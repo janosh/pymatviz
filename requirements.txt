@@ -1,0 +1,6 @@
+pymatgen
+pandas
+numpy
+matplolib
+# dev dependencies
+pytest

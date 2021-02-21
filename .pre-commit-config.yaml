@@ -1,0 +1,21 @@
+# Install these hooks with `pre-commit install`.
+# Update with `pre-commit autoupdate`.
+# Setup CI and readme badge at https://pre-commit.ci.
+repos:
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.7.0
+    hooks:
+      - id: isort
+  - repo: https://github.com/psf/black
+    rev: 20.8b1
+    hooks:
+      - id: black
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.4
+    hooks:
+      - id: flake8
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v2.10.0
+    hooks:
+      - id: pyupgrade
+        args: [--py38-plus]

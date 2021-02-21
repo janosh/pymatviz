@@ -1,0 +1,34 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '**.py' # only run workflow when source files changed
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '**.py'
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Set up latest Python 3
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install .
+
+      - name: Run Tests
+        run: |
+          python -m pytest --durations 0
