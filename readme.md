@@ -55,9 +55,9 @@ git+git://github.com/janosh/mlmatrics@41b95ec
 
 ## Uncertainty Calibration
 
-| [`std_calibration_single.svg`](assets/std_calibration_single.svg) | [`std_calibration_multiple.svg`](assets/std_calibration_multiple.svg) |
+| [`normal_prob_plot.svg`](assets/normal_prob_plot.svg) | [`normal_prob_plot_multiple.svg`](assets/normal_prob_plot_multiple.svg) |
 | :---------------------------------------------------------------: | :-------------------------------------------------------------------: |
-|   ![std_calibration_single](assets/std_calibration_single.svg)    |   ![std_calibration_multiple](assets/std_calibration_multiple.svg)    |
+|   ![normal_prob_plot](assets/normal_prob_plot.svg)    |   ![normal_prob_plot_multiple](assets/normal_prob_plot_multiple.svg)    |
 
 ## Cumulative Error and Residual
 

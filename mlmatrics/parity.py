@@ -78,8 +78,8 @@ def density_hexbin(
     title=None,
     text=None,
     color_by=None,
-    xlabel="actual",
-    ylabel="predicted",
+    xlabel="Actual",
+    ylabel="Predicted",
 ):
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by"""

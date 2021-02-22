@@ -7,14 +7,17 @@ from scipy.stats import norm
 from mlmatrics.utils import add_identity
 
 
-def std_calibration(y_true: list, y_pred: list, y_std: Union[list, dict]) -> None:
-    """Plot the calibration of one (passed as list) or multiple (passed as dict)
-    sets of uncertainty estimates for a single pair of ground truth targets
-    `y_true` and model predictions `y_pred`. Overconfidence is visualized as shaded
-    areas below the parity line, underconfidence (oversized uncertainties) as
-    shaded areas above the parity line.
+def qq_gaussian(y_true: list, y_pred: list, y_std: Union[list, dict]) -> None:
+    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as list)
+    or multiple (passed as dict) sets of uncertainty estimates for a single
+    pair of ground truth targets `y_true` and model predictions `y_pred`.
+
+    Overconfidence relative to a gaussian distribution is visualized as shaded areas
+    below the parity line, underconfidence (oversized uncertainties) as shaded areas
+    above the parity line.
 
     Inspired by https://github.com/uncertainty-toolbox/uncertainty-toolbox#visualizations.
+    Info on Q-Q plots: https://wikipedia.org/wiki/Q-Q_plot
 
     Args:
         y_true (list): ground truth targets
@@ -50,7 +53,10 @@ def std_calibration(y_true: list, y_pred: list, y_std: Union[list, dict]) -> Non
     plt.xlim(0, 1)
     plt.ylim(0, 1)
 
-    legend1 = plt.legend(loc="upper left")
+    plt.xlabel("Theoretical Quantile")
+    plt.ylabel("Observed Quantile")
+
+    legend1 = plt.legend(loc="upper left", frameon=False)
     # Multiple legends on the same axes:
     # https://matplotlib.org/3.3.3/tutorials/intermediate/legend_guide.html#multiple-legends-on-the-same-axes
     plt.gca().add_artist(legend1)
@@ -64,7 +70,13 @@ def std_calibration(y_true: list, y_pred: list, y_std: Union[list, dict]) -> Non
             title="Miscalibration areas",
             loc="lower right",
             ncol=2,
+            frameon=False,
         )
         legend2._legend_box.align = "left"  # https://stackoverflow.com/a/44620643
     else:
-        plt.legend(lines, [f"Miscalibration area: {areas[0]:.2f}"], loc="lower right")
+        plt.legend(
+            lines,
+            [f"Miscalibration area: {areas[0]:.2f}"],
+            loc="lower right",
+            frameon=False,
+        )
