@@ -39,7 +39,7 @@ git+git://github.com/janosh/mlmatrics@master # default
 git+git://github.com/janosh/mlmatrics@41b95ec
 ```
 
-## Density Scatter
+## Parity Plots
 
 |     [`density_scatter.svg`](assets/density_scatter.svg)     |     [`density_scatter_with_hist.svg`](assets/density_scatter_with_hist.svg)     |
 | :---------------------------------------------------------: | :-----------------------------------------------------------------------------: |
@@ -61,11 +61,10 @@ git+git://github.com/janosh/mlmatrics@41b95ec
 
 ## Cumulative Error and Residual
 
-|                     [`cumulative_error.svg`](assets/cumulative_error.svg)                     | [`cumulative_residual.svg`](assets/cumulative_residual.svg) |
-| :-------------------------------------------------------------------------------------------: | :---------------------------------------------------------: |
-|                       ![cumulative_error](assets/cumulative_error.svg)                        |   ![cumulative_residual](assets/cumulative_residual.svg)    |
-| [`cumulative_error_cumulative_residual.svg`](assets/cumulative_error_cumulative_residual.svg) |                                                             |
-|   ![cumulative_error_cumulative_residual](assets/cumulative_error_cumulative_residual.svg)    |                                                             |
+| [`cumulative_error.svg`](assets/cumulative_error) | [`cumulative_residual.svg`](assets/cumulative_residual) |
+| :-----------------------------------------------: | :-----------------------------------------------------: |
+| ![cumulative_error](assets/cumulative_error.svg)  | ![cumulative_residual](assets/cumulative_residual.svg)  |
+|                                                   |
 
 ## Classification Metrics
 
