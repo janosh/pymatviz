@@ -1,3 +1,5 @@
+from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -31,7 +33,7 @@ def count_elements(formulas: list) -> pd.Series:
 
 
 def ptable_elemental_prevalence(
-    formulas: list = None, elem_counts: pd.Series = None, log_scale: bool = False
+    formulas: List[str] = None, elem_counts: pd.Series = None, log_scale: bool = False
 ) -> None:
     """Display the prevalence of each element in a materials dataset plotted as a
     heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
@@ -39,7 +41,7 @@ def ptable_elemental_prevalence(
     Adapted from https://github.com/kaaiian/ML_figures.
 
     Args:
-        formulas (list): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
+        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         elem_counts (pd.Series): Map from element symbol to prevalence count
         log_scale (bool, optional): Whether color map scale is log or linear.
     """
