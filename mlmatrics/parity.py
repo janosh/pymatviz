@@ -117,4 +117,4 @@ def density_hexbin_with_hist(xs, ys, cell=None, bins=100, **kwargs):
     """
 
     ax_scatter = with_hist(xs, ys, cell, bins)
-    density_scatter_hex(xs, ys, ax_scatter, **kwargs)
+    density_hexbin(xs, ys, ax_scatter, **kwargs)
