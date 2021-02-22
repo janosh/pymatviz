@@ -15,9 +15,23 @@ from mlmatrics import (
     hist_elemental_prevalence,
     precision_recall_curve,
     ptable_elemental_prevalence,
+    qq_gaussian,
     roc_curve,
-    std_calibration,
 )
+
+plt.rcParams.update({"font.size": 20})
+plt.rcParams["axes.linewidth"] = 2.5
+plt.rcParams["xtick.major.size"] = 7
+plt.rcParams["xtick.major.width"] = 2.5
+plt.rcParams["xtick.minor.size"] = 5
+plt.rcParams["xtick.minor.width"] = 2.5
+plt.rcParams["ytick.major.size"] = 7
+plt.rcParams["ytick.major.width"] = 2.5
+plt.rcParams["ytick.minor.size"] = 5
+plt.rcParams["ytick.minor.width"] = 2.5
+plt.rcParams["legend.fontsize"] = 20
+plt.rcParams["figure.figsize"] = (8, 7)
+
 
 # %%
 y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
@@ -78,12 +92,12 @@ savefig("hist_elemental_prevalence")
 
 
 # %%
-std_calibration(y_pred, y_true, y_std)
-savefig("std_calibration_single")
+qq_gaussian(y_pred, y_true, y_std)
+savefig("normal_prob_plot")
 
 
-std_calibration(y_pred, y_true, {"foo": y_std, "bar": 0.1 * y_std})
-savefig("std_calibration_multiple")
+qq_gaussian(y_pred, y_true, {"foo": y_std, "bar": 1.5 * y_std})
+savefig("normal_prob_plot_multiple")
 
 
 # %%
