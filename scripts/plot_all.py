@@ -16,7 +16,7 @@ from mlmatrics import (
     precision_recall_curve,
     ptable_elemental_prevalence,
     roc_curve,
-    std_calibration,
+    qq_gaussian,
 )
 
 # %%
@@ -78,11 +78,11 @@ savefig("hist_elemental_prevalence")
 
 
 # %%
-std_calibration(y_pred, y_true, y_std)
+qq_gaussian(y_pred, y_true, y_std)
 savefig("std_calibration_single")
 
 
-std_calibration(y_pred, y_true, {"foo": y_std, "bar": 0.1 * y_std})
+qq_gaussian(y_pred, y_true, {"foo": y_std, "bar": 0.1 * y_std})
 savefig("std_calibration_multiple")
 
 
