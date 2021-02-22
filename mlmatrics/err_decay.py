@@ -12,6 +12,7 @@ def get_err_decay(y_test, y_pred, n_rand=100):
     # error decay for random exclusion of samples
     ae_tile = np.tile(abs_err, [n_rand, 1])
     [np.random.shuffle(row) for row in ae_tile]  # shuffle rows of ae_tile in place
+
     rand = ae_tile.cumsum(1) / n_inc
     rand_mean, rand_std = rand.mean(0), rand.std(0)
 
@@ -20,7 +21,10 @@ def get_err_decay(y_test, y_pred, n_rand=100):
 
 def get_std_decay(y_test, y_pred, y_std):
     abs_err = np.abs(y_test - y_pred)
-    y_std_sort = np.argsort(y_std)  # indices that sort y_std in ascending uncertainty
+
+    # indices that sort y_std in ascending uncertainty
+    y_std_sort = np.argsort(y_std)
+
     # increasing count of the number of samples in each element of cumsum()
     n_inc = range(1, len(abs_err) + 1)
 
