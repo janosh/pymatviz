@@ -23,6 +23,7 @@ from mlmatrics import (
 y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 
 
+# Load example dataset
 df = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv", comment="#", na_filter=False)
 
 tar_col = [col for col in df.columns if "target" in col]

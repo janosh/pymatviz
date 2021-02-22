@@ -15,11 +15,11 @@ def hist_density(x, y, sort=True, bins=100):
     data, x_e, y_e = np.histogram2d(x, y, bins=bins)
 
     z = interpn(
-        (0.5*(x_e[1:] + x_e[:-1]), 0.5*(y_e[1:]+y_e[:-1])),
+        (0.5 * (x_e[1:] + x_e[:-1]), 0.5 * (y_e[1:] + y_e[:-1])),
         data,
         np.vstack([x, y]).T,
         method="splinef2d",
-        bounds_error=False
+        bounds_error=False,
     )
 
     # Sort the points by density, so that the densest points are plotted last
