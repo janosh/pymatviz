@@ -24,6 +24,21 @@ For a locally editable install, use
 git clone https://github.com/janosh/mlmatrics && pip install -e mlmatrics
 ```
 
+To specify a dependence on this package in `requirements.txt`, use
+
+```txt
+pandas==1.1.2
+numpy==1.20.1
+git+git://github.com/janosh/mlmatrics
+```
+
+To specify a certain branch or commit, append it's name or hash, e.g.
+
+```txt
+git+git://github.com/janosh/mlmatrics@master # default
+git+git://github.com/janosh/mlmatrics@41b95ec
+```
+
 ## Density Scatter
 
 |     [`density_scatter.svg`](assets/density_scatter.svg)     |     [`density_scatter_with_hist.svg`](assets/density_scatter_with_hist.svg)     |
