@@ -15,22 +15,22 @@ from mlmatrics import (
     hist_elemental_prevalence,
     precision_recall_curve,
     ptable_elemental_prevalence,
-    roc_curve,
     qq_gaussian,
+    roc_curve,
 )
 
-plt.rcParams.update({'font.size': 20})
-plt.rcParams['axes.linewidth'] = 2.5
-plt.rcParams['xtick.major.size'] = 7
-plt.rcParams['xtick.major.width'] = 2.5
-plt.rcParams['xtick.minor.size'] = 5
-plt.rcParams['xtick.minor.width'] = 2.5
-plt.rcParams['ytick.major.size'] = 7
-plt.rcParams['ytick.major.width'] = 2.5
-plt.rcParams['ytick.minor.size'] = 5
-plt.rcParams['ytick.minor.width'] = 2.5
-plt.rcParams['legend.fontsize'] = 20
-plt.rcParams['figure.figsize'] = (8, 7)
+plt.rcParams.update({"font.size": 20})
+plt.rcParams["axes.linewidth"] = 2.5
+plt.rcParams["xtick.major.size"] = 7
+plt.rcParams["xtick.major.width"] = 2.5
+plt.rcParams["xtick.minor.size"] = 5
+plt.rcParams["xtick.minor.width"] = 2.5
+plt.rcParams["ytick.major.size"] = 7
+plt.rcParams["ytick.major.width"] = 2.5
+plt.rcParams["ytick.minor.size"] = 5
+plt.rcParams["ytick.minor.width"] = 2.5
+plt.rcParams["legend.fontsize"] = 20
+plt.rcParams["figure.figsize"] = (8, 7)
 
 
 # %%

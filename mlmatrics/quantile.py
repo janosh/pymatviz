@@ -79,5 +79,5 @@ def qq_gaussian(y_true: list, y_pred: list, y_std: Union[list, dict]) -> None:
             lines,
             [f"Miscalibration area: {areas[0]:.2f}"],
             loc="lower right",
-            frameon=False
+            frameon=False,
         )
