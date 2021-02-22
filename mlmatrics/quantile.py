@@ -2,27 +2,31 @@ from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy import ndarray as Array
 from scipy.stats import norm
 
 from mlmatrics.utils import add_identity
 
 
-def qq_gaussian(y_true: list, y_pred: list, y_std: Union[list, dict]) -> None:
-    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as list)
+def qq_gaussian(y_true: Array, y_pred: Array, y_std: Union[Array, dict]) -> None:
+    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)
     or multiple (passed as dict) sets of uncertainty estimates for a single
     pair of ground truth targets `y_true` and model predictions `y_pred`.
 
-    Overconfidence relative to a gaussian distribution is visualized as shaded areas
-    below the parity line, underconfidence (oversized uncertainties) as shaded areas
-    above the parity line.
+    Overconfidence relative to a Gaussian distribution is visualized as shaded
+    areas below the parity line, underconfidence (oversized uncertainties) as
+    shaded areas above the parity line.
+
+    The measure of calibration is how well the uncertainty percentiles conform
+    to those of a normal distribution.
 
     Inspired by https://github.com/uncertainty-toolbox/uncertainty-toolbox#visualizations.
     Info on Q-Q plots: https://wikipedia.org/wiki/Q-Q_plot
 
     Args:
-        y_true (list): ground truth targets
-        y_pred (list): model predictions
-        y_std (list | dict): model uncertainties
+        y_true (Array): ground truth targets
+        y_pred (Array): model predictions
+        y_std (Array | dict): model uncertainties
     """
     if type(y_std) != dict:
         y_std = {"std": y_std}
@@ -45,7 +49,7 @@ def qq_gaussian(y_true: list, y_pred: list, y_std: Union[list, dict]) -> None:
         plt.fill_between(
             exp_proportions, y1=obs_proportions, y2=exp_proportions, alpha=0.2
         )
-        miscal_area = np.trapz(obs_proportions, dx=1 / resolution) - 0.5
+        miscal_area = np.trapz(obs_proportions - exp_proportions, dx=1 / resolution)
         lines.append([line, miscal_area])
 
     add_identity(label="ideal")
