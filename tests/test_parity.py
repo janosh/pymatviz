@@ -1,7 +1,7 @@
 from mlmatrics import (
-    density_scatter,
     density_hexbin,
     density_hexbin_with_hist,
+    density_scatter,
     density_scatter_with_hist,
 )
 
