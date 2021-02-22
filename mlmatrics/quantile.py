@@ -54,7 +54,10 @@ def qq_gaussian(y_true: list, y_pred: list, y_std: Union[list, dict]) -> None:
     plt.xlim(0, 1)
     plt.ylim(0, 1)
 
-    legend1 = plt.legend(loc="upper left")
+    plt.xlabel("Theoretical Quantile")
+    plt.ylabel("Observed Quantile")
+
+    legend1 = plt.legend(loc="upper left", frameon=False)
     # Multiple legends on the same axes:
     # https://matplotlib.org/3.3.3/tutorials/intermediate/legend_guide.html#multiple-legends-on-the-same-axes
     plt.gca().add_artist(legend1)
@@ -68,7 +71,13 @@ def qq_gaussian(y_true: list, y_pred: list, y_std: Union[list, dict]) -> None:
             title="Miscalibration areas",
             loc="lower right",
             ncol=2,
+            frameon=False,
         )
         legend2._legend_box.align = "left"  # https://stackoverflow.com/a/44620643
     else:
-        plt.legend(lines, [f"Miscalibration area: {areas[0]:.2f}"], loc="lower right")
+        plt.legend(
+            lines,
+            [f"Miscalibration area: {areas[0]:.2f}"],
+            loc="lower right",
+            frameon=False
+        )
