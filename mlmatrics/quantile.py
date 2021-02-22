@@ -8,17 +8,16 @@ from mlmatrics.utils import add_identity
 
 
 def qq_gaussian(y_true: list, y_pred: list, y_std: Union[list, dict]) -> None:
-    """Plot the guassian Q-Q plot of one (passed as list) or multiple (passed as dict)
-    sets of uncertainty estimates for a single pair of ground truth targets
-    `y_true` and model predictions `y_pred`.
+    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as list)
+    or multiple (passed as dict) sets of uncertainty estimates for a single
+    pair of ground truth targets `y_true` and model predictions `y_pred`.
 
     Overconfidence relative to a gaussian distribution is visualized as shaded areas
     below the parity line, underconfidence (oversized uncertainties) as shaded areas
     above the parity line.
 
     Inspired by https://github.com/uncertainty-toolbox/uncertainty-toolbox#visualizations.
-
-    Info on Q-Q plots https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot
+    Info on Q-Q plots: https://wikipedia.org/wiki/Q-Q_plot
 
     Args:
         y_true (list): ground truth targets

@@ -1,12 +1,10 @@
 import matplotlib.pyplot as plt
 import sklearn.metrics as skm
-from numpy import ndarray as array
+from matplotlib.axes import Axes
+from numpy import ndarray as Array
 
 
-def roc_curve(targets: array, proba_pos: array, ax=None) -> float:
-
-    if ax is None:
-        ax = plt.gca()
+def roc_curve(targets: Array, proba_pos: Array, ax: Axes = plt.gca()) -> float:
 
     # get the metrics
     fpr, tpr, _ = skm.roc_curve(targets, proba_pos)
@@ -25,10 +23,9 @@ def roc_curve(targets: array, proba_pos: array, ax=None) -> float:
     return roc_auc
 
 
-def precision_recall_curve(targets: array, proba_pos: array, ax=None) -> float:
-
-    if ax is None:
-        ax = plt.gca()
+def precision_recall_curve(
+    targets: Array, proba_pos: Array, ax: Axes = plt.gca()
+) -> float:
 
     # get the metrics
     precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
