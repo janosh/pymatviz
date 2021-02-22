@@ -7,6 +7,29 @@ from scipy.interpolate import interpn
 from mlmatrics.utils import add_identity, with_hist
 
 
+def hist_density(x, y, sort=True, bins=100):
+    """
+    return an approximate density of points
+    """
+
+    data, x_e, y_e = np.histogram2d(x, y, bins=bins)
+
+    z = interpn(
+        (0.5*(x_e[1:] + x_e[:-1]), 0.5*(y_e[1:]+y_e[:-1])),
+        data,
+        np.vstack([x, y]).T,
+        method="splinef2d",
+        bounds_error=False
+    )
+
+    # Sort the points by density, so that the densest points are plotted last
+    if sort:
+        idx = z.argsort()
+        x, y, z = x[idx], y[idx], z[idx]
+
+    return x, y, z
+
+
 def density_scatter(
     xs,
     ys,
@@ -24,20 +47,7 @@ def density_scatter(
     if ax is None:
         ax = plt.gca()
 
-    data, x_edges, y_edges = np.histogram2d(xs, ys, bins)
-
-    cs = interpn(
-        (0.5 * (x_edges[1:] + x_edges[:-1]), 0.5 * (y_edges[1:] + y_edges[:-1])),
-        data,
-        np.vstack([xs, ys]).T,
-        method="splinef2d",
-        bounds_error=False,
-    )
-
-    if sort:
-        # sort points by density so densest points are plotted last
-        idx = cs.argsort()
-        xs, ys, cs = xs[idx], ys[idx], cs[idx]
+    xs, ys, cs = hist_density(xs, ys, sort=sort, bins=bins)
 
     norm = mpl.colors.LogNorm() if log else None
 
