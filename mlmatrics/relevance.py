@@ -5,6 +5,17 @@ from numpy import ndarray as Array
 
 
 def roc_curve(targets: Array, proba_pos: Array, ax: Axes = plt.gca()) -> float:
+    """Plot the receiver operating characteristic curve of a binary
+    classifier given target labels and predicted probabilities for
+    the positive class.
+
+    Args:
+        targets (Array): Ground truth targets.
+        proba_pos (Array): predicted probabilities for the positive class.
+
+    Returns:
+        float: The classifier's ROC area under the curve.
+    """
 
     # get the metrics
     fpr, tpr, _ = skm.roc_curve(targets, proba_pos)
@@ -26,6 +37,15 @@ def roc_curve(targets: Array, proba_pos: Array, ax: Axes = plt.gca()) -> float:
 def precision_recall_curve(
     targets: Array, proba_pos: Array, ax: Axes = plt.gca()
 ) -> float:
+    """Plot the precision recall curve of a binary classifier.
+
+    Args:
+        targets (Array): Ground truth targets.
+        proba_pos (Array): predicted probabilities for the positive class.
+
+    Returns:
+        float: The classifier's precision score.
+    """
 
     # get the metrics
     precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
