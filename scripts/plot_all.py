@@ -97,10 +97,6 @@ cum_res(y_pred, y_true)
 savefig("cumulative_residual")
 
 
-cum_err_cum_res(y_pred, y_true)
-savefig("cumulative_error_cumulative_residual")
-
-
 # %%
 err_decay(y_true, y_pred, y_std)
 savefig("err_decay")

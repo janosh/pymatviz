@@ -97,13 +97,3 @@ def cum_err(preds: Array, targets: Array, ax: Axes = None) -> None:
     ax.set_ylabel("Percentile")
     ax.set_title("Cumulative Error")
     ax.legend(frameon=False)
-
-
-def cum_err_cum_res(preds, targets, title=None):
-
-    fig, [ax_res, ax_err] = plt.subplots(1, 2, figsize=(12, 5))
-
-    cum_res(preds, targets, ax_res)
-    cum_err(preds, targets, ax_err, title)
-
-    return fig, [ax_res, ax_err]

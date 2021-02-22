@@ -9,7 +9,3 @@ def test_cum_err():
 
 def test_cum_res():
     cum_res(y_pred - y_true)
-
-
-def test_cum_err_cum_res():
-    cum_err_cum_res(y_pred, y_true)
