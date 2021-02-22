@@ -1,70 +1,109 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from numpy import ndarray as Array
 
 
-def add_dropdown(ax, percentile, err):
-    per = int(percentile * (err.shape[0] - 1) / 100 + 0.5)
-    ax.plot((0, err[per]), (percentile, percentile), "--", color="grey", alpha=0.4)
-    ax.plot((err[per], err[per]), (0, percentile), "--", color="grey", alpha=0.4)
+def add_dropdown(ax: Axes, percentile: int, err: Array) -> None:
+    """Add a visual drop-down at a given percentile.
+
+    Args:
+        ax (Axes): plt axes on which to add the dropdown.
+        percentile (int): Integer in range(100) at which to display dropdown line.
+        err (array): Numpy array of errors = abs(preds - targets).
+    """
+    percent = int(percentile * (err.shape[0] - 1) / 100 + 0.5)
+    ax.plot((0, err[percent]), (percentile, percentile), "--", color="grey", alpha=0.4)
+    ax.plot(
+        (err[percent], err[percent]), (0, percentile), "--", color="grey", alpha=0.4
+    )
 
 
-def cum_res(res, ax=None):
+def cum_res(preds: Array, targets: Array, ax: Axes = None) -> None:
+    """Plot the empirical cumulative distribution for the residuals (y - mu).
+
+    Args:
+        preds (Array): Numpy array of predictions.
+        targets (Array): Numpy array of targets.
+        ax (Axes, optional): plt axes. Defaults to None.
+    """
     if ax is None:
         ax = plt.gca()
+
+    res = np.sort(preds - targets)
 
     n_data = len(res)
 
+    # Plot the empirical distribution
+    ax.plot(res, np.arange(n_data) / n_data * 100)
+
+    # Fill the 90% coverage region
+    # TODO may look better to add drop downs instead
     low = int(0.05 * (n_data - 1) + 0.5)
     up = int(0.95 * (n_data - 1) + 0.5)
-
-    d_low = res[low] - res[int(0.97 * low)]
-    d_up = res[int(1.03 * up)] - res[up]
-
-    d_max = max(d_low, d_up)
-
-    lim = max(abs(res[up] + d_max), abs(res[low] - d_max))
-
-    ax.plot(res, np.arange(n_data) / n_data * 100)
     ax.fill_between(res[low:up], (np.arange(n_data) / n_data * 100)[low:up], alpha=0.3)
 
-    ax.plot((0, 0), (0, 100), "--", color="grey", alpha=0.4)
-    ax.set_ylim((0, 100))
+    # Get robust (and symmetrical) x axis limits
+    delta_low = res[low] - res[int(0.97 * low)]
+    delta_up = res[int(1.03 * up)] - res[up]
+    delta_max = max(delta_low, delta_up)
+    lim = max(abs(res[up] + delta_max), abs(res[low] - delta_max))
     ax.set_xlim((-lim, lim))
+
+    # Set y axis limits
+    ax.set_ylim((0, 100))
+
+    # Add some visual guidelines
+    ax.plot((0, 0), (0, 100), "--", color="grey", alpha=0.4)
     ax.plot((ax.get_xlim()[0], 0), (50, 50), "--", color="grey", alpha=0.4)
+
+    # Label the plot
     ax.set_xlabel("Residual")
     ax.set_ylabel("Percentile")
     ax.set_title("Cumulative Residual")
+    ax.legend(frameon=False)
 
 
-def cum_err(err, ax=None, legend_title=None):
+def cum_err(preds: Array, targets: Array, ax: Axes = None) -> None:
+    """Plot the empirical cumulative distribution for the absolute errors abs(y - y_hat).
+
+    Args:
+        preds (Array): Numpy array of predictions.
+        targets (Array): Numpy array of targets.
+        ax (Axes, optional): plt axes. Defaults to None.
+    """
     if ax is None:
         ax = plt.gca()
 
+    err = np.sort(np.abs(preds - targets))
     n_data = len(err)
-    lim = np.percentile(err, 98)
 
+    # Plot the empirical distribution
     ax.plot(err, np.arange(n_data) / n_data * 100)
 
-    ax.set_ylim((0, 100))
+    # Get robust (and symmetrical) x axis limits
+    lim = np.percentile(err, 98)
     ax.set_xlim((0, lim))
 
+    # Set y axis limits
+    ax.set_ylim((0, 100))
+
+    # Add some visual guidelines
     add_dropdown(ax, 50, err)
     add_dropdown(ax, 75, err)
 
+    # Label the plot
     ax.set_xlabel("Absolute Error")
     ax.set_ylabel("Percentile")
     ax.set_title("Cumulative Error")
-    ax.legend(title=legend_title, frameon=False)
+    ax.legend(frameon=False)
 
 
-def cum_err_cum_res(targets, preds, title=None):
-
-    res = np.sort(preds - targets)
-    err = np.sort(np.abs(preds - targets))
+def cum_err_cum_res(preds, targets, title=None):
 
     fig, [ax_res, ax_err] = plt.subplots(1, 2, figsize=(12, 5))
 
-    cum_res(res, ax_res)
-    cum_err(err, ax_err, title)
+    cum_res(preds, targets, ax_res)
+    cum_err(preds, targets, ax_err, title)
 
     return fig, [ax_res, ax_err]

@@ -68,11 +68,11 @@ savefig("std_calibration_multiple")
 
 
 # %%
-cum_err(y_pred - y_true)
+cum_err(y_pred, y_true)
 savefig("cumulative_error")
 
 
-cum_res(y_pred - y_true)
+cum_res(y_pred, y_true)
 savefig("cumulative_residual")
 
 
