@@ -1,7 +1,7 @@
 pymatgen
 pandas
 numpy
-matplolib
+matplotlib
 
 # dev dependencies
 pytest

@@ -1,13 +1,11 @@
 import matplotlib.pyplot as plt
+import sklearn.metrics as skm
 from numpy import ndarray as array
-from sklearn.metrics import precision_recall_curve as sklearn_precision_recall_curve
-from sklearn.metrics import precision_score, roc_auc_score
-from sklearn.metrics import roc_curve as sklearn_roc_curve
 
 
 def roc_curve(targets: array, proba_pos: array) -> float:
-    fpr, tpr, _ = sklearn_roc_curve(targets, proba_pos)
-    roc_auc = roc_auc_score(targets, proba_pos)
+    fpr, tpr, _ = skm.roc_curve(targets, proba_pos)
+    roc_auc = skm.roc_auc_score(targets, proba_pos)
 
     plt.title("Receiver Operating Characteristic")
     plt.plot(fpr, tpr, "b", label=f"AUC = {roc_auc:.2f}")
@@ -21,8 +19,9 @@ def roc_curve(targets: array, proba_pos: array) -> float:
 
 def precision_recall_curve(targets: array, proba_pos: array) -> float:
 
-    precision, recall, _ = sklearn_precision_recall_curve(targets, proba_pos)
-    prec = precision_score(targets, proba_pos.round())  # round: convert probas to preds
+    precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
+    # round: convert probas to preds
+    prec = skm.precision_score(targets, proba_pos.round())
 
     plt.title("Precision Recall curve for positive label (1: superconductor)")
     plt.plot(recall, precision, "b", label=f"precision = {prec:.2f}")
