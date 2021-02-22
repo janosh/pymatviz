@@ -1,9 +1,9 @@
 from .clf_metrics import precision_recall_curve, roc_curve
 from .cumulative import add_dropdown, cum_err, cum_res
-from .density_scatter import (
+from .parity import (
     density_scatter,
-    density_scatter_hex,
-    density_scatter_hex_with_hist,
+    density_hexbin,
+    density_hexbin_with_hist,
     density_scatter_with_hist,
 )
 from .elements import (

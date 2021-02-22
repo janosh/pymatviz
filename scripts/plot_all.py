@@ -8,8 +8,8 @@ from mlmatrics import (
     cum_err,
     cum_res,
     density_scatter,
-    density_scatter_hex,
-    density_scatter_hex_with_hist,
+    density_hexbin,
+    density_hexbin_with_hist,
     density_scatter_with_hist,
     err_decay,
     hist_elemental_prevalence,
@@ -57,11 +57,11 @@ density_scatter_with_hist(y_pred, y_true)
 savefig("density_scatter_with_hist")
 
 
-density_scatter_hex(y_pred, y_true)
+density_hexbin(y_pred, y_true)
 savefig("density_scatter_hex")
 
 
-density_scatter_hex_with_hist(y_pred, y_true)
+density_hexbin_with_hist(y_pred, y_true)
 savefig("density_scatter_hex_with_hist")
 
 

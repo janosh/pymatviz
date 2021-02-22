@@ -39,7 +39,7 @@ git+git://github.com/janosh/mlmatrics@master # default
 git+git://github.com/janosh/mlmatrics@41b95ec
 ```
 
-## Density Scatter
+## Parity Plots
 
 |     [`density_scatter.svg`](assets/density_scatter.svg)     |     [`density_scatter_with_hist.svg`](assets/density_scatter_with_hist.svg)     |
 | :---------------------------------------------------------: | :-----------------------------------------------------------------------------: |

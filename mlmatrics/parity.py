@@ -71,7 +71,7 @@ def density_scatter(
     return ax
 
 
-def density_scatter_hex(
+def density_hexbin(
     targets,
     preds,
     ax=None,
@@ -111,7 +111,7 @@ def density_scatter_with_hist(xs, ys, cell=None, bins=100, **kwargs):
     density_scatter(xs, ys, ax_scatter, **kwargs)
 
 
-def density_scatter_hex_with_hist(xs, ys, cell=None, bins=100, **kwargs):
+def density_hexbin_with_hist(xs, ys, cell=None, bins=100, **kwargs):
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by with histograms along each dimension.
     """
