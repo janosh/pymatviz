@@ -79,11 +79,11 @@ savefig("hist_elemental_prevalence")
 
 # %%
 qq_gaussian(y_pred, y_true, y_std)
-savefig("std_calibration_single")
+savefig("normal_prob_plot")
 
 
-qq_gaussian(y_pred, y_true, {"foo": y_std, "bar": 0.1 * y_std})
-savefig("std_calibration_multiple")
+qq_gaussian(y_pred, y_true, {"foo": y_std, "bar": 1.5 * y_std})
+savefig("normal_prob_plot_multiple")
 
 
 # %%
