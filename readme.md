@@ -15,7 +15,7 @@ A toolkit of metrics and visualizations for model performance in data-driven mat
 ## Installation
 
 ```sh
-pip install git+https://github.com/janosh/mlmatrics
+pip install -U git+https://github.com/janosh/mlmatrics
 ```
 
 For a locally editable install, use
@@ -41,37 +41,53 @@ git+git://github.com/janosh/mlmatrics@41b95ec
 
 ## Parity Plots
 
-|     [`density_scatter.svg`](assets/density_scatter.svg)     |     [`density_scatter_with_hist.svg`](assets/density_scatter_with_hist.svg)     |
-| :---------------------------------------------------------: | :-----------------------------------------------------------------------------: |
-|       ![density_scatter](assets/density_scatter.svg)        |       ![density_scatter_with_hist](assets/density_scatter_with_hist.svg)        |
-| [`density_scatter_hex.svg`](assets/density_scatter_hex.svg) | [`density_scatter_hex_with_hist.svg`](assets/density_scatter_hex_with_hist.svg) |
-|   ![density_scatter_hex](assets/density_scatter_hex.svg)    |   ![density_scatter_hex_with_hist](assets/density_scatter_hex_with_hist.svg)    |
+See [`mlmatrics/parity.py`](mlmatrics/parity.py).
+
+| [`density_scatter(xs, ys, ...)`](mlmatrics/parity.py)  |      [`density_scatter_with_hist(xs, ys, ...)`](mlmatrics/parity.py)       |
+| :----------------------------------------------------: | :------------------------------------------------------------------------: |
+|     ![density_scatter](assets/density_scatter.svg)     |     ![density_scatter_with_hist](assets/density_scatter_with_hist.svg)     |
+|  [`density_hexbin(xs, ys, ...)`](mlmatrics/parity.py)  |       [`density_hexbin_with_hist(xs, ys, ...)`](mlmatrics/parity.py)       |
+| ![density_scatter_hex](assets/density_scatter_hex.svg) | ![density_scatter_hex_with_hist](assets/density_scatter_hex_with_hist.svg) |
 
 ## Elements
 
-| [`ptable_elemental_prevalence.svg`](assets/ptable_elemental_prevalence.svg) | [`hist_elemental_prevalence.svg`](assets/hist_elemental_prevalence.svg) |
-| :-------------------------------------------------------------------------: | :---------------------------------------------------------------------: |
-|   ![ptable_elemental_prevalence](assets/ptable_elemental_prevalence.svg)    |   ![hist_elemental_prevalence](assets/hist_elemental_prevalence.svg)    |
+See [`mlmatrics/elements.py`](mlmatrics/elements.py).
+
+|    [`ptable_elemental_prevalence(formulas)`](mlmatrics/elements.py)    |   [`hist_elemental_prevalence(formulas)`](mlmatrics/elements.py)   |
+| :--------------------------------------------------------------------: | :----------------------------------------------------------------: |
+| ![ptable_elemental_prevalence](assets/ptable_elemental_prevalence.svg) | ![hist_elemental_prevalence](assets/hist_elemental_prevalence.svg) |
 
 ## Uncertainty Calibration
 
-| [`normal_prob_plot.svg`](assets/normal_prob_plot.svg) | [`normal_prob_plot_multiple.svg`](assets/normal_prob_plot_multiple.svg) |
-| :---------------------------------------------------------------: | :-------------------------------------------------------------------: |
-|   ![normal_prob_plot](assets/normal_prob_plot.svg)    |   ![normal_prob_plot_multiple](assets/normal_prob_plot_multiple.svg)    |
+See [`mlmatrics/quantile.py`](mlmatrics/quantile.py).
+
+| [`qq_gaussian(y_test, y_pred, y_std)`](mlmatrics/quantile.py) | [`qq_gaussian(y_test, y_pred, y_std: dict)`](mlmatrics/quantile.py) |
+| :-----------------------------------------------------------: | :-----------------------------------------------------------------: |
+|       ![normal_prob_plot](assets/normal_prob_plot.svg)        | ![normal_prob_plot_multiple](assets/normal_prob_plot_multiple.svg)  |
+
+## Ranking
+
+See [`mlmatrics/ranking.py`](mlmatrics/ranking.py).
+
+| [`err_decay(y_test, y_pred, y_std)`](mlmatrics/cumulative.py) | [`err_decay(y_test, y_pred, y_std: dict)`](mlmatrics/cumulative.py) |
+| :-----------------------------------------------------------: | :-----------------------------------------------------------------: |
+|              ![err_decay](assets/err_decay.svg)               |        ![err_decay_multiple](assets/err_decay_multiple.svg)         |
 
 ## Cumulative Error and Residual
 
-| [`cumulative_error.svg`](assets/cumulative_error) | [`cumulative_residual.svg`](assets/cumulative_residual) |
-| :-----------------------------------------------: | :-----------------------------------------------------: |
-| ![cumulative_error](assets/cumulative_error.svg)  | ![cumulative_residual](assets/cumulative_residual.svg)  |
-|                                                   |
+See [`mlmatrics/cumulative.py`](mlmatrics/cumulative.py).
+
+| [`cum_err(preds, targets)`](mlmatrics/cumulative.py) |  [`cum_res(preds, targets)`](mlmatrics/cumulative.py)  |
+| :--------------------------------------------------: | :----------------------------------------------------: |
+|   ![cumulative_error](assets/cumulative_error.svg)   | ![cumulative_residual](assets/cumulative_residual.svg) |
 
 ## Classification Metrics
 
-|              [`roc_curve.svg`](assets/roc_curve.svg)               | [`precision_recall_curve.svg`](assets/precision_recall_curve.svg) |
-| :----------------------------------------------------------------: | :---------------------------------------------------------------: |
-|                 ![roc_curve](assets/roc_curve.svg)                 |   ![precision_recall_curve](assets/precision_recall_curve.svg)    |
-| ```from mlmatrics import roc_curve roc_curve(y_binary, y_proba)``` |            `precision_recall_curve(y_binary, y_proba)`            |
+See [`mlmatrics/relevance.py`](mlmatrics/relevance.py).
+
+| [`roc_curve(targets, proba_pos)`](mlmatrics/relevance.py) | [`precision_recall_curve(targets, proba_pos)`](mlmatrics/relevance.py) |
+| :-------------------------------------------------------: | :--------------------------------------------------------------------: |
+|            ![roc_curve](assets/roc_curve.svg)             |      ![precision_recall_curve](assets/precision_recall_curve.svg)      |
 
 ## Adding Assets
 

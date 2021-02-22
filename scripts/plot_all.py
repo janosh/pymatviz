@@ -96,7 +96,7 @@ qq_gaussian(y_pred, y_true, y_std)
 savefig("normal_prob_plot")
 
 
-qq_gaussian(y_pred, y_true, {"foo": y_std, "bar": 1.5 * y_std})
+qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_std})
 savefig("normal_prob_plot_multiple")
 
 
@@ -112,6 +112,14 @@ savefig("cumulative_residual")
 # %%
 err_decay(y_true, y_pred, y_std)
 savefig("err_decay")
+
+
+err_decay(
+    y_true,
+    y_pred,
+    {"better": y_std, "worse": y_std + 0.2 * np.random.randn(*y_std.shape)},
+)
+savefig("err_decay_multiple")
 
 
 # %%
