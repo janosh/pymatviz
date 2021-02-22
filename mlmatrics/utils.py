@@ -1,6 +1,7 @@
 from os.path import abspath, dirname
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 ROOT: str = dirname(dirname(abspath(__file__)))
 
@@ -28,7 +29,7 @@ def add_identity(ax=None, **line_kwargs) -> None:
     ax.callbacks.connect("ylim_changed", callback)
 
 
-def with_hist(xs, ys, cell=None, bins=100):
+def with_hist(xs, ys, cell=None, bins: int = 100):
     fig = plt.gcf()
 
     gs = (cell.subgridspec if cell else fig.add_gridspec)(
@@ -48,3 +49,12 @@ def with_hist(xs, ys, cell=None, bins=100):
     ax_histy.axis("off")
 
     return ax_main
+
+
+def softmax(x: np.ndarray) -> np.ndarray:
+    e_x = np.exp(x)
+    return e_x / e_x.sum(axis=-1, keepdims=True)
+
+
+def one_hot(targets: np.ndarray, n_classes: int = 2) -> np.ndarray:
+    return np.eye(n_classes)[targets]

@@ -1,6 +1,5 @@
 # %%
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from mlmatrics import (
@@ -14,17 +13,17 @@ from mlmatrics import (
     density_scatter_with_hist,
     err_decay,
     hist_elemental_prevalence,
+    precision_recall_curve,
     ptable_elemental_prevalence,
+    roc_curve,
     std_calibration,
 )
 
 # %%
-xs = np.random.rand(100)
-y_pred = xs + 0.1 * np.random.normal(size=100)
-y_true = xs + 0.1 * np.random.normal(size=100)
+y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
+xs, y_pred, y_true = pd.read_csv(f"{ROOT}/data/rand_regr.csv").to_numpy().T
 
 
-# %%
 def savefig(filename: str) -> None:
     plt.savefig(f"{ROOT}/assets/{filename}.svg", bbox_inches="tight")
     plt.close()
@@ -84,3 +83,12 @@ savefig("cumulative_error_cumulative_residual")
 # %%
 err_decay(y_true, y_pred, y_true - y_pred)
 savefig("err_decay")
+
+
+# %%
+roc_curve(y_binary, y_proba)
+savefig("roc_curve")
+
+
+precision_recall_curve(y_binary, y_proba)
+savefig("precision_recall_curve")

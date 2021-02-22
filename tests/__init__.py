@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
-import numpy as np
+import pandas as pd
 import pytest
+
+from mlmatrics import ROOT
 
 
 @pytest.fixture(autouse=True)
@@ -13,6 +15,5 @@ def run_around_tests():
     plt.close()
 
 
-xs = np.random.rand(100)
-y_pred = xs + 0.1 * np.random.normal(size=100)
-y_true = xs + 0.1 * np.random.normal(size=100)
+y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
+xs, y_pred, y_true = pd.read_csv(f"{ROOT}/data/rand_regr.csv").to_numpy().T
