@@ -6,7 +6,6 @@ import pandas as pd
 from mlmatrics import (
     ROOT,
     cum_err,
-    cum_err_cum_res,
     cum_res,
     density_scatter,
     density_scatter_hex,
@@ -24,7 +23,7 @@ from mlmatrics import (
 y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 
 
-df = pd.read_csv("data/ex-ensemble-roost.csv", comment="#", na_filter=False)
+df = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv", comment="#", na_filter=False)
 
 tar_col = [col for col in df.columns if "target" in col]
 y_true = df[tar_col].to_numpy().ravel()
@@ -41,8 +40,6 @@ y_epi = np.var(y_preds, axis=0, ddof=0)
 
 y_var = y_ale + y_epi
 y_std = np.sqrt(y_var)
-
-print(y_true.shape, y_pred.shape, y_std.shape)
 
 
 def savefig(filename: str) -> None:
