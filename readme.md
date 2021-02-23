@@ -43,11 +43,13 @@ git+git://github.com/janosh/mlmatrics@41b95ec
 
 See [`mlmatrics/parity.py`](mlmatrics/parity.py).
 
-| [`density_scatter(xs, ys, ...)`](mlmatrics/parity.py)  |      [`density_scatter_with_hist(xs, ys, ...)`](mlmatrics/parity.py)       |
-| :----------------------------------------------------: | :------------------------------------------------------------------------: |
-|     ![density_scatter](assets/density_scatter.svg)     |     ![density_scatter_with_hist](assets/density_scatter_with_hist.svg)     |
-|  [`density_hexbin(xs, ys, ...)`](mlmatrics/parity.py)  |       [`density_hexbin_with_hist(xs, ys, ...)`](mlmatrics/parity.py)       |
-| ![density_scatter_hex](assets/density_scatter_hex.svg) | ![density_scatter_hex_with_hist](assets/density_scatter_hex_with_hist.svg) |
+|  [`density_scatter(xs, ys, ...)`](mlmatrics/parity.py)  |      [`density_scatter_with_hist(xs, ys, ...)`](mlmatrics/parity.py)       |
+| :-----------------------------------------------------: | :------------------------------------------------------------------------: |
+|     ![density_scatter](assets/density_scatter.svg)      |     ![density_scatter_with_hist](assets/density_scatter_with_hist.svg)     |
+|  [`density_hexbin(xs, ys, ...)`](mlmatrics/parity.py)   |       [`density_hexbin_with_hist(xs, ys, ...)`](mlmatrics/parity.py)       |
+| ![density_scatter_hex](assets/density_scatter_hex.svg)  | ![density_scatter_hex_with_hist](assets/density_scatter_hex_with_hist.svg) |
+| [`err_scatter(xs, ys, yerr, ...)`](mlmatrics/parity.py) |                                                                            |
+|         ![err_scatter](assets/err_scatter.svg)          |                                                                            |
 
 ## Elements
 
@@ -69,9 +71,9 @@ See [`mlmatrics/quantile.py`](mlmatrics/quantile.py).
 
 See [`mlmatrics/ranking.py`](mlmatrics/ranking.py).
 
-| [`err_decay(y_test, y_pred, y_std)`](mlmatrics/cumulative.py) | [`err_decay(y_test, y_pred, y_std: dict)`](mlmatrics/cumulative.py) |
-| :-----------------------------------------------------------: | :-----------------------------------------------------------------: |
-|              ![err_decay](assets/err_decay.svg)               |        ![err_decay_multiple](assets/err_decay_multiple.svg)         |
+| [`err_decay(y_test, y_pred, y_std)`](mlmatrics/ranking.py) | [`err_decay(y_test, y_pred, y_std: dict)`](mlmatrics/ranking.py) |
+| :--------------------------------------------------------: | :--------------------------------------------------------------: |
+|             ![err_decay](assets/err_decay.svg)             |       ![err_decay_multiple](assets/err_decay_multiple.svg)       |
 
 ## Cumulative Error and Residual
 

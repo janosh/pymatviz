@@ -18,6 +18,7 @@ from mlmatrics import (
     qq_gaussian,
     roc_curve,
 )
+from mlmatrics.parity import err_scatter
 
 plt.rcParams.update({"font.size": 20})
 plt.rcParams["axes.linewidth"] = 2.5
@@ -38,17 +39,18 @@ y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 
 
 # Load example dataset
-df = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv", comment="#", na_filter=False)
+df_roost_ens = pd.read_csv(
+    f"{ROOT}/data/ex-ensemble-roost.csv", comment="#", na_filter=False
+)
 
-tar_col = [col for col in df.columns if "target" in col]
-y_true = df[tar_col].to_numpy().ravel()
+y_true = df_roost_ens.target
 
-pred_cols = [col for col in df.columns if "pred" in col]
-y_preds = df[pred_cols].to_numpy().T
-y_pred = np.average(y_preds, axis=0)
+pred_cols = [col for col in df_roost_ens.columns if "pred" in col]
+y_preds = df_roost_ens[pred_cols].T
+y_pred = np.mean(y_preds, axis=0)
 
-ale_cols = [col for col in df.columns if "ale" in col]
-y_ales = df[ale_cols].to_numpy().T
+ale_cols = [col for col in df_roost_ens.columns if "ale" in col]
+y_ales = df_roost_ens[ale_cols].T
 y_ale = np.mean(np.square(y_ales), axis=0)
 
 y_epi = np.var(y_preds, axis=0, ddof=0)
@@ -79,15 +81,19 @@ density_hexbin_with_hist(y_pred, y_true)
 savefig("density_scatter_hex_with_hist")
 
 
+err_scatter(y_pred, y_true, yerr=y_std)
+savefig("err_scatter")
+
+
 # %%
-df = pd.read_csv(f"{ROOT}/data/mp-n_elements<2.csv")
+mp_formulas = pd.read_csv(f"{ROOT}/data/mp-n_elements<2.csv").formula
 
 
-ptable_elemental_prevalence(df.formula)
+ptable_elemental_prevalence(mp_formulas)
 savefig("ptable_elemental_prevalence")
 
 
-hist_elemental_prevalence(df.formula, keep_top=10)
+hist_elemental_prevalence(mp_formulas, keep_top=10)
 savefig("hist_elemental_prevalence")
 
 
