@@ -4,7 +4,7 @@ from matplotlib.axes import Axes
 from numpy import ndarray as Array
 
 
-def roc_curve(targets: Array, proba_pos: Array, ax: Axes = plt.gca()) -> float:
+def roc_curve(targets: Array, proba_pos: Array, ax: Axes = None) -> float:
     """Plot the receiver operating characteristic curve of a binary
     classifier given target labels and predicted probabilities for
     the positive class.
@@ -16,6 +16,8 @@ def roc_curve(targets: Array, proba_pos: Array, ax: Axes = plt.gca()) -> float:
     Returns:
         float: The classifier's ROC area under the curve.
     """
+    if ax is None:
+        ax = plt.gca()
 
     # get the metrics
     fpr, tpr, _ = skm.roc_curve(targets, proba_pos)
@@ -34,9 +36,7 @@ def roc_curve(targets: Array, proba_pos: Array, ax: Axes = plt.gca()) -> float:
     return roc_auc
 
 
-def precision_recall_curve(
-    targets: Array, proba_pos: Array, ax: Axes = plt.gca()
-) -> float:
+def precision_recall_curve(targets: Array, proba_pos: Array, ax: Axes = None) -> float:
     """Plot the precision recall curve of a binary classifier.
 
     Args:
@@ -46,6 +46,8 @@ def precision_recall_curve(
     Returns:
         float: The classifier's precision score.
     """
+    if ax is None:
+        ax = plt.gca()
 
     # get the metrics
     precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
