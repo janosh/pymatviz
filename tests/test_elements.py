@@ -1,17 +1,38 @@
 import pandas as pd
 
-from mlmatrics import hist_elemental_prevalence, ptable_elemental_prevalence
+from mlmatrics import (
+    count_elements,
+    hist_elemental_prevalence,
+    ptable_elemental_prevalence,
+)
 
-df = pd.read_csv("data/mp-n_elements<2.csv")
+compositions = pd.read_csv("data/mp-n_elements<2.csv").formula
 
 
 def test_ptable_elemental_prevalence():
-    ptable_elemental_prevalence(df.formula)
+    ptable_elemental_prevalence(compositions)
+
+
+def test_ptable_elemental_prevalence_log_scale():
+    ptable_elemental_prevalence(compositions)
+
+
+def test_ptable_elemental_prevalence_with_elem_counts():
+    elem_counts = count_elements(compositions)
+    ptable_elemental_prevalence(elem_counts=elem_counts)
 
 
 def test_hist_elemental_prevalence():
-    hist_elemental_prevalence(df.formula)
+    hist_elemental_prevalence(compositions)
+
+
+def test_hist_elemental_prevalence_log_scale():
+    hist_elemental_prevalence(compositions, log_scale=True)
 
 
 def test_hist_elemental_prevalence_with_keep_top():
-    hist_elemental_prevalence(df.formula, keep_top=10)
+    hist_elemental_prevalence(compositions, keep_top=10)
+
+
+def test_hist_elemental_prevalence_with_bar_values_count():
+    hist_elemental_prevalence(compositions, keep_top=10, bar_values="count")
