@@ -39,10 +39,10 @@ def regression_metrics(y_preds, y_true, verbose=False):
         r2_std = np.std(r2)
 
         mae_avg = np.mean(mae)
-        mae_std = np.std(mae)/np.sqrt(mae.shape[0])
+        mae_std = np.std(mae) / np.sqrt(mae.shape[0])
 
         rmse_avg = np.mean(rmse)
-        rmse_std = np.std(rmse)/np.sqrt(rmse.shape[0])
+        rmse_std = np.std(rmse) / np.sqrt(rmse.shape[0])
 
         if verbose:
             print("\nModel Performance Metrics:")
