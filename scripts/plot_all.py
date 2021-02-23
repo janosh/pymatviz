@@ -63,7 +63,7 @@ def savefig(filename: str) -> None:
 
 
 # %%
-density_scatter(y_pred, y_true, xlabel="foo", ylabel="bar")
+density_scatter(y_pred, y_true)
 savefig("density_scatter")
 
 
