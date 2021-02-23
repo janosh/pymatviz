@@ -2,9 +2,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.offsetbox import AnchoredText
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from numpy import ndarray as Array
 from scipy.interpolate import interpn
+from sklearn.metrics import r2_score
 
 from mlmatrics.utils import add_identity, with_hist
 
@@ -41,6 +43,16 @@ def hist_density(xs: Array, ys: Array, sort: bool = True, bins: int = 100) -> No
     return xs, ys, zs
 
 
+def add_mae_r2_box(xs: Array, ys: Array, ax: Axes, loc: str = "lower right"):
+
+    text = f"$\\epsilon_\\mathrm{{mae}} = {np.abs(xs - ys).mean():.2f}$\n"
+
+    text += f"$R^2 = {r2_score(xs, ys):.2f}$"
+
+    text_box = AnchoredText(text, loc=loc, frameon=False)
+    ax.add_artist(text_box)
+
+
 def density_scatter(
     xs: Array,
     ys: Array,
@@ -49,8 +61,8 @@ def density_scatter(
     sort: bool = True,
     log: bool = True,
     bins: int = 100,
-    xlabel: str = "actual",
-    ylabel: str = "predicted",
+    xlabel: str = "Actual",
+    ylabel: str = "Predicted",
     **kwargs,
 ):
     """Scatter plot colored (and optionally sorted) by density"""
@@ -63,8 +75,33 @@ def density_scatter(
 
     ax.scatter(xs, ys, c=cs, cmap=color_map or "Blues", norm=norm, **kwargs)
     add_identity(ax, label="ideal")
+    add_mae_r2_box(xs, ys, ax)
 
-    ax.legend(loc="upper left", frameon=False)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    return ax
+
+
+def err_scatter(
+    xs: Array,
+    ys: Array,
+    xerr: Array = None,
+    yerr: Array = None,
+    ax: Axes = None,
+    xlabel: str = "Actual",
+    ylabel: str = "Predicted",
+    **kwargs,
+):
+    """Scatter plot colored (and optionally sorted) by density"""
+    if ax is None:
+        ax = plt.gca()
+
+    styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
+    ax.errorbar(xs, ys, yerr=yerr, xerr=xerr, **kwargs, **styles)
+    add_identity(ax)
+    add_mae_r2_box(xs, ys, ax)
+
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
@@ -76,10 +113,9 @@ def density_hexbin(
     preds: Array,
     ax: Axes = None,
     title: str = None,
-    text: str = None,
     color_map: Array = None,
-    xlabel: str = "actual",
-    ylabel: str = "predicted",
+    xlabel: str = "Actual",
+    ylabel: str = "Predicted",
 ):
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by"""
@@ -93,13 +129,10 @@ def density_hexbin(
     cb_ax.yaxis.set_ticks_position("left")
 
     add_identity(ax, label="ideal")
+    add_mae_r2_box(targets, preds, ax, loc="upper left")
 
-    ax.legend(title=title, frameon=False, loc="upper left")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-
-    if text:
-        ax.annotate(text, xy=(0.04, 0.7), xycoords="axes fraction")
 
 
 def density_scatter_with_hist(xs, ys, cell=None, bins=100, **kwargs):
