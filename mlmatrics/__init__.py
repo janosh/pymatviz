@@ -14,3 +14,4 @@ from .quantile import qq_gaussian
 from .ranking import err_decay
 from .relevance import precision_recall_curve, roc_curve
 from .utils import ROOT
+from .metrics import regression_metrics
