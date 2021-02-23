@@ -3,12 +3,13 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 from matplotlib.cm import YlGn
 from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
 from pymatgen import Composition
 
-from mlmatrics.utils import ROOT
+from mlmatrics.utils import ROOT, show_bar_values
 
 
 def count_elements(formulas: list) -> pd.Series:
@@ -134,7 +135,12 @@ def ptable_elemental_prevalence(
 
 
 def hist_elemental_prevalence(
-    formulas: list, log_scale: bool = False, keep_top: int = None
+    formulas: list,
+    log_scale: bool = False,
+    keep_top: int = None,
+    ax: Axes = None,
+    bar_values: str = "percent",
+    barfontsize: int = 14,
 ) -> None:
     """Plots a histogram of the prevalence of each element in a materials dataset.
     Adapted from https://github.com/kaaiian/ML_figures.
@@ -143,14 +149,20 @@ def hist_elemental_prevalence(
         formulas (list): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         log_scale (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
+        ax (Axes): plt axes. Defaults to None.
+        bar_values (str): One of 'percent', 'count' or None. Annotate bars with the
+            percentage each element makes up in the total element count, or use the count
+            itself, or display no bar labels.
+        barfontsize (int): Font size of bar labels.
     """
-    plt.figure(figsize=(12, 6))
+    if ax is None:
+        ax = plt.gca()
 
     elem_counts = count_elements(formulas)
-    non_zero = elem_counts[elem_counts != 0].sort_values(ascending=False)
+    non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     if keep_top is not None:
         non_zero = non_zero.head(keep_top)
-        plt.title(f"top {keep_top} elements")
+        plt.title(f"Top {keep_top} Elements")
 
     non_zero.plot.bar(width=0.7, edgecolor="black")
 
@@ -158,3 +170,11 @@ def hist_elemental_prevalence(
 
     if log_scale:
         plt.yscale("log")
+
+    if bar_values is not None:
+        if bar_values == "percent":
+            sum_elements = non_zero.sum()
+            labels = [f"{100 * el / sum_elements:.1f}%" for el in non_zero.values]
+        else:
+            labels = non_zero.astype(int).to_list()
+        show_bar_values(ax, labels=labels, fontsize=barfontsize)
