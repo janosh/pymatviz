@@ -4,6 +4,7 @@ from .elements import (
     hist_elemental_prevalence,
     ptable_elemental_prevalence,
 )
+from .metrics import regression_metrics
 from .parity import (
     density_hexbin,
     density_hexbin_with_hist,
