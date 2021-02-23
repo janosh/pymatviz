@@ -1,12 +1,16 @@
 from os.path import abspath, dirname
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.gridspec import GridSpec
+from numpy import ndarray as Array
 
 ROOT: str = dirname(dirname(abspath(__file__)))
 
 
-def add_identity(ax=None, **line_kwargs) -> None:
+def add_identity(ax: Axes = None, **line_kwargs) -> None:
     """Add a parity line (y = x) to the provided axis."""
     if ax is None:
         ax = plt.gca()
@@ -29,7 +33,22 @@ def add_identity(ax=None, **line_kwargs) -> None:
     ax.callbacks.connect("ylim_changed", callback)
 
 
-def with_hist(xs, ys, cell=None, bins: int = 100):
+def with_hist(xs: Array, ys: Array, cell: GridSpec = None, bins: int = 100) -> Axes:
+    """Call before creating a plot and use the returned `ax_main` for all
+    subsequent plotting ops to create a grid of plots with the main plot in
+    the lower left and narrow histograms along its x- and/or y-axes displayed
+    above and near the right edge.
+
+    Args:
+        xs (Array): x values.
+        ys (Array): y values.
+        cell (GridSpec, optional): Cell of a plt GridSpec at which to add the
+            grid of plots. Defaults to None.
+        bins (int, optional): Resolution/bin count of the histograms. Defaults to 100.
+
+    Returns:
+        Axes: The axes to be used to for the main plot.
+    """
     fig = plt.gcf()
 
     gs = (cell.subgridspec if cell else fig.add_gridspec)(
@@ -51,10 +70,45 @@ def with_hist(xs, ys, cell=None, bins: int = 100):
     return ax_main
 
 
-def softmax(x: np.ndarray) -> np.ndarray:
-    e_x = np.exp(x)
-    return e_x / e_x.sum(axis=-1, keepdims=True)
+def softmax(arr: Array, axis: int = -1) -> Array:
+    """ Compute the softmax of an array along an axis. """
+    exp = np.exp(arr)
+    return exp / exp.sum(axis=axis, keepdims=True)
 
 
-def one_hot(targets: np.ndarray, n_classes: int = 2) -> np.ndarray:
+def one_hot(targets: Array, n_classes: int = None) -> Array:
+    """ Get a one-hot encoded version of `targets` containing `n_classes`. """
+    if n_classes is None:
+        n_classes = np.max(targets) + 1
     return np.eye(n_classes)[targets]
+
+
+def show_bar_values(
+    ax: Axes = None,
+    voffset: int = 1,
+    hoffset: int = 0,
+    labels: List[str] = None,
+    fontsize: int = 14,
+) -> None:
+    """Annotate histograms with a label indicating the height/count of each bar.
+
+    Args:
+        ax (matplotlib.axes.Axes): The axes to annotate.
+        voffset (int): Vertical offset between the labels and the bars.
+        hoffset (int): Horizontal offset between the labels and the bars.
+        labels (list[str]): Labels used for annotating bars. Falls back to the
+            y-value of each bar if None.
+    """
+    ax.figure.set_size_inches(12, 6)
+
+    for rect, label in zip(ax.patches, labels):
+        # get_height() returns float but count will always be integer
+        y_val = int(rect.get_height())
+        x_val = rect.get_x() + rect.get_width() / 2
+
+        # place label at end of the bar and center horizontally
+        ax.annotate(
+            label, (x_val + hoffset, y_val + voffset), ha="center", fontsize=fontsize
+        )
+        # ensure enough vertical space to display label above highest bar
+        ax.margins(y=0.1)

@@ -93,8 +93,16 @@ ptable_elemental_prevalence(mp_formulas)
 savefig("ptable_elemental_prevalence")
 
 
-hist_elemental_prevalence(mp_formulas, keep_top=10)
+ptable_elemental_prevalence(mp_formulas, log_scale=True)
+savefig("ptable_elemental_prevalence_log")
+
+
+hist_elemental_prevalence(mp_formulas, keep_top=15)
 savefig("hist_elemental_prevalence")
+
+
+hist_elemental_prevalence(mp_formulas, keep_top=20, log_scale=True, bar_values="count")
+savefig("hist_elemental_prevalence_log_count")
 
 
 # %%
