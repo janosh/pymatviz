@@ -1,8 +1,11 @@
+from typing import Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy import ndarray as Array
 
 
-def get_err_decay(y_test, y_pred, n_rand=100):
+def get_err_decay(y_test: Array, y_pred: Array, n_rand: int = 100) -> Tuple[Array]:
     abs_err = np.abs(y_test - y_pred)
     # increasing count of the number of samples in each element of cumsum()
     n_inc = range(1, len(abs_err) + 1)
@@ -14,12 +17,11 @@ def get_err_decay(y_test, y_pred, n_rand=100):
     [np.random.shuffle(row) for row in ae_tile]  # shuffle rows of ae_tile in place
 
     rand = ae_tile.cumsum(1) / n_inc
-    rand_mean, rand_std = rand.mean(0), rand.std(0)
 
-    return decay_by_err, rand_mean, rand_std
+    return decay_by_err, rand.std(0)
 
 
-def get_std_decay(y_test, y_pred, y_std):
+def get_std_decay(y_test: Array, y_pred: Array, y_std: Array) -> Array:
     abs_err = np.abs(y_test - y_pred)
 
     # indices that sort y_std in ascending uncertainty
@@ -33,16 +35,30 @@ def get_std_decay(y_test, y_pred, y_std):
     return decay_by_std
 
 
-def err_decay(y_test, y_pred, y_stds, title=None, n_rand=100, percentile=True):
-    """
-    Plot for assessing the quality of uncertainty estimates. If a model's
+def err_decay(
+    y_test: Array,
+    y_pred: Array,
+    y_stds: Array,
+    title: str = None,
+    n_rand: int = 100,
+    percentile: bool = True,
+) -> None:
+    """Plot for assessing the quality of uncertainty estimates. If a model's
     uncertainty is well calibrated, i.e. strongly correlated with its error,
     removing the most uncertain predictions should make the mean error decay
-    similarly to how it decays when removing the predictions of largest error
+    similarly to how it decays when removing the predictions of largest error.
+
+    Args:
+        y_test (Array): Ground truth regression targets.
+        y_pred (Array): Model predictions.
+        y_stds (Array): Model uncertainties.
+        title (str, optional): Plot title. Defaults to None.
+        n_rand (int, optional): Number of shuffles from which to compute std.dev.
+            of error decay by random ordering. Defaults to 100.
+        percentile (bool, optional): Whether to chart percentiles or total number
+            of samples remaining in the MAE calculation. Defaults to True.
     """
     xs = range(100 if percentile else len(y_test), 0, -1)
-
-    prctile = lambda seq: np.percentile(seq, xs[::-1])
 
     if type(y_stds) != dict:
         y_stds = {"std": y_stds}
@@ -51,20 +67,22 @@ def err_decay(y_test, y_pred, y_stds, title=None, n_rand=100, percentile=True):
         decay_by_std = get_std_decay(y_test, y_pred, y_std)
 
         if percentile:
-            decay_by_std = prctile(decay_by_std)
+            decay_by_std = np.percentile(decay_by_std, xs[::-1])
 
         plt.plot(xs, decay_by_std, label=key)
 
-    decay_by_err, rand_mean, rand_std = get_err_decay(y_test, y_pred, n_rand)
+    decay_by_err, rand_std = get_err_decay(y_test, y_pred, n_rand)
+
+    rand_mean = np.abs(y_test - y_pred).mean()
 
     if percentile:
-        decay_by_err, rand_mean, rand_std = [
-            prctile(ys) for ys in [decay_by_err, rand_mean, rand_std]
+        decay_by_err, rand_std = [
+            np.percentile(ys, xs[::-1]) for ys in [decay_by_err, rand_std]
         ]
 
     rand_hi, rand_lo = rand_mean + rand_std, rand_mean - rand_std
     plt.plot(xs, decay_by_err, label="error")
-    plt.plot(xs[::-1] if percentile else xs, rand_mean)
+    plt.plot([1, 100] if percentile else [len(xs), 0], [rand_mean, rand_mean])
     plt.fill_between(
         xs[::-1] if percentile else xs, rand_hi, rand_lo, alpha=0.2, label="random"
     )
@@ -75,4 +93,4 @@ def err_decay(y_test, y_pred, y_stds, title=None, n_rand=100, percentile=True):
     plt.xlabel("error/confidence percentile" if percentile else "excluded samples")
     plt.ylabel("$\\epsilon_\\mathrm{MAE}$")
     plt.title(title)
-    plt.legend()
+    plt.legend(loc="lower left")
