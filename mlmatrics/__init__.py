@@ -10,6 +10,7 @@ from .parity import (
     density_hexbin_with_hist,
     density_scatter,
     density_scatter_with_hist,
+    err_scatter,
 )
 from .quantile import qq_gaussian
 from .ranking import err_decay
