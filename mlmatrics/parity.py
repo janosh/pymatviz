@@ -83,7 +83,7 @@ def density_scatter(
     return ax
 
 
-def err_scatter(
+def scatter_with_err_bar(
     xs: Array,
     ys: Array,
     xerr: Array = None,
@@ -91,9 +91,26 @@ def err_scatter(
     ax: Axes = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
+    title: str = None,
     **kwargs,
-):
-    """Scatter plot colored (and optionally sorted) by density"""
+) -> Axes:
+    """Scatter plot with optional x- and/or y-error bars. Useful when passing model
+    uncertainties as yerr=y_std for checking if uncertainty correlates with error,
+    i.e. if points farther from the parity line have larger uncertainty.
+
+    Args:
+        xs (Array): x-values
+        ys (Array): y-values
+        xerr (Array, optional): Horizontal error bars. Defaults to None.
+        yerr (Array, optional): Vertical error bars. Defaults to None.
+        ax (Axes, optional): plt axes. Defaults to None.
+        xlabel (str, optional): x-axis label. Defaults to "Actual".
+        ylabel (str, optional): y-axis label. Defaults to "Predicted".
+        title (str, optional): Plot tile. Defaults to None.
+
+    Returns:
+        Axes: plt axes on which the data was plotted.
+    """
     if ax is None:
         ax = plt.gca()
 
@@ -104,6 +121,7 @@ def err_scatter(
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    ax.set_title(title)
 
     return ax
 
@@ -151,3 +169,23 @@ def density_hexbin_with_hist(xs, ys, cell=None, bins=100, **kwargs):
 
     ax_scatter = with_hist(xs, ys, cell, bins)
     density_hexbin(xs, ys, ax_scatter, **kwargs)
+
+
+def residual_vs_actual(y_true: Array, y_pred: Array, ax: Axes = None) -> Axes:
+
+    if ax is None:
+        ax = plt.gca()
+
+    y_err = y_pred - y_true
+
+    xmin = np.min(y_true) * 0.9
+    xmax = np.max(y_true) / 0.9
+
+    plt.plot(y_true, y_err, "o", alpha=0.5, label=None, mew=1.2, ms=5.2)
+    plt.plot([xmin, xmax], [0, 0], "k--", alpha=0.5, label="ideal")
+
+    plt.ylabel(r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)")
+    plt.xlabel("Actual value")
+    plt.legend(loc="lower right")
+
+    return ax

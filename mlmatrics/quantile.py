@@ -49,7 +49,9 @@ def qq_gaussian(y_true: Array, y_pred: Array, y_std: Union[Array, dict]) -> None
         plt.fill_between(
             exp_proportions, y1=obs_proportions, y2=exp_proportions, alpha=0.2
         )
-        miscal_area = np.trapz(np.abs(obs_proportions - exp_proportions), dx=1 / resolution)
+        miscal_area = np.trapz(
+            np.abs(obs_proportions - exp_proportions), dx=1 / resolution
+        )
         lines.append([line, miscal_area])
 
     add_identity(label="ideal")
