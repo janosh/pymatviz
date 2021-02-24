@@ -25,4 +25,4 @@ jobs:
         run: |
           svgo assets
           git add assets/*.svg
-          git commit -m 'compress SVG assets'
+          git commit -m 'compress new SVG assets'
