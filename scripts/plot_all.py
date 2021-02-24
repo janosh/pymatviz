@@ -16,9 +16,11 @@ from mlmatrics import (
     precision_recall_curve,
     ptable_elemental_prevalence,
     qq_gaussian,
+    residual_hist,
+    residual_vs_actual,
     roc_curve,
+    scatter_with_err_bar,
 )
-from mlmatrics.parity import err_scatter
 
 plt.rcParams.update({"font.size": 20})
 plt.rcParams["axes.linewidth"] = 2.5
@@ -64,7 +66,7 @@ def savefig(filename: str) -> None:
     plt.close()
 
 
-# %%
+# %% Parity Plots
 density_scatter(y_pred, y_true)
 savefig("density_scatter")
 
@@ -81,11 +83,15 @@ density_hexbin_with_hist(y_pred, y_true)
 savefig("density_scatter_hex_with_hist")
 
 
-err_scatter(y_pred, y_true, yerr=y_std)
-savefig("err_scatter")
+scatter_with_err_bar(y_pred, y_true, yerr=y_std)
+savefig("scatter_with_err_bar")
 
 
-# %%
+residual_vs_actual(y_true, y_pred)
+savefig("residual_vs_actual")
+
+
+# %% Elemental Plots
 mp_formulas = pd.read_csv(f"{ROOT}/data/mp-n_elements<2.csv").formula
 
 
@@ -105,7 +111,7 @@ hist_elemental_prevalence(mp_formulas, keep_top=20, log_scale=True, bar_values="
 savefig("hist_elemental_prevalence_log_count")
 
 
-# %%
+# %% Quantile/Calibration Plots
 qq_gaussian(y_pred, y_true, y_std)
 savefig("normal_prob_plot")
 
@@ -114,7 +120,7 @@ qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_s
 savefig("normal_prob_plot_multiple")
 
 
-# %%
+# %% Cumulative Plots
 cum_err(y_pred, y_true)
 savefig("cumulative_error")
 
@@ -123,7 +129,7 @@ cum_res(y_pred, y_true)
 savefig("cumulative_residual")
 
 
-# %%
+# %% Rankign Plots
 err_decay(y_true, y_pred, y_std)
 savefig("err_decay")
 
@@ -136,10 +142,15 @@ err_decay(
 savefig("err_decay_multiple")
 
 
-# %%
+# %% Relevance Plots
 roc_curve(y_binary, y_proba)
 savefig("roc_curve")
 
 
 precision_recall_curve(y_binary, y_proba)
 savefig("precision_recall_curve")
+
+
+# %% Histogram Plots
+residual_hist(y_true, y_pred)
+savefig("residual_hist")

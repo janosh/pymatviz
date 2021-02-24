@@ -43,13 +43,13 @@ git+git://github.com/janosh/mlmatrics@41b95ec
 
 See [`mlmatrics/parity.py`](mlmatrics/parity.py).
 
-|  [`density_scatter(xs, ys, ...)`](mlmatrics/parity.py)  |      [`density_scatter_with_hist(xs, ys, ...)`](mlmatrics/parity.py)       |
-| :-----------------------------------------------------: | :------------------------------------------------------------------------: |
-|     ![density_scatter](assets/density_scatter.svg)      |     ![density_scatter_with_hist](assets/density_scatter_with_hist.svg)     |
-|  [`density_hexbin(xs, ys, ...)`](mlmatrics/parity.py)   |       [`density_hexbin_with_hist(xs, ys, ...)`](mlmatrics/parity.py)       |
-| ![density_scatter_hex](assets/density_scatter_hex.svg)  | ![density_scatter_hex_with_hist](assets/density_scatter_hex_with_hist.svg) |
-| [`err_scatter(xs, ys, yerr, ...)`](mlmatrics/parity.py) |                                                                            |
-|         ![err_scatter](assets/err_scatter.svg)          |                                                                            |
+|      [`density_scatter(xs, ys, ...)`](mlmatrics/parity.py)       |  [`density_scatter_with_hist(xs, ys, ...)`](mlmatrics/parity.py)   |
+| :--------------------------------------------------------------: | :----------------------------------------------------------------: |
+|          ![density_scatter](assets/density_scatter.svg)          | ![density_scatter_with_hist](assets/density_scatter_with_hist.svg) |
+|       [`density_hexbin(xs, ys, ...)`](mlmatrics/parity.py)       |   [`density_hexbin_with_hist(xs, ys, ...)`](mlmatrics/parity.py)   |
+|           ![density_hexbin](assets/density_hexbin.svg)           |  ![density_hexbin_with_hist](assets/density_hexbin_with_hist.svg)  |
+| [`scatter_with_err_bar(xs, ys, yerr, ...)`](mlmatrics/parity.py) |  [`residual_vs_actual(y_test, y_pred, ...)`](mlmatrics/parity.py)  |
+|     ![scatter_with_err_bar](assets/scatter_with_err_bar.svg)     |        ![residual_vs_actual](assets/residual_vs_actual.svg)        |
 
 ## Elements
 
@@ -93,6 +93,14 @@ See [`mlmatrics/relevance.py`](mlmatrics/relevance.py).
 | :-------------------------------------------------------: | :--------------------------------------------------------------------: |
 |            ![roc_curve](assets/roc_curve.svg)             |      ![precision_recall_curve](assets/precision_recall_curve.svg)      |
 
+## Histograms
+
+See [`mlmatrics/histograms.py`](mlmatrics/histograms.py).
+
+| [`residual_hist(y_test, y_pred)`](mlmatrics/histograms.py) |       |
+| :--------------------------------------------------------: | :---: |
+|         ![residual_hist](assets/residual_hist.svg)         |       |
+
 ## Adding Assets
 
 When adding new SVG assets, please compress them before committing. This can either be done online without setup at <https://vecta.io/nano> or on the command line with [`svgo`](https://github.com/svg/svgo). Install it with `npm -g svgo` (or `yarn global add svgo`). Then compress all assets in one go with `svgo assets`. (`svgo` is safe for multiple compressions).
@@ -119,3 +127,9 @@ python -m pytest -k test_precision_recall_curve
 ```
 
 Consult the [`pytest`](https://docs.pytest.org/en/stable/usage.html) docs for more details.
+
+## Glossary
+
+- **Residual** `y - y_hat`: The difference between ground truth target and model prediction.
+- **Error** `abs(y - y_hat)`: Absolute error between target and model prediction.
+- **Uncertainty** `y_std`: The model's estimate for its own error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)

@@ -140,7 +140,7 @@ def hist_elemental_prevalence(
     keep_top: int = None,
     ax: Axes = None,
     bar_values: str = "percent",
-    barfontsize: int = 14,
+    **kwargs,
 ) -> None:
     """Plots a histogram of the prevalence of each element in a materials dataset.
     Adapted from https://github.com/kaaiian/ML_figures.
@@ -153,7 +153,7 @@ def hist_elemental_prevalence(
         bar_values (str): One of 'percent', 'count' or None. Annotate bars with the
             percentage each element makes up in the total element count, or use the count
             itself, or display no bar labels.
-        barfontsize (int): Font size of bar labels.
+        **kwargs (int): Keyword arguments passed to show_bar_values.
     """
     if ax is None:
         ax = plt.gca()
@@ -177,4 +177,4 @@ def hist_elemental_prevalence(
             labels = [f"{100 * el / sum_elements:.1f}%" for el in non_zero.values]
         else:
             labels = non_zero.astype(int).to_list()
-        show_bar_values(ax, labels=labels, fontsize=barfontsize)
+        show_bar_values(ax, labels=labels, **kwargs)

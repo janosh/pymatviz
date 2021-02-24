@@ -3,22 +3,32 @@ from mlmatrics import (
     density_hexbin_with_hist,
     density_scatter,
     density_scatter_with_hist,
+    residual_hist,
+    scatter_with_err_bar,
 )
 
-from . import xs, y_pred
+from . import y_pred, y_true
 
 
 def test_density_scatter():
-    density_scatter(xs, y_pred)
+    density_scatter(y_true, y_pred)
 
 
 def test_density_scatter_with_hist():
-    density_scatter_with_hist(xs, y_pred)
+    density_scatter_with_hist(y_true, y_pred)
 
 
 def test_density_hexbin():
-    density_hexbin(xs, y_pred)
+    density_hexbin(y_true, y_pred)
 
 
 def test_density_hexbin_with_hist():
-    density_hexbin_with_hist(xs, y_pred)
+    density_hexbin_with_hist(y_true, y_pred)
+
+
+def test_scatter_with_err_bar():
+    scatter_with_err_bar(y_true, y_pred, yerr=y_true - y_pred)
+
+
+def test_residual_hist():
+    residual_hist(y_true, y_pred)

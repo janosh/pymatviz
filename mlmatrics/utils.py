@@ -85,7 +85,7 @@ def one_hot(targets: Array, n_classes: int = None) -> Array:
 
 def show_bar_values(
     ax: Axes = None,
-    voffset: int = 1,
+    voffset: int = 10,
     hoffset: int = 0,
     labels: List[str] = None,
     fontsize: int = 14,
@@ -99,11 +99,12 @@ def show_bar_values(
         labels (list[str]): Labels used for annotating bars. Falls back to the
             y-value of each bar if None.
     """
-    ax.figure.set_size_inches(12, 6)
+    if labels is None:
+        labels = [patch.get_height() for patch in ax.patches]
 
     for rect, label in zip(ax.patches, labels):
-        # get_height() returns float but count will always be integer
-        y_val = int(rect.get_height())
+
+        y_val = rect.get_height()
         x_val = rect.get_x() + rect.get_width() / 2
 
         # place label at end of the bar and center horizontally
