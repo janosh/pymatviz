@@ -48,7 +48,7 @@ See [`mlmatrics/parity.py`](mlmatrics/parity.py).
 |          ![density_scatter](assets/density_scatter.svg)          | ![density_scatter_with_hist](assets/density_scatter_with_hist.svg) |
 |       [`density_hexbin(xs, ys, ...)`](mlmatrics/parity.py)       |   [`density_hexbin_with_hist(xs, ys, ...)`](mlmatrics/parity.py)   |
 |           ![density_hexbin](assets/density_hexbin.svg)           |  ![density_hexbin_with_hist](assets/density_hexbin_with_hist.svg)  |
-| [`scatter_with_err_bar(xs, ys, yerr, ...)`](mlmatrics/parity.py) |  [`residual_vs_actual(y_test, y_pred, ...)`](mlmatrics/parity.py)  |
+| [`scatter_with_err_bar(xs, ys, yerr, ...)`](mlmatrics/parity.py) |  [`residual_vs_actual(y_true, y_pred, ...)`](mlmatrics/parity.py)  |
 |     ![scatter_with_err_bar](assets/scatter_with_err_bar.svg)     |        ![residual_vs_actual](assets/residual_vs_actual.svg)        |
 
 ## Elements
@@ -65,7 +65,7 @@ See [`mlmatrics/elements.py`](mlmatrics/elements.py).
 
 See [`mlmatrics/quantile.py`](mlmatrics/quantile.py).
 
-| [`qq_gaussian(y_test, y_pred, y_std)`](mlmatrics/quantile.py) | [`qq_gaussian(y_test, y_pred, y_std: dict)`](mlmatrics/quantile.py) |
+| [`qq_gaussian(y_true, y_pred, y_std)`](mlmatrics/quantile.py) | [`qq_gaussian(y_true, y_pred, y_std: dict)`](mlmatrics/quantile.py) |
 | :-----------------------------------------------------------: | :-----------------------------------------------------------------: |
 |       ![normal_prob_plot](assets/normal_prob_plot.svg)        | ![normal_prob_plot_multiple](assets/normal_prob_plot_multiple.svg)  |
 
@@ -73,7 +73,7 @@ See [`mlmatrics/quantile.py`](mlmatrics/quantile.py).
 
 See [`mlmatrics/ranking.py`](mlmatrics/ranking.py).
 
-| [`err_decay(y_test, y_pred, y_std)`](mlmatrics/ranking.py) | [`err_decay(y_test, y_pred, y_std: dict)`](mlmatrics/ranking.py) |
+| [`err_decay(y_true, y_pred, y_std)`](mlmatrics/ranking.py) | [`err_decay(y_true, y_pred, y_std: dict)`](mlmatrics/ranking.py) |
 | :--------------------------------------------------------: | :--------------------------------------------------------------: |
 |             ![err_decay](assets/err_decay.svg)             |       ![err_decay_multiple](assets/err_decay_multiple.svg)       |
 
@@ -97,7 +97,7 @@ See [`mlmatrics/relevance.py`](mlmatrics/relevance.py).
 
 See [`mlmatrics/histograms.py`](mlmatrics/histograms.py).
 
-| [`residual_hist(y_test, y_pred)`](mlmatrics/histograms.py) |       |
+| [`residual_hist(y_true, y_pred)`](mlmatrics/histograms.py) |       |
 | :--------------------------------------------------------: | :---: |
 |         ![residual_hist](assets/residual_hist.svg)         |       |
 
@@ -130,6 +130,6 @@ Consult the [`pytest`](https://docs.pytest.org/en/stable/usage.html) docs for mo
 
 ## Glossary
 
-- **Residual** `y - y_hat`: The difference between ground truth target and model prediction.
-- **Error** `abs(y - y_hat)`: Absolute error between target and model prediction.
-- **Uncertainty** `y_std`: The model's estimate for its own error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)
+1. **Residual** `y - y_hat`: The difference between ground truth target and model prediction.
+2. **Error** `abs(y - y_hat)`: Absolute error between target and model prediction.
+3. **Uncertainty** `y_std`: The model's estimate for its own error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)

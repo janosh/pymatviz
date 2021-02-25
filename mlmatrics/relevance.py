@@ -1,10 +1,12 @@
+from typing import Tuple
+
 import matplotlib.pyplot as plt
 import sklearn.metrics as skm
 from matplotlib.axes import Axes
 from numpy import ndarray as Array
 
 
-def roc_curve(targets: Array, proba_pos: Array, ax: Axes = None) -> float:
+def roc_curve(targets: Array, proba_pos: Array, ax: Axes = None) -> Tuple[float, Axes]:
     """Plot the receiver operating characteristic curve of a binary
     classifier given target labels and predicted probabilities for
     the positive class.
@@ -33,10 +35,12 @@ def roc_curve(targets: Array, proba_pos: Array, ax: Axes = None) -> float:
     ax.set_ylim((0, 1.05))
     ax.set_xlim((0, 1.05))
 
-    return roc_auc
+    return float(roc_auc), ax
 
 
-def precision_recall_curve(targets: Array, proba_pos: Array, ax: Axes = None) -> float:
+def precision_recall_curve(
+    targets: Array, proba_pos: Array, ax: Axes = None
+) -> Tuple[float, Axes]:
     """Plot the precision recall curve of a binary classifier.
 
     Args:
@@ -64,4 +68,4 @@ def precision_recall_curve(targets: Array, proba_pos: Array, ax: Axes = None) ->
     ax.set_ylim((0, 1.05))
     ax.set_xlim((0, 1.05))
 
-    return prec
+    return float(prec), ax
