@@ -5,8 +5,8 @@ import numpy as np
 from numpy import ndarray as Array
 
 
-def get_err_decay(y_test: Array, y_pred: Array, n_rand: int = 100) -> Tuple[Array]:
-    abs_err = np.abs(y_test - y_pred)
+def get_err_decay(y_true: Array, y_pred: Array, n_rand: int = 100) -> Tuple[Array]:
+    abs_err = np.abs(y_true - y_pred)
     # increasing count of the number of samples in each element of cumsum()
     n_inc = range(1, len(abs_err) + 1)
 
@@ -21,8 +21,8 @@ def get_err_decay(y_test: Array, y_pred: Array, n_rand: int = 100) -> Tuple[Arra
     return decay_by_err, rand.std(0)
 
 
-def get_std_decay(y_test: Array, y_pred: Array, y_std: Array) -> Array:
-    abs_err = np.abs(y_test - y_pred)
+def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
+    abs_err = np.abs(y_true - y_pred)
 
     # indices that sort y_std in ascending uncertainty
     y_std_sort = np.argsort(y_std)
@@ -36,12 +36,12 @@ def get_std_decay(y_test: Array, y_pred: Array, y_std: Array) -> Array:
 
 
 def err_decay(
-    y_test: Array,
+    y_true: Array,
     y_pred: Array,
     y_stds: Array,
     title: str = None,
     n_rand: int = 100,
-    percentile: bool = True,
+    percentiles: bool = True,
 ) -> None:
     """Plot for assessing the quality of uncertainty estimates. If a model's
     uncertainty is well calibrated, i.e. strongly correlated with its error,
@@ -49,48 +49,48 @@ def err_decay(
     similarly to how it decays when removing the predictions of largest error.
 
     Args:
-        y_test (Array): Ground truth regression targets.
+        y_true (Array): Ground truth regression targets.
         y_pred (Array): Model predictions.
         y_stds (Array): Model uncertainties.
         title (str, optional): Plot title. Defaults to None.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.
             of error decay by random ordering. Defaults to 100.
-        percentile (bool, optional): Whether to chart percentiles or total number
-            of samples remaining in the MAE calculation. Defaults to True.
+        percentiles (bool, optional): Whether the x-axis shows percentiless or number
+            of remaining samples in the MAE calculation. Defaults to True.
     """
-    xs = range(100 if percentile else len(y_test), 0, -1)
+    xs = range(100 if percentiles else len(y_true), 0, -1)
 
     if type(y_stds) != dict:
         y_stds = {"std": y_stds}
 
     for key, y_std in y_stds.items():
-        decay_by_std = get_std_decay(y_test, y_pred, y_std)
+        decay_by_std = get_std_decay(y_true, y_pred, y_std)
 
-        if percentile:
+        if percentiles:
             decay_by_std = np.percentile(decay_by_std, xs[::-1])
 
         plt.plot(xs, decay_by_std, label=key)
 
-    decay_by_err, rand_std = get_err_decay(y_test, y_pred, n_rand)
+    decay_by_err, rand_std = get_err_decay(y_true, y_pred, n_rand)
 
-    rand_mean = np.abs(y_test - y_pred).mean()
+    rand_mean = np.abs(y_true - y_pred).mean()
 
-    if percentile:
+    if percentiles:
         decay_by_err, rand_std = [
             np.percentile(ys, xs[::-1]) for ys in [decay_by_err, rand_std]
         ]
 
     rand_hi, rand_lo = rand_mean + rand_std, rand_mean - rand_std
     plt.plot(xs, decay_by_err, label="error")
-    plt.plot([1, 100] if percentile else [len(xs), 0], [rand_mean, rand_mean])
+    plt.plot([1, 100] if percentiles else [len(xs), 0], [rand_mean, rand_mean])
     plt.fill_between(
-        xs[::-1] if percentile else xs, rand_hi, rand_lo, alpha=0.2, label="random"
+        xs[::-1] if percentiles else xs, rand_hi, rand_lo, alpha=0.2, label="random"
     )
     plt.ylim([0, rand_mean.mean() * 1.1])
 
     # n: Number of remaining points in err calculation after discarding the
-    # (len(y_test) - n) most uncertain/hightest-error points
-    plt.xlabel("error/confidence percentile" if percentile else "excluded samples")
-    plt.ylabel("$\\epsilon_\\mathrm{MAE}$")
+    # (len(y_true) - n) most uncertain/hightest-error points
+    plt.xlabel("Confidence percentiles" if percentiles else "Excluded samples")
+    plt.ylabel("MAE")
     plt.title(title)
     plt.legend(loc="lower left")

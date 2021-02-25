@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +13,9 @@ from sklearn.metrics import r2_score
 from mlmatrics.utils import add_identity, with_hist
 
 
-def hist_density(xs: Array, ys: Array, sort: bool = True, bins: int = 100) -> None:
+def hist_density(
+    xs: Array, ys: Array, sort: bool = True, bins: int = 100
+) -> Tuple[Array]:
     """Return an approximate density of 2d points.
 
     Args:
@@ -43,13 +47,13 @@ def hist_density(xs: Array, ys: Array, sort: bool = True, bins: int = 100) -> No
     return xs, ys, zs
 
 
-def add_mae_r2_box(xs: Array, ys: Array, ax: Axes, loc: str = "lower right"):
+def add_mae_r2_box(xs: Array, ys: Array, ax: Axes, loc: str = "lower right") -> None:
 
-    text = f"$\\epsilon_\\mathrm{{mae}} = {np.abs(xs - ys).mean():.2f}$\n"
+    mae_str = f"$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.3f}$\n"
 
-    text += f"$R^2 = {r2_score(xs, ys):.2f}$"
+    r2_str = f"$R^2 = {r2_score(xs, ys):.3f}$"
 
-    text_box = AnchoredText(text, loc=loc, frameon=False)
+    text_box = AnchoredText(mae_str + r2_str, loc=loc, frameon=False)
     ax.add_artist(text_box)
 
 
@@ -57,14 +61,14 @@ def density_scatter(
     xs: Array,
     ys: Array,
     ax: Axes = None,
-    color_map: Array = None,
+    color_map: str = "Blues",
     sort: bool = True,
     log: bool = True,
     bins: int = 100,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
     **kwargs,
-):
+) -> Axes:
     """Scatter plot colored (and optionally sorted) by density"""
     if ax is None:
         ax = plt.gca()
@@ -73,7 +77,7 @@ def density_scatter(
 
     norm = mpl.colors.LogNorm() if log else None
 
-    ax.scatter(xs, ys, c=cs, cmap=color_map or "Blues", norm=norm, **kwargs)
+    ax.scatter(xs, ys, c=cs, cmap=color_map, norm=norm, **kwargs)
     add_identity(ax, label="ideal")
     add_mae_r2_box(xs, ys, ax)
 
