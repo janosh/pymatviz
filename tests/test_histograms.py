@@ -1,7 +1,7 @@
-from mlmatrics import residual_vs_actual
+from mlmatrics import residual_hist
 
 from . import y_pred, y_true
 
 
-def test_residual_vs_actual():
-    residual_vs_actual(y_true, y_pred)
+def test_residual_hist():
+    residual_hist(y_true, y_pred)
