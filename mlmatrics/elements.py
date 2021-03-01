@@ -16,21 +16,19 @@ def count_elements(formulas: list) -> pd.Series:
     """Count occurrences of each chemical element in a materials dataset.
 
     Args:
-        formulas (list): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
+        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
 
     Returns:
         pd.Series: Total number of appearances of each element in `formulas`.
     """
+    srs = pd.Series(formulas).apply(lambda x: pd.Series(Composition(x).as_dict())).sum()
 
+    # ensure all elements are present in returned Series (with count zero if they
+    # weren't in formulas)
     ptable = pd.read_csv(ROOT + "/data/periodic_table.csv")
-    elem_counts = pd.Series(0, index=ptable.symbol)  # symbols = [H, He, Li, etc.]
-
-    for formula in formulas:
-        formula_dict = Composition(formula).as_dict()
-        elem_count = pd.Series(formula_dict, name="count")
-        elem_counts = elem_counts.add(elem_count, fill_value=0)
-
-    return elem_counts
+    # fill_value=0 required as max(NaN, any int) = NaN
+    srs = srs.combine(pd.Series(0, index=ptable.symbol), max, fill_value=0)
+    return srs
 
 
 def ptable_elemental_prevalence(
@@ -110,9 +108,9 @@ def ptable_elemental_prevalence(
         )
 
         if i in [0, 4, 9, 14, 19]:
-            text = f"{value:.0g}"
+            text = f"{value:g}"
             if log_scale:
-                text = f"{np.exp(value):.0g}".replace("e+0", "e")
+                text = f"{np.exp(value):g}".replace("e+0", "e")
             plt.text(x_loc + width / 2, y_offset - 0.4, text, **text_style)
 
         plt.gca().add_patch(rect)
