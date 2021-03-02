@@ -15,6 +15,7 @@ from mlmatrics import (
     hist_elemental_prevalence,
     precision_recall_curve,
     ptable_elemental_prevalence,
+    ptable_elemental_ratio,
     qq_gaussian,
     residual_hist,
     residual_vs_actual,
@@ -93,6 +94,7 @@ savefig("residual_vs_actual")
 
 # %% Elemental Plots
 mp_formulas = pd.read_csv(f"{ROOT}/data/mp-n_elements<2.csv").formula
+roost_formulas = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
 
 
 ptable_elemental_prevalence(mp_formulas)
@@ -101,6 +103,14 @@ savefig("ptable_elemental_prevalence")
 
 ptable_elemental_prevalence(mp_formulas, log_scale=True)
 savefig("ptable_elemental_prevalence_log")
+
+
+ptable_elemental_ratio(mp_formulas, roost_formulas)
+savefig("ptable_elemental_ratio")
+
+
+ptable_elemental_ratio(mp_formulas, roost_formulas, log_scale=True)
+savefig("ptable_elemental_ratio_log")
 
 
 hist_elemental_prevalence(mp_formulas, keep_top=15)

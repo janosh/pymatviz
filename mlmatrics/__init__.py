@@ -3,6 +3,7 @@ from .elements import (
     count_elements,
     hist_elemental_prevalence,
     ptable_elemental_prevalence,
+    ptable_elemental_ratio,
 )
 from .histograms import residual_hist
 from .metrics import regression_metrics
