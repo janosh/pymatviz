@@ -21,7 +21,11 @@ def count_elements(formulas: list) -> pd.Series:
     Returns:
         pd.Series: Total number of appearances of each element in `formulas`.
     """
-    srs = pd.Series(formulas).apply(lambda x: pd.Series(Composition(x).as_dict())).sum()
+    formula2dict = lambda str: pd.Series(
+        Composition(str).fractional_composition.as_dict()
+    )
+
+    srs = pd.Series(formulas).apply(formula2dict).sum()
 
     # ensure all elements are present in returned Series (with count zero if they
     # weren't in formulas)
@@ -32,7 +36,10 @@ def count_elements(formulas: list) -> pd.Series:
 
 
 def ptable_elemental_prevalence(
-    formulas: List[str] = None, elem_counts: pd.Series = None, log_scale: bool = False
+    formulas: List[str] = None,
+    elem_counts: pd.Series = None,
+    log_scale: bool = False,
+    cbar_title: str = None,
 ) -> None:
     """Display the prevalence of each element in a materials dataset plotted as a
     heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
@@ -54,18 +61,18 @@ def ptable_elemental_prevalence(
 
     ptable = pd.read_csv(ROOT + "/data/periodic_table.csv")
 
-    n_row = ptable.row.max()
-    n_column = ptable.column.max()
+    n_rows = ptable.row.max()
+    n_columns = ptable.column.max()
 
-    plt.figure(figsize=(n_column, n_row))
+    plt.figure(figsize=(n_columns, n_rows))
 
     rw = rh = 0.9  # rectangle width/height
-    count_min = elem_counts.min()
-    count_max = elem_counts.max()
+    min_count = elem_counts.min()
+    max_count = elem_counts.replace([np.inf, -np.inf], np.nan).dropna().max()
 
     norm = Normalize(
-        vmin=0 if log_scale else count_min,
-        vmax=np.log(count_max) if log_scale else count_max,
+        vmin=0 if log_scale else min_count,
+        vmax=np.log(max_count) if log_scale else max_count,
     )
 
     text_style = dict(
@@ -73,15 +80,24 @@ def ptable_elemental_prevalence(
         verticalalignment="center",
         fontsize=20,
         fontweight="semibold",
-        color="black",
     )
 
     for symbol, row, column, _ in ptable.values:
-        row = n_row - row
+        row = n_rows - row
         count = elem_counts[symbol]
+
         if log_scale and count != 0:
             count = np.log(count)
-        color = YlGn(norm(count)) if count != 0 else "silver"
+
+        # inf or NaN are expected when passing in elem_counts from ptable_elemental_ratio
+        if count == 0:  # not in formulas_a
+            color = "yellow"
+        elif count == np.inf:
+            color = "orange"  # not in formulas_b
+        elif pd.isna(count):
+            color = "gray"  # not in either formulas_a nor formulas_b
+        else:
+            color = YlGn(norm(count)) if count != 0 else "silver"
 
         if row < 3:
             row += 0.5
@@ -95,19 +111,19 @@ def ptable_elemental_prevalence(
     x_offset = 3.5
     y_offset = 7.8
     length = 9
-    for i in range(granularity):
-        value = int(round((i) * count_max / (granularity - 1)))
+    for idx in range(granularity):
+        value = int(round(idx * max_count / (granularity - 1)))
         if log_scale and value != 0:
             value = np.log(value)
         color = YlGn(norm(value)) if value != 0 else "silver"
-        x_loc = i / (granularity) * length + x_offset
+        x_loc = idx / (granularity) * length + x_offset
         width = length / granularity
         height = 0.35
         rect = Rectangle(
             (x_loc, y_offset), width, height, edgecolor="gray", facecolor=color
         )
 
-        if i in [0, 4, 9, 14, 19]:
+        if idx in [0, 4, 9, 14, 19]:
             text = f"{value:g}"
             if log_scale:
                 text = f"{np.exp(value):g}".replace("e+0", "e")
@@ -115,21 +131,46 @@ def ptable_elemental_prevalence(
 
         plt.gca().add_patch(rect)
 
-    plt.text(
-        x_offset + length / 2,
-        y_offset + 0.7,
-        "log(Element Count)" if log_scale else "Element Count",
-        horizontalalignment="center",
-        verticalalignment="center",
-        fontweight="semibold",
-        fontsize=20,
-        color="k",
-    )
+    if cbar_title is None:
+        cbar_title = "log(Element Count)" if log_scale else "Element Count"
 
-    plt.ylim(-0.15, n_row + 0.1)
-    plt.xlim(0.85, n_column + 1.1)
+    plt.text(x_offset + length / 2, y_offset + 0.7, cbar_title, **text_style)
+
+    plt.ylim(-0.15, n_rows + 0.1)
+    plt.xlim(0.85, n_columns + 1.1)
 
     plt.axis("off")
+
+
+def ptable_elemental_ratio(
+    formulas_a: List[str], formulas_b: List[str], log_scale: bool = False
+) -> None:
+    """Display the prevalence of each element in a materials dataset plotted as a
+    heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
+
+    Adapted from https://github.com/kaaiian/ML_figures.
+
+    Args:
+        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
+        elem_counts (pd.Series): Map from element symbol to prevalence count
+        log_scale (bool, optional): Whether color map scale is log or linear.
+    """
+    elem_counts_a = count_elements(formulas_a)
+    elem_counts_b = count_elements(formulas_b)
+
+    elem_counts = elem_counts_a / elem_counts_b
+
+    cbar_title = "log(Element Ratio)" if log_scale else "Element Ratio"
+
+    ptable_elemental_prevalence(
+        elem_counts=elem_counts, log_scale=log_scale, cbar_title=cbar_title
+    )
+
+    text_style = dict(fontsize=14, fontweight="semibold")
+
+    plt.text(0.2, 2, "yellow: not in first list", **text_style)
+    plt.text(0.2, 1.5, "orange: not in second list", **text_style)
+    plt.text(0.2, 1, "gray: not in either", **text_style)
 
 
 def hist_elemental_prevalence(
