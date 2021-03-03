@@ -41,10 +41,8 @@ plt.rcParams["figure.figsize"] = (8, 7)
 y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 
 
-# Load example dataset
-df_roost_ens = pd.read_csv(
-    f"{ROOT}/data/ex-ensemble-roost.csv", comment="#", na_filter=False
-)
+# na_filter=False so sodium amide (NaN) is not parsed as 'not a number'
+df_roost_ens = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv", na_filter=False)
 
 y_true = df_roost_ens.target
 
@@ -54,11 +52,11 @@ y_pred = np.mean(y_preds, axis=0)
 
 ale_cols = [col for col in df_roost_ens.columns if "ale" in col]
 y_ales = df_roost_ens[ale_cols].T
-y_ale = np.mean(np.square(y_ales), axis=0)
 
-y_epi = np.var(y_preds, axis=0, ddof=0)
+y_var_ale = np.square(y_ales).mean(axis=0)
+y_var_epi = y_preds.var(axis=0)
 
-y_var = y_ale + y_epi
+y_var = y_var_ale + y_var_epi
 y_std = np.sqrt(y_var)
 
 

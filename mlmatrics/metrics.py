@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 
 import numpy as np
 from numpy import ndarray as Array
@@ -7,7 +7,7 @@ from sklearn.metrics import r2_score
 
 def regression_metrics(
     y_true: Array, y_preds: Array, verbose: bool = False
-) -> Dict[str, float]:
+) -> Dict[str, Union[float, dict]]:
     """Print a common selection of regression metrics
 
     TODO make robust by finding the common axis
