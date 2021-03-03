@@ -107,34 +107,35 @@ def ptable_elemental_prevalence(
 
         plt.gca().add_patch(rect)
 
-    granularity = 20
-    x_offset = 3.5
-    y_offset = 7.8
-    length = 9
-    for idx in range(granularity):
-        value = int(round(idx * max_count / (granularity - 1)))
-        if log_scale and value != 0:
+    # color bar
+    granularity = 20  # number of cells in the color bar
+    bar_xpos, bar_ypos = 3.5, 7.8  # bar position
+    bar_width, bar_height = 9, 0.35
+    cell_width = bar_width / granularity
+
+    for idx in np.arange(granularity) + (1 if log_scale else 0):
+        value = idx * max_count / (granularity - 1)
+        if log_scale and value > 0:
             value = np.log(value)
+
         color = YlGn(norm(value)) if value != 0 else "silver"
-        x_loc = idx / (granularity) * length + x_offset
-        width = length / granularity
-        height = 0.35
+        x_loc = (idx - (1 if log_scale else 0)) / granularity * bar_width + bar_xpos
         rect = Rectangle(
-            (x_loc, y_offset), width, height, edgecolor="gray", facecolor=color
+            (x_loc, bar_ypos), cell_width, bar_height, edgecolor="gray", facecolor=color
         )
 
-        if idx in [0, 4, 9, 14, 19]:
-            text = f"{value:g}"
-            if log_scale:
-                text = f"{np.exp(value):g}".replace("e+0", "e")
-            plt.text(x_loc + width / 2, y_offset - 0.4, text, **text_style)
+        if idx in np.linspace(0, granularity, granularity // 4) + (
+            1 if log_scale else 0
+        ) or idx == (granularity - (0 if log_scale else 1)):
+            text = f"{value:.1f}" if log_scale else f"{value:.0f}"
+            plt.text(x_loc + cell_width / 2, bar_ypos - 0.4, text, **text_style)
 
         plt.gca().add_patch(rect)
 
     if cbar_title is None:
         cbar_title = "log(Element Count)" if log_scale else "Element Count"
 
-    plt.text(x_offset + length / 2, y_offset + 0.7, cbar_title, **text_style)
+    plt.text(bar_xpos + bar_width / 2, bar_ypos + 0.7, cbar_title, **text_style)
 
     plt.ylim(-0.15, n_rows + 0.1)
     plt.xlim(0.85, n_columns + 1.1)
