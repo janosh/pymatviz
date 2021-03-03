@@ -15,7 +15,7 @@ def test_ptable_elemental_prevalence():
     ptable_elemental_prevalence(compositions)
 
 
-def test_ptable_elemental_prevalence_log_scale():
+def test_ptable_elemental_prevalence_log():
     ptable_elemental_prevalence(compositions)
 
 
@@ -28,8 +28,8 @@ def test_hist_elemental_prevalence():
     hist_elemental_prevalence(compositions)
 
 
-def test_hist_elemental_prevalence_log_scale():
-    hist_elemental_prevalence(compositions, log_scale=True)
+def test_hist_elemental_prevalence_log():
+    hist_elemental_prevalence(compositions, log=True)
 
 
 def test_hist_elemental_prevalence_with_keep_top():
@@ -44,5 +44,5 @@ def test_ptable_elemental_ratio():
     ptable_elemental_ratio(compositions, compositions_b)
 
 
-def test_ptable_elemental_ratio_log_scale():
-    ptable_elemental_ratio(compositions, compositions_b, log_scale=True)
+def test_ptable_elemental_ratio_log():
+    ptable_elemental_ratio(compositions, compositions_b, log=True)
