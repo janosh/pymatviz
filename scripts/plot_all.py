@@ -98,24 +98,21 @@ roost_formulas = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
 ptable_elemental_prevalence(mp_formulas)
 savefig("ptable_elemental_prevalence")
 
-
-ptable_elemental_prevalence(mp_formulas, log_scale=True)
+ptable_elemental_prevalence(mp_formulas, log=True)
 savefig("ptable_elemental_prevalence_log")
-
 
 ptable_elemental_ratio(mp_formulas, roost_formulas)
 savefig("ptable_elemental_ratio")
 
-
-ptable_elemental_ratio(mp_formulas, roost_formulas, log_scale=True)
+ptable_elemental_ratio(roost_formulas, mp_formulas, log=True)
 savefig("ptable_elemental_ratio_log")
 
-
-hist_elemental_prevalence(mp_formulas, keep_top=15)
+hist_elemental_prevalence(mp_formulas, keep_top=15, voffset=1)
 savefig("hist_elemental_prevalence")
 
-
-hist_elemental_prevalence(mp_formulas, keep_top=20, log_scale=True, bar_values="count")
+hist_elemental_prevalence(
+    mp_formulas, keep_top=20, log=True, bar_values="count", voffset=1
+)
 savefig("hist_elemental_prevalence_log_count")
 
 
@@ -141,12 +138,9 @@ savefig("cumulative_residual")
 err_decay(y_true, y_pred, y_std)
 savefig("err_decay")
 
+eps = 0.2 * np.random.randn(*y_std.shape)
 
-err_decay(
-    y_true,
-    y_pred,
-    {"better": y_std, "worse": y_std + 0.2 * np.random.randn(*y_std.shape)},
-)
+err_decay(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
 savefig("err_decay_multiple")
 
 

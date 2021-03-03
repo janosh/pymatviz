@@ -55,13 +55,13 @@ See [`mlmatrics/parity.py`](mlmatrics/parity.py).
 
 See [`mlmatrics/elements.py`](mlmatrics/elements.py).
 
-|  [`ptable_elemental_prevalence(compositions)`](mlmatrics/elements.py)  |          [`ptable_elemental_prevalence(compositions, log_scale=True)`](mlmatrics/elements.py)          |
-| :--------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------: |
-| ![ptable_elemental_prevalence](assets/ptable_elemental_prevalence.svg) |             ![ptable_elemental_prevalence_log](assets/ptable_elemental_prevalence_log.svg)             |
-|   [`hist_elemental_prevalence(compositions)`](mlmatrics/elements.py)   | [`hist_elemental_prevalence(compositions, log_scale=True, bar_values='count')`](mlmatrics/elements.py) |
-|   ![hist_elemental_prevalence](assets/hist_elemental_prevalence.svg)   |         ![hist_elemental_prevalence_log_count](assets/hist_elemental_prevalence_log_count.svg)         |
-|  [`ptable_elemental_ratio(comps_a, comps_b)`](mlmatrics/elements.py)   |          [`ptable_elemental_ratio(comps_a, comps_b, log_scale=True)`](mlmatrics/elements.py)           |
-|      ![ptable_elemental_ratio](assets/ptable_elemental_ratio.svg)      |                  ![ptable_elemental_ratio_log](assets/ptable_elemental_ratio_log.svg)                  |
+|  [`ptable_elemental_prevalence(compositions)`](mlmatrics/elements.py)  |          [`ptable_elemental_prevalence(compositions, log=True)`](mlmatrics/elements.py)          |
+| :--------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------: |
+| ![ptable_elemental_prevalence](assets/ptable_elemental_prevalence.svg) |          ![ptable_elemental_prevalence_log](assets/ptable_elemental_prevalence_log.svg)          |
+|   [`hist_elemental_prevalence(compositions)`](mlmatrics/elements.py)   | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](mlmatrics/elements.py) |
+|   ![hist_elemental_prevalence](assets/hist_elemental_prevalence.svg)   |      ![hist_elemental_prevalence_log_count](assets/hist_elemental_prevalence_log_count.svg)      |
+|  [`ptable_elemental_ratio(comps_a, comps_b)`](mlmatrics/elements.py)   |          [`ptable_elemental_ratio(comps_b, comps_a, log=True)`](mlmatrics/elements.py)           |
+|      ![ptable_elemental_ratio](assets/ptable_elemental_ratio.svg)      |               ![ptable_elemental_ratio_log](assets/ptable_elemental_ratio_log.svg)               |
 
 ## Uncertainty Calibration
 
