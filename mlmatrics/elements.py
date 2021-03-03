@@ -38,7 +38,7 @@ def count_elements(formulas: list) -> pd.Series:
 def ptable_elemental_prevalence(
     formulas: List[str] = None,
     elem_counts: pd.Series = None,
-    log_scale: bool = False,
+    log: bool = False,
     cbar_title: str = None,
 ) -> None:
     """Display the prevalence of each element in a materials dataset plotted as a
@@ -49,7 +49,7 @@ def ptable_elemental_prevalence(
     Args:
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         elem_counts (pd.Series): Map from element symbol to prevalence count
-        log_scale (bool, optional): Whether color map scale is log or linear.
+        log (bool, optional): Whether color map scale is log or linear.
     """
     if (formulas is None and elem_counts is None) or (
         formulas is not None and elem_counts is not None
@@ -71,8 +71,8 @@ def ptable_elemental_prevalence(
     max_count = elem_counts.replace([np.inf, -np.inf], np.nan).dropna().max()
 
     norm = Normalize(
-        vmin=0 if log_scale else min_count,
-        vmax=np.log(max_count) if log_scale else max_count,
+        vmin=0 if log else min_count,
+        vmax=np.log10(max_count) if log else max_count,
     )
 
     text_style = dict(
@@ -86,16 +86,16 @@ def ptable_elemental_prevalence(
         row = n_rows - row
         count = elem_counts[symbol]
 
-        if log_scale and count != 0:
-            count = np.log(count)
+        if log and count > 0:
+            count = np.log10(count)
 
         # inf or NaN are expected when passing in elem_counts from ptable_elemental_ratio
         if count == 0:  # not in formulas_a
-            color = "yellow"
+            color = "silver"
         elif count == np.inf:
-            color = "orange"  # not in formulas_b
+            color = "lightskyblue"  # not in formulas_b
         elif pd.isna(count):
-            color = "gray"  # not in either formulas_a nor formulas_b
+            color = "white"  # not in either formulas_a nor formulas_b
         else:
             color = YlGn(norm(count)) if count != 0 else "silver"
 
@@ -113,27 +113,33 @@ def ptable_elemental_prevalence(
     bar_width, bar_height = 9, 0.35
     cell_width = bar_width / granularity
 
-    for idx in np.arange(granularity) + (1 if log_scale else 0):
+    for idx in np.arange(granularity) + (1 if log else 0):
         value = idx * max_count / (granularity - 1)
-        if log_scale and value > 0:
-            value = np.log(value)
+        if log and value > 0:
+            value = np.log10(value)
 
         color = YlGn(norm(value)) if value != 0 else "silver"
-        x_loc = (idx - (1 if log_scale else 0)) / granularity * bar_width + bar_xpos
+        x_loc = (idx - (1 if log else 0)) / granularity * bar_width + bar_xpos
         rect = Rectangle(
             (x_loc, bar_ypos), cell_width, bar_height, edgecolor="gray", facecolor=color
         )
 
         if idx in np.linspace(0, granularity, granularity // 4) + (
-            1 if log_scale else 0
-        ) or idx == (granularity - (0 if log_scale else 1)):
-            text = f"{value:.1f}" if log_scale else f"{value:.0f}"
+            1 if log else 0
+        ) or idx == (granularity - (0 if log else 1)):
+            text = f"{value:.1f}" if log else f"{value:.0f}"
             plt.text(x_loc + cell_width / 2, bar_ypos - 0.4, text, **text_style)
 
         plt.gca().add_patch(rect)
 
+    if log:
+        plt.text(
+            bar_xpos + cell_width / 2, bar_ypos + 0.6, int(min_count), **text_style
+        )
+        plt.text(x_loc + cell_width / 2, bar_ypos + 0.6, int(max_count), **text_style)
+
     if cbar_title is None:
-        cbar_title = "log(Element Count)" if log_scale else "Element Count"
+        cbar_title = "log(Element Count)" if log else "Element Count"
 
     plt.text(bar_xpos + bar_width / 2, bar_ypos + 0.7, cbar_title, **text_style)
 
@@ -144,7 +150,7 @@ def ptable_elemental_prevalence(
 
 
 def ptable_elemental_ratio(
-    formulas_a: List[str], formulas_b: List[str], log_scale: bool = False
+    formulas_a: List[str], formulas_b: List[str], log: bool = False
 ) -> None:
     """Display the prevalence of each element in a materials dataset plotted as a
     heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
@@ -154,29 +160,44 @@ def ptable_elemental_ratio(
     Args:
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         elem_counts (pd.Series): Map from element symbol to prevalence count
-        log_scale (bool, optional): Whether color map scale is log or linear.
+        log (bool, optional): Whether color map scale is log or linear.
     """
     elem_counts_a = count_elements(formulas_a)
     elem_counts_b = count_elements(formulas_b)
 
+    # normalize elemental distributions, just a scaling factor but
+    # makes different ratio plots comparable
+    elem_counts_a /= elem_counts_a.sum()
+    elem_counts_b /= elem_counts_b.sum()
+
     elem_counts = elem_counts_a / elem_counts_b
 
-    cbar_title = "log(Element Ratio)" if log_scale else "Element Ratio"
+    cbar_title = "log(Element Ratio)" if log else "Element Ratio"
 
-    ptable_elemental_prevalence(
-        elem_counts=elem_counts, log_scale=log_scale, cbar_title=cbar_title
+    ptable_elemental_prevalence(elem_counts=elem_counts, log=log, cbar_title=cbar_title)
+
+    text_style = {"fontsize": 14, "fontweight": "semibold"}
+
+    plt.text(
+        0.8,
+        2,
+        "gray: not in st list",
+        **text_style,
+        bbox={"facecolor": "silver", "linewidth": 0},
     )
-
-    text_style = dict(fontsize=14, fontweight="semibold")
-
-    plt.text(0.2, 2, "yellow: not in first list", **text_style)
-    plt.text(0.2, 1.5, "orange: not in second list", **text_style)
-    plt.text(0.2, 1, "gray: not in either", **text_style)
+    plt.text(
+        0.8,
+        1.5,
+        "blue: not in 2nd list",
+        **text_style,
+        bbox={"facecolor": "lightskyblue", "linewidth": 0},
+    )
+    plt.text(0.8, 1, "white: not in either", **text_style)
 
 
 def hist_elemental_prevalence(
     formulas: list,
-    log_scale: bool = False,
+    log: bool = False,
     keep_top: int = None,
     ax: Axes = None,
     bar_values: str = "percent",
@@ -187,7 +208,7 @@ def hist_elemental_prevalence(
 
     Args:
         formulas (list): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
-        log_scale (bool, optional): Whether y-axis is log or linear. Defaults to False.
+        log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
         ax (Axes): plt axes. Defaults to None.
         bar_values (str): One of 'percent', 'count' or None. Annotate bars with the
@@ -206,9 +227,9 @@ def hist_elemental_prevalence(
 
     non_zero.plot.bar(width=0.7, edgecolor="black")
 
-    plt.ylabel("log(Element Count)" if log_scale else "Element Count")
+    plt.ylabel("log(Element Count)" if log else "Element Count")
 
-    if log_scale:
+    if log:
         plt.yscale("log")
 
     if bar_values is not None:
