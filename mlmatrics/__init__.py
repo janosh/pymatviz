@@ -1,3 +1,4 @@
+from .correlation import marchenko_pastur, marchenko_pastur_pdf
 from .cumulative import add_dropdown, cum_err, cum_res
 from .elements import (
     count_elements,
