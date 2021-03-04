@@ -161,13 +161,23 @@ savefig("residual_hist")
 
 # %% Correlation Plots
 rand_wide_mat = pd.read_csv(f"{ROOT}/data/rand_wide_matrix.csv", header=None).to_numpy()
-r_rows, n_cols = rand_wide_mat.shape
-corr_mat = np.corrcoef(rand_wide_mat)
-marchenko_pastur(corr_mat, gamma=n_cols / r_rows)
+n_rows, n_cols = 50, 400
+linear_matrix = np.arange(n_rows * n_cols).reshape(n_rows, n_cols) / n_cols
+corr_mat = np.corrcoef(linear_matrix + rand_wide_mat[:n_rows, :n_cols])
+marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
 savefig("marchenko_pastur")
 
+rand_wide_mat = pd.read_csv(f"{ROOT}/data/rand_wide_matrix.csv", header=None).to_numpy()
+n_rows, n_cols = 50, 400
+linear_matrix = np.arange(n_rows * n_cols).reshape(n_rows, n_cols) / n_cols
+corr_mat = np.corrcoef(linear_matrix + rand_wide_mat[:n_rows, :n_cols])
+marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
+savefig("marchenko_pastur_significant_eval")
+
 rand_tall_mat = pd.read_csv(f"{ROOT}/data/rand_tall_matrix.csv", header=None).to_numpy()
-r_rows, n_cols = rand_tall_mat.shape
+n_rows, n_cols = rand_tall_mat.shape
 corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
-marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / r_rows)
+marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
 savefig("marchenko_pastur_rank_deficient")
+
+# %%

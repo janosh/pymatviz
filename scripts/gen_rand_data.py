@@ -18,14 +18,14 @@ df_clf = pd.DataFrame(
 )
 df_clf.to_csv(f"{ROOT}/data/rand_clf.csv", index=False, float_format="%g")
 
-r_rows, n_cols = 500, 1000
-rand_mat = np.random.normal(0, 1, size=(r_rows, n_cols))
+n_rows, n_cols = 500, 1000
+rand_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 pd.DataFrame(rand_mat).to_csv(
     f"{ROOT}/data/rand_wide_matrix.csv", index=False, float_format="%g", header=False
 )
 
-r_rows, n_cols = 600, 500
-rand_mat = np.random.normal(0, 1, size=(r_rows, n_cols))
+n_rows, n_cols = 600, 500
+rand_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 pd.DataFrame(rand_mat).to_csv(
     f"{ROOT}/data/rand_tall_matrix.csv", index=False, float_format="%g", header=False
 )
