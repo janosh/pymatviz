@@ -95,6 +95,14 @@ See [`mlmatrics/relevance.py`](mlmatrics/relevance.py).
 | :-------------------------------------------------------: | :--------------------------------------------------------------------: |
 |            ![roc_curve](assets/roc_curve.svg)             |      ![precision_recall_curve](assets/precision_recall_curve.svg)      |
 
+## Correlation
+
+See [`mlmatrics/correlation.py`](mlmatrics/correlation.py).
+
+| [`marchenko_pastur(corr_mat, gamma=ncols/nrows)`](mlmatrics/correlation.py) | [`marchenko_pastur(corr_mat_rank_deficient, gamma=ncols/nrows)`](mlmatrics/correlation.py) |
+| :-------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
+|              ![marchenko_pastur](assets/marchenko_pastur.svg)               |       ![marchenko_pastur_rank_deficient](assets/marchenko_pastur_rank_deficient.svg)       |
+
 ## Histograms
 
 See [`mlmatrics/histograms.py`](mlmatrics/histograms.py).
