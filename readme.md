@@ -99,9 +99,9 @@ See [`mlmatrics/relevance.py`](mlmatrics/relevance.py).
 
 See [`mlmatrics/correlation.py`](mlmatrics/correlation.py).
 
-| [`marchenko_pastur(corr_mat, gamma=ncols/nrows)`](mlmatrics/correlation.py) | [`marchenko_pastur(corr_mat_rank_deficient, gamma=ncols/nrows)`](mlmatrics/correlation.py) |
-| :-------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
-|              ![marchenko_pastur](assets/marchenko_pastur.svg)               |       ![marchenko_pastur_rank_deficient](assets/marchenko_pastur_rank_deficient.svg)       |
+| [`marchenko_pastur(corr_mat, gamma=ncols/nrows)`](mlmatrics/correlation.py) | [`marchenko_pastur(corr_mat_significant_eval, gamma=ncols/nrows)`](mlmatrics/correlation.py) |
+| :-------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------: |
+|              ![marchenko_pastur](assets/marchenko_pastur.svg)               |      ![marchenko_pastur_significant_eval](assets/marchenko_pastur_significant_eval.svg)      |
 
 ## Histograms
 
