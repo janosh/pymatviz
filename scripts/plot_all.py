@@ -13,6 +13,7 @@ from mlmatrics import (
     density_scatter_with_hist,
     err_decay,
     hist_elemental_prevalence,
+    marchenko_pastur,
     precision_recall_curve,
     ptable_elemental_prevalence,
     ptable_elemental_ratio,
@@ -156,3 +157,17 @@ savefig("precision_recall_curve")
 # %% Histogram Plots
 residual_hist(y_true, y_pred)
 savefig("residual_hist")
+
+
+# %% Correlation Plots
+rand_wide_mat = pd.read_csv(f"{ROOT}/data/rand_wide_matrix.csv", header=None).to_numpy()
+r_rows, n_cols = rand_wide_mat.shape
+corr_mat = np.corrcoef(rand_wide_mat)
+marchenko_pastur(corr_mat, gamma=n_cols / r_rows)
+savefig("marchenko_pastur")
+
+rand_tall_mat = pd.read_csv(f"{ROOT}/data/rand_tall_matrix.csv", header=None).to_numpy()
+r_rows, n_cols = rand_tall_mat.shape
+corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
+marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / r_rows)
+savefig("marchenko_pastur_rank_deficient")
