@@ -64,22 +64,46 @@ def density_scatter(
     color_map: str = "Blues",
     sort: bool = True,
     log: bool = True,
-    bins: int = 100,
+    density_bins: int = 100,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
+    identity: bool = True,
+    stats: bool = True,
     **kwargs,
 ) -> Axes:
-    """Scatter plot colored (and optionally sorted) by density"""
+    """Scatter plot colored (and optionally sorted) by density.
+
+    Args:
+        xs (Array): x values.
+        ys (Array): y values.
+        ax (Axes, optional): plt axes. Defaults to None.
+        color_map (str, optional): plt color map or valid string name. Defaults to "Blues".
+        sort (bool, optional): Whether to sort the data. Defaults to True.
+        log (bool, optional): Whether to the color scale. Defaults to True.
+        density_bins (int, optional): How many density_bins to use for the density histogram,
+            i.e. granularity of the density color scale. Defaults to 100.
+        xlabel (str, optional): x-axis label. Defaults to "Actual".
+        ylabel (str, optional): y-axis label. Defaults to "Predicted".
+        identity (bool, optional): Whether to add an identity/parity line (y = x).
+            Defaults to True.
+        stats (bool, optional): Whether to display a text box with MAE and R^2.
+            Defaults to True.
+
+    Returns:
+        Axes: plt axes containing the plot.
+    """
     if ax is None:
         ax = plt.gca()
 
-    xs, ys, cs = hist_density(xs, ys, sort=sort, bins=bins)
+    xs, ys, cs = hist_density(xs, ys, sort=sort, bins=density_bins)
 
     norm = mpl.colors.LogNorm() if log else None
 
     ax.scatter(xs, ys, c=cs, cmap=color_map, norm=norm, **kwargs)
-    add_identity(ax, label="ideal")
-    add_mae_r2_box(xs, ys, ax)
+    if identity:
+        add_identity(ax, label="ideal")
+    if stats:
+        add_mae_r2_box(xs, ys, ax)
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -134,7 +158,6 @@ def density_hexbin(
     targets: Array,
     preds: Array,
     ax: Axes = None,
-    title: str = None,
     color_map: Array = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
@@ -176,11 +199,22 @@ def density_hexbin_with_hist(xs, ys, cell=None, bins=100, **kwargs):
 
 
 def residual_vs_actual(y_true: Array, y_pred: Array, ax: Axes = None) -> Axes:
+    """Plot ground truth targets on the x-axis against residuals
+    (y_err = y_true - y_pred) on the y-axis.
+
+    Args:
+        y_true (Array): [description]
+        y_pred (Array): [description]
+        ax (Axes, optional): [description]. Defaults to None.
+
+    Returns:
+        Axes: [description]
+    """
 
     if ax is None:
         ax = plt.gca()
 
-    y_err = y_pred - y_true
+    y_err = y_true - y_pred
 
     xmin = np.min(y_true) * 0.9
     xmax = np.max(y_true) / 0.9
