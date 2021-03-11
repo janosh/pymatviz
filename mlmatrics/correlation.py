@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from numpy.typing import ArrayLike as Array
+from numpy import ndarray as Array
 
 
 def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
