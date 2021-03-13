@@ -166,7 +166,7 @@ def ptable_elemental_ratio(
     **kwargs,
 ) -> None:
     """Display the ratio of the normalised prevalence of each element for two sets of
-    materials.
+    compositions.
 
     Args:
         formulas_a (list[str]): numerator compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
@@ -180,12 +180,16 @@ def ptable_elemental_ratio(
     if (formulas_a is None and elem_counts_a is None) or (
         formulas_a is not None and elem_counts_a is not None
     ):
-        raise ValueError("provide either formulas_a or elem_counts_a, not neither nor both")
+        raise ValueError(
+            "provide either formulas_a or elem_counts_a, not neither nor both"
+        )
 
     if (formulas_b is None and elem_counts_b is None) or (
         formulas_b is not None and elem_counts_b is not None
     ):
-        raise ValueError("provide either formulas_b or elem_counts_b, not neither nor both")
+        raise ValueError(
+            "provide either formulas_b or elem_counts_b, not neither nor both"
+        )
 
     if formulas_a is not None:
         elem_counts_a = count_elements(formulas_a)
@@ -202,7 +206,9 @@ def ptable_elemental_ratio(
 
     cbar_title = "log(Element Ratio)" if log else "Element Ratio"
 
-    ptable_elemental_prevalence(elem_counts=elem_counts, log=log, cbar_title=cbar_title, **kwargs)
+    ptable_elemental_prevalence(
+        elem_counts=elem_counts, log=log, cbar_title=cbar_title, **kwargs
+    )
 
     text_style = {"fontsize": 14, "fontweight": "semibold"}
 
