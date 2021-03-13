@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
-from matplotlib.cm import YlGn
+from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
 from pymatgen import Composition
@@ -40,6 +40,7 @@ def ptable_elemental_prevalence(
     elem_counts: pd.Series = None,
     log: bool = False,
     cbar_title: str = None,
+    cmap: str = "YlGn",
 ) -> None:
     """Display the prevalence of each element in a materials dataset plotted as a
     heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
@@ -50,6 +51,11 @@ def ptable_elemental_prevalence(
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         elem_counts (pd.Series): Map from element symbol to prevalence count
         log (bool, optional): Whether color map scale is log or linear.
+        cbar_title (str, optional): Optional Title for colorbar. Defaults to None.
+        cmap (str, optional): Matplotlib colormap name to use. Defaults to "YlGn".
+
+    Raises:
+        ValueError: provide either formulas or elem_counts, not neither nor both
     """
     if (formulas is None and elem_counts is None) or (
         formulas is not None and elem_counts is not None
@@ -60,10 +66,12 @@ def ptable_elemental_prevalence(
         elem_counts = count_elements(formulas)
 
     ptable = pd.read_csv(ROOT + "/data/periodic_table.csv")
+    cmap = get_cmap(cmap)
 
     n_rows = ptable.row.max()
     n_columns = ptable.column.max()
 
+    # TODO can we pass as as a kwarg and still ensure aspect ratio respected?
     plt.figure(figsize=(n_columns, n_rows))
 
     rw = rh = 0.9  # rectangle width/height
@@ -97,7 +105,7 @@ def ptable_elemental_prevalence(
         elif pd.isna(count):
             color = "white"  # not in either formulas_a nor formulas_b
         else:
-            color = YlGn(norm(count)) if count != 0 else "silver"
+            color = cmap(norm(count)) if count != 0 else "silver"
 
         if row < 3:
             row += 0.5
@@ -118,7 +126,7 @@ def ptable_elemental_prevalence(
         if log and value > 0:
             value = np.log10(value)
 
-        color = YlGn(norm(value)) if value != 0 else "silver"
+        color = cmap(norm(value)) if value != 0 else "silver"
         x_loc = (idx - (1 if log else 0)) / granularity * bar_width + bar_xpos
         rect = Rectangle(
             (x_loc, bar_ypos), cell_width, bar_height, edgecolor="gray", facecolor=color
@@ -150,20 +158,40 @@ def ptable_elemental_prevalence(
 
 
 def ptable_elemental_ratio(
-    formulas_a: List[str], formulas_b: List[str], log: bool = False
+    formulas_a: List[str] = None,
+    formulas_b: List[str] = None,
+    elem_counts_a: pd.Series = None,
+    elem_counts_b: pd.Series = None,
+    log: bool = False,
+    **kwargs,
 ) -> None:
-    """Display the prevalence of each element in a materials dataset plotted as a
-    heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
-
-    Adapted from https://github.com/kaaiian/ML_figures.
+    """Display the ratio of the normalised prevalence of each element for two sets of
+    materials.
 
     Args:
-        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
-        elem_counts (pd.Series): Map from element symbol to prevalence count
+        formulas_a (list[str]): numerator compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
+        formulas_b (list[str]): denominator compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
+        elem_counts_a (pd.Series): Map from element symbol to prevalence count for numerator
+        elem_counts_b (pd.Series): Map from element symbol to prevalence count for denominator
         log (bool, optional): Whether color map scale is log or linear.
+        kwargs (dict, optional): kwargs passed to ptable_elemental_prevalence
     """
-    elem_counts_a = count_elements(formulas_a)
-    elem_counts_b = count_elements(formulas_b)
+
+    if (formulas_a is None and elem_counts_a is None) or (
+        formulas_a is not None and elem_counts_a is not None
+    ):
+        raise ValueError("provide either formulas_a or elem_counts_a, not neither nor both")
+
+    if (formulas_b is None and elem_counts_b is None) or (
+        formulas_b is not None and elem_counts_b is not None
+    ):
+        raise ValueError("provide either formulas_b or elem_counts_b, not neither nor both")
+
+    if formulas_a is not None:
+        elem_counts_a = count_elements(formulas_a)
+
+    if formulas_b is not None:
+        elem_counts_b = count_elements(formulas_b)
 
     # normalize elemental distributions, just a scaling factor but
     # makes different ratio plots comparable
@@ -174,10 +202,11 @@ def ptable_elemental_ratio(
 
     cbar_title = "log(Element Ratio)" if log else "Element Ratio"
 
-    ptable_elemental_prevalence(elem_counts=elem_counts, log=log, cbar_title=cbar_title)
+    ptable_elemental_prevalence(elem_counts=elem_counts, log=log, cbar_title=cbar_title, **kwargs)
 
     text_style = {"fontsize": 14, "fontweight": "semibold"}
 
+    # add key for the colours
     plt.text(
         0.8,
         2,
@@ -204,6 +233,7 @@ def hist_elemental_prevalence(
     **kwargs,
 ) -> None:
     """Plots a histogram of the prevalence of each element in a materials dataset.
+
     Adapted from https://github.com/kaaiian/ML_figures.
 
     Args:
