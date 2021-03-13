@@ -46,3 +46,15 @@ def test_ptable_elemental_ratio():
 
 def test_ptable_elemental_ratio_log():
     ptable_elemental_ratio(compositions, compositions_b, log=True)
+
+
+def test_ptable_elemental_ratio_with_elem_counts():
+    elem_counts = count_elements(compositions)
+    elem_counts_b = count_elements(compositions_b)
+    ptable_elemental_ratio(elem_counts_a=elem_counts, elem_counts_b=elem_counts_b)
+
+
+def test_ptable_elemental_ratio_with_mixed():
+    elem_counts_b = count_elements(compositions_b)
+    ptable_elemental_ratio(formulas_a=compositions, elem_counts_b=elem_counts_b)
+    ptable_elemental_ratio(formulas_b=compositions, elem_counts_a=elem_counts_b)
