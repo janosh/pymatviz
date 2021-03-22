@@ -3,7 +3,7 @@
 # Setup CI and readme badge at https://pre-commit.ci.
 repos:
   - repo: https://github.com/PyCQA/isort
-    rev: 5.7.0
+    rev: 5.8.0
     hooks:
       - id: isort
   - repo: https://github.com/psf/black
@@ -15,7 +15,7 @@ repos:
     hooks:
       - id: flake8
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.10.0
+    rev: v2.11.0
     hooks:
       - id: pyupgrade
         args: [--py38-plus]
