@@ -32,7 +32,7 @@ numpy==1.20.1
 git+git://github.com/janosh/mlmatrics
 ```
 
-To specify a certain branch or commit, append it's name or hash, e.g.
+To specify a specific branch or commit, append its name or hash, e.g.
 
 ```txt
 git+git://github.com/janosh/mlmatrics@master # default
@@ -107,9 +107,9 @@ See [`mlmatrics/correlation.py`](mlmatrics/correlation.py).
 
 See [`mlmatrics/histograms.py`](mlmatrics/histograms.py).
 
-| [`residual_hist(y_true, y_pred)`](mlmatrics/histograms.py) |       |
-| :--------------------------------------------------------: | :---: |
-|         ![residual_hist](assets/residual_hist.svg)         |       |
+| [`residual_hist(y_true, y_pred)`](mlmatrics/histograms.py) | [`true_pred_hist(y_true, y_pred, y_std)`](mlmatrics/histograms.py) |
+| :--------------------------------------------------------: | :----------------------------------------------------------------: |
+|         ![residual_hist](assets/residual_hist.svg)         |            ![true_pred_hist](assets/true_pred_hist.svg)            |
 
 ## Adding Assets
 
@@ -130,7 +130,7 @@ python -m pytest tests/test_cumulative.py
 python -m pytest **/test_*_metrics.py
 ```
 
-You can also run single tests by passing its name to the `-k` flag:
+To run a single test, pass its name to the `-k` flag:
 
 ```sh
 python -m pytest -k test_precision_recall_curve
@@ -140,6 +140,6 @@ Consult the [`pytest`](https://docs.pytest.org/en/stable/usage.html) docs for mo
 
 ## Glossary
 
-1. **Residual** `y - y_hat`: The difference between ground truth target and model prediction.
-2. **Error** `abs(y - y_hat)`: Absolute error between target and model prediction.
-3. **Uncertainty** `y_std`: The model's estimate for its own error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)
+1. **Residual** `y_res = y_true - y_pred`: The difference between ground truth target and model prediction.
+2. **Error** `y_err = abs(y_true - y_pred)`: Absolute error between target and model prediction.
+3. **Uncertainty** `y_std`: The model's estimate for its error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)
