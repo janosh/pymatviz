@@ -45,7 +45,7 @@ def ptable_elemental_prevalence(
     """Display the prevalence of each element in a materials dataset plotted as a
     heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
 
-    Adapted from https://github.com/kaaiian/ML_figures.
+    Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
 
     Args:
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
@@ -240,7 +240,7 @@ def hist_elemental_prevalence(
 ) -> None:
     """Plots a histogram of the prevalence of each element in a materials dataset.
 
-    Adapted from https://github.com/kaaiian/ML_figures.
+    Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
 
     Args:
         formulas (list): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]

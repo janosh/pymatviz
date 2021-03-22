@@ -90,7 +90,7 @@ def density_scatter(
             Defaults to True.
 
     Returns:
-        Axes: plt axes containing the plot.
+        Axes: plt axes with plotted data.
     """
     if ax is None:
         ax = plt.gca()
@@ -137,7 +137,7 @@ def scatter_with_err_bar(
         title (str, optional): Plot tile. Defaults to None.
 
     Returns:
-        Axes: plt axes on which the data was plotted.
+        Axes: plt axes with plotted data.
     """
     if ax is None:
         ax = plt.gca()
@@ -169,7 +169,7 @@ def density_hexbin(
 
     # the scatter plot
     hexbin = ax.hexbin(targets, preds, gridsize=75, mincnt=1, bins="log", C=color_map)
-    cb_ax = inset_axes(ax, width="3%", height="70%", loc=4)
+    cb_ax = inset_axes(ax, width="3%", height="70%", loc="lower right")
     plt.colorbar(hexbin, cax=cb_ax)
     cb_ax.yaxis.set_ticks_position("left")
 

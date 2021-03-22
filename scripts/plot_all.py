@@ -22,6 +22,7 @@ from mlmatrics import (
     residual_vs_actual,
     roc_curve,
     scatter_with_err_bar,
+    true_pred_hist,
 )
 
 plt.rcParams.update({"font.size": 20})
@@ -157,6 +158,9 @@ savefig("precision_recall_curve")
 # %% Histogram Plots
 residual_hist(y_true, y_pred)
 savefig("residual_hist")
+
+true_pred_hist(y_true, y_pred, y_std)
+savefig("true_pred_hist")
 
 
 # %% Correlation Plots
