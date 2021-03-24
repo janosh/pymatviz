@@ -22,6 +22,7 @@ from mlmatrics import (
     residual_vs_actual,
     roc_curve,
     scatter_with_err_bar,
+    spacegroup_hist,
     true_pred_hist,
 )
 
@@ -161,6 +162,10 @@ savefig("residual_hist")
 
 true_pred_hist(y_true, y_pred, y_std)
 savefig("true_pred_hist")
+
+phonons = pd.read_csv(f"{ROOT}/data/matbench-phonons.csv")
+spacegroup_hist(phonons.sg_number)
+savefig("spacegroup_hist")
 
 
 # %% Correlation Plots
