@@ -9,7 +9,7 @@ from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
 from pymatgen import Composition
 
-from mlmatrics.utils import ROOT, show_bar_values
+from mlmatrics.utils import ROOT, annotate_bar_heights
 
 
 def count_elements(formulas: list) -> pd.Series:
@@ -250,7 +250,7 @@ def hist_elemental_prevalence(
         bar_values (str): One of 'percent', 'count' or None. Annotate bars with the
             percentage each element makes up in the total element count, or use the count
             itself, or display no bar labels.
-        **kwargs (int): Keyword arguments passed to show_bar_values.
+        **kwargs (int): Keyword arguments passed to annotate_bar_heights.
     """
     if ax is None:
         ax = plt.gca()
@@ -274,4 +274,4 @@ def hist_elemental_prevalence(
             labels = [f"{100 * el / sum_elements:.1f}%" for el in non_zero.values]
         else:
             labels = non_zero.astype(int).to_list()
-        show_bar_values(ax, labels=labels, **kwargs)
+        annotate_bar_heights(ax, labels=labels, **kwargs)
