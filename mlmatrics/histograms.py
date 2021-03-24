@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import transforms
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from numpy import ndarray as Array
@@ -106,5 +107,67 @@ def true_pred_hist(
     norm = plt.cm.colors.Normalize(vmax=y_std.max(), vmin=y_std.min())
     plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cb_ax)
     cb_ax.yaxis.set_ticks_position("left")
+
+    return ax
+
+
+def spacegroup_hist(spacegroups: Array, ax: Axes = None) -> Axes:
+    """Plot a histogram of spacegroups shaded by crystal system.
+
+    (triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, cubic)
+
+    Args:
+        spacegroups (Array): list, tuple np.array or pd.Series of spacegroup numbers.
+        ax (Axes, optional): plt axes. Defaults to None.
+
+    Returns:
+        Axes: plt axes
+    """
+    if ax is None:
+        ax = plt.gca()
+
+    ax.hist(spacegroups, bins=230)
+    ax.set_xlim(0, 230)
+    ax.figure.set_size_inches(15, 4)
+
+    # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
+    trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+
+    # https://git.io/JYJcs
+    crystal_systems = {
+        "tri-/monoclinic": ["red", (1, 15)],
+        "orthorhombic": ["blue", (16, 74)],
+        "tetragonal": ["green", (75, 142)],
+        "trigonal": ["orange", (143, 167)],
+        "hexagonal": ["purple", (168, 194)],
+        "cubic": ["yellow", (195, 230)],
+    }
+
+    for name, [color, rng] in crystal_systems.items():
+        x0, x1 = rng
+        for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
+            patch.set_facecolor(color)
+        ax.text(
+            sum(rng) / 2,
+            0.95,
+            name,
+            rotation=90,
+            transform=trans,
+            verticalalignment="top",
+            horizontalalignment="center",
+        )
+        ax.fill_between(
+            [x0 - 1, x1],
+            *[0, 1],
+            facecolor=color,
+            alpha=0.1,
+            transform=trans,
+            edgecolor="black",
+        )
+
+    ax.set_xlabel("International Spacegroup Number")
+    ax.set_ylabel("Count")
+    ax.yaxis.grid(True)
+    ax.xaxis.grid(False)
 
     return ax

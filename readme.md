@@ -107,9 +107,11 @@ See [`mlmatrics/correlation.py`](mlmatrics/correlation.py).
 
 See [`mlmatrics/histograms.py`](mlmatrics/histograms.py).
 
-| [`residual_hist(y_true, y_pred)`](mlmatrics/histograms.py) | [`true_pred_hist(y_true, y_pred, y_std)`](mlmatrics/histograms.py) |
-| :--------------------------------------------------------: | :----------------------------------------------------------------: |
-|         ![residual_hist](assets/residual_hist.svg)         |            ![true_pred_hist](assets/true_pred_hist.svg)            |
+|  [`residual_hist(y_true, y_pred)`](mlmatrics/histograms.py)  | [`true_pred_hist(y_true, y_pred, y_std)`](mlmatrics/histograms.py) |
+| :----------------------------------------------------------: | :----------------------------------------------------------------: |
+|          ![residual_hist](assets/residual_hist.svg)          |            ![true_pred_hist](assets/true_pred_hist.svg)            |
+| [`spacegroup_hist(y_true, y_pred)`](mlmatrics/histograms.py) |                                                                    |
+|        ![spacegroup_hist](assets/spacegroup_hist.svg)        |                                                                    |
 
 ## Adding Assets
 

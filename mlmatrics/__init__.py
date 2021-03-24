@@ -6,7 +6,7 @@ from .elements import (
     ptable_elemental_prevalence,
     ptable_elemental_ratio,
 )
-from .histograms import residual_hist, true_pred_hist
+from .histograms import residual_hist, spacegroup_hist, true_pred_hist
 from .metrics import regression_metrics
 from .parity import (
     density_hexbin,
@@ -19,4 +19,4 @@ from .parity import (
 from .quantile import qq_gaussian
 from .ranking import err_decay
 from .relevance import precision_recall_curve, roc_curve
-from .utils import ROOT, add_identity, show_bar_values
+from .utils import ROOT, add_identity, annotate_bar_heights

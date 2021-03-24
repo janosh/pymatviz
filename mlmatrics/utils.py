@@ -83,7 +83,7 @@ def one_hot(targets: Array, n_classes: int = None) -> Array:
     return np.eye(n_classes)[targets]
 
 
-def show_bar_values(
+def annotate_bar_heights(
     ax: Axes = None,
     voffset: int = 10,
     hoffset: int = 0,
@@ -99,17 +99,23 @@ def show_bar_values(
         labels (list[str]): Labels used for annotating bars. Falls back to the
             y-value of each bar if None.
     """
+    if ax is None:
+        ax = plt.gca()
+
     if labels is None:
-        labels = [patch.get_height() for patch in ax.patches]
+        labels = [int(patch.get_height()) for patch in ax.patches]
 
     for rect, label in zip(ax.patches, labels):
 
-        y_val = rect.get_height()
-        x_val = rect.get_x() + rect.get_width() / 2
+        y_pos = rect.get_height()
+        x_pos = rect.get_x() + rect.get_width() / 2 + hoffset
+
+        if ax.get_yscale() == "log":
+            y_pos = y_pos + np.log(voffset)
+        else:
+            y_pos = y_pos + voffset
 
         # place label at end of the bar and center horizontally
-        ax.annotate(
-            label, (x_val + hoffset, y_val + voffset), ha="center", fontsize=fontsize
-        )
+        ax.annotate(label, (x_pos, y_pos), ha="center", fontsize=fontsize)
         # ensure enough vertical space to display label above highest bar
         ax.margins(y=0.1)
