@@ -127,7 +127,6 @@ def spacegroup_hist(spacegroups: Array, ax: Axes = None) -> Axes:
         ax = plt.gca()
 
     ax.hist(spacegroups, bins=230)
-    ax.set_xlim(0, 230)
     ax.figure.set_size_inches(15, 4)
 
     # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
@@ -165,8 +164,7 @@ def spacegroup_hist(spacegroups: Array, ax: Axes = None) -> Axes:
             edgecolor="black",
         )
 
-    ax.set_xlabel("International Spacegroup Number")
-    ax.set_ylabel("Count")
+    ax.set(xlim=(0, 230), xlabel="International Spacegroup Number", ylabel="Count")
     ax.yaxis.grid(True)
     ax.xaxis.grid(False)
 

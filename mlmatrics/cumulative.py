@@ -48,19 +48,15 @@ def cum_res(preds: Array, targets: Array, ax: Axes = None) -> None:
     delta_up = res[int(1.03 * up)] - res[up]
     delta_max = max(delta_low, delta_up)
     lim = max(abs(res[up] + delta_max), abs(res[low] - delta_max))
-    ax.set_xlim((-lim, lim))
 
-    # Set y axis limits
-    ax.set_ylim((0, 100))
+    ax.set(xlim=(-lim, lim), ylim=(0, 100))
 
     # Add some visual guidelines
     ax.plot((0, 0), (0, 100), "--", color="grey", alpha=0.4)
     ax.plot((ax.get_xlim()[0], 0), (50, 50), "--", color="grey", alpha=0.4)
 
     # Label the plot
-    ax.set_xlabel("Residual")
-    ax.set_ylabel("Percentile")
-    ax.set_title("Cumulative Residual")
+    ax.set(xlabel="Residual", ylabel="Percentile", title="Cumulative Residual")
     ax.legend(frameon=False)
 
 
@@ -83,17 +79,12 @@ def cum_err(preds: Array, targets: Array, ax: Axes = None) -> None:
 
     # Get robust (and symmetrical) x axis limits
     lim = np.percentile(err, 98)
-    ax.set_xlim((0, lim))
-
-    # Set y axis limits
-    ax.set_ylim((0, 100))
+    ax.set(xlim=(0, lim), ylim=(0, 100))
 
     # Add some visual guidelines
     add_dropdown(ax, 50, err)
     add_dropdown(ax, 75, err)
 
     # Label the plot
-    ax.set_xlabel("Absolute Error")
-    ax.set_ylabel("Percentile")
-    ax.set_title("Cumulative Error")
+    ax.set(xlabel="Absolute Error", ylabel="Percentile", title="Cumulative Error")
     ax.legend(frameon=False)
