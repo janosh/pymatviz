@@ -105,8 +105,7 @@ def density_scatter(
     if stats:
         add_mae_r2_box(xs, ys, ax)
 
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set(xlabel=xlabel, ylabel=ylabel)
 
     return ax
 
@@ -147,9 +146,7 @@ def scatter_with_err_bar(
     add_identity(ax)
     add_mae_r2_box(xs, ys, ax)
 
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
 
     return ax
 
@@ -176,8 +173,7 @@ def density_hexbin(
     add_identity(ax, label="ideal")
     add_mae_r2_box(targets, preds, ax, loc="upper left")
 
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set(xlabel=xlabel, ylabel=ylabel)
 
 
 def density_scatter_with_hist(xs, ys, cell=None, bins=100, **kwargs):
