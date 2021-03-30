@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib import transforms
 from matplotlib.axes import Axes
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from matplotlib.ticker import FixedLocator, FormatStrFormatter
 from numpy import ndarray as Array
 from scipy.stats import gaussian_kde
 
@@ -82,6 +83,7 @@ def true_pred_hist(
     _, bins, bars = ax.hist(
         y_pred, bins=bins, alpha=0.8, label=r"$y_\mathrm{pred}$", **kwargs
     )
+    ax.figure.set
     ax.hist(
         y_true,
         bins=bins,
@@ -102,16 +104,19 @@ def true_pred_hist(
     if log:
         plt.yscale("log")
     ax.legend(frameon=False)
-    cb_ax = inset_axes(ax, width="3%", height="50%", loc="center right")
 
     norm = plt.cm.colors.Normalize(vmax=y_std.max(), vmin=y_std.min())
-    plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cb_ax)
-    cb_ax.yaxis.set_ticks_position("left")
+    cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), pad=0.075)
+    cbar.outline.set_linewidth(1)
+    cbar.set_label(r"mean $y_\mathrm{std}$ of prediction in bin")
+    cbar.ax.yaxis.set_ticks_position("left")
+
+    ax.figure.set_size_inches(12, 7)
 
     return ax
 
 
-def spacegroup_hist(spacegroups: Array, ax: Axes = None) -> Axes:
+def spacegroup_hist(spacegroups: Array, ax: Axes = None, **kwargs) -> Axes:
     """Plot a histogram of spacegroups shaded by crystal system.
 
     (triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, cubic)
@@ -119,6 +124,7 @@ def spacegroup_hist(spacegroups: Array, ax: Axes = None) -> Axes:
     Args:
         spacegroups (Array): list, tuple np.array or pd.Series of spacegroup numbers.
         ax (Axes, optional): plt axes. Defaults to None.
+        kwargs: Keywords passed to pd.Series.plot.bar().
 
     Returns:
         Axes: plt axes
@@ -126,8 +132,9 @@ def spacegroup_hist(spacegroups: Array, ax: Axes = None) -> Axes:
     if ax is None:
         ax = plt.gca()
 
-    ax.hist(spacegroups, bins=230)
-    ax.figure.set_size_inches(15, 4)
+    pd.Series(spacegroups).value_counts().reindex(range(230), fill_value=0).plot.bar(
+        figsize=[15, 4], width=1, rot=0, ax=ax, **kwargs
+    )
 
     # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
     trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
@@ -167,5 +174,12 @@ def spacegroup_hist(spacegroups: Array, ax: Axes = None) -> Axes:
     ax.set(xlim=(0, 230), xlabel="International Spacegroup Number", ylabel="Count")
     ax.yaxis.grid(True)
     ax.xaxis.grid(False)
+
+    majorLocator = FixedLocator([x[1][1] for x in crystal_systems.values()])
+    minorLocator = FixedLocator([sum(x[1]) // 2 for x in crystal_systems.values()])
+
+    ax.xaxis.set_major_locator(majorLocator)
+    ax.xaxis.set_minor_locator(minorLocator)
+    ax.xaxis.set_minor_formatter(FormatStrFormatter("%d"))
 
     return ax
