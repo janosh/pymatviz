@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap
-from matplotlib.colors import Normalize
+from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
 from pymatgen import Composition
 
@@ -29,7 +29,7 @@ def count_elements(formulas: list) -> pd.Series:
 
     # ensure all elements are present in returned Series (with count zero if they
     # weren't in formulas)
-    ptable = pd.read_csv(ROOT + "/data/periodic_table.csv")
+    ptable = pd.read_csv(f"{ROOT}/data/periodic_table.csv")
     # fill_value=0 required as max(NaN, any int) = NaN
     srs = srs.combine(pd.Series(0, index=ptable.symbol), max, fill_value=0)
     return srs
@@ -39,6 +39,7 @@ def ptable_elemental_prevalence(
     formulas: List[str] = None,
     elem_counts: pd.Series = None,
     log: bool = False,
+    ax: Axes = None,
     cbar_title: str = None,
     cmap: str = "YlGn",
 ) -> None:
@@ -51,6 +52,7 @@ def ptable_elemental_prevalence(
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         elem_counts (pd.Series): Map from element symbol to prevalence count
         log (bool, optional): Whether color map scale is log or linear.
+        ax (Axes, optional): plt axes. Defaults to None.
         cbar_title (str, optional): Optional Title for colorbar. Defaults to None.
         cmap (str, optional): Matplotlib colormap name to use. Defaults to "YlGn".
 
@@ -65,37 +67,39 @@ def ptable_elemental_prevalence(
     if formulas is not None:
         elem_counts = count_elements(formulas)
 
-    ptable = pd.read_csv(ROOT + "/data/periodic_table.csv")
+    ptable = pd.read_csv(f"{ROOT}/data/periodic_table.csv")
     cmap = get_cmap(cmap)
 
     n_rows = ptable.row.max()
     n_columns = ptable.column.max()
 
-    # TODO can we pass as as a kwarg and still ensure aspect ratio respected?
-    plt.figure(figsize=(n_columns, n_rows))
+    # TODO can we pass as a kwarg and still ensure aspect ratio respected?
+    fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows))
+
+    if ax is None:
+        ax = plt.gca()
 
     rw = rh = 0.9  # rectangle width/height
     min_count = elem_counts.min()
+    # replace([np.inf, -np.inf], np.nan) deals with missing or zero-values when
+    # plotting ptable_elemental_ratio
     max_count = elem_counts.replace([np.inf, -np.inf], np.nan).dropna().max()
 
-    norm = Normalize(
-        vmin=0 if log else min_count,
-        vmax=np.log10(max_count) if log else max_count,
-    )
+    if log:
+        norm = LogNorm(max(min_count, 1), max_count)
+    else:
+        norm = Normalize(min_count, max_count)
 
     text_style = dict(
         horizontalalignment="center",
         verticalalignment="center",
-        fontsize=20,
+        fontsize=15,
         fontweight="semibold",
     )
 
     for symbol, row, column, _ in ptable.values:
         row = n_rows - row
         count = elem_counts[symbol]
-
-        if log and count > 0:
-            count = np.log10(count)
 
         # inf or NaN are expected when passing in elem_counts from ptable_elemental_ratio
         if count == 0:  # not in formulas_a
@@ -105,7 +109,7 @@ def ptable_elemental_prevalence(
         elif pd.isna(count):
             color = "white"  # not in either formulas_a nor formulas_b
         else:
-            color = cmap(norm(count)) if count != 0 else "silver"
+            color = cmap(norm(count)) if count > 0 else "silver"
 
         if row < 3:
             row += 0.5
@@ -113,46 +117,22 @@ def ptable_elemental_prevalence(
 
         plt.text(column + rw / 2, row + rw / 2, symbol, **text_style)
 
-        plt.gca().add_patch(rect)
+        ax.add_patch(rect)
 
-    # color bar
-    granularity = 20  # number of cells in the color bar
-    bar_xpos, bar_ypos = 3.5, 7.8  # bar position
-    bar_width, bar_height = 9, 0.35
-    cell_width = bar_width / granularity
+    # colorbar position and size: [bar_xpos, bar_ypos, bar_width, bar_height]
+    # anchored at lower left corner
+    cb_ax = ax.inset_axes([0.18, 0.8, 0.42, 0.05], transform=ax.transAxes)
+    # format major and minor ticks
+    cb_ax.tick_params(which="both", labelsize=14, width=1)
 
-    for idx in np.arange(granularity) + (1 if log else 0):
-        value = idx * max_count / (granularity - 1)
-        if log and value > 0:
-            value = np.log10(value)
+    cbar = fig.colorbar(
+        plt.cm.ScalarMappable(norm=norm, cmap=cmap), orientation="horizontal", cax=cb_ax
+    )
+    cbar.outline.set_linewidth(1)
+    cb_ax.set_title(cbar_title or "Element Count", pad=15, **text_style)
 
-        color = cmap(norm(value)) if value != 0 else "silver"
-        x_loc = (idx - (1 if log else 0)) / granularity * bar_width + bar_xpos
-        rect = Rectangle(
-            (x_loc, bar_ypos), cell_width, bar_height, edgecolor="gray", facecolor=color
-        )
-
-        if idx in np.linspace(0, granularity, granularity // 4) + (
-            1 if log else 0
-        ) or idx == (granularity - (0 if log else 1)):
-            text = f"{value:.1f}" if log else f"{value:.0f}"
-            plt.text(x_loc + cell_width / 2, bar_ypos - 0.4, text, **text_style)
-
-        plt.gca().add_patch(rect)
-
-    if log:
-        plt.text(
-            bar_xpos + cell_width / 2, bar_ypos + 0.6, int(min_count), **text_style
-        )
-        plt.text(x_loc + cell_width / 2, bar_ypos + 0.6, int(max_count), **text_style)
-
-    if cbar_title is None:
-        cbar_title = "log(Element Count)" if log else "Element Count"
-
-    plt.text(bar_xpos + bar_width / 2, bar_ypos + 0.7, cbar_title, **text_style)
-
-    plt.ylim(-0.15, n_rows + 0.1)
-    plt.xlim(0.85, n_columns + 1.1)
+    plt.ylim(0.3, n_rows + 0.1)
+    plt.xlim(0.9, n_columns + 1)
 
     plt.axis("off")
 
@@ -204,30 +184,18 @@ def ptable_elemental_ratio(
 
     elem_counts = elem_counts_a / elem_counts_b
 
-    cbar_title = "log(Element Ratio)" if log else "Element Ratio"
-
     ptable_elemental_prevalence(
-        elem_counts=elem_counts, log=log, cbar_title=cbar_title, **kwargs
+        elem_counts=elem_counts, log=log, cbar_title="Element Ratio", **kwargs
     )
 
-    text_style = {"fontsize": 14, "fontweight": "semibold"}
-
-    # add key for the colours
-    plt.text(
-        0.8,
-        2,
-        "gray: not in st list",
-        **text_style,
-        bbox={"facecolor": "silver", "linewidth": 0},
-    )
-    plt.text(
-        0.8,
-        1.5,
-        "blue: not in 2nd list",
-        **text_style,
-        bbox={"facecolor": "lightskyblue", "linewidth": 0},
-    )
-    plt.text(0.8, 1, "white: not in either", **text_style)
+    # add legend for the colours
+    for y_pos, label, color, txt in [
+        [0.4, "white", "white", "not in either"],
+        [1.1, "blue", "lightskyblue", "not in 2nd list"],
+        [1.8, "gray", "silver", "not in 1st list"],
+    ]:
+        bbox = {"facecolor": color, "edgecolor": "gray"}
+        plt.text(0.8, y_pos, f"{label}: {txt}", fontsize=12, bbox=bbox)
 
 
 def hist_elemental_prevalence(
