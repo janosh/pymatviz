@@ -84,9 +84,9 @@ def ptable_elemental_prevalence(
     max_count = elem_counts.replace([np.inf, -np.inf], np.nan).dropna().max()
 
     norm = Normalize(
-        vmin=1 if log else min_count,
+        vmin=np.log10(max(min_count, 1)) if log else min_count,
         # TODO possibly incorrect color scale when plotting a ptable ratio plot with log scale
-        vmax=max(np.log10(max_count), 1.1) if log else max_count,
+        vmax=np.log10(max_count) if log else max_count,
     )
 
     text_style = dict(
@@ -127,12 +127,20 @@ def ptable_elemental_prevalence(
         [0.18, 0.8, 0.42, 0.05],
         transform=ax.transAxes,
     )
-    cb_ax.tick_params(labelsize=16, width=1)
 
     cbar = fig.colorbar(
         plt.cm.ScalarMappable(norm=norm, cmap=cmap), orientation="horizontal", cax=cb_ax
     )
+
+    cb_ax.tick_params(labelsize=16, width=1)
+    if log:
+        cb_ax_top = cb_ax.secondary_xaxis(
+            "top", functions=(lambda x: 10 ** (x - 0.01), np.log10)
+        )
+        cb_ax_top.tick_params(labelsize=16, width=1)
+        cb_ax_top.spines["top"].set_linewidth(1)
     cbar.outline.set_linewidth(1)
+
     cb_ax.set_title(
         cbar_title or "log(Element Count)" if log else "Element Count",
         fontsize=20,
