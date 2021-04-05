@@ -3,7 +3,7 @@ import pandas as pd
 from matminer.datasets import load_dataset
 from pymatgen import MPRester
 
-from mlmatrics import ROOT
+from ml_matrics import ROOT
 
 # %%
 with MPRester(api_key="X2UaF2zkPMcFhpnMN") as mpr:

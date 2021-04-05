@@ -1,4 +1,4 @@
-from mlmatrics import qq_gaussian
+from ml_matrics import qq_gaussian
 
 from . import xs, y_pred
 
