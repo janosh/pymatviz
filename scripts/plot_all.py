@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from mlmatrics import (
+from ml_matrics import (
     ROOT,
     cum_err,
     cum_res,

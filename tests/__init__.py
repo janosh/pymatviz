@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
-from mlmatrics import ROOT
+from ml_matrics import ROOT
 
 
 @pytest.fixture(autouse=True)
