@@ -1,4 +1,4 @@
-from mlmatrics import cum_err, cum_res
+from ml_matrics import cum_err, cum_res
 
 from . import y_pred, y_true
 

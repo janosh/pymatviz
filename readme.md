@@ -4,10 +4,10 @@
 
 A toolkit of metrics and visualizations for model performance in data-driven materials discovery.
 
-[![Tests](https://github.com/janosh/mlmatrics/workflows/Tests/badge.svg)](https://github.com/janosh/mlmatrics/actions)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/mlmatrics/master.svg)](https://results.pre-commit.ci/latest/github/janosh/mlmatrics/master)
-[![License](https://img.shields.io/github/license/janosh/mlmatrics?label=License)](/license)
-[![GitHub Repo Size](https://img.shields.io/github/repo-size/janosh/mlmatrics?label=Repo+Size)](https://github.com/janosh/mlmatrics/graphs/contributors)
+[![Tests](https://github.com/janosh/ml-matrics/workflows/Tests/badge.svg)](https://github.com/janosh/ml-matrics/actions)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/ml-matrics/master.svg)](https://results.pre-commit.ci/latest/github/janosh/ml-matrics/master)
+[![License](https://img.shields.io/github/license/janosh/ml-matrics?label=License)](/license)
+[![GitHub Repo Size](https://img.shields.io/github/repo-size/janosh/ml-matrics?label=Repo+Size)](https://github.com/janosh/ml-matrics/graphs/contributors)
 [![This project supports Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org/downloads)
 
 </h4>
@@ -15,13 +15,13 @@ A toolkit of metrics and visualizations for model performance in data-driven mat
 ## Installation
 
 ```sh
-pip install -U git+https://github.com/janosh/mlmatrics
+pip install -U git+https://github.com/janosh/ml-matrics
 ```
 
 For a locally editable install, use
 
 ```sh
-git clone https://github.com/janosh/mlmatrics && pip install -e mlmatrics
+git clone https://github.com/janosh/ml-matrics && pip install -e ml-matrics
 ```
 
 To specify a dependence on this package in `requirements.txt`, use
@@ -29,89 +29,89 @@ To specify a dependence on this package in `requirements.txt`, use
 ```txt
 pandas==1.1.2
 numpy==1.20.1
-git+git://github.com/janosh/mlmatrics
+git+git://github.com/janosh/ml-matrics
 ```
 
 To specify a specific branch or commit, append its name or hash, e.g.
 
 ```txt
-git+git://github.com/janosh/mlmatrics@master # default
-git+git://github.com/janosh/mlmatrics@41b95ec
+git+git://github.com/janosh/ml-matrics@master # default
+git+git://github.com/janosh/ml-matrics@41b95ec
 ```
 
 ## Parity Plots
 
-See [`mlmatrics/parity.py`](mlmatrics/parity.py).
+See [`ml_matrics/parity.py`](ml_matrics/parity.py).
 
-|      [`density_scatter(xs, ys, ...)`](mlmatrics/parity.py)       |  [`density_scatter_with_hist(xs, ys, ...)`](mlmatrics/parity.py)   |
-| :--------------------------------------------------------------: | :----------------------------------------------------------------: |
-|          ![density_scatter](assets/density_scatter.svg)          | ![density_scatter_with_hist](assets/density_scatter_with_hist.svg) |
-|       [`density_hexbin(xs, ys, ...)`](mlmatrics/parity.py)       |   [`density_hexbin_with_hist(xs, ys, ...)`](mlmatrics/parity.py)   |
-|           ![density_hexbin](assets/density_hexbin.svg)           |  ![density_hexbin_with_hist](assets/density_hexbin_with_hist.svg)  |
-| [`scatter_with_err_bar(xs, ys, yerr, ...)`](mlmatrics/parity.py) |  [`residual_vs_actual(y_true, y_pred, ...)`](mlmatrics/parity.py)  |
-|     ![scatter_with_err_bar](assets/scatter_with_err_bar.svg)     |        ![residual_vs_actual](assets/residual_vs_actual.svg)        |
+|      [`density_scatter(xs, ys, ...)`](ml_matrics/parity.py)       |  [`density_scatter_with_hist(xs, ys, ...)`](ml_matrics/parity.py)  |
+| :---------------------------------------------------------------: | :----------------------------------------------------------------: |
+|          ![density_scatter](assets/density_scatter.svg)           | ![density_scatter_with_hist](assets/density_scatter_with_hist.svg) |
+|       [`density_hexbin(xs, ys, ...)`](ml_matrics/parity.py)       |  [`density_hexbin_with_hist(xs, ys, ...)`](ml_matrics/parity.py)   |
+|           ![density_hexbin](assets/density_hexbin.svg)            |  ![density_hexbin_with_hist](assets/density_hexbin_with_hist.svg)  |
+| [`scatter_with_err_bar(xs, ys, yerr, ...)`](ml_matrics/parity.py) | [`residual_vs_actual(y_true, y_pred, ...)`](ml_matrics/parity.py)  |
+|     ![scatter_with_err_bar](assets/scatter_with_err_bar.svg)      |        ![residual_vs_actual](assets/residual_vs_actual.svg)        |
 
 ## Elements
 
-See [`mlmatrics/elements.py`](mlmatrics/elements.py).
+See [`ml_matrics/elements.py`](ml_matrics/elements.py).
 
-|  [`ptable_elemental_prevalence(compositions)`](mlmatrics/elements.py)  |          [`ptable_elemental_prevalence(compositions, log=True)`](mlmatrics/elements.py)          |
-| :--------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------: |
-| ![ptable_elemental_prevalence](assets/ptable_elemental_prevalence.svg) |          ![ptable_elemental_prevalence_log](assets/ptable_elemental_prevalence_log.svg)          |
-|   [`hist_elemental_prevalence(compositions)`](mlmatrics/elements.py)   | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](mlmatrics/elements.py) |
-|   ![hist_elemental_prevalence](assets/hist_elemental_prevalence.svg)   |      ![hist_elemental_prevalence_log_count](assets/hist_elemental_prevalence_log_count.svg)      |
-|  [`ptable_elemental_ratio(comps_a, comps_b)`](mlmatrics/elements.py)   |          [`ptable_elemental_ratio(comps_b, comps_a, log=True)`](mlmatrics/elements.py)           |
-|      ![ptable_elemental_ratio](assets/ptable_elemental_ratio.svg)      |               ![ptable_elemental_ratio_log](assets/ptable_elemental_ratio_log.svg)               |
+| [`ptable_elemental_prevalence(compositions)`](ml_matrics/elements.py)  |          [`ptable_elemental_prevalence(compositions, log=True)`](ml_matrics/elements.py)          |
+| :--------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
+| ![ptable_elemental_prevalence](assets/ptable_elemental_prevalence.svg) |          ![ptable_elemental_prevalence_log](assets/ptable_elemental_prevalence_log.svg)           |
+|  [`hist_elemental_prevalence(compositions)`](ml_matrics/elements.py)   | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](ml_matrics/elements.py) |
+|   ![hist_elemental_prevalence](assets/hist_elemental_prevalence.svg)   |      ![hist_elemental_prevalence_log_count](assets/hist_elemental_prevalence_log_count.svg)       |
+|  [`ptable_elemental_ratio(comps_a, comps_b)`](ml_matrics/elements.py)  |          [`ptable_elemental_ratio(comps_b, comps_a, log=True)`](ml_matrics/elements.py)           |
+|      ![ptable_elemental_ratio](assets/ptable_elemental_ratio.svg)      |               ![ptable_elemental_ratio_log](assets/ptable_elemental_ratio_log.svg)                |
 
 ## Uncertainty Calibration
 
-See [`mlmatrics/quantile.py`](mlmatrics/quantile.py).
+See [`ml_matrics/quantile.py`](ml_matrics/quantile.py).
 
-| [`qq_gaussian(y_true, y_pred, y_std)`](mlmatrics/quantile.py) | [`qq_gaussian(y_true, y_pred, y_std: dict)`](mlmatrics/quantile.py) |
-| :-----------------------------------------------------------: | :-----------------------------------------------------------------: |
-|       ![normal_prob_plot](assets/normal_prob_plot.svg)        | ![normal_prob_plot_multiple](assets/normal_prob_plot_multiple.svg)  |
+| [`qq_gaussian(y_true, y_pred, y_std)`](ml_matrics/quantile.py) | [`qq_gaussian(y_true, y_pred, y_std: dict)`](ml_matrics/quantile.py) |
+| :------------------------------------------------------------: | :------------------------------------------------------------------: |
+|        ![normal_prob_plot](assets/normal_prob_plot.svg)        |  ![normal_prob_plot_multiple](assets/normal_prob_plot_multiple.svg)  |
 
 ## Ranking
 
-See [`mlmatrics/ranking.py`](mlmatrics/ranking.py).
+See [`ml_matrics/ranking.py`](ml_matrics/ranking.py).
 
-| [`err_decay(y_true, y_pred, y_std)`](mlmatrics/ranking.py) | [`err_decay(y_true, y_pred, y_std: dict)`](mlmatrics/ranking.py) |
-| :--------------------------------------------------------: | :--------------------------------------------------------------: |
-|             ![err_decay](assets/err_decay.svg)             |       ![err_decay_multiple](assets/err_decay_multiple.svg)       |
+| [`err_decay(y_true, y_pred, y_std)`](ml_matrics/ranking.py) | [`err_decay(y_true, y_pred, y_std: dict)`](ml_matrics/ranking.py) |
+| :---------------------------------------------------------: | :---------------------------------------------------------------: |
+|             ![err_decay](assets/err_decay.svg)              |       ![err_decay_multiple](assets/err_decay_multiple.svg)        |
 
 ## Cumulative Error and Residual
 
-See [`mlmatrics/cumulative.py`](mlmatrics/cumulative.py).
+See [`ml_matrics/cumulative.py`](ml_matrics/cumulative.py).
 
-| [`cum_err(preds, targets)`](mlmatrics/cumulative.py) |  [`cum_res(preds, targets)`](mlmatrics/cumulative.py)  |
-| :--------------------------------------------------: | :----------------------------------------------------: |
-|   ![cumulative_error](assets/cumulative_error.svg)   | ![cumulative_residual](assets/cumulative_residual.svg) |
+| [`cum_err(preds, targets)`](ml_matrics/cumulative.py) | [`cum_res(preds, targets)`](ml_matrics/cumulative.py)  |
+| :---------------------------------------------------: | :----------------------------------------------------: |
+|   ![cumulative_error](assets/cumulative_error.svg)    | ![cumulative_residual](assets/cumulative_residual.svg) |
 
 ## Classification Metrics
 
-See [`mlmatrics/relevance.py`](mlmatrics/relevance.py).
+See [`ml_matrics/relevance.py`](ml_matrics/relevance.py).
 
-| [`roc_curve(targets, proba_pos)`](mlmatrics/relevance.py) | [`precision_recall_curve(targets, proba_pos)`](mlmatrics/relevance.py) |
-| :-------------------------------------------------------: | :--------------------------------------------------------------------: |
-|            ![roc_curve](assets/roc_curve.svg)             |      ![precision_recall_curve](assets/precision_recall_curve.svg)      |
+| [`roc_curve(targets, proba_pos)`](ml_matrics/relevance.py) | [`precision_recall_curve(targets, proba_pos)`](ml_matrics/relevance.py) |
+| :--------------------------------------------------------: | :---------------------------------------------------------------------: |
+|             ![roc_curve](assets/roc_curve.svg)             |      ![precision_recall_curve](assets/precision_recall_curve.svg)       |
 
 ## Correlation
 
-See [`mlmatrics/correlation.py`](mlmatrics/correlation.py).
+See [`ml_matrics/correlation.py`](ml_matrics/correlation.py).
 
-| [`marchenko_pastur(corr_mat, gamma=ncols/nrows)`](mlmatrics/correlation.py) | [`marchenko_pastur(corr_mat_significant_eval, gamma=ncols/nrows)`](mlmatrics/correlation.py) |
-| :-------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------: |
-|              ![marchenko_pastur](assets/marchenko_pastur.svg)               |      ![marchenko_pastur_significant_eval](assets/marchenko_pastur_significant_eval.svg)      |
+| [`marchenko_pastur(corr_mat, gamma=ncols/nrows)`](ml_matrics/correlation.py) | [`marchenko_pastur(corr_mat_significant_eval, gamma=ncols/nrows)`](ml_matrics/correlation.py) |
+| :--------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
+|               ![marchenko_pastur](assets/marchenko_pastur.svg)               |      ![marchenko_pastur_significant_eval](assets/marchenko_pastur_significant_eval.svg)       |
 
 ## Histograms
 
-See [`mlmatrics/histograms.py`](mlmatrics/histograms.py).
+See [`ml_matrics/histograms.py`](ml_matrics/histograms.py).
 
-|  [`residual_hist(y_true, y_pred)`](mlmatrics/histograms.py)  | [`true_pred_hist(y_true, y_pred, y_std)`](mlmatrics/histograms.py) |
-| :----------------------------------------------------------: | :----------------------------------------------------------------: |
-|          ![residual_hist](assets/residual_hist.svg)          |            ![true_pred_hist](assets/true_pred_hist.svg)            |
-| [`spacegroup_hist(y_true, y_pred)`](mlmatrics/histograms.py) |                                                                    |
-|        ![spacegroup_hist](assets/spacegroup_hist.svg)        |                                                                    |
+|  [`residual_hist(y_true, y_pred)`](ml_matrics/histograms.py)  | [`true_pred_hist(y_true, y_pred, y_std)`](ml_matrics/histograms.py) |
+| :-----------------------------------------------------------: | :-----------------------------------------------------------------: |
+|          ![residual_hist](assets/residual_hist.svg)           |            ![true_pred_hist](assets/true_pred_hist.svg)             |
+| [`spacegroup_hist(y_true, y_pred)`](ml_matrics/histograms.py) |                                                                     |
+|        ![spacegroup_hist](assets/spacegroup_hist.svg)         |                                                                     |
 
 ## Adding Assets
 

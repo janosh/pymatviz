@@ -1,6 +1,6 @@
 import pandas as pd
 
-from mlmatrics import (
+from ml_matrics import (
     count_elements,
     hist_elemental_prevalence,
     ptable_elemental_prevalence,

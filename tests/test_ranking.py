@@ -1,4 +1,4 @@
-from mlmatrics import err_decay
+from ml_matrics import err_decay
 
 from . import y_pred, y_true
 
