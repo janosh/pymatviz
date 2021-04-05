@@ -7,7 +7,7 @@ from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap
 from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
-from pymatgen import Composition
+from pymatgen.core import Composition
 
 from ml_matrics.utils import ROOT, annotate_bar_heights
 
