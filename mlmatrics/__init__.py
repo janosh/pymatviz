@@ -7,7 +7,7 @@ from .elements import (
     ptable_elemental_ratio,
 )
 from .histograms import residual_hist, spacegroup_hist, true_pred_hist
-from .metrics import regression_metrics
+from .metrics import classification_metrics, regression_metrics
 from .parity import (
     density_hexbin,
     density_hexbin_with_hist,
