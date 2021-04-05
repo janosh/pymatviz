@@ -2,7 +2,12 @@ from typing import Dict, Union
 
 import numpy as np
 from numpy import ndarray as Array
-from sklearn.metrics import r2_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_recall_fscore_support,
+    r2_score,
+    roc_auc_score,
+)
 
 
 def regression_metrics(
@@ -87,5 +92,128 @@ def regression_metrics(
                 "mae": mae_ens,
                 "rmse": rmse_ens,
                 "r2": r2_ens,
+            },
+        }
+
+
+def classification_metrics(
+    target: Array, logits: Array, average: str = "micro", verbose: bool = False
+) -> Dict[str, Union[float, dict]]:
+    """print out metrics for a classification task
+
+    TODO make less janky, first index is for ensembles, second data, third classes.
+    always calculate metrics in the multi-class setting. How to convert binary labels
+    to multi-task automatically?
+
+    Args:
+        target (Array): categorical encoding of the tasks
+        logits (Array): logits predicted by the model
+        verbose (bool, optional): Whether to print metrics. Defaults to False.
+    """
+
+    if len(logits.shape) != 3:
+        raise ValueError(
+            "please insure that the logits are of the form (n_ens, n_data, n_classes)"
+        )
+
+    if logits.shape[2] == 1:
+        logits = np.concatenate((logits, 1 - logits), axis=2)
+
+    acc = np.zeros(len(logits))
+    roc_auc = np.zeros(len(logits))
+    precision = np.zeros(len(logits))
+    recall = np.zeros(len(logits))
+    fscore = np.zeros(len(logits))
+
+    for idx, y_logit in enumerate(logits):
+
+        target_ohe = np.zeros_like(y_logit)
+        target_ohe[np.arange(target.size), target.astype(int)] = 1
+
+        acc[idx] = accuracy_score(target, np.argmax(y_logit, axis=1))
+        roc_auc[idx] = roc_auc_score(target_ohe, y_logit, average=average)
+        precision[idx], recall[idx], fscore[idx] = precision_recall_fscore_support(
+            target, np.argmax(y_logit, axis=1), average=average
+        )[:3]
+
+    if len(logits) == 1:
+        if verbose:
+            print("\nModel Performance Metrics:")
+            print("Accuracy : {:.4f} ".format(acc[0]))
+            print("ROC-AUC  : {:.4f}".format(roc_auc[0]))
+            print("Precision : {:.4f}".format(precision[0]))
+            print("Recall    : {:.4f}".format(recall[0]))
+            print("F-score   : {:.4f}".format(fscore[0]))
+
+        return {
+            "acc": acc[0],
+            "roc_auc": roc_auc[0],
+            "precision": precision[0],
+            "recall": recall[0],
+            "f1": fscore[0],
+        }
+    else:
+        acc_avg = np.mean(acc)
+        acc_std = np.std(acc) / np.sqrt(acc.shape[0])
+
+        roc_auc_avg = np.mean(roc_auc)
+        roc_auc_std = np.std(roc_auc) / np.sqrt(roc_auc.shape[0])
+
+        prec_avg = np.mean(precision)
+        prec_std = np.std(precision) / np.sqrt(precision.shape[0])
+
+        recall_avg = np.mean(recall)
+        recall_std = np.std(recall) / np.sqrt(recall.shape[0])
+
+        fscore_avg = np.mean(fscore)
+        fscore_std = np.std(fscore) / np.sqrt(fscore.shape[0])
+
+        if verbose:
+            print("\nModel Performance Metrics:")
+            print(f"Accuracy : {acc_avg:.4f} +/- {acc_std:.4f}")
+            print(f"ROC-AUC  : {roc_auc_avg:.4f} +/- {roc_auc_std:.4f}")
+            print(f"Precision : {prec_avg:.4f} +/- {prec_std:.4f}")
+            print(f"Recall    : {recall_avg:.4f} +/- {recall_std:.4f}")
+            print(f"F-score   : {fscore_avg:.4f} +/- {fscore_std:.4f}")
+
+        # calculate metrics and errors with associated errors for ensembles
+        ens_logits = np.mean(logits, axis=0)
+
+        target_ohe = np.zeros_like(ens_logits)
+        target_ohe[np.arange(target.size), target.astype(int)] = 1
+
+        ens_acc = accuracy_score(target, np.argmax(ens_logits, axis=1))
+        ens_roc_auc = roc_auc_score(target_ohe, ens_logits, average=average)
+        ens_prec, ens_recall, ens_fscore = precision_recall_fscore_support(
+            target, np.argmax(ens_logits, axis=1), average=average
+        )[:3]
+
+        if verbose:
+            print("\nEnsemble Performance Metrics:")
+            print(f"Accuracy : {ens_acc:.4f} ")
+            print(f"ROC-AUC  : {ens_roc_auc:.4f}")
+            print(f"Precision : {ens_prec:.4f}")
+            print(f"Recall    : {ens_recall:.4f}")
+            print(f"F-score   : {ens_fscore:.4f}")
+
+        return {
+            "single": {
+                "acc": acc_avg,
+                "roc_auc": roc_auc_avg,
+                "precision": prec_avg,
+                "recall": recall_avg,
+                "f1": fscore_avg,
+                "acc_std": acc_std,
+                "roc_auc_std": roc_auc_std,
+                "precision_std": prec_std,
+                "recall_std": recall_std,
+                "f1_std": fscore_std,
+            },
+            "ensemble": {
+                "acc": ens_acc,
+                "roc_auc": ens_roc_auc,
+                "precision": ens_prec,
+                "recall": ens_recall,
+                "f1": ens_fscore,
             },
         }
