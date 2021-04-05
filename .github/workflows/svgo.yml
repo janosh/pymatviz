@@ -3,9 +3,9 @@ name: SVG Compression
 on:
   pull_request:
     branches:
-      - master
+      - main
     paths:
-      - '**.svg' # only run workflow when SVG files changed
+      - "**.svg" # only run workflow when SVG files changed
 
 jobs:
   tests:
