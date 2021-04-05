@@ -5,7 +5,7 @@
 A toolkit of metrics and visualizations for model performance in data-driven materials discovery.
 
 [![Tests](https://github.com/janosh/ml-matrics/workflows/Tests/badge.svg)](https://github.com/janosh/ml-matrics/actions)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/ml-matrics/master.svg)](https://results.pre-commit.ci/latest/github/janosh/ml-matrics/master)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/ml-matrics/main.svg)](https://results.pre-commit.ci/latest/github/janosh/ml-matrics/main)
 [![License](https://img.shields.io/github/license/janosh/ml-matrics?label=License)](/license)
 [![GitHub Repo Size](https://img.shields.io/github/repo-size/janosh/ml-matrics?label=Repo+Size)](https://github.com/janosh/ml-matrics/graphs/contributors)
 [![This project supports Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org/downloads)
@@ -35,7 +35,7 @@ git+git://github.com/janosh/ml-matrics
 To specify a specific branch or commit, append its name or hash, e.g.
 
 ```txt
-git+git://github.com/janosh/ml-matrics@master # default
+git+git://github.com/janosh/ml-matrics@main # default
 git+git://github.com/janosh/ml-matrics@41b95ec
 ```
 
