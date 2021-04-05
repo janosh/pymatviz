@@ -1,6 +1,6 @@
 from matplotlib.axes import Axes
 
-from mlmatrics import precision_recall_curve, roc_curve
+from ml_matrics import precision_recall_curve, roc_curve
 
 from . import y_binary, y_proba
 
