@@ -1,6 +1,6 @@
 import numpy as np
 
-from mlmatrics import classification_metrics, regression_metrics
+from ml_matrics import classification_metrics, regression_metrics
 
 from . import y_binary, y_pred, y_proba, y_true
 

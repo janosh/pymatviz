@@ -9,7 +9,7 @@ from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
 from pymatgen import Composition
 
-from mlmatrics.utils import ROOT, annotate_bar_heights
+from ml_matrics.utils import ROOT, annotate_bar_heights
 
 
 def count_elements(formulas: list) -> pd.Series:

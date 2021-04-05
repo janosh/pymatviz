@@ -1,4 +1,4 @@
-from mlmatrics import (
+from ml_matrics import (
     density_hexbin,
     density_hexbin_with_hist,
     density_scatter,
