@@ -1,6 +1,6 @@
 import numpy as np
 
-from mlmatrics import marchenko_pastur
+from ml_matrics import marchenko_pastur
 
 
 def test_marchenko_pastur():

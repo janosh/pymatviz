@@ -5,7 +5,7 @@ import numpy as np
 from numpy import ndarray as Array
 from scipy.stats import norm
 
-from mlmatrics.utils import add_identity
+from ml_matrics.utils import add_identity
 
 
 def qq_gaussian(y_true: Array, y_pred: Array, y_std: Union[Array, dict]) -> None:

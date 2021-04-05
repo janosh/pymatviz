@@ -10,7 +10,7 @@ from numpy import ndarray as Array
 from scipy.interpolate import interpn
 from sklearn.metrics import r2_score
 
-from mlmatrics.utils import add_identity, with_hist
+from ml_matrics.utils import add_identity, with_hist
 
 
 def hist_density(
