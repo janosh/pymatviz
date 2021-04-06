@@ -29,7 +29,7 @@ def count_elements(formulas: list) -> pd.Series:
 
     # ensure all elements are present in returned Series (with count zero if they
     # weren't in formulas)
-    ptable = pd.read_csv(ROOT + "/data/periodic_table.csv")
+    ptable = pd.read_csv(ROOT + "/ml_matrics/elements.csv")
     # fill_value=0 required as max(NaN, any int) = NaN
     srs = srs.combine(pd.Series(0, index=ptable.symbol), max, fill_value=0)
     return srs
@@ -67,7 +67,7 @@ def ptable_elemental_prevalence(
     if formulas is not None:
         elem_counts = count_elements(formulas)
 
-    ptable = pd.read_csv(ROOT + "/data/periodic_table.csv")
+    ptable = pd.read_csv(ROOT + "/ml_matrics/elements.csv")
     cmap = get_cmap(cmap)
 
     n_rows = ptable.row.max()
