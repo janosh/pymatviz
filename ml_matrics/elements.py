@@ -41,6 +41,7 @@ def ptable_elemental_prevalence(
     log: bool = False,
     ax: Axes = None,
     cbar_title: str = None,
+    cbar_max: float = 0,
     cmap: str = "YlGn",
 ) -> None:
     """Display the prevalence of each element in a materials dataset plotted as a
@@ -53,7 +54,10 @@ def ptable_elemental_prevalence(
         elem_counts (pd.Series): Map from element symbol to prevalence count
         log (bool, optional): Whether color map scale is log or linear.
         ax (Axes, optional): plt axes. Defaults to None.
-        cbar_title (str, optional): Optional Title for colorbar. Defaults to None.
+        cbar_title (str, optional): Title for colorbar. Defaults to None.
+        cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
+            if smaller than the largest plotted value. For creating multiple plots with
+            identical color bars for visual comparison. Defaults to 0.
         cmap (str, optional): Matplotlib colormap name to use. Defaults to "YlGn".
 
     Raises:
@@ -80,15 +84,14 @@ def ptable_elemental_prevalence(
         ax = plt.gca()
 
     rw = rh = 0.9  # rectangle width/height
-    min_count = elem_counts.min()
-    # replace([np.inf, -np.inf], np.nan) deals with missing or zero-values when
-    # plotting ptable_elemental_ratio
-    max_count = elem_counts.replace([np.inf, -np.inf], np.nan).dropna().max()
 
-    if log:
-        norm = LogNorm(max(min_count, 1), max_count)
-    else:
-        norm = Normalize(min_count, max_count)
+    norm = LogNorm() if log else Normalize()
+    # norm.autoscale(elem_counts.to_numpy())
+
+    # norm = Normalize()
+    clean_scale = elem_counts.replace([np.inf, -np.inf], np.nan).dropna()
+
+    norm.autoscale(clean_scale.to_list() + [cbar_max])
 
     text_style = dict(
         horizontalalignment="center",
@@ -101,10 +104,9 @@ def ptable_elemental_prevalence(
         row = n_rows - row
         count = elem_counts[symbol]
 
-        # inf or NaN are expected when passing in elem_counts from ptable_elemental_ratio
-        if count == 0:  # not in formulas_a
-            color = "silver"
-        elif count == np.inf:
+        # inf (float/0) or NaN (0/0) are expected
+        # when passing in elem_counts from ptable_elemental_ratio
+        if count == np.inf:
             color = "lightskyblue"  # not in formulas_b
         elif pd.isna(count):
             color = "white"  # not in either formulas_a nor formulas_b
@@ -125,9 +127,8 @@ def ptable_elemental_prevalence(
     # format major and minor ticks
     cb_ax.tick_params(which="both", labelsize=14, width=1)
 
-    cbar = fig.colorbar(
-        plt.cm.ScalarMappable(norm=norm, cmap=cmap), orientation="horizontal", cax=cb_ax
-    )
+    mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+    cbar = fig.colorbar(mappable, orientation="horizontal", cax=cb_ax)
     cbar.outline.set_linewidth(1)
     cb_ax.set_title(cbar_title or "Element Count", pad=15, **text_style)
 
@@ -142,7 +143,6 @@ def ptable_elemental_ratio(
     formulas_b: List[str] = None,
     elem_counts_a: pd.Series = None,
     elem_counts_b: pd.Series = None,
-    log: bool = False,
     **kwargs,
 ) -> None:
     """Display the ratio of the normalised prevalence of each element for two sets of
@@ -153,7 +153,6 @@ def ptable_elemental_ratio(
         formulas_b (list[str]): denominator compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         elem_counts_a (pd.Series): Map from element symbol to prevalence count for numerator
         elem_counts_b (pd.Series): Map from element symbol to prevalence count for denominator
-        log (bool, optional): Whether color map scale is log or linear.
         kwargs (dict, optional): kwargs passed to ptable_elemental_prevalence
     """
 
@@ -185,7 +184,7 @@ def ptable_elemental_ratio(
     elem_counts = elem_counts_a / elem_counts_b
 
     ptable_elemental_prevalence(
-        elem_counts=elem_counts, log=log, cbar_title="Element Ratio", **kwargs
+        elem_counts=elem_counts, cbar_title="Element Ratio", **kwargs
     )
 
     # add legend for the colours
