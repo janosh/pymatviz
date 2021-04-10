@@ -47,7 +47,7 @@ See [`ml_matrics/elements.py`](ml_matrics/elements.py).
 |  [`hist_elemental_prevalence(compositions)`](ml_matrics/elements.py)  | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](ml_matrics/elements.py) |
 |                    ![hist_elemental_prevalence][]                     |                             ![hist_elemental_prevalence_log_count][]                              |
 | [`ptable_elemental_ratio(comps_a, comps_b)`](ml_matrics/elements.py)  |          [`ptable_elemental_ratio(comps_b, comps_a, log=True)`](ml_matrics/elements.py)           |
-|                      ![ptable_elemental_ratio][]                      |                                  ![ptable_elemental_ratio_log][]                                  |
+|                      ![ptable_elemental_ratio][]                      |                                ![ptable_elemental_ratio_inverse][]                                |
 
 ## Uncertainty Calibration
 
@@ -143,7 +143,7 @@ Consult the [`pytest`](https://docs.pytest.org/en/stable/usage.html) docs for mo
 [hist_elemental_prevalence]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence.svg
 [hist_elemental_prevalence_log_count]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence_log_count.svg
 [ptable_elemental_ratio]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_elemental_ratio.svg
-[ptable_elemental_ratio_log]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_elemental_ratio_log.svg
+[ptable_elemental_ratio_inverse]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_elemental_ratio_inverse.svg
 [normal_prob_plot]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot.svg
 [normal_prob_plot_multiple]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot_multiple.svg
 [err_decay]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/err_decay.svg

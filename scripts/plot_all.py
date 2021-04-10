@@ -107,8 +107,8 @@ savefig("ptable_elemental_prevalence_log")
 ptable_elemental_ratio(mp_formulas, roost_formulas)
 savefig("ptable_elemental_ratio")
 
-ptable_elemental_ratio(roost_formulas, mp_formulas, log=True)
-savefig("ptable_elemental_ratio_log")
+ptable_elemental_ratio(roost_formulas, mp_formulas)
+savefig("ptable_elemental_ratio_inverse")
 
 hist_elemental_prevalence(mp_formulas, keep_top=15, voffset=1)
 savefig("hist_elemental_prevalence")
@@ -188,5 +188,3 @@ n_rows, n_cols = rand_tall_mat.shape
 corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
 marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
 savefig("marchenko_pastur_rank_deficient")
-
-# %%
