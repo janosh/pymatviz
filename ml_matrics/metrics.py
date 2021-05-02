@@ -139,11 +139,11 @@ def classification_metrics(
     if len(logits) == 1:
         if verbose:
             print("\nModel Performance Metrics:")
-            print("Accuracy : {:.4f} ".format(acc[0]))
-            print("ROC-AUC  : {:.4f}".format(roc_auc[0]))
-            print("Precision : {:.4f}".format(precision[0]))
-            print("Recall    : {:.4f}".format(recall[0]))
-            print("F-score   : {:.4f}".format(fscore[0]))
+            print(f"Accuracy : {acc[0]:.4f} ")
+            print(f"ROC-AUC  : {roc_auc[0]:.4f}")
+            print(f"Precision : {precision[0]:.4f}")
+            print(f"Recall    : {recall[0]:.4f}")
+            print(f"F-score   : {fscore[0]:.4f}")
 
         return {
             "acc": acc[0],

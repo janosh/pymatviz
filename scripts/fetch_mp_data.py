@@ -5,6 +5,7 @@ from pymatgen.ext.matproj import MPRester
 
 from ml_matrics import ROOT
 
+
 # %%
 with MPRester(api_key="X2UaF2zkPMcFhpnMN") as mpr:
     formulas = mpr.query({"nelements": {"$lt": 2}}, ["pretty_formula"])

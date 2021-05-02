@@ -26,6 +26,7 @@ from ml_matrics import (
     true_pred_hist,
 )
 
+
 plt.rcParams.update({"font.size": 20})
 plt.rcParams["axes.linewidth"] = 2.5
 plt.rcParams["xtick.major.size"] = 7

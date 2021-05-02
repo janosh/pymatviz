@@ -7,6 +7,7 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from numpy import ndarray as Array
 
+
 ROOT: str = dirname(dirname(abspath(__file__)))
 
 
@@ -71,13 +72,13 @@ def with_hist(xs: Array, ys: Array, cell: GridSpec = None, bins: int = 100) -> A
 
 
 def softmax(arr: Array, axis: int = -1) -> Array:
-    """ Compute the softmax of an array along an axis. """
+    """Compute the softmax of an array along an axis."""
     exp = np.exp(arr)
     return exp / exp.sum(axis=axis, keepdims=True)
 
 
 def one_hot(targets: Array, n_classes: int = None) -> Array:
-    """ Get a one-hot encoded version of `targets` containing `n_classes`. """
+    """Get a one-hot encoded version of `targets` containing `n_classes`."""
     if n_classes is None:
         n_classes = np.max(targets) + 1
     return np.eye(n_classes)[targets]
