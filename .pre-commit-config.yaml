@@ -20,6 +20,6 @@ repos:
       - id: pyupgrade
         args: [--py38-plus]
   - repo: https://github.com/janosh/format-ipy-cells
-    rev: v0.1.3
+    rev: v0.1.4
     hooks:
       - id: format-ipy-cells
