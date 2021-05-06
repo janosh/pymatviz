@@ -8,7 +8,6 @@ A toolkit of metrics and visualizations for model performance in data-driven mat
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/ml-matrics/main.svg)](https://results.pre-commit.ci/latest/github/janosh/ml-matrics/main)
 [![PyPI](https://img.shields.io/pypi/v/ml-matrics)](https://pypi.org/project/ml-matrics)
 [![This project supports Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org/downloads)
-[![License](https://img.shields.io/github/license/janosh/ml-matrics?label=License)](/license)
 [![GitHub Repo Size](https://img.shields.io/github/repo-size/janosh/ml-matrics?label=Repo+Size)](https://github.com/janosh/ml-matrics/graphs/contributors)
 
 </h4>

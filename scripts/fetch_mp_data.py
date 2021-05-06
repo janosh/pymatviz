@@ -7,7 +7,9 @@ from ml_matrics import ROOT
 
 
 # %%
-with MPRester(api_key="X2UaF2zkPMcFhpnMN") as mpr:
+# requires MP API key in ~/.pmgrc.yml available at https://materialsproject.org/dashboard
+# pmg config --add PMG_MAPI_KEY <your_key>
+with MPRester() as mpr:
     formulas = mpr.query({"nelements": {"$lt": 2}}, ["pretty_formula"])
 
 

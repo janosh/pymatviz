@@ -96,7 +96,7 @@ def ptable_elemental_prevalence(
     text_style = dict(
         horizontalalignment="center",
         verticalalignment="center",
-        fontsize=15,
+        fontsize=14,
         fontweight="semibold",
     )
 
@@ -108,16 +108,26 @@ def ptable_elemental_prevalence(
         # when passing in elem_counts from ptable_elemental_ratio
         if count == np.inf:
             color = "lightskyblue"  # not in formulas_b
+            label = r"$\infty$"
         elif pd.isna(count):
             color = "white"  # not in either formulas_a nor formulas_b
+            label = r"$0\,/0$"
         else:
             color = cmap(norm(count)) if count > 0 else "silver"
+            label = f"{count:.2g}"
 
         if row < 3:
             row += 0.5
         rect = Rectangle((column, row), rw, rh, edgecolor="gray", facecolor=color)
 
-        plt.text(column + rw / 2, row + rw / 2, symbol, **text_style)
+        plt.text(column + rw / 2, row + 2 * rh / 3, symbol, **text_style)
+        plt.text(
+            column + rw / 2,
+            row + rh / 6,
+            label,
+            fontsize=10,
+            horizontalalignment="center",
+        )
 
         ax.add_patch(rect)
 
