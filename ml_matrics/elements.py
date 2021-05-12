@@ -40,9 +40,9 @@ def ptable_elemental_prevalence(
     elem_counts: pd.Series = None,
     log: bool = False,
     ax: Axes = None,
-    cbar_title: str = None,
+    cbar_title: str = "Element Count",
     cbar_max: float = 0,
-    cmap: str = "YlGn",
+    cmap: str = "summer_r",
 ) -> None:
     """Display the prevalence of each element in a materials dataset plotted as a
     heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
@@ -54,7 +54,7 @@ def ptable_elemental_prevalence(
         elem_counts (pd.Series): Map from element symbol to prevalence count
         log (bool, optional): Whether color map scale is log or linear.
         ax (Axes, optional): plt axes. Defaults to None.
-        cbar_title (str, optional): Title for colorbar. Defaults to None.
+        cbar_title (str, optional): Title for colorbar. Defaults to "Element Count".
         cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
             if smaller than the largest plotted value. For creating multiple plots with
             identical color bars for visual comparison. Defaults to 0.
@@ -93,12 +93,7 @@ def ptable_elemental_prevalence(
 
     norm.autoscale(clean_scale.to_list() + [cbar_max])
 
-    text_style = dict(
-        horizontalalignment="center",
-        verticalalignment="center",
-        fontsize=14,
-        fontweight="semibold",
-    )
+    text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
 
     for symbol, row, column, _ in ptable.values:
         row = n_rows - row
@@ -108,24 +103,25 @@ def ptable_elemental_prevalence(
         # when passing in elem_counts from ptable_elemental_ratio
         if count == np.inf:
             color = "lightskyblue"  # not in formulas_b
-            label = r"$\infty$"
+            count_label = r"$\infty$"
         elif pd.isna(count):
             color = "white"  # not in either formulas_a nor formulas_b
-            label = r"$0\,/0$"
+            count_label = "0/0"
         else:
             color = cmap(norm(count)) if count > 0 else "silver"
-            label = f"{count:.2g}"
+            # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
+            count_label = f"{count:.2g}".replace("e+0", "e")
 
         if row < 3:
             row += 0.5
         rect = Rectangle((column, row), rw, rh, edgecolor="gray", facecolor=color)
 
-        plt.text(column + rw / 2, row + 2 * rh / 3, symbol, **text_style)
+        plt.text(column + 0.5 * rw, row + 0.5 * rh, symbol, **text_style)
         plt.text(
-            column + rw / 2,
-            row + rh / 6,
-            label,
-            fontsize=10,
+            column + 0.5 * rw,
+            row + 0.1 * rh,
+            count_label,
+            fontsize=12,
             horizontalalignment="center",
         )
 
@@ -140,7 +136,7 @@ def ptable_elemental_prevalence(
     mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
     cbar = fig.colorbar(mappable, orientation="horizontal", cax=cb_ax)
     cbar.outline.set_linewidth(1)
-    cb_ax.set_title(cbar_title or "Element Count", pad=15, **text_style)
+    cb_ax.set_title(cbar_title, pad=10, **text_style)
 
     plt.ylim(0.3, n_rows + 0.1)
     plt.xlim(0.9, n_columns + 1)
