@@ -10,13 +10,13 @@ def get_err_decay(y_true: Array, y_pred: Array, n_rand: int = 100) -> Tuple[Arra
     # increasing count of the number of samples in each element of cumsum()
     n_inc = range(1, len(abs_err) + 1)
 
-    decay_by_err = np.sort(abs_err).cumsum() / n_inc
+    decay_by_err: Array = np.sort(abs_err).cumsum() / n_inc
 
     # error decay for random exclusion of samples
     ae_tile = np.tile(abs_err, [n_rand, 1])
     [np.random.shuffle(row) for row in ae_tile]  # shuffle rows of ae_tile in place
 
-    rand = ae_tile.cumsum(1) / n_inc
+    rand: Array = ae_tile.cumsum(1) / n_inc
 
     return decay_by_err, rand.std(0)
 
@@ -76,9 +76,9 @@ def err_decay(
     rand_mean = np.abs(y_true - y_pred).mean()
 
     if percentiles:
-        decay_by_err, rand_std = [
+        decay_by_err, rand_std = (
             np.percentile(ys, xs[::-1]) for ys in [decay_by_err, rand_std]
-        ]
+        )
 
     rand_hi, rand_lo = rand_mean + rand_std, rand_mean - rand_std
     plt.plot(xs, decay_by_err, label="error")

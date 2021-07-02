@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,7 +41,7 @@ def ptable_elemental_prevalence(
     log: bool = False,
     ax: Axes = None,
     cbar_title: str = "Element Count",
-    cbar_max: float = 0,
+    cbar_max: Union[float, int, None] = None,
     cmap: str = "summer_r",
 ) -> None:
     """Display the prevalence of each element in a materials dataset plotted as a
@@ -86,12 +86,15 @@ def ptable_elemental_prevalence(
     rw = rh = 0.9  # rectangle width/height
 
     norm = LogNorm() if log else Normalize()
-    # norm.autoscale(elem_counts.to_numpy())
 
-    # norm = Normalize()
     clean_scale = elem_counts.replace([np.inf, -np.inf], np.nan).dropna()
 
-    norm.autoscale(clean_scale.to_list() + [cbar_max])
+    if cbar_max is not None:
+        color_scale = [min(clean_scale.to_list()), cbar_max]
+    else:
+        color_scale = clean_scale.to_list()
+
+    norm.autoscale(color_scale)
 
     text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
 

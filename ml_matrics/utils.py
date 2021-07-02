@@ -1,5 +1,5 @@
 from os.path import abspath, dirname
-from typing import List
+from typing import List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -88,7 +88,7 @@ def annotate_bar_heights(
     ax: Axes = None,
     voffset: int = 10,
     hoffset: int = 0,
-    labels: List[str] = None,
+    labels: List[Union[int, str]] = None,
     fontsize: int = 14,
 ) -> None:
     """Annotate histograms with a label indicating the height/count of each bar.
