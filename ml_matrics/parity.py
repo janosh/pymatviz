@@ -1,9 +1,10 @@
-from typing import Tuple
+from typing import Any, Tuple
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from numpy import ndarray as Array
@@ -15,7 +16,7 @@ from ml_matrics.utils import add_identity, with_hist
 
 def hist_density(
     xs: Array, ys: Array, sort: bool = True, bins: int = 100
-) -> Tuple[Array]:
+) -> Tuple[Array, Array, Array]:
     """Return an approximate density of 2d points.
 
     Args:
@@ -69,7 +70,7 @@ def density_scatter(
     ylabel: str = "Predicted",
     identity: bool = True,
     stats: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> Axes:
     """Scatter plot colored (and optionally sorted) by density.
 
@@ -119,7 +120,7 @@ def scatter_with_err_bar(
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
     title: str = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> Axes:
     """Scatter plot with optional x- and/or y-error bars. Useful when passing model
     uncertainties as yerr=y_std for checking if uncertainty correlates with error,
@@ -158,7 +159,7 @@ def density_hexbin(
     color_map: Array = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
-):
+) -> Axes:
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by"""
     if ax is None:
@@ -175,23 +176,33 @@ def density_hexbin(
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
+    return ax
 
-def density_scatter_with_hist(xs, ys, cell=None, bins=100, **kwargs):
+
+def density_scatter_with_hist(
+    xs: Array, ys: Array, cell: GridSpec = None, bins: int = 100, **kwargs: Any
+) -> Axes:
     """Scatter plot colored (and optionally sorted) by density
     with histograms along each dimension
     """
 
     ax_scatter = with_hist(xs, ys, cell, bins)
-    density_scatter(xs, ys, ax_scatter, **kwargs)
+    ax = density_scatter(xs, ys, ax_scatter, **kwargs)
+
+    return ax
 
 
-def density_hexbin_with_hist(xs, ys, cell=None, bins=100, **kwargs):
+def density_hexbin_with_hist(
+    xs: Array, ys: Array, cell: GridSpec = None, bins: int = 100, **kwargs: Any
+) -> Axes:
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by with histograms along each dimension.
     """
 
     ax_scatter = with_hist(xs, ys, cell, bins)
-    density_hexbin(xs, ys, ax_scatter, **kwargs)
+    ax = density_hexbin(xs, ys, ax_scatter, **kwargs)
+
+    return ax
 
 
 def residual_vs_actual(y_true: Array, y_pred: Array, ax: Axes = None) -> Axes:

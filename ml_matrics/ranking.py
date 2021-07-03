@@ -1,11 +1,13 @@
-from typing import Tuple
+from typing import Dict, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import ndarray as Array
 
 
-def get_err_decay(y_true: Array, y_pred: Array, n_rand: int = 100) -> Tuple[Array]:
+def get_err_decay(
+    y_true: Array, y_pred: Array, n_rand: int = 100
+) -> Tuple[Array, Array]:
     abs_err = np.abs(y_true - y_pred)
     # increasing count of the number of samples in each element of cumsum()
     n_inc = range(1, len(abs_err) + 1)
@@ -38,7 +40,7 @@ def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
 def err_decay(
     y_true: Array,
     y_pred: Array,
-    y_stds: Array,
+    y_stds: Union[Array, Dict[str, Array]],
     title: str = None,
     n_rand: int = 100,
     percentiles: bool = True,
@@ -51,7 +53,8 @@ def err_decay(
     Args:
         y_true (Array): Ground truth regression targets.
         y_pred (Array): Model predictions.
-        y_stds (Array): Model uncertainties.
+        y_stds (Array | dict[str, Array]): Model uncertainties. Can be a single or multiple
+            types (e.g. aleatoric/epistemic/total uncertainty) in dict form.
         title (str, optional): Plot title. Defaults to None.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.
             of error decay by random ordering. Defaults to 100.
@@ -60,7 +63,7 @@ def err_decay(
     """
     xs = range(100 if percentiles else len(y_true), 0, -1)
 
-    if type(y_stds) != dict:
+    if isinstance(y_stds, Array):
         y_stds = {"std": y_stds}
 
     for key, y_std in y_stds.items():
