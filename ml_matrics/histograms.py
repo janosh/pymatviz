@@ -1,3 +1,5 @@
+from typing import Any, Dict, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -9,7 +11,7 @@ from scipy.stats import gaussian_kde
 
 
 def residual_hist(
-    y_true: Array, y_pred: Array, ax: Axes = None, xlabel: str = None, **kwargs
+    y_true: Array, y_pred: Array, ax: Axes = None, xlabel: str = None, **kwargs: Any
 ) -> Axes:
     """Plot the residual distribution overlayed with a Gaussian kernel
     density estimate.
@@ -55,7 +57,7 @@ def true_pred_hist(
     bins: int = 50,
     log: bool = True,
     truth_color: str = "blue",
-    **kwargs,
+    **kwargs: Any,
 ) -> Axes:
     """Plot a histogram of model predictions with bars colored by the average uncertainty of
     predictions in that bin. Overlayed by a more transparent histogram of ground truth values.
@@ -77,36 +79,36 @@ def true_pred_hist(
     if ax is None:
         ax = plt.gca()
 
-    cmap = getattr(plt.cm, cmap)
+    color_map = getattr(plt.cm, cmap)
     y_true, y_pred, y_std = np.array([y_true, y_pred, y_std])
 
-    _, bins, bars = ax.hist(
+    _, bin_edges, bars = ax.hist(
         y_pred, bins=bins, alpha=0.8, label=r"$y_\mathrm{pred}$", **kwargs
     )
     ax.figure.set
     ax.hist(
         y_true,
-        bins=bins,
+        bins=bin_edges,
         alpha=0.2,
         color=truth_color,
         label=r"$y_\mathrm{true}$",
         **kwargs,
     )
 
-    for xmin, xmax, rect in zip(bins, bins[1:], bars.patches):
+    for xmin, xmax, rect in zip(bin_edges, bin_edges[1:], bars.patches):
 
         y_preds_in_rect = np.logical_and(y_pred > xmin, y_pred < xmax).nonzero()
 
         color_value = y_std[y_preds_in_rect].mean()
 
-        rect.set_color(cmap(color_value))
+        rect.set_color(color_map(color_value))
 
     if log:
         plt.yscale("log")
     ax.legend(frameon=False)
 
     norm = plt.cm.colors.Normalize(vmax=y_std.max(), vmin=y_std.min())
-    cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), pad=0.075)
+    cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=color_map), pad=0.075)
     cbar.outline.set_linewidth(1)
     cbar.set_label(r"mean $y_\mathrm{std}$ of prediction in bin")
     cbar.ax.yaxis.set_ticks_position("left")
@@ -116,7 +118,7 @@ def true_pred_hist(
     return ax
 
 
-def spacegroup_hist(spacegroups: Array, ax: Axes = None, **kwargs) -> Axes:
+def spacegroup_hist(spacegroups: Array, ax: Axes = None, **kwargs: Any) -> Axes:
     """Plot a histogram of spacegroups shaded by crystal system.
 
     (triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, cubic)
@@ -140,21 +142,21 @@ def spacegroup_hist(spacegroups: Array, ax: Axes = None, **kwargs) -> Axes:
     trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
 
     # https://git.io/JYJcs
-    crystal_systems = {
-        "tri-/monoclinic": ["red", (1, 15)],
-        "orthorhombic": ["blue", (16, 74)],
-        "tetragonal": ["green", (75, 142)],
-        "trigonal": ["orange", (143, 167)],
-        "hexagonal": ["purple", (168, 194)],
-        "cubic": ["yellow", (195, 230)],
+    crystal_systems: Dict[str, Tuple[str, Tuple[int, int]]] = {
+        "tri-/monoclinic": ("red", (1, 15)),
+        "orthorhombic": ("blue", (16, 74)),
+        "tetragonal": ("green", (75, 142)),
+        "trigonal": ("orange", (143, 167)),
+        "hexagonal": ("purple", (168, 194)),
+        "cubic": ("yellow", (195, 230)),
     }
 
-    for name, [color, rng] in crystal_systems.items():
-        x0, x1 = rng
+    for name, [color, x_lim] in crystal_systems.items():
+        x0, x1 = x_lim
         for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
             patch.set_facecolor(color)
         ax.text(
-            sum(rng) / 2,
+            sum(x_lim) / 2,
             0.95,
             name,
             rotation=90,

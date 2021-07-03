@@ -1,5 +1,5 @@
 from os.path import abspath, dirname
-from typing import List, Union
+from typing import Any, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +11,7 @@ from numpy import ndarray as Array
 ROOT: str = dirname(dirname(abspath(__file__)))
 
 
-def add_identity(ax: Axes = None, **line_kwargs) -> None:
+def add_identity(ax: Axes = None, **line_kwargs: Any) -> None:
     """Add a parity line (y = x) to the provided axis."""
     if ax is None:
         ax = plt.gca()
@@ -20,7 +20,7 @@ def add_identity(ax: Axes = None, **line_kwargs) -> None:
     default_kwargs = dict(alpha=0.5, zorder=0, linestyle="dashed", color="black")
     (identity,) = ax.plot([], [], **default_kwargs, **line_kwargs)
 
-    def callback(axes):
+    def callback(axes: Axes) -> None:
         low_x, high_x = axes.get_xlim()
         low_y, high_y = axes.get_ylim()
         low = max(low_x, low_y)
@@ -88,7 +88,7 @@ def annotate_bar_heights(
     ax: Axes = None,
     voffset: int = 10,
     hoffset: int = 0,
-    labels: List[Union[int, str]] = None,
+    labels: Sequence[Union[str, int, float]] = None,
     fontsize: int = 14,
 ) -> None:
     """Annotate histograms with a label indicating the height/count of each bar.

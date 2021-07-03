@@ -12,7 +12,7 @@ from sklearn.metrics import (
 
 def regression_metrics(
     y_true: Array, y_preds: Array, verbose: bool = False
-) -> Dict[str, Union[float, dict]]:
+) -> Dict[str, Union[float, Dict[str, float]]]:
     """Print a common selection of regression metrics
 
     TODO make robust by finding the common axis
@@ -98,7 +98,7 @@ def regression_metrics(
 
 def classification_metrics(
     target: Array, logits: Array, average: str = "micro", verbose: bool = False
-) -> Dict[str, Union[float, dict]]:
+) -> Dict[str, Union[float, Dict[str, float]]]:
     """print out metrics for a classification task
 
     TODO make less janky, first index is for ensembles, second data, third classes.
