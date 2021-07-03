@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import Any, Sequence, Union, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,7 +12,9 @@ from pymatgen.core import Composition
 from ml_matrics.utils import ROOT, annotate_bar_heights
 
 
-def count_elements(formulas: list) -> pd.Series:
+def count_elements(
+    formulas: Sequence[str] = None, elem_counts: pd.Series = None
+) -> pd.Series:
     """Count occurrences of each chemical element in a materials dataset.
 
     Args:
@@ -21,6 +23,18 @@ def count_elements(formulas: list) -> pd.Series:
     Returns:
         pd.Series: Total number of appearances of each element in `formulas`.
     """
+
+    if (formulas is None and elem_counts is None) or (
+        formulas is not None and elem_counts is not None
+    ):
+        raise ValueError("provide either formulas or elem_counts, not neither nor both")
+
+    # elem_counts is sure to be a Series at this point but mypy needs help to realize
+    elem_counts = cast(pd.Series, elem_counts)
+
+    if formulas is None:
+        return elem_counts
+
     formula2dict = lambda str: pd.Series(
         Composition(str).fractional_composition.as_dict()
     )
@@ -36,7 +50,7 @@ def count_elements(formulas: list) -> pd.Series:
 
 
 def ptable_elemental_prevalence(
-    formulas: List[str] = None,
+    formulas: Sequence[str] = None,
     elem_counts: pd.Series = None,
     log: bool = False,
     ax: Axes = None,
@@ -63,16 +77,11 @@ def ptable_elemental_prevalence(
     Raises:
         ValueError: provide either formulas or elem_counts, not neither nor both
     """
-    if (formulas is None and elem_counts is None) or (
-        formulas is not None and elem_counts is not None
-    ):
-        raise ValueError("provide either formulas or elem_counts, not neither nor both")
 
-    if formulas is not None:
-        elem_counts = count_elements(formulas)
+    elem_counts = count_elements(formulas, elem_counts)
 
     ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
-    cmap = get_cmap(cmap)
+    color_map = get_cmap(cmap)
 
     n_rows = ptable.row.max()
     n_columns = ptable.column.max()
@@ -87,6 +96,7 @@ def ptable_elemental_prevalence(
 
     norm = LogNorm() if log else Normalize()
 
+    # replace positive and negative infinities with NaN values, then drop all NaNs
     clean_scale = elem_counts.replace([np.inf, -np.inf], np.nan).dropna()
 
     if cbar_max is not None:
@@ -111,7 +121,7 @@ def ptable_elemental_prevalence(
             color = "white"  # not in either formulas_a nor formulas_b
             count_label = "0/0"
         else:
-            color = cmap(norm(count)) if count > 0 else "silver"
+            color = color_map(norm(count)) if count > 0 else "silver"
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             count_label = f"{count:.2g}".replace("e+0", "e")
 
@@ -148,11 +158,11 @@ def ptable_elemental_prevalence(
 
 
 def ptable_elemental_ratio(
-    formulas_a: List[str] = None,
-    formulas_b: List[str] = None,
+    formulas_a: Sequence[str] = None,
+    formulas_b: Sequence[str] = None,
     elem_counts_a: pd.Series = None,
     elem_counts_b: pd.Series = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> None:
     """Display the ratio of the normalised prevalence of each element for two sets of
     compositions.
@@ -165,32 +175,15 @@ def ptable_elemental_ratio(
         kwargs (dict, optional): kwargs passed to ptable_elemental_prevalence
     """
 
-    if (formulas_a is None and elem_counts_a is None) or (
-        formulas_a is not None and elem_counts_a is not None
-    ):
-        raise ValueError(
-            "provide either formulas_a or elem_counts_a, not neither nor both"
-        )
+    elem_counts_a = count_elements(formulas_a, elem_counts_a)
 
-    if (formulas_b is None and elem_counts_b is None) or (
-        formulas_b is not None and elem_counts_b is not None
-    ):
-        raise ValueError(
-            "provide either formulas_b or elem_counts_b, not neither nor both"
-        )
+    elem_counts_b = count_elements(formulas_b, elem_counts_b)
 
-    if formulas_a is not None:
-        elem_counts_a = count_elements(formulas_a)
-
-    if formulas_b is not None:
-        elem_counts_b = count_elements(formulas_b)
+    elem_counts = elem_counts_a / elem_counts_b
 
     # normalize elemental distributions, just a scaling factor but
     # makes different ratio plots comparable
-    elem_counts_a /= elem_counts_a.sum()
-    elem_counts_b /= elem_counts_b.sum()
-
-    elem_counts = elem_counts_a / elem_counts_b
+    elem_counts /= elem_counts.sum()
 
     ptable_elemental_prevalence(
         elem_counts=elem_counts, cbar_title="Element Ratio", **kwargs
@@ -207,12 +200,12 @@ def ptable_elemental_ratio(
 
 
 def hist_elemental_prevalence(
-    formulas: list,
+    formulas: Sequence[str],
     log: bool = False,
     keep_top: int = None,
     ax: Axes = None,
     bar_values: str = "percent",
-    **kwargs,
+    **kwargs: Any,
 ) -> None:
     """Plots a histogram of the prevalence of each element in a materials dataset.
 
