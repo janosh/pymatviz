@@ -30,3 +30,11 @@ repos:
     rev: v0.1.5
     hooks:
       - id: format-ipy-cells
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: end-of-file-fixer
+        exclude: ^assets/.+\.svg$
+      - id: check-yaml
+      - id: trailing-whitespace
+      - id: mixed-line-ending
