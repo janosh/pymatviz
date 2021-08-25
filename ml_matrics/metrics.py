@@ -1,7 +1,6 @@
 from typing import Dict, Union
 
 import numpy as np
-from numpy import ndarray as Array
 from sklearn.metrics import (
     accuracy_score,
     precision_recall_fscore_support,
@@ -9,17 +8,19 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
+from ml_matrics.utils import NumArray
+
 
 def regression_metrics(
-    y_true: Array, y_preds: Array, verbose: bool = False
+    y_true: NumArray, y_preds: NumArray, verbose: bool = False
 ) -> Dict[str, Union[float, Dict[str, float]]]:
     """Print a common selection of regression metrics
 
     TODO make robust by finding the common axis
 
     Args:
-        y_true (Array): Regression targets.
-        y_preds (Array): Model predictions.
+        y_true (NumArray): Regression targets.
+        y_preds (NumArray): Model predictions.
         verbose (bool, optional): Whether to print metrics. Defaults to False.
 
     Returns:
@@ -97,7 +98,7 @@ def regression_metrics(
 
 
 def classification_metrics(
-    target: Array, logits: Array, average: str = "micro", verbose: bool = False
+    target: NumArray, logits: NumArray, average: str = "micro", verbose: bool = False
 ) -> Dict[str, Union[float, Dict[str, float]]]:
     """print out metrics for a classification task
 
@@ -106,8 +107,8 @@ def classification_metrics(
     to multi-task automatically?
 
     Args:
-        target (Array): categorical encoding of the tasks
-        logits (Array): logits predicted by the model
+        target (NumArray): categorical encoding of the tasks
+        logits (NumArray): logits predicted by the model
         verbose (bool, optional): Whether to print metrics. Defaults to False.
     """
 

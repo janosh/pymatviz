@@ -7,27 +7,26 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from numpy import ndarray as Array
 from scipy.interpolate import interpn
 from sklearn.metrics import r2_score
 
-from ml_matrics.utils import add_identity, with_hist
+from ml_matrics.utils import NumArray, add_identity, with_hist
 
 
 def hist_density(
-    xs: Array, ys: Array, sort: bool = True, bins: int = 100
-) -> Tuple[Array, Array, Array]:
+    xs: NumArray, ys: NumArray, sort: bool = True, bins: int = 100
+) -> Tuple[NumArray, NumArray, NumArray]:
     """Return an approximate density of 2d points.
 
     Args:
-        xs (Array): x-coordinates of points
-        ys (Array): y-coordinates of points
+        xs (NumArray): x-coordinates of points
+        ys (NumArray): y-coordinates of points
         sort (bool, optional): Whether to sort points by density so that densest points
             are plotted last. Defaults to True.
         bins (int, optional): Number of bins (histogram resolution). Defaults to 100.
 
     Returns:
-        tuple[Array]: x- and y-coordinates (sorted by density) as well as density itself.
+        tuple[NumArray]: x- and y-coordinates (sorted by density) as well as density itself.
     """
 
     data, x_e, y_e = np.histogram2d(xs, ys, bins=bins)
@@ -48,7 +47,9 @@ def hist_density(
     return xs, ys, zs
 
 
-def add_mae_r2_box(xs: Array, ys: Array, ax: Axes, loc: str = "lower right") -> None:
+def add_mae_r2_box(
+    xs: NumArray, ys: NumArray, ax: Axes, loc: str = "lower right"
+) -> None:
 
     mae_str = f"$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.3f}$\n"
 
@@ -59,8 +60,8 @@ def add_mae_r2_box(xs: Array, ys: Array, ax: Axes, loc: str = "lower right") -> 
 
 
 def density_scatter(
-    xs: Array,
-    ys: Array,
+    xs: NumArray,
+    ys: NumArray,
     ax: Axes = None,
     color_map: str = "Blues",
     sort: bool = True,
@@ -75,9 +76,9 @@ def density_scatter(
     """Scatter plot colored (and optionally sorted) by density.
 
     Args:
-        xs (Array): x values.
-        ys (Array): y values.
-        ax (Axes, optional): plt axes. Defaults to None.
+        xs (NumArray): x values.
+        ys (NumArray): y values.
+        ax (Axes, optional): plt.Axes object. Defaults to None.
         color_map (str, optional): plt color map or valid string name. Defaults to "Blues".
         sort (bool, optional): Whether to sort the data. Defaults to True.
         log (bool, optional): Whether to the color scale. Defaults to True.
@@ -91,7 +92,7 @@ def density_scatter(
             Defaults to True.
 
     Returns:
-        Axes: plt axes with plotted data.
+        Axes: plt.Axes object with plotted data.
     """
     if ax is None:
         ax = plt.gca()
@@ -112,10 +113,10 @@ def density_scatter(
 
 
 def scatter_with_err_bar(
-    xs: Array,
-    ys: Array,
-    xerr: Array = None,
-    yerr: Array = None,
+    xs: NumArray,
+    ys: NumArray,
+    xerr: NumArray = None,
+    yerr: NumArray = None,
     ax: Axes = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
@@ -127,17 +128,17 @@ def scatter_with_err_bar(
     i.e. if points farther from the parity line have larger uncertainty.
 
     Args:
-        xs (Array): x-values
-        ys (Array): y-values
-        xerr (Array, optional): Horizontal error bars. Defaults to None.
-        yerr (Array, optional): Vertical error bars. Defaults to None.
-        ax (Axes, optional): plt axes. Defaults to None.
+        xs (NumArray): x-values
+        ys (NumArray): y-values
+        xerr (NumArray, optional): Horizontal error bars. Defaults to None.
+        yerr (NumArray, optional): Vertical error bars. Defaults to None.
+        ax (Axes, optional): plt.Axes object. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         title (str, optional): Plot tile. Defaults to None.
 
     Returns:
-        Axes: plt axes with plotted data.
+        Axes: plt.Axes object with plotted data.
     """
     if ax is None:
         ax = plt.gca()
@@ -153,26 +154,42 @@ def scatter_with_err_bar(
 
 
 def density_hexbin(
-    targets: Array,
-    preds: Array,
+    xs: NumArray,
+    yx: NumArray,
     ax: Axes = None,
-    color_map: Array = None,
+    weights: NumArray = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
+    **kwargs: Any,
 ) -> Axes:
-    """Hexagonal-grid scatter plot colored by density or by third dimension
-    passed color_by"""
+    """Hexagonal-grid scatter plot colored by point density or by density in third
+    dimension passed as weights.
+
+    Args:
+        xs (NumArray): x values
+        yx (NumArray): y values
+        ax (Axes, optional): plt.Axes object. Defaults to None.
+        weights (NumArray, optional): If given, these values are accumulated in the bins.
+            Otherwise, every point has value 1. Must be of the same length as x and y.
+            Defaults to None.
+        xlabel (str, optional): x-axis label. Defaults to "Actual".
+        ylabel (str, optional): y-axis label. Defaults to "Predicted".
+
+    Returns:
+        Axes: plt.Axes object
+    """
     if ax is None:
         ax = plt.gca()
 
     # the scatter plot
-    hexbin = ax.hexbin(targets, preds, gridsize=75, mincnt=1, bins="log", C=color_map)
+    hexbin = ax.hexbin(xs, yx, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
+
     cb_ax = inset_axes(ax, width="3%", height="70%", loc="lower right")
     plt.colorbar(hexbin, cax=cb_ax)
     cb_ax.yaxis.set_ticks_position("left")
 
     add_identity(ax, label="ideal")
-    add_mae_r2_box(targets, preds, ax, loc="upper left")
+    add_mae_r2_box(xs, yx, ax, loc="upper left")
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
@@ -180,7 +197,11 @@ def density_hexbin(
 
 
 def density_scatter_with_hist(
-    xs: Array, ys: Array, cell: GridSpec = None, bins: int = 100, **kwargs: Any
+    xs: NumArray,
+    ys: NumArray,
+    cell: GridSpec = None,
+    bins: int = 100,
+    **kwargs: Any,
 ) -> Axes:
     """Scatter plot colored (and optionally sorted) by density
     with histograms along each dimension
@@ -193,7 +214,11 @@ def density_scatter_with_hist(
 
 
 def density_hexbin_with_hist(
-    xs: Array, ys: Array, cell: GridSpec = None, bins: int = 100, **kwargs: Any
+    xs: NumArray,
+    ys: NumArray,
+    cell: GridSpec = None,
+    bins: int = 100,
+    **kwargs: Any,
 ) -> Axes:
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by with histograms along each dimension.
@@ -205,17 +230,17 @@ def density_hexbin_with_hist(
     return ax
 
 
-def residual_vs_actual(y_true: Array, y_pred: Array, ax: Axes = None) -> Axes:
+def residual_vs_actual(y_true: NumArray, y_pred: NumArray, ax: Axes = None) -> Axes:
     """Plot ground truth targets on the x-axis against residuals
     (y_err = y_true - y_pred) on the y-axis.
 
     Args:
-        y_true (Array): [description]
-        y_pred (Array): [description]
-        ax (Axes, optional): [description]. Defaults to None.
+        y_true (NumArray): Ground truth values
+        y_pred (NumArray): Model predictions
+        ax (Axes, optional): plt.Axes object. Defaults to None.
 
     Returns:
-        Axes: [description]
+        Axes: plt.Axes object
     """
 
     if ax is None:
