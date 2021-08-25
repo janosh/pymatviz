@@ -1,31 +1,32 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
-from numpy import ndarray as Array
+
+from ml_matrics.utils import NumArray
 
 
-def add_dropdown(ax: Axes, percentile: int, err: Array) -> None:
-    """Add a visual drop-down at a given percentile.
+def add_dropdown(ax: Axes, percentile: int, err: NumArray) -> None:
+    """Add a dashed drop-down line at a given percentile.
 
     Args:
-        ax (Axes): plt axes on which to add the dropdown.
+        ax (Axes): plt.Axes object on which to add the dropdown.
         percentile (int): Integer in range(100) at which to display dropdown line.
         err (array): Numpy array of errors = abs(preds - targets).
     """
-    percent = int(percentile * (err.shape[0] - 1) / 100 + 0.5)
+    percent = int(percentile * (len(err) - 1) / 100 + 0.5)
     ax.plot((0, err[percent]), (percentile, percentile), "--", color="grey", alpha=0.4)
     ax.plot(
         (err[percent], err[percent]), (0, percentile), "--", color="grey", alpha=0.4
     )
 
 
-def cum_res(preds: Array, targets: Array, ax: Axes = None) -> None:
+def cum_res(preds: NumArray, targets: NumArray, ax: Axes = None) -> None:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
     Args:
-        preds (Array): Numpy array of predictions.
-        targets (Array): Numpy array of targets.
-        ax (Axes, optional): plt axes. Defaults to None.
+        preds (NumArray): Numpy array of predictions.
+        targets (NumArray): Numpy array of targets.
+        ax (Axes, optional): plt.Axes object. Defaults to None.
     """
     if ax is None:
         ax = plt.gca()
@@ -60,13 +61,13 @@ def cum_res(preds: Array, targets: Array, ax: Axes = None) -> None:
     ax.legend(frameon=False)
 
 
-def cum_err(preds: Array, targets: Array, ax: Axes = None) -> None:
+def cum_err(preds: NumArray, targets: NumArray, ax: Axes = None) -> None:
     """Plot the empirical cumulative distribution for the absolute errors abs(y - y_hat).
 
     Args:
-        preds (Array): Numpy array of predictions.
-        targets (Array): Numpy array of targets.
-        ax (Axes, optional): plt axes. Defaults to None.
+        preds (NumArray): Numpy array of predictions.
+        targets (NumArray): Numpy array of targets.
+        ax (Axes, optional): plt.Axes object. Defaults to None.
     """
     if ax is None:
         ax = plt.gca()

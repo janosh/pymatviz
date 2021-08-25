@@ -67,7 +67,7 @@ def ptable_elemental_prevalence(
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         elem_counts (pd.Series): Map from element symbol to prevalence count
         log (bool, optional): Whether color map scale is log or linear.
-        ax (Axes, optional): plt axes. Defaults to None.
+        ax (Axes, optional): plt.Axes object. Defaults to None.
         cbar_title (str, optional): Title for colorbar. Defaults to "Element Count".
         cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
             if smaller than the largest plotted value. For creating multiple plots with
@@ -215,7 +215,7 @@ def hist_elemental_prevalence(
         formulas (list): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
         log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
-        ax (Axes): plt axes. Defaults to None.
+        ax (Axes): plt.Axes object. Defaults to None.
         bar_values (str): One of 'percent', 'count' or None. Annotate bars with the
             percentage each element makes up in the total element count, or use the count
             itself, or display no bar labels.
@@ -240,7 +240,7 @@ def hist_elemental_prevalence(
     if bar_values is not None:
         if bar_values == "percent":
             sum_elements = non_zero.sum()
-            labels = [f"{100 * el / sum_elements:.1f}%" for el in non_zero.values]
+            labels = [f"{el / sum_elements:.1%}" for el in non_zero.values]
         else:
             labels = non_zero.astype(int).to_list()
         annotate_bar_heights(ax, labels=labels, **kwargs)
