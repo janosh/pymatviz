@@ -2,16 +2,15 @@ from typing import Dict, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import ndarray as Array
 from scipy.stats import norm
 
-from ml_matrics.utils import add_identity
+from ml_matrics.utils import NumArray, add_identity
 
 
 def qq_gaussian(
-    y_true: Array, y_pred: Array, y_std: Union[Array, Dict[str, Array]]
+    y_true: NumArray, y_pred: NumArray, y_std: Union[NumArray, Dict[str, NumArray]]
 ) -> None:
-    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)
+    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as NumArray)
     or multiple (passed as dict) sets of uncertainty estimates for a single
     pair of ground truth targets `y_true` and model predictions `y_pred`.
 
@@ -26,11 +25,11 @@ def qq_gaussian(
     Info on Q-Q plots: https://wikipedia.org/wiki/Q-Q_plot
 
     Args:
-        y_true (Array): ground truth targets
-        y_pred (Array): model predictions
-        y_std (Array | dict): model uncertainties
+        y_true (NumArray): ground truth targets
+        y_pred (NumArray): model predictions
+        y_std (NumArray | dict): model uncertainties
     """
-    if isinstance(y_std, Array):
+    if isinstance(y_std, np.ndarray):
         y_std = {"std": y_std}
 
     res = np.abs(y_pred - y_true)

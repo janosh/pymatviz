@@ -2,28 +2,31 @@ from typing import Dict, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import ndarray as Array
+
+from ml_matrics.utils import NumArray
 
 
 def get_err_decay(
-    y_true: Array, y_pred: Array, n_rand: int = 100
-) -> Tuple[Array, Array]:
+    y_true: NumArray, y_pred: NumArray, n_rand: int = 100
+) -> Tuple[NumArray, NumArray]:
     abs_err = np.abs(y_true - y_pred)
     # increasing count of the number of samples in each element of cumsum()
     n_inc = range(1, len(abs_err) + 1)
 
-    decay_by_err: Array = np.sort(abs_err).cumsum() / n_inc
+    decay_by_err = np.sort(abs_err).cumsum() / n_inc
 
     # error decay for random exclusion of samples
     ae_tile = np.tile(abs_err, [n_rand, 1])
-    [np.random.shuffle(row) for row in ae_tile]  # shuffle rows of ae_tile in place
 
-    rand: Array = ae_tile.cumsum(1) / n_inc
+    for row in ae_tile:
+        np.random.shuffle(row)  # shuffle rows of ae_tile in place
+
+    rand = ae_tile.cumsum(1) / n_inc
 
     return decay_by_err, rand.std(0)
 
 
-def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
+def get_std_decay(y_true: NumArray, y_pred: NumArray, y_std: NumArray) -> NumArray:
     abs_err = np.abs(y_true - y_pred)
 
     # indices that sort y_std in ascending uncertainty
@@ -38,9 +41,9 @@ def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
 
 
 def err_decay(
-    y_true: Array,
-    y_pred: Array,
-    y_stds: Union[Array, Dict[str, Array]],
+    y_true: NumArray,
+    y_pred: NumArray,
+    y_stds: Union[NumArray, Dict[str, NumArray]],
     title: str = None,
     n_rand: int = 100,
     percentiles: bool = True,
@@ -51,10 +54,10 @@ def err_decay(
     similarly to how it decays when removing the predictions of largest error.
 
     Args:
-        y_true (Array): Ground truth regression targets.
-        y_pred (Array): Model predictions.
-        y_stds (Array | dict[str, Array]): Model uncertainties. Can be a single or multiple
-            types (e.g. aleatoric/epistemic/total uncertainty) in dict form.
+        y_true (NumArray): Ground truth regression targets.
+        y_pred (NumArray): Model predictions.
+        y_stds (NumArray | dict[str, NumArray]): Model uncertainties. Can be a single or
+            multiple types (e.g. aleatoric/epistemic/total uncertainty) in dict form.
         title (str, optional): Plot title. Defaults to None.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.
             of error decay by random ordering. Defaults to 100.
@@ -63,7 +66,7 @@ def err_decay(
     """
     xs = range(100 if percentiles else len(y_true), 0, -1)
 
-    if isinstance(y_stds, Array):
+    if isinstance(y_stds, np.ndarray):
         y_stds = {"std": y_stds}
 
     for key, y_std in y_stds.items():

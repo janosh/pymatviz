@@ -1,7 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from numpy import ndarray as Array
+
+from ml_matrics.utils import NumArray
 
 
 def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
@@ -35,7 +36,7 @@ def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
 
 
 def marchenko_pastur(
-    matrix: Array,
+    matrix: NumArray,
     gamma: float,
     sigma: float = 1,
     filter_high_evals: bool = False,
@@ -57,13 +58,13 @@ def marchenko_pastur(
         filter_high_evals (bool, optional): Whether to filter out eigenvalues larger
             than the theoretical random maximum. Useful for focusing the plot on the area
             of the MP PDF. Defaults to False.
-        ax (Axes, optional): plt axes. Defaults to None.
+        ax (Axes, optional): plt.Axes object. Defaults to None.
     """
     if ax is None:
         ax = plt.gca()
 
-    # use eigh for speed since correlation matrix is symmetric
-    evals, _ = np.linalg.eigh(matrix)
+    # use eigvalsh for speed since correlation matrix is symmetric
+    evals = np.linalg.eigvalsh(matrix)
 
     lambda_m = (sigma * (1 - np.sqrt(1 / gamma))) ** 2  # Largest eigenvalue
     lambda_p = (sigma * (1 + np.sqrt(1 / gamma))) ** 2  # Smallest eigenvalue
@@ -82,7 +83,7 @@ def marchenko_pastur(
     # Compute and display matrix rank
     # A ratio less than one indicates an undersampled set of RVs
     rank = np.linalg.matrix_rank(matrix)
-    n_rows = matrix.shape[0]
+    n_rows = len(matrix)
 
     plt.text(
         *[0.95, 0.9],

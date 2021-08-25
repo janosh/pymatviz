@@ -5,10 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
-from numpy import ndarray as Array
+from numpy.typing import NDArray
 
 
 ROOT: str = dirname(dirname(abspath(__file__)))
+
+
+NumArray = NDArray[Union[np.float64, np.int_]]
 
 
 def add_identity(ax: Axes = None, **line_kwargs: Any) -> None:
@@ -21,28 +24,30 @@ def add_identity(ax: Axes = None, **line_kwargs: Any) -> None:
     (identity,) = ax.plot([], [], **default_kwargs, **line_kwargs)
 
     def callback(axes: Axes) -> None:
-        low_x, high_x = axes.get_xlim()
-        low_y, high_y = axes.get_ylim()
-        low = max(low_x, low_y)
-        high = min(high_x, high_y)
+        x_min, x_max = axes.get_xlim()
+        y_min, y_max = axes.get_ylim()
+        low = max(x_min, y_min)
+        high = min(x_max, y_max)
         identity.set_data([low, high], [low, high])
 
     callback(ax)
-    # Update identity line when moving the plot in interactive
-    # viewing mode to always extend to the plot's edges.
+    # Register callbacks to update identity line when moving plots in interactive
+    # mode to ensure line always extend to plot edges.
     ax.callbacks.connect("xlim_changed", callback)
     ax.callbacks.connect("ylim_changed", callback)
 
 
-def with_hist(xs: Array, ys: Array, cell: GridSpec = None, bins: int = 100) -> Axes:
+def with_hist(
+    xs: NumArray, ys: NumArray, cell: GridSpec = None, bins: int = 100  # type: ignore
+) -> Axes:
     """Call before creating a plot and use the returned `ax_main` for all
     subsequent plotting ops to create a grid of plots with the main plot in
     the lower left and narrow histograms along its x- and/or y-axes displayed
     above and near the right edge.
 
     Args:
-        xs (Array): x values.
-        ys (Array): y values.
+        xs (NumArray): x values.
+        ys (NumArray): y values.
         cell (GridSpec, optional): Cell of a plt GridSpec at which to add the
             grid of plots. Defaults to None.
         bins (int, optional): Resolution/bin count of the histograms. Defaults to 100.
@@ -71,13 +76,13 @@ def with_hist(xs: Array, ys: Array, cell: GridSpec = None, bins: int = 100) -> A
     return ax_main
 
 
-def softmax(arr: Array, axis: int = -1) -> Array:
+def softmax(arr: NumArray, axis: int = -1) -> NumArray:  # type: ignore
     """Compute the softmax of an array along an axis."""
     exp = np.exp(arr)
     return exp / exp.sum(axis=axis, keepdims=True)
 
 
-def one_hot(targets: Array, n_classes: int = None) -> Array:
+def one_hot(targets: Sequence[int], n_classes: int = None) -> NDArray[np.int_]:
     """Get a one-hot encoded version of `targets` containing `n_classes`."""
     if n_classes is None:
         n_classes = np.max(targets) + 1

@@ -6,12 +6,17 @@ import pandas as pd
 from matplotlib import transforms
 from matplotlib.axes import Axes
 from matplotlib.ticker import FixedLocator, FormatStrFormatter
-from numpy import ndarray as Array
 from scipy.stats import gaussian_kde
+
+from ml_matrics.utils import NumArray
 
 
 def residual_hist(
-    y_true: Array, y_pred: Array, ax: Axes = None, xlabel: str = None, **kwargs: Any
+    y_true: NumArray,
+    y_pred: NumArray,
+    ax: Axes = None,
+    xlabel: str = None,
+    **kwargs: Any,
 ) -> Axes:
     """Plot the residual distribution overlayed with a Gaussian kernel
     density estimate.
@@ -19,13 +24,13 @@ def residual_hist(
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/Jmb2O).
 
     Args:
-        y_true (Array): ground truth targets
-        y_pred (Array): model predictions
-        ax (Axes, optional): plt axes. Defaults to None.
+        y_true (NumArray): ground truth targets
+        y_pred (NumArray): model predictions
+        ax (Axes, optional): plt.Axes object. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to None.
 
     Returns:
-        Axes: plt axes with plotted data.
+        Axes: plt.Axes object with plotted data.
     """
 
     if ax is None:
@@ -49,9 +54,9 @@ def residual_hist(
 
 
 def true_pred_hist(
-    y_true: Array,
-    y_pred: Array,
-    y_std: Array,
+    y_true: NumArray,
+    y_pred: NumArray,
+    y_std: NumArray,
     ax: Axes = None,
     cmap: str = "hot",
     bins: int = 50,
@@ -63,17 +68,17 @@ def true_pred_hist(
     predictions in that bin. Overlayed by a more transparent histogram of ground truth values.
 
     Args:
-        y_true (Array): ground truth targets
-        y_pred (Array): model predictions
-        y_std (Array): model uncertainty
-        ax (Axes, optional): plt axes. Defaults to None.
+        y_true (NumArray): ground truth targets
+        y_pred (NumArray): model predictions
+        y_std (NumArray): model uncertainty
+        ax (Axes, optional): plt.Axes object. Defaults to None.
         cmap (str, optional): string identifier of a plt colormap. Defaults to "hot".
         bins (int, optional): Histogram resolution. Defaults to 50.
         log (bool, optional): Whether to log-scale the y-axis. Defaults to True.
         truth_color (str, optional): Face color to use for y_true bars. Defaults to "blue".
 
     Returns:
-        Axes: plt axes with plotted data.
+        Axes: plt.Axes object with plotted data.
     """
 
     if ax is None:
@@ -118,18 +123,18 @@ def true_pred_hist(
     return ax
 
 
-def spacegroup_hist(spacegroups: Array, ax: Axes = None, **kwargs: Any) -> Axes:
+def spacegroup_hist(spacegroups: NumArray, ax: Axes = None, **kwargs: Any) -> Axes:
     """Plot a histogram of spacegroups shaded by crystal system.
 
     (triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, cubic)
 
     Args:
-        spacegroups (Array): list, tuple np.array or pd.Series of spacegroup numbers.
-        ax (Axes, optional): plt axes. Defaults to None.
+        spacegroups (NumArray): A list of spacegroup numbers.
+        ax (Axes, optional): plt.Axes object. Defaults to None.
         kwargs: Keywords passed to pd.Series.plot.bar().
 
     Returns:
-        Axes: plt axes
+        Axes: plt.Axes object
     """
     if ax is None:
         ax = plt.gca()
