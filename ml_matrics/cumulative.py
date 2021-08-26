@@ -24,8 +24,8 @@ def cum_res(preds: NumArray, targets: NumArray, ax: Axes = None) -> None:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
     Args:
-        preds (NumArray): Numpy array of predictions.
-        targets (NumArray): Numpy array of targets.
+        preds (array): Numpy array of predictions.
+        targets (array): Numpy array of targets.
         ax (Axes, optional): plt.Axes object. Defaults to None.
     """
     if ax is None:
@@ -65,8 +65,8 @@ def cum_err(preds: NumArray, targets: NumArray, ax: Axes = None) -> None:
     """Plot the empirical cumulative distribution for the absolute errors abs(y - y_hat).
 
     Args:
-        preds (NumArray): Numpy array of predictions.
-        targets (NumArray): Numpy array of targets.
+        preds (array): Numpy array of predictions.
+        targets (array): Numpy array of targets.
         ax (Axes, optional): plt.Axes object. Defaults to None.
     """
     if ax is None:
