@@ -54,9 +54,9 @@ def err_decay(
     similarly to how it decays when removing the predictions of largest error.
 
     Args:
-        y_true (NumArray): Ground truth regression targets.
-        y_pred (NumArray): Model predictions.
-        y_stds (NumArray | dict[str, NumArray]): Model uncertainties. Can be a single or
+        y_true (array): Ground truth regression targets.
+        y_pred (array): Model predictions.
+        y_stds (array | dict[str, NumArray]): Model uncertainties. Can be a single or
             multiple types (e.g. aleatoric/epistemic/total uncertainty) in dict form.
         title (str, optional): Plot title. Defaults to None.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.

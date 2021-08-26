@@ -24,8 +24,8 @@ def residual_hist(
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/Jmb2O).
 
     Args:
-        y_true (NumArray): ground truth targets
-        y_pred (NumArray): model predictions
+        y_true (array): ground truth targets
+        y_pred (array): model predictions
         ax (Axes, optional): plt.Axes object. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to None.
 
@@ -68,9 +68,9 @@ def true_pred_hist(
     predictions in that bin. Overlayed by a more transparent histogram of ground truth values.
 
     Args:
-        y_true (NumArray): ground truth targets
-        y_pred (NumArray): model predictions
-        y_std (NumArray): model uncertainty
+        y_true (array): ground truth targets
+        y_pred (array): model predictions
+        y_std (array): model uncertainty
         ax (Axes, optional): plt.Axes object. Defaults to None.
         cmap (str, optional): string identifier of a plt colormap. Defaults to "hot".
         bins (int, optional): Histogram resolution. Defaults to 50.
@@ -129,7 +129,7 @@ def spacegroup_hist(spacegroups: NumArray, ax: Axes = None, **kwargs: Any) -> Ax
     (triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, cubic)
 
     Args:
-        spacegroups (NumArray): A list of spacegroup numbers.
+        spacegroups (array): A list of spacegroup numbers.
         ax (Axes, optional): plt.Axes object. Defaults to None.
         kwargs: Keywords passed to pd.Series.plot.bar().
 

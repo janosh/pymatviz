@@ -1,5 +1,5 @@
 from os.path import abspath, dirname
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,29 +14,6 @@ ROOT: str = dirname(dirname(abspath(__file__)))
 NumArray = NDArray[Union[np.float64, np.int_]]
 
 
-def add_identity(ax: Axes = None, **line_kwargs: Any) -> None:
-    """Add a parity line (y = x) to the provided axis."""
-    if ax is None:
-        ax = plt.gca()
-
-    # zorder=0 ensures other plotted data displays on top of line
-    default_kwargs = dict(alpha=0.5, zorder=0, linestyle="dashed", color="black")
-    (identity,) = ax.plot([], [], **default_kwargs, **line_kwargs)
-
-    def callback(axes: Axes) -> None:
-        x_min, x_max = axes.get_xlim()
-        y_min, y_max = axes.get_ylim()
-        low = max(x_min, y_min)
-        high = min(x_max, y_max)
-        identity.set_data([low, high], [low, high])
-
-    callback(ax)
-    # Register callbacks to update identity line when moving plots in interactive
-    # mode to ensure line always extend to plot edges.
-    ax.callbacks.connect("xlim_changed", callback)
-    ax.callbacks.connect("ylim_changed", callback)
-
-
 def with_hist(
     xs: NumArray, ys: NumArray, cell: GridSpec = None, bins: int = 100  # type: ignore
 ) -> Axes:
@@ -46,8 +23,8 @@ def with_hist(
     above and near the right edge.
 
     Args:
-        xs (NumArray): x values.
-        ys (NumArray): y values.
+        xs (array): x values.
+        ys (array): y values.
         cell (GridSpec, optional): Cell of a plt GridSpec at which to add the
             grid of plots. Defaults to None.
         bins (int, optional): Resolution/bin count of the histograms. Defaults to 100.

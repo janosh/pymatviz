@@ -2,15 +2,19 @@ from typing import Dict, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
 from scipy.stats import norm
 
-from ml_matrics.utils import NumArray, add_identity
+from ml_matrics.utils import NumArray
 
 
 def qq_gaussian(
-    y_true: NumArray, y_pred: NumArray, y_std: Union[NumArray, Dict[str, NumArray]]
+    y_true: NumArray,
+    y_pred: NumArray,
+    y_std: Union[NumArray, Dict[str, NumArray]],
+    ax: Axes = None,
 ) -> None:
-    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as NumArray)
+    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)
     or multiple (passed as dict) sets of uncertainty estimates for a single
     pair of ground truth targets `y_true` and model predictions `y_pred`.
 
@@ -25,10 +29,13 @@ def qq_gaussian(
     Info on Q-Q plots: https://wikipedia.org/wiki/Q-Q_plot
 
     Args:
-        y_true (NumArray): ground truth targets
-        y_pred (NumArray): model predictions
-        y_std (NumArray | dict): model uncertainties
+        y_true (array): ground truth targets
+        y_pred (array): model predictions
+        y_std (array | dict[str, array]): model uncertainties
     """
+    if ax is None:
+        ax = plt.gca()
+
     if isinstance(y_std, np.ndarray):
         y_std = {"std": y_std}
 
@@ -38,16 +45,16 @@ def qq_gaussian(
     lines = []  # collect plotted lines to show second legend with miscalibration areas
     for key, std in y_std.items():
 
-        z_scored = (res / std).reshape(-1, 1)
+        z_scored = (np.array(res) / std).reshape(-1, 1)
 
         exp_proportions = np.linspace(0, 1, resolution)
         gaussian_upper_bound = norm.ppf(0.5 + exp_proportions / 2)
         obs_proportions = np.mean(z_scored <= gaussian_upper_bound, axis=0)
 
-        [line] = plt.plot(
+        [line] = ax.plot(
             exp_proportions, obs_proportions, linewidth=2, alpha=0.8, label=key
         )
-        plt.fill_between(
+        ax.fill_between(
             exp_proportions, y1=obs_proportions, y2=exp_proportions, alpha=0.2
         )
         miscal_area = np.trapz(
@@ -55,18 +62,16 @@ def qq_gaussian(
         )
         lines.append([line, miscal_area])
 
-    add_identity(label="ideal")
+    # identity line
+    ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
 
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
-
-    plt.xlabel("Theoretical Quantile")
-    plt.ylabel("Observed Quantile")
+    ax.set(xlim=(0, 1), ylim=(0, 1))
+    ax.set(xlabel="Theoretical Quantile", ylabel="Observed Quantile")
 
     legend1 = plt.legend(loc="upper left", frameon=False)
     # Multiple legends on the same axes:
     # https://matplotlib.org/3.3.3/tutorials/intermediate/legend_guide.html#multiple-legends-on-the-same-axes
-    plt.gca().add_artist(legend1)
+    ax.add_artist(legend1)
 
     lines, areas = zip(*lines)
 
