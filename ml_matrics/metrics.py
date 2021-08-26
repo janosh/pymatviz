@@ -19,8 +19,8 @@ def regression_metrics(
     TODO make robust by finding the common axis
 
     Args:
-        y_true (NumArray): Regression targets.
-        y_preds (NumArray): Model predictions.
+        y_true (array): Regression targets.
+        y_preds (array): Model predictions.
         verbose (bool, optional): Whether to print metrics. Defaults to False.
 
     Returns:
@@ -107,8 +107,8 @@ def classification_metrics(
     to multi-task automatically?
 
     Args:
-        target (NumArray): categorical encoding of the tasks
-        logits (NumArray): logits predicted by the model
+        target (array): categorical encoding of the tasks
+        logits (array): logits predicted by the model
         verbose (bool, optional): Whether to print metrics. Defaults to False.
     """
 

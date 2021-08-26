@@ -3,28 +3,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from ml_matrics import (
-    ROOT,
-    cum_err,
-    cum_res,
+from ml_matrics.correlation import marchenko_pastur
+from ml_matrics.cumulative import cum_err, cum_res
+from ml_matrics.elements import (
+    hist_elemental_prevalence,
+    ptable_elemental_prevalence,
+    ptable_elemental_ratio,
+)
+from ml_matrics.histograms import (
+    residual_hist,
+    spacegroup_hist,
+    true_pred_hist,
+)
+from ml_matrics.parity import (
     density_hexbin,
     density_hexbin_with_hist,
     density_scatter,
     density_scatter_with_hist,
-    err_decay,
-    hist_elemental_prevalence,
-    marchenko_pastur,
-    precision_recall_curve,
-    ptable_elemental_prevalence,
-    ptable_elemental_ratio,
-    qq_gaussian,
-    residual_hist,
     residual_vs_actual,
-    roc_curve,
     scatter_with_err_bar,
-    spacegroup_hist,
-    true_pred_hist,
 )
+from ml_matrics.quantile import qq_gaussian
+from ml_matrics.ranking import err_decay
+from ml_matrics.relevance import precision_recall_curve, roc_curve
+from ml_matrics.utils import ROOT
 
 
 plt.rcParams.update({"font.size": 20})
@@ -50,18 +52,17 @@ df_roost_ens = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv", na_filter=False
 
 y_true = df_roost_ens.target
 
-pred_cols = [col for col in df_roost_ens.columns if "pred" in col]
-y_preds = df_roost_ens[pred_cols].T
-y_pred = np.mean(y_preds, axis=0)
+pred_cols = [col for col in df_roost_ens if "pred" in col]
+y_preds = df_roost_ens[pred_cols].to_numpy()
+y_pred = y_preds.mean(axis=1)
 
-ale_cols = [col for col in df_roost_ens.columns if "ale" in col]
-y_ales = df_roost_ens[ale_cols].T
+ale_cols = [col for col in df_roost_ens if "ale" in col]  # aleatoric uncertainties
+y_ales = df_roost_ens[ale_cols].to_numpy()
 
-y_var_ale = np.square(y_ales).mean(axis=0)
-y_var_epi = y_preds.var(axis=0)
+y_var_ale = np.square(y_ales).mean(axis=1)
+y_var_epi = y_preds.var(axis=1)
 
-y_var = y_var_ale + y_var_epi
-y_std = np.sqrt(y_var)
+y_std = np.sqrt(y_var_ale + y_var_epi)
 
 
 def savefig(filename: str) -> None:
@@ -138,7 +139,7 @@ cum_res(y_pred, y_true)
 savefig("cumulative_residual")
 
 
-# %% Rankign Plots
+# %% Ranking Plots
 err_decay(y_true, y_pred, y_std)
 savefig("err_decay")
 

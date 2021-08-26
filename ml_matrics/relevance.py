@@ -15,8 +15,8 @@ def roc_curve(
     the positive class.
 
     Args:
-        targets (NumArray): Ground truth targets.
-        proba_pos (NumArray): predicted probabilities for the positive class.
+        targets (array): Ground truth targets.
+        proba_pos (array): predicted probabilities for the positive class.
 
     Returns:
         float: The classifier's ROC area under the curve.
@@ -44,8 +44,8 @@ def precision_recall_curve(
     """Plot the precision recall curve of a binary classifier.
 
     Args:
-        targets (NumArray): Ground truth targets.
-        proba_pos (NumArray): predicted probabilities for the positive class.
+        targets (array): Ground truth targets.
+        proba_pos (array): predicted probabilities for the positive class.
 
     Returns:
         float: The classifier's precision score.

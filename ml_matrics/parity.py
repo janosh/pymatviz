@@ -10,7 +10,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.interpolate import interpn
 from sklearn.metrics import r2_score
 
-from ml_matrics.utils import NumArray, add_identity, with_hist
+from ml_matrics.utils import NumArray, with_hist
 
 
 def hist_density(
@@ -19,8 +19,8 @@ def hist_density(
     """Return an approximate density of 2d points.
 
     Args:
-        xs (NumArray): x-coordinates of points
-        ys (NumArray): y-coordinates of points
+        xs (array): x-coordinates of points
+        ys (array): y-coordinates of points
         sort (bool, optional): Whether to sort points by density so that densest points
             are plotted last. Defaults to True.
         bins (int, optional): Number of bins (histogram resolution). Defaults to 100.
@@ -76,8 +76,8 @@ def density_scatter(
     """Scatter plot colored (and optionally sorted) by density.
 
     Args:
-        xs (NumArray): x values.
-        ys (NumArray): y values.
+        xs (array): x values.
+        ys (array): y values.
         ax (Axes, optional): plt.Axes object. Defaults to None.
         color_map (str, optional): plt color map or valid string name. Defaults to "Blues".
         sort (bool, optional): Whether to sort the data. Defaults to True.
@@ -102,8 +102,12 @@ def density_scatter(
     norm = mpl.colors.LogNorm() if log else None
 
     ax.scatter(xs, ys, c=cs, cmap=color_map, norm=norm, **kwargs)
+
     if identity:
-        add_identity(ax, label="ideal")
+        ax.axline(
+            (0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black"
+        )
+
     if stats:
         add_mae_r2_box(xs, ys, ax)
 
@@ -128,10 +132,10 @@ def scatter_with_err_bar(
     i.e. if points farther from the parity line have larger uncertainty.
 
     Args:
-        xs (NumArray): x-values
-        ys (NumArray): y-values
-        xerr (NumArray, optional): Horizontal error bars. Defaults to None.
-        yerr (NumArray, optional): Vertical error bars. Defaults to None.
+        xs (array): x-values
+        ys (array): y-values
+        xerr (array, optional): Horizontal error bars. Defaults to None.
+        yerr (array, optional): Vertical error bars. Defaults to None.
         ax (Axes, optional): plt.Axes object. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
@@ -145,7 +149,10 @@ def scatter_with_err_bar(
 
     styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
     ax.errorbar(xs, ys, yerr=yerr, xerr=xerr, **kwargs, **styles)
-    add_identity(ax)
+
+    # identity line
+    ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
+
     add_mae_r2_box(xs, ys, ax)
 
     ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
@@ -166,10 +173,10 @@ def density_hexbin(
     dimension passed as weights.
 
     Args:
-        xs (NumArray): x values
-        yx (NumArray): y values
+        xs (array): x values
+        yx (array): y values
         ax (Axes, optional): plt.Axes object. Defaults to None.
-        weights (NumArray, optional): If given, these values are accumulated in the bins.
+        weights (array, optional): If given, these values are accumulated in the bins.
             Otherwise, every point has value 1. Must be of the same length as x and y.
             Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
@@ -188,7 +195,9 @@ def density_hexbin(
     plt.colorbar(hexbin, cax=cb_ax)
     cb_ax.yaxis.set_ticks_position("left")
 
-    add_identity(ax, label="ideal")
+    # identity line
+    ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
+
     add_mae_r2_box(xs, yx, ax, loc="upper left")
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
@@ -235,8 +244,8 @@ def residual_vs_actual(y_true: NumArray, y_pred: NumArray, ax: Axes = None) -> A
     (y_err = y_true - y_pred) on the y-axis.
 
     Args:
-        y_true (NumArray): Ground truth values
-        y_pred (NumArray): Model predictions
+        y_true (array): Ground truth values
+        y_pred (array): Model predictions
         ax (Axes, optional): plt.Axes object. Defaults to None.
 
     Returns:
@@ -248,11 +257,10 @@ def residual_vs_actual(y_true: NumArray, y_pred: NumArray, ax: Axes = None) -> A
 
     y_err = y_true - y_pred
 
-    xmin = np.min(y_true) * 0.9
-    xmax = np.max(y_true) / 0.9
-
     plt.plot(y_true, y_err, "o", alpha=0.5, label=None, mew=1.2, ms=5.2)
-    plt.plot([xmin, xmax], [0, 0], "k--", alpha=0.5, label="ideal")
+    plt.axline(
+        [1, 0], [2, 0], linestyle="dashed", color="black", alpha=0.5, label="ideal"
+    )
 
     plt.ylabel(r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)")
     plt.xlabel("Actual value")
