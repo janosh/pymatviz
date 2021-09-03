@@ -1,11 +1,13 @@
 from os.path import abspath, dirname
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
+from matplotlib.offsetbox import AnchoredText
 from numpy.typing import NDArray
+from sklearn.metrics import r2_score
 
 
 ROOT: str = dirname(dirname(abspath(__file__)))
@@ -15,7 +17,10 @@ NumArray = NDArray[Union[np.float64, np.int_]]
 
 
 def with_hist(
-    xs: NumArray, ys: NumArray, cell: GridSpec = None, bins: int = 100  # type: ignore
+    xs: NDArray[np.float64],
+    ys: NDArray[np.float64],
+    cell: GridSpec = None,
+    bins: int = 100,
 ) -> Axes:
     """Call before creating a plot and use the returned `ax_main` for all
     subsequent plotting ops to create a grid of plots with the main plot in
@@ -53,7 +58,7 @@ def with_hist(
     return ax_main
 
 
-def softmax(arr: NumArray, axis: int = -1) -> NumArray:  # type: ignore
+def softmax(arr: NDArray[np.float64], axis: int = -1) -> NDArray[np.float64]:
     """Compute the softmax of an array along an axis."""
     exp = np.exp(arr)
     return exp / exp.sum(axis=axis, keepdims=True)
@@ -102,3 +107,21 @@ def annotate_bar_heights(
         ax.annotate(label, (x_pos, y_pos), ha="center", fontsize=fontsize)
         # ensure enough vertical space to display label above highest bar
         ax.margins(y=0.1)
+
+
+def add_mae_r2_box(
+    xs: NDArray[np.float64],
+    ys: NDArray[np.float64],
+    ax: Axes = None,
+    loc: str = "lower right",
+    **kwargs: Any,
+) -> None:
+    if ax is None:
+        ax = plt.gca()
+
+    mae_str = f"$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.3f}$\n"
+
+    r2_str = f"$R^2 = {r2_score(xs, ys):.3f}$"
+
+    text_box = AnchoredText(mae_str + r2_str, loc=loc, frameon=False, **kwargs)
+    ax.add_artist(text_box)

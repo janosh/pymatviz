@@ -1,4 +1,4 @@
-from typing import Any, Sequence, Union, cast
+from typing import Any, Dict, Literal, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,13 +12,18 @@ from pymatgen.core import Composition
 from ml_matrics.utils import ROOT, annotate_bar_heights
 
 
+PTABLE = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
+
+
 def count_elements(
-    formulas: Sequence[str] = None, elem_counts: pd.Series = None
+    formulas: Sequence[str] = None, elem_counts: Union[pd.Series, Dict[str, int]] = None
 ) -> pd.Series:
     """Count occurrences of each chemical element in a materials dataset.
 
     Args:
-        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
+        formulas (list[str], optional): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
+        elem_counts (pd.Series | dict[str, int], optional): map from element symbol to
+            prevalence counts
 
     Returns:
         pd.Series: Total number of appearances of each element in `formulas`.
@@ -29,8 +34,8 @@ def count_elements(
     ):
         raise ValueError("provide either formulas or elem_counts, not neither nor both")
 
-    # elem_counts is sure to be a Series at this point but mypy needs help to realize
-    elem_counts = cast(pd.Series, elem_counts)
+    # ensure elem_counts is Series if we got a dict
+    elem_counts = pd.Series(elem_counts)
 
     if formulas is None:
         return elem_counts
@@ -43,9 +48,8 @@ def count_elements(
 
     # ensure all elements are present in returned Series (with count zero if they
     # weren't in formulas)
-    ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
     # fill_value=0 required as max(NaN, any int) = NaN
-    srs = srs.combine(pd.Series(0, index=ptable.symbol), max, fill_value=0)
+    srs = srs.combine(pd.Series(0, index=PTABLE.symbol), max, fill_value=0)
     return srs
 
 
@@ -168,11 +172,14 @@ def ptable_elemental_ratio(
     compositions.
 
     Args:
-        formulas_a (list[str]): numerator compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
-        formulas_b (list[str]): denominator compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
-        elem_counts_a (pd.Series): Map from element symbol to prevalence count for numerator
-        elem_counts_b (pd.Series): Map from element symbol to prevalence count for denominator
-        kwargs (dict, optional): kwargs passed to ptable_elemental_prevalence
+        formulas_a (list[str], optional): numerator compositional strings, e.g
+            ["Fe2O3", "Bi2Te3"]
+        formulas_b (list[str], optional): denominator compositional strings
+        elem_counts_a (pd.Series | dict[str, int], optional): map from element symbol
+            to prevalence count for numerator
+        elem_counts_b (pd.Series | dict[str, int], optional): map from element symbol
+            to prevalence count for denominator
+        kwargs (Any, optional): kwargs passed to ptable_elemental_prevalence
     """
 
     elem_counts_a = count_elements(formulas_a, elem_counts_a)
@@ -204,7 +211,7 @@ def hist_elemental_prevalence(
     log: bool = False,
     keep_top: int = None,
     ax: Axes = None,
-    bar_values: str = "percent",
+    bar_values: Literal["percent", "count", None] = "percent",
     **kwargs: Any,
 ) -> None:
     """Plots a histogram of the prevalence of each element in a materials dataset.
@@ -216,9 +223,9 @@ def hist_elemental_prevalence(
         log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
         ax (Axes): plt.Axes object. Defaults to None.
-        bar_values (str): One of 'percent', 'count' or None. Annotate bars with the
-            percentage each element makes up in the total element count, or use the count
-            itself, or display no bar labels.
+        bar_values ('percent'|'count'|None): 'percent' annotates bars with the
+            percentage each element makes up in the total element count. 'count'
+            displays count itself. None removes bar labels.
         **kwargs (int): Keyword arguments passed to annotate_bar_heights.
     """
     if ax is None:

@@ -25,7 +25,7 @@ def qq_gaussian(
     The measure of calibration is how well the uncertainty percentiles conform
     to those of a normal distribution.
 
-    Inspired by https://github.com/uncertainty-toolbox/uncertainty-toolbox#visualizations.
+    Inspired by https://git.io/JufOz.
     Info on Q-Q plots: https://wikipedia.org/wiki/Q-Q_plot
 
     Args:

@@ -5,12 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
-from matplotlib.offsetbox import AnchoredText
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.interpolate import interpn
-from sklearn.metrics import r2_score
 
-from ml_matrics.utils import NumArray, with_hist
+from ml_matrics.utils import NumArray, add_mae_r2_box, with_hist
 
 
 def hist_density(
@@ -26,7 +24,7 @@ def hist_density(
         bins (int, optional): Number of bins (histogram resolution). Defaults to 100.
 
     Returns:
-        tuple[NumArray]: x- and y-coordinates (sorted by density) as well as density itself.
+        tuple[array]: x- and y-coordinates (sorted by density) as well as density itself
     """
 
     data, x_e, y_e = np.histogram2d(xs, ys, bins=bins)
@@ -45,18 +43,6 @@ def hist_density(
         xs, ys, zs = xs[idx], ys[idx], zs[idx]
 
     return xs, ys, zs
-
-
-def add_mae_r2_box(
-    xs: NumArray, ys: NumArray, ax: Axes, loc: str = "lower right"
-) -> None:
-
-    mae_str = f"$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.3f}$\n"
-
-    r2_str = f"$R^2 = {r2_score(xs, ys):.3f}$"
-
-    text_box = AnchoredText(mae_str + r2_str, loc=loc, frameon=False)
-    ax.add_artist(text_box)
 
 
 def density_scatter(
@@ -79,11 +65,12 @@ def density_scatter(
         xs (array): x values.
         ys (array): y values.
         ax (Axes, optional): plt.Axes object. Defaults to None.
-        color_map (str, optional): plt color map or valid string name. Defaults to "Blues".
+        color_map (str, optional): plt color map or valid string name.
+            Defaults to "Blues".
         sort (bool, optional): Whether to sort the data. Defaults to True.
         log (bool, optional): Whether to the color scale. Defaults to True.
-        density_bins (int, optional): How many density_bins to use for the density histogram,
-            i.e. granularity of the density color scale. Defaults to 100.
+        density_bins (int, optional): How many density_bins to use for the density
+            histogram, i.e. granularity of the density color scale. Defaults to 100.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         identity (bool, optional): Whether to add an identity/parity line (y = x).
