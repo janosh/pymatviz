@@ -107,20 +107,20 @@ When adding new SVG assets, please compress them before committing. This can eit
 This project uses [`pytest`](https://docs.pytest.org/en/stable/usage.html). To run the entire test suite:
 
 ```sh
-python -m pytest
+pytest
 ```
 
 To run individual or groups of test files, pass `pytest` a path or glob pattern, respectively:
 
 ```sh
-python -m pytest tests/test_cumulative.py
-python -m pytest **/test_*_metrics.py
+pytest tests/test_cumulative.py
+pytest **/test_*_metrics.py
 ```
 
 To run a single test, pass its name to the `-k` flag:
 
 ```sh
-python -m pytest -k test_precision_recall_curve
+pytest -k test_precision_recall_curve
 ```
 
 Consult the [`pytest`](https://docs.pytest.org/en/stable/usage.html) docs for more details.

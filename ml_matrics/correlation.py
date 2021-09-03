@@ -45,9 +45,9 @@ def marchenko_pastur(
     """Plot the eigenvalue distribution of a symmetric matrix (usually a correlation
     matrix) against the Marchenko Pastur distribution.
 
-    The probability of a random matrix having eigenvalues larger than (1 + sqrt(gamma))^2
-    in the absence of any signal is vanishingly small. Thus, if eigenvalues larger than
-    that appear, they correspond to statistically significant signals.
+    The probability of a random matrix having eigenvalues >= (1 + sqrt(gamma))^2 in the
+    absence of any signal is vanishingly small. Thus, if eigenvalues larger than that
+    appear, they correspond to statistically significant signals.
 
     Args:
         matrix (Array): 2d array
@@ -56,7 +56,7 @@ def marchenko_pastur(
             gamma = p/N = 1/2.
         sigma (float, optional): Standard deviation of random variables. Defaults to 1.
         filter_high_evals (bool, optional): Whether to filter out eigenvalues larger
-            than the theoretical random maximum. Useful for focusing the plot on the area
+            than theoretical random maximum. Useful for focusing the plot on the area
             of the MP PDF. Defaults to False.
         ax (Axes, optional): plt.Axes object. Defaults to None.
     """

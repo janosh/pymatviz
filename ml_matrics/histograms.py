@@ -64,18 +64,20 @@ def true_pred_hist(
     truth_color: str = "blue",
     **kwargs: Any,
 ) -> Axes:
-    """Plot a histogram of model predictions with bars colored by the average uncertainty of
-    predictions in that bin. Overlayed by a more transparent histogram of ground truth values.
+    """Plot a histogram of model predictions with bars colored by the mean uncertainty of
+    predictions in that bin. Overlayed by a more transparent histogram of ground truth
+    values.
 
     Args:
         y_true (array): ground truth targets
         y_pred (array): model predictions
         y_std (array): model uncertainty
         ax (Axes, optional): plt.Axes object. Defaults to None.
-        cmap (str, optional): string identifier of a plt colormap. Defaults to "hot".
+        cmap (str, optional): string identifier of a plt colormap. Defaults to 'hot'.
         bins (int, optional): Histogram resolution. Defaults to 50.
         log (bool, optional): Whether to log-scale the y-axis. Defaults to True.
-        truth_color (str, optional): Face color to use for y_true bars. Defaults to "blue".
+        truth_color (str, optional): Face color to use for y_true bars.
+            Defaults to 'blue'.
 
     Returns:
         Axes: plt.Axes object with plotted data.
