@@ -19,7 +19,7 @@ def roc_curve(
         proba_pos (array): predicted probabilities for the positive class.
 
     Returns:
-        float: The classifier's ROC area under the curve.
+        tuple[float, plt.Axes]: The classifier's ROCAUC and the plt.Axes object.
     """
     if ax is None:
         ax = plt.gca()
@@ -35,7 +35,7 @@ def roc_curve(
     ax.set(xlim=(0, 1.05), ylim=(0, 1.05))
     ax.set(xlabel="False Positive Rate", ylabel="True Positive Rate", title="ROC Curve")
 
-    return float(roc_auc), ax
+    return roc_auc, ax
 
 
 def precision_recall_curve(
@@ -48,22 +48,24 @@ def precision_recall_curve(
         proba_pos (array): predicted probabilities for the positive class.
 
     Returns:
-        float: The classifier's precision score.
+        tuple[float, plt.Axes]: The classifier's precision score and the plt.Axes object
     """
     if ax is None:
         ax = plt.gca()
 
     # get the metrics
     precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
-    # round: convert probas to preds
-    prec = skm.precision_score(targets, proba_pos.round())
 
-    ax.plot(recall, precision, "b", label=f"precision = {prec:.2f}")
-    # plt.plot([0, 1], [0, 0], "r--", label="random")
+    # proba_pos.round() converts class probabilities to integer class labels
+    prec_score = skm.precision_score(targets, proba_pos.round())
+
+    ax.plot(recall, precision, color="blue", label=f"precision = {prec_score:.2f}")
+
+    ax.plot([0, 1], [0.5, 0.5], "r--", label="No skill")
     ax.legend(loc="lower left", frameon=False)
 
     ax.set(xlabel="Recall", ylabel="Precision", title="Precision Recall Curve")
 
     ax.set(xlim=(0, 1.05), ylim=(0, 1.05))
 
-    return float(prec), ax
+    return prec_score, ax

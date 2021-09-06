@@ -114,14 +114,31 @@ def add_mae_r2_box(
     ys: NDArray[np.float64],
     ax: Axes = None,
     loc: str = "lower right",
+    prec: int = 3,
     **kwargs: Any,
 ) -> None:
+    """Provide a set of x and y values of equal length and an optional Axes object
+    on which to print the values' mean absolute error and R^2 coefficient of
+    determination.
+
+    Args:
+        xs (array, optional): x values.
+        ys (array, optional): y values.
+        ax (plt.Axes, optional): plt.Axes object. Defaults to None.
+        loc (str, optional): Where on the plot to place the AnchoredText object.
+            Defaults to "lower right".
+        prec (int, optional): # of decimal places in printed metrics. Defaults to 3.
+    """
     if ax is None:
         ax = plt.gca()
 
-    mae_str = f"$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.3f}$\n"
+    mask = ~np.isnan(xs) & ~np.isnan(ys)
+    xs, ys = xs[mask], ys[mask]
 
-    r2_str = f"$R^2 = {r2_score(xs, ys):.3f}$"
+    mae_str = f"$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.{prec}f}$\n"
 
-    text_box = AnchoredText(mae_str + r2_str, loc=loc, frameon=False, **kwargs)
+    r2_str = f"$R^2 = {r2_score(xs, ys):.{prec}f}$"
+
+    frameon: bool = kwargs.pop("frameon", False)
+    text_box = AnchoredText(mae_str + r2_str, loc=loc, frameon=frameon, **kwargs)
     ax.add_artist(text_box)
