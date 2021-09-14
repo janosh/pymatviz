@@ -66,6 +66,11 @@ y_std = np.sqrt(y_var_ale + y_var_epi)
 
 
 def savefig(filename: str) -> None:
+    """Save current matplotlib figure as SVG.
+
+    Args:
+        filename (str): Name of SVG file (w/o extension).
+    """
     plt.savefig(f"{ROOT}/assets/{filename}.svg", bbox_inches="tight")
     plt.close()
 

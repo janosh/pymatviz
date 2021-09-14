@@ -13,7 +13,7 @@ def qq_gaussian(
     y_pred: NumArray,
     y_std: Union[NumArray, Dict[str, NumArray]],
     ax: Axes = None,
-) -> None:
+) -> Axes:
     """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)
     or multiple (passed as dict) sets of uncertainty estimates for a single
     pair of ground truth targets `y_true` and model predictions `y_pred`.
@@ -32,6 +32,10 @@ def qq_gaussian(
         y_true (array): ground truth targets
         y_pred (array): model predictions
         y_std (array | dict[str, array]): model uncertainties
+        ax (Axes): plt.Axes object. Defaults to None.
+
+    Returns:
+        Axes: plt.Axes object with plotted data.
     """
     if ax is None:
         ax = plt.gca()
@@ -92,3 +96,5 @@ def qq_gaussian(
             loc="lower right",
             frameon=False,
         )
+
+    return ax

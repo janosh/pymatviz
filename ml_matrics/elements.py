@@ -28,7 +28,6 @@ def count_elements(
     Returns:
         pd.Series: Total number of appearances of each element in `formulas`.
     """
-
     if (formulas is None and elem_counts is None) or (
         formulas is not None and elem_counts is not None
     ):
@@ -81,7 +80,6 @@ def ptable_elemental_prevalence(
     Raises:
         ValueError: provide either formulas or elem_counts, not neither nor both
     """
-
     elem_counts = count_elements(formulas, elem_counts)
 
     ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
@@ -181,7 +179,6 @@ def ptable_elemental_ratio(
             to prevalence count for denominator
         kwargs (Any, optional): kwargs passed to ptable_elemental_prevalence
     """
-
     elem_counts_a = count_elements(formulas_a, elem_counts_a)
 
     elem_counts_b = count_elements(formulas_b, elem_counts_b)
