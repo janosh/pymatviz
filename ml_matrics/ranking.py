@@ -9,6 +9,22 @@ from ml_matrics.utils import NumArray
 def get_err_decay(
     y_true: NumArray, y_pred: NumArray, n_rand: int = 100
 ) -> Tuple[NumArray, NumArray]:
+    """Calculate the model's error curve as samples are excluded from the calculation
+    based on their absolute error.
+
+    Use in combination with get_std_decay to see what the error drop curve would look
+    like if model error and uncertainty were perfectly rank-correlated.
+
+    Args:
+        y_true (array): ground truth targets
+        y_pred (array): model predictions
+        n_rand (int, optional): Number of randomly ordered sample exclusions over which
+            to average to estimate dummy performance. Defaults to 100.
+
+    Returns:
+        Tuple[array, array]: Drop off in errors as data points are dropped based on
+            model uncertainties and randomly, respectively.
+    """
     abs_err = np.abs(y_true - y_pred)
     # increasing count of the number of samples in each element of cumsum()
     n_inc = range(1, len(abs_err) + 1)
@@ -27,6 +43,30 @@ def get_err_decay(
 
 
 def get_std_decay(y_true: NumArray, y_pred: NumArray, y_std: NumArray) -> NumArray:
+    """Calculate the drop in model error as samples are excluded from the calculation
+    based on the model's uncertainty.
+
+    For model's able to estimate their own uncertainty well, meaning predictions of
+    larger error are associated with larger uncertainty, the error curve should fall
+    off sharply at first as the highest-error points are discarded and slowly towards
+    the end where only small-error samples with little uncertainty remain.
+
+    Note that even perfect model uncertainties would not mean this error drop curve
+    coincides exactly with the one returned by get_err_decay as in some cases the model
+    may have made an accurate prediction purely by chance in which case the error is
+    small yet a good uncertainty estimate would still be large, leading the same sample
+    to be excluded at different x-axis locations and thus the get_std_decay curve to lie
+    higher.
+
+    Args:
+        y_true (array): ground truth targets
+        y_pred (array): model predictions
+        y_std (array): model's predicted uncertainties
+
+    Returns:
+        array: Error decay as data points are excluded by order of largest to smallest
+            model uncertainties.
+    """
     abs_err = np.abs(y_true - y_pred)
 
     # indices that sort y_std in ascending uncertainty

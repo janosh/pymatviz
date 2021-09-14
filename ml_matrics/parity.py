@@ -26,7 +26,6 @@ def hist_density(
     Returns:
         tuple[array]: x- and y-coordinates (sorted by density) as well as density itself
     """
-
     data, x_e, y_e = np.histogram2d(xs, ys, bins=bins)
 
     zs = interpn(
@@ -202,7 +201,6 @@ def density_scatter_with_hist(
     """Scatter plot colored (and optionally sorted) by density
     with histograms along each dimension
     """
-
     ax_scatter = with_hist(xs, ys, cell, bins)
     ax = density_scatter(xs, ys, ax_scatter, **kwargs)
 
@@ -219,7 +217,6 @@ def density_hexbin_with_hist(
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by with histograms along each dimension.
     """
-
     ax_scatter = with_hist(xs, ys, cell, bins)
     ax = density_hexbin(xs, ys, ax_scatter, **kwargs)
 
@@ -238,7 +235,6 @@ def residual_vs_actual(y_true: NumArray, y_pred: NumArray, ax: Axes = None) -> A
     Returns:
         Axes: plt.Axes object
     """
-
     if ax is None:
         ax = plt.gca()
 
