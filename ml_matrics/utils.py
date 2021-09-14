@@ -86,6 +86,7 @@ def annotate_bar_heights(
         hoffset (int): Horizontal offset between the labels and the bars.
         labels (list[str]): Labels used for annotating bars. Falls back to the
             y-value of each bar if None.
+        fontsize (int): Annotated text size in pts. Defaults to 14.
     """
     if ax is None:
         ax = plt.gca()

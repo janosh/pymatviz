@@ -32,7 +32,6 @@ def residual_hist(
     Returns:
         Axes: plt.Axes object with plotted data.
     """
-
     if ax is None:
         ax = plt.gca()
 
@@ -82,7 +81,6 @@ def true_pred_hist(
     Returns:
         Axes: plt.Axes object with plotted data.
     """
-
     if ax is None:
         ax = plt.gca()
 

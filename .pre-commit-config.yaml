@@ -6,30 +6,36 @@ ci:
 
 repos:
   - repo: https://github.com/PyCQA/isort
-    rev: 5.9.1
+    rev: 5.9.3
     hooks:
       - id: isort
+
   - repo: https://github.com/psf/black
-    rev: 21.6b0
+    rev: 21.9b0
     hooks:
       - id: black
+
   - repo: https://github.com/PyCQA/flake8
     rev: 3.9.2
     hooks:
       - id: flake8
+
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.20.0
+    rev: v2.26.0
     hooks:
       - id: pyupgrade
         args: [--py38-plus]
+
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v0.910
     hooks:
       - id: mypy
+
   - repo: https://github.com/janosh/format-ipy-cells
-    rev: v0.1.5
+    rev: v0.1.7
     hooks:
       - id: format-ipy-cells
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
     hooks:
@@ -38,3 +44,15 @@ repos:
       - id: check-yaml
       - id: trailing-whitespace
       - id: mixed-line-ending
+
+  - repo: https://github.com/PyCQA/pydocstyle
+    rev: 6.1.1
+    hooks:
+      - id: pydocstyle
+        # D100: Missing docstring in public module
+        # D104: Missing docstring in public package
+        # D107: Missing docstring in __init__
+        # D205: 1 blank line required between summary line and description
+        # D415: First line should end with ., ? or !
+        args: [--convention=google, '--add-ignore=D100,D104,D107,D205,D415']
+        exclude: tests

@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, Literal, Union
 
 import numpy as np
 from sklearn.metrics import (
@@ -14,7 +14,7 @@ from ml_matrics.utils import NumArray
 def regression_metrics(
     y_true: NumArray, y_preds: NumArray, verbose: bool = False
 ) -> Dict[str, Union[float, Dict[str, float]]]:
-    """Print a common selection of regression metrics
+    """Print a common selection of regression metrics.
 
     TODO make robust by finding the common axis
 
@@ -98,9 +98,12 @@ def regression_metrics(
 
 
 def classification_metrics(
-    target: NumArray, logits: NumArray, average: str = "micro", verbose: bool = False
+    target: NumArray,
+    logits: NumArray,
+    average: Literal["micro", "macro", "samples", "weighted"] = "micro",
+    verbose: bool = False,
 ) -> Dict[str, Union[float, Dict[str, float]]]:
-    """print out metrics for a classification task
+    """Print out metrics for a classification task.
 
     TODO make less janky, first index is for ensembles, second data, third classes.
     always calculate metrics in the multi-class setting. How to convert binary labels
@@ -109,9 +112,12 @@ def classification_metrics(
     Args:
         target (array): categorical encoding of the tasks
         logits (array): logits predicted by the model
+        average ("micro" | "macro" | "samples" | "weighted"): If None, the scores for
+            each class are returned. Else this determines the type of data averaging
+            performed on the data. Defaults to 'micro' calculates metrics globally by
+            considering each element of the label indicator matrix as a label.
         verbose (bool, optional): Whether to print metrics. Defaults to False.
     """
-
     if len(logits.shape) != 3:
         raise ValueError(
             "please insure that the logits are of the form (n_ens, n_data, n_classes)"
