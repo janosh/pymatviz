@@ -2,6 +2,7 @@ from typing import Dict, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.pyplot import Axes
 
 from ml_matrics.utils import NumArray
 
@@ -84,10 +85,10 @@ def err_decay(
     y_true: NumArray,
     y_pred: NumArray,
     y_stds: Union[NumArray, Dict[str, NumArray]],
-    title: str = None,
     n_rand: int = 100,
     percentiles: bool = True,
-) -> None:
+    ax: Axes = None,
+) -> Axes:
     """Plot for assessing the quality of uncertainty estimates. If a model's
     uncertainty is well calibrated, i.e. strongly correlated with its error,
     removing the most uncertain predictions should make the mean error decay
@@ -98,12 +99,19 @@ def err_decay(
         y_pred (array): Model predictions.
         y_stds (array | dict[str, NumArray]): Model uncertainties. Can be a single or
             multiple types (e.g. aleatoric/epistemic/total uncertainty) in dict form.
-        title (str, optional): Plot title. Defaults to None.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.
             of error decay by random ordering. Defaults to 100.
         percentiles (bool, optional): Whether the x-axis shows percentiless or number
             of remaining samples in the MAE calculation. Defaults to True.
+        ax (Axes): plt.Axes object. Defaults to None.
+
+    Returns:
+        Axes: plt.Axes with plotted model error drop curve based on sample exclusion
+            by order of large to small model uncertainties.
     """
+    if ax is None:
+        ax = plt.gca()
+
     xs = range(100 if percentiles else len(y_true), 0, -1)
 
     if isinstance(y_stds, np.ndarray):
@@ -127,16 +135,16 @@ def err_decay(
         )
 
     rand_hi, rand_lo = rand_mean + rand_std, rand_mean - rand_std
-    plt.plot(xs, decay_by_err, label="error")
-    plt.plot([1, 100] if percentiles else [len(xs), 0], [rand_mean, rand_mean])
-    plt.fill_between(
+    ax.plot(xs, decay_by_err, label="error")
+    ax.plot([1, 100] if percentiles else [len(xs), 0], [rand_mean, rand_mean])
+    ax.fill_between(
         xs[::-1] if percentiles else xs, rand_hi, rand_lo, alpha=0.2, label="random"
     )
-    plt.ylim([0, rand_mean.mean() * 1.1])
+    ax.set(ylim=[0, rand_mean.mean() * 1.1], ylabel="MAE")
 
     # n: Number of remaining points in err calculation after discarding the
     # (len(y_true) - n) most uncertain/hightest-error points
-    plt.xlabel("Confidence percentiles" if percentiles else "Excluded samples")
-    plt.ylabel("MAE")
-    plt.title(title)
-    plt.legend(loc="lower left")
+    ax.set(xlabel="Confidence percentiles" if percentiles else "Excluded samples")
+    ax.legend(loc="lower left")
+
+    return ax
