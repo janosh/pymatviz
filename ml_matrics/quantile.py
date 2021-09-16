@@ -72,7 +72,7 @@ def qq_gaussian(
     ax.set(xlim=(0, 1), ylim=(0, 1))
     ax.set(xlabel="Theoretical Quantile", ylabel="Observed Quantile")
 
-    legend1 = plt.legend(loc="upper left", frameon=False)
+    legend1 = ax.legend(loc="upper left", frameon=False)
     # Multiple legends on the same axes:
     # https://matplotlib.org/3.3.3/tutorials/intermediate/legend_guide.html#multiple-legends-on-the-same-axes
     ax.add_artist(legend1)
@@ -80,7 +80,7 @@ def qq_gaussian(
     lines, areas = zip(*lines)
 
     if len(lines) > 1:
-        legend2 = plt.legend(
+        legend2 = ax.legend(
             lines,
             [f"{area:.2f}" for area in areas],
             title="Miscalibration areas",
@@ -90,7 +90,7 @@ def qq_gaussian(
         )
         legend2._legend_box.align = "left"  # https://stackoverflow.com/a/44620643
     else:
-        plt.legend(
+        ax.legend(
             lines,
             [f"Miscalibration area: {areas[0]:.2f}"],
             loc="lower right",
