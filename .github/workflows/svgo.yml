@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "**.svg" # only run workflow when SVG files changed
+      - assets/*.svg # only run workflow when SVG files changed
 
 jobs:
   tests:
@@ -24,5 +24,11 @@ jobs:
       - name: Compress SVG assets and commit to current PR
         run: |
           svgo assets
-          git add assets/*.svg
-          git commit -m 'compress new SVG assets'
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name='Janosh Riebesell'
+          git config user.email=janosh.riebesell@gmail.com
+          git commit -a -m 'compress new SVG assets'
+          git push

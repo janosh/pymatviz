@@ -39,11 +39,15 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
     hooks:
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: check-yaml
+      - id: destroyed-symlinks
+      - id: double-quote-string-fixer
       - id: end-of-file-fixer
         exclude: ^assets/.+\.svg$
-      - id: check-yaml
-      - id: trailing-whitespace
       - id: mixed-line-ending
+      - id: trailing-whitespace
 
   - repo: https://github.com/PyCQA/pydocstyle
     rev: 6.1.1
