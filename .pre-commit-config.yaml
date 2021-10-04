@@ -43,7 +43,6 @@ repos:
       - id: check-symlinks
       - id: check-yaml
       - id: destroyed-symlinks
-      - id: double-quote-string-fixer
       - id: end-of-file-fixer
         exclude: ^assets/.+\.svg$
       - id: mixed-line-ending

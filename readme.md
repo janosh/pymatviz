@@ -30,23 +30,23 @@ See [`ml_matrics/parity.py`](ml_matrics/parity.py).
 
 |      [`density_scatter(xs, ys, ...)`](ml_matrics/parity.py)       | [`density_scatter_with_hist(xs, ys, ...)`](ml_matrics/parity.py)  |
 | :---------------------------------------------------------------: | :---------------------------------------------------------------: |
-|                       ![density_scatter][]                        |                  ![density_scatter_with_hist][]                   |
+|                        ![density_scatter]                         |                   ![density_scatter_with_hist]                    |
 |       [`density_hexbin(xs, ys, ...)`](ml_matrics/parity.py)       |  [`density_hexbin_with_hist(xs, ys, ...)`](ml_matrics/parity.py)  |
-|                        ![density_hexbin][]                        |                   ![density_hexbin_with_hist][]                   |
+|                         ![density_hexbin]                         |                    ![density_hexbin_with_hist]                    |
 | [`scatter_with_err_bar(xs, ys, yerr, ...)`](ml_matrics/parity.py) | [`residual_vs_actual(y_true, y_pred, ...)`](ml_matrics/parity.py) |
-|                     ![scatter_with_err_bar][]                     |                      ![residual_vs_actual][]                      |
+|                      ![scatter_with_err_bar]                      |                       ![residual_vs_actual]                       |
 
 ## Elements
 
 See [`ml_matrics/elements.py`](ml_matrics/elements.py).
 
-| [`ptable_elemental_prevalence(compositions)`](ml_matrics/elements.py) |          [`ptable_elemental_prevalence(compositions, log=True)`](ml_matrics/elements.py)          |
-| :-------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
-|                   ![ptable_elemental_prevalence][]                    |                               ![ptable_elemental_prevalence_log][]                                |
-|  [`hist_elemental_prevalence(compositions)`](ml_matrics/elements.py)  | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](ml_matrics/elements.py) |
-|                    ![hist_elemental_prevalence][]                     |                             ![hist_elemental_prevalence_log_count][]                              |
-| [`ptable_elemental_ratio(comps_a, comps_b)`](ml_matrics/elements.py)  |          [`ptable_elemental_ratio(comps_b, comps_a, log=True)`](ml_matrics/elements.py)           |
-|                      ![ptable_elemental_ratio][]                      |                                ![ptable_elemental_ratio_inverse][]                                |
+|      [`ptable_heatmap(compositions)`](ml_matrics/elements.py)       |                [`ptable_heatmap(compositions, log=True)`](ml_matrics/elements.py)                 |
+| :-----------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
+|                          ![ptable_heatmap]                          |                                       ![ptable_heatmap_log]                                       |
+| [`hist_elemental_prevalence(compositions)`](ml_matrics/elements.py) | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](ml_matrics/elements.py) |
+|                    ![hist_elemental_prevalence]                     |                              ![hist_elemental_prevalence_log_count]                               |
+| [`ptable_heatmap_ratio(comps_a, comps_b)`](ml_matrics/elements.py)  |           [`ptable_heatmap_ratio(comps_b, comps_a, log=True)`](ml_matrics/elements.py)            |
+|                       ![ptable_heatmap_ratio]                       |                                  ![ptable_heatmap_ratio_inverse]                                  |
 
 ## Uncertainty Calibration
 
@@ -54,7 +54,7 @@ See [`ml_matrics/quantile.py`](ml_matrics/quantile.py).
 
 | [`qq_gaussian(y_true, y_pred, y_std)`](ml_matrics/quantile.py) | [`qq_gaussian(y_true, y_pred, y_std: dict)`](ml_matrics/quantile.py) |
 | :------------------------------------------------------------: | :------------------------------------------------------------------: |
-|                     ![normal_prob_plot][]                      |                    ![normal_prob_plot_multiple][]                    |
+|                      ![normal_prob_plot]                       |                     ![normal_prob_plot_multiple]                     |
 
 ## Ranking
 
@@ -62,7 +62,7 @@ See [`ml_matrics/ranking.py`](ml_matrics/ranking.py).
 
 | [`err_decay(y_true, y_pred, y_std)`](ml_matrics/ranking.py) | [`err_decay(y_true, y_pred, y_std: dict)`](ml_matrics/ranking.py) |
 | :---------------------------------------------------------: | :---------------------------------------------------------------: |
-|                       ![err_decay][]                        |                      ![err_decay_multiple][]                      |
+|                        ![err_decay]                         |                       ![err_decay_multiple]                       |
 
 ## Cumulative Error and Residual
 
@@ -70,7 +70,7 @@ See [`ml_matrics/cumulative.py`](ml_matrics/cumulative.py).
 
 | [`cum_err(preds, targets)`](ml_matrics/cumulative.py) | [`cum_res(preds, targets)`](ml_matrics/cumulative.py) |
 | :---------------------------------------------------: | :---------------------------------------------------: |
-|                 ![cumulative_error][]                 |               ![cumulative_residual][]                |
+|                  ![cumulative_error]                  |                ![cumulative_residual]                 |
 
 ## Classification Metrics
 
@@ -78,7 +78,7 @@ See [`ml_matrics/relevance.py`](ml_matrics/relevance.py).
 
 | [`roc_curve(targets, proba_pos)`](ml_matrics/relevance.py) | [`precision_recall_curve(targets, proba_pos)`](ml_matrics/relevance.py) |
 | :--------------------------------------------------------: | :---------------------------------------------------------------------: |
-|                       ![roc_curve][]                       |                       ![precision_recall_curve][]                       |
+|                        ![roc_curve]                        |                        ![precision_recall_curve]                        |
 
 ## Correlation
 
@@ -86,7 +86,7 @@ See [`ml_matrics/correlation.py`](ml_matrics/correlation.py).
 
 | [`marchenko_pastur(corr_mat, gamma=ncols/nrows)`](ml_matrics/correlation.py) | [`marchenko_pastur(corr_mat_significant_eval, gamma=ncols/nrows)`](ml_matrics/correlation.py) |
 | :--------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
-|                            ![marchenko_pastur][]                             |                            ![marchenko_pastur_significant_eval][]                             |
+|                             ![marchenko_pastur]                              |                             ![marchenko_pastur_significant_eval]                              |
 
 ## Histograms
 
@@ -94,9 +94,9 @@ See [`ml_matrics/histograms.py`](ml_matrics/histograms.py).
 
 |  [`residual_hist(y_true, y_pred)`](ml_matrics/histograms.py)  | [`true_pred_hist(y_true, y_pred, y_std)`](ml_matrics/histograms.py) |
 | :-----------------------------------------------------------: | :-----------------------------------------------------------------: |
-|                      ![residual_hist][]                       |                         ![true_pred_hist][]                         |
+|                       ![residual_hist]                        |                          ![true_pred_hist]                          |
 | [`spacegroup_hist(y_true, y_pred)`](ml_matrics/histograms.py) |                                                                     |
-|                     ![spacegroup_hist][]                      |                                                                     |
+|                      ![spacegroup_hist]                       |                                                                     |
 
 ## Adding Assets
 
@@ -137,12 +137,12 @@ Consult the [`pytest`](https://docs.pytest.org/en/stable/usage.html) docs for mo
 [density_hexbin_with_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_hexbin_with_hist.svg
 [scatter_with_err_bar]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/scatter_with_err_bar.svg
 [residual_vs_actual]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/residual_vs_actual.svg
-[ptable_elemental_prevalence]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_elemental_prevalence.svg
-[ptable_elemental_prevalence_log]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_elemental_prevalence_log.svg
+[ptable_heatmap]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap.svg
+[ptable_heatmap_log]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_log.svg
 [hist_elemental_prevalence]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence.svg
 [hist_elemental_prevalence_log_count]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence_log_count.svg
-[ptable_elemental_ratio]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_elemental_ratio.svg
-[ptable_elemental_ratio_inverse]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_elemental_ratio_inverse.svg
+[ptable_heatmap_ratio]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_ratio.svg
+[ptable_heatmap_ratio_inverse]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_ratio_inverse.svg
 [normal_prob_plot]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot.svg
 [normal_prob_plot_multiple]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot_multiple.svg
 [err_decay]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/err_decay.svg
