@@ -3,8 +3,8 @@ import pandas as pd
 from ml_matrics import (
     count_elements,
     hist_elemental_prevalence,
-    ptable_elemental_prevalence,
-    ptable_elemental_ratio,
+    ptable_heatmap,
+    ptable_heatmap_ratio,
 )
 
 
@@ -31,36 +31,36 @@ def test_hist_elemental_prevalence_with_bar_values_count():
     hist_elemental_prevalence(compositions_a, keep_top=10, bar_values="count")
 
 
-def test_ptable_elemental_prevalence():
-    ptable_elemental_prevalence(compositions_a)
+def test_ptable_heatmap():
+    ptable_heatmap(compositions_a)
 
 
-def test_ptable_elemental_prevalence_log():
-    ptable_elemental_prevalence(compositions_a)
+def test_ptable_heatmap_log():
+    ptable_heatmap(compositions_a)
 
 
-def test_ptable_elemental_prevalence_cbar_max():
+def test_ptable_heatmap_cbar_max():
     cbar_max = max(counts_a.max(), counts_b.max())
-    ptable_elemental_prevalence(compositions_a, cbar_max=cbar_max)
-    ptable_elemental_prevalence(compositions_b, cbar_max=cbar_max)
+    ptable_heatmap(compositions_a, cbar_max=cbar_max)
+    ptable_heatmap(compositions_b, cbar_max=cbar_max)
 
 
-def test_ptable_elemental_prevalence_with_elem_counts():
+def test_ptable_heatmap_with_elem_counts():
     elem_counts = count_elements(compositions_a)
-    ptable_elemental_prevalence(elem_counts=elem_counts)
+    ptable_heatmap(elem_counts=elem_counts)
 
 
-def test_ptable_elemental_ratio():
-    ptable_elemental_ratio(compositions_a, compositions_b)
+def test_ptable_heatmap_ratio():
+    ptable_heatmap_ratio(compositions_a, compositions_b)
 
 
-def test_ptable_elemental_ratio_with_elem_counts():
+def test_ptable_heatmap_ratio_with_elem_counts():
     elem_counts = count_elements(compositions_a)
     elem_counts_b = count_elements(compositions_b)
-    ptable_elemental_ratio(elem_counts_a=elem_counts, elem_counts_b=elem_counts_b)
+    ptable_heatmap_ratio(elem_counts_a=elem_counts, elem_counts_b=elem_counts_b)
 
 
-def test_ptable_elemental_ratio_with_mixed():
+def test_ptable_heatmap_ratio_with_mixed():
     elem_counts_b = count_elements(compositions_b)
-    ptable_elemental_ratio(formulas_a=compositions_a, elem_counts_b=elem_counts_b)
-    ptable_elemental_ratio(formulas_b=compositions_a, elem_counts_a=elem_counts_b)
+    ptable_heatmap_ratio(formulas_a=compositions_a, elem_counts_b=elem_counts_b)
+    ptable_heatmap_ratio(formulas_b=compositions_a, elem_counts_a=elem_counts_b)
