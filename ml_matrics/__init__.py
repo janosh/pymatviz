@@ -3,8 +3,8 @@ from .cumulative import add_dropdown, cum_err, cum_res
 from .elements import (
     count_elements,
     hist_elemental_prevalence,
-    ptable_elemental_prevalence,
-    ptable_elemental_ratio,
+    ptable_heatmap,
+    ptable_heatmap_ratio,
 )
 from .histograms import residual_hist, spacegroup_hist, true_pred_hist
 from .metrics import classification_metrics, regression_metrics

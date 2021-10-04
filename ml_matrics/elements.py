@@ -52,7 +52,7 @@ def count_elements(
     return srs
 
 
-def ptable_elemental_prevalence(
+def ptable_heatmap(
     formulas: Sequence[str] = None,
     elem_counts: pd.Series = None,
     log: bool = False,
@@ -115,7 +115,7 @@ def ptable_elemental_prevalence(
         count = elem_counts[symbol]
 
         # inf (float/0) or NaN (0/0) are expected
-        # when passing in elem_counts from ptable_elemental_ratio
+        # when passing in elem_counts from ptable_heatmap_ratio
         if count == np.inf:
             color = "lightskyblue"  # not in formulas_b
             count_label = r"$\infty$"
@@ -159,7 +159,7 @@ def ptable_elemental_prevalence(
     plt.axis("off")
 
 
-def ptable_elemental_ratio(
+def ptable_heatmap_ratio(
     formulas_a: Sequence[str] = None,
     formulas_b: Sequence[str] = None,
     elem_counts_a: pd.Series = None,
@@ -177,7 +177,7 @@ def ptable_elemental_ratio(
             to prevalence count for numerator
         elem_counts_b (pd.Series | dict[str, int], optional): map from element symbol
             to prevalence count for denominator
-        kwargs (Any, optional): kwargs passed to ptable_elemental_prevalence
+        kwargs (Any, optional): kwargs passed to ptable_heatmap
     """
     elem_counts_a = count_elements(formulas_a, elem_counts_a)
 
@@ -189,9 +189,7 @@ def ptable_elemental_ratio(
     # makes different ratio plots comparable
     elem_counts /= elem_counts.sum()
 
-    ptable_elemental_prevalence(
-        elem_counts=elem_counts, cbar_title="Element Ratio", **kwargs
-    )
+    ptable_heatmap(elem_counts=elem_counts, cbar_title="Element Ratio", **kwargs)
 
     # add legend for the colours
     for y_pos, label, color, txt in [

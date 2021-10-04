@@ -7,8 +7,8 @@ from ml_matrics.correlation import marchenko_pastur
 from ml_matrics.cumulative import cum_err, cum_res
 from ml_matrics.elements import (
     hist_elemental_prevalence,
-    ptable_elemental_prevalence,
-    ptable_elemental_ratio,
+    ptable_heatmap,
+    ptable_heatmap_ratio,
 )
 from ml_matrics.histograms import (
     residual_hist,
@@ -105,17 +105,17 @@ mp_formulas = pd.read_csv(f"{ROOT}/data/mp-n_elements<2.csv").formula
 roost_formulas = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
 
 
-ptable_elemental_prevalence(mp_formulas)
-savefig("ptable_elemental_prevalence")
+ptable_heatmap(mp_formulas)
+savefig("ptable_heatmap")
 
-ptable_elemental_prevalence(mp_formulas, log=True)
-savefig("ptable_elemental_prevalence_log")
+ptable_heatmap(mp_formulas, log=True)
+savefig("ptable_heatmap_log")
 
-ptable_elemental_ratio(mp_formulas, roost_formulas)
-savefig("ptable_elemental_ratio")
+ptable_heatmap_ratio(mp_formulas, roost_formulas)
+savefig("ptable_heatmap_ratio")
 
-ptable_elemental_ratio(roost_formulas, mp_formulas)
-savefig("ptable_elemental_ratio_inverse")
+ptable_heatmap_ratio(roost_formulas, mp_formulas)
+savefig("ptable_heatmap_ratio_inverse")
 
 hist_elemental_prevalence(mp_formulas, keep_top=15, voffset=1)
 savefig("hist_elemental_prevalence")
