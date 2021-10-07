@@ -24,6 +24,28 @@ For a locally editable install, use
 git clone https://github.com/janosh/ml-matrics && pip install -e ml-matrics
 ```
 
+## Elements
+
+See [`ml_matrics/elements.py`](ml_matrics/elements.py).
+
+|      [`ptable_heatmap(compositions)`](ml_matrics/elements.py)       |                [`ptable_heatmap(compositions, log=True)`](ml_matrics/elements.py)                 |
+| :-----------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
+|                          ![ptable_heatmap]                          |                                       ![ptable_heatmap_log]                                       |
+| [`ptable_heatmap_ratio(comps_a, comps_b)`](ml_matrics/elements.py)  |           [`ptable_heatmap_ratio(comps_b, comps_a, log=True)`](ml_matrics/elements.py)            |
+|                       ![ptable_heatmap_ratio]                       |                                  ![ptable_heatmap_ratio_inverse]                                  |
+| [`hist_elemental_prevalence(compositions)`](ml_matrics/elements.py) | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](ml_matrics/elements.py) |
+|                    ![hist_elemental_prevalence]                     |                              ![hist_elemental_prevalence_log_count]                               |
+
+## Histograms
+
+See [`ml_matrics/histograms.py`](ml_matrics/histograms.py).
+
+| [`spacegroup_hist([65, 134, 225, ...])`](ml_matrics/histograms.py) | [`spacegroup_hist([65, 134, 225, ...], show_counts=False)`](ml_matrics/histograms.py) |
+| :----------------------------------------------------------------: | :-----------------------------------------------------------------------------------: |
+|                         ![spacegroup_hist]                         |                             ![spacegroup_hist_no_counts]                              |
+|    [`residual_hist(y_true, y_pred)`](ml_matrics/histograms.py)     |          [`true_pred_hist(y_true, y_pred, y_std)`](ml_matrics/histograms.py)          |
+|                          ![residual_hist]                          |                                   ![true_pred_hist]                                   |
+
 ## Parity Plots
 
 See [`ml_matrics/parity.py`](ml_matrics/parity.py).
@@ -35,18 +57,6 @@ See [`ml_matrics/parity.py`](ml_matrics/parity.py).
 |                         ![density_hexbin]                         |                    ![density_hexbin_with_hist]                    |
 | [`scatter_with_err_bar(xs, ys, yerr, ...)`](ml_matrics/parity.py) | [`residual_vs_actual(y_true, y_pred, ...)`](ml_matrics/parity.py) |
 |                      ![scatter_with_err_bar]                      |                       ![residual_vs_actual]                       |
-
-## Elements
-
-See [`ml_matrics/elements.py`](ml_matrics/elements.py).
-
-|      [`ptable_heatmap(compositions)`](ml_matrics/elements.py)       |                [`ptable_heatmap(compositions, log=True)`](ml_matrics/elements.py)                 |
-| :-----------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
-|                          ![ptable_heatmap]                          |                                       ![ptable_heatmap_log]                                       |
-| [`hist_elemental_prevalence(compositions)`](ml_matrics/elements.py) | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](ml_matrics/elements.py) |
-|                    ![hist_elemental_prevalence]                     |                              ![hist_elemental_prevalence_log_count]                               |
-| [`ptable_heatmap_ratio(comps_a, comps_b)`](ml_matrics/elements.py)  |           [`ptable_heatmap_ratio(comps_b, comps_a, log=True)`](ml_matrics/elements.py)            |
-|                       ![ptable_heatmap_ratio]                       |                                  ![ptable_heatmap_ratio_inverse]                                  |
 
 ## Uncertainty Calibration
 
@@ -88,42 +98,20 @@ See [`ml_matrics/correlation.py`](ml_matrics/correlation.py).
 | :--------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
 |                             ![marchenko_pastur]                              |                             ![marchenko_pastur_significant_eval]                              |
 
-## Histograms
-
-See [`ml_matrics/histograms.py`](ml_matrics/histograms.py).
-
-|  [`residual_hist(y_true, y_pred)`](ml_matrics/histograms.py)  | [`true_pred_hist(y_true, y_pred, y_std)`](ml_matrics/histograms.py) |
-| :-----------------------------------------------------------: | :-----------------------------------------------------------------: |
-|                       ![residual_hist]                        |                          ![true_pred_hist]                          |
-| [`spacegroup_hist(y_true, y_pred)`](ml_matrics/histograms.py) |                                                                     |
-|                      ![spacegroup_hist]                       |                                                                     |
-
 ## Adding Assets
 
 When adding new SVG assets, please compress them before committing. This can either be done online without setup at <https://vecta.io/nano> or on the command line with [`svgo`](https://github.com/svg/svgo). Install it with `npm -g svgo` (or `yarn global add svgo`). Then compress all assets in one go with `svgo assets`. (`svgo` is safe for multiple compressions).
 
 ## Testing
 
-This project uses [`pytest`](https://docs.pytest.org/en/stable/usage.html). To run the entire test suite:
+This project uses `pytest` ([docs](https://docs.pytest.org/en/stable/usage.html)). To run tests, use:
 
 ```sh
-pytest
+pytest # full test suite
+pytest tests/test_cumulative.py # single file
+pytest **/test_*_metrics.py # multiple files
+pytest -k test_precision_recall_curve # -k takes regex matching test names
 ```
-
-To run individual or groups of test files, pass `pytest` a path or glob pattern, respectively:
-
-```sh
-pytest tests/test_cumulative.py
-pytest **/test_*_metrics.py
-```
-
-To run a single test, pass its name to the `-k` flag:
-
-```sh
-pytest -k test_precision_recall_curve
-```
-
-Consult the [`pytest`](https://docs.pytest.org/en/stable/usage.html) docs for more details.
 
 ## Glossary
 
@@ -156,3 +144,4 @@ Consult the [`pytest`](https://docs.pytest.org/en/stable/usage.html) docs for mo
 [residual_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/residual_hist.svg
 [true_pred_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/true_pred_hist.svg
 [spacegroup_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_hist.svg
+[spacegroup_hist_no_counts]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_hist_no_counts.svg
