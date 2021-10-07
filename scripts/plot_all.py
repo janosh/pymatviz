@@ -174,6 +174,9 @@ phonons = pd.read_csv(f"{ROOT}/data/matbench-phonons.csv")
 spacegroup_hist(phonons.sg_number)
 savefig("spacegroup_hist")
 
+spacegroup_hist(phonons.sg_number, show_counts=False)
+savefig("spacegroup_hist_no_counts")
+
 
 # %% Correlation Plots
 rand_wide_mat = pd.read_csv(f"{ROOT}/data/rand_wide_matrix.csv", header=None).to_numpy()

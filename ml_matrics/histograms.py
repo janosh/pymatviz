@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -123,13 +123,23 @@ def true_pred_hist(
     return ax
 
 
-def spacegroup_hist(spacegroups: NumArray, ax: Axes = None, **kwargs: Any) -> Axes:
+def spacegroup_hist(
+    spacegroups: Sequence[int],
+    show_counts: bool = True,
+    show_minor_xticks: bool = False,
+    ax: Axes = None,
+    **kwargs: Any,
+) -> Axes:
     """Plot a histogram of spacegroups shaded by crystal system.
 
     (triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, cubic)
 
     Args:
         spacegroups (array): A list of spacegroup numbers.
+        show_counts (bool, optional): Whether to count the number of items
+            in each crystal system. Defaults to True.
+        show_minor_xticks (bool, optional): Whether to render minor x-ticks half way
+            through each crystal system. Defaults to False.
         ax (Axes, optional): plt.Axes object. Defaults to None.
         kwargs: Keywords passed to pd.Series.plot.bar().
 
@@ -139,8 +149,10 @@ def spacegroup_hist(spacegroups: NumArray, ax: Axes = None, **kwargs: Any) -> Ax
     if ax is None:
         ax = plt.gca()
 
-    pd.Series(spacegroups).value_counts().reindex(range(230), fill_value=0).plot.bar(
-        figsize=[15, 4], width=1, rot=0, ax=ax, **kwargs
+    sg_series = pd.Series(spacegroups)
+
+    sg_series.value_counts().reindex(range(230), fill_value=0).plot.bar(
+        figsize=[20, 5], width=1, rot=0, ax=ax, **kwargs
     )
 
     # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
@@ -156,19 +168,34 @@ def spacegroup_hist(spacegroups: NumArray, ax: Axes = None, **kwargs: Any) -> Ax
         "cubic": ("yellow", (195, 230)),
     }
 
-    for name, [color, x_lim] in crystal_systems.items():
-        x0, x1 = x_lim
+    if show_counts:
+        spacegroup_ranges = [1] + [x[1][1] for x in crystal_systems.values()]
+        crys_sys_counts = sg_series.value_counts(bins=spacegroup_ranges, sort=False)
+        crys_sys_counts.index = crystal_systems.keys()
+        ax.set_title("Totals per crystal system", fontdict={"fontsize": 20}, pad=30)
+
+    for cryst_sys, (color, (x0, x1)) in crystal_systems.items():
+
         for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
             patch.set_facecolor(color)
+
+        text_kwds = dict(transform=trans, horizontalalignment="center")
         ax.text(
-            sum(x_lim) / 2,
-            0.95,
-            name,
+            *[(x0 + x1) / 2, 0.95],
+            cryst_sys,
             rotation=90,
-            transform=trans,
             verticalalignment="top",
-            horizontalalignment="center",
+            **text_kwds,
         )
+        if show_counts:
+            count = crys_sys_counts[cryst_sys]
+            ax.text(
+                *[(x0 + x1) / 2, 1.02],
+                f"{count} ({count/len(spacegroups):.0%})",
+                fontdict={"fontsize": 14},
+                **text_kwds,
+            )
+
         ax.fill_between(
             [x0 - 1, x1],
             *[0, 1],
@@ -186,7 +213,8 @@ def spacegroup_hist(spacegroups: NumArray, ax: Axes = None, **kwargs: Any) -> Ax
     minorLocator = FixedLocator([sum(x[1]) // 2 for x in crystal_systems.values()])
 
     ax.xaxis.set_major_locator(majorLocator)
-    ax.xaxis.set_minor_locator(minorLocator)
-    ax.xaxis.set_minor_formatter(FormatStrFormatter("%d"))
+    if show_minor_xticks:
+        ax.xaxis.set_minor_locator(minorLocator)
+        ax.xaxis.set_minor_formatter(FormatStrFormatter("%d"))
 
     return ax
