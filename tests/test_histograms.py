@@ -13,3 +13,5 @@ def test_true_pred_hist():
 
 def test_spacegroup_hist():
     spacegroup_hist(range(1, 231))
+    spacegroup_hist(range(1, 231), show_counts=False)
+    spacegroup_hist(range(1, 231), show_minor_xticks=True)
