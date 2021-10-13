@@ -1,6 +1,3 @@
-# Install these hooks with `pre-commit install`.
-# Setup CI at https://pre-commit.ci.
-
 ci:
   autoupdate_schedule: quarterly
 
@@ -59,3 +56,10 @@ repos:
         # D415: First line should end with ., ? or !
         args: [--convention=google, '--add-ignore=D100,D104,D107,D205,D415']
         exclude: tests
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.1.0
+    hooks:
+    - id: codespell
+      exclude_types: [csv]
+      args: [--ignore-words-list, hist]
