@@ -1,4 +1,5 @@
-from typing import Dict, Literal, Union
+import sys
+from typing import Dict, Union
 
 import numpy as np
 from sklearn.metrics import (
@@ -9,6 +10,12 @@ from sklearn.metrics import (
 )
 
 from ml_matrics.utils import NumArray
+
+
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 
 def regression_metrics(
