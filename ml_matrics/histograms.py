@@ -18,7 +18,7 @@ def residual_hist(
     xlabel: str = None,
     **kwargs: Any,
 ) -> Axes:
-    """Plot the residual distribution overlayed with a Gaussian kernel
+    """Plot the residual distribution overlaid with a Gaussian kernel
     density estimate.
 
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/Jmb2O).
@@ -64,7 +64,7 @@ def true_pred_hist(
     **kwargs: Any,
 ) -> Axes:
     """Plot a histogram of model predictions with bars colored by the mean uncertainty of
-    predictions in that bin. Overlayed by a more transparent histogram of ground truth
+    predictions in that bin. Overlaid by a more transparent histogram of ground truth
     values.
 
     Args:
@@ -171,6 +171,7 @@ def spacegroup_hist(
     if show_counts:
         spacegroup_ranges = [1] + [x[1][1] for x in crystal_systems.values()]
         crys_sys_counts = sg_series.value_counts(bins=spacegroup_ranges, sort=False)
+        # reindex needed for crys_sys_counts[cryst_sys] below
         crys_sys_counts.index = crystal_systems.keys()
         ax.set_title("Totals per crystal system", fontdict={"fontsize": 20}, pad=30)
 
