@@ -1,19 +1,23 @@
 from os.path import abspath, dirname
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
-from numpy.typing import NDArray
 from sklearn.metrics import r2_score
 
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    NumArray = NDArray[Union[np.float64, np.int_]]
+else:
+    NumArray = Sequence[Union[int, float]]
+    NDArray = Sequence
+
 ROOT: str = dirname(dirname(abspath(__file__)))
-
-
-NumArray = NDArray[Union[np.float64, np.int_]]
 
 
 def with_hist(

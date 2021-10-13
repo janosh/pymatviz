@@ -1,4 +1,5 @@
-from typing import Any, Dict, Literal, Sequence, Union
+import sys
+from typing import Any, Dict, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +12,11 @@ from pymatgen.core import Composition
 
 from ml_matrics.utils import ROOT, annotate_bar_heights
 
+
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 PTABLE = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
 
