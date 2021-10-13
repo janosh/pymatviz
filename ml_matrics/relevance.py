@@ -19,16 +19,16 @@ def roc_curve(
         proba_pos (array): predicted probabilities for the positive class.
 
     Returns:
-        tuple[float, plt.Axes]: The classifier's ROCAUC and the plt.Axes object.
+        tuple[float, plt.Axes]: The classifier's ROC-AUC and the plt.Axes object.
     """
     if ax is None:
         ax = plt.gca()
 
     # get the metrics
-    fpr, tpr, _ = skm.roc_curve(targets, proba_pos)
+    false_pos_rate, true_pos_rate, _ = skm.roc_curve(targets, proba_pos)
     roc_auc = skm.roc_auc_score(targets, proba_pos)
 
-    ax.plot(fpr, tpr, "b", label=f"AUC = {roc_auc:.2f}")
+    ax.plot(false_pos_rate, true_pos_rate, "b", label=f"AUC = {roc_auc:.2f}")
     ax.plot([0, 1.1], [0, 1.1], "r--", label="random")
     ax.legend(loc="lower right", frameon=False)
 
