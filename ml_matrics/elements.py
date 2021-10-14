@@ -88,11 +88,10 @@ def ptable_heatmap(
     """
     elem_counts = count_elements(formulas, elem_counts)
 
-    ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
     color_map = get_cmap(cmap)
 
-    n_rows = ptable.row.max()
-    n_columns = ptable.column.max()
+    n_rows = PTABLE.row.max()
+    n_columns = PTABLE.column.max()
 
     # TODO can we pass as a kwarg and still ensure aspect ratio respected?
     fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows))
@@ -116,7 +115,7 @@ def ptable_heatmap(
 
     text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
 
-    for symbol, row, column, _ in ptable.values:
+    for symbol, row, column, _ in PTABLE.values:
         row = n_rows - row
         count = elem_counts[symbol]
 
