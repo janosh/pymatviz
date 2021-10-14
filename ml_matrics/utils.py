@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 from sklearn.metrics import r2_score
 
 
-ROOT: str = dirname(dirname(abspath(__file__)))
+ROOT = dirname(dirname(abspath(__file__)))
 
 NumArray = NDArray[Union[np.float64, np.int_]]
 
