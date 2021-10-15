@@ -103,10 +103,14 @@ savefig("residual_vs_actual")
 # %% Elemental Plots
 mp_formulas = pd.read_csv(f"{ROOT}/data/mp-n_elements<2.csv").formula
 roost_formulas = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
+df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
 
 
 ptable_heatmap(mp_formulas)
 savefig("ptable_heatmap")
+
+ptable_heatmap(df_ptable.atomic_mass)
+savefig("ptable_heatmap_atomic_mass")
 
 ptable_heatmap(mp_formulas, log=True)
 savefig("ptable_heatmap_log")

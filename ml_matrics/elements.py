@@ -8,6 +8,7 @@ from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
+from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition
 
 from ml_matrics.utils import ROOT, annotate_bar_heights
@@ -18,63 +19,65 @@ if sys.version_info >= (3, 8):
 else:
     from typing_extensions import Literal
 
-PTABLE = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
+df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
+
+ElemValues = Union[Dict[str, Union[int, float]], pd.Series, Sequence[str]]
 
 
-def count_elements(
-    formulas: Sequence[str] = None, elem_counts: Union[pd.Series, Dict[str, int]] = None
-) -> pd.Series:
-    """Count occurrences of each chemical element in a materials dataset.
+def count_elements(elem_values: ElemValues) -> pd.Series:
+    """Processes elemental heatmap data. If passed a list of strings, assume they are
+    compositions and count the occurrences of each chemical element. Else ensure the
+    data is a pd.Series filled with zero values for missing element symbols.
 
     Args:
-        formulas (list[str], optional): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
-        elem_counts (pd.Series | dict[str, int], optional): map from element symbol to
-            prevalence counts
+        elem_values (dict[str, int | float] | pd.Series | list[str]): Map from element
+            symbols to heatmap values or iterable of composition strings/objects.
 
     Returns:
-        pd.Series: Total number of appearances of each element in `formulas`.
+        pd.Series: Map element symbols to heatmap values.
     """
-    if (formulas is None and elem_counts is None) or (
-        formulas is not None and elem_counts is not None
-    ):
-        raise ValueError("provide either formulas or elem_counts, not neither nor both")
+    # ensure elem_values is Series if we got dict/list/tuple
+    srs = pd.Series(elem_values)
 
-    # ensure elem_counts is Series if we got a dict
-    elem_counts = pd.Series(elem_counts)
+    if is_numeric_dtype(srs):
+        pass
+    elif is_string_dtype(srs):
+        # assume all items in elem_values are composition strings
+        formula2dict = lambda str: pd.Series(
+            Composition(str).fractional_composition.as_dict()
+        )
+        # sum up element occurrences
+        srs = pd.Series(elem_values).apply(formula2dict).sum()
+    else:
+        raise ValueError(
+            "Expected map from element symbols to heatmap values or a iterable of "
+            f"compositions (strings or Pymatgen objects), got {elem_values=}"
+        )
 
-    if formulas is None:
-        return elem_counts
-
-    formula2dict = lambda str: pd.Series(
-        Composition(str).fractional_composition.as_dict()
-    )
-
-    srs = pd.Series(formulas).apply(formula2dict).sum()
-
-    # ensure all elements are present in returned Series (with count zero if they
+    # ensure all elements are present in returned Series (with value zero if they
     # weren't in formulas)
+    zeros = pd.Series(0, index=df_ptable.symbol)
+
     # fill_value=0 required as max(NaN, any int) = NaN
-    srs = srs.combine(pd.Series(0, index=PTABLE.symbol), max, fill_value=0)
+    srs = srs.combine(zeros, max, fill_value=0)
     return srs
 
 
 def ptable_heatmap(
-    formulas: Sequence[str] = None,
-    elem_counts: pd.Series = None,
+    elem_values: ElemValues,
     log: bool = False,
     ax: Axes = None,
     cbar_title: str = "Element Count",
     cbar_max: Union[float, int, None] = None,
     cmap: str = "summer_r",
 ) -> None:
-    """Display the prevalence of each element in a materials dataset plotted as a
-    heatmap over the periodic table. `formulas` xor `elem_counts` must be passed.
+    """Plot a heatmap across the periodic table of elements.
 
-    Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
+    Inspired by from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
 
     Args:
-        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
-        elem_counts (pd.Series): Map from element symbol to prevalence count
+        elem_values (dict[str, int | float] | pd.Series | list[str]): Map from element
+            symbols to heatmap values or iterable of composition strings/objects.
         log (bool, optional): Whether color map scale is log or linear.
         ax (Axes, optional): plt.Axes object. Defaults to None.
         cbar_title (str, optional): Title for colorbar. Defaults to "Element Count".
@@ -84,14 +87,14 @@ def ptable_heatmap(
         cmap (str, optional): Matplotlib colormap name to use. Defaults to "YlGn".
 
     Raises:
-        ValueError: provide either formulas or elem_counts, not neither nor both
+        ValueError: provide either formulas or elem_values, not neither nor both
     """
-    elem_counts = count_elements(formulas, elem_counts)
+    elem_values = count_elements(elem_values)
 
     color_map = get_cmap(cmap)
 
-    n_rows = PTABLE.row.max()
-    n_columns = PTABLE.column.max()
+    n_rows = df_ptable.row.max()
+    n_columns = df_ptable.column.max()
 
     # TODO can we pass as a kwarg and still ensure aspect ratio respected?
     fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows))
@@ -104,7 +107,7 @@ def ptable_heatmap(
     norm = LogNorm() if log else Normalize()
 
     # replace positive and negative infinities with NaN values, then drop all NaNs
-    clean_scale = elem_counts.replace([np.inf, -np.inf], np.nan).dropna()
+    clean_scale = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
 
     if cbar_max is not None:
         color_scale = [min(clean_scale.to_list()), cbar_max]
@@ -115,12 +118,13 @@ def ptable_heatmap(
 
     text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
 
-    for symbol, row, column, _ in PTABLE.values:
-        row = n_rows - row
-        count = elem_counts[symbol]
+    for symbol, row, column, *_ in df_ptable.values:
+
+        row = n_rows - row  # makes periodic table right side up
+        count = elem_values[symbol]
 
         # inf (float/0) or NaN (0/0) are expected
-        # when passing in elem_counts from ptable_heatmap_ratio
+        # when passing in elem_values from ptable_heatmap_ratio
         if count == np.inf:
             color = "lightskyblue"  # not in formulas_b
             count_label = r"$\infty$"
@@ -128,11 +132,11 @@ def ptable_heatmap(
             color = "white"  # not in either formulas_a nor formulas_b
             count_label = "0/0"
         else:
-            color = color_map(norm(count)) if count > 0 else "silver"
+            color = color_map(norm(count)) if count > 0 else "#EEE"  # light gray
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             count_label = f"{count:.2g}".replace("e+0", "e")
 
-        if row < 3:
+        if row < 3:  # vertical offset for lanthanide + actinide series
             row += 0.5
         rect = Rectangle((column, row), rw, rh, edgecolor="gray", facecolor=color)
 
@@ -165,11 +169,7 @@ def ptable_heatmap(
 
 
 def ptable_heatmap_ratio(
-    formulas_a: Sequence[str] = None,
-    formulas_b: Sequence[str] = None,
-    elem_counts_a: pd.Series = None,
-    elem_counts_b: pd.Series = None,
-    **kwargs: Any,
+    elem_values_a: ElemValues, elem_values_b: ElemValues, **kwargs: Any
 ) -> None:
     """Display the ratio of the normalised prevalence of each element for two sets of
     compositions.
@@ -178,23 +178,23 @@ def ptable_heatmap_ratio(
         formulas_a (list[str], optional): numerator compositional strings, e.g
             ["Fe2O3", "Bi2Te3"]
         formulas_b (list[str], optional): denominator compositional strings
-        elem_counts_a (pd.Series | dict[str, int], optional): map from element symbol
+        elem_values_a (pd.Series | dict[str, int], optional): map from element symbol
             to prevalence count for numerator
-        elem_counts_b (pd.Series | dict[str, int], optional): map from element symbol
+        elem_values_b (pd.Series | dict[str, int], optional): map from element symbol
             to prevalence count for denominator
         kwargs (Any, optional): kwargs passed to ptable_heatmap
     """
-    elem_counts_a = count_elements(formulas_a, elem_counts_a)
+    elem_values_a = count_elements(elem_values_a)
 
-    elem_counts_b = count_elements(formulas_b, elem_counts_b)
+    elem_values_b = count_elements(elem_values_b)
 
-    elem_counts = elem_counts_a / elem_counts_b
+    elem_values = elem_values_a / elem_values_b
 
     # normalize elemental distributions, just a scaling factor but
     # makes different ratio plots comparable
-    elem_counts /= elem_counts.sum()
+    elem_values /= elem_values.sum()
 
-    ptable_heatmap(elem_counts=elem_counts, cbar_title="Element Ratio", **kwargs)
+    ptable_heatmap(elem_values, cbar_title="Element Ratio", **kwargs)
 
     # add legend for the colours
     for y_pos, label, color, txt in [
@@ -219,7 +219,7 @@ def hist_elemental_prevalence(
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
 
     Args:
-        formulas (list): compositional strings, e.g. ["Fe2O3", "Bi2Te3"]
+        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
         log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
         ax (Axes): plt.Axes object. Defaults to None.
