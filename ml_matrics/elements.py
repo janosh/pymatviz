@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Sequence, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +18,7 @@ if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal
+
 
 df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
 
@@ -70,6 +71,10 @@ def ptable_heatmap(
     cbar_title: str = "Element Count",
     cbar_max: Union[float, int, None] = None,
     cmap: str = "summer_r",
+    zero_color: str = "#DDD",  # light gray
+    infty_color: str = "lightskyblue",
+    na_color: str = "white",
+    heat_labels: Literal["value", "fraction", "percent", None] = "value",
 ) -> None:
     """Plot a heatmap across the periodic table of elements.
 
@@ -85,11 +90,34 @@ def ptable_heatmap(
             if smaller than the largest plotted value. For creating multiple plots with
             identical color bars for visual comparison. Defaults to 0.
         cmap (str, optional): Matplotlib colormap name to use. Defaults to "YlGn".
+        zero_color (str): Color to use for elements with value zero. Defaults to "#DDD"
+            (light gray).
+        infty_color: Color to use for elements with value infinity. Defaults to
+            "lightskyblue".
+        na_color: Color to use for elements with value infinity. Defaults to "white".
+        heat_labels ("value" | "fraction" | "percent" | None): Whether to display heat
+            values as is (value), normalized as a fraction of the total, as percentages
+            or not at all (None). Defaults to "value".
+            "fraction" and "percent" can be used to make the colors in different heatmap
+            (and ratio) plots comparable.
 
     Raises:
         ValueError: provide either formulas or elem_values, not neither nor both
     """
+    if log and heat_labels in ("fraction", "percent"):
+        raise ValueError(
+            "Combining log color scale and heat_labels='fraction'/'percent' unsupported"
+        )
+
     elem_values = count_elements(elem_values)
+
+    # replace positive and negative infinities with NaN values, then drop all NaNs
+    clean_vals = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
+
+    if heat_labels in ("fraction", "percent"):
+        # ignore inf values in sum() else all would be set to 0 by normalizing
+        elem_values /= clean_vals.sum()
+        clean_vals /= clean_vals.sum()  # normalize as well for norm.autoscale() below
 
     color_map = get_cmap(cmap)
 
@@ -106,61 +134,78 @@ def ptable_heatmap(
 
     norm = LogNorm() if log else Normalize()
 
-    # replace positive and negative infinities with NaN values, then drop all NaNs
-    clean_scale = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
-
+    norm.autoscale(clean_vals.to_numpy())
     if cbar_max is not None:
-        color_scale = [min(clean_scale.to_list()), cbar_max]
-    else:
-        color_scale = clean_scale.to_list()
-
-    norm.autoscale(color_scale)
+        norm.vmax = cbar_max
 
     text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
 
     for symbol, row, column, *_ in df_ptable.values:
 
         row = n_rows - row  # makes periodic table right side up
-        count = elem_values[symbol]
+        heat_val = elem_values[symbol]
 
-        # inf (float/0) or NaN (0/0) are expected
-        # when passing in elem_values from ptable_heatmap_ratio
-        if count == np.inf:
-            color = "lightskyblue"  # not in formulas_b
-            count_label = r"$\infty$"
-        elif pd.isna(count):
-            color = "white"  # not in either formulas_a nor formulas_b
-            count_label = "0/0"
+        # inf (float/0) or NaN (0/0) are expected when passing in elem_values from
+        # ptable_heatmap_ratio
+        if heat_val == np.inf:
+            color = infty_color  # not in denominator
+            label = r"$\infty$"
+        elif pd.isna(heat_val):
+            color = na_color  # neither numerator nor denominator
+            label = r"$0\,/\,0$"
         else:
-            color = color_map(norm(count)) if count > 0 else "#EEE"  # light gray
-            # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
-            count_label = f"{count:.2g}".replace("e+0", "e")
+            color = color_map(norm(heat_val)) if heat_val > 0 else zero_color
 
+            label = f"{heat_val:{'.1%' if heat_labels == 'percent' else '.3g'}}"
+            # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
+            label = label.replace("e+0", "e")
         if row < 3:  # vertical offset for lanthanide + actinide series
             row += 0.5
         rect = Rectangle((column, row), rw, rh, edgecolor="gray", facecolor=color)
 
+        if heat_labels is None:
+            # no value to display below in colored rectangle so center element symbol
+            text_style["verticalalignment"] = "center"
+
         plt.text(column + 0.5 * rw, row + 0.5 * rh, symbol, **text_style)
-        plt.text(
-            column + 0.5 * rw,
-            row + 0.1 * rh,
-            count_label,
-            fontsize=12,
-            horizontalalignment="center",
-        )
+
+        if heat_labels is not None:
+            plt.text(
+                column + 0.5 * rw,
+                row + 0.1 * rh,
+                label,
+                fontsize=12,
+                horizontalalignment="center",
+            )
 
         ax.add_patch(rect)
 
-    # colorbar position and size: [bar_xpos, bar_ypos, bar_width, bar_height]
-    # anchored at lower left corner
-    cb_ax = ax.inset_axes([0.18, 0.8, 0.42, 0.05], transform=ax.transAxes)
-    # format major and minor ticks
-    cb_ax.tick_params(which="both", labelsize=14, width=1)
+    if heat_labels is not None:
 
-    mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
-    cbar = fig.colorbar(mappable, orientation="horizontal", cax=cb_ax)
-    cbar.outline.set_linewidth(1)
-    cb_ax.set_title(cbar_title, pad=10, **text_style)
+        # colorbar position and size: [bar_xpos, bar_ypos, bar_width, bar_height]
+        # anchored at lower left corner
+        cb_ax = ax.inset_axes([0.18, 0.8, 0.42, 0.05], transform=ax.transAxes)
+        # format major and minor ticks
+        cb_ax.tick_params(which="both", labelsize=14, width=1)
+
+        mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+
+        def tick_fmt(val: float, pos: int) -> str:
+            # val: value at color axis tick (e.g. 10.0, 20.0, ...)
+            # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
+            if heat_labels == "percent":
+                # display color bar values as percentages
+                return f"{val:.0%}"
+            if val < 1e4:
+                return f"{val:.0f}"
+            return f"{val:.2g}"
+
+        cbar = fig.colorbar(
+            mappable, cax=cb_ax, orientation="horizontal", format=tick_fmt
+        )
+
+        cbar.outline.set_linewidth(1)
+        cb_ax.set_title(cbar_title, pad=10, **text_style)
 
     plt.ylim(0.3, n_rows + 0.1)
     plt.xlim(0.9, n_columns + 1)
@@ -169,41 +214,51 @@ def ptable_heatmap(
 
 
 def ptable_heatmap_ratio(
-    elem_values_a: ElemValues, elem_values_b: ElemValues, **kwargs: Any
+    elem_values_num: ElemValues,
+    elem_values_denom: ElemValues,
+    cbar_title: str = "Element Ratio",
+    not_in_numerator: Tuple[str, str] = ("#DDD", "gray: not in 1st list"),
+    not_in_denominator: Tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
+    not_in_either: Tuple[str, str] = ("white", "white: not in either"),
+    **kwargs: Any,
 ) -> None:
-    """Display the ratio of the normalised prevalence of each element for two sets of
-    compositions.
+    """Display the ratio of two maps from element symbols to heat values or of two sets
+    of compositions.
 
     Args:
-        formulas_a (list[str], optional): numerator compositional strings, e.g
-            ["Fe2O3", "Bi2Te3"]
-        formulas_b (list[str], optional): denominator compositional strings
-        elem_values_a (pd.Series | dict[str, int], optional): map from element symbol
-            to prevalence count for numerator
-        elem_values_b (pd.Series | dict[str, int], optional): map from element symbol
-            to prevalence count for denominator
+        elem_values_num (dict[str, int | float] | pd.Series | list[str]): Map from
+            element symbols to heatmap values or iterable of composition strings/objects
+            in the numerator.
+        elem_values_denom (dict[str, int | float] | pd.Series | list[str]): Map from
+            element symbols to heatmap values or iterable of composition strings/objects
+            in the denominator.
+        cbar_title (str): Title for the color bar. Defaults to "Element Ratio".
+        not_in_numerator (tuple[str, str]): Color and legend description used for
+            elements missing from numerator.
+        not_in_denominator (tuple[str, str]): See not_in_numerator.
+        not_in_either (tuple[str, str]): See not_in_numerator.
         kwargs (Any, optional): kwargs passed to ptable_heatmap
     """
-    elem_values_a = count_elements(elem_values_a)
+    elem_values_num = count_elements(elem_values_num)
 
-    elem_values_b = count_elements(elem_values_b)
+    elem_values_denom = count_elements(elem_values_denom)
 
-    elem_values = elem_values_a / elem_values_b
+    elem_values = elem_values_num / elem_values_denom
 
-    # normalize elemental distributions, just a scaling factor but
-    # makes different ratio plots comparable
-    elem_values /= elem_values.sum()
+    kwargs["zero_color"] = not_in_numerator[0]
+    kwargs["infty_color"] = not_in_denominator[0]
+    kwargs["na_color"] = not_in_either[0]
 
-    ptable_heatmap(elem_values, cbar_title="Element Ratio", **kwargs)
+    ptable_heatmap(elem_values, cbar_title=cbar_title, **kwargs)
 
-    # add legend for the colours
-    for y_pos, label, color, txt in [
-        [0.4, "white", "white", "not in either"],
-        [1.1, "blue", "lightskyblue", "not in 2nd list"],
-        [1.8, "gray", "silver", "not in 1st list"],
-    ]:
-        bbox = {"facecolor": color, "edgecolor": "gray"}
-        plt.text(0.8, y_pos, f"{label}: {txt}", fontsize=12, bbox=bbox)
+    # add legend handles
+    for y_pos, color, txt in (
+        (1.8, *not_in_numerator),
+        (1.1, *not_in_denominator),
+        (0.4, *not_in_either),
+    ):
+        bbox = dict(facecolor=color, edgecolor="gray")
+        plt.text(0.8, y_pos, txt, fontsize=12, bbox=bbox)
 
 
 def hist_elemental_prevalence(

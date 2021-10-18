@@ -112,8 +112,14 @@ savefig("ptable_heatmap")
 ptable_heatmap(df_ptable.atomic_mass)
 savefig("ptable_heatmap_atomic_mass")
 
+ptable_heatmap(mp_formulas, heat_labels="percent")
+savefig("ptable_heatmap_percent")
+
 ptable_heatmap(mp_formulas, log=True)
 savefig("ptable_heatmap_log")
+
+ptable_heatmap(mp_formulas, log=True, cbar_max=1e3)
+savefig("ptable_heatmap_log_cbar_max")
 
 ptable_heatmap_ratio(mp_formulas, roost_formulas)
 savefig("ptable_heatmap_ratio")
