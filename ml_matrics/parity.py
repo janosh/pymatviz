@@ -24,7 +24,8 @@ def hist_density(
         bins (int, optional): Number of bins (histogram resolution). Defaults to 100.
 
     Returns:
-        tuple[array]: x- and y-coordinates (sorted by density) as well as density itself
+        tuple[array, array]: x- and y-coordinates (sorted by density) as well as density
+            itself
     """
     data, x_e, y_e = np.histogram2d(xs, ys, bins=bins)
 
@@ -63,7 +64,7 @@ def density_scatter(
     Args:
         xs (array): x values.
         ys (array): y values.
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         color_map (str, optional): plt color map or valid string name.
             Defaults to "Blues".
         sort (bool, optional): Whether to sort the data. Defaults to True.
@@ -78,7 +79,7 @@ def density_scatter(
             Defaults to True.
 
     Returns:
-        Axes: plt.Axes object with plotted data.
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -122,13 +123,13 @@ def scatter_with_err_bar(
         ys (array): y-values
         xerr (array, optional): Horizontal error bars. Defaults to None.
         yerr (array, optional): Vertical error bars. Defaults to None.
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         title (str, optional): Plot tile. Defaults to None.
 
     Returns:
-        Axes: plt.Axes object with plotted data.
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -161,7 +162,7 @@ def density_hexbin(
     Args:
         xs (array): x values
         yx (array): y values
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         weights (array, optional): If given, these values are accumulated in the bins.
             Otherwise, every point has value 1. Must be of the same length as x and y.
             Defaults to None.
@@ -169,7 +170,7 @@ def density_hexbin(
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
 
     Returns:
-        Axes: plt.Axes object
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -230,10 +231,10 @@ def residual_vs_actual(y_true: NumArray, y_pred: NumArray, ax: Axes = None) -> A
     Args:
         y_true (array): Ground truth values
         y_pred (array): Model predictions
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
-        Axes: plt.Axes object
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()

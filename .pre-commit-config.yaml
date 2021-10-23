@@ -60,6 +60,14 @@ repos:
   - repo: https://github.com/codespell-project/codespell
     rev: v2.1.0
     hooks:
-    - id: codespell
-      exclude_types: [csv]
-      args: [--ignore-words-list, hist]
+      - id: codespell
+        exclude_types: [csv]
+        args: [--ignore-words-list, hist]
+
+  - repo: local
+    hooks:
+      - id: svg-assets
+        name: SVG assets
+        entry: Files under assets/* must end in .svg
+        language: fail
+        files: ^assets/.*(?<!\.svg)$

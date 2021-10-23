@@ -10,11 +10,7 @@ from ml_matrics.elements import (
     ptable_heatmap,
     ptable_heatmap_ratio,
 )
-from ml_matrics.histograms import (
-    residual_hist,
-    spacegroup_hist,
-    true_pred_hist,
-)
+from ml_matrics.histograms import residual_hist, spacegroup_hist, true_pred_hist
 from ml_matrics.parity import (
     density_hexbin,
     density_hexbin_with_hist,
