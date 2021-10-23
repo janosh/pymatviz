@@ -31,7 +31,9 @@ def regression_metrics(
         verbose (bool, optional): Whether to print metrics. Defaults to False.
 
     Returns:
-        Tuple[float]:
+        dict[str, float | dict[str, float]]: For single models, map from metrics (MAE,
+            RMSE, R^2) to values. For ensembles, a dictionary containing two sub dicts,
+            one with those metrics for single models (mean + std) and one for ensemble.
     """
     y_preds = np.atleast_2d(y_preds)
     y_true = y_true.ravel()

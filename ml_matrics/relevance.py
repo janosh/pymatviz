@@ -17,9 +17,10 @@ def roc_curve(
     Args:
         targets (array): Ground truth targets.
         proba_pos (array): predicted probabilities for the positive class.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
-        tuple[float, plt.Axes]: The classifier's ROC-AUC and the plt.Axes object.
+        tuple[float, ax]: The classifier's ROC-AUC and the plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -46,9 +47,10 @@ def precision_recall_curve(
     Args:
         targets (array): Ground truth targets.
         proba_pos (array): predicted probabilities for the positive class.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
-        tuple[float, plt.Axes]: The classifier's precision score and the plt.Axes object
+        tuple[float, ax]: The classifier's precision score and the matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()

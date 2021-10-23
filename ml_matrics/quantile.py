@@ -32,10 +32,10 @@ def qq_gaussian(
         y_true (array): ground truth targets
         y_pred (array): model predictions
         y_std (array | dict[str, array]): model uncertainties
-        ax (Axes): plt.Axes object. Defaults to None.
+        ax (Axes): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
-        Axes: plt.Axes object with plotted data.
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()

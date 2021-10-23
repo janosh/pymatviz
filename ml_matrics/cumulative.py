@@ -9,7 +9,7 @@ def add_dropdown(ax: Axes, percentile: int, err: NumArray) -> None:
     """Add a dashed drop-down line at a given percentile.
 
     Args:
-        ax (Axes): plt.Axes object on which to add the dropdown.
+        ax (Axes): matplotlib Axes on which to add the dropdown.
         percentile (int): Integer in range(100) at which to display dropdown line.
         err (array): Numpy array of errors = abs(preds - targets).
     """
@@ -20,13 +20,16 @@ def add_dropdown(ax: Axes, percentile: int, err: NumArray) -> None:
     )
 
 
-def cum_res(preds: NumArray, targets: NumArray, ax: Axes = None) -> None:
+def cum_res(preds: NumArray, targets: NumArray, ax: Axes = None) -> Axes:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
     Args:
         preds (array): Numpy array of predictions.
         targets (array): Numpy array of targets.
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+
+    Returns:
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -60,14 +63,19 @@ def cum_res(preds: NumArray, targets: NumArray, ax: Axes = None) -> None:
     ax.set(xlabel="Residual", ylabel="Percentile", title="Cumulative Residual")
     ax.legend(frameon=False)
 
+    return ax
 
-def cum_err(preds: NumArray, targets: NumArray, ax: Axes = None) -> None:
+
+def cum_err(preds: NumArray, targets: NumArray, ax: Axes = None) -> Axes:
     """Plot the empirical cumulative distribution for the absolute errors abs(y - y_hat).
 
     Args:
         preds (array): Numpy array of predictions.
         targets (array): Numpy array of targets.
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+
+    Returns:
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -89,3 +97,5 @@ def cum_err(preds: NumArray, targets: NumArray, ax: Axes = None) -> None:
     # Label the plot
     ax.set(xlabel="Absolute Error", ylabel="Percentile", title="Cumulative Error")
     ax.legend(frameon=False)
+
+    return ax

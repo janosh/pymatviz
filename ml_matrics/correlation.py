@@ -41,7 +41,7 @@ def marchenko_pastur(
     sigma: float = 1,
     filter_high_evals: bool = False,
     ax: Axes = None,
-) -> None:
+) -> Axes:
     """Plot the eigenvalue distribution of a symmetric matrix (usually a correlation
     matrix) against the Marchenko Pastur distribution.
 
@@ -58,7 +58,10 @@ def marchenko_pastur(
         filter_high_evals (bool, optional): Whether to filter out eigenvalues larger
             than theoretical random maximum. Useful for focusing the plot on the area
             of the MP PDF. Defaults to False.
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+
+    Returns:
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -91,3 +94,5 @@ def marchenko_pastur(
         transform=ax.transAxes,
         ha="right",
     )
+
+    return ax
