@@ -103,11 +103,11 @@ def err_decay(
             of error decay by random ordering. Defaults to 100.
         percentiles (bool, optional): Whether the x-axis shows percentiless or number
             of remaining samples in the MAE calculation. Defaults to True.
-        ax (Axes): plt.Axes object. Defaults to None.
+        ax (Axes): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
-        Axes: plt.Axes with plotted model error drop curve based on sample exclusion
-            by order of large to small model uncertainties.
+        ax: matplotlib Axes object with plotted model error drop curve based on
+            excluding data points by order of large to small model uncertainties.
     """
     if ax is None:
         ax = plt.gca()

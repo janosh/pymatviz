@@ -51,7 +51,7 @@ def count_elements(elem_values: ElemValues) -> pd.Series:
         srs = pd.Series(elem_values).apply(formula2dict).sum()
     else:
         raise ValueError(
-            "Expected map from element symbols to heatmap values or a iterable of "
+            "Expected map from element symbols to heatmap values or a list of "
             f"compositions (strings or Pymatgen objects), got {elem_values=}"
         )
 
@@ -75,16 +75,15 @@ def ptable_heatmap(
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
-) -> None:
+    precision: str = None,
+) -> Axes:
     """Plot a heatmap across the periodic table of elements.
-
-    Inspired by from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
 
     Args:
         elem_values (dict[str, int | float] | pd.Series | list[str]): Map from element
             symbols to heatmap values or iterable of composition strings/objects.
         log (bool, optional): Whether color map scale is log or linear.
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         cbar_title (str, optional): Title for colorbar. Defaults to "Element Count".
         cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
             if smaller than the largest plotted value. For creating multiple plots with
@@ -100,9 +99,12 @@ def ptable_heatmap(
             or not at all (None). Defaults to "value".
             "fraction" and "percent" can be used to make the colors in different heatmap
             (and ratio) plots comparable.
+        precision (str): f-string format option for heat labels. Defaults to None in
+            which case we fall back on ".1%" (1 decimal place) if heat_labels="percent"
+            else ".3g".
 
-    Raises:
-        ValueError: provide either formulas or elem_values, not neither nor both
+    Returns:
+        ax: matplotlib Axes with the heatmap.
     """
     if log and heat_labels in ("fraction", "percent"):
         raise ValueError(
@@ -156,7 +158,10 @@ def ptable_heatmap(
         else:
             color = color_map(norm(heat_val)) if heat_val > 0 else zero_color
 
-            label = f"{heat_val:{'.1%' if heat_labels == 'percent' else '.3g'}}"
+            if heat_labels == "percent":
+                label = f"{heat_val:{precision or '.1%'}}"
+            else:
+                label = f"{heat_val:{precision or '.3g'}}"
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             label = label.replace("e+0", "e")
         if row < 3:  # vertical offset for lanthanide + actinide series
@@ -170,12 +175,15 @@ def ptable_heatmap(
         plt.text(column + 0.5 * rw, row + 0.5 * rh, symbol, **text_style)
 
         if heat_labels is not None:
+            textcolor = "white" if norm(heat_val) > 0.8 else "black"
+
             plt.text(
                 column + 0.5 * rw,
                 row + 0.1 * rh,
                 label,
                 fontsize=12,
                 horizontalalignment="center",
+                color=textcolor,
             )
 
         ax.add_patch(rect)
@@ -211,6 +219,7 @@ def ptable_heatmap(
     plt.xlim(0.9, n_columns + 1)
 
     plt.axis("off")
+    return ax
 
 
 def ptable_heatmap_ratio(
@@ -221,7 +230,7 @@ def ptable_heatmap_ratio(
     not_in_denominator: Tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
     not_in_either: Tuple[str, str] = ("white", "white: not in either"),
     **kwargs: Any,
-) -> None:
+) -> Axes:
     """Display the ratio of two maps from element symbols to heat values or of two sets
     of compositions.
 
@@ -237,7 +246,10 @@ def ptable_heatmap_ratio(
             elements missing from numerator.
         not_in_denominator (tuple[str, str]): See not_in_numerator.
         not_in_either (tuple[str, str]): See not_in_numerator.
-        kwargs (Any, optional): kwargs passed to ptable_heatmap
+        kwargs (Any, optional): kwargs passed to ptable_heatmap.
+
+    Returns:
+        ax: The plot's matplotlib Axes.
     """
     elem_values_num = count_elements(elem_values_num)
 
@@ -249,7 +261,7 @@ def ptable_heatmap_ratio(
     kwargs["infty_color"] = not_in_denominator[0]
     kwargs["na_color"] = not_in_either[0]
 
-    ptable_heatmap(elem_values, cbar_title=cbar_title, **kwargs)
+    ax = ptable_heatmap(elem_values, cbar_title=cbar_title, precision=".1f", **kwargs)
 
     # add legend handles
     for y_pos, color, txt in (
@@ -259,6 +271,8 @@ def ptable_heatmap_ratio(
     ):
         bbox = dict(facecolor=color, edgecolor="gray")
         plt.text(0.8, y_pos, txt, fontsize=12, bbox=bbox)
+
+    return ax
 
 
 def hist_elemental_prevalence(
@@ -277,7 +291,7 @@ def hist_elemental_prevalence(
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
         log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
-        ax (Axes): plt.Axes object. Defaults to None.
+        ax (Axes): matplotlib Axes on which to plot. Defaults to None.
         bar_values ('percent'|'count'|None): 'percent' annotates bars with the
             percentage each element makes up in the total element count. 'count'
             displays count itself. None removes bar labels.
@@ -306,3 +320,5 @@ def hist_elemental_prevalence(
         else:
             labels = non_zero.astype(int).to_list()
         annotate_bar_heights(ax, labels=labels, **kwargs)
+
+    return ax

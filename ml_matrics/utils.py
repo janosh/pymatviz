@@ -34,7 +34,7 @@ def with_hist(
         bins (int, optional): Resolution/bin count of the histograms. Defaults to 100.
 
     Returns:
-        Axes: The axes to be used to for the main plot.
+        ax: The matplotlib Axes to be used for the main plot.
     """
     fig = plt.gcf()
 
@@ -124,7 +124,7 @@ def add_mae_r2_box(
     Args:
         xs (array, optional): x values.
         ys (array, optional): y values.
-        ax (plt.Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to add the box. Defaults to None.
         loc (str, optional): Where on the plot to place the AnchoredText object.
             Defaults to "lower right".
         prec (int, optional): # of decimal places in printed metrics. Defaults to 3.

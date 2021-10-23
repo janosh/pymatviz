@@ -26,11 +26,11 @@ def residual_hist(
     Args:
         y_true (array): ground truth targets
         y_pred (array): model predictions
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to None.
 
     Returns:
-        Axes: plt.Axes object with plotted data.
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -71,7 +71,7 @@ def true_pred_hist(
         y_true (array): ground truth targets
         y_pred (array): model predictions
         y_std (array): model uncertainty
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         cmap (str, optional): string identifier of a plt colormap. Defaults to 'hot'.
         bins (int, optional): Histogram resolution. Defaults to 50.
         log (bool, optional): Whether to log-scale the y-axis. Defaults to True.
@@ -79,7 +79,7 @@ def true_pred_hist(
             Defaults to 'blue'.
 
     Returns:
-        Axes: plt.Axes object with plotted data.
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -140,11 +140,11 @@ def spacegroup_hist(
             in each crystal system. Defaults to True.
         show_minor_xticks (bool, optional): Whether to render minor x-ticks half way
             through each crystal system. Defaults to False.
-        ax (Axes, optional): plt.Axes object. Defaults to None.
+        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         kwargs: Keywords passed to pd.Series.plot.bar().
 
     Returns:
-        Axes: plt.Axes object
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
@@ -152,7 +152,7 @@ def spacegroup_hist(
     sg_series = pd.Series(spacegroups)
 
     sg_series.value_counts().reindex(range(230), fill_value=0).plot.bar(
-        figsize=[20, 5], width=1, rot=0, ax=ax, **kwargs
+        figsize=[16, 4], width=1, rot=0, ax=ax, **kwargs
     )
 
     # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
@@ -173,7 +173,7 @@ def spacegroup_hist(
         crys_sys_counts = sg_series.value_counts(bins=spacegroup_ranges, sort=False)
         # reindex needed for crys_sys_counts[cryst_sys] below
         crys_sys_counts.index = crystal_systems.keys()
-        ax.set_title("Totals per crystal system", fontdict={"fontsize": 20}, pad=30)
+        ax.set_title("Totals per crystal system", fontdict={"fontsize": 18}, pad=30)
 
     for cryst_sys, (color, (x0, x1)) in crystal_systems.items():
 
@@ -186,14 +186,15 @@ def spacegroup_hist(
             cryst_sys,
             rotation=90,
             verticalalignment="top",
+            fontdict={"fontsize": 14},
             **text_kwds,
         )
         if show_counts:
             count = crys_sys_counts[cryst_sys]
             ax.text(
                 *[(x0 + x1) / 2, 1.02],
-                f"{count} ({count/len(spacegroups):.0%})",
-                fontdict={"fontsize": 14},
+                f"{count:,} ({count/len(spacegroups):.0%})",
+                fontdict={"fontsize": 12},
                 **text_kwds,
             )
 
