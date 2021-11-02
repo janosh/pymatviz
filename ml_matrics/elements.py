@@ -51,8 +51,8 @@ def count_elements(elem_values: ElemValues) -> pd.Series:
         srs = pd.Series(elem_values).apply(formula2dict).sum()
     else:
         raise ValueError(
-            "Expected map from element symbols to heatmap values or a list of "
-            f"compositions (strings or Pymatgen objects), got {elem_values=}"
+            "Expected elem_values to be map from element symbols to heatmap values or "
+            f"list of compositions (strings or Pymatgen objects), got {elem_values}"
         )
 
     # ensure all elements are present in returned Series (with value zero if they
@@ -225,6 +225,7 @@ def ptable_heatmap(
 def ptable_heatmap_ratio(
     elem_values_num: ElemValues,
     elem_values_denom: ElemValues,
+    normalize: bool = False,
     cbar_title: str = "Element Ratio",
     not_in_numerator: Tuple[str, str] = ("#DDD", "gray: not in 1st list"),
     not_in_denominator: Tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
@@ -241,6 +242,8 @@ def ptable_heatmap_ratio(
         elem_values_denom (dict[str, int | float] | pd.Series | list[str]): Map from
             element symbols to heatmap values or iterable of composition strings/objects
             in the denominator.
+        normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
+            different ptable_heatmap_ratio plots comparable. Defaults to False.
         cbar_title (str): Title for the color bar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator.
@@ -256,6 +259,9 @@ def ptable_heatmap_ratio(
     elem_values_denom = count_elements(elem_values_denom)
 
     elem_values = elem_values_num / elem_values_denom
+
+    if normalize:
+        elem_values /= elem_values.sum()
 
     kwargs["zero_color"] = not_in_numerator[0]
     kwargs["infty_color"] = not_in_denominator[0]
