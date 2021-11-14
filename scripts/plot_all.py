@@ -1,13 +1,18 @@
 # %%
+from shutil import which
+from subprocess import call
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from plotly.graph_objects import Figure
 
 from ml_matrics.correlation import marchenko_pastur
 from ml_matrics.cumulative import cum_err, cum_res
 from ml_matrics.elements import (
     hist_elemental_prevalence,
     ptable_heatmap,
+    ptable_heatmap_plotly,
     ptable_heatmap_ratio,
 )
 from ml_matrics.histograms import residual_hist, spacegroup_hist, true_pred_hist
@@ -61,39 +66,60 @@ y_var_epi = y_preds.var(axis=1)
 y_std = np.sqrt(y_var_ale + y_var_epi)
 
 
-def savefig(filename: str) -> None:
-    """Save current matplotlib figure as SVG.
+def save_mpl_fig(filename: str) -> None:
+    """Save current Matplotlib figure as SVG to assets/ folder. Compresses SVG file with
+    svgo CLI if available in PATH.
 
     Args:
         filename (str): Name of SVG file (w/o extension).
     """
-    plt.savefig(f"{ROOT}/assets/{filename}.svg", bbox_inches="tight")
+    filepath = f"{ROOT}/assets/{filename}.svg"
+    plt.savefig(filepath, bbox_inches="tight")
     plt.close()
+
+    if which("svgo") is not None:
+        call(["svgo", filepath])
+
+
+def save_compress_plotly(fig: Figure, filename: str) -> None:
+    """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG file with
+    svgo CLI if available in PATH.
+
+    Args:
+        fig (Figure): Plotly Figure instance.
+        filename (str): Name of SVG file (w/o extension).
+    """
+    filepath = f"{ROOT}/assets/{filename}.svg"
+    fig.write_image(filepath)
+    fig.write_html(f"{ROOT}/assets/{filename}.html", include_plotlyjs="cdn")
+
+    if which("svgo") is not None:
+        call(["svgo", filepath])
 
 
 # %% Parity Plots
 density_scatter(y_pred, y_true)
-savefig("density_scatter")
+save_mpl_fig("density_scatter")
 
 
 density_scatter_with_hist(y_pred, y_true)
-savefig("density_scatter_with_hist")
+save_mpl_fig("density_scatter_with_hist")
 
 
 density_hexbin(y_pred, y_true)
-savefig("density_scatter_hex")
+save_mpl_fig("density_scatter_hex")
 
 
 density_hexbin_with_hist(y_pred, y_true)
-savefig("density_scatter_hex_with_hist")
+save_mpl_fig("density_scatter_hex_with_hist")
 
 
 scatter_with_err_bar(y_pred, y_true, yerr=y_std)
-savefig("scatter_with_err_bar")
+save_mpl_fig("scatter_with_err_bar")
 
 
 residual_vs_actual(y_true, y_pred)
-savefig("residual_vs_actual")
+save_mpl_fig("residual_vs_actual")
 
 
 # %% Elemental Plots
@@ -103,85 +129,109 @@ df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
 
 
 ptable_heatmap(mp_formulas)
-savefig("ptable_heatmap")
+save_mpl_fig("ptable_heatmap")
 
 ptable_heatmap(df_ptable.atomic_mass)
-savefig("ptable_heatmap_atomic_mass")
+save_mpl_fig("ptable_heatmap_atomic_mass")
 
 ptable_heatmap(mp_formulas, heat_labels="percent")
-savefig("ptable_heatmap_percent")
+save_mpl_fig("ptable_heatmap_percent")
 
 ptable_heatmap(mp_formulas, log=True)
-savefig("ptable_heatmap_log")
+save_mpl_fig("ptable_heatmap_log")
 
 ptable_heatmap(mp_formulas, log=True, cbar_max=1e3)
-savefig("ptable_heatmap_log_cbar_max")
+save_mpl_fig("ptable_heatmap_log_cbar_max")
 
 ptable_heatmap_ratio(mp_formulas, roost_formulas)
-savefig("ptable_heatmap_ratio")
+save_mpl_fig("ptable_heatmap_ratio")
 
 ptable_heatmap_ratio(roost_formulas, mp_formulas)
-savefig("ptable_heatmap_ratio_inverse")
+save_mpl_fig("ptable_heatmap_ratio_inverse")
 
 hist_elemental_prevalence(mp_formulas, keep_top=15, voffset=1)
-savefig("hist_elemental_prevalence")
+save_mpl_fig("hist_elemental_prevalence")
 
 hist_elemental_prevalence(
     mp_formulas, keep_top=20, log=True, bar_values="count", voffset=1
 )
-savefig("hist_elemental_prevalence_log_count")
+save_mpl_fig("hist_elemental_prevalence_log_count")
+
+# Plotly interactive periodic table heatmap
+fig = ptable_heatmap_plotly(mp_formulas)
+save_compress_plotly(fig, "ptable_heatmap_plotly")
+
+fig = ptable_heatmap_plotly(mp_formulas, heat_labels=None)
+save_compress_plotly(fig, "ptable_heatmap_plotly_no_labels")
+
+fig = ptable_heatmap_plotly(
+    df_ptable.atomic_mass,
+    hover_cols=["atomic_mass", "atomic_number"],
+    hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
+)
+save_compress_plotly(fig, "ptable_heatmap_plotly_more_hover_data")
+
+fig = ptable_heatmap_plotly(mp_formulas, heat_labels="percent")
+save_compress_plotly(fig, "ptable_heatmap_plotly_percent_labels")
+
+fig = ptable_heatmap_plotly(
+    mp_formulas,
+    colorscale=[(0, "lightblue"), (1, "teal")],
+    font_colors=("black", "white"),
+)
+save_compress_plotly(fig, "ptable_heatmap_plotly_custom_color_scale")
 
 
 # %% Quantile/Calibration Plots
 qq_gaussian(y_pred, y_true, y_std)
-savefig("normal_prob_plot")
+save_mpl_fig("normal_prob_plot")
 
 
 qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_std})
-savefig("normal_prob_plot_multiple")
+save_mpl_fig("normal_prob_plot_multiple")
 
 
 # %% Cumulative Plots
 cum_err(y_pred, y_true)
-savefig("cumulative_error")
+save_mpl_fig("cumulative_error")
 
 
 cum_res(y_pred, y_true)
-savefig("cumulative_residual")
+save_mpl_fig("cumulative_residual")
 
 
 # %% Ranking Plots
 err_decay(y_true, y_pred, y_std)
-savefig("err_decay")
+save_mpl_fig("err_decay")
 
 eps = 0.2 * np.random.randn(*y_std.shape)
 
 err_decay(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
-savefig("err_decay_multiple")
+save_mpl_fig("err_decay_multiple")
 
 
 # %% Relevance Plots
 roc_curve(y_binary, y_proba)
-savefig("roc_curve")
+save_mpl_fig("roc_curve")
 
 
 precision_recall_curve(y_binary, y_proba)
-savefig("precision_recall_curve")
+save_mpl_fig("precision_recall_curve")
 
 
 # %% Histogram Plots
 residual_hist(y_true, y_pred)
-savefig("residual_hist")
+save_mpl_fig("residual_hist")
 
 true_pred_hist(y_true, y_pred, y_std)
-savefig("true_pred_hist")
+save_mpl_fig("true_pred_hist")
 
 phonons = pd.read_csv(f"{ROOT}/data/matbench-phonons.csv")
 spacegroup_hist(phonons.sg_number)
-savefig("spacegroup_hist")
+save_mpl_fig("spacegroup_hist")
 
 spacegroup_hist(phonons.sg_number, show_counts=False)
-savefig("spacegroup_hist_no_counts")
+save_mpl_fig("spacegroup_hist_no_counts")
 
 
 # %% Correlation Plots
@@ -190,17 +240,17 @@ n_rows, n_cols = 50, 400
 linear_matrix = np.arange(n_rows * n_cols).reshape(n_rows, n_cols) / n_cols
 corr_mat = np.corrcoef(linear_matrix + rand_wide_mat[:n_rows, :n_cols])
 marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
-savefig("marchenko_pastur")
+save_mpl_fig("marchenko_pastur")
 
 rand_wide_mat = pd.read_csv(f"{ROOT}/data/rand_wide_matrix.csv", header=None).to_numpy()
 n_rows, n_cols = 50, 400
 linear_matrix = np.arange(n_rows * n_cols).reshape(n_rows, n_cols) / n_cols
 corr_mat = np.corrcoef(linear_matrix + rand_wide_mat[:n_rows, :n_cols])
 marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
-savefig("marchenko_pastur_significant_eval")
+save_mpl_fig("marchenko_pastur_significant_eval")
 
 rand_tall_mat = pd.read_csv(f"{ROOT}/data/rand_tall_matrix.csv", header=None).to_numpy()
 n_rows, n_cols = rand_tall_mat.shape
 corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
 marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
-savefig("marchenko_pastur_rank_deficient")
+save_mpl_fig("marchenko_pastur_rank_deficient")

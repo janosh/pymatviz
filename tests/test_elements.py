@@ -1,30 +1,39 @@
 import pandas as pd
+from matplotlib.axes import Axes
+from plotly.graph_objects import Figure
 
-from ml_matrics import (
+from ml_matrics.elements import (
     count_elements,
     hist_elemental_prevalence,
     ptable_heatmap,
+    ptable_heatmap_plotly,
     ptable_heatmap_ratio,
 )
 
 
 compositions_1 = pd.read_csv("data/mp-n_elements<2.csv").formula
 compositions_2 = pd.read_csv("data/ex-ensemble-roost.csv").composition
-df_ptable = pd.read_csv("ml_matrics/elements.csv")
+df_ptable = pd.read_csv("ml_matrics/elements.csv").set_index("symbol")
 
 elem_counts_1 = count_elements(compositions_1)
 elem_counts_2 = count_elements(compositions_2)
 
 
 def test_hist_elemental_prevalence():
-    hist_elemental_prevalence(compositions_1)
+    ax = hist_elemental_prevalence(compositions_1)
+    assert isinstance(ax, Axes)
+
     hist_elemental_prevalence(compositions_1, log=True)
+
     hist_elemental_prevalence(compositions_1, keep_top=10)
+
     hist_elemental_prevalence(compositions_1, keep_top=10, bar_values="count")
 
 
 def test_ptable_heatmap():
-    ptable_heatmap(compositions_1)
+    ax = ptable_heatmap(compositions_1)
+    assert isinstance(ax, Axes)
+
     ptable_heatmap(compositions_1, log=True)
 
     # custom color map
@@ -51,7 +60,8 @@ def test_ptable_heatmap():
 
 def test_ptable_heatmap_ratio():
     # composition strings
-    ptable_heatmap_ratio(compositions_1, compositions_2)
+    ax = ptable_heatmap_ratio(compositions_1, compositions_2)
+    assert isinstance(ax, Axes)
 
     # element counts
     ptable_heatmap_ratio(elem_counts_1, elem_counts_2)
@@ -59,3 +69,21 @@ def test_ptable_heatmap_ratio():
     # mixed element counts and composition
     ptable_heatmap_ratio(compositions_1, elem_counts_2)
     ptable_heatmap_ratio(elem_counts_1, compositions_2)
+
+
+def test_ptable_heatmap_plotly():
+    fig = ptable_heatmap_plotly(compositions_1)
+    assert isinstance(fig, Figure)
+
+    ptable_heatmap_plotly(
+        compositions_1, hover_cols=["atomic_mass", "atomic_number", "density"]
+    )
+    ptable_heatmap_plotly(
+        compositions_1,
+        hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
+    )
+    ptable_heatmap_plotly(df_ptable.density, precision=".1f")
+
+    ptable_heatmap_plotly(compositions_1, heat_labels="percent")
+
+    ptable_heatmap_plotly(compositions_1, colorscale=[(0, "red"), (1, "blue")])
