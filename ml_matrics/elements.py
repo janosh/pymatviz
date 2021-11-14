@@ -4,11 +4,13 @@ from typing import Any, Dict, Sequence, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.figure_factory as ff
 from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
+from plotly.graph_objects import Figure
 from pymatgen.core import Composition
 
 from ml_matrics.utils import ROOT, annotate_bar_heights
@@ -20,7 +22,7 @@ else:
     from typing_extensions import Literal
 
 
-df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv")
+df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
 
 ElemValues = Union[Dict[str, Union[int, float]], pd.Series, Sequence[str]]
 
@@ -57,7 +59,7 @@ def count_elements(elem_values: ElemValues) -> pd.Series:
 
     # ensure all elements are present in returned Series (with value zero if they
     # weren't in formulas)
-    zeros = pd.Series(0, index=df_ptable.symbol)
+    zeros = pd.Series(0, index=df_ptable.index)
 
     # fill_value=0 required as max(NaN, any int) = NaN
     srs = srs.combine(zeros, max, fill_value=0)
@@ -142,7 +144,7 @@ def ptable_heatmap(
 
     text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
 
-    for symbol, row, column, *_ in df_ptable.values:
+    for symbol, row, column, *_ in df_ptable.itertuples():
 
         row = n_rows - row  # makes periodic table right side up
         heat_val = elem_values[symbol]
@@ -288,7 +290,7 @@ def hist_elemental_prevalence(
     ax: Axes = None,
     bar_values: Literal["percent", "count", None] = "percent",
     **kwargs: Any,
-) -> None:
+) -> Axes:
     """Plots a histogram of the prevalence of each element in a materials dataset.
 
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
@@ -328,3 +330,129 @@ def hist_elemental_prevalence(
         annotate_bar_heights(ax, labels=labels, **kwargs)
 
     return ax
+
+
+def ptable_heatmap_plotly(
+    elem_values: ElemValues,
+    colorscale: Sequence[Tuple[Union[float, int], str]] = None,
+    heat_labels: Literal["value", "fraction", "percent", None] = "value",
+    precision: str = None,
+    hover_cols: Sequence[str] = None,
+    hover_data: Union[Dict[str, Union[str, int, float]], pd.Series] = None,
+    font_colors: Sequence[str] = ["white"],
+    # TODO: figure why 'ValueError: invalid literal for int() with base 10: 'a(0'' when
+    # setting default font_colors=[] or None
+    gap: float = 5,
+    font_size: int = 16,
+) -> Figure:
+    """Plot the periodic table as an interactive heatmap.
+
+    Args:
+        elem_values (dict[str, int | float] | pd.Series | list[str]): Map from element
+            symbols to heatmap values or iterable of composition strings/objects.
+        colorscale (list[tuple[float, str]]): Color scale for heatmap. Defaults to
+            [(0.0, "teal"), (1.0, "darkgreen")].
+        heat_labels ("value" | "fraction" | "percent" | None): Whether to display heat
+            values as is (value), normalized as a fraction of the total, as percentages
+            or not at all (None). Defaults to "value".
+            "fraction" and "percent" can be used to make the colors in different heatmap
+            (and ratio) plots comparable.
+        precision (str): f-string format option for heat labels. Defaults to None in
+            which case we fall back on ".1%" (1 decimal place) if heat_labels="percent"
+            else ".3g".
+        hover_cols (list[str]): Elemental properties to display in the hover tooltip.
+            Defaults to None. Available properties are: symbol, row, column, name,
+            atomic_number, atomic_mass, n_neutrons, n_protons, n_electrons, period,
+            group, phase, radioactive, natural, metal, nonmetal, metalloid, type,
+            atomic_radius, electronegativity, first_ionization, density, melting_point,
+            boiling_point, number_of_isotopes, discoverer, year, specific_heat,
+            n_shells, n_valence.
+        hover_data (dict[str, str | int | float] | pd.Series): Map from element symbols
+            to additional data to display in the hover tooltip. Defaults to None.
+        font_colors (list[str]): One or two color strings [min_color, max_color].
+            min_color is applied to annotations for heatmap values
+            < (max_val - min_val) / 2. Defaults to ["white"].
+        gap (float): Gap between tiles of the periodic table. Defaults to 5.
+        font_size (int): Element symbol and hover text size. Heat values will be
+            font_size - 2. Defaults to 14.
+
+    Returns:
+        Figure: Plotly Figure object.
+    """
+    elem_values = count_elements(elem_values)
+
+    if heat_labels in ("fraction", "percent"):
+        # normalize heat values
+        clean_vals = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
+        # ignore inf values in sum() else all would be set to 0 by normalizing
+        label_vals = elem_values / clean_vals.sum()
+    else:
+        label_vals = elem_values
+
+    n_rows, n_columns = 10, 18
+    tile_texts, hover_texts = np.full([2, n_rows, n_columns], "", dtype=object)
+    heat_vals = -np.ones([n_rows, n_columns])
+
+    for (symbol, period, group, name, *_) in df_ptable.itertuples():
+        row = n_rows - period
+        col = group - 1
+
+        heat_label = label_vals[symbol]
+        if heat_labels == "percent":
+            label = f"{heat_label:{precision or '.1%'}}"
+        else:
+            label = f"{heat_label:{precision or '.3g'}}"
+
+        tile_text = f"<b>{symbol}</b>"
+        if heat_labels is not None:
+            tile_text += f"<br><span style='font-size: {font_size-2}px;'>{label}</span>"
+        tile_texts[row][col] = tile_text
+
+        hover_text = name
+
+        if hover_data is not None:
+            hover_text += f"<br>{hover_data[symbol]}"
+
+        if hover_cols is not None:
+            df_row = df_ptable.loc[symbol]
+
+            col_data_str = "<br>".join(f"{x} = {df_row[x]}" for x in hover_cols)
+            hover_text += f"<br>{col_data_str}"
+
+        hover_texts[row][col] = hover_text
+
+        color_val = elem_values[symbol]
+        heat_vals[row][col] = color_val + 1e-6
+
+    if isinstance(colorscale, (list, tuple)) and isinstance(
+        colorscale[0], (list, tuple)
+    ):
+        colorscale = [(0, "rgba(0, 0, 0, 0)"), *map(list, colorscale)]  # type: ignore
+        colorscale[1][0] = 1e-6  # type: ignore
+    elif colorscale is None:
+        colorscale = [(0, "rgba(0, 0, 0, 0)"), (1e-6, "teal"), (1, "darkgreen")]
+    else:
+        raise NotImplementedError(
+            "passing in string names as colorscale not yet supported"
+        )
+        # requires https://github.com/plotly/plotly.js/issues/975
+
+    fig = ff.create_annotated_heatmap(
+        heat_vals,
+        annotation_text=tile_texts,
+        text=hover_texts,
+        colorscale=colorscale,
+        font_colors=font_colors,
+        hoverinfo="text",
+        xgap=gap,
+        ygap=gap,
+    )
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="rgba(0, 0, 0, 0)",
+        plot_bgcolor="rgba(0, 0, 0, 0)",
+        xaxis=dict(zeroline=False, showgrid=False),
+        yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
+        font=dict(size=font_size),
+    )
+    return fig

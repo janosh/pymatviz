@@ -61,7 +61,7 @@ repos:
     rev: v2.1.0
     hooks:
       - id: codespell
-        exclude_types: [csv]
+        exclude_types: [csv, svg, html]
         args: [--ignore-words-list, hist]
 
   - repo: local
@@ -70,4 +70,4 @@ repos:
         name: SVG assets
         entry: Files under assets/* must end in .svg
         language: fail
-        files: ^assets/.*(?<!\.svg)$
+        files: ^assets/.*(?<!\.svg)(?<!\.html)$

@@ -4,6 +4,7 @@ from .elements import (
     count_elements,
     hist_elemental_prevalence,
     ptable_heatmap,
+    ptable_heatmap_plotly,
     ptable_heatmap_ratio,
 )
 from .histograms import residual_hist, spacegroup_hist, true_pred_hist
