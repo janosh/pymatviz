@@ -10,8 +10,8 @@ def run_around_tests():
     # Code that runs before each test
 
     yield
-    # Code that runs after each test
 
+    # Code that runs after each test
     plt.close()
 
 
