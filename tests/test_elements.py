@@ -1,8 +1,9 @@
 import pandas as pd
+import pytest
 from matplotlib.axes import Axes
 from plotly.graph_objects import Figure
 
-from ml_matrics.elements import (
+from ml_matrics import (
     count_elements,
     hist_elemental_prevalence,
     ptable_heatmap,
@@ -57,6 +58,12 @@ def test_ptable_heatmap():
     # element counts
     ptable_heatmap(elem_counts_1)
 
+    with pytest.raises(ValueError) as exc_info:
+        ptable_heatmap(compositions_1, log=True, heat_labels="percent")
+
+    assert exc_info.type is ValueError
+    assert "Combining log color scale" in exc_info.value.args[0]
+
 
 def test_ptable_heatmap_ratio():
     # composition strings
@@ -64,7 +71,7 @@ def test_ptable_heatmap_ratio():
     assert isinstance(ax, Axes)
 
     # element counts
-    ptable_heatmap_ratio(elem_counts_1, elem_counts_2)
+    ptable_heatmap_ratio(elem_counts_1, elem_counts_2, normalize=True)
 
     # mixed element counts and composition
     ptable_heatmap_ratio(compositions_1, elem_counts_2)
@@ -74,6 +81,8 @@ def test_ptable_heatmap_ratio():
 def test_ptable_heatmap_plotly():
     fig = ptable_heatmap_plotly(compositions_1)
     assert isinstance(fig, Figure)
+    assert len(fig.layout.annotations) == 18 * 10  # n_cols * n_rows
+    assert sum(anno.text != "" for anno in fig.layout.annotations) == 118  # n_elements
 
     ptable_heatmap_plotly(
         compositions_1, hover_cols=["atomic_mass", "atomic_number", "density"]

@@ -57,19 +57,6 @@ def with_hist(
     return ax_main
 
 
-def softmax(arr: NDArray[np.float64], axis: int = -1) -> NDArray[np.float64]:
-    """Compute the softmax of an array along an axis."""
-    exp = np.exp(arr)
-    return exp / exp.sum(axis=axis, keepdims=True)
-
-
-def one_hot(targets: Sequence[int], n_classes: int = None) -> NDArray[np.int_]:
-    """Get a one-hot encoded version of `targets` containing `n_classes`."""
-    if n_classes is None:
-        n_classes = np.max(targets) + 1
-    return np.eye(n_classes)[targets]
-
-
 def annotate_bar_heights(
     ax: Axes = None,
     voffset: int = 10,
