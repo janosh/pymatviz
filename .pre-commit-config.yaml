@@ -41,7 +41,7 @@ repos:
       - id: check-yaml
       - id: destroyed-symlinks
       - id: end-of-file-fixer
-        exclude: ^assets/.+\.svg$
+        exclude: ^assets/.+\.(svg|html)$
       - id: mixed-line-ending
       - id: trailing-whitespace
 
