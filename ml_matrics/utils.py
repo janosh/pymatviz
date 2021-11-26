@@ -129,3 +129,23 @@ def add_mae_r2_box(
     frameon: bool = kwargs.pop("frameon", False)
     text_box = AnchoredText(mae_str + r2_str, loc=loc, frameon=frameon, **kwargs)
     ax.add_artist(text_box)
+
+
+def get_crystal_system(spg: int) -> str:
+    """Get the crystal system for an international space group number."""
+    if 0 < spg < 3:
+        return "triclinic"
+    if spg < 16:
+        return "monoclinic"
+    if spg < 75:
+        return "orthorhombic"
+    if spg < 143:
+        return "tetragonal"
+    if spg < 168:
+        return "trigonal"
+    if spg < 195:
+        return "hexagonal"
+    if spg < 231:
+        return "cubic"
+    else:
+        raise ValueError(f"Received invalid space group {spg}")

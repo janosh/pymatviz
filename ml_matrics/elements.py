@@ -334,15 +334,17 @@ def hist_elemental_prevalence(
 
 def ptable_heatmap_plotly(
     elem_values: ElemValues,
-    colorscale: Sequence[Tuple[Union[float, int], str]] = None,
+    colorscale: Sequence[Tuple[float, str]] = None,
+    showscale: bool = True,
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
     hover_cols: Union[Sequence[str], Dict[str, str]] = None,
     hover_data: Union[Dict[str, Union[str, int, float]], pd.Series] = None,
-    font_colors: Sequence[str] = ["white", "black"],
+    font_colors: Sequence[str] = ["black"],
     gap: float = 5,
     font_size: int = None,
     bg_color: str = "rgba(0, 0, 0, 0)",
+    color_bar: Dict[str, Any] = {},
 ) -> Figure:
     """Plot the periodic table as an interactive heatmap.
 
@@ -351,6 +353,7 @@ def ptable_heatmap_plotly(
             symbols to heatmap values or iterable of composition strings/objects.
         colorscale (list[tuple[float, str]]): Color scale for heatmap. Defaults to
             [(0.0, "teal"), (1.0, "darkgreen")].
+        showscale (bool): Whether to show a bar for the color scale. Defaults to True.
         heat_labels ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is (value), normalized as a fraction of the total, as percentages
             or not at all (None). Defaults to "value".
@@ -377,6 +380,8 @@ def ptable_heatmap_plotly(
         font_size (int): Element symbol and heat label text size. Defaults to None
             meaning automatic font size based on plot size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
+        color_bar (dict[str, Any]): Plotly color bar properties documented at
+            https://plotly.com/python/reference#heatmap-colorbar. Defaults to None.
 
     Returns:
         Figure: Plotly Figure object.
@@ -396,6 +401,7 @@ def ptable_heatmap_plotly(
     heat_vals = -np.ones([n_rows, n_columns])
 
     for (symbol, period, group, name, *_) in df_ptable.itertuples():
+        # build table from bottom up so that period 1 becomes top row
         row = n_rows - period
         col = group - 1
 
@@ -436,19 +442,18 @@ def ptable_heatmap_plotly(
         colorscale[1][0] = 1e-6  # type: ignore
     elif colorscale is None:
         colorscale = [(0, "rgba(0, 0, 0, 0)"), (1e-6, "teal"), (1, "darkgreen")]
-    elif colorscale is False:
-        pass
     else:
         raise NotImplementedError(
             "passing in string names as colorscale not currently supported"
         )
-        # requires https://github.com/plotly/plotly.js/issues/975
+    # requires https://github.com/plotly/plotly.js/issues/975 so we no longer need
+    # to modify colorscale as above to handle empty tiles
 
     fig = ff.create_annotated_heatmap(
         heat_vals,
         annotation_text=tile_texts,
         text=hover_texts,
-        showscale=colorscale is not False,
+        showscale=showscale,
         colorscale=colorscale or None,
         font_colors=font_colors,
         hoverinfo="text",
@@ -457,10 +462,13 @@ def ptable_heatmap_plotly(
     )
     fig.update_layout(
         margin=dict(l=10, r=10, t=10, b=10, pad=10),
-        paper_bgcolor="rgba(0, 0, 0, 0)",
-        plot_bgcolor=bg_color,
+        paper_bgcolor=bg_color,
+        plot_bgcolor="rgba(0, 0, 0, 0)",
         xaxis=dict(zeroline=False, showgrid=False),
         yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
         font=dict(size=font_size),
+    )
+    fig.update_traces(
+        colorbar=dict(lenmode="fraction", len=0.87, thickness=15, **color_bar)
     )
     return fig
