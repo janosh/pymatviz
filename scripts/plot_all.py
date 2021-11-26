@@ -27,6 +27,7 @@ from ml_matrics.parity import (
 from ml_matrics.quantile import qq_gaussian
 from ml_matrics.ranking import err_decay
 from ml_matrics.relevance import precision_recall_curve, roc_curve
+from ml_matrics.sunburst import spacegroup_sunburst
 from ml_matrics.utils import ROOT
 
 
@@ -232,6 +233,14 @@ save_mpl_fig("spacegroup_hist")
 
 spacegroup_hist(phonons.sg_number, show_counts=False)
 save_mpl_fig("spacegroup_hist_no_counts")
+
+
+# %% Sunburst Plots
+fig = spacegroup_sunburst(phonons.sg_number)
+save_compress_plotly(fig, "spacegroup_sunburst")
+
+fig = spacegroup_sunburst(phonons.sg_number, show_values="percent")
+save_compress_plotly(fig, "spacegroup_sunburst_percent")
 
 
 # %% Correlation Plots

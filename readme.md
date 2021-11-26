@@ -36,6 +36,14 @@ See [`ml_matrics/elements.py`](ml_matrics/elements.py).
 | [`hist_elemental_prevalence(compositions)`](ml_matrics/elements.py) | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](ml_matrics/elements.py) |
 |                    ![hist_elemental_prevalence]                     |                              ![hist_elemental_prevalence_log_count]                               |
 
+## Sunburst
+
+See [`ml_matrics/sunburst.py`](ml_matrics/sunburst.py).
+
+| [`spacegroup_sunburst([65, 134, 225, ...])`](ml_matrics/sunburst.py) | [`spacegroup_sunburst([65, 134, 225, ...], show_values="percent")`](ml_matrics/sunburst.py) |
+| :------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
+|                        ![spacegroup_sunburst]                        |                               ![spacegroup_sunburst_percent]                                |
+
 ## Histograms
 
 See [`ml_matrics/histograms.py`](ml_matrics/histograms.py).
@@ -145,3 +153,5 @@ pytest -k test_precision_recall_curve # -k takes regex matching test names
 [true_pred_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/true_pred_hist.svg
 [spacegroup_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_hist.svg
 [spacegroup_hist_no_counts]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_hist_no_counts.svg
+[spacegroup_sunburst]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_sunburst.svg
+[spacegroup_sunburst_percent]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_sunburst_percent.svg
