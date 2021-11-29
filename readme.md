@@ -106,10 +106,6 @@ See [`ml_matrics/correlation.py`](ml_matrics/correlation.py).
 | :--------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
 |                             ![marchenko_pastur]                              |                             ![marchenko_pastur_significant_eval]                              |
 
-## Adding Assets
-
-When adding new SVG assets, please compress them before committing. This can either be done online without setup at <https://vecta.io/nano> or on the command line with [`svgo`](https://github.com/svg/svgo). Install it with `npm -g svgo` (or `yarn global add svgo`). Then compress all assets in one go with `svgo assets`. (`svgo` is safe for multiple compressions).
-
 ## Testing
 
 This project uses `pytest` ([docs](https://docs.pytest.org/en/stable/usage.html)). To run tests, use:
