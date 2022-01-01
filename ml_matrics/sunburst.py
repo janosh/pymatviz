@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import sys
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 
 import pandas as pd
 import plotly.express as px
 from plotly.graph_objects import Figure
 
 from ml_matrics.utils import get_crystal_system
-
-
-if sys.version_info >= (3, 8):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
 
 
 def spacegroup_sunburst(

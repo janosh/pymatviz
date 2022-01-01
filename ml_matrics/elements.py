@@ -1,5 +1,4 @@
-import sys
-from typing import Any, Dict, Sequence, Tuple, Union
+from typing import Any, Dict, Literal, Sequence, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,12 +13,6 @@ from plotly.graph_objects import Figure
 from pymatgen.core import Composition
 
 from ml_matrics.utils import ROOT, annotate_bar_heights
-
-
-if sys.version_info >= (3, 8):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
 
 
 df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
