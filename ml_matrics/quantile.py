@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +11,7 @@ from ml_matrics.utils import NumArray
 def qq_gaussian(
     y_true: NumArray,
     y_pred: NumArray,
-    y_std: Union[NumArray, Dict[str, NumArray]],
+    y_std: NumArray | dict[str, NumArray],
     ax: Axes = None,
 ) -> Axes:
     """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)

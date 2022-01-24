@@ -1,4 +1,6 @@
-from typing import Any, Dict, Literal, Sequence, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,9 +17,12 @@ from pymatgen.core import Composition
 from ml_matrics.utils import ROOT, annotate_bar_heights
 
 
-df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
+if TYPE_CHECKING:
+    from typing import TypeAlias
 
-ElemValues = Union[Dict[str, Union[int, float]], pd.Series, Sequence[str]]
+    ElemValues: TypeAlias = dict[str, int | float] | pd.Series | Sequence[str]
+
+df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
 
 
 def count_elements(elem_values: ElemValues) -> pd.Series:
@@ -64,7 +69,7 @@ def ptable_heatmap(
     log: bool = False,
     ax: Axes = None,
     cbar_title: str = "Element Count",
-    cbar_max: Union[float, int, None] = None,
+    cbar_max: float | int | None = None,
     cmap: str = "summer_r",
     zero_color: str = "#DDD",  # light gray
     infty_color: str = "lightskyblue",
@@ -222,9 +227,9 @@ def ptable_heatmap_ratio(
     elem_values_denom: ElemValues,
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
-    not_in_numerator: Tuple[str, str] = ("#DDD", "gray: not in 1st list"),
-    not_in_denominator: Tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
-    not_in_either: Tuple[str, str] = ("white", "white: not in either"),
+    not_in_numerator: tuple[str, str] = ("#DDD", "gray: not in 1st list"),
+    not_in_denominator: tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
+    not_in_either: tuple[str, str] = ("white", "white: not in either"),
     **kwargs: Any,
 ) -> Axes:
     """Display the ratio of two maps from element symbols to heat values or of two sets
@@ -327,17 +332,17 @@ def hist_elemental_prevalence(
 
 def ptable_heatmap_plotly(
     elem_values: ElemValues,
-    colorscale: Sequence[Tuple[float, str]] = None,
+    colorscale: Sequence[tuple[float, str]] = None,
     showscale: bool = True,
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
-    hover_cols: Union[Sequence[str], Dict[str, str]] = None,
-    hover_data: Union[Dict[str, Union[str, int, float]], pd.Series] = None,
+    hover_cols: Sequence[str] | dict[str, str] | None = None,
+    hover_data: dict[str, str | int | float] | pd.Series = None,
     font_colors: Sequence[str] = ["black"],
     gap: float = 5,
     font_size: int = None,
     bg_color: str = "rgba(0, 0, 0, 0)",
-    color_bar: Dict[str, Any] = {},
+    color_bar: dict[str, Any] = {},
 ) -> Figure:
     """Plot the periodic table as an interactive heatmap.
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from os.path import abspath, dirname
 from typing import Any, Sequence, Union
 
@@ -61,7 +63,7 @@ def annotate_bar_heights(
     ax: Axes = None,
     voffset: int = 10,
     hoffset: int = 0,
-    labels: Sequence[Union[str, int, float]] = None,
+    labels: Sequence[str | int | float] = None,
     fontsize: int = 14,
 ) -> None:
     """Annotate histograms with a label indicating the height/count of each bar.

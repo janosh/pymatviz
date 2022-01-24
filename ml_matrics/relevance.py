@@ -1,4 +1,4 @@
-from typing import Tuple
+from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import sklearn.metrics as skm
@@ -9,7 +9,7 @@ from ml_matrics.utils import NumArray
 
 def roc_curve(
     targets: NumArray, proba_pos: NumArray, ax: Axes = None
-) -> Tuple[float, Axes]:
+) -> tuple[float, Axes]:
     """Plot the receiver operating characteristic curve of a binary
     classifier given target labels and predicted probabilities for
     the positive class.
@@ -41,7 +41,7 @@ def roc_curve(
 
 def precision_recall_curve(
     targets: NumArray, proba_pos: NumArray, ax: Axes = None
-) -> Tuple[float, Axes]:
+) -> tuple[float, Axes]:
     """Plot the precision recall curve of a binary classifier.
 
     Args:
