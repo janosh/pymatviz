@@ -1,0 +1,31 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - v*.*.* # only trigger on version tags
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        pip install .[test]
+
+    - name: pytest
+      # Only publish to PyPI if tests pass.
+      run: |
+        pytest
+
+    - name: release
+      run: |
+        pip install setuptools wheel twine
+        python setup.py sdist bdist_wheel
+        twine upload --skip-existing dist/*.tar.gz
+      env:
+        TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
