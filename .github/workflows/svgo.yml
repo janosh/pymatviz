@@ -2,10 +2,8 @@ name: SVG Compression
 
 on:
   pull_request:
-    branches:
-      - main
-    paths:
-      - assets/*.svg # only run workflow when SVG files changed
+    branches: [main]
+    paths: [assets/*.svg] # only run workflow when SVG files changed
 
 jobs:
   tests:
@@ -14,7 +12,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
-      - name: Set up node
+      - name: Setup node
         uses: actions/setup-node@v2
 
       - name: Install SVGO
