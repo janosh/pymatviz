@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Union
+from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +9,7 @@ from ml_matrics.utils import NumArray
 
 def get_err_decay(
     y_true: NumArray, y_pred: NumArray, n_rand: int = 100
-) -> Tuple[NumArray, NumArray]:
+) -> tuple[NumArray, NumArray]:
     """Calculate the model's error curve as samples are excluded from the calculation
     based on their absolute error.
 
@@ -84,7 +84,7 @@ def get_std_decay(y_true: NumArray, y_pred: NumArray, y_std: NumArray) -> NumArr
 def err_decay(
     y_true: NumArray,
     y_pred: NumArray,
-    y_stds: Union[NumArray, Dict[str, NumArray]],
+    y_stds: NumArray | dict[str, NumArray],
     n_rand: int = 100,
     percentiles: bool = True,
     ax: Axes = None,
