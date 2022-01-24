@@ -1,4 +1,6 @@
-from typing import Any, Tuple
+from __future__ import annotations
+
+from typing import Any
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -13,7 +15,7 @@ from ml_matrics.utils import NumArray, add_mae_r2_box, with_hist
 
 def hist_density(
     xs: NumArray, ys: NumArray, sort: bool = True, bins: int = 100
-) -> Tuple[NumArray, NumArray, NumArray]:
+) -> tuple[NumArray, NumArray, NumArray]:
     """Return an approximate density of 2d points.
 
     Args:

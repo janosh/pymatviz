@@ -1,4 +1,6 @@
-from typing import Any, Dict, Sequence, Tuple
+from __future__ import annotations
+
+from typing import Any, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -159,7 +161,7 @@ def spacegroup_hist(
     trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
 
     # https://git.io/JYJcs
-    crystal_systems: Dict[str, Tuple[str, Tuple[int, int]]] = {
+    crystal_systems: dict[str, tuple[str, tuple[int, int]]] = {
         "tri-/monoclinic": ("red", (1, 15)),
         "orthorhombic": ("blue", (16, 74)),
         "tetragonal": ("green", (75, 142)),
