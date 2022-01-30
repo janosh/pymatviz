@@ -48,7 +48,7 @@ def count_elements(elem_values: ElemValues) -> pd.Series:
             Composition(str).fractional_composition.as_dict()
         )
         # sum up element occurrences
-        srs = pd.Series(elem_values).apply(formula2dict).sum()
+        srs = srs.apply(formula2dict).sum()
     else:
         raise ValueError(
             "Expected elem_values to be map from element symbols to heatmap values or "
@@ -56,11 +56,8 @@ def count_elements(elem_values: ElemValues) -> pd.Series:
         )
 
     # ensure all elements are present in returned Series (with value zero if they
-    # weren't in formulas)
-    zeros = pd.Series(0, index=df_ptable.index)
-
-    # fill_value=0 required as max(NaN, any int) = NaN
-    srs = srs.combine(zeros, max, fill_value=0)
+    # weren't in elem_values)
+    srs = srs.reindex(df_ptable.index, fill_value=0).rename("count")
     return srs
 
 
