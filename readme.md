@@ -4,7 +4,7 @@
 
 A toolkit of metrics and visualizations for model performance in data-driven materials discovery.
 
-[![Tests](https://github.com/janosh/ml-matrics/workflows/Tests/badge.svg)](https://github.com/janosh/ml-matrics/actions)
+[![Tests](https://github.com/janosh/ml-matrics/actions/workflows/test.yml/badge.svg)](https://github.com/janosh/ml-matrics/actions/workflows/test.yml)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/ml-matrics/main.svg)](https://results.pre-commit.ci/latest/github/janosh/ml-matrics/main)
 [![This project supports Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org/downloads)
 [![PyPI](https://img.shields.io/pypi/v/ml-matrics)](https://pypi.org/project/ml-matrics)

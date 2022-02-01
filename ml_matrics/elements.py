@@ -334,7 +334,7 @@ def ptable_heatmap_plotly(
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
     hover_cols: Sequence[str] | dict[str, str] | None = None,
-    hover_data: dict[str, str | int | float] | pd.Series = None,
+    hover_data: dict[str, str | int | float] | pd.Series | None = None,
     font_colors: Sequence[str] = ["black"],
     gap: float = 5,
     font_size: int = None,

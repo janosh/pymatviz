@@ -9,14 +9,14 @@ on:
     paths: ['**/*.py', '.github/workflows/test.yml']
 
 jobs:
-  tests:
+  pytest:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Check out repo
         uses: actions/checkout@v2
 
-      - name: Setup python
+      - name: Set up python
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
@@ -28,4 +28,4 @@ jobs:
         run: pip install .[test]
 
       - name: Run tests
-        run: pytest --durations 0
+        run: pytest --durations 0 --cov
