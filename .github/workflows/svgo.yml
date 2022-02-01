@@ -9,17 +9,14 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Check out repo
         uses: actions/checkout@v2
 
-      - name: Setup node
+      - name: Set up node
         uses: actions/setup-node@v2
-        with:
-          cache: npm
 
       - name: Install SVGO
-        run: |
-          npm -g svgo
+        run: npm -g svgo
 
       - name: Compress SVG assets and commit to current PR
         run: |

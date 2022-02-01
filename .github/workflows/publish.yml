@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Check out repo
         uses: actions/checkout@v2
 
       - name: Install dependencies
@@ -19,8 +19,7 @@ jobs:
 
       - name: Run pytest
         # Only publish to PyPI if tests pass.
-        run: |
-          pytest
+        run: pytest
 
       - name: Build and upload dist
         run: |
