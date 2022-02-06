@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px
 from plotly.graph_objects import Figure
 
-from ml_matrics.utils import get_crystal_system
+from ml_matrics.utils import get_crystal_sys
 
 
 def spacegroup_sunburst(
@@ -38,7 +38,7 @@ def spacegroup_sunburst(
         series = pd.Series(spacegroups)
 
     df = pd.DataFrame({"spacegroup": range(230)})
-    df["cryst_sys"] = [get_crystal_system(spg) for spg in range(230)]
+    df["cryst_sys"] = [get_crystal_sys(spg) for spg in range(1, 231)]
 
     df["values"] = series.value_counts().reindex(range(230), fill_value=0)
 
