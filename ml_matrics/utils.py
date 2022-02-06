@@ -105,7 +105,7 @@ def add_mae_r2_box(
     loc: str = "lower right",
     prec: int = 3,
     **kwargs: Any,
-) -> None:
+) -> AnchoredText:
     """Provide a set of x and y values of equal length and an optional Axes object
     on which to print the values' mean absolute error and R^2 coefficient of
     determination.
@@ -132,9 +132,14 @@ def add_mae_r2_box(
     text_box = AnchoredText(mae_str + r2_str, loc=loc, frameon=frameon, **kwargs)
     ax.add_artist(text_box)
 
+    return text_box
 
-def get_crystal_system(spg: int) -> str:
+
+def get_crystal_sys(spg: int) -> str:
     """Get the crystal system for an international space group number."""
+    if spg < 1 or spg > 230:
+        raise ValueError(f"Received invalid space group {spg}")
+
     if 0 < spg < 3:
         return "triclinic"
     if spg < 16:
@@ -147,7 +152,4 @@ def get_crystal_system(spg: int) -> str:
         return "trigonal"
     if spg < 195:
         return "hexagonal"
-    if spg < 231:
-        return "cubic"
-    else:
-        raise ValueError(f"Received invalid space group {spg}")
+    return "cubic"
