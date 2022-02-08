@@ -103,6 +103,8 @@ def add_mae_r2_box(
     ys: NDArray[np.float64],
     ax: Axes = None,
     loc: str = "lower right",
+    prefix: str = "",
+    suffix: str = "",
     prec: int = 3,
     **kwargs: Any,
 ) -> AnchoredText:
@@ -117,6 +119,12 @@ def add_mae_r2_box(
         loc (str, optional): Where on the plot to place the AnchoredText object.
             Defaults to "lower right".
         prec (int, optional): # of decimal places in printed metrics. Defaults to 3.
+        prefix (str, optional): Title or other string to prepend to metrics.
+            Defaults to "".
+        suffix (str, optional): Text to append after metrics. Defaults to "".
+
+    Returns:
+        AnchoredText: Instance containing the metrics.
     """
     if ax is None:
         ax = plt.gca()
@@ -124,12 +132,11 @@ def add_mae_r2_box(
     mask = ~np.isnan(xs) & ~np.isnan(ys)
     xs, ys = xs[mask], ys[mask]
 
-    mae_str = f"$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.{prec}f}$\n"
-
-    r2_str = f"$R^2 = {r2_score(xs, ys):.{prec}f}$"
+    text = f"{prefix}$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.{prec}f}$"
+    text += f"\n$R^2 = {r2_score(xs, ys):.{prec}f}${suffix}"
 
     frameon: bool = kwargs.pop("frameon", False)
-    text_box = AnchoredText(mae_str + r2_str, loc=loc, frameon=frameon, **kwargs)
+    text_box = AnchoredText(text, loc=loc, frameon=frameon, **kwargs)
     ax.add_artist(text_box)
 
     return text_box
@@ -137,7 +144,8 @@ def add_mae_r2_box(
 
 def get_crystal_sys(spg: int) -> str:
     """Get the crystal system for an international space group number."""
-    if spg < 1 or spg > 230:
+    # not using isinstance(n, int) to allow 0-decimal floats
+    if not (spg == int(spg) and 0 < spg < 231):
         raise ValueError(f"Received invalid space group {spg}")
 
     if 0 < spg < 3:

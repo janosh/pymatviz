@@ -28,7 +28,7 @@ def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
     lambda_m = (sigma * (1 - np.sqrt(1 / gamma))) ** 2  # Largest eigenvalue
     lambda_p = (sigma * (1 + np.sqrt(1 / gamma))) ** 2  # Smallest eigenvalue
 
-    prefac = gamma / (2 * np.pi * sigma ** 2 * x)
+    prefac = gamma / (2 * np.pi * sigma**2 * x)
     root = np.sqrt((lambda_p - x) * (x - lambda_m))
     unit_step = x > lambda_p or x < lambda_m
 
