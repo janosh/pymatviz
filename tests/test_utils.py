@@ -12,7 +12,12 @@ def test_add_mae_r2_box():
 
     assert isinstance(text_box, AnchoredText)
 
-    assert text_box.txt.get_text() == "$\\mathrm{MAE} = 0.116$\n$R^2 = 0.740$"
+    txt = "$\\mathrm{MAE} = 0.116$\n$R^2 = 0.740$"
+    assert text_box.txt.get_text() == txt
+
+    prefix, suffix = "Metrics:\n", "\nthe end"
+    text_box = add_mae_r2_box(y_pred, y_true, prefix=prefix, suffix=suffix)
+    assert text_box.txt.get_text() == prefix + txt + suffix
 
 
 @pytest.mark.parametrize(
