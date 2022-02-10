@@ -22,17 +22,21 @@ elem_counts_1 = count_elements(formulas_1)
 elem_counts_2 = count_elements(formulas_2)
 
 
-def test_count_elements():
+@pytest.mark.parametrize("idx, expected", [(1, elem_counts_1), (2, elem_counts_2)])
+def test_count_elements(idx, expected):
     # ground truth for element counts
     # df.squeeze("columns") turns single-col df into series
-    el_cnt_1 = pd.read_csv(f"{ROOT}/data/elem_counts_1.csv", index_col=0)
-    el_cnt_1 = el_cnt_1.squeeze("columns")
+    el_cnt = pd.read_csv(f"{ROOT}/data/elem_counts_{idx}.csv", index_col=0)
+    el_cnt = el_cnt.squeeze("columns")
 
-    el_cnt_2 = pd.read_csv(f"{ROOT}/data/elem_counts_2.csv", index_col=0)
-    el_cnt_2 = el_cnt_2.squeeze("columns")
+    pd.testing.assert_series_equal(expected, el_cnt)
 
-    pd.testing.assert_series_equal(elem_counts_1, el_cnt_1)
-    pd.testing.assert_series_equal(elem_counts_2.round(4), el_cnt_2.round(4))
+
+def test_count_elements_atomic_nums():
+    el_cts = count_elements({str(idx): idx for idx in range(1, 119)})
+    expected = pd.Series(range(1, 119), index=df_ptable.index, name="count")
+
+    pd.testing.assert_series_equal(expected, el_cts)
 
 
 def test_hist_elemental_prevalence():
@@ -65,6 +69,9 @@ def test_ptable_heatmap():
 
     # element properties as heatmap values
     ptable_heatmap(df_ptable.atomic_mass)
+
+    # element properties as heatmap values
+    ptable_heatmap(df_ptable.atomic_mass, text_color=("red", "blue"))
 
     # custom max color bar value
     ptable_heatmap(formulas_1, cbar_max=1e2)

@@ -55,8 +55,15 @@ def count_elements(elem_values: ElemValues) -> pd.Series:
             f"list of compositions (strings or Pymatgen objects), got {elem_values}"
         )
 
+    if srs.index.dtype == int or srs.index.str.isdigit().all():
+        # if index is all integers or digit strings, assume they represent atomic
+        # numbers and map them to element symbols (H: 1, He: 2, ...)
+        srs.index = srs.index.astype(int).map(
+            df_ptable.reset_index().set_index("atomic_number").symbol
+        )
+
     # ensure all elements are present in returned Series (with value zero if they
-    # weren't in elem_values)
+    # weren't in elem_values before)
     srs = srs.reindex(df_ptable.index, fill_value=0).rename("count")
     return srs
 
@@ -73,6 +80,7 @@ def ptable_heatmap(
     na_color: str = "white",
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
+    text_color: str | tuple[str, str] = "auto",
 ) -> Axes:
     """Plot a heatmap across the periodic table of elements.
 
@@ -99,6 +107,11 @@ def ptable_heatmap(
         precision (str): f-string format option for heat labels. Defaults to None in
             which case we fall back on ".1%" (1 decimal place) if heat_labels="percent"
             else ".3g".
+        text_color (str | tuple[str, str]): What color to use for element symbols and
+            heat labels. Must be a valid color name, or a 2-tuple of names, one to use
+            for the upper half of the color scale, one for the lower half. The special
+            value 'auto' applies 'black' on the lower and 'white' on the upper half of
+            the color scale. Defaults to "auto".
 
     Returns:
         ax: matplotlib Axes with the heatmap.
@@ -169,18 +182,25 @@ def ptable_heatmap(
             # no value to display below in colored rectangle so center element symbol
             text_style["verticalalignment"] = "center"
 
-        plt.text(column + 0.5 * rw, row + 0.5 * rh, symbol, **text_style)
+        if text_color == "auto":
+            text_clr = "white" if norm(heat_val) > 0.5 else "black"
+        elif isinstance(text_color, (tuple, list)):
+            text_clr = text_color[0] if norm(heat_val) > 0.5 else text_color[1]
+        else:
+            text_clr = text_color
+
+        plt.text(
+            column + 0.5 * rw, row + 0.5 * rh, symbol, color=text_clr, **text_style
+        )
 
         if heat_labels is not None:
-            textcolor = "white" if norm(heat_val) > 0.8 else "black"
-
             plt.text(
                 column + 0.5 * rw,
                 row + 0.1 * rh,
                 label,
                 fontsize=12,
                 horizontalalignment="center",
-                color=textcolor,
+                color=text_clr,
             )
 
         ax.add_patch(rect)
