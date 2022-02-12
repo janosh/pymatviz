@@ -124,7 +124,7 @@ save_mpl_fig("residual_vs_actual")
 
 
 # %% Elemental Plots
-mp_formulas = pd.read_csv(f"{ROOT}/data/mp-n_elements<2.csv").formula
+mp_formulas = pd.read_csv(f"{ROOT}/data/mp-elements.csv").formula
 roost_formulas = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
 df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
 
