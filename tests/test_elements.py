@@ -13,7 +13,7 @@ from ml_matrics import (
 )
 
 
-formulas_1 = pd.read_csv(f"{ROOT}/data/mp-n_elements<2.csv").formula
+formulas_1 = pd.read_csv(f"{ROOT}/data/mp-elements.csv").formula
 formulas_2 = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
 df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
 

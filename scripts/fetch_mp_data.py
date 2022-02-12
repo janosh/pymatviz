@@ -16,7 +16,7 @@ with MPRester() as mpr:
 # %%
 df = pd.DataFrame(formulas).rename(columns={"pretty_formula": "formula"})
 
-df.to_csv(f"{ROOT}/data/mp-n_elements<2.csv", index=False)
+df.to_csv(f"{ROOT}/data/mp-elements.csv", index=False)
 
 
 # %%
