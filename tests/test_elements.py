@@ -39,6 +39,12 @@ def test_count_elements_atomic_nums():
     pd.testing.assert_series_equal(expected, el_cts)
 
 
+@pytest.mark.parametrize("rng", [(-1, 10), (100, 200)])
+def test_count_elements_bad_atomic_nums(rng):
+    with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
+        count_elements({str(idx): 0 for idx in list(range(*rng))})
+
+
 def test_hist_elemental_prevalence():
     ax = hist_elemental_prevalence(formulas_1)
     assert isinstance(ax, Axes)
