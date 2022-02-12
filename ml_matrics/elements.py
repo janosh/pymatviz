@@ -20,7 +20,7 @@ from ml_matrics.utils import ROOT, annotate_bar_heights
 if TYPE_CHECKING:
     from typing import TypeAlias
 
-    ElemValues: TypeAlias = dict[str, int | float] | pd.Series | Sequence[str]
+    ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
 
 df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
 
@@ -55,10 +55,21 @@ def count_elements(elem_values: ElemValues) -> pd.Series:
             f"list of compositions (strings or Pymatgen objects), got {elem_values}"
         )
 
-    if srs.index.dtype == int or srs.index.str.isdigit().all():
-        # if index is all integers or digit strings, assume they represent atomic
+    try:
+        # if index consists entirely of strings representing integers, convert to ints
+        srs.index = srs.index.astype(int)
+    except (ValueError, TypeError):
+        pass
+
+    if srs.index.dtype == int:
+        # if index is all integers, assume they represent atomic
         # numbers and map them to element symbols (H: 1, He: 2, ...)
-        srs.index = srs.index.astype(int).map(
+        if srs.index.max() > 118 or srs.index.min() < 1:
+            raise ValueError(
+                "element value keys were found to be integers and assumed to represent "
+                "atomic numbers, but values are outside expected range [1, 118]."
+            )
+        srs.index = srs.index.map(
             df_ptable.reset_index().set_index("atomic_number").symbol
         )
 
