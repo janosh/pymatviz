@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
     paths: [assets/*.svg] # only run workflow when SVG files changed
+  push:
+    branches: [main]
+    paths: [assets/*.svg] # only run workflow when SVG files changed
 
 jobs:
   tests:
@@ -11,21 +14,24 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: Set up node
         uses: actions/setup-node@v2
 
       - name: Install SVGO
-        run: npm -g svgo
+        run: npm install --global svgo
 
       - name: Compress SVG assets and commit to current PR
         run: |
           svgo assets
-          if git diff --quiet; then
+          if git diff --quiet assets; then
             echo "No changes to commit"
             exit 0
           fi
-          git config user.name='Janosh Riebesell'
-          git config user.email=janosh.riebesell@gmail.com
-          git commit -a -m 'compress new SVG assets'
+          git config user.name "Janosh Riebesell"
+          git config user.email janosh.riebesell@gmail.com
+          git add assets
+          git commit -m "compress new SVG assets"
           git push
