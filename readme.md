@@ -44,6 +44,14 @@ See [`ml_matrics/sunburst.py`](ml_matrics/sunburst.py).
 | :------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
 |                        ![spacegroup_sunburst]                        |                               ![spacegroup_sunburst_percent]                                |
 
+## Structure
+
+See [`ml_matrics/struct_vis.py`](ml_matrics/struct_vis.py).
+
+| [`plot_structure_2d(pmg_struct)`](ml_matrics/struct_vis.py) | [`plot_structure_2d(pmg_struct, show_unit_cell=False, annotate_sites=False)`](ml_matrics/struct_vis.py) |
+| :---------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------: |
+|              ![struct-2d-mp-19017-disordered]               |                                          ![struct-2d-mp-12712]                                          |
+
 ## Histograms
 
 See [`ml_matrics/histograms.py`](ml_matrics/histograms.py).
@@ -123,31 +131,33 @@ pytest -k test_precision_recall_curve # -k takes regex matching test names
 2. **Error** `y_err = abs(y_true - y_pred)`: Absolute error between target and model prediction.
 3. **Uncertainty** `y_std`: The model's estimate for its error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)
 
-[density_scatter]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_scatter.svg
-[density_scatter_with_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_scatter_with_hist.svg
-[density_hexbin]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_hexbin.svg
-[density_hexbin_with_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_hexbin_with_hist.svg
-[scatter_with_err_bar]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/scatter_with_err_bar.svg
-[residual_vs_actual]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/residual_vs_actual.svg
-[ptable_heatmap]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap.svg
-[ptable_heatmap_log]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_log.svg
-[hist_elemental_prevalence]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence.svg
-[hist_elemental_prevalence_log_count]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence_log_count.svg
-[ptable_heatmap_ratio]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_ratio.svg
-[ptable_heatmap_ratio_inverse]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_ratio_inverse.svg
-[normal_prob_plot]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot.svg
-[normal_prob_plot_multiple]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot_multiple.svg
-[err_decay]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/err_decay.svg
-[err_decay_multiple]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/err_decay_multiple.svg
 [cumulative_error]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/cumulative_error.svg
 [cumulative_residual]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/cumulative_residual.svg
-[roc_curve]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/roc_curve.svg
-[precision_recall_curve]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/precision_recall_curve.svg
-[marchenko_pastur]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/marchenko_pastur.svg
+[density_hexbin_with_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_hexbin_with_hist.svg
+[density_hexbin]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_hexbin.svg
+[density_scatter_with_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_scatter_with_hist.svg
+[density_scatter]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/density_scatter.svg
+[err_decay_multiple]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/err_decay_multiple.svg
+[err_decay]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/err_decay.svg
+[hist_elemental_prevalence_log_count]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence_log_count.svg
+[hist_elemental_prevalence]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence.svg
 [marchenko_pastur_significant_eval]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/marchenko_pastur_significant_eval.svg
+[marchenko_pastur]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/marchenko_pastur.svg
+[normal_prob_plot_multiple]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot_multiple.svg
+[normal_prob_plot]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot.svg
+[precision_recall_curve]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/precision_recall_curve.svg
+[ptable_heatmap_log]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_log.svg
+[ptable_heatmap_ratio_inverse]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_ratio_inverse.svg
+[ptable_heatmap_ratio]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap_ratio.svg
+[ptable_heatmap]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/ptable_heatmap.svg
 [residual_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/residual_hist.svg
-[true_pred_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/true_pred_hist.svg
-[spacegroup_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_hist.svg
+[residual_vs_actual]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/residual_vs_actual.svg
+[roc_curve]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/roc_curve.svg
+[scatter_with_err_bar]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/scatter_with_err_bar.svg
 [spacegroup_hist_no_counts]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_hist_no_counts.svg
-[spacegroup_sunburst]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_sunburst.svg
+[spacegroup_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_hist.svg
 [spacegroup_sunburst_percent]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_sunburst_percent.svg
+[spacegroup_sunburst]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/spacegroup_sunburst.svg
+[struct-2d-mp-12712]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/struct-2d-mp-12712.svg
+[struct-2d-mp-19017-disordered]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/struct-2d-mp-19017-disordered.svg
+[true_pred_hist]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/true_pred_hist.svg
