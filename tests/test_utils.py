@@ -38,5 +38,5 @@ def test_get_crystal_sys(input, expected):
 
 @pytest.mark.parametrize("spg", [-1, 0, 231])
 def test_get_crystal_sys_invalid(spg):
-    with pytest.raises(ValueError, match=f"Received invalid space group {spg}"):
+    with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         get_crystal_sys(spg)
