@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from itertools import product
-from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -93,13 +92,14 @@ def plot_structure_2d(
     show_unit_cell: bool = True,
     bbox: tuple[float, float, float, float] = None,
     maxwidth: int = None,
+    annotate_sites: bool = True,
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
     Args:
-        struct (Structure): Must be pymatgen instance.
-        ax (plt.Axes, optional): Matplotlib axes on which to plot. Defaults to None.
-        rotation (str, optional): Euler angles in degrees in the form '10x,20y,30z'
+        struct (Structure): Must be pymatgen instance. ax (plt.Axes, optional):
+        Matplotlib axes on which to plot. Defaults to None. rotation (str, optional):
+        Euler angles in degrees in the form '10x,20y,30z'
             describing angle at which to view structure. Defaults to "".
         radii (float | dict[str, float], optional): Either a scaling factor for default
             radii or map from element symbol to atomic radii. Defaults to covalent
@@ -114,6 +114,8 @@ def plot_structure_2d(
         bbox (tuple[float, float, float, float], optional): Bounding box for the plot.
             Defaults to None.
         maxwidth (int, optional): Maximum width of the plot. Defaults to None.
+        annotate_sites (bool): Whether to show element symbols at lattice sites.
+            Defaults to True.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -121,7 +123,6 @@ def plot_structure_2d(
     if ax is None:
         ax = plt.gca()
 
-    # atom_nums = np.array(struct.atomic_numbers)
     elems = [str(site.species.elements[0]) for site in struct]
 
     if colors is None:
@@ -134,8 +135,7 @@ def plot_structure_2d(
         # make sure all present elements are assigned a radius
         assert all(el in atomic_radii for el in elems)
 
-    atomic_radii = cast(dict[str, float], atomic_radii)
-    radii = np.array([atomic_radii[el] for el in elems])
+    radii = np.array([atomic_radii[el] for el in elems])  # type: ignore
 
     n_atoms = len(struct)
     rot_matrix = get_rot_matrix(rotation)
@@ -204,22 +204,34 @@ def plot_structure_2d(
     # sort so we draw from back to front along out-of-plane (z-)axis
     for idx in positions[:, 2].argsort():
         xy = positions[idx, :2]
+        start = 0
         if idx < n_atoms:
-            start = 0
             # loop over all species on a site
-            for elem, occ in struct[idx].species.items():
+            for elem, occu in struct[idx].species.items():
                 elem = str(elem)
+                radius = atomic_radii[elem] * scale  # type: ignore
                 wedge = Wedge(
                     xy,
-                    atomic_radii[elem] * scale,
-                    start,
-                    start + 360 * occ,
+                    radius,
+                    360 * start,
+                    360 * (start + occu),
                     facecolor=colors[elem],
                     edgecolor="black",
                 )
                 ax.add_patch(wedge)
-                start += 360 * occ
 
+                # place element symbol half way along outer wedge edge for disordered
+                # sites
+                if annotate_sites:
+                    half_way = 2 * np.pi * (start + occu / 2)
+                    direction = np.array([math.cos(half_way), math.sin(half_way)])
+                    text_offset = (
+                        (radius + 0.3 * scale) * direction if occu < 1 else (0, 0)
+                    )
+
+                    ax.text(*(xy + text_offset), elem, ha="center", va="center")
+
+                start += occu
         else:
             # draw unit cell
             idx -= n_atoms
