@@ -48,9 +48,9 @@ See [`ml_matrics/sunburst.py`](ml_matrics/sunburst.py).
 
 See [`ml_matrics/struct_vis.py`](ml_matrics/struct_vis.py).
 
-| [`plot_structure_2d(pmg_struct)`](ml_matrics/struct_vis.py) | [`plot_structure_2d(pmg_struct, show_unit_cell=False, annotate_sites=False)`](ml_matrics/struct_vis.py) |
-| :---------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------: |
-|              ![struct-2d-mp-19017-disordered]               |                                          ![struct-2d-mp-12712]                                          |
+| [`plot_structure_2d(pmg_struct)`](ml_matrics/struct_vis.py) | [`plot_structure_2d(pmg_struct, show_unit_cell=False, site_labels=False)`](ml_matrics/struct_vis.py) |
+| :---------------------------------------------------------: | :--------------------------------------------------------------------------------------------------: |
+|              ![struct-2d-mp-19017-disordered]               |                                        ![struct-2d-mp-12712]                                         |
 
 ## Histograms
 

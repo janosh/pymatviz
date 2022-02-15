@@ -17,9 +17,9 @@ disord_struct: Structure = SubstitutionTransformation(
 @pytest.mark.parametrize("structure", [struct, disord_struct])
 @pytest.mark.parametrize("radii", [0.5, 1.2])
 @pytest.mark.parametrize("rot", ["0x,0y,0z", "10x,-10y,0z"])
-@pytest.mark.parametrize("anno", [True, False])
-def test_plot_structure_2d(structure, radii, rot, anno):
+@pytest.mark.parametrize("labels", [True, False, {"P": "Phosphor"}])
+def test_plot_structure_2d(structure, radii, rot, labels):
     ax = plot_structure_2d(
-        structure, atomic_radii=radii, rotation=rot, annotate_sites=anno
+        structure, atomic_radii=radii, rotation=rot, site_labels=labels
     )
     assert isinstance(ax, plt.Axes)
