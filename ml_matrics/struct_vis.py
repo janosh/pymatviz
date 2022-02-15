@@ -92,7 +92,7 @@ def plot_structure_2d(
     show_unit_cell: bool = True,
     bbox: tuple[float, float, float, float] = None,
     maxwidth: int = None,
-    annotate_sites: bool = True,
+    site_labels: bool | dict[str, str | float] | list[str | float] = True,
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
@@ -114,8 +114,10 @@ def plot_structure_2d(
         bbox (tuple[float, float, float, float], optional): Bounding box for the plot.
             Defaults to None.
         maxwidth (int, optional): Maximum width of the plot. Defaults to None.
-        annotate_sites (bool): Whether to show element symbols at lattice sites.
-            Defaults to True.
+        site_labels (bool | dict[str, str | float] | list[str | float]): How to annotate
+            lattice sites. If True, labels are element symbols. If a dict, should map
+            element symbols to labels. If a list, must be same length as the number of
+            sites in the crystal. Defaults to True.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -125,6 +127,11 @@ def plot_structure_2d(
 
     elems = [str(site.species.elements[0]) for site in struct]
 
+    if isinstance(site_labels, list):
+        assert len(site_labels) == len(
+            struct
+        ), "Length mismatch between site_labels and struct"
+
     if colors is None:
         colors = jmol_colors
 
@@ -133,7 +140,8 @@ def plot_structure_2d(
     else:
         assert isinstance(atomic_radii, dict)
         # make sure all present elements are assigned a radius
-        assert all(el in atomic_radii for el in elems)
+        missing = {el for el in elems if el not in atomic_radii}
+        assert not missing, f"atomic_radii is missing keys: {missing}"
 
     radii = np.array([atomic_radii[el] for el in elems])  # type: ignore
 
@@ -222,14 +230,19 @@ def plot_structure_2d(
 
                 # place element symbol half way along outer wedge edge for disordered
                 # sites
-                if annotate_sites:
+                txt = elem
+                if isinstance(site_labels, dict) and elem in site_labels:
+                    txt = site_labels.get(elem, "")
+                if isinstance(site_labels, list):
+                    txt = site_labels[idx]
+                if site_labels:
                     half_way = 2 * np.pi * (start + occu / 2)
                     direction = np.array([math.cos(half_way), math.sin(half_way)])
                     text_offset = (
                         (radius + 0.3 * scale) * direction if occu < 1 else (0, 0)
                     )
 
-                    ax.text(*(xy + text_offset), elem, ha="center", va="center")
+                    ax.text(*(xy + text_offset), txt, ha="center", va="center")
 
                 start += occu
         else:

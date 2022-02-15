@@ -6,7 +6,7 @@ on:
     paths: [assets/*.svg] # only run workflow when SVG files changed
   push:
     branches: [main]
-    paths: [assets/*.svg] # only run workflow when SVG files changed
+    paths: [assets/*.svg]
 
 jobs:
   tests:
