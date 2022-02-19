@@ -1,0 +1,64 @@
+'@module': pymatgen.core.structure
+'@class': Structure
+charge:
+lattice:
+  matrix:
+  - - 0.0
+    - 3.182586
+    - 3.182586
+  - - 3.182586
+    - 0.0
+    - 3.182586
+  - - 3.182586
+    - 3.182586
+    - 0.0
+  a: 4.500856284618739
+  b: 4.500856284618739
+  c: 4.500856284618739
+  alpha: 59.99999999999999
+  beta: 59.99999999999999
+  gamma: 59.99999999999999
+  volume: 64.4718956285029
+sites:
+- species:
+  - element: Mg
+    occu: 1
+  abc:
+  - 0.25
+  - 0.25
+  - 0.25
+  xyz:
+  - 1.591293
+  - 1.591293
+  - 1.591293
+  label: Mg
+  properties:
+    magmom: 0.0
+- species:
+  - element: Mg
+    occu: 1
+  abc:
+  - 0.75
+  - 0.75
+  - 0.75
+  xyz:
+  - 4.773879
+  - 4.773879
+  - 4.773879
+  label: Mg
+  properties:
+    magmom: 0.0
+- species:
+  - element: Si
+    occu: 1
+  abc:
+  - 0.0
+  - 0.0
+  - 0.0
+  xyz:
+  - 0.0
+  - 0.0
+  - 0.0
+  label: Si
+  properties:
+    magmom: -0.0

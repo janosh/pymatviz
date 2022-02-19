@@ -1,0 +1,50 @@
+'@module': pymatgen.core.structure
+'@class': Structure
+charge:
+lattice:
+  matrix:
+  - - 0.0
+    - 2.75315
+    - 2.75315
+  - - 2.75315
+    - 0.0
+    - 2.75315
+  - - 2.75315
+    - 2.75315
+    - 0.0
+  a: 3.893542069247487
+  b: 3.893542069247487
+  c: 3.893542069247487
+  alpha: 59.99999999999999
+  beta: 59.99999999999999
+  gamma: 59.99999999999999
+  volume: 41.73684503376176
+sites:
+- species:
+  - element: Ga
+    occu: 1
+  abc:
+  - 0.0
+  - 0.0
+  - 0.0
+  xyz:
+  - 0.0
+  - 0.0
+  - 0.0
+  label: Ga
+  properties:
+    magmom: 0.0
+- species:
+  - element: P
+    occu: 1
+  abc:
+  - 0.75
+  - 0.75
+  - 0.75
+  xyz:
+  - 4.1297250000000005
+  - 4.1297250000000005
+  - 4.1297250000000005
+  label: P
+  properties:
+    magmom: 0.0

@@ -51,6 +51,7 @@ See [`ml_matrics/struct_vis.py`](ml_matrics/struct_vis.py).
 | [`plot_structure_2d(pmg_struct)`](ml_matrics/struct_vis.py) | [`plot_structure_2d(pmg_struct, show_unit_cell=False, site_labels=False)`](ml_matrics/struct_vis.py) |
 | :---------------------------------------------------------: | :--------------------------------------------------------------------------------------------------: |
 |              ![struct-2d-mp-19017-disordered]               |                                        ![struct-2d-mp-12712]                                         |
+|                     ![mp-structures-2d]                     |                                                                                                      |
 
 ## Histograms
 
@@ -143,6 +144,7 @@ pytest -k test_precision_recall_curve # -k takes regex matching test names
 [hist_elemental_prevalence]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/hist_elemental_prevalence.svg
 [marchenko_pastur_significant_eval]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/marchenko_pastur_significant_eval.svg
 [marchenko_pastur]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/marchenko_pastur.svg
+[mp-structures-2d]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/mp-structures-2d.svg
 [normal_prob_plot_multiple]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot_multiple.svg
 [normal_prob_plot]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/normal_prob_plot.svg
 [precision_recall_curve]: https://raw.githubusercontent.com/janosh/ml-matrics/main/assets/precision_recall_curve.svg
