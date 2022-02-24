@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from itertools import product
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,7 +52,7 @@ def unit_cell_to_lines(cell: NumArray) -> tuple[NumArray, NumArray, NumArray]:
     Returns:
         tuple[NumArray, NumArray, NumArray]:
         - Lines
-        - z-indices that sort plot elements into out-of-place layers
+        - z-indices that sort plot elements into out-of-plane layers
         - lines used to plot the unit cell
     """
     n_lines = 0
@@ -88,11 +89,9 @@ def plot_structure_2d(
     atomic_radii: float | dict[str, float] | None = None,
     colors: dict[str, str | list[float]] = None,
     scale: float = 1,
-    offset: tuple[float, float] = (0, 0),
     show_unit_cell: bool = True,
-    bbox: tuple[float, float, float, float] = None,
-    maxwidth: int = None,
     site_labels: bool | dict[str, str | float] | list[str | float] = True,
+    label_kwargs: dict[str, Any] = {"fontsize": 14},
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
@@ -108,16 +107,13 @@ def plot_structure_2d(
             colors, either a named color (str) or rgb(a) values like (0.2, 0.3, 0.6).
             Defaults to JMol colors.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
-        offset (tuple[float, float], optional): (x, y) offset of the plotted atoms and
-            lines. Defaults to (0, 0).
         show_unit_cell (bool, optional): Whether to draw unit cell. Defaults to True.
-        bbox (tuple[float, float, float, float], optional): Bounding box for the plot.
-            Defaults to None.
-        maxwidth (int, optional): Maximum width of the plot. Defaults to None.
         site_labels (bool | dict[str, str | float] | list[str | float]): How to annotate
             lattice sites. If True, labels are element symbols. If a dict, should map
             element symbols to labels. If a list, must be same length as the number of
             sites in the crystal. Defaults to True.
+        label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text.
+            Defaults to {"fontsize": 12}.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -151,8 +147,8 @@ def plot_structure_2d(
 
     if show_unit_cell:
         lines, z_indices, unit_cell_lines = unit_cell_to_lines(unit_cell)
-        mult = np.array(list(product((0, 1), (0, 1), (0, 1))))
-        cell_vertices = np.dot(mult, unit_cell)
+        corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
+        cell_vertices = np.dot(corners, unit_cell)
         cell_vertices = np.dot(cell_vertices, rot_matrix)
     else:
         lines = np.empty((0, 3))
@@ -178,31 +174,17 @@ def plot_structure_2d(
     positions = np.dot(positions, rot_matrix)
     site_coords = positions[:n_atoms]
 
-    if bbox is None:
-        min_coords = (site_coords - radii[:, None]).min(0)
-        max_coords = (site_coords + radii[:, None]).max(0)
+    min_coords = (site_coords - radii[:, None]).min(0)
+    max_coords = (site_coords + radii[:, None]).max(0)
 
-        if show_unit_cell:
-            min_coords = np.minimum(min_coords, cell_vertices.min(0))
-            max_coords = np.maximum(max_coords, cell_vertices.max(0))
+    if show_unit_cell:
+        min_coords = np.minimum(min_coords, cell_vertices.min(0))
+        max_coords = np.maximum(max_coords, cell_vertices.max(0))
 
-        means = (min_coords + max_coords) / 2
-        coord_ranges = 1.05 * (max_coords - min_coords)
-        width = scale * coord_ranges[0]
+    means = (min_coords + max_coords) / 2
+    coord_ranges = 1.05 * (max_coords - min_coords)
 
-        if maxwidth and width > maxwidth:
-            width = maxwidth
-            scale = width / coord_ranges[0]
-
-        height = scale * coord_ranges[1]
-        offset = np.array(
-            [scale * means[0] - width / 2, scale * means[1] - height / 2, 0]
-        )
-    else:
-        width = (bbox[2] - bbox[0]) * scale
-        height = (bbox[3] - bbox[1]) * scale
-        offset = np.array([bbox[0], bbox[1], 0]) * scale
-
+    offset = scale * (means - coord_ranges / 2)
     positions *= scale
     positions -= offset
 
@@ -214,15 +196,15 @@ def plot_structure_2d(
         xy = positions[idx, :2]
         start = 0
         if idx < n_atoms:
-            # loop over all species on a site
-            for elem, occu in struct[idx].species.items():
+            # loop over all species on a site (usually just 1 for ordered sites)
+            for elem, occupancy in struct[idx].species.items():
                 elem = str(elem)
                 radius = atomic_radii[elem] * scale  # type: ignore
                 wedge = Wedge(
                     xy,
                     radius,
                     360 * start,
-                    360 * (start + occu),
+                    360 * (start + occupancy),
                     facecolor=colors[elem],
                     edgecolor="black",
                 )
@@ -236,15 +218,16 @@ def plot_structure_2d(
                 if isinstance(site_labels, list):
                     txt = site_labels[idx]
                 if site_labels:
-                    half_way = 2 * np.pi * (start + occu / 2)
+                    half_way = 2 * np.pi * (start + occupancy / 2)
                     direction = np.array([math.cos(half_way), math.sin(half_way)])
                     text_offset = (
-                        (radius + 0.3 * scale) * direction if occu < 1 else (0, 0)
+                        (radius + 0.3 * scale) * direction if occupancy < 1 else (0, 0)
                     )
 
-                    ax.text(*(xy + text_offset), txt, ha="center", va="center")
+                    txt_kwds = dict(ha="center", va="center", **label_kwargs)
+                    ax.text(*(xy + text_offset), txt, **txt_kwds)
 
-                start += occu
+                start += occupancy
         else:
             # draw unit cell
             idx -= n_atoms
@@ -254,6 +237,7 @@ def plot_structure_2d(
                 path = PathPatch(Path((xy + hxy, xy - hxy)))
                 ax.add_patch(path)
 
+    width, height, _ = scale * coord_ranges
     ax.set(xlim=[0, width], ylim=[0, height], aspect="equal")
     ax.axis("off")
 
