@@ -210,14 +210,15 @@ def plot_structure_2d(
                 )
                 ax.add_patch(wedge)
 
-                # place element symbol half way along outer wedge edge for disordered
-                # sites
                 txt = elem
                 if isinstance(site_labels, dict) and elem in site_labels:
                     txt = site_labels.get(elem, "")
                 if isinstance(site_labels, list):
                     txt = site_labels[idx]
+
                 if site_labels:
+                    # place element symbol half way along outer wedge edge for
+                    # disordered sites
                     half_way = 2 * np.pi * (start + occupancy / 2)
                     direction = np.array([math.cos(half_way), math.sin(half_way)])
                     text_offset = (
@@ -228,12 +229,11 @@ def plot_structure_2d(
                     ax.text(*(xy + text_offset), txt, **txt_kwds)
 
                 start += occupancy
-        else:
-            # draw unit cell
+        else:  # draw unit cell
             idx -= n_atoms
-            c = z_indices[idx]
-            if c != -1:  # don't draw line if it should be obstructed by an atom
-                hxy = unit_cell_lines[c]
+            # only draw line if not obstructed by an atom
+            if z_indices[idx] != -1:
+                hxy = unit_cell_lines[z_indices[idx]]
                 path = PathPatch(Path((xy + hxy, xy - hxy)))
                 ax.add_patch(path)
 
