@@ -14,7 +14,7 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 from plotly.graph_objects import Figure
 from pymatgen.core import Composition
 
-from ml_matrics.utils import ROOT, annotate_bar_heights
+from pymatviz.utils import ROOT, annotate_bar_heights
 
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
 
-df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
+df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
 def count_elements(elem_values: ElemValues) -> pd.Series:

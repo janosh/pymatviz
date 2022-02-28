@@ -3,10 +3,8 @@ name: Tests
 on:
   push:
     branches: [main]
-    paths: ['**/*.py', '.github/workflows/test.yml']
   pull_request:
     branches: [main]
-    paths: ['**/*.py', '.github/workflows/test.yml']
 
 jobs:
   pytest:
@@ -28,4 +26,4 @@ jobs:
         run: pip install .[test]
 
       - name: Run tests
-        run: pytest --durations 0 --cov ml_matrics
+        run: pytest --durations 0 --cov pymatviz

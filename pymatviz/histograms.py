@@ -10,7 +10,7 @@ from matplotlib.axes import Axes
 from matplotlib.ticker import FixedLocator, FormatStrFormatter
 from scipy.stats import gaussian_kde
 
-from ml_matrics.utils import NumArray
+from pymatviz.utils import NumArray
 
 
 def residual_hist(

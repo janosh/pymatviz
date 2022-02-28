@@ -1,7 +1,7 @@
 import pandas as pd
 from plotly.graph_objects import Figure
 
-from ml_matrics import ROOT, spacegroup_sunburst
+from pymatviz import ROOT, spacegroup_sunburst
 
 
 phonons = pd.read_csv(f"{ROOT}/data/matbench-phonons.csv")

@@ -1,7 +1,7 @@
 import pytest
 from matplotlib.offsetbox import AnchoredText
 
-from ml_matrics.utils import add_mae_r2_box, get_crystal_sys
+from pymatviz.utils import add_mae_r2_box, get_crystal_sys
 
 from ._helpers import y_pred, y_true
 

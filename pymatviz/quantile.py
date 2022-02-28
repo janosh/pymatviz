@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.axes import Axes
 from scipy.stats import norm
 
-from ml_matrics.utils import NumArray
+from pymatviz.utils import NumArray
 
 
 def qq_gaussian(

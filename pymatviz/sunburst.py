@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px
 from plotly.graph_objects import Figure
 
-from ml_matrics.utils import get_crystal_sys
+from pymatviz.utils import get_crystal_sys
 
 
 def spacegroup_sunburst(
