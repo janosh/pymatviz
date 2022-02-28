@@ -1,6 +1,6 @@
 from ml_matrics import cum_err, cum_res
 
-from . import y_pred, y_true
+from ._helpers import y_pred, y_true
 
 
 def test_cum_err():

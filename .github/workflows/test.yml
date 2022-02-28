@@ -28,4 +28,4 @@ jobs:
         run: pip install .[test]
 
       - name: Run tests
-        run: pytest --durations 0 --cov
+        run: pytest --durations 0 --cov ml_matrics

@@ -3,7 +3,7 @@ from matplotlib.offsetbox import AnchoredText
 
 from ml_matrics.utils import add_mae_r2_box, get_crystal_sys
 
-from . import y_pred, y_true
+from ._helpers import y_pred, y_true
 
 
 def test_add_mae_r2_box():
@@ -38,5 +38,5 @@ def test_get_crystal_sys(input, expected):
 
 @pytest.mark.parametrize("spg", [-1, 0, 231])
 def test_get_crystal_sys_invalid(spg):
-    with pytest.raises(ValueError, match=f"Received invalid space group {spg}"):
+    with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         get_crystal_sys(spg)

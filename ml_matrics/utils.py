@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import ast
 from os.path import abspath, dirname
-from typing import Any, Sequence, Union
+from typing import Any, Literal, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
@@ -15,6 +17,32 @@ from sklearn.metrics import r2_score
 ROOT = dirname(dirname(abspath(__file__)))
 
 NumArray = NDArray[Union[np.float64, np.int_]]
+
+df_elem = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
+
+# http://jmol.sourceforge.net/jscolors
+jmol_colors = df_elem.jmol_color.dropna().apply(ast.literal_eval)
+
+missing_cov_rad = 0.2
+# covalent_radii = df_elem.covalent_radius.fillna(missing_cov_rad).to_dict()
+covalent_radii = df_elem.covalent_radius.fillna(missing_cov_rad)
+
+atomic_numbers: dict[str, int] = {}
+element_symbols: dict[int, str] = {}
+
+for Z, symbol in enumerate(df_elem.index, 1):
+    atomic_numbers[symbol] = Z
+    element_symbols[Z] = symbol
+
+
+def elem_to_Z(elem_sumbol: str) -> int:
+    """Map element symbol to atomic number."""
+    return atomic_numbers[elem_sumbol]
+
+
+def Z_to_elem(atom_num: int) -> str:
+    """Map atomic number to element symbol."""
+    return element_symbols[atom_num]
 
 
 def with_hist(
@@ -142,11 +170,21 @@ def add_mae_r2_box(
     return text_box
 
 
-def get_crystal_sys(spg: int) -> str:
+def get_crystal_sys(
+    spg: int,
+) -> Literal[
+    "triclinic",
+    "monoclinic",
+    "orthorhombic",
+    "tetragonal",
+    "trigonal",
+    "hexagonal",
+    "cubic",
+]:
     """Get the crystal system for an international space group number."""
     # not using isinstance(n, int) to allow 0-decimal floats
     if not (spg == int(spg) and 0 < spg < 231):
-        raise ValueError(f"Received invalid space group {spg}")
+        raise ValueError(f"Invalid space group {spg}")
 
     if 0 < spg < 3:
         return "triclinic"

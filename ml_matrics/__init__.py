@@ -19,5 +19,6 @@ from .parity import (
 from .quantile import qq_gaussian
 from .ranking import err_decay
 from .relevance import precision_recall_curve, roc_curve
+from .struct_vis import plot_structure_2d
 from .sunburst import spacegroup_sunburst
 from .utils import ROOT, add_mae_r2_box, annotate_bar_heights

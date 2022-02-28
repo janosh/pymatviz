@@ -1,0 +1,134 @@
+'@module': pymatgen.core.structure
+'@class': Structure
+charge:
+lattice:
+  matrix:
+  - - -2.710914
+    - 2.710914
+    - 5.268644
+  - - 2.710914
+    - -2.710914
+    - 5.268644
+  - - 2.710914
+    - 2.710914
+    - -5.268644
+  a: 6.515882060744194
+  b: 6.515882060744194
+  c: 6.515882060744194
+  alpha: 130.8294474550374
+  beta: 130.8294474550374
+  gamma: 72.08419166033369
+  volume: 154.87821212777135
+sites:
+- species:
+  - element: Zn
+    occu: 1
+  abc:
+  - 0.0
+  - 0.0
+  - 0.0
+  xyz:
+  - 0.0
+  - 0.0
+  - 0.0
+  label: Zn
+  properties:
+    magmom: 0.0
+- species:
+  - element: Zn
+    occu: 1
+  abc:
+  - 0.75
+  - 0.25
+  - 0.5
+  xyz:
+  - -2.220446049250313e-16
+  - 2.710914
+  - 2.634322
+  label: Zn
+  properties:
+    magmom: 0.0
+- species:
+  - element: Si
+    occu: 1
+  abc:
+  - 0.5
+  - 0.5
+  - 0.0
+  xyz:
+  - 0.0
+  - 0.0
+  - 5.268644
+  label: Si
+  properties:
+    magmom: 0.0
+- species:
+  - element: Si
+    occu: 1
+  abc:
+  - 0.25
+  - 0.75
+  - 0.5
+  xyz:
+  - 2.710914
+  - 0.0
+  - 2.634322
+  label: Si
+  properties:
+    magmom: 0.0
+- species:
+  - element: P
+    occu: 1
+  abc:
+  - 0.375
+  - 0.393075
+  - 0.518075
+  xyz:
+  - 1.4534565410999998
+  - 1.355457
+  - 1.3171610000000007
+  label: P
+  properties:
+    magmom: -0.0
+- species:
+  - element: P
+    occu: 1
+  abc:
+  - 0.875
+  - 0.856925
+  - 0.481925
+  xyz:
+  - 1.2574574588999998
+  - 1.355457
+  - 6.585805
+  label: P
+  properties:
+    magmom: -0.0
+- species:
+  - element: P
+    occu: 1
+  abc:
+  - 0.606925
+  - 0.125
+  - 0.981925
+  xyz:
+  - 1.3554570000000001
+  - 3.9683714588999996
+  - -1.3171609999999998
+  label: P
+  properties:
+    magmom: -0.0
+- species:
+  - element: P
+    occu: 1
+  abc:
+  - 0.143075
+  - 0.625
+  - 0.018075
+  xyz:
+  - 1.355457
+  - -1.2574574588999998
+  - 3.9514830000000005
+  label: P
+  properties:
+    magmom: -0.0

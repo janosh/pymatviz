@@ -1,0 +1,120 @@
+'@module': pymatgen.core.structure
+'@class': Structure
+charge:
+lattice:
+  matrix:
+  - - -2.822895
+    - 2.822895
+    - 5.18441
+  - - 2.822895
+    - -2.822895
+    - 5.18441
+  - - 2.822895
+    - 2.822895
+    - -5.18441
+  a: 6.543361476347611
+  b: 6.543361476347611
+  c: 6.543361476347611
+  alpha: 128.8853940429804
+  beta: 128.8853940429804
+  gamma: 75.19504956707874
+  volume: 165.25278217707128
+sites:
+- species:
+  - element: Cd
+    occu: 1
+  abc:
+  - 0.0
+  - 0.0
+  - 0.0
+  xyz:
+  - 0.0
+  - 0.0
+  - 0.0
+  label: Cd
+  properties:
+    magmom: -0.0
+- species:
+  - element: Ga
+    occu: 1
+  abc:
+  - 0.25
+  - 0.75
+  - 0.5
+  xyz:
+  - 2.822895
+  - 0.0
+  - 2.592205
+  label: Ga
+  properties:
+    magmom: 0.0
+- species:
+  - element: Ga
+    occu: 1
+  abc:
+  - 0.5
+  - 0.5
+  - 0.0
+  xyz:
+  - 0.0
+  - 0.0
+  - 5.18441
+  label: Ga
+  properties:
+    magmom: 0.0
+- species:
+  - element: S
+    occu: 1
+  abc:
+  - 0.868521
+  - 0.407943
+  - 0.005827
+  xyz:
+  - -1.2837143241449998
+  - 1.3166123424749998
+  - 6.58750316917
+  label: S
+  properties:
+    magmom: 0.0
+- species:
+  - element: S
+    occu: 1
+  abc:
+  - 0.592057
+  - 0.597884
+  - 0.460579
+  xyz:
+  - 1.3166151653699998
+  - 1.2837171470400002
+  - 3.78131164642
+  label: S
+  properties:
+    magmom: 0.0
+- species:
+  - element: S
+    occu: 1
+  abc:
+  - 0.137305
+  - 0.131479
+  - 0.539421
+  xyz:
+  - 1.5062826575250001
+  - 1.539175030065
+  - -1.40309316917
+  label: S
+  properties:
+    magmom: 0.0
+- species:
+  - element: S
+    occu: 1
+  abc:
+  - 0.402116
+  - 0.862695
+  - 0.994173
+  xyz:
+  - 4.10661214704
+  - 1.5062798346299997
+  - 1.40309835358
+  label: S
+  properties:
+    magmom: 0.0
