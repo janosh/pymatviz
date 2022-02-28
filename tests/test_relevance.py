@@ -2,7 +2,7 @@ from matplotlib.axes import Axes
 
 from ml_matrics import precision_recall_curve, roc_curve
 
-from . import y_binary, y_proba
+from ._helpers import y_binary, y_proba
 
 
 def test_roc_curve():

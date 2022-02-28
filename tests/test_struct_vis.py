@@ -1,6 +1,4 @@
 import os
-import subprocess
-from shutil import which
 
 import matplotlib.pyplot as plt
 import pytest
@@ -10,6 +8,7 @@ from pymatgen.transformations.standard_transformations import SubstitutionTransf
 
 from ml_matrics.struct_vis import plot_structure_2d
 
+from ._helpers import save_fixture
 
 
 os.makedirs(fixt_dir := "tests/fixtures/struct_vis", exist_ok=True)
@@ -20,30 +19,6 @@ struct = Structure(latt, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 disord_struct: Structure = SubstitutionTransformation(
     {"Fe": {"Fe": 0.75, "C": 0.25}}
 ).apply_transformation(struct)
-
-
-pngquant, zopflipng = which("pngquant"), which("zopflipng")
-
-
-def save_fixture(save_to: str) -> None:
-    plt.savefig(save_to)
-    plt.close()
-
-    if not pngquant:
-        return print("Warning: pngquant not installed. Cannot compress new fixture.")
-    if not zopflipng:
-        return print("Warning: zopflipng not installed. Cannot compress new fixture.")
-
-    subprocess.run(
-        f"{pngquant} 32 --skip-if-larger --ext .png --force".split() + [save_to],
-        check=False,
-        capture_output=True,
-    )
-    subprocess.run(
-        [zopflipng, "-y", save_to, save_to],
-        check=True,
-        capture_output=True,
-    )
 
 
 @pytest.mark.parametrize("radii", [0.5, 1.2])
