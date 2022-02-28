@@ -51,7 +51,8 @@ See [`ml_matrics/struct_vis.py`](ml_matrics/struct_vis.py).
 | [`plot_structure_2d(pmg_struct)`](ml_matrics/struct_vis.py) | [`plot_structure_2d(pmg_struct, show_unit_cell=False, site_labels=False)`](ml_matrics/struct_vis.py) |
 | :---------------------------------------------------------: | :--------------------------------------------------------------------------------------------------: |
 |              ![struct-2d-mp-19017-disordered]               |                                        ![struct-2d-mp-12712]                                         |
-|                     ![mp-structures-2d]                     |                                                                                                      |
+
+![mp-structures-2d]
 
 ## Histograms
 
