@@ -1,4 +1,6 @@
 # %%
+import os
+from glob import glob
 from shutil import which
 from subprocess import call
 
@@ -6,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from plotly.graph_objects import Figure
+from pymatgen.core import Structure
 
 from ml_matrics.correlation import marchenko_pastur
 from ml_matrics.cumulative import cum_err, cum_res
@@ -27,6 +30,7 @@ from ml_matrics.parity import (
 from ml_matrics.quantile import qq_gaussian
 from ml_matrics.ranking import err_decay
 from ml_matrics.relevance import precision_recall_curve, roc_curve
+from ml_matrics.struct_vis import plot_structure_2d
 from ml_matrics.sunburst import spacegroup_sunburst
 from ml_matrics.utils import ROOT
 
@@ -263,3 +267,20 @@ n_rows, n_cols = rand_tall_mat.shape
 corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
 marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
 save_mpl_fig("marchenko_pastur_rank_deficient")
+
+
+# %%
+structs = [
+    (fname, Structure.from_file(fname))
+    for fname in glob(f"{ROOT}/data/structures/*.yml")
+]
+
+fig, axs = plt.subplots(4, 5, figsize=(20, 20))
+
+for (fname, struct), ax in zip(structs, axs.flat):
+    ax = plot_structure_2d(struct, ax=ax)
+    mp_id = os.path.basename(fname).split(".")[0]
+    ax.set_title(f"{struct.formula}\n{mp_id}", fontsize=14)
+
+
+fig.savefig(f"{ROOT}/assets/mp-structures-2d.svg", bbox_inches="tight")

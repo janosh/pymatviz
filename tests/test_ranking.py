@@ -2,7 +2,7 @@ from matplotlib.pyplot import Axes
 
 from ml_matrics import err_decay
 
-from . import y_pred, y_true
+from ._helpers import y_pred, y_true
 
 
 y_std_mock = y_true - y_pred

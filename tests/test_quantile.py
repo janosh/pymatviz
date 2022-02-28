@@ -1,6 +1,6 @@
 from ml_matrics import qq_gaussian
 
-from . import xs, y_pred
+from ._helpers import xs, y_pred
 
 
 def test_qq_gaussian():
