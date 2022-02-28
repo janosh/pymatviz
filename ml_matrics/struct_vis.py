@@ -13,18 +13,22 @@ from pymatgen.core import Structure
 from ml_matrics.utils import NumArray, covalent_radii, jmol_colors
 
 
+# plot_structure_2d() and its helphers get_rot_matrix() and unit_cell_to_lines() were
+# inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
+
+
 def get_rot_matrix(angles: str, rotation: NumArray = np.identity(3)) -> NumArray:
     """Convert Euler angles to a rotation matrix.
 
-    Note the order of angles matters. E.g. '50x,40z' != '40z,50x'.
+    Note the order of angles matters. 50x,40z != 40z,50x.
 
     Args:
-        angles (str): Euler angles (in degrees) of formatted as '50x,-10y,120z'
+        angles (str): Euler angles (in degrees) formatted as '50x,-10y,120z'
         rotation (NumArray, optional): Starting rotation matrix.
             Defaults to np.identity(3).
 
     Returns:
-        ndarray: Rotation matrix.
+        NumArray: 3d rotation matrix.
     """
     if angles == "":
         return rotation.copy()  # return unit matrix if no angles
