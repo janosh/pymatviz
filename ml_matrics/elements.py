@@ -369,7 +369,7 @@ def ptable_heatmap_plotly(
     font_colors: Sequence[str] = ["black"],
     gap: float = 5,
     font_size: int = None,
-    bg_color: str = "rgba(0, 0, 0, 0)",
+    bg_color: str = None,
     color_bar: dict[str, Any] = {},
 ) -> Figure:
     """Plot the periodic table as an interactive heatmap.
@@ -467,7 +467,13 @@ def ptable_heatmap_plotly(
         colorscale = [(0, "rgba(0, 0, 0, 0)"), *map(list, colorscale)]  # type: ignore
         colorscale[1][0] = 1e-6  # type: ignore
     elif colorscale is None:
-        colorscale = [(0, "rgba(0, 0, 0, 0)"), (1e-6, "teal"), (1, "darkgreen")]
+        colorscale = [
+            (0, "rgba(0, 0, 0, 0)"),
+            (1e-6, "gray"),
+            (0.33, "yellow"),
+            (0.66, "green"),
+            (1, "darkgreen"),
+        ]
     else:
         raise NotImplementedError(
             "passing in string names as colorscale not currently supported"

@@ -1,6 +1,6 @@
 from ml_matrics import residual_hist, spacegroup_hist, true_pred_hist
 
-from . import y_pred, y_true
+from ._helpers import y_pred, y_true
 
 
 def test_residual_hist():
