@@ -2,7 +2,7 @@
 
 <h4 align="center">
 
-A toolkit of metrics and visualizations for model performance in data-driven materials discovery.
+A toolkit for visualizations in materials informatics. Works with [`pymatgen`](https://github.com/materialsproject/pymatgen).
 
 [![Tests](https://github.com/janosh/pymatviz/actions/workflows/test.yml/badge.svg)](https://github.com/janosh/pymatviz/actions/workflows/test.yml)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/pymatviz/main.svg)](https://results.pre-commit.ci/latest/github/janosh/pymatviz/main)
