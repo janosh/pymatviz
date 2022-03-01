@@ -1,4 +1,4 @@
-<h1 align="center">ML Matrics</h1>
+<h1 align="center">pymatviz</h1>
 
 <h4 align="center">
 
@@ -16,12 +16,6 @@ A toolkit of metrics and visualizations for model performance in data-driven mat
 
 ```sh
 pip install pymatviz
-```
-
-For a locally editable install, use
-
-```sh
-git clone https://github.com/janosh/pymatviz && pip install -e pymatviz
 ```
 
 ## Elements
@@ -116,16 +110,17 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 | :------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
 |                            ![marchenko_pastur]                             |                            ![marchenko_pastur_significant_eval]                             |
 
-## Testing
+## Migrating from `ml-matrics` to `pymatviz`
 
-This project uses `pytest` ([docs](https://docs.pytest.org/en/stable/usage.html)). To run tests, use:
+This library was renamed from `ml-matrics` to `pymatviz` between versions 0.3.0 and 0.4.0. To update existing Python files that import `ml-matrics` in place, run the following commands. On Linux:
 
 ```sh
-pytest # full test suite
-pytest tests/test_cumulative.py # single file
-pytest **/test_*_metrics.py # multiple files
-pytest -k test_precision_recall_curve # -k takes regex matching test names
+find . -name '*.py' | xargs sed -i 's/^from ml_matrics import/from pymatviz import/g'
+find . -name '*.py' | xargs sed -i 's/^from ml_matrics./from pymatviz./g'
+find . -name '*.py' | xargs sed -i 's/^import ml_matrics/import pymatviz/g'
 ```
+
+On Mac, replace `sed -i` with `sed -i ""`.
 
 ## Glossary
 
