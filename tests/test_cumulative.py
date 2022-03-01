@@ -1,4 +1,4 @@
-from ml_matrics import cum_err, cum_res
+from pymatviz import cum_err, cum_res
 
 from ._helpers import y_pred, y_true
 

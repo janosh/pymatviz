@@ -4,7 +4,7 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from pymatgen.ext.matproj import MPRester
 
-from ml_matrics import ROOT
+from pymatviz import ROOT
 
 
 # %%
