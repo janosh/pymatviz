@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
-from ml_matrics.utils import NumArray
+from pymatviz.utils import NumArray
 
 
 def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:

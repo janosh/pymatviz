@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
-from ml_matrics import ROOT
+from pymatviz import ROOT
 
 
 @pytest.fixture(autouse=True)

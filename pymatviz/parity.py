@@ -10,7 +10,7 @@ from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.interpolate import interpn
 
-from ml_matrics.utils import NumArray, add_mae_r2_box, with_hist
+from pymatviz.utils import NumArray, add_mae_r2_box, with_hist
 
 
 def hist_density(

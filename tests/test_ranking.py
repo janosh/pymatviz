@@ -1,6 +1,6 @@
 from matplotlib.pyplot import Axes
 
-from ml_matrics import err_decay
+from pymatviz import err_decay
 
 from ._helpers import y_pred, y_true
 
