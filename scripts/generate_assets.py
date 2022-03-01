@@ -10,16 +10,16 @@ import pandas as pd
 from plotly.graph_objects import Figure
 from pymatgen.core import Structure
 
-from ml_matrics.correlation import marchenko_pastur
-from ml_matrics.cumulative import cum_err, cum_res
-from ml_matrics.elements import (
+from pymatviz.correlation import marchenko_pastur
+from pymatviz.cumulative import cum_err, cum_res
+from pymatviz.elements import (
     hist_elemental_prevalence,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
 )
-from ml_matrics.histograms import residual_hist, spacegroup_hist, true_pred_hist
-from ml_matrics.parity import (
+from pymatviz.histograms import residual_hist, spacegroup_hist, true_pred_hist
+from pymatviz.parity import (
     density_hexbin,
     density_hexbin_with_hist,
     density_scatter,
@@ -27,12 +27,12 @@ from ml_matrics.parity import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
-from ml_matrics.quantile import qq_gaussian
-from ml_matrics.ranking import err_decay
-from ml_matrics.relevance import precision_recall_curve, roc_curve
-from ml_matrics.struct_vis import plot_structure_2d
-from ml_matrics.sunburst import spacegroup_sunburst
-from ml_matrics.utils import ROOT
+from pymatviz.quantile import qq_gaussian
+from pymatviz.ranking import err_decay
+from pymatviz.relevance import precision_recall_curve, roc_curve
+from pymatviz.struct_vis import plot_structure_2d
+from pymatviz.sunburst import spacegroup_sunburst
+from pymatviz.utils import ROOT
 
 
 plt.rcParams.update({"font.size": 20})
@@ -130,7 +130,7 @@ save_mpl_fig("residual_vs_actual")
 # %% Elemental Plots
 mp_formulas = pd.read_csv(f"{ROOT}/data/mp-elements.csv").formula
 roost_formulas = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
-df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
+df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
 ptable_heatmap(mp_formulas)

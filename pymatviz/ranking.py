@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.pyplot import Axes
 
-from ml_matrics.utils import NumArray
+from pymatviz.utils import NumArray
 
 
 def get_err_decay(

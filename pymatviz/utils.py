@@ -18,7 +18,7 @@ ROOT = dirname(dirname(abspath(__file__)))
 
 NumArray = NDArray[Union[np.float64, np.int_]]
 
-df_elem = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
+df_elem = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 # http://jmol.sourceforge.net/jscolors
 jmol_colors = df_elem.jmol_color.dropna().apply(ast.literal_eval)

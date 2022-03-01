@@ -1,4 +1,4 @@
-from ml_matrics import qq_gaussian
+from pymatviz import qq_gaussian
 
 from ._helpers import xs, y_pred
 

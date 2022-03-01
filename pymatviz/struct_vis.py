@@ -10,7 +10,7 @@ from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
 from pymatgen.core import Structure
 
-from ml_matrics.utils import NumArray, covalent_radii, jmol_colors
+from pymatviz.utils import NumArray, covalent_radii, jmol_colors
 
 
 # plot_structure_2d() and its helphers get_rot_matrix() and unit_cell_to_lines() were

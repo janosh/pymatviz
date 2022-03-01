@@ -3,7 +3,7 @@ import pytest
 from matplotlib.axes import Axes
 from plotly.graph_objects import Figure
 
-from ml_matrics import (
+from pymatviz import (
     ROOT,
     count_elements,
     hist_elemental_prevalence,
@@ -15,7 +15,7 @@ from ml_matrics import (
 
 formulas_1 = pd.read_csv(f"{ROOT}/data/mp-elements.csv").formula
 formulas_2 = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
-df_ptable = pd.read_csv(f"{ROOT}/ml_matrics/elements.csv").set_index("symbol")
+df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
 elem_counts_1 = count_elements(formulas_1)

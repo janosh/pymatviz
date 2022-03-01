@@ -6,7 +6,7 @@ from matplotlib.testing.compare import compare_images
 from pymatgen.core import Lattice, Structure
 from pymatgen.transformations.standard_transformations import SubstitutionTransformation
 
-from ml_matrics.struct_vis import plot_structure_2d
+from pymatviz.struct_vis import plot_structure_2d
 
 from ._helpers import save_fixture
 

@@ -1,4 +1,4 @@
-from ml_matrics import residual_hist, spacegroup_hist, true_pred_hist
+from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
 
 from ._helpers import y_pred, y_true
 

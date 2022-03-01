@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import sklearn.metrics as skm
 from matplotlib.axes import Axes
 
-from ml_matrics.utils import NumArray
+from pymatviz.utils import NumArray
 
 
 def roc_curve(

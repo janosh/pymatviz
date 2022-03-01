@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 
-from ml_matrics.utils import NumArray
+from pymatviz.utils import NumArray
 
 
 def add_dropdown(ax: Axes, percentile: int, err: NumArray) -> None:

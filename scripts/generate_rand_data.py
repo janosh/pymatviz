@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from ml_matrics import ROOT
+from pymatviz import ROOT
 
 
 xs = np.random.rand(100)
