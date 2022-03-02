@@ -115,9 +115,9 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 This library was renamed from `ml-matrics` to `pymatviz` between versions 0.3.0 and 0.4.0. To update existing Python files that import `ml-matrics` in place, run the following commands. On Linux:
 
 ```sh
-find . -name '*.py' | xargs sed -i 's/^from ml_matrics import/from pymatviz import/g'
-find . -name '*.py' | xargs sed -i 's/^from ml_matrics./from pymatviz./g'
-find . -name '*.py' | xargs sed -i 's/^import ml_matrics/import pymatviz/g'
+find . -iname '*.py' -o -iname '*.ipynb' | xargs sed -i 's/from ml_matrics import/from pymatviz import/g'
+find . -iname '*.py' -o -iname '*.ipynb' | xargs sed -i 's/from ml_matrics./from pymatviz./g'
+find . -iname '*.py' -o -iname '*.ipynb' | xargs sed -i 's/import ml_matrics/import pymatviz/g'
 ```
 
 On Mac, replace `sed -i` with `sed -i ""`.
