@@ -2,7 +2,7 @@
 
 <h4 align="center">
 
-A toolkit for visualizations in materials informatics. Works with [`pymatgen`](https://github.com/materialsproject/pymatgen).
+A toolkit for visualizations in materials informatics.
 
 [![Tests](https://github.com/janosh/pymatviz/actions/workflows/test.yml/badge.svg)](https://github.com/janosh/pymatviz/actions/workflows/test.yml)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/pymatviz/main.svg)](https://results.pre-commit.ci/latest/github/janosh/pymatviz/main)
@@ -11,6 +11,8 @@ A toolkit for visualizations in materials informatics. Works with [`pymatgen`](h
 [![PyPI Downloads](https://img.shields.io/pypi/dm/pymatviz)](https://pypistats.org/packages/pymatviz)
 
 </h4>
+
+**Note**: This project is not associated with or endorsed by [`pymatgen`](https://github.com/materialsproject/pymatgen), but aims to complement it by adding additional plotting functionality.
 
 ## Installation
 
