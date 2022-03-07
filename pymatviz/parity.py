@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.interpolate import interpn
 
 from pymatviz.utils import NumArray, add_mae_r2_box, with_hist
@@ -180,7 +179,7 @@ def density_hexbin(
     # the scatter plot
     hexbin = ax.hexbin(xs, yx, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
 
-    cb_ax = inset_axes(ax, width="3%", height="70%", loc="lower right")
+    cb_ax = ax.inset_axes([0.95, 0.03, 0.03, 0.7])  # [left, bottom, width, height]
     plt.colorbar(hexbin, cax=cb_ax)
     cb_ax.yaxis.set_ticks_position("left")
 
