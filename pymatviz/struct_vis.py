@@ -17,21 +17,21 @@ from pymatviz.utils import NumArray, covalent_radii, jmol_colors
 # inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
 
 
-def get_rot_matrix(angles: str, rotation: NumArray = np.identity(3)) -> NumArray:
+def get_rot_matrix(angles: str, rotation: NumArray = np.eye(3)) -> NumArray:
     """Convert Euler angles to a rotation matrix.
 
     Note the order of angles matters. 50x,40z != 40z,50x.
 
     Args:
-        angles (str): Euler angles (in degrees) formatted as '50x,-10y,120z'
-        rotation (NumArray, optional): Starting rotation matrix.
-            Defaults to np.identity(3).
+        angles (str): Euler angles (in degrees) formatted as '-10y,50x,120z'
+        rotation (NumArray, optional): Initial rotation matrix. Defaults to identity
+            matrix.
 
     Returns:
         NumArray: 3d rotation matrix.
     """
     if angles == "":
-        return rotation.copy()  # return unit matrix if no angles
+        return rotation.copy()  # return initial rotation matrix if no angles
 
     for i, a in [
         ("xyz".index(s[-1]), math.radians(float(s[:-1]))) for s in angles.split(",")
