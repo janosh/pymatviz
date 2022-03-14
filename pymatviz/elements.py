@@ -209,7 +209,7 @@ def ptable_heatmap(
                 column + 0.5 * rw,
                 row + 0.1 * rh,
                 label,
-                fontsize=12,
+                fontsize=10,
                 horizontalalignment="center",
                 color=text_clr,
             )
