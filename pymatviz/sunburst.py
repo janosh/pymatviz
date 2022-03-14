@@ -55,7 +55,7 @@ def spacegroup_sunburst(
         raise ValueError(f"Invalid {show_values=}")
 
     fig.update_layout(
-        margin=dict(l=10, r=10, t=10, b=10, pad=10),
+        margin=dict(l=10, r=10, b=10, pad=10),
         paper_bgcolor="rgba(0, 0, 0, 0)",
     )
 
