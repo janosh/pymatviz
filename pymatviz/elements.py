@@ -11,7 +11,7 @@ from matplotlib.cm import get_cmap
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from plotly.graph_objects import Figure
+from plotly.graph_objs._figure import Figure
 from pymatgen.core import Composition
 
 from pymatviz.utils import ROOT, annotate_bar_heights

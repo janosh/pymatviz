@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 from matplotlib.axes import Axes
-from plotly.graph_objects import Figure
+from plotly.graph_objs._figure import Figure
 
 from pymatviz import (
     ROOT,

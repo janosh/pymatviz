@@ -4,7 +4,7 @@ from typing import Any, Literal, Sequence
 
 import pandas as pd
 import plotly.express as px
-from plotly.graph_objects import Figure
+from plotly.graph_objs._figure import Figure
 
 from pymatviz.utils import get_crystal_sys
 

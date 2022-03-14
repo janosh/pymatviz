@@ -7,7 +7,7 @@ from subprocess import call
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from plotly.graph_objects import Figure
+from plotly.graph_objs._figure import Figure
 from pymatgen.core import Structure
 
 from pymatviz.correlation import marchenko_pastur

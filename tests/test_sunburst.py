@@ -1,5 +1,5 @@
 import pandas as pd
-from plotly.graph_objects import Figure
+from plotly.graph_objs._figure import Figure
 
 from pymatviz import ROOT, spacegroup_sunburst
 
