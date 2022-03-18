@@ -14,7 +14,7 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 from plotly.graph_objs._figure import Figure
 from pymatgen.core import Composition
 
-from pymatviz.utils import ROOT, annotate_bar_heights
+from pymatviz.utils import ROOT, annotate_bars
 
 
 if TYPE_CHECKING:
@@ -315,6 +315,9 @@ def hist_elemental_prevalence(
     keep_top: int = None,
     ax: Axes = None,
     bar_values: Literal["percent", "count", None] = "percent",
+    h_offset: int = 0,
+    v_offset: int = 10,
+    rotation: int = 45,
     **kwargs: Any,
 ) -> Axes:
     """Plots a histogram of the prevalence of each element in a materials dataset.
@@ -329,7 +332,10 @@ def hist_elemental_prevalence(
         bar_values ('percent'|'count'|None): 'percent' (default) annotates bars with the
             percentage each element makes up in the total element count. 'count'
             displays count itself. None removes bar labels.
-        **kwargs (int): Keyword arguments passed to annotate_bar_heights.
+        h_offset (int): Horizontal offset for bar height labels. Defaults to 0.
+        v_offset (int): Vertical offset for bar height labels. Defaults to 10.
+        rotation (int): Bar label angle. Defaults to 45.
+        **kwargs (int): Keyword arguments passed to pandas.plot.bar().
     """
     if ax is None:
         ax = plt.gca()
@@ -338,14 +344,14 @@ def hist_elemental_prevalence(
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     if keep_top is not None:
         non_zero = non_zero.head(keep_top)
-        plt.title(f"Top {keep_top} Elements")
+        ax.set_title(f"Top {keep_top} Elements")
 
-    non_zero.plot.bar(width=0.7, edgecolor="black")
-
-    plt.ylabel("log(Element Count)" if log else "Element Count")
+    non_zero.plot.bar(width=0.7, edgecolor="black", ax=ax, **kwargs)
 
     if log:
-        plt.yscale("log")
+        ax.set(yscale="log", ylabel="log(Element Count)")
+    else:
+        ax.set(title="Element Count")
 
     if bar_values is not None:
         if bar_values == "percent":
@@ -353,7 +359,9 @@ def hist_elemental_prevalence(
             labels = [f"{el / sum_elements:.1%}" for el in non_zero.values]
         else:
             labels = non_zero.astype(int).to_list()
-        annotate_bar_heights(ax, labels=labels, **kwargs)
+        annotate_bars(
+            ax, labels=labels, h_offset=h_offset, v_offset=v_offset, rotation=rotation
+        )
 
     return ax
 

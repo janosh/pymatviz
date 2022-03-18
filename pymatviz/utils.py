@@ -87,22 +87,25 @@ def with_hist(
     return ax_main
 
 
-def annotate_bar_heights(
+def annotate_bars(
     ax: Axes = None,
-    voffset: int = 10,
-    hoffset: int = 0,
+    v_offset: int = 10,
+    h_offset: int = 0,
     labels: Sequence[str | int | float] = None,
     fontsize: int = 14,
+    **kwargs: Any,
 ) -> None:
-    """Annotate histograms with a label indicating the height/count of each bar.
+    """Annotate each bar in bar plot with a label.
 
     Args:
         ax (matplotlib.axes.Axes): The axes to annotate.
-        voffset (int): Vertical offset between the labels and the bars.
-        hoffset (int): Horizontal offset between the labels and the bars.
-        labels (list[str]): Labels used for annotating bars. Falls back to the
-            y-value of each bar if None.
+        v_offset (int): Vertical offset between the labels and the bars.
+        h_offset (int): Horizontal offset between the labels and the bars.
+        labels (list[str]): Labels used for annotating bars. If not provided, defaults
+            to the y-value of each bar.
         fontsize (int): Annotated text size in pts. Defaults to 14.
+        **kwargs: Additional arguments (rotation, arrowprops, etc.) are passed to
+            ax.annotate().
     """
     if ax is None:
         ax = plt.gca()
@@ -110,20 +113,26 @@ def annotate_bar_heights(
     if labels is None:
         labels = [int(patch.get_height()) for patch in ax.patches]
 
+    y_max = 0
+
     for rect, label in zip(ax.patches, labels):
 
         y_pos = rect.get_height()
-        x_pos = rect.get_x() + rect.get_width() / 2 + hoffset
+        x_pos = rect.get_x() + rect.get_width() / 2 + h_offset
 
         if ax.get_yscale() == "log":
-            y_pos = y_pos + np.log(voffset)
+            y_pos = y_pos + np.log(v_offset if v_offset > 1 else 1)
         else:
-            y_pos = y_pos + voffset
+            y_pos = y_pos + v_offset
 
+        y_max = max(y_max, y_pos)
+
+        txt = f"{label:,}" if isinstance(label, (int, float)) else label
         # place label at end of the bar and center horizontally
-        ax.annotate(label, (x_pos, y_pos), ha="center", fontsize=fontsize)
-        # ensure enough vertical space to display label above highest bar
-        ax.margins(y=0.1)
+        ax.annotate(txt, (x_pos, y_pos), ha="center", fontsize=fontsize, **kwargs)
+
+    # ensure enough vertical space to display label above highest bar
+    ax.set(ylim=(None, y_max * 1.1))
 
 
 def add_mae_r2_box(

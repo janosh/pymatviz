@@ -35,20 +35,6 @@ from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.utils import ROOT
 
 
-plt.rcParams.update({"font.size": 20})
-plt.rcParams["axes.linewidth"] = 2.5
-plt.rcParams["xtick.major.size"] = 7
-plt.rcParams["xtick.major.width"] = 2.5
-plt.rcParams["xtick.minor.size"] = 5
-plt.rcParams["xtick.minor.width"] = 2.5
-plt.rcParams["ytick.major.size"] = 7
-plt.rcParams["ytick.major.width"] = 2.5
-plt.rcParams["ytick.minor.size"] = 5
-plt.rcParams["ytick.minor.width"] = 2.5
-plt.rcParams["legend.fontsize"] = 20
-plt.rcParams["figure.figsize"] = (8, 7)
-
-
 # %%
 y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 
@@ -154,11 +140,11 @@ save_mpl_fig("ptable_heatmap_ratio")
 ptable_heatmap_ratio(roost_formulas, mp_formulas)
 save_mpl_fig("ptable_heatmap_ratio_inverse")
 
-hist_elemental_prevalence(mp_formulas, keep_top=15, voffset=1)
+hist_elemental_prevalence(mp_formulas, keep_top=15, v_offset=1)
 save_mpl_fig("hist_elemental_prevalence")
 
 hist_elemental_prevalence(
-    mp_formulas, keep_top=20, log=True, bar_values="count", voffset=1
+    mp_formulas, keep_top=20, log=True, bar_values="count", v_offset=1
 )
 save_mpl_fig("hist_elemental_prevalence_log_count")
 
