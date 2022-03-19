@@ -5,12 +5,13 @@ from typing import Any, Literal, Sequence
 import pandas as pd
 import plotly.express as px
 from plotly.graph_objs._figure import Figure
+from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.utils import get_crystal_sys
 
 
 def spacegroup_sunburst(
-    spacegroups: Sequence[int] | pd.DataFrame,
+    spacegroups: Sequence[int | str] | pd.DataFrame,
     sgp_col: str = None,
     show_values: Literal["value", "percent", False] = False,
     **kwargs: Any,
@@ -18,9 +19,12 @@ def spacegroup_sunburst(
     """Generate a sunburst plot with crystal systems as the inner ring for a list of
     international space group numbers.
 
+    Hint: To hide very small labels, set a uniformtext minsize and mode='hide'.
+    fig.update_layout(uniformtext=dict(minsize=9, mode="hide"))
+
     Args:
-        spacegroups (list[int] | pd.DataFrame): A sequence of space group numbers or a
-            dataframe. If dataframe, be sure to specify sgp_col.
+        spacegroups (list[int] | pd.DataFrame): A sequence of space group strings or
+            numbers or a dataframe. If dataframe, be sure to specify sgp_col.
         sgp_col (str): The name of the column that holds the space group numbers.
             Defaults to None.
         show_values ("value" | "percent" | False): Whether to display values below each
@@ -30,22 +34,26 @@ def spacegroup_sunburst(
         Figure: The Plotly figure.
     """
     if isinstance(spacegroups, pd.DataFrame):
-        assert (
-            sgp_col is not None
-        ), "if 1st arg is a DataFrame, sgp_col must be specified"
+        if sgp_col is None:
+            raise ValueError(
+                "if 1st arg is a DataFrame, sgp_col must be specified as 2nd arg"
+            )
         series = spacegroups[sgp_col]
     else:
         series = pd.Series(spacegroups)
 
-    df = pd.DataFrame({"spacegroup": range(230)})
-    df["cryst_sys"] = [get_crystal_sys(spg) for spg in range(1, 231)]
+    df = pd.DataFrame(series.value_counts().reset_index())
+    df.columns = ["spacegroup", "count"]
 
-    df["values"] = series.value_counts().reindex(range(230), fill_value=0)
+    try:
+        df["crystal_sys"] = [get_crystal_sys(x) for x in df.spacegroup]
+    except ValueError:  # column must be space group strings
+        df["crystal_sys"] = [SpaceGroup(x).crystal_system for x in df.spacegroup]
 
     if "color_discrete_sequence" not in kwargs:
         kwargs["color_discrete_sequence"] = px.colors.qualitative.G10
 
-    fig = px.sunburst(df, path=["cryst_sys", "spacegroup"], values="values", **kwargs)
+    fig = px.sunburst(df, path=["crystal_sys", "spacegroup"], values="count", **kwargs)
 
     if show_values == "percent":
         fig.data[0].textinfo = "label+percent entry"
