@@ -227,7 +227,7 @@ save_mpl_fig("spacegroup_hist_no_counts")
 fig = spacegroup_sunburst(df_phonons.spg_num)
 save_compress_plotly(fig, "spacegroup_sunburst")
 
-fig = spacegroup_sunburst(df_phonons.spg_num, show_values="percent")
+fig = spacegroup_sunburst(df_phonons.sgp_symbol, show_values="percent")
 save_compress_plotly(fig, "spacegroup_sunburst_percent")
 
 
