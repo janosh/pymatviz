@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import pandas as pd
 import pytest
 from matminer.datasets import load_dataset
 from matplotlib.axes import Axes
 from plotly.graph_objs._figure import Figure
+from pymatgen.core import Composition
 
 from pymatviz import (
     ROOT,
@@ -14,30 +17,49 @@ from pymatviz import (
 )
 
 
-glasses = load_dataset("matbench_glass").composition
-steels = load_dataset("matbench_steels").composition
-df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
+@pytest.fixture
+def glasses() -> pd.Series[Composition]:
+    return load_dataset("matbench_glass").composition
 
 
-glass_elem_counts = count_elements(glasses)
-steel_elem_counts = count_elements(steels)
+@pytest.fixture
+def glass_elem_counts(glasses: pd.Series[Composition]) -> pd.Series[int]:
+    return count_elements(glasses)
+
+
+@pytest.fixture
+def steels() -> pd.Series[Composition]:
+    return load_dataset("matbench_steels").composition
+
+
+@pytest.fixture
+def steel_elem_counts(steels: pd.Series[Composition]) -> pd.Series[int]:
+    return count_elements(steels)
+
+
+@pytest.fixture
+def df_ptable() -> pd.DataFrame:
+    return pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
 @pytest.mark.parametrize(
-    "idx, expected", [(1, glass_elem_counts), (2, steel_elem_counts)]
+    "mode, counts",
+    [
+        ("composition", {"Fe": 22, "O": 63, "P": 12}),
+        ("fractional_composition", {"Fe": 2.5, "O": 5, "P": 0.5}),
+        ("reduced_composition", {"Fe": 13, "O": 27, "P": 3}),
+    ],
 )
-def test_count_elements(idx, expected):
-    # ground truth for element counts
-    # df.squeeze("columns") turns single-col df into series
-    el_cnt = pd.read_csv(f"{ROOT}/data/elem_counts_{idx}.csv", index_col=0)
-    el_cnt = el_cnt.squeeze("columns")
-
-    pd.testing.assert_series_equal(expected, el_cnt)
+def test_count_elements(df_ptable, mode, counts):
+    series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, mode=mode)
+    expected = pd.Series(counts, index=df_ptable.index, name="count").fillna(0)
+    assert series.equals(expected)
 
 
-def test_count_elements_atomic_nums():
-    el_cts = count_elements({str(idx): idx for idx in range(1, 119)})
-    expected = pd.Series(range(1, 119), index=df_ptable.index, name="count")
+def test_count_elements_by_atomic_nums(df_ptable):
+    series_in = pd.Series(1, index=range(1, 119))
+    el_cts = count_elements(series_in)
+    expected = pd.Series(1, index=df_ptable.index, name="count")
 
     pd.testing.assert_series_equal(expected, el_cts)
 
@@ -48,7 +70,7 @@ def test_count_elements_bad_atomic_nums(rng):
         count_elements({str(idx): 0 for idx in list(range(*rng))})
 
 
-def test_hist_elemental_prevalence():
+def test_hist_elemental_prevalence(glasses):
     ax = hist_elemental_prevalence(glasses)
     assert isinstance(ax, Axes)
 
@@ -59,7 +81,7 @@ def test_hist_elemental_prevalence():
     hist_elemental_prevalence(glasses, keep_top=10, bar_values="count")
 
 
-def test_ptable_heatmap():
+def test_ptable_heatmap(glasses, glass_elem_counts, df_ptable):
     ax = ptable_heatmap(glasses)
     assert isinstance(ax, Axes)
 
@@ -96,7 +118,7 @@ def test_ptable_heatmap():
     assert "Combining log color scale" in exc_info.value.args[0]
 
 
-def test_ptable_heatmap_ratio():
+def test_ptable_heatmap_ratio(steels, glasses, steel_elem_counts, glass_elem_counts):
     # composition strings
     ax = ptable_heatmap_ratio(glasses, steels)
     assert isinstance(ax, Axes)
@@ -109,7 +131,7 @@ def test_ptable_heatmap_ratio():
     ptable_heatmap_ratio(glass_elem_counts, steels)
 
 
-def test_ptable_heatmap_plotly():
+def test_ptable_heatmap_plotly(df_ptable, glasses):
     fig = ptable_heatmap_plotly(glasses)
     assert isinstance(fig, Figure)
     assert len(fig.layout.annotations) == 18 * 10  # n_cols * n_rows
