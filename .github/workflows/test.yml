@@ -22,8 +22,7 @@ jobs:
           cache-dependency-path: setup.cfg
 
       - name: Install dependencies
-        # [test]: see options.extras_require in setup.cfg
-        run: pip install .[test]
+        run: pip install .[test,data_src]
 
       - name: Run tests
         run: pytest --durations 0 --cov pymatviz
