@@ -89,7 +89,7 @@ def unit_cell_to_lines(cell: NumArray) -> tuple[NumArray, NumArray, NumArray]:
 def plot_structure_2d(
     struct: Structure,
     ax: plt.Axes = None,
-    rotation: str = "",
+    rotation: str = "10x,10y,0z",
     atomic_radii: float | dict[str, float] | None = None,
     colors: dict[str, str | list[float]] = None,
     scale: float = 1,
