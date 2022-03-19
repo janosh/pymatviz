@@ -22,16 +22,13 @@ if TYPE_CHECKING:
 
     ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
 
+    CountMode = Literal["composition", "fractional_composition", "reduced_composition"]
+
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
 def count_elements(
-    elem_values: ElemValues,
-    mode: Literal[
-        "composition",
-        "fractional_composition",
-        "reduced_composition",
-    ] = "composition",
+    elem_values: ElemValues, mode: CountMode = "composition"
 ) -> pd.Series:
     """Processes elemental heatmap data. If passed a list of strings, assume they are
     compositions and count the occurrences of each chemical element. Else ensure the
@@ -41,7 +38,7 @@ def count_elements(
         elem_values (dict[str, int | float] | pd.Series | list[str]): Iterable of
             composition strings/objects or map from element symbols to heatmap values.
         mode ('composition' | 'fractional_composition' | 'reduced_composition'):
-            Only used when elem_values is a list of compositions strings or objects.
+            Only used when elem_values is a list of composition strings/objects.
             - composition (default): Count elements in each composition as is, i.e.
                 without reduction or normalization.
             - fractional_composition: Convert to normalized compositions in which the
@@ -101,6 +98,7 @@ def ptable_heatmap(
     elem_values: ElemValues,
     log: bool = False,
     ax: Axes = None,
+    count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
     cbar_max: float | int | None = None,
     cmap: str = "summer_r",
@@ -118,6 +116,9 @@ def ptable_heatmap(
             symbols to heatmap values or iterable of composition strings/objects.
         log (bool, optional): Whether color map scale is log or linear.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+            Reduce or normalize compositions before counting. See count_elements() for
+            details. Only used when elem_values is list of composition strings/objects.
         cbar_title (str, optional): Title for colorbar. Defaults to "Element Count".
         cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
             if smaller than the largest plotted value. For creating multiple plots with
@@ -150,7 +151,7 @@ def ptable_heatmap(
             "Combining log color scale and heat_labels='fraction'/'percent' unsupported"
         )
 
-    elem_values = count_elements(elem_values)
+    elem_values = count_elements(elem_values, count_mode)
 
     # replace positive and negative infinities with NaN values, then drop all NaNs
     clean_vals = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
@@ -271,6 +272,7 @@ def ptable_heatmap(
 def ptable_heatmap_ratio(
     elem_values_num: ElemValues,
     elem_values_denom: ElemValues,
+    count_mode: CountMode = "composition",
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] = ("#DDD", "gray: not in 1st list"),
@@ -290,19 +292,22 @@ def ptable_heatmap_ratio(
             in the denominator.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
+        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+            Reduce or normalize compositions before counting. See count_elements() for
+            details. Only used when elem_values is list of composition strings/objects.
         cbar_title (str): Title for the color bar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator.
         not_in_denominator (tuple[str, str]): See not_in_numerator.
         not_in_either (tuple[str, str]): See not_in_numerator.
-        kwargs (Any, optional): kwargs passed to ptable_heatmap.
+        kwargs (Any, optional): Passed to ptable_heatmap().
 
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    elem_values_num = count_elements(elem_values_num)
+    elem_values_num = count_elements(elem_values_num, count_mode)
 
-    elem_values_denom = count_elements(elem_values_denom)
+    elem_values_denom = count_elements(elem_values_denom, count_mode)
 
     elem_values = elem_values_num / elem_values_denom
 
@@ -329,6 +334,7 @@ def ptable_heatmap_ratio(
 
 def hist_elemental_prevalence(
     formulas: ElemValues,
+    count_mode: CountMode = "composition",
     log: bool = False,
     keep_top: int = None,
     ax: Axes = None,
@@ -344,6 +350,9 @@ def hist_elemental_prevalence(
 
     Args:
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
+        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+            Reduce or normalize compositions before counting. See count_elements() for
+            details. Only used when elem_values is list of composition strings/objects.
         log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
         ax (Axes): matplotlib Axes on which to plot. Defaults to None.
@@ -358,7 +367,7 @@ def hist_elemental_prevalence(
     if ax is None:
         ax = plt.gca()
 
-    elem_counts = count_elements(formulas)
+    elem_counts = count_elements(formulas, count_mode)
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     if keep_top is not None:
         non_zero = non_zero.head(keep_top)
@@ -386,6 +395,7 @@ def hist_elemental_prevalence(
 
 def ptable_heatmap_plotly(
     elem_values: ElemValues,
+    count_mode: CountMode = "composition",
     colorscale: Sequence[tuple[float, str]] = None,
     showscale: bool = True,
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
@@ -403,6 +413,9 @@ def ptable_heatmap_plotly(
     Args:
         elem_values (dict[str, int | float] | pd.Series | list[str]): Map from element
             symbols to heatmap values or iterable of composition strings/objects.
+        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+            Reduce or normalize compositions before counting. See count_elements() for
+            details. Only used when elem_values is list of composition strings/objects.
         colorscale (list[tuple[float, str]]): Color scale for heatmap. Defaults to
             [(0.0, "teal"), (1.0, "darkgreen")].
         showscale (bool): Whether to show a bar for the color scale. Defaults to True.
@@ -438,7 +451,7 @@ def ptable_heatmap_plotly(
     Returns:
         Figure: Plotly Figure object.
     """
-    elem_values = count_elements(elem_values)
+    elem_values = count_elements(elem_values, count_mode)
 
     if heat_labels in ("fraction", "percent"):
         # normalize heat values
