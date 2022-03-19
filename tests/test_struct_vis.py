@@ -43,5 +43,5 @@ def test_plot_structure_2d(radii, rot, labels, tmpdir):
 
     plt.savefig(tmp_img)
     plt.close()
-    tolerance = 0.8
+    tolerance = 100
     assert compare_images(tmp_img, fxt_img, tolerance) is None
