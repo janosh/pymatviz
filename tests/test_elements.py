@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+from matminer.datasets import load_dataset
 from matplotlib.axes import Axes
 from plotly.graph_objs._figure import Figure
 
@@ -13,16 +14,18 @@ from pymatviz import (
 )
 
 
-formulas_1 = pd.read_csv(f"{ROOT}/data/mp-elements.csv").formula
-formulas_2 = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
+glasses = load_dataset("matbench_glass").composition
+steels = load_dataset("matbench_steels").composition
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
-elem_counts_1 = count_elements(formulas_1)
-elem_counts_2 = count_elements(formulas_2)
+glass_elem_counts = count_elements(glasses)
+steel_elem_counts = count_elements(steels)
 
 
-@pytest.mark.parametrize("idx, expected", [(1, elem_counts_1), (2, elem_counts_2)])
+@pytest.mark.parametrize(
+    "idx, expected", [(1, glass_elem_counts), (2, steel_elem_counts)]
+)
 def test_count_elements(idx, expected):
     # ground truth for element counts
     # df.squeeze("columns") turns single-col df into series
@@ -46,32 +49,32 @@ def test_count_elements_bad_atomic_nums(rng):
 
 
 def test_hist_elemental_prevalence():
-    ax = hist_elemental_prevalence(formulas_1)
+    ax = hist_elemental_prevalence(glasses)
     assert isinstance(ax, Axes)
 
-    hist_elemental_prevalence(formulas_1, log=True)
+    hist_elemental_prevalence(glasses, log=True)
 
-    hist_elemental_prevalence(formulas_1, keep_top=10)
+    hist_elemental_prevalence(glasses, keep_top=10)
 
-    hist_elemental_prevalence(formulas_1, keep_top=10, bar_values="count")
+    hist_elemental_prevalence(glasses, keep_top=10, bar_values="count")
 
 
 def test_ptable_heatmap():
-    ax = ptable_heatmap(formulas_1)
+    ax = ptable_heatmap(glasses)
     assert isinstance(ax, Axes)
 
-    ptable_heatmap(formulas_1, log=True)
+    ptable_heatmap(glasses, log=True)
 
     # custom color map
-    ptable_heatmap(formulas_1, log=True, cmap="summer")
+    ptable_heatmap(glasses, log=True, cmap="summer")
 
     # heat_labels normalized to total count
-    ptable_heatmap(formulas_1, heat_labels="fraction")
-    ptable_heatmap(formulas_1, heat_labels="percent")
+    ptable_heatmap(glasses, heat_labels="fraction")
+    ptable_heatmap(glasses, heat_labels="percent")
 
     # without heatmap values
-    ptable_heatmap(formulas_1, heat_labels=None)
-    ptable_heatmap(formulas_1, log=True, heat_labels=None)
+    ptable_heatmap(glasses, heat_labels=None)
+    ptable_heatmap(glasses, log=True, heat_labels=None)
 
     # element properties as heatmap values
     ptable_heatmap(df_ptable.atomic_mass)
@@ -80,14 +83,14 @@ def test_ptable_heatmap():
     ptable_heatmap(df_ptable.atomic_mass, text_color=("red", "blue"))
 
     # custom max color bar value
-    ptable_heatmap(formulas_1, cbar_max=1e2)
-    ptable_heatmap(formulas_1, log=True, cbar_max=1e2)
+    ptable_heatmap(glasses, cbar_max=1e2)
+    ptable_heatmap(glasses, log=True, cbar_max=1e2)
 
     # element counts
-    ptable_heatmap(elem_counts_1)
+    ptable_heatmap(glass_elem_counts)
 
     with pytest.raises(ValueError) as exc_info:
-        ptable_heatmap(formulas_1, log=True, heat_labels="percent")
+        ptable_heatmap(glasses, log=True, heat_labels="percent")
 
     assert exc_info.type is ValueError
     assert "Combining log color scale" in exc_info.value.args[0]
@@ -95,32 +98,32 @@ def test_ptable_heatmap():
 
 def test_ptable_heatmap_ratio():
     # composition strings
-    ax = ptable_heatmap_ratio(formulas_1, formulas_2)
+    ax = ptable_heatmap_ratio(glasses, steels)
     assert isinstance(ax, Axes)
 
     # element counts
-    ptable_heatmap_ratio(elem_counts_1, elem_counts_2, normalize=True)
+    ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
 
     # mixed element counts and composition
-    ptable_heatmap_ratio(formulas_1, elem_counts_2)
-    ptable_heatmap_ratio(elem_counts_1, formulas_2)
+    ptable_heatmap_ratio(glasses, steel_elem_counts)
+    ptable_heatmap_ratio(glass_elem_counts, steels)
 
 
 def test_ptable_heatmap_plotly():
-    fig = ptable_heatmap_plotly(formulas_1)
+    fig = ptable_heatmap_plotly(glasses)
     assert isinstance(fig, Figure)
     assert len(fig.layout.annotations) == 18 * 10  # n_cols * n_rows
     assert sum(anno.text != "" for anno in fig.layout.annotations) == 118  # n_elements
 
     ptable_heatmap_plotly(
-        formulas_1, hover_cols=["atomic_mass", "atomic_number", "density"]
+        glasses, hover_cols=["atomic_mass", "atomic_number", "density"]
     )
     ptable_heatmap_plotly(
-        formulas_1,
+        glasses,
         hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
     )
     ptable_heatmap_plotly(df_ptable.density, precision=".1f")
 
-    ptable_heatmap_plotly(formulas_1, heat_labels="percent")
+    ptable_heatmap_plotly(glasses, heat_labels="percent")
 
-    ptable_heatmap_plotly(formulas_1, colorscale=[(0, "red"), (1, "blue")])
+    ptable_heatmap_plotly(glasses, colorscale=[(0, "red"), (1, "blue")])

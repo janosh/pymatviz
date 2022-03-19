@@ -7,6 +7,7 @@ from subprocess import call
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matminer.datasets import load_dataset
 from plotly.graph_objs._figure import Figure
 from pymatgen.core import Structure
 
@@ -217,19 +218,25 @@ save_mpl_fig("residual_hist")
 true_pred_hist(y_true, y_pred, y_std)
 save_mpl_fig("true_pred_hist")
 
-phonons = pd.read_csv(f"{ROOT}/data/matbench-phonons.csv")
-spacegroup_hist(phonons.sg_number)
+
+df_phonons = load_dataset("matbench_phonons")
+
+df_phonons[["sgp_symbol", "spg_num"]] = [
+    struct.get_space_group_info() for struct in df_phonons.structure
+]
+
+spacegroup_hist(df_phonons.spg_num)
 save_mpl_fig("spacegroup_hist")
 
-spacegroup_hist(phonons.sg_number, show_counts=False)
+spacegroup_hist(df_phonons.spg_num, show_counts=False)
 save_mpl_fig("spacegroup_hist_no_counts")
 
 
 # %% Sunburst Plots
-fig = spacegroup_sunburst(phonons.sg_number)
+fig = spacegroup_sunburst(df_phonons.spg_num)
 save_compress_plotly(fig, "spacegroup_sunburst")
 
-fig = spacegroup_sunburst(phonons.sg_number, show_values="percent")
+fig = spacegroup_sunburst(df_phonons.spg_num, show_values="percent")
 save_compress_plotly(fig, "spacegroup_sunburst_percent")
 
 

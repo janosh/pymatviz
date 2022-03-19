@@ -1,14 +1,18 @@
-import pandas as pd
+from matminer.datasets import load_dataset
 from plotly.graph_objs._figure import Figure
 
-from pymatviz import ROOT, spacegroup_sunburst
+from pymatviz import spacegroup_sunburst
 
 
-phonons = pd.read_csv(f"{ROOT}/data/matbench-phonons.csv")
+df_phonons = load_dataset("matbench_phonons")
+
+df_phonons[["sgp_symbol", "spg_num"]] = [
+    struct.get_space_group_info() for struct in df_phonons.structure
+]
 
 
 def test_spacegroup_sunburst():
-    fig = spacegroup_sunburst(phonons.sg_number)
+    fig = spacegroup_sunburst(df_phonons.spg_num)
     assert isinstance(fig, Figure)
     assert set(fig.data[0].parents) == {
         "",
@@ -22,5 +26,5 @@ def test_spacegroup_sunburst():
     }
     assert fig.data[0].branchvalues == "total"
 
-    spacegroup_sunburst(phonons, sgp_col="sg_number")
-    spacegroup_sunburst(phonons.sg_number, show_values="percent")
+    spacegroup_sunburst(df_phonons, sgp_col="spg_num")
+    spacegroup_sunburst(df_phonons.spg_num, show_values="percent")
