@@ -1,32 +1,8 @@
 # %%
-import pandas as pd
-from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from pymatgen.ext.matproj import MPRester
 
 from pymatviz import ROOT
-
-
-# %%
-# needs MP API key in ~/.pmgrc.yml available at https://materialsproject.org/dashboard
-# pmg config --add PMG_MAPI_KEY <your_key>
-formulas = MPRester().query({"nelements": {"$lt": 2}}, ["pretty_formula"])
-
-
-# %%
-df = pd.DataFrame(formulas).rename(columns={"pretty_formula": "formula"})
-
-df.to_csv(f"{ROOT}/data/mp-elements.csv", index=False)
-
-
-# %%
-phonons = load_dataset("matbench_phonons")
-
-phonons[["sg_symbol", "sg_number"]] = phonons.apply(
-    lambda row: row.structure.get_space_group_info(), axis=1, result_type="expand"
-)
-
-phonons.to_csv(f"{ROOT}/data/matbench-phonons.csv", index=False)
 
 
 # %% write MP structures to disk
@@ -39,7 +15,7 @@ structs = [MPRester().get_structure_by_material_id(idx) for idx in mp_ids]
 
 for struct, mp_id in zip(structs, mp_ids):
     struct.material_id = mp_id
-struct.to(filename=f"data/structures/{mp_id}.yml")
+struct.to(filename=f"{ROOT}/data/structures/{mp_id}.yml")
 
 
 # %% load MP structures from disk
