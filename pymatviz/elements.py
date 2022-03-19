@@ -25,14 +25,31 @@ if TYPE_CHECKING:
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
-def count_elements(elem_values: ElemValues) -> pd.Series:
+def count_elements(
+    elem_values: ElemValues,
+    mode: Literal[
+        "composition",
+        "fractional_composition",
+        "reduced_composition",
+    ] = "composition",
+) -> pd.Series:
     """Processes elemental heatmap data. If passed a list of strings, assume they are
     compositions and count the occurrences of each chemical element. Else ensure the
     data is a pd.Series filled with zero values for missing element symbols.
 
     Args:
-        elem_values (dict[str, int | float] | pd.Series | list[str]): Map from element
-            symbols to heatmap values or iterable of composition strings/objects.
+        elem_values (dict[str, int | float] | pd.Series | list[str]): Iterable of
+            composition strings/objects or map from element symbols to heatmap values.
+        mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+            Only used when elem_values is a list of compositions strings or objects.
+            - composition (default): Count elements in each composition as is, i.e.
+                without reduction or normalization.
+            - fractional_composition: Convert to normalized compositions in which the
+                amounts of each species sum to before counting.
+                Example: Fe2 O3 -> Fe0.4 O0.6
+            - reduced_composition: Convert to reduced compositions (i.e. amounts
+                normalized by greatest common denominator) before counting.
+                Example: Fe4 P4 O16 -> Fe P O4.
 
     Returns:
         pd.Series: Map element symbols to heatmap values.
@@ -44,11 +61,12 @@ def count_elements(elem_values: ElemValues) -> pd.Series:
         pass
     elif is_string_dtype(srs):
         # assume all items in elem_values are composition strings
-        formula2dict = lambda str: pd.Series(
-            Composition(str).fractional_composition.as_dict()
-        )
         # sum up element occurrences
-        srs = srs.apply(formula2dict).sum()
+        if mode == "composition":
+            mode = "element_composition"  # type: ignore
+        srs = srs.apply(
+            lambda str: pd.Series(getattr(Composition(str), mode).as_dict())
+        ).sum()
     else:
         raise ValueError(
             "Expected elem_values to be map from element symbols to heatmap values or "
