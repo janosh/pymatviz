@@ -104,9 +104,9 @@ def plot_structure_2d(
         Matplotlib axes on which to plot. Defaults to None. rotation (str, optional):
         Euler angles in degrees in the form '10x,20y,30z'
             describing angle at which to view structure. Defaults to "".
-        radii (float | dict[str, float], optional): Either a scaling factor for default
-            radii or map from element symbol to atomic radii. Defaults to covalent
-            radii.
+        atomic_radii (float | dict[str, float], optional): Either a scaling factor for
+            default radii or map from element symbol to atomic radii. Defaults to
+            covalent radii.
         colors (dict[str, str | list[float]], optional): Map from element symbols to
             colors, either a named color (str) or rgb(a) values like (0.2, 0.3, 0.6).
             Defaults to JMol colors.
@@ -117,7 +117,7 @@ def plot_structure_2d(
             element symbols to labels. If a list, must be same length as the number of
             sites in the crystal. Defaults to True.
         label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text.
-            Defaults to {"fontsize": 12}.
+            Defaults to {"fontsize": 14}.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -135,8 +135,8 @@ def plot_structure_2d(
     if colors is None:
         colors = jmol_colors
 
-    if isinstance(atomic_radii, (float, type(None))):
-        atomic_radii = covalent_radii * (atomic_radii or 1)
+    if atomic_radii is None or isinstance(atomic_radii, float):
+        atomic_radii = 0.7 * covalent_radii * (atomic_radii or 1)
     else:
         assert isinstance(atomic_radii, dict)
         # make sure all present elements are assigned a radius
