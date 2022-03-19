@@ -22,9 +22,6 @@ y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 xs, y_pred, y_true = pd.read_csv(f"{ROOT}/data/rand_regr.csv").to_numpy().T
 
 
-pngquant, zopflipng = which("pngquant"), which("zopflipng")
-
-
 def save_fixture(save_to: str) -> None:
     """Save a matplotlib figure to a specified fixture path.
 
@@ -33,6 +30,8 @@ def save_fixture(save_to: str) -> None:
     """
     if not save_to.startswith((f"{ROOT}/tests/fixtures/", "tests/fixtures/")):
         raise ValueError(f"{save_to=} must point at 'tests/fixtures/'")
+
+    pngquant, zopflipng = which("pngquant"), which("zopflipng")
 
     print(
         f"created new fixture {save_to=}, image comparison will run for real on "

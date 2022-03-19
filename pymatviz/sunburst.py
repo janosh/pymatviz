@@ -4,7 +4,7 @@ from typing import Any, Literal, Sequence
 
 import pandas as pd
 import plotly.express as px
-from plotly.graph_objects import Figure
+from plotly.graph_objs._figure import Figure
 
 from pymatviz.utils import get_crystal_sys
 
@@ -55,7 +55,7 @@ def spacegroup_sunburst(
         raise ValueError(f"Invalid {show_values=}")
 
     fig.update_layout(
-        margin=dict(l=10, r=10, t=10, b=10, pad=10),
+        margin=dict(l=10, r=10, b=10, pad=10),
         paper_bgcolor="rgba(0, 0, 0, 0)",
     )
 

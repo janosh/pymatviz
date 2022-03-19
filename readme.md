@@ -24,13 +24,9 @@ pip install pymatviz
 
 See [`pymatviz/elements.py`](pymatviz/elements.py).
 
-|      [`ptable_heatmap(compositions)`](pymatviz/elements.py)       |                [`ptable_heatmap(compositions, log=True)`](pymatviz/elements.py)                 |
-| :---------------------------------------------------------------: | :---------------------------------------------------------------------------------------------: |
-|                         ![ptable_heatmap]                         |                                      ![ptable_heatmap_log]                                      |
-| [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/elements.py)  |           [`ptable_heatmap_ratio(comps_b, comps_a, log=True)`](pymatviz/elements.py)            |
-|                      ![ptable_heatmap_ratio]                      |                                 ![ptable_heatmap_ratio_inverse]                                 |
-| [`hist_elemental_prevalence(compositions)`](pymatviz/elements.py) | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/elements.py) |
-|                   ![hist_elemental_prevalence]                    |                             ![hist_elemental_prevalence_log_count]                              |
+| [`ptable_heatmap(compositions, log=True)`](pymatviz/elements.py) | [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/elements.py) |
+| :--------------------------------------------------------------: | :--------------------------------------------------------------: |
+|                      ![ptable_heatmap_log]                       |                     ![ptable_heatmap_ratio]                      |
 
 ## Sunburst
 
@@ -54,11 +50,11 @@ See [`pymatviz/struct_vis.py`](pymatviz/struct_vis.py).
 
 See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 
-| [`spacegroup_hist([65, 134, 225, ...])`](pymatviz/histograms.py) | [`spacegroup_hist([65, 134, 225, ...], show_counts=False)`](pymatviz/histograms.py) |
-| :--------------------------------------------------------------: | :---------------------------------------------------------------------------------: |
-|                        ![spacegroup_hist]                        |                            ![spacegroup_hist_no_counts]                             |
-|    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     |          [`true_pred_hist(y_true, y_pred, y_std)`](pymatviz/histograms.py)          |
-|                         ![residual_hist]                         |                                  ![true_pred_hist]                                  |
+| [`spacegroup_hist([65, 134, 225, ...])`](pymatviz/histograms.py) |       [`spacegroup_hist([65, 134, 225, ...], show_counts=False)`](pymatviz/histograms.py)       |
+| :--------------------------------------------------------------: | :---------------------------------------------------------------------------------------------: |
+|                        ![spacegroup_hist]                        |                                  ![spacegroup_hist_no_counts]                                   |
+|    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/elements.py) |
+|                         ![residual_hist]                         |                             ![hist_elemental_prevalence_log_count]                              |
 
 ## Parity Plots
 
