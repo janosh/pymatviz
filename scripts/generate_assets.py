@@ -7,7 +7,8 @@ from subprocess import call
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from plotly.graph_objects import Figure
+from matminer.datasets import load_dataset
+from plotly.graph_objs._figure import Figure
 from pymatgen.core import Structure
 
 from pymatviz.correlation import marchenko_pastur
@@ -35,20 +36,6 @@ from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.utils import ROOT
 
 
-plt.rcParams.update({"font.size": 20})
-plt.rcParams["axes.linewidth"] = 2.5
-plt.rcParams["xtick.major.size"] = 7
-plt.rcParams["xtick.major.width"] = 2.5
-plt.rcParams["xtick.minor.size"] = 5
-plt.rcParams["xtick.minor.width"] = 2.5
-plt.rcParams["ytick.major.size"] = 7
-plt.rcParams["ytick.major.width"] = 2.5
-plt.rcParams["ytick.minor.size"] = 5
-plt.rcParams["ytick.minor.width"] = 2.5
-plt.rcParams["legend.fontsize"] = 20
-plt.rcParams["figure.figsize"] = (8, 7)
-
-
 # %%
 y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 
@@ -57,17 +44,9 @@ y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 df_roost_ens = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv", na_filter=False)
 
 y_true = df_roost_ens.target
-
-pred_cols = [col for col in df_roost_ens if "pred" in col]
-y_preds = df_roost_ens[pred_cols].to_numpy()
-y_pred = y_preds.mean(axis=1)
-
-ale_cols = [col for col in df_roost_ens if "ale" in col]  # aleatoric uncertainties
-y_ales = df_roost_ens[ale_cols].to_numpy()
-
-y_var_ale = np.square(y_ales).mean(axis=1)
-y_var_epi = y_preds.var(axis=1)
-
+y_pred = df_roost_ens.filter(like="pred").mean(1)
+y_var_epi = df_roost_ens.filter(like="pred").var(1)
+y_var_ale = (df_roost_ens.filter(like="ale") ** 2).mean(1)
 y_std = np.sqrt(y_var_ale + y_var_epi)
 
 
@@ -128,45 +107,44 @@ save_mpl_fig("residual_vs_actual")
 
 
 # %% Elemental Plots
-mp_formulas = pd.read_csv(f"{ROOT}/data/mp-elements.csv").formula
-roost_formulas = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
+df_glass = load_dataset("matbench_glass")
+df_steels = load_dataset("matbench_steels")
 
-ptable_heatmap(mp_formulas)
+
+ptable_heatmap(df_glass.composition, log=True)
+title = f"Matbench glass elemental prevalence for {len(df_glass):,} compositions"
+plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
+plt.tight_layout()
 save_mpl_fig("ptable_heatmap")
 
 ptable_heatmap(df_ptable.atomic_mass)
+plt.suptitle("Atomic mass heatmap", fontsize=20, fontweight="bold", y=0.96)
+plt.tight_layout()
 save_mpl_fig("ptable_heatmap_atomic_mass")
 
-ptable_heatmap(mp_formulas, heat_labels="percent")
+ptable_heatmap(df_glass.composition, heat_labels="percent")
+title = "Matbench glass elemental prevalence in percent"
+plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
+plt.tight_layout()
 save_mpl_fig("ptable_heatmap_percent")
 
-ptable_heatmap(mp_formulas, log=True)
-save_mpl_fig("ptable_heatmap_log")
-
-ptable_heatmap(mp_formulas, log=True, cbar_max=1e3)
-save_mpl_fig("ptable_heatmap_log_cbar_max")
-
-ptable_heatmap_ratio(mp_formulas, roost_formulas)
+ptable_heatmap_ratio(df_glass.composition, df_steels.composition, log=True)
+title = "Elemental prevalence ratios from Matbench glass to steel"
+plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
+plt.tight_layout()
 save_mpl_fig("ptable_heatmap_ratio")
 
-ptable_heatmap_ratio(roost_formulas, mp_formulas)
-save_mpl_fig("ptable_heatmap_ratio_inverse")
-
-hist_elemental_prevalence(mp_formulas, keep_top=15, voffset=1)
+hist_elemental_prevalence(df_glass.composition, keep_top=15, v_offset=1)
 save_mpl_fig("hist_elemental_prevalence")
 
-hist_elemental_prevalence(
-    mp_formulas, keep_top=20, log=True, bar_values="count", voffset=1
-)
-save_mpl_fig("hist_elemental_prevalence_log_count")
 
 # Plotly interactive periodic table heatmap
-fig = ptable_heatmap_plotly(mp_formulas)
+fig = ptable_heatmap_plotly(df_glass.composition)
 save_compress_plotly(fig, "ptable_heatmap_plotly")
 
-fig = ptable_heatmap_plotly(mp_formulas, heat_labels=None)
+fig = ptable_heatmap_plotly(df_glass.composition, heat_labels=None)
 save_compress_plotly(fig, "ptable_heatmap_plotly_no_labels")
 
 fig = ptable_heatmap_plotly(
@@ -176,11 +154,11 @@ fig = ptable_heatmap_plotly(
 )
 save_compress_plotly(fig, "ptable_heatmap_plotly_more_hover_data")
 
-fig = ptable_heatmap_plotly(mp_formulas, heat_labels="percent")
+fig = ptable_heatmap_plotly(df_glass.composition, heat_labels="percent")
 save_compress_plotly(fig, "ptable_heatmap_plotly_percent_labels")
 
 fig = ptable_heatmap_plotly(
-    mp_formulas,
+    df_glass.composition,
     colorscale=[(0, "lightblue"), (1, "teal")],
     font_colors=("black", "white"),
 )
@@ -231,19 +209,25 @@ save_mpl_fig("residual_hist")
 true_pred_hist(y_true, y_pred, y_std)
 save_mpl_fig("true_pred_hist")
 
-phonons = pd.read_csv(f"{ROOT}/data/matbench-phonons.csv")
-spacegroup_hist(phonons.sg_number)
+
+df_phonons = load_dataset("matbench_phonons")
+
+df_phonons[["sgp_symbol", "spg_num"]] = [
+    struct.get_space_group_info() for struct in df_phonons.structure
+]
+
+spacegroup_hist(df_phonons.spg_num)
 save_mpl_fig("spacegroup_hist")
 
-spacegroup_hist(phonons.sg_number, show_counts=False)
+spacegroup_hist(df_phonons.spg_num, show_counts=False)
 save_mpl_fig("spacegroup_hist_no_counts")
 
 
 # %% Sunburst Plots
-fig = spacegroup_sunburst(phonons.sg_number)
+fig = spacegroup_sunburst(df_phonons.spg_num)
 save_compress_plotly(fig, "spacegroup_sunburst")
 
-fig = spacegroup_sunburst(phonons.sg_number, show_values="percent")
+fig = spacegroup_sunburst(df_phonons.spg_num, show_values="percent")
 save_compress_plotly(fig, "spacegroup_sunburst_percent")
 
 
