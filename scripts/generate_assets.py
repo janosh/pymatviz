@@ -107,45 +107,44 @@ save_mpl_fig("residual_vs_actual")
 
 
 # %% Elemental Plots
-mp_formulas = pd.read_csv(f"{ROOT}/data/mp-elements.csv").formula
-roost_formulas = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv").composition
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
+df_glass = load_dataset("matbench_glass")
+df_steels = load_dataset("matbench_steels")
 
-ptable_heatmap(mp_formulas)
+
+ptable_heatmap(df_glass.composition, log=True)
+title = f"Matbench glass elemental prevalence for {len(df_glass):,} compositions"
+plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
+plt.tight_layout()
 save_mpl_fig("ptable_heatmap")
 
 ptable_heatmap(df_ptable.atomic_mass)
+plt.suptitle("Atomic mass heatmap", fontsize=20, fontweight="bold", y=0.96)
+plt.tight_layout()
 save_mpl_fig("ptable_heatmap_atomic_mass")
 
-ptable_heatmap(mp_formulas, heat_labels="percent")
+ptable_heatmap(df_glass.composition, heat_labels="percent")
+title = "Matbench glass elemental prevalence in percent"
+plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
+plt.tight_layout()
 save_mpl_fig("ptable_heatmap_percent")
 
-ptable_heatmap(mp_formulas, log=True)
-save_mpl_fig("ptable_heatmap_log")
-
-ptable_heatmap(mp_formulas, log=True, cbar_max=1e3)
-save_mpl_fig("ptable_heatmap_log_cbar_max")
-
-ptable_heatmap_ratio(mp_formulas, roost_formulas)
+ptable_heatmap_ratio(df_glass.composition, df_steels.composition, log=True)
+title = "Elemental prevalence ratios from Matbench glass to steel"
+plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
+plt.tight_layout()
 save_mpl_fig("ptable_heatmap_ratio")
 
-ptable_heatmap_ratio(roost_formulas, mp_formulas)
-save_mpl_fig("ptable_heatmap_ratio_inverse")
-
-hist_elemental_prevalence(mp_formulas, keep_top=15, v_offset=1)
+hist_elemental_prevalence(df_glass.composition, keep_top=15, v_offset=1)
 save_mpl_fig("hist_elemental_prevalence")
 
-hist_elemental_prevalence(
-    mp_formulas, keep_top=20, log=True, bar_values="count", v_offset=1
-)
-save_mpl_fig("hist_elemental_prevalence_log_count")
 
 # Plotly interactive periodic table heatmap
-fig = ptable_heatmap_plotly(mp_formulas)
+fig = ptable_heatmap_plotly(df_glass.composition)
 save_compress_plotly(fig, "ptable_heatmap_plotly")
 
-fig = ptable_heatmap_plotly(mp_formulas, heat_labels=None)
+fig = ptable_heatmap_plotly(df_glass.composition, heat_labels=None)
 save_compress_plotly(fig, "ptable_heatmap_plotly_no_labels")
 
 fig = ptable_heatmap_plotly(
@@ -155,11 +154,11 @@ fig = ptable_heatmap_plotly(
 )
 save_compress_plotly(fig, "ptable_heatmap_plotly_more_hover_data")
 
-fig = ptable_heatmap_plotly(mp_formulas, heat_labels="percent")
+fig = ptable_heatmap_plotly(df_glass.composition, heat_labels="percent")
 save_compress_plotly(fig, "ptable_heatmap_plotly_percent_labels")
 
 fig = ptable_heatmap_plotly(
-    mp_formulas,
+    df_glass.composition,
     colorscale=[(0, "lightblue"), (1, "teal")],
     font_colors=("black", "white"),
 )

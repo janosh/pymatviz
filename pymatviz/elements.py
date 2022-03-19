@@ -201,7 +201,8 @@ def ptable_heatmap(
             if heat_labels == "percent":
                 label = f"{heat_val:{precision or '.1%'}}"
             else:
-                label = f"{heat_val:{precision or '.3g'}}"
+                prec = precision or (".0f" if heat_val > 100 else ".1f")
+                label = f"{heat_val:{prec}}"
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             label = label.replace("e+0", "e")
         if row < 3:  # vertical offset for lanthanide + actinide series
@@ -318,7 +319,7 @@ def ptable_heatmap_ratio(
     kwargs["infty_color"] = not_in_denominator[0]
     kwargs["na_color"] = not_in_either[0]
 
-    ax = ptable_heatmap(elem_values, cbar_title=cbar_title, precision=".1f", **kwargs)
+    ax = ptable_heatmap(elem_values, cbar_title=cbar_title, **kwargs)
 
     # add legend handles
     for y_pos, color, txt in (
