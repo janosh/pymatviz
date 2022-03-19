@@ -363,6 +363,9 @@ def hist_elemental_prevalence(
         v_offset (int): Vertical offset for bar height labels. Defaults to 10.
         rotation (int): Bar label angle. Defaults to 45.
         **kwargs (int): Keyword arguments passed to pandas.plot.bar().
+
+    Returns:
+        ax: The plot's matplotlib Axes.
     """
     if ax is None:
         ax = plt.gca()
