@@ -26,7 +26,7 @@ See [`pymatviz/elements.py`](pymatviz/elements.py).
 
 | [`ptable_heatmap(compositions, log=True)`](pymatviz/elements.py) | [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/elements.py) |
 | :--------------------------------------------------------------: | :--------------------------------------------------------------: |
-|                      ![ptable_heatmap_log]                       |                     ![ptable_heatmap_ratio]                      |
+|                        ![ptable_heatmap]                         |                     ![ptable_heatmap_ratio]                      |
 
 ## Sunburst
 
@@ -54,7 +54,7 @@ See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 | :--------------------------------------------------------------: | :---------------------------------------------------------------------------------------------: |
 |                        ![spacegroup_hist]                        |                                  ![spacegroup_hist_no_counts]                                   |
 |    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/elements.py) |
-|                         ![residual_hist]                         |                             ![hist_elemental_prevalence_log_count]                              |
+|                         ![residual_hist]                         |                                  ![hist_elemental_prevalence]                                   |
 
 ## Parity Plots
 
@@ -134,7 +134,6 @@ On Mac, replace `sed -i` with `sed -i ""`.
 [density_scatter]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density_scatter.svg
 [err_decay_multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/err_decay_multiple.svg
 [err_decay]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/err_decay.svg
-[hist_elemental_prevalence_log_count]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/hist_elemental_prevalence_log_count.svg
 [hist_elemental_prevalence]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/hist_elemental_prevalence.svg
 [marchenko_pastur_significant_eval]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko_pastur_significant_eval.svg
 [marchenko_pastur]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko_pastur.svg
@@ -142,8 +141,6 @@ On Mac, replace `sed -i` with `sed -i ""`.
 [normal_prob_plot_multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal_prob_plot_multiple.svg
 [normal_prob_plot]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal_prob_plot.svg
 [precision_recall_curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/precision_recall_curve.svg
-[ptable_heatmap_log]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_heatmap_log.svg
-[ptable_heatmap_ratio_inverse]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_heatmap_ratio_inverse.svg
 [ptable_heatmap_ratio]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_heatmap_ratio.svg
 [ptable_heatmap]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_heatmap.svg
 [residual_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/residual_hist.svg

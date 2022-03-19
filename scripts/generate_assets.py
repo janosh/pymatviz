@@ -1,6 +1,4 @@
 # %%
-import os
-from glob import glob
 from shutil import which
 from subprocess import call
 
@@ -9,7 +7,6 @@ import numpy as np
 import pandas as pd
 from matminer.datasets import load_dataset
 from plotly.graph_objs._figure import Figure
-from pymatgen.core import Structure
 
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cum_err, cum_res
@@ -37,6 +34,8 @@ from pymatviz.utils import ROOT
 
 
 # %%
+plt.rc("savefig", bbox="tight")
+
 y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 
 
@@ -254,17 +253,12 @@ save_mpl_fig("marchenko_pastur_rank_deficient")
 
 
 # %%
-structs = [
-    (fname, Structure.from_file(fname))
-    for fname in glob(f"{ROOT}/data/structures/*.yml")
-]
+df_phonons = load_dataset("matbench_phonons")
 
-fig, axs = plt.subplots(4, 5, figsize=(20, 20))
+fig, axs = plt.subplots(3, 4, figsize=(12, 12))
 
-for (fname, struct), ax in zip(structs, axs.flat):
+for struct, ax in zip(df_phonons.structure.head(12), axs.flat):
     ax = plot_structure_2d(struct, ax=ax)
-    mp_id = os.path.basename(fname).split(".")[0]
-    ax.set_title(f"{struct.formula}\n{mp_id}", fontsize=14)
+    ax.set_title(struct.composition.reduced_formula, fontsize=14)
 
-
-fig.savefig(f"{ROOT}/assets/mp-structures-2d.svg", bbox_inches="tight")
+save_mpl_fig("mp-structures-2d")
