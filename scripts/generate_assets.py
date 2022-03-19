@@ -44,17 +44,9 @@ y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 df_roost_ens = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv", na_filter=False)
 
 y_true = df_roost_ens.target
-
-pred_cols = [col for col in df_roost_ens if "pred" in col]
-y_preds = df_roost_ens[pred_cols].to_numpy()
-y_pred = y_preds.mean(axis=1)
-
-ale_cols = [col for col in df_roost_ens if "ale" in col]  # aleatoric uncertainties
-y_ales = df_roost_ens[ale_cols].to_numpy()
-
-y_var_ale = np.square(y_ales).mean(axis=1)
-y_var_epi = y_preds.var(axis=1)
-
+y_pred = df_roost_ens.filter(like="pred").mean(1)
+y_var_epi = df_roost_ens.filter(like="pred").var(1)
+y_var_ale = (df_roost_ens.filter(like="ale") ** 2).mean(1)
 y_std = np.sqrt(y_var_ale + y_var_epi)
 
 
