@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib import transforms
 from matplotlib.axes import Axes
-from matplotlib.ticker import FixedLocator, FormatStrFormatter
+from matplotlib.ticker import FixedLocator
+from pymatgen.symmetry.groups import SpaceGroup
 from scipy.stats import gaussian_kde
 
-from pymatviz.utils import NumArray
+from pymatviz.utils import NumArray, get_crystal_sys
 
 
 def residual_hist(
@@ -126,9 +127,11 @@ def true_pred_hist(
 
 
 def spacegroup_hist(
-    spacegroups: Sequence[int],
+    spacegroups: Sequence[int | str] | pd.DataFrame,
+    spg_col: str = None,
     show_counts: bool = True,
-    show_minor_xticks: bool = False,
+    xticks: Literal["all", "crys_sys_edges"] | int = 20,
+    include_missing: bool = False,
     ax: Axes = None,
     **kwargs: Any,
 ) -> Axes:
@@ -140,8 +143,13 @@ def spacegroup_hist(
         spacegroups (array): A list of spacegroup numbers.
         show_counts (bool, optional): Whether to count the number of items
             in each crystal system. Defaults to True.
-        show_minor_xticks (bool, optional): Whether to render minor x-ticks half way
-            through each crystal system. Defaults to False.
+        xticks ('all' | 'crys_sys_edges' | int, optional): Where to add x-ticks. An
+            integer will add ticks below that number of tallest bars. Defaults to 20.
+            'all' will show below all bars, 'crys_sys_edges' only at the edge from one
+            crystal system to another.
+        include_missing (bool, optional): Whether to include a 0-height bar for missing
+            space groups missing from the data. Currently only implemented for numbers,
+            not symbols. Defaults to False.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         kwargs: Keywords passed to pd.Series.plot.bar().
 
@@ -151,33 +159,75 @@ def spacegroup_hist(
     if ax is None:
         ax = plt.gca()
 
-    sg_series = pd.Series(spacegroups)
+    if isinstance(spacegroups, pd.DataFrame):
+        print(f"{spg_col=}")
+        if spg_col is None:
+            raise ValueError(
+                "if 1st arg is a DataFrame, spg_col must be specified as 2nd arg"
+            )
+        series = spacegroups[spg_col]
+    else:
+        series = pd.Series(spacegroups)
 
-    sg_series.value_counts().reindex(range(230), fill_value=0).plot.bar(
-        figsize=[16, 4], width=1, rot=0, ax=ax, **kwargs
-    )
+    df = pd.DataFrame(series.value_counts(sort=False))
+    df.columns = ["counts"]
+
+    crys_colors = {
+        "triclinic": "red",
+        "monoclinic": "teal",
+        "orthorhombic": "blue",
+        "tetragonal": "green",
+        "trigonal": "orange",
+        "hexagonal": "purple",
+        "cubic": "yellow",
+    }
+
+    if df.index.is_numeric():  # assume index is space group numbers
+        if include_missing:
+            df = df.reindex(range(1, 231), fill_value=0)
+        else:
+            print("hi")
+            df = df.sort_index()
+        df["crystal_sys"] = [get_crystal_sys(x) for x in df.index]
+        ax.set(xlim=(0, 230))
+        xlabel = "International Spacegroup Number"
+
+    else:  # assume index is space group symbols
+        # TODO: figure how to implement include_missing for space group symbols
+        # if include_missing:
+        #     idx = [SpaceGroup.from_int_number(x).symbol for x in range(1, 231)]
+        #     df = df.reindex(idx, fill_value=0)
+        df["crystal_sys"] = [SpaceGroup(x).crystal_system for x in df.index]
+
+        # sort df by crystal system going from smallest to largest spacegroup numbers
+        # e.g. triclinic (1-2) comes first, cubic (195-230) last
+        sys_order = dict(zip(crys_colors, range(len(crys_colors))))
+        df = df.loc[df.crystal_sys.map(sys_order).sort_values().index]
+
+        xlabel = "International Spacegroup Symbol"
+
+    ax.set(xlabel=xlabel, ylabel="Count")
+
+    # make plot
+    df.counts.plot.bar(figsize=[16, 4], width=1, rot=0, ax=ax, **kwargs)
 
     # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
     trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
 
-    # https://git.io/JYJcs
-    crystal_systems: dict[str, tuple[str, tuple[int, int]]] = {
-        "tri-/monoclinic": ("red", (1, 15)),
-        "orthorhombic": ("blue", (16, 74)),
-        "tetragonal": ("green", (75, 142)),
-        "trigonal": ("orange", (143, 167)),
-        "hexagonal": ("purple", (168, 194)),
-        "cubic": ("yellow", (195, 230)),
-    }
+    # count rows per crystal system
+    crys_sys_counts = df.groupby("crystal_sys").sum("counts")
+    # sort by key order in dict crys_colors
+    crys_sys_counts = crys_sys_counts.loc[
+        [x for x in crys_colors if x in df.crystal_sys]
+    ]
 
-    if show_counts:
-        spacegroup_ranges = [1] + [x[1][1] for x in crystal_systems.values()]
-        crys_sys_counts = sg_series.value_counts(bins=spacegroup_ranges, sort=False)
-        # reindex needed for crys_sys_counts[cryst_sys] below
-        crys_sys_counts.index = crystal_systems.keys()
-        ax.set_title("Totals per crystal system", fontdict={"fontsize": 18}, pad=30)
+    crys_sys_counts["width"] = df.value_counts("crystal_sys")
+    ax.set_title("Totals per crystal system", fontdict={"fontsize": 18}, pad=30)
+    crys_sys_counts["color"] = pd.Series(crys_colors)
 
-    for cryst_sys, (color, (x0, x1)) in crystal_systems.items():
+    x0 = 0
+    for cryst_sys, count, width, color in crys_sys_counts.itertuples():
+        x1 = x0 + width - 1
 
         for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
             patch.set_facecolor(color)
@@ -192,7 +242,6 @@ def spacegroup_hist(
             **text_kwds,
         )
         if show_counts:
-            count = crys_sys_counts[cryst_sys]
             ax.text(
                 *[(x0 + x1) / 2, 1.02],
                 f"{count:,} ({count/len(spacegroups):.0%})",
@@ -208,17 +257,23 @@ def spacegroup_hist(
             transform=trans,
             edgecolor="black",
         )
+        x0 += width
 
-    ax.set(xlim=(0, 230), xlabel="International Spacegroup Number", ylabel="Count")
     ax.yaxis.grid(True)
     ax.xaxis.grid(False)
 
-    majorLocator = FixedLocator([x[1][1] for x in crystal_systems.values()])
-    minorLocator = FixedLocator([sum(x[1]) // 2 for x in crystal_systems.values()])
+    if xticks == "crys_sys_edges" or isinstance(xticks, int):
 
-    ax.xaxis.set_major_locator(majorLocator)
-    if show_minor_xticks:
-        ax.xaxis.set_minor_locator(minorLocator)
-        ax.xaxis.set_minor_formatter(FormatStrFormatter("%d"))
+        if isinstance(xticks, int):
+            # get x_locs of n=xticks tallest bars
+            x_indices = df.reset_index().sort_values("counts").tail(xticks).index
+        else:
+            # add x_locs of n=xticks tallest bars
+            x_indices = crys_sys_counts.width.cumsum()
+
+        majorLocator = FixedLocator(x_indices)
+
+        ax.xaxis.set_major_locator(majorLocator)
+    plt.xticks(rotation=90)
 
     return ax
