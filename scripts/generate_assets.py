@@ -60,8 +60,8 @@ def save_mpl_fig(filename: str) -> None:
     plt.savefig(filepath, bbox_inches="tight")
     plt.close()
 
-    if which("svgo") is not None:
-        call(["svgo", filepath])
+    if (svgo := which("svgo")) is not None:
+        call([svgo, "--multipass", filepath])
 
 
 def save_compress_plotly(fig: Figure, filename: str) -> None:
@@ -76,8 +76,8 @@ def save_compress_plotly(fig: Figure, filename: str) -> None:
     fig.write_image(filepath)
     fig.write_html(f"{ROOT}/assets/{filename}.html", include_plotlyjs="cdn")
 
-    if which("svgo") is not None:
-        call(["svgo", filepath])
+    if (svgo := which("svgo")) is not None:
+        call([svgo, "--multipass", filepath])
 
 
 # %% Parity Plots
@@ -216,17 +216,17 @@ df_phonons[["spg_symbol", "spg_num"]] = [
 ]
 
 spacegroup_hist(df_phonons.spg_num)
-save_mpl_fig("spacegroup_hist")
+save_mpl_fig("spg_num_hist")
 
-spacegroup_hist(df_phonons.spg_num, show_counts=False)
-save_mpl_fig("spacegroup_hist_no_counts")
+spacegroup_hist(df_phonons.spg_symbol)
+save_mpl_fig("spg_symbol_hist")
 
 
 # %% Sunburst Plots
 fig = spacegroup_sunburst(df_phonons.spg_num)
 save_compress_plotly(fig, "spacegroup_sunburst")
 
-fig = spacegroup_sunburst(df_phonons.sgp_symbol, show_values="percent")
+fig = spacegroup_sunburst(df_phonons.spg_symbol, show_values="percent")
 save_compress_plotly(fig, "spacegroup_sunburst_percent")
 
 
