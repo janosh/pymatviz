@@ -211,7 +211,7 @@ save_mpl_fig("true_pred_hist")
 
 df_phonons = load_dataset("matbench_phonons")
 
-df_phonons[["sgp_symbol", "spg_num"]] = [
+df_phonons[["spg_symbol", "spg_num"]] = [
     struct.get_space_group_info() for struct in df_phonons.structure
 ]
 
