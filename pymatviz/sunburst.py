@@ -12,7 +12,7 @@ from pymatviz.utils import get_crystal_sys
 
 def spacegroup_sunburst(
     spacegroups: Sequence[int | str] | pd.DataFrame,
-    sgp_col: str = None,
+    spg_col: str = None,
     show_values: Literal["value", "percent", False] = False,
     **kwargs: Any,
 ) -> Figure:
@@ -24,8 +24,8 @@ def spacegroup_sunburst(
 
     Args:
         spacegroups (list[int] | pd.DataFrame): A sequence of space group strings or
-            numbers or a dataframe. If dataframe, be sure to specify sgp_col.
-        sgp_col (str): The name of the column that holds the space group numbers.
+            numbers or a dataframe. If dataframe, be sure to specify spg_col.
+        spg_col (str): The name of the column that holds the space group numbers.
             Defaults to None.
         show_values ("value" | "percent" | False): Whether to display values below each
             labels on the sunburst.
@@ -34,11 +34,11 @@ def spacegroup_sunburst(
         Figure: The Plotly figure.
     """
     if isinstance(spacegroups, pd.DataFrame):
-        if sgp_col is None:
+        if spg_col is None:
             raise ValueError(
-                "if 1st arg is a DataFrame, sgp_col must be specified as 2nd arg"
+                "if 1st arg is a DataFrame, spg_col must be specified as 2nd arg"
             )
-        series = spacegroups[sgp_col]
+        series = spacegroups[spg_col]
     else:
         series = pd.Series(spacegroups)
 

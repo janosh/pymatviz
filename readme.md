@@ -50,9 +50,9 @@ See [`pymatviz/struct_vis.py`](pymatviz/struct_vis.py).
 
 See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 
-| [`spacegroup_hist([65, 134, 225, ...])`](pymatviz/histograms.py) |       [`spacegroup_hist([65, 134, 225, ...], show_counts=False)`](pymatviz/histograms.py)       |
+| [`spacegroup_hist([65, 134, 225, ...])`](pymatviz/histograms.py) |           [`spacegroup_hist(["C2/m", "C2/m", "Fm-3m", ...])`](pymatviz/histograms.py)           |
 | :--------------------------------------------------------------: | :---------------------------------------------------------------------------------------------: |
-|                        ![spacegroup_hist]                        |                                  ![spacegroup_hist_no_counts]                                   |
+|                         ![spg_num_hist]                          |                                       ![spg_symbol_hist]                                        |
 |    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/elements.py) |
 |                         ![residual_hist]                         |                                  ![hist_elemental_prevalence]                                   |
 
@@ -147,10 +147,10 @@ On Mac, replace `sed -i` with `sed -i ""`.
 [residual_vs_actual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/residual_vs_actual.svg
 [roc_curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/roc_curve.svg
 [scatter_with_err_bar]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/scatter_with_err_bar.svg
-[spacegroup_hist_no_counts]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spacegroup_hist_no_counts.svg
-[spacegroup_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spacegroup_hist.svg
 [spacegroup_sunburst_percent]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spacegroup_sunburst_percent.svg
 [spacegroup_sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spacegroup_sunburst.svg
+[spg_num_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg_num_hist.svg
+[spg_symbol_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg_symbol_hist.svg
 [struct-2d-mp-12712]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712.svg
 [struct-2d-mp-19017-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-disordered.svg
 [true_pred_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/true_pred_hist.svg
