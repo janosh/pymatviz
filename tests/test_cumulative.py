@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pymatviz import cum_err, cum_res
 
 from .conftest import y_pred, y_true

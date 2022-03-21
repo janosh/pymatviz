@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pymatviz import (
     density_hexbin,
     density_hexbin_with_hist,

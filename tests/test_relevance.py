@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from matplotlib.axes import Axes
 
 from pymatviz import precision_recall_curve, roc_curve
