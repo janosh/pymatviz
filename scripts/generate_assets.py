@@ -74,7 +74,6 @@ def save_compress_plotly(fig: Figure, filename: str) -> None:
     """
     filepath = f"{ROOT}/assets/{filename}.svg"
     fig.write_image(filepath)
-    fig.write_html(f"{ROOT}/assets/{filename}.html", include_plotlyjs="cdn")
 
     if (svgo := which("svgo")) is not None:
         call([svgo, "--multipass", filepath])
@@ -209,6 +208,7 @@ true_pred_hist(y_true, y_pred, y_std)
 save_mpl_fig("true_pred_hist")
 
 
+# %%
 df_phonons = load_dataset("matbench_phonons")
 
 df_phonons[["spg_symbol", "spg_num"]] = [
@@ -223,11 +223,11 @@ save_mpl_fig("spg_symbol_hist")
 
 
 # %% Sunburst Plots
-fig = spacegroup_sunburst(df_phonons.spg_num)
-save_compress_plotly(fig, "spacegroup_sunburst")
+fig = spacegroup_sunburst(df_phonons.spg_num, show_values="percent")
+save_compress_plotly(fig, "spg_num_sunburst")
 
 fig = spacegroup_sunburst(df_phonons.spg_symbol, show_values="percent")
-save_compress_plotly(fig, "spacegroup_sunburst_percent")
+save_compress_plotly(fig, "spg_symbol_sunburst")
 
 
 # %% Correlation Plots
