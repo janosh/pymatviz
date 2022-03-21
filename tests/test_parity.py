@@ -7,7 +7,7 @@ from pymatviz import (
     scatter_with_err_bar,
 )
 
-from ._helpers import y_pred, y_true
+from .conftest import y_pred, y_true
 
 
 def test_density_scatter():

@@ -18,11 +18,30 @@ def run_around_tests():
     plt.close()
 
 
+@pytest.fixture
+def spg_symbols():
+    return [
+        "C2/m",
+        "C2/m",
+        "Fm-3m",
+        "C2/m",
+        "Cmc2_1",
+        "P4/nmm",
+        "P-43m",
+        "P-43m",
+        "P6_3mc",
+        "Cmcm",
+        "P2_1/m",
+        "I2_13",
+        "P-6m2",
+    ]
+
+
 y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
 xs, y_pred, y_true = pd.read_csv(f"{ROOT}/data/rand_regr.csv").to_numpy().T
 
 
-def save_fixture(save_to: str) -> None:
+def save_reference_img(save_to: str) -> None:
     """Save a matplotlib figure to a specified fixture path.
 
     Raises:

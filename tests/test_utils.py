@@ -3,7 +3,7 @@ from matplotlib.offsetbox import AnchoredText
 
 from pymatviz.utils import add_mae_r2_box, get_crystal_sys
 
-from ._helpers import y_pred, y_true
+from .conftest import y_pred, y_true
 
 
 def test_add_mae_r2_box():

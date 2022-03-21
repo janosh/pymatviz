@@ -1,6 +1,6 @@
 from pymatviz import cum_err, cum_res
 
-from ._helpers import y_pred, y_true
+from .conftest import y_pred, y_true
 
 
 def test_cum_err():
