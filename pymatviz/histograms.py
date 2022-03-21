@@ -216,8 +216,8 @@ def spacegroup_hist(
 
     # count rows per crystal system
     crys_sys_counts = df.groupby("crystal_sys").sum("counts")
-    # sort by key order in dict crys_colors
 
+    # sort by key order in dict crys_colors
     crys_sys_counts = crys_sys_counts.loc[
         [x for x in crys_colors if x in crys_sys_counts.index]
     ]
