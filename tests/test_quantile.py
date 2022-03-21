@@ -1,9 +1,16 @@
+from __future__ import annotations
+
+import pytest
+from matplotlib.axes import Axes
+
 from pymatviz import qq_gaussian
+from pymatviz.utils import NumArray
 
-from ._helpers import xs, y_pred
+from .conftest import xs, y_pred
 
 
-def test_qq_gaussian():
-    qq_gaussian(xs, y_pred, xs)
+@pytest.mark.parametrize("y_std", [xs, {"foo": xs, "bar": 0.1 * xs}])
+def test_qq_gaussian(y_std: NumArray | dict[str, NumArray]) -> None:
+    ax = qq_gaussian(xs, y_pred, y_std)
 
-    qq_gaussian(xs, y_pred, {"foo": xs, "bar": 0.1 * xs})
+    assert isinstance(ax, Axes)
