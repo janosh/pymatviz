@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 import matplotlib.pyplot as plt
@@ -8,7 +10,7 @@ from pymatgen.transformations.standard_transformations import SubstitutionTransf
 
 from pymatviz.struct_vis import plot_structure_2d
 
-from ._helpers import save_fixture
+from .conftest import save_reference_img
 
 
 os.makedirs(fixt_dir := "tests/fixtures/struct_vis", exist_ok=True)
@@ -37,11 +39,11 @@ def test_plot_structure_2d(radii, rot, labels, tmpdir):
 
     tmp_img = tmpdir.join(fname).strpath
 
-    if not os.path.exists(fxt_img := f"{fixt_dir}/{fname}"):
-        save_fixture(fxt_img)
+    if not os.path.exists(ref_img := f"{fixt_dir}/{fname}"):
+        save_reference_img(ref_img)
         return
 
     plt.savefig(tmp_img)
     plt.close()
     tolerance = 100
-    assert compare_images(tmp_img, fxt_img, tolerance) is None
+    assert compare_images(tmp_img, ref_img, tolerance) is None
