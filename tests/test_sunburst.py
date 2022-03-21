@@ -1,18 +1,19 @@
-from matminer.datasets import load_dataset
+from __future__ import annotations
+
+from typing import Literal
+
+import pandas as pd
+import pytest
 from plotly.graph_objs._figure import Figure
 
 from pymatviz import spacegroup_sunburst
 
 
-df_phonons = load_dataset("matbench_phonons")
-
-df_phonons[["spg_symbol", "spg_num"]] = [
-    struct.get_space_group_info() for struct in df_phonons.structure
-]
-
-
-def test_spacegroup_sunburst():
-    fig = spacegroup_sunburst(df_phonons.spg_num)
+@pytest.mark.parametrize("show_vals", ["value", "percent", False])
+def test_spacegroup_sunburst(
+    spg_symbols: list[str], show_vals: Literal["value", "percent", False]
+) -> None:
+    fig = spacegroup_sunburst(range(1, 231), show_values=show_vals)
     assert isinstance(fig, Figure)
     assert set(fig.data[0].parents) == {
         "",
@@ -26,5 +27,9 @@ def test_spacegroup_sunburst():
     }
     assert fig.data[0].branchvalues == "total"
 
-    spacegroup_sunburst(df_phonons, spg_col="spg_num")
-    spacegroup_sunburst(df_phonons.spg_num, show_values="percent")
+    df = pd.DataFrame(spg_symbols, columns=["spg_symbol"])
+
+    # frame with col name
+    spacegroup_sunburst(df, spg_col="spg_symbol", show_values=show_vals)
+    # series
+    spacegroup_sunburst(df.spg_symbol, show_values=show_vals)

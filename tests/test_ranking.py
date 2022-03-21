@@ -1,20 +1,23 @@
+from __future__ import annotations
+
+import pytest
 from matplotlib.pyplot import Axes
 
 from pymatviz import err_decay
+from pymatviz.utils import NumArray
 
-from ._helpers import y_pred, y_true
+from .conftest import y_pred, y_true
 
 
 y_std_mock = y_true - y_pred
 
 
-def test_err_decay():
-    ax = err_decay(y_true, y_pred, y_std_mock)
+@pytest.mark.parametrize("y_std", [y_std_mock, {"y_std_mock": y_std_mock}])
+@pytest.mark.parametrize("n_rand", [10, 100, 1000])
+@pytest.mark.parametrize("percentiles", [True, False])
+def test_err_decay(
+    y_std: NumArray | dict[str, NumArray], n_rand: int, percentiles: bool
+) -> None:
+    ax = err_decay(y_true, y_pred, y_std, n_rand=n_rand, percentiles=percentiles)
 
     assert isinstance(ax, Axes)
-
-    err_decay(y_true, y_pred, {"y_std_mock": y_std_mock})
-
-    err_decay(y_true, y_pred, y_std_mock, n_rand=10)
-
-    err_decay(y_true, y_pred, y_std_mock, percentiles=False)
