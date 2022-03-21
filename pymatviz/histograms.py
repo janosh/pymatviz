@@ -186,7 +186,6 @@ def spacegroup_hist(
         if include_missing:
             df = df.reindex(range(1, 231), fill_value=0)
         else:
-            print("hi")
             df = df.sort_index()
         df["crystal_sys"] = [get_crystal_sys(x) for x in df.index]
         ax.set(xlim=(0, 230))
@@ -208,17 +207,19 @@ def spacegroup_hist(
 
     ax.set(xlabel=xlabel, ylabel="Count")
 
+    kwargs["width"] = kwargs.get("width", 0.9)  # set default bar width
     # make plot
-    df.counts.plot.bar(figsize=[16, 4], width=1, rot=0, ax=ax, **kwargs)
+    df.counts.plot.bar(figsize=[16, 4], ax=ax, **kwargs)
 
     # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
     trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
 
     # count rows per crystal system
     crys_sys_counts = df.groupby("crystal_sys").sum("counts")
+
     # sort by key order in dict crys_colors
     crys_sys_counts = crys_sys_counts.loc[
-        [x for x in crys_colors if x in df.crystal_sys]
+        [x for x in crys_colors if x in crys_sys_counts.index]
     ]
 
     crys_sys_counts["width"] = df.value_counts("crystal_sys")
@@ -227,7 +228,7 @@ def spacegroup_hist(
 
     x0 = 0
     for cryst_sys, count, width, color in crys_sys_counts.itertuples():
-        x1 = x0 + width - 1
+        x1 = x0 + width
 
         for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
             patch.set_facecolor(color)
@@ -250,7 +251,7 @@ def spacegroup_hist(
             )
 
         ax.fill_between(
-            [x0 - 1, x1],
+            [x0 - 0.5, x1 - 0.5],
             *[0, 1],
             facecolor=color,
             alpha=0.1,
