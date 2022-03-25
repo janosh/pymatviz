@@ -4,10 +4,22 @@ import subprocess
 from shutil import which
 
 import matplotlib.pyplot as plt
-import pandas as pd
+import numpy as np
 import pytest
 
 from pymatviz import ROOT
+
+
+# random regression data
+np.random.seed(42)
+xs = np.random.rand(100)
+y_pred = xs + 0.1 * np.random.normal(size=100)
+y_true = xs + 0.1 * np.random.normal(size=100)
+
+# random classification data
+y_binary = np.random.choice([0, 1], 100)
+y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
+y_clf = y_proba.round()
 
 
 @pytest.fixture(autouse=True)
@@ -37,10 +49,6 @@ def spg_symbols():
         "I2_13",
         "P-6m2",
     ]
-
-
-y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
-xs, y_pred, y_true = pd.read_csv(f"{ROOT}/data/rand_regr.csv").to_numpy().T
 
 
 def save_reference_img(save_to: str) -> None:
