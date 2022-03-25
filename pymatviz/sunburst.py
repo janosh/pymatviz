@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Sequence
+from typing import Any, Literal, Sequence, cast
 
 import pandas as pd
 import plotly.express as px
 from plotly.graph_objs._figure import Figure
+from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.utils import get_crystal_sys
 
 
 def spacegroup_sunburst(
-    spacegroups: Sequence[int | str] | pd.DataFrame,
-    spg_col: str = None,
-    show_values: Literal["value", "percent", False] = False,
+    data: Sequence[int | str] | pd.Series,
+    show_counts: Literal["value", "percent", False] = False,
     **kwargs: Any,
 ) -> Figure:
     """Generate a sunburst plot with crystal systems as the inner ring for a list of
@@ -23,24 +23,21 @@ def spacegroup_sunburst(
     fig.update_layout(uniformtext=dict(minsize=9, mode="hide"))
 
     Args:
-        spacegroups (list[int] | pd.DataFrame): A sequence of space group strings or
-            numbers or a dataframe. If dataframe, be sure to specify spg_col.
-        spg_col (str): The name of the column that holds the space group numbers.
-            Defaults to None.
-        show_values ("value" | "percent" | False): Whether to display values below each
+        data (list[int] | pd.Series): A sequence (list, tuple, pd.Series) of
+            space group strings or numbers (from 1 - 230) or pymatgen structures.
+        show_counts ("value" | "percent" | False): Whether to display values below each
             labels on the sunburst.
 
     Returns:
         Figure: The Plotly figure.
     """
-    if isinstance(spacegroups, pd.DataFrame):
-        if spg_col is None:
-            raise ValueError(
-                "if 1st arg is a DataFrame, spg_col must be specified as 2nd arg"
-            )
-        series = spacegroups[spg_col]
+    if isinstance(data[0], Structure):  # if 1st item is structure, assume all are
+        data = cast(Sequence[Structure], data)
+        series = pd.Series(
+            struct.get_space_group_info()[1] for struct in data  # type: ignore
+        )
     else:
-        series = pd.Series(spacegroups)
+        series = pd.Series(data)
 
     df = pd.DataFrame(series.value_counts().reset_index())
     df.columns = ["spacegroup", "count"]
@@ -55,12 +52,12 @@ def spacegroup_sunburst(
 
     fig = px.sunburst(df, path=["crystal_sys", "spacegroup"], values="count", **kwargs)
 
-    if show_values == "percent":
+    if show_counts == "percent":
         fig.data[0].textinfo = "label+percent entry"
-    elif show_values == "value":
+    elif show_counts == "value":
         fig.data[0].textinfo = "label+value"
-    elif show_values is not False:
-        raise ValueError(f"Invalid {show_values=}")
+    elif show_counts is not False:
+        raise ValueError(f"Invalid {show_counts=}")
 
     fig.update_layout(
         margin=dict(l=10, r=10, b=10, pad=10),
