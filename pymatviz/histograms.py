@@ -8,6 +8,7 @@ import pandas as pd
 from matplotlib import transforms
 from matplotlib.axes import Axes
 from matplotlib.ticker import FixedLocator
+from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 from scipy.stats import gaussian_kde
 
@@ -127,8 +128,7 @@ def true_pred_hist(
 
 
 def spacegroup_hist(
-    spacegroups: Sequence[int | str] | pd.DataFrame,
-    spg_col: str = None,
+    data: Sequence[int | str] | pd.Series,
     show_counts: bool = True,
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     include_missing: bool = False,
@@ -137,10 +137,9 @@ def spacegroup_hist(
 ) -> Axes:
     """Plot a histogram of spacegroups shaded by crystal system.
 
-    (triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, cubic)
-
     Args:
-        spacegroups (array): A list of spacegroup numbers.
+        data (list[int | str] | pd.Series): A sequence (list, tuple, pd.Series) of
+            space group strings or numbers (from 1 - 230) or pymatgen structures.
         show_counts (bool, optional): Whether to count the number of items
             in each crystal system. Defaults to True.
         xticks ('all' | 'crys_sys_edges' | int, optional): Where to add x-ticks. An
@@ -159,15 +158,13 @@ def spacegroup_hist(
     if ax is None:
         ax = plt.gca()
 
-    if isinstance(spacegroups, pd.DataFrame):
-        print(f"{spg_col=}")
-        if spg_col is None:
-            raise ValueError(
-                "if 1st arg is a DataFrame, spg_col must be specified as 2nd arg"
-            )
-        series = spacegroups[spg_col]
+    if isinstance(next(iter(data)), Structure):
+        # if 1st sequence item is structure, assume all are
+        series = pd.Series(
+            struct.get_space_group_info()[1] for struct in data  # type: ignore
+        )
     else:
-        series = pd.Series(spacegroups)
+        series = pd.Series(data)
 
     df = pd.DataFrame(series.value_counts(sort=False))
     df.columns = ["counts"]
@@ -245,7 +242,7 @@ def spacegroup_hist(
         if show_counts:
             ax.text(
                 *[(x0 + x1) / 2, 1.02],
-                f"{count:,} ({count/len(spacegroups):.0%})",
+                f"{count:,} ({count/len(data):.0%})",
                 fontdict={"fontsize": 12},
                 **text_kwds,
             )

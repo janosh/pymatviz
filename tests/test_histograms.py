@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-import pandas as pd
+import matplotlib.pyplot as plt
 import pytest
+from pymatgen.core import Structure
 
 from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
 
@@ -22,10 +23,13 @@ def test_true_pred_hist():
 @pytest.mark.parametrize("show_counts", [True, False])
 @pytest.mark.parametrize("include_missing", [True, False])
 def test_spacegroup_hist_num(
+    spg_symbols: list[str],
+    structures: list[Structure],
     xticks: Literal["all", "crys_sys_edges", 1, 50],
     show_counts: bool,
     include_missing: bool,
 ) -> None:
+    # spg numbers
     spacegroup_hist(
         range(1, 231),
         xticks=xticks,
@@ -33,21 +37,18 @@ def test_spacegroup_hist_num(
         include_missing=include_missing,
     )
 
+    # spg symbols
+    ax = spacegroup_hist(
+        spg_symbols,
+        xticks=xticks,
+        show_counts=show_counts,
+        include_missing=include_missing,
+    )
+    assert isinstance(ax, plt.Axes)
 
-@pytest.mark.parametrize("xticks", ["all", "crys_sys_edges", 1, 50])
-@pytest.mark.parametrize("show_counts", [True, False])
-@pytest.mark.parametrize("include_missing", [True, False])
-def test_spacegroup_hist_symbol(
-    spg_symbols: list[str],
-    xticks: Literal["all", "crys_sys_edges", 1, 50],
-    show_counts: bool,
-    include_missing: bool,
-) -> None:
-    df = pd.DataFrame(spg_symbols, columns=["spg_symbol"])
-
+    # pmg structures
     spacegroup_hist(
-        df,
-        spg_col="spg_symbol",
+        structures,
         xticks=xticks,
         show_counts=show_counts,
         include_missing=include_missing,

@@ -76,3 +76,14 @@ repos:
         entry: Files under assets/* must end in .svg
         language: fail
         files: ^assets/.*(?<!\.svg)(?<!\.html)$
+
+  - repo: https://github.com/myint/autoflake
+    rev: v1.4
+    hooks:
+      - id: autoflake
+        args:
+          - --in-place
+          - --remove-unused-variables
+          - --remove-all-unused-imports
+          - --expand-star-imports
+          - --ignore-init-module-imports

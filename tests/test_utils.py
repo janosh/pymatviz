@@ -14,7 +14,7 @@ def test_add_mae_r2_box():
 
     assert isinstance(text_box, AnchoredText)
 
-    txt = "$\\mathrm{MAE} = 0.116$\n$R^2 = 0.740$"
+    txt = "$\\mathrm{MAE} = 0.113$\n$R^2 = 0.765$"
     assert text_box.txt.get_text() == txt
 
     prefix, suffix = "Metrics:\n", "\nthe end"

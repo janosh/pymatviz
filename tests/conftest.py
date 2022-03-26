@@ -4,10 +4,23 @@ import subprocess
 from shutil import which
 
 import matplotlib.pyplot as plt
-import pandas as pd
+import numpy as np
 import pytest
+from pymatgen.core import Lattice, Structure
 
 from pymatviz import ROOT
+
+
+# random regression data
+np.random.seed(42)
+xs = np.random.rand(100)
+y_pred = xs + 0.1 * np.random.normal(size=100)
+y_true = xs + 0.1 * np.random.normal(size=100)
+
+# random classification data
+y_binary = np.random.choice([0, 1], 100)
+y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
+y_clf = y_proba.round()
 
 
 @pytest.fixture(autouse=True)
@@ -39,8 +52,23 @@ def spg_symbols():
     ]
 
 
-y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
-xs, y_pred, y_true = pd.read_csv(f"{ROOT}/data/rand_regr.csv").to_numpy().T
+@pytest.fixture
+def structures():
+    coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
+    lattice = [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]]
+    Si2 = Structure(lattice, ["Si4+", "Si4+"], coords)
+
+    coords = [
+        [0.25, 0.25, 0.173],
+        [0.75, 0.75, 0.827],
+        [0.75, 0.25, 0],
+        [0.25, 0.75, 0],
+        [0.25, 0.25, 0.676],
+        [0.75, 0.75, 0.324],
+    ]
+    lattice = Lattice.tetragonal(4.192, 6.88)
+    Si2Ru2Pr2 = Structure(lattice, ["Si", "Si", "Ru", "Ru", "Pr", "Pr"], coords)
+    return [Si2, Si2Ru2Pr2]
 
 
 def save_reference_img(save_to: str) -> None:
