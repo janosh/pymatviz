@@ -34,9 +34,16 @@ from pymatviz.utils import ROOT
 
 
 # %%
-plt.rc("savefig", bbox="tight")
+plt.rc("font", size=14)
+plt.rc("savefig", bbox="tight", dpi=200)
+plt.rc("axes", titlesize=16, titleweight="bold")
+plt.rcParams["figure.constrained_layout.use"] = True
 
-y_binary, y_proba, y_clf = pd.read_csv(f"{ROOT}/data/rand_clf.csv").to_numpy().T
+
+# random classification data
+np.random.seed(42)
+y_binary = np.random.choice([0, 1], 100)
+y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
 
 
 # na_filter=False so sodium amide (NaN) is not parsed as 'not a number'
@@ -114,24 +121,20 @@ df_steels = load_dataset("matbench_steels")
 ptable_heatmap(df_glass.composition, log=True)
 title = f"Matbench glass elemental prevalence for {len(df_glass):,} compositions"
 plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
-plt.tight_layout()
 save_mpl_fig("ptable_heatmap")
 
 ptable_heatmap(df_ptable.atomic_mass)
 plt.suptitle("Atomic mass heatmap", fontsize=20, fontweight="bold", y=0.96)
-plt.tight_layout()
 save_mpl_fig("ptable_heatmap_atomic_mass")
 
 ptable_heatmap(df_glass.composition, heat_labels="percent")
 title = "Matbench glass elemental prevalence in percent"
 plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
-plt.tight_layout()
 save_mpl_fig("ptable_heatmap_percent")
 
 ptable_heatmap_ratio(df_glass.composition, df_steels.composition, log=True)
 title = "Elemental prevalence ratios from Matbench glass to steel"
 plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
-plt.tight_layout()
 save_mpl_fig("ptable_heatmap_ratio")
 
 hist_elemental_prevalence(df_glass.composition, keep_top=15, v_offset=1)

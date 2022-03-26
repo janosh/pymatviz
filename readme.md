@@ -20,6 +20,10 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
+## Usage
+
+Check out the Jupyter notebooks under [`examples/`](/examples) to learn how to use `pymatviz`.
+
 ## Elements
 
 See [`pymatviz/elements.py`](pymatviz/elements.py).
