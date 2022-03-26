@@ -6,6 +6,7 @@ from shutil import which
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from pymatgen.core import Lattice, Structure
 
 from pymatviz import ROOT
 
@@ -49,6 +50,25 @@ def spg_symbols():
         "I2_13",
         "P-6m2",
     ]
+
+
+@pytest.fixture
+def structures():
+    coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
+    lattice = [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]]
+    Si2 = Structure(lattice, ["Si4+", "Si4+"], coords)
+
+    coords = [
+        [0.25, 0.25, 0.173],
+        [0.75, 0.75, 0.827],
+        [0.75, 0.25, 0],
+        [0.25, 0.75, 0],
+        [0.25, 0.25, 0.676],
+        [0.75, 0.75, 0.324],
+    ]
+    lattice = Lattice.tetragonal(4.192, 6.88)
+    Si2Ru2Pr2 = Structure(lattice, ["Si", "Si", "Ru", "Ru", "Pr", "Pr"], coords)
+    return [Si2, Si2Ru2Pr2]
 
 
 def save_reference_img(save_to: str) -> None:

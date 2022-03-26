@@ -31,7 +31,8 @@ def spacegroup_sunburst(
     Returns:
         Figure: The Plotly figure.
     """
-    if isinstance(data[0], Structure):  # if 1st item is structure, assume all are
+    if isinstance(next(iter(data)), Structure):
+        # if 1st sequence item is structure, assume all are
         data = cast(Sequence[Structure], data)
         series = pd.Series(
             struct.get_space_group_info()[1] for struct in data  # type: ignore

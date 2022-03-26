@@ -138,7 +138,7 @@ def spacegroup_hist(
     """Plot a histogram of spacegroups shaded by crystal system.
 
     Args:
-        data (list[int] | pd.Series): A sequence (list, tuple, pd.Series) of
+        data (list[int | str] | pd.Series): A sequence (list, tuple, pd.Series) of
             space group strings or numbers (from 1 - 230) or pymatgen structures.
         show_counts (bool, optional): Whether to count the number of items
             in each crystal system. Defaults to True.
@@ -158,7 +158,8 @@ def spacegroup_hist(
     if ax is None:
         ax = plt.gca()
 
-    if isinstance(data[0], Structure):  # if 1st item is structure, assume all are
+    if isinstance(next(iter(data)), Structure):
+        # if 1st sequence item is structure, assume all are
         series = pd.Series(
             struct.get_space_group_info()[1] for struct in data  # type: ignore
         )
