@@ -38,7 +38,7 @@ See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
 
 | [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst.py) | [`spacegroup_sunburst(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/sunburst.py) |
 | :----------------------------------------------------------------: | :----------------------------------------------------------------------------: |
-|                          ![spg_num_hist]                           |                               ![spg_symbol_hist]                               |
+|                        ![spg_num_sunburst]                         |                             ![spg_symbol_sunburst]                             |
 
 ## Structure
 
@@ -112,18 +112,6 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 | :------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
 |                            ![marchenko_pastur]                             |                            ![marchenko_pastur_significant_eval]                             |
 
-## Migrating from `ml-matrics` to `pymatviz`
-
-This library was renamed from `ml-matrics` to `pymatviz` between versions 0.3.0 and 0.4.0. To update existing Python files that import `ml-matrics` in place, run the following commands. On Linux:
-
-```sh
-find . -iname '*.py' -o -iname '*.ipynb' | xargs sed -i 's/from ml_matrics import/from pymatviz import/g'
-find . -iname '*.py' -o -iname '*.ipynb' | xargs sed -i 's/from ml_matrics./from pymatviz./g'
-find . -iname '*.py' -o -iname '*.ipynb' | xargs sed -i 's/import ml_matrics/import pymatviz/g'
-```
-
-On Mac, replace `sed -i` with `sed -i ""`.
-
 ## Glossary
 
 1. **Residual** `y_res = y_true - y_pred`: The difference between ground truth target and model prediction.
@@ -153,6 +141,8 @@ On Mac, replace `sed -i` with `sed -i ""`.
 [scatter_with_err_bar]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/scatter_with_err_bar.svg
 [spg_num_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg_num_hist.svg
 [spg_symbol_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg_symbol_hist.svg
+[spg_num_sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg_num_sunburst.svg
+[spg_symbol_sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg_symbol_sunburst.svg
 [struct-2d-mp-12712]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712.svg
 [struct-2d-mp-19017-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-disordered.svg
 [true_pred_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/true_pred_hist.svg
