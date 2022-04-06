@@ -25,31 +25,19 @@ y_clf = y_proba.round()
 
 @pytest.fixture(autouse=True)
 def run_around_tests():
-    # Code that runs before each test
+    # runs before each test
 
     yield
 
-    # Code that runs after each test
+    # runs after each test
     plt.close()
 
 
 @pytest.fixture
 def spg_symbols():
-    return [
-        "C2/m",
-        "C2/m",
-        "Fm-3m",
-        "C2/m",
-        "Cmc2_1",
-        "P4/nmm",
-        "P-43m",
-        "P-43m",
-        "P6_3mc",
-        "Cmcm",
-        "P2_1/m",
-        "I2_13",
-        "P-6m2",
-    ]
+    symbols = "C2/m C2/m Fm-3m C2/m Cmc2_1 P4/nmm P-43m P-43m P6_3mc".split()
+    symbols += "P-43m P6_3mc Cmcm P2_1/m I2_13 P-6m2".split()
+    return symbols
 
 
 @pytest.fixture
