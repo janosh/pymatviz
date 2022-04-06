@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 from matminer.datasets import load_dataset
 from matplotlib.axes import Axes
+from plotly.exceptions import PlotlyError
 from plotly.graph_objs._figure import Figure
 from pymatgen.core import Composition
 
@@ -148,4 +149,18 @@ def test_ptable_heatmap_plotly(df_ptable, glasses):
 
     ptable_heatmap_plotly(glasses, heat_labels="percent")
 
-    ptable_heatmap_plotly(glasses, colorscale=[(0, "red"), (1, "blue")])
+    # test that bad colorscale raises ValueError
+    with pytest.raises(ValueError, match="should be string, list of strings or list"):
+        ptable_heatmap_plotly(glasses, colorscale=lambda: "foobar")  # type: ignore
+
+    # test that unknown builtin colorscale raises ValueError
+    with pytest.raises(PlotlyError, match="Colorscale foobar is not a built-in scale"):
+        ptable_heatmap_plotly(glasses, colorscale="foobar")
+
+
+@pytest.mark.parametrize(
+    "clr_scl", ["YlGn", ["blue", "red"], [(0, "blue"), (1, "red")]]
+)
+def test_ptable_heatmap_plotly_colorscale(glasses, clr_scl):
+    fig = ptable_heatmap_plotly(glasses, colorscale=clr_scl)
+    assert isinstance(fig, Figure)
