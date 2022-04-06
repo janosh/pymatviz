@@ -26,11 +26,13 @@ Check out the Jupyter notebooks under [`examples/`](/examples) to learn how to u
 
 ## Elements
 
-See [`pymatviz/elements.py`](pymatviz/elements.py).
+See [`pymatviz/elements.py`](pymatviz/elements.py). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. Latter supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
 
 | [`ptable_heatmap(compositions, log=True)`](pymatviz/elements.py) | [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/elements.py) |
 | :--------------------------------------------------------------: | :--------------------------------------------------------------: |
 |                        ![ptable_heatmap]                         |                     ![ptable_heatmap_ratio]                      |
+|  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/elements.py)  |  [`ptable_heatmap_plotly(compositions)`](pymatviz/elements.py)   |
+|           ![ptable_heatmap_plotly_more_hover_data.svg]           |           ![ptable_heatmap_plotly_percent_labels.svg]            |
 
 ## Sunburst
 
@@ -135,6 +137,8 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [precision_recall_curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/precision_recall_curve.svg
 [ptable_heatmap_ratio]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_heatmap_ratio.svg
 [ptable_heatmap]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_heatmap.svg
+[ptable_heatmap_plotly_more_hover_data]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_heatmap_plotly_more_hover_data.svg
+[ptable_heatmap_plotly_percent_labels]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_heatmap_plotly_percent_labels.svg
 [residual_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/residual_hist.svg
 [residual_vs_actual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/residual_vs_actual.svg
 [roc_curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/roc_curve.svg

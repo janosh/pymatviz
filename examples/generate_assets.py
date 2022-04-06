@@ -40,10 +40,17 @@ plt.rc("axes", titlesize=16, titleweight="bold")
 plt.rcParams["figure.constrained_layout.use"] = True
 
 
+df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
+
+
 # random classification data
 np.random.seed(42)
 y_binary = np.random.choice([0, 1], 100)
 y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
+
+
+df_steels = load_dataset("matbench_steels")
+df_expt_gap = load_dataset("matbench_expt_gap")
 
 
 # na_filter=False so sodium amide (NaN) is not parsed as 'not a number'
@@ -112,14 +119,8 @@ save_mpl_fig("residual_vs_actual")
 
 
 # %% Elemental Plots
-df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
-
-df_glass = load_dataset("matbench_glass")
-df_steels = load_dataset("matbench_steels")
-
-
-ptable_heatmap(df_glass.composition, log=True)
-title = f"Matbench glass elemental prevalence for {len(df_glass):,} compositions"
+ptable_heatmap(df_expt_gap.composition, log=True)
+title = f"Matbench glass elemental prevalence for {len(df_expt_gap):,} compositions"
 plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
 save_mpl_fig("ptable_heatmap")
 
@@ -127,43 +128,37 @@ ptable_heatmap(df_ptable.atomic_mass)
 plt.suptitle("Atomic mass heatmap", fontsize=20, fontweight="bold", y=0.96)
 save_mpl_fig("ptable_heatmap_atomic_mass")
 
-ptable_heatmap(df_glass.composition, heat_labels="percent")
+ptable_heatmap(df_expt_gap.composition, heat_labels="percent")
 title = "Matbench glass elemental prevalence in percent"
 plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
 save_mpl_fig("ptable_heatmap_percent")
 
-ptable_heatmap_ratio(df_glass.composition, df_steels.composition, log=True)
+ptable_heatmap_ratio(df_expt_gap.composition, df_steels.composition, log=True)
 title = "Elemental prevalence ratios from Matbench glass to steel"
 plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
 save_mpl_fig("ptable_heatmap_ratio")
 
-hist_elemental_prevalence(df_glass.composition, keep_top=15, v_offset=1)
+hist_elemental_prevalence(df_expt_gap.composition, keep_top=15, v_offset=1)
 save_mpl_fig("hist_elemental_prevalence")
 
 
-# Plotly interactive periodic table heatmap
-fig = ptable_heatmap_plotly(df_glass.composition)
-save_compress_plotly(fig, "ptable_heatmap_plotly")
-
-fig = ptable_heatmap_plotly(df_glass.composition, heat_labels=None)
-save_compress_plotly(fig, "ptable_heatmap_plotly_no_labels")
-
+# %% Plotly interactive periodic table heatmap
 fig = ptable_heatmap_plotly(
     df_ptable.atomic_mass,
     hover_cols=["atomic_mass", "atomic_number"],
     hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
 )
+fig.update_layout(
+    title=dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
+)
+fig.show()
 save_compress_plotly(fig, "ptable_heatmap_plotly_more_hover_data")
 
-fig = ptable_heatmap_plotly(df_glass.composition, heat_labels="percent")
+fig = ptable_heatmap_plotly(df_expt_gap.composition, heat_labels="percent")
+title = "Matbench Experimental Bandgap Elemental Prevalence"
+fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
+fig.show()
 save_compress_plotly(fig, "ptable_heatmap_plotly_percent_labels")
-
-fig = ptable_heatmap_plotly(
-    df_glass.composition,
-    colorscale=[(0, "lightblue"), (1, "teal")],
-    font_colors=("black", "white"),
-)
-save_compress_plotly(fig, "ptable_heatmap_plotly_custom_color_scale")
 
 
 # %% Quantile/Calibration Plots
