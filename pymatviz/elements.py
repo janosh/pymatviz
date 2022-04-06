@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Literal, Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import plotly.figure_factory as ff
 from matplotlib.axes import Axes
 from matplotlib.cm import get_cmap
@@ -400,7 +401,7 @@ def hist_elemental_prevalence(
 def ptable_heatmap_plotly(
     elem_values: ElemValues,
     count_mode: CountMode = "composition",
-    colorscale: Sequence[tuple[float, str]] = None,
+    colorscale: str | Sequence[str] | Sequence[tuple[float, str]] | None = None,
     showscale: bool = True,
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
@@ -420,8 +421,12 @@ def ptable_heatmap_plotly(
         count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when elem_values is list of composition strings/objects.
-        colorscale (list[tuple[float, str]]): Color scale for heatmap. Defaults to
-            [(0.0, "teal"), (1.0, "darkgreen")].
+        colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
+            Defaults to plotly.express.colors.sequential.Pinkyl. See
+            https://plotly.com/python/builtin-colorscales for names of other builtin
+            color scales. Note e.g. colorscale='YlGn' and px.colors.sequential.YlGn are
+            equivalent. Custom scales are specified as ['blue', 'red'] or
+            [[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']].
         showscale (bool): Whether to show a bar for the color scale. Defaults to True.
         heat_labels ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is (value), normalized as a fraction of the total, as percentages
@@ -446,7 +451,7 @@ def ptable_heatmap_plotly(
             min_color is applied to annotations for heatmap values
             < (max_val - min_val) / 2. Defaults to ["white"].
         gap (float): Gap between tiles of the periodic table. Defaults to 5.
-        font_size (int): Element symbol and heat label text size. Defaults to None
+        font_size (int): Element symbol and heat label text size. Defaults to None,
             meaning automatic font size based on plot size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
         color_bar (dict[str, Any]): Plotly color bar properties documented at
@@ -478,9 +483,14 @@ def ptable_heatmap_plotly(
         if heat_labels == "percent":
             label = f"{heat_label:{precision or '.1%'}}"
         else:
-            label = f"{heat_label:{precision or '.3g'}}"
+            if precision is None:
+                prec = ".1f" if heat_label < 100 else ".0f"
+                if heat_label > 1e5:
+                    prec = ".2g"
+            label = f"{heat_label:{precision or prec}}".replace("e+0", "e")
 
-        tile_text = f"<b>{symbol}</b>"
+        style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
+        tile_text = f"<span {style=}>{symbol}</span>"
         if heat_labels is not None:
             tile_text += f"<br>{label}"
         tile_texts[row][col] = tile_text
@@ -504,25 +514,26 @@ def ptable_heatmap_plotly(
         color_val = elem_values[symbol]
         heat_vals[row][col] = color_val + 1e-6
 
-    if isinstance(colorscale, (list, tuple)) and isinstance(
-        colorscale[0], (list, tuple)
-    ):
-        colorscale = [(0, "rgba(0, 0, 0, 0)"), *map(list, colorscale)]  # type: ignore
+    rgba0 = "rgba(0, 0, 0, 0)"
+    if colorscale is None:
+        colorscale = [rgba0] + px.colors.sequential.Pinkyl
+    elif isinstance(colorscale, str):
+        colorscale = [(0, rgba0)] + px.colors.get_colorscale(colorscale)
         colorscale[1][0] = 1e-6  # type: ignore
-    elif colorscale is None:
-        colorscale = [
-            (0, "rgba(0, 0, 0, 0)"),
-            (1e-6, "gray"),
-            (0.33, "yellow"),
-            (0.66, "green"),
-            (1, "darkgreen"),
-        ]
+    elif isinstance(colorscale, Sequence) and isinstance(colorscale[0], str):
+        colorscale = [rgba0] + list(colorscale)  # type: ignore
+    elif isinstance(colorscale, Sequence) and isinstance(colorscale[0], (list, tuple)):
+        # list of tuples(float in [0, 1], color)
+        # make sure we're dealing with mutable lists
+        colorscale = [(0, rgba0)] + list(map(list, colorscale))  # type: ignore
+        colorscale[1][0] = 1e-6  # type: ignore
     else:
-        raise NotImplementedError(
-            "passing in string names as colorscale not currently supported"
+        raise ValueError(
+            f"{colorscale = } should be string, list of strings or list of "
+            "tuples(float, str)"
         )
-    # requires https://github.com/plotly/plotly.js/issues/975 so we no longer need
-    # to modify colorscale as above to handle empty tiles
+    # nice to have: https://github.com/plotly/plotly.js/issues/975 so we no longer need
+    # to insert transparency at start of colorscale as above to handle empty tiles
 
     fig = ff.create_annotated_heatmap(
         heat_vals,
@@ -542,6 +553,8 @@ def ptable_heatmap_plotly(
         xaxis=dict(zeroline=False, showgrid=False),
         yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
         font=dict(size=font_size),
+        width=1000,
+        height=500,
     )
     fig.update_traces(
         colorbar=dict(lenmode="fraction", len=0.87, thickness=15, **color_bar)
