@@ -30,6 +30,7 @@ def glass_elem_counts(glasses: pd.Series[Composition]) -> pd.Series[int]:
 
 @pytest.fixture
 def steels() -> pd.Series[Composition]:
+    # unusually fractional compositions, good for testing edge cases
     return load_dataset("matbench_steels").composition
 
 

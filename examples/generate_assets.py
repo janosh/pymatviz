@@ -37,6 +37,7 @@ from pymatviz.utils import ROOT
 plt.rc("font", size=14)
 plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("axes", titlesize=16, titleweight="bold")
+plt.rc("figure", titlesize=20, titleweight="bold")
 plt.rcParams["figure.constrained_layout.use"] = True
 
 
@@ -51,6 +52,11 @@ y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9
 
 df_steels = load_dataset("matbench_steels")
 df_expt_gap = load_dataset("matbench_expt_gap")
+df_phonons = load_dataset("matbench_phonons")
+
+df_phonons[["spg_symbol", "spg_num"]] = [
+    struct.get_space_group_info() for struct in df_phonons.structure
+]
 
 
 # na_filter=False so sodium amide (NaN) is not parsed as 'not a number'
@@ -63,22 +69,7 @@ y_var_ale = (df_roost_ens.filter(like="ale") ** 2).mean(1)
 y_std = np.sqrt(y_var_ale + y_var_epi)
 
 
-def save_mpl_fig(filename: str) -> None:
-    """Save current Matplotlib figure as SVG to assets/ folder. Compresses SVG file with
-    svgo CLI if available in PATH.
-
-    Args:
-        filename (str): Name of SVG file (w/o extension).
-    """
-    filepath = f"{ROOT}/assets/{filename}.svg"
-    plt.savefig(filepath, bbox_inches="tight")
-    plt.close()
-
-    if (svgo := which("svgo")) is not None:
-        call([svgo, "--multipass", filepath])
-
-
-def save_compress_plotly(fig: Figure, filename: str) -> None:
+def save_and_compress_svg(filename: str, fig: Figure | None = None) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG file with
     svgo CLI if available in PATH.
 
@@ -86,8 +77,16 @@ def save_compress_plotly(fig: Figure, filename: str) -> None:
         fig (Figure): Plotly Figure instance.
         filename (str): Name of SVG file (w/o extension).
     """
+    assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
     filepath = f"{ROOT}/assets/{filename}.svg"
-    fig.write_image(filepath)
+
+    if isinstance(fig, Figure):
+        fig.write_image(filepath)
+    elif fig is None:
+        plt.savefig(filepath, bbox_inches="tight")
+        plt.close()
+    else:
+        raise TypeError(f"{fig = } should be a Plotly Figure or Matplotlib Figure")
 
     if (svgo := which("svgo")) is not None:
         call([svgo, "--multipass", filepath])
@@ -95,51 +94,53 @@ def save_compress_plotly(fig: Figure, filename: str) -> None:
 
 # %% Parity Plots
 density_scatter(y_pred, y_true)
-save_mpl_fig("density_scatter")
+save_and_compress_svg("density_scatter")
 
 
 density_scatter_with_hist(y_pred, y_true)
-save_mpl_fig("density_scatter_with_hist")
+save_and_compress_svg("density_scatter_with_hist")
 
 
 density_hexbin(y_pred, y_true)
-save_mpl_fig("density_scatter_hex")
+save_and_compress_svg("density_scatter_hex")
 
 
 density_hexbin_with_hist(y_pred, y_true)
-save_mpl_fig("density_scatter_hex_with_hist")
+save_and_compress_svg("density_scatter_hex_with_hist")
 
 
 scatter_with_err_bar(y_pred, y_true, yerr=y_std)
-save_mpl_fig("scatter_with_err_bar")
+save_and_compress_svg("scatter_with_err_bar")
 
 
 residual_vs_actual(y_true, y_pred)
-save_mpl_fig("residual_vs_actual")
+save_and_compress_svg("residual_vs_actual")
 
 
 # %% Elemental Plots
 ptable_heatmap(df_expt_gap.composition, log=True)
-title = f"Matbench glass elemental prevalence for {len(df_expt_gap):,} compositions"
-plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
-save_mpl_fig("ptable_heatmap")
+title = (
+    f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
+)
+plt.suptitle(title, y=0.96)
+save_and_compress_svg("ptable_heatmap")
 
 ptable_heatmap(df_ptable.atomic_mass)
-plt.suptitle("Atomic mass heatmap", fontsize=20, fontweight="bold", y=0.96)
-save_mpl_fig("ptable_heatmap_atomic_mass")
+plt.suptitle("Atomic Mass Heatmap", y=0.96)
+save_and_compress_svg("ptable_heatmap_atomic_mass")
 
 ptable_heatmap(df_expt_gap.composition, heat_labels="percent")
-title = "Matbench glass elemental prevalence in percent"
-plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
-save_mpl_fig("ptable_heatmap_percent")
+title = "Elements in Matbench Experimental Band Gap (percent)"
+plt.suptitle(title, y=0.96)
+save_and_compress_svg("ptable_heatmap_percent")
 
 ptable_heatmap_ratio(df_expt_gap.composition, df_steels.composition, log=True)
-title = "Elemental prevalence ratios from Matbench glass to steel"
-plt.suptitle(title, fontsize=20, fontweight="bold", y=0.96)
-save_mpl_fig("ptable_heatmap_ratio")
+title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
+plt.suptitle(title, y=0.96)
+save_and_compress_svg("ptable_heatmap_ratio")
 
 hist_elemental_prevalence(df_expt_gap.composition, keep_top=15, v_offset=1)
-save_mpl_fig("hist_elemental_prevalence")
+save_and_compress_svg("hist_elemental_prevalence")
 
 
 # %% Plotly interactive periodic table heatmap
@@ -152,80 +153,78 @@ fig.update_layout(
     title=dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
 )
 fig.show()
-save_compress_plotly(fig, "ptable_heatmap_plotly_more_hover_data")
+save_and_compress_svg("ptable_heatmap_plotly_more_hover_data", fig)
 
 fig = ptable_heatmap_plotly(df_expt_gap.composition, heat_labels="percent")
-title = "Matbench Experimental Bandgap Elemental Prevalence"
+title = "Elements in Matbench Experimental Bandgap"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
 fig.show()
-save_compress_plotly(fig, "ptable_heatmap_plotly_percent_labels")
+save_and_compress_svg("ptable_heatmap_plotly_percent_labels", fig)
 
 
 # %% Quantile/Calibration Plots
 qq_gaussian(y_pred, y_true, y_std)
-save_mpl_fig("normal_prob_plot")
+save_and_compress_svg("normal_prob_plot")
 
 
 qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_std})
-save_mpl_fig("normal_prob_plot_multiple")
+save_and_compress_svg("normal_prob_plot_multiple")
 
 
 # %% Cumulative Plots
 cum_err(y_pred, y_true)
-save_mpl_fig("cumulative_error")
+save_and_compress_svg("cumulative_error")
 
 
 cum_res(y_pred, y_true)
-save_mpl_fig("cumulative_residual")
+save_and_compress_svg("cumulative_residual")
 
 
 # %% Ranking Plots
 err_decay(y_true, y_pred, y_std)
-save_mpl_fig("err_decay")
+save_and_compress_svg("err_decay")
 
 eps = 0.2 * np.random.randn(*y_std.shape)
 
 err_decay(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
-save_mpl_fig("err_decay_multiple")
+save_and_compress_svg("err_decay_multiple")
 
 
 # %% Relevance Plots
 roc_curve(y_binary, y_proba)
-save_mpl_fig("roc_curve")
+save_and_compress_svg("roc_curve")
 
 
 precision_recall_curve(y_binary, y_proba)
-save_mpl_fig("precision_recall_curve")
+save_and_compress_svg("precision_recall_curve")
 
 
 # %% Histogram Plots
 residual_hist(y_true, y_pred)
-save_mpl_fig("residual_hist")
+save_and_compress_svg("residual_hist")
 
 true_pred_hist(y_true, y_pred, y_std)
-save_mpl_fig("true_pred_hist")
+save_and_compress_svg("true_pred_hist")
 
 
 # %%
-df_phonons = load_dataset("matbench_phonons")
-
-df_phonons[["spg_symbol", "spg_num"]] = [
-    struct.get_space_group_info() for struct in df_phonons.structure
-]
-
 spacegroup_hist(df_phonons.spg_num)
-save_mpl_fig("spg_num_hist")
+save_and_compress_svg("spg_num_hist")
 
 spacegroup_hist(df_phonons.spg_symbol)
-save_mpl_fig("spg_symbol_hist")
+save_and_compress_svg("spg_symbol_hist")
 
 
 # %% Sunburst Plots
-fig = spacegroup_sunburst(df_phonons.spg_num, show_values="percent")
-save_compress_plotly(fig, "spg_num_sunburst")
+fig = spacegroup_sunburst(df_phonons.spg_num, show_counts="percent")
+title = "Matbench Phonons Spacegroup Sunburst"
+fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18))
+save_and_compress_svg("spg_num_sunburst", fig)
 
-fig = spacegroup_sunburst(df_phonons.spg_symbol, show_values="percent")
-save_compress_plotly(fig, "spg_symbol_sunburst")
+fig = spacegroup_sunburst(df_phonons.spg_symbol, show_counts="percent")
+title = "Matbench Phonons Spacegroup Symbols Sunburst"
+fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18))
+save_and_compress_svg("spg_symbol_sunburst", fig)
 
 
 # %% Correlation Plots
@@ -238,7 +237,7 @@ rand_wide_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 corr_mat = np.corrcoef(rand_wide_mat)
 
 marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
-save_mpl_fig("marchenko_pastur")
+save_and_compress_svg("marchenko_pastur")
 
 # plot eigenvalue distribution of a correlation matrix with significant
 # (i.e. non-noise) eigenvalue
@@ -248,7 +247,7 @@ linear_matrix = np.arange(n_rows * n_cols).reshape(n_rows, n_cols) / n_cols
 corr_mat = np.corrcoef(linear_matrix + rand_wide_mat[:n_rows, :n_cols])
 
 marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
-save_mpl_fig("marchenko_pastur_significant_eval")
+save_and_compress_svg("marchenko_pastur_significant_eval")
 
 # plot eigenvalue distribution of a rank-deficient correlation matrix
 n_rows, n_cols = 600, 500
@@ -257,7 +256,7 @@ rand_tall_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
 
 marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
-save_mpl_fig("marchenko_pastur_rank_deficient")
+save_and_compress_svg("marchenko_pastur_rank_deficient")
 
 
 # %%
@@ -267,6 +266,6 @@ fig, axs = plt.subplots(3, 4, figsize=(12, 12))
 
 for struct, ax in zip(df_phonons.structure.head(12), axs.flat):
     ax = plot_structure_2d(struct, ax=ax)
-    ax.set_title(struct.composition.reduced_formula, fontsize=14)
+    ax.set_title(struct.composition.reduced_formula)
 
-save_mpl_fig("mp-structures-2d")
+save_and_compress_svg("mp-structures-2d", fig)
