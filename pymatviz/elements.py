@@ -450,7 +450,7 @@ def ptable_heatmap_plotly(
         font_colors (list[str]): One or two color strings [min_color, max_color].
             min_color is applied to annotations for heatmap values
             < (max_val - min_val) / 2. Defaults to ["white"].
-        gap (float): Gap between tiles of the periodic table. Defaults to 5.
+        gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
         font_size (int): Element symbol and heat label text size. Defaults to None,
             meaning automatic font size based on plot size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
@@ -514,6 +514,10 @@ def ptable_heatmap_plotly(
         color_val = elem_values[symbol]
         heat_vals[row][col] = color_val + 1e-6
 
+    # until https://github.com/plotly/plotly.js/issues/975 is resolved, we need to
+    # insert transparency (rgba0) at start of colorscale as above to not show any colors
+    # on empty tiles of the periodic table
+
     rgba0 = "rgba(0, 0, 0, 0)"
     if colorscale is None:
         colorscale = [rgba0] + px.colors.sequential.Pinkyl
@@ -532,15 +536,13 @@ def ptable_heatmap_plotly(
             f"{colorscale = } should be string, list of strings or list of "
             "tuples(float, str)"
         )
-    # nice to have: https://github.com/plotly/plotly.js/issues/975 so we no longer need
-    # to insert transparency at start of colorscale as above to handle empty tiles
 
     fig = ff.create_annotated_heatmap(
         heat_vals,
         annotation_text=tile_texts,
         text=hover_texts,
         showscale=showscale,
-        colorscale=colorscale or None,
+        colorscale=colorscale,
         font_colors=font_colors,
         hoverinfo="text",
         xgap=gap,
