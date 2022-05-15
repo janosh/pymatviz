@@ -5,6 +5,7 @@ from shutil import which
 
 import matplotlib.pyplot as plt
 import numpy as np
+import plotly.express as px
 import pytest
 from pymatgen.core import Lattice, Structure
 
@@ -57,6 +58,15 @@ def structures():
     lattice = Lattice.tetragonal(4.192, 6.88)
     Si2Ru2Pr2 = Structure(lattice, ["Si", "Si", "Ru", "Ru", "Pr", "Pr"], coords)
     return [Si2, Si2Ru2Pr2]
+
+
+@pytest.fixture
+def plotly_scatter():
+    xs = np.arange(7)
+    y1 = xs**2
+    y2 = xs**0.5
+    fig = px.scatter(x=xs, y=[y1, y2])
+    return fig
 
 
 def save_reference_img(save_to: str) -> None:

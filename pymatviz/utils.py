@@ -11,6 +11,7 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from numpy.typing import NDArray
+from plotly.graph_objs._figure import Figure
 from sklearn.metrics import r2_score
 
 
@@ -208,3 +209,35 @@ def get_crystal_sys(
     if spg < 195:
         return "hexagonal"
     return "cubic"
+
+
+def add_identity_line(
+    fig: Figure, trace_idx: int = 0, line_kwds: dict[str, Any] = None
+) -> Figure:
+    """Add a line shape to the background layer of a plotly figure spanning from
+    smallest to largest x/y values in the trace specified by trace_idx.
+
+    Args:
+        fig (Figure): Plotly figure.
+        trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
+            Defaults to 0.
+        line_kwds (dict[str, Any], optional): Keyword arguments passed to
+            fig.add_shape(line=line_kwds). Defaults to dict(color="gray", width=1,
+            dash="dash").
+
+    Returns:
+        Figure: Figure with added identity line.
+    """
+    trace = fig.data[trace_idx]
+
+    xy_min = min(trace.x.min(), trace.y.min())
+    xy_max = max(trace.x.max(), trace.y.max())
+
+    fig.add_shape(
+        type="line",
+        **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
+        layer="below",
+        line={**dict(color="gray", width=1, dash="dash"), **(line_kwds or {})},
+    )
+
+    return fig

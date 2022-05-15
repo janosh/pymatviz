@@ -471,6 +471,7 @@ def ptable_heatmap_plotly(
         label_vals = elem_values
 
     n_rows, n_columns = 10, 18
+    # initialize tile text and hover tooltips to empty strings
     tile_texts, hover_texts = np.full([2, n_rows, n_columns], "", dtype=object)
     heat_vals = -np.ones([n_rows, n_columns])
 
@@ -554,7 +555,7 @@ def ptable_heatmap_plotly(
         plot_bgcolor="rgba(0, 0, 0, 0)",
         xaxis=dict(zeroline=False, showgrid=False),
         yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
-        font=dict(size=font_size),
+        font_size=font_size,
         width=1000,
         height=500,
     )
