@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import pytest
 from matplotlib.offsetbox import AnchoredText
+from plotly.graph_objs._figure import Figure
 
-from pymatviz.utils import add_mae_r2_box, get_crystal_sys
+from pymatviz.utils import add_identity_line, add_mae_r2_box, get_crystal_sys
 
 from .conftest import y_pred, y_true
 
@@ -42,3 +43,10 @@ def test_get_crystal_sys(input, expected):
 def test_get_crystal_sys_invalid(spg):
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         get_crystal_sys(spg)
+
+
+@pytest.mark.parametrize("trace_idx", [0, 1])
+@pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
+def test_add_identity_line(plotly_scatter, trace_idx, line_kwds):
+    fig = add_identity_line(plotly_scatter, trace_idx, line_kwds)
+    assert isinstance(fig, Figure)
