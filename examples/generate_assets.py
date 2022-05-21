@@ -24,6 +24,7 @@ from pymatviz.parity import (
 from pymatviz.quantile import qq_gaussian
 from pymatviz.ranking import err_decay
 from pymatviz.relevance import precision_recall_curve, roc_curve
+from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.struct_vis import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.utils import ROOT, save_and_compress_svg
@@ -241,4 +242,11 @@ for struct, ax in zip(df_phonons.structure.head(12), axs.flat):
     ax = plot_structure_2d(struct, ax=ax)
     ax.set_title(struct.composition.reduced_formula)
 
-save_and_compress_svg("mp-structures-2d", fig)
+save_and_compress_svg("mp_structures_2d", fig)
+
+
+# %% Sankey diagram of random integers
+col_names = "col_a col_b".split()
+df = pd.DataFrame(np.random.randint(1, 6, size=(100, 2)), columns=col_names)
+fig = sankey_from_2_df_cols(df, col_names, labels_with_counts="percent")
+save_and_compress_svg("sankey-from-2-df-cols-randints", fig)
