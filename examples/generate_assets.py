@@ -1,12 +1,8 @@
 # %%
-from shutil import which
-from subprocess import call
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matminer.datasets import load_dataset
-from plotly.graph_objs._figure import Figure
 
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cum_err, cum_res
@@ -30,7 +26,7 @@ from pymatviz.ranking import err_decay
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.struct_vis import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
-from pymatviz.utils import ROOT
+from pymatviz.utils import ROOT, save_and_compress_svg
 
 
 # %%
@@ -67,29 +63,6 @@ y_pred = df_roost_ens.filter(like="pred").mean(1)
 y_var_epi = df_roost_ens.filter(like="pred").var(1)
 y_var_ale = (df_roost_ens.filter(like="ale") ** 2).mean(1)
 y_std = np.sqrt(y_var_ale + y_var_epi)
-
-
-def save_and_compress_svg(filename: str, fig: Figure | None = None) -> None:
-    """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG file with
-    svgo CLI if available in PATH.
-
-    Args:
-        fig (Figure): Plotly Figure instance.
-        filename (str): Name of SVG file (w/o extension).
-    """
-    assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
-    filepath = f"{ROOT}/assets/{filename}.svg"
-
-    if isinstance(fig, Figure):
-        fig.write_image(filepath)
-    elif fig is None:
-        plt.savefig(filepath, bbox_inches="tight")
-        plt.close()
-    else:
-        raise TypeError(f"{fig = } should be a Plotly Figure or Matplotlib Figure")
-
-    if (svgo := which("svgo")) is not None:
-        call([svgo, "--multipass", filepath])
 
 
 # %% Parity Plots
