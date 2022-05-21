@@ -140,7 +140,7 @@ def test_ptable_heatmap_plotly(df_ptable, glasses):
     assert sum(anno.text != "" for anno in fig.layout.annotations) == 118  # n_elements
 
     ptable_heatmap_plotly(
-        glasses, hover_cols=["atomic_mass", "atomic_number", "density"]
+        glasses, hover_props=["atomic_mass", "atomic_number", "density"]
     )
     ptable_heatmap_plotly(
         glasses,

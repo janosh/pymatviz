@@ -405,7 +405,7 @@ def ptable_heatmap_plotly(
     showscale: bool = True,
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
-    hover_cols: Sequence[str] | dict[str, str] | None = None,
+    hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
     font_colors: Sequence[str] = ["black"],
     gap: float = 5,
@@ -413,20 +413,23 @@ def ptable_heatmap_plotly(
     bg_color: str = None,
     color_bar: dict[str, Any] = {},
 ) -> Figure:
-    """Plot the periodic table as an interactive heatmap.
+    """Creates a Plotly figure with an interactive heatmap of the periodic table.
+    Supports hover tooltips with custom data or atomic reference data like
+    electronegativity, atomic_radius, etc. See kwargs hover_data and hover_props, resp.
 
     Args:
         elem_values (dict[str, int | float] | pd.Series | list[str]): Map from element
-            symbols to heatmap values or iterable of composition strings/objects.
-        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+            symbols to heatmap values e.g. {"Fe": 2, "O": 3} or iterable of composition
+            strings or Pymatgen composition objects.
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when elem_values is list of composition strings/objects.
         colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
             Defaults to plotly.express.colors.sequential.Pinkyl. See
             https://plotly.com/python/builtin-colorscales for names of other builtin
-            color scales. Note e.g. colorscale='YlGn' and px.colors.sequential.YlGn are
-            equivalent. Custom scales are specified as ['blue', 'red'] or
-            [[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']].
+            color scales. Note e.g. colorscale="YlGn" and px.colors.sequential.YlGn are
+            equivalent. Custom scales are specified as ["blue", "red"] or
+            [[0, "rgb(0,0,255)"], [1, "rgb(255,0,0)"]].
         showscale (bool): Whether to show a bar for the color scale. Defaults to True.
         heat_labels ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is (value), normalized as a fraction of the total, as percentages
@@ -436,17 +439,19 @@ def ptable_heatmap_plotly(
         precision (str): f-string format option for heat labels. Defaults to None in
             which case we fall back on ".1%" (1 decimal place) if heat_labels="percent"
             else ".3g".
-        hover_cols (list[str] | dict[str, str]): Elemental properties to display in the
-            hover tooltip. Can be a list of names or a dict mapping names to what they
-            should display as. E.g. {"n_valence": "# of valence electrons"} will
-            display as "# of valence electrons = {x}". Defaults to None. Available
-            properties are: symbol, row, column, name, atomic_number, atomic_mass,
-            n_neutrons, n_protons, n_electrons, period, group, phase, radioactive,
-            natural, metal, nonmetal, metalloid, type, atomic_radius, electronegativity,
-            first_ionization, density, melting_point, boiling_point, number_of_isotopes,
-            discoverer, year, specific_heat, n_shells, n_valence.
+        hover_props (list[str] | dict[str, str]): Elemental properties to display in the
+            hover tooltip. Can be a list of property names to display only the values
+            themselves or a dict mapping names to what they should display as. E.g.
+            {"atomic_mass": "atomic weight"} will display as "atomic weight = {x}".
+            Defaults to None. Available properties are: symbol, row, column, name,
+            atomic_number, atomic_mass, n_neutrons, n_protons, n_electrons, period,
+            group, phase, radioactive, natural, metal, nonmetal, metalloid, type,
+            atomic_radius, electronegativity, first_ionization, density, melting_point,
+            boiling_point, number_of_isotopes, discoverer, year, specific_heat,
+            n_shells, n_valence.
         hover_data (dict[str, str | int | float] | pd.Series): Map from element symbols
-            to additional data to display in the hover tooltip. Defaults to None.
+            to additional data to display in the hover tooltip. {"Fe": "this shows up in
+            the hover tooltip on a new line below the element name"}. Defaults to None.
         font_colors (list[str]): One or two color strings [min_color, max_color].
             min_color is applied to annotations for heatmap values
             < (max_val - min_val) / 2. Defaults to ["white"].
@@ -501,14 +506,25 @@ def ptable_heatmap_plotly(
         if hover_data is not None:
             hover_text += f"<br>{hover_data[symbol]}"
 
-        if hover_cols is not None:
+        if hover_props is not None:
+            if unsupported_keys := set(hover_props) - set(df_ptable):
+                raise ValueError(
+                    f"Unsupported hover_props: {', '.join(unsupported_keys)}. Available"
+                    f" keys are: {', '.join(df_ptable)}.\nNote that some keys have "
+                    "missing values."
+                )
             df_row = df_ptable.loc[symbol]
-            if isinstance(hover_cols, dict):
-                for col_name, col_label in hover_cols.items():
+            if isinstance(hover_props, dict):
+                for col_name, col_label in hover_props.items():
                     hover_text += f"<br>{col_label} = {df_row[col_name]}"
+            elif isinstance(hover_props, (list, tuple)):
+                hover_text += "<br>" + "<br>".join(
+                    f"{col_name} = {df_row[col_name]}" for col_name in hover_props
+                )
             else:
-                col_data_str = "<br>".join(f"{x} = {df_row[x]}" for x in hover_cols)
-            hover_text += f"<br>{col_data_str}"
+                raise ValueError(
+                    f"hover_props must be dict or sequence of str, got {hover_props}"
+                )
 
         hover_texts[row][col] = hover_text
 
