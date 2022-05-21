@@ -42,6 +42,14 @@ See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
 | :----------------------------------------------------------------: | :----------------------------------------------------------------------------: |
 |                        ![spg_num_sunburst]                         |                             ![spg_symbol_sunburst]                             |
 
+## Sankey
+
+See [`pymatviz/sankey.py`](pymatviz/sankey.py).
+
+| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py) | [`sankey_from_2_df_cols(df_rand_ints)`](pymatviz/sankey.py) |
+| :-----------------------------------------------------------: | :---------------------------------------------------------: |
+|                   ![sankey_spglib_vs_aflow]                   |              ![sankey_from_2_df_cols_randints]              |
+
 ## Structure
 
 See [`pymatviz/struct_vis.py`](pymatviz/struct_vis.py).
@@ -50,7 +58,7 @@ See [`pymatviz/struct_vis.py`](pymatviz/struct_vis.py).
 | :-------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
 |             ![struct-2d-mp-19017-disordered]              |                                       ![struct-2d-mp-12712]                                        |
 
-![mp-structures-2d]
+![mp_structures_2d]
 
 ## Histograms
 
@@ -131,7 +139,7 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [hist_elemental_prevalence]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/hist_elemental_prevalence.svg
 [marchenko_pastur_significant_eval]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko_pastur_significant_eval.svg
 [marchenko_pastur]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko_pastur.svg
-[mp-structures-2d]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/mp-structures-2d.svg
+[mp_structures_2d]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/mp_structures_2d.svg
 [normal_prob_plot_multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal_prob_plot_multiple.svg
 [normal_prob_plot]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal_prob_plot.svg
 [precision_recall_curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/precision_recall_curve.svg
@@ -150,3 +158,5 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [struct-2d-mp-12712]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712.svg
 [struct-2d-mp-19017-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-disordered.svg
 [true_pred_hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/true_pred_hist.svg
+[sankey_from_2_df_cols_randints]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey_from_2_df_cols_randints.svg
+[sankey_spglib_vs_aflow]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey_spglib_vs_aflow.svg
