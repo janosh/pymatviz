@@ -146,7 +146,7 @@ save_and_compress_svg("hist_elemental_prevalence")
 # %% Plotly interactive periodic table heatmap
 fig = ptable_heatmap_plotly(
     df_ptable.atomic_mass,
-    hover_cols=["atomic_mass", "atomic_number"],
+    hover_props=["atomic_mass", "atomic_number"],
     hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
 )
 fig.update_layout(
