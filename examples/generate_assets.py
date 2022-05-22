@@ -68,27 +68,27 @@ y_std = np.sqrt(y_var_ale + y_var_epi)
 
 # %% Parity Plots
 density_scatter(y_pred, y_true)
-save_and_compress_svg("density_scatter")
+save_and_compress_svg("density-scatter")
 
 
 density_scatter_with_hist(y_pred, y_true)
-save_and_compress_svg("density_scatter_with_hist")
+save_and_compress_svg("density-scatter-with-hist")
 
 
 density_hexbin(y_pred, y_true)
-save_and_compress_svg("density_scatter_hex")
+save_and_compress_svg("density-scatter-hex")
 
 
 density_hexbin_with_hist(y_pred, y_true)
-save_and_compress_svg("density_scatter_hex_with_hist")
+save_and_compress_svg("density-scatter-hex-with-hist")
 
 
 scatter_with_err_bar(y_pred, y_true, yerr=y_std)
-save_and_compress_svg("scatter_with_err_bar")
+save_and_compress_svg("scatter-with-err-bar")
 
 
 residual_vs_actual(y_true, y_pred)
-save_and_compress_svg("residual_vs_actual")
+save_and_compress_svg("residual-vs-actual")
 
 
 # %% Elemental Plots
@@ -97,24 +97,24 @@ title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
 plt.suptitle(title, y=0.96)
-save_and_compress_svg("ptable_heatmap")
+save_and_compress_svg("ptable-heatmap")
 
 ptable_heatmap(df_ptable.atomic_mass)
 plt.suptitle("Atomic Mass Heatmap", y=0.96)
-save_and_compress_svg("ptable_heatmap_atomic_mass")
+save_and_compress_svg("ptable-heatmap-atomic-mass")
 
 ptable_heatmap(df_expt_gap.composition, heat_labels="percent")
 title = "Elements in Matbench Experimental Band Gap (percent)"
 plt.suptitle(title, y=0.96)
-save_and_compress_svg("ptable_heatmap_percent")
+save_and_compress_svg("ptable-heatmap-percent")
 
 ptable_heatmap_ratio(df_expt_gap.composition, df_steels.composition, log=True)
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 plt.suptitle(title, y=0.96)
-save_and_compress_svg("ptable_heatmap_ratio")
+save_and_compress_svg("ptable-heatmap-ratio")
 
 hist_elemental_prevalence(df_expt_gap.composition, keep_top=15, v_offset=1)
-save_and_compress_svg("hist_elemental_prevalence")
+save_and_compress_svg("hist-elemental-prevalence")
 
 
 # %% Plotly interactive periodic table heatmap
@@ -127,78 +127,78 @@ fig.update_layout(
     title=dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
 )
 fig.show()
-save_and_compress_svg("ptable_heatmap_plotly_more_hover_data", fig)
+save_and_compress_svg("ptable-heatmap-plotly-more-hover-data", fig)
 
 fig = ptable_heatmap_plotly(df_expt_gap.composition, heat_labels="percent")
 title = "Elements in Matbench Experimental Bandgap"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
 fig.show()
-save_and_compress_svg("ptable_heatmap_plotly_percent_labels", fig)
+save_and_compress_svg("ptable-heatmap-plotly-percent-labels", fig)
 
 
 # %% Quantile/Calibration Plots
 qq_gaussian(y_pred, y_true, y_std)
-save_and_compress_svg("normal_prob_plot")
+save_and_compress_svg("normal-prob-plot")
 
 
 qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_std})
-save_and_compress_svg("normal_prob_plot_multiple")
+save_and_compress_svg("normal-prob-plot-multiple")
 
 
 # %% Cumulative Plots
 cum_err(y_pred, y_true)
-save_and_compress_svg("cumulative_error")
+save_and_compress_svg("cumulative-error")
 
 
 cum_res(y_pred, y_true)
-save_and_compress_svg("cumulative_residual")
+save_and_compress_svg("cumulative-residual")
 
 
 # %% Ranking Plots
 err_decay(y_true, y_pred, y_std)
-save_and_compress_svg("err_decay")
+save_and_compress_svg("err-decay")
 
 eps = 0.2 * np.random.randn(*y_std.shape)
 
 err_decay(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
-save_and_compress_svg("err_decay_multiple")
+save_and_compress_svg("err-decay-multiple")
 
 
 # %% Relevance Plots
 roc_curve(y_binary, y_proba)
-save_and_compress_svg("roc_curve")
+save_and_compress_svg("roc-curve")
 
 
 precision_recall_curve(y_binary, y_proba)
-save_and_compress_svg("precision_recall_curve")
+save_and_compress_svg("precision-recall-curve")
 
 
 # %% Histogram Plots
 residual_hist(y_true, y_pred)
-save_and_compress_svg("residual_hist")
+save_and_compress_svg("residual-hist")
 
 true_pred_hist(y_true, y_pred, y_std)
-save_and_compress_svg("true_pred_hist")
+save_and_compress_svg("true-pred-hist")
 
 
 # %%
 spacegroup_hist(df_phonons.spg_num)
-save_and_compress_svg("spg_num_hist")
+save_and_compress_svg("spg-num-hist")
 
 spacegroup_hist(df_phonons.spg_symbol)
-save_and_compress_svg("spg_symbol_hist")
+save_and_compress_svg("spg-symbol-hist")
 
 
 # %% Sunburst Plots
 fig = spacegroup_sunburst(df_phonons.spg_num, show_counts="percent")
 title = "Matbench Phonons Spacegroup Sunburst"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18))
-save_and_compress_svg("spg_num_sunburst", fig)
+save_and_compress_svg("spg-num-sunburst", fig)
 
 fig = spacegroup_sunburst(df_phonons.spg_symbol, show_counts="percent")
 title = "Matbench Phonons Spacegroup Symbols Sunburst"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18))
-save_and_compress_svg("spg_symbol_sunburst", fig)
+save_and_compress_svg("spg-symbol-sunburst", fig)
 
 
 # %% Correlation Plots
@@ -211,7 +211,7 @@ rand_wide_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 corr_mat = np.corrcoef(rand_wide_mat)
 
 marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
-save_and_compress_svg("marchenko_pastur")
+save_and_compress_svg("marchenko-pastur")
 
 # plot eigenvalue distribution of a correlation matrix with significant
 # (i.e. non-noise) eigenvalue
@@ -221,7 +221,7 @@ linear_matrix = np.arange(n_rows * n_cols).reshape(n_rows, n_cols) / n_cols
 corr_mat = np.corrcoef(linear_matrix + rand_wide_mat[:n_rows, :n_cols])
 
 marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
-save_and_compress_svg("marchenko_pastur_significant_eval")
+save_and_compress_svg("marchenko-pastur-significant-eval")
 
 # plot eigenvalue distribution of a rank-deficient correlation matrix
 n_rows, n_cols = 600, 500
@@ -230,7 +230,7 @@ rand_tall_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
 
 marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
-save_and_compress_svg("marchenko_pastur_rank_deficient")
+save_and_compress_svg("marchenko-pastur-rank-deficient")
 
 
 # %%
@@ -242,7 +242,7 @@ for struct, ax in zip(df_phonons.structure.head(12), axs.flat):
     ax = plot_structure_2d(struct, ax=ax)
     ax.set_title(struct.composition.reduced_formula)
 
-save_and_compress_svg("mp_structures_2d", fig)
+save_and_compress_svg("mp-structures-2d", fig)
 
 
 # %% Sankey diagram of random integers
