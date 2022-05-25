@@ -99,6 +99,29 @@ def plot_structure_2d(
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
+    Inspired by ASE's ase.visualize.plot.plot_atoms()
+    https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
+    pymatviz aims to give similar output to ASE but supports disordered structures and
+    avoids the conversion hassle of AseAtomsAdaptor.get_atoms(pmg_struct).
+
+    For example, these two snippets should give very similar output:
+    ```py
+    from pymatgen.ext.matproj import MPRester
+
+    mp_19017 = MPRester().get_structure_by_material_id("mp-19017")
+
+    # ASE
+    from ase.visualize.plot import plot_atoms
+    from pymatgen.io.ase import AseAtomsAdaptor
+
+    plot_atoms(AseAtomsAdaptor().get_atoms(mp_19017), rotation="10x,10y,0z", radii=0.5)
+
+    # pymatviz
+    from pymatviz import plot_structure_2d
+
+    plot_structure_2d(mp_19017)
+    ```
+
     Args:
         struct (Structure): Must be pymatgen instance. ax (plt.Axes, optional):
         Matplotlib axes on which to plot. Defaults to None. rotation (str, optional):
