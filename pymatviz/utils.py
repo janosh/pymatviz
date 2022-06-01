@@ -21,19 +21,21 @@ ROOT = dirname(dirname(abspath(__file__)))
 
 NumArray = NDArray[Union[np.float64, np.int_]]
 
-df_elem = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
+df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
+    "symbol"
+)
 
 # http://jmol.sourceforge.net/jscolors
-jmol_colors = df_elem.jmol_color.dropna().apply(ast.literal_eval)
+jmol_colors = df_ptable.jmol_color.dropna().apply(ast.literal_eval)
 
 missing_cov_rad = 0.2
-# covalent_radii = df_elem.covalent_radius.fillna(missing_cov_rad).to_dict()
-covalent_radii = df_elem.covalent_radius.fillna(missing_cov_rad)
+# covalent_radii = df_ptable.covalent_radius.fillna(missing_cov_rad).to_dict()
+covalent_radii = df_ptable.covalent_radius.fillna(missing_cov_rad)
 
 atomic_numbers: dict[str, int] = {}
 element_symbols: dict[int, str] = {}
 
-for Z, symbol in enumerate(df_elem.index, 1):
+for Z, symbol in enumerate(df_ptable.index, 1):
     atomic_numbers[symbol] = Z
     element_symbols[Z] = symbol
 
