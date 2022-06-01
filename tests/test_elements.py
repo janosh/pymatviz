@@ -9,13 +9,13 @@ from plotly.graph_objs._figure import Figure
 from pymatgen.core import Composition
 
 from pymatviz import (
-    ROOT,
     count_elements,
     hist_elemental_prevalence,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
 )
+from pymatviz.utils import df_ptable
 
 
 @pytest.fixture
@@ -39,11 +39,6 @@ def steel_elem_counts(steels: pd.Series[Composition]) -> pd.Series[int]:
     return count_elements(steels)
 
 
-@pytest.fixture
-def df_ptable() -> pd.DataFrame:
-    return pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
-
-
 @pytest.mark.parametrize(
     "mode, counts",
     [
@@ -52,13 +47,13 @@ def df_ptable() -> pd.DataFrame:
         ("reduced_composition", {"Fe": 13, "O": 27, "P": 3}),
     ],
 )
-def test_count_elements(df_ptable, mode, counts):
+def test_count_elements(mode, counts):
     series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, mode=mode)
     expected = pd.Series(counts, index=df_ptable.index, name="count").fillna(0)
     assert series.equals(expected)
 
 
-def test_count_elements_by_atomic_nums(df_ptable):
+def test_count_elements_by_atomic_nums():
     series_in = pd.Series(1, index=range(1, 119))
     el_cts = count_elements(series_in)
     expected = pd.Series(1, index=df_ptable.index, name="count")
@@ -83,7 +78,7 @@ def test_hist_elemental_prevalence(glasses):
     hist_elemental_prevalence(glasses, keep_top=10, bar_values="count")
 
 
-def test_ptable_heatmap(glasses, glass_elem_counts, df_ptable):
+def test_ptable_heatmap(glasses, glass_elem_counts):
     ax = ptable_heatmap(glasses)
     assert isinstance(ax, Axes)
 
@@ -133,7 +128,7 @@ def test_ptable_heatmap_ratio(steels, glasses, steel_elem_counts, glass_elem_cou
     ptable_heatmap_ratio(glass_elem_counts, steels)
 
 
-def test_ptable_heatmap_plotly(df_ptable, glasses):
+def test_ptable_heatmap_plotly(glasses):
     fig = ptable_heatmap_plotly(glasses)
     assert isinstance(fig, Figure)
     assert len(fig.layout.annotations) == 18 * 10  # n_cols * n_rows

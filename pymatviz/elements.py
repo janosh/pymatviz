@@ -15,7 +15,7 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 from plotly.graph_objs._figure import Figure
 from pymatgen.core import Composition
 
-from pymatviz.utils import ROOT, annotate_bars
+from pymatviz.utils import annotate_bars, df_ptable
 
 
 if TYPE_CHECKING:
@@ -24,8 +24,6 @@ if TYPE_CHECKING:
     ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
 
     CountMode = Literal["composition", "fractional_composition", "reduced_composition"]
-
-df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
 def count_elements(
