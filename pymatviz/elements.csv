@@ -1,3 +1,5 @@
+# copied from https://gist.github.com/robertwb/22aa4dbfb6bcecd94f2176caa912b952
+# appended 2 columns: jmol_color, covalent_radius
 symbol,row,column,name,atomic_number,atomic_mass,n_neutrons,n_protons,n_electrons,period,group,phase,radioactive,natural,metal,nonmetal,metalloid,type,atomic_radius,electronegativity,first_ionization,density,melting_point,boiling_point,number_of_isotopes,discoverer,year,specific_heat,n_shells,n_valence,jmol_color,covalent_radius
 H,1,1,Hydrogen,1,1.007,0,1,1,1,1.0,gas,,True,,True,,Nonmetal,0.79,2.2,13.5984,8.99e-05,14.175,20.28,3.0,Cavendish,1766.0,14.304,1,1.0,"(1.0, 1.0, 1.0)",0.31
 He,1,18,Helium,2,4.002,2,2,2,1,18.0,gas,,True,,True,,Noble Gas,0.49,,24.5874,0.000179,,4.22,5.0,Janssen,1868.0,5.193,1,,"(0.851, 1.0, 1.0)",0.28
@@ -72,7 +74,7 @@ Yb,9,17,Ytterbium,70,173.054,103,70,70,6,,solid,,True,True,,,Lanthanide,2.4,1.1,
 Lu,9,18,Lutetium,71,174.967,104,71,71,6,,solid,,True,True,,,Lanthanide,2.3,1.27,5.4259,9.84,1936.15,3675.0,22.0,Urbain/ von Welsbach,1907.0,0.154,6,,"(0.0, 0.671, 0.141)",1.87
 Hf,6,4,Hafnium,72,178.49,106,72,72,6,4.0,solid,,True,True,,,Transition Metal,2.2,1.3,6.8251,13.3,2500.15,4876.0,17.0,Coster and von Hevesy,1923.0,0.144,6,,"(0.302, 0.761, 1.0)",1.75
 Ta,6,5,Tantalum,73,180.948,108,73,73,6,5.0,solid,,True,True,,,Transition Metal,2.1,1.5,7.5496,16.7,3269.15,5731.0,19.0,Ekeberg,1801.0,0.14,6,,"(0.302, 0.651, 1.0)",1.7
-W,6,6,Wolfram,74,183.84,110,74,74,6,6.0,solid,,True,True,,,Transition Metal,2.0,2.36,7.864,19.3,3680.15,5828.0,22.0,J. and F. d'Elhuyar,1783.0,0.132,6,,"(0.129, 0.58, 0.839)",1.62
+W,6,6,Tungsten,74,183.84,110,74,74,6,6.0,solid,,True,True,,,Transition Metal,2.0,2.36,7.864,19.3,3680.15,5828.0,22.0,J. and F. d'Elhuyar,1783.0,0.132,6,,"(0.129, 0.58, 0.839)",1.62
 Re,6,7,Rhenium,75,186.207,111,75,75,6,7.0,solid,,True,True,,,Transition Metal,2.0,1.9,7.8335,21.0,3453.15,5869.0,21.0,"Noddack, Berg, and Tacke",1925.0,0.137,6,,"(0.149, 0.49, 0.671)",1.51
 Os,6,8,Osmium,76,190.23,114,76,76,6,8.0,solid,,True,True,,,Transition Metal,1.9,2.2,8.4382,22.6,3300.15,5285.0,19.0,Tennant,1803.0,0.13,6,,"(0.149, 0.4, 0.588)",1.44
 Ir,6,9,Iridium,77,192.217,115,77,77,6,9.0,solid,,True,True,,,Transition Metal,1.9,2.2,8.967,22.6,2716.15,4701.0,25.0,Tennant,1804.0,0.131,6,,"(0.09, 0.329, 0.529)",1.41
@@ -83,10 +85,10 @@ Tl,6,13,Thallium,81,204.383,123,81,81,6,13.0,solid,,True,True,,,Metal,2.1,2.04,6
 Pb,6,14,Lead,82,207.2,125,82,82,6,14.0,solid,,True,True,,,Metal,1.8,2.33,7.4167,11.3,600.75,2022.0,29.0,Prehistoric,,0.129,6,4.0,"(0.341, 0.349, 0.38)",1.46
 Bi,6,15,Bismuth,83,208.98,126,83,83,6,15.0,solid,,True,True,,,Metal,1.6,2.02,7.2856,9.81,544.67,1837.0,19.0,Geoffroy the Younger,1753.0,0.122,6,5.0,"(0.62, 0.31, 0.71)",1.48
 Po,6,16,Polonium,84,210.0,126,84,84,6,16.0,solid,True,True,,,True,Metalloid,1.5,2.0,8.417,9.32,527.15,1235.0,34.0,Curie,1898.0,,6,6.0,"(0.671, 0.361, 0.0)",1.4
-At,6,17,Astatine,85,210.0,125,85,85,6,17.0,solid,True,True,,True,,Noble Gas,1.4,2.2,9.3,7.0,575.15,610.0,21.0,Corson et al.,1940.0,,6,7.0,"(0.459, 0.31, 0.271)",1.5
-Rn,6,18,Radon,86,222.0,136,86,86,6,18.0,gas,True,True,True,,,Alkali Metal,1.3,,10.7485,0.00973,202.15,211.3,20.0,Dorn,1900.0,0.094,6,8.0,"(0.259, 0.51, 0.588)",1.5
-Fr,7,1,Francium,87,223.0,136,87,87,7,1.0,solid,True,True,True,,,Alkaline Earth Metal,,0.7,4.0727,1.87,300.15,950.0,21.0,Perey,1939.0,,7,1.0,"(0.259, 0.0, 0.4)",2.6
-Ra,7,2,Radium,88,226.0,138,88,88,7,2.0,solid,True,True,True,,,Actinide,,0.9,5.2784,5.5,973.15,2010.0,15.0,Pierre and Marie Curie,1898.0,,7,2.0,"(0.0, 0.49, 0.0)",2.21
+At,6,17,Astatine,85,210.0,125,85,85,6,17.0,solid,True,True,,True,,Halogen,1.4,2.2,9.3,7.0,575.15,610.0,21.0,Corson et al.,1940.0,,6,7.0,"(0.459, 0.31, 0.271)",1.5
+Rn,6,18,Radon,86,222.0,136,86,86,6,18.0,gas,True,True,True,,,Noble Gas,1.3,,10.7485,0.00973,202.15,211.3,20.0,Dorn,1900.0,0.094,6,8.0,"(0.259, 0.51, 0.588)",1.5
+Fr,7,1,Francium,87,223.0,136,87,87,7,1.0,solid,True,True,True,,,Alkaline Metal,,0.7,4.0727,1.87,300.15,950.0,21.0,Perey,1939.0,,7,1.0,"(0.259, 0.0, 0.4)",2.6
+Ra,7,2,Radium,88,226.0,138,88,88,7,2.0,solid,True,True,True,,,Alkaline Earth Metal,,0.9,5.2784,5.5,973.15,2010.0,15.0,Pierre and Marie Curie,1898.0,,7,2.0,"(0.0, 0.49, 0.0)",2.21
 Ac,10,4,Actinium,89,227.0,138,89,89,7,3.0,solid,True,True,True,,,Actinide,,1.1,5.17,10.1,1323.15,3471.0,11.0,Debierne/Giesel,1899.0,0.12,7,,"(0.439, 0.671, 0.98)",2.15
 Th,10,5,Thorium,90,232.038,142,90,90,7,,solid,True,True,True,,,Actinide,,1.3,6.3067,11.7,2028.15,5061.0,12.0,Berzelius,1828.0,0.113,7,,"(0.0, 0.729, 1.0)",2.06
 Pa,10,6,Protactinium,91,231.036,140,91,91,7,,solid,True,True,True,,,Actinide,,1.5,5.89,15.4,1873.15,4300.0,14.0,Hahn and Meitner,1917.0,,7,,"(0.0, 0.631, 1.0)",2.0

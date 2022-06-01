@@ -27,7 +27,7 @@ from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.struct_vis import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
-from pymatviz.utils import ROOT, save_and_compress_svg
+from pymatviz.utils import ROOT, df_ptable, save_and_compress_svg
 
 
 # %%
@@ -36,9 +36,6 @@ plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("axes", titlesize=16, titleweight="bold")
 plt.rc("figure", titlesize=20, titleweight="bold")
 plt.rcParams["figure.constrained_layout.use"] = True
-
-
-df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv").set_index("symbol")
 
 
 # random classification data
