@@ -50,3 +50,9 @@ def test_get_crystal_sys_invalid(spg):
 def test_add_identity_line(plotly_scatter, trace_idx, line_kwds):
     fig = add_identity_line(plotly_scatter, trace_idx, line_kwds)
     assert isinstance(fig, Figure)
+
+    line = [shape for shape in fig.layout["shapes"] if shape["type"] == "line"][0]
+    assert line["x0"] == line["y0"]  # fails if we don't handle nan since nan != nan
+    assert line["x1"] == line["y1"]
+    assert line["layer"] == "below"
+    assert line["line"]["color"] == line_kwds["color"] if line_kwds else "gray"

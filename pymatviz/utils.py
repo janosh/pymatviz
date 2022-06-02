@@ -234,8 +234,11 @@ def add_identity_line(
     """
     trace = fig.data[trace_idx]
 
-    xy_min = min(trace.x.min(), trace.y.min())
-    xy_max = max(trace.x.max(), trace.y.max())
+    # min/max of sequence containing nans = nan so get rid of them first
+    df = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
+
+    xy_min = min(df.min())
+    xy_max = max(df.max())
 
     fig.add_shape(
         type="line",
