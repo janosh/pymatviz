@@ -107,6 +107,8 @@ def ptable_heatmap(
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
     text_color: str | tuple[str, str] = "auto",
+    exclude_elements: Sequence[str] = (),
+    zero_symbol: str | float = "-",
 ) -> Axes:
     """Plot a heatmap across the periodic table of elements.
 
@@ -141,6 +143,11 @@ def ptable_heatmap(
             for the upper half of the color scale, one for the lower half. The special
             value 'auto' applies 'black' on the lower and 'white' on the upper half of
             the color scale. Defaults to "auto".
+        exclude_elements (Sequence[str]): List of element symbols to exclude from the
+            heatmap. E.g. if oxygen overpowers everything, you can try log=True or pass
+            exclude_elements=['O']. Defaults to None.
+        zero_symbol (str | float): Symbol to use for elements with value zero.
+            Defaults to "-".
 
     Returns:
         ax: matplotlib Axes with the heatmap.
@@ -151,6 +158,14 @@ def ptable_heatmap(
         )
 
     elem_values = count_elements(elem_values, count_mode)
+    if len(exclude_elements) > 0:
+        try:
+            elem_values = elem_values.drop(exclude_elements)
+        except KeyError as exc:
+            bad_symbols = ", ".join(x for x in exclude_elements if x not in elem_values)
+            raise ValueError(
+                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}"
+            ) from exc
 
     # replace positive and negative infinities with NaN values, then drop all NaNs
     clean_vals = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
@@ -184,18 +199,24 @@ def ptable_heatmap(
     for symbol, row, column, *_ in df_ptable.itertuples():
 
         row = n_rows - row  # makes periodic table right side up
-        heat_val = elem_values[symbol]
+        heat_val = elem_values.get(symbol)
 
         # inf (float/0) or NaN (0/0) are expected when passing in elem_values from
         # ptable_heatmap_ratio
-        if heat_val == np.inf:
+        if symbol in exclude_elements:
+            color = "white"
+            label = "excl."
+        elif heat_val == np.inf:
             color = infty_color  # not in denominator
             label = r"$\infty$"
         elif pd.isna(heat_val):
             color = na_color  # neither numerator nor denominator
             label = r"$0\,/\,0$"
+        elif heat_val == 0:
+            color = zero_color
+            label = str(zero_symbol)
         else:
-            color = color_map(norm(heat_val)) if heat_val > 0 else zero_color
+            color = color_map(norm(heat_val))
 
             if heat_labels == "percent":
                 label = f"{heat_val:{precision or '.1%'}}"
@@ -212,7 +233,9 @@ def ptable_heatmap(
             # no value to display below in colored rectangle so center element symbol
             text_style["verticalalignment"] = "center"
 
-        if text_color == "auto":
+        if symbol in exclude_elements:
+            text_clr = "black"
+        elif text_color == "auto":
             text_clr = "white" if norm(heat_val) > 0.5 else "black"
         elif isinstance(text_color, (tuple, list)):
             text_clr = text_color[0] if norm(heat_val) > 0.5 else text_color[1]
@@ -297,9 +320,12 @@ def ptable_heatmap_ratio(
             details. Only used when elem_values is list of composition strings/objects.
         cbar_title (str): Title for the color bar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
-            elements missing from numerator.
-        not_in_denominator (tuple[str, str]): See not_in_numerator.
-        not_in_either (tuple[str, str]): See not_in_numerator.
+            elements missing from numerator. Defaults to
+            ('#DDD', 'gray: not in 1st list').
+        not_in_denominator (tuple[str, str]): See not_in_numerator. Defaults to
+            ('lightskyblue', 'blue: not in 2nd list').
+        not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
+            ('white', 'white: not in either').
         kwargs (Any, optional): Passed to ptable_heatmap().
 
     Returns:
@@ -322,12 +348,12 @@ def ptable_heatmap_ratio(
 
     # add legend handles
     for y_pos, color, txt in (
-        (1.8, *not_in_numerator),
-        (1.1, *not_in_denominator),
-        (0.4, *not_in_either),
+        (2.1, *not_in_numerator),
+        (1.4, *not_in_denominator),
+        (0.7, *not_in_either),
     ):
         bbox = dict(facecolor=color, edgecolor="gray")
-        plt.text(0.8, y_pos, txt, fontsize=12, bbox=bbox)
+        plt.text(0.8, y_pos, txt, fontsize=10, bbox=bbox)
 
     return ax
 

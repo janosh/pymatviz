@@ -100,7 +100,7 @@ ptable_heatmap(df_ptable.atomic_mass)
 plt.suptitle("Atomic Mass Heatmap", y=0.96)
 save_and_compress_svg("ptable-heatmap-atomic-mass")
 
-ptable_heatmap(df_expt_gap.composition, heat_labels="percent")
+ptable_heatmap(df_expt_gap.composition, heat_labels="percent", exclude_elements=["O"])
 title = "Elements in Matbench Experimental Band Gap (percent)"
 plt.suptitle(title, y=0.96)
 save_and_compress_svg("ptable-heatmap-percent")
