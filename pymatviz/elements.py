@@ -297,9 +297,12 @@ def ptable_heatmap_ratio(
             details. Only used when elem_values is list of composition strings/objects.
         cbar_title (str): Title for the color bar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
-            elements missing from numerator.
-        not_in_denominator (tuple[str, str]): See not_in_numerator.
-        not_in_either (tuple[str, str]): See not_in_numerator.
+            elements missing from numerator. Defaults to
+            ('#DDD', 'gray: not in 1st list').
+        not_in_denominator (tuple[str, str]): See not_in_numerator. Defaults to
+            ('lightskyblue', 'blue: not in 2nd list').
+        not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
+            ('white', 'white: not in either').
         kwargs (Any, optional): Passed to ptable_heatmap().
 
     Returns:
@@ -322,12 +325,12 @@ def ptable_heatmap_ratio(
 
     # add legend handles
     for y_pos, color, txt in (
-        (1.8, *not_in_numerator),
-        (1.1, *not_in_denominator),
-        (0.4, *not_in_either),
+        (2.1, *not_in_numerator),
+        (1.4, *not_in_denominator),
+        (0.7, *not_in_either),
     ):
         bbox = dict(facecolor=color, edgecolor="gray")
-        plt.text(0.8, y_pos, txt, fontsize=12, bbox=bbox)
+        plt.text(0.8, y_pos, txt, fontsize=10, bbox=bbox)
 
     return ax
 
