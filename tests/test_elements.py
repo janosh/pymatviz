@@ -108,11 +108,13 @@ def test_ptable_heatmap(glasses, glass_elem_counts):
     # element counts
     ptable_heatmap(glass_elem_counts)
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="Combining log color scale and"):
         ptable_heatmap(glasses, log=True, heat_labels="percent")
 
-    assert exc_info.type is ValueError
-    assert "Combining log color scale" in exc_info.value.args[0]
+    ptable_heatmap(glass_elem_counts, exclude_elements=["O", "P"])
+
+    with pytest.raises(ValueError, match=r"Unexpected symbol\(s\) foobar"):
+        ptable_heatmap(glass_elem_counts, exclude_elements=["foobar"])
 
 
 def test_ptable_heatmap_ratio(steels, glasses, steel_elem_counts, glass_elem_counts):
