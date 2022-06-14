@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
+from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 
 from pymatviz.utils import NumArray, covalent_radii, jmol_colors
@@ -99,6 +100,7 @@ def plot_structure_2d(
     colors: dict[str, str | list[float]] = None,
     scale: float = 1,
     show_unit_cell: bool = True,
+    show_bonds: bool | NearNeighbors = True,
     site_labels: bool | dict[str, str | float] | list[str | float] = True,
     label_kwargs: dict[str, Any] = None,
 ) -> plt.Axes:
@@ -140,6 +142,12 @@ def plot_structure_2d(
             Defaults to JMol colors.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool, optional): Whether to draw unit cell. Defaults to True.
+        show_bonds (bool | NearNeighbors, optional): Whether to draw bonds. If True, use
+            pymatgen.analysis.local_env.CrystalNN to infer the structure's connectivity.
+            If False, don't draw bonds. If a subclass of
+            pymatgen.analysis.local_env.NearNeighbors, use that to determine
+            connectivity. Options include VoronoiNN, MinimumDistanceNN, OpenBabelNN,
+            CovalentBondNN, dtc. Defaults to True.
         site_labels (bool | dict[str, str | float] | list[str | float]): How to annotate
             lattice sites. If True, labels are element symbols. If a dict, should map
             element symbols to labels. If a list, must be same length as the number of
@@ -284,6 +292,19 @@ def plot_structure_2d(
                 hxy = unit_cell_lines[z_indices[idx]]
                 path = PathPatch(Path((xy + hxy, xy - hxy)))
                 ax.add_patch(path)
+
+    structure_graph = CrystalNN().get_bonded_structure(struct)
+
+    bonds = structure_graph.graph.edges(data=True)
+    for bond in bonds:
+        from_idx, to_idx, data = bond
+        if data["to_jimage"] != (0, 0, 0):
+            continue
+        from_xy = positions[from_idx, :2]
+        to_xy = positions[to_idx, :2]
+
+        bond_patch = PathPatch(Path((from_xy, to_xy)), facecolor="black")
+        ax.add_patch(bond_patch)
 
     width, height, _ = scale * coord_ranges
     ax.set(xlim=[0, width], ylim=[0, height], aspect="equal")
