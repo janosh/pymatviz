@@ -17,33 +17,38 @@ from pymatviz.utils import NumArray, covalent_radii, jmol_colors
 # inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
 
 
-def get_rot_matrix(angles: str, rotation: NumArray = np.eye(3)) -> NumArray:
+def _angles_to_rotation_matrix(angles: str, rotation: NumArray = None) -> NumArray:
     """Convert Euler angles to a rotation matrix.
 
     Note the order of angles matters. 50x,40z != 40z,50x.
 
     Args:
         angles (str): Euler angles (in degrees) formatted as '-10y,50x,120z'
-        rotation (NumArray, optional): Initial rotation matrix. Defaults to identity
-            matrix.
+        rotation (np.array, optional): Initial rotation matrix. Use this if you already
+            have a rotation and want to combine it with the rotation defined by angles.
+            Defaults to identity matrix np.eye(3).
 
     Returns:
-        NumArray: 3d rotation matrix.
+        np.array: 3d rotation matrix.
     """
+    if rotation is None:
+        rotation = np.eye(3)
     if angles == "":
         return rotation.copy()  # return initial rotation matrix if no angles
 
-    for i, a in [
-        ("xyz".index(s[-1]), math.radians(float(s[:-1]))) for s in angles.split(",")
-    ]:
-        s = math.sin(a)
-        c = math.cos(a)
-        if i == 0:
-            rotation = np.dot(rotation, [(1, 0, 0), (0, c, s), (0, -s, c)])
-        elif i == 1:
-            rotation = np.dot(rotation, [(c, 0, -s), (0, 1, 0), (s, 0, c)])
+    for angle in angles.split(","):
+        radians = math.radians(float(angle[:-1]))
+        xyz = angle[-1]
+        assert xyz in "xyz"
+        dim = "xyz".index(xyz)
+        sin = math.sin(radians)
+        cos = math.cos(radians)
+        if dim == 0:
+            rotation = np.dot(rotation, [(1, 0, 0), (0, cos, sin), (0, -sin, cos)])
+        elif dim == 1:
+            rotation = np.dot(rotation, [(cos, 0, -sin), (0, 1, 0), (sin, 0, cos)])
         else:
-            rotation = np.dot(rotation, [(c, s, 0), (-s, c, 0), (0, 0, 1)])
+            rotation = np.dot(rotation, [(cos, sin, 0), (-sin, cos, 0), (0, 0, 1)])
     return rotation
 
 
@@ -95,7 +100,7 @@ def plot_structure_2d(
     scale: float = 1,
     show_unit_cell: bool = True,
     site_labels: bool | dict[str, str | float] | list[str | float] = True,
-    label_kwargs: dict[str, Any] = {"fontsize": 14},
+    label_kwargs: dict[str, Any] = None,
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
@@ -139,8 +144,8 @@ def plot_structure_2d(
             lattice sites. If True, labels are element symbols. If a dict, should map
             element symbols to labels. If a list, must be same length as the number of
             sites in the crystal. Defaults to True.
-        label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text.
-            Defaults to {"fontsize": 14}.
+        label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text like
+            {"fontsize": 14}. Defaults to None.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -174,7 +179,7 @@ def plot_structure_2d(
     radii = np.array([atomic_radii[el] for el in elems])  # type: ignore
 
     n_atoms = len(struct)
-    rot_matrix = get_rot_matrix(rotation)
+    rot_matrix = _angles_to_rotation_matrix(rotation)
     unit_cell = struct.lattice.matrix
 
     if show_unit_cell:
@@ -260,7 +265,7 @@ def plot_structure_2d(
                         (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                     )
 
-                    txt_kwds = dict(ha="center", va="center", **label_kwargs)
+                    txt_kwds = dict(ha="center", va="center", **(label_kwargs or {}))
                     ax.text(*(xy + text_offset), txt, **txt_kwds)
 
                 start += occupancy
