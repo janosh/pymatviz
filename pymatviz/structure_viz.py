@@ -153,7 +153,7 @@ def plot_structure_2d(
     if ax is None:
         ax = plt.gca()
 
-    if isinstance(site_labels, list):
+    if isinstance(site_labels, (list, tuple)):
         if len(site_labels) != len(struct):
             raise ValueError(
                 f"If a list, site_labels ({len(site_labels)=}) must have same length as"
@@ -166,27 +166,31 @@ def plot_structure_2d(
     # Get any element at each site, only used for occlusion calculation which won't be
     # perfect for disordered sites. Plotting wedges of different radii for disordered
     # sites is handled later.
-    elems = [str(site.species.elements[0].symbol) for site in struct]
+    elements_at_sites = [str(site.species.elements[0].symbol) for site in struct]
 
     if atomic_radii is None or isinstance(atomic_radii, float):
+        # atomic_radii is a scaling factor for the default set of radii
         atomic_radii = 0.7 * covalent_radii * (atomic_radii or 1)
     else:
+        # atomic_radii is assumed to be a map from element symbols to atomic radii
         assert isinstance(atomic_radii, dict)
         # make sure all present elements are assigned a radius
-        missing = set(elems) - set(atomic_radii)
+        missing = set(elements_at_sites) - set(atomic_radii)
         assert not missing, f"atomic_radii is missing keys: {missing}"
 
-    radii = np.array([atomic_radii[el] for el in elems])  # type: ignore
+    radii_at_sites = np.array(
+        [atomic_radii[el] for el in elements_at_sites]  # type: ignore
+    )
 
     n_atoms = len(struct)
-    rot_matrix = _angles_to_rotation_matrix(rotation)
+    rotation_matrix = _angles_to_rotation_matrix(rotation)
     unit_cell = struct.lattice.matrix
 
     if show_unit_cell:
         lines, z_indices, unit_cell_lines = unit_cell_to_lines(unit_cell)
         corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
         cell_vertices = np.dot(corners, unit_cell)
-        cell_vertices = np.dot(cell_vertices, rot_matrix)
+        cell_vertices = np.dot(cell_vertices, rotation_matrix)
     else:
         lines = np.empty((0, 3))
         z_indices = None
@@ -203,16 +207,20 @@ def plot_structure_2d(
     # determine which lines should be hidden behind other objects
     for idx in range(n_lines):
         this_layer = unit_cell_lines[z_indices[idx]]
-        occlu_top = ((site_coords - lines[idx] + this_layer) ** 2).sum(1) < radii**2
-        occlu_bot = ((site_coords - lines[idx] - this_layer) ** 2).sum(1) < radii**2
-        if any(occlu_top & occlu_bot):
+        occluded_top = ((site_coords - lines[idx] + this_layer) ** 2).sum(
+            1
+        ) < radii_at_sites**2
+        occluded_bottom = ((site_coords - lines[idx] - this_layer) ** 2).sum(
+            1
+        ) < radii_at_sites**2
+        if any(occluded_top & occluded_bottom):
             z_indices[idx] = -1
 
-    positions = np.dot(positions, rot_matrix)
-    site_coords = positions[:n_atoms]
+    positions = np.dot(positions, rotation_matrix)
+    rotated_site_coords = positions[:n_atoms]
 
-    min_coords = (site_coords - radii[:, None]).min(0)
-    max_coords = (site_coords + radii[:, None]).max(0)
+    min_coords = (rotated_site_coords - radii_at_sites[:, None]).min(0)
+    max_coords = (rotated_site_coords + radii_at_sites[:, None]).max(0)
 
     if show_unit_cell:
         min_coords = np.minimum(min_coords, cell_vertices.min(0))
@@ -226,7 +234,7 @@ def plot_structure_2d(
     positions -= offset
 
     if n_lines > 0:
-        unit_cell_lines = np.dot(unit_cell_lines, rot_matrix)[:, :2] * scale
+        unit_cell_lines = np.dot(unit_cell_lines, rotation_matrix)[:, :2] * scale
 
     # sort so we draw from back to front along out-of-plane (z-)axis
     for idx in positions[:, 2].argsort():
