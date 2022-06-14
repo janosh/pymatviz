@@ -224,21 +224,32 @@ def add_identity_line(
     Args:
         fig (Figure): Plotly figure.
         trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
-            Defaults to 0.
-        line_kwds (dict[str, Any], optional): Keyword arguments passed to
-            fig.add_shape(line=line_kwds). Defaults to dict(color="gray", width=1,
-            dash="dash").
+            Defaults to 0. Unused if kaleido package is installed and the figure's
+            actual x/y-range can be obtained from fig.full_figure_for_development().
+        line_kwds (dict[str, Any], optional): Keyword arguments for customizing the line
+            shape will be passed to fig.add_shape(line=line_kwds). Defaults to
+            dict(color="gray", width=1, dash="dash").
 
     Returns:
         Figure: Figure with added identity line.
     """
-    trace = fig.data[trace_idx]
+    # If kaleido is missing, try block raises ValueError: Full figure generation
+    # requires the kaleido package. Install with: pip install kaleido
+    # If so, we resort to manually computing the xy data ranges which are usually are
+    # close to but not the same as the axes limits.
+    try:
+        # https://stackoverflow.com/a/62042077
+        full_fig = fig.full_figure_for_development(warn=False)
+        xy_range = full_fig.layout.xaxis.range + full_fig.layout.yaxis.range
+        xy_min, xy_max = min(xy_range), max(xy_range)
+    except ValueError:
+        trace = fig.data[trace_idx]
 
-    # min/max of sequence containing nans = nan so get rid of them first
-    df = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
+        # min/max(seq) gives NaN if sequence contains NaNs so get rid of them first
+        df = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
 
-    xy_min = min(df.min())
-    xy_max = max(df.max())
+        xy_min = min(df.min())
+        xy_max = max(df.max())
 
     fig.add_shape(
         type="line",
