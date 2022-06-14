@@ -27,7 +27,7 @@ from pymatviz.quantile import qq_gaussian
 from pymatviz.ranking import err_decay
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
-from pymatviz.struct_vis import plot_structure_2d
+from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.utils import ROOT, df_ptable, save_and_compress_svg
 

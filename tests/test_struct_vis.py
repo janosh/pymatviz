@@ -8,12 +8,12 @@ from matplotlib.testing.compare import compare_images
 from pymatgen.core import Lattice, Structure
 from pymatgen.transformations.standard_transformations import SubstitutionTransformation
 
-from pymatviz.struct_vis import plot_structure_2d
+from pymatviz.structure_viz import plot_structure_2d
 
 from .conftest import save_reference_img
 
 
-os.makedirs(fixt_dir := "tests/fixtures/struct_vis", exist_ok=True)
+os.makedirs(fixt_dir := "tests/fixtures/structure_viz", exist_ok=True)
 
 latt = Lattice.cubic(5)
 struct = Structure(latt, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
