@@ -56,12 +56,6 @@ repos:
     rev: 6.1.1
     hooks:
       - id: pydocstyle
-        # D100: Missing docstring in public module
-        # D104: Missing docstring in public package
-        # D107: Missing docstring in __init__
-        # D205: 1 blank line required between summary line and description
-        # D415: First line should end with ., ? or !
-        args: [--convention=google, '--add-ignore=D100,D104,D107,D205,D415']
         exclude: tests
 
   - repo: https://github.com/codespell-project/codespell
@@ -70,7 +64,6 @@ repos:
       - id: codespell
         stages: [commit, commit-msg]
         exclude_types: [csv, svg, html, yaml, jupyter]
-        args: [--ignore-words-list, hist]
 
   - repo: local
     hooks:
