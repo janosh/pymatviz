@@ -293,18 +293,28 @@ def plot_structure_2d(
                 path = PathPatch(Path((xy + hxy, xy - hxy)))
                 ax.add_patch(path)
 
-    structure_graph = CrystalNN().get_bonded_structure(struct)
+    if show_bonds:
+        if show_bonds is True:
+            neighbor_strategy_cls = CrystalNN
+        elif issubclass(show_bonds, NearNeighbors):
+            neighbor_strategy_cls = show_bonds
+        else:
+            raise ValueError(
+                f"Expected boolean or a NearNeighbors subclass for {show_bonds = }"
+            )
 
-    bonds = structure_graph.graph.edges(data=True)
-    for bond in bonds:
-        from_idx, to_idx, data = bond
-        if data["to_jimage"] != (0, 0, 0):
-            continue
-        from_xy = positions[from_idx, :2]
-        to_xy = positions[to_idx, :2]
+        structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
 
-        bond_patch = PathPatch(Path((from_xy, to_xy)), facecolor="black")
-        ax.add_patch(bond_patch)
+        bonds = structure_graph.graph.edges(data=True)
+        for bond in bonds:
+            from_idx, to_idx, data = bond
+            if data["to_jimage"] != (0, 0, 0):
+                continue
+            from_xy = positions[from_idx, :2]
+            to_xy = positions[to_idx, :2]
+
+            bond_patch = PathPatch(Path((from_xy, to_xy)), facecolor="black")
+            ax.add_patch(bond_patch)
 
     width, height, _ = scale * coord_ranges
     ax.set(xlim=[0, width], ylim=[0, height], aspect="equal")
