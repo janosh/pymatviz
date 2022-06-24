@@ -249,7 +249,7 @@ def plot_structure_2d(
                     half_way = 2 * np.pi * (start + occupancy / 2)
                     direction = np.array([math.cos(half_way), math.sin(half_way)])
                     text_offset = (
-                        (radius + 0.3 * scale) * direction if occupancy < 1 else (0, 0)
+                        (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                     )
 
                     txt_kwds = dict(ha="center", va="center", **label_kwargs)

@@ -52,13 +52,13 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 ## Structure
 
-See [`pymatviz/struct_vis.py`](pymatviz/struct_vis.py).
+See [`pymatviz/struct_vis.py`](pymatviz/struct_vis.py). Currently only structure plotting in 2d with `matplotlib` is supported. 3d interactive plots (probably with `plotly`) are on the road map.
 
-| [`plot_structure_2d(pmg_struct)`](pymatviz/struct_vis.py) | [`plot_structure_2d(pmg_struct, show_unit_cell=False, site_labels=False)`](pymatviz/struct_vis.py) |
-| :-------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
-|             ![struct-2d-mp-19017-disordered]              |                                       ![struct-2d-mp-12712]                                        |
+| [`plot_structure_2d(mp_19017)`](pymatviz/struct_vis.py) | [`plot_structure_2d(mp_12712)`](pymatviz/struct_vis.py) |
+| :-----------------------------------------------------: | :-----------------------------------------------------: |
+|      ![struct-2d-mp-19017-Li4Fe3P4CO16-disordered]      |       ![struct-2d-mp-12712-Hf3Zr3Pd8-disordered]        |
 
-![mp_structures_2d]
+![matbench-phonons-structures-2d]
 
 ## Histograms
 
@@ -128,6 +128,10 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 2. **Error** `y_err = abs(y_true - y_pred)`: Absolute error between target and model prediction.
 3. **Uncertainty** `y_std`: The model's estimate for its error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)
 
+## Usage on Colab
+
+For the time being, Google Colab only supports Python 3.7. `pymatviz` uses Python 3.8 features like self-documenting f-strings. You may still be able to use `pymatviz` on Colab by cloning the repo and patching the source code in place [as shown here](https://github.com/janosh/pymatviz/issues/17#issuecomment-1165141311).
+
 [cumulative-error]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-error.svg
 [cumulative-residual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-residual.svg
 [density-hexbin-with-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-hexbin-with-hist.svg
@@ -139,7 +143,7 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [hist-elemental-prevalence]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/hist-elemental-prevalence.svg
 [marchenko-pastur-significant-eval]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko-pastur-significant-eval.svg
 [marchenko-pastur]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko-pastur.svg
-[mp-structures-2d]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/mp-structures-2d.svg
+[matbench-phonons-structures-2d]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/matbench-phonons-structures-2d.svg
 [normal-prob-plot-multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal-prob-plot-multiple.svg
 [normal-prob-plot]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal-prob-plot.svg
 [precision-recall-curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/precision-recall-curve.svg
@@ -155,8 +159,8 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [spg-symbol-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist.svg
 [spg-num-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-sunburst.svg
 [spg-symbol-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-sunburst.svg
-[struct-2d-mp-12712]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712.svg
-[struct-2d-mp-19017-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-disordered.svg
+[struct-2d-mp-12712-Hf3Zr3Pd8-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf3Zr3Pd8-disordered.svg
+[struct-2d-mp-19017-Li4Fe3P4CO16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Fe3P4CO16-disordered.svg
 [true-pred-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/true-pred-hist.svg
 [sankey-from-2-df-cols-randints]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-from-2-df-cols-randints.svg
 [sankey-spglib-vs-aflow-spacegroups]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-spglib-vs-aflow-spacegroups.svg
