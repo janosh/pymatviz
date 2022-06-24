@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matminer.datasets import load_dataset
+from pymatgen.ext.matproj import MPRester
+from pymatgen.transformations.standard_transformations import SubstitutionTransformation
 
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cum_err, cum_res
@@ -237,13 +239,57 @@ fig, axs = plt.subplots(3, 4, figsize=(12, 12))
 
 for struct, ax in zip(df_phonons.structure.head(12), axs.flat):
     ax = plot_structure_2d(struct, ax=ax)
-    ax.set_title(struct.composition.reduced_formula)
+    spg_symbol, _ = struct.get_space_group_info()
+    formula = struct.composition.reduced_formula
+    ax.set_title(f"{formula} ({spg_symbol})", fontweight="bold")
 
-save_and_compress_svg("mp-structures-2d", fig)
+save_and_compress_svg("matbench-phonons-structures-2d")
+
+
+# %% plot some disordered structures in 2d
+mp_ids = ["mp-19017", "mp-12712"]
+elem_maps = [{"Fe": {"Fe": 0.75, "C": 0.25}}, {"Zr": {"Zr": 0.5, "Hf": 0.5}}]
+structs = [
+    MPRester().get_structure_by_material_id(mp_id, conventional_unit_cell=True)
+    for mp_id in mp_ids
+]
+
+disordered_structs = [
+    SubstitutionTransformation(elem_map).apply_transformation(struct)
+    for struct, elem_map in zip(structs, elem_maps)
+]
+
+
+# %%
+for struct, mp_id in zip(disordered_structs, mp_ids):
+    href = f"https://materialsproject.org/materials/{mp_id}"
+
+    ax = plot_structure_2d(struct)
+    formula = struct.composition.reduced_formula
+    _, spacegroup = struct.get_space_group_info()
+    ax.set_title(
+        f"{formula} (disordered {mp_id} with {spacegroup = })", fontweight="bold"
+    )
+
+    ax.figure.set_size_inches(8, 8)
+
+    save_and_compress_svg(f"struct-2d-{mp_id}-{formula}-disordered")
+    plt.show()
 
 
 # %% Sankey diagram of random integers
-col_names = "col_a col_b".split()
-df = pd.DataFrame(np.random.randint(1, 6, size=(100, 2)), columns=col_names)
-fig = sankey_from_2_df_cols(df, col_names, labels_with_counts="percent")
+df = pd.DataFrame(np.random.randint(1, 6, size=(100, 2)), columns=["col_a", "col_b"])
+fig = sankey_from_2_df_cols(df, df.columns, labels_with_counts="percent")
+rand_int_title = "Two sets of 100 random integers from 1 to 5"
+fig.update_layout(title=dict(text=rand_int_title, x=0.5, y=0.87))
+code_anno = dict(
+    x=0.5,
+    y=-0.2,
+    text="<span style='font-family: monospace;'>df = pd.DataFrame("
+    "np.random.randint(1, 6, size=(100, 2)), columns=['col_a','col_b'])<br>"
+    "fig = sankey_from_2_df_cols(df, df.columns)</span>",
+    font_size=12,
+    showarrow=False,
+)
+fig.add_annotation(code_anno)
 save_and_compress_svg("sankey-from-2-df-cols-randints", fig)
