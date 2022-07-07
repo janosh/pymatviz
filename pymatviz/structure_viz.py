@@ -329,8 +329,13 @@ def plot_structure_2d(
         # composition. Helps CrystalNN and other strategies to estimate better bond
         # connectivity. Uses getattr on site.specie since it's often a pymatgen Element
         # which has no oxi_state
-        if all(getattr(site.specie, "oxi_state", None) is None for site in struct):
-            struct.add_oxidation_state_by_guess()
+        if not any(
+            hasattr(getattr(site, "specie", None), "oxi_state") for site in struct
+        ):
+            try:
+                struct.add_oxidation_state_by_guess()
+            except ValueError:  # fails for disordered structures
+                "Charge balance analysis requires integer values in Composition"
         structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
 
         bonds = structure_graph.graph.edges(data=True)
