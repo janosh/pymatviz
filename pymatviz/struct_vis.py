@@ -13,7 +13,7 @@ from pymatgen.core import Structure
 from pymatviz.utils import NumArray, covalent_radii, jmol_colors
 
 
-# plot_structure_2d() and its helphers get_rot_matrix() and unit_cell_to_lines() were
+# plot_structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
 # inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
 
 
@@ -51,10 +51,10 @@ def unit_cell_to_lines(cell: NumArray) -> tuple[NumArray, NumArray, NumArray]:
     """Convert lattice vectors to plot lines.
 
     Args:
-        cell (NumArray): Lattice vectors.
+        cell (np.array): Lattice vectors.
 
     Returns:
-        tuple[NumArray, NumArray, NumArray]:
+        tuple[np.array, np.array, np.array]:
         - Lines
         - z-indices that sort plot elements into out-of-plane layers
         - lines used to plot the unit cell
@@ -148,22 +148,27 @@ def plot_structure_2d(
     if ax is None:
         ax = plt.gca()
 
-    elems = [str(site.species.elements[0]) for site in struct]
-
     if isinstance(site_labels, list):
-        assert len(site_labels) == len(
-            struct
-        ), "Length mismatch between site_labels and struct"
+        if len(site_labels) != len(struct):
+            raise ValueError(
+                f"If a list, site_labels ({len(site_labels)=}) must have same length as"
+                f" the number of sites in the crystal ({len(struct)=})"
+            )
 
     if colors is None:
         colors = jmol_colors
+
+    # Get any element at each site, only used for occlusion calculation which won't be
+    # perfect for disordered sites. Plotting wedges of different radii for disordered
+    # sites is handled later.
+    elems = [str(site.species.elements[0].symbol) for site in struct]
 
     if atomic_radii is None or isinstance(atomic_radii, float):
         atomic_radii = 0.7 * covalent_radii * (atomic_radii or 1)
     else:
         assert isinstance(atomic_radii, dict)
         # make sure all present elements are assigned a radius
-        missing = {el for el in elems if el not in atomic_radii}
+        missing = set(elems) - set(atomic_radii)
         assert not missing, f"atomic_radii is missing keys: {missing}"
 
     radii = np.array([atomic_radii[el] for el in elems])  # type: ignore
@@ -225,23 +230,26 @@ def plot_structure_2d(
         if idx < n_atoms:
             # loop over all species on a site (usually just 1 for ordered sites)
             for elem, occupancy in struct[idx].species.items():
-                elem = str(elem)
-                radius = atomic_radii[elem] * scale  # type: ignore
+                # strip oxidation state from element symbol (e.g. Ta5+ to Ta)
+                elem_symbol = elem.symbol
+                radius = atomic_radii[elem_symbol] * scale  # type: ignore
                 wedge = Wedge(
                     xy,
                     radius,
                     360 * start,
                     360 * (start + occupancy),
-                    facecolor=colors[elem],
+                    facecolor=colors[elem_symbol],
                     edgecolor="black",
                 )
                 ax.add_patch(wedge)
 
                 txt = elem
                 if isinstance(site_labels, dict) and elem in site_labels:
-                    txt = site_labels.get(elem, "")
+                    # try element incl. oxidation state as dict key first (e.g. Na+),
+                    # then just element as fallback
+                    txt = site_labels.get(elem_symbol, site_labels.get(elem, ""))
                 if isinstance(site_labels, list):
-                    txt = site_labels[idx]
+                    txt = site_labels[idx]  # idx runs from 0 to n_atoms
 
                 if site_labels:
                     # place element symbol half way along outer wedge edge for
