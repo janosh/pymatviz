@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from itertools import product
 from typing import Any
 
@@ -12,6 +13,13 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 
 from pymatviz.utils import NumArray, covalent_radii, jmol_colors
+
+
+class ExperimentalWarning(Warning):
+    """Used for experimental show_bonds feature."""
+
+
+warnings.simplefilter("once", ExperimentalWarning)
 
 
 # plot_structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
@@ -100,9 +108,10 @@ def plot_structure_2d(
     colors: dict[str, str | list[float]] = None,
     scale: float = 1,
     show_unit_cell: bool = True,
-    show_bonds: bool | NearNeighbors = True,
+    show_bonds: bool | NearNeighbors = False,
     site_labels: bool | dict[str, str | float] | list[str | float] = True,
     label_kwargs: dict[str, Any] = None,
+    bond_kwargs: dict[str, Any] = None,
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
@@ -154,6 +163,10 @@ def plot_structure_2d(
             sites in the crystal. Defaults to True.
         label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text like
             {"fontsize": 14}. Defaults to None.
+        bond_kwargs (dict, optional): Keyword arguments for the matplotlib.path.Path
+            class used to draw chemical bonds. Allowed are edgecolor, facecolor, color,
+            linewidth, linestyle, antialiased, hatch, fill, capstyle, joinstyle.
+            Defaults to None.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -254,12 +267,13 @@ def plot_structure_2d(
                 # strip oxidation state from element symbol (e.g. Ta5+ to Ta)
                 elem_symbol = elem.symbol
                 radius = atomic_radii[elem_symbol] * scale  # type: ignore
+                facecolor = colors[elem_symbol]
                 wedge = Wedge(
                     xy,
                     radius,
                     360 * start,
                     360 * (start + occupancy),
-                    facecolor=colors[elem_symbol],
+                    facecolor=facecolor,
                     edgecolor="black",
                 )
                 ax.add_patch(wedge)
@@ -281,7 +295,10 @@ def plot_structure_2d(
                         (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                     )
 
-                    txt_kwds = dict(ha="center", va="center", **(label_kwargs or {}))
+                    bbox = dict(facecolor=facecolor, edgecolor="none", pad=1)
+                    txt_kwds = dict(
+                        ha="center", va="center", bbox=bbox, **(label_kwargs or {})
+                    )
                     ax.text(*(xy + text_offset), txt, **txt_kwds)
 
                 start += occupancy
@@ -294,6 +311,11 @@ def plot_structure_2d(
                 ax.add_patch(path)
 
     if show_bonds:
+        warnings.warn(
+            "Warning: the show_bonds feature of plot_structure_2d() is experimental. "
+            "Issues and PRs with improvements welcome.",
+            category=ExperimentalWarning,
+        )
         if show_bonds is True:
             neighbor_strategy_cls = CrystalNN
         elif issubclass(show_bonds, NearNeighbors):
@@ -303,17 +325,24 @@ def plot_structure_2d(
                 f"Expected boolean or a NearNeighbors subclass for {show_bonds = }"
             )
 
+        # If structure doesn't have any oxidation states yet, guess them from chemical
+        # composition. Helps CrystalNN and other strategies to estimate better bond
+        # connectivity. Uses getattr on site.specie since it's often a pymatgen Element
+        # which has no oxi_state
+        if all(getattr(site.specie, "oxi_state", None) is None for site in struct):
+            struct.add_oxidation_state_by_guess()
         structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
 
         bonds = structure_graph.graph.edges(data=True)
         for bond in bonds:
             from_idx, to_idx, data = bond
             if data["to_jimage"] != (0, 0, 0):
-                continue
+                continue  # skip bonds across periodic boundaries
             from_xy = positions[from_idx, :2]
             to_xy = positions[to_idx, :2]
 
-            bond_patch = PathPatch(Path((from_xy, to_xy)), facecolor="black")
+            bond_patch_kwds = dict(facecolor="black", **(bond_kwargs or {}))
+            bond_patch = PathPatch(Path((from_xy, to_xy)), **bond_patch_kwds)
             ax.add_patch(bond_patch)
 
     width, height, _ = scale * coord_ranges

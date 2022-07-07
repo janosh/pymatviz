@@ -235,9 +235,10 @@ save_and_compress_svg("marchenko-pastur-rank-deficient")
 # %%
 df_phonons = load_dataset("matbench_phonons")
 
-fig, axs = plt.subplots(3, 4, figsize=(12, 12))
+n_rows, n_cols = 3, 4
+fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_rows, 3 * n_cols))
 
-for struct, ax in zip(df_phonons.structure.head(12), axs.flat):
+for struct, ax in zip(df_phonons.structure.head(n_rows * n_cols), axs.flat):
     ax = plot_structure_2d(struct, ax=ax)
     spg_symbol, _ = struct.get_space_group_info()
     formula = struct.composition.reduced_formula
