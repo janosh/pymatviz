@@ -13,7 +13,7 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from numpy.typing import NDArray
-from plotly.graph_objs._figure import Figure
+from plotly.graph_objs._figure import Figure as PlotlyFigure
 from sklearn.metrics import r2_score
 
 
@@ -28,9 +28,10 @@ df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
 # http://jmol.sourceforge.net/jscolors
 jmol_colors = df_ptable.jmol_color.dropna().apply(ast.literal_eval)
 
-missing_cov_rad = 0.2
-# covalent_radii = df_ptable.covalent_radius.fillna(missing_cov_rad).to_dict()
-covalent_radii = df_ptable.covalent_radius.fillna(missing_cov_rad)
+# fallback value (in nanometers) for covalent radius of an element
+# see https://wikipedia.org/wiki/Atomic_radii_of_the_elements
+missing_covalent_radius = 0.2
+covalent_radii: pd.Series = df_ptable.covalent_radius.fillna(missing_covalent_radius)
 
 atomic_numbers: dict[str, int] = {}
 element_symbols: dict[int, str] = {}
@@ -216,8 +217,8 @@ def get_crystal_sys(
 
 
 def add_identity_line(
-    fig: Figure, trace_idx: int = 0, line_kwds: dict[str, Any] = None
-) -> Figure:
+    fig: PlotlyFigure, trace_idx: int = 0, line_kwds: dict[str, Any] = None
+) -> PlotlyFigure:
     """Add a line shape to the background layer of a plotly figure spanning from
     smallest to largest x/y values in the trace specified by trace_idx.
 
@@ -261,7 +262,7 @@ def add_identity_line(
     return fig
 
 
-def save_and_compress_svg(filename: str, fig: Figure | None = None) -> None:
+def save_and_compress_svg(filename: str, fig: PlotlyFigure | None = None) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG file with
     svgo CLI if available in PATH.
 
@@ -275,9 +276,9 @@ def save_and_compress_svg(filename: str, fig: Figure | None = None) -> None:
     assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
     filepath = f"{ROOT}/assets/{filename}.svg"
 
-    if isinstance(fig, Figure):
+    if isinstance(fig, PlotlyFigure):
         fig.write_image(filepath)
-    elif fig is None:
+    elif fig is None or isinstance(fig, plt.Figure):
         if len(plt.gcf().axes) == 0:
             raise ValueError(
                 "No figure passed explicitly and plt.gcf() contains no axes. "
