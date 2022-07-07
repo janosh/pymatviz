@@ -52,9 +52,9 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 ## Structure
 
-See [`pymatviz/struct_vis.py`](pymatviz/struct_vis.py). Currently only structure plotting in 2d with `matplotlib` is supported. 3d interactive plots (probably with `plotly`) are on the road map.
+See [`pymatviz/struct_viz.py`](pymatviz/struct_viz.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
 
-| [`plot_structure_2d(mp_19017)`](pymatviz/struct_vis.py) | [`plot_structure_2d(mp_12712)`](pymatviz/struct_vis.py) |
+| [`plot_structure_2d(mp_19017)`](pymatviz/struct_viz.py) | [`plot_structure_2d(mp_12712)`](pymatviz/struct_viz.py) |
 | :-----------------------------------------------------: | :-----------------------------------------------------: |
 |      ![struct-2d-mp-19017-Li4Fe3P4CO16-disordered]      |       ![struct-2d-mp-12712-Hf3Zr3Pd8-disordered]        |
 

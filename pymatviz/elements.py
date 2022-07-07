@@ -431,11 +431,11 @@ def ptable_heatmap_plotly(
     precision: str = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
-    font_colors: Sequence[str] = ["black"],
+    font_colors: Sequence[str] = ("black",),
     gap: float = 5,
     font_size: int = None,
     bg_color: str = None,
-    color_bar: dict[str, Any] = {},
+    color_bar: dict[str, Any] = None,
 ) -> Figure:
     """Creates a Plotly figure with an interactive heatmap of the periodic table.
     Supports hover tooltips with custom data or atomic reference data like
@@ -600,6 +600,6 @@ def ptable_heatmap_plotly(
         height=500,
     )
     fig.update_traces(
-        colorbar=dict(lenmode="fraction", len=0.87, thickness=15, **color_bar)
+        colorbar=dict(lenmode="fraction", len=0.87, thickness=15, **(color_bar or {}))
     )
     return fig

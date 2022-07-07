@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from itertools import product
 from typing import Any
 
@@ -8,42 +9,55 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
+from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 
 from pymatviz.utils import NumArray, covalent_radii, jmol_colors
+
+
+class ExperimentalWarning(Warning):
+    """Used for experimental show_bonds feature."""
+
+
+warnings.simplefilter("once", ExperimentalWarning)
 
 
 # plot_structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
 # inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
 
 
-def get_rot_matrix(angles: str, rotation: NumArray = np.eye(3)) -> NumArray:
+def _angles_to_rotation_matrix(angles: str, rotation: NumArray = None) -> NumArray:
     """Convert Euler angles to a rotation matrix.
 
     Note the order of angles matters. 50x,40z != 40z,50x.
 
     Args:
         angles (str): Euler angles (in degrees) formatted as '-10y,50x,120z'
-        rotation (NumArray, optional): Initial rotation matrix. Defaults to identity
-            matrix.
+        rotation (np.array, optional): Initial rotation matrix. Use this if you already
+            have a rotation and want to combine it with the rotation defined by angles.
+            Defaults to identity matrix np.eye(3).
 
     Returns:
-        NumArray: 3d rotation matrix.
+        np.array: 3d rotation matrix.
     """
+    if rotation is None:
+        rotation = np.eye(3)
     if angles == "":
         return rotation.copy()  # return initial rotation matrix if no angles
 
-    for i, a in [
-        ("xyz".index(s[-1]), math.radians(float(s[:-1]))) for s in angles.split(",")
-    ]:
-        s = math.sin(a)
-        c = math.cos(a)
-        if i == 0:
-            rotation = np.dot(rotation, [(1, 0, 0), (0, c, s), (0, -s, c)])
-        elif i == 1:
-            rotation = np.dot(rotation, [(c, 0, -s), (0, 1, 0), (s, 0, c)])
+    for angle in angles.split(","):
+        radians = math.radians(float(angle[:-1]))
+        xyz = angle[-1]
+        assert xyz in "xyz"
+        dim = "xyz".index(xyz)
+        sin = math.sin(radians)
+        cos = math.cos(radians)
+        if dim == 0:
+            rotation = np.dot(rotation, [(1, 0, 0), (0, cos, sin), (0, -sin, cos)])
+        elif dim == 1:
+            rotation = np.dot(rotation, [(cos, 0, -sin), (0, 1, 0), (sin, 0, cos)])
         else:
-            rotation = np.dot(rotation, [(c, s, 0), (-s, c, 0), (0, 0, 1)])
+            rotation = np.dot(rotation, [(cos, sin, 0), (-sin, cos, 0), (0, 0, 1)])
     return rotation
 
 
@@ -94,8 +108,10 @@ def plot_structure_2d(
     colors: dict[str, str | list[float]] = None,
     scale: float = 1,
     show_unit_cell: bool = True,
+    show_bonds: bool | NearNeighbors = False,
     site_labels: bool | dict[str, str | float] | list[str | float] = True,
-    label_kwargs: dict[str, Any] = {"fontsize": 14},
+    label_kwargs: dict[str, Any] = None,
+    bond_kwargs: dict[str, Any] = None,
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
@@ -135,12 +151,22 @@ def plot_structure_2d(
             Defaults to JMol colors.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool, optional): Whether to draw unit cell. Defaults to True.
+        show_bonds (bool | NearNeighbors, optional): Whether to draw bonds. If True, use
+            pymatgen.analysis.local_env.CrystalNN to infer the structure's connectivity.
+            If False, don't draw bonds. If a subclass of
+            pymatgen.analysis.local_env.NearNeighbors, use that to determine
+            connectivity. Options include VoronoiNN, MinimumDistanceNN, OpenBabelNN,
+            CovalentBondNN, dtc. Defaults to True.
         site_labels (bool | dict[str, str | float] | list[str | float]): How to annotate
             lattice sites. If True, labels are element symbols. If a dict, should map
             element symbols to labels. If a list, must be same length as the number of
             sites in the crystal. Defaults to True.
-        label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text.
-            Defaults to {"fontsize": 14}.
+        label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text like
+            {"fontsize": 14}. Defaults to None.
+        bond_kwargs (dict, optional): Keyword arguments for the matplotlib.path.Path
+            class used to draw chemical bonds. Allowed are edgecolor, facecolor, color,
+            linewidth, linestyle, antialiased, hatch, fill, capstyle, joinstyle.
+            Defaults to None.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -148,7 +174,7 @@ def plot_structure_2d(
     if ax is None:
         ax = plt.gca()
 
-    if isinstance(site_labels, list):
+    if isinstance(site_labels, (list, tuple)):
         if len(site_labels) != len(struct):
             raise ValueError(
                 f"If a list, site_labels ({len(site_labels)=}) must have same length as"
@@ -161,27 +187,31 @@ def plot_structure_2d(
     # Get any element at each site, only used for occlusion calculation which won't be
     # perfect for disordered sites. Plotting wedges of different radii for disordered
     # sites is handled later.
-    elems = [str(site.species.elements[0].symbol) for site in struct]
+    elements_at_sites = [str(site.species.elements[0].symbol) for site in struct]
 
     if atomic_radii is None or isinstance(atomic_radii, float):
+        # atomic_radii is a scaling factor for the default set of radii
         atomic_radii = 0.7 * covalent_radii * (atomic_radii or 1)
     else:
+        # atomic_radii is assumed to be a map from element symbols to atomic radii
         assert isinstance(atomic_radii, dict)
         # make sure all present elements are assigned a radius
-        missing = set(elems) - set(atomic_radii)
+        missing = set(elements_at_sites) - set(atomic_radii)
         assert not missing, f"atomic_radii is missing keys: {missing}"
 
-    radii = np.array([atomic_radii[el] for el in elems])  # type: ignore
+    radii_at_sites = np.array(
+        [atomic_radii[el] for el in elements_at_sites]  # type: ignore
+    )
 
     n_atoms = len(struct)
-    rot_matrix = get_rot_matrix(rotation)
+    rotation_matrix = _angles_to_rotation_matrix(rotation)
     unit_cell = struct.lattice.matrix
 
     if show_unit_cell:
         lines, z_indices, unit_cell_lines = unit_cell_to_lines(unit_cell)
         corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
         cell_vertices = np.dot(corners, unit_cell)
-        cell_vertices = np.dot(cell_vertices, rot_matrix)
+        cell_vertices = np.dot(cell_vertices, rotation_matrix)
     else:
         lines = np.empty((0, 3))
         z_indices = None
@@ -198,16 +228,20 @@ def plot_structure_2d(
     # determine which lines should be hidden behind other objects
     for idx in range(n_lines):
         this_layer = unit_cell_lines[z_indices[idx]]
-        occlu_top = ((site_coords - lines[idx] + this_layer) ** 2).sum(1) < radii**2
-        occlu_bot = ((site_coords - lines[idx] - this_layer) ** 2).sum(1) < radii**2
-        if any(occlu_top & occlu_bot):
+        occluded_top = ((site_coords - lines[idx] + this_layer) ** 2).sum(
+            1
+        ) < radii_at_sites**2
+        occluded_bottom = ((site_coords - lines[idx] - this_layer) ** 2).sum(
+            1
+        ) < radii_at_sites**2
+        if any(occluded_top & occluded_bottom):
             z_indices[idx] = -1
 
-    positions = np.dot(positions, rot_matrix)
-    site_coords = positions[:n_atoms]
+    positions = np.dot(positions, rotation_matrix)
+    rotated_site_coords = positions[:n_atoms]
 
-    min_coords = (site_coords - radii[:, None]).min(0)
-    max_coords = (site_coords + radii[:, None]).max(0)
+    min_coords = (rotated_site_coords - radii_at_sites[:, None]).min(0)
+    max_coords = (rotated_site_coords + radii_at_sites[:, None]).max(0)
 
     if show_unit_cell:
         min_coords = np.minimum(min_coords, cell_vertices.min(0))
@@ -221,7 +255,7 @@ def plot_structure_2d(
     positions -= offset
 
     if n_lines > 0:
-        unit_cell_lines = np.dot(unit_cell_lines, rot_matrix)[:, :2] * scale
+        unit_cell_lines = np.dot(unit_cell_lines, rotation_matrix)[:, :2] * scale
 
     # sort so we draw from back to front along out-of-plane (z-)axis
     for idx in positions[:, 2].argsort():
@@ -233,12 +267,13 @@ def plot_structure_2d(
                 # strip oxidation state from element symbol (e.g. Ta5+ to Ta)
                 elem_symbol = elem.symbol
                 radius = atomic_radii[elem_symbol] * scale  # type: ignore
+                facecolor = colors[elem_symbol]
                 wedge = Wedge(
                     xy,
                     radius,
                     360 * start,
                     360 * (start + occupancy),
-                    facecolor=colors[elem_symbol],
+                    facecolor=facecolor,
                     edgecolor="black",
                 )
                 ax.add_patch(wedge)
@@ -260,7 +295,10 @@ def plot_structure_2d(
                         (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                     )
 
-                    txt_kwds = dict(ha="center", va="center", **label_kwargs)
+                    bbox = dict(facecolor=facecolor, edgecolor="none", pad=1)
+                    txt_kwds = dict(
+                        ha="center", va="center", bbox=bbox, **(label_kwargs or {})
+                    )
                     ax.text(*(xy + text_offset), txt, **txt_kwds)
 
                 start += occupancy
@@ -271,6 +309,46 @@ def plot_structure_2d(
                 hxy = unit_cell_lines[z_indices[idx]]
                 path = PathPatch(Path((xy + hxy, xy - hxy)))
                 ax.add_patch(path)
+
+    if show_bonds:
+        warnings.warn(
+            "Warning: the show_bonds feature of plot_structure_2d() is experimental. "
+            "Issues and PRs with improvements welcome.",
+            category=ExperimentalWarning,
+        )
+        if show_bonds is True:
+            neighbor_strategy_cls = CrystalNN
+        elif issubclass(show_bonds, NearNeighbors):
+            neighbor_strategy_cls = show_bonds
+        else:
+            raise ValueError(
+                f"Expected boolean or a NearNeighbors subclass for {show_bonds = }"
+            )
+
+        # If structure doesn't have any oxidation states yet, guess them from chemical
+        # composition. Helps CrystalNN and other strategies to estimate better bond
+        # connectivity. Uses getattr on site.specie since it's often a pymatgen Element
+        # which has no oxi_state
+        if not any(
+            hasattr(getattr(site, "specie", None), "oxi_state") for site in struct
+        ):
+            try:
+                struct.add_oxidation_state_by_guess()
+            except ValueError:  # fails for disordered structures
+                "Charge balance analysis requires integer values in Composition"
+        structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
+
+        bonds = structure_graph.graph.edges(data=True)
+        for bond in bonds:
+            from_idx, to_idx, data = bond
+            if data["to_jimage"] != (0, 0, 0):
+                continue  # skip bonds across periodic boundaries
+            from_xy = positions[from_idx, :2]
+            to_xy = positions[to_idx, :2]
+
+            bond_patch_kwds = dict(facecolor="black", **(bond_kwargs or {}))
+            bond_patch = PathPatch(Path((from_xy, to_xy)), **bond_patch_kwds)
+            ax.add_patch(bond_patch)
 
     width, height, _ = scale * coord_ranges
     ax.set(xlim=[0, width], ylim=[0, height], aspect="equal")
