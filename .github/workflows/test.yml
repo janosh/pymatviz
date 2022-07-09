@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: setup.cfg
 
       - name: Install dependencies
-        run: pip install .[test,data_src]
+        run: pip install .[test]
 
       - name: Run tests
         id: tests
