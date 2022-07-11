@@ -55,15 +55,15 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
 
 
 @pytest.mark.parametrize(
-    "mode, counts",
+    "count_mode, counts",
     [
-        ("composition", {"Fe": 22, "O": 63, "P": 12}),
+        ("element_composition", {"Fe": 22, "O": 63, "P": 12}),
         ("fractional_composition", {"Fe": 2.5, "O": 5, "P": 0.5}),
         ("reduced_composition", {"Fe": 13, "O": 27, "P": 3}),
     ],
 )
-def test_count_elements(mode, counts):
-    series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, mode=mode)
+def test_count_elements(count_mode, counts):
+    series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, count_mode=count_mode)
     expected = pd.Series(counts, index=df_ptable.index, name="count").fillna(0)
     assert series.equals(expected)
 
@@ -76,10 +76,14 @@ def test_count_elements_by_atomic_nums():
     pd.testing.assert_series_equal(expected, el_cts)
 
 
-@pytest.mark.parametrize("rng", [(-1, 10), (100, 200)])
-def test_count_elements_bad_atomic_nums(rng):
+@pytest.mark.parametrize("range_limits", [(-1, 10), (100, 200)])
+def test_count_elements_bad_atomic_nums(range_limits):
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
-        count_elements({str(idx): 0 for idx in list(range(*rng))})
+        count_elements({idx: 0 for idx in range(*range_limits)})
+
+    with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
+        # string and integer keys for atomic numbers should be handled equally
+        count_elements({str(idx): 0 for idx in range(*range_limits)})
 
 
 def test_hist_elemental_prevalence(glass_formulas):
