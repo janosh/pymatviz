@@ -55,15 +55,15 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
 
 
 @pytest.mark.parametrize(
-    "mode, counts",
+    "count_mode, counts",
     [
-        ("composition", {"Fe": 22, "O": 63, "P": 12}),
+        ("element_composition", {"Fe": 22, "O": 63, "P": 12}),
         ("fractional_composition", {"Fe": 2.5, "O": 5, "P": 0.5}),
         ("reduced_composition", {"Fe": 13, "O": 27, "P": 3}),
     ],
 )
-def test_count_elements(mode, counts):
-    series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, mode=mode)
+def test_count_elements(count_mode, counts):
+    series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, count_mode=count_mode)
     expected = pd.Series(counts, index=df_ptable.index, name="count").fillna(0)
     assert series.equals(expected)
 

@@ -23,11 +23,13 @@ if TYPE_CHECKING:
 
     ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
 
-    CountMode = Literal["composition", "fractional_composition", "reduced_composition"]
+    CountMode = Literal[
+        "element_composition", "fractional_composition", "reduced_composition"
+    ]
 
 
 def count_elements(
-    elem_values: ElemValues, mode: CountMode = "composition"
+    elem_values: ElemValues, count_mode: CountMode = "element_composition"
 ) -> pd.Series:
     """Processes elemental heatmap data. If passed a list of strings, assume they are
     compositions and count the occurrences of each chemical element. Else ensure the
@@ -36,10 +38,10 @@ def count_elements(
     Args:
         elem_values (dict[str, int | float] | pd.Series | list[str]): Iterable of
             composition strings/objects or map from element symbols to heatmap values.
-        mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+        count_mode ('{element|fractional|reduced}_composition'):
             Only used when elem_values is a list of composition strings/objects.
-            - composition (default): Count elements in each composition as is, i.e.
-                without reduction or normalization.
+            - element_composition (default): Count elements in each composition as is,
+                i.e. without reduction or normalization.
             - fractional_composition: Convert to normalized compositions in which the
                 amounts of each species sum to before counting.
                 Example: Fe2 O3 -> Fe0.4 O0.6
@@ -57,12 +59,9 @@ def count_elements(
         pass
     elif is_string_dtype(srs):
         # assume all items in elem_values are composition strings
-        # sum up element occurrences
-        if mode == "composition":
-            mode = "element_composition"  # type: ignore
-        srs = srs.apply(
-            lambda str: pd.Series(getattr(Composition(str), mode).as_dict())
-        ).sum()
+        srs = pd.DataFrame(
+            getattr(Composition(comp_str), count_mode).as_dict() for comp_str in srs
+        ).sum()  # sum up element occurrences
     else:
         raise ValueError(
             "Expected elem_values to be map from element symbols to heatmap values or "
@@ -97,7 +96,7 @@ def ptable_heatmap(
     elem_values: ElemValues,
     log: bool = False,
     ax: Axes = None,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = "element_composition",
     cbar_title: str = "Element Count",
     cbar_max: float | int | None = None,
     cmap: str = "summer_r",
@@ -295,7 +294,7 @@ def ptable_heatmap(
 def ptable_heatmap_ratio(
     elem_values_num: ElemValues,
     elem_values_denom: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = "element_composition",
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] = ("#DDD", "gray: not in 1st list"),
@@ -360,7 +359,7 @@ def ptable_heatmap_ratio(
 
 def hist_elemental_prevalence(
     formulas: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = "element_composition",
     log: bool = False,
     keep_top: int = None,
     ax: Axes = None,
@@ -424,7 +423,7 @@ def hist_elemental_prevalence(
 
 def ptable_heatmap_plotly(
     elem_values: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = "element_composition",
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] | None = None,
     showscale: bool = True,
     heat_labels: Literal["value", "fraction", "percent", None] = "value",
