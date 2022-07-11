@@ -14,7 +14,7 @@ from pymatviz.structure_viz import plot_structure_2d
 from .conftest import save_reference_img
 
 
-os.makedirs(fixt_dir := "tests/fixtures/structure_viz", exist_ok=True)
+os.makedirs(fixture_dir := "tests/fixtures/structure_viz", exist_ok=True)
 
 lattice = Lattice.cubic(5)
 struct = Structure(lattice, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
@@ -25,12 +25,12 @@ disordered_struct: Structure = SubstitutionTransformation(
 
 
 @pytest.mark.parametrize("radii", [None, 0.5])
-@pytest.mark.parametrize("rot", ["0x,0y,0z", "10x,-10y,0z"])
+@pytest.mark.parametrize("rotation", ["0x,0y,0z", "10x,-10y,0z"])
 @pytest.mark.parametrize("labels", [True, False, {"P": "Phosphor"}])
 # add True to [False, VoronoiNN] later to test CrystalNN which currently errors on
 # disordered structures https://github.com/materialsproject/pymatgen/issues/2070
 @pytest.mark.parametrize("show_bonds", [False, VoronoiNN])
-def test_plot_structure_2d(radii, rot, labels, tmpdir, show_bonds):
+def test_plot_structure_2d(tmp_path, radii, rotation, labels, show_bonds):
     # set explicit size to avoid ImageComparisonFailure in CI: sizes do not match
     # expected (700, 1350, 3), actual (480, 640, 3)
     plt.figure(figsize=(5, 5))
@@ -38,16 +38,18 @@ def test_plot_structure_2d(radii, rot, labels, tmpdir, show_bonds):
     ax = plot_structure_2d(
         disordered_struct,
         atomic_radii=radii,
-        rotation=rot,
+        rotation=rotation,
         site_labels=labels,
         show_bonds=show_bonds,
     )
     assert isinstance(ax, plt.Axes)
-    fname = f"{radii=}_{rot=}_{labels=}.png"
 
-    tmp_img = tmpdir.join(fname).strpath
+    if isinstance(labels, dict):  # warning: we overwrite labels here
+        labels = ",".join(f"{k}={v}" for k, v in labels.items())
+    file_path = f"{radii=}_{rotation=}_{labels=}.png"
+    tmp_img = f"{tmp_path}/{file_path}"
 
-    if not os.path.exists(ref_img := f"{fixt_dir}/{fname}"):
+    if not os.path.exists(ref_img := f"{fixture_dir}/{file_path}"):
         save_reference_img(ref_img)
         return
 
