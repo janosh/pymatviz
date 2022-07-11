@@ -74,7 +74,7 @@ def count_elements(
     except (ValueError, TypeError):
         pass
 
-    if srs.index.dtype == int:
+    if pd.api.types.is_integer_dtype(srs.index):
         # if index is all integers, assume they represent atomic
         # numbers and map them to element symbols (H: 1, He: 2, ...)
         if srs.index.max() > 118 or srs.index.min() < 1:
@@ -82,9 +82,10 @@ def count_elements(
                 "element value keys were found to be integers and assumed to represent "
                 "atomic numbers, but values are outside expected range [1, 118]."
             )
-        srs.index = srs.index.map(
+        map_atomic_num_to_elem_symbol = (
             df_ptable.reset_index().set_index("atomic_number").symbol
         )
+        srs.index = srs.index.map(map_atomic_num_to_elem_symbol)
 
     # ensure all elements are present in returned Series (with value zero if they
     # weren't in elem_values before)
