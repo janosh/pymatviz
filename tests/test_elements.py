@@ -76,10 +76,14 @@ def test_count_elements_by_atomic_nums():
     pd.testing.assert_series_equal(expected, el_cts)
 
 
-@pytest.mark.parametrize("rng", [(-1, 10), (100, 200)])
-def test_count_elements_bad_atomic_nums(rng):
+@pytest.mark.parametrize("range_limits", [(-1, 10), (100, 200)])
+def test_count_elements_bad_atomic_nums(range_limits):
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
-        count_elements({str(idx): 0 for idx in list(range(*rng))})
+        count_elements({idx: 0 for idx in range(*range_limits)})
+
+    with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
+        # string and integer keys for atomic numbers should be handled equally
+        count_elements({str(idx): 0 for idx in range(*range_limits)})
 
 
 def test_hist_elemental_prevalence(glass_formulas):
