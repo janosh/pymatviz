@@ -8,13 +8,12 @@ from pymatgen.transformations.standard_transformations import SubstitutionTransf
 
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cum_err, cum_res
-from pymatviz.elements import (
+from pymatviz.histograms import (
     hist_elemental_prevalence,
-    ptable_heatmap,
-    ptable_heatmap_plotly,
-    ptable_heatmap_ratio,
+    residual_hist,
+    spacegroup_hist,
+    true_pred_hist,
 )
-from pymatviz.histograms import residual_hist, spacegroup_hist, true_pred_hist
 from pymatviz.parity import (
     density_hexbin,
     density_hexbin_with_hist,
@@ -23,6 +22,7 @@ from pymatviz.parity import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
+from pymatviz.ptable import ptable_heatmap, ptable_heatmap_plotly, ptable_heatmap_ratio
 from pymatviz.quantile import qq_gaussian
 from pymatviz.ranking import err_decay
 from pymatviz.relevance import precision_recall_curve, roc_curve
@@ -102,7 +102,7 @@ ptable_heatmap(df_ptable.atomic_mass)
 plt.suptitle("Atomic Mass Heatmap", y=0.96)
 save_and_compress_svg("ptable-heatmap-atomic-mass")
 
-ptable_heatmap(df_expt_gap.composition, heat_labels="percent", exclude_elements=["O"])
+ptable_heatmap(df_expt_gap.composition, heat_mode="percent", exclude_elements=["O"])
 title = "Elements in Matbench Experimental Band Gap (percent)"
 plt.suptitle(title, y=0.96)
 save_and_compress_svg("ptable-heatmap-percent")
@@ -128,7 +128,7 @@ fig.update_layout(
 fig.show()
 save_and_compress_svg("ptable-heatmap-plotly-more-hover-data", fig)
 
-fig = ptable_heatmap_plotly(df_expt_gap.composition, heat_labels="percent")
+fig = ptable_heatmap_plotly(df_expt_gap.composition, heat_mode="percent")
 title = "Elements in Matbench Experimental Bandgap"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
 fig.show()

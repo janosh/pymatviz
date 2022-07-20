@@ -26,13 +26,13 @@ Check out the Jupyter notebooks under [`examples/`](/examples) to learn how to u
 
 ## Elements
 
-See [`pymatviz/elements.py`](pymatviz/elements.py). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. Latter supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
+See [`pymatviz/ptable`](pymatviz/ptable). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. Latter supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
 
-| [`ptable_heatmap(compositions, log=True)`](pymatviz/elements.py) | [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/elements.py) |
-| :--------------------------------------------------------------: | :--------------------------------------------------------------: |
-|                        ![ptable-heatmap]                         |                     ![ptable-heatmap-ratio]                      |
-|  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/elements.py)  |  [`ptable_heatmap_plotly(compositions)`](pymatviz/elements.py)   |
-|             ![ptable-heatmap-plotly-more-hover-data]             |             ![ptable-heatmap-plotly-percent-labels]              |
+| [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable) | [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable) |
+| :---------------------------------------------------------: | :---------------------------------------------------------: |
+|                      ![ptable-heatmap]                      |                   ![ptable-heatmap-ratio]                   |
+|  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable)  |  [`ptable_heatmap_plotly(compositions)`](pymatviz/ptable)   |
+|          ![ptable-heatmap-plotly-more-hover-data]           |           ![ptable-heatmap-plotly-percent-labels]           |
 
 ## Sunburst
 
@@ -64,11 +64,11 @@ See [`pymatviz/struct_viz.py`](pymatviz/struct_viz.py). Currently structure plot
 
 See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 
-| [`spacegroup_hist([65, 134, 225, ...])`](pymatviz/histograms.py) |          [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/histograms.py)           |
-| :--------------------------------------------------------------: | :---------------------------------------------------------------------------------------------: |
-|                         ![spg-num-hist]                          |                                       ![spg-symbol-hist]                                        |
-|    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/elements.py) |
-|                         ![residual-hist]                         |                                  ![hist-elemental-prevalence]                                   |
+| [`spacegroup_hist([65, 134, 225, ...])`](pymatviz/histograms.py) |        [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/histograms.py)        |
+| :--------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
+|                         ![spg-num-hist]                          |                                     ![spg-symbol-hist]                                     |
+|    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/ptable) |
+|                         ![residual-hist]                         |                                ![hist-elemental-prevalence]                                |
 
 ## Parity Plots
 
