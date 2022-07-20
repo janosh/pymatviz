@@ -50,6 +50,8 @@ def count_elements(
             - reduced_composition: Convert to reduced compositions (i.e. amounts
                 normalized by greatest common denominator) before counting.
                 Example: Fe4 P4 O16 -> Fe P O4.
+        exclude_elements (Sequence[str]): Elements to exclude from the count. Defaults
+            to ().
 
     Returns:
         pd.Series: Map element symbols to heatmap values.
@@ -157,7 +159,7 @@ def ptable_heatmap(
             the color scale. Defaults to "auto".
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can try log=True or
-            exclude_elements=['O']. Defaults to None.
+            exclude_elements=['O']. Defaults to ().
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
 
@@ -419,7 +421,7 @@ def ptable_heatmap_plotly(
             the hover tooltip on a new line below the element name"}. Defaults to None.
         font_colors (list[str]): One or two color strings [min_color, max_color].
             min_color is applied to annotations for heatmap values
-            < (max_val - min_val) / 2. Defaults to ["white"].
+            < (max_val - min_val) / 2. Defaults to ["black"].
         gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
         font_size (int): Element symbol and heat label text size. Defaults to None,
             meaning automatic font size based on plot size.
@@ -428,7 +430,7 @@ def ptable_heatmap_plotly(
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to None.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can do exclude_elements=['O'].
-            Defaults to None.
+            Defaults to ().
 
     Returns:
         Figure: Plotly Figure object.
