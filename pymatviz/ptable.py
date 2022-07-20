@@ -15,7 +15,7 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 from plotly.graph_objs._figure import Figure
 from pymatgen.core import Composition
 
-from pymatviz.utils import annotate_bars, df_ptable
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
@@ -29,7 +29,9 @@ if TYPE_CHECKING:
 
 
 def count_elements(
-    elem_values: ElemValues, count_mode: CountMode = "element_composition"
+    elem_values: ElemValues,
+    count_mode: CountMode = "element_composition",
+    exclude_elements: Sequence[str] = (),
 ) -> pd.Series:
     """Processes elemental heatmap data. If passed a list of strings, assume they are
     compositions and count the occurrences of each chemical element. Else ensure the
@@ -90,6 +92,16 @@ def count_elements(
     # ensure all elements are present in returned Series (with value zero if they
     # weren't in elem_values before)
     srs = srs.reindex(df_ptable.index, fill_value=0).rename("count")
+
+    if len(exclude_elements) > 0:
+        try:
+            srs = srs.drop(exclude_elements)
+        except KeyError as exc:
+            bad_symbols = ", ".join(x for x in exclude_elements if x not in srs)
+            raise ValueError(
+                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}"
+            ) from exc
+
     return srs
 
 
@@ -104,7 +116,7 @@ def ptable_heatmap(
     zero_color: str = "#DDD",  # light gray
     infty_color: str = "lightskyblue",
     na_color: str = "white",
-    heat_labels: Literal["value", "fraction", "percent", None] = "value",
+    heat_mode: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
@@ -130,21 +142,21 @@ def ptable_heatmap(
         infty_color: Color to use for elements with value infinity. Defaults to
             "lightskyblue".
         na_color: Color to use for elements with value infinity. Defaults to "white".
-        heat_labels ("value" | "fraction" | "percent" | None): Whether to display heat
+        heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is, normalized as a fraction of the total, as percentages
             or not at all (None). Defaults to "value".
-            "fraction" and "percent" can be used to make the colors in different heatmap
-            (and ratio) plots comparable.
+            "fraction" and "percent" can be used to make the colors in different
+            ptable_heatmap() (and ptable_heatmap_ratio()) plots comparable.
         precision (str): f-string format option for heat labels. Defaults to None in
-            which case we fall back on ".1%" (1 decimal place) if heat_labels="percent"
+            which case we fall back on ".1%" (1 decimal place) if heat_mode="percent"
             else ".3g".
         text_color (str | tuple[str, str]): What color to use for element symbols and
             heat labels. Must be a valid color name, or a 2-tuple of names, one to use
             for the upper half of the color scale, one for the lower half. The special
             value 'auto' applies 'black' on the lower and 'white' on the upper half of
             the color scale. Defaults to "auto".
-        exclude_elements (Sequence[str]): List of element symbols to exclude from the
-            heatmap. E.g. if oxygen overpowers everything, you can try log=True or pass
+        exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
+            oxygen overpowers everything, you can try log=True or
             exclude_elements=['O']. Defaults to None.
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
@@ -152,25 +164,17 @@ def ptable_heatmap(
     Returns:
         ax: matplotlib Axes with the heatmap.
     """
-    if log and heat_labels in ("fraction", "percent"):
+    if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
-            "Combining log color scale and heat_labels='fraction'/'percent' unsupported"
+            "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
         )
 
-    elem_values = count_elements(elem_values, count_mode)
-    if len(exclude_elements) > 0:
-        try:
-            elem_values = elem_values.drop(exclude_elements)
-        except KeyError as exc:
-            bad_symbols = ", ".join(x for x in exclude_elements if x not in elem_values)
-            raise ValueError(
-                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}"
-            ) from exc
+    elem_values = count_elements(elem_values, count_mode, exclude_elements)
 
     # replace positive and negative infinities with NaN values, then drop all NaNs
     clean_vals = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
 
-    if heat_labels in ("fraction", "percent"):
+    if heat_mode in ("fraction", "percent"):
         # ignore inf values in sum() else all would be set to 0 by normalizing
         elem_values /= clean_vals.sum()
         clean_vals /= clean_vals.sum()  # normalize as well for norm.autoscale() below
@@ -218,7 +222,7 @@ def ptable_heatmap(
         else:
             color = color_map(norm(heat_val))
 
-            if heat_labels == "percent":
+            if heat_mode == "percent":
                 label = f"{heat_val:{precision or '.1%'}}"
             else:
                 prec = precision or (".0f" if heat_val > 100 else ".1f")
@@ -229,7 +233,7 @@ def ptable_heatmap(
             row += 0.5
         rect = Rectangle((column, row), rw, rh, edgecolor="gray", facecolor=color)
 
-        if heat_labels is None:
+        if heat_mode is None:
             # no value to display below in colored rectangle so center element symbol
             text_style["verticalalignment"] = "center"
 
@@ -246,7 +250,7 @@ def ptable_heatmap(
             column + 0.5 * rw, row + 0.5 * rh, symbol, color=text_clr, **text_style
         )
 
-        if heat_labels is not None:
+        if heat_mode is not None:
             plt.text(
                 column + 0.5 * rw,
                 row + 0.1 * rh,
@@ -258,7 +262,7 @@ def ptable_heatmap(
 
         ax.add_patch(rect)
 
-    if heat_labels is not None:
+    if heat_mode is not None:
 
         # colorbar position and size: [bar_xpos, bar_ypos, bar_width, bar_height]
         # anchored at lower left corner
@@ -271,7 +275,7 @@ def ptable_heatmap(
         def tick_fmt(val: float, pos: int) -> str:
             # val: value at color axis tick (e.g. 10.0, 20.0, ...)
             # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
-            if heat_labels == "percent":
+            if heat_mode == "percent":
                 # display color bar values as percentages
                 return f"{val:.0%}"
             if val < 1e4:
@@ -358,76 +362,12 @@ def ptable_heatmap_ratio(
     return ax
 
 
-def hist_elemental_prevalence(
-    formulas: ElemValues,
-    count_mode: CountMode = "element_composition",
-    log: bool = False,
-    keep_top: int = None,
-    ax: Axes = None,
-    bar_values: Literal["percent", "count", None] = "percent",
-    h_offset: int = 0,
-    v_offset: int = 10,
-    rotation: int = 45,
-    **kwargs: Any,
-) -> Axes:
-    """Plots a histogram of the prevalence of each element in a materials dataset.
-
-    Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
-
-    Args:
-        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
-        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
-            Reduce or normalize compositions before counting. See count_elements() for
-            details. Only used when elem_values is list of composition strings/objects.
-        log (bool, optional): Whether y-axis is log or linear. Defaults to False.
-        keep_top (int | None): Display only the top n elements by prevalence.
-        ax (Axes): matplotlib Axes on which to plot. Defaults to None.
-        bar_values ('percent'|'count'|None): 'percent' (default) annotates bars with the
-            percentage each element makes up in the total element count. 'count'
-            displays count itself. None removes bar labels.
-        h_offset (int): Horizontal offset for bar height labels. Defaults to 0.
-        v_offset (int): Vertical offset for bar height labels. Defaults to 10.
-        rotation (int): Bar label angle. Defaults to 45.
-        **kwargs (int): Keyword arguments passed to pandas.plot.bar().
-
-    Returns:
-        ax: The plot's matplotlib Axes.
-    """
-    if ax is None:
-        ax = plt.gca()
-
-    elem_counts = count_elements(formulas, count_mode)
-    non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
-    if keep_top is not None:
-        non_zero = non_zero.head(keep_top)
-        ax.set_title(f"Top {keep_top} Elements")
-
-    non_zero.plot.bar(width=0.7, edgecolor="black", ax=ax, **kwargs)
-
-    if log:
-        ax.set(yscale="log", ylabel="log(Element Count)")
-    else:
-        ax.set(title="Element Count")
-
-    if bar_values is not None:
-        if bar_values == "percent":
-            sum_elements = non_zero.sum()
-            labels = [f"{el / sum_elements:.1%}" for el in non_zero.values]
-        else:
-            labels = non_zero.astype(int).to_list()
-        annotate_bars(
-            ax, labels=labels, h_offset=h_offset, v_offset=v_offset, rotation=rotation
-        )
-
-    return ax
-
-
 def ptable_heatmap_plotly(
     elem_values: ElemValues,
     count_mode: CountMode = "element_composition",
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] | None = None,
     showscale: bool = True,
-    heat_labels: Literal["value", "fraction", "percent", None] = "value",
+    heat_mode: Literal["value", "fraction", "percent", None] = "value",
     precision: str = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
@@ -436,6 +376,7 @@ def ptable_heatmap_plotly(
     font_size: int = None,
     bg_color: str = None,
     color_bar: dict[str, Any] = None,
+    exclude_elements: Sequence[str] = (),
 ) -> Figure:
     """Creates a Plotly figure with an interactive heatmap of the periodic table.
     Supports hover tooltips with custom data or atomic reference data like
@@ -455,13 +396,13 @@ def ptable_heatmap_plotly(
             equivalent. Custom scales are specified as ["blue", "red"] or
             [[0, "rgb(0,0,255)"], [1, "rgb(255,0,0)"]].
         showscale (bool): Whether to show a bar for the color scale. Defaults to True.
-        heat_labels ("value" | "fraction" | "percent" | None): Whether to display heat
+        heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is (value), normalized as a fraction of the total, as percentages
             or not at all (None). Defaults to "value".
-            "fraction" and "percent" can be used to make the colors in different heatmap
-            (and ratio) plots comparable.
+            "fraction" and "percent" can be used to make the colors in different
+            periodic table heatmap plots comparable.
         precision (str): f-string format option for heat labels. Defaults to None in
-            which case we fall back on ".1%" (1 decimal place) if heat_labels="percent"
+            which case we fall back on ".1%" (1 decimal place) if heat_mode="percent"
             else ".3g".
         hover_props (list[str] | dict[str, str]): Elemental properties to display in the
             hover tooltip. Can be a list of property names to display only the values
@@ -485,49 +426,57 @@ def ptable_heatmap_plotly(
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
         color_bar (dict[str, Any]): Plotly color bar properties documented at
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to None.
+        exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
+            oxygen overpowers everything, you can do exclude_elements=['O'].
+            Defaults to None.
 
     Returns:
         Figure: Plotly Figure object.
     """
-    elem_values = count_elements(elem_values, count_mode)
+    elem_values = count_elements(elem_values, count_mode, exclude_elements)
 
-    if heat_labels in ("fraction", "percent"):
+    if heat_mode in ("fraction", "percent"):
         # normalize heat values
         clean_vals = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
         # ignore inf values in sum() else all would be set to 0 by normalizing
-        label_vals = elem_values / clean_vals.sum()
+        heat_value_element_map = elem_values / clean_vals.sum()
     else:
-        label_vals = elem_values
+        heat_value_element_map = elem_values
 
     n_rows, n_columns = 10, 18
     # initialize tile text and hover tooltips to empty strings
     tile_texts, hover_texts = np.full([2, n_rows, n_columns], "", dtype=object)
-    heat_vals = -np.ones([n_rows, n_columns])
+    heat_vals = np.zeros([n_rows, n_columns])
 
-    for (symbol, period, group, name, *_) in df_ptable.itertuples():
+    for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
         row = n_rows - period
         col = group - 1
 
-        heat_label = label_vals[symbol]
-        if heat_labels == "percent":
-            label = f"{heat_label:{precision or '.1%'}}"
-        else:
-            if precision is None:
-                prec = ".1f" if heat_label < 100 else ".0f"
-                if heat_label > 1e5:
-                    prec = ".2g"
-            label = f"{heat_label:{precision or prec}}".replace("e+0", "e")
+        label = None  # label (if not None) is placed below the element symbol
+        if symbol in exclude_elements:
+            label = "excl."
+        elif symbol in heat_value_element_map:
+            heat_value = heat_value_element_map[symbol]
+            if heat_mode == "percent":
+                label = f"{heat_value:{precision or '.1%'}}"
+            else:
+                if precision is None:
+                    prec = ".1f" if heat_value < 100 else ".0f"
+                    if heat_value > 1e5:
+                        prec = ".2g"
+                label = f"{heat_value:{precision or prec}}".replace("e+0", "e")
 
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
         tile_text = f"<span {style=}>{symbol}</span>"
-        if heat_labels is not None:
+        if label is not None:
             tile_text += f"<br>{label}"
+
         tile_texts[row][col] = tile_text
 
         hover_text = name
 
-        if hover_data is not None:
+        if hover_data is not None and symbol in hover_data:
             hover_text += f"<br>{hover_data[symbol]}"
 
         if hover_props is not None:
@@ -552,12 +501,15 @@ def ptable_heatmap_plotly(
 
         hover_texts[row][col] = hover_text
 
-        color_val = elem_values[symbol]
-        heat_vals[row][col] = color_val + 1e-6
+        # TODO maybe there's a more elegant way to handle excluded elements?
+        if symbol in exclude_elements:
+            continue
 
-    # until https://github.com/plotly/plotly.js/issues/975 is resolved, we need to
-    # insert transparency (rgba0) at start of colorscale as above to not show any colors
-    # on empty tiles of the periodic table
+        color_val = heat_value_element_map[symbol]
+        # until https://github.com/plotly/plotly.js/issues/975 is resolved, we need to
+        # insert transparency (rgba0) at low end of colorscale (+1e-6) to not show any
+        # colors on empty tiles of the periodic table
+        heat_vals[row][col] = color_val + 1e-6
 
     rgba0 = "rgba(0, 0, 0, 0)"
     if colorscale is None:
