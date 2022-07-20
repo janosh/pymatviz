@@ -24,7 +24,7 @@ pip install pymatviz
 
 Check out the Jupyter notebooks under [`examples/`](/examples) to learn how to use `pymatviz`.
 
-## Elements
+## Periodic Table
 
 See [`pymatviz/ptable`](pymatviz/ptable). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. Latter supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
 
