@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,7 +12,12 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 from scipy.stats import gaussian_kde
 
-from pymatviz.utils import NumArray, get_crystal_sys
+from pymatviz.ptable import count_elements
+from pymatviz.utils import NumArray, annotate_bars, get_crystal_sys
+
+
+if TYPE_CHECKING:
+    from pymatviz.ptable import CountMode, ElemValues
 
 
 def residual_hist(
@@ -273,5 +278,69 @@ def spacegroup_hist(
 
         ax.xaxis.set_major_locator(majorLocator)
     plt.xticks(rotation=90)
+
+    return ax
+
+
+def hist_elemental_prevalence(
+    formulas: ElemValues,
+    count_mode: CountMode = "element_composition",
+    log: bool = False,
+    keep_top: int = None,
+    ax: Axes = None,
+    bar_values: Literal["percent", "count", None] = "percent",
+    h_offset: int = 0,
+    v_offset: int = 10,
+    rotation: int = 45,
+    **kwargs: Any,
+) -> Axes:
+    """Plots a histogram of the prevalence of each element in a materials dataset.
+
+    Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
+
+    Args:
+        formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
+        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+            Reduce or normalize compositions before counting. See count_elements() for
+            details. Only used when elem_values is list of composition strings/objects.
+        log (bool, optional): Whether y-axis is log or linear. Defaults to False.
+        keep_top (int | None): Display only the top n elements by prevalence.
+        ax (Axes): matplotlib Axes on which to plot. Defaults to None.
+        bar_values ('percent'|'count'|None): 'percent' (default) annotates bars with the
+            percentage each element makes up in the total element count. 'count'
+            displays count itself. None removes bar labels.
+        h_offset (int): Horizontal offset for bar height labels. Defaults to 0.
+        v_offset (int): Vertical offset for bar height labels. Defaults to 10.
+        rotation (int): Bar label angle. Defaults to 45.
+        **kwargs (int): Keyword arguments passed to pandas.plot.bar().
+
+    Returns:
+        ax: The plot's matplotlib Axes.
+    """
+    if ax is None:
+        ax = plt.gca()
+
+    elem_counts = count_elements(formulas, count_mode)
+    non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
+    if keep_top is not None:
+        non_zero = non_zero.head(keep_top)
+        ax.set_title(f"Top {keep_top} Elements")
+
+    non_zero.plot.bar(width=0.7, edgecolor="black", ax=ax, **kwargs)
+
+    if log:
+        ax.set(yscale="log", ylabel="log(Element Count)")
+    else:
+        ax.set(title="Element Count")
+
+    if bar_values is not None:
+        if bar_values == "percent":
+            sum_elements = non_zero.sum()
+            labels = [f"{el / sum_elements:.1%}" for el in non_zero.values]
+        else:
+            labels = non_zero.astype(int).to_list()
+        annotate_bars(
+            ax, labels=labels, h_offset=h_offset, v_offset=v_offset, rotation=rotation
+        )
 
     return ax

@@ -66,7 +66,7 @@ repos:
     hooks:
       - id: svg-assets
         name: SVG assets
-        entry: Files under assets/* must end in .svg
+        entry: Files under assets/* must end in .(svg|html)
         language: fail
         files: ^assets/.*(?<!\.svg)(?<!\.html)$
 
@@ -88,3 +88,4 @@ repos:
         args: [--py38-plus]
       - id: nbqa-isort
       - id: nbqa-flake8
+        args: [--ignore=E402]

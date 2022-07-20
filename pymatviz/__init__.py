@@ -1,13 +1,11 @@
 from .correlation import marchenko_pastur, marchenko_pastur_pdf
 from .cumulative import add_dropdown, cum_err, cum_res
-from .elements import (
-    count_elements,
+from .histograms import (
     hist_elemental_prevalence,
-    ptable_heatmap,
-    ptable_heatmap_plotly,
-    ptable_heatmap_ratio,
+    residual_hist,
+    spacegroup_hist,
+    true_pred_hist,
 )
-from .histograms import residual_hist, spacegroup_hist, true_pred_hist
 from .parity import (
     density_hexbin,
     density_hexbin_with_hist,
@@ -15,6 +13,12 @@ from .parity import (
     density_scatter_with_hist,
     residual_vs_actual,
     scatter_with_err_bar,
+)
+from .ptable import (
+    count_elements,
+    ptable_heatmap,
+    ptable_heatmap_plotly,
+    ptable_heatmap_ratio,
 )
 from .quantile import qq_gaussian
 from .ranking import err_decay

@@ -24,7 +24,7 @@ def test_add_mae_r2_box():
 
 
 @pytest.mark.parametrize(
-    "input, expected",
+    "spg_num, crystal_sys",
     [
         (1, "triclinic"),
         (15, "monoclinic"),
@@ -35,8 +35,8 @@ def test_add_mae_r2_box():
         (230, "cubic"),
     ],
 )
-def test_get_crystal_sys(input, expected):
-    assert expected == get_crystal_sys(input)
+def test_get_crystal_sys(spg_num, crystal_sys):
+    assert crystal_sys == get_crystal_sys(spg_num)
 
 
 @pytest.mark.parametrize("spg", [-1, 0, 231])

@@ -106,13 +106,13 @@ def test_ptable_heatmap(glass_formulas, glass_elem_counts):
     # custom color map
     ptable_heatmap(glass_formulas, log=True, cmap="summer")
 
-    # heat_labels normalized to total count
-    ptable_heatmap(glass_formulas, heat_labels="fraction")
-    ptable_heatmap(glass_formulas, heat_labels="percent")
+    # heat_mode normalized to total count
+    ptable_heatmap(glass_formulas, heat_mode="fraction")
+    ptable_heatmap(glass_formulas, heat_mode="percent")
 
     # without heatmap values
-    ptable_heatmap(glass_formulas, heat_labels=None)
-    ptable_heatmap(glass_formulas, log=True, heat_labels=None)
+    ptable_heatmap(glass_formulas, heat_mode=None)
+    ptable_heatmap(glass_formulas, log=True, heat_mode=None)
 
     # element properties as heatmap values
     ptable_heatmap(df_ptable.atomic_mass)
@@ -128,7 +128,7 @@ def test_ptable_heatmap(glass_formulas, glass_elem_counts):
     ptable_heatmap(glass_elem_counts)
 
     with pytest.raises(ValueError, match="Combining log color scale and"):
-        ptable_heatmap(glass_formulas, log=True, heat_labels="percent")
+        ptable_heatmap(glass_formulas, log=True, heat_mode="percent")
 
     ptable_heatmap(glass_elem_counts, exclude_elements=["O", "P"])
 
@@ -166,7 +166,7 @@ def test_ptable_heatmap_plotly(glass_formulas):
     )
     ptable_heatmap_plotly(df_ptable.density, precision=".1f")
 
-    ptable_heatmap_plotly(glass_formulas, heat_labels="percent")
+    ptable_heatmap_plotly(glass_formulas, heat_mode="percent")
 
     with pytest.raises(ValueError, match="should be string, list of strings or list"):
         # test that bad colorscale raises ValueError
