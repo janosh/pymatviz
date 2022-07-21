@@ -154,8 +154,12 @@ def test_ptable_heatmap_ratio(
 def test_ptable_heatmap_plotly(glass_formulas):
     fig = ptable_heatmap_plotly(glass_formulas)
     assert isinstance(fig, Figure)
-    assert len(fig.layout.annotations) == 18 * 10  # n_cols * n_rows
-    assert sum(anno.text != "" for anno in fig.layout.annotations) == 118  # n_elements
+    assert (
+        len(fig.layout.annotations) == 18 * 10
+    ), "not all periodic table tiles have annotations"
+    assert (
+        sum(anno.text != "" for anno in fig.layout.annotations) == 118
+    ), "no annotations should be empty"
 
     ptable_heatmap_plotly(
         glass_formulas, hover_props=["atomic_mass", "atomic_number", "density"]
@@ -177,6 +181,25 @@ def test_ptable_heatmap_plotly(glass_formulas):
     # test that unknown builtin colorscale raises ValueError
     with pytest.raises(PlotlyError, match="Colorscale foobar is not a built-in scale"):
         ptable_heatmap_plotly(glass_formulas, colorscale="foobar")
+
+
+@pytest.mark.parametrize("exclude_elements", [(), [], ["O", "P"]])
+@pytest.mark.parametrize("heat_mode", [None, "fraction", "percent"])
+@pytest.mark.parametrize("showscale", [False, True])
+@pytest.mark.parametrize("font_size", [None, 14])
+@pytest.mark.parametrize("font_colors", [None, ("black", "white")])
+def test_ptable_heatmap_plotly_kwarg_combos(
+    glass_formulas, exclude_elements, heat_mode, showscale, font_size, font_colors
+):
+    fig = ptable_heatmap_plotly(
+        glass_formulas,
+        exclude_elements=exclude_elements,
+        heat_mode=heat_mode,
+        showscale=showscale,
+        font_size=font_size,
+        font_colors=font_colors,
+    )
+    assert isinstance(fig, Figure)
 
 
 @pytest.mark.parametrize(
