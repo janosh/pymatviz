@@ -34,6 +34,12 @@ See [`pymatviz/ptable`](pymatviz/ptable). Heat maps of the periodic table can be
 |  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable)  |  [`ptable_heatmap_plotly(compositions)`](pymatviz/ptable)   |
 |          ![ptable-heatmap-plotly-more-hover-data]           |           ![ptable-heatmap-plotly-percent-labels]           |
 
+### Dash app using `ptable_heatmap_plotly()`
+
+See [`examples/mprester_ptable.ipynb`](https://github.com/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb).
+
+<https://user-images.githubusercontent.com/30958850/181644052-b330f0a2-70fc-451c-8230-20d45d3af72f.mp4>
+
 ## Sunburst
 
 See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
