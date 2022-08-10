@@ -26,7 +26,7 @@ Check out the Jupyter notebooks under [`examples/`](/examples) to learn how to u
 
 ## Periodic Table
 
-See [`pymatviz/ptable`](pymatviz/ptable). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. `plotly` supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
+See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. `plotly` supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
 
 | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable) | [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable) |
 | :---------------------------------------------------------: | :---------------------------------------------------------: |
