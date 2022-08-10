@@ -22,7 +22,7 @@ pip install pymatviz
 
 ## Usage
 
-Check out the Jupyter notebooks under [`examples/`](/examples) to learn how to use `pymatviz`.
+Check out the Jupyter notebooks under [`examples/`](examples/) to learn how to use `pymatviz`.
 
 ## Periodic Table
 
@@ -58,9 +58,9 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 ## Structure
 
-See [`pymatviz/struct_viz.py`](pymatviz/struct_viz.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
+See [`pymatviz/structure_viz.py`](pymatviz/structure_viz.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
 
-| [`plot_structure_2d(mp_19017)`](pymatviz/struct_viz.py) | [`plot_structure_2d(mp_12712)`](pymatviz/struct_viz.py) |
+| [`plot_structure_2d(mp_19017)`](pymatviz/structure_viz.py) | [`plot_structure_2d(mp_12712)`](pymatviz/structure_viz.py) |
 | :-----------------------------------------------------: | :-----------------------------------------------------: |
 |      ![struct-2d-mp-19017-Li4Fe3P4CO16-disordered]      |       ![struct-2d-mp-12712-Hf3Zr3Pd8-disordered]        |
 
@@ -73,7 +73,7 @@ See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 | [`spacegroup_hist([65, 134, 225, ...])`](pymatviz/histograms.py) |        [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/histograms.py)        |
 | :--------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
 |                         ![spg-num-hist]                          |                                     ![spg-symbol-hist]                                     |
-|    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/ptable) |
+|    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/ptable.py) |
 |                         ![residual-hist]                         |                                ![hist-elemental-prevalence]                                |
 
 ## Parity Plots
