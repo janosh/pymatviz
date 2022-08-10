@@ -89,3 +89,9 @@ repos:
       - id: nbqa-isort
       - id: nbqa-flake8
         args: [--ignore=E402]
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.6.0
+    hooks:
+      - id: nbstripout
+        args: [--drop-empty-cells, --keep-output]
