@@ -28,10 +28,10 @@ Check out the Jupyter notebooks under [`examples/`](/examples) to learn how to u
 
 See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. `plotly` supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
 
-| [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable) | [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable) |
+| [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable.py) | [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable.py) |
 | :---------------------------------------------------------: | :---------------------------------------------------------: |
 |                      ![ptable-heatmap]                      |                   ![ptable-heatmap-ratio]                   |
-|  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable)  |  [`ptable_heatmap_plotly(compositions)`](pymatviz/ptable)   |
+|  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)  |  [`ptable_heatmap_plotly(compositions)`](pymatviz/ptable.py)   |
 |          ![ptable-heatmap-plotly-more-hover-data]           |           ![ptable-heatmap-plotly-percent-labels]           |
 
 ### Dash app using `ptable_heatmap_plotly()`
