@@ -62,14 +62,6 @@ repos:
         stages: [commit, commit-msg]
         exclude_types: [csv, svg, html, yaml, jupyter]
 
-  - repo: local
-    hooks:
-      - id: svg-assets
-        name: SVG assets
-        entry: Files under assets/* must end in .(svg|html)
-        language: fail
-        files: ^assets/.*(?<!\.svg)(?<!\.html)$
-
   - repo: https://github.com/myint/autoflake
     rev: v1.4
     hooks:
