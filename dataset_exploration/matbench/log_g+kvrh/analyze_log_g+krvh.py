@@ -15,13 +15,12 @@ from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
-import plotly.express as px
-import plotly.io as pio
-from aviary.wren.utils import count_wyks, get_aflow_label_from_spglib
+from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
 from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from tqdm import tqdm
 
+from dataset_exploration.plot_defaults import crystal_sys_order, px
 from pymatviz import ptable_heatmap, spacegroup_hist, spacegroup_sunburst
 from pymatviz.utils import get_crystal_sys
 
@@ -30,8 +29,6 @@ plt.rc("font", size=16)
 plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("figure", dpi=150, titlesize=18)
 plt.rcParams["figure.constrained_layout.use"] = True
-
-pio.templates.default = "plotly_white"
 
 
 # %%
@@ -51,7 +48,7 @@ df_grvh["wyckoff"] = [
         df_grvh.structure, desc="Getting matbench_log_gvrh Wyckoff strings"
     )
 ]
-df_grvh["n_wyckoff"] = df_grvh.wyckoff.map(count_wyks)
+df_grvh["n_wyckoff"] = df_grvh.wyckoff.map(count_wyckoff_positions)
 df_grvh["formula"] = [x.formula for x in df_grvh.structure]
 
 
@@ -148,28 +145,15 @@ fig.show()
 
 
 # %%
-plot_labels = {
-    "crystal_sys": "Crystal system",
-    "n": "Refractive index n",
-    "spg_num": "Space group",
-    "n_wyckoff": "Number of Wyckoff positions",
-}
-cry_sys_order = (
-    "cubic hexagonal trigonal tetragonal orthorhombic monoclinic triclinic".split()
-)
-
-
-# %%
 fig = px.violin(
     df_grvh,
     color="crystal_sys",
     x="crystal_sys",
     y="n_wyckoff",
-    labels=plot_labels,
     points="all",
     hover_data=["spg_num"],
     hover_name="formula",
-    category_orders={"crystal_sys": cry_sys_order},
+    category_orders={"crystal_sys": crystal_sys_order},
     log_y=True,
 ).update_traces(jitter=1)
 
@@ -181,7 +165,7 @@ def rgb_color(val: float, max: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_grvh.groupby("crystal_sys"), key=lambda x: cry_sys_order.index(x[0])
+    df_grvh.groupby("crystal_sys"), key=lambda x: crystal_sys_order.index(x[0])
 ):
     n_wyckoff_top = df_group.n_wyckoff.mean()
     clr = rgb_color(n_wyckoff_top, 14)

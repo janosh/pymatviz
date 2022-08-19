@@ -1,18 +1,13 @@
 # %%
 import pandas as pd
-import plotly.express as px
-import plotly.io as pio
 
+from dataset_exploration.plot_defaults import crystal_sys_order, px
 from pymatviz import ptable_heatmap_plotly, spacegroup_sunburst
 from pymatviz.utils import get_crystal_sys
 
 
 __author__ = "Janosh Riebesell"
 __date__ = "2022-08-18"
-
-
-# https://github.com/plotly/Kaleido/issues/122#issuecomment-994906924
-pio.kaleido.scope.mathjax = None
 
 
 # %% download wbm-steps-summary.csv (23.31 MB)
@@ -47,17 +42,6 @@ for idx, df in df_wbm.groupby("batch_idx"):
 
 
 # %%
-plot_labels = {
-    "crystal_sys": "Crystal system",
-    "spg_num": "Space group",
-    "n_wyckoff": "Number of Wyckoff positions",
-    "n_sites": "Number of unit cell sites",
-    "energy_per_atom": "Energy (eV/atom)",
-}
-cry_sys_order = (
-    "cubic hexagonal trigonal tetragonal orthorhombic monoclinic triclinic".split()
-)
-
 df_wbm_non_metals = df_wbm.query("bandgap_pbe > 0")
 
 fig = px.violin(
@@ -65,20 +49,22 @@ fig = px.violin(
     color="crystal_sys",
     x="crystal_sys",
     y="energy_per_atom",
-    labels=plot_labels,
     hover_name="formula",
 ).update_traces(jitter=1)
 
 x_ticks = {}  # custom x axis tick labels
 for cry_sys, df_group in sorted(
-    df_wbm_non_metals.groupby("crystal_sys"), key=lambda x: cry_sys_order.index(x[0])
+    df_wbm_non_metals.groupby("crystal_sys"),
+    key=lambda x: crystal_sys_order.index(x[0]),
 ):
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
         f"{len(df_group):,} = {len(df_group)/len(df_wbm_non_metals):.0%}<br>"
     )
 
-xaxis = dict(tickvals=list(range(len(cry_sys_order))), ticktext=list(x_ticks.values()))
+xaxis = dict(
+    tickvals=list(range(len(crystal_sys_order))), ticktext=list(x_ticks.values())
+)
 fig.update_layout(
     title="<b>Energy distribution by crystal system</b>",
     title_x=0.5,

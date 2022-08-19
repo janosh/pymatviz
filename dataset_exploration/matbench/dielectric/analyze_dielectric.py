@@ -15,12 +15,11 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 
 # %%
 import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.io as pio
-from aviary.wren.utils import count_wyks, get_aflow_label_from_spglib
+from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
+from dataset_exploration.plot_defaults import crystal_sys_order, px
 from pymatviz import (
     ptable_heatmap,
     ptable_heatmap_plotly,
@@ -29,8 +28,6 @@ from pymatviz import (
 )
 from pymatviz.utils import get_crystal_sys
 
-
-pio.templates.default = "plotly_white"
 
 plt.rc("font", size=16)
 plt.rc("savefig", bbox="tight", dpi=200)
@@ -50,7 +47,7 @@ df_diel["wyckoff"] = [
     get_aflow_label_from_spglib(struct)
     for struct in tqdm(df_diel.structure, desc="Getting Wyckoff strings")
 ]
-df_diel["n_wyckoff"] = df_diel.wyckoff.map(count_wyks)
+df_diel["n_wyckoff"] = df_diel.wyckoff.map(count_wyckoff_positions)
 
 df_diel["crystal_sys"] = df_diel.spg_num.map(get_crystal_sys)
 
@@ -85,24 +82,11 @@ fig.show()
 
 
 # %%
-plot_labels = {
-    "crystal_sys": "Crystal system",
-    "n": "Refractive index n",
-    "spg_num": "Space group",
-    "n_wyckoff": "Number of Wyckoff positions",
-}
-cry_sys_order = (
-    "cubic hexagonal trigonal tetragonal orthorhombic monoclinic triclinic".split()
-)
-
-
-# %%
 fig = px.violin(
     df_diel,
     color="crystal_sys",
     x="crystal_sys",
     y="n",
-    labels=plot_labels,
     points="all",
     hover_data=["spg_num"],
     hover_name="formula",
@@ -110,14 +94,16 @@ fig = px.violin(
 
 x_ticks = {}  # custom x axis tick labels
 for cry_sys, df_group in sorted(
-    df_diel.groupby("crystal_sys"), key=lambda x: cry_sys_order.index(x[0])
+    df_diel.groupby("crystal_sys"), key=lambda x: crystal_sys_order.index(x[0])
 ):
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
         f"{len(df_group):,} = {len(df_group)/len(df_diel):.0%}<br>"
     )
 
-xaxis = dict(tickvals=list(range(len(cry_sys_order))), ticktext=list(x_ticks.values()))
+xaxis = dict(
+    tickvals=list(range(len(crystal_sys_order))), ticktext=list(x_ticks.values())
+)
 fig.update_layout(
     title="<b>Refractive index distribution by crystal system</b>",
     title_x=0.5,
@@ -136,11 +122,10 @@ fig = px.violin(
     color="crystal_sys",
     x="crystal_sys",
     y="n_wyckoff",
-    labels=plot_labels,
     points="all",
     hover_data=["spg_num"],
     hover_name="formula",
-    category_orders={"crystal_sys": cry_sys_order},
+    category_orders={"crystal_sys": crystal_sys_order},
     log_y=True,
 ).update_traces(jitter=1)
 
@@ -152,7 +137,7 @@ def rgb_color(val: float, max: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_diel.groupby("crystal_sys"), key=lambda x: cry_sys_order.index(x[0])
+    df_diel.groupby("crystal_sys"), key=lambda x: crystal_sys_order.index(x[0])
 ):
     n_wyckoff = df_group.n_wyckoff.mean()
     clr = rgb_color(n_wyckoff, 14)
@@ -182,7 +167,6 @@ fig = px.scatter(
     x="volume",
     y="n",
     color="crystal_sys",
-    labels=plot_labels,
     size="n",
     hover_data=["spg_num"],
     hover_name="formula",

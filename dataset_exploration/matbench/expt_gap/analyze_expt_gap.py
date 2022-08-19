@@ -24,15 +24,12 @@ https://ml.materialsproject.org/projects/matbench_expt_gap
 
 # %%
 import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.io as pio
 from matminer.datasets import load_dataset
 from pymatgen.core import Composition
 
+from dataset_exploration.plot_defaults import px
 from pymatviz import ptable_heatmap
 
-
-pio.templates.default = "plotly_white"
 
 plt.rc("font", size=16)
 plt.rc("savefig", bbox="tight", dpi=200)
@@ -72,17 +69,11 @@ plt.savefig("expt-gap-ptable-heatmap.pdf")
 
 
 # %%
-plot_labels = {
-    "n_atoms": "Atom Count",
-    "n_elems": "Element Count",
-    "gap expt": "Experimental band gap (eV)",
-}
 fig = px.scatter(
     df_gap,
     x="n_atoms",
     y="gap expt",
     color="n_elems",
-    labels=plot_labels,
     size="mean_mass",
     hover_name="composition",
     log_x=True,
