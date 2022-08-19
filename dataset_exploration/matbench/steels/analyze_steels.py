@@ -9,16 +9,10 @@ https://ml.materialsproject.org/projects/matbench_steels
 
 
 # %%
-import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
+from dataset_exploration.plot_defaults import plt
 from pymatviz import ptable_heatmap
-
-
-plt.rc("font", size=16)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=150, titlesize=18)
-plt.rcParams["figure.constrained_layout.use"] = True
 
 
 # %%

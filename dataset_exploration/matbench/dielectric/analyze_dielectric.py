@@ -1,3 +1,18 @@
+# %%
+from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
+from matminer.datasets import load_dataset
+from tqdm import tqdm
+
+from dataset_exploration.plot_defaults import crystal_sys_order, plt, px
+from pymatviz import (
+    ptable_heatmap,
+    ptable_heatmap_plotly,
+    spacegroup_hist,
+    spacegroup_sunburst,
+)
+from pymatviz.utils import get_crystal_sys
+
+
 """matbench_dielectric dataset
 
 Input: Pymatgen Structure of the material.
@@ -11,28 +26,6 @@ those containing noble gases. Retrieved April 2, 2019.
 
 https://ml.materialsproject.org/projects/matbench_dielectric
 """
-
-
-# %%
-import matplotlib.pyplot as plt
-from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
-from matminer.datasets import load_dataset
-from tqdm import tqdm
-
-from dataset_exploration.plot_defaults import crystal_sys_order, px
-from pymatviz import (
-    ptable_heatmap,
-    ptable_heatmap_plotly,
-    spacegroup_hist,
-    spacegroup_sunburst,
-)
-from pymatviz.utils import get_crystal_sys
-
-
-plt.rc("font", size=16)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=150, titlesize=18)
-plt.rcParams["figure.constrained_layout.use"] = True
 
 
 # %%

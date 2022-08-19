@@ -1,3 +1,11 @@
+# %%
+from matminer.datasets import load_dataset
+from pymatgen.core import Composition
+
+from dataset_exploration.plot_defaults import plt, px
+from pymatviz import ptable_heatmap
+
+
 """Stats for the matbench_expt_gap dataset.
 
 Input: Chemical formula.
@@ -20,21 +28,6 @@ e_above_hull.
 
 https://ml.materialsproject.org/projects/matbench_expt_gap
 """
-
-
-# %%
-import matplotlib.pyplot as plt
-from matminer.datasets import load_dataset
-from pymatgen.core import Composition
-
-from dataset_exploration.plot_defaults import px
-from pymatviz import ptable_heatmap
-
-
-plt.rc("font", size=16)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=150, titlesize=18)
-plt.rcParams["figure.constrained_layout.use"] = True
 
 
 # %%

@@ -1,3 +1,11 @@
+# %%
+from matminer.datasets import load_dataset
+from tqdm import tqdm
+
+from dataset_exploration.plot_defaults import plt
+from pymatviz import ptable_heatmap, spacegroup_hist, spacegroup_sunburst
+
+
 """Stats for the matbench_jdft2d dataset.
 
 Input: Pymatgen Structure of the material.
@@ -10,20 +18,6 @@ Matbench v0.1 dataset for predicting exfoliation energies from crystal structure
 
 https://ml.materialsproject.org/projects/matbench_jdft2d
 """
-
-
-# %%
-import matplotlib.pyplot as plt
-from matminer.datasets import load_dataset
-from tqdm import tqdm
-
-from pymatviz import ptable_heatmap, spacegroup_hist, spacegroup_sunburst
-
-
-plt.rc("font", size=16)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=150, titlesize=18)
-plt.rcParams["figure.constrained_layout.use"] = True
 
 
 # %%

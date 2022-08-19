@@ -1,3 +1,10 @@
+# %%
+from matminer.datasets import load_dataset
+
+from dataset_exploration.plot_defaults import plt
+from pymatviz import ptable_heatmap
+
+
 """Stats for the matbench_mp_e_form dataset.
 
 Input: Pymatgen Structure of the material.
@@ -10,19 +17,6 @@ Retrieved April 2, 2019.
 
 https://ml.materialsproject.org/projects/matbench_mp_e_form
 """
-
-
-# %%
-import matplotlib.pyplot as plt
-from matminer.datasets import load_dataset
-
-from pymatviz import ptable_heatmap
-
-
-plt.rc("font", size=16)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=150, titlesize=18)
-plt.rcParams["figure.constrained_layout.use"] = True
 
 
 # %%

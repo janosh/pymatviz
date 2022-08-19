@@ -17,18 +17,12 @@ campaigns by chemical system.
 # %%
 import os
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import requests
 from pymatgen.symmetry.groups import SpaceGroup
 
+from dataset_exploration.plot_defaults import plt
 from pymatviz import annotate_bars, count_elements, ptable_heatmap, spacegroup_sunburst
-
-
-plt.rc("font", size=16)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=150, titlesize=18)
-plt.rcParams["figure.constrained_layout.use"] = True
 
 
 # %% Download data (if needed)

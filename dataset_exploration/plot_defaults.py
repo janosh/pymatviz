@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import plotly.io as pio
 
 from dataset_exploration.plot_defaults import px
@@ -23,3 +24,9 @@ pio.kaleido.scope.mathjax = None
 crystal_sys_order = (
     "cubic hexagonal trigonal tetragonal orthorhombic monoclinic triclinic".split()
 )
+
+
+plt.rc("font", size=16)
+plt.rc("savefig", bbox="tight", dpi=200)
+plt.rc("figure", dpi=150, titlesize=18)
+plt.rcParams["figure.constrained_layout.use"] = True
