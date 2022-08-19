@@ -29,7 +29,7 @@ from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
-from pymatviz.utils import ROOT, df_ptable, save_and_compress_svg
+from pymatviz.utils import df_ptable, save_and_compress_svg
 
 
 # %%
@@ -42,8 +42,18 @@ plt.rcParams["figure.constrained_layout.use"] = True
 
 # random classification data
 np.random.seed(42)
-y_binary = np.random.choice([0, 1], 100)
-y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
+rand_clf_size = 100
+y_binary = np.random.choice([0, 1], size=rand_clf_size)
+y_proba = np.clip(
+    y_binary - 0.1 * np.random.normal(scale=5, size=rand_clf_size), 0.2, 0.9
+)
+
+
+# random regression data
+rand_regression_size = 500
+y_true = np.random.normal(5, 4, rand_regression_size)
+y_pred = y_true + np.random.normal(0, 1, rand_regression_size)
+y_std = (y_true - y_pred) * 10 * np.random.normal(0, 0.1, rand_regression_size)
 
 
 df_steels = load_dataset("matbench_steels")
@@ -53,16 +63,6 @@ df_phonons = load_dataset("matbench_phonons")
 df_phonons[["spg_symbol", "spg_num"]] = [
     struct.get_space_group_info() for struct in df_phonons.structure
 ]
-
-
-# na_filter=False so sodium amide (NaN) is not parsed as 'not a number'
-df_roost_ens = pd.read_csv(f"{ROOT}/data/ex-ensemble-roost.csv", na_filter=False)
-
-y_true = df_roost_ens.target
-y_pred = df_roost_ens.filter(like="pred").mean(1)
-y_var_epi = df_roost_ens.filter(like="pred").var(1)
-y_var_ale = (df_roost_ens.filter(like="ale") ** 2).mean(1)
-y_std = np.sqrt(y_var_ale + y_var_epi)
 
 
 # %% Parity Plots

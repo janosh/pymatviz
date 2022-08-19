@@ -95,8 +95,8 @@ def with_hist(
 
 def annotate_bars(
     ax: Axes = None,
-    v_offset: int = 10,
-    h_offset: int = 0,
+    v_offset: int | float = 10,
+    h_offset: int | float = 0,
     labels: Sequence[str | int | float] = None,
     fontsize: int = 14,
     **kwargs: Any,
