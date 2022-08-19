@@ -14,7 +14,6 @@ Materials Discovery (CAMD)
 
 > MatBench is an [ImageNet](http://www.image-net.org) for materials science; a set of 13 supervised, pre-cleaned, ready-to-use ML tasks for benchmarking and fair comparison. The tasks span across the domain of inorganic materials science applications.
 
-The datasets in this repo are available at <https://hackingmaterials.lbl.gov/matbench/#all-matbench-datasets>.
 To browse these datasets online, go to <https://ml.materialsproject.org> and log in.
 Datasets were originally published in <https://nature.com/articles/s41524-020-00406-3>.
 
