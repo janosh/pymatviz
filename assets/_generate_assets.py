@@ -23,12 +23,11 @@ from pymatviz.parity import (
     scatter_with_err_bar,
 )
 from pymatviz.ptable import ptable_heatmap, ptable_heatmap_plotly, ptable_heatmap_ratio
-from pymatviz.quantile import qq_gaussian
-from pymatviz.ranking import err_decay
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
+from pymatviz.uncertainty import err_decay, qq_gaussian
 from pymatviz.utils import df_ptable, save_and_compress_svg
 
 
@@ -135,13 +134,22 @@ fig.show()
 save_and_compress_svg("ptable-heatmap-plotly-percent-labels", fig)
 
 
-# %% Quantile/Calibration Plots
+# %% Uncertainty Plots
 qq_gaussian(y_pred, y_true, y_std)
 save_and_compress_svg("normal-prob-plot")
 
 
 qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_std})
 save_and_compress_svg("normal-prob-plot-multiple")
+
+
+err_decay(y_true, y_pred, y_std)
+save_and_compress_svg("err-decay")
+
+eps = 0.2 * np.random.randn(*y_std.shape)
+
+err_decay(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
+save_and_compress_svg("err-decay-multiple")
 
 
 # %% Cumulative Plots
@@ -151,16 +159,6 @@ save_and_compress_svg("cumulative-error")
 
 cum_res(y_pred, y_true)
 save_and_compress_svg("cumulative-residual")
-
-
-# %% Ranking Plots
-err_decay(y_true, y_pred, y_std)
-save_and_compress_svg("err-decay")
-
-eps = 0.2 * np.random.randn(*y_std.shape)
-
-err_decay(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
-save_and_compress_svg("err-decay-multiple")
 
 
 # %% Relevance Plots

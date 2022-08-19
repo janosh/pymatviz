@@ -88,21 +88,15 @@ See [`pymatviz/parity.py`](pymatviz/parity.py).
 | [`scatter_with_err_bar(xs, ys, yerr, ...)`](pymatviz/parity.py) | [`residual_vs_actual(y_true, y_pred, ...)`](pymatviz/parity.py) |
 |                     ![scatter-with-err-bar]                     |                      ![residual-vs-actual]                      |
 
-## Uncertainty Calibration
+## Uncertainty Calibration & Estimation
 
-See [`pymatviz/quantile.py`](pymatviz/quantile.py).
+See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
-| [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/quantile.py) | [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/quantile.py) |
-| :----------------------------------------------------------: | :----------------------------------------------------------------: |
-|                     ![normal-prob-plot]                      |                    ![normal-prob-plot-multiple]                    |
-
-## Ranking
-
-See [`pymatviz/ranking.py`](pymatviz/ranking.py).
-
-| [`err_decay(y_true, y_pred, y_std)`](pymatviz/ranking.py) | [`err_decay(y_true, y_pred, y_std: dict)`](pymatviz/ranking.py) |
-| :-------------------------------------------------------: | :-------------------------------------------------------------: |
-|                       ![err-decay]                        |                      ![err-decay-multiple]                      |
+| [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py) | [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py) |
+| :-------------------------------------------------------------: | :-------------------------------------------------------------------: |
+|                       ![normal-prob-plot]                       |                     ![normal-prob-plot-multiple]                      |
+|  [`err_decay(y_true, y_pred, y_std)`](pymatviz/uncertainty.py)  |  [`err_decay(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py)  |
+|                          ![err-decay]                           |                         ![err-decay-multiple]                         |
 
 ## Cumulative Error and Residual
 
