@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
+import plotly.express as px
 import plotly.io as pio
-
-from dataset_exploration.plot_defaults import px
 
 
 px.defaults.labels = {

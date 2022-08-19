@@ -56,8 +56,8 @@ plt.savefig("dielectric-ptable-heatmap.pdf")
 
 # %%
 fig = ptable_heatmap_plotly(df_diel.formula)
-title = "Elements in Matbench Dielectric"
-fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
+title = "<b>Elements in Matbench Dielectric</b>"
+fig.update_layout(title=dict(text=title, x=0.4, y=0.94, font_size=20))
 # fig.write_image("dielectric-ptable-heatmap-plotly.pdf")
 
 
@@ -165,9 +165,9 @@ fig = px.scatter(
     hover_name="formula",
     range_x=[0, 1500],
 )
-title = "Matbench Dielectric: Refractive Index vs. Volume"
+title = "<b>Matbench Dielectric: Refractive Index vs. Volume</b>"
 fig.update_layout(
-    title=dict(text=f"<b>{title}</b>", x=0.5, font_size=20),
+    title=dict(text=title, x=0.5, font_size=20),
     legend=dict(x=1, y=1, xanchor="right"),
 )
 # slightly increase scatter point size (lower sizeref means larger)
