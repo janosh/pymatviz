@@ -1,6 +1,6 @@
-# mat-EDA
+# Exploratory data analysis of interesting material property datasets
 
-Most of the datasets investigated in this repo are from the [`matbench`](https://matbench.materialsproject.org) collection. Others include:
+The majority of datasets explored in this directory are from the [`matbench`](https://matbench.materialsproject.org) collection. Others include:
 
 - [`ricci_carrier_transport`](https://hackingmaterials.lbl.gov/matminer/dataset_summary): Electronic Transport Properties by F. Ricci et al.](<https://contribs.materialsproject.org/projects/carrier_transport>) from MPContribs which contains 48,000 DFT Seebeck coefficients ([Paper](https://nature.com/articles/sdata201785)). [[Download link](https://contribs.materialsproject.org/projects/carrier_transport.json.gz) (from [here](https://git.io/JOMwY))].
 - [`boltztrap_mp`](https://hackingmaterials.lbl.gov/matminer/dataset_summary) which contains ~9000 effective mass and thermoelectric properties calculated by the BoltzTraP software package.
