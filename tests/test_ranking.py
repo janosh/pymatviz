@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from matplotlib.pyplot import Axes
+from matplotlib.axes import Axes
 
 from pymatviz import err_decay
 from pymatviz.utils import NumArray
