@@ -27,5 +27,5 @@ crystal_sys_order = (
 
 plt.rc("font", size=16)
 plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=150, titlesize=18)
+plt.rc("figure", dpi=200, titlesize=18)
 plt.rcParams["figure.constrained_layout.use"] = True

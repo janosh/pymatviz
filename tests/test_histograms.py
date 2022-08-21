@@ -11,8 +11,10 @@ from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
 from .conftest import y_pred, y_true
 
 
-def test_residual_hist():
-    residual_hist(y_true, y_pred)
+@pytest.mark.parametrize("bins", [None, 1, 100])
+@pytest.mark.parametrize("xlabel", [None, "foo"])
+def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
+    residual_hist(y_true, y_pred, bins=bins, xlabel=xlabel)
 
 
 def test_true_pred_hist():

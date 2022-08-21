@@ -19,7 +19,7 @@ from sklearn.metrics import r2_score
 
 ROOT = dirname(dirname(abspath(__file__)))
 
-NumArray = NDArray[Union[np.float64, np.int_]]
+Array = NDArray[Union[np.float64, np.int_]]
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
     "symbol"

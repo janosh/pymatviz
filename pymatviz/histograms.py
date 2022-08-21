@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING, Any, Literal, Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats
 from matplotlib import transforms
 from matplotlib.axes import Axes
 from matplotlib.ticker import FixedLocator
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
-from scipy.stats import gaussian_kde
 
 from pymatviz.ptable import count_elements
-from pymatviz.utils import NumArray, annotate_bars, get_crystal_sys
+from pymatviz.utils import Array, annotate_bars, get_crystal_sys
 
 
 if TYPE_CHECKING:
@@ -21,10 +21,9 @@ if TYPE_CHECKING:
 
 
 def residual_hist(
-    y_true: NumArray,
-    y_pred: NumArray,
+    y_true: Array,
+    y_pred: Array,
     ax: Axes = None,
-    xlabel: str = None,
     **kwargs: Any,
 ) -> Axes:
     """Plot the residual distribution overlaid with a Gaussian kernel
@@ -36,7 +35,7 @@ def residual_hist(
         y_true (array): ground truth targets
         y_pred (array): model predictions
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        xlabel (str, optional): x-axis label. Defaults to None.
+        **kwargs: Additional keyword arguments to pass to matplotlib.Axes.
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -45,30 +44,33 @@ def residual_hist(
         ax = plt.gca()
 
     y_res = y_pred - y_true
-    plt.hist(y_res, bins=35, density=True, edgecolor="black", **kwargs)
+    xlabel = kwargs.pop("xlabel", r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)")
+
+    ax.hist(
+        y_res, bins=kwargs.pop("bins", 50), density=True, edgecolor="black", **kwargs
+    )
 
     # Gaussian kernel density estimation: evaluates the Gaussian
     # probability density estimated based on the points in y_res
-    kde = gaussian_kde(y_res)
+    kde = scipy.stats.gaussian_kde(y_res)
     x_range = np.linspace(min(y_res), max(y_res), 100)
 
     label = "Gaussian kernel density estimate"
-    plt.plot(x_range, kde(x_range), lw=3, color="red", label=label)
+    ax.plot(x_range, kde(x_range), linewidth=3, color="red", label=label)
 
-    plt.xlabel(xlabel or r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)")
-    plt.legend(loc=2, framealpha=0.5, handlelength=1)
+    ax.set(xlabel=xlabel)
+    ax.legend(loc=2, framealpha=0.5, handlelength=1)
 
     return ax
 
 
 def true_pred_hist(
-    y_true: NumArray,
-    y_pred: NumArray,
-    y_std: NumArray,
+    y_true: Array,
+    y_pred: Array,
+    y_std: Array,
     ax: Axes = None,
     cmap: str = "hot",
     bins: int = 50,
-    log: bool = True,
     truth_color: str = "blue",
     **kwargs: Any,
 ) -> Axes:
@@ -83,7 +85,6 @@ def true_pred_hist(
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         cmap (str, optional): string identifier of a plt colormap. Defaults to 'hot'.
         bins (int, optional): Histogram resolution. Defaults to 50.
-        log (bool, optional): Whether to log-scale the y-axis. Defaults to True.
         truth_color (str, optional): Face color to use for y_true bars.
             Defaults to 'blue'.
 
@@ -117,8 +118,6 @@ def true_pred_hist(
 
         rect.set_color(color_map(color_value))
 
-    if log:
-        plt.yscale("log")
     ax.legend(frameon=False)
 
     norm = plt.cm.colors.Normalize(vmax=y_std.max(), vmin=y_std.min())
