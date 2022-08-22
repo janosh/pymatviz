@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
-from pymatviz.utils import NumArray
+from pymatviz.utils import Array
 
 
 def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
@@ -36,7 +36,7 @@ def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
 
 
 def marchenko_pastur(
-    matrix: NumArray,
+    matrix: Array,
     gamma: float,
     sigma: float = 1,
     filter_high_evals: bool = False,
