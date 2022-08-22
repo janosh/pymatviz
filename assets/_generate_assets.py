@@ -35,7 +35,7 @@ from pymatviz.utils import df_ptable, save_and_compress_svg
 plt.rc("font", size=14)
 plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("axes", titlesize=16, titleweight="bold")
-plt.rc("figure", titlesize=20, titleweight="bold")
+plt.rc("figure", dpi=200, titlesize=20, titleweight="bold")
 plt.rcParams["figure.constrained_layout.use"] = True
 
 

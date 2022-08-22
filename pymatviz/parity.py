@@ -9,12 +9,12 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from scipy.interpolate import interpn
 
-from pymatviz.utils import NumArray, add_mae_r2_box, with_hist
+from pymatviz.utils import Array, add_mae_r2_box, with_hist
 
 
 def hist_density(
-    xs: NumArray, ys: NumArray, sort: bool = True, bins: int = 100
-) -> tuple[NumArray, NumArray, NumArray]:
+    xs: Array, ys: Array, sort: bool = True, bins: int = 100
+) -> tuple[Array, Array, Array]:
     """Return an approximate density of 2d points.
 
     Args:
@@ -47,8 +47,8 @@ def hist_density(
 
 
 def density_scatter(
-    xs: NumArray,
-    ys: NumArray,
+    xs: Array,
+    ys: Array,
     ax: Axes = None,
     color_map: str = "Blues",
     sort: bool = True,
@@ -78,6 +78,7 @@ def density_scatter(
             Defaults to True.
         stats (bool, optional): Whether to display a text box with MAE and R^2.
             Defaults to True.
+        **kwargs: Additional keyword arguments to pass to ax.scatter().
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -105,10 +106,10 @@ def density_scatter(
 
 
 def scatter_with_err_bar(
-    xs: NumArray,
-    ys: NumArray,
-    xerr: NumArray = None,
-    yerr: NumArray = None,
+    xs: Array,
+    ys: Array,
+    xerr: Array = None,
+    yerr: Array = None,
     ax: Axes = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
@@ -149,10 +150,10 @@ def scatter_with_err_bar(
 
 
 def density_hexbin(
-    xs: NumArray,
-    yx: NumArray,
+    xs: Array,
+    yx: Array,
     ax: Axes = None,
-    weights: NumArray = None,
+    weights: Array = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
     **kwargs: Any,
@@ -194,8 +195,8 @@ def density_hexbin(
 
 
 def density_scatter_with_hist(
-    xs: NumArray,
-    ys: NumArray,
+    xs: Array,
+    ys: Array,
     cell: GridSpec = None,
     bins: int = 100,
     **kwargs: Any,
@@ -210,8 +211,8 @@ def density_scatter_with_hist(
 
 
 def density_hexbin_with_hist(
-    xs: NumArray,
-    ys: NumArray,
+    xs: Array,
+    ys: Array,
     cell: GridSpec = None,
     bins: int = 100,
     **kwargs: Any,
@@ -225,14 +226,25 @@ def density_hexbin_with_hist(
     return ax
 
 
-def residual_vs_actual(y_true: NumArray, y_pred: NumArray, ax: Axes = None) -> Axes:
-    """Plot ground truth targets on the x-axis against residuals
+def residual_vs_actual(
+    y_true: Array,
+    y_pred: Array,
+    ax: Axes = None,
+    xlabel: str = r"Actual value",
+    ylabel: str = r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)",
+    **kwargs: Any,
+) -> Axes:
+    r"""Plot ground truth targets on the x-axis against residuals
     (y_err = y_true - y_pred) on the y-axis.
 
     Args:
         y_true (array): Ground truth values
         y_pred (array): Model predictions
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+        xlabel (str, optional): x-axis label. Defaults to "Actual value".
+        ylabel (str, optional): y-axis label. Defaults to
+            'Residual ($y_\mathrm{test} - y_\mathrm{pred}$)'.
+        **kwargs: Additional keyword arguments passed to plt.plot()
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -242,13 +254,12 @@ def residual_vs_actual(y_true: NumArray, y_pred: NumArray, ax: Axes = None) -> A
 
     y_err = y_true - y_pred
 
-    plt.plot(y_true, y_err, "o", alpha=0.5, label=None, mew=1.2, ms=5.2)
-    plt.axline(
+    ax.plot(y_true, y_err, "o", alpha=0.5, label=None, mew=1.2, ms=5.2, **kwargs)
+    ax.axline(
         [1, 0], [2, 0], linestyle="dashed", color="black", alpha=0.5, label="ideal"
     )
 
-    plt.ylabel(r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)")
-    plt.xlabel("Actual value")
-    plt.legend(loc="lower right")
+    ax.set(xlabel=xlabel, ylabel=ylabel)
+    ax.legend(loc="lower right")
 
     return ax
