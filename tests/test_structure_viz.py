@@ -27,9 +27,10 @@ disordered_struct: Structure = SubstitutionTransformation(
 @pytest.mark.parametrize("radii", [None, 0.5])
 @pytest.mark.parametrize("rotation", ["0x,0y,0z", "10x,-10y,0z"])
 @pytest.mark.parametrize("labels", [True, False, {"P": "Phosphor"}])
-# add True to [False, VoronoiNN] later to test CrystalNN which currently errors on
+# show_bonds=True|VoronoiNN used to raise AttributeError on
 # disordered structures https://github.com/materialsproject/pymatgen/issues/2070
-@pytest.mark.parametrize("show_bonds", [False, VoronoiNN])
+# which we work around by only considering majority species on each site
+@pytest.mark.parametrize("show_bonds", [False, True, VoronoiNN])
 def test_plot_structure_2d(tmp_path, radii, rotation, labels, show_bonds):
     # set explicit size to avoid ImageComparisonFailure in CI: sizes do not match
     # expected (700, 1350, 3), actual (480, 640, 3)

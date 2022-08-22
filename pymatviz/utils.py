@@ -19,7 +19,7 @@ from sklearn.metrics import r2_score
 
 ROOT = dirname(dirname(abspath(__file__)))
 
-NumArray = NDArray[Union[np.float64, np.int_]]
+Array = NDArray[Union[np.float64, np.int_]]
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
     "symbol"
@@ -138,7 +138,7 @@ def annotate_bars(
         ax.annotate(txt, (x_pos, y_pos), ha="center", fontsize=fontsize, **kwargs)
 
     # ensure enough vertical space to display label above highest bar
-    ax.set(ylim=(None, y_max * 1.1))
+    ax.set(ylim=(None, y_max * 1.2))
 
 
 def add_mae_r2_box(
@@ -165,6 +165,8 @@ def add_mae_r2_box(
         prefix (str, optional): Title or other string to prepend to metrics.
             Defaults to "".
         suffix (str, optional): Text to append after metrics. Defaults to "".
+        **kwargs: Additional arguments (rotation, arrowprops, etc.) are passed to
+            matplotlib.offsetbox.AnchoredText.
 
     Returns:
         AnchoredText: Instance containing the metrics.

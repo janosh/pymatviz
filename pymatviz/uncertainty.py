@@ -5,13 +5,13 @@ import numpy as np
 from matplotlib.axes import Axes
 from scipy.stats import norm
 
-from pymatviz.utils import NumArray
+from pymatviz.utils import Array
 
 
 def qq_gaussian(
-    y_true: NumArray,
-    y_pred: NumArray,
-    y_std: NumArray | dict[str, NumArray],
+    y_true: Array,
+    y_pred: Array,
+    y_std: Array | dict[str, Array],
     ax: Axes = None,
 ) -> Axes:
     """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)
@@ -101,8 +101,8 @@ def qq_gaussian(
 
 
 def get_err_decay(
-    y_true: NumArray, y_pred: NumArray, n_rand: int = 100
-) -> tuple[NumArray, NumArray]:
+    y_true: Array, y_pred: Array, n_rand: int = 100
+) -> tuple[Array, Array]:
     """Calculate the model's error curve as samples are excluded from the calculation
     based on their absolute error.
 
@@ -136,7 +136,7 @@ def get_err_decay(
     return decay_by_err, rand.std(0)
 
 
-def get_std_decay(y_true: NumArray, y_pred: NumArray, y_std: NumArray) -> NumArray:
+def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
     """Calculate the drop in model error as samples are excluded from the calculation
     based on the model's uncertainty.
 
@@ -175,28 +175,33 @@ def get_std_decay(y_true: NumArray, y_pred: NumArray, y_std: NumArray) -> NumArr
 
 
 def err_decay(
-    y_true: NumArray,
-    y_pred: NumArray,
-    y_stds: NumArray | dict[str, NumArray],
+    y_true: Array,
+    y_pred: Array,
+    y_stds: Array | dict[str, Array],
     n_rand: int = 100,
     percentiles: bool = True,
     ax: Axes = None,
 ) -> Axes:
     """Plot for assessing the quality of uncertainty estimates. If a model's
-    uncertainty is well calibrated, i.e. strongly correlated with its error,
-    removing the most uncertain predictions should make the mean error decay
-    similarly to how it decays when removing the predictions of largest error.
+    uncertainty is well calibrated, i.e. strongly correlated with its error, removing
+    the most uncertain predictions should make the mean error decay similarly to how it
+    decays when removing the predictions of largest error.
 
     Args:
         y_true (array): Ground truth regression targets.
-        y_pred (array): Model predictions.
-        y_stds (array | dict[str, NumArray]): Model uncertainties. Can be a single or
+        y_pred (array): Model
+        predictions. y_stds (array | dict[str, NumArray]): Model uncertainties. Can be a
+        single or
             multiple types (e.g. aleatoric/epistemic/total uncertainty) in dict form.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.
             of error decay by random ordering. Defaults to 100.
         percentiles (bool, optional): Whether the x-axis shows percentiles or number
             of remaining samples in the MAE calculation. Defaults to True.
         ax (Axes): matplotlib Axes on which to plot. Defaults to None.
+
+    Note: If you're not happy with the default y_max of 1.1 * rand_mean, where rand_mean
+    is mean of random sample exclusion, use ax.set(ylim=[None, some_value *
+    ax.get_ylim()[1]]).
 
     Returns:
         ax: matplotlib Axes object with plotted model error drop curve based on
@@ -216,24 +221,24 @@ def err_decay(
         if percentiles:
             decay_by_std = np.percentile(decay_by_std, xs[::-1])
 
-        plt.plot(xs, decay_by_std, label=key)
+        ax.plot(xs, decay_by_std, label=key)
 
     decay_by_err, rand_std = get_err_decay(y_true, y_pred, n_rand)
-
-    rand_mean = np.abs(y_true - y_pred).mean()
 
     if percentiles:
         decay_by_err, rand_std = (
             np.percentile(ys, xs[::-1]) for ys in [decay_by_err, rand_std]
         )
 
+    rand_mean = np.abs(y_true - y_pred).mean()
     rand_hi, rand_lo = rand_mean + rand_std, rand_mean - rand_std
+
     ax.plot(xs, decay_by_err, label="error")
     ax.plot([1, 100] if percentiles else [len(xs), 0], [rand_mean, rand_mean])
     ax.fill_between(
         xs[::-1] if percentiles else xs, rand_hi, rand_lo, alpha=0.2, label="random"
     )
-    ax.set(ylim=[0, rand_mean.mean() * 1.1], ylabel="MAE")
+    ax.set(ylim=[0, rand_mean.mean() * 1.3], ylabel="MAE")
 
     # n: Number of remaining points in err calculation after discarding the
     # (len(y_true) - n) most uncertain/hightest-error points
