@@ -1,3 +1,5 @@
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
@@ -20,13 +22,14 @@ def add_dropdown(ax: Axes, percentile: int, err: Array) -> None:
     )
 
 
-def cum_res(preds: Array, targets: Array, ax: Axes = None) -> Axes:
+def cum_res(preds: Array, targets: Array, ax: Axes = None, **kwargs: Any) -> Axes:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
     Args:
         preds (array): Numpy array of predictions.
         targets (array): Numpy array of targets.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+        **kwargs: Additional keyword arguments passed to ax.fill_between().
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -45,7 +48,12 @@ def cum_res(preds: Array, targets: Array, ax: Axes = None) -> Axes:
     # TODO may look better to add drop downs instead
     low = int(0.05 * (n_data - 1) + 0.5)
     up = int(0.95 * (n_data - 1) + 0.5)
-    ax.fill_between(res[low:up], (np.arange(n_data) / n_data * 100)[low:up], alpha=0.3)
+    ax.fill_between(
+        res[low:up],
+        (np.arange(n_data) / n_data * 100)[low:up],
+        alpha=kwargs.pop("alpha", 0.3),
+        **kwargs
+    )
 
     # Get robust (and symmetrical) x axis limits
     delta_low = res[low] - res[int(0.97 * low)]
@@ -66,13 +74,14 @@ def cum_res(preds: Array, targets: Array, ax: Axes = None) -> Axes:
     return ax
 
 
-def cum_err(preds: Array, targets: Array, ax: Axes = None) -> Axes:
+def cum_err(preds: Array, targets: Array, ax: Axes = None, **kwargs: Any) -> Axes:
     """Plot the empirical cumulative distribution for the absolute errors abs(y - y_hat).
 
     Args:
         preds (array): Numpy array of predictions.
         targets (array): Numpy array of targets.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+        **kwargs: Additional keyword arguments passed to ax.plot().
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -84,7 +93,7 @@ def cum_err(preds: Array, targets: Array, ax: Axes = None) -> Axes:
     n_data = len(err)
 
     # Plot the empirical distribution
-    ax.plot(err, np.arange(n_data) / n_data * 100)
+    ax.plot(err, np.arange(n_data) / n_data * 100, **kwargs)
 
     # Get robust (and symmetrical) x axis limits
     lim = np.percentile(err, 98)

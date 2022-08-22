@@ -78,6 +78,7 @@ def density_scatter(
             Defaults to True.
         stats (bool, optional): Whether to display a text box with MAE and R^2.
             Defaults to True.
+        **kwargs: Additional keyword arguments to pass to ax.scatter().
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -226,15 +227,24 @@ def density_hexbin_with_hist(
 
 
 def residual_vs_actual(
-    y_true: Array, y_pred: Array, ax: Axes = None, **kwargs: Any
+    y_true: Array,
+    y_pred: Array,
+    ax: Axes = None,
+    xlabel: str = r"Actual value",
+    ylabel: str = r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)",
+    **kwargs: Any,
 ) -> Axes:
-    """Plot ground truth targets on the x-axis against residuals
+    r"""Plot ground truth targets on the x-axis against residuals
     (y_err = y_true - y_pred) on the y-axis.
 
     Args:
         y_true (array): Ground truth values
         y_pred (array): Model predictions
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+        xlabel (str, optional): x-axis label. Defaults to "Actual value".
+        ylabel (str, optional): y-axis label. Defaults to
+            'Residual ($y_\mathrm{test} - y_\mathrm{pred}$)'.
+        **kwargs: Additional keyword arguments passed to plt.plot()
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -244,13 +254,11 @@ def residual_vs_actual(
 
     y_err = y_true - y_pred
 
-    ax.plot(y_true, y_err, "o", alpha=0.5, label=None, mew=1.2, ms=5.2)
+    ax.plot(y_true, y_err, "o", alpha=0.5, label=None, mew=1.2, ms=5.2, **kwargs)
     ax.axline(
         [1, 0], [2, 0], linestyle="dashed", color="black", alpha=0.5, label="ideal"
     )
 
-    ylabel = kwargs.pop("ylabel", r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)")
-    xlabel = kwargs.pop("xlabel", r"Actual value")
     ax.set(xlabel=xlabel, ylabel=ylabel)
     ax.legend(loc="lower right")
 

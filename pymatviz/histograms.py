@@ -24,9 +24,10 @@ def residual_hist(
     y_true: Array,
     y_pred: Array,
     ax: Axes = None,
+    xlabel: str = r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)",
     **kwargs: Any,
 ) -> Axes:
-    """Plot the residual distribution overlaid with a Gaussian kernel
+    r"""Plot the residual distribution overlaid with a Gaussian kernel
     density estimate.
 
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/Jmb2O).
@@ -35,6 +36,8 @@ def residual_hist(
         y_true (array): ground truth targets
         y_pred (array): model predictions
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+        xlabel (str, optional): x-axis label. Defaults to
+            'Residual ($y_\mathrm{test} - y_\mathrm{pred}$)
         **kwargs: Additional keyword arguments to pass to matplotlib.Axes.
 
     Returns:
@@ -44,7 +47,6 @@ def residual_hist(
         ax = plt.gca()
 
     y_res = y_pred - y_true
-    xlabel = kwargs.pop("xlabel", r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)")
 
     ax.hist(
         y_res, bins=kwargs.pop("bins", 50), density=True, edgecolor="black", **kwargs
@@ -87,6 +89,7 @@ def true_pred_hist(
         bins (int, optional): Histogram resolution. Defaults to 50.
         truth_color (str, optional): Face color to use for y_true bars.
             Defaults to 'blue'.
+        **kwargs: Additional keyword arguments to pass to ax.hist().
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -154,7 +157,7 @@ def spacegroup_hist(
             space groups missing from the data. Currently only implemented for numbers,
             not symbols. Defaults to False.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        kwargs: Keywords passed to pd.Series.plot.bar().
+        kwargs: Keywords passed to pandas.Series.plot.bar().
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -311,7 +314,7 @@ def hist_elemental_prevalence(
         h_offset (int): Horizontal offset for bar height labels. Defaults to 0.
         v_offset (int): Vertical offset for bar height labels. Defaults to 10.
         rotation (int): Bar label angle. Defaults to 45.
-        **kwargs (int): Keyword arguments passed to pandas.plot.bar().
+        **kwargs (int): Keyword arguments passed to pandas.Series.plot.bar().
 
     Returns:
         ax: The plot's matplotlib Axes.

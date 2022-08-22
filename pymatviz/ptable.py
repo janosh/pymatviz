@@ -332,7 +332,7 @@ def ptable_heatmap_ratio(
             ('lightskyblue', 'blue: not in 2nd list').
         not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
             ('white', 'white: not in either').
-        kwargs (Any, optional): Passed to ptable_heatmap().
+        **kwargs: Additional keyword arguments passed to ptable_heatmap().
 
     Returns:
         ax: The plot's matplotlib Axes.

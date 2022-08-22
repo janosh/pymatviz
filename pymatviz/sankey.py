@@ -21,6 +21,7 @@ def sankey_from_2_df_cols(
             corresponds to left, target to right side of the diagram.
         labels_with_counts (bool, optional): Whether to append value counts to node
             labels. Defaults to True.
+        **kwargs: Additional keyword arguments passed to plotly.graph_objects.Sankey.
 
     Raises:
         ValueError: If len(cols) != 2.

@@ -27,6 +27,7 @@ def spacegroup_sunburst(
             space group strings or numbers (from 1 - 230) or pymatgen structures.
         show_counts ("value" | "percent" | False): Whether to display values below each
             labels on the sunburst.
+        **kwargs: Additional keyword arguments passed to plotly.express.sunburst.
 
     Returns:
         Figure: The Plotly figure.
