@@ -24,7 +24,7 @@ def residual_hist(
     y_true: Array,
     y_pred: Array,
     ax: Axes = None,
-    xlabel: str = r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)",
+    xlabel: str | None = r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)",
     **kwargs: Any,
 ) -> Axes:
     r"""Plot the residual distribution overlaid with a Gaussian kernel
