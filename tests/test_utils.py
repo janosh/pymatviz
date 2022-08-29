@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import plotly.graph_objects as go
 import pytest
 from matplotlib.offsetbox import AnchoredText
-from plotly.graph_objs._figure import Figure
 
 from pymatviz.utils import add_identity_line, add_mae_r2_box, get_crystal_sys
-
-from .conftest import y_pred, y_true
+from tests.conftest import y_pred, y_true
 
 
 def test_add_mae_r2_box():
@@ -49,7 +48,7 @@ def test_get_crystal_sys_invalid(spg):
 @pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
 def test_add_identity_line(plotly_scatter, trace_idx, line_kwds):
     fig = add_identity_line(plotly_scatter, trace_idx, line_kwds)
-    assert isinstance(fig, Figure)
+    assert isinstance(fig, go.Figure)
 
     line = [shape for shape in fig.layout["shapes"] if shape["type"] == "line"][0]
     assert line["x0"] == line["y0"]  # fails if we don't handle nan since nan != nan

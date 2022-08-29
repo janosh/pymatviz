@@ -7,12 +7,11 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
-from matplotlib.axes import Axes
+import plotly.graph_objects as go
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from plotly.graph_objs._figure import Figure
 from pymatgen.core import Composition
 
 from pymatviz.utils import df_ptable
@@ -110,7 +109,7 @@ def count_elements(
 def ptable_heatmap(
     elem_values: ElemValues,
     log: bool = False,
-    ax: Axes = None,
+    ax: plt.Axes = None,
     count_mode: CountMode = "element_composition",
     cbar_title: str = "Element Count",
     cbar_max: float | int | None = None,
@@ -123,7 +122,7 @@ def ptable_heatmap(
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
     zero_symbol: str | float = "-",
-) -> Axes:
+) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
 
     Args:
@@ -308,7 +307,7 @@ def ptable_heatmap_ratio(
     not_in_denominator: tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
     not_in_either: tuple[str, str] = ("white", "white: not in either"),
     **kwargs: Any,
-) -> Axes:
+) -> plt.Axes:
     """Display the ratio of two maps from element symbols to heat values or of two sets
     of compositions.
 
@@ -379,7 +378,7 @@ def ptable_heatmap_plotly(
     bg_color: str = None,
     color_bar: dict[str, Any] = None,
     exclude_elements: Sequence[str] = (),
-) -> Figure:
+) -> go.Figure:
     """Creates a Plotly figure with an interactive heatmap of the periodic table.
     Supports hover tooltips with custom data or atomic reference data like
     electronegativity, atomic_radius, etc. See kwargs hover_data and hover_props, resp.

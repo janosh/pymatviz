@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.axes import Axes
 from scipy.stats import norm
 
 from pymatviz.utils import Array
@@ -12,8 +11,8 @@ def qq_gaussian(
     y_true: Array,
     y_pred: Array,
     y_std: Array | dict[str, Array],
-    ax: Axes = None,
-) -> Axes:
+    ax: plt.Axes = None,
+) -> plt.Axes:
     """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)
     or multiple (passed as dict) sets of uncertainty estimates for a single
     pair of ground truth targets `y_true` and model predictions `y_pred`.
@@ -180,8 +179,8 @@ def error_decay_with_uncert(
     y_stds: Array | dict[str, Array],
     n_rand: int = 100,
     percentiles: bool = True,
-    ax: Axes = None,
-) -> Axes:
+    ax: plt.Axes = None,
+) -> plt.Axes:
     """Plot for assessing the quality of uncertainty estimates. If a model's
     uncertainty is well calibrated, i.e. strongly correlated with its error, removing
     the most uncertain predictions should make the mean error decay similarly to how it

@@ -2,12 +2,11 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.axes import Axes
 
 from pymatviz.utils import Array
 
 
-def add_dropdown(ax: Axes, percentile: int, err: Array) -> None:
+def add_dropdown(ax: plt.Axes, percentile: int, err: Array) -> None:
     """Add a dashed drop-down line at a given percentile.
 
     Args:
@@ -22,7 +21,9 @@ def add_dropdown(ax: Axes, percentile: int, err: Array) -> None:
     )
 
 
-def cum_res(preds: Array, targets: Array, ax: Axes = None, **kwargs: Any) -> Axes:
+def cum_res(
+    preds: Array, targets: Array, ax: plt.Axes = None, **kwargs: Any
+) -> plt.Axes:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
     Args:
@@ -74,7 +75,9 @@ def cum_res(preds: Array, targets: Array, ax: Axes = None, **kwargs: Any) -> Axe
     return ax
 
 
-def cum_err(preds: Array, targets: Array, ax: Axes = None, **kwargs: Any) -> Axes:
+def cum_err(
+    preds: Array, targets: Array, ax: plt.Axes = None, **kwargs: Any
+) -> plt.Axes:
     """Plot the empirical cumulative distribution for the absolute errors abs(y - y_hat).
 
     Args:

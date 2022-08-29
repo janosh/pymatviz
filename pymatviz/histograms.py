@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 from matplotlib import transforms
-from matplotlib.axes import Axes
 from matplotlib.ticker import FixedLocator
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
@@ -23,10 +22,10 @@ if TYPE_CHECKING:
 def residual_hist(
     y_true: Array,
     y_pred: Array,
-    ax: Axes = None,
+    ax: plt.Axes = None,
     xlabel: str | None = r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)",
     **kwargs: Any,
-) -> Axes:
+) -> plt.Axes:
     r"""Plot the residual distribution overlaid with a Gaussian kernel
     density estimate.
 
@@ -70,12 +69,12 @@ def true_pred_hist(
     y_true: Array,
     y_pred: Array,
     y_std: Array,
-    ax: Axes = None,
+    ax: plt.Axes = None,
     cmap: str = "hot",
     bins: int = 50,
     truth_color: str = "blue",
     **kwargs: Any,
-) -> Axes:
+) -> plt.Axes:
     """Plot a histogram of model predictions with bars colored by the mean uncertainty of
     predictions in that bin. Overlaid by a more transparent histogram of ground truth
     values.
@@ -139,9 +138,9 @@ def spacegroup_hist(
     show_counts: bool = True,
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     include_missing: bool = False,
-    ax: Axes = None,
+    ax: plt.Axes = None,
     **kwargs: Any,
-) -> Axes:
+) -> plt.Axes:
     """Plot a histogram of spacegroups shaded by crystal system.
 
     Args:
@@ -289,13 +288,13 @@ def hist_elemental_prevalence(
     count_mode: CountMode = "element_composition",
     log: bool = False,
     keep_top: int = None,
-    ax: Axes = None,
+    ax: plt.Axes = None,
     bar_values: Literal["percent", "count", None] = "percent",
     h_offset: int = 0,
     v_offset: int = 10,
     rotation: int = 45,
     **kwargs: Any,
-) -> Axes:
+) -> plt.Axes:
     """Plots a histogram of the prevalence of each element in a materials dataset.
 
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
