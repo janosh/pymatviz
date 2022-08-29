@@ -174,7 +174,7 @@ def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
     return decay_by_std
 
 
-def err_decay(
+def error_decay_with_uncert(
     y_true: Array,
     y_pred: Array,
     y_stds: Array | dict[str, Array],

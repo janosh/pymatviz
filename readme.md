@@ -92,11 +92,11 @@ See [`pymatviz/parity.py`](pymatviz/parity.py).
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
-| [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py) | [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py) |
-| :-------------------------------------------------------------: | :-------------------------------------------------------------------: |
-|                       ![normal-prob-plot]                       |                     ![normal-prob-plot-multiple]                      |
-|  [`err_decay(y_true, y_pred, y_std)`](pymatviz/uncertainty.py)  |  [`err_decay(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py)  |
-|                          ![err-decay]                           |                         ![err-decay-multiple]                         |
+|       [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py)       |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py)       |
+| :-------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
+|                             ![normal-prob-plot]                             |                           ![normal-prob-plot-multiple]                            |
+| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py) |
+|                                ![err-decay]                                 |                               ![err-decay-multiple]                               |
 
 ## Cumulative Error and Residual
 

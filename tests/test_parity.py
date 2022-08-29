@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from pymatviz import (
     density_hexbin,
     density_hexbin_with_hist,
@@ -12,11 +14,11 @@ from pymatviz import (
 from .conftest import y_pred, y_true
 
 
-def test_density_scatter():
-    density_scatter(y_true, y_pred)
-    density_scatter(y_true, y_pred, log=True)
-    density_scatter(y_true, y_pred, sort=True)
-    density_scatter(y_true, y_pred, color_map="Greens")
+@pytest.mark.parametrize("log", [True, False])
+@pytest.mark.parametrize("sort", [True, False])
+@pytest.mark.parametrize("cmap", [None, "Greens"])
+def test_density_scatter(log: bool, sort: bool, cmap: str | None) -> None:
+    density_scatter(y_true, y_pred, log=log, sort=sort, cmap=cmap)
 
 
 def test_density_scatter_with_hist():

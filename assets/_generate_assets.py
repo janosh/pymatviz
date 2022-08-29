@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from matminer.datasets import load_dataset
 from pymatgen.ext.matproj import MPRester
-from pymatgen.transformations.standard_transformations import SubstitutionTransformation
 
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cum_err, cum_res
@@ -27,7 +26,7 @@ from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
-from pymatviz.uncertainty import err_decay, qq_gaussian
+from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import df_ptable, save_and_compress_svg
 
 
@@ -143,12 +142,12 @@ qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_s
 save_and_compress_svg("normal-prob-plot-multiple")
 
 
-err_decay(y_true, y_pred, y_std)
+error_decay_with_uncert(y_true, y_pred, y_std)
 save_and_compress_svg("err-decay")
 
 eps = 0.2 * np.random.randn(*y_std.shape)
 
-err_decay(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
+error_decay_with_uncert(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
 save_and_compress_svg("err-decay-multiple")
 
 
@@ -247,20 +246,20 @@ save_and_compress_svg("matbench-phonons-structures-2d")
 
 # %% plot some disordered structures in 2d
 mp_ids = ["mp-19017", "mp-12712"]
-elem_maps = [{"Fe": {"Fe": 0.75, "C": 0.25}}, {"Zr": {"Zr": 0.5, "Hf": 0.5}}]
-structs = [
+disordered_structs = [
     MPRester().get_structure_by_material_id(mp_id, conventional_unit_cell=True)
     for mp_id in mp_ids
-]
-
-disordered_structs = [
-    SubstitutionTransformation(elem_map).apply_transformation(struct)
-    for struct, elem_map in zip(structs, elem_maps)
 ]
 
 
 # %%
 for struct, mp_id in zip(disordered_structs, mp_ids):
+    for site in struct:  # disorder structures in-place
+        if "Fe" in site.species:
+            site.species = {"Fe": 0.4, "C": 0.4, "Mn": 0.2}
+        elif "Zr" in site.species:
+            site.species = {"Zr": 0.5, "Hf": 0.5}
+
     href = f"https://materialsproject.org/materials/{mp_id}"
 
     ax = plot_structure_2d(struct)
