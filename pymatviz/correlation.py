@@ -1,6 +1,5 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.axes import Axes
 
 from pymatviz.utils import Array
 
@@ -40,8 +39,8 @@ def marchenko_pastur(
     gamma: float,
     sigma: float = 1,
     filter_high_evals: bool = False,
-    ax: Axes = None,
-) -> Axes:
+    ax: plt.Axes = None,
+) -> plt.Axes:
     """Plot the eigenvalue distribution of a symmetric matrix (usually a correlation
     matrix) against the Marchenko Pastur distribution.
 

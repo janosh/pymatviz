@@ -4,7 +4,7 @@ from typing import Any, Literal, Sequence, cast
 
 import pandas as pd
 import plotly.express as px
-from plotly.graph_objs._figure import Figure
+import plotly.graph_objects as go
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
@@ -15,7 +15,7 @@ def spacegroup_sunburst(
     data: Sequence[int | str] | pd.Series,
     show_counts: Literal["value", "percent", False] = False,
     **kwargs: Any,
-) -> Figure:
+) -> go.Figure:
     """Generate a sunburst plot with crystal systems as the inner ring for a list of
     international space group numbers.
 

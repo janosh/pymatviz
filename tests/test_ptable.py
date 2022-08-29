@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
-from matplotlib.axes import Axes
 from plotly.exceptions import PlotlyError
-from plotly.graph_objs._figure import Figure
 from pymatgen.core import Composition
 
 from pymatviz import (
@@ -88,7 +88,7 @@ def test_count_elements_bad_atomic_nums(range_limits):
 
 def test_hist_elemental_prevalence(glass_formulas):
     ax = hist_elemental_prevalence(glass_formulas)
-    assert isinstance(ax, Axes)
+    assert isinstance(ax, plt.Axes)
 
     hist_elemental_prevalence(glass_formulas, log=True)
 
@@ -99,7 +99,7 @@ def test_hist_elemental_prevalence(glass_formulas):
 
 def test_ptable_heatmap(glass_formulas, glass_elem_counts):
     ax = ptable_heatmap(glass_formulas)
-    assert isinstance(ax, Axes)
+    assert isinstance(ax, plt.Axes)
 
     ptable_heatmap(glass_formulas, log=True)
 
@@ -141,7 +141,7 @@ def test_ptable_heatmap_ratio(
 ):
     # composition strings
     ax = ptable_heatmap_ratio(glass_formulas, steel_formulas)
-    assert isinstance(ax, Axes)
+    assert isinstance(ax, plt.Axes)
 
     # element counts
     ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
@@ -153,7 +153,7 @@ def test_ptable_heatmap_ratio(
 
 def test_ptable_heatmap_plotly(glass_formulas):
     fig = ptable_heatmap_plotly(glass_formulas)
-    assert isinstance(fig, Figure)
+    assert isinstance(fig, go.Figure)
     assert (
         len(fig.layout.annotations) == 18 * 10
     ), "not all periodic table tiles have annotations"
@@ -199,7 +199,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         font_size=font_size,
         font_colors=font_colors,
     )
-    assert isinstance(fig, Figure)
+    assert isinstance(fig, go.Figure)
 
 
 @pytest.mark.parametrize(
@@ -207,4 +207,4 @@ def test_ptable_heatmap_plotly_kwarg_combos(
 )
 def test_ptable_heatmap_plotly_colorscale(glass_formulas, clr_scl):
     fig = ptable_heatmap_plotly(glass_formulas, colorscale=clr_scl)
-    assert isinstance(fig, Figure)
+    assert isinstance(fig, go.Figure)

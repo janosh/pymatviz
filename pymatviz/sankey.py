@@ -4,7 +4,6 @@ from typing import Any, Literal
 
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.graph_objs._figure import Figure
 
 
 def sankey_from_2_df_cols(
@@ -12,7 +11,7 @@ def sankey_from_2_df_cols(
     cols: list[str],
     labels_with_counts: bool | Literal["percent"] = True,
     **kwargs: Any,
-) -> Figure:
+) -> go.Figure:
     """Plot two columns of a dataframe as a Plotly Sankey diagram.
 
     Args:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import pytest
-from matplotlib.axes import Axes
 
 from pymatviz import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import Array
@@ -23,7 +22,7 @@ def test_error_decay_with_uncert(
         y_true, y_pred, y_std, n_rand=n_rand, percentiles=percentiles
     )
 
-    assert isinstance(ax, Axes)
+    assert isinstance(ax, plt.Axes)
     # assert ax.get_title() == "Error Decay"
     assert ax.get_ylabel() == "MAE"
     if percentiles:
