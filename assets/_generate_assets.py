@@ -26,7 +26,7 @@ from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
-from pymatviz.uncertainty import err_decay, qq_gaussian
+from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import df_ptable, save_and_compress_svg
 
 
@@ -142,12 +142,12 @@ qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_s
 save_and_compress_svg("normal-prob-plot-multiple")
 
 
-err_decay(y_true, y_pred, y_std)
+error_decay_with_uncert(y_true, y_pred, y_std)
 save_and_compress_svg("err-decay")
 
 eps = 0.2 * np.random.randn(*y_std.shape)
 
-err_decay(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
+error_decay_with_uncert(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
 save_and_compress_svg("err-decay-multiple")
 
 
