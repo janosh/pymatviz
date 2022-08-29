@@ -50,7 +50,6 @@ def density_scatter(
     xs: Array,
     ys: Array,
     ax: Axes = None,
-    color_map: str = "Blues",
     sort: bool = True,
     log: bool = True,
     density_bins: int = 100,
@@ -66,8 +65,6 @@ def density_scatter(
         xs (array): x values.
         ys (array): y values.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        color_map (str, optional): plt color map or valid string name.
-            Defaults to "Blues".
         sort (bool, optional): Whether to sort the data. Defaults to True.
         log (bool, optional): Whether to the color scale. Defaults to True.
         density_bins (int, optional): How many density_bins to use for the density
@@ -78,7 +75,8 @@ def density_scatter(
             Defaults to True.
         stats (bool, optional): Whether to display a text box with MAE and R^2.
             Defaults to True.
-        **kwargs: Additional keyword arguments to pass to ax.scatter().
+        **kwargs: Additional keyword arguments to pass to ax.scatter(). E.g. cmap to
+            change the color map.
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -90,7 +88,7 @@ def density_scatter(
 
     norm = mpl.colors.LogNorm() if log else None
 
-    ax.scatter(xs, ys, c=cs, cmap=color_map, norm=norm, **kwargs)
+    ax.scatter(xs, ys, c=cs, norm=norm, **kwargs)
 
     if identity:
         ax.axline(

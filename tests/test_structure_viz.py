@@ -7,21 +7,17 @@ import pytest
 from matplotlib.testing.compare import compare_images
 from pymatgen.analysis.local_env import VoronoiNN
 from pymatgen.core import Lattice, Structure
-from pymatgen.transformations.standard_transformations import SubstitutionTransformation
 
 from pymatviz.structure_viz import plot_structure_2d
-
-from .conftest import save_reference_img
+from tests.conftest import save_reference_img
 
 
 os.makedirs(fixture_dir := "tests/fixtures/structure_viz", exist_ok=True)
 
 lattice = Lattice.cubic(5)
-struct = Structure(lattice, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-disordered_struct: Structure = SubstitutionTransformation(
-    {"Fe": {"Fe": 0.75, "C": 0.25}}
-).apply_transformation(struct)
+disordered_struct = Structure(
+    lattice, [{"Fe": 0.75, "C": 0.25}, "O"], [[0, 0, 0], [0.5, 0.5, 0.5]]
+)
 
 
 @pytest.mark.parametrize("radii", [None, 0.5])
