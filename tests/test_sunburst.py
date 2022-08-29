@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Literal
 
+import plotly.graph_objects as go
 import pytest
-from plotly.graph_objs._figure import Figure
 from pymatgen.core import Structure
 
 from pymatviz import spacegroup_sunburst
@@ -18,7 +18,7 @@ def test_spacegroup_sunburst(
     # spg numbers
     fig = spacegroup_sunburst(range(1, 231), show_counts=show_counts)
 
-    assert isinstance(fig, Figure)
+    assert isinstance(fig, go.Figure)
     assert set(fig.data[0].parents) == {
         "",
         "cubic",

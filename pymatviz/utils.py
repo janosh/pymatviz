@@ -9,11 +9,10 @@ from typing import Any, Literal, Sequence, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.axes import Axes
+import plotly.graph_objects as go
 from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from numpy.typing import NDArray
-from plotly.graph_objs._figure import Figure as PlotlyFigure
 from sklearn.metrics import r2_score
 
 
@@ -56,7 +55,7 @@ def with_hist(
     ys: NDArray[np.float64],
     cell: GridSpec = None,
     bins: int = 100,
-) -> Axes:
+) -> plt.Axes:
     """Call before creating a plot and use the returned `ax_main` for all
     subsequent plotting ops to create a grid of plots with the main plot in
     the lower left and narrow histograms along its x- and/or y-axes displayed
@@ -94,7 +93,7 @@ def with_hist(
 
 
 def annotate_bars(
-    ax: Axes = None,
+    ax: plt.Axes = None,
     v_offset: int | float = 10,
     h_offset: int | float = 0,
     labels: Sequence[str | int | float] = None,
@@ -104,7 +103,7 @@ def annotate_bars(
     """Annotate each bar in bar plot with a label.
 
     Args:
-        ax (matplotlib.axes.Axes): The axes to annotate.
+        ax (Axes): The matplotlib axes to annotate.
         v_offset (int): Vertical offset between the labels and the bars.
         h_offset (int): Horizontal offset between the labels and the bars.
         labels (list[str]): Labels used for annotating bars. If not provided, defaults
@@ -144,7 +143,7 @@ def annotate_bars(
 def add_mae_r2_box(
     xs: NDArray[np.float64],
     ys: NDArray[np.float64],
-    ax: Axes = None,
+    ax: plt.Axes = None,
     loc: str = "lower right",
     prefix: str = "",
     suffix: str = "",
@@ -219,8 +218,8 @@ def get_crystal_sys(
 
 
 def add_identity_line(
-    fig: PlotlyFigure, trace_idx: int = 0, line_kwds: dict[str, Any] = None
-) -> PlotlyFigure:
+    fig: go.Figure, trace_idx: int = 0, line_kwds: dict[str, Any] = None
+) -> go.Figure:
     """Add a line shape to the background layer of a plotly figure spanning from
     smallest to largest x/y values in the trace specified by trace_idx.
 
@@ -264,7 +263,7 @@ def add_identity_line(
     return fig
 
 
-def save_and_compress_svg(filename: str, fig: PlotlyFigure | None = None) -> None:
+def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG file with
     svgo CLI if available in PATH.
 
@@ -278,7 +277,7 @@ def save_and_compress_svg(filename: str, fig: PlotlyFigure | None = None) -> Non
     assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
     filepath = f"{ROOT}/assets/{filename}.svg"
 
-    if isinstance(fig, PlotlyFigure):
+    if isinstance(fig, go.Figure):
         fig.write_image(filepath)
     elif fig is None or isinstance(fig, plt.Figure):
         if len(plt.gcf().axes) == 0:
