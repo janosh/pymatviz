@@ -64,7 +64,7 @@ def precision_recall_curve(
     ax.plot([0, 1], [0.5, 0.5], "r--", label="No skill")
     ax.legend(loc="lower left", frameon=False)
 
-    ax.set(xlabel="Recall", ylabel="Precision", title="Precision Recall Curve")
+    ax.set(xlabel="Recall", ylabel="Precision", title="Precision-Recall Curve")
 
     ax.set(xlim=(0, 1.05), ylim=(0, 1.05))
 
