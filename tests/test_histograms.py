@@ -7,18 +7,29 @@ import pytest
 from pymatgen.core import Structure
 
 from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
-
-from .conftest import y_pred, y_true
+from tests.conftest import y_pred, y_true
 
 
 @pytest.mark.parametrize("bins", [None, 1, 100])
 @pytest.mark.parametrize("xlabel", [None, "foo"])
 def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
-    residual_hist(y_true, y_pred, bins=bins, xlabel=xlabel)
+    ax = residual_hist(y_true, y_pred, bins=bins, xlabel=xlabel)
+
+    assert isinstance(ax, plt.Axes)
+    assert (
+        ax.get_xlabel() == xlabel or r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)"
+    )
+    assert len(ax.lines) == 1
+    legend = ax.get_legend()
+    assert len(ax.patches) == bins or 10
+    assert legend._get_loc() == 2  # 2 meaning 'upper left'
 
 
-def test_true_pred_hist():
-    true_pred_hist(y_true, y_pred, y_true - y_pred)
+@pytest.mark.parametrize("bins", [None, 1, 100])
+@pytest.mark.parametrize("cmap", ["hot", "Blues"])
+def test_true_pred_hist(bins: int | None, cmap: str) -> None:
+    ax = true_pred_hist(y_true, y_pred, y_true - y_pred, bins=bins, cmap=cmap)
+    assert isinstance(ax, plt.Axes)
 
 
 @pytest.mark.parametrize("xticks", ["all", "crys_sys_edges", 1, 50])

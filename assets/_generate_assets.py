@@ -6,7 +6,7 @@ from matminer.datasets import load_dataset
 from pymatgen.ext.matproj import MPRester
 
 from pymatviz.correlation import marchenko_pastur
-from pymatviz.cumulative import cum_err, cum_res
+from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.histograms import (
     hist_elemental_prevalence,
     residual_hist,
@@ -143,20 +143,20 @@ save_and_compress_svg("normal-prob-plot-multiple")
 
 
 error_decay_with_uncert(y_true, y_pred, y_std)
-save_and_compress_svg("err-decay")
+save_and_compress_svg("error-decay-with-uncert")
 
 eps = 0.2 * np.random.randn(*y_std.shape)
 
 error_decay_with_uncert(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
-save_and_compress_svg("err-decay-multiple")
+save_and_compress_svg("error-decay-with-uncert-multiple")
 
 
 # %% Cumulative Plots
-cum_err(y_pred, y_true)
+cumulative_error(y_pred, y_true)
 save_and_compress_svg("cumulative-error")
 
 
-cum_res(y_pred, y_true)
+cumulative_residual(y_pred, y_true)
 save_and_compress_svg("cumulative-residual")
 
 

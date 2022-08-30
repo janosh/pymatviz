@@ -96,15 +96,15 @@ See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 | :-------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
 |                             ![normal-prob-plot]                             |                           ![normal-prob-plot-multiple]                            |
 | [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py) |
-|                                ![err-decay]                                 |                               ![err-decay-multiple]                               |
+|                         ![error-decay-with-uncert]                          |                        ![error-decay-with-uncert-multiple]                        |
 
 ## Cumulative Error and Residual
 
 See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
 
-| [`cum_err(preds, targets)`](pymatviz/cumulative.py) | [`cum_res(preds, targets)`](pymatviz/cumulative.py) |
-| :-------------------------------------------------: | :-------------------------------------------------: |
-|                 ![cumulative-error]                 |               ![cumulative-residual]                |
+| [`cumulative_error(preds, targets)`](pymatviz/cumulative.py) | [`cumulative_residual(preds, targets)`](pymatviz/cumulative.py) |
+| :----------------------------------------------------------: | :-------------------------------------------------------------: |
+|                     ![cumulative-error]                      |                     ![cumulative-residual]                      |
 
 ## Classification Metrics
 
@@ -138,8 +138,8 @@ For the time being, Google Colab only supports Python 3.7. `pymatviz` uses Pytho
 [density-hexbin]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-hexbin.svg
 [density-scatter-with-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-scatter-with-hist.svg
 [density-scatter]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-scatter.svg
-[err-decay-multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/err-decay-multiple.svg
-[err-decay]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/err-decay.svg
+[error-decay-with-uncert-multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/error-decay-with-uncert-multiple.svg
+[error-decay-with-uncert]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/error-decay-with-uncert.svg
 [hist-elemental-prevalence]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/hist-elemental-prevalence.svg
 [marchenko-pastur-significant-eval]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko-pastur-significant-eval.svg
 [marchenko-pastur]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko-pastur.svg
@@ -161,6 +161,5 @@ For the time being, Google Colab only supports Python 3.7. `pymatviz` uses Pytho
 [spg-symbol-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-sunburst.svg
 [struct-2d-mp-12712-Hf3Zr3Pd8-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf3Zr3Pd8-disordered.svg
 [struct-2d-mp-19017-Li4Fe3P4CO16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Fe3P4CO16-disordered.svg
-[true-pred-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/true-pred-hist.svg
 [sankey-from-2-df-cols-randints]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-from-2-df-cols-randints.svg
 [sankey-spglib-vs-aflow-spacegroups]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-spglib-vs-aflow-spacegroups.svg

@@ -239,7 +239,7 @@ def error_decay_with_uncert(
     )
     ax.set(ylim=[0, rand_mean.mean() * 1.3], ylabel="MAE")
 
-    # n: Number of remaining points in err calculation after discarding the
+    # n: Number of remaining points in error calculation after discarding the
     # (len(y_true) - n) most uncertain/hightest-error points
     ax.set(xlabel="Confidence percentiles" if percentiles else "Excluded samples")
     ax.legend(loc="lower left")
