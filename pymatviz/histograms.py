@@ -60,7 +60,7 @@ def residual_hist(
     ax.plot(x_range, kde(x_range), linewidth=3, color="red", label=label)
 
     ax.set(xlabel=xlabel)
-    ax.legend(loc=2, framealpha=0.5, handlelength=1)
+    ax.legend(loc="upper left", framealpha=0.5, handlelength=1)
 
     return ax
 
@@ -71,7 +71,6 @@ def true_pred_hist(
     y_std: Array,
     ax: plt.Axes = None,
     cmap: str = "hot",
-    bins: int = 50,
     truth_color: str = "blue",
     **kwargs: Any,
 ) -> plt.Axes:
@@ -85,7 +84,6 @@ def true_pred_hist(
         y_std (array): model uncertainty
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         cmap (str, optional): string identifier of a plt colormap. Defaults to 'hot'.
-        bins (int, optional): Histogram resolution. Defaults to 50.
         truth_color (str, optional): Face color to use for y_true bars.
             Defaults to 'blue'.
         **kwargs: Additional keyword arguments to pass to ax.hist().
@@ -100,9 +98,9 @@ def true_pred_hist(
     y_true, y_pred, y_std = np.array([y_true, y_pred, y_std])
 
     _, bin_edges, bars = ax.hist(
-        y_pred, bins=bins, alpha=0.8, label=r"$y_\mathrm{pred}$", **kwargs
+        y_pred, alpha=0.8, label=r"$y_\mathrm{pred}$", **kwargs
     )
-    ax.figure.set
+    kwargs.pop("bins", None)
     ax.hist(
         y_true,
         bins=bin_edges,
