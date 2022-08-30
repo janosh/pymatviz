@@ -3,9 +3,8 @@
 # and https://peps.python.org/pep-0484/#stub-files 'Additional notes on stub files'
 from pymatviz.correlation import marchenko_pastur as marchenko_pastur
 from pymatviz.correlation import marchenko_pastur_pdf as marchenko_pastur_pdf
-from pymatviz.cumulative import add_dropdown as add_dropdown
-from pymatviz.cumulative import cum_err as cum_err
-from pymatviz.cumulative import cum_res as cum_res
+from pymatviz.cumulative import cumulative_error as cumulative_error
+from pymatviz.cumulative import cumulative_residual as cumulative_residual
 from pymatviz.histograms import hist_elemental_prevalence as hist_elemental_prevalence
 from pymatviz.histograms import residual_hist as residual_hist
 from pymatviz.histograms import spacegroup_hist as spacegroup_hist

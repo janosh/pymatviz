@@ -6,22 +6,7 @@ import numpy as np
 from pymatviz.utils import Array
 
 
-def add_dropdown(ax: plt.Axes, percentile: int, err: Array) -> None:
-    """Add a dashed drop-down line at a given percentile.
-
-    Args:
-        ax (Axes): matplotlib Axes on which to add the dropdown.
-        percentile (int): Integer in range(100) at which to display dropdown line.
-        err (array): Numpy array of errors = abs(preds - targets).
-    """
-    percent = int(percentile * (len(err) - 1) / 100 + 0.5)
-    ax.plot((0, err[percent]), (percentile, percentile), "--", color="grey", alpha=0.4)
-    ax.plot(
-        (err[percent], err[percent]), (0, percentile), "--", color="grey", alpha=0.4
-    )
-
-
-def cum_res(
+def cumulative_residual(
     preds: Array, targets: Array, ax: plt.Axes = None, **kwargs: Any
 ) -> plt.Axes:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
@@ -70,15 +55,15 @@ def cum_res(
 
     # Label the plot
     ax.set(xlabel="Residual", ylabel="Percentile", title="Cumulative Residual")
-    ax.legend(frameon=False)
 
     return ax
 
 
-def cum_err(
+def cumulative_error(
     preds: Array, targets: Array, ax: plt.Axes = None, **kwargs: Any
 ) -> plt.Axes:
-    """Plot the empirical cumulative distribution for the absolute errors abs(y - y_hat).
+    """Plot the empirical cumulative distribution of the absolute errors
+    abs(y_true - y_pred).
 
     Args:
         preds (array): Numpy array of predictions.
@@ -92,22 +77,24 @@ def cum_err(
     if ax is None:
         ax = plt.gca()
 
-    err = np.sort(np.abs(preds - targets))
-    n_data = len(err)
+    errors = np.sort(np.abs(preds - targets))
+    n_data = len(errors)
 
     # Plot the empirical distribution
-    ax.plot(err, np.arange(n_data) / n_data * 100, **kwargs)
+    ax.plot(errors, np.arange(n_data) / n_data * 100, **kwargs)
 
-    # Get robust (and symmetrical) x axis limits
-    lim = np.percentile(err, 98)
+    # Get robust (and symmetrical) x-axis limits
+    lim = np.percentile(errors, 98)
     ax.set(xlim=(0, lim), ylim=(0, 100))
 
+    line_kwargs = dict(linestyle="--", color="grey", alpha=0.4)
     # Add some visual guidelines
-    add_dropdown(ax, 50, err)
-    add_dropdown(ax, 75, err)
+    for percentile in [50, 75]:
+        percent = int(percentile * (n_data - 1) / 100 + 0.5)
+        ax.plot((0, errors[percent]), (percentile, percentile), **line_kwargs)
+        ax.plot((errors[percent], errors[percent]), (0, percentile), **line_kwargs)
 
     # Label the plot
     ax.set(xlabel="Absolute Error", ylabel="Percentile", title="Cumulative Error")
-    ax.legend(frameon=False)
 
     return ax
