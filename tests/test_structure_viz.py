@@ -3,13 +3,12 @@ from __future__ import annotations
 import os
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import pytest
-from matplotlib.testing.compare import compare_images
-from pymatgen.analysis.local_env import VoronoiNN
+from pymatgen.analysis.local_env import NearNeighbors, VoronoiNN
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.structure_viz import plot_structure_2d
-from tests.conftest import save_reference_img
 
 
 os.makedirs(fixture_dir := "tests/fixtures/structure_viz", exist_ok=True)
@@ -27,7 +26,14 @@ disordered_struct = Structure(
 # disordered structures https://github.com/materialsproject/pymatgen/issues/2070
 # which we work around by only considering majority species on each site
 @pytest.mark.parametrize("show_bonds", [False, True, VoronoiNN])
-def test_plot_structure_2d(tmp_path, radii, rotation, labels, show_bonds):
+@pytest.mark.parametrize("standardize_struct", [None, False, True])
+def test_plot_structure_2d(
+    radii: float | None,
+    rotation: str,
+    labels: bool | dict[str, str | float],
+    show_bonds: bool | NearNeighbors,
+    standardize_struct: bool | None,
+) -> None:
     # set explicit size to avoid ImageComparisonFailure in CI: sizes do not match
     # expected (700, 1350, 3), actual (480, 640, 3)
     plt.figure(figsize=(5, 5))
@@ -38,19 +44,18 @@ def test_plot_structure_2d(tmp_path, radii, rotation, labels, show_bonds):
         rotation=rotation,
         site_labels=labels,
         show_bonds=show_bonds,
+        standardize_struct=standardize_struct,
     )
     assert isinstance(ax, plt.Axes)
 
-    if isinstance(labels, dict):  # warning: we overwrite labels here
-        labels = ",".join(f"{k}={v}" for k, v in labels.items())
-    file_path = f"{radii=}_{rotation=}_{labels=}.png"
-    tmp_img = f"{tmp_path}/{file_path}"
+    assert ax.get_aspect() == 1, "aspect ratio should be set to 'equal', i.e. 1:1"
+    x_min, x_max, y_min, y_max = ax.axis()
+    assert x_min == y_min == 0, "x/y_min should be 0"
+    assert x_max > 5 and y_max > 5, "x/y_max should be > 5"
 
-    if not os.path.exists(ref_img := f"{fixture_dir}/{file_path}"):
-        save_reference_img(ref_img)
-        return
+    patch_counts = pd.Series(
+        [type(patch).__name__ for patch in ax.patches]
+    ).value_counts()
+    assert patch_counts["Wedge"] == len(disordered_struct.composition)
 
-    plt.savefig(tmp_img)
-    plt.close()
-    tolerance = 100
-    assert compare_images(tmp_img, ref_img, tolerance) is None
+    assert patch_counts["PathPatch"] > 182

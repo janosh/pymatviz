@@ -38,8 +38,8 @@ plt.savefig("phonons-last-dos-peak-hist.pdf")
 
 
 # %%
-df_phonon["formula"] = df_phonon.structure.apply(lambda cryst: cryst.formula)
-df_phonon["volume"] = df_phonon.structure.apply(lambda cryst: cryst.volume)
+df_phonon["formula"] = df_phonon.structure.map(lambda cryst: cryst.formula)
+df_phonon["volume"] = df_phonon.structure.map(lambda cryst: cryst.volume)
 
 ptable_heatmap(df_phonon.formula, log=True)
 plt.title("Elemental prevalence in the Matbench phonons dataset")

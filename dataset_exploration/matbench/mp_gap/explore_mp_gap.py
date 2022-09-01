@@ -27,12 +27,12 @@ plt.savefig("pbe_gap_hist.pdf")
 
 
 # %%
-df_gap["volume/atom"] = df_gap.structure.apply(
+df_gap["volume/atom"] = df_gap.structure.map(
     lambda cryst: cryst.volume / cryst.num_sites
 )
-df_gap["num_sites"] = df_gap.structure.apply(lambda cryst: cryst.num_sites)
+df_gap["num_sites"] = df_gap.structure.map(lambda cryst: cryst.num_sites)
 
-df_gap["formula"] = df_gap.structure.apply(lambda cryst: cryst.formula)
+df_gap["formula"] = df_gap.structure.map(lambda cryst: cryst.formula)
 
 
 # %%
