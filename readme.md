@@ -24,6 +24,19 @@ pip install pymatviz
 
 Check out the Jupyter notebooks under [`examples/`](examples/) to learn how to use `pymatviz`.
 
+|                                      |                                                                                                              |                                                                                                           |                                                                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **`matbench_dielectric_eda.ipynb`**  | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/matbench_dielectric_eda.ipynb)  | [![View on GitHub]](https://github.com/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)  | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)  |
+| **`mp_bimodal_e_form.ipynb`**        | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/mp_bimodal_e_form.ipynb)        | [![View on GitHub]](https://github.com/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)        | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)        |
+| **`matbench_perovskites_eda.ipynb`** | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/matbench_perovskites_eda.ipynb) | [![View on GitHub]](https://github.com/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) |
+| **`mprester_ptable.ipynb`**          | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/mprester_ptable.ipynb)          | [![View on GitHub]](https://github.com/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)          | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)          |
+
+[Binder]: https://mybinder.org/badge_logo.svg
+[View on GitHub]: https://img.shields.io/badge/View%20on-GitHub-darkblue?logo=github
+[Open in Google Colab]: https://colab.research.google.com/assets/colab-badge.svg
+
+When trying to open notebooks in Google Colab, you might encounter errors. Colab currently only supports Python 3.7. `pymatviz` uses Python 3.8 features like [self-documenting f-strings](https://docs.python.org/3/whatsnew/3.8.html#f-strings-support-for-self-documenting-expressions-and-debugging). You may still be able to use `pymatviz` on Colab by cloning the repo and patching the source code in-place [as shown here](https://github.com/janosh/pymatviz/issues/17#issuecomment-1165141311).
+
 ## Periodic Table
 
 See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. `plotly` supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
@@ -127,10 +140,6 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 1. **Residual** `y_res = y_true - y_pred`: The difference between ground truth target and model prediction.
 2. **Error** `y_err = abs(y_true - y_pred)`: Absolute error between target and model prediction.
 3. **Uncertainty** `y_std`: The model's estimate for its error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)
-
-## Usage on Google Colab
-
-For the time being, Google Colab only supports Python 3.7. `pymatviz` uses Python 3.8 features like [self-documenting f-strings](https://docs.python.org/3/whatsnew/3.8.html#f-strings-support-for-self-documenting-expressions-and-debugging). You may still be able to use `pymatviz` on Colab by cloning the repo and patching the source code in place [as shown here](https://github.com/janosh/pymatviz/issues/17#issuecomment-1165141311).
 
 [cumulative-error]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-error.svg
 [cumulative-residual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-residual.svg
