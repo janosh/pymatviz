@@ -94,14 +94,12 @@ def has_isolated_atom(crystal: Structure, radius: float = 5) -> bool:
     return (dists.min(1) > radius).any()
 
 
-df_grvh["isolated_r5"] = df_grvh.structure.apply(has_isolated_atom)
+df_grvh["isolated_r5"] = df_grvh.structure.map(has_isolated_atom)
 print(f"took {perf_counter() - start:.3f} sec")
 
 
 # %%
-df_grvh["graph_size"] = df_grvh[f"neighbor_list_r{radius}"].apply(
-    lambda lst: len(lst[0])
-)
+df_grvh["graph_size"] = df_grvh[f"neighbor_list_r{radius}"].map(lambda lst: len(lst[0]))
 
 
 # %%
@@ -112,13 +110,13 @@ for idx, structure, target, *_ in df_grvh.query("graph_size == 0").itertuples():
 
 
 # %%
-df_grvh["volume"] = df_grvh.structure.apply(lambda struct: struct.volume)
+df_grvh["volume"] = df_grvh.structure.map(lambda struct: struct.volume)
 
 df_grvh.hist(column="volume", bins=50, log=True)
 
 
 # %%
-df_grvh["formula"] = df_grvh.structure.apply(lambda struct: struct.formula)
+df_grvh["formula"] = df_grvh.structure.map(lambda struct: struct.formula)
 
 ptable_heatmap(df_grvh.formula, log=True)
 plt.title("Elemental prevalence in the Matbench bulk/shear modulus datasets")
