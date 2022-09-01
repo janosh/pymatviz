@@ -25,7 +25,7 @@ df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
 )
 
 # http://jmol.sourceforge.net/jscolors
-jmol_colors = df_ptable.jmol_color.dropna().apply(ast.literal_eval)
+jmol_colors = df_ptable.jmol_color.dropna().map(ast.literal_eval)
 
 # fallback value (in nanometers) for covalent radius of an element
 # see https://wikipedia.org/wiki/Atomic_radii_of_the_elements

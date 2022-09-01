@@ -112,6 +112,7 @@ def plot_structure_2d(
     site_labels: bool | dict[str, str | float] | list[str | float] = True,
     label_kwargs: dict[str, Any] = None,
     bond_kwargs: dict[str, Any] = None,
+    standardize_struct: bool | None = None,
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
@@ -167,6 +168,11 @@ def plot_structure_2d(
             class used to draw chemical bonds. Allowed are edgecolor, facecolor, color,
             linewidth, linestyle, antialiased, hatch, fill, capstyle, joinstyle.
             Defaults to None.
+        standardize_struct (bool, optional): Whether to standardize the structure using
+            SpacegroupAnalyzer(struct).get_conventional_standard_structure() before
+            plotting. Defaults to False unless any fractional coordinates are negative,
+            i.e. any crystal sites are outside the unit cell. Set this to False to
+            disable this behavior which speeds up plotting for many structures.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -181,6 +187,20 @@ def plot_structure_2d(
                 f" the number of sites in the crystal ({len(struct)=})"
             )
 
+    # default behavior in case of no user input is to standardize if any fractional
+    # coordinates are negative
+    has_sites_outside_unit_cell = any(any(site.frac_coords < 0) for site in struct)
+    if standardize_struct is False and has_sites_outside_unit_cell:
+        warnings.warn(
+            "your structure has negative fractional coordinates, you may want set "
+            "standardize=True"
+        )
+    elif standardize_struct is None:
+        standardize_struct = has_sites_outside_unit_cell
+    if standardize_struct:
+        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+        struct = SpacegroupAnalyzer(struct).get_conventional_standard_structure()
     if colors is None:
         colors = jmol_colors
 
