@@ -177,8 +177,7 @@ def plot_structure_2d(
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     if isinstance(site_labels, (list, tuple)):
         if len(site_labels) != len(struct):
