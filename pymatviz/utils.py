@@ -112,8 +112,7 @@ def annotate_bars(
         **kwargs: Additional arguments (rotation, arrowprops, etc.) are passed to
             ax.annotate().
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     if labels is None:
         labels = [int(patch.get_height()) for patch in ax.patches]
@@ -170,8 +169,7 @@ def add_mae_r2_box(
     Returns:
         AnchoredText: Instance containing the metrics.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     mask = ~np.isnan(xs) & ~np.isnan(ys)
     xs, ys = xs[mask], ys[mask]

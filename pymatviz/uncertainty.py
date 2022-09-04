@@ -36,8 +36,7 @@ def qq_gaussian(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     if isinstance(y_std, np.ndarray):
         y_std = {"std": y_std}
@@ -206,8 +205,7 @@ def error_decay_with_uncert(
         ax: matplotlib Axes object with plotted model error drop curve based on
             excluding data points by order of large to small model uncertainties.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     xs = range(100 if percentiles else len(y_true), 0, -1)
 

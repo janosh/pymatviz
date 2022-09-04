@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
@@ -10,8 +8,6 @@ from pymatgen.core import Lattice, Structure
 
 from pymatviz.structure_viz import plot_structure_2d
 
-
-os.makedirs(fixture_dir := "tests/fixtures/structure_viz", exist_ok=True)
 
 lattice = Lattice.cubic(5)
 disordered_struct = Structure(

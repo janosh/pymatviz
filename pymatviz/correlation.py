@@ -62,8 +62,7 @@ def marchenko_pastur(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     # use eigvalsh for speed since correlation matrix is symmetric
     evals = np.linalg.eigvalsh(matrix)

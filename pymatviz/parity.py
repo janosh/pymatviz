@@ -80,8 +80,7 @@ def density_scatter(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     xs, ys, cs = hist_density(xs, ys, sort=sort, bins=density_bins)
 
@@ -130,8 +129,7 @@ def scatter_with_err_bar(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
     ax.errorbar(xs, ys, yerr=yerr, xerr=xerr, **kwargs, **styles)
@@ -171,8 +169,7 @@ def density_hexbin(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     # the scatter plot
     hexbin = ax.hexbin(xs, yx, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
@@ -246,8 +243,7 @@ def residual_vs_actual(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     y_err = y_true - y_pred
 

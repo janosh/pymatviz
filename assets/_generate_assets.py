@@ -265,9 +265,9 @@ for struct, mp_id in zip(disordered_structs, mp_ids):
     ax = plot_structure_2d(struct)
     formula = struct.composition.reduced_formula
     _, spacegroup = struct.get_space_group_info()
-    ax.set_title(
-        f"{formula} (disordered {mp_id} with {spacegroup = })", fontweight="bold"
-    )
+
+    anno_text = f"{formula}\ndisordered {mp_id} with {spacegroup = }"
+    ax.text(0.5, 1, anno_text, url=href, ha="center", transform=ax.transAxes)
 
     ax.figure.set_size_inches(8, 8)
 

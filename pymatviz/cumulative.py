@@ -20,8 +20,7 @@ def cumulative_residual(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     res = np.sort(preds - targets)
 
@@ -74,8 +73,7 @@ def cumulative_error(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     errors = np.sort(np.abs(preds - targets))
     n_data = len(errors)

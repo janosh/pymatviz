@@ -188,8 +188,7 @@ def ptable_heatmap(
     # TODO can we pass as a kwarg and still ensure aspect ratio respected?
     fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows))
 
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     rw = rh = 0.9  # rectangle width/height
 
@@ -273,7 +272,7 @@ def ptable_heatmap(
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
 
-        def tick_fmt(val: float, pos: int) -> str:
+        def tick_fmt(val: float, _pos: int) -> str:
             # val: value at color axis tick (e.g. 10.0, 20.0, ...)
             # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
             if heat_mode == "percent":

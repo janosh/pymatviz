@@ -42,8 +42,7 @@ def residual_hist(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     y_res = y_pred - y_true
 
@@ -74,8 +73,8 @@ def true_pred_hist(
     truth_color: str = "blue",
     **kwargs: Any,
 ) -> plt.Axes:
-    """Plot a histogram of model predictions with bars colored by the mean uncertainty of
-    predictions in that bin. Overlaid by a more transparent histogram of ground truth
+    """Plot a histogram of model predictions with bars colored by the mean uncertainty
+    of predictions in that bin. Overlaid by a more transparent histogram of ground truth
     values.
 
     Args:
@@ -91,8 +90,7 @@ def true_pred_hist(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     color_map = getattr(plt.cm, cmap)
     y_true, y_pred, y_std = np.array([y_true, y_pred, y_std])
@@ -159,8 +157,7 @@ def spacegroup_hist(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     if isinstance(next(iter(data)), Structure):
         # if 1st sequence item is structure, assume all are
@@ -316,8 +313,7 @@ def hist_elemental_prevalence(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     elem_counts = count_elements(formulas, count_mode)
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
