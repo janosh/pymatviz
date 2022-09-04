@@ -16,7 +16,6 @@ y_true = xs + 0.1 * np.random.normal(size=100)
 # random classification data
 y_binary = np.random.choice([0, 1], 100)
 y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
-y_clf = y_proba.round()
 
 
 @pytest.fixture(autouse=True)
