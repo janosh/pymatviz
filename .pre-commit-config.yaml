@@ -83,3 +83,9 @@ repos:
     hooks:
       - id: nbstripout
         args: [--drop-empty-cells, --keep-output]
+
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.5
+    hooks:
+      - id: vulture
+        args: [., assets/vulture_whitelist]

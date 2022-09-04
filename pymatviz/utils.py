@@ -40,16 +40,6 @@ for Z, symbol in enumerate(df_ptable.index, 1):
     element_symbols[Z] = symbol
 
 
-def elem_to_Z(elem_sumbol: str) -> int:
-    """Map element symbol to atomic number."""
-    return atomic_numbers[elem_sumbol]
-
-
-def Z_to_elem(atom_num: int) -> str:
-    """Map atomic number to element symbol."""
-    return element_symbols[atom_num]
-
-
 def with_hist(
     xs: NDArray[np.float64],
     ys: NDArray[np.float64],

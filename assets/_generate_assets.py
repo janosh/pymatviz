@@ -260,13 +260,12 @@ for struct, mp_id in zip(disordered_structs, mp_ids):
         elif "Zr" in site.species:
             site.species = {"Zr": 0.5, "Hf": 0.5}
 
-    href = f"https://materialsproject.org/materials/{mp_id}"
-
     ax = plot_structure_2d(struct)
     formula = struct.composition.reduced_formula
     _, spacegroup = struct.get_space_group_info()
 
     anno_text = f"{formula}\ndisordered {mp_id} with {spacegroup = }"
+    href = f"https://materialsproject.org/materials/{mp_id}"
     ax.text(0.5, 1, anno_text, url=href, ha="center", transform=ax.transAxes)
 
     ax.figure.set_size_inches(8, 8)
