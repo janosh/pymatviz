@@ -21,8 +21,7 @@ def roc_curve(
     Returns:
         tuple[float, ax]: The classifier's ROC-AUC and the plot's matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     # get the metrics
     false_pos_rate, true_pos_rate, _ = skm.roc_curve(targets, proba_pos)
@@ -51,8 +50,7 @@ def precision_recall_curve(
     Returns:
         tuple[float, ax]: The classifier's precision score and the matplotlib Axes.
     """
-    if ax is None:
-        ax = plt.gca()
+    ax = ax or plt.gca()
 
     # get the metrics
     precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
