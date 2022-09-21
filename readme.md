@@ -45,7 +45,7 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heat maps of the periodic table 
 | :------------------------------------------------------------: | :------------------------------------------------------------: |
 |                       ![ptable-heatmap]                        |                    ![ptable-heatmap-ratio]                     |
 |  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)  |  [`ptable_heatmap_plotly(compositions)`](pymatviz/ptable.py)   |
-|            ![ptable-heatmap-plotly-more-hover-data]            |            ![ptable-heatmap-plotly-percent-labels]             |
+|            ![ptable-heatmap-plotly-more-hover-data]            |                  ![ptable-heatmap-plotly-log]                  |
 
 ### Dash app using `ptable_heatmap_plotly()`
 
@@ -156,19 +156,19 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [normal-prob-plot-multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal-prob-plot-multiple.svg
 [normal-prob-plot]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal-prob-plot.svg
 [precision-recall-curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/precision-recall-curve.svg
+[ptable-heatmap-plotly-log]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-plotly-log.svg
+[ptable-heatmap-plotly-more-hover-data]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-plotly-more-hover-data.svg
 [ptable-heatmap-ratio]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-ratio.svg
 [ptable-heatmap]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap.svg
-[ptable-heatmap-plotly-more-hover-data]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-plotly-more-hover-data.svg
-[ptable-heatmap-plotly-percent-labels]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-plotly-percent-labels.svg
 [residual-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/residual-hist.svg
 [residual-vs-actual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/residual-vs-actual.svg
 [roc-curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/roc-curve.svg
+[sankey-from-2-df-cols-randints]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-from-2-df-cols-randints.svg
+[sankey-spglib-vs-aflow-spacegroups]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-spglib-vs-aflow-spacegroups.svg
 [scatter-with-err-bar]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/scatter-with-err-bar.svg
 [spg-num-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-hist.svg
-[spg-symbol-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist.svg
 [spg-num-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-sunburst.svg
+[spg-symbol-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist.svg
 [spg-symbol-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-sunburst.svg
 [struct-2d-mp-12712-Hf3Zr3Pd8-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf3Zr3Pd8-disordered.svg
 [struct-2d-mp-19017-Li4Fe3P4CO16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Fe3P4CO16-disordered.svg
-[sankey-from-2-df-cols-randints]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-from-2-df-cols-randints.svg
-[sankey-spglib-vs-aflow-spacegroups]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-spglib-vs-aflow-spacegroups.svg
