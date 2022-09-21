@@ -132,6 +132,12 @@ fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20
 fig.show()
 save_and_compress_svg("ptable-heatmap-plotly-percent-labels", fig)
 
+fig = ptable_heatmap_plotly(df_expt_gap.composition, log=True, colorscale="viridis")
+title = "Elements in Matbench Experimental Bandgap (log scale)"
+fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
+fig.show()
+save_and_compress_svg("ptable-heatmap-plotly-log", fig)
+
 
 # %% Uncertainty Plots
 qq_gaussian(y_pred, y_true, y_std)

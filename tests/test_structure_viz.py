@@ -30,10 +30,6 @@ def test_plot_structure_2d(
     show_bonds: bool | NearNeighbors,
     standardize_struct: bool | None,
 ) -> None:
-    # set explicit size to avoid ImageComparisonFailure in CI: sizes do not match
-    # expected (700, 1350, 3), actual (480, 640, 3)
-    plt.figure(figsize=(5, 5))
-
     ax = plot_structure_2d(
         disordered_struct,
         atomic_radii=radii,

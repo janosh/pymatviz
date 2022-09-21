@@ -12,7 +12,7 @@ __date__ = "2022-08-18"
 
 # %% download wbm-steps-summary.csv (23.31 MB)
 df_wbm = pd.read_csv(
-    "https://figshare.com/ndownloader/files/36714216?private_link=ff0ad14505f9624f0c05"
+    "https://figshare.com/files/37542841?private_link=ff0ad14505f9624f0c05"
 ).set_index("material_id", drop=False)
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
