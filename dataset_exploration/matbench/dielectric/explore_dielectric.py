@@ -55,7 +55,7 @@ plt.savefig("dielectric-ptable-heatmap.pdf")
 
 
 # %%
-fig = ptable_heatmap_plotly(df_diel.formula)
+fig = ptable_heatmap_plotly(df_diel.formula, log=True, colorscale="viridis")
 title = "<b>Elements in Matbench Dielectric</b>"
 fig.update_layout(title=dict(text=title, x=0.4, y=0.94, font_size=20))
 # fig.write_image("dielectric-ptable-heatmap-plotly.pdf")
