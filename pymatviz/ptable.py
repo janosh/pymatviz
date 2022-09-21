@@ -443,6 +443,12 @@ def ptable_heatmap_plotly(
 
     elem_values = count_elements(elem_values, count_mode, exclude_elements)
 
+    if log and elem_values[elem_values != 0].min() <= 1:
+        raise ValueError(
+            "Log color scale requires all heat map values to be > 1 since values <= 1 "
+            "map to negative log values which throws off the color scale."
+        )
+
     if heat_mode in ("fraction", "percent"):
         # normalize heat values
         clean_vals = elem_values.replace([np.inf, -np.inf], np.nan).dropna()
