@@ -34,8 +34,8 @@ def test_density_hexbin_with_hist():
 
 
 def test_scatter_with_err_bar():
-    scatter_with_err_bar(y_true, y_pred, yerr=y_true - y_pred)
-    scatter_with_err_bar(y_true, y_pred, xerr=y_true - y_pred)
+    scatter_with_err_bar(y_true, y_pred, yerr=abs(y_true - y_pred))
+    scatter_with_err_bar(y_true, y_pred, xerr=abs(y_true - y_pred))
 
 
 def test_residual_vs_actual():

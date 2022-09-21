@@ -182,14 +182,19 @@ def test_ptable_heatmap_plotly(glass_formulas):
     with pytest.raises(PlotlyError, match="Colorscale foobar is not a built-in scale"):
         ptable_heatmap_plotly(glass_formulas, colorscale="foobar")
 
+    with pytest.raises(ValueError, match="Combining log color scale and"):
+        ptable_heatmap_plotly(glass_formulas, log=True, heat_mode="percent")
+
 
 @pytest.mark.parametrize("exclude_elements", [(), [], ["O", "P"]])
-@pytest.mark.parametrize("heat_mode", [None, "fraction", "percent"])
+@pytest.mark.parametrize(
+    "heat_mode, log", [(None, True), ("fraction", False), ("percent", False)]
+)
 @pytest.mark.parametrize("showscale", [False, True])
 @pytest.mark.parametrize("font_size", [None, 14])
 @pytest.mark.parametrize("font_colors", [None, ("black", "white")])
 def test_ptable_heatmap_plotly_kwarg_combos(
-    glass_formulas, exclude_elements, heat_mode, showscale, font_size, font_colors
+    glass_formulas, exclude_elements, heat_mode, showscale, font_size, font_colors, log
 ):
     fig = ptable_heatmap_plotly(
         glass_formulas,
@@ -198,6 +203,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         showscale=showscale,
         font_size=font_size,
         font_colors=font_colors,
+        log=log,
     )
     assert isinstance(fig, go.Figure)
 

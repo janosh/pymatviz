@@ -31,7 +31,7 @@ jobs:
 
       - name: Run tests
         id: tests
-        run: pytest --durations 0 --cov pymatviz
+        run: pytest --cov pymatviz
 
       - name: Build and upload dist
         if: github.event_name == 'release' && steps.tests.outcome == 'success' && runner.os == 'Linux'

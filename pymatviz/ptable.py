@@ -264,7 +264,7 @@ def ptable_heatmap(
 
     if heat_mode is not None:
 
-        # colorbar position and size: [bar_xpos, bar_ypos, bar_width, bar_height]
+        # colorbar position and size: [x, y, width, height]
         # anchored at lower left corner
         cb_ax = ax.inset_axes([0.18, 0.8, 0.42, 0.05], transform=ax.transAxes)
         # format major and minor ticks
@@ -377,6 +377,7 @@ def ptable_heatmap_plotly(
     bg_color: str = None,
     color_bar: dict[str, Any] = None,
     exclude_elements: Sequence[str] = (),
+    log: bool = False,
 ) -> go.Figure:
     """Creates a Plotly figure with an interactive heatmap of the periodic table.
     Supports hover tooltips with custom data or atomic reference data like
@@ -394,7 +395,7 @@ def ptable_heatmap_plotly(
             https://plotly.com/python/builtin-colorscales for names of other builtin
             color scales. Note e.g. colorscale="YlGn" and px.colors.sequential.YlGn are
             equivalent. Custom scales are specified as ["blue", "red"] or
-            [[0, "rgb(0,0,255)"], [1, "rgb(255,0,0)"]].
+            [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
         showscale (bool): Whether to show a bar for the color scale. Defaults to True.
         heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is (value), normalized as a fraction of the total, as percentages
@@ -429,11 +430,24 @@ def ptable_heatmap_plotly(
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can do exclude_elements=['O'].
             Defaults to ().
+        log (bool): Whether to use a logarithmic color scale. Defaults to False.
+            Piece of advice: colorscale='viridis' and log=True go well together.
 
     Returns:
         Figure: Plotly Figure object.
     """
+    if log and heat_mode in ("fraction", "percent"):
+        raise ValueError(
+            "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
+        )
+
     elem_values = count_elements(elem_values, count_mode, exclude_elements)
+
+    if log and elem_values[elem_values != 0].min() <= 1:
+        raise ValueError(
+            "Log color scale requires all heat map values to be > 1 since values <= 1 "
+            "map to negative log values which throws off the color scale."
+        )
 
     if heat_mode in ("fraction", "percent"):
         # normalize heat values
@@ -446,7 +460,7 @@ def ptable_heatmap_plotly(
     n_rows, n_columns = 10, 18
     # initialize tile text and hover tooltips to empty strings
     tile_texts, hover_texts = np.full([2, n_rows, n_columns], "", dtype=object)
-    heat_vals = np.zeros([n_rows, n_columns])
+    heatmap_values = np.zeros([n_rows, n_columns])
 
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
@@ -506,10 +520,12 @@ def ptable_heatmap_plotly(
             continue
 
         color_val = heat_value_element_map[symbol]
+        if log and color_val > 0:
+            color_val = np.log10(color_val)
         # until https://github.com/plotly/plotly.js/issues/975 is resolved, we need to
         # insert transparency (rgba0) at low end of colorscale (+1e-6) to not show any
         # colors on empty tiles of the periodic table
-        heat_vals[row][col] = color_val + 1e-6
+        heatmap_values[row][col] = color_val + 1e-6
 
     rgba0 = "rgba(0, 0, 0, 0)"
     if colorscale is None:
@@ -531,7 +547,7 @@ def ptable_heatmap_plotly(
         )
 
     fig = ff.create_annotated_heatmap(
-        heat_vals,
+        heatmap_values,
         annotation_text=tile_texts,
         text=hover_texts,
         showscale=showscale,
@@ -540,6 +556,15 @@ def ptable_heatmap_plotly(
         hoverinfo="text",
         xgap=gap,
         ygap=gap,
+        # TODO: see if this ugly code can be handed off to plotly, looks like not atm
+        # https://github.com/janosh/pymatviz/issues/52
+        # https://github.com/plotly/documentation/issues/1611
+        colorbar=dict(
+            tickvals=np.arange(int(np.log10(elem_values.max())) + 1),
+            ticktext=10 ** np.arange(int(np.log10(elem_values.max())) + 1),
+        )
+        if log
+        else None,
     )
     fig.update_layout(
         margin=dict(l=10, r=10, t=10, b=10, pad=10),
