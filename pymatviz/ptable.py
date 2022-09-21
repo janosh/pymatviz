@@ -264,7 +264,7 @@ def ptable_heatmap(
 
     if heat_mode is not None:
 
-        # colorbar position and size: [bar_xpos, bar_ypos, bar_width, bar_height]
+        # colorbar position and size: [x, y, width, height]
         # anchored at lower left corner
         cb_ax = ax.inset_axes([0.18, 0.8, 0.42, 0.05], transform=ax.transAxes)
         # format major and minor ticks
@@ -395,7 +395,7 @@ def ptable_heatmap_plotly(
             https://plotly.com/python/builtin-colorscales for names of other builtin
             color scales. Note e.g. colorscale="YlGn" and px.colors.sequential.YlGn are
             equivalent. Custom scales are specified as ["blue", "red"] or
-            [[0, "rgb(0,0,255)"], [1, "rgb(255,0,0)"]].
+            [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
         showscale (bool): Whether to show a bar for the color scale. Defaults to True.
         heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is (value), normalized as a fraction of the total, as percentages

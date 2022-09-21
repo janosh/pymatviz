@@ -174,7 +174,7 @@ def density_hexbin(
     # the scatter plot
     hexbin = ax.hexbin(xs, yx, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
 
-    cb_ax = ax.inset_axes([0.95, 0.03, 0.03, 0.7])  # [left, bottom, width, height]
+    cb_ax = ax.inset_axes([0.95, 0.03, 0.03, 0.7])  # [x, y, width, height]
     plt.colorbar(hexbin, cax=cb_ax)
     cb_ax.yaxis.set_ticks_position("left")
 
