@@ -19,8 +19,8 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from tqdm import tqdm
 
-from dataset_exploration.plot_defaults import crystal_sys_order, plt, px
 from pymatviz import ptable_heatmap, spacegroup_hist, spacegroup_sunburst
+from pymatviz.plot_defaults import crystal_sys_order, plt, px
 from pymatviz.utils import get_crystal_sys
 
 

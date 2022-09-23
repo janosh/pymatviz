@@ -2,13 +2,13 @@
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from dataset_exploration.plot_defaults import plt
 from pymatviz import (
     annotate_bars,
     plot_structure_2d,
     ptable_heatmap,
     spacegroup_sunburst,
 )
+from pymatviz.plot_defaults import plt
 from pymatviz.utils import get_crystal_sys
 
 

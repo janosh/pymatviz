@@ -22,8 +22,8 @@ https://hackingmaterials.lbl.gov/matminer/dataset_summary.html#ricci-boltztrap-m
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from dataset_exploration.plot_defaults import plt
 from pymatviz import ptable_heatmap, spacegroup_hist
+from pymatviz.plot_defaults import plt
 
 
 # %%
