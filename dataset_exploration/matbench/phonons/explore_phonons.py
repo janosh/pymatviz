@@ -20,8 +20,8 @@ https://ml.materialsproject.org/projects/matbench_phonons
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from dataset_exploration.plot_defaults import plt
 from pymatviz import ptable_heatmap, spacegroup_hist
+from pymatviz.plot_defaults import plt
 
 
 # %%
