@@ -2,8 +2,8 @@
 from matminer.datasets import load_dataset
 from pymatgen.core import Composition
 
-from dataset_exploration.plot_defaults import plt, px
 from pymatviz import ptable_heatmap
+from pymatviz.plot_defaults import plt, px
 
 
 """Stats for the matbench_expt_gap dataset.

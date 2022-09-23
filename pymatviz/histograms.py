@@ -119,9 +119,8 @@ def true_pred_hist(
     ax.legend(frameon=False)
 
     norm = plt.cm.colors.Normalize(vmax=y_std.max(), vmin=y_std.min())
-    cb_ax = ax.inset_axes([1.075, 0, 0.05, 1])  # [x, y, width, height]
     cbar = plt.colorbar(
-        plt.cm.ScalarMappable(norm=norm, cmap=color_map), pad=0.075, cax=cb_ax
+        plt.cm.ScalarMappable(norm=norm, cmap=color_map), pad=0.075, ax=ax
     )
     cbar.outline.set_linewidth(1)
     cbar.set_label(r"mean $y_\mathrm{std}$ of prediction in bin")

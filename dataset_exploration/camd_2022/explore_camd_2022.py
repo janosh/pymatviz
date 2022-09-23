@@ -21,8 +21,8 @@ import pandas as pd
 import requests
 from pymatgen.symmetry.groups import SpaceGroup
 
-from dataset_exploration.plot_defaults import plt
 from pymatviz import annotate_bars, count_elements, ptable_heatmap, spacegroup_sunburst
+from pymatviz.plot_defaults import plt
 
 
 # %% Download data (if needed)
