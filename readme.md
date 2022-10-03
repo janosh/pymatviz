@@ -6,8 +6,8 @@ A toolkit for visualizations in materials informatics.
 
 [![Tests](https://github.com/janosh/pymatviz/actions/workflows/test.yml/badge.svg)](https://github.com/janosh/pymatviz/actions/workflows/test.yml)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/pymatviz/main.svg)](https://results.pre-commit.ci/latest/github/janosh/pymatviz/main)
-[![This project supports Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org/downloads)
-[![PyPI](https://img.shields.io/pypi/v/pymatviz)](https://pypi.org/project/pymatviz)
+[![This project supports Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg?logo=python)](https://python.org/downloads)
+[![PyPI](https://img.shields.io/pypi/v/pymatviz?logo=PyPI)](https://pypi.org/project/pymatviz)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/pymatviz)](https://pypistats.org/packages/pymatviz)
 
 </h4>
