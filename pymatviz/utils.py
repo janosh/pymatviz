@@ -88,6 +88,7 @@ def annotate_bars(
     h_offset: int | float = 0,
     labels: Sequence[str | int | float] = None,
     fontsize: int = 14,
+    y_max_headroom: float = 1.2,
     **kwargs: Any,
 ) -> None:
     """Annotate each bar in bar plot with a label.
@@ -99,6 +100,9 @@ def annotate_bars(
         labels (list[str]): Labels used for annotating bars. If not provided, defaults
             to the y-value of each bar.
         fontsize (int): Annotated text size in pts. Defaults to 14.
+        y_max_headroom (float): Will be multiplied with the y-value of the tallest bar
+            to increase the y-max of the plot, thereby making room for text above all
+            bars. Defaults to 1.2.
         **kwargs: Additional arguments (rotation, arrowprops, etc.) are passed to
             ax.annotate().
     """
@@ -126,7 +130,7 @@ def annotate_bars(
         ax.annotate(txt, (x_pos, y_pos), ha="center", fontsize=fontsize, **kwargs)
 
     # ensure enough vertical space to display label above highest bar
-    ax.set(ylim=(None, y_max * 1.2))
+    ax.set(ylim=(None, y_max * y_max_headroom))
 
 
 def add_mae_r2_box(
