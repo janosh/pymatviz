@@ -17,7 +17,7 @@ from numpy.typing import NDArray
 from sklearn.metrics import r2_score
 
 
-if sys.version_info < (3, 8):
+if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal

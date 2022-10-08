@@ -18,7 +18,7 @@ from pymatgen.core import Composition
 from pymatviz.utils import df_ptable
 
 
-if sys.version_info < (3, 8):
+if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal

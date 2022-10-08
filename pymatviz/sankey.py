@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 
-if sys.version_info < (3, 8):
+if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal

@@ -16,7 +16,7 @@ from pymatviz.ptable import count_elements
 from pymatviz.utils import Array, annotate_bars, get_crystal_sys
 
 
-if sys.version_info < (3, 8):
+if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal

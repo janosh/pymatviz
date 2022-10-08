@@ -10,7 +10,7 @@ from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
 from tests.conftest import y_pred, y_true
 
 
-if sys.version_info < (3, 8):
+if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal

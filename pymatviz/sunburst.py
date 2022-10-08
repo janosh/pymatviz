@@ -12,7 +12,7 @@ from pymatgen.symmetry.groups import SpaceGroup
 from pymatviz.utils import get_crystal_sys
 
 
-if sys.version_info < (3, 8):
+if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal
