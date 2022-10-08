@@ -289,5 +289,6 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
     else:
         raise TypeError(f"{fig = } should be a Plotly Figure or Matplotlib Figure")
 
-    if (svgo := which("svgo")) is not None:
+    svgo = which("svgo")
+    if svgo is not None:
         subprocess.run([svgo, "--multipass", filepath])

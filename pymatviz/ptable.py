@@ -502,7 +502,8 @@ def ptable_heatmap_plotly(
             hover_text += f"<br>{hover_data[symbol]}"
 
         if hover_props is not None:
-            if unsupported_keys := set(hover_props) - set(df_ptable):
+            unsupported_keys = set(hover_props) - set(df_ptable)
+            if unsupported_keys:
                 raise ValueError(
                     f"Unsupported hover_props: {', '.join(unsupported_keys)}. Available"
                     f" keys are: {', '.join(df_ptable)}.\nNote that some keys have "
