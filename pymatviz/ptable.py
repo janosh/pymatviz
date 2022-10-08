@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence
+import sys
+from typing import TYPE_CHECKING, Any, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +16,12 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition
 
 from pymatviz.utils import df_ptable
+
+
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 
 if TYPE_CHECKING:
@@ -100,7 +107,8 @@ def count_elements(
         except KeyError as exc:
             bad_symbols = ", ".join(x for x in exclude_elements if x not in srs)
             raise ValueError(
-                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}"
+                f"Unexpected symbol(s) {bad_symbols} in "
+                f"exclude_elements={exclude_elements}"
             ) from exc
 
     return srs
@@ -482,7 +490,7 @@ def ptable_heatmap_plotly(
                 label = f"{heat_value:{precision or prec}}".replace("e+0", "e")
 
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
-        tile_text = f"<span {style=}>{symbol}</span>"
+        tile_text = f"<span style={style}>{symbol}</span>"
         if label is not None:
             tile_text += f"<br>{label}"
 
@@ -494,7 +502,8 @@ def ptable_heatmap_plotly(
             hover_text += f"<br>{hover_data[symbol]}"
 
         if hover_props is not None:
-            if unsupported_keys := set(hover_props) - set(df_ptable):
+            unsupported_keys = set(hover_props) - set(df_ptable)
+            if unsupported_keys:
                 raise ValueError(
                     f"Unsupported hover_props: {', '.join(unsupported_keys)}. Available"
                     f" keys are: {', '.join(df_ptable)}.\nNote that some keys have "
@@ -542,7 +551,7 @@ def ptable_heatmap_plotly(
         colorscale[1][0] = 1e-6  # type: ignore
     else:
         raise ValueError(
-            f"{colorscale = } should be string, list of strings or list of "
+            f"colorscale={colorscale} should be string, list of strings or list of "
             "tuples(float, str)"
         )
 
