@@ -6,7 +6,7 @@ A toolkit for visualizations in materials informatics.
 
 [![Tests](https://github.com/janosh/pymatviz/actions/workflows/test.yml/badge.svg)](https://github.com/janosh/pymatviz/actions/workflows/test.yml)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/pymatviz/main.svg)](https://results.pre-commit.ci/latest/github/janosh/pymatviz/main)
-[![This project supports Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg?logo=python)](https://python.org/downloads)
+[![This project supports Python 3.7+](https://img.shields.io/badge/Python-3.7+-blue.svg?logo=python)](https://python.org/downloads)
 [![PyPI](https://img.shields.io/pypi/v/pymatviz?logo=PyPI)](https://pypi.org/project/pymatviz)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/pymatviz)](https://pypistats.org/packages/pymatviz)
 
@@ -35,7 +35,7 @@ Check out the Jupyter notebooks under [`examples/`](examples/) to learn how to u
 [View on GitHub]: https://img.shields.io/badge/View%20on-GitHub-darkblue?logo=github
 [Open in Google Colab]: https://colab.research.google.com/assets/colab-badge.svg
 
-When trying to open notebooks in Google Colab, you might encounter errors. Colab currently only supports Python 3.7. `pymatviz` uses Python 3.8 features like [self-documenting f-strings](https://docs.python.org/3/whatsnew/3.8.html#f-strings-support-for-self-documenting-expressions-and-debugging). You may still be able to use `pymatviz` on Colab by cloning the repo and patching the source code in-place [as shown here](https://github.com/janosh/pymatviz/issues/17#issuecomment-1165141311).
+When trying to open notebooks in Google Colab, you might encounter errors. Colab currently only supports Python 3.7. `pymatviz` uses Python 3.7 features like [self-documenting f-strings](https://docs.python.org/3/whatsnew/3.7.html#f-strings-support-for-self-documenting-expressions-and-debugging). You may still be able to use `pymatviz` on Colab by cloning the repo and patching the source code in-place [as shown here](https://github.com/janosh/pymatviz/issues/17#issuecomment-1165141311).
 
 ## Periodic Table
 
