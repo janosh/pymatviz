@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import sys
-from typing import Any, Sequence, cast
+from typing import Any, Literal, Sequence, cast
 
 import pandas as pd
 import plotly.express as px
@@ -10,12 +9,6 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.utils import get_crystal_sys
-
-
-if sys.version_info >= (3, 8):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
 
 
 def spacegroup_sunburst(
@@ -66,7 +59,7 @@ def spacegroup_sunburst(
     elif show_counts == "value":
         fig.data[0].textinfo = "label+value"
     elif show_counts is not False:
-        raise ValueError(f"Invalid show_counts={show_counts}")
+        raise ValueError(f"Invalid {show_counts=}")
 
     fig.update_layout(
         margin=dict(l=10, r=10, b=10, pad=10),

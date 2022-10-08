@@ -1,16 +1,9 @@
 from __future__ import annotations
 
-import sys
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 import plotly.graph_objects as go
-
-
-if sys.version_info >= (3, 8):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
 
 
 def sankey_from_2_df_cols(
@@ -37,7 +30,7 @@ def sankey_from_2_df_cols(
     """
     if len(cols) != 2:
         raise ValueError(
-            f"cols={cols} should specify exactly two columns: (source_col, target_col)"
+            f"{cols=} should specify exactly two columns: (source_col, target_col)"
         )
 
     source, target, value = (
