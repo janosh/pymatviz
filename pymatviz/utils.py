@@ -273,7 +273,7 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
     Raises:
         ValueError: If fig is None and plt.gcf() is empty.
     """
-    assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
+    assert not filename.endswith(".svg"), f"filename={filename} should not include .svg"
     filepath = f"{ROOT}/assets/{filename}.svg"
 
     if isinstance(fig, go.Figure):
@@ -287,7 +287,7 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
         plt.savefig(filepath, bbox_inches="tight")
         plt.close()
     else:
-        raise TypeError(f"{fig = } should be a Plotly Figure or Matplotlib Figure")
+        raise TypeError(f"fig={fig} should be a Plotly Figure or Matplotlib Figure")
 
     svgo = which("svgo")
     if svgo is not None:

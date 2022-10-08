@@ -341,7 +341,8 @@ def plot_structure_2d(
             neighbor_strategy_cls = show_bonds
         else:
             raise ValueError(
-                f"Expected boolean or a NearNeighbors subclass for {show_bonds = }"
+                "Expected boolean or a NearNeighbors subclass for show_bonds="
+                f"{show_bonds}"
             )
 
         # If structure doesn't have any oxidation states yet, guess them from chemical

@@ -551,7 +551,7 @@ def ptable_heatmap_plotly(
         colorscale[1][0] = 1e-6  # type: ignore
     else:
         raise ValueError(
-            f"{colorscale = } should be string, list of strings or list of "
+            f"colorscale={colorscale} should be string, list of strings or list of "
             "tuples(float, str)"
         )
 
