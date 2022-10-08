@@ -182,8 +182,8 @@ def plot_structure_2d(
     if isinstance(site_labels, (list, tuple)):
         if len(site_labels) != len(struct):
             raise ValueError(
-                f"If a list, site_labels ({len(site_labels)=}) must have same length as"
-                f" the number of sites in the crystal ({len(struct)=})"
+                f"If a list, site_labels (len={len(site_labels)}) must have same length"
+                f" as the number of sites in the crystal (len={len(struct)})"
             )
 
     # default behavior in case of no user input is to standardize if any fractional

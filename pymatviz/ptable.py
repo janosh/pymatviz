@@ -107,7 +107,8 @@ def count_elements(
         except KeyError as exc:
             bad_symbols = ", ".join(x for x in exclude_elements if x not in srs)
             raise ValueError(
-                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}"
+                f"Unexpected symbol(s) {bad_symbols} in "
+                f"exclude_elements={exclude_elements}"
             ) from exc
 
     return srs
@@ -489,7 +490,7 @@ def ptable_heatmap_plotly(
                 label = f"{heat_value:{precision or prec}}".replace("e+0", "e")
 
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
-        tile_text = f"<span {style=}>{symbol}</span>"
+        tile_text = f"<span style={style}>{symbol}</span>"
         if label is not None:
             tile_text += f"<br>{label}"
 

@@ -66,7 +66,7 @@ def spacegroup_sunburst(
     elif show_counts == "value":
         fig.data[0].textinfo = "label+value"
     elif show_counts is not False:
-        raise ValueError(f"Invalid {show_counts=}")
+        raise ValueError(f"Invalid show_counts={show_counts}")
 
     fig.update_layout(
         margin=dict(l=10, r=10, b=10, pad=10),
