@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import sys
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,11 +14,6 @@ from pymatgen.symmetry.groups import SpaceGroup
 from pymatviz.ptable import count_elements
 from pymatviz.utils import Array, annotate_bars, get_crystal_sys
 
-
-if sys.version_info >= (3, 8):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
 
 if TYPE_CHECKING:
     from pymatviz.ptable import CountMode, ElemValues
