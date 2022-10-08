@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import ast
 import subprocess
+import sys
 from os.path import abspath, dirname
 from shutil import which
-from typing import Any, Literal, Sequence, Union
+from typing import Any, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,6 +15,12 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from numpy.typing import NDArray
 from sklearn.metrics import r2_score
+
+
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 
 ROOT = dirname(dirname(abspath(__file__)))
@@ -266,7 +273,7 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
     Raises:
         ValueError: If fig is None and plt.gcf() is empty.
     """
-    assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
+    assert not filename.endswith(".svg"), f"filename={filename} should not include .svg"
     filepath = f"{ROOT}/assets/{filename}.svg"
 
     if isinstance(fig, go.Figure):
@@ -280,7 +287,8 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
         plt.savefig(filepath, bbox_inches="tight")
         plt.close()
     else:
-        raise TypeError(f"{fig = } should be a Plotly Figure or Matplotlib Figure")
+        raise TypeError(f"fig={fig} should be a Plotly Figure or Matplotlib Figure")
 
-    if (svgo := which("svgo")) is not None:
+    svgo = which("svgo")
+    if svgo is not None:
         subprocess.run([svgo, "--multipass", filepath])
