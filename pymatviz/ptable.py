@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence
+import sys
+from typing import TYPE_CHECKING, Any, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +16,12 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition
 
 from pymatviz.utils import df_ptable
+
+
+if sys.version_info < (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 
 if TYPE_CHECKING:

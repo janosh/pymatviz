@@ -1,11 +1,17 @@
 from __future__ import annotations
 
-from typing import Literal
+import sys
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+
+
+if sys.version_info < (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 from pymatviz.sankey import sankey_from_2_df_cols
 

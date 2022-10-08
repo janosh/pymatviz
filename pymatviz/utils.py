@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import ast
 import subprocess
+import sys
 from os.path import abspath, dirname
 from shutil import which
-from typing import Any, Literal, Sequence, Union
+from typing import Any, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,6 +15,12 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from numpy.typing import NDArray
 from sklearn.metrics import r2_score
+
+
+if sys.version_info < (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 
 ROOT = dirname(dirname(abspath(__file__)))

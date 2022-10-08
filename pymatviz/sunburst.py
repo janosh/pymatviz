@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Sequence, cast
+import sys
+from typing import Any, Sequence, cast
 
 import pandas as pd
 import plotly.express as px
@@ -9,6 +10,12 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.utils import get_crystal_sys
+
+
+if sys.version_info < (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 
 def spacegroup_sunburst(
