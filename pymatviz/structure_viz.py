@@ -139,6 +139,21 @@ def plot_structure_2d(
     plot_structure_2d(mp_19017)
     ```
 
+    Multiple structures in single figure example:
+    ```py
+    import matplotlib.pyplot as plt
+    from pymatgen.ext.matproj import MPRester
+    from pymatviz import plot_structure_2d
+
+    structures = [
+        MPRester().get_structure_by_material_id(f"mp-{idx}") for idx in range(1, 5)
+    ]
+    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
+
+    for struct, ax in zip(structures, axs.flat):
+        plot_structure_2d(struct, ax=ax)
+    ```
+
     Args:
         struct (Structure): Must be pymatgen instance. ax (plt.Axes, optional):
         Matplotlib axes on which to plot. Defaults to None. rotation (str, optional):
