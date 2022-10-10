@@ -225,7 +225,7 @@ def residual_vs_actual(
     y_pred: Array,
     ax: plt.Axes = None,
     xlabel: str = r"Actual value",
-    ylabel: str = r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)",
+    ylabel: str = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
     **kwargs: Any,
 ) -> plt.Axes:
     r"""Plot ground truth targets on the x-axis against residuals
@@ -237,7 +237,7 @@ def residual_vs_actual(
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual value".
         ylabel (str, optional): y-axis label. Defaults to
-            'Residual ($y_\mathrm{test} - y_\mathrm{pred}$)'.
+            'Residual ($y_\mathrm{true} - y_\mathrm{pred}$)'.
         **kwargs: Additional keyword arguments passed to plt.plot()
 
     Returns:

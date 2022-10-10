@@ -20,10 +20,9 @@ if TYPE_CHECKING:
 
 
 def residual_hist(
-    y_true: Array,
-    y_pred: Array,
+    y_res: Array,
     ax: plt.Axes = None,
-    xlabel: str | None = r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)",
+    xlabel: str | None = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
     **kwargs: Any,
 ) -> plt.Axes:
     r"""Plot the residual distribution overlaid with a Gaussian kernel
@@ -32,19 +31,16 @@ def residual_hist(
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/Jmb2O).
 
     Args:
-        y_true (array): ground truth targets
-        y_pred (array): model predictions
+        y_res (array): y_true - y_pred, i.e. ground-truth targets - model predictions.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to
-            'Residual ($y_\mathrm{test} - y_\mathrm{pred}$)
+            'Residual ($y_\mathrm{true} - y_\mathrm{pred}$)
         **kwargs: Additional keyword arguments to pass to matplotlib.Axes.
 
     Returns:
         ax: The plot's matplotlib Axes.
     """
     ax = ax or plt.gca()
-
-    y_res = y_pred - y_true
 
     ax.hist(
         y_res, bins=kwargs.pop("bins", 50), density=True, edgecolor="black", **kwargs
@@ -56,7 +52,7 @@ def residual_hist(
     x_range = np.linspace(min(y_res), max(y_res), 100)
 
     label = "Gaussian kernel density estimate"
-    ax.plot(x_range, kde(x_range), linewidth=3, color="red", label=label)
+    ax.plot(x_range, kde(x_range), linewidth=3, color="orange", label=label)
 
     ax.set(xlabel=xlabel)
     ax.legend(loc="upper left", framealpha=0.5, handlelength=1)
