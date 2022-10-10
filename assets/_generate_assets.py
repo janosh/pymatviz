@@ -240,9 +240,10 @@ df_phonons = load_dataset("matbench_phonons")
 
 n_rows, n_cols = 3, 4
 fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_rows, 3 * n_cols))
+structures = df_phonons.structure.head(n_rows * n_cols)
 
-for struct, ax in zip(df_phonons.structure.head(n_rows * n_cols), axs.flat):
-    ax = plot_structure_2d(struct, ax=ax)
+for struct, ax in zip(structures, axs.flat):
+    plot_structure_2d(struct, ax=ax)
     spg_symbol, _ = struct.get_space_group_info()
     formula = struct.composition.reduced_formula
     ax.set_title(f"{formula} ({spg_symbol})", fontweight="bold")
