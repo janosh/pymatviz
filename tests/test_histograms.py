@@ -13,7 +13,7 @@ from tests.conftest import y_pred, y_true
 @pytest.mark.parametrize("bins", [None, 1, 100])
 @pytest.mark.parametrize("xlabel", [None, "foo"])
 def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
-    ax = residual_hist(y_true, y_pred, bins=bins, xlabel=xlabel)
+    ax = residual_hist(y_true - y_pred, bins=bins, xlabel=xlabel)
 
     assert isinstance(ax, plt.Axes)
     assert (
