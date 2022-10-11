@@ -234,7 +234,7 @@ def plot_structure_2d(
         assert not missing, f"atomic_radii is missing keys: {missing}"
 
     radii_at_sites = np.array(
-        [atomic_radii[el] for el in elements_at_sites]  # type: ignore
+        [atomic_radii[el] for el in elements_at_sites]  # type: ignore[index]
     )
 
     n_atoms = len(struct)

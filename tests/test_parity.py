@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
 from pymatviz import (
@@ -10,33 +11,48 @@ from pymatviz import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
+from tests.conftest import y_pred, y_true
 
-from .conftest import y_pred, y_true
+
+df = pd.util.testing.makeMixedDataFrame()
+data = [[None, y_true, y_pred], [df, *df.columns[:2]]]
 
 
 @pytest.mark.parametrize("log", [True, False])
 @pytest.mark.parametrize("sort", [True, False])
 @pytest.mark.parametrize("cmap", [None, "Greens"])
-def test_density_scatter(log: bool, sort: bool, cmap: str | None) -> None:
-    density_scatter(y_true, y_pred, log=log, sort=sort, cmap=cmap)
+@pytest.mark.parametrize("df, x, y", data)
+def test_density_scatter(
+    df: pd.DataFrame, x: str, y: str, log: bool, sort: bool, cmap: str | None
+) -> None:
+    density_scatter(df=df, x=x, y=y, log=log, sort=sort, cmap=cmap)
 
 
-def test_density_scatter_with_hist():
-    density_scatter_with_hist(y_true, y_pred)
+@pytest.mark.parametrize("df, x, y", data)
+def test_density_scatter_with_hist(df: pd.DataFrame, x: str, y: str) -> None:
+    density_scatter_with_hist(df=df, x=x, y=y)
 
 
-def test_density_hexbin():
-    density_hexbin(y_true, y_pred)
+@pytest.mark.parametrize("df, x, y", data)
+def test_density_hexbin(df: pd.DataFrame, x: str, y: str) -> None:
+    density_hexbin(df=df, x=x, y=y)
 
 
-def test_density_hexbin_with_hist():
-    density_hexbin_with_hist(y_true, y_pred)
+@pytest.mark.parametrize("df, x, y", data)
+def test_density_hexbin_with_hist(df: pd.DataFrame, x: str, y: str) -> None:
+    density_hexbin_with_hist(df=df, x=x, y=y)
 
 
-def test_scatter_with_err_bar():
-    scatter_with_err_bar(y_true, y_pred, yerr=abs(y_true - y_pred))
-    scatter_with_err_bar(y_true, y_pred, xerr=abs(y_true - y_pred))
+@pytest.mark.parametrize("df, x, y", data)
+def test_scatter_with_err_bar(df: pd.DataFrame, x: str, y: str) -> None:
+    if df is not None:
+        err = abs(df[x] - df[y])
+    else:
+        err = abs(x - y)  # type: ignore[operator]
+    scatter_with_err_bar(df=df, x=x, y=y, yerr=err)
+    scatter_with_err_bar(df=df, x=x, y=y, xerr=err)
 
 
-def test_residual_vs_actual():
-    residual_vs_actual(y_true, y_pred)
+@pytest.mark.parametrize("df, x, y", data)
+def test_residual_vs_actual(df: pd.DataFrame, x: str, y: str) -> None:
+    residual_vs_actual(df=df, y_true=x, y_pred=y)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Sequence, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -128,7 +128,7 @@ def true_pred_hist(
 
 
 def spacegroup_hist(
-    data: Sequence[int | str] | pd.Series,
+    data: Sequence[int | str | Structure] | pd.Series,
     show_counts: bool = True,
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     include_missing: bool = False,
@@ -138,8 +138,8 @@ def spacegroup_hist(
     """Plot a histogram of spacegroups shaded by crystal system.
 
     Args:
-        data (list[int | str] | pd.Series): A sequence (list, tuple, pd.Series) of
-            space group strings or numbers (from 1 - 230) or pymatgen structures.
+        data (list[int | str | Structure] | pd.Series): Space group strings or numbers
+            (from 1 - 230) or pymatgen structures.
         show_counts (bool, optional): Whether to count the number of items
             in each crystal system. Defaults to True.
         xticks ('all' | 'crys_sys_edges' | int, optional): Where to add x-ticks. An
@@ -159,16 +159,14 @@ def spacegroup_hist(
 
     if isinstance(next(iter(data)), Structure):
         # if 1st sequence item is structure, assume all are
-        series = pd.Series(
-            struct.get_space_group_info()[1] for struct in data  # type: ignore
-        )
+        data = cast(Sequence[Structure], data)
+        series = pd.Series(struct.get_space_group_info()[1] for struct in data)
     else:
         series = pd.Series(data)
 
-    df = pd.DataFrame(series.value_counts(sort=False))
-    df.columns = ["counts"]
+    df = pd.DataFrame(series.value_counts(sort=False), columns=["counts"])
 
-    crys_colors = {
+    crystal_sys_colors = {
         "triclinic": "red",
         "monoclinic": "teal",
         "orthorhombic": "blue",
@@ -196,7 +194,7 @@ def spacegroup_hist(
 
         # sort df by crystal system going from smallest to largest spacegroup numbers
         # e.g. triclinic (1-2) comes first, cubic (195-230) last
-        sys_order = dict(zip(crys_colors, range(len(crys_colors))))
+        sys_order = dict(zip(crystal_sys_colors, range(len(crystal_sys_colors))))
         df = df.loc[df.crystal_sys.map(sys_order).sort_values().index]
 
         xlabel = "International Spacegroup Symbol"
@@ -215,12 +213,12 @@ def spacegroup_hist(
 
     # sort by key order in dict crys_colors
     crys_sys_counts = crys_sys_counts.loc[
-        [x for x in crys_colors if x in crys_sys_counts.index]
+        [x for x in crystal_sys_colors if x in crys_sys_counts.index]
     ]
 
     crys_sys_counts["width"] = df.value_counts("crystal_sys")
     ax.set_title("Totals per crystal system", fontdict={"fontsize": 18}, pad=30)
-    crys_sys_counts["color"] = pd.Series(crys_colors)
+    crys_sys_counts["color"] = pd.Series(crystal_sys_colors)
 
     x0 = 0
     for cryst_sys, count, width, color in crys_sys_counts.itertuples():
@@ -260,7 +258,6 @@ def spacegroup_hist(
     ax.xaxis.grid(False)
 
     if xticks == "crys_sys_edges" or isinstance(xticks, int):
-
         if isinstance(xticks, int):
             # get x_locs of n=xticks tallest bars
             x_indices = df.reset_index().sort_values("counts").tail(xticks).index
