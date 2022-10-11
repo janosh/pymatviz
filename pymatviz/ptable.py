@@ -538,7 +538,7 @@ def ptable_heatmap_plotly(
     elif isinstance(colorscale, Sequence) and isinstance(colorscale[0], (list, tuple)):
         # list of tuples(float in [0, 1], color)
         # make sure we're dealing with mutable lists
-        colorscale = [(0, rgba0)] + list(map(list, colorscale))  # type: ignore
+        colorscale = [(0, rgba0), *map(list, colorscale)]  # type: ignore
         colorscale[1][0] = 1e-6  # type: ignore
     else:
         raise ValueError(

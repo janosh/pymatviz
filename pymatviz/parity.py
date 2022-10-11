@@ -5,34 +5,41 @@ from typing import Any
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy.interpolate
 from matplotlib.gridspec import GridSpec
 
-from pymatviz.utils import Array, add_mae_r2_box, with_hist
+from pymatviz.utils import Array, add_mae_r2_box, df_to_arrays, with_hist
 
 
 def hist_density(
-    xs: Array, ys: Array, sort: bool = True, bins: int = 100
+    x: Array | str,
+    y: Array | str,
+    df: pd.DataFrame = None,
+    sort: bool = True,
+    bins: int = 100,
 ) -> tuple[Array, Array, Array]:
     """Return an approximate density of 2d points.
 
     Args:
-        xs (array): x-coordinates of points
-        ys (array): y-coordinates of points
+        x (array | str): x-values or dataframe column name.
+        y (array | str): y-values or dataframe column name.
+        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
         sort (bool, optional): Whether to sort points by density so that densest points
             are plotted last. Defaults to True.
         bins (int, optional): Number of bins (histogram resolution). Defaults to 100.
 
     Returns:
-        tuple[array, array]: x- and y-coordinates (sorted by density) as well as density
-            itself
+        tuple[array, array]: x and y values (sorted by density) and density itself
     """
-    data, x_e, y_e = np.histogram2d(xs, ys, bins=bins)
+    x, y = df_to_arrays(x, y, df)
+
+    data, x_e, y_e = np.histogram2d(x, y, bins=bins)
 
     zs = scipy.interpolate.interpn(
         (0.5 * (x_e[1:] + x_e[:-1]), 0.5 * (y_e[1:] + y_e[:-1])),
         data,
-        np.vstack([xs, ys]).T,
+        np.vstack([x, y]).T,
         method="splinef2d",
         bounds_error=False,
     )
@@ -40,14 +47,15 @@ def hist_density(
     # Sort the points by density, so that the densest points are plotted last
     if sort:
         idx = zs.argsort()
-        xs, ys, zs = xs[idx], ys[idx], zs[idx]
+        x, y, zs = x[idx], y[idx], zs[idx]
 
-    return xs, ys, zs
+    return x, y, zs
 
 
 def density_scatter(
-    xs: Array,
-    ys: Array,
+    x: Array | str,
+    y: Array | str,
+    df: pd.DataFrame = None,
     ax: plt.Axes = None,
     sort: bool = True,
     log: bool = True,
@@ -61,8 +69,9 @@ def density_scatter(
     """Scatter plot colored (and optionally sorted) by density.
 
     Args:
-        xs (array): x values.
-        ys (array): y values.
+        x (array | str): x-values or dataframe column name.
+        y (array | str): y-values or dataframe column name.
+        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         sort (bool, optional): Whether to sort the data. Defaults to True.
         log (bool, optional): Whether to the color scale. Defaults to True.
@@ -80,13 +89,14 @@ def density_scatter(
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    x, y = df_to_arrays(x, y, df)
     ax = ax or plt.gca()
 
-    xs, ys, cs = hist_density(xs, ys, sort=sort, bins=density_bins)
+    x, y, cs = hist_density(x, y, sort=sort, bins=density_bins)
 
     norm = mpl.colors.LogNorm() if log else None
 
-    ax.scatter(xs, ys, c=cs, norm=norm, **kwargs)
+    ax.scatter(x, y, c=cs, norm=norm, **kwargs)
 
     if identity:
         ax.axline(
@@ -94,7 +104,7 @@ def density_scatter(
         )
 
     if stats:
-        add_mae_r2_box(xs, ys, ax)
+        add_mae_r2_box(x, y, ax)
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
@@ -102,8 +112,9 @@ def density_scatter(
 
 
 def scatter_with_err_bar(
-    xs: Array,
-    ys: Array,
+    x: Array | str,
+    y: Array | str,
+    df: pd.DataFrame = None,
     xerr: Array = None,
     yerr: Array = None,
     ax: plt.Axes = None,
@@ -117,8 +128,9 @@ def scatter_with_err_bar(
     i.e. if points farther from the parity line have larger uncertainty.
 
     Args:
-        xs (array): x-values
-        ys (array): y-values
+        x (array | str): x-values or dataframe column name
+        y (array | str): y-values or dataframe column name
+        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
         xerr (array, optional): Horizontal error bars. Defaults to None.
         yerr (array, optional): Vertical error bars. Defaults to None.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
@@ -129,15 +141,16 @@ def scatter_with_err_bar(
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    x, y = df_to_arrays(x, y, df)
     ax = ax or plt.gca()
 
     styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
-    ax.errorbar(xs, ys, yerr=yerr, xerr=xerr, **kwargs, **styles)
+    ax.errorbar(x, y, xerr=xerr, yerr=yerr, **kwargs, **styles)
 
     # identity line
     ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
 
-    add_mae_r2_box(xs, ys, ax)
+    add_mae_r2_box(x, y, ax)
 
     ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
 
@@ -145,8 +158,9 @@ def scatter_with_err_bar(
 
 
 def density_hexbin(
-    xs: Array,
-    yx: Array,
+    x: Array | str,
+    y: Array | str,
+    df: pd.DataFrame = None,
     ax: plt.Axes = None,
     weights: Array = None,
     xlabel: str = "Actual",
@@ -157,8 +171,9 @@ def density_hexbin(
     dimension passed as weights.
 
     Args:
-        xs (array): x values
-        yx (array): y values
+        x (array): x-values or dataframe column name.
+        y (array): y-values or dataframe column name.
+        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         weights (array, optional): If given, these values are accumulated in the bins.
             Otherwise, every point has value 1. Must be of the same length as x and y.
@@ -169,10 +184,11 @@ def density_hexbin(
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    x, y = df_to_arrays(x, y, df)
     ax = ax or plt.gca()
 
     # the scatter plot
-    hexbin = ax.hexbin(xs, yx, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
+    hexbin = ax.hexbin(x, y, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
 
     cb_ax = ax.inset_axes([0.95, 0.03, 0.03, 0.7])  # [x, y, width, height]
     plt.colorbar(hexbin, cax=cb_ax)
@@ -181,7 +197,7 @@ def density_hexbin(
     # identity line
     ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
 
-    add_mae_r2_box(xs, yx, ax, loc="upper left")
+    add_mae_r2_box(x, y, ax, loc="upper left")
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
@@ -189,8 +205,9 @@ def density_hexbin(
 
 
 def density_scatter_with_hist(
-    xs: Array,
-    ys: Array,
+    x: Array | str,
+    y: Array | str,
+    df: pd.DataFrame = None,
     cell: GridSpec = None,
     bins: int = 100,
     **kwargs: Any,
@@ -198,15 +215,17 @@ def density_scatter_with_hist(
     """Scatter plot colored (and optionally sorted) by density
     with histograms along each dimension
     """
-    ax_scatter = with_hist(xs, ys, cell, bins)
-    ax = density_scatter(xs, ys, ax_scatter, **kwargs)
+    x, y = df_to_arrays(x, y, df)
+    ax_scatter = with_hist(x, y, cell, bins)
+    ax = density_scatter(x, y, ax=ax_scatter, **kwargs)
 
     return ax
 
 
 def density_hexbin_with_hist(
-    xs: Array,
-    ys: Array,
+    x: Array | str,
+    y: Array | str,
+    df: pd.DataFrame = None,
     cell: GridSpec = None,
     bins: int = 100,
     **kwargs: Any,
@@ -214,15 +233,17 @@ def density_hexbin_with_hist(
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by with histograms along each dimension.
     """
-    ax_scatter = with_hist(xs, ys, cell, bins)
-    ax = density_hexbin(xs, ys, ax_scatter, **kwargs)
+    x, y = df_to_arrays(x, y, df)
+    ax_scatter = with_hist(x, y, cell, bins)
+    ax = density_hexbin(x, y, ax=ax_scatter, **kwargs)
 
     return ax
 
 
 def residual_vs_actual(
-    y_true: Array,
-    y_pred: Array,
+    y_true: Array | str,
+    y_pred: Array | str,
+    df: pd.DataFrame = None,
     ax: plt.Axes = None,
     xlabel: str = r"Actual value",
     ylabel: str = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
@@ -234,6 +255,8 @@ def residual_vs_actual(
     Args:
         y_true (array): Ground truth values
         y_pred (array): Model predictions
+        df (pd.DataFrame, optional): DataFrame with y_true and y_pred columns.
+            Defaults to None.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual value".
         ylabel (str, optional): y-axis label. Defaults to
@@ -243,6 +266,7 @@ def residual_vs_actual(
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    y_true, y_pred = df_to_arrays(y_true, y_pred, df)
     ax = ax or plt.gca()
 
     y_err = y_true - y_pred

@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from matplotlib.offsetbox import AnchoredText
 
-from pymatviz.utils import add_identity_line, add_mae_r2_box, get_crystal_sys
+from pymatviz.utils import (
+    add_identity_line,
+    add_mae_r2_box,
+    df_to_arrays,
+    get_crystal_sys,
+)
 from tests.conftest import y_pred, y_true
 
 
@@ -55,3 +61,18 @@ def test_add_identity_line(plotly_scatter, trace_idx, line_kwds):
     assert line["x1"] == line["y1"]
     assert line["layer"] == "below"
     assert line["line"]["color"] == line_kwds["color"] if line_kwds else "gray"
+
+
+def test_df_to_arrays():
+    df = pd.DataFrame([y_true, y_pred]).T
+    x1, y1 = df_to_arrays(y_true, y_pred, df=None)
+    x_col, y_col = df.columns[:2]
+    x2, y2 = df_to_arrays(x=x_col, y=y_col, df=df)
+    assert all(x1 == x2) and all(y1 == y2)
+    assert all(x1 == y_true) and all(y1 == y_pred)
+
+    with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
+        df_to_arrays(y_true, y_pred, df="foo")
+
+    with pytest.raises(ValueError, match="x and y must be column names of df.columns="):
+        df_to_arrays("not-real-col-name", df.columns[0], df=df)

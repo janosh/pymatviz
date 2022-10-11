@@ -175,7 +175,7 @@ def test_ptable_heatmap_plotly(glass_formulas):
     with pytest.raises(ValueError, match="should be string, list of strings or list"):
         # test that bad colorscale raises ValueError
         ptable_heatmap_plotly(
-            glass_formulas, colorscale=lambda: "bad color scale"  # type: ignore
+            glass_formulas, colorscale=lambda: "bad scale"  # type: ignore[arg-type]
         )
 
     # test that unknown builtin colorscale raises ValueError

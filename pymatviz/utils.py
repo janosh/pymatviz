@@ -284,3 +284,34 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
 
     if (svgo := which("svgo")) is not None:
         subprocess.run([svgo, "--multipass", filepath])
+
+
+def df_to_arrays(
+    x: NDArray[np.float64] | str, y: NDArray[np.float64] | str, df: pd.DataFrame | None
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """If x and y are arrays, this is a no-op. If they are strings and df a dataframe,
+    they are used as column names and the column data returned as arrays (after dropping
+    # rows with NaNs in either column). All other cases raise TypeError or ValueError.
+
+    Args:
+        x (Array | str): array or dataframe column name
+        y (Array | str): array or dataframe column name
+        df (pd.DataFrame | None): pandas
+
+    Returns:
+        tuple[Array, Array]: Input arrays or arrays from dataframe columns.
+    """
+    if isinstance(df, pd.DataFrame):
+        if not (x in df and y in df):
+            raise ValueError(
+                f"if df is passed (i.e. not None), x and y must be column names of "
+                f"{df.columns=}, got {x, y=}"
+            )
+        x, y = df[[x, y]].dropna().values.T
+    elif df is not None:
+        raise TypeError(f"df should be pandas DataFrame or None, got {type(df)=}")
+
+    if isinstance(x, str) or isinstance(y, str):
+        raise TypeError(f"x and y should be arrays by now, got {type(x)} and {type(y)}")
+
+    return x, y
