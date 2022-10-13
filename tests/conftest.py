@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import plotly.express as px
 import pytest
 from pymatgen.core import Lattice, Structure
@@ -16,6 +17,13 @@ y_true = xs + 0.1 * np.random.normal(size=100)
 # random classification data
 y_binary = np.random.choice([0, 1], 100)
 y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
+
+
+df = pd.DataFrame(dict(y_true=y_true, y_pred=y_pred))
+df_x_y = [(None, y_true, y_pred), (df, *df.columns[:2])]
+
+df_clf = pd.DataFrame(dict(y_binary=y_binary, y_proba=y_proba))
+df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]
 
 
 @pytest.fixture(autouse=True)

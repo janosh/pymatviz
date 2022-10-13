@@ -65,14 +65,20 @@ def test_add_identity_line(plotly_scatter, trace_idx, line_kwds):
 
 def test_df_to_arrays():
     df = pd.DataFrame([y_true, y_pred]).T
-    x1, y1 = df_to_arrays(y_true, y_pred, df=None)
+    x1, y1 = df_to_arrays(None, y_true, y_pred)
     x_col, y_col = df.columns[:2]
-    x2, y2 = df_to_arrays(x=x_col, y=y_col, df=df)
-    assert all(x1 == x2) and all(y1 == y2)
+    x2, y2 = df_to_arrays(df, x_col, y_col)
+    assert all(x1 == x2) and all(y1 == y2)  # type: ignore
     assert all(x1 == y_true) and all(y1 == y_pred)
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        df_to_arrays(y_true, y_pred, df="foo")
+        df_to_arrays("foo", y_true, y_pred)
 
-    with pytest.raises(ValueError, match="x and y must be column names of df.columns="):
-        df_to_arrays("not-real-col-name", df.columns[0], df=df)
+    with pytest.raises(KeyError) as exc_info:
+        df_to_arrays(df, "not-real-col-name", df.columns[0])
+
+        assert (
+            "if df is passed (i.e. not None), subsequent args must be column names"
+            in str(exc_info.value)
+        )
+        assert "not-real-col-name" in str(exc_info.value)
