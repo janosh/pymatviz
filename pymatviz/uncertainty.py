@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+from typing import Sequence
+
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy.stats import norm
 
-from pymatviz.utils import Array
+from pymatviz.utils import Array, df_to_arrays
 
 
 def qq_gaussian(
-    y_true: Array,
-    y_pred: Array,
-    y_std: Array | dict[str, Array],
+    y_true: Array | str,
+    y_pred: Array | str,
+    y_std: Array | dict[str, Array] | str | Sequence[str],
+    df: pd.DataFrame = None,
     ax: plt.Axes = None,
 ) -> plt.Axes:
     """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)
@@ -28,14 +32,19 @@ def qq_gaussian(
     Info on Q-Q plots: https://wikipedia.org/wiki/Q-Q_plot
 
     Args:
-        y_true (array): ground truth targets
-        y_pred (array): model predictions
-        y_std (array | dict[str, array]): model uncertainties
+        y_true (array | str): Ground truth targets
+        y_pred (array | str): Model predictions
+        y_std (array | dict[str, array] | str | list[str]): Model uncertainties either
+            as array(s) (single or dict with labels if you have multiple sources of
+            uncertainty) or column names in df.
         ax (Axes): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
+    assert isinstance(y_true, np.ndarray)
+    assert isinstance(y_pred, np.ndarray)
     ax = ax or plt.gca()
 
     if isinstance(y_std, np.ndarray):
@@ -173,9 +182,10 @@ def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
 
 
 def error_decay_with_uncert(
-    y_true: Array,
-    y_pred: Array,
-    y_stds: Array | dict[str, Array],
+    y_true: Array | str,
+    y_pred: Array | str,
+    y_std: Array | dict[str, Array] | str | Sequence[str],
+    df: pd.DataFrame = None,
     n_rand: int = 100,
     percentiles: bool = True,
     ax: plt.Axes = None,
@@ -186,11 +196,11 @@ def error_decay_with_uncert(
     decays when removing the predictions of largest error.
 
     Args:
-        y_true (array): Ground truth regression targets.
-        y_pred (array): Model
-        predictions. y_stds (array | dict[str, NumArray]): Model uncertainties. Can be a
-        single or
-            multiple types (e.g. aleatoric/epistemic/total uncertainty) in dict form.
+        y_true (array | str): Ground truth regression targets.
+        y_pred (array | str): Model predictions.
+        y_std (array | dict[str, Array] | str | list[str]): Model uncertainties.
+            Can be single or multiple uncertainties (e.g. aleatoric/epistemic/total
+            uncertainty) as dict.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.
             of error decay by random ordering. Defaults to 100.
         percentiles (bool, optional): Whether the x-axis shows percentiles or number
@@ -205,15 +215,19 @@ def error_decay_with_uncert(
         ax: matplotlib Axes object with plotted model error drop curve based on
             excluding data points by order of large to small model uncertainties.
     """
+    y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
+    assert isinstance(y_true, np.ndarray)
+    assert isinstance(y_pred, np.ndarray)
+
     ax = ax or plt.gca()
 
     xs = range(100 if percentiles else len(y_true), 0, -1)
 
-    if isinstance(y_stds, np.ndarray):
-        y_stds = {"std": y_stds}
+    if isinstance(y_std, np.ndarray):
+        y_std = {"std": y_std}
 
-    for key, y_std in y_stds.items():
-        decay_by_std = get_std_decay(y_true, y_pred, y_std)
+    for key in y_std:
+        decay_by_std = get_std_decay(y_true, y_pred, y_std[key])
 
         if percentiles:
             decay_by_std = np.percentile(decay_by_std, xs[::-1])

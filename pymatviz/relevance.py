@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import sklearn.metrics as skm
 
-from pymatviz.utils import Array
+from pymatviz.utils import Array, df_to_arrays
 
 
 def roc_curve(
-    targets: Array, proba_pos: Array, ax: plt.Axes = None
+    targets: Array | str,
+    proba_pos: Array | str,
+    df: pd.DataFrame = None,
+    ax: plt.Axes = None,
 ) -> tuple[float, plt.Axes]:
     """Plot the receiver operating characteristic curve of a binary
     classifier given target labels and predicted probabilities for
@@ -16,11 +20,13 @@ def roc_curve(
     Args:
         targets (array): Ground truth targets.
         proba_pos (array): predicted probabilities for the positive class.
+        df (pd.DataFrame, optional): DataFrame with targets and proba_pos columns.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
         tuple[float, ax]: The classifier's ROC-AUC and the plot's matplotlib Axes.
     """
+    targets, proba_pos = df_to_arrays(df, targets, proba_pos)
     ax = ax or plt.gca()
 
     # get the metrics
@@ -38,25 +44,32 @@ def roc_curve(
 
 
 def precision_recall_curve(
-    targets: Array, proba_pos: Array, ax: plt.Axes = None
+    targets: Array | str,
+    proba_pos: Array | str,
+    df: pd.DataFrame = None,
+    ax: plt.Axes = None,
 ) -> tuple[float, plt.Axes]:
     """Plot the precision recall curve of a binary classifier.
 
     Args:
         targets (array): Ground truth targets.
         proba_pos (array): predicted probabilities for the positive class.
+        df (pd.DataFrame, optional): DataFrame with targets and proba_pos columns.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
         tuple[float, ax]: The classifier's precision score and the matplotlib Axes.
     """
+    targets, proba_pos = df_to_arrays(df, targets, proba_pos)
     ax = ax or plt.gca()
 
     # get the metrics
     precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
 
     # proba_pos.round() converts class probabilities to integer class labels
-    prec_score = skm.precision_score(targets, proba_pos.round())
+    prec_score = skm.precision_score(
+        targets, proba_pos.round()  # type: ignore[union-attr]
+    )
 
     ax.plot(recall, precision, color="blue", label=f"precision = {prec_score:.2f}")
 

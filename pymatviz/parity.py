@@ -32,7 +32,7 @@ def hist_density(
     Returns:
         tuple[array, array]: x and y values (sorted by density) and density itself
     """
-    x, y = df_to_arrays(x, y, df)
+    x, y = df_to_arrays(df, x, y)
 
     data, x_e, y_e = np.histogram2d(x, y, bins=bins)
 
@@ -89,7 +89,7 @@ def density_scatter(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    x, y = df_to_arrays(x, y, df)
+    x, y = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
 
     x, y, cs = hist_density(x, y, sort=sort, bins=density_bins)
@@ -141,7 +141,7 @@ def scatter_with_err_bar(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    x, y = df_to_arrays(x, y, df)
+    x, y = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
 
     styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
@@ -184,7 +184,7 @@ def density_hexbin(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    x, y = df_to_arrays(x, y, df)
+    x, y = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
 
     # the scatter plot
@@ -215,7 +215,7 @@ def density_scatter_with_hist(
     """Scatter plot colored (and optionally sorted) by density
     with histograms along each dimension
     """
-    x, y = df_to_arrays(x, y, df)
+    x, y = df_to_arrays(df, x, y)
     ax_scatter = with_hist(x, y, cell, bins)
     ax = density_scatter(x, y, ax=ax_scatter, **kwargs)
 
@@ -233,7 +233,7 @@ def density_hexbin_with_hist(
     """Hexagonal-grid scatter plot colored by density or by third dimension
     passed color_by with histograms along each dimension.
     """
-    x, y = df_to_arrays(x, y, df)
+    x, y = df_to_arrays(df, x, y)
     ax_scatter = with_hist(x, y, cell, bins)
     ax = density_hexbin(x, y, ax=ax_scatter, **kwargs)
 
@@ -266,7 +266,9 @@ def residual_vs_actual(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    y_true, y_pred = df_to_arrays(y_true, y_pred, df)
+    y_true, y_pred = df_to_arrays(df, y_true, y_pred)
+    assert isinstance(y_true, np.ndarray)
+    assert isinstance(y_pred, np.ndarray)
     ax = ax or plt.gca()
 
     y_err = y_true - y_pred
