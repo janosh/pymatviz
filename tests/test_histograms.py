@@ -34,12 +34,7 @@ def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
 @pytest.mark.parametrize("cmap", ["hot", "Blues"])
 @pytest.mark.parametrize(
     "df, y_true, y_pred, y_std",
-    [
-        [None, y_true, y_pred, y_std_mock],
-        [None, y_true, y_pred, {"y_std_mock": y_std_mock}],
-        [df, *df.columns[:2], df.columns[0]],  # single std col
-        [df, *df.columns[:2], df.columns[:2]],  # multiple std cols
-    ],
+    [[None, y_true, y_pred, y_std_mock], [df, *df.columns[:2], df.columns[0]]],
 )
 def test_true_pred_hist(
     df: pd.DataFrame | None,
