@@ -6,14 +6,12 @@ import numpy as np
 from pymatviz.utils import Array
 
 
-def cumulative_residual(
-    preds: Array, targets: Array, ax: plt.Axes = None, **kwargs: Any
-) -> plt.Axes:
+def cumulative_residual(res: Array, ax: plt.Axes = None, **kwargs: Any) -> plt.Axes:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
     Args:
-        preds (array): Numpy array of predictions.
-        targets (array): Numpy array of targets.
+        res (array): Residuals between y_true and y_pred, i.e.
+            targets - model predictions.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         **kwargs: Additional keyword arguments passed to ax.fill_between().
 
@@ -22,8 +20,7 @@ def cumulative_residual(
     """
     ax = ax or plt.gca()
 
-    res = np.sort(preds - targets)
-
+    res = np.sort(res)
     n_data = len(res)
 
     # Plot the empirical distribution
@@ -58,15 +55,13 @@ def cumulative_residual(
     return ax
 
 
-def cumulative_error(
-    preds: Array, targets: Array, ax: plt.Axes = None, **kwargs: Any
-) -> plt.Axes:
+def cumulative_error(abs_err: Array, ax: plt.Axes = None, **kwargs: Any) -> plt.Axes:
     """Plot the empirical cumulative distribution of the absolute errors
     abs(y_true - y_pred).
 
     Args:
-        preds (array): Numpy array of predictions.
-        targets (array): Numpy array of targets.
+        abs_err (array): Absolute error between y_true and y_pred, i.e.
+            abs(targets - model predictions).
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         **kwargs: Additional keyword arguments passed to ax.plot().
 
@@ -75,7 +70,7 @@ def cumulative_error(
     """
     ax = ax or plt.gca()
 
-    errors = np.sort(np.abs(preds - targets))
+    errors = np.sort(abs_err)
     n_data = len(errors)
 
     # Plot the empirical distribution

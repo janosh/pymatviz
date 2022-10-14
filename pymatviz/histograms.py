@@ -12,7 +12,7 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.ptable import count_elements
-from pymatviz.utils import Array, annotate_bars, get_crystal_sys
+from pymatviz.utils import Array, annotate_bars, df_to_arrays, get_crystal_sys
 
 
 if TYPE_CHECKING:
@@ -31,7 +31,8 @@ def residual_hist(
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/Jmb2O).
 
     Args:
-        y_res (array): y_true - y_pred, i.e. ground-truth targets - model predictions.
+        y_res (array): Residuals between y_true and y_pred, i.e.
+            targets - model predictions.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to
             'Residual ($y_\mathrm{true} - y_\mathrm{pred}$)
@@ -61,46 +62,53 @@ def residual_hist(
 
 
 def true_pred_hist(
-    y_true: Array,
-    y_pred: Array,
-    y_std: Array,
+    y_true: Array | str,
+    y_pred: Array | str,
+    y_std: Array | str,
+    df: pd.DataFrame = None,
     ax: plt.Axes = None,
     cmap: str = "hot",
     truth_color: str = "blue",
+    true_label: str = r"$y_\mathrm{true}$",
+    pred_label: str = r"$y_\mathrm{pred}$",
     **kwargs: Any,
 ) -> plt.Axes:
-    """Plot a histogram of model predictions with bars colored by the mean uncertainty
+    r"""Plot a histogram of model predictions with bars colored by the mean uncertainty
     of predictions in that bin. Overlaid by a more transparent histogram of ground truth
     values.
 
     Args:
-        y_true (array): ground truth targets
-        y_pred (array): model predictions
-        y_std (array): model uncertainty
+        y_true (array | str): ground truth targets as array or df column name.
+        y_pred (array | str): model predictions as array or df column name.
+        y_std (array | str): model uncertainty as array or df column name.
+        df (DataFrame, optional): DataFrame containing y_true, y_pred, and y_std.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         cmap (str, optional): string identifier of a plt colormap. Defaults to 'hot'.
         truth_color (str, optional): Face color to use for y_true bars.
             Defaults to 'blue'.
+        true_label (str, optional): Label for y_true bars. Defaults to
+            '$y_\mathrm{true}$'.
+        pred_label (str, optional): Label for y_pred bars. Defaults to
+            '$y_\mathrm{true}$'.
         **kwargs: Additional keyword arguments to pass to ax.hist().
 
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
+    y_true, y_pred, y_std = np.array([y_true, y_pred, y_std])
     ax = ax or plt.gca()
 
     color_map = getattr(plt.cm, cmap)
-    y_true, y_pred, y_std = np.array([y_true, y_pred, y_std])
 
-    _, bin_edges, bars = ax.hist(
-        y_pred, alpha=0.8, label=r"$y_\mathrm{pred}$", **kwargs
-    )
+    _, bin_edges, bars = ax.hist(y_pred, alpha=0.8, label=pred_label, **kwargs)
     kwargs.pop("bins", None)
     ax.hist(
         y_true,
         bins=bin_edges,
         alpha=0.2,
         color=truth_color,
-        label=r"$y_\mathrm{true}$",
+        label=true_label,
         **kwargs,
     )
 

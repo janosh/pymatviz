@@ -3,11 +3,16 @@ from __future__ import annotations
 from typing import Literal
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import pytest
 from pymatgen.core import Structure
 
 from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
-from tests.conftest import y_pred, y_true
+from pymatviz.utils import Array
+from tests.conftest import df, y_pred, y_true
+
+
+y_std_mock = y_true - y_pred
 
 
 @pytest.mark.parametrize("bins", [None, 1, 100])
@@ -27,8 +32,19 @@ def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
 
 @pytest.mark.parametrize("bins", [None, 1, 100])
 @pytest.mark.parametrize("cmap", ["hot", "Blues"])
-def test_true_pred_hist(bins: int | None, cmap: str) -> None:
-    ax = true_pred_hist(y_true, y_pred, y_true - y_pred, bins=bins, cmap=cmap)
+@pytest.mark.parametrize(
+    "df, y_true, y_pred, y_std",
+    [[None, y_true, y_pred, y_std_mock], [df, *df.columns[:2], df.columns[0]]],
+)
+def test_true_pred_hist(
+    df: pd.DataFrame | None,
+    y_true: Array | str,
+    y_pred: Array | str,
+    y_std: Array | dict[str, Array] | str | list[str],
+    bins: int | None,
+    cmap: str,
+) -> None:
+    ax = true_pred_hist(y_true, y_pred, y_std, df, bins=bins, cmap=cmap)
     assert isinstance(ax, plt.Axes)
 
 
