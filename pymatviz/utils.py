@@ -299,7 +299,7 @@ def df_to_arrays(
         *args (list[Array | str]): Arbitrary number of arrays or column names in df.
 
     Raises:
-        ValueError: If df is not None and any of the args is not a column name in df.
+        ValueError: If df is not None and any of the args is not a df column name.
         TypeError: If df is not pd.DataFrame and not None.
 
     Returns:
