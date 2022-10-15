@@ -13,9 +13,8 @@ def roc_curve(
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
 ) -> tuple[float, plt.Axes]:
-    """Plot the receiver operating characteristic curve of a binary
-    classifier given target labels and predicted probabilities for
-    the positive class.
+    """Plot the receiver operating characteristic curve of a binary classifier given
+    target labels and predicted probabilities for the positive class.
 
     Args:
         targets (array): Ground truth targets.

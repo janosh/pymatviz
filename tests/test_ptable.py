@@ -19,7 +19,8 @@ from pymatviz.utils import df_ptable
 
 @pytest.fixture
 def glass_formulas() -> list[str]:
-    """The result of
+    """Output of:
+
     from matminer.datasets import load_dataset
 
     load_dataset("matbench_glass").composition.head(20)
@@ -39,6 +40,7 @@ def glass_elem_counts(glass_formulas: pd.Series[Composition]) -> pd.Series[int]:
 @pytest.fixture
 def steel_formulas() -> list[str]:
     """Unusually fractional compositions, good for testing edge cases. The result of:
+
     from matminer.datasets import load_dataset
 
     load_dataset("matbench_steels").composition.head(2)

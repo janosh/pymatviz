@@ -25,8 +25,7 @@ def residual_hist(
     xlabel: str | None = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
     **kwargs: Any,
 ) -> plt.Axes:
-    r"""Plot the residual distribution overlaid with a Gaussian kernel
-    density estimate.
+    r"""Plot the residual distribution overlaid with a Gaussian kernel density estimate.
 
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/Jmb2O).
 

@@ -1,5 +1,5 @@
-"""Rhys received this dataset from Joseph Montoya at Toyota Research Institute (TRI)
-via email on 2022-01-12.
+"""Rhys received this dataset from Joseph Montoya at Toyota Research Institute (TRI) via
+email on 2022-01-12.
 
 Download link: https://data.matr.io/7
 GitHub repo: https://github.com/TRI-AMDD/CAMD

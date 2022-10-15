@@ -46,10 +46,10 @@ def with_hist(
     cell: GridSpec = None,
     bins: int = 100,
 ) -> plt.Axes:
-    """Call before creating a plot and use the returned `ax_main` for all
-    subsequent plotting ops to create a grid of plots with the main plot in
-    the lower left and narrow histograms along its x- and/or y-axes displayed
-    above and near the right edge.
+    """Call before creating a plot and use the returned `ax_main` for all subsequent
+    plotting ops to create a grid of plots with the main plot in the lower left and
+    narrow histograms along its x- and/or y-axes displayed above and near the right
+    edge.
 
     Args:
         xs (array): x values.
@@ -143,9 +143,8 @@ def add_mae_r2_box(
     prec: int = 3,
     **kwargs: Any,
 ) -> AnchoredText:
-    """Provide a set of x and y values of equal length and an optional Axes object
-    on which to print the values' mean absolute error and R^2 coefficient of
-    determination.
+    """Provide a set of x and y values of equal length and an optional Axes object on
+    which to print the values' mean absolute error and R^2 coefficient of determination.
 
     Args:
         xs (array, optional): x values.
