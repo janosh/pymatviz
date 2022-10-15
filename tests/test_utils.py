@@ -15,7 +15,6 @@ from tests.conftest import y_pred, y_true
 
 
 def test_add_mae_r2_box():
-
     text_box = add_mae_r2_box(y_pred, y_true)
 
     assert isinstance(text_box, AnchoredText)

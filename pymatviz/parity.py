@@ -124,8 +124,8 @@ def scatter_with_err_bar(
     **kwargs: Any,
 ) -> plt.Axes:
     """Scatter plot with optional x- and/or y-error bars. Useful when passing model
-    uncertainties as yerr=y_std for checking if uncertainty correlates with error,
-    i.e. if points farther from the parity line have larger uncertainty.
+    uncertainties as yerr=y_std for checking if uncertainty correlates with error, i.e.
+    if points farther from the parity line have larger uncertainty.
 
     Args:
         x (array | str): x-values or dataframe column name
@@ -212,8 +212,8 @@ def density_scatter_with_hist(
     bins: int = 100,
     **kwargs: Any,
 ) -> plt.Axes:
-    """Scatter plot colored (and optionally sorted) by density
-    with histograms along each dimension
+    """Scatter plot colored (and optionally sorted) by density with histograms along
+    each dimension.
     """
     x, y = df_to_arrays(df, x, y)
     ax_scatter = with_hist(x, y, cell, bins)
@@ -230,8 +230,8 @@ def density_hexbin_with_hist(
     bins: int = 100,
     **kwargs: Any,
 ) -> plt.Axes:
-    """Hexagonal-grid scatter plot colored by density or by third dimension
-    passed color_by with histograms along each dimension.
+    """Hexagonal-grid scatter plot colored by density or by third dimension passed
+    color_by with histograms along each dimension.
     """
     x, y = df_to_arrays(df, x, y)
     ax_scatter = with_hist(x, y, cell, bins)
@@ -249,8 +249,7 @@ def residual_vs_actual(
     ylabel: str = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
     **kwargs: Any,
 ) -> plt.Axes:
-    r"""Plot ground truth targets on the x-axis against residuals
-    (y_err = y_true - y_pred) on the y-axis.
+    r"""Plot targets on the x-axis vs residuals (y_err = y_true - y_pred) on the y-axis.
 
     Args:
         y_true (array): Ground truth values
