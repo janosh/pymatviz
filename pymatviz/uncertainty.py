@@ -17,9 +17,9 @@ def qq_gaussian(
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
 ) -> plt.Axes:
-    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array)
-    or multiple (passed as dict) sets of uncertainty estimates for a single
-    pair of ground truth targets `y_true` and model predictions `y_pred`.
+    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array) or
+    multiple (passed as dict) sets of uncertainty estimates for a single pair of ground
+    truth targets `y_true` and model predictions `y_pred`.
 
     Overconfidence relative to a Gaussian distribution is visualized as shaded
     areas below the parity line, underconfidence (oversized uncertainties) as
@@ -190,10 +190,10 @@ def error_decay_with_uncert(
     percentiles: bool = True,
     ax: plt.Axes = None,
 ) -> plt.Axes:
-    """Plot for assessing the quality of uncertainty estimates. If a model's
-    uncertainty is well calibrated, i.e. strongly correlated with its error, removing
-    the most uncertain predictions should make the mean error decay similarly to how it
-    decays when removing the predictions of largest error.
+    """Plot for assessing the quality of uncertainty estimates. If a model's uncertainty
+    is well calibrated, i.e. strongly correlated with its error, removing the most
+    uncertain predictions should make the mean error decay similarly to how it decays
+    when removing the predictions of largest error.
 
     Args:
         y_true (array | str): Ground truth regression targets.
