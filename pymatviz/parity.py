@@ -63,7 +63,7 @@ def density_scatter(
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
     identity: bool = True,
-    stats: bool = True,
+    stats: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Axes:
     """Scatter plot colored (and optionally sorted) by density.
@@ -81,8 +81,9 @@ def density_scatter(
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         identity (bool, optional): Whether to add an identity/parity line (y = x).
             Defaults to True.
-        stats (bool, optional): Whether to display a text box with MAE and R^2.
-            Defaults to True.
+        stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
+            and R^2. Defaults to True. Can be dict to pass kwargs to `add_mae_r2_box`.
+            E.g. stats=dict(loc="upper left", prefix="Title", prop=dict(fontsize=16)).
         **kwargs: Additional keyword arguments to pass to ax.scatter(). E.g. cmap to
             change the color map.
 
@@ -99,12 +100,18 @@ def density_scatter(
     ax.scatter(x, y, c=cs, norm=norm, **kwargs)
 
     if identity:
+        x1, x2, y1, y2 = ax.axis()
         ax.axline(
-            (0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black"
+            ((x1 + x2) / 2, (y1 + y2) / 2),
+            slope=1,
+            alpha=0.5,
+            zorder=0,
+            linestyle="dashed",
+            color="black",
         )
 
     if stats:
-        add_mae_r2_box(x, y, ax)
+        add_mae_r2_box(x, y, ax, **(stats if isinstance(stats, dict) else {}))
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 

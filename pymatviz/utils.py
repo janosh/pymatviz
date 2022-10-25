@@ -41,8 +41,8 @@ for Z, symbol in enumerate(df_ptable.index, 1):
 
 
 def with_hist(
-    xs: NDArray[np.float64],
-    ys: NDArray[np.float64],
+    xs: NDArray[np.float64 | np.int_],
+    ys: NDArray[np.float64 | np.int_],
     cell: GridSpec = None,
     bins: int = 100,
 ) -> plt.Axes:
@@ -134,10 +134,9 @@ def annotate_bars(
 
 
 def add_mae_r2_box(
-    xs: NDArray[np.float64],
-    ys: NDArray[np.float64],
+    xs: NDArray[np.float64 | np.int_],
+    ys: NDArray[np.float64 | np.int_],
     ax: plt.Axes = None,
-    loc: str = "lower right",
     prefix: str = "",
     suffix: str = "",
     prec: int = 3,
@@ -152,12 +151,13 @@ def add_mae_r2_box(
         ax (Axes, optional): matplotlib Axes on which to add the box. Defaults to None.
         loc (str, optional): Where on the plot to place the AnchoredText object.
             Defaults to "lower right".
-        prec (int, optional): # of decimal places in printed metrics. Defaults to 3.
+        prec (int, optional): decimal places in printed metrics. Defaults to 3.
         prefix (str, optional): Title or other string to prepend to metrics.
             Defaults to "".
         suffix (str, optional): Text to append after metrics. Defaults to "".
-        **kwargs: Additional arguments (rotation, arrowprops, etc.) are passed to
-            matplotlib.offsetbox.AnchoredText.
+        **kwargs: Additional arguments (rotation, arrowprops, frameon, loc, etc.) are
+            passed to matplotlib.offsetbox.AnchoredText. Sets default loc="lower right"
+            and frameon=False.
 
     Returns:
         AnchoredText: Instance containing the metrics.
@@ -170,8 +170,9 @@ def add_mae_r2_box(
     text = f"{prefix}$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.{prec}f}$"
     text += f"\n$R^2 = {r2_score(xs, ys):.{prec}f}${suffix}"
 
-    frameon: bool = kwargs.pop("frameon", False)
-    text_box = AnchoredText(text, loc=loc, frameon=frameon, **kwargs)
+    kwargs["frameon"] = kwargs.get("frameon", False)
+    kwargs["loc"] = kwargs.get("frameon", "lower right")
+    text_box = AnchoredText(text, **kwargs)
     ax.add_artist(text_box)
 
     return text_box
@@ -288,7 +289,7 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
 def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | Sequence[str] | NDArray[np.float64 | np.int_],
-) -> list[NDArray[np.float64] | dict[str, NDArray[np.float64]]]:
+) -> list[NDArray[np.float64 | np.int_] | dict[str, NDArray[np.float64 | np.int_]]]:
     """If df is None, this is a no-op: args are returned as-is. If df is a dataframe,
     all following args are used as column names and the column data returned as arrays
     (after dropping rows with NaNs in any column).
