@@ -14,6 +14,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      MPLBACKEND: Agg  # https://github.com/orgs/community/discussions/26434
 
     steps:
       - name: Check out repo
@@ -31,7 +33,7 @@ jobs:
 
       - name: Run tests
         id: tests
-        run: pytest --cov pymatviz
+        run: pytest --cov .
 
       - name: Build and upload dist
         if: github.event_name == 'release' && steps.tests.outcome == 'success' && runner.os == 'Linux'

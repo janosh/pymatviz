@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 import pytest
 
@@ -15,19 +17,26 @@ from pymatviz.utils import Array
 from tests.conftest import df_x_y
 
 
-@pytest.mark.parametrize("log", [True, False])
+@pytest.mark.parametrize("log_cmap", [True, False])
 @pytest.mark.parametrize("sort", [True, False])
 @pytest.mark.parametrize("cmap", [None, "Greens"])
+@pytest.mark.parametrize(
+    "stats",
+    [False, True, dict(prefix="test", loc="lower right", prop=dict(fontsize=10))],
+)
 @pytest.mark.parametrize("df, x, y", df_x_y)
 def test_density_scatter(
     df: pd.DataFrame | None,
     x: Array | str,
     y: str | Array,
-    log: bool,
+    log_cmap: bool,
     sort: bool,
     cmap: str | None,
+    stats: bool | dict[str, Any],
 ) -> None:
-    density_scatter(df=df, x=x, y=y, log=log, sort=sort, cmap=cmap)
+    density_scatter(
+        df=df, x=x, y=y, log_cmap=log_cmap, sort=sort, cmap=cmap, stats=stats
+    )
 
 
 @pytest.mark.parametrize("df, x, y", df_x_y)

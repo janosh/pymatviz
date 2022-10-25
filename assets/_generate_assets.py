@@ -144,7 +144,7 @@ qq_gaussian(y_pred, y_true, y_std)
 save_and_compress_svg("normal-prob-plot")
 
 
-qq_gaussian(y_pred, y_true, {"overconfident": y_std, "underconfident": 1.5 * y_std})
+qq_gaussian(y_pred, y_true, {"over-confident": y_std, "under-confident": 1.5 * y_std})
 save_and_compress_svg("normal-prob-plot-multiple")
 
 
