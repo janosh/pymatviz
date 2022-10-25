@@ -58,12 +58,12 @@ def density_scatter(
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
     sort: bool = True,
-    log: bool = True,
+    log_cmap: bool = True,
     density_bins: int = 100,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
     identity: bool = True,
-    stats: bool = True,
+    stats: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Axes:
     """Scatter plot colored (and optionally sorted) by density.
@@ -74,15 +74,16 @@ def density_scatter(
         df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         sort (bool, optional): Whether to sort the data. Defaults to True.
-        log (bool, optional): Whether to the color scale. Defaults to True.
+        log_cmap (bool, optional): Whether to log the color scale. Defaults to True.
         density_bins (int, optional): How many density_bins to use for the density
             histogram, i.e. granularity of the density color scale. Defaults to 100.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         identity (bool, optional): Whether to add an identity/parity line (y = x).
             Defaults to True.
-        stats (bool, optional): Whether to display a text box with MAE and R^2.
-            Defaults to True.
+        stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
+            and R^2. Defaults to True. Can be dict to pass kwargs to `add_mae_r2_box`.
+            E.g. stats=dict(loc="upper left", prefix="Title", prop=dict(fontsize=16)).
         **kwargs: Additional keyword arguments to pass to ax.scatter(). E.g. cmap to
             change the color map.
 
@@ -94,17 +95,23 @@ def density_scatter(
 
     x, y, cs = hist_density(x, y, sort=sort, bins=density_bins)
 
-    norm = mpl.colors.LogNorm() if log else None
+    norm = mpl.colors.LogNorm() if log_cmap else None
 
     ax.scatter(x, y, c=cs, norm=norm, **kwargs)
 
     if identity:
+        x_mid = sum(ax.get_xlim()) / 2
         ax.axline(
-            (0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black"
+            (x_mid, x_mid),
+            slope=1,
+            alpha=0.5,
+            zorder=0,
+            linestyle="dashed",
+            color="black",
         )
 
     if stats:
-        add_mae_r2_box(x, y, ax)
+        add_mae_r2_box(x, y, ax, **(stats if isinstance(stats, dict) else {}))
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
