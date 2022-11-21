@@ -1,0 +1,17 @@
+
+{
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "waitFor": "onCreateCommand",
+  "updateContentCommand": "pip install -e .",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["examples/mprester_ptable.ipynb"]
+    },
+    "vscode": {
+      "extensions": [
+        "ms-toolsai.jupyter",
+        "ms-python.python"
+      ]
+    }
+  }
+}
