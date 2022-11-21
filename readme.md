@@ -22,20 +22,19 @@ pip install pymatviz
 
 ## Usage
 
-Check out the Jupyter notebooks under [`examples/`](examples/) to learn how to use `pymatviz`.
+See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`.
 
-|                                      |                                                                                                              |                                                                                                           |                                                                                                                                       |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **`matbench_dielectric_eda.ipynb`**  | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/matbench_dielectric_eda.ipynb)  | [![View on GitHub]](https://github.com/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)  | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)  |
-| **`mp_bimodal_e_form.ipynb`**        | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/mp_bimodal_e_form.ipynb)        | [![View on GitHub]](https://github.com/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)        | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)        |
-| **`matbench_perovskites_eda.ipynb`** | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/matbench_perovskites_eda.ipynb) | [![View on GitHub]](https://github.com/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) |
-| **`mprester_ptable.ipynb`**          | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/mprester_ptable.ipynb)          | [![View on GitHub]](https://github.com/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)          | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)          |
+|                                                                                                                        |                                      |                                                                                                              |                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| [matbench_dielectric_eda.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)   | [![Launch Codespace]][codespace url] | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/matbench_dielectric_eda.ipynb)  | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)  |
+| [mp_bimodal_e_form.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)               | [![Launch Codespace]][codespace url] | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/mp_bimodal_e_form.ipynb)        | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)        |
+| [matbench_perovskites_eda.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) | [![Launch Codespace]][codespace url] | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/matbench_perovskites_eda.ipynb) | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) |
+| [mprester_ptable.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)                   | [![Launch Codespace]][codespace url] | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/mprester_ptable.ipynb)          | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)          |
 
 [Binder]: https://mybinder.org/badge_logo.svg
-[View on GitHub]: https://img.shields.io/badge/View%20on-GitHub-darkblue?logo=github
 [Open in Google Colab]: https://colab.research.google.com/assets/colab-badge.svg
-
-When trying to open notebooks in Google Colab, you might encounter errors. Colab currently only supports Python 3.7. `pymatviz` uses Python 3.8 features like [self-documenting f-strings](https://docs.python.org/3/whatsnew/3.8.html#f-strings-support-for-self-documenting-expressions-and-debugging). You may still be able to use `pymatviz` on Colab by cloning the repo and patching the source code in-place [as shown here](https://github.com/janosh/pymatviz/issues/17#issuecomment-1165141311).
+[Launch Codespace]: https://img.shields.io/badge/Launch-Codespace-darkblue?logo=github
+[codespace url]: https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=340898532
 
 ## Periodic Table
 
