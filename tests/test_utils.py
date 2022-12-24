@@ -6,6 +6,7 @@ import pytest
 from matplotlib.offsetbox import AnchoredText
 
 from pymatviz.utils import (
+    CrystalSystem,
     add_identity_line,
     add_mae_r2_box,
     df_to_arrays,
@@ -39,20 +40,22 @@ def test_add_mae_r2_box():
         (230, "cubic"),
     ],
 )
-def test_get_crystal_sys(spg_num, crystal_sys):
+def test_get_crystal_sys(spg_num: int, crystal_sys: CrystalSystem) -> None:
     assert crystal_sys == get_crystal_sys(spg_num)
 
 
 @pytest.mark.parametrize("spg", [-1, 0, 231])
-def test_get_crystal_sys_invalid(spg):
+def test_get_crystal_sys_invalid(spg: int) -> None:
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         get_crystal_sys(spg)
 
 
 @pytest.mark.parametrize("trace_idx", [0, 1])
 @pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
-def test_add_identity_line(plotly_scatter, trace_idx, line_kwds):
-    fig = add_identity_line(plotly_scatter, trace_idx, line_kwds)
+def test_add_identity_line(
+    plotly_scatter: go.Figure, trace_idx: int, line_kwds: dict[str, str] | None
+) -> None:
+    fig = add_identity_line(plotly_scatter, line_kwds=line_kwds, trace_idx=trace_idx)
     assert isinstance(fig, go.Figure)
 
     line = [shape for shape in fig.layout["shapes"] if shape["type"] == "line"][0]
