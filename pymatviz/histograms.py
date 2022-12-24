@@ -286,7 +286,7 @@ def hist_elemental_prevalence(
     log: bool = False,
     keep_top: int = None,
     ax: plt.Axes = None,
-    bar_values: Literal["percent", "count", None] = "percent",
+    bar_values: Literal["percent", "count"] | None = "percent",
     h_offset: int = 0,
     v_offset: int = 10,
     rotation: int = 45,
