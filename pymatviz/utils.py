@@ -178,9 +178,7 @@ def add_mae_r2_box(
     return text_box
 
 
-def get_crystal_sys(
-    spg: int,
-) -> Literal[
+CrystalSystem = Literal[
     "triclinic",
     "monoclinic",
     "orthorhombic",
@@ -188,7 +186,10 @@ def get_crystal_sys(
     "trigonal",
     "hexagonal",
     "cubic",
-]:
+]
+
+
+def get_crystal_sys(spg: int) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
     # not using isinstance(n, int) to allow 0-decimal floats
     if not (spg == int(spg) and 0 < spg < 231):
@@ -210,19 +211,19 @@ def get_crystal_sys(
 
 
 def add_identity_line(
-    fig: go.Figure, trace_idx: int = 0, line_kwds: dict[str, Any] = None
+    fig: go.Figure, line_kwds: dict[str, Any] = None, trace_idx: int = 0
 ) -> go.Figure:
     """Add a line shape to the background layer of a plotly figure spanning from
     smallest to largest x/y values in the trace specified by trace_idx.
 
     Args:
         fig (Figure): Plotly figure.
-        trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
-            Defaults to 0. Unused if kaleido package is installed and the figure's
-            actual x/y-range can be obtained from fig.full_figure_for_development().
         line_kwds (dict[str, Any], optional): Keyword arguments for customizing the line
             shape will be passed to fig.add_shape(line=line_kwds). Defaults to
             dict(color="gray", width=1, dash="dash").
+        trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
+            Defaults to 0. Unused if kaleido package is installed and the figure's
+            actual x/y-range can be obtained from fig.full_figure_for_development().
 
     Returns:
         Figure: Figure with added identity line.
