@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from typing import Generator
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Lattice, Structure
 
@@ -27,7 +30,7 @@ df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]
 
 
 @pytest.fixture(autouse=True)
-def run_around_tests():
+def run_around_tests() -> Generator[None, None, None]:
     # runs before each test
 
     yield
@@ -37,14 +40,14 @@ def run_around_tests():
 
 
 @pytest.fixture
-def spg_symbols():
+def spg_symbols() -> list[str]:
     symbols = "C2/m C2/m Fm-3m C2/m Cmc2_1 P4/nmm P-43m P-43m P6_3mc".split()
     symbols += "P-43m P6_3mc Cmcm P2_1/m I2_13 P-6m2".split()
     return symbols
 
 
 @pytest.fixture
-def structures():
+def structures() -> list[Structure]:
     coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
     lattice = [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]]
     Si2 = Structure(lattice, ["Si4+", "Si4+"], coords)
@@ -63,7 +66,7 @@ def structures():
 
 
 @pytest.fixture
-def plotly_scatter():
+def plotly_scatter() -> go.Figure:
     xs = np.arange(7)
     y1 = xs**2
     y2 = xs**0.5
