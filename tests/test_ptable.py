@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Literal, Sequence
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
@@ -17,6 +19,10 @@ from pymatviz import (
 from pymatviz.utils import df_ptable
 
 
+if TYPE_CHECKING:
+    from pymatviz.ptable import CountMode
+
+
 @pytest.fixture
 def glass_formulas() -> list[str]:
     """Output of:
@@ -26,10 +32,10 @@ def glass_formulas() -> list[str]:
     load_dataset("matbench_glass").composition.head(20)
     """
     return (
-        "Al,Al(NiB)2,Al10Co21B19,Al10Co23B17,Al10Co27B13,Al10Co29B11,Al10Co31B9,"
-        "Al10Co33B7,Al10Cr3Si7,Al10Fe23B17,Al10Fe27B13,Al10Fe31B9,Al10Fe33B7,"
-        "Al10Ni23B17,Al10Ni27B13,Al10Ni29B11,Al10Ni31B9,Al10Ni33B7,Al11(CrSi2)3"
-    ).split(",")
+        "Al Al(NiB)2 Al10Co21B19 Al10Co23B17 Al10Co27B13 Al10Co29B11 Al10Co31B9 "
+        "Al10Co33B7 Al10Cr3Si7 Al10Fe23B17 Al10Fe27B13 Al10Fe31B9 Al10Fe33B7 "
+        "Al10Ni23B17 Al10Ni27B13 Al10Ni29B11 Al10Ni31B9 Al10Ni33B7 Al11(CrSi2)3"
+    ).split()
 
 
 @pytest.fixture
@@ -64,13 +70,13 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
         ("reduced_composition", {"Fe": 13, "O": 27, "P": 3}),
     ],
 )
-def test_count_elements(count_mode, counts):
+def test_count_elements(count_mode: CountMode, counts: dict[str, float]) -> None:
     series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, count_mode=count_mode)
     expected = pd.Series(counts, index=df_ptable.index, name="count").fillna(0)
     assert series.equals(expected)
 
 
-def test_count_elements_by_atomic_nums():
+def test_count_elements_by_atomic_nums() -> None:
     series_in = pd.Series(1, index=range(1, 119))
     el_cts = count_elements(series_in)
     expected = pd.Series(1, index=df_ptable.index, name="count")
@@ -79,7 +85,7 @@ def test_count_elements_by_atomic_nums():
 
 
 @pytest.mark.parametrize("range_limits", [(-1, 10), (100, 200)])
-def test_count_elements_bad_atomic_nums(range_limits):
+def test_count_elements_bad_atomic_nums(range_limits: tuple[int, int]) -> None:
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
         count_elements({idx: 0 for idx in range(*range_limits)})
 
@@ -88,7 +94,7 @@ def test_count_elements_bad_atomic_nums(range_limits):
         count_elements({str(idx): 0 for idx in range(*range_limits)})
 
 
-def test_hist_elemental_prevalence(glass_formulas):
+def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
     ax = hist_elemental_prevalence(glass_formulas)
     assert isinstance(ax, plt.Axes)
 
@@ -99,7 +105,9 @@ def test_hist_elemental_prevalence(glass_formulas):
     hist_elemental_prevalence(glass_formulas, keep_top=10, bar_values="count")
 
 
-def test_ptable_heatmap(glass_formulas, glass_elem_counts):
+def test_ptable_heatmap(
+    glass_formulas: list[str], glass_elem_counts: pd.Series[int]
+) -> None:
     ax = ptable_heatmap(glass_formulas)
     assert isinstance(ax, plt.Axes)
 
@@ -139,8 +147,11 @@ def test_ptable_heatmap(glass_formulas, glass_elem_counts):
 
 
 def test_ptable_heatmap_ratio(
-    steel_formulas, glass_formulas, steel_elem_counts, glass_elem_counts
-):
+    steel_formulas: list[str],
+    glass_formulas: list[str],
+    steel_elem_counts: pd.Series[int],
+    glass_elem_counts: pd.Series[int],
+) -> None:
     # composition strings
     ax = ptable_heatmap_ratio(glass_formulas, steel_formulas)
     assert isinstance(ax, plt.Axes)
@@ -153,7 +164,7 @@ def test_ptable_heatmap_ratio(
     ptable_heatmap_ratio(glass_elem_counts, steel_formulas)
 
 
-def test_ptable_heatmap_plotly(glass_formulas):
+def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
     fig = ptable_heatmap_plotly(glass_formulas)
     assert isinstance(fig, go.Figure)
     assert (
@@ -194,10 +205,16 @@ def test_ptable_heatmap_plotly(glass_formulas):
 )
 @pytest.mark.parametrize("showscale", [False, True])
 @pytest.mark.parametrize("font_size", [None, 14])
-@pytest.mark.parametrize("font_colors", [None, ("black", "white")])
+@pytest.mark.parametrize("font_colors", [["red"], ("black", "white")])
 def test_ptable_heatmap_plotly_kwarg_combos(
-    glass_formulas, exclude_elements, heat_mode, showscale, font_size, font_colors, log
-):
+    glass_formulas: list[str],
+    exclude_elements: Sequence[str],
+    heat_mode: Literal["value", "fraction", "percent"] | None,
+    showscale: bool,
+    font_size: int,
+    font_colors: tuple[str] | tuple[str, str],
+    log: bool,
+) -> None:
     fig = ptable_heatmap_plotly(
         glass_formulas,
         exclude_elements=exclude_elements,
@@ -211,8 +228,10 @@ def test_ptable_heatmap_plotly_kwarg_combos(
 
 
 @pytest.mark.parametrize(
-    "clr_scl", ["YlGn", ["blue", "red"], [(0, "blue"), (1, "red")]]
+    "colorscale", ["YlGn", ["blue", "red"], [(0, "blue"), (1, "red")]]
 )
-def test_ptable_heatmap_plotly_colorscale(glass_formulas, clr_scl):
-    fig = ptable_heatmap_plotly(glass_formulas, colorscale=clr_scl)
+def test_ptable_heatmap_plotly_colorscale(
+    glass_formulas: list[str], colorscale: str | list[tuple[float, str]] | list[str]
+) -> None:
+    fig = ptable_heatmap_plotly(glass_formulas, colorscale=colorscale)
     assert isinstance(fig, go.Figure)

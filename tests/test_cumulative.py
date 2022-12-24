@@ -13,7 +13,7 @@ def test_cumulative_error(alpha: float) -> None:
     assert isinstance(ax, plt.Axes)
 
 
-def test_cumulative_residual():
+def test_cumulative_residual() -> None:
     ax = cumulative_residual(abs(y_true - y_pred))
     assert isinstance(ax, plt.Axes)
     assert len(ax.lines) == 3

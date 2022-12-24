@@ -15,7 +15,7 @@ from pymatviz.utils import (
 from tests.conftest import y_pred, y_true
 
 
-def test_add_mae_r2_box():
+def test_add_mae_r2_box() -> None:
     text_box = add_mae_r2_box(y_pred, y_true)
 
     assert isinstance(text_box, AnchoredText)
@@ -65,7 +65,7 @@ def test_add_identity_line(
     assert line["line"]["color"] == line_kwds["color"] if line_kwds else "gray"
 
 
-def test_df_to_arrays():
+def test_df_to_arrays() -> None:
     df = pd.DataFrame([y_true, y_pred]).T
     x1, y1 = df_to_arrays(None, y_true, y_pred)
     x_col, y_col = df.columns[:2]

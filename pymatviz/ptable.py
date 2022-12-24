@@ -117,7 +117,7 @@ def ptable_heatmap(
     zero_color: str = "#DDD",  # light gray
     infty_color: str = "lightskyblue",
     na_color: str = "white",
-    heat_mode: Literal["value", "fraction", "percent", None] = "value",
+    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     precision: str = None,
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
@@ -367,7 +367,7 @@ def ptable_heatmap_plotly(
     count_mode: CountMode = "element_composition",
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] | None = None,
     showscale: bool = True,
-    heat_mode: Literal["value", "fraction", "percent", None] = "value",
+    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     precision: str = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
@@ -418,7 +418,7 @@ def ptable_heatmap_plotly(
         hover_data (dict[str, str | int | float] | pd.Series): Map from element symbols
             to additional data to display in the hover tooltip. {"Fe": "this shows up in
             the hover tooltip on a new line below the element name"}. Defaults to None.
-        font_colors (list[str]): One or two color strings [min_color, max_color].
+        font_colors (list[str]): One color name or two for [min_color, max_color].
             min_color is applied to annotations for heatmap values
             < (max_val - min_val) / 2. Defaults to ["black"].
         gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
