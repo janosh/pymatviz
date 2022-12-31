@@ -36,6 +36,13 @@ def count_elements(
     compositions and count the occurrences of each chemical element. Else ensure the
     data is a pd.Series filled with zero values for missing element symbols.
 
+    Provided as standalone function for external use or to cache long computations.
+    Caching long element counts is done by refactoring
+        ptable_heatmap(long_list_of_formulas) # slow
+    to
+        elem_counts = count_elements(long_list_of_formulas) # slow
+        ptable_heatmap(elem_counts) # fast, only rerun this line to update the plot
+
     Args:
         elem_values (dict[str, int | float] | pd.Series | list[str]): Iterable of
             composition strings/objects or map from element symbols to heatmap values.
@@ -80,10 +87,12 @@ def count_elements(
     if pd.api.types.is_integer_dtype(srs.index):
         # if index is all integers, assume they represent atomic
         # numbers and map them to element symbols (H: 1, He: 2, ...)
-        if srs.index.max() > 118 or srs.index.min() < 1:
+        idx_min, idx_max = srs.index.min(), srs.index.max()
+        if idx_max > 118 or idx_min < 1:
             raise ValueError(
                 "element value keys were found to be integers and assumed to represent "
-                "atomic numbers, but values are outside expected range [1, 118]."
+                f"atomic numbers, but values range from {idx_min} to {idx_max}, "
+                "expected range [1, 118]."
             )
         map_atomic_num_to_elem_symbol = (
             df_ptable.reset_index().set_index("atomic_number").symbol
@@ -378,6 +387,7 @@ def ptable_heatmap_plotly(
     color_bar: dict[str, Any] = None,
     exclude_elements: Sequence[str] = (),
     log: bool = False,
+    **kwargs: Any,
 ) -> go.Figure:
     """Creates a Plotly figure with an interactive heatmap of the periodic table.
     Supports hover tooltips with custom data or atomic reference data like
@@ -546,6 +556,13 @@ def ptable_heatmap_plotly(
             "tuples(float, str)"
         )
 
+    # TODO: see if this ugly code can be handed off to plotly, looks like not atm
+    # https://github.com/janosh/pymatviz/issues/52
+    # https://github.com/plotly/documentation/issues/1611
+    log_cbar = dict(
+        tickvals=np.arange(int(np.log10(elem_values.max())) + 1),
+        ticktext=10 ** np.arange(int(np.log10(elem_values.max())) + 1),
+    )
     fig = ff.create_annotated_heatmap(
         heatmap_values,
         annotation_text=tile_texts,
@@ -556,15 +573,8 @@ def ptable_heatmap_plotly(
         hoverinfo="text",
         xgap=gap,
         ygap=gap,
-        # TODO: see if this ugly code can be handed off to plotly, looks like not atm
-        # https://github.com/janosh/pymatviz/issues/52
-        # https://github.com/plotly/documentation/issues/1611
-        colorbar=dict(
-            tickvals=np.arange(int(np.log10(elem_values.max())) + 1),
-            ticktext=10 ** np.arange(int(np.log10(elem_values.max())) + 1),
-        )
-        if log
-        else None,
+        colorbar=log_cbar if log else None,
+        **kwargs,
     )
     fig.update_layout(
         margin=dict(l=10, r=10, t=10, b=10, pad=10),

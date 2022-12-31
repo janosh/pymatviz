@@ -1,0 +1,61 @@
+name: GitHub Pages
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, site]
+  workflow_dispatch:
+
+# set permissions of GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Set up node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: |
+          pip install lazydocs  # used in package.json script
+          # lazydocs needs package deps to be installed
+          pip install .
+          cd site
+          npm install
+
+      - name: Build site
+        run: |
+          cd site
+          npm run make-api-docs
+          npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: site/build
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1

@@ -1,0 +1,55 @@
+{
+  "name": "pymatviz",
+  "description": "A toolkit for visualizations in materials informatics",
+  "author": "Janosh Riebesell <janosh.riebesell@gmail.com>",
+  "homepage": "https://janosh.github.io/pymatviz",
+  "repository": "https://github.com/janosh/pymatviz",
+  "license": "MIT",
+  "type": "module",
+  "bugs": "https://github.com/janosh/pymatviz/issues",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "vite build && vite preview",
+    "make-api-docs": "rm -f src/routes/api/*.md && cd .. && lazydocs pymatviz --output-path site/src/routes/api --no-watermark --src-base-url https://github.com/janosh/pymatviz/blob/main"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "1.0.0",
+    "@sveltejs/kit": "1.0.1",
+    "@sveltejs/vite-plugin-svelte": "^2.0.2",
+    "@typescript-eslint/eslint-plugin": "^5.47.0",
+    "@typescript-eslint/parser": "^5.47.0",
+    "eslint": "^8.30.0",
+    "eslint-plugin-svelte3": "^4.0.0",
+    "hastscript": "^7.1.0",
+    "highlight.js": "^11.7.0",
+    "marked": "^4.2.5",
+    "mdsvex": "^0.10.6",
+    "prettier": "^2.8.1",
+    "prettier-plugin-svelte": "^2.9.0",
+    "rehype-autolink-headings": "^6.1.1",
+    "rehype-slug": "^5.1.0",
+    "svelte": "^3.55.0",
+    "svelte-check": "^3.0.1",
+    "svelte-github-corner": "^0.1.0",
+    "svelte-preprocess": "^5.0.0",
+    "svelte-toc": "^0.5.1",
+    "svelte2tsx": "^0.6.0",
+    "tslib": "^2.4.1",
+    "typescript": "^4.9.4",
+    "vite": "^4.0.3"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": "*.svelte",
+        "options": {
+          "printWidth": 90
+        }
+      }
+    ]
+  }
+}
