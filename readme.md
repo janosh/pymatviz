@@ -1,6 +1,11 @@
-<h1 align="center">pymatviz</h1>
+<h1 align="center">
+<br>
+<img src="https://raw.githubusercontent.com/janosh/pymatviz/main/site/static/favicon.svg" alt="Logo" height="60px">
+<br class="hide-in-docs">&ensp;
+pymatviz
+</h1>
 
-<h4 align="center">
+<h4 align="center" class="toc-exclude">
 
 A toolkit for visualizations in materials informatics.
 
@@ -12,7 +17,7 @@ A toolkit for visualizations in materials informatics.
 
 </h4>
 
-**Note**: This project is not associated with or endorsed by [`pymatgen`](https://github.com/materialsproject/pymatgen), but aims to complement it by adding additional plotting functionality.
+**Note**: This project is not associated with or endorsed by [`pymatgen`](https://github.com/materialsproject/pymatgen), but aims to complement it with additional plotting functionality.
 
 ## Installation
 
@@ -22,7 +27,7 @@ pip install pymatviz
 
 ## Usage
 
-See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`.
+See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`. <slot name="docs-link" />
 
 |                                                                                                                        |                                      |                                                                                                              |                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
