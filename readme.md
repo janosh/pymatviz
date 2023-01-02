@@ -1,7 +1,6 @@
 <h1 align="center">
-<br>
 <img src="https://raw.githubusercontent.com/janosh/pymatviz/main/site/static/favicon.svg" alt="Logo" height="60px">
-<br class="hide-in-docs">&ensp;
+<br class="hide-in-docs">
 pymatviz
 </h1>
 

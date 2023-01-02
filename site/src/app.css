@@ -63,10 +63,6 @@ label {
   font-weight: bold;
   cursor: pointer;
 }
-img {
-  max-width: 100%;
-  margin: 1em auto;
-}
 
 table {
   border-collapse: collapse;
@@ -75,6 +71,9 @@ table {
 table :is(td, th) {
   border: 1px solid gray;
   padding: 5pt 9pt;
+}
+img {
+  max-width: 100%;
 }
 tbody tr:nth-child(odd) {
   background: black;
@@ -85,7 +84,10 @@ h1 {
   font-size: clamp(2rem, 2rem + 2vw, 3rem);
   place-items: center;
   place-content: center;
-  margin: 1.2em 0;
+  gap: 6pt;
+}
+.hide-in-docs {
+  display: none;
 }
 
 :where(h2, h3, h4, h5, h6) {
