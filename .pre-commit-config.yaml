@@ -75,7 +75,7 @@ repos:
       - id: docformatter
 
   - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.5.3
+    rev: 1.6.0
     hooks:
       - id: nbqa-pyupgrade
         args: [--py38-plus]
