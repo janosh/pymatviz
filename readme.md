@@ -24,9 +24,13 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
+## API Docs
+
+See <https://janosh.github.io/pymatviz/api>.
+
 ## Usage
 
-See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`. <slot name="docs-link" />
+See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`.
 
 |                                                                                                                        |                                      |                                                                                                              |                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |

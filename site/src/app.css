@@ -15,10 +15,19 @@
 }
 body {
   background: var(--night);
-  padding: calc(1ex + 2vw);
   font-family: -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
   color: var(--text-color);
   line-height: 1.5;
+  margin: 0;
+}
+body > div {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+main {
+  padding: calc(1ex + 2vw);
+  flex: 1;
 }
 button {
   color: var(--text-color);
@@ -36,6 +45,15 @@ a {
 }
 a:hover {
   color: orange;
+}
+a.link {
+  padding: 0 4pt;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 3pt;
+  transition: 0.2s;
+}
+a.link[aria-current='page'] {
+  color: mediumseagreen;
 }
 code {
   overflow-wrap: break-word;
@@ -78,13 +96,8 @@ img {
 tbody tr:nth-child(odd) {
   background: black;
 }
-
 h1 {
-  display: flex;
-  font-size: clamp(2rem, 2rem + 2vw, 3rem);
-  place-items: center;
-  place-content: center;
-  gap: 6pt;
+  text-align: center;
 }
 .hide-in-docs {
   display: none;
@@ -129,4 +142,8 @@ aside.toc.desktop {
   top: 3em;
   left: calc(50vw + 50em / 2);
   max-width: 16em;
+}
+
+caption {
+  display: block;
 }

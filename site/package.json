@@ -15,6 +15,7 @@
     "make-api-docs": "rm -f src/routes/api/*.md && cd .. && lazydocs pymatviz --output-path site/src/routes/api --no-watermark --src-base-url https://github.com/janosh/pymatviz/blob/main"
   },
   "devDependencies": {
+    "@iconify/svelte": "^3.0.1",
     "@sveltejs/adapter-static": "1.0.0",
     "@sveltejs/kit": "1.0.1",
     "@sveltejs/vite-plugin-svelte": "^2.0.2",
