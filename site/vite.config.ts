@@ -14,7 +14,7 @@ const vite_config: UserConfig = {
   },
 
   server: {
-    fs: { allow: [`../..`] }, // needed to import readme.md
+    fs: { allow: [`../..`] }, // needed to import from $root
     port: 3000,
   },
 
