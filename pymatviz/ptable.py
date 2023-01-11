@@ -432,8 +432,9 @@ def ptable_heatmap_plotly(
             min_color is applied to annotations for heatmap values
             < (max_val - min_val) / 2. Defaults to ["black"].
         gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
-        font_size (int): Element symbol and heat label text size. Defaults to None,
-            meaning automatic font size based on plot size.
+        font_size (int): Element symbol and heat label text size. Any valid CSS size
+            allowed. Defaults to None, meaning automatic font size based on plot size.
+            Element symbols will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
         color_bar (dict[str, Any]): Plotly color bar properties documented at
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to None.
