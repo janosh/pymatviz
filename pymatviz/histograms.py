@@ -34,7 +34,7 @@ def residual_hist(
             targets - model predictions.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to
-            'Residual ($y_\mathrm{true} - y_\mathrm{pred}$)
+            `'Residual ($y_\mathrm{true} - y_\mathrm{pred}$'`)
         **kwargs: Additional keyword arguments to pass to matplotlib.Axes.
 
     Returns:

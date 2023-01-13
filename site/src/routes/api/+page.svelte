@@ -1,10 +1,8 @@
-<script lang="ts">
-  export let data
-</script>
-
 <h1 class="toc-exclude">API</h1>
 
-{@html data.html}
+{#each Object.values(import.meta.glob(`./*.md`, { eager: true })) as file}
+  <svelte:component this={file?.default} />
+{/each}
 
 <style>
   /* select all but first module h1s */

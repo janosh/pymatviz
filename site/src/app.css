@@ -3,11 +3,15 @@
   --blue: cornflowerblue;
   --text-color: rgb(208, 208, 208);
 
-  --toc-mobile-bg: #1c0e3e;
+  --toc-mobile-bg: #0d1a1d;
+  --toc-mobile-shadow: 0 0 1em 0 black;
+  --toc-title-padding: 0 0 0 3pt;
   --toc-li-padding: 4pt 1ex;
   --toc-mobile-btn-color: white;
+  --toc-mobile-btn-bg: teal;
+  --toc-mobile-btn-padding: 1pt 2pt;
   --toc-desktop-nav-margin: 0 0 0 1em;
-  --toc-min-width: 20em;
+  --toc-min-width: 16em;
   --toc-active-bg: darkcyan;
 
   --ghc-color: var(--night);
