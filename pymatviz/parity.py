@@ -266,7 +266,7 @@ def residual_vs_actual(
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual value".
         ylabel (str, optional): y-axis label. Defaults to
-            'Residual ($y_\mathrm{true} - y_\mathrm{pred}$)'.
+            `'Residual ($y_\mathrm{true} - y_\mathrm{pred}$)'`.
         **kwargs: Additional keyword arguments passed to plt.plot()
 
     Returns:
