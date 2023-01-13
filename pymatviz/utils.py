@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import subprocess
-from os.path import abspath, dirname
+from os.path import dirname
 from shutil import which
 from typing import Any, Literal, Sequence, Union
 
@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 from sklearn.metrics import r2_score
 
 
-ROOT = dirname(dirname(abspath(__file__)))
+ROOT = dirname(dirname(__file__))
 
 Array = NDArray[Union[np.float64, np.int_]]
 

@@ -46,7 +46,7 @@ def count_elements(
     Args:
         elem_values (dict[str, int | float] | pd.Series | list[str]): Iterable of
             composition strings/objects or map from element symbols to heatmap values.
-        count_mode ('{element|fractional|reduced}_composition'):
+        count_mode ('(element|fractional|reduced)_composition'):
             Only used when elem_values is a list of composition strings/objects.
             - element_composition (default): Count elements in each composition as is,
                 i.e. without reduction or normalization.
@@ -395,14 +395,14 @@ def ptable_heatmap_plotly(
 
     Args:
         elem_values (dict[str, int | float] | pd.Series | list[str]): Map from element
-            symbols to heatmap values e.g. {"Fe": 2, "O": 3} or iterable of composition
+            symbols to heatmap values e.g. dict(Fe=2, O=3) or iterable of composition
             strings or Pymatgen composition objects.
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when elem_values is list of composition strings/objects.
         colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
             Defaults to plotly.express.colors.sequential.Pinkyl. See
-            https://plotly.com/python/builtin-colorscales for names of other builtin
+            plotly.com/python/builtin-colorscales for names of other builtin
             color scales. Note e.g. colorscale="YlGn" and px.colors.sequential.YlGn are
             equivalent. Custom scales are specified as ["blue", "red"] or
             [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
@@ -418,19 +418,20 @@ def ptable_heatmap_plotly(
         hover_props (list[str] | dict[str, str]): Elemental properties to display in the
             hover tooltip. Can be a list of property names to display only the values
             themselves or a dict mapping names to what they should display as. E.g.
-            {"atomic_mass": "atomic weight"} will display as "atomic weight = {x}".
-            Defaults to None. Available properties are: symbol, row, column, name,
+            dict(atomic_mass="atomic weight") will display as `"atomic weight = {x}"`.
+            Defaults to None.
+            Available properties are: symbol, row, column, name,
             atomic_number, atomic_mass, n_neutrons, n_protons, n_electrons, period,
             group, phase, radioactive, natural, metal, nonmetal, metalloid, type,
             atomic_radius, electronegativity, first_ionization, density, melting_point,
             boiling_point, number_of_isotopes, discoverer, year, specific_heat,
             n_shells, n_valence.
         hover_data (dict[str, str | int | float] | pd.Series): Map from element symbols
-            to additional data to display in the hover tooltip. {"Fe": "this shows up in
-            the hover tooltip on a new line below the element name"}. Defaults to None.
+            to additional data to display in the hover tooltip. dict(Fe="this appears in
+            the hover tooltip on a new line below the element name"). Defaults to None.
         font_colors (list[str]): One color name or two for [min_color, max_color].
-            min_color is applied to annotations for heatmap values
-            < (max_val - min_val) / 2. Defaults to ["black"].
+            min_color is applied to annotations with heatmap values less than
+            (max_val - min_val) / 2. Defaults to ["black"].
         gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
         font_size (int): Element symbol and heat label text size. Any valid CSS size
             allowed. Defaults to None, meaning automatic font size based on plot size.

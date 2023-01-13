@@ -40,8 +40,8 @@ jobs:
 
       - name: Build site
         run: |
+          python assets/make_api_docs.py
           cd site
-          npm run make-api-docs
           npm run build
 
       - name: Upload build artifact

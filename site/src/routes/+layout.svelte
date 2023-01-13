@@ -3,8 +3,8 @@
   import Footer from '$lib/Footer.svelte'
   import { repository } from '$site/package.json'
   import { onMount } from 'svelte'
-  import GitHubCorner from 'svelte-github-corner'
   import Toc from 'svelte-toc'
+  import { GitHubCorner } from 'svelte-zoo'
   import '../app.css'
 
   $: headingSelector = `main :is(${
