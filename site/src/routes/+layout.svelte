@@ -11,7 +11,7 @@
     $page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`
   }):not(.toc-exclude)`
 
-  const site_url = 'https://janosh.github.io/pymatviz'
+  const site_url = `https://janosh.github.io/pymatviz`
   onMount(() => {
     for (const link of [
       ...document.querySelectorAll(`a[href^='${site_url}']`),
@@ -30,19 +30,11 @@
 
 <GitHubCorner href={repository} />
 
-<main>
-  <slot />
-</main>
+<slot />
 
 <Footer />
 
 <style>
-  main {
-    margin: auto;
-    margin-bottom: 3em;
-    width: 100%;
-    max-width: 50em;
-  }
   a[href='/'] {
     font-size: 15pt;
     position: absolute;

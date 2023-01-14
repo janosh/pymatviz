@@ -256,6 +256,43 @@ def add_identity_line(
     return fig
 
 
+def save_fig(fig: go.Figure | plt.Figure | plt.Axes, path: str, **kwargs: Any) -> None:
+    """Write a plotly figure to an HTML file. If the file is has .svelte extension,
+    insert `{...$$props}` into the figure's top-level div so it can be styled by
+    consuming Svelte code.
+
+    Args:
+        fig (go.Figure | plt.Figure | plt.Axes): Plotly or matplotlib Figure or
+            matplotlib Axes object.
+        path (str): Path to HTML file that will be created.
+        **kwargs: Keyword arguments passed to fig.write_html().
+    """
+    # handle matplotlib figures
+    if isinstance(fig, (plt.Figure, plt.Axes)):
+        if hasattr(fig, "figure"):
+            fig = fig.figure  # unwrap Axes
+        fig.savefig(path, **kwargs)
+        return
+    if not isinstance(fig, go.Figure):
+        raise TypeError(
+            f"Unsupported figure type {type(fig)}, expected plotly or matplotlib Figure"
+        )
+    if path.lower().endswith((".svelte", ".html")):
+        config = dict(
+            showTips=False, displayModeBar=False, scrollZoom=True, responsive=True
+        )
+        defaults = dict(include_plotlyjs=False, full_html=False, config=config)
+        defaults.update(kwargs)
+        fig.write_html(path, **defaults)
+        if path.lower().endswith(".svelte"):
+            # insert {...$$props} into top-level div to be able to post-process and
+            # style plotly figures from within Svelte files
+            text = open(path).read().replace("<div>", "<div {...$$props}>", 1)
+            open(path, "w").write(text)
+    else:
+        fig.write_image(path, **kwargs)
+
+
 def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG file with
     svgo CLI if available in PATH.
@@ -270,18 +307,13 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
     assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
     filepath = f"{ROOT}/assets/{filename}.svg"
 
-    if isinstance(fig, go.Figure):
-        fig.write_image(filepath)
-    elif fig is None or isinstance(fig, plt.Figure):
-        if len(plt.gcf().axes) == 0:
-            raise ValueError(
-                "No figure passed explicitly and plt.gcf() contains no axes. "
-                "Did you forget to pass a plotly figure instance?"
-            )
-        plt.savefig(filepath, bbox_inches="tight")
-        plt.close()
-    else:
-        raise TypeError(f"{fig = } should be a Plotly Figure or Matplotlib Figure")
+    if fig is None or isinstance(fig, plt.Figure) and len(plt.gcf().axes) == 0:
+        raise ValueError(
+            "No figure passed explicitly and plt.gcf() contains no axes. "
+            "Did you forget to pass a plotly figure instance?"
+        )
+    save_fig(fig, filepath)
+    plt.close()
 
     if (svgo := which("svgo")) is not None:
         subprocess.run([svgo, "--multipass", filepath])

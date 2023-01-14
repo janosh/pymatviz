@@ -32,6 +32,10 @@ body > div {
 main {
   padding: calc(1ex + 2vw);
   flex: 1;
+  margin: auto;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 55em;
 }
 button {
   color: var(--text-color);
