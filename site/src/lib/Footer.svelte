@@ -16,6 +16,7 @@
     gap: 1ex;
     place-content: center;
     place-items: center;
+    margin: 2em 0 0;
     padding: 3vh 3vw;
     background: #00061a;
   }
