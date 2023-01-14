@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+from matplotlib import pyplot as plt
 from matplotlib.offsetbox import AnchoredText
 
 from pymatviz.utils import (
@@ -11,6 +14,7 @@ from pymatviz.utils import (
     add_mae_r2_box,
     df_to_arrays,
     get_crystal_sys,
+    save_fig,
 )
 from tests.conftest import y_pred, y_true
 
@@ -84,3 +88,25 @@ def test_df_to_arrays() -> None:
             in str(exc_info.value)
         )
         assert "not-real-col-name" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("fig", (go.Figure(), plt.figure()))
+@pytest.mark.parametrize("ext", ("html", "svelte", "png", "svg", "pdf"))
+def test_save_fig(
+    fig: go.Figure | plt.Figure | plt.Axes, ext: str, tmp_path: Path
+) -> None:
+    if isinstance(fig, plt.Figure) and ext in ("svelte", "html"):
+        pytest.skip("svelte not supported for matplotlib figures")
+
+    path = f"{tmp_path}/fig.{ext}"
+    save_fig(fig, path)
+
+    if ext in ("svelte", "html"):
+        html = open(path).read()
+        assert '"showTips": false' in html
+        assert '"displayModeBar": false' in html
+
+        if ext == "svelte":
+            assert html.startswith("<div {...$$props}>")
+        else:
+            assert html.startswith("<div>")

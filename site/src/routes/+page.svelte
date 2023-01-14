@@ -13,7 +13,9 @@
   })
 </script>
 
-<Readme />
+<main>
+  <Readme />
+</main>
 
 <style>
   :global(h1[align='center']) {
