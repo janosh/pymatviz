@@ -1,20 +1,11 @@
 import { sveltekit } from '@sveltejs/kit/vite'
-import { resolve } from 'path'
 import type { UserConfig } from 'vite'
 
 const vite_config: UserConfig = {
   plugins: [sveltekit()],
 
-  resolve: {
-    alias: {
-      $src: resolve(`./src`),
-      $site: resolve(`.`),
-      $root: resolve(`..`),
-    },
-  },
-
   server: {
-    fs: { allow: [`../..`] }, // needed to import from $root
+    fs: { allow: [`..`] }, // needed to import from $root
     port: 3000,
   },
 

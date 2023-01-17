@@ -26,7 +26,9 @@ pip install pymatviz
 
 ## API Docs
 
-See <https://janosh.github.io/pymatviz/api>.
+See the [/api] page.
+
+[/api]: https://janosh.github.io/pymatviz/api
 
 ## Usage
 
