@@ -1,16 +1,5 @@
 <script lang="ts">
   import Readme from '$root/readme.md'
-  import { repository } from '$site/package.json'
-  import { onMount } from 'svelte'
-
-  onMount(() => {
-    for (const link of [
-      ...document.querySelectorAll(`a:has(code)`),
-    ] as HTMLAnchorElement[]) {
-      const path = link.href.split(`/`).slice(-2).join(`/`)
-      link.href = `${repository}/blob/main/${path}`
-    }
-  })
 </script>
 
 <main>
