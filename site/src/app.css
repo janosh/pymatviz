@@ -14,8 +14,8 @@
   --toc-min-width: 16em;
   --toc-active-bg: darkcyan;
 
-  --ghc-color: var(--night);
-  --ghc-bg: white;
+  --zoo-github-corner-color: var(--night);
+  --zoo-github-corner-bg: white;
 }
 body {
   background: var(--night);

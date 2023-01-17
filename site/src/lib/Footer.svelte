@@ -4,10 +4,9 @@
 </script>
 
 <footer>
-  Maintained by Janosh Riebesell
+  Questions/feedback?
+  <a href="{repository}/issues"><Icon icon="octicon:mark-github" inline /></a>
   <a href="mailto:janosh@lbl.gov"><Icon icon="mdi:email" inline /></a>
-  on
-  <a href={repository}><Icon icon="octicon:mark-github" inline /></a>
 </footer>
 
 <style>

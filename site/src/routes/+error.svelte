@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores'
-  import { homepage, name } from '../../package.json'
+  import { homepage, name } from '$site/package.json'
 
   let online: boolean
 </script>
