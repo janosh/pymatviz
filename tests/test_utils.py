@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -11,7 +12,7 @@ from matplotlib.offsetbox import AnchoredText
 from pymatviz.utils import (
     CrystalSystem,
     add_identity_line,
-    add_mae_r2_box,
+    annotate_mae_r2,
     df_to_arrays,
     get_crystal_sys,
     save_fig,
@@ -19,8 +20,8 @@ from pymatviz.utils import (
 from tests.conftest import y_pred, y_true
 
 
-def test_add_mae_r2_box() -> None:
-    text_box = add_mae_r2_box(y_pred, y_true)
+def test_annotate_mae_r2() -> None:
+    text_box = annotate_mae_r2(y_pred, y_true)
 
     assert isinstance(text_box, AnchoredText)
 
@@ -28,7 +29,7 @@ def test_add_mae_r2_box() -> None:
     assert text_box.txt.get_text() == txt
 
     prefix, suffix = "Metrics:\n", "\nthe end"
-    text_box = add_mae_r2_box(y_pred, y_true, prefix=prefix, suffix=suffix)
+    text_box = annotate_mae_r2(y_pred, y_true, prefix=prefix, suffix=suffix)
     assert text_box.txt.get_text() == prefix + txt + suffix
 
 
@@ -92,19 +93,31 @@ def test_df_to_arrays() -> None:
 
 @pytest.mark.parametrize("fig", (go.Figure(), plt.figure()))
 @pytest.mark.parametrize("ext", ("html", "svelte", "png", "svg", "pdf"))
+@pytest.mark.parametrize(
+    "plotly_config", (None, {"showTips": True}, {"scrollZoom": True})
+)
 def test_save_fig(
-    fig: go.Figure | plt.Figure | plt.Axes, ext: str, tmp_path: Path
+    fig: go.Figure | plt.Figure | plt.Axes,
+    ext: str,
+    tmp_path: Path,
+    plotly_config: dict[str, Any] | None,
 ) -> None:
     if isinstance(fig, plt.Figure) and ext in ("svelte", "html"):
         pytest.skip("svelte not supported for matplotlib figures")
 
     path = f"{tmp_path}/fig.{ext}"
-    save_fig(fig, path)
+    save_fig(fig, path, plotly_config=plotly_config)
 
     if ext in ("svelte", "html"):
         html = open(path).read()
-        assert '"showTips": false' in html
-        assert '"displayModeBar": false' in html
+        if plotly_config and plotly_config.get("showTips"):
+            assert '"showTips": true' in html
+        else:
+            assert '"showTips": false' in html
+        assert '"modeBarButtonsToRemove": ' in html
+        assert '"displaylogo": false' in html
+        if plotly_config and plotly_config.get("scrollZoom"):
+            assert '"scrollZoom": true' in html
 
         if ext == "svelte":
             assert html.startswith("<div {...$$props}>")
