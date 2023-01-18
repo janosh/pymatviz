@@ -133,7 +133,7 @@ def annotate_bars(
     ax.set(ylim=(None, y_max * y_max_headroom))
 
 
-def add_mae_r2_box(
+def annotate_mae_r2(
     xs: NDArray[np.float64 | np.int_],
     ys: NDArray[np.float64 | np.int_],
     ax: plt.Axes = None,
@@ -256,7 +256,12 @@ def add_identity_line(
     return fig
 
 
-def save_fig(fig: go.Figure | plt.Figure | plt.Axes, path: str, **kwargs: Any) -> None:
+def save_fig(
+    fig: go.Figure | plt.Figure | plt.Axes,
+    path: str,
+    plotly_config: dict[str, Any] = None,
+    **kwargs: Any,
+) -> None:
     """Write a plotly figure to an HTML file. If the file is has .svelte extension,
     insert `{...$$props}` into the figure's top-level div so it can be styled by
     consuming Svelte code.
@@ -265,6 +270,11 @@ def save_fig(fig: go.Figure | plt.Figure | plt.Axes, path: str, **kwargs: Any) -
         fig (go.Figure | plt.Figure | plt.Axes): Plotly or matplotlib Figure or
             matplotlib Axes object.
         path (str): Path to HTML file that will be created.
+        plotly_config (dict, optional): Configuration options for fig.write_html().
+        Defaults to dict(showTips=False, responsive=True, modeBarButtonsToRemove=
+        ["lasso2d", "select2d", "autoScale2d", "toImage"]).
+        See https://plotly.com/python/configuration-options.
+
         **kwargs: Keyword arguments passed to fig.write_html().
     """
     # handle matplotlib figures
@@ -279,8 +289,12 @@ def save_fig(fig: go.Figure | plt.Figure | plt.Axes, path: str, **kwargs: Any) -
         )
     if path.lower().endswith((".svelte", ".html")):
         config = dict(
-            showTips=False, displayModeBar=False, scrollZoom=True, responsive=True
+            showTips=False,
+            modeBarButtonsToRemove=["lasso2d", "select2d", "autoScale2d", "toImage"],
+            responsive=True,
+            displaylogo=False,
         )
+        config.update(plotly_config or {})
         defaults = dict(include_plotlyjs=False, full_html=False, config=config)
         defaults.update(kwargs)
         fig.write_html(path, **defaults)

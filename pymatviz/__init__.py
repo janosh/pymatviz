@@ -27,5 +27,5 @@ from pymatviz.sunburst import spacegroup_sunburst as spacegroup_sunburst
 from pymatviz.uncertainty import error_decay_with_uncert as error_decay_with_uncert
 from pymatviz.uncertainty import qq_gaussian as qq_gaussian
 from pymatviz.utils import ROOT as ROOT
-from pymatviz.utils import add_mae_r2_box as add_mae_r2_box
 from pymatviz.utils import annotate_bars as annotate_bars
+from pymatviz.utils import annotate_mae_r2 as annotate_mae_r2
