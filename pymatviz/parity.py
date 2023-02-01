@@ -60,8 +60,8 @@ def density_scatter(
     sort: bool = True,
     log_cmap: bool = True,
     density_bins: int = 100,
-    xlabel: str = "Actual",
-    ylabel: str = "Predicted",
+    xlabel: str = None,
+    ylabel: str = None,
     identity: bool = True,
     stats: bool | dict[str, Any] = True,
     **kwargs: Any,
@@ -90,6 +90,11 @@ def density_scatter(
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    if xlabel is None:
+        xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
+    if ylabel is None:
+        ylabel = getattr(y, "name", y if isinstance(y, str) else "Predicted")
+
     x, y = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
 

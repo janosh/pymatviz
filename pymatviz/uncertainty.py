@@ -55,7 +55,6 @@ def qq_gaussian(
 
     lines = []  # collect plotted lines to show second legend with miscalibration areas
     for key, std in y_std.items():
-
         z_scored = (np.array(res) / std).reshape(-1, 1)
 
         exp_proportions = np.linspace(0, 1, resolution)

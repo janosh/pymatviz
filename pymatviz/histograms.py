@@ -112,7 +112,6 @@ def true_pred_hist(
     )
 
     for xmin, xmax, rect in zip(bin_edges, bin_edges[1:], bars.patches):
-
         y_preds_in_rect = np.logical_and(y_pred > xmin, y_pred < xmax).nonzero()
 
         color_value = y_std[y_preds_in_rect].mean()

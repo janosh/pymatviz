@@ -114,7 +114,6 @@ def annotate_bars(
     y_max = 0
 
     for rect, label in zip(ax.patches, labels):
-
         y_pos = rect.get_height()
         x_pos = rect.get_x() + rect.get_width() / 2 + h_offset
 
@@ -290,7 +289,15 @@ def save_fig(
     if path.lower().endswith((".svelte", ".html")):
         config = dict(
             showTips=False,
-            modeBarButtonsToRemove=["lasso2d", "select2d", "autoScale2d", "toImage"],
+            modeBarButtonsToRemove=[
+                "lasso2d",
+                "select2d",
+                "autoScale2d",
+                "toImage",
+                "toggleSpikelines",
+                "hoverClosestCartesian",
+                "hoverCompareCartesian",
+            ],
             responsive=True,
             displaylogo=False,
         )
