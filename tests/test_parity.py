@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -34,9 +36,21 @@ def test_density_scatter(
     cmap: str | None,
     stats: bool | dict[str, Any],
 ) -> None:
-    density_scatter(
+    ax = density_scatter(
         df=df, x=x, y=y, log_cmap=log_cmap, sort=sort, cmap=cmap, stats=stats
     )
+    assert isinstance(ax, plt.Axes)
+    assert ax.get_xlabel() == x if isinstance(x, str) else "Actual"
+    assert ax.get_ylabel() == y if isinstance(y, str) else "Predicted"
+
+
+def test_density_scatter_uses_series_name_as_label() -> None:
+    x = pd.Series(np.random.rand(5), name="x")
+    y = pd.Series(np.random.rand(5), name="y")
+    ax = density_scatter(x=x, y=y)
+
+    assert ax.get_xlabel() == "x"
+    assert ax.get_ylabel() == "y"
 
 
 @pytest.mark.parametrize("df, x, y", df_x_y)

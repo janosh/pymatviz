@@ -210,7 +210,6 @@ def ptable_heatmap(
     text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
 
     for symbol, row, column, *_ in df_ptable.itertuples():
-
         row = n_rows - row  # makes periodic table right side up
         heat_val = elem_values.get(symbol)
 
@@ -272,7 +271,6 @@ def ptable_heatmap(
         ax.add_patch(rect)
 
     if heat_mode is not None:
-
         # colorbar position and size: [x, y, width, height]
         # anchored at lower left corner
         cb_ax = ax.inset_axes([0.18, 0.8, 0.42, 0.05], transform=ax.transAxes)
