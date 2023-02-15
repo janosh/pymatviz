@@ -12,21 +12,10 @@ repos:
       - id: ruff
         args: [--fix]
 
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-
   - repo: https://github.com/psf/black
     rev: 23.1.0
     hooks:
       - id: black-jupyter
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        additional_dependencies: [flake8-bugbear]
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.3.1
@@ -64,25 +53,12 @@ repos:
         stages: [commit, commit-msg]
         exclude_types: [csv, svg, html, yaml, jupyter]
 
-  - repo: https://github.com/PyCQA/autoflake
-    rev: v2.0.1
-    hooks:
-      - id: autoflake
-
-  - repo: https://github.com/PyCQA/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        exclude: tests
-
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.6.1
     hooks:
       - id: nbqa-pyupgrade
         args: [--py38-plus]
-      - id: nbqa-isort
-      - id: nbqa-flake8
-        args: [--ignore=E402]
+      - id: nbqa-ruff
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.6.1
