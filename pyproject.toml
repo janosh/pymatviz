@@ -1,5 +1,19 @@
 [tool.ruff]
-select = ["B", "E", "F", "W", "I"]
+select = ["B", "E", "F", "W", "I", "C", "RET", "S", "D"]
+ignore = [
+  "B905",
+  "C408",
+  "S101",
+  "S113",
+  "C901",
+  "RET504",
+  "D100",
+  "D104",
+  "D107",
+  "D205",
+  "D415",
+]
+pydocstyle.convention = "google"
 
-[tool.ruff.per-file-ignores]
-"__init__.py" = ["F401"]
+[tool.ruff.isort]
+lines-after-imports = 2
