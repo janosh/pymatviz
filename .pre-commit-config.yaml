@@ -6,6 +6,12 @@ default_stages: [commit]
 default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.0.245
+    hooks:
+      - id: ruff
+        args: [--fix]
+
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
     hooks:
