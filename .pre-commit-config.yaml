@@ -69,11 +69,6 @@ repos:
       - id: pydocstyle
         exclude: tests
 
-  - repo: https://github.com/PyCQA/docformatter
-    rev: v1.6.0.rc1
-    hooks:
-      - id: docformatter
-
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.6.1
     hooks:
