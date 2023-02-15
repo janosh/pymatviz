@@ -5,7 +5,7 @@ from pymatviz.utils import Array
 
 
 def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
-    """The Marchenko-Pastur probability density function describes the distribution of
+    """Generate Marchenko-Pastur probability distribution which describes the density of
     singular values of large rectangular random matrices.
 
     See https://wikipedia.org/wiki/Marchenko-Pastur_distribution.

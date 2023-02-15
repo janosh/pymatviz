@@ -156,9 +156,9 @@ def plot_structure_2d(
     ```
 
     Args:
-        struct (Structure): Must be pymatgen instance. ax (plt.Axes, optional):
-        Matplotlib axes on which to plot. Defaults to None. rotation (str, optional):
-        Euler angles in degrees in the form '10x,20y,30z'
+        struct (Structure): Must be pymatgen instance.
+        ax (plt.Axes, optional): Matplotlib axes on which to plot. Defaults to None.
+        rotation (str, optional): Euler angles in degrees in the form '10x,20y,30z'
             describing angle at which to view structure. Defaults to "".
         atomic_radii (float | dict[str, float], optional): Either a scaling factor for
             default radii or map from element symbol to atomic radii. Defaults to

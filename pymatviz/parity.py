@@ -149,6 +149,7 @@ def scatter_with_err_bar(
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         title (str, optional): Plot tile. Defaults to None.
+        **kwargs: Additional keyword arguments to pass to ax.errorbar().
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -192,6 +193,7 @@ def density_hexbin(
             Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
+        **kwargs: Additional keyword arguments to pass to ax.hexbin().
 
     Returns:
         ax: The plot's matplotlib Axes.
@@ -229,9 +231,7 @@ def density_scatter_with_hist(
     """
     x, y = df_to_arrays(df, x, y)
     ax_scatter = with_hist(x, y, cell, bins)
-    ax = density_scatter(x, y, ax=ax_scatter, **kwargs)
-
-    return ax
+    return density_scatter(x, y, ax=ax_scatter, **kwargs)
 
 
 def density_hexbin_with_hist(
@@ -247,9 +247,7 @@ def density_hexbin_with_hist(
     """
     x, y = df_to_arrays(df, x, y)
     ax_scatter = with_hist(x, y, cell, bins)
-    ax = density_hexbin(x, y, ax=ax_scatter, **kwargs)
-
-    return ax
+    return density_hexbin(x, y, ax=ax_scatter, **kwargs)
 
 
 def residual_vs_actual(

@@ -46,10 +46,10 @@ def with_hist(
     cell: GridSpec = None,
     bins: int = 100,
 ) -> plt.Axes:
-    """Call before creating a plot and use the returned `ax_main` for all subsequent
-    plotting ops to create a grid of plots with the main plot in the lower left and
-    narrow histograms along its x- and/or y-axes displayed above and near the right
-    edge.
+    """Call before creating a plot and use the returned `ax_main` for all
+    subsequent plotting ops to create a grid of plots with the main plot in the
+    lower left and narrow histograms along its x- and/or y-axes displayed above
+    and near the right edge.
 
     Args:
         xs (array): x values.
@@ -141,8 +141,9 @@ def annotate_mae_r2(
     prec: int = 3,
     **kwargs: Any,
 ) -> AnchoredText:
-    """Provide a set of x and y values of equal length and an optional Axes object on
-    which to print the values' mean absolute error and R^2 coefficient of determination.
+    """Provide a set of x and y values of equal length and an optional Axes
+    object on which to print the values' mean absolute error and R^2
+    coefficient of determination.
 
     Args:
         xs (array, optional): x values.
@@ -212,8 +213,8 @@ def get_crystal_sys(spg: int) -> CrystalSystem:
 def add_identity_line(
     fig: go.Figure, line_kwds: dict[str, Any] = None, trace_idx: int = 0
 ) -> go.Figure:
-    """Add a line shape to the background layer of a plotly figure spanning from
-    smallest to largest x/y values in the trace specified by trace_idx.
+    """Add a line shape to the background layer of a plotly figure spanning
+    from smallest to largest x/y values in the trace specified by trace_idx.
 
     Args:
         fig (Figure): Plotly figure.
@@ -261,9 +262,9 @@ def save_fig(
     plotly_config: dict[str, Any] = None,
     **kwargs: Any,
 ) -> None:
-    """Write a plotly figure to an HTML file. If the file is has .svelte extension,
-    insert `{...$$props}` into the figure's top-level div so it can be styled by
-    consuming Svelte code.
+    """Write a plotly figure to an HTML file. If the file is has .svelte
+    extension, insert `{...$$props}` into the figure's top-level div so it can
+    be styled by consuming Svelte code.
 
     Args:
         fig (go.Figure | plt.Figure | plt.Axes): Plotly or matplotlib Figure or
@@ -311,12 +312,25 @@ def save_fig(
             text = open(path).read().replace("<div>", "<div {...$$props}>", 1)
             open(path, "w").write(text)
     else:
+        if path.lower().endswith(".pdf"):
+            orig_template = fig.layout.template
+            fig.layout.template = "plotly_white"
+        # hide click-to-show traces in PDF
+        hidden_traces = []
+        for trace in fig.data:
+            if trace.visible == "legendonly":
+                trace.visible = False
+                hidden_traces.append(trace)
         fig.write_image(path, **kwargs)
+        if path.lower().endswith(".pdf"):
+            fig.layout.template = orig_template
+        for trace in hidden_traces:
+            trace.visible = "legendonly"
 
 
 def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
-    """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG file with
-    svgo CLI if available in PATH.
+    """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG
+    file with svgo CLI if available in PATH.
 
     Args:
         fig (Figure): Plotly Figure instance.
@@ -344,9 +358,9 @@ def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | Sequence[str] | NDArray[np.float64 | np.int_],
 ) -> list[NDArray[np.float64 | np.int_] | dict[str, NDArray[np.float64 | np.int_]]]:
-    """If df is None, this is a no-op: args are returned as-is. If df is a dataframe,
-    all following args are used as column names and the column data returned as arrays
-    (after dropping rows with NaNs in any column).
+    """If df is None, this is a no-op: args are returned as-is. If df is a
+    dataframe, all following args are used as column names and the column data
+    returned as arrays (after dropping rows with NaNs in any column).
 
     Args:
         df (pd.DataFrame | None): Optional pandas DataFrame.

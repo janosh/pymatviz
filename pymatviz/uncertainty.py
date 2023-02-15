@@ -37,6 +37,7 @@ def qq_gaussian(
         y_std (array | dict[str, array] | str | list[str]): Model uncertainties either
             as array(s) (single or dict with labels if you have multiple sources of
             uncertainty) or column names in df.
+        df (pd.DataFrame, optional): DataFrame with y_true, y_pred and y_std columns.
         ax (Axes): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
@@ -202,6 +203,7 @@ def error_decay_with_uncert(
             uncertainty) as dict.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.
             of error decay by random ordering. Defaults to 100.
+        df (pd.DataFrame, optional): DataFrame with y_true, y_pred and y_std columns.
         percentiles (bool, optional): Whether the x-axis shows percentiles or number
             of remaining samples in the MAE calculation. Defaults to True.
         ax (Axes): matplotlib Axes on which to plot. Defaults to None.
