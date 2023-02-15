@@ -291,7 +291,7 @@ def hist_elemental_prevalence(
     rotation: int = 45,
     **kwargs: Any,
 ) -> plt.Axes:
-    """Plots a histogram of the prevalence of each element in a materials dataset.
+    """Plot a histogram of the prevalence of each element in a materials dataset.
 
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
 

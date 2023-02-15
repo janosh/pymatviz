@@ -65,5 +65,4 @@ def sankey_from_2_df_cols(
     )
 
     fig = go.Figure(data=[sankey])
-
     return fig

@@ -32,8 +32,8 @@ def count_elements(
     count_mode: CountMode = "element_composition",
     exclude_elements: Sequence[str] = (),
 ) -> pd.Series:
-    """Processes elemental heatmap data. If passed a list of strings, assume they are
-    compositions and count the occurrences of each chemical element. Else ensure the
+    """Count element occurrence in list of formula strings or dict-like compositions.
+    If passed elem_values are already a map from element symbol to counts, ensure the
     data is a pd.Series filled with zero values for missing element symbols.
 
     Provided as standalone function for external use or to cache long computations.
@@ -387,7 +387,7 @@ def ptable_heatmap_plotly(
     log: bool = False,
     **kwargs: Any,
 ) -> go.Figure:
-    """Creates a Plotly figure with an interactive heatmap of the periodic table.
+    """Create a Plotly figure with an interactive heatmap of the periodic table.
     Supports hover tooltips with custom data or atomic reference data like
     electronegativity, atomic_radius, etc. See kwargs hover_data and hover_props, resp.
 
@@ -442,6 +442,8 @@ def ptable_heatmap_plotly(
             Defaults to ().
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
             Piece of advice: colorscale='viridis' and log=True go well together.
+        **kwargs: Additional keyword arguments passed to
+            plotly.figure_factory.create_annotated_heatmap().
 
     Returns:
         Figure: Plotly Figure object.
