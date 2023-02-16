@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from matminer.datasets import load_dataset
 from pymatgen.ext.matproj import MPRester
+from tqdm import tqdm
 
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cumulative_error, cumulative_residual
@@ -59,59 +60,61 @@ df_expt_gap = load_dataset("matbench_expt_gap")
 df_phonons = load_dataset("matbench_phonons")
 
 df_phonons[["spg_symbol", "spg_num"]] = [
-    struct.get_space_group_info() for struct in df_phonons.structure
+    struct.get_space_group_info() for struct in tqdm(df_phonons.structure)
 ]
 
 
 # %% Parity Plots
-density_scatter(y_pred, y_true)
-save_and_compress_svg("density-scatter")
+ax = density_scatter(y_pred, y_true)
+save_and_compress_svg(ax, "density-scatter")
 
 
-density_scatter_with_hist(y_pred, y_true)
-save_and_compress_svg("density-scatter-with-hist")
+ax = density_scatter_with_hist(y_pred, y_true)
+save_and_compress_svg(ax, "density-scatter-with-hist")
 
 
-density_hexbin(y_pred, y_true)
-save_and_compress_svg("density-scatter-hex")
+ax = density_hexbin(y_pred, y_true)
+save_and_compress_svg(ax, "density-scatter-hex")
 
 
-density_hexbin_with_hist(y_pred, y_true)
-save_and_compress_svg("density-scatter-hex-with-hist")
+ax = density_hexbin_with_hist(y_pred, y_true)
+save_and_compress_svg(ax, "density-scatter-hex-with-hist")
 
 
-scatter_with_err_bar(y_pred, y_true, yerr=y_std)
-save_and_compress_svg("scatter-with-err-bar")
+ax = scatter_with_err_bar(y_pred, y_true, yerr=y_std)
+save_and_compress_svg(ax, "scatter-with-err-bar")
 
 
-residual_vs_actual(y_true, y_pred)
-save_and_compress_svg("residual-vs-actual")
+ax = residual_vs_actual(y_true, y_pred)
+save_and_compress_svg(ax, "residual-vs-actual")
 
 
 # %% Elemental Plots
-ptable_heatmap(df_expt_gap.composition, log=True)
+ax = ptable_heatmap(df_expt_gap.composition, log=True)
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
 plt.suptitle(title, y=0.96)
-save_and_compress_svg("ptable-heatmap")
+save_and_compress_svg(ax, "ptable-heatmap")
 
-ptable_heatmap(df_ptable.atomic_mass)
+ax = ptable_heatmap(df_ptable.atomic_mass)
 plt.suptitle("Atomic Mass Heatmap", y=0.96)
-save_and_compress_svg("ptable-heatmap-atomic-mass")
+save_and_compress_svg(ax, "ptable-heatmap-atomic-mass")
 
-ptable_heatmap(df_expt_gap.composition, heat_mode="percent", exclude_elements=["O"])
+ax = ptable_heatmap(
+    df_expt_gap.composition, heat_mode="percent", exclude_elements=["O"]
+)
 title = "Elements in Matbench Experimental Band Gap (percent)"
 plt.suptitle(title, y=0.96)
-save_and_compress_svg("ptable-heatmap-percent")
+save_and_compress_svg(ax, "ptable-heatmap-percent")
 
-ptable_heatmap_ratio(df_expt_gap.composition, df_steels.composition, log=True)
+ax = ptable_heatmap_ratio(df_expt_gap.composition, df_steels.composition, log=True)
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 plt.suptitle(title, y=0.96)
-save_and_compress_svg("ptable-heatmap-ratio")
+save_and_compress_svg(ax, "ptable-heatmap-ratio")
 
-hist_elemental_prevalence(df_expt_gap.composition, keep_top=15, v_offset=1)
-save_and_compress_svg("hist-elemental-prevalence")
+ax = hist_elemental_prevalence(df_expt_gap.composition, keep_top=15, v_offset=1)
+save_and_compress_svg(ax, "hist-elemental-prevalence")
 
 
 # %% Plotly interactive periodic table heatmap
@@ -124,83 +127,85 @@ fig.update_layout(
     title=dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
 )
 fig.show()
-save_and_compress_svg("ptable-heatmap-plotly-more-hover-data", fig)
+save_and_compress_svg(fig, "ptable-heatmap-plotly-more-hover-data")
 
 fig = ptable_heatmap_plotly(df_expt_gap.composition, heat_mode="percent")
 title = "Elements in Matbench Experimental Bandgap"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
 fig.show()
-save_and_compress_svg("ptable-heatmap-plotly-percent-labels", fig)
+save_and_compress_svg(fig, "ptable-heatmap-plotly-percent-labels")
 
 fig = ptable_heatmap_plotly(df_expt_gap.composition, log=True, colorscale="viridis")
 title = "Elements in Matbench Experimental Bandgap (log scale)"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
 fig.show()
-save_and_compress_svg("ptable-heatmap-plotly-log", fig)
+save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 
 # %% Uncertainty Plots
-qq_gaussian(y_pred, y_true, y_std)
-save_and_compress_svg("normal-prob-plot")
+ax = qq_gaussian(y_pred, y_true, y_std)
+save_and_compress_svg(ax, "normal-prob-plot")
 
 
-qq_gaussian(y_pred, y_true, {"over-confident": y_std, "under-confident": 1.5 * y_std})
-save_and_compress_svg("normal-prob-plot-multiple")
+ax = qq_gaussian(
+    y_pred, y_true, {"over-confident": y_std, "under-confident": 1.5 * y_std}
+)
+save_and_compress_svg(ax, "normal-prob-plot-multiple")
 
 
-error_decay_with_uncert(y_true, y_pred, y_std)
-save_and_compress_svg("error-decay-with-uncert")
+ax = error_decay_with_uncert(y_true, y_pred, y_std)
+save_and_compress_svg(ax, "error-decay-with-uncert")
 
 eps = 0.2 * np.random.randn(*y_std.shape)
 
-error_decay_with_uncert(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
-save_and_compress_svg("error-decay-with-uncert-multiple")
+ax = error_decay_with_uncert(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
+save_and_compress_svg(ax, "error-decay-with-uncert-multiple")
 
 
 # %% Cumulative Plots
-cumulative_error(y_pred, y_true)
-save_and_compress_svg("cumulative-error")
+ax = cumulative_error(y_pred, y_true)
+save_and_compress_svg(ax, "cumulative-error")
 
 
-cumulative_residual(y_pred, y_true)
-save_and_compress_svg("cumulative-residual")
+ax = cumulative_residual(y_pred, y_true)
+save_and_compress_svg(ax, "cumulative-residual")
 
 
 # %% Relevance Plots
-roc_curve(y_binary, y_proba)
-save_and_compress_svg("roc-curve")
+ax = roc_curve(y_binary, y_proba)
+save_and_compress_svg(ax, "roc-curve")
 
 
-precision_recall_curve(y_binary, y_proba)
-save_and_compress_svg("precision-recall-curve")
+ax = precision_recall_curve(y_binary, y_proba)
+save_and_compress_svg(ax, "precision-recall-curve")
 
 
 # %% Histogram Plots
-residual_hist(y_true, y_pred)
-save_and_compress_svg("residual-hist")
+ax = residual_hist(y_true, y_pred)
+save_and_compress_svg(ax, "residual-hist")
 
-true_pred_hist(y_true, y_pred, y_std)
-save_and_compress_svg("true-pred-hist")
+ax = true_pred_hist(y_true, y_pred, y_std)
+save_and_compress_svg(ax, "true-pred-hist")
 
 
 # %%
-spacegroup_hist(df_phonons.spg_num)
-save_and_compress_svg("spg-num-hist")
+ax = spacegroup_hist(df_phonons.spg_num)
+save_and_compress_svg(ax, "spg-num-hist")
 
-spacegroup_hist(df_phonons.spg_symbol)
-save_and_compress_svg("spg-symbol-hist")
+ax = spacegroup_hist(df_phonons.spg_symbol)
+save_and_compress_svg(ax, "spg-symbol-hist")
 
 
 # %% Sunburst Plots
 fig = spacegroup_sunburst(df_phonons.spg_num, show_counts="percent")
 title = "Matbench Phonons Spacegroup Sunburst"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18))
-save_and_compress_svg("spg-num-sunburst", fig)
+save_and_compress_svg(fig, "spg-num-sunburst")
 
 fig = spacegroup_sunburst(df_phonons.spg_symbol, show_counts="percent")
 title = "Matbench Phonons Spacegroup Symbols Sunburst"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18))
-save_and_compress_svg("spg-symbol-sunburst", fig)
+save_and_compress_svg(fig, "spg-symbol-sunburst")
 
 
 # %% Correlation Plots
@@ -212,8 +217,8 @@ rand_wide_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 
 corr_mat = np.corrcoef(rand_wide_mat)
 
-marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
-save_and_compress_svg("marchenko-pastur")
+ax = marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
+save_and_compress_svg(ax, "marchenko-pastur")
 
 # plot eigenvalue distribution of a correlation matrix with significant
 # (i.e. non-noise) eigenvalue
@@ -222,8 +227,8 @@ linear_matrix = np.arange(n_rows * n_cols).reshape(n_rows, n_cols) / n_cols
 
 corr_mat = np.corrcoef(linear_matrix + rand_wide_mat[:n_rows, :n_cols])
 
-marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
-save_and_compress_svg("marchenko-pastur-significant-eval")
+ax = marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
+save_and_compress_svg(ax, "marchenko-pastur-significant-eval")
 
 # plot eigenvalue distribution of a rank-deficient correlation matrix
 n_rows, n_cols = 600, 500
@@ -231,36 +236,34 @@ rand_tall_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 
 corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
 
-marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
-save_and_compress_svg("marchenko-pastur-rank-deficient")
+ax = marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
+save_and_compress_svg(ax, "marchenko-pastur-rank-deficient")
 
 
 # %%
-df_phonons = load_dataset("matbench_phonons")
-
 n_rows, n_cols = 3, 4
-fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_rows, 3 * n_cols))
-structures = df_phonons.structure.head(n_rows * n_cols)
+fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows))
+title = f"{len(axs.flat)} Matbench Phonons Structures"
+fig.suptitle(title, fontweight="bold", fontsize=20)
 
-for struct, ax in zip(structures, axs.flat):
+for row, ax in zip(df_phonons.itertuples(), axs.flat):
+    idx, struct, *_, spg_num = row
     plot_structure_2d(struct, ax=ax)
-    spg_symbol, _ = struct.get_space_group_info()
-    formula = struct.composition.reduced_formula
-    ax.set_title(f"{formula} ({spg_symbol})", fontweight="bold")
+    sub_title = f"{idx + 1}. {struct.formula} ({spg_num})"
+    ax.set_title(sub_title, fontweight="bold")
 
-save_and_compress_svg("matbench-phonons-structures-2d")
+save_and_compress_svg(fig, "matbench-phonons-structures-2d")
 
 
 # %% plot some disordered structures in 2d
-mp_ids = ["mp-19017", "mp-12712"]
-disordered_structs = [
-    MPRester().get_structure_by_material_id(mp_id, conventional_unit_cell=True)
-    for mp_id in mp_ids
-]
+disordered_structs = {
+    mp_id: MPRester().get_structure_by_material_id(mp_id, conventional_unit_cell=True)
+    for mp_id in ["mp-19017", "mp-12712"]
+}
 
 
 # %%
-for struct, mp_id in zip(disordered_structs, mp_ids):
+for mp_id, struct in disordered_structs.items():
     for site in struct:  # disorder structures in-place
         if "Fe" in site.species:
             site.species = {"Fe": 0.4, "C": 0.4, "Mn": 0.2}
@@ -268,16 +271,18 @@ for struct, mp_id in zip(disordered_structs, mp_ids):
             site.species = {"Zr": 0.5, "Hf": 0.5}
 
     ax = plot_structure_2d(struct)
-    formula = struct.composition.reduced_formula
     _, spacegroup = struct.get_space_group_info()
 
-    anno_text = f"{formula}\ndisordered {mp_id} with {spacegroup = }"
+    formula = struct.formula.replace(" ", "")
+    text = f"{formula}\ndisordered {mp_id}, {spacegroup = }"
     href = f"https://materialsproject.org/materials/{mp_id}"
-    ax.text(0.5, 1, anno_text, url=href, ha="center", transform=ax.transAxes)
+    ax.text(
+        0.5, 1, text, url=href, ha="center", transform=ax.transAxes, fontweight="bold"
+    )
 
     ax.figure.set_size_inches(8, 8)
 
-    save_and_compress_svg(f"struct-2d-{mp_id}-{formula}-disordered")
+    save_and_compress_svg(ax, f"struct-2d-{mp_id}-{formula}-disordered")
     plt.show()
 
 
@@ -296,4 +301,4 @@ code_anno = dict(
     showarrow=False,
 )
 fig.add_annotation(code_anno)
-save_and_compress_svg("sankey-from-2-df-cols-randints", fig)
+save_and_compress_svg(fig, "sankey-from-2-df-cols-randints")

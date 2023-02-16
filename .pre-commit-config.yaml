@@ -71,3 +71,11 @@ repos:
     hooks:
       - id: vulture
         args: [., assets/vulture_whitelist]
+
+  - repo: local
+    hooks:
+      - id: no-missing-readme-images
+        name: No missing readme images
+        entry: python -c 'from tests.test_readme import test_no_missing_images; test_no_missing_images()'
+        language: system
+        files: readme.md

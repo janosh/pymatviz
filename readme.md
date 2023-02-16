@@ -84,7 +84,7 @@ See [`pymatviz/structure_viz.py`](pymatviz/structure_viz.py). Currently structur
 
 | [`plot_structure_2d(mp_19017)`](pymatviz/structure_viz.py) | [`plot_structure_2d(mp_12712)`](pymatviz/structure_viz.py) |
 | :--------------------------------------------------------: | :--------------------------------------------------------: |
-|       ![struct-2d-mp-19017-Li4Fe3P4CO16-disordered]        |         ![struct-2d-mp-12712-Hf3Zr3Pd8-disordered]         |
+|  ![struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]   |        ![struct-2d-mp-12712-Hf9Zr9Pd24-disordered]         |
 
 ![matbench-phonons-structures-2d]
 
@@ -179,5 +179,5 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [spg-num-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-sunburst.svg
 [spg-symbol-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist.svg
 [spg-symbol-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-sunburst.svg
-[struct-2d-mp-12712-Hf3Zr3Pd8-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf3Zr3Pd8-disordered.svg
-[struct-2d-mp-19017-Li4Fe3P4CO16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Fe3P4CO16-disordered.svg
+[struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
+[struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg

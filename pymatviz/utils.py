@@ -328,12 +328,14 @@ def save_fig(
             trace.visible = "legendonly"
 
 
-def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
+def save_and_compress_svg(
+    fig: go.Figure | plt.Figure | plt.Axes, filename: str
+) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder. Compresses SVG
     file with svgo CLI if available in PATH.
 
     Args:
-        fig (Figure): Plotly Figure instance.
+        fig (Figure): Plotly or matplotlib Figure/Axes instance.
         filename (str): Name of SVG file (w/o extension).
 
     Raises:
@@ -341,12 +343,11 @@ def save_and_compress_svg(filename: str, fig: go.Figure | None = None) -> None:
     """
     assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
     filepath = f"{ROOT}/assets/{filename}.svg"
+    if isinstance(fig, plt.Axes):
+        fig = fig.figure
 
-    if fig is None or isinstance(fig, plt.Figure) and len(plt.gcf().axes) == 0:
-        raise ValueError(
-            "No figure passed explicitly and plt.gcf() contains no axes. "
-            "Did you forget to pass a plotly figure instance?"
-        )
+    if isinstance(fig, plt.Figure) and not fig.axes:
+        raise ValueError("Passed fig contains no axes. Nothing to plot!")
     save_fig(fig, filepath)
     plt.close()
 
