@@ -42,11 +42,12 @@ df_perov["crystal_sys"] = [get_crystal_sys(x) for x in df_perov.spg_num]
 
 
 # %%
-fig, axs = plt.subplots(3, 4, figsize=(12, 12))
+n_rows, n_cols = 3, 4
+fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows))
 
-for struct, ax in zip(df_perov.structure.head(12), axs.flat):
+for struct, ax in zip(df_perov.structure, axs.flat):
     plot_structure_2d(struct, ax=ax)
-    ax.set_title(struct.composition.reduced_formula, fontsize=14)
+    ax.set_title(struct.formula, fontsize=14)
 
 plt.savefig("perovskite-structures-2d.pdf")
 
