@@ -1,6 +1,29 @@
 [tool.ruff]
-select = ["B", "E", "F", "W", "I", "C", "RET", "S", "D"]
+target-version = "py38"
+select = [
+  "F",   # pyflakes
+  "E",   # pycodestyle
+  "I",   # isort
+  "W",
+  "YTT", # flake8-2020
+  "B",   # flake8-bugbear
+  "Q",   # flake8-quotes
+  "PLE", # pylint
+  "PLW",
+  "TID", # tidy imports
+  "C",
+  "RET",
+  "S",
+  "D",
+]
 ignore = [
+  "B019",
+  # Within an except clause, raise exceptions with ...
+  "B904",
+  # Magic number
+  "PLR2004",
+  "S101",    # Use of `assert` detected
+  "D100",    # Missing docstring in public module
   "B905",
   "C408",
   "S101",
@@ -9,14 +32,10 @@ ignore = [
   "RET504",
   "D100",
   "D104",
-  "D107",
-  "D205",
-  "D415",
+  "D205",    # 1 blank line required between summary line and description
 ]
 pydocstyle.convention = "google"
-
-[tool.ruff.isort]
-lines-after-imports = 2
+isort.lines-after-imports = 2
 
 [tool.ruff.per-file-ignores]
 # D103 Missing docstring in public function
