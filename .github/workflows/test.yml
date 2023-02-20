@@ -45,7 +45,7 @@ jobs:
 
       - name: Build and upload dist
         run: |
-          pip install build wheel
+          pip install build twine
           python -m build
           twine check dist/* --strict
           twine upload --skip-existing --repository-url https://upload.pypi.org/legacy dist/*.tar.gz
