@@ -34,7 +34,7 @@ def cumulative_residual(res: Array, ax: plt.Axes = None, **kwargs: Any) -> plt.A
         res[low:up],
         (np.arange(n_data) / n_data * 100)[low:up],
         alpha=kwargs.pop("alpha", 0.3),
-        **kwargs
+        **kwargs,
     )
 
     # Get robust (and symmetrical) x axis limits
