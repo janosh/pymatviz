@@ -195,12 +195,11 @@ def plot_structure_2d(
     """
     ax = ax or plt.gca()
 
-    if isinstance(site_labels, (list, tuple)):
-        if len(site_labels) != len(struct):
-            raise ValueError(
-                f"If a list, site_labels ({len(site_labels)=}) must have same length as"
-                f" the number of sites in the crystal ({len(struct)=})"
-            )
+    if isinstance(site_labels, (list, tuple)) and len(site_labels) != len(struct):
+        raise ValueError(
+            f"If a list, site_labels ({len(site_labels)=}) must have same length as"
+            f" the number of sites in the crystal ({len(struct)=})"
+        )
 
     # default behavior in case of no user input is to standardize if any fractional
     # coordinates are negative
