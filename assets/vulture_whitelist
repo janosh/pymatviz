@@ -1,7 +1,0 @@
-_.default  # unused attribute (dataset_exploration/plot_defaults.py:18)
-_.mathjax  # unused attribute (dataset_exploration/plot_defaults.py:21)
-_.vmax  # unused attribute (pymatviz/ptable.py:199)
-_.textinfo  # unused attribute (pymatviz/sunburst.py:58)
-_.textinfo  # unused attribute (pymatviz/sunburst.py:60)
-_.align  # unused attribute (pymatviz/uncertainty.py:89)
-run_around_tests  # unused function (tests/conftest.py:21)
