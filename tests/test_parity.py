@@ -78,10 +78,7 @@ def test_density_hexbin_with_hist(
 def test_scatter_with_err_bar(
     df: pd.DataFrame | None, x: str | Array, y: str | Array
 ) -> None:
-    if df is not None:
-        err = abs(df[x] - df[y])
-    else:
-        err = abs(x - y)  # type: ignore[operator]
+    err = abs(df[x] - df[y]) if df is not None else abs(x - y)  # type: ignore[operator]
     scatter_with_err_bar(df=df, x=x, y=y, yerr=err)
     scatter_with_err_bar(df=df, x=x, y=y, xerr=err)
 

@@ -109,7 +109,8 @@ def test_save_fig(
     save_fig(fig, path, plotly_config=plotly_config)
 
     if ext in ("svelte", "html"):
-        html = open(path).read()
+        with open(path) as file:
+            html = file.read()
         if plotly_config and plotly_config.get("showTips"):
             assert '"showTips": true' in html
         else:

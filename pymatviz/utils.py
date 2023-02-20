@@ -309,8 +309,10 @@ def save_fig(
         if path.lower().endswith(".svelte"):
             # insert {...$$props} into top-level div to be able to post-process and
             # style plotly figures from within Svelte files
-            text = open(path).read().replace("<div>", "<div {...$$props}>", 1)
-            open(path, "w").write(text)
+            with open(path) as file:
+                text = file.read().replace("<div>", "<div {...$$props}>", 1)
+            with open(path, "w") as file:
+                file.write(text)
     else:
         if path.lower().endswith(".pdf"):
             orig_template = fig.layout.template
