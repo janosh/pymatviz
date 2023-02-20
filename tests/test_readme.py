@@ -2,7 +2,7 @@ import os
 
 
 def test_no_missing_images() -> None:
-    """Test that all images in the readme are present in repo"""
+    """Test that all images in the readme are present in repo."""
     readme = open("readme.md").read()
     base_url = "https://raw.githubusercontent.com/janosh/pymatviz/main/assets/"
     images = [text.split(".svg\n")[0] for text in readme.split(base_url)[1:]]

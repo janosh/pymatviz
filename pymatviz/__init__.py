@@ -1,5 +1,7 @@
-# use redundant as-import following PEP 484, see
-# https://github.com/microsoft/pylance-release/issues/856#issuecomment-763793949
+"""pymatviz: A Python package for visualizing materials data."""
+
+# convenience exports using redundant as-import following PEP 484.
+# see https://github.com/microsoft/pylance-release/issues/856#issuecomment-763793949
 # and https://peps.python.org/pep-0484/#stub-files 'Additional notes on stub files'
 from pymatviz.correlation import marchenko_pastur as marchenko_pastur
 from pymatviz.correlation import marchenko_pastur_pdf as marchenko_pastur_pdf

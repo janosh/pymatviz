@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def glass_formulas() -> list[str]:
-    """Output of:
+    """First 20 materials in the Matbench glass dataset.
 
     from matminer.datasets import load_dataset
 
@@ -45,15 +45,18 @@ def glass_elem_counts(glass_formulas: pd.Series[Composition]) -> pd.Series[int]:
 
 @pytest.fixture
 def steel_formulas() -> list[str]:
-    """Unusually fractional compositions, good for testing edge cases. The result of:
+    """Unusually fractional compositions, good for testing edge cases.
 
+    Output of:
     from matminer.datasets import load_dataset
 
     load_dataset("matbench_steels").composition.head(2)
     """
     return [
-        "Fe0.620C0.000953Mn0.000521Si0.00102Cr0.000110Ni0.192Mo0.0176V0.000112Nb0.0000616Co0.146Al0.00318Ti0.0185",  # noqa: E501
-        "Fe0.623C0.00854Mn0.000104Si0.000203Cr0.147Ni0.0000971Mo0.0179V0.00515N0.00163Nb0.0000614Co0.188W0.00729Al0.000845",  # noqa: E501
+        "Fe0.620C0.000953Mn0.000521Si0.00102Cr0.000110Ni0.192Mo0.0176V0.000112"
+        "Nb0.0000616Co0.146Al0.00318Ti0.0185",
+        "Fe0.623C0.00854Mn0.000104Si0.000203Cr0.147Ni0.0000971Mo0.0179V0.00515"
+        "N0.00163Nb0.0000614Co0.188W0.00729Al0.000845",
     ]
 
 
