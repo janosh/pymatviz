@@ -100,5 +100,5 @@ pydocstyle.convention = "google"
 isort.lines-after-imports = 2
 
 [tool.ruff.per-file-ignores]
-"__init__.py" = ["F401"]
 "tests/*" = ["D103"]
+"examples/*" = ["E402"] # E402 Module level import not at top of file
