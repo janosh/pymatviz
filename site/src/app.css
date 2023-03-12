@@ -6,13 +6,16 @@
   --toc-mobile-bg: #0d1a1d;
   --toc-mobile-shadow: 0 0 1em 0 black;
   --toc-title-padding: 0 0 0 3pt;
-  --toc-li-padding: 4pt 1ex;
+  --toc-li-padding: 2pt 1ex;
   --toc-mobile-btn-color: white;
   --toc-mobile-btn-bg: teal;
   --toc-mobile-btn-padding: 1pt 2pt;
   --toc-desktop-nav-margin: 0 0 0 1em;
-  --toc-min-width: 16em;
-  --toc-active-bg: darkcyan;
+  --toc-min-width: 15em;
+  --toc-active-border: solid cornflowerblue;
+  --toc-active-border-width: 0 0 0 2pt;
+  --toc-active-bg: none;
+  --toc-active-border-radius: 0;
 
   --zoo-github-corner-color: var(--night);
   --zoo-github-corner-bg: white;
@@ -38,7 +41,7 @@ main {
   margin: auto;
   box-sizing: border-box;
   width: 100%;
-  max-width: 55em;
+  max-width: 50em;
 }
 button {
   color: var(--text-color);
@@ -151,7 +154,7 @@ kbd {
 aside.toc.desktop {
   position: fixed;
   top: 3em;
-  left: calc(50vw + 50em / 2);
+  left: calc(50vw + 45em / 2);
   max-width: 16em;
 }
 

@@ -39,8 +39,9 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov", "kaleido"]
-data_src = ["matminer"]
-export_figs = ["kaleido"]
+data-src = ["matminer"]
+export-figs = ["kaleido"]
+gh-pages = ["lazydocs", "jupyter", "nbconvert"]
 
 [tool.setuptools.packages]
 find = { include = ["pymatviz"] }
