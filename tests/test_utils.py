@@ -75,10 +75,11 @@ def test_df_to_arrays() -> None:
     x1, y1 = df_to_arrays(None, y_true, y_pred)
     x_col, y_col = df.columns[:2]
     x2, y2 = df_to_arrays(df, x_col, y_col)
-    assert all(x1 == x2)  # type: ignore[union-attr]
-    assert all(y1 == y2)  # type: ignore[union-attr]
-    assert all(x1 == y_true)  # type: ignore[union-attr]
-    assert all(y1 == y_pred)  # type: ignore[union-attr]
+    # TODO find a mypy-compat way to check for exact equality
+    assert x1 == pytest.approx(x2)
+    assert y1 == pytest.approx(y2)
+    assert x1 == pytest.approx(y_true)
+    assert y1 == pytest.approx(y_pred)
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
         df_to_arrays("foo", y_true, y_pred)
