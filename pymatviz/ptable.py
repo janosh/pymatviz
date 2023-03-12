@@ -146,6 +146,7 @@ def ptable_heatmap(
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     precision: str = None,
+    cbar_precision: str = None,
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
     zero_symbol: str | float = "-",
@@ -304,8 +305,8 @@ def ptable_heatmap(
                 # display color bar values as percentages
                 return f"{val:.0%}"
             if val < 1e4:
-                return f"{val:.0f}"
-            return f"{val:.2g}"
+                return f"{val:{cbar_precision or precision or '.0f'}}"
+            return f"{val:{cbar_precision or precision or '.2g'}}"
 
         cbar = fig.colorbar(
             mappable, cax=cb_ax, orientation="horizontal", format=tick_fmt
