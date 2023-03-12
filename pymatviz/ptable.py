@@ -176,9 +176,10 @@ def ptable_heatmap(
             or not at all (None). Defaults to "value".
             "fraction" and "percent" can be used to make the colors in different
             ptable_heatmap() (and ptable_heatmap_ratio()) plots comparable.
-        precision (str): f-string format option for heat labels. Defaults to None in
-            which case we fall back on ".1%" (1 decimal place) if heat_mode="percent"
-            else ".3g".
+        precision (str): f-string format option for heat labels. Defaults to ".1%"
+            (1 decimal place) if heat_mode="percent" else ".3g".
+        cbar_precision (str): f-string format option to set a different colorbar tick
+            label precision than the above heat label precision. Defaults to precision.
         text_color (str | tuple[str, str]): What color to use for element symbols and
             heat labels. Must be a valid color name, or a 2-tuple of names, one to use
             for the upper half of the color scale, one for the lower half. The special
@@ -429,9 +430,8 @@ def ptable_heatmap_plotly(
             or not at all (None). Defaults to "value".
             "fraction" and "percent" can be used to make the colors in different
             periodic table heatmap plots comparable.
-        precision (str): f-string format option for heat labels. Defaults to None in
-            which case we fall back on ".1%" (1 decimal place) if heat_mode="percent"
-            else ".3g".
+        precision (str): f-string format option for heat labels. Defaults to ".1%"
+            (1 decimal place) if heat_mode="percent" else ".3g".
         hover_props (list[str] | dict[str, str]): Elemental properties to display in the
             hover tooltip. Can be a list of property names to display only the values
             themselves or a dict mapping names to what they should display as. E.g.
@@ -451,8 +451,8 @@ def ptable_heatmap_plotly(
             (max_val - min_val) / 2. Defaults to ["black"].
         gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
         font_size (int): Element symbol and heat label text size. Any valid CSS size
-            allowed. Defaults to None, meaning automatic font size based on plot size.
-            Element symbols will be bold and 1.5x this size.
+            allowed. Defaults to automatic font size based on plot size. Element symbols
+            will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
         color_bar (dict[str, Any]): Plotly color bar properties documented at
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to None.
