@@ -16,6 +16,9 @@
 
   --zoo-github-corner-color: var(--night);
   --zoo-github-corner-bg: white;
+
+  --sms-options-bg: rgb(50, 48, 66);
+  --sms-active-color: cornflowerblue;
 }
 body {
   background: var(--night);
