@@ -312,7 +312,7 @@ def save_fig(
             with open(path) as file:
                 text = file.read().replace("<div>", "<div {...$$props}>", 1)
             with open(path, "w") as file:
-                file.write(text)
+                file.write(text + "\n")
     else:
         if path.lower().endswith(".pdf"):
             orig_template = fig.layout.template

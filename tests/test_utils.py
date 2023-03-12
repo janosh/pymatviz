@@ -75,26 +75,25 @@ def test_df_to_arrays() -> None:
     x1, y1 = df_to_arrays(None, y_true, y_pred)
     x_col, y_col = df.columns[:2]
     x2, y2 = df_to_arrays(df, x_col, y_col)
-    assert all(x1 == x2) and all(y1 == y2)  # type: ignore
-    assert all(x1 == y_true) and all(y1 == y_pred)
+    assert all(x1 == x2)  # type: ignore[union-attr]
+    assert all(y1 == y2)  # type: ignore[union-attr]
+    assert all(x1 == y_true)  # type: ignore[union-attr]
+    assert all(y1 == y_pred)  # type: ignore[union-attr]
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
         df_to_arrays("foo", y_true, y_pred)
 
+    bad_col_name = "not-real-col-name"
     with pytest.raises(KeyError) as exc_info:
-        df_to_arrays(df, "not-real-col-name", df.columns[0])
+        df_to_arrays(df, bad_col_name, df.columns[0])
 
-        assert (
-            "if df is passed (i.e. not None), subsequent args must be column names"
-            in str(exc_info.value)
-        )
-        assert "not-real-col-name" in str(exc_info.value)
+    assert "not-real-col-name" in str(exc_info.value)
 
 
-@pytest.mark.parametrize("fig", (go.Figure(), plt.figure()))
-@pytest.mark.parametrize("ext", ("html", "svelte", "png", "svg", "pdf"))
+@pytest.mark.parametrize("fig", [go.Figure(), plt.figure()])
+@pytest.mark.parametrize("ext", ["html", "svelte", "png", "svg", "pdf"])
 @pytest.mark.parametrize(
-    "plotly_config", (None, {"showTips": True}, {"scrollZoom": True})
+    "plotly_config", [None, {"showTips": True}, {"scrollZoom": True}]
 )
 def test_save_fig(
     fig: go.Figure | plt.Figure | plt.Axes,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence
+import itertools
+from typing import TYPE_CHECKING, Any, Literal, Sequence, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,15 +23,19 @@ if TYPE_CHECKING:
 
     ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
 
-    CountMode = Literal[
-        "element_composition", "fractional_composition", "reduced_composition"
-    ]
+CountMode = Literal[
+    "element_composition",
+    "fractional_composition",
+    "reduced_composition",
+    "occurrence",
+]
 
 
 def count_elements(
     elem_values: ElemValues,
     count_mode: CountMode = "element_composition",
     exclude_elements: Sequence[str] = (),
+    fill_value: float | None = 0,
 ) -> pd.Series:
     """Count element occurrence in list of formula strings or dict-like compositions.
     If passed elem_values are already a map from element symbol to counts, ensure the
@@ -56,12 +61,18 @@ def count_elements(
             - reduced_composition: Convert to reduced compositions (i.e. amounts
                 normalized by greatest common denominator) before counting.
                 Example: Fe4 P4 O16 -> Fe P O4.
+            - occurrence: Count the number of times each element occurs in a list of
+                formulas irrespective of compositions. E.g. [Fe2 O3, Fe O, Fe4 P4 O16]
+                counts to {Fe: 3, O: 3, P1}.
         exclude_elements (Sequence[str]): Elements to exclude from the count. Defaults
             to ().
+        fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
 
     Returns:
         pd.Series: Map element symbols to heatmap values.
     """
+    if count_mode not in get_args(CountMode):
+        raise ValueError(f"{count_mode=} must be one of {get_args(CountMode)=}")
     # ensure elem_values is Series if we got dict/list/tuple
     srs = pd.Series(elem_values)
 
@@ -69,9 +80,16 @@ def count_elements(
         pass
     elif is_string_dtype(srs):
         # assume all items in elem_values are composition strings
-        srs = pd.DataFrame(
-            getattr(Composition(comp_str), count_mode).as_dict() for comp_str in srs
-        ).sum()  # sum up element occurrences
+        if count_mode == "occurrence":
+            srs = pd.Series(
+                itertools.chain.from_iterable(
+                    map(str, Composition(comp)) for comp in srs
+                )
+            ).value_counts()
+        else:
+            srs = pd.DataFrame(
+                getattr(Composition(formula), count_mode).as_dict() for formula in srs
+            ).sum()  # sum up element occurrences
     else:
         raise ValueError(
             "Expected elem_values to be map from element symbols to heatmap values or "
@@ -101,7 +119,7 @@ def count_elements(
 
     # ensure all elements are present in returned Series (with value zero if they
     # weren't in elem_values before)
-    srs = srs.reindex(df_ptable.index, fill_value=0).rename("count")
+    srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
 
     if len(exclude_elements) > 0:
         try:
@@ -210,7 +228,7 @@ def ptable_heatmap(
     text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
 
     for symbol, row, column, *_ in df_ptable.itertuples():
-        row = n_rows - row  # makes periodic table right side up
+        row = n_rows - row  # invert row count to make periodic table right side up
         heat_val = elem_values.get(symbol)
 
         # inf (float/0) or NaN (0/0) are expected when passing in elem_values from
@@ -372,7 +390,7 @@ def ptable_heatmap_ratio(
 def ptable_heatmap_plotly(
     elem_values: ElemValues,
     count_mode: CountMode = "element_composition",
-    colorscale: str | Sequence[str] | Sequence[tuple[float, str]] | None = None,
+    colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     showscale: bool = True,
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     precision: str = None,
@@ -385,6 +403,7 @@ def ptable_heatmap_plotly(
     color_bar: dict[str, Any] = None,
     exclude_elements: Sequence[str] = (),
     log: bool = False,
+    fill_value: float | None = 0,
     **kwargs: Any,
 ) -> go.Figure:
     """Create a Plotly figure with an interactive heatmap of the periodic table.
@@ -399,9 +418,8 @@ def ptable_heatmap_plotly(
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when elem_values is list of composition strings/objects.
         colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
-            Defaults to plotly.express.colors.sequential.Pinkyl. See
-            plotly.com/python/builtin-colorscales for names of other builtin
-            color scales. Note e.g. colorscale="YlGn" and px.colors.sequential.YlGn are
+            Defaults to 'viridis'. See plotly.com/python/builtin-colorscales for names
+            of other builtin color scales. Note "YlGn" and px.colors.sequential.YlGn are
             equivalent. Custom scales are specified as ["blue", "red"] or
             [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
         showscale (bool): Whether to show a bar for the color scale. Defaults to True.
@@ -442,6 +460,7 @@ def ptable_heatmap_plotly(
             Defaults to ().
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
             Piece of advice: colorscale='viridis' and log=True go well together.
+        fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
 
@@ -453,7 +472,7 @@ def ptable_heatmap_plotly(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
         )
 
-    elem_values = count_elements(elem_values, count_mode, exclude_elements)
+    elem_values = count_elements(elem_values, count_mode, exclude_elements, fill_value)
 
     if log and elem_values[elem_values != 0].min() <= 1:
         raise ValueError(
