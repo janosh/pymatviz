@@ -110,7 +110,7 @@ See [`pymatviz/parity.py`](pymatviz/parity.py).
 | [`scatter_with_err_bar(xs, ys, yerr, ...)`](pymatviz/parity.py) | [`residual_vs_actual(y_true, y_pred, ...)`](pymatviz/parity.py) |
 |                     ![scatter-with-err-bar]                     |                      ![residual-vs-actual]                      |
 
-## Uncertainty Calibration & Estimation
+## Uncertainty Calibration
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
@@ -120,7 +120,7 @@ See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 | [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py) |
 |                         ![error-decay-with-uncert]                          |                        ![error-decay-with-uncert-multiple]                        |
 
-## Cumulative Error and Residual
+## Cumulative Error & Residual
 
 See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
 
