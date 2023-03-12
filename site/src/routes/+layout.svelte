@@ -12,14 +12,22 @@
     $page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`
   }):not(.toc-exclude)`
 
-  const actions = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`)).map(
-    (filename) => {
-      const parts = filename.split(`/`).filter((part) => !part.startsWith(`(`)) // remove hidden route segments
-      const route = `/${parts.slice(1, -1).join(`/`)}`
+  const file_routes = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`))
+    .filter((key) => !key.includes(`/[`))
+    .map((filename) => {
+      const parts = filename.split(`/`)
+      return `/` + parts.slice(1, -1).join(`/`)
+    })
 
-      return { label: route, action: () => goto(route) }
-    }
-  )
+  const notebooks = Object.keys(
+    import.meta.glob(`$root/examples/*.html`, { eager: true, as: `url` })
+  ).map((path) => {
+    const filename = path.split(`/`).at(-1)?.replace(`.html`, ``)
+    return `/notebooks/${filename}`
+  })
+  const actions = notebooks.concat(file_routes).map((name) => {
+    return { label: name, action: () => goto(name.toLowerCase()) }
+  })
 </script>
 
 <CmdPalette {actions} placeholder="Go to..." />

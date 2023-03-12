@@ -32,9 +32,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install lazydocs  # used in package.json script
-          # lazydocs needs package deps to be installed
-          pip install .
+          # gh-pages extra deps used in package.json script
+          # also, lazydocs needs all package deps to be installed
+          pip install .[gh-pages]
           cd site
           npm install
 
@@ -42,6 +42,7 @@ jobs:
         run: |
           python assets/make_api_docs.py
           cd site
+          npm run make-html-examples
           npm run build
 
       - name: Upload build artifact
