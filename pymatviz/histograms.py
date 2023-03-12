@@ -170,7 +170,7 @@ def spacegroup_hist(
     else:
         series = pd.Series(data)
 
-    df = pd.DataFrame(series.value_counts(sort=False), columns=["counts"])
+    df = series.value_counts(sort=False).to_frame(name="counts")
 
     crystal_sys_colors = {
         "triclinic": "red",
