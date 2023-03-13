@@ -302,12 +302,10 @@ def ptable_heatmap(
         def tick_fmt(val: float, _pos: int) -> str:
             # val: value at color axis tick (e.g. 10.0, 20.0, ...)
             # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
-            if heat_mode == "percent":
-                # display color bar values as percentages
-                return f"{val:.0%}"
-            if val < 1e4:
-                return f"{val:{cbar_precision or precision or '.0f'}}"
-            return f"{val:{cbar_precision or precision or '.2g'}}"
+            default = (
+                ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
+            )
+            return f"{val:{cbar_precision or precision or default}}"
 
         cbar = fig.colorbar(
             mappable, cax=cb_ax, orientation="horizontal", format=tick_fmt
