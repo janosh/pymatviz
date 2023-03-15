@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
-  import Footer from '$lib/Footer.svelte'
   import { repository } from '$site/package.json'
+  import Icon from '@iconify/svelte'
   import { CmdPalette } from 'svelte-multiselect'
   import Toc from 'svelte-toc'
   import { GitHubCorner } from 'svelte-zoo'
@@ -42,7 +42,11 @@
 
 <slot />
 
-<Footer />
+<footer>
+  Questions/feedback?
+  <a href="{repository}/issues"><Icon icon="octicon:mark-github" inline /></a>
+  <a href="mailto:janosh@lbl.gov"><Icon icon="mdi:email" inline /></a>
+</footer>
 
 <style>
   a[href='/'] {
@@ -57,5 +61,14 @@
   }
   a[href='/']:hover {
     background-color: rgba(255, 255, 255, 0.2);
+  }
+  footer {
+    display: flex;
+    gap: 1ex;
+    place-content: center;
+    place-items: center;
+    margin: 2em 0 0;
+    padding: 3vh 3vw;
+    background: #00061a;
   }
 </style>

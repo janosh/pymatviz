@@ -8,8 +8,14 @@ export const load = async ({ params }) => {
     as: `raw`,
   })
 
-  const path = `../examples/${slug}.html`
-  if (!notebooks[path]) throw error(404, `No notebook found at path=${path}`)
+  const path = `../examples/${slug}.ipynb`
+  const html = notebooks[path.replace(`.ipynb`, `.html`)]
+  if (!html) throw error(404, `No notebook found at path=${path}`)
 
-  return { html: notebooks[path], slug, path: path.replace(`.html`, `.ipynb`) }
+  // get prev/next with wrap around
+  const routes = Object.keys(notebooks).map((key) =>
+    key.replace(`../examples/`, `/notebooks/`).replace(`.html`, ``)
+  )
+
+  return { html, slug, path, routes }
 }

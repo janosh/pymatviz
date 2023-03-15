@@ -44,7 +44,7 @@ export-figs = ["kaleido"]
 gh-pages = ["lazydocs", "jupyter", "nbconvert"]
 
 [tool.setuptools.packages]
-find = { include = ["pymatviz"] }
+find = { include = ["pymatviz*"], exclude = ["tests*"] }
 
 [tool.setuptools.package-data]
 pymatviz = ["*.csv"]

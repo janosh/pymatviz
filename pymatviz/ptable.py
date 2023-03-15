@@ -302,10 +302,10 @@ def ptable_heatmap(
         def tick_fmt(val: float, _pos: int) -> str:
             # val: value at color axis tick (e.g. 10.0, 20.0, ...)
             # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
-            default = (
+            default_prec = (
                 ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
             )
-            return f"{val:{cbar_precision or precision or default}}"
+            return f"{val:{cbar_precision or precision or default_prec}}"
 
         cbar = fig.colorbar(
             mappable, cax=cb_ax, orientation="horizontal", format=tick_fmt
@@ -396,7 +396,7 @@ def ptable_heatmap_plotly(
     precision: str = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
-    font_colors: Sequence[str] = ("black",),
+    font_colors: Sequence[str] = ("#eee", "black"),
     gap: float = 5,
     font_size: int = None,
     bg_color: str = None,
@@ -446,7 +446,9 @@ def ptable_heatmap_plotly(
             the hover tooltip on a new line below the element name"). Defaults to None.
         font_colors (list[str]): One color name or two for [min_color, max_color].
             min_color is applied to annotations with heatmap values less than
-            (max_val - min_val) / 2. Defaults to ["black"].
+            (max_val - min_val) / 2. Defaults to ("#eee", "black") meaning light text
+            for low values and dark text for high values. May need to be manually
+            swapped depending on the colorscale.
         gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
         font_size (int): Element symbol and heat label text size. Any valid CSS size
             allowed. Defaults to automatic font size based on plot size. Element symbols
@@ -505,11 +507,10 @@ def ptable_heatmap_plotly(
             if heat_mode == "percent":
                 label = f"{heat_value:{precision or '.1%'}}"
             else:
-                if precision is None:
-                    prec = ".1f" if heat_value < 100 else ".0f"
-                    if heat_value > 1e5:
-                        prec = ".2g"
-                label = f"{heat_value:{precision or prec}}".replace("e+0", "e")
+                default_prec = ".1f" if heat_value < 100 else ",.0f"
+                if heat_value > 1e5:
+                    default_prec = ".2g"
+                label = f"{heat_value:{precision or default_prec}}".replace("e+0", "e")
 
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
         tile_text = f"<span {style=}>{symbol}</span>"
