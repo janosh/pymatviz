@@ -248,10 +248,16 @@ fig.suptitle(title, fontweight="bold", fontsize=20)
 
 for row, ax in zip(df_phonons.itertuples(), axs.flat):
     idx, struct, *_, spg_num = row
-    plot_structure_2d(struct, ax=ax)
+    plot_structure_2d(
+        struct,
+        ax=ax,
+        show_bonds=True,
+        bond_kwargs=dict(facecolor="gray", linewidth=2, linestyle="dotted"),
+    )
     sub_title = f"{idx + 1}. {struct.formula} ({spg_num})"
     ax.set_title(sub_title, fontweight="bold")
 
+fig.show()
 save_and_compress_svg(fig, "matbench-phonons-structures-2d")
 
 
