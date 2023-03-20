@@ -401,6 +401,7 @@ def ptable_heatmap_plotly(
     font_size: int = None,
     bg_color: str = None,
     color_bar: dict[str, Any] = None,
+    cscale_range: tuple[float | None, float | None] = (None, None),
     exclude_elements: Sequence[str] = (),
     log: bool = False,
     fill_value: float | None = 0,
@@ -455,7 +456,9 @@ def ptable_heatmap_plotly(
             will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
         color_bar (dict[str, Any]): Plotly color bar properties documented at
-            https://plotly.com/python/reference#heatmap-colorbar. Defaults to None.
+            https://plotly.com/python/reference#heatmap-colorbar. Defaults to {}.
+        cscale_range (tuple[float | None, float | None]): Color bar range. Defaults to
+            (None, None) meaning the range is automatically determined from the data.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can do exclude_elements=['O'].
             Defaults to ().
@@ -472,6 +475,8 @@ def ptable_heatmap_plotly(
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
         )
+    if len(cscale_range) != 2:
+        raise ValueError(f"{cscale_range=} should have length 2")
 
     elem_values = count_elements(elem_values, count_mode, exclude_elements, fill_value)
 
@@ -595,6 +600,10 @@ def ptable_heatmap_plotly(
         xgap=gap,
         ygap=gap,
         colorbar=log_cbar if log else None,
+        zmax=cscale_range[1],
+        zmin=cscale_range[0],
+        # https://github.com/plotly/plotly.py/issues/193
+        zauto=cscale_range == (None, None),
         **kwargs,
     )
     fig.update_layout(
