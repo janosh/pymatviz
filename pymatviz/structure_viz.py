@@ -114,6 +114,7 @@ def plot_structure_2d(
     label_kwargs: dict[str, Any] = None,
     bond_kwargs: dict[str, Any] = None,
     standardize_struct: bool | None = None,
+    axis: bool | str = "off",
 ) -> plt.Axes:
     """Plot pymatgen structure object in 2d. Uses matplotlib.
 
@@ -165,7 +166,7 @@ def plot_structure_2d(
             covalent radii.
         colors (dict[str, str | list[float]], optional): Map from element symbols to
             colors, either a named color (str) or rgb(a) values like (0.2, 0.3, 0.6).
-            Defaults to JMol colors.
+            Defaults to JMol colors (https://jmol.sourceforge.net/jscolors).
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool, optional): Whether to draw unit cell. Defaults to True.
         show_bonds (bool | NearNeighbors, optional): Whether to draw bonds. If True, use
@@ -189,6 +190,9 @@ def plot_structure_2d(
             plotting. Defaults to False unless any fractional coordinates are negative,
             i.e. any crystal sites are outside the unit cell. Set this to False to
             disable this behavior which speeds up plotting for many structures.
+        axis (bool | str, optional): Whether/how to show plot axes. Defaults to "off".
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.axis for
+            details.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -206,8 +210,9 @@ def plot_structure_2d(
     has_sites_outside_unit_cell = any(any(site.frac_coords < 0) for site in struct)
     if standardize_struct is False and has_sites_outside_unit_cell:
         warnings.warn(
-            "your structure has negative fractional coordinates, you may want set "
-            "standardize=True"
+            "your structure has negative fractional coordinates, you may want to set "
+            "standardize=True",
+            UserWarning,
         )
     elif standardize_struct is None:
         standardize_struct = has_sites_outside_unit_cell
@@ -291,7 +296,7 @@ def plot_structure_2d(
     if n_lines > 0:
         unit_cell_lines = np.dot(unit_cell_lines, rotation_matrix)[:, :2] * scale
 
-    # sort so we draw from back to front along out-of-plane (z-)axis
+    # sort positions by 3rd dim so we draw from back to front in z-axis (out-of-plane)
     for idx in positions[:, 2].argsort():
         xy = positions[idx, :2]
         start = 0
@@ -301,13 +306,13 @@ def plot_structure_2d(
                 # strip oxidation state from element symbol (e.g. Ta5+ to Ta)
                 elem_symbol = elem.symbol
                 radius = atomic_radii[elem_symbol] * scale  # type: ignore
-                facecolor = colors[elem_symbol]
+                face_color = colors[elem_symbol]
                 wedge = Wedge(
                     xy,
                     radius,
                     360 * start,
                     360 * (start + occupancy),
-                    facecolor=facecolor,
+                    facecolor=face_color,
                     edgecolor="black",
                 )
                 ax.add_patch(wedge)
@@ -329,7 +334,7 @@ def plot_structure_2d(
                         (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                     )
 
-                    bbox = dict(facecolor=facecolor, edgecolor="none", pad=1)
+                    bbox = dict(facecolor=face_color, edgecolor="none", pad=1)
                     txt_kwds = dict(
                         ha="center", va="center", bbox=bbox, **(label_kwargs or {})
                     )
@@ -392,12 +397,11 @@ def plot_structure_2d(
             from_xy = positions[from_idx, :2]
             to_xy = positions[to_idx, :2]
 
-            bond_patch_kwds = dict(facecolor="black", **(bond_kwargs or {}))
-            bond_patch = PathPatch(Path((from_xy, to_xy)), **bond_patch_kwds)
+            bond_patch = PathPatch(Path((from_xy, to_xy)), **(bond_kwargs or {}))
             ax.add_patch(bond_patch)
 
     width, height, _ = scale * coord_ranges
     ax.set(xlim=[0, width], ylim=[0, height], aspect="equal")
-    ax.axis("off")
+    ax.axis(axis)
 
     return ax

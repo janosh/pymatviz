@@ -25,7 +25,7 @@
     const filename = path.split(`/`).at(-1)?.replace(`.html`, ``)
     return `/notebooks/${filename}`
   })
-  const actions = notebooks.concat(file_routes).map((name) => {
+  const actions = file_routes.concat(notebooks).map((name) => {
     return { label: name, action: () => goto(name.toLowerCase()) }
   })
 </script>

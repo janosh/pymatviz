@@ -248,3 +248,26 @@ def test_ptable_heatmap_plotly_colorscale(
 ) -> None:
     fig = ptable_heatmap_plotly(glass_formulas, colorscale=colorscale)
     assert isinstance(fig, go.Figure)
+
+
+@pytest.mark.parametrize(
+    "cscale_range", [(None, None), (None, 10), (2, None), (2, 87123)]
+)
+def test_ptable_heatmap_plotly_cscale_range(
+    cscale_range: tuple[float | None, float | None]
+) -> None:
+    fig = ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)
+    trace = fig.data[0]
+    assert "colorbar" in trace
+    # check that color bar range is correct
+    assert trace["zmin"] == cscale_range[0]
+    assert trace["zmax"] == cscale_range[1]
+
+
+def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
+    cscale_range = (0, 10, 20)
+    with pytest.raises(ValueError) as excinfo:
+        ptable_heatmap_plotly(
+            df_ptable.density, cscale_range=cscale_range  # type: ignore[arg-type]
+        )
+    assert f"{cscale_range=} should have length 2" in str(excinfo.value)

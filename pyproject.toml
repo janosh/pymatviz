@@ -88,6 +88,7 @@ select = [
     "YTT", # flake8-2020
 ]
 ignore = [
+    "B028",    # No explicit stacklevel keyword argument found
     "D100",    # Missing docstring in public module
     "D104",    # Missing docstring in public package
     "D205",    # 1 blank line required between summary line and description
