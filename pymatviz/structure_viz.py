@@ -100,7 +100,6 @@ def unit_cell_to_lines(cell: Array) -> tuple[Array, Array, Array]:
     return lines, z_indices, unit_cell_lines
 
 
-# TODO rewrite this doc string so that it doesn't mess up the /api page
 def plot_structure_2d(
     struct: Structure,
     ax: plt.Axes = None,
@@ -124,6 +123,7 @@ def plot_structure_2d(
     avoids the conversion hassle of AseAtomsAdaptor.get_atoms(pmg_struct).
 
     For example, these two snippets should give very similar output:
+
     ```py
     from pymatgen.ext.matproj import MPRester
 
@@ -142,6 +142,7 @@ def plot_structure_2d(
     ```
 
     Multiple structures in single figure example:
+
     ```py
     import matplotlib.pyplot as plt
     from pymatgen.ext.matproj import MPRester

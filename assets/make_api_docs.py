@@ -8,6 +8,8 @@ from subprocess import run
 # - prettier badges linking to source code on GitHub
 # - remove bold tags since they break inline code
 
+ROOT = os.path.dirname(os.path.dirname(__file__))
+os.chdir(ROOT)
 pkg = json.load(open("site/package.json"))
 route = "site/src/routes/api"
 
