@@ -456,7 +456,7 @@ def ptable_heatmap_plotly(
             will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
         color_bar (dict[str, Any]): Plotly color bar properties documented at
-            https://plotly.com/python/reference#heatmap-colorbar. Defaults to {}.
+            https://plotly.com/python/reference#heatmap-colorbar. Defaults to `{}`.
         cscale_range (tuple[float | None, float | None]): Color bar range. Defaults to
             (None, None) meaning the range is automatically determined from the data.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
