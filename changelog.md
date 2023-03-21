@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. Dates are d
 
 <!-- auto-changelog-above -->
 
+#### [v0.6.1](https://github.com/janosh/pymatviz/compare/v0.6.0...v0.6.1)
+
+> 21 March 2023
+
+- Add kwarg `axis: bool | str = "off"` to `plot_structure_2d()` [`#72`](https://github.com/janosh/pymatviz/pull/72)
+- Add `ptable_heatmap` `cbar_precision` kwarg [`#70`](https://github.com/janosh/pymatviz/pull/70)
+- add changelog.md via auto-changelog [`05da617`](https://github.com/janosh/pymatviz/commit/05da61795d3ecb67026f964be79a36cf0737b760)
+- add half-baked /plots and /notebook pages [`ed171ec`](https://github.com/janosh/pymatviz/commit/ed171ec947bfcdbbd5bfda85e2ba6b48e0e35e39)
+- add svelte-zoo PrevNext to notebooks pages [`05368c0`](https://github.com/janosh/pymatviz/commit/05368c034f6c2aff572011b93c5b4c722ee7559b)
+- add new option 'occurrence' for CountMode = element_composition|fractional_composition|reduced_composition [`bf1604a`](https://github.com/janosh/pymatviz/commit/bf1604a27b2dc80d657ae36a0070d83cba4e2e86)
+- refactor ptable_heatmap()'s tick_fmt() and add test for cbar_precision kwarg [`3427e1f`](https://github.com/janosh/pymatviz/commit/3427e1fce2ccd13aacf7b2043d9c10c6375027af)
+- plot_structure_2d() in site /api docs [`fcf75de`](https://github.com/janosh/pymatviz/commit/fcf75de255cb3a3fb1555b2b1f7595e0be66043d)
+
 #### [v0.6.0](https://github.com/janosh/pymatviz/compare/v0.5.3...v0.6.0)
 
 > 21 February 2023
