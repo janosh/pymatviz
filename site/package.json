@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "serve": "vite build && vite preview",
     "make-api-docs": "python ../assets/make_api_docs.py",
-    "make-html-examples": "jupyter nbconvert --to html ../examples/*.ipynb --no-prompt --template basic"
+    "make-html-examples": "jupyter nbconvert --to html ../examples/*.ipynb --no-prompt --template basic",
+    "changelog": "npx auto-changelog --package --output ../changelog.md --unreleased-only --hide-credit --commit-limit false"
   },
   "devDependencies": {
     "@iconify/svelte": "^3.1.0",
