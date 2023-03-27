@@ -16,7 +16,7 @@ def sankey_from_2_df_cols(
 
     Args:
         df (pd.DataFrame): Pandas dataframe.
-        cols (Sequence[str]): 2-tuple of source and target column names. Source
+        cols (list[str]): 2-tuple of source and target column names. Source
             corresponds to left, target to right side of the diagram.
         labels_with_counts (bool, optional): Whether to append value counts to node
             labels. Defaults to True.
