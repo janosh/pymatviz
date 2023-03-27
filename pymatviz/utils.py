@@ -137,8 +137,8 @@ def annotate_bars(
 def annotate_metrics(
     xs: NDArray[np.float64 | np.int_],
     ys: NDArray[np.float64 | np.int_],
-    metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
     ax: plt.Axes = None,
+    metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
     prefix: str = "",
     suffix: str = "",
     prec: int = 3,
@@ -176,6 +176,7 @@ def annotate_metrics(
         "MSE": lambda x, y: ((x - y) ** 2).mean(),
         "MAPE": mape,
         "R2": r2_score,
+        # TODO: check this for correctness
         "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
     }
     for key in set(metrics) - set(funcs):
