@@ -30,4 +30,4 @@ from pymatviz.uncertainty import error_decay_with_uncert as error_decay_with_unc
 from pymatviz.uncertainty import qq_gaussian as qq_gaussian
 from pymatviz.utils import ROOT as ROOT
 from pymatviz.utils import annotate_bars as annotate_bars
-from pymatviz.utils import annotate_mae_r2 as annotate_mae_r2
+from pymatviz.utils import annotate_metrics as annotate_metrics

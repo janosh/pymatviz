@@ -9,7 +9,7 @@ import pandas as pd
 import scipy.interpolate
 from matplotlib.gridspec import GridSpec
 
-from pymatviz.utils import Array, annotate_mae_r2, df_to_arrays, with_hist
+from pymatviz.utils import Array, annotate_metrics, df_to_arrays, with_hist
 
 
 def hist_density(
@@ -82,7 +82,7 @@ def density_scatter(
         identity (bool, optional): Whether to add an identity/parity line (y = x).
             Defaults to True.
         stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
-            and R^2. Defaults to True. Can be dict to pass kwargs to `annotate_mae_r2`.
+            and R^2. Defaults to True. Can be dict to pass kwargs to `annotate_metrics`.
             E.g. stats=dict(loc="upper left", prefix="Title", prop=dict(fontsize=16)).
         **kwargs: Additional keyword arguments to pass to ax.scatter(). E.g. cmap to
             change the color map.
@@ -116,7 +116,7 @@ def density_scatter(
         )
 
     if stats:
-        annotate_mae_r2(x, y, ax, **(stats if isinstance(stats, dict) else {}))
+        annotate_metrics(x, y, ax, **(stats if isinstance(stats, dict) else {}))
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
@@ -163,7 +163,7 @@ def scatter_with_err_bar(
     # identity line
     ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
 
-    annotate_mae_r2(x, y, ax)
+    annotate_metrics(x, y, ax)
 
     ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
 
@@ -211,7 +211,7 @@ def density_hexbin(
     # identity line
     ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
 
-    annotate_mae_r2(x, y, ax, loc="upper left")
+    annotate_metrics(x, y, ax, loc="upper left")
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
