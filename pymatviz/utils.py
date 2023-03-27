@@ -10,9 +10,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import sklearn
 from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from numpy.typing import NDArray
+from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
 
@@ -132,10 +134,11 @@ def annotate_bars(
     ax.set(ylim=(None, y_max * y_max_headroom))
 
 
-def annotate_mae_r2(
+def annotate_metrics(
     xs: NDArray[np.float64 | np.int_],
     ys: NDArray[np.float64 | np.int_],
     ax: plt.Axes = None,
+    metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
     prefix: str = "",
     suffix: str = "",
     prec: int = 3,
@@ -148,10 +151,15 @@ def annotate_mae_r2(
     Args:
         xs (array, optional): x values.
         ys (array, optional): y values.
+        metrics (dict[str, float] | list[str], optional): Metrics to show. Can be a
+            subset of recognized keys MAE, R2, R2_adj, RMSE, MSE, MAPE or the names of
+            sklearn.metrics.regression functions or any dict of metric names and values.
+            Defaults to ("MAE", "R2").
         ax (Axes, optional): matplotlib Axes on which to add the box. Defaults to None.
         loc (str, optional): Where on the plot to place the AnchoredText object.
             Defaults to "lower right".
-        prec (int, optional): decimal places in printed metrics. Defaults to 3.
+        prec (int, optional): Precision, i.e. decimal places to show in printed metrics.
+            Defaults to 3.
         prefix (str, optional): Title or other string to prepend to metrics.
             Defaults to "".
         suffix (str, optional): Text to append after metrics. Defaults to "".
@@ -162,16 +170,37 @@ def annotate_mae_r2(
     Returns:
         AnchoredText: Instance containing the metrics.
     """
-    ax = ax or plt.gca()
+    funcs = {
+        "MAE": lambda x, y: np.abs(x - y).mean(),
+        "RMSE": lambda x, y: (((x - y) ** 2).mean()) ** 0.5,
+        "MSE": lambda x, y: ((x - y) ** 2).mean(),
+        "MAPE": mape,
+        "R2": r2_score,
+        # TODO: check this for correctness
+        "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
+    }
+    for key in set(metrics) - set(funcs):
+        func = getattr(sklearn.metrics, key, None)
+        if func:
+            funcs[key] = func
+    if bad_keys := set(metrics) - set(funcs):
+        raise ValueError(f"Unrecognized metrics: {bad_keys}")
 
+    ax = ax or plt.gca()
     nans = np.isnan(xs) | np.isnan(ys)
     xs, ys = xs[~nans], ys[~nans]
 
-    text = f"{prefix}$\\mathrm{{MAE}} = {np.abs(xs - ys).mean():.{prec}f}$"
-    text += f"\n$R^2 = {r2_score(xs, ys):.{prec}f}${suffix}"
+    text = prefix
+    if isinstance(metrics, dict):
+        for key, val in metrics.items():
+            text += f"{key} = {val:.{prec}f}\n"
+    else:
+        for metric in metrics:
+            text += f"{metric} = {funcs[metric](xs, ys):.{prec}f}\n"
+    text += suffix
 
-    kwargs["frameon"] = kwargs.get("frameon", False)
-    kwargs["loc"] = kwargs.get("loc", "lower right")
+    kwargs["frameon"] = kwargs.get("frameon", False)  # default to no frame
+    kwargs["loc"] = kwargs.get("loc", "lower right")  # default to lower right
     text_box = AnchoredText(text, **kwargs)
     ax.add_artist(text_box)
 

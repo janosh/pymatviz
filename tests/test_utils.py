@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -12,7 +12,7 @@ from matplotlib.offsetbox import AnchoredText
 from pymatviz.utils import (
     CrystalSystem,
     add_identity_line,
-    annotate_mae_r2,
+    annotate_metrics,
     df_to_arrays,
     get_crystal_sys,
     save_fig,
@@ -20,16 +20,36 @@ from pymatviz.utils import (
 from tests.conftest import y_pred, y_true
 
 
-def test_annotate_mae_r2() -> None:
-    text_box = annotate_mae_r2(y_pred, y_true)
+@pytest.mark.parametrize(
+    "metrics, prec",
+    [
+        [["RMSE"], 1],
+        [("MAPE", "MSE"), 2],
+        [{"MAE", "R2", "RMSE"}, 3],
+        [{"MAE": 1, "R2": 2, "RMSE": 3}, 0],
+    ],
+)
+def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], prec: int) -> None:
+    text_box = annotate_metrics(y_pred, y_true, metrics=metrics, prec=prec)
 
     assert isinstance(text_box, AnchoredText)
 
-    txt = "$\\mathrm{MAE} = 0.113$\n$R^2 = 0.765$"
+    expected = dict(MAE=0.113, R2=0.765, RMSE=0.144, MAPE=0.5900, MSE=0.0206)
+
+    txt = ""
+    if isinstance(metrics, dict):
+        for key, val in metrics.items():
+            txt += f"{key} = {val:.{prec}f}\n"
+    else:
+        for key in metrics:
+            txt += f"{key} = {expected[key]:.{prec}f}\n"
+
     assert text_box.txt.get_text() == txt
 
     prefix, suffix = "Metrics:\n", "\nthe end"
-    text_box = annotate_mae_r2(y_pred, y_true, prefix=prefix, suffix=suffix)
+    text_box = annotate_metrics(
+        y_pred, y_true, metrics=metrics, prec=prec, prefix=prefix, suffix=suffix
+    )
     assert text_box.txt.get_text() == prefix + txt + suffix
 
 
