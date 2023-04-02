@@ -13,6 +13,7 @@ from pymatviz.utils import (
     CrystalSystem,
     add_identity_line,
     annotate_metrics,
+    bin_df_cols,
     df_to_arrays,
     get_crystal_sys,
     save_fig,
@@ -144,3 +145,50 @@ def test_save_fig(
             assert html.startswith("<div {...$$props}>")
         else:
             assert html.startswith("<div>")
+
+
+@pytest.mark.parametrize(
+    "bin_by_cols, group_by_cols, n_bins, expected_n_bins",
+    [
+        (["col1"], [], 2, [2]),
+        (["col1", "col2"], [], 2, [2, 2]),
+        (["col1", "col2"], [], [2, 3], [2, 3]),
+        (["col1"], ["col2"], 2, [2]),
+    ],
+)
+@pytest.mark.parametrize("verbose", [True, False])
+def test_bin_df_cols(
+    bin_by_cols: list[str],
+    group_by_cols: list[str],
+    n_bins: int | list[int],
+    expected_n_bins: list[int],
+    verbose: bool,
+) -> None:
+    data = {"col1": [1, 2, 3, 4], "col2": [2, 3, 4, 5], "col3": [3, 4, 5, 6]}
+    df = pd.DataFrame(data)
+
+    df_binned = bin_df_cols(df, bin_by_cols, group_by_cols, n_bins, verbose=verbose)
+
+    df_grouped = (
+        df.reset_index()
+        .groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
+        .first()
+        .dropna()
+    )
+
+    for col, bins in zip(bin_by_cols, expected_n_bins):
+        binned_col = f"{col}_bins"
+        assert binned_col in df_grouped.index.names
+
+        unique_bins = df_grouped.index.get_level_values(binned_col).nunique()
+        assert unique_bins <= bins
+
+    assert not df_binned.empty
+
+
+def test_bin_df_cols_raises_value_error() -> None:
+    df = pd.DataFrame({"col1": [1, 2, 3, 4], "col2": [2, 3, 4, 5]})
+    bin_by_cols = ["col1", "col2"]
+
+    with pytest.raises(ValueError):
+        bin_df_cols(df, bin_by_cols, n_bins=[2])
