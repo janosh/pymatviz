@@ -16,4 +16,3 @@ jobs:
     uses: janosh/workflows/.github/workflows/pytest-release.yml@main
     with:
       os: ${{ matrix.os }}
-      pre-test: export MPLBACKEND=Agg # https://github.com/orgs/community/discussions/26434
