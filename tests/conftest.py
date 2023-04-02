@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 from typing import Generator
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Lattice, Structure
+
+
+# if platform is windows, set matplotlib backend to "Agg" to fix
+# _tkinter.TclError: Can't find a usable init.tcl in the following directories
+# https://github.com/orgs/community/discussions/26434
+if platform.system() == "Windows":
+    import matplotlib as mpl
+
+    mpl.use("Agg")
 
 
 # random regression data

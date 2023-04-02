@@ -456,7 +456,8 @@ def ptable_heatmap_plotly(
             will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
         color_bar (dict[str, Any]): Plotly color bar properties documented at
-            https://plotly.com/python/reference#heatmap-colorbar. Defaults to `{}`.
+            https://plotly.com/python/reference#heatmap-colorbar. Defaults to
+            dict(orientation="h").
         cscale_range (tuple[float | None, float | None]): Color bar range. Defaults to
             (None, None) meaning the range is automatically determined from the data.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
@@ -477,6 +478,12 @@ def ptable_heatmap_plotly(
         )
     if len(cscale_range) != 2:
         raise ValueError(f"{cscale_range=} should have length 2")
+
+    if color_bar is None:
+        color_bar = dict(orientation="h")
+    # if elem_values is a series with a name, use it as the color bar title
+    if isinstance(elem_values, pd.Series) and elem_values.name:
+        color_bar.setdefault("title", elem_values.name)
 
     elem_values = count_elements(elem_values, count_mode, exclude_elements, fill_value)
 
@@ -616,7 +623,16 @@ def ptable_heatmap_plotly(
         width=1000,
         height=500,
     )
-    fig.update_traces(
-        colorbar=dict(lenmode="fraction", len=0.87, thickness=15, **(color_bar or {}))
-    )
+
+    if color_bar.get("orientation") == "h":
+        dct = dict(x=0.4, y=0.75, titleside="top", len=0.4)
+        color_bar = {**dct, **color_bar}
+    else:  # make title vertical
+        dct = dict(titleside="right", len=0.87)
+        color_bar = {**dct, **color_bar}
+        if title := color_bar.get("title"):
+            # <br><br> to increase title offset
+            color_bar["title"] = f"<br><br>{title}"
+
+    fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
     return fig

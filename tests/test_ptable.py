@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -248,6 +248,23 @@ def test_ptable_heatmap_plotly_colorscale(
 ) -> None:
     fig = ptable_heatmap_plotly(glass_formulas, colorscale=colorscale)
     assert isinstance(fig, go.Figure)
+
+
+@pytest.mark.parametrize(
+    "color_bar", [{}, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)]
+)
+def test_ptable_heatmap_plotly_color_bar(
+    glass_formulas: list[str], color_bar: dict[str, Any]
+) -> None:
+    fig = ptable_heatmap_plotly(glass_formulas, color_bar=color_bar)
+    # check color bar has expected length
+    assert fig.data[0].colorbar.len == color_bar.get("len", 0.87)
+    # check color bar has expected title side
+    assert (
+        fig.data[0].colorbar.title.side == "right"
+        if color_bar.get("orientation") == "v"
+        else "top"
+    )
 
 
 @pytest.mark.parametrize(
