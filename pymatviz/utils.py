@@ -438,3 +438,47 @@ def df_to_arrays(
             args[idx] = dict(zip(col_name, col_data))  # type: ignore[index]
 
     return args  # type: ignore[return-value]
+
+
+def bin_df_cols(
+    df: pd.DataFrame,
+    bin_by_cols: Sequence[str],
+    group_by_cols: Sequence[str] = (),
+    n_bins: int | Sequence[int] = 100,
+    verbose: bool = True,
+) -> pd.DataFrame:
+    """Bin columns of a DataFrame.
+
+    Args:
+        df (pd.DataFrame): DataFrame to bin.
+        bin_by_cols (Sequence[str]): Columns to bin.
+        group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
+        n_bins (int): Number of bins to use. Defaults to 100.
+        verbose (bool): If True, report df length reduction. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Binned DataFrame.
+    """
+    if isinstance(n_bins, int):
+        n_bins = [n_bins] * len(bin_by_cols)
+
+    if len(bin_by_cols) != len(n_bins):
+        raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
+
+    index_name = df.index.name
+
+    for col, bins in zip(bin_by_cols, n_bins):
+        df[f"{col}_bins"] = pd.cut(df[col], bins=bins)
+
+    df_bin = (
+        df.reset_index()
+        .groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
+        .first()
+        .dropna()
+    )
+    if verbose:
+        print(f"{len(df_bin)=:,} / {len(df)=:,} = {len(df_bin)/len(df):.1%}")
+
+    if index_name is None:
+        return df_bin
+    return df_bin.reset_index().set_index(index_name)
