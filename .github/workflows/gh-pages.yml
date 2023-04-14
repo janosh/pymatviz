@@ -16,4 +16,4 @@ jobs:
       pre-build: |
         pip install '..[gh-pages]'
         npm run make-html-examples
-        python ../assets/make_api_docs.py
+        python ../site/make_docs.py
