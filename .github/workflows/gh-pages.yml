@@ -15,5 +15,4 @@ jobs:
       working-directory: site
       pre-build: |
         pip install '..[gh-pages]'
-        npm run make-html-examples
         python ../site/make_docs.py
