@@ -27,6 +27,8 @@ def spacegroup_sunburst(
             space group strings or numbers (from 1 - 230) or pymatgen structures.
         show_counts ("value" | "percent" | False): Whether to display values below each
             labels on the sunburst.
+        color_discrete_sequence (list[str]): A list of 7 colors, one for each crystal
+            system. Defaults to plotly.express.colors.qualitative.G10.
         **kwargs: Additional keyword arguments passed to plotly.express.sunburst.
 
     Returns:
@@ -44,13 +46,12 @@ def spacegroup_sunburst(
     df = pd.DataFrame(series.value_counts().reset_index())
     df.columns = ["spacegroup", "count"]
 
-    try:
+    try:  # assume column contains integers as space group numbers
         df["crystal_sys"] = [get_crystal_sys(x) for x in df.spacegroup]
-    except ValueError:  # column must be space group strings
+    except ValueError:  # column must be strings of space group symbols
         df["crystal_sys"] = [SpaceGroup(x).crystal_system for x in df.spacegroup]
 
-    if "color_discrete_sequence" not in kwargs:
-        kwargs["color_discrete_sequence"] = px.colors.qualitative.G10
+    kwargs.setdefault("color_discrete_sequence", px.colors.qualitative.G10)
 
     fig = px.sunburst(df, path=["crystal_sys", "spacegroup"], values="count", **kwargs)
 
