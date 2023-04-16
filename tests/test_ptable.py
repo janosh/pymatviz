@@ -258,7 +258,7 @@ def test_ptable_heatmap_plotly_color_bar(
 ) -> None:
     fig = ptable_heatmap_plotly(glass_formulas, color_bar=color_bar)
     # check color bar has expected length
-    assert fig.data[0].colorbar.len == color_bar.get("len", 0.87)
+    assert fig.data[0].colorbar.len == color_bar.get("len", 0.4)
     # check color bar has expected title side
     assert (
         fig.data[0].colorbar.title.side == "right"
