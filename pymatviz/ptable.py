@@ -479,8 +479,8 @@ def ptable_heatmap_plotly(
     if len(cscale_range) != 2:
         raise ValueError(f"{cscale_range=} should have length 2")
 
-    if color_bar is None:
-        color_bar = dict(orientation="h")
+    color_bar = color_bar or {}
+    color_bar.setdefault("orientation", "h")
     # if elem_values is a series with a name, use it as the color bar title
     if isinstance(elem_values, pd.Series) and elem_values.name:
         color_bar.setdefault("title", elem_values.name)
