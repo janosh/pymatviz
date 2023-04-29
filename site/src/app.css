@@ -79,10 +79,10 @@ code {
 pre code {
   background-color: transparent;
   display: inline-block;
+  font-size: 10pt;
 }
 pre {
   border-radius: 4pt;
-  font-size: 9.5pt;
   background-color: rgba(255, 255, 255, 0.05);
   overflow-x: auto;
   padding: 6pt 8pt;
