@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. Dates are d
 
 <!-- auto-changelog-above -->
 
+#### [v0.6.2](https://github.com/janosh/pymatviz/compare/v0.6.1...v0.6.2)
+
+> 29 April 2023
+
+- Per-module doc pages [`#77`](https://github.com/janosh/pymatviz/pull/77)
+- Refactor `make_docs.py` [`#76`](https://github.com/janosh/pymatviz/pull/76)
+- DRY workflows [`#74`](https://github.com/janosh/pymatviz/pull/74)
+- More flexible `annotate_metrics` util [`#73`](https://github.com/janosh/pymatviz/pull/73)
+
 #### [v0.6.1](https://github.com/janosh/pymatviz/compare/v0.6.0...v0.6.1)
 
 > 21 March 2023
