@@ -113,9 +113,6 @@ title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 plt.suptitle(title, y=0.96)
 save_and_compress_svg(ax, "ptable-heatmap-ratio")
 
-ax = hist_elemental_prevalence(df_expt_gap.composition, keep_top=15, v_offset=1)
-save_and_compress_svg(ax, "hist-elemental-prevalence")
-
 
 # %% Plotly interactive periodic table heatmap
 fig = ptable_heatmap_plotly(
@@ -186,6 +183,9 @@ save_and_compress_svg(ax, "residual-hist")
 
 ax = true_pred_hist(y_true, y_pred, y_std)
 save_and_compress_svg(ax, "true-pred-hist")
+
+ax = hist_elemental_prevalence(df_expt_gap.composition, keep_top=15, v_offset=1)
+save_and_compress_svg(ax, "hist-elemental-prevalence")
 
 
 # %%
