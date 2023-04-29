@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymatviz"
-version = "0.6.1"
+version = "0.6.2"
 description = "A toolkit for visualizations in materials informatics"
 authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
@@ -95,6 +95,7 @@ ignore = [
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
+# TODO maybe remove after https://github.com/charliermarsh/ruff/issues/4153
 isort.split-on-trailing-comma = false
 
 [tool.ruff.per-file-ignores]
