@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Sequence
+from unittest.mock import patch
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -117,17 +119,27 @@ def test_df_to_arrays() -> None:
 @pytest.mark.parametrize(
     "plotly_config", [None, {"showTips": True}, {"scrollZoom": True}]
 )
+@pytest.mark.parametrize("env_disable", [[], ["CI"]])
+@patch.dict(os.environ, {"CI": "1"})
 def test_save_fig(
     fig: go.Figure | plt.Figure | plt.Axes,
     ext: str,
     tmp_path: Path,
     plotly_config: dict[str, Any] | None,
+    env_disable: list[str],
 ) -> None:
     if isinstance(fig, plt.Figure) and ext in ("svelte", "html"):
-        pytest.skip("svelte not supported for matplotlib figures")
+        pytest.skip("saving to Svelte file not supported for matplotlib figures")
 
     path = f"{tmp_path}/fig.{ext}"
-    save_fig(fig, path, plotly_config=plotly_config)
+    save_fig(fig, path, plotly_config=plotly_config, env_disable=env_disable)
+
+    if any(var in os.environ for var in env_disable):
+        # if CI env var is set, we should not save the figure
+        assert not os.path.exists(path)
+        return
+
+    assert os.path.isfile(path)
 
     if ext in ("svelte", "html"):
         with open(path) as file:
