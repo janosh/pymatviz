@@ -310,7 +310,7 @@ def save_fig(
 
         **kwargs: Keyword arguments passed to fig.write_html().
     """
-    if any(os.getenv(var) for var in env_disable):
+    if any(var in os.environ for var in env_disable):
         return
     # handle matplotlib figures
     if isinstance(fig, (plt.Figure, plt.Axes)):
