@@ -281,7 +281,7 @@ def spacegroup_hist(
 
 def hist_elemental_prevalence(
     formulas: ElemValues,
-    count_mode: CountMode = "element_composition",
+    count_mode: CountMode = "composition",
     log: bool = False,
     keep_top: int = None,
     ax: plt.Axes = None,
