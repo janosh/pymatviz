@@ -84,8 +84,9 @@ def count_elements(
                 )
             ).value_counts()
         else:
+            attr = "element_composition" if count_mode == "composition" else count_mode
             srs = pd.DataFrame(
-                getattr(Composition(formula), count_mode).as_dict() for formula in srs
+                getattr(Composition(formula), attr).as_dict() for formula in srs
             ).sum()  # sum up element occurrences
     else:
         raise ValueError(
