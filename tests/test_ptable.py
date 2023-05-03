@@ -68,7 +68,7 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
 @pytest.mark.parametrize(
     "count_mode, counts",
     [
-        ("element_composition", {"Fe": 22, "O": 63, "P": 12}),
+        ("composition", {"Fe": 22, "O": 63, "P": 12}),
         ("fractional_composition", {"Fe": 2.5, "O": 5, "P": 0.5}),
         ("reduced_composition", {"Fe": 13, "O": 27, "P": 3}),
         ("occurrence", {"Fe": 8, "O": 8, "P": 3}),
