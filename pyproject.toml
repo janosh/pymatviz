@@ -95,7 +95,6 @@ ignore = [
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
-# TODO maybe remove after https://github.com/charliermarsh/ruff/issues/4153
 isort.split-on-trailing-comma = false
 
 [tool.ruff.per-file-ignores]

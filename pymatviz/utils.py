@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import os
 import subprocess
 from os.path import dirname
 from shutil import which
@@ -289,6 +290,7 @@ def save_fig(
     fig: go.Figure | plt.Figure | plt.Axes,
     path: str,
     plotly_config: dict[str, Any] = None,
+    env_disable: Sequence[str] = ("CI",),
     **kwargs: Any,
 ) -> None:
     """Write a plotly figure to an HTML file. If the file is has .svelte
@@ -303,9 +305,13 @@ def save_fig(
         Defaults to dict(showTips=False, responsive=True, modeBarButtonsToRemove=
         ["lasso2d", "select2d", "autoScale2d", "toImage"]).
         See https://plotly.com/python/configuration-options.
+        env_disable (list[str], optional): Do nothing if any of these environment
+            variables are set. Defaults to ("CI",).
 
         **kwargs: Keyword arguments passed to fig.write_html().
     """
+    if any(os.getenv(var) for var in env_disable):
+        return
     # handle matplotlib figures
     if isinstance(fig, (plt.Figure, plt.Axes)):
         if hasattr(fig, "figure"):
