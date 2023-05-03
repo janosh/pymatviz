@@ -24,16 +24,13 @@ if TYPE_CHECKING:
     ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
 
 CountMode = Literal[
-    "element_composition",
-    "fractional_composition",
-    "reduced_composition",
-    "occurrence",
+    "composition", "fractional_composition", "reduced_composition", "occurrence"
 ]
 
 
 def count_elements(
     elem_values: ElemValues,
-    count_mode: CountMode = "element_composition",
+    count_mode: CountMode = "composition",
     exclude_elements: Sequence[str] = (),
     fill_value: float | None = 0,
 ) -> pd.Series:
@@ -53,7 +50,7 @@ def count_elements(
             composition strings/objects or map from element symbols to heatmap values.
         count_mode ('(element|fractional|reduced)_composition'):
             Only used when elem_values is a list of composition strings/objects.
-            - element_composition (default): Count elements in each composition as is,
+            - composition (default): Count elements in each composition as is,
                 i.e. without reduction or normalization.
             - fractional_composition: Convert to normalized compositions in which the
                 amounts of each species sum to before counting.
@@ -87,8 +84,9 @@ def count_elements(
                 )
             ).value_counts()
         else:
+            attr = "element_composition" if count_mode == "composition" else count_mode
             srs = pd.DataFrame(
-                getattr(Composition(formula), count_mode).as_dict() for formula in srs
+                getattr(Composition(formula), attr).as_dict() for formula in srs
             ).sum()  # sum up element occurrences
     else:
         raise ValueError(
@@ -137,7 +135,7 @@ def ptable_heatmap(
     elem_values: ElemValues,
     log: bool = False,
     ax: plt.Axes = None,
-    count_mode: CountMode = "element_composition",
+    count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
     cbar_max: float | int | None = None,
     cmap: str = "summer_r",
@@ -324,7 +322,7 @@ def ptable_heatmap(
 def ptable_heatmap_ratio(
     elem_values_num: ElemValues,
     elem_values_denom: ElemValues,
-    count_mode: CountMode = "element_composition",
+    count_mode: CountMode = "composition",
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] = ("#DDD", "gray: not in 1st list"),
@@ -389,7 +387,7 @@ def ptable_heatmap_ratio(
 
 def ptable_heatmap_plotly(
     elem_values: ElemValues,
-    count_mode: CountMode = "element_composition",
+    count_mode: CountMode = "composition",
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     showscale: bool = True,
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
