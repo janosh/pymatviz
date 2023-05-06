@@ -40,7 +40,7 @@ df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]
 
 
 @pytest.fixture(autouse=True)
-def run_around_tests() -> Generator[None, None, None]:
+def _run_around_tests() -> Generator[None, None, None]:
     # runs before each test
 
     yield
@@ -49,14 +49,14 @@ def run_around_tests() -> Generator[None, None, None]:
     plt.close()
 
 
-@pytest.fixture
+@pytest.fixture()
 def spg_symbols() -> list[str]:
     symbols = "C2/m C2/m Fm-3m C2/m Cmc2_1 P4/nmm P-43m P-43m P6_3mc".split()
     symbols += "P-43m P6_3mc Cmcm P2_1/m I2_13 P-6m2".split()
     return symbols
 
 
-@pytest.fixture
+@pytest.fixture()
 def structures() -> list[Structure]:
     coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
     lattice = [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]]
@@ -75,7 +75,7 @@ def structures() -> list[Structure]:
     return [Si2, Si2Ru2Pr2]
 
 
-@pytest.fixture
+@pytest.fixture()
 def plotly_scatter() -> go.Figure:
     xs = np.arange(7)
     y1 = xs**2

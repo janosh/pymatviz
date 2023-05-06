@@ -74,8 +74,10 @@ select = [
     "E",   # pycodestyle
     "F",   # pyflakes
     "I",   # isort
+    "PIE", # flake8-pie
     "PLE", # pylint error
     "PLW", # pylint warning
+    "PT",  # flake8-pytest-style
     "PYI", # flakes8-pyi
     "Q",   # flake8-quotes
     "SIM", # flake8-simplify
@@ -92,6 +94,9 @@ ignore = [
     "SIM105",  # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
     "SIM115",  # Use context handler for opening files
     "PLW2901", # Outer for loop variable overwritten by inner assignment target
+    "PT006",   # pytest-parametrize-names-wrong-type
+    "PT011",   # pytest-raises-too-broad
+    "PT013",   # pytest-incorrect-pytest-import
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
