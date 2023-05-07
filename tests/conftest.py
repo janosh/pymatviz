@@ -71,8 +71,8 @@ def structures() -> list[Structure]:
         [0.75, 0.75, 0.324],
     ]
     lattice = Lattice.tetragonal(4.192, 6.88)
-    Si2Ru2Pr2 = Structure(lattice, ["Si", "Si", "Ru", "Ru", "Pr", "Pr"], coords)
-    return [Si2, Si2Ru2Pr2]
+    Si2_Ru2_Pr2 = Structure(lattice, "Si Si Ru Ru Pr Pr".split(), coords)
+    return [Si2, Si2_Ru2_Pr2]
 
 
 @pytest.fixture()
@@ -80,5 +80,4 @@ def plotly_scatter() -> go.Figure:
     xs = np.arange(7)
     y1 = xs**2
     y2 = xs**0.5
-    fig = px.scatter(x=xs, y=[y1, y2])
-    return fig
+    return px.scatter(x=xs, y=[y1, y2])

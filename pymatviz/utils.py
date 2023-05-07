@@ -438,9 +438,9 @@ def df_to_arrays(
     df_no_nan = df.dropna(subset=flat_args)
     for idx, col_name in enumerate(args):
         if isinstance(col_name, (str, int)):
-            args[idx] = df_no_nan[col_name].values  # type: ignore[index]
+            args[idx] = df_no_nan[col_name].to_numpy()  # type: ignore[index]
         else:
-            col_data = df_no_nan[[*col_name]].values.T
+            col_data = df_no_nan[[*col_name]].to_numpy().T
             args[idx] = dict(zip(col_name, col_data))  # type: ignore[index]
 
     return args  # type: ignore[return-value]
