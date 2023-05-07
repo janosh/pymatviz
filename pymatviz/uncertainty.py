@@ -178,7 +178,7 @@ def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
 
     decay_by_std = abs_err[y_std_sort].cumsum() / n_inc
 
-    return decay_by_std
+    return decay_by_std  # noqa: RET504
 
 
 def error_decay_with_uncert(

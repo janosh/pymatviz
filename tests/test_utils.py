@@ -26,10 +26,10 @@ from tests.conftest import y_pred, y_true
 @pytest.mark.parametrize(
     "metrics, prec",
     [
-        [["RMSE"], 1],
-        [("MAPE", "MSE"), 2],
-        [{"MAE", "R2", "RMSE"}, 3],
-        [{"MAE": 1, "R2": 2, "RMSE": 3}, 0],
+        (["RMSE"], 1),
+        (("MAPE", "MSE"), 2),
+        ({"MAE", "R2", "RMSE"}, 3),
+        ({"MAE": 1, "R2": 2, "RMSE": 3}, 0),
     ],
 )
 def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], prec: int) -> None:

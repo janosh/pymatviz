@@ -1,11 +1,11 @@
 import { compile } from 'mdsvex'
 
 export const load = async ({ params }) => {
-  const raw = import.meta.glob(`./**/*.py`, { eager: true, as: `raw` })
+  const files = import.meta.glob(`./**/*.py`, { eager: true, as: `raw` })
   const { slug } = params
 
   // exclude files starting with _
-  const matches = Object.keys(raw).filter(
+  const matches = Object.keys(files).filter(
     (key) => key.startsWith(`./${slug}/`) && !key.startsWith(`./${slug}/_`)
   )
 
@@ -13,12 +13,12 @@ export const load = async ({ params }) => {
   if (matches.length == 0) return { status: 404 }
 
   const examples = matches.map(async (path) => {
-    let code = raw[path]
+    let code = files[path]
     const name = path.split(`/`).at(-1)?.split(`.`)[1] ?? ``
     let title = name.replace(/-/g, ` `)
 
     if (code.startsWith(`# `)) {
-      // split 1st line into title and code
+      // extract title from leading code comment
       const lines = code.split(`\n\n`)
       title = lines[0].replace(`# `, ``)
       code = lines.slice(1).join(`\n\n`)

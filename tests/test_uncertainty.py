@@ -21,10 +21,10 @@ assert len(df_x_y[0]) == 3
 @pytest.mark.parametrize(
     "df, x, y, y_std",
     [
-        [None, y_true, y_pred, y_std_mock],
-        [None, y_true, y_pred, {"y_std_mock": y_std_mock}],
-        [df, *df.columns[:2], df.columns[0]],  # single std col
-        [df, *df.columns[:2], df.columns[:2]],  # multiple std cols
+        (None, y_true, y_pred, y_std_mock),
+        (None, y_true, y_pred, {"y_std_mock": y_std_mock}),
+        (df, *df.columns[:2], df.columns[0]),  # single std col
+        (df, *df.columns[:2], df.columns[:2]),  # multiple std cols
     ],
 )
 @pytest.mark.parametrize("n_rand", [10, 100, 1000])
@@ -53,10 +53,10 @@ def test_error_decay_with_uncert(
 @pytest.mark.parametrize(
     "df, x, y, y_std",
     [
-        [*df_x_y[0], xs],
-        [*df_x_y[0], {"foo": xs, "bar": 0.1 * xs}],
-        [*df_x_y[1], df.columns[0]],
-        [*df_x_y[1], df.columns[:2]],
+        (*df_x_y[0], xs),
+        (*df_x_y[0], {"foo": xs, "bar": 0.1 * xs}),
+        (*df_x_y[1], df.columns[0]),
+        (*df_x_y[1], df.columns[:2]),
     ],
 )
 @pytest.mark.parametrize("ax", [None, plt.gca()])
