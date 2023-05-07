@@ -74,10 +74,15 @@ select = [
     "E",   # pycodestyle
     "F",   # pyflakes
     "I",   # isort
-    "PLE", # pylint error
-    "PLW", # pylint warning
+    "N",   # pep8-naming
+    "PD",  # pandas-vet
+    "PIE", # flake8-pie
+    "PL",  # pylint
+    "PT",  # flake8-pytest-style
     "PYI", # flakes8-pyi
     "Q",   # flake8-quotes
+    "RET", # flake8-return
+    "RUF", # ruff
     "SIM", # flake8-simplify
     "TID", # tidy imports
     "UP",  # pyupgrade
@@ -89,9 +94,18 @@ ignore = [
     "D100",    # Missing docstring in public module
     "D104",    # Missing docstring in public package
     "D205",    # 1 blank line required between summary line and description
+    "N806",    # non-lowercase-variable-in-function
+    "PD901",   # pandas-df-variable-name
+    "PLC0414", # useless-import-alias
+    "PLC1901", # compare-to-empty-string
+    "PLR",     # pylint refactor
+    "PLW2901", # Outer for loop variable overwritten by inner assignment target
+    "PT006",   # pytest-parametrize-names-wrong-type
+    "PT011",   # pytest-raises-too-broad
+    "PT013",   # pytest-incorrect-pytest-import
+    "RUF001",  # ambiguous-unicode-character-string
     "SIM105",  # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
     "SIM115",  # Use context handler for opening files
-    "PLW2901", # Outer for loop variable overwritten by inner assignment target
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2

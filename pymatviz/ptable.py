@@ -570,12 +570,12 @@ def ptable_heatmap_plotly(
 
     rgba0 = "rgba(0, 0, 0, 0)"
     if colorscale is None:
-        colorscale = [rgba0] + px.colors.sequential.Pinkyl
+        colorscale = [rgba0, *px.colors.sequential.Pinkyl]
     elif isinstance(colorscale, str):
-        colorscale = [(0, rgba0)] + px.colors.get_colorscale(colorscale)
-        colorscale[1][0] = 1e-6  # type: ignore
+        colorscale = [(0, rgba0), *px.colors.get_colorscale(colorscale)]
+        colorscale[1][0] = 1e-6
     elif isinstance(colorscale, Sequence) and isinstance(colorscale[0], str):
-        colorscale = [rgba0] + list(colorscale)  # type: ignore
+        colorscale = [rgba0, *colorscale]
     elif isinstance(colorscale, Sequence) and isinstance(colorscale[0], (list, tuple)):
         # list of tuples(float in [0, 1], color)
         # make sure we're dealing with mutable lists
