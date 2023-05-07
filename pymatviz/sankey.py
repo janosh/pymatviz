@@ -34,7 +34,7 @@ def sankey_from_2_df_cols(
         )
 
     source, target, value = (
-        df[list(cols)].value_counts().reset_index().values.T.tolist()
+        df[list(cols)].value_counts().reset_index().to_numpy().T.tolist()
     )
 
     if labels_with_counts:
@@ -64,5 +64,4 @@ def sankey_from_2_df_cols(
         **kwargs,
     )
 
-    fig = go.Figure(data=[sankey])
-    return fig
+    return go.Figure(data=[sankey])

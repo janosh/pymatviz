@@ -18,7 +18,7 @@ df_carrier = pd.concat([df_carrier, pd.json_normalize(df_carrier.data)], axis=1)
     columns=["data", "is_public", "project"]
 )
 
-df_carrier.set_index("identifier", inplace=True)
+df_carrier = df_carrier.set_index("identifier")
 df_carrier.index.name = "mp_id"
 
 
@@ -85,7 +85,7 @@ col_map = {
     "mₑᶜ.n.ε₂": "mₑᶜ.n.ε₂ [mₑ]",
     "mₑᶜ.n.ε₃": "mₑᶜ.n.ε₃ [mₑ]",
 }
-df_carrier.rename(columns=col_map, inplace=True)
+df_carrier = df_carrier.rename(columns=col_map)
 
 
 # %% convert all target columns to dtype float
