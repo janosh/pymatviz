@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Sequence, cast
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.utils import get_crystal_sys
+
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 
 def spacegroup_sunburst(
@@ -36,9 +39,9 @@ def spacegroup_sunburst(
     """
     if isinstance(next(iter(data)), Structure):
         # if 1st sequence item is structure, assume all are
-        data = cast(Sequence[Structure], data)
         series = pd.Series(
-            struct.get_space_group_info()[1] for struct in data  # type: ignore
+            struct.get_space_group_info()[1]  # type: ignore[union-attr]
+            for struct in data
         )
     else:
         series = pd.Series(data)

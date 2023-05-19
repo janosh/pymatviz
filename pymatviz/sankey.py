@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
-import pandas as pd
 import plotly.graph_objects as go
+
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 def sankey_from_2_df_cols(

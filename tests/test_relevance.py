@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
-import pandas as pd
 import pytest
 
 from pymatviz import precision_recall_curve, roc_curve
-from pymatviz.utils import Array
 from tests.conftest import df_x_y_clf
+
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from pymatviz.utils import Array
 
 
 @pytest.mark.parametrize("ax", [None, plt.gca()])
