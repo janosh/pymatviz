@@ -5,18 +5,21 @@ import os
 import subprocess
 from os.path import dirname
 from shutil import which
-from typing import Any, Literal, Sequence, Union
+from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import sklearn
-from matplotlib.gridspec import GridSpec
 from matplotlib.offsetbox import AnchoredText
 from numpy.typing import NDArray
 from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
+
+
+if TYPE_CHECKING:
+    from matplotlib.gridspec import GridSpec
 
 
 ROOT = dirname(dirname(__file__))

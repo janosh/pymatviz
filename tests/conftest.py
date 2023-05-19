@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import platform
-from typing import Generator
+from typing import TYPE_CHECKING, Generator
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Lattice, Structure
+
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 
 # if platform is windows, set matplotlib backend to "Agg" to fix

@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import scipy.interpolate
-from matplotlib.gridspec import GridSpec
 
 from pymatviz.utils import Array, annotate_metrics, df_to_arrays, with_hist
+
+
+if TYPE_CHECKING:
+    import pandas as pd
+    from matplotlib.gridspec import GridSpec
 
 
 def hist_density(

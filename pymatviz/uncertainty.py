@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from scipy.stats import norm
 
 from pymatviz.utils import Array, df_to_arrays
+
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 def qq_gaussian(

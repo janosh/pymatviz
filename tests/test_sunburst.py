@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import plotly.graph_objects as go
 import pytest
-from pymatgen.core import Structure
 
 from pymatviz import spacegroup_sunburst
+
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure
 
 
 @pytest.mark.parametrize("show_counts", ["value", "percent", False])

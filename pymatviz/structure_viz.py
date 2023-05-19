@@ -3,16 +3,19 @@ from __future__ import annotations
 import math
 import warnings
 from itertools import product
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
-from pymatgen.core import Structure
 
 from pymatviz.utils import Array, covalent_radii, jmol_colors
+
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure
 
 
 class ExperimentalWarning(Warning):
@@ -306,7 +309,7 @@ def plot_structure_2d(
             for elem, occupancy in struct[idx].species.items():
                 # strip oxidation state from element symbol (e.g. Ta5+ to Ta)
                 elem_symbol = elem.symbol
-                radius = atomic_radii[elem_symbol] * scale  # type: ignore
+                radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
                 face_color = colors[elem_symbol]
                 wedge = Wedge(
                     xy,

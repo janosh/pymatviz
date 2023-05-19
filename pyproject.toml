@@ -10,20 +10,20 @@ authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
 license = { file = "license" }
 keywords = [
-    "science",
-    "materials informatics",
-    "materials discovery",
     "chemistry",
     "data visualization",
-    "plotly",
+    "materials discovery",
+    "materials informatics",
     "matplotlib",
+    "plotly",
+    "science",
 ]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
-    "License :: OSI Approved :: MIT License",
 ]
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.8"
@@ -38,10 +38,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "kaleido"]
+test = ["kaleido", "pytest", "pytest-cov"]
 data-src = ["matminer"]
 export-figs = ["kaleido"]
-gh-pages = ["lazydocs", "jupyter", "nbconvert"]
+gh-pages = ["jupyter", "lazydocs", "nbconvert"]
 
 [tool.setuptools.packages]
 find = { include = ["pymatviz*"], exclude = ["tests*"] }
@@ -70,11 +70,15 @@ no_implicit_optional = false
 target-version = "py38"
 select = [
     "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
     "D",   # pydocstyle
-    "E",   # pycodestyle
+    "E",   # pycodestyle error
+    "EXE", # flake8-executable
     "F",   # pyflakes
+    "FLY", # flynt
     "I",   # isort
-    "N",   # pep8-naming
+    "ICN", # flake8-import-conventions
+    "ISC", # flake8-implicit-str-concat
     "PD",  # pandas-vet
     "PIE", # flake8-pie
     "PL",  # pylint
@@ -82,15 +86,18 @@ select = [
     "PYI", # flakes8-pyi
     "Q",   # flake8-quotes
     "RET", # flake8-return
-    "RUF", # ruff
+    "RSE", # flake8-raise
+    "RUF", # Ruff-specific rules
     "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
     "TID", # tidy imports
     "UP",  # pyupgrade
-    "W",   # pycodestyle
+    "W",   # pycodestyle warning
     "YTT", # flake8-2020
 ]
 ignore = [
     "B028",    # No explicit stacklevel keyword argument found
+    "C408",    # unnecessary-collection-call
     "D100",    # Missing docstring in public module
     "D104",    # Missing docstring in public package
     "D205",    # 1 blank line required between summary line and description
@@ -103,9 +110,10 @@ ignore = [
     "PT006",   # pytest-parametrize-names-wrong-type
     "PT011",   # pytest-raises-too-broad
     "PT013",   # pytest-incorrect-pytest-import
-    "RUF001",  # ambiguous-unicode-character-string
-    "SIM105",  # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
-    "SIM115",  # Use context handler for opening files
+    # TODO maybe remove after https://github.com/charliermarsh/ruff/issues/4268
+    "RUF001", # ambiguous-unicode-character-string
+    "SIM105", # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
+    "SIM115", # Use context handler for opening files
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
