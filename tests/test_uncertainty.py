@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import pytest
 
 from pymatviz import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import Array
 from tests.conftest import df, df_x_y, xs, y_pred, y_true
+
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from pymatviz.utils import Array
 
 
 y_std_mock = y_true - y_pred

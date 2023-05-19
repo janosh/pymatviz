@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
-import pandas as pd
 import sklearn.metrics as skm
 
 from pymatviz.utils import Array, df_to_arrays
+
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 def roc_curve(

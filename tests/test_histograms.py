@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import pytest
-from pymatgen.core import Structure
 
 from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
-from pymatviz.utils import Array
 from tests.conftest import df, y_pred, y_true
+
+
+if TYPE_CHECKING:
+    import pandas as pd
+    from pymatgen.core import Structure
+
+    from pymatviz.utils import Array
 
 
 y_std_mock = y_true - y_pred

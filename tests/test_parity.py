@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,8 +15,11 @@ from pymatviz import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
-from pymatviz.utils import Array
 from tests.conftest import df_x_y
+
+
+if TYPE_CHECKING:
+    from pymatviz.utils import Array
 
 
 @pytest.mark.parametrize("log_cmap", [True, False])

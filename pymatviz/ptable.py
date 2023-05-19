@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
-import plotly.graph_objects as go
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
@@ -20,6 +19,8 @@ from pymatviz.utils import df_ptable
 
 if TYPE_CHECKING:
     from typing import TypeAlias
+
+    import plotly.graph_objects as go
 
     ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
 
@@ -580,7 +581,7 @@ def ptable_heatmap_plotly(
         # list of tuples(float in [0, 1], color)
         # make sure we're dealing with mutable lists
         colorscale = [(0, rgba0), *map(list, colorscale)]  # type: ignore
-        colorscale[1][0] = 1e-6  # type: ignore
+        colorscale[1][0] = 1e-6  # type: ignore[index]
     else:
         raise ValueError(
             f"{colorscale = } should be string, list of strings or list of "

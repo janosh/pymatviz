@@ -7,7 +7,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from plotly.exceptions import PlotlyError
-from pymatgen.core import Composition
 
 from pymatviz import (
     count_elements,
@@ -20,6 +19,8 @@ from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
+    from pymatgen.core import Composition
+
     from pymatviz.ptable import CountMode
 
 

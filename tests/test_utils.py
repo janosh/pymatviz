@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 from unittest.mock import patch
 
 import pandas as pd
@@ -21,6 +20,10 @@ from pymatviz.utils import (
     save_fig,
 )
 from tests.conftest import y_pred, y_true
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.parametrize(
