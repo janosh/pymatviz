@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 ROOT = dirname(dirname(__file__))
 
-Array = NDArray[Union[np.float64, np.int_]]
+Array = Sequence[int | float] | NDArray[Union[np.float64, np.int_]]
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
     "symbol"
@@ -142,7 +142,7 @@ def annotate_metrics(
     xs: NDArray[np.float64 | np.int_],
     ys: NDArray[np.float64 | np.int_],
     ax: plt.Axes = None,
-    metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
+    metrics: dict[str, float] | Sequence[str] = ("MAE", "$R^2$"),
     prefix: str = "",
     suffix: str = "",
     prec: int = 3,
@@ -174,12 +174,17 @@ def annotate_metrics(
     Returns:
         AnchoredText: Instance containing the metrics.
     """
+    if isinstance(metrics, str):
+        metrics = [metrics]
+    if not isinstance(metrics, (dict, list, tuple, set)):
+        raise TypeError(f"metrics must be dict|list|tuple|set, not {type(metrics)}")
     funcs = {
         "MAE": lambda x, y: np.abs(x - y).mean(),
         "RMSE": lambda x, y: (((x - y) ** 2).mean()) ** 0.5,
         "MSE": lambda x, y: ((x - y) ** 2).mean(),
         "MAPE": mape,
         "R2": r2_score,
+        "$R^2$": r2_score,
         # TODO: check this for correctness
         "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
     }

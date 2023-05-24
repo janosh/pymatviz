@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Sequence
 from unittest.mock import patch
 
@@ -29,10 +30,11 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize(
     "metrics, prec",
     [
+        ("MSE", 1),
         (["RMSE"], 1),
         (("MAPE", "MSE"), 2),
         ({"MAE", "R2", "RMSE"}, 3),
-        ({"MAE": 1, "R2": 2, "RMSE": 3}, 0),
+        ({"MAE": 1, "$R^2$": 2, "RMSE": 3}, 0),
     ],
 )
 def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], prec: int) -> None:
@@ -47,7 +49,7 @@ def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], prec: int) 
         for key, val in metrics.items():
             txt += f"{key} = {val:.{prec}f}\n"
     else:
-        for key in metrics:
+        for key in [metrics] if isinstance(metrics, str) else metrics:
             txt += f"{key} = {expected[key]:.{prec}f}\n"
 
     assert text_box.txt.get_text() == txt
@@ -57,6 +59,14 @@ def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], prec: int) 
         y_pred, y_true, metrics=metrics, prec=prec, prefix=prefix, suffix=suffix
     )
     assert text_box.txt.get_text() == prefix + txt + suffix
+
+
+@pytest.mark.parametrize("metrics", [42, datetime.now()])
+def test_annotate_metrics_raises(metrics: Any) -> None:
+    with pytest.raises(
+        TypeError, match=f"metrics must be dict|list|tuple|set, not {type(metrics)}"
+    ):
+        annotate_metrics(y_pred, y_true, metrics=metrics)
 
 
 @pytest.mark.parametrize(
