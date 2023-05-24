@@ -5,16 +5,17 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import sklearn.metrics as skm
 
-from pymatviz.utils import Array, df_to_arrays
+from pymatviz.utils import df_to_arrays
 
 
 if TYPE_CHECKING:
     import pandas as pd
+    from numpy.typing import ArrayLike
 
 
 def roc_curve(
-    targets: Array | str,
-    proba_pos: Array | str,
+    targets: ArrayLike | str,
+    proba_pos: ArrayLike | str,
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
 ) -> tuple[float, plt.Axes]:
@@ -48,8 +49,8 @@ def roc_curve(
 
 
 def precision_recall_curve(
-    targets: Array | str,
-    proba_pos: Array | str,
+    targets: ArrayLike | str,
+    proba_pos: ArrayLike | str,
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
 ) -> tuple[float, plt.Axes]:

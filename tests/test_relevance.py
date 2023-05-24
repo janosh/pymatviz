@@ -11,14 +11,16 @@ from tests.conftest import df_x_y_clf
 
 if TYPE_CHECKING:
     import pandas as pd
-
-    from pymatviz.utils import Array
+    from numpy.typing import ArrayLike
 
 
 @pytest.mark.parametrize("ax", [None, plt.gca()])
 @pytest.mark.parametrize("df, y_binary, y_proba", df_x_y_clf)
 def test_roc_curve(
-    df: pd.DataFrame | None, y_binary: str | Array, y_proba: str | Array, ax: plt.Axes
+    df: pd.DataFrame | None,
+    y_binary: str | ArrayLike,
+    y_proba: str | ArrayLike,
+    ax: plt.Axes,
 ) -> None:
     roc_auc, ax = roc_curve(y_binary, y_proba, df=df, ax=ax)
     assert isinstance(roc_auc, float)
@@ -31,7 +33,10 @@ def test_roc_curve(
 @pytest.mark.parametrize("ax", [None, plt.gca()])
 @pytest.mark.parametrize("df, y_binary, y_proba", df_x_y_clf)
 def test_precision_recall_curve(
-    df: pd.DataFrame | None, y_binary: str | Array, y_proba: str | Array, ax: plt.Axes
+    df: pd.DataFrame | None,
+    y_binary: str | ArrayLike,
+    y_proba: str | ArrayLike,
+    ax: plt.Axes,
 ) -> None:
     precision, ax = precision_recall_curve(y_binary, y_proba, df=df, ax=ax)
     assert isinstance(precision, float)
