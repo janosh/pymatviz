@@ -11,9 +11,8 @@ from tests.conftest import df, y_pred, y_true
 
 if TYPE_CHECKING:
     import pandas as pd
+    from numpy.typing import ArrayLike
     from pymatgen.core import Structure
-
-    from pymatviz.utils import Array
 
 
 y_std_mock = y_true - y_pred
@@ -42,9 +41,9 @@ def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
 )
 def test_true_pred_hist(
     df: pd.DataFrame | None,
-    y_true: Array | str,
-    y_pred: Array | str,
-    y_std: Array | dict[str, Array] | str | list[str],
+    y_true: ArrayLike | str,
+    y_pred: ArrayLike | str,
+    y_std: ArrayLike | dict[str, ArrayLike] | str | list[str],
     bins: int | None,
     cmap: str,
 ) -> None:

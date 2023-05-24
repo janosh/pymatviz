@@ -12,15 +12,17 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.ptable import count_elements
-from pymatviz.utils import Array, annotate_bars, df_to_arrays, get_crystal_sys
+from pymatviz.utils import annotate_bars, df_to_arrays, get_crystal_sys
 
 
 if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
     from pymatviz.ptable import CountMode, ElemValues
 
 
 def residual_hist(
-    y_res: Array,
+    y_res: ArrayLike,
     ax: plt.Axes = None,
     xlabel: str | None = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
     **kwargs: Any,
@@ -61,9 +63,9 @@ def residual_hist(
 
 
 def true_pred_hist(
-    y_true: Array | str,
-    y_pred: Array | str,
-    y_std: Array | str,
+    y_true: ArrayLike | str,
+    y_pred: ArrayLike | str,
+    y_std: ArrayLike | str,
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
     cmap: str = "hot",

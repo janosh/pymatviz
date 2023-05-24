@@ -2,11 +2,10 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.typing import ArrayLike
 
-from pymatviz.utils import Array
 
-
-def cumulative_residual(res: Array, ax: plt.Axes = None, **kwargs: Any) -> plt.Axes:
+def cumulative_residual(res: ArrayLike, ax: plt.Axes = None, **kwargs: Any) -> plt.Axes:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
     Args:
@@ -55,7 +54,9 @@ def cumulative_residual(res: Array, ax: plt.Axes = None, **kwargs: Any) -> plt.A
     return ax
 
 
-def cumulative_error(abs_err: Array, ax: plt.Axes = None, **kwargs: Any) -> plt.Axes:
+def cumulative_error(
+    abs_err: ArrayLike, ax: plt.Axes = None, **kwargs: Any
+) -> plt.Axes:
     """Plot the empirical cumulative distribution of the absolute errors.
 
     abs(y_true - y_pred).

@@ -11,10 +11,11 @@ from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 
-from pymatviz.utils import Array, covalent_radii, jmol_colors
+from pymatviz.utils import covalent_radii, jmol_colors
 
 
 if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
     from pymatgen.core import Structure
 
 
@@ -29,7 +30,7 @@ warnings.simplefilter("once", ExperimentalWarning)
 # inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
 
 
-def _angles_to_rotation_matrix(angles: str, rotation: Array = None) -> Array:
+def _angles_to_rotation_matrix(angles: str, rotation: ArrayLike = None) -> ArrayLike:
     """Convert Euler angles to a rotation matrix.
 
     Note the order of angles matters. 50x,40z != 40z,50x.
@@ -64,7 +65,7 @@ def _angles_to_rotation_matrix(angles: str, rotation: Array = None) -> Array:
     return rotation
 
 
-def unit_cell_to_lines(cell: Array) -> tuple[Array, Array, Array]:
+def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """Convert lattice vectors to plot lines.
 
     Args:
