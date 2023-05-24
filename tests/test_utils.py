@@ -127,6 +127,17 @@ def test_df_to_arrays() -> None:
     assert "not-real-col-name" in str(exc_info.value)
 
 
+@pytest.mark.parametrize("strict", [True, False])
+def test_df_to_arrays_strict(strict: bool) -> None:
+    try:
+        args = df_to_arrays(42, "foo", "bar", strict=strict)
+    except TypeError as exc:
+        if strict:
+            assert "df should be pandas DataFrame or None" in str(exc)  # noqa: PT017
+        else:
+            assert args == ("foo", "bar")
+
+
 @pytest.mark.parametrize("fig", [go.Figure(), plt.figure()])
 @pytest.mark.parametrize("ext", ["html", "svelte", "png", "svg", "pdf"])
 @pytest.mark.parametrize(

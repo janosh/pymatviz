@@ -403,6 +403,7 @@ def save_and_compress_svg(
 def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | Sequence[str] | NDArray[np.float64 | np.int_],
+    strict: bool = True,
 ) -> list[NDArray[np.float64 | np.int_] | dict[str, NDArray[np.float64 | np.int_]]]:
     """If df is None, this is a no-op: args are returned as-is. If df is a
     dataframe, all following args are used as column names and the column data
@@ -411,6 +412,8 @@ def df_to_arrays(
     Args:
         df (pd.DataFrame | None): Optional pandas DataFrame.
         *args (list[Array | str]): Arbitrary number of arrays or column names in df.
+        strict (bool, optional): If True, raise TypeError if df is not pd.DataFrame
+            or None. If False, return args as-is. Defaults to True.
 
     Raises:
         ValueError: If df is not None and any of the args is not a df column name.
@@ -425,6 +428,8 @@ def df_to_arrays(
         return args  # type: ignore[return-value]
 
     if not isinstance(df, pd.DataFrame):
+        if not strict:
+            return args  # type: ignore[return-value]
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
 
     if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
