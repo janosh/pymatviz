@@ -6,17 +6,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
 
-from pymatviz.utils import Array, df_to_arrays
+from pymatviz.utils import df_to_arrays
 
 
 if TYPE_CHECKING:
     import pandas as pd
+    from numpy.typing import ArrayLike
 
 
 def qq_gaussian(
-    y_true: Array | str,
-    y_pred: Array | str,
-    y_std: Array | dict[str, Array] | str | Sequence[str],
+    y_true: ArrayLike | str,
+    y_pred: ArrayLike | str,
+    y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
 ) -> plt.Axes:
@@ -111,8 +112,8 @@ def qq_gaussian(
 
 
 def get_err_decay(
-    y_true: Array, y_pred: Array, n_rand: int = 100
-) -> tuple[Array, Array]:
+    y_true: ArrayLike, y_pred: ArrayLike, n_rand: int = 100
+) -> tuple[ArrayLike, ArrayLike]:
     """Calculate the model's error curve as samples are excluded from the calculation
     based on their absolute error.
 
@@ -146,7 +147,7 @@ def get_err_decay(
     return decay_by_err, rand.std(0)
 
 
-def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
+def get_std_decay(y_true: ArrayLike, y_pred: ArrayLike, y_std: ArrayLike) -> ArrayLike:
     """Calculate the drop in model error as samples are excluded from the calculation
     based on the model's uncertainty.
 
@@ -185,9 +186,9 @@ def get_std_decay(y_true: Array, y_pred: Array, y_std: Array) -> Array:
 
 
 def error_decay_with_uncert(
-    y_true: Array | str,
-    y_pred: Array | str,
-    y_std: Array | dict[str, Array] | str | Sequence[str],
+    y_true: ArrayLike | str,
+    y_pred: ArrayLike | str,
+    y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
     df: pd.DataFrame = None,
     n_rand: int = 100,
     percentiles: bool = True,
@@ -201,7 +202,7 @@ def error_decay_with_uncert(
     Args:
         y_true (array | str): Ground truth regression targets.
         y_pred (array | str): Model predictions.
-        y_std (array | dict[str, Array] | str | list[str]): Model uncertainties.
+        y_std (array | dict[str, ArrayLike] | str | list[str]): Model uncertainties.
             Can be single or multiple uncertainties (e.g. aleatoric/epistemic/total
             uncertainty) as dict.
         n_rand (int, optional): Number of shuffles from which to compute std.dev.

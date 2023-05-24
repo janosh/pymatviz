@@ -11,8 +11,7 @@ from tests.conftest import df, df_x_y, xs, y_pred, y_true
 
 if TYPE_CHECKING:
     import pandas as pd
-
-    from pymatviz.utils import Array
+    from numpy.typing import ArrayLike
 
 
 y_std_mock = y_true - y_pred
@@ -35,9 +34,9 @@ assert len(df_x_y[0]) == 3
 @pytest.mark.parametrize("percentiles", [True, False])
 def test_error_decay_with_uncert(
     df: pd.DataFrame,
-    x: Array | str,
-    y: Array | str,
-    y_std: Array | dict[str, Array] | str | Sequence[str],
+    x: ArrayLike | str,
+    y: ArrayLike | str,
+    y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
     n_rand: int,
     percentiles: bool,
 ) -> None:
@@ -66,9 +65,9 @@ def test_error_decay_with_uncert(
 @pytest.mark.parametrize("ax", [None, plt.gca()])
 def test_qq_gaussian(
     df: pd.DataFrame,
-    x: Array | str,
-    y: Array | str,
-    y_std: Array | dict[str, Array],
+    x: ArrayLike | str,
+    y: ArrayLike | str,
+    y_std: ArrayLike | dict[str, ArrayLike],
     ax: plt.Axes,
 ) -> None:
     ax = qq_gaussian(x, y, y_std, df=df, ax=ax)

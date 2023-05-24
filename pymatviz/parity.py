@@ -7,21 +7,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate
 
-from pymatviz.utils import Array, annotate_metrics, df_to_arrays, with_hist
+from pymatviz.utils import annotate_metrics, df_to_arrays, with_hist
 
 
 if TYPE_CHECKING:
     import pandas as pd
     from matplotlib.gridspec import GridSpec
+    from numpy.typing import ArrayLike
 
 
 def hist_density(
-    x: Array | str,
-    y: Array | str,
+    x: ArrayLike | str,
+    y: ArrayLike | str,
     df: pd.DataFrame = None,
     sort: bool = True,
     bins: int = 100,
-) -> tuple[Array, Array, Array]:
+) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """Return an approximate density of 2d points.
 
     Args:
@@ -56,8 +57,8 @@ def hist_density(
 
 
 def density_scatter(
-    x: Array | str,
-    y: Array | str,
+    x: ArrayLike | str,
+    y: ArrayLike | str,
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
     sort: bool = True,
@@ -93,6 +94,8 @@ def density_scatter(
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    if not isinstance(stats, (bool, dict)):
+        raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
     if xlabel is None:
         xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
     if ylabel is None:
@@ -127,11 +130,11 @@ def density_scatter(
 
 
 def scatter_with_err_bar(
-    x: Array | str,
-    y: Array | str,
+    x: ArrayLike | str,
+    y: ArrayLike | str,
     df: pd.DataFrame = None,
-    xerr: Array = None,
-    yerr: Array = None,
+    xerr: ArrayLike = None,
+    yerr: ArrayLike = None,
     ax: plt.Axes = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
@@ -174,11 +177,11 @@ def scatter_with_err_bar(
 
 
 def density_hexbin(
-    x: Array | str,
-    y: Array | str,
+    x: ArrayLike | str,
+    y: ArrayLike | str,
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
-    weights: Array = None,
+    weights: ArrayLike = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
     **kwargs: Any,
@@ -222,8 +225,8 @@ def density_hexbin(
 
 
 def density_scatter_with_hist(
-    x: Array | str,
-    y: Array | str,
+    x: ArrayLike | str,
+    y: ArrayLike | str,
     df: pd.DataFrame = None,
     cell: GridSpec = None,
     bins: int = 100,
@@ -238,8 +241,8 @@ def density_scatter_with_hist(
 
 
 def density_hexbin_with_hist(
-    x: Array | str,
-    y: Array | str,
+    x: ArrayLike | str,
+    y: ArrayLike | str,
     df: pd.DataFrame = None,
     cell: GridSpec = None,
     bins: int = 100,
@@ -254,8 +257,8 @@ def density_hexbin_with_hist(
 
 
 def residual_vs_actual(
-    y_true: Array | str,
-    y_pred: Array | str,
+    y_true: ArrayLike | str,
+    y_pred: ArrayLike | str,
     df: pd.DataFrame = None,
     ax: plt.Axes = None,
     xlabel: str = r"Actual value",

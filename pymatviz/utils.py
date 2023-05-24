@@ -5,7 +5,7 @@ import os
 import subprocess
 from os.path import dirname
 from shutil import which
-from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,18 +13,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import sklearn
 from matplotlib.offsetbox import AnchoredText
-from numpy.typing import NDArray
 from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
 
 if TYPE_CHECKING:
     from matplotlib.gridspec import GridSpec
-
+    from numpy.typing import ArrayLike
 
 ROOT = dirname(dirname(__file__))
 
-Array = NDArray[Union[np.float64, np.int_]]
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
     "symbol"
@@ -47,8 +45,8 @@ for Z, symbol in enumerate(df_ptable.index, 1):
 
 
 def with_hist(
-    xs: NDArray[np.float64 | np.int_],
-    ys: NDArray[np.float64 | np.int_],
+    xs: ArrayLike,
+    ys: ArrayLike,
     cell: GridSpec = None,
     bins: int = 100,
 ) -> plt.Axes:
@@ -139,10 +137,10 @@ def annotate_bars(
 
 
 def annotate_metrics(
-    xs: NDArray[np.float64 | np.int_],
-    ys: NDArray[np.float64 | np.int_],
+    xs: ArrayLike,
+    ys: ArrayLike,
     ax: plt.Axes = None,
-    metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
+    metrics: dict[str, float] | Sequence[str] = ("MAE", "$R^2$"),
     prefix: str = "",
     suffix: str = "",
     prec: int = 3,
@@ -174,12 +172,17 @@ def annotate_metrics(
     Returns:
         AnchoredText: Instance containing the metrics.
     """
+    if isinstance(metrics, str):
+        metrics = [metrics]
+    if not isinstance(metrics, (dict, list, tuple, set)):
+        raise TypeError(f"metrics must be dict|list|tuple|set, not {type(metrics)}")
     funcs = {
         "MAE": lambda x, y: np.abs(x - y).mean(),
         "RMSE": lambda x, y: (((x - y) ** 2).mean()) ** 0.5,
         "MSE": lambda x, y: ((x - y) ** 2).mean(),
         "MAPE": mape,
         "R2": r2_score,
+        "$R^2$": r2_score,
         # TODO: check this for correctness
         "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
     }
@@ -397,22 +400,25 @@ def save_and_compress_svg(
 
 def df_to_arrays(
     df: pd.DataFrame | None,
-    *args: str | Sequence[str] | NDArray[np.float64 | np.int_],
-) -> list[NDArray[np.float64 | np.int_] | dict[str, NDArray[np.float64 | np.int_]]]:
+    *args: str | Sequence[str] | ArrayLike,
+    strict: bool = True,
+) -> list[ArrayLike | dict[str, ArrayLike]]:
     """If df is None, this is a no-op: args are returned as-is. If df is a
     dataframe, all following args are used as column names and the column data
     returned as arrays (after dropping rows with NaNs in any column).
 
     Args:
         df (pd.DataFrame | None): Optional pandas DataFrame.
-        *args (list[Array | str]): Arbitrary number of arrays or column names in df.
+        *args (list[ArrayLike | str]): Arbitrary number of arrays or column names in df.
+        strict (bool, optional): If True, raise TypeError if df is not pd.DataFrame
+            or None. If False, return args as-is. Defaults to True.
 
     Raises:
         ValueError: If df is not None and any of the args is not a df column name.
         TypeError: If df is not pd.DataFrame and not None.
 
     Returns:
-        tuple[Array, Array]: Input arrays or arrays from dataframe columns.
+        tuple[ArrayLike, ArrayLike]: Input arrays or arrays from dataframe columns.
     """
     if df is None:
         if cols := [arg for arg in args if isinstance(arg, str)]:
@@ -420,6 +426,8 @@ def df_to_arrays(
         return args  # type: ignore[return-value]
 
     if not isinstance(df, pd.DataFrame):
+        if not strict:
+            return args  # type: ignore[return-value]
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
 
     if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
