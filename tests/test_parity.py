@@ -47,6 +47,15 @@ def test_density_scatter(
     assert ax.get_ylabel() == y if isinstance(y, str) else "Predicted"
 
 
+@pytest.mark.parametrize("stats", [1, (1,), "foo"])
+def test_density_scatter_raises_on_bad_stats_type(stats: Any) -> None:
+    match = f"stats must be bool or dict, got {type(stats)} instead."
+
+    vals = [1, 2, 3]
+    with pytest.raises(TypeError, match=match):
+        density_scatter(x=vals, y=vals, stats=stats)
+
+
 def test_density_scatter_uses_series_name_as_label() -> None:
     x = pd.Series(np.random.rand(5), name="x")
     y = pd.Series(np.random.rand(5), name="y")

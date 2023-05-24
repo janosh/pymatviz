@@ -93,6 +93,8 @@ def density_scatter(
     Returns:
         ax: The plot's matplotlib Axes.
     """
+    if not isinstance(stats, (bool, dict)):
+        raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
     if xlabel is None:
         xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
     if ylabel is None:
