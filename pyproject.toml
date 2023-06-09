@@ -103,22 +103,19 @@ ignore = [
     "D205",    # 1 blank line required between summary line and description
     "N806",    # non-lowercase-variable-in-function
     "PD901",   # pandas-df-variable-name
-    "PLC0414", # useless-import-alias
     "PLC1901", # compare-to-empty-string
     "PLR",     # pylint refactor
     "PLW2901", # Outer for loop variable overwritten by inner assignment target
     "PT006",   # pytest-parametrize-names-wrong-type
     "PT011",   # pytest-raises-too-broad
-    "PT013",   # pytest-incorrect-pytest-import
-    # TODO maybe remove after https://github.com/charliermarsh/ruff/issues/4268
-    "RUF001", # ambiguous-unicode-character-string
-    "SIM105", # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
-    "SIM115", # Use context handler for opening files
+    "RUF001",  # ambiguous-unicode-character-string
+    "SIM105",  # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
 isort.split-on-trailing-comma = false
 
 [tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
 "tests/*" = ["D103"]
-"examples/*" = ["E402"] # E402 Module level import not at top of file
+"examples/*" = ["E402"]  # E402 Module level import not at top of file

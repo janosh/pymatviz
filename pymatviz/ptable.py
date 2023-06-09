@@ -61,7 +61,7 @@ def count_elements(
                 Example: Fe4 P4 O16 -> Fe P O4.
             - occurrence: Count the number of times each element occurs in a list of
                 formulas irrespective of compositions. E.g. [Fe2 O3, Fe O, Fe4 P4 O16]
-                counts to {Fe: 3, O: 3, P1}.
+                counts to {Fe: 3, O: 3, P: 1}.
         exclude_elements (Sequence[str]): Elements to exclude from the count. Defaults
             to ().
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
