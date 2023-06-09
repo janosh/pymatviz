@@ -15,7 +15,8 @@ from glob import glob
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 os.chdir(ROOT)
-pkg = json.load(open("site/package.json"))
+with open("site/package.json") as file:
+    pkg = json.load(file)
 route = "site/src/routes/api"
 
 for path in glob(f"{route}/*.md"):
@@ -28,7 +29,8 @@ subprocess.run(
 )
 
 for path in glob(f"{route}/*.md"):
-    markdown = open(path).read()
+    with open(path, "w") as file:
+        markdown = file.read()
     # remove <b> tags from generated markdown as they break inline code
     markdown = markdown.replace("<b>", "").replace("</b>", "")
     # improve style of badges linking to source code on GitHub
@@ -36,7 +38,8 @@ for path in glob(f"{route}/*.md"):
         'src="https://img.shields.io/badge/-source-cccccc?style=flat-square"',
         'src="https://img.shields.io/badge/source-blue?style=flat" alt="source link"',
     )
-    open(path, "w").write(markdown)
+    with open(path, "w") as file:
+        file.write(markdown)
 
 
 # --- Notebook to HTML conversion ---
