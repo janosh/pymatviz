@@ -5,6 +5,7 @@ import os
 import subprocess
 from os.path import dirname
 from shutil import which
+from time import sleep
 from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import matplotlib.pyplot as plt
@@ -297,6 +298,7 @@ def save_fig(
     path: str,
     plotly_config: dict[str, Any] = None,
     env_disable: Sequence[str] = ("CI",),
+    pdf_sleep: float = 0.6,
     **kwargs: Any,
 ) -> None:
     """Write a plotly figure to an HTML file. If the file is has .svelte
@@ -313,6 +315,10 @@ def save_fig(
         See https://plotly.com/python/configuration-options.
         env_disable (list[str], optional): Do nothing if any of these environment
             variables are set. Defaults to ("CI",).
+        pdf_sleep (float, optional): Minimum time in seconds to wait before
+            writing a PDF file. Workaround for this plotly issue
+            https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6. Has no
+            effect on matplotlib figures.
 
         **kwargs: Keyword arguments passed to fig.write_html().
     """
@@ -328,6 +334,7 @@ def save_fig(
         raise TypeError(
             f"Unsupported figure type {type(fig)}, expected plotly or matplotlib Figure"
         )
+    is_pdf = path.lower().endswith((".pdf", ".pdfa"))
     if path.lower().endswith((".svelte", ".html")):
         config = dict(
             showTips=False,
@@ -355,7 +362,7 @@ def save_fig(
             with open(path, "w") as file:
                 file.write(text + "\n")
     else:
-        if path.lower().endswith(".pdf"):
+        if is_pdf:
             orig_template = fig.layout.template
             fig.layout.template = "plotly_white"
         # hide click-to-show traces in PDF
@@ -365,7 +372,12 @@ def save_fig(
                 trace.visible = False
                 hidden_traces.append(trace)
         fig.write_image(path, **kwargs)
-        if path.lower().endswith(".pdf"):
+        if is_pdf:
+            # write PDFs twice to get rid of "Loading [MathJax]/extensions/MathMenu.js"
+            # see https://github.com/plotly/plotly.py/issues/3469#issuecomment-994907721
+            sleep(pdf_sleep)
+            fig.write_image(path, **kwargs)
+
             fig.layout.template = orig_template
         for trace in hidden_traces:
             trace.visible = "legendonly"
