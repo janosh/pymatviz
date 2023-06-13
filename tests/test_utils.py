@@ -230,3 +230,20 @@ def test_bin_df_cols_raises_value_error() -> None:
         bin_df_cols(df, bin_by_cols, n_bins=[2])
 
     assert "len(bin_by_cols)=2 != len(n_bins)=1" in str(exc_info.value)
+
+
+def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
+    # https://github.com/plotly/plotly.py/issues/3469
+    PyPDF2 = pytest.importorskip("PyPDF2")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=[1, 2], y=[3, 4]))
+    path = f"{tmp_path}/test.pdf"
+    save_fig(fig, path)
+
+    # check PDF doesn't contain "Loading [MathJax]/extensions/MathMenu.js"
+    with open(path, "rb") as f:
+        pdf = PyPDF2.PdfFileReader(f)
+        assert len(pdf.pages) == 1
+        text = pdf.pages[0].extract_text()
+        assert "Loading [MathJax]/extensions/MathMenu.js" not in text
