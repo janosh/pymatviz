@@ -52,6 +52,7 @@ repos:
     rev: 1.7.0
     hooks:
       - id: nbqa-ruff
+        additional_dependencies: [ruff==0.0.272]
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.6.1
