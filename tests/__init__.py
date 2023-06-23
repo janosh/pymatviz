@@ -1,0 +1,1 @@
+"""pymatviz tests."""

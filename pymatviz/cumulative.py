@@ -1,11 +1,13 @@
-from typing import Any
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import ArrayLike
 
 
-def cumulative_residual(res: ArrayLike, ax: plt.Axes = None, **kwargs: Any) -> plt.Axes:
+def cumulative_residual(
+    res: ArrayLike, ax: Optional[plt.Axes] = None, **kwargs: Any
+) -> plt.Axes:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
     Args:
@@ -55,7 +57,7 @@ def cumulative_residual(res: ArrayLike, ax: plt.Axes = None, **kwargs: Any) -> p
 
 
 def cumulative_error(
-    abs_err: ArrayLike, ax: plt.Axes = None, **kwargs: Any
+    abs_err: ArrayLike, ax: Optional[plt.Axes] = None, **kwargs: Any
 ) -> plt.Axes:
     """Plot the empirical cumulative distribution of the absolute errors.
 

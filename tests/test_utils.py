@@ -121,10 +121,10 @@ def test_df_to_arrays() -> None:
         df_to_arrays("foo", y_true, y_pred)
 
     bad_col_name = "not-real-col-name"
-    with pytest.raises(KeyError) as exc_info:
+    with pytest.raises(KeyError) as exc:
         df_to_arrays(df, bad_col_name, df.columns[0])
 
-    assert "not-real-col-name" in str(exc_info.value)
+    assert "not-real-col-name" in str(exc.value)
 
 
 @pytest.mark.parametrize("strict", [True, False])
@@ -226,10 +226,10 @@ def test_bin_df_cols_raises_value_error() -> None:
     df = pd.DataFrame({"col1": [1, 2, 3, 4], "col2": [2, 3, 4, 5]})
     bin_by_cols = ["col1", "col2"]
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError) as exc:
         bin_df_cols(df, bin_by_cols, n_bins=[2])
 
-    assert "len(bin_by_cols)=2 != len(n_bins)=1" in str(exc_info.value)
+    assert "len(bin_by_cols)=2 != len(n_bins)=1" in str(exc.value)
 
 
 def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
