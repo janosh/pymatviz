@@ -18,8 +18,8 @@ def qq_gaussian(
     y_true: ArrayLike | str,
     y_pred: ArrayLike | str,
     y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
-    df: pd.DataFrame = None,
-    ax: plt.Axes = None,
+    df: pd.DataFrame | None = None,
+    ax: plt.Axes | None = None,
 ) -> plt.Axes:
     """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array) or
     multiple (passed as dict) sets of uncertainty estimates for a single pair of ground
@@ -189,10 +189,10 @@ def error_decay_with_uncert(
     y_true: ArrayLike | str,
     y_pred: ArrayLike | str,
     y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
-    df: pd.DataFrame = None,
+    df: pd.DataFrame | None = None,
     n_rand: int = 100,
     percentiles: bool = True,
-    ax: plt.Axes = None,
+    ax: plt.Axes | None = None,
 ) -> plt.Axes:
     """Plot for assessing the quality of uncertainty estimates. If a model's uncertainty
     is well calibrated, i.e. strongly correlated with its error, removing the most

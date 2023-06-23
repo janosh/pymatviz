@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 def roc_curve(
     targets: ArrayLike | str,
     proba_pos: ArrayLike | str,
-    df: pd.DataFrame = None,
-    ax: plt.Axes = None,
+    df: pd.DataFrame | None = None,
+    ax: plt.Axes | None = None,
 ) -> tuple[float, plt.Axes]:
     """Plot the receiver operating characteristic curve of a binary classifier given
     target labels and predicted probabilities for the positive class.
@@ -51,8 +51,8 @@ def roc_curve(
 def precision_recall_curve(
     targets: ArrayLike | str,
     proba_pos: ArrayLike | str,
-    df: pd.DataFrame = None,
-    ax: plt.Axes = None,
+    df: pd.DataFrame | None = None,
+    ax: plt.Axes | None = None,
 ) -> tuple[float, plt.Axes]:
     """Plot the precision recall curve of a binary classifier.
 

@@ -30,7 +30,9 @@ warnings.simplefilter("once", ExperimentalWarning)
 # inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
 
 
-def _angles_to_rotation_matrix(angles: str, rotation: ArrayLike = None) -> ArrayLike:
+def _angles_to_rotation_matrix(
+    angles: str, rotation: ArrayLike | None = None
+) -> ArrayLike:
     """Convert Euler angles to a rotation matrix.
 
     Note the order of angles matters. 50x,40z != 40z,50x.
@@ -106,16 +108,16 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
 
 def plot_structure_2d(
     struct: Structure,
-    ax: plt.Axes = None,
+    ax: plt.Axes | None = None,
     rotation: str = "10x,10y,0z",
     atomic_radii: float | dict[str, float] | None = None,
-    colors: dict[str, str | list[float]] = None,
+    colors: dict[str, str | list[float]] | None = None,
     scale: float = 1,
     show_unit_cell: bool = True,
     show_bonds: bool | NearNeighbors = False,
     site_labels: bool | dict[str, str | float] | list[str | float] = True,
-    label_kwargs: dict[str, Any] = None,
-    bond_kwargs: dict[str, Any] = None,
+    label_kwargs: dict[str, Any] | None = None,
+    bond_kwargs: dict[str, Any] | None = None,
     standardize_struct: bool | None = None,
     axis: bool | str = "off",
 ) -> plt.Axes:

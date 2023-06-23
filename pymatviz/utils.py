@@ -48,7 +48,7 @@ for Z, symbol in enumerate(df_ptable.index, 1):
 def with_hist(
     xs: ArrayLike,
     ys: ArrayLike,
-    cell: GridSpec = None,
+    cell: GridSpec | None = None,
     bins: int = 100,
 ) -> plt.Axes:
     """Call before creating a plot and use the returned `ax_main` for all
@@ -88,10 +88,10 @@ def with_hist(
 
 
 def annotate_bars(
-    ax: plt.Axes = None,
+    ax: plt.Axes | None = None,
     v_offset: int | float = 10,
     h_offset: int | float = 0,
-    labels: Sequence[str | int | float] = None,
+    labels: Sequence[str | int | float] | None = None,
     fontsize: int = 14,
     y_max_headroom: float = 1.2,
     **kwargs: Any,
@@ -140,7 +140,7 @@ def annotate_bars(
 def annotate_metrics(
     xs: ArrayLike,
     ys: ArrayLike,
-    ax: plt.Axes = None,
+    ax: plt.Axes | None = None,
     metrics: dict[str, float] | Sequence[str] = ("MAE", "$R^2$"),
     prefix: str = "",
     suffix: str = "",
@@ -248,7 +248,7 @@ def get_crystal_sys(spg: int) -> CrystalSystem:
 
 
 def add_identity_line(
-    fig: go.Figure, line_kwds: dict[str, Any] = None, trace_idx: int = 0
+    fig: go.Figure, line_kwds: dict[str, Any] | None = None, trace_idx: int = 0
 ) -> go.Figure:
     """Add a line shape to the background layer of a plotly figure spanning
     from smallest to largest x/y values in the trace specified by trace_idx.
@@ -296,7 +296,7 @@ def add_identity_line(
 def save_fig(
     fig: go.Figure | plt.Figure | plt.Axes,
     path: str,
-    plotly_config: dict[str, Any] = None,
+    plotly_config: dict[str, Any] | None = None,
     env_disable: Sequence[str] = ("CI",),
     pdf_sleep: float = 0.6,
     **kwargs: Any,
