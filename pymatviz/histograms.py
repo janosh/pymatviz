@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 def residual_hist(
     y_res: ArrayLike,
-    ax: plt.Axes = None,
+    ax: plt.Axes | None = None,
     xlabel: str | None = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
     **kwargs: Any,
 ) -> plt.Axes:
@@ -66,8 +66,8 @@ def true_pred_hist(
     y_true: ArrayLike | str,
     y_pred: ArrayLike | str,
     y_std: ArrayLike | str,
-    df: pd.DataFrame = None,
-    ax: plt.Axes = None,
+    df: pd.DataFrame | None = None,
+    ax: plt.Axes | None = None,
     cmap: str = "hot",
     truth_color: str = "blue",
     true_label: str = r"$y_\mathrm{true}$",
@@ -140,7 +140,7 @@ def spacegroup_hist(
     show_counts: bool = True,
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     include_missing: bool = False,
-    ax: plt.Axes = None,
+    ax: plt.Axes | None = None,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a histogram of spacegroups shaded by crystal system.
@@ -285,8 +285,8 @@ def hist_elemental_prevalence(
     formulas: ElemValues,
     count_mode: CountMode = "composition",
     log: bool = False,
-    keep_top: int = None,
-    ax: plt.Axes = None,
+    keep_top: int | None = None,
+    ax: plt.Axes | None = None,
     bar_values: Literal["percent", "count"] | None = "percent",
     h_offset: int = 0,
     v_offset: int = 10,
