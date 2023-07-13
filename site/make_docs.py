@@ -29,7 +29,7 @@ subprocess.run(
 )
 
 for path in glob(f"{route}/*.md"):
-    with open(path, "w") as file:
+    with open(path) as file:
         markdown = file.read()
     # remove <b> tags from generated markdown as they break inline code
     markdown = markdown.replace("<b>", "").replace("</b>", "")
