@@ -16,3 +16,4 @@ jobs:
       pre-build: |
         pip install '..[gh-pages]'
         python ../site/make_docs.py
+      install-cmd: npm install --force
