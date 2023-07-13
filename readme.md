@@ -16,7 +16,7 @@ A toolkit for visualizations in materials informatics.
 
 </h4>
 
-**Note**: This project is not associated with or endorsed by [`pymatgen`](https://github.com/materialsproject/pymatgen), but aims to complement it with additional plotting functionality.
+**Note**: This project is not endorsed by [`pymatgen`](https://github.com/materialsproject/pymatgen), but aims to complement it with additional plotting functionality.
 
 ## Installation
 
