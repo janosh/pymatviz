@@ -43,9 +43,18 @@
 <slot />
 
 <footer>
-  Questions/feedback?
-  <a href="{repository}/issues"><Icon icon="octicon:mark-github" inline /></a>
-  <a href="mailto:janosh@lbl.gov"><Icon icon="mdi:email" inline /></a>
+  <nav>
+    <a href="{repository}/issues"
+      ><Icon icon="octicon:mark-github" inline />&ensp;Issues</a
+    >
+    <a href="mailto:janosh@lbl.gov"><Icon icon="mdi:email" inline />&ensp;Email</a>
+  </nav>
+  <img
+    src="https://raw.githubusercontent.com/janosh/pymatviz/main/site/static/favicon.svg"
+    alt="Logo"
+    height="60px"
+  />
+  <strong>pymatviz</strong>
 </footer>
 
 <style>
@@ -63,12 +72,19 @@
     background-color: rgba(255, 255, 255, 0.2);
   }
   footer {
-    display: flex;
-    gap: 1ex;
-    place-content: center;
-    place-items: center;
-    margin: 2em 0 0;
     padding: 3vh 3vw;
     background: #00061a;
+    text-align: center;
+  }
+  footer nav {
+    margin: 2em;
+    display: flex;
+    gap: 2em;
+    place-content: center;
+    flex-wrap: wrap;
+  }
+  strong {
+    font-size: 24px;
+    vertical-align: 25px;
   }
 </style>
