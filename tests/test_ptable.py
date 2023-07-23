@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
@@ -277,9 +278,13 @@ def test_ptable_heatmap_plotly_cscale_range(
     fig = ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)
     trace = fig.data[0]
     assert "colorbar" in trace
-    # check that color bar range is correct
-    assert trace["zmin"] == cscale_range[0]
-    assert trace["zmax"] == cscale_range[1]
+    # check for correct color bar range
+    if cscale_range == (None, None):
+        # if both None, range is dynamic based on plotted data
+        assert trace["zmin"] == pytest.approx(df_ptable.density.min())
+        assert trace["zmax"] == pytest.approx(df_ptable.density.max())
+    else:
+        assert cscale_range == (trace["zmin"], trace["zmax"])
 
 
 def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
@@ -289,3 +294,28 @@ def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
             df_ptable.density, cscale_range=cscale_range  # type: ignore[arg-type]
         )
     assert f"{cscale_range=} should have length 2" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "label_map",
+    [None, False, {"1.0": "one", "2.0": "two", "3.0": "three", np.nan: "N/A"}],
+)
+def test_ptable_heatmap_plotly_label_map(
+    label_map: dict[str, str] | Literal[False] | None
+) -> None:
+    elem_vals = dict(Al=1.0, Cr=2.0, Fe=3.0, Ni=np.nan)
+    fig = ptable_heatmap_plotly(elem_vals, label_map=label_map)
+    assert isinstance(fig, go.Figure)
+
+    # if label_map is not False, ensure mapped labels appear in figure annotations
+    if label_map is not False:
+        if label_map is None:
+            # use default map
+            label_map = dict.fromkeys([np.nan, None, "nan"], " ")  # type: ignore
+        # check for non-empty intersection between label_map values and annotations
+        # we use `val in anno.text` cause the labels are wrapped in non-matching
+        # HTML <span> tags
+        assert sum(
+            any(val in anno.text for val in label_map.values())
+            for anno in fig.layout.annotations
+        )

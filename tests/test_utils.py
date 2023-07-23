@@ -99,7 +99,7 @@ def test_add_identity_line(
     fig = add_identity_line(plotly_scatter, line_kwds=line_kwds, trace_idx=trace_idx)
     assert isinstance(fig, go.Figure)
 
-    line = [shape for shape in fig.layout["shapes"] if shape["type"] == "line"][0]
+    line = next(shape for shape in fig.layout["shapes"] if shape["type"] == "line")
     assert line["x0"] == line["y0"]  # fails if we don't handle nan since nan != nan
     assert line["x1"] == line["y1"]
     assert line["layer"] == "below"

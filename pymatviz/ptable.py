@@ -403,7 +403,8 @@ def ptable_heatmap_plotly(
     cscale_range: tuple[float | None, float | None] = (None, None),
     exclude_elements: Sequence[str] = (),
     log: bool = False,
-    fill_value: float | None = 0,
+    fill_value: float | None = None,
+    label_map: dict[str, str] | Literal[False] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Create a Plotly figure with an interactive heatmap of the periodic table.
@@ -465,6 +466,9 @@ def ptable_heatmap_plotly(
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
             Piece of advice: colorscale='viridis' and log=True go well together.
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
+        label_map (dict[str, str] | None): Map heat values (after string formatting)
+            to target strings. Defaults to dict.fromkeys((np.nan, None, "nan"), " ")
+            so as not to display 'nan' for missing values. Set to False to disable.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
 
@@ -477,6 +481,18 @@ def ptable_heatmap_plotly(
         )
     if len(cscale_range) != 2:
         raise ValueError(f"{cscale_range=} should have length 2")
+
+    if isinstance(colorscale, (str, type(None))):
+        colorscale = px.colors.get_colorscale(colorscale or "Pinkyl")
+    elif isinstance(colorscale, Sequence) and isinstance(
+        colorscale[0], (str, list, tuple)
+    ):
+        pass
+    else:
+        raise ValueError(
+            f"{colorscale = } should be string, list of strings or list of "
+            "tuples(float, str)"
+        )
 
     color_bar = color_bar or {}
     color_bar.setdefault("orientation", "h")
@@ -503,7 +519,12 @@ def ptable_heatmap_plotly(
     n_rows, n_columns = 10, 18
     # initialize tile text and hover tooltips to empty strings
     tile_texts, hover_texts = np.full([2, n_rows, n_columns], "", dtype=object)
-    heatmap_values = np.zeros([n_rows, n_columns])
+    heatmap_values = np.full([n_rows, n_columns], np.nan)
+
+    if label_map is None:
+        # default to space string for None, np.nan and "nan". space is needed
+        # for <br> in tile_text to work so all element symbols are vertically aligned
+        label_map = dict.fromkeys([np.nan, None, "nan"], " ")  # type: ignore
 
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
@@ -524,9 +545,10 @@ def ptable_heatmap_plotly(
                 label = f"{heat_value:{precision or default_prec}}".replace("e+0", "e")
 
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
-        tile_text = f"<span {style=}>{symbol}</span>"
-        if label is not None:
-            tile_text += f"<br>{label}"
+        tile_text = (
+            f"<span {style=}>{symbol}</span><br>"
+            f"{(label_map or {}).get(label, label)}"  # type: ignore
+        )
 
         tile_texts[row][col] = tile_text
 
@@ -567,26 +589,7 @@ def ptable_heatmap_plotly(
         # until https://github.com/plotly/plotly.js/issues/975 is resolved, we need to
         # insert transparency (rgba0) at low end of colorscale (+1e-6) to not show any
         # colors on empty tiles of the periodic table
-        heatmap_values[row][col] = color_val + 1e-6
-
-    rgba0 = "rgba(0, 0, 0, 0)"
-    if colorscale is None:
-        colorscale = [rgba0, *px.colors.sequential.Pinkyl]
-    elif isinstance(colorscale, str):
-        colorscale = [(0, rgba0), *px.colors.get_colorscale(colorscale)]
-        colorscale[1][0] = 1e-6
-    elif isinstance(colorscale, Sequence) and isinstance(colorscale[0], str):
-        colorscale = [rgba0, *colorscale]
-    elif isinstance(colorscale, Sequence) and isinstance(colorscale[0], (list, tuple)):
-        # list of tuples(float in [0, 1], color)
-        # make sure we're dealing with mutable lists
-        colorscale = [(0, rgba0), *map(list, colorscale)]  # type: ignore
-        colorscale[1][0] = 1e-6  # type: ignore[index]
-    else:
-        raise ValueError(
-            f"{colorscale = } should be string, list of strings or list of "
-            "tuples(float, str)"
-        )
+        heatmap_values[row][col] = color_val
 
     # TODO: see if this ugly code can be handed off to plotly, looks like not atm
     # https://github.com/janosh/pymatviz/issues/52
@@ -595,6 +598,11 @@ def ptable_heatmap_plotly(
         tickvals=np.arange(int(np.log10(elem_values.max())) + 1),
         ticktext=10 ** np.arange(int(np.log10(elem_values.max())) + 1),
     )
+    if isinstance(font_colors, str):
+        font_colors = [font_colors]
+    if cscale_range == (None, None):
+        cscale_range = (elem_values.min(), elem_values.max())
+
     fig = ff.create_annotated_heatmap(
         heatmap_values,
         annotation_text=tile_texts,
@@ -606,8 +614,8 @@ def ptable_heatmap_plotly(
         xgap=gap,
         ygap=gap,
         colorbar=log_cbar if log else None,
-        zmax=cscale_range[1],
         zmin=cscale_range[0],
+        zmax=cscale_range[1],
         # https://github.com/plotly/plotly.py/issues/193
         zauto=cscale_range == (None, None),
         **kwargs,
