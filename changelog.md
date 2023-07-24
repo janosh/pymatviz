@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
-<!-- auto-changelog-above -->
+#### [v0.6.3](https://github.com/janosh/pymatviz/compare/v0.6.2...v0.6.3)
+
+> 24 July 2023
+
+- Fix "Loading [MathJax]/extensions/MathMenu.js" in Plotly figures exported to PDF  [`#83`](https://github.com/janosh/pymatviz/pull/83)
+- Tiny doc update in ptable.py [`#82`](https://github.com/janosh/pymatviz/pull/82)
+- Better type errors [`#80`](https://github.com/janosh/pymatviz/pull/80)
+- `ruff` enable more rule sets [`#79`](https://github.com/janosh/pymatviz/pull/79)
+- Disable `save_fig()` in CI [`#78`](https://github.com/janosh/pymatviz/pull/78)
+- adhere to PEP 484 (no implicit optional) [`8e50218`](https://github.com/janosh/pymatviz/commit/8e5021876b65f13d10b34e65fc9738b16489bee4)
+- fix ruff TCH002,TCH003 [`d60276b`](https://github.com/janosh/pymatviz/commit/d60276bfc55d69d138c8784e1b29a0e658b32e5e)
+- add ptable_heatmap_plotly kwarg label_map: dict[str, str] | False | None = None [`ef40171`](https://github.com/janosh/pymatviz/commit/ef401718a2903bbc1f64364e686d15b9ae614988)
+- migrate site to eslint-plugin-svelte [`91d7909`](https://github.com/janosh/pymatviz/commit/91d7909362dab8739d0b84579e6134766b205bce)
 
 #### [v0.6.2](https://github.com/janosh/pymatviz/compare/v0.6.1...v0.6.2)
 
