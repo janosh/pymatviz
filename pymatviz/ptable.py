@@ -230,30 +230,30 @@ def ptable_heatmap(
 
     for symbol, row, column, *_ in df_ptable.itertuples():
         row = n_rows - row  # invert row count to make periodic table right side up
-        heat_val = elem_values.get(symbol)
+        tile_value = elem_values.get(symbol)
 
         # inf (float/0) or NaN (0/0) are expected when passing in elem_values from
         # ptable_heatmap_ratio
         if symbol in exclude_elements:
             color = "white"
             label = "excl."
-        elif heat_val == np.inf:
+        elif tile_value == np.inf:
             color = infty_color  # not in denominator
             label = r"$\infty$"
-        elif pd.isna(heat_val):
+        elif pd.isna(tile_value):
             color = na_color  # neither numerator nor denominator
             label = r"$0\,/\,0$"
-        elif heat_val == 0:
+        elif tile_value == 0:
             color = zero_color
             label = str(zero_symbol)
         else:
-            color = color_map(norm(heat_val))
+            color = color_map(norm(tile_value))
 
             if heat_mode == "percent":
-                label = f"{heat_val:{precision or '.1%'}}"
+                label = f"{tile_value:{precision or '.1f'}}"
             else:
-                prec = precision or (".0f" if heat_val > 100 else ".1f")
-                label = f"{heat_val:{prec}}"
+                prec = precision or (".0f" if tile_value > 100 else ".1f")
+                label = f"{tile_value:{prec}}"
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             label = label.replace("e+0", "e")
         if row < 3:  # vertical offset for lanthanide + actinide series
@@ -267,9 +267,9 @@ def ptable_heatmap(
         if symbol in exclude_elements:
             text_clr = "black"
         elif text_color == "auto":
-            text_clr = "white" if norm(heat_val) > 0.5 else "black"
+            text_clr = "white" if norm(tile_value) > 0.5 else "black"
         elif isinstance(text_color, (tuple, list)):
-            text_clr = text_color[0] if norm(heat_val) > 0.5 else text_color[1]
+            text_clr = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
         else:
             text_clr = text_color
 
@@ -502,10 +502,12 @@ def ptable_heatmap_plotly(
 
     elem_values = count_elements(elem_values, count_mode, exclude_elements, fill_value)
 
-    if log and elem_values[elem_values != 0].min() <= 1:
+    if log and elem_values.dropna()[elem_values != 0].min() <= 1:
+        smaller_1 = elem_values[elem_values <= 1]
         raise ValueError(
             "Log color scale requires all heat map values to be > 1 since values <= 1 "
-            "map to negative log values which throws off the color scale."
+            f"map to negative log values which throws off the color scale. Got "
+            f"{smaller_1.size} values <= 0: {list(smaller_1)}"
         )
 
     if heat_mode in ("fraction", "percent"):
@@ -534,8 +536,7 @@ def ptable_heatmap_plotly(
         label = None  # label (if not None) is placed below the element symbol
         if symbol in exclude_elements:
             label = "excl."
-        elif symbol in heat_value_element_map:
-            heat_value = heat_value_element_map[symbol]
+        elif heat_value := heat_value_element_map.get(symbol):
             if heat_mode == "percent":
                 label = f"{heat_value:{precision or '.1%'}}"
             else:
