@@ -243,7 +243,7 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
 
     # check PDF doesn't contain "Loading [MathJax]/extensions/MathMenu.js"
     with open(path, "rb") as f:
-        pdf = PyPDF2.PdfFileReader(f)
+        pdf = PyPDF2.PdfReader(f)
         assert len(pdf.pages) == 1
         text = pdf.pages[0].extract_text()
         assert "Loading [MathJax]/extensions/MathMenu.js" not in text
