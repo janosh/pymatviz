@@ -138,7 +138,7 @@ def ptable_heatmap(
     ax: plt.Axes | None = None,
     count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
-    cbar_max: float | int | None = None,
+    cbar_max: float | None = None,
     cmap: str = "summer_r",
     zero_color: str = "#DDD",  # light gray
     infty_color: str = "lightskyblue",

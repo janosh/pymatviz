@@ -89,8 +89,8 @@ def with_hist(
 
 def annotate_bars(
     ax: plt.Axes | None = None,
-    v_offset: int | float = 10,
-    h_offset: int | float = 0,
+    v_offset: float = 10,
+    h_offset: float = 0,
     labels: Sequence[str | int | float] | None = None,
     fontsize: int = 14,
     y_max_headroom: float = 1.2,
@@ -499,12 +499,13 @@ def bin_df_cols(
     for col, bins in zip(bin_by_cols, n_bins):
         df[f"{col}_bins"] = pd.cut(df[col], bins=bins)
 
-    df_bin = (
-        df.reset_index()
-        .groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
-        .first()
-        .dropna()
+    group = df.reset_index().groupby(
+        [*[f"{c}_bins" for c in bin_by_cols], *group_by_cols]
     )
+
+    df_bin = group.first().dropna()
+    df_bin["bin_counts"] = group.size()
+
     if verbose:
         print(f"{len(df_bin)=:,} / {len(df)=:,} = {len(df_bin)/len(df):.1%}")
 
