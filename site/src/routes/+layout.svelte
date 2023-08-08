@@ -47,12 +47,12 @@
     <a href="{repository}/issues"
       ><Icon icon="octicon:mark-github" inline />&ensp;Issues</a
     >
-    <a href="mailto:janosh@lbl.gov"><Icon icon="mdi:email" inline />&ensp;Email</a>
+    <a href="{repository}/discussion"><Icon icon="mdi:chat" inline />&ensp;Discussion</a>
   </nav>
   <img
     src="https://raw.githubusercontent.com/janosh/pymatviz/main/site/static/favicon.svg"
     alt="Logo"
-    height="60px"
+    height="40px"
   />
   <strong>pymatviz</strong>
 </footer>
@@ -84,7 +84,7 @@
     flex-wrap: wrap;
   }
   strong {
-    font-size: 24px;
-    vertical-align: 25px;
+    font-size: 20px;
+    vertical-align: 16px;
   }
 </style>
