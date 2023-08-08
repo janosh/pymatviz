@@ -147,10 +147,6 @@ blockquote p:first-child {
   margin-top: 0;
 }
 
-/* for /api/[slug] */
-kbd {
-  padding: 0 1ex 0 0;
-}
 aside.toc.desktop {
   position: fixed;
   top: 3em;

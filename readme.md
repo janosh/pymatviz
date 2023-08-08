@@ -148,7 +148,7 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 
 1. **Residual** `y_res = y_true - y_pred`: The difference between ground truth target and model prediction.
 2. **Error** `y_err = abs(y_true - y_pred)`: Absolute error between target and model prediction.
-3. **Uncertainty** `y_std`: The model's estimate for its error, i.e. how much the model thinks its prediction can be trusted. (`std` for standard deviation.)
+3. **Uncertainty** `y_std`: The model's estimate for its error, i.e. how much the model thinks its prediction can be trusted (`std` for standard deviation).
 
 [cumulative-error]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-error.svg
 [cumulative-residual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-residual.svg
