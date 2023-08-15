@@ -144,7 +144,7 @@ def annotate_metrics(
     metrics: dict[str, float] | Sequence[str] = ("MAE", "$R^2$"),
     prefix: str = "",
     suffix: str = "",
-    prec: int = 3,
+    fmt: str = ".4",
     **kwargs: Any,
 ) -> AnchoredText:
     """Provide a set of x and y values of equal length and an optional Axes
@@ -161,8 +161,7 @@ def annotate_metrics(
         ax (Axes, optional): matplotlib Axes on which to add the box. Defaults to None.
         loc (str, optional): Where on the plot to place the AnchoredText object.
             Defaults to "lower right".
-        prec (int, optional): Precision, i.e. decimal places to show in printed metrics.
-            Defaults to 3.
+        fmt (str, optional): f-string float format for metrics. Defaults to '.4'.
         prefix (str, optional): Title or other string to prepend to metrics.
             Defaults to "".
         suffix (str, optional): Text to append after metrics. Defaults to "".
@@ -201,10 +200,10 @@ def annotate_metrics(
     text = prefix
     if isinstance(metrics, dict):
         for key, val in metrics.items():
-            text += f"{key} = {val:.{prec}f}\n"
+            text += f"{key} = {val:{fmt}}\n"
     else:
         for metric in metrics:
-            text += f"{metric} = {funcs[metric](xs, ys):.{prec}f}\n"
+            text += f"{metric} = {funcs[metric](xs, ys):{fmt}}\n"
     text += suffix
 
     kwargs["frameon"] = kwargs.get("frameon", False)  # default to no frame

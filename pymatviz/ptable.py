@@ -144,8 +144,8 @@ def ptable_heatmap(
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
-    precision: str | None = None,
-    cbar_precision: str | None = None,
+    fmt: str | None = None,
+    cbar_fmt: str | None = None,
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
     zero_symbol: str | float = "-",
@@ -175,10 +175,10 @@ def ptable_heatmap(
             or not at all (None). Defaults to "value".
             "fraction" and "percent" can be used to make the colors in different
             ptable_heatmap() (and ptable_heatmap_ratio()) plots comparable.
-        precision (str): f-string format option for heat labels. Defaults to ".1%"
+        fmt (str): f-string format option for tile values. Defaults to ".1%"
             (1 decimal place) if heat_mode="percent" else ".3g".
-        cbar_precision (str): f-string format option to set a different colorbar tick
-            label precision than the above heat label precision. Defaults to precision.
+        cbar_fmt (str): f-string format option to set a different colorbar tick
+            label format. Defaults to the above fmt.
         text_color (str | tuple[str, str]): What color to use for element symbols and
             heat labels. Must be a valid color name, or a 2-tuple of names, one to use
             for the upper half of the color scale, one for the lower half. The special
@@ -250,10 +250,10 @@ def ptable_heatmap(
             color = color_map(norm(tile_value))
 
             if heat_mode == "percent":
-                label = f"{tile_value:{precision or '.1f'}}"
+                label = f"{tile_value:{fmt or '.1f'}}"
             else:
-                prec = precision or (".0f" if tile_value > 100 else ".1f")
-                label = f"{tile_value:{prec}}"
+                fmt = fmt or (".0f" if tile_value > 100 else ".1f")
+                label = f"{tile_value:{fmt}}"
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             label = label.replace("e+0", "e")
         if row < 3:  # vertical offset for lanthanide + actinide series
@@ -304,7 +304,7 @@ def ptable_heatmap(
             default_prec = (
                 ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
             )
-            return f"{val:{cbar_precision or precision or default_prec}}"
+            return f"{val:{cbar_fmt or fmt or default_prec}}"
 
         cbar = fig.colorbar(
             mappable, cax=cb_ax, orientation="horizontal", format=tick_fmt

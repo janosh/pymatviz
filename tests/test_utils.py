@@ -28,17 +28,17 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize(
-    "metrics, prec",
+    "metrics, fmt",
     [
-        ("MSE", 1),
-        (["RMSE"], 1),
-        (("MAPE", "MSE"), 2),
-        ({"MAE", "R2", "RMSE"}, 3),
-        ({"MAE": 1, "$R^2$": 2, "RMSE": 3}, 0),
+        ("MSE", ".1"),
+        (["RMSE"], ".1"),
+        (("MAPE", "MSE"), ".2"),
+        ({"MAE", "R2", "RMSE"}, ".3"),
+        ({"MAE": 1.4, "$R^2$": 0.2, "RMSE": 1.9}, ".0"),
     ],
 )
-def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], prec: int) -> None:
-    text_box = annotate_metrics(y_pred, y_true, metrics=metrics, prec=prec)
+def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], fmt: str) -> None:
+    text_box = annotate_metrics(y_pred, y_true, metrics=metrics, fmt=fmt)
 
     assert isinstance(text_box, AnchoredText)
 
@@ -47,16 +47,16 @@ def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], prec: int) 
     txt = ""
     if isinstance(metrics, dict):
         for key, val in metrics.items():
-            txt += f"{key} = {val:.{prec}f}\n"
+            txt += f"{key} = {val:{fmt}}\n"
     else:
         for key in [metrics] if isinstance(metrics, str) else metrics:
-            txt += f"{key} = {expected[key]:.{prec}f}\n"
+            txt += f"{key} = {expected[key]:{fmt}}\n"
 
     assert text_box.txt.get_text() == txt
 
     prefix, suffix = "Metrics:\n", "\nthe end"
     text_box = annotate_metrics(
-        y_pred, y_true, metrics=metrics, prec=prec, prefix=prefix, suffix=suffix
+        y_pred, y_true, metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix
     )
     assert text_box.txt.get_text() == prefix + txt + suffix
 
