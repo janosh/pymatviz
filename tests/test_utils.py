@@ -34,7 +34,7 @@ if TYPE_CHECKING:
         (["RMSE"], ".1"),
         (("MAPE", "MSE"), ".2"),
         ({"MAE", "R2", "RMSE"}, ".3"),
-        ({"MAE": 1, "$R^2$": 2, "RMSE": 3}, ".0"),
+        ({"MAE": 1.4, "$R^2$": 0.2, "RMSE": 1.9}, ".0"),
     ],
 )
 def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], fmt: str) -> None:
