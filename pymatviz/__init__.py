@@ -1,8 +1,9 @@
 """pymatviz: A Python package for visualizing materials data."""
 
-# convenience exports using redundant as-import following PEP 484.
-# see https://github.com/microsoft/pylance-release/issues/856#issuecomment-763793949
-# and https://peps.python.org/pep-0484/#stub-files 'Additional notes on stub files'
+from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError, version
+
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.histograms import (
@@ -31,3 +32,9 @@ from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import ROOT, annotate_bars, annotate_metrics
+
+
+try:
+    __version__ = version("pymatviz")
+except PackageNotFoundError:
+    pass  # package not installed
