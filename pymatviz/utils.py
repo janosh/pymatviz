@@ -300,22 +300,23 @@ def save_fig(
     pdf_sleep: float = 0.6,
     **kwargs: Any,
 ) -> None:
-    """Write a plotly figure to an HTML file. If the file is has .svelte
-    extension, insert `{...$$props}` into the figure's top-level div so it can
-    be styled by consuming Svelte code.
+    """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
+
+    If the file is has .svelte extension, insert `{...$$props}` into the figure's
+    top-level div so it can be later styled and customized from Svelte code.
 
     Args:
         fig (go.Figure | plt.Figure | plt.Axes): Plotly or matplotlib Figure or
             matplotlib Axes object.
-        path (str): Path to HTML file that will be created.
+        path (str): Path to image file that will be created.
         plotly_config (dict, optional): Configuration options for fig.write_html().
-        Defaults to dict(showTips=False, responsive=True, modeBarButtonsToRemove=
-        ["lasso2d", "select2d", "autoScale2d", "toImage"]).
-        See https://plotly.com/python/configuration-options.
+            Defaults to dict(showTips=False, responsive=True, modeBarButtonsToRemove=
+            ["lasso2d", "select2d", "autoScale2d", "toImage"]).
+            See https://plotly.com/python/configuration-options.
         env_disable (list[str], optional): Do nothing if any of these environment
             variables are set. Defaults to ("CI",).
-        pdf_sleep (float, optional): Minimum time in seconds to wait before
-            writing a PDF file. Workaround for this plotly issue
+        pdf_sleep (float, optional): Minimum time in seconds to wait before writing a
+            plotly figure to PDF file. Workaround for this plotly issue
             https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6. Has no
             effect on matplotlib figures.
 
@@ -359,6 +360,7 @@ def save_fig(
             with open(path) as file:
                 text = file.read().replace("<div>", "<div {...$$props}>", 1)
             with open(path, "w") as file:
+                # add trailing newline for pre-commit end-of-file commit hook
                 file.write(text + "\n")
     else:
         if is_pdf:
@@ -406,7 +408,7 @@ def save_and_compress_svg(
     plt.close()
 
     if (svgo := which("svgo")) is not None:
-        subprocess.run([svgo, "--multipass", filepath])
+        subprocess.run([svgo, "--multipass", filepath], check=True)
 
 
 def df_to_arrays(
