@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from copy import deepcopy
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Sequence
 from unittest.mock import patch
@@ -18,6 +19,7 @@ from pymatviz.utils import (
     bin_df_cols,
     df_to_arrays,
     get_crystal_sys,
+    patch_dict,
     save_fig,
 )
 from tests.conftest import y_pred, y_true
@@ -247,3 +249,73 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
         assert len(pdf.pages) == 1
         text = pdf.pages[0].extract_text()
         assert "Loading [MathJax]/extensions/MathMenu.js" not in text
+
+
+sample_dict = {"a": 1, "b": None, "c": [3, 4]}
+ref_sample_dict = deepcopy(sample_dict)
+
+
+def test_patch_dict_with_kwargs() -> None:
+    with patch_dict(sample_dict, a=2, b=3, d=4) as patched_dict:
+        assert patched_dict == {"a": 2, "b": 3, "c": [3, 4], "d": 4}
+    assert sample_dict == ref_sample_dict
+
+
+def test_patch_dict_with_args() -> None:
+    with patch_dict(sample_dict, {"a": 5, "b": 6}) as patched_dict:
+        assert patched_dict == {"a": 5, "b": 6, "c": [3, 4]}
+    assert sample_dict == ref_sample_dict
+
+
+def test_patch_dict_with_none_value() -> None:
+    with patch_dict(sample_dict, b=5, c=None) as patched_dict:
+        assert patched_dict == {"a": 1, "b": 5, "c": None}
+    assert sample_dict == ref_sample_dict
+
+
+def test_patch_dict_with_new_key() -> None:
+    with patch_dict(sample_dict, d=7, e=None) as patched_dict:
+        assert patched_dict == {"a": 1, "b": None, "c": [3, 4], "d": 7, "e": None}
+    assert sample_dict == ref_sample_dict
+
+
+def test_patch_dict_with_mutable_value() -> None:
+    with patch_dict(sample_dict, c=[5, 6]) as patched_dict:
+        assert patched_dict["c"] == [5, 6]
+        patched_dict["c"].append(7)
+        patched_dict["c"][0] = 99
+        assert patched_dict == {"a": 1, "b": None, "c": [99, 6, 7]}
+
+    assert sample_dict != patched_dict
+    assert sample_dict == ref_sample_dict
+
+
+def test_patch_dict_empty() -> None:
+    empty_dict: dict[str, int] = {}
+    with patch_dict(empty_dict, a=2) as patched_dict:
+        assert patched_dict == {"a": 2}
+    assert empty_dict == {}
+
+
+def test_patch_dict_nested_dict() -> None:
+    with patch_dict(sample_dict, c={"x": 10, "y": 20}) as patched_dict:
+        assert patched_dict == {"a": 1, "b": None, "c": {"x": 10, "y": 20}}
+    assert sample_dict == ref_sample_dict
+
+
+def test_patch_dict_overlapping_args_kwargs() -> None:
+    # kwargs should take precedence over args
+    with patch_dict(sample_dict, {"a": 7}, a=8) as patched_dict:
+        assert patched_dict["a"] == 8
+    assert sample_dict == ref_sample_dict
+
+
+def test_patch_dict_remove_key_inside_context() -> None:
+    with patch_dict(sample_dict, d=7) as patched_dict:
+        assert patched_dict["d"] == 7
+        del patched_dict["d"]
+        assert "d" not in patched_dict
+    assert sample_dict == ref_sample_dict
+
+
+assert ref_sample_dict == sample_dict
