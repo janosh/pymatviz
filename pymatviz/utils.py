@@ -3,10 +3,11 @@ from __future__ import annotations
 import ast
 import os
 import subprocess
+from contextlib import contextmanager
 from os.path import dirname
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Generator, Literal, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -300,22 +301,23 @@ def save_fig(
     pdf_sleep: float = 0.6,
     **kwargs: Any,
 ) -> None:
-    """Write a plotly figure to an HTML file. If the file is has .svelte
-    extension, insert `{...$$props}` into the figure's top-level div so it can
-    be styled by consuming Svelte code.
+    """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
+
+    If the file is has .svelte extension, insert `{...$$props}` into the figure's
+    top-level div so it can be later styled and customized from Svelte code.
 
     Args:
         fig (go.Figure | plt.Figure | plt.Axes): Plotly or matplotlib Figure or
             matplotlib Axes object.
-        path (str): Path to HTML file that will be created.
+        path (str): Path to image file that will be created.
         plotly_config (dict, optional): Configuration options for fig.write_html().
-        Defaults to dict(showTips=False, responsive=True, modeBarButtonsToRemove=
-        ["lasso2d", "select2d", "autoScale2d", "toImage"]).
-        See https://plotly.com/python/configuration-options.
+            Defaults to dict(showTips=False, responsive=True, modeBarButtonsToRemove=
+            ["lasso2d", "select2d", "autoScale2d", "toImage"]).
+            See https://plotly.com/python/configuration-options.
         env_disable (list[str], optional): Do nothing if any of these environment
             variables are set. Defaults to ("CI",).
-        pdf_sleep (float, optional): Minimum time in seconds to wait before
-            writing a PDF file. Workaround for this plotly issue
+        pdf_sleep (float, optional): Minimum time in seconds to wait before writing a
+            plotly figure to PDF file. Workaround for this plotly issue
             https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6. Has no
             effect on matplotlib figures.
 
@@ -359,6 +361,7 @@ def save_fig(
             with open(path) as file:
                 text = file.read().replace("<div>", "<div {...$$props}>", 1)
             with open(path, "w") as file:
+                # add trailing newline for pre-commit end-of-file commit hook
                 file.write(text + "\n")
     else:
         if is_pdf:
@@ -406,7 +409,7 @@ def save_and_compress_svg(
     plt.close()
 
     if (svgo := which("svgo")) is not None:
-        subprocess.run([svgo, "--multipass", filepath])
+        subprocess.run([svgo, "--multipass", filepath], check=True)
 
 
 def df_to_arrays(
@@ -511,3 +514,30 @@ def bin_df_cols(
     if index_name is None:
         return df_bin
     return df_bin.reset_index().set_index(index_name)
+
+
+@contextmanager
+def patch_dict(
+    dct: dict[Any, Any], *args: Any, **kwargs: Any
+) -> Generator[dict[Any, Any], None, None]:
+    """Context manager to temporarily patch the specified keys in a dictionary and
+    restore it to its original state on context exit.
+
+    Useful e.g. for temporary plotly fig.layout mutations:
+
+        with patch_dict(fig.layout, showlegend=False):
+            fig.write_image("plot.pdf")
+
+    Args:
+        dct (dict): The dictionary to be patched.
+        *args: Only first element is read if present. A single dictionary containing the
+            key-value pairs to patch.
+        **kwargs: The key-value pairs to patch, provided as keyword arguments.
+
+    Yields:
+        dict: The patched dictionary incl. temporary updates.
+    """
+    # if both args and kwargs are passed, kwargs will overwrite args
+    updates = {**args[0], **kwargs} if args and isinstance(args[0], dict) else kwargs
+
+    yield {**dct, **updates}

@@ -7,7 +7,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.284
+    rev: v0.0.285
     hooks:
       - id: ruff
         args: [--fix]
@@ -18,7 +18,7 @@ repos:
       - id: black-jupyter
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.4.1
+    rev: v1.5.1
     hooks:
       - id: mypy
         additional_dependencies: [types-requests]
