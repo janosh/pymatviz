@@ -507,7 +507,7 @@ def ptable_heatmap_plotly(
         raise ValueError(
             "Log color scale requires all heat map values to be > 1 since values <= 1 "
             f"map to negative log values which throws off the color scale. Got "
-            f"{smaller_1.size} values <= 0: {list(smaller_1)}"
+            f"{smaller_1.size} values <= 1: {list(smaller_1)}"
         )
 
     if heat_mode in ("fraction", "percent"):
