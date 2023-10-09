@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import scipy.stats
 import sklearn
 from matplotlib.offsetbox import AnchoredText
 from sklearn.metrics import mean_absolute_percentage_error as mape
@@ -299,6 +300,7 @@ def save_fig(
     plotly_config: dict[str, Any] | None = None,
     env_disable: Sequence[str] = ("CI",),
     pdf_sleep: float = 0.6,
+    style: str = "",
     **kwargs: Any,
 ) -> None:
     """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
@@ -320,6 +322,8 @@ def save_fig(
             plotly figure to PDF file. Workaround for this plotly issue
             https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6. Has no
             effect on matplotlib figures.
+        style (str, optional): CSS style string to be inserted into the HTML file.
+            Defaults to "". Only used if path ends with .svelte or .html.
 
         **kwargs: Keyword arguments passed to fig.write_html().
     """
@@ -363,6 +367,10 @@ def save_fig(
             with open(path, "w") as file:
                 # add trailing newline for pre-commit end-of-file commit hook
                 file.write(text + "\n")
+        if style:
+            with open(path, "r+") as file:
+                # replace first '<div ' with '<div {style=} '
+                file.write(file.read().replace("<div ", f"<div {style=} ", 1))
     else:
         if is_pdf:
             orig_template = fig.layout.template
@@ -476,6 +484,8 @@ def bin_df_cols(
     bin_by_cols: Sequence[str],
     group_by_cols: Sequence[str] = (),
     n_bins: int | Sequence[int] = 100,
+    bin_counts_col: str = "bin_counts",
+    kde_col: str = "",
     verbose: bool = True,
 ) -> pd.DataFrame:
     """Bin columns of a DataFrame.
@@ -485,6 +495,10 @@ def bin_df_cols(
         bin_by_cols (Sequence[str]): Columns to bin.
         group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
         n_bins (int): Number of bins to use. Defaults to 100.
+        bin_counts_col (str): Column name for bin counts.
+            Defaults to "bin_counts".
+        kde_col (str): Column name for KDE bin counts e.g. 'kde_bin_counts'. Defaults to
+            "" which means no KDE to speed things up.
         verbose (bool): If True, report df length reduction. Defaults to True.
 
     Returns:
@@ -499,17 +513,30 @@ def bin_df_cols(
     index_name = df.index.name
 
     for col, bins in zip(bin_by_cols, n_bins):
-        df[f"{col}_bins"] = pd.cut(df[col], bins=bins)
+        df[f"{col}_bins"] = pd.cut(df[col].values, bins=bins)
 
-    group = df.reset_index().groupby(
-        [*[f"{c}_bins" for c in bin_by_cols], *group_by_cols]
-    )
+    if df.index.name not in df:
+        df = df.reset_index()
+
+    group = df.groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
 
     df_bin = group.first().dropna()
-    df_bin["bin_counts"] = group.size()
+    df_bin[bin_counts_col] = group.size()
 
     if verbose:
-        print(f"{len(df_bin)=:,} / {len(df)=:,} = {len(df_bin)/len(df):.1%}")
+        print(
+            f"{1 - len(df_bin)/len(df):.1%} row reduction from binning: from "
+            f"{len(df_bin):,} to {len(df):,}"
+        )
+
+    if kde_col:
+        # compute kernel density estimate for each bin
+        values = df[bin_by_cols].dropna().T
+        model_kde = scipy.stats.gaussian_kde(values)
+
+        xy_binned = df_bin[bin_by_cols].T
+        density = model_kde(xy_binned)
+        df_bin["cnt_col"] = density / density.sum() * len(values)
 
     if index_name is None:
         return df_bin
@@ -540,4 +567,11 @@ def patch_dict(
     # if both args and kwargs are passed, kwargs will overwrite args
     updates = {**args[0], **kwargs} if args and isinstance(args[0], dict) else kwargs
 
-    yield {**dct, **updates}
+    # save original values as shallow copy for speed
+    # warning: in-place changes to nested dicts and objects will persist beyond context!
+    patched = dct.copy()
+
+    # apply updates
+    patched.update(updates)
+
+    yield patched
