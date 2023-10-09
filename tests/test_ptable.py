@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +20,8 @@ from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from pymatgen.core import Composition
 
     from pymatviz.ptable import CountMode

@@ -5,13 +5,14 @@ import subprocess
 from os.path import dirname
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from pandas.io.formats.style import Styler
