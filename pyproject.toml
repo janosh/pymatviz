@@ -38,10 +38,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["kaleido", "pytest", "pytest-cov"]
+test = ["kaleido", "pdfCropMargins", "pytest", "pytest-cov", "weasyprint"]
 data-src = ["matminer"]
 export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
+df-pdf-export = ["pdfCropMargins", "weasyprint"]
 
 [tool.setuptools.packages]
 find = { include = ["pymatviz*"], exclude = ["tests*"] }
