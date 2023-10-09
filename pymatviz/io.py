@@ -163,7 +163,7 @@ def df_to_pdf(
         size (str): Page size. Defaults to "landscape". See
             https://developer.mozilla.org/@page for options.
         style (str): CSS style string to be inserted into the HTML file.
-            Defaults to "". Example: "body { margin: 0; padding: 1em; }".
+            Defaults to "".
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     try:
