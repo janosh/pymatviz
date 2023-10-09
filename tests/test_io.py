@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
@@ -78,6 +79,9 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
         assert "Loading [MathJax]/extensions/MathMenu.js" not in text
 
 
+# skip on windows, failing with OSError: cannot load library 'gobject-2.0-0': error 0x7e
+# https://stackoverflow.com/a/69816601
+@pytest.mark.skipif(sys.platform == "win32", reason="fails on Windows")
 @pytest.mark.parametrize(
     "crop, size, style",
     [

@@ -17,3 +17,4 @@ jobs:
     uses: janosh/workflows/.github/workflows/pytest-release.yml@main
     with:
       os: ${{ matrix.os }}
+      python-version: 3.9
