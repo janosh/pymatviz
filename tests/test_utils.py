@@ -18,6 +18,7 @@ from pymatviz.utils import (
     annotate_metrics,
     bin_df_cols,
     df_to_arrays,
+    df_to_pdf,
     get_crystal_sys,
     patch_dict,
     save_fig,
@@ -204,7 +205,7 @@ def test_bin_df_cols(
     kde_col: str,
     expected_n_rows: int,
 ) -> None:
-    df = pd._testing.makeDataFrame()  # random data
+    df: pd.DataFrame = pd._testing.makeDataFrame()  # random data
     idx_col = "index"
     df.index.name = idx_col
     bin_counts_col = "bin_counts"
@@ -333,3 +334,38 @@ def test_patch_dict_remove_key_inside_context() -> None:
 
 
 assert ref_sample_dict == sample_dict
+
+
+@pytest.mark.parametrize(
+    "crop, size, style",
+    [
+        # test with cropping, default size, and no extra style
+        (True, "landscape", ""),
+        # test without cropping, portrait size, and additional styles
+        (False, "portrait", "body { margin: 0; padding: 1em; }"),
+    ],
+)
+def test_df_to_pdf(crop: bool, size: str, style: str, tmp_path: Path) -> None:
+    # Create a test DataFrame and Styler object
+    df: pd.DataFrame = pd._testing.makeDataFrame()  # random data
+    file_path = tmp_path / "test.pdf"
+
+    # Execute the function
+    df_to_pdf(df.style, file_path, crop=crop, size=size, style=style)
+
+    # Check if the file is created
+    assert file_path.is_file()
+
+    with open(file_path, "rb") as pdf_file:
+        contents = pdf_file.read()
+
+    # TODO: Add more specific checks here, like file content validation
+    assert contents[:4] == b"%PDF"
+
+    # Test file overwrite behavior
+    file_size_before = file_path.stat().st_size
+    df_to_pdf(df.style, file_path, crop=crop, size=size, style=style)
+    file_size_after = file_path.stat().st_size
+
+    # file size should be the same since content is unchanged
+    assert file_size_before - 10 <= file_size_after <= file_size_before + 10
