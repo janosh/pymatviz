@@ -38,7 +38,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["kaleido", "pdfCropMargins", "pytest", "pytest-cov", "weasyprint"]
+test = [
+    "jinja2",
+    "kaleido",
+    "pdfCropMargins",
+    "pytest",
+    "pytest-cov",
+    "weasyprint",
+]
 data-src = ["matminer"]
 export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
