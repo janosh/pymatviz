@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.7.0](https://github.com/janosh/pymatviz/compare/v0.6.3...v0.7.0)
+
+> 9 October 2023
+
+- Bump minimum Python version to 3.9 [`#92`](https://github.com/janosh/pymatviz/pull/92)
+- Split `pymatviz/io.py` out from `pymatviz/utils.py` and add `df_to_pdf()` export function [`#91`](https://github.com/janosh/pymatviz/pull/91)
+- Add KDE support to `bin_df_cols` utility function [`#90`](https://github.com/janosh/pymatviz/pull/90)
+- Add `patch_dict()` utility [`#88`](https://github.com/janosh/pymatviz/pull/88)
+- Breaking: rename `ptable_heatmap` and `annotate_metrics` float precision kwargs to `fmt` [`#87`](https://github.com/janosh/pymatviz/pull/87)
+- Rename `ptable_heatmap(_plotly)` 1st arg: `elem_values-&gt;values` [`#86`](https://github.com/janosh/pymatviz/pull/86)
+- skip test_df_to_pdf in windows CI [`8f207c8`](https://github.com/janosh/pymatviz/commit/8f207c8b7f9271f06dac94d1da032c8a12b1a107)
+
 #### [v0.6.3](https://github.com/janosh/pymatviz/compare/v0.6.2...v0.6.3)
 
 > 24 July 2023
