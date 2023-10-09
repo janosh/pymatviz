@@ -540,4 +540,11 @@ def patch_dict(
     # if both args and kwargs are passed, kwargs will overwrite args
     updates = {**args[0], **kwargs} if args and isinstance(args[0], dict) else kwargs
 
-    yield {**dct, **updates}
+    # save original values as shallow copy for speed
+    # warning: in-place changes to nested dicts and objects will persist beyond context!
+    patched = dct.copy()
+
+    # apply updates
+    patched.update(updates)
+
+    yield patched
