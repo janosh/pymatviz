@@ -14,6 +14,7 @@ from pymatviz.histograms import (
     spacegroup_hist,
     true_pred_hist,
 )
+from pymatviz.io import save_and_compress_svg
 from pymatviz.parity import (
     density_hexbin,
     density_hexbin_with_hist,
@@ -28,7 +29,7 @@ from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import df_ptable, save_and_compress_svg
+from pymatviz.utils import df_ptable
 
 
 # %%

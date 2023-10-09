@@ -3,7 +3,7 @@
 from matminer.datasets import load_dataset
 
 from pymatviz.histograms import hist_elemental_prevalence
-from pymatviz.utils import save_and_compress_svg
+from pymatviz.io import save_and_compress_svg
 
 
 df_expt_gap = load_dataset("matbench_expt_gap")

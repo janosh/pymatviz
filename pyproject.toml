@@ -30,7 +30,7 @@ requires-python = ">=3.8"
 dependencies = [
     "matplotlib >= 3.6.2",
     "numpy >= 1.21.0",
-    "pandas",
+    "pandas >= 2.0.0",
     "plotly",
     "pymatgen",
     "scikit-learn",
@@ -38,10 +38,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["kaleido", "pytest", "pytest-cov"]
+test = [
+    "jinja2",
+    "kaleido",
+    "pdfCropMargins",
+    "pytest",
+    "pytest-cov",
+    "weasyprint",
+]
 data-src = ["matminer"]
 export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
+# needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
+df-pdf-export = ["jinja2", "pdfCropMargins", "weasyprint"]
 
 [tool.setuptools.packages]
 find = { include = ["pymatviz*"], exclude = ["tests*"] }
