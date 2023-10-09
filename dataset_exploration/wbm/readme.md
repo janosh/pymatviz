@@ -1,1 +1,1 @@
-Refer to <https://matbench-discovery.materialsproject.org/about-the-data>.
+Refer to <https://matbench-discovery.materialsproject.org/data>.
