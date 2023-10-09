@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 import plotly.express as px
@@ -11,6 +11,8 @@ from pymatviz.utils import get_crystal_sys
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import plotly.graph_objects as go
 
 

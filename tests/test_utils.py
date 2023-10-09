@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -19,6 +19,10 @@ from pymatviz.utils import (
     patch_dict,
 )
 from tests.conftest import y_pred, y_true
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @pytest.mark.parametrize(

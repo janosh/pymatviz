@@ -22,11 +22,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.9",
 ]
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "matplotlib >= 3.6.2",
     "numpy >= 1.21.0",
@@ -76,7 +77,7 @@ show_error_codes = true
 no_implicit_optional = false
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 include = ["**/pyproject.toml", "*.ipynb", "*.py", "*.pyi"]
 select = [
     "B",    # flake8-bugbear

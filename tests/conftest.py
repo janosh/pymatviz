@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import platform
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +12,8 @@ from pymatgen.core import Lattice, Structure
 
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     import plotly.graph_objects as go
 
 
