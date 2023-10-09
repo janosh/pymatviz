@@ -2,8 +2,8 @@
 
 from matminer.datasets import load_dataset
 
+from pymatviz.io import save_and_compress_svg
 from pymatviz.ptable import ptable_heatmap
-from pymatviz.utils import save_and_compress_svg
 
 
 df_expt_gap = load_dataset("matbench_expt_gap")

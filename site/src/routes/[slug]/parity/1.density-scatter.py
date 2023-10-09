@@ -1,7 +1,7 @@
 import numpy as np
 
+from pymatviz.io import save_and_compress_svg
 from pymatviz.parity import density_scatter
-from pymatviz.utils import save_and_compress_svg
 
 
 rand_regression_size = 500
