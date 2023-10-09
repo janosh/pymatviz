@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from contextlib import contextmanager
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Generator, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,6 +16,8 @@ from sklearn.metrics import r2_score
 
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
     import plotly.graph_objects as go
     from matplotlib.gridspec import GridSpec
     from numpy.typing import ArrayLike
