@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +10,8 @@ from pymatviz.utils import df_to_arrays
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import pandas as pd
     from numpy.typing import ArrayLike
 
