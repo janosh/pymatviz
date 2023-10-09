@@ -300,6 +300,7 @@ def save_fig(
     plotly_config: dict[str, Any] | None = None,
     env_disable: Sequence[str] = ("CI",),
     pdf_sleep: float = 0.6,
+    style: str = "",
     **kwargs: Any,
 ) -> None:
     """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
@@ -321,6 +322,8 @@ def save_fig(
             plotly figure to PDF file. Workaround for this plotly issue
             https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6. Has no
             effect on matplotlib figures.
+        style (str, optional): CSS style string to be inserted into the HTML file.
+            Defaults to "". Only used if path ends with .svelte or .html.
 
         **kwargs: Keyword arguments passed to fig.write_html().
     """
@@ -364,6 +367,10 @@ def save_fig(
             with open(path, "w") as file:
                 # add trailing newline for pre-commit end-of-file commit hook
                 file.write(text + "\n")
+        if style:
+            with open(path, "r+") as file:
+                # replace first '<div ' with '<div {style=} '
+                file.write(file.read().replace("<div ", f"<div {style=} ", 1))
     else:
         if is_pdf:
             orig_template = fig.layout.template
