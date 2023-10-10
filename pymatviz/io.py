@@ -5,7 +5,7 @@ import subprocess
 from os.path import dirname
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -192,13 +192,24 @@ def df_to_pdf(
         normalize_and_crop_pdf(file_path)
 
 
-def normalize_and_crop_pdf(file_path: str | Path) -> None:
+def normalize_and_crop_pdf(
+    file_path: str | Path, on_gs_not_found: Literal["ignore", "warn", "error"] = "warn"
+) -> None:
     """Normalize a PDF using Ghostscript and then crop it.
     Without gs normalization, pdfCropMargins sometimes corrupts the PDF.
 
     Args:
         file_path (str | Path): Path to the PDF file.
+        on_gs_not_found ('ignore' | 'warn' | 'error', optional): What to do if
+            Ghostscript is not found in PATH. Defaults to 'warn'.
     """
+    if which("gs") is None:
+        if on_gs_not_found == "ignore":
+            return
+        if on_gs_not_found == "warn":
+            print("Ghostscript not found, skipping PDF normalization and cropping")
+            return
+        raise RuntimeError("Ghostscript not found in PATH")
     try:
         normalized_file_path = f"{file_path}_normalized.pdf"
         from pdfCropMargins import crop
@@ -234,3 +245,44 @@ def normalize_and_crop_pdf(file_path: str | Path) -> None:
         raise ImportError(msg) from exc
     except Exception as exc:
         raise RuntimeError("Error cropping PDF margins") from exc
+
+
+def df_to_svelte_table(
+    styler: Styler,
+    file_path: str | Path,
+    inline_props: str = "",
+    script: str | None = "",
+    styles: str | None = "table { overflow: scroll; max-width: 100%; display: block; }",
+    **kwargs: Any,
+) -> None:
+    """Convert a pandas Styler to a svelte table.
+
+    Args:
+        styler (Styler): Styler object to export.
+        file_path (str): Path to the file to write the svelte table to.
+        inline_props (str): Inline props to pass to the table element. Example:
+            "class='table' style='width: 100%'". Defaults to "".
+        script (str): JavaScript to insert above the table. Will replace the opening
+            `<table` tag to allow passing props to it. Uses ...props to allow for
+            Svelte props forwarding to the table element. See source code for lengthy
+            default script.
+        styles (str): CSS rules to add to the table styles. Defaults to
+            `table { overflow: scroll; max-width: 100%; display: block; }`.
+        **kwargs: Keyword arguments passed to Styler.to_html().
+    """
+    default_script = """<script lang="ts">
+      import { sortable } from 'svelte-zoo/actions'
+    </script>
+
+    <table use:sortable {...$$props}
+    """
+    html = styler.to_html(**kwargs)
+    if inline_props:
+        html = html.replace("<table", f"<table {inline_props}")
+    if script is not None:
+        html = html.replace("<table", f"<table {script or default_script}")
+    if styles is not None:
+        # insert styles at end of closing </style> tag so they override default styles
+        html = html.replace("</style>", f"{styles}</style>")
+    with open(file_path, "w") as file:
+        file.write(html)

@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
 
-from pymatviz.io import df_to_pdf, save_fig
+from pymatviz.io import df_to_pdf, df_to_svelte_table, normalize_and_crop_pdf, save_fig
 
 
 if TYPE_CHECKING:
@@ -93,21 +93,47 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
         (False, "portrait", "body { margin: 0; padding: 1em; }"),
     ],
 )
-def test_df_to_pdf(crop: bool, size: str, style: str, tmp_path: Path) -> None:
+def test_df_to_pdf(
+    crop: bool,
+    size: str,
+    style: str,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    try:
+        import weasyprint
+    except ImportError:
+        weasyprint = None
+    try:
+        import pdfCropMargins
+    except ImportError:
+        pdfCropMargins = None
+
     # Create a test DataFrame and Styler object
     df: pd.DataFrame = pd._testing.makeDataFrame()  # random data
-    file_path = tmp_path / "test.pdf"
+    file_path = tmp_path / "test_df_to.pdf"
 
-    # Execute the function
-    df_to_pdf(df.style, file_path, crop=crop, size=size, style=style)
+    try:
+        df_to_pdf(df.style, file_path, crop=crop, size=size, style=style)
+    except ImportError as exc:
+        if weasyprint is None:
+            assert "weasyprint not installed\n" in str(exc)  # noqa: PT017
+            return
+        if pdfCropMargins is None:
+            assert "cropPdfMargins not installed\n" in str(exc)  # noqa: PT017
+            return
 
     # Check if the file is created
     assert file_path.is_file()
+    # ensure the function doesn't print to stdout or stderr
+    stdout, stderr = capsys.readouterr()
+    assert stderr == ""
+    assert stdout == ""
 
     with open(file_path, "rb") as pdf_file:
         contents = pdf_file.read()
 
-    # TODO: Add more specific checks here, like file content validation
+    # TODO: maybe add more specific checks here, like file content validation
     assert contents[:4] == b"%PDF"
 
     # Test file overwrite behavior
@@ -117,3 +143,61 @@ def test_df_to_pdf(crop: bool, size: str, style: str, tmp_path: Path) -> None:
 
     # file size should be the same since content is unchanged
     assert file_size_before - 10 <= file_size_after <= file_size_before + 10
+
+
+def test_normalize_and_crop_pdf(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # patch which('gs') to return None
+    monkeypatch.setattr("pymatviz.io.which", lambda _: None)
+
+    normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="ignore")
+    stdout, stderr = capsys.readouterr()
+    assert stdout == "" == stderr
+
+    normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="warn")
+    stdout, stderr = capsys.readouterr()
+    assert stdout == "Ghostscript not found, skipping PDF normalization and cropping\n"
+    assert stderr == ""
+
+    with pytest.raises(RuntimeError, match="Ghostscript not found in PATH"):
+        normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="error")
+
+    # patch which('gs') to return a path
+
+
+@pytest.mark.parametrize(
+    "script, styles, inline_props",
+    [
+        (None, None, ""),
+        ("", "body { margin: 0; padding: 1em; }", "class='table'"),
+        (
+            "import { sortable } from 'svelte-zoo/actions'",
+            "body { margin: 0; padding: 1em; }",
+            "style='width: 100%'",
+        ),
+    ],
+)
+def test_df_to_svelte_table(
+    tmp_path: Path, script: str, styles: str, inline_props: str
+) -> None:
+    df = pd._testing.makeMixedDataFrame()
+
+    file_path = tmp_path / "test_df.svelte"
+
+    df_to_svelte_table(
+        df.style, file_path, script=script, styles=styles, inline_props=inline_props
+    )
+
+    assert file_path.is_file()
+    content = file_path.read_text()
+
+    if script is not None:
+        assert script in content
+    if styles is not None:
+        assert f"{styles}</style>" in content
+    if inline_props:
+        assert inline_props in content
+
+    # check file contains original dataframe value
+    assert str(df.iloc[0, 0]) in content
