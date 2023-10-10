@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
 
-from pymatviz.io import df_to_pdf, normalize_and_crop_pdf, save_fig
+from pymatviz.io import df_to_pdf, df_to_svelte_table, normalize_and_crop_pdf, save_fig
 
 
 if TYPE_CHECKING:
@@ -164,3 +164,40 @@ def test_normalize_and_crop_pdf(
         normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="error")
 
     # patch which('gs') to return a path
+
+
+@pytest.mark.parametrize(
+    "script, styles, inline_props",
+    [
+        (None, None, ""),
+        ("", "body { margin: 0; padding: 1em; }", "class='table'"),
+        (
+            "import { sortable } from 'svelte-zoo/actions'",
+            "body { margin: 0; padding: 1em; }",
+            "style='width: 100%'",
+        ),
+    ],
+)
+def test_df_to_svelte_table(
+    tmp_path: Path, script: str, styles: str, inline_props: str
+) -> None:
+    df = pd._testing.makeMixedDataFrame()
+
+    file_path = tmp_path / "test_df.svelte"
+
+    df_to_svelte_table(
+        df.style, file_path, script=script, styles=styles, inline_props=inline_props
+    )
+
+    assert file_path.is_file()
+    content = file_path.read_text()
+
+    if script is not None:
+        assert script in content
+    if styles is not None:
+        assert f"{styles}</style>" in content
+    if inline_props:
+        assert inline_props in content
+
+    # check file contains original dataframe value
+    assert str(df.iloc[0, 0]) in content
