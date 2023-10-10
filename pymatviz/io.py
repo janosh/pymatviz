@@ -251,14 +251,7 @@ def df_to_svelte_table(
     styler: Styler,
     file_path: str | Path,
     inline_props: str = "",
-    script: str
-    | None = """
-    <script lang="ts">
-      import { sortable } from 'svelte-zoo/actions'
-    </script>
-
-    <table use:sortable {...$$props}
-    """,
+    script: str | None = "",
     styles: str | None = "table { overflow: scroll; max-width: 100%; display: block; }",
     **kwargs: Any,
 ) -> None:
@@ -270,22 +263,24 @@ def df_to_svelte_table(
         inline_props (str): Inline props to pass to the table element. Example:
             "class='table' style='width: 100%'". Defaults to "".
         script (str): JavaScript to insert above the table. Will replace the opening
-            '<table' tag to allow passing props to it. Defaults to '''
-            <script lang="ts">
-            import { sortable } from 'svelte-zoo/actions'
-            </script>
-
-            <table use:sortable {...$$props}'''
-            The `{...props}` allows for Svelte props forwarding to the table element.
-        styles (str): CSS rules to add to the table styles.
-            Defaults to "table { overflow: scroll; max-width: 100%; display: block; }".
+            `<table` tag to allow passing props to it. Uses ...props to allow for
+            Svelte props forwarding to the table element. See source code for lengthy
+            default script.
+        styles (str): CSS rules to add to the table styles. Defaults to
+            `table { overflow: scroll; max-width: 100%; display: block; }`.
         **kwargs: Keyword arguments passed to Styler.to_html().
+    """
+    default_script = """<script lang="ts">
+      import { sortable } from 'svelte-zoo/actions'
+    </script>
+
+    <table use:sortable {...$$props}
     """
     html = styler.to_html(**kwargs)
     if inline_props:
         html = html.replace("<table", f"<table {inline_props}")
     if script is not None:
-        html = html.replace("<table", f"<table {script}")
+        html = html.replace("<table", f"<table {script or default_script}")
     if styles is not None:
         # insert styles at end of closing </style> tag so they override default styles
         html = html.replace("</style>", f"{styles}</style>")
