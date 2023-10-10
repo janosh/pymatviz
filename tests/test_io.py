@@ -16,6 +16,8 @@ from pymatviz.io import df_to_pdf, save_fig
 if TYPE_CHECKING:
     from pathlib import Path
 
+    CapSys = pytest.CaptureFixture[str]
+
 
 @pytest.mark.parametrize("fig", [go.Figure(), plt.figure()])
 @pytest.mark.parametrize("ext", ["html", "svelte", "png", "svg", "pdf"])
@@ -93,21 +95,47 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
         (False, "portrait", "body { margin: 0; padding: 1em; }"),
     ],
 )
-def test_df_to_pdf(crop: bool, size: str, style: str, tmp_path: Path) -> None:
+def test_df_to_pdf(
+    crop: bool,
+    size: str,
+    style: str,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    try:
+        import weasyprint
+    except ImportError:
+        weasyprint = None
+    try:
+        import pdfCropMargins
+    except ImportError:
+        pdfCropMargins = None
+
     # Create a test DataFrame and Styler object
     df: pd.DataFrame = pd._testing.makeDataFrame()  # random data
-    file_path = tmp_path / "test.pdf"
+    file_path = tmp_path / "test_df_to.pdf"
 
-    # Execute the function
-    df_to_pdf(df.style, file_path, crop=crop, size=size, style=style)
+    try:
+        df_to_pdf(df.style, file_path, crop=crop, size=size, style=style)
+    except ImportError as exc:
+        if weasyprint is None:
+            assert "weasyprint not installed\n" in str(exc)  # noqa: PT017
+            return
+        if pdfCropMargins is None:
+            assert "cropPdfMargins not installed\n" in str(exc)  # noqa: PT017
+            return
 
     # Check if the file is created
     assert file_path.is_file()
+    # ensure the function doesn't print to stdout or stderr
+    stdout, stderr = capsys.readouterr()
+    assert stderr == ""
+    assert stdout == ""
 
     with open(file_path, "rb") as pdf_file:
         contents = pdf_file.read()
 
-    # TODO: Add more specific checks here, like file content validation
+    # TODO: maybe add more specific checks here, like file content validation
     assert contents[:4] == b"%PDF"
 
     # Test file overwrite behavior
