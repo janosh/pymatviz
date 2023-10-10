@@ -10,13 +10,11 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
 
-from pymatviz.io import df_to_pdf, save_fig
+from pymatviz.io import df_to_pdf, normalize_and_crop_pdf, save_fig
 
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    CapSys = pytest.CaptureFixture[str]
 
 
 @pytest.mark.parametrize("fig", [go.Figure(), plt.figure()])
@@ -145,3 +143,24 @@ def test_df_to_pdf(
 
     # file size should be the same since content is unchanged
     assert file_size_before - 10 <= file_size_after <= file_size_before + 10
+
+
+def test_normalize_and_crop_pdf(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # patch which('gs') to return None
+    monkeypatch.setattr("pymatviz.io.which", lambda _: None)
+
+    normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="ignore")
+    stdout, stderr = capsys.readouterr()
+    assert stdout == "" == stderr
+
+    normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="warn")
+    stdout, stderr = capsys.readouterr()
+    assert stdout == "Ghostscript not found, skipping PDF normalization and cropping\n"
+    assert stderr == ""
+
+    with pytest.raises(RuntimeError, match="Ghostscript not found in PATH"):
+        normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="error")
+
+    # patch which('gs') to return a path
