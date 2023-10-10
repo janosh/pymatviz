@@ -245,3 +245,49 @@ def normalize_and_crop_pdf(
         raise ImportError(msg) from exc
     except Exception as exc:
         raise RuntimeError("Error cropping PDF margins") from exc
+
+
+def df_to_svelte_table(
+    styler: Styler,
+    file_path: str | Path,
+    inline_props: str = "",
+    script: str
+    | None = """
+    <script lang="ts">
+      import { sortable } from 'svelte-zoo/actions'
+    </script>
+
+    <table use:sortable {...$$props}
+    """,
+    styles: str | None = "table { overflow: scroll; max-width: 100%; display: block; }",
+    **kwargs: Any,
+) -> None:
+    """Convert a pandas Styler to a svelte table.
+
+    Args:
+        styler (Styler): Styler object to export.
+        file_path (str): Path to the file to write the svelte table to.
+        inline_props (str): Inline props to pass to the table element. Example:
+            "class='table' style='width: 100%'". Defaults to "".
+        script (str): JavaScript to insert above the table. Will replace the opening
+            '<table' tag to allow passing props to it. Defaults to '''
+            <script lang="ts">
+            import { sortable } from 'svelte-zoo/actions'
+            </script>
+
+            <table use:sortable {...$$props}'''
+            The `{...props}` allows for Svelte props forwarding to the table element.
+        styles (str): CSS rules to add to the table styles.
+            Defaults to "table { overflow: scroll; max-width: 100%; display: block; }".
+        **kwargs: Keyword arguments passed to Styler.to_html().
+    """
+    html = styler.to_html(**kwargs)
+    if inline_props:
+        html = html.replace("<table", f"<table {inline_props}")
+    if script is not None:
+        html = html.replace("<table", f"<table {script}")
+    if styles is not None:
+        # insert styles at end of closing </style> tag so they override default styles
+        html = html.replace("</style>", f"{styles}</style>")
+    with open(file_path, "w") as file:
+        file.write(html)
