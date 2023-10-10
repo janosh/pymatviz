@@ -5,7 +5,7 @@ import subprocess
 from os.path import dirname
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -192,13 +192,24 @@ def df_to_pdf(
         normalize_and_crop_pdf(file_path)
 
 
-def normalize_and_crop_pdf(file_path: str | Path) -> None:
+def normalize_and_crop_pdf(
+    file_path: str | Path, on_gs_not_found: Literal["ignore", "warn", "error"] = "warn"
+) -> None:
     """Normalize a PDF using Ghostscript and then crop it.
     Without gs normalization, pdfCropMargins sometimes corrupts the PDF.
 
     Args:
         file_path (str | Path): Path to the PDF file.
+        on_gs_not_found ('ignore' | 'warn' | 'error', optional): What to do if
+            Ghostscript is not found in PATH. Defaults to 'warn'.
     """
+    if which("gs") is None:
+        if on_gs_not_found == "ignore":
+            return
+        if on_gs_not_found == "warn":
+            print("Ghostscript not found, skipping PDF normalization and cropping")
+            return
+        raise RuntimeError("Ghostscript not found in PATH")
     try:
         normalized_file_path = f"{file_path}_normalized.pdf"
         from pdfCropMargins import crop
