@@ -71,7 +71,7 @@ def count_elements(
         pd.Series: Map element symbols to heatmap values.
     """
     if count_mode not in get_args(CountMode):
-        raise ValueError(f"{count_mode=} must be one of {get_args(CountMode)=}")
+        raise ValueError(f"Invalid {count_mode=} must be one of {get_args(CountMode)}")
     # ensure values is Series if we got dict/list/tuple
     srs = pd.Series(values)
 
@@ -458,7 +458,15 @@ def ptable_heatmap_plotly(
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
         color_bar (dict[str, Any]): Plotly color bar properties documented at
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to
-            dict(orientation="h").
+            dict(orientation="h"). Commonly used keys are:
+            - title: color bar title
+            - titleside: "top" | "bottom" | "right" | "left"
+            - tickmode: "array" | "auto" | "linear" | "log" | "date" | "category"
+            - tickvals: list of tick values
+            - ticktext: list of tick labels
+            - tickformat: f-string format option for tick labels
+            - len: fraction of plot height or width depending on orientation
+            - thickness: fraction of plot height or width depending on orientation
         cscale_range (tuple[float | None, float | None]): Color bar range. Defaults to
             (None, None) meaning the range is automatically determined from the data.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
@@ -527,7 +535,7 @@ def ptable_heatmap_plotly(
     if label_map is None:
         # default to space string for None, np.nan and "nan". space is needed
         # for <br> in tile_text to work so all element symbols are vertically aligned
-        label_map = dict.fromkeys([np.nan, None, "nan"], " ")  # type: ignore
+        label_map = dict.fromkeys([np.nan, None, "nan"], " ")  # type: ignore[list-item]
 
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
@@ -549,7 +557,7 @@ def ptable_heatmap_plotly(
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
         tile_text = (
             f"<span {style=}>{symbol}</span><br>"
-            f"{(label_map or {}).get(label, label)}"  # type: ignore
+            f"{(label_map or {}).get(label, label)}"  # type: ignore[arg-type]
         )
 
         tile_texts[row][col] = tile_text

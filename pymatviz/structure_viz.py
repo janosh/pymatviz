@@ -349,10 +349,10 @@ def plot_structure_2d(
 
                 start += occupancy
         else:  # draw unit cell
-            idx -= n_atoms
+            cell_idx = idx - n_atoms
             # only draw line if not obstructed by an atom
-            if z_indices[idx] != -1:
-                hxy = unit_cell_lines[z_indices[idx]]
+            if z_indices[cell_idx] != -1:
+                hxy = unit_cell_lines[z_indices[cell_idx]]
                 path = PathPatch(Path((xy + hxy, xy - hxy)))
                 ax.add_patch(path)
 

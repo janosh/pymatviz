@@ -263,8 +263,8 @@ def spacegroup_hist(
         )
         x0 += width
 
-    ax.yaxis.grid(True)
-    ax.xaxis.grid(False)
+    ax.yaxis.grid(visible=True)
+    ax.xaxis.grid(visible=False)
 
     if xticks == "crys_sys_edges" or isinstance(xticks, int):
         if isinstance(xticks, int):
