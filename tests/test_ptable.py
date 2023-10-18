@@ -105,12 +105,16 @@ def test_count_elements_bad_atomic_nums(range_limits: tuple[int, int]) -> None:
 def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
     ax = hist_elemental_prevalence(glass_formulas)
     assert isinstance(ax, plt.Axes)
+    plt.clf()
 
-    hist_elemental_prevalence(glass_formulas, log=True)
+    ax = hist_elemental_prevalence(glass_formulas, log=True)
+    plt.clf()
 
-    hist_elemental_prevalence(glass_formulas, keep_top=10)
+    ax = hist_elemental_prevalence(glass_formulas, keep_top=10)
+    plt.clf()
 
     hist_elemental_prevalence(glass_formulas, keep_top=10, bar_values="count")
+    plt.clf()
 
 
 def test_ptable_heatmap(

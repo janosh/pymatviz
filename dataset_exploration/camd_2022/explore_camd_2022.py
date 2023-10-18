@@ -32,11 +32,11 @@ if os.path.isfile("camd-2022-wo-features.csv.bz2"):
 else:
     print("Fetching data from AWS...")
     url = "https://s3.amazonaws.com/publications.matr.io/7/deployment/data/files"
-    with_feat = False
-    dataset = f"/camd_data_to_release_{'w' if with_feat else 'wo'}features.json"
-    data = requests.get(url + dataset).json()
+    with_feat_str = "w" if (with_feat := False) else "wo"
+    dataset_url = f"{url}/camd_data_to_release_{with_feat_str}features.json"
+    data = requests.get(dataset_url).json()
     df = pd.DataFrame(data)
-    df = pd.to_csv(f"camd-2022-{'w' if with_feat else 'wo'}-features.csv.bz2")
+    df = pd.to_csv(f"camd-2022-{with_feat_str}-features.csv.bz2")
 
 
 # %%
