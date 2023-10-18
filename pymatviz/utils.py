@@ -206,8 +206,8 @@ def annotate_metrics(
             text += f"{metric} = {funcs[metric](xs, ys):{fmt}}\n"
     text += suffix
 
-    kwargs["frameon"] = kwargs.get("frameon", False)  # default to no frame
-    kwargs["loc"] = kwargs.get("loc", "lower right")  # default to lower right
+    kwargs.setdefault("frameon", False)
+    kwargs.setdefault("loc", "lower right")
     text_box = AnchoredText(text, **kwargs)
     ax.add_artist(text_box)
 

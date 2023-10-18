@@ -210,7 +210,7 @@ def spacegroup_hist(
 
     ax.set(xlabel=xlabel, ylabel="Count")
 
-    kwargs["width"] = kwargs.get("width", 0.9)  # set default bar width
+    kwargs.setdefault("width", 0.9)  # set default histogram bar width
     # make plot
     df.counts.plot.bar(figsize=[16, 4], ax=ax, **kwargs)
 
