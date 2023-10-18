@@ -40,6 +40,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
+    "adjustText",
     "jinja2",
     "kaleido",
     "pdfCropMargins",
@@ -52,6 +53,7 @@ export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
 # needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
 df-pdf-export = ["jinja2", "pdfCropMargins", "weasyprint"]
+auto-text-pos = ["adjustText"]
 
 [tool.setuptools.packages]
 find = { include = ["pymatviz*"], exclude = ["tests*"] }
