@@ -13,6 +13,7 @@ A toolkit for visualizations in materials informatics.
 [![This project supports Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg?logo=python&logoColor=white)](https://python.org/downloads)
 [![PyPI](https://img.shields.io/pypi/v/pymatviz?logo=pypi&logoColor=white)](https://pypi.org/project/pymatviz)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/pymatviz?logo=icloud&logoColor=white)](https://pypistats.org/packages/pymatviz)
+[![DOI](https://zenodo.org/badge/340898532.svg)](https://zenodo.org/badge/latestdoi/340898532)
 
 </h4>
 
