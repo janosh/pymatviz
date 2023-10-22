@@ -141,7 +141,6 @@ def ptable_heatmap(
     cbar_title: str = "Element Count",
     cbar_max: float | None = None,
     cmap: str = "summer_r",
-    zero_color: str = "#DDD",  # light gray
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
@@ -149,6 +148,7 @@ def ptable_heatmap(
     cbar_fmt: str | None = None,
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
+    zero_color: str = "#eee",  # light gray
     zero_symbol: str | float = "-",
     label_font_size: int = 16,
     value_font_size: int = 12,
@@ -168,8 +168,6 @@ def ptable_heatmap(
             if smaller than the largest plotted value. For creating multiple plots with
             identical color bars for visual comparison. Defaults to 0.
         cmap (str, optional): Matplotlib colormap name to use. Defaults to "YlGn".
-        zero_color (str): Color to use for elements with value zero. Defaults to "#DDD"
-            (light gray).
         infty_color: Color to use for elements with value infinity. Defaults to
             "lightskyblue".
         na_color: Color to use for elements with value infinity. Defaults to "white".
@@ -189,7 +187,9 @@ def ptable_heatmap(
             the color scale. Defaults to "auto".
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can try log=True or
-            exclude_elements=['O']. Defaults to ().
+            exclude_elements=["O"]. Defaults to ().
+        zero_color (str): Color to use for elements with value zero. Defaults to "#eee"
+            (light gray).
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
         label_font_size (int): Font size for element symbols. Defaults to 16.
