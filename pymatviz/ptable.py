@@ -614,13 +614,14 @@ def ptable_heatmap_plotly(
         # colors on empty tiles of the periodic table
         heatmap_values[row][col] = color_val
 
-    # TODO: see if this ugly code can be handed off to plotly, looks like not atm
-    # https://github.com/janosh/pymatviz/issues/52
-    # https://github.com/plotly/documentation/issues/1611
-    log_cbar = dict(
-        tickvals=np.arange(int(np.log10(values.max())) + 1),
-        ticktext=10 ** np.arange(int(np.log10(values.max())) + 1),
-    )
+    if log:
+        # TODO: see if this ugly code can be handed off to plotly, looks like not atm
+        # https://github.com/janosh/pymatviz/issues/52
+        # https://github.com/plotly/documentation/issues/1611
+        log_cbar = dict(
+            tickvals=np.arange(int(np.log10(values.max())) + 1),
+            ticktext=10 ** np.arange(int(np.log10(values.max())) + 1),
+        )
     if isinstance(font_colors, str):
         font_colors = [font_colors]
     if cscale_range == (None, None):
