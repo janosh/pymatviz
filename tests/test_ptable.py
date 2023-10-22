@@ -166,6 +166,10 @@ def test_ptable_heatmap(
     cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
     assert cbar_1st_label == "0.000%"
 
+    # test tile_size
+    ptable_heatmap(df_ptable.atomic_mass, tile_size=1)
+    ptable_heatmap(df_ptable.atomic_mass, tile_size=(0.9, 1))
+
 
 def test_ptable_heatmap_ratio(
     steel_formulas: list[str],

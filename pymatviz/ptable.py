@@ -157,6 +157,7 @@ def ptable_heatmap(
     zero_symbol: str | float = "-",
     label_font_size: int = 16,
     value_font_size: int = 12,
+    tile_size: float | tuple[float, float] = 0.9,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
@@ -202,6 +203,9 @@ def ptable_heatmap(
             Defaults to "-".
         label_font_size (int): Font size for element symbols. Defaults to 16.
         value_font_size (int): Font size for heat values. Defaults to 12.
+        tile_size (float | tuple[float, float]): Size of each tile in the periodic
+            table as a fraction of available space before touching neighboring tiles.
+            1 or (1, 1) means no gaps between tiles. Defaults to 0.9.
         **kwargs: Additional keyword arguments passed to plt.figure().
 
     Returns:
@@ -235,7 +239,10 @@ def ptable_heatmap(
 
     ax = ax or plt.gca()
 
-    rw = rh = 0.9  # rectangle width/height
+    if isinstance(tile_size, (float, int)):
+        tile_width = tile_height = tile_size
+    else:
+        tile_width, tile_height = tile_size
 
     norm = LogNorm() if log else Normalize()
 
@@ -277,7 +284,9 @@ def ptable_heatmap(
             label = label.replace("e+0", "e")
         if row < 3:  # vertical offset for lanthanide + actinide series
             row += 0.5
-        rect = Rectangle((column, row), rw, rh, edgecolor="gray", facecolor=color)
+        rect = Rectangle(
+            (column, row), tile_width, tile_height, edgecolor="gray", facecolor=color
+        )
 
         if heat_mode is None:
             # no value to display below in colored rectangle so center element symbol
@@ -295,13 +304,17 @@ def ptable_heatmap(
             text_clr = text_color
 
         plt.text(
-            column + 0.5 * rw, row + 0.5 * rh, symbol, color=text_clr, **text_style
+            column + 0.5 * tile_width,
+            row + 0.5 * tile_height,
+            symbol,
+            color=text_clr,
+            **text_style,
         )
 
         if heat_mode is not None:
             plt.text(
-                column + 0.5 * rw,
-                row + 0.1 * rh,
+                column + 0.5 * tile_width,
+                row + 0.1 * tile_height,
                 label,
                 fontsize=value_font_size,
                 horizontalalignment="center",
