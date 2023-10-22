@@ -150,6 +150,8 @@ def ptable_heatmap(
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
     zero_symbol: str | float = "-",
+    label_font_size: int = 16,
+    value_font_size: int = 12,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
 
@@ -190,6 +192,8 @@ def ptable_heatmap(
             exclude_elements=['O']. Defaults to ().
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
+        label_font_size (int): Font size for element symbols. Defaults to 16.
+        value_font_size (int): Font size for heat values. Defaults to 12.
 
     Returns:
         ax: matplotlib Axes with the heatmap.
@@ -227,7 +231,9 @@ def ptable_heatmap(
     if cbar_max is not None:
         norm.vmax = cbar_max
 
-    text_style = dict(horizontalalignment="center", fontsize=16, fontweight="semibold")
+    text_style = dict(
+        horizontalalignment="center", fontsize=label_font_size, fontweight="semibold"
+    )
 
     for symbol, row, column, *_ in df_ptable.itertuples():
         row = n_rows - row  # invert row count to make periodic table right side up
@@ -283,7 +289,7 @@ def ptable_heatmap(
                 column + 0.5 * rw,
                 row + 0.1 * rh,
                 label,
-                fontsize=10,
+                fontsize=value_font_size,
                 horizontalalignment="center",
                 color=text_clr,
             )
