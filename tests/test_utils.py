@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
@@ -19,7 +19,9 @@ from pymatviz.utils import (
     bin_df_cols,
     df_to_arrays,
     get_crystal_sys,
+    luminance,
     patch_dict,
+    pick_bw_for_contrast,
 )
 from tests.conftest import y_pred, y_true
 
@@ -331,3 +333,38 @@ def test_annotate_bars(
         ImportError, match=err_msg
     ):
         annotate_bars(ax, adjust_test_pos=True)
+
+
+@pytest.mark.parametrize(
+    "color,expected",
+    [
+        ((0, 0, 0), 0),  # Black
+        ((1, 1, 1), 1),  # White
+        ((0.5, 0.5, 0.5), 0.5),  # Gray
+        ((1, 0, 0), 0.299),  # Red
+        ((0, 1, 0), 0.587),  # Green
+        ((0, 0, 1, 0.3), 0.114),  # Blue with alpha (should be ignored)
+    ],
+)
+def test_luminance(color: tuple[float, float, float], expected: float) -> None:
+    assert luminance(color) == pytest.approx(expected, 0.001)
+
+
+@pytest.mark.parametrize(
+    "color,text_color_threshold,expected",
+    [
+        ((1.0, 1.0, 1.0), 0.7, "black"),  # White
+        ((0, 0, 0), 0.7, "white"),  # Black
+        ((0.5, 0.5, 0.5), 0.7, "white"),  # Gray
+        ((0.5, 0.5, 0.5), 0, "black"),  # Gray with low threshold
+        ((1, 0, 0, 0.3), 0.7, "white"),  # Red with alpha (should be ignored)
+        ((0, 1, 0), 0.7, "white"),  # Green
+        ((0, 0, 1.0), 0.4, "white"),  # Blue with low threshold
+    ],
+)
+def test_pick_bw_for_contrast(
+    color: tuple[float, float, float],
+    text_color_threshold: float,
+    expected: Literal["black", "white"],
+) -> None:
+    assert pick_bw_for_contrast(color, text_color_threshold) == expected
