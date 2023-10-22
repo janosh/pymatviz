@@ -505,7 +505,7 @@ def ptable_heatmap_plotly(
         raise ValueError(f"{cscale_range=} should have length 2")
 
     if isinstance(colorscale, (str, type(None))):
-        colorscale = px.colors.get_colorscale(colorscale or "Pinkyl")
+        colorscale = px.colors.get_colorscale(colorscale or "viridis")
     elif isinstance(colorscale, Sequence) and isinstance(
         colorscale[0], (str, list, tuple)
     ):
@@ -529,7 +529,7 @@ def ptable_heatmap_plotly(
         raise ValueError(
             "Log color scale requires all heat map values to be > 1 since values <= 1 "
             f"map to negative log values which throws off the color scale. Got "
-            f"{smaller_1.size} values <= 1: {list(smaller_1)}"
+            f"{smaller_1.size} values <= 1: {dict(smaller_1)}"
         )
 
     if heat_mode in ("fraction", "percent"):
