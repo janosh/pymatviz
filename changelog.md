@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.7.1](https://github.com/janosh/pymatviz/compare/v0.7.0...v0.7.1)
+
+> 22 October 2023
+
+- Periodic table UX improvements [`#95`](https://github.com/janosh/pymatviz/pull/95)
+- `annotate_bars` add keyword `adjust_test_pos: bool = False` [`#94`](https://github.com/janosh/pymatviz/pull/94)
+- Add `df_to_svelte_table` [`#93`](https://github.com/janosh/pymatviz/pull/93)
+- fix invalid count_mode ValueError err msg [`ae77997`](https://github.com/janosh/pymatviz/commit/ae779970e210e382006b7a730175ac025b026285)
+
 #### [v0.7.0](https://github.com/janosh/pymatviz/compare/v0.6.3...v0.7.0)
 
 > 9 October 2023
@@ -12,7 +21,6 @@ All notable changes to this project will be documented in this file. Dates are d
 - Add `patch_dict()` utility [`#88`](https://github.com/janosh/pymatviz/pull/88)
 - Breaking: rename `ptable_heatmap` and `annotate_metrics` float precision kwargs to `fmt` [`#87`](https://github.com/janosh/pymatviz/pull/87)
 - Rename `ptable_heatmap(_plotly)` 1st arg: `elem_values-&gt;values` [`#86`](https://github.com/janosh/pymatviz/pull/86)
-- skip test_df_to_pdf in windows CI [`8f207c8`](https://github.com/janosh/pymatviz/commit/8f207c8b7f9271f06dac94d1da032c8a12b1a107)
 
 #### [v0.6.3](https://github.com/janosh/pymatviz/compare/v0.6.2...v0.6.3)
 
