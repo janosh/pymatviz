@@ -126,7 +126,7 @@ def test_ptable_heatmap(
     ptable_heatmap(glass_formulas, log=True)
 
     # custom color map
-    ptable_heatmap(glass_formulas, log=True, cmap="summer")
+    ptable_heatmap(glass_formulas, log=True, colorscale="summer")
 
     # heat_mode normalized to total count
     ptable_heatmap(glass_formulas, heat_mode="fraction")

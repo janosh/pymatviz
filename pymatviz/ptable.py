@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import sys
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
@@ -140,7 +141,7 @@ def ptable_heatmap(
     count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
     cbar_max: float | None = None,
-    cmap: str = "summer_r",
+    colorscale: str = "summer_r",
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
@@ -152,6 +153,7 @@ def ptable_heatmap(
     zero_symbol: str | float = "-",
     label_font_size: int = 16,
     value_font_size: int = 12,
+    **kwargs: Any,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
 
@@ -167,7 +169,8 @@ def ptable_heatmap(
         cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
             if smaller than the largest plotted value. For creating multiple plots with
             identical color bars for visual comparison. Defaults to 0.
-        cmap (str, optional): Matplotlib colormap name to use. Defaults to "YlGn".
+        colorscale (str, optional): Matplotlib colormap name to use.
+            Defaults to "summer_r".
         infty_color: Color to use for elements with value infinity. Defaults to
             "lightskyblue".
         na_color: Color to use for elements with value infinity. Defaults to "white".
@@ -194,6 +197,7 @@ def ptable_heatmap(
             Defaults to "-".
         label_font_size (int): Font size for element symbols. Defaults to 16.
         value_font_size (int): Font size for heat values. Defaults to 12.
+        **kwargs: Additional keyword arguments passed to plt.figure().
 
     Returns:
         ax: matplotlib Axes with the heatmap.
@@ -202,6 +206,9 @@ def ptable_heatmap(
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
         )
+    if "cmap" in kwargs:
+        colorscale = kwargs.pop("cmap")
+        print("cmap argument is deprecated, use colorscale instead.", file=sys.stderr)
 
     values = count_elements(values, count_mode, exclude_elements)
 
@@ -213,13 +220,13 @@ def ptable_heatmap(
         values /= clean_vals.sum()
         clean_vals /= clean_vals.sum()  # normalize as well for norm.autoscale() below
 
-    color_map = get_cmap(cmap)
+    color_map = get_cmap(colorscale)
 
     n_rows = df_ptable.row.max()
     n_columns = df_ptable.column.max()
 
     # TODO can we pass as a kwarg and still ensure aspect ratio respected?
-    fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows))
+    fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows), **kwargs)
 
     ax = ax or plt.gca()
 
@@ -303,7 +310,7 @@ def ptable_heatmap(
         # format major and minor ticks
         cb_ax.tick_params(which="both", labelsize=14, width=1)
 
-        mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+        mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 
         def tick_fmt(val: float, _pos: int) -> str:
             # val: value at color axis tick (e.g. 10.0, 20.0, ...)
