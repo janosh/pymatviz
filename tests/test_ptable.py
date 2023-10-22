@@ -126,7 +126,7 @@ def test_ptable_heatmap(
     ptable_heatmap(glass_formulas, log=True)
 
     # custom color map
-    ptable_heatmap(glass_formulas, log=True, cmap="summer")
+    ptable_heatmap(glass_formulas, log=True, colorscale="summer")
 
     # heat_mode normalized to total count
     ptable_heatmap(glass_formulas, heat_mode="fraction")
@@ -165,6 +165,10 @@ def test_ptable_heatmap(
     ax = ptable_heatmap(glass_elem_counts, heat_mode="percent", cbar_fmt=".3%")
     cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
     assert cbar_1st_label == "0.000%"
+
+    # test tile_size
+    ptable_heatmap(df_ptable.atomic_mass, tile_size=1)
+    ptable_heatmap(df_ptable.atomic_mass, tile_size=(0.9, 1))
 
 
 def test_ptable_heatmap_ratio(
