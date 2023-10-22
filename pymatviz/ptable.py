@@ -16,7 +16,7 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition
 
-from pymatviz.utils import choose_bw_for_contrast, df_ptable
+from pymatviz.utils import df_ptable, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
@@ -297,7 +297,7 @@ def ptable_heatmap(
         elif text_color == "auto":
             if isinstance(color, (tuple, list)) and len(color) >= 3:
                 # treat color as RGB tuple and choose black or white text for contrast
-                text_clr = choose_bw_for_contrast(color)
+                text_clr = pick_bw_for_contrast(color)
             else:
                 text_clr = "black"
         elif isinstance(text_color, (tuple, list)):
