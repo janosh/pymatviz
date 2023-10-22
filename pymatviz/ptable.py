@@ -180,14 +180,15 @@ def ptable_heatmap(
             "fraction" and "percent" can be used to make the colors in different
             ptable_heatmap() (and ptable_heatmap_ratio()) plots comparable.
         fmt (str): f-string format option for tile values. Defaults to ".1%"
-            (1 decimal place) if heat_mode="percent" else ".3g".
+            (1 decimal place) if heat_mode="percent" else ".3g". Use e.g. ",.0f" to
+            format values with thousands separators and no decimal places.
         cbar_fmt (str): f-string format option to set a different colorbar tick
             label format. Defaults to the above fmt.
         text_color (str | tuple[str, str]): What color to use for element symbols and
             heat labels. Must be a valid color name, or a 2-tuple of names, one to use
             for the upper half of the color scale, one for the lower half. The special
-            value 'auto' applies 'black' on the lower and 'white' on the upper half of
-            the color scale. Defaults to "auto".
+            value "auto" applies "black" on the lower and "white" on the upper half of
+            the color scale. "auto_reverse" does the opposite. Defaults to "auto".
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can try log=True or
             exclude_elements=["O"]. Defaults to ().
@@ -282,6 +283,8 @@ def ptable_heatmap(
             text_clr = "black"
         elif text_color == "auto":
             text_clr = "white" if norm(tile_value) > 0.5 else "black"
+        elif text_color == "auto_reverse":
+            text_clr = "black" if norm(tile_value) > 0.5 else "white"
         elif isinstance(text_color, (tuple, list)):
             text_clr = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
         else:
@@ -340,7 +343,7 @@ def ptable_heatmap_ratio(
     count_mode: CountMode = "composition",
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
-    not_in_numerator: tuple[str, str] = ("#DDD", "gray: not in 1st list"),
+    not_in_numerator: tuple[str, str] = ("#eee", "gray: not in 1st list"),
     not_in_denominator: tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
     not_in_either: tuple[str, str] = ("white", "white: not in either"),
     **kwargs: Any,
@@ -363,7 +366,7 @@ def ptable_heatmap_ratio(
         cbar_title (str): Title for the color bar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator. Defaults to
-            ('#DDD', 'gray: not in 1st list').
+            ('#eee', 'gray: not in 1st list').
         not_in_denominator (tuple[str, str]): See not_in_numerator. Defaults to
             ('lightskyblue', 'blue: not in 2nd list').
         not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
