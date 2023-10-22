@@ -123,6 +123,10 @@ def count_elements(
     srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
 
     if len(exclude_elements) > 0:
+        if isinstance(exclude_elements, str):
+            exclude_elements = [exclude_elements]
+        if isinstance(exclude_elements, tuple):
+            exclude_elements = list(exclude_elements)
         try:
             srs = srs.drop(exclude_elements)
         except KeyError as exc:
