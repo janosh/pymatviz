@@ -145,7 +145,7 @@ def ptable_heatmap(
     count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
     cbar_max: float | None = None,
-    colorscale: str = "summer_r",
+    colorscale: str = "viridis",
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
@@ -153,7 +153,7 @@ def ptable_heatmap(
     cbar_fmt: str | None = None,
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
-    zero_color: str = "#eee",  # light gray
+    zero_color: str = "#eff",  # light gray
     zero_symbol: str | float = "-",
     label_font_size: int = 16,
     value_font_size: int = 12,
@@ -174,8 +174,9 @@ def ptable_heatmap(
         cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
             if smaller than the largest plotted value. For creating multiple plots with
             identical color bars for visual comparison. Defaults to 0.
-        colorscale (str, optional): Matplotlib colormap name to use.
-            Defaults to "summer_r".
+        colorscale (str, optional): Matplotlib colormap name to use. Defaults to
+            "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
+            for available options.
         infty_color: Color to use for elements with value infinity. Defaults to
             "lightskyblue".
         na_color: Color to use for elements with value infinity. Defaults to "white".
@@ -197,7 +198,7 @@ def ptable_heatmap(
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can try log=True or
             exclude_elements=["O"]. Defaults to ().
-        zero_color (str): Color to use for elements with value zero. Defaults to "#eee"
+        zero_color (str): Color to use for elements with value zero. Defaults to "#eff"
             (light gray).
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
@@ -362,7 +363,7 @@ def ptable_heatmap_ratio(
     count_mode: CountMode = "composition",
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
-    not_in_numerator: tuple[str, str] = ("#eee", "gray: not in 1st list"),
+    not_in_numerator: tuple[str, str] = ("#eff", "gray: not in 1st list"),
     not_in_denominator: tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
     not_in_either: tuple[str, str] = ("white", "white: not in either"),
     **kwargs: Any,
@@ -385,7 +386,7 @@ def ptable_heatmap_ratio(
         cbar_title (str): Title for the color bar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator. Defaults to
-            ('#eee', 'gray: not in 1st list').
+            ('#eff', 'gray: not in 1st list').
         not_in_denominator (tuple[str, str]): See not_in_numerator. Defaults to
             ('lightskyblue', 'blue: not in 2nd list').
         not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
@@ -431,7 +432,7 @@ def ptable_heatmap_plotly(
     precision: str | None = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
-    font_colors: Sequence[str] = ("#eee", "black"),
+    font_colors: Sequence[str] = ("#eff", "black"),
     gap: float = 5,
     font_size: int | None = None,
     bg_color: str | None = None,
@@ -483,7 +484,7 @@ def ptable_heatmap_plotly(
             the hover tooltip on a new line below the element name"). Defaults to None.
         font_colors (list[str]): One color name or two for [min_color, max_color].
             min_color is applied to annotations with heatmap values less than
-            (max_val - min_val) / 2. Defaults to ("#eee", "black") meaning light text
+            (max_val - min_val) / 2. Defaults to ("#eff", "black") meaning light text
             for low values and dark text for high values. May need to be manually
             swapped depending on the colorscale.
         gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
