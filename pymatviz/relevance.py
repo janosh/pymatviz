@@ -72,9 +72,7 @@ def precision_recall_curve(
     precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
 
     # proba_pos.round() converts class probabilities to integer class labels
-    prec_score = skm.precision_score(
-        targets, proba_pos.round()  # type: ignore[union-attr]
-    )
+    prec_score = skm.precision_score(targets, proba_pos.round())  # type: ignore[union-attr]
 
     ax.plot(recall, precision, color="blue", label=f"precision = {prec_score:.2f}")
 
