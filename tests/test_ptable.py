@@ -212,9 +212,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 
     with pytest.raises(ValueError, match="should be string, list of strings or list"):
         # test that bad colorscale raises ValueError
-        ptable_heatmap_plotly(
-            glass_formulas, colorscale=lambda: "bad scale"  # type: ignore[arg-type]
-        )
+        ptable_heatmap_plotly(glass_formulas, colorscale=lambda: "bad scale")  # type: ignore[arg-type]
 
     # test that unknown builtin colorscale raises ValueError
     with pytest.raises(PlotlyError, match="Colorscale foobar is not a built-in scale"):
@@ -300,9 +298,7 @@ def test_ptable_heatmap_plotly_cscale_range(
 def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
     cscale_range = (0, 10, 20)
     with pytest.raises(ValueError) as exc:
-        ptable_heatmap_plotly(
-            df_ptable.density, cscale_range=cscale_range  # type: ignore[arg-type]
-        )
+        ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)  # type: ignore[arg-type]
     assert f"{cscale_range=} should have length 2" in str(exc.value)
 
 

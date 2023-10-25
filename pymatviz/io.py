@@ -150,8 +150,9 @@ def df_to_pdf(
     styler: Styler,
     file_path: str | Path,
     crop: bool = True,
-    size: str = "landscape",
+    size: str | None = None,
     style: str = "",
+    default_styles: bool = True,
     **kwargs: Any,
 ) -> None:
     """Export a pandas Styler to PDF with WeasyPrint.
@@ -160,11 +161,14 @@ def df_to_pdf(
         styler (Styler): Styler object to export.
         file_path (str): Path to save the PDF to. Requires WeasyPrint.
         crop (bool): Whether to crop the PDF margins. Requires pdfCropMargins.
-            Defaults to True.
-        size (str): Page size. Defaults to "landscape". See
-            https://developer.mozilla.org/@page for options.
+            Defaults to True. Be careful to set size correctly (not much too large as
+            is the default) if you set crop=False.
+        size (str): Page size. Defaults to "100cm". See
+            https://developer.mozilla.org/@page for 'landscape' and other options.
         style (str): CSS style string to be inserted into the HTML file.
             Defaults to "".
+        default_styles (bool): Whether to apply some sensible default CSS.
+            Defaults to True.
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     try:
@@ -173,7 +177,25 @@ def df_to_pdf(
         msg = "weasyprint not installed\nrun pip install weasyprint"
         raise ImportError(msg) from exc
 
+    if default_styles:
+        # Apply default styles
+        styles = {
+            "": "font-family: sans-serif; border-collapse: collapse;",
+            "td, th": "border: none; padding: 4px 6px; white-space: nowrap;",
+            "th.col_heading": "border: 1px solid; border-width: 1px 0; "
+            "text-align: left;",
+            "th.row_heading": "font-weight: normal; padding: 3pt;",
+        }
+        styler.set_table_styles(
+            [dict(selector=sel, props=styles[sel]) for sel in styles]
+        )
+        styler.set_uuid("")
+
     html_str = styler.to_html(**kwargs)
+
+    if size is None:
+        n_rows, n_cols = styler.data.shape
+        size = f"{n_cols * 3}cm {n_rows * 1}cm"
 
     # CSS to adjust layout and margins
     html_str = f"""
