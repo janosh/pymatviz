@@ -286,8 +286,9 @@ def df_to_svelte_table(
             "class='table' style='width: 100%'". Defaults to "".
         script (str): JavaScript to insert above the table. Will replace the opening
             `<table` tag to allow passing props to it. Uses ...props to allow for
-            Svelte props forwarding to the table element. See source code for lengthy
-            default script.
+            Svelte props forwarding to the table element. See source code for
+            default script as example. Don't forget to include '<table' in the script,
+            since that exact string is replaced. Defaults to "".
         styles (str): CSS rules to add to the table styles. Defaults to
             `table { overflow: scroll; max-width: 100%; display: block; }`.
         **kwargs: Keyword arguments passed to Styler.to_html().
@@ -299,12 +300,12 @@ def df_to_svelte_table(
     <table use:sortable {...$$props}
     """
     html = styler.to_html(**kwargs)
+    if script is not None:
+        html = html.replace("<table", f"{script or default_script}")
     if inline_props:
         html = html.replace("<table", f"<table {inline_props}")
-    if script is not None:
-        html = html.replace("<table", f"<table {script or default_script}")
     if styles is not None:
         # insert styles at end of closing </style> tag so they override default styles
-        html = html.replace("</style>", f"{styles}</style>")
+        html = html.replace("</style>", f"{styles}\n</style>")
     with open(file_path, "w") as file:
         file.write(html)
