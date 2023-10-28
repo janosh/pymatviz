@@ -2,11 +2,11 @@
 
 The majority of datasets explored in this directory are from the [`matbench`](https://matbench.materialsproject.org) collection. Others include:
 
-- [`ricci_carrier_transport`](https://hackingmaterials.lbl.gov/matminer/dataset_summary): [Electronic Transport Properties by F. Ricci et al.][carrier_transport] from MPContribs which contains 48,000 DFT Seebeck coefficients ([Paper](https://nature.com/articles/sdata201785)). [[Download link][carrier_transport.json.gz] (from [here](https://git.io/JOMwY))].
+- [`ricci_carrier_transport`](https://hackingmaterials.lbl.gov/matminer/dataset_summary): [Electronic Transport Properties by F. Ricci et al.][carrier_transport] from MPContribs which contains 48,000 DFT Seebeck coefficients ([Paper](https://www.nature.com/articles/sdata201785)). [[Download link][carrier_transport.json.gz] (from [here](https://git.io/JOMwY))].
 - [`boltztrap_mp`](https://hackingmaterials.lbl.gov/matminer/dataset_summary) which contains ~9000 effective mass and thermoelectric properties calculated by the BoltzTraP software package.
 - [`tri_camd_2022`](https://data.matr.io/7): Toyota Research Institute's 2nd active learning crystal discovery dataset from Computational Autonomy for
 Materials Discovery (CAMD)
-- `WBM`: From the paper [Predicting stable crystalline compounds using chemical similarity](https://nature.com/articles/s41524-020-00481-6) published Jan 26, 2021 in Nature. A dataset generated with DFT building on earlier work by some of the same authors published in [The optimal one dimensional periodic table: a modified Pettifor chemical scale from data mining](https://doi.org/10.1088/1367-2630/18/9/093011). Kindly shared by the author Hai-Chen Wang on email request.
+- `WBM`: From the paper [Predicting stable crystalline compounds using chemical similarity](https://www.nature.com/articles/s41524-020-00481-6) published Jan 26, 2021 in Nature. A dataset generated with DFT building on earlier work by some of the same authors published in [The optimal one dimensional periodic table: a modified Pettifor chemical scale from data mining](https://doi.org/10.1088/1367-2630/18/9/093011). Kindly shared by the author Hai-Chen Wang on email request.
 
 ## [MatBench v0.1](https://matbench.materialsproject.org)
 
@@ -15,7 +15,7 @@ Materials Discovery (CAMD)
 > MatBench is an [ImageNet](http://www.image-net.org) for materials science; a set of 13 supervised, pre-cleaned, ready-to-use ML tasks for benchmarking and fair comparison. The tasks span across the domain of inorganic materials science applications.
 
 To browse these datasets online, go to [ml.materialsproject.org] and log in.
-Datasets were originally published in <https://nature.com/articles/s41524-020-00406-3>.
+Datasets were originally published in <https://www.nature.com/articles/s41524-020-00406-3>.
 
 Detailed information about how each dataset was created and prepared for use is available at <https://hackingmaterials.lbl.gov/matminer/dataset_summary.html>
 

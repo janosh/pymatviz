@@ -5,7 +5,7 @@ import subprocess
 from os.path import dirname
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -146,13 +146,21 @@ def save_and_compress_svg(
         subprocess.run([svgo, "--multipass", filepath], check=True)
 
 
+DEFAULT_DF_STYLES: Final = {
+    "": "font-family: sans-serif; border-collapse: collapse;",
+    "td, th": "border: none; padding: 4px 6px; white-space: nowrap;",
+    "th.col_heading": "border: 1px solid; border-width: 1px 0; text-align: left;",
+    "th.row_heading": "font-weight: normal; padding: 3pt;",
+}
+
+
 def df_to_pdf(
     styler: Styler,
     file_path: str | Path,
     crop: bool = True,
     size: str | None = None,
     style: str = "",
-    default_styles: bool = True,
+    styler_css: bool | dict[str, str] = True,
     **kwargs: Any,
 ) -> None:
     """Export a pandas Styler to PDF with WeasyPrint.
@@ -163,12 +171,14 @@ def df_to_pdf(
         crop (bool): Whether to crop the PDF margins. Requires pdfCropMargins.
             Defaults to True. Be careful to set size correctly (not much too large as
             is the default) if you set crop=False.
-        size (str): Page size. Defaults to "100cm". See
-            https://developer.mozilla.org/@page for 'landscape' and other options.
+        size (str): Page size. Defaults to "4cm * n_cols x 2cm * n_rows"
+            (width x height). See https://developer.mozilla.org/@page for 'landscape'
+            and other options.
         style (str): CSS style string to be inserted into the HTML file.
             Defaults to "".
-        default_styles (bool): Whether to apply some sensible default CSS.
-            Defaults to True.
+        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
+            to the pandas Styler. Defaults to True. If dict, keys are selectors and
+            values CSS strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     try:
@@ -177,25 +187,18 @@ def df_to_pdf(
         msg = "weasyprint not installed\nrun pip install weasyprint"
         raise ImportError(msg) from exc
 
-    if default_styles:
-        # Apply default styles
-        styles = {
-            "": "font-family: sans-serif; border-collapse: collapse;",
-            "td, th": "border: none; padding: 4px 6px; white-space: nowrap;",
-            "th.col_heading": "border: 1px solid; border-width: 1px 0; "
-            "text-align: left;",
-            "th.row_heading": "font-weight: normal; padding: 3pt;",
-        }
+    if styler_css:
+        styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
         styler.set_table_styles(
-            [dict(selector=sel, props=styles[sel]) for sel in styles]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
         )
-        styler.set_uuid("")
 
+    styler.set_uuid("")
     html_str = styler.to_html(**kwargs)
 
     if size is None:
         n_rows, n_cols = styler.data.shape
-        size = f"{n_cols * 3}cm {n_rows * 1}cm"
+        size = f"{n_cols * 4}cm {n_rows * 2}cm"
 
     # CSS to adjust layout and margins
     html_str = f"""
@@ -269,12 +272,13 @@ def normalize_and_crop_pdf(
         raise RuntimeError("Error cropping PDF margins") from exc
 
 
-def df_to_svelte_table(
+def df_to_html_table(
     styler: Styler,
     file_path: str | Path,
-    inline_props: str = "",
+    inline_props: str | None = "",
     script: str | None = "",
     styles: str | None = "table { overflow: scroll; max-width: 100%; display: block; }",
+    styler_css: bool | dict[str, str] = True,
     **kwargs: Any,
 ) -> None:
     """Convert a pandas Styler to a svelte table.
@@ -284,12 +288,16 @@ def df_to_svelte_table(
         file_path (str): Path to the file to write the svelte table to.
         inline_props (str): Inline props to pass to the table element. Example:
             "class='table' style='width: 100%'". Defaults to "".
-        script (str): JavaScript to insert above the table. Will replace the opening
-            `<table` tag to allow passing props to it. Uses ...props to allow for
-            Svelte props forwarding to the table element. See source code for lengthy
-            default script.
+        script (str): JavaScript string to insert above the table. Will replace the
+            opening `<table` tag to allow passing props to it. The default script uses
+            ...props to allow for Svelte props forwarding to the table element. See
+            source code to inspect default script. Don't forget to include '<table' in
+            the somewhere in the script. Defaults to "".
         styles (str): CSS rules to add to the table styles. Defaults to
             `table { overflow: scroll; max-width: 100%; display: block; }`.
+        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
+            to the pandas Styler. Defaults to True. If dict, keys are selectors and
+            values CSS strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     default_script = """<script lang="ts">
@@ -298,13 +306,25 @@ def df_to_svelte_table(
 
     <table use:sortable {...$$props}
     """
+
+    styler.set_uuid("")
+    if styler_css:
+        styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
+        styler.set_table_styles(
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
+        )
     html = styler.to_html(**kwargs)
+    if script:
+        html = html.replace("<table", f"{script or default_script}")
     if inline_props:
+        if "<table " not in html:
+            raise ValueError(
+                f"Got {inline_props=} but no '<table ...' tag found in HTML string to "
+                "attach to"
+            )
         html = html.replace("<table", f"<table {inline_props}")
-    if script is not None:
-        html = html.replace("<table", f"<table {script or default_script}")
     if styles is not None:
         # insert styles at end of closing </style> tag so they override default styles
-        html = html.replace("</style>", f"{styles}</style>")
+        html = html.replace("</style>", f"{styles}\n</style>")
     with open(file_path, "w") as file:
         file.write(html)
