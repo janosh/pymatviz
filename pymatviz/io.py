@@ -160,7 +160,7 @@ def df_to_pdf(
     crop: bool = True,
     size: str | None = None,
     style: str = "",
-    default_styles: bool = True,
+    styler_css: bool | dict[str, str] = True,
     **kwargs: Any,
 ) -> None:
     """Export a pandas Styler to PDF with WeasyPrint.
@@ -176,8 +176,9 @@ def df_to_pdf(
             and other options.
         style (str): CSS style string to be inserted into the HTML file.
             Defaults to "".
-        default_styles (bool): Whether to apply some sensible default CSS.
-            Defaults to True.
+        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS.
+            Defaults to True. If dict, the keys are selectors and the values are CSS
+            strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     try:
@@ -186,9 +187,10 @@ def df_to_pdf(
         msg = "weasyprint not installed\nrun pip install weasyprint"
         raise ImportError(msg) from exc
 
-    if default_styles:
+    if styler_css:
+        styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in DEFAULT_DF_STYLES.items()]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
         )
 
     styler.set_uuid("")
@@ -276,7 +278,7 @@ def df_to_html_table(
     inline_props: str = "",
     script: str | None = "",
     styles: str | None = "table { overflow: scroll; max-width: 100%; display: block; }",
-    default_styles: bool = True,
+    styler_css: bool | dict[str, str] = True,
     **kwargs: Any,
 ) -> None:
     """Convert a pandas Styler to a svelte table.
@@ -286,15 +288,16 @@ def df_to_html_table(
         file_path (str): Path to the file to write the svelte table to.
         inline_props (str): Inline props to pass to the table element. Example:
             "class='table' style='width: 100%'". Defaults to "".
-        script (str): JavaScript to insert above the table. Will replace the opening
-            `<table` tag to allow passing props to it. Uses ...props to allow for
-            Svelte props forwarding to the table element. See source code for
-            default script as example. Don't forget to include '<table' in the script,
-            since that exact string is replaced. Defaults to "".
+        script (str): JavaScript string to insert above the table. Will replace the
+            opening `<table` tag to allow passing props to it. The default script uses
+            ...props to allow for Svelte props forwarding to the table element. See
+            source code to inspect default script. Don't forget to include '<table' in
+            the somewhere in the script. Defaults to "".
         styles (str): CSS rules to add to the table styles. Defaults to
             `table { overflow: scroll; max-width: 100%; display: block; }`.
-        default_styles (bool): Whether to apply some sensible default CSS.
-            Defaults to True.
+        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS.
+            Defaults to True. If dict, the keys are selectors and the values are CSS
+            strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     default_script = """<script lang="ts">
@@ -305,9 +308,10 @@ def df_to_html_table(
     """
 
     styler.set_uuid("")
-    if default_styles:
+    if styler_css:
+        styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in DEFAULT_DF_STYLES.items()]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
         )
     html = styler.to_html(**kwargs)
     if script is not None:
