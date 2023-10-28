@@ -5,7 +5,7 @@ import subprocess
 from os.path import dirname
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -146,6 +146,14 @@ def save_and_compress_svg(
         subprocess.run([svgo, "--multipass", filepath], check=True)
 
 
+DEFAULT_DF_STYLES: Final = {
+    "": "font-family: sans-serif; border-collapse: collapse;",
+    "td, th": "border: none; padding: 4px 6px; white-space: nowrap;",
+    "th.col_heading": "border: 1px solid; border-width: 1px 0; text-align: left;",
+    "th.row_heading": "font-weight: normal; padding: 3pt;",
+}
+
+
 def df_to_pdf(
     styler: Styler,
     file_path: str | Path,
@@ -178,19 +186,11 @@ def df_to_pdf(
         raise ImportError(msg) from exc
 
     if default_styles:
-        # Apply default styles
-        styles = {
-            "": "font-family: sans-serif; border-collapse: collapse;",
-            "td, th": "border: none; padding: 4px 6px; white-space: nowrap;",
-            "th.col_heading": "border: 1px solid; border-width: 1px 0; "
-            "text-align: left;",
-            "th.row_heading": "font-weight: normal; padding: 3pt;",
-        }
         styler.set_table_styles(
-            [dict(selector=sel, props=styles[sel]) for sel in styles]
+            [dict(selector=sel, props=val) for sel, val in DEFAULT_DF_STYLES.items()]
         )
-        styler.set_uuid("")
 
+    styler.set_uuid("")
     html_str = styler.to_html(**kwargs)
 
     if size is None:
