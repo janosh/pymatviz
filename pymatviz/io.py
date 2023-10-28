@@ -171,8 +171,9 @@ def df_to_pdf(
         crop (bool): Whether to crop the PDF margins. Requires pdfCropMargins.
             Defaults to True. Be careful to set size correctly (not much too large as
             is the default) if you set crop=False.
-        size (str): Page size. Defaults to "100cm". See
-            https://developer.mozilla.org/@page for 'landscape' and other options.
+        size (str): Page size. Defaults to "4cm * n_cols x 2cm * n_rows"
+            (width x height). See https://developer.mozilla.org/@page for 'landscape'
+            and other options.
         style (str): CSS style string to be inserted into the HTML file.
             Defaults to "".
         default_styles (bool): Whether to apply some sensible default CSS.
@@ -195,7 +196,7 @@ def df_to_pdf(
 
     if size is None:
         n_rows, n_cols = styler.data.shape
-        size = f"{n_cols * 3}cm {n_rows * 1}cm"
+        size = f"{n_cols * 4}cm {n_rows * 2}cm"
 
     # CSS to adjust layout and margins
     html_str = f"""
