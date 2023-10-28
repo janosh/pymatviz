@@ -20,7 +20,7 @@ The properties are reported at 300 Kelvin and carrier concentration of 1e18/cm3.
 
 Reference:
 Ricci, F. et al. An ab initio electronic transport database for inorganic materials.
-https://nature.com/articles/sdata201785
+https://www.nature.com/articles/sdata201785
 Dryad Digital Repository. https://doi.org/10.5061/dryad.gn001
 
 https://hackingmaterials.lbl.gov/matminer/dataset_summary.html
