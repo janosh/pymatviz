@@ -10,7 +10,7 @@ https://contribs.materialsproject.org/projects/carrier_transport.json.gz
 
 Reference:
 Ricci, F. et al. An ab initio electronic transport database for inorganic materials.
-https://nature.com/articles/sdata201785
+https://www.nature.com/articles/sdata201785
 Dryad Digital Repository. https://doi.org/10.5061/dryad.gn001
 
 Extensive column descriptions and metadata at
