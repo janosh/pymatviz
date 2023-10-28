@@ -176,9 +176,9 @@ def df_to_pdf(
             and other options.
         style (str): CSS style string to be inserted into the HTML file.
             Defaults to "".
-        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS.
-            Defaults to True. If dict, the keys are selectors and the values are CSS
-            strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
+        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
+            to the pandas Styler. Defaults to True. If dict, keys are selectors and
+            values CSS strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     try:
@@ -275,7 +275,7 @@ def normalize_and_crop_pdf(
 def df_to_html_table(
     styler: Styler,
     file_path: str | Path,
-    inline_props: str = "",
+    inline_props: str | None = "",
     script: str | None = "",
     styles: str | None = "table { overflow: scroll; max-width: 100%; display: block; }",
     styler_css: bool | dict[str, str] = True,
@@ -295,9 +295,9 @@ def df_to_html_table(
             the somewhere in the script. Defaults to "".
         styles (str): CSS rules to add to the table styles. Defaults to
             `table { overflow: scroll; max-width: 100%; display: block; }`.
-        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS.
-            Defaults to True. If dict, the keys are selectors and the values are CSS
-            strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
+        styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
+            to the pandas Styler. Defaults to True. If dict, keys are selectors and
+            values CSS strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     default_script = """<script lang="ts">
@@ -314,9 +314,14 @@ def df_to_html_table(
             [dict(selector=sel, props=val) for sel, val in styler_css.items()]
         )
     html = styler.to_html(**kwargs)
-    if script is not None:
+    if script:
         html = html.replace("<table", f"{script or default_script}")
     if inline_props:
+        if "<table " not in html:
+            raise ValueError(
+                f"Got {inline_props=} but no '<table ...' tag found in HTML string to "
+                "attach to"
+            )
         html = html.replace("<table", f"<table {inline_props}")
     if styles is not None:
         # insert styles at end of closing </style> tag so they override default styles
