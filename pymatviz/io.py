@@ -276,6 +276,7 @@ def df_to_svelte_table(
     inline_props: str = "",
     script: str | None = "",
     styles: str | None = "table { overflow: scroll; max-width: 100%; display: block; }",
+    default_styles: bool = True,
     **kwargs: Any,
 ) -> None:
     """Convert a pandas Styler to a svelte table.
@@ -292,6 +293,8 @@ def df_to_svelte_table(
             since that exact string is replaced. Defaults to "".
         styles (str): CSS rules to add to the table styles. Defaults to
             `table { overflow: scroll; max-width: 100%; display: block; }`.
+        default_styles (bool): Whether to apply some sensible default CSS.
+            Defaults to True.
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     default_script = """<script lang="ts">
@@ -300,6 +303,12 @@ def df_to_svelte_table(
 
     <table use:sortable {...$$props}
     """
+
+    styler.set_uuid("")
+    if default_styles:
+        styler.set_table_styles(
+            [dict(selector=sel, props=val) for sel, val in DEFAULT_DF_STYLES.items()]
+        )
     html = styler.to_html(**kwargs)
     if script is not None:
         html = html.replace("<table", f"{script or default_script}")
