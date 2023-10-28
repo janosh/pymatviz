@@ -270,7 +270,7 @@ def normalize_and_crop_pdf(
         raise RuntimeError("Error cropping PDF margins") from exc
 
 
-def df_to_svelte_table(
+def df_to_html_table(
     styler: Styler,
     file_path: str | Path,
     inline_props: str = "",

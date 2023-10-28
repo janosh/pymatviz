@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
 
-from pymatviz.io import df_to_pdf, df_to_svelte_table, normalize_and_crop_pdf, save_fig
+from pymatviz.io import df_to_html_table, df_to_pdf, normalize_and_crop_pdf, save_fig
 
 
 if TYPE_CHECKING:
@@ -67,7 +67,7 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
     PyPDF2 = pytest.importorskip("PyPDF2")
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=[1, 2], y=[3, 4]))
+    fig.add_scatter(x=[1, 2], y=[3, 4])
     path = f"{tmp_path}/test.pdf"
     save_fig(fig, path)
 
@@ -188,14 +188,14 @@ def test_normalize_and_crop_pdf(
         ),
     ],
 )
-def test_df_to_svelte_table(
+def test_df_to_html_table(
     tmp_path: Path, script: str, styles: str, inline_props: str
 ) -> None:
     df = pd._testing.makeMixedDataFrame()
 
     file_path = tmp_path / "test_df.svelte"
 
-    df_to_svelte_table(
+    df_to_html_table(
         df.style, file_path, script=script, styles=styles, inline_props=inline_props
     )
 
