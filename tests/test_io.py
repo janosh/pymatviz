@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
 
-from pymatviz.io import df_to_pdf, df_to_svelte_table, normalize_and_crop_pdf, save_fig
+from pymatviz.io import df_to_html_table, df_to_pdf, normalize_and_crop_pdf, save_fig
 
 
 if TYPE_CHECKING:
@@ -67,7 +67,7 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
     PyPDF2 = pytest.importorskip("PyPDF2")
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=[1, 2], y=[3, 4]))
+    fig.add_scatter(x=[1, 2], y=[3, 4])
     path = f"{tmp_path}/test.pdf"
     save_fig(fig, path)
 
@@ -83,7 +83,7 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
 # https://stackoverflow.com/a/69816601
 @pytest.mark.skipif(sys.platform == "win32", reason="fails on Windows")
 @pytest.mark.parametrize(
-    "crop, size, style, default_styles",
+    "crop, size, style, styler_css",
     [
         # test with cropping, default size, and no extra style
         # TODO test crop=True in CI, kept failing with FileNotFoundError: No such file
@@ -98,7 +98,7 @@ def test_df_to_pdf(
     crop: bool,
     size: str,
     style: str,
-    default_styles: bool,
+    styler_css: bool,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -121,7 +121,7 @@ def test_df_to_pdf(
         crop=crop,
         size=size,
         style=style,
-        default_styles=default_styles,
+        styler_css=styler_css,
     )
     try:
         df_to_pdf(**kwds)
@@ -177,26 +177,37 @@ def test_normalize_and_crop_pdf(
 
 
 @pytest.mark.parametrize(
-    "script, styles, inline_props",
+    "script, styles, inline_props, styler_css",
     [
-        (None, None, ""),
-        ("", "body { margin: 0; padding: 1em; }", "class='table'"),
+        (None, None, "", False),
+        (None, "", None, False),
+        ("", "body { margin: 0; padding: 1em; }", "<table class='table'", True),
         (
-            "import { sortable } from 'svelte-zoo/actions'",
+            "<script>import { sortable } from 'svelte-zoo/actions'<s/script><table",
             "body { margin: 0; padding: 1em; }",
             "style='width: 100%'",
+            {"tb, th, td": "border: 1px solid black;"},
         ),
     ],
 )
-def test_df_to_svelte_table(
-    tmp_path: Path, script: str, styles: str, inline_props: str
+def test_df_to_html_table(
+    tmp_path: Path,
+    script: str | None,
+    styles: str | None,
+    inline_props: str,
+    styler_css: bool | dict[str, str],
 ) -> None:
     df = pd._testing.makeMixedDataFrame()
 
     file_path = tmp_path / "test_df.svelte"
 
-    df_to_svelte_table(
-        df.style, file_path, script=script, styles=styles, inline_props=inline_props
+    df_to_html_table(
+        df.style,
+        file_path,
+        script=script,
+        styles=styles,
+        inline_props=inline_props,
+        styler_css=styler_css,
     )
 
     assert file_path.is_file()
@@ -205,8 +216,9 @@ def test_df_to_svelte_table(
     if script is not None:
         assert script in content
     if styles is not None:
-        assert f"{styles}</style>" in content
+        assert f"{styles}\n</style>" in content
     if inline_props:
+        print(f"{content=}")
         assert inline_props in content
 
     # check file contains original dataframe value
