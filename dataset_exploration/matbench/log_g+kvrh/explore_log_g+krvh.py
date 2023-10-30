@@ -162,7 +162,7 @@ for cry_sys, df_group in sorted(
     clr = rgb_color(n_wyckoff_top, 14)
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
-        f"{len(df_group):,} = {len(df_group)/len(df_grvh):.0%}<br>"
+        f"{len(df_group):,} = {len(df_group) / len(df_grvh):.0%}<br>"
         f"mean = <span style='color:{clr}'><b>{n_wyckoff_top:.1f}</b></span>"
     )
 

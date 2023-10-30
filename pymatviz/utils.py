@@ -418,7 +418,7 @@ def bin_df_cols(
 
     if verbose:
         print(
-            f"{1 - len(df_bin)/len(df):.1%} row reduction from binning: from "
+            f"{1 - len(df_bin) / len(df):.1%} row reduction from binning: from "
             f"{len(df_bin):,} to {len(df):,}"
         )
 

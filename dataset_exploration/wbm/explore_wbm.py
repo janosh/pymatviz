@@ -59,7 +59,7 @@ for cry_sys, df_group in sorted(
 ):
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
-        f"{len(df_group):,} = {len(df_group)/len(df_wbm_non_metals):.0%}<br>"
+        f"{len(df_group):,} = {len(df_group) / len(df_wbm_non_metals):.0%}<br>"
     )
 
 xaxis = dict(

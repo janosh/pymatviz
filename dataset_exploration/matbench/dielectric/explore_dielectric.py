@@ -91,7 +91,7 @@ for cry_sys, df_group in sorted(
 ):
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
-        f"{len(df_group):,} = {len(df_group)/len(df_diel):.0%}<br>"
+        f"{len(df_group):,} = {len(df_group) / len(df_diel):.0%}<br>"
     )
 
 xaxis = dict(
@@ -136,7 +136,7 @@ for cry_sys, df_group in sorted(
     clr = rgb_color(n_wyckoff, 14)
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
-        f"{len(df_group):,} = {len(df_group)/len(df_diel):.0%}<br>"
+        f"{len(df_group):,} = {len(df_group) / len(df_diel):.0%}<br>"
         f"mean = <span style='color:{clr}'><b>{n_wyckoff:.1f}</b></span>"
     )
 
