@@ -248,7 +248,7 @@ def spacegroup_hist(
         if show_counts:
             ax.text(
                 *[(x0 + x1) / 2, 1.02],
-                f"{count:,} ({count/len(data):.0%})",
+                f"{count:,} ({count / len(data):.0%})",
                 fontdict={"fontsize": 12},
                 **text_kwds,
             )
