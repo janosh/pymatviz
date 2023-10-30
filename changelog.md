@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.7.2](https://github.com/janosh/pymatviz/compare/v0.7.1...v0.7.2)
+
+> 30 October 2023
+
+- Fix and rename `df_to_(svelte-&gt;html)_table` [`#97`](https://github.com/janosh/pymatviz/pull/97)
+- Add keyword `default_styles: bool = True` to `df_to_pdf` [`#96`](https://github.com/janosh/pymatviz/pull/96)
+
 #### [v0.7.1](https://github.com/janosh/pymatviz/compare/v0.7.0...v0.7.1)
 
 > 22 October 2023
