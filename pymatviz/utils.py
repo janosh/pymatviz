@@ -499,3 +499,45 @@ def pick_bw_for_contrast(
     """
     light_bg = luminance(color) > text_color_threshold
     return "black" if light_bg else "white"
+
+
+def si_fmt(
+    val: float, fmt_spec: str = ".1f", sep: str = "", binary: bool = False
+) -> str:
+    """Convert large numbers into human readable format using SI prefixes in binary
+    (1024) or metric (1000) mode.
+
+    https://nist.gov/pml/weights-and-measures/metric-si-prefixes
+
+    Args:
+        val (int | float): Some numerical value to format.
+        binary (bool, optional): If True, scaling factor is 2^10 = 1024 else 1000.
+            Defaults to False.
+        fmt_spec (str): f-string format specifier. Configure precision and left/right
+            padding in returned string. Defaults to ".1f". Can be used to ensure leading
+            or trailing whitespace for shorter numbers. Ex.1: ">10.2f" has 2 decimal
+            places and is at least 10 characters long with leading spaces if necessary.
+            Ex.2: "<20.3g" uses 3 significant digits (g: scientific notation on large
+            numbers) with at least 20 chars through trailing space.
+        sep (str): Separator between number and postfix. Defaults to "".
+
+    Returns:
+        str: Formatted number.
+    """
+    factor = 1024 if binary else 1000
+
+    if abs(val) >= 1:
+        # 1, Kilo, Mega, Giga, Tera, Peta, Exa, Zetta, Yotta
+        for _scale in ("", "K", "M", "G", "T", "P", "E", "Z", "Y"):
+            if abs(val) < factor:
+                break
+            val /= factor
+    else:
+        mu_unicode = "\u03BC"
+        # milli, micro, nano, pico, femto, atto, zepto, yocto
+        for _scale in ("", "m", mu_unicode, "n", "p", "f", "a", "z", "y"):
+            if abs(val) > 1:
+                break
+            val *= factor
+
+    return f"{val:{fmt_spec}}{sep}{_scale}"
