@@ -23,6 +23,7 @@ from pymatviz.utils import (
     patch_dict,
     pick_bw_for_contrast,
     si_fmt,
+    styled_html_tag,
 )
 from tests.conftest import y_pred, y_true
 
@@ -381,3 +382,19 @@ def test_si_fmt() -> None:
     assert si_fmt(0.00000123, fmt_spec="5.1f", sep="\t", binary=True) == "  1.3\tμ"
 
     assert si_fmt(0.00000123, fmt_spec="5.1f", sep="\t", binary=False) == "  1.2\tμ"
+
+
+@pytest.mark.parametrize(
+    "text, tag, style",
+    [
+        ("foo", "span", ""),
+        ("bar", "small", "color: red;"),
+        ("baz", "div", "font-size: 0.8em;"),
+        ("", "strong", "font-size: 0.8em; font-weight: lighter;"),
+    ],
+)
+def test_styled_html_tag(text: str, tag: str, style: str) -> None:
+    style = style or "font-size: 0.8em; font-weight: lighter;"
+    assert (
+        styled_html_tag(text, tag=tag, style=style) == f"<{tag} {style=}>{text}</{tag}>"
+    )
