@@ -12,8 +12,9 @@ import os
 import subprocess
 from glob import glob
 
+from pymatviz import ROOT
 
-ROOT = os.path.dirname(os.path.dirname(__file__))
+
 os.chdir(ROOT)
 with open("site/package.json") as file:
     pkg = json.load(file)
