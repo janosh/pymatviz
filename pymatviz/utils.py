@@ -541,3 +541,17 @@ def si_fmt(
             val *= factor
 
     return f"{val:{fmt_spec}}{sep}{_scale}"
+
+
+def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
+    """Wrap text in a span with custom style. Style defaults to decreased font size
+    and weight e.g. to display units in plotly labels and annotations.
+
+    Args:
+        text (str): Text to wrap in span.
+        tag (str, optional): HTML tag name. Defaults to "span".
+        style (str, optional): CSS style string. Defaults to
+            "font-size: 0.8em; font-weight: lighter;".
+    """
+    style = style or "font-size: 0.8em; font-weight: lighter;"
+    return f"<{tag} {style=}>{text}</{tag}>"
