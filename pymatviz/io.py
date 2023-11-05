@@ -178,7 +178,7 @@ def df_to_pdf(
             Defaults to "".
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
             to the pandas Styler. Defaults to True. If dict, keys are selectors and
-            values CSS strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
+            values CSS strings. Example: dict("td, th": "border: none; padding: 4px;")
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     try:
@@ -272,12 +272,15 @@ def normalize_and_crop_pdf(
         raise RuntimeError("Error cropping PDF margins") from exc
 
 
+TABLE_SCROLL_CSS = "table { overflow: scroll; max-width: 100%; display: block; }"
+
+
 def df_to_html_table(
     styler: Styler,
     file_path: str | Path,
     inline_props: str | None = "",
     script: str | None = "",
-    styles: str | None = "table { overflow: scroll; max-width: 100%; display: block; }",
+    styles: str | None = TABLE_SCROLL_CSS,
     styler_css: bool | dict[str, str] = True,
     **kwargs: Any,
 ) -> None:
@@ -293,8 +296,8 @@ def df_to_html_table(
             ...props to allow for Svelte props forwarding to the table element. See
             source code to inspect default script. Don't forget to include '<table' in
             the somewhere in the script. Defaults to "".
-        styles (str): CSS rules to add to the table styles. Defaults to
-            `table { overflow: scroll; max-width: 100%; display: block; }`.
+        styles (str): CSS rules to apply to the table element. Defaults to
+             TABLE_SCROLL_CSS (overflow: scroll; max-width: 100%; display: block;)
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
             to the pandas Styler. Defaults to True. If dict, keys are selectors and
             values CSS strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
