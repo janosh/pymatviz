@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.7.3](https://github.com/janosh/pymatviz/compare/v0.7.2...v0.7.3)
+
+> 4 November 2023
+
+- Add `styled_html_tag()` in `utils.py` [`#99`](https://github.com/janosh/pymatviz/pull/99)
+- Add `si_fmt()` for formatting large numbers in human-readable format [`#98`](https://github.com/janosh/pymatviz/pull/98)
+
 #### [v0.7.2](https://github.com/janosh/pymatviz/compare/v0.7.1...v0.7.2)
 
 > 30 October 2023
