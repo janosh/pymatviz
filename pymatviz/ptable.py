@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import math
 import sys
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Callable, Literal, get_args
@@ -14,7 +15,7 @@ from matplotlib.cm import get_cmap
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition
+from pymatgen.core import Composition, Element
 
 from pymatviz.utils import df_ptable, pick_bw_for_contrast
 
@@ -702,4 +703,123 @@ def ptable_heatmap_plotly(
             color_bar["title"] = f"<br><br>{title}"
 
     fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
+    return fig
+
+
+def ptable_hists(
+    srs: pd.Series,
+    bins: int = 20,
+    colormap: str = "viridis",
+    cbar_coords: tuple[float, float, float, float] = (0.25, 0.77, 0.35, 0.02),
+    x_range: tuple[float | None, float | None] | None = None,
+    symbol_kwargs: Any = None,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    cbar_title: str = "Histogram Value",
+    **kwargs: Any,
+) -> plt.Figure:
+    """Plot histograms of values across the periodic table of elements.
+
+    Args:
+        srs (pd.Series): Map from element symbols to histogram values.
+        bins (int): Number of bins for the histograms. Defaults to 20.
+        colormap (str): Matplotlib colormap name to use. Defaults to "viridis".
+            See https://matplotlib.org/stable/users/explain/colors/colormaps
+            for available options.
+        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
+            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
+            (0.25, 0.77, 0.35, 0.02).
+        x_range (tuple[float | None, float | None]): x-axis range for all histograms.
+            Defaults to None.
+        symbol_text (str | Callable[[Element], str]): Text to display for each element
+            symbol. Defaults to "{elem.symbol}".
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
+            symbols. Defaults to None.
+        cbar_title (str): Color bar title. Defaults to "Histogram Value".
+        **kwargs: Additional keyword arguments passed to plt.subplots().
+            figsize is set to (0.75 * n_columns, 0.75 * n_rows) where n_columns and
+            n_rows are the number of columns and rows in the periodic table.
+
+    Returns:
+        fig: matplotlib Figure object.
+    """
+    symbol_kwargs = symbol_kwargs or {}
+    n_rows = df_ptable.row.max()
+    n_columns = df_ptable.column.max()
+
+    kwargs.setdefault("figsize", (0.75 * n_columns, 0.75 * n_rows))
+    fig, axes = plt.subplots(n_rows, n_columns, **kwargs)
+    plt.subplots_adjust(wspace=0.4, hspace=0.4)
+
+    # create a normalized color map
+    flat_list = [cn for sublist in srs for cn in sublist]
+    norm = Normalize(vmin=min(flat_list), vmax=max(flat_list))
+    cmap = plt.get_cmap(colormap)
+
+    # turn off axis of subplots on the grid that don't correspond to elements
+    for ax in axes.flat:
+        ax.axis("off")
+
+    for Z in range(1, 119):
+        element = Element.from_Z(Z)
+        symbol = element.symbol
+        group = element.group
+        row = element.row
+        if element.block == "f":
+            noble = Element.from_row_and_group(row - 1, 18)
+            row += 2
+            group += Z - noble.Z - 2
+
+        if element.is_rare_earth_metal:
+            row += 1  # Lanthanides and actinides are one row below
+
+        ax = axes[row - 1][group - 1]
+        symbol_kwargs.setdefault("fontsize", 10)
+        ax.text(
+            *(0.5, 0.8),
+            symbol_text(element)
+            if callable(symbol_text)
+            else symbol_text.format(elem=element),
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+            **symbol_kwargs,
+        )
+        ax.axis("on")  # re-enable axes of elements that exist
+
+        hist_data = srs.get(symbol, [])
+        if hist_data:
+            _n, bins_array, patches = ax.hist(hist_data, bins=bins, color="C0", alpha=1)
+            if x_range:
+                ax.set_xlim(x_range)
+            x_min, x_max = math.floor(min(bins_array)), math.ceil(max(bins_array))
+            x_ticks = list(x_range or [x_min, x_max])
+            if x_ticks[0] is None:
+                x_ticks[0] = x_min
+            if x_ticks[1] is None:
+                x_ticks[1] = x_max
+            if x_min < 0 < x_max:
+                x_ticks = [x_min, 0, x_max]
+
+            y_min, y_max = ax.get_ylim()
+            for patch, x_val in zip(patches, bins_array[:-1]):
+                plt.setp(patch, "facecolor", cmap(norm(x_val)))
+            ax.set_xticks(x_ticks)
+            ax.set_yticks([])
+            ax.tick_params(labelsize=8, direction="in")
+        else:  # disable ticks for elements without data
+            ax.set_xticks([])
+            ax.set_yticks([])
+        for side in ("left", "right", "top"):
+            ax.spines[side].set_visible(False)
+
+    # add colorbar
+    cbar_ax = fig.add_axes(cbar_coords)
+    _cbar = fig.colorbar(
+        plt.cm.ScalarMappable(norm=norm, cmap=cmap),
+        cax=cbar_ax,
+        orientation="horizontal",
+    )
+    # set color bar title
+    cbar_ax.set_title(cbar_title, fontsize=12, pad=10)
+
     return fig
