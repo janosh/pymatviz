@@ -161,6 +161,8 @@ def ptable_heatmap(
     label_font_size: int = 16,
     value_font_size: int = 12,
     tile_size: float | tuple[float, float] = 0.9,
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
+    rare_earth_voffset: float = 0.5,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
@@ -215,6 +217,11 @@ def ptable_heatmap(
         tile_size (float | tuple[float, float]): Size of each tile in the periodic
             table as a fraction of available space before touching neighboring tiles.
             1 or (1, 1) means no gaps between tiles. Defaults to 0.9.
+        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
+            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
+            (0.18, 0.8, 0.42, 0.05).
+        rare_earth_voffset (float): Vertical offset for lanthanides and actinides
+            (row 6 and 7) from the rest of the periodic table. Defaults to 0.5.
         **kwargs: Additional keyword arguments passed to plt.figure().
 
     Returns:
@@ -297,8 +304,8 @@ def ptable_heatmap(
                 label = f"{tile_value:{fmt}}"
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             label = label.replace("e+0", "e")
-        if row < 3:  # vertical offset for lanthanide + actinide series
-            row += 0.5
+        if row < 3:  # vertical offset for lanthanides + actinides
+            row += rare_earth_voffset
         rect = Rectangle(
             (column, row), tile_width, tile_height, edgecolor="gray", facecolor=color
         )
@@ -343,9 +350,9 @@ def ptable_heatmap(
     if heat_mode is not None:
         # color bar position and size: [x, y, width, height]
         # anchored at lower left corner
-        cb_ax = ax.inset_axes(cbar_coords, transform=ax.transAxes)
+        cbar_ax = ax.inset_axes(cbar_coords, transform=ax.transAxes)
         # format major and minor ticks
-        cb_ax.tick_params(which="both", labelsize=14, width=1)
+        cbar_ax.tick_params(which="both", labelsize=14, width=1)
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 
@@ -369,7 +376,7 @@ def ptable_heatmap(
         )
 
         cbar.outline.set_linewidth(1)
-        cb_ax.set_title(cbar_title, pad=10, **text_style)
+        cbar_ax.set_title(cbar_title, pad=10, **text_style)
 
     plt.ylim(0.3, n_rows + 0.1)
     plt.xlim(0.9, n_columns + 1)
