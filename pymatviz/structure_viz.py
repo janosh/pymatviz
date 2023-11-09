@@ -15,6 +15,8 @@ from pymatviz.utils import covalent_radii, jmol_colors
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import ArrayLike
     from pymatgen.core import Structure
 
@@ -118,7 +120,7 @@ def plot_structure_2d(
     site_labels: bool
     | Literal["symbol", "species"]
     | dict[str, str | float]
-    | list[str | float] = True,
+    | Sequence[str | float] = True,
     site_labels_bbox: dict[str, Any] | None = None,
     label_kwargs: dict[str, Any] | None = None,
     bond_kwargs: dict[str, Any] | None = None,
@@ -186,8 +188,9 @@ def plot_structure_2d(
             pymatgen.analysis.local_env.NearNeighbors, use that to determine
             connectivity. Options include VoronoiNN, MinimumDistanceNN, OpenBabelNN,
             CovalentBondNN, dtc. Defaults to True.
-        site_labels (bool | dict[str, str | float] | list[str | float]): How to annotate
-            lattice sites. If True, labels are element species (symbol + oxidation
+        site_labels (bool | "symbol" | "species" | dict[str, str | float] | Sequence):
+            How to annotate lattice sites.
+            If True, labels are element species (symbol + oxidation
             state). If a dict, should map species strings (or element symbols but looks
             for species string first) to labels. If a list, must be same length as the
             number of sites in the crystal. If a string, must be "symbol" or
@@ -341,7 +344,9 @@ def plot_structure_2d(
                     txt = elem_symbol
                 elif site_labels in ("species", True):
                     txt = specie
-                elif isinstance(site_labels, dict) and specie in site_labels:
+                elif site_labels is False:
+                    txt = ""
+                elif isinstance(site_labels, dict):
                     # try element incl. oxidation state as dict key first (e.g. Na+),
                     # then just element as fallback
                     txt = site_labels.get(
@@ -349,7 +354,7 @@ def plot_structure_2d(
                     )
                     if txt in special_site_labels:
                         txt = specie if txt == "species" else elem_symbol
-                elif isinstance(site_labels, list):
+                elif isinstance(site_labels, (list, tuple)):
                     txt = site_labels[idx]  # idx runs from 0 to n_atoms
                 else:
                     raise ValueError(

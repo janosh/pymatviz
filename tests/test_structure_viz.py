@@ -57,4 +57,4 @@ def test_plot_structure_2d(
 @pytest.mark.parametrize("axis", [True, False, "on", "off", "square", "equal"])
 def test_plot_structure_2d_axis(axis: str | bool) -> None:
     ax = plot_structure_2d(disordered_struct, axis=axis)
-    assert ax.axes.axison is False if axis in (False, "off") else True
+    assert ax.axes.axison == (axis not in (False, "off"))
