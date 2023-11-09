@@ -23,7 +23,8 @@ if TYPE_CHECKING:
     from matplotlib.text import Annotation
     from numpy.typing import ArrayLike
 
-ROOT = dirname(dirname(__file__))
+PKG_DIR = dirname(__file__)
+ROOT = dirname(PKG_DIR)
 
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(

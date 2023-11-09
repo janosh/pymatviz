@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
@@ -57,4 +59,23 @@ def test_plot_structure_2d(
 @pytest.mark.parametrize("axis", [True, False, "on", "off", "square", "equal"])
 def test_plot_structure_2d_axis(axis: str | bool) -> None:
     ax = plot_structure_2d(disordered_struct, axis=axis)
-    assert ax.axes.axison is False if axis in (False, "off") else True
+    assert ax.axes.axison == (axis not in (False, "off"))
+
+
+@pytest.mark.parametrize(
+    "site_labels",
+    [True, False, "symbol", "species", {"Fe": "Iron"}, {"Fe": 1.0}, ["Fe", "O"]],
+)
+@pytest.mark.parametrize("site_labels_bbox", [None, {}, {"boxstyle": "round"}])
+def test_plot_structure_2d_site_labels(
+    site_labels: Any, site_labels_bbox: dict[str, Any] | None
+) -> None:
+    ax = plot_structure_2d(
+        disordered_struct, site_labels=site_labels, site_labels_bbox=site_labels_bbox
+    )
+    # specie = disordered_struct[0].species
+    if site_labels is False:
+        assert not ax.axes.texts
+    else:
+        label = ax.axes.texts[0].get_text()
+        assert label in ("Fe", "O", "1.0", "Iron")

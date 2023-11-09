@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import warnings
 from itertools import product
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +15,8 @@ from pymatviz.utils import covalent_radii, jmol_colors
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import ArrayLike
     from pymatgen.core import Structure
 
@@ -115,7 +117,11 @@ def plot_structure_2d(
     scale: float = 1,
     show_unit_cell: bool = True,
     show_bonds: bool | NearNeighbors = False,
-    site_labels: bool | dict[str, str | float] | list[str | float] = True,
+    site_labels: bool
+    | Literal["symbol", "species"]
+    | dict[str, str | float]
+    | Sequence[str | float] = True,
+    site_labels_bbox: dict[str, Any] | None = None,
     label_kwargs: dict[str, Any] | None = None,
     bond_kwargs: dict[str, Any] | None = None,
     standardize_struct: bool | None = None,
@@ -182,10 +188,16 @@ def plot_structure_2d(
             pymatgen.analysis.local_env.NearNeighbors, use that to determine
             connectivity. Options include VoronoiNN, MinimumDistanceNN, OpenBabelNN,
             CovalentBondNN, dtc. Defaults to True.
-        site_labels (bool | dict[str, str | float] | list[str | float]): How to annotate
-            lattice sites. If True, labels are element symbols. If a dict, should map
-            element symbols to labels. If a list, must be same length as the number of
-            sites in the crystal. Defaults to True.
+        site_labels (bool | "symbol" | "species" | dict[str, str | float] | Sequence):
+            How to annotate lattice sites.
+            If True, labels are element species (symbol + oxidation
+            state). If a dict, should map species strings (or element symbols but looks
+            for species string first) to labels. If a list, must be same length as the
+            number of sites in the crystal. If a string, must be "symbol" or
+            "species". "symbol" hides the oxidation state, "species" shows it
+            (equivalent to True). Defaults to True.
+        site_labels_bbox (dict, optional): Keyword arguments for matplotlib.text.Text
+            bbox like {"facecolor": "white", "alpha": 0.5}. Defaults to None.
         label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text like
             {"fontsize": 14}. Defaults to None.
         bond_kwargs (dict, optional): Keyword arguments for the matplotlib.path.Path
@@ -200,6 +212,9 @@ def plot_structure_2d(
         axis (bool | str, optional): Whether/how to show plot axes. Defaults to "off".
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.axis for
             details.
+
+    Raises:
+        ValueError: On invalid site_labels.
 
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
@@ -303,15 +318,16 @@ def plot_structure_2d(
     if n_lines > 0:
         unit_cell_lines = np.dot(unit_cell_lines, rotation_matrix)[:, :2] * scale
 
+    special_site_labels = ("symbol", "species")
     # sort positions by 3rd dim so we draw from back to front in z-axis (out-of-plane)
     for idx in positions[:, 2].argsort():
         xy = positions[idx, :2]
         start = 0
         if idx < n_atoms:
             # loop over all species on a site (usually just 1 for ordered sites)
-            for elem, occupancy in struct[idx].species.items():
+            for specie, occupancy in struct[idx].species.items():
                 # strip oxidation state from element symbol (e.g. Ta5+ to Ta)
-                elem_symbol = elem.symbol
+                elem_symbol = specie.symbol
                 radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
                 face_color = colors[elem_symbol]
                 wedge = Wedge(
@@ -324,13 +340,27 @@ def plot_structure_2d(
                 )
                 ax.add_patch(wedge)
 
-                txt = elem
-                if isinstance(site_labels, dict) and elem in site_labels:
+                if site_labels == "symbol":
+                    txt = elem_symbol
+                elif site_labels in ("species", True):
+                    txt = specie
+                elif site_labels is False:
+                    txt = ""
+                elif isinstance(site_labels, dict):
                     # try element incl. oxidation state as dict key first (e.g. Na+),
                     # then just element as fallback
-                    txt = site_labels.get(elem_symbol, site_labels.get(elem, ""))
-                if isinstance(site_labels, list):
+                    txt = site_labels.get(
+                        repr(specie), site_labels.get(elem_symbol, "")
+                    )
+                    if txt in special_site_labels:
+                        txt = specie if txt == "species" else elem_symbol
+                elif isinstance(site_labels, (list, tuple)):
                     txt = site_labels[idx]  # idx runs from 0 to n_atoms
+                else:
+                    raise ValueError(
+                        f"Invalid {site_labels=}. Must be one of (bool, "
+                        f"{', '.join(special_site_labels)}, dict, list)"
+                    )
 
                 if site_labels:
                     # place element symbol half way along outer wedge edge for
@@ -341,7 +371,8 @@ def plot_structure_2d(
                         (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                     )
 
-                    bbox = dict(facecolor=face_color, edgecolor="none", pad=1)
+                    bbox = dict(facecolor="none", edgecolor="none", pad=1)
+                    bbox.update(site_labels_bbox or {})
                     txt_kwds = dict(
                         ha="center", va="center", bbox=bbox, **(label_kwargs or {})
                     )
