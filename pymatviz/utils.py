@@ -293,22 +293,39 @@ def add_identity_line(
     try:
         # https://stackoverflow.com/a/62042077
         full_fig = fig.full_figure_for_development(warn=False)
-        xy_range = full_fig.layout.xaxis.range + full_fig.layout.yaxis.range
-        xy_min, xy_max = min(xy_range), max(xy_range)
+        xaxis_type = full_fig.layout.xaxis.type
+        yaxis_type = full_fig.layout.yaxis.type
+
+        if xaxis_type == "log" or yaxis_type == "log":
+            xy_min = min(full_fig.layout.xaxis.range[0], full_fig.layout.yaxis.range[0])
+            xy_max = max(full_fig.layout.xaxis.range[1], full_fig.layout.yaxis.range[1])
+            # Convert to linear space for plotting
+            xy_min, xy_max = 10**xy_min, 10**xy_max
+        else:
+            xy_range = full_fig.layout.xaxis.range + full_fig.layout.yaxis.range
+            xy_min, xy_max = min(xy_range), max(xy_range)
     except ValueError:
         trace = fig.data[trace_idx]
-
-        # min/max(seq) gives NaN if sequence contains NaNs so get rid of them first
         df = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
 
-        xy_min = min(df.min())
-        xy_max = max(df.max())
+        x_min, x_max = min(df.x), max(df.x)
+        y_min, y_max = min(df.y), max(df.y)
 
+        # If the axes are logarithmic, adjust the min and max accordingly
+        if fig.layout.xaxis.type == "log":
+            x_min, x_max = 10**x_min, 10**x_max
+        if fig.layout.yaxis.type == "log":
+            y_min, y_max = 10**y_min, 10**y_max
+
+        xy_min = min(x_min, y_min)
+        xy_max = max(x_max, y_max)
+
+    line_defaults = dict(color="gray", width=1, dash="dash")
     fig.add_shape(
         type="line",
         **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
         layer="below",
-        line={**dict(color="gray", width=1, dash="dash"), **(line_kwds or {})},
+        line=line_defaults | (line_kwds or {}),
     )
 
     return fig
