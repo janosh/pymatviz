@@ -293,22 +293,44 @@ def add_identity_line(
     try:
         # https://stackoverflow.com/a/62042077
         full_fig = fig.full_figure_for_development(warn=False)
-        xy_range = full_fig.layout.xaxis.range + full_fig.layout.yaxis.range
-        xy_min, xy_max = min(xy_range), max(xy_range)
+        xaxis_type = full_fig.layout.xaxis.type
+        yaxis_type = full_fig.layout.yaxis.type
+
+        x_range = full_fig.layout.xaxis.range
+        y_range = full_fig.layout.yaxis.range
+
+        # Convert log range to linear if necessary
+        if xaxis_type == "log":
+            x_range = [10**val for val in x_range]
+        if yaxis_type == "log":
+            y_range = [10**val for val in y_range]
+
+        xy_min = min(x_range[0], y_range[0])
+        xy_max = max(x_range[1], y_range[1])
     except ValueError:
         trace = fig.data[trace_idx]
-
-        # min/max(seq) gives NaN if sequence contains NaNs so get rid of them first
         df = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
 
-        xy_min = min(df.min())
-        xy_max = max(df.max())
+        # Determine ranges based on the type of axes
+        if fig.layout.xaxis.type == "log":
+            x_range = [10**val for val in (min(df.x), max(df.x))]
+        else:
+            x_range = [min(df.x), max(df.x)]
 
+        if fig.layout.yaxis.type == "log":
+            y_range = [10**val for val in (min(df.y), max(df.y))]
+        else:
+            y_range = [min(df.y), max(df.y)]
+
+        xy_min = min(x_range[0], y_range[0])
+        xy_max = max(x_range[1], y_range[1])
+
+    line_defaults = dict(color="gray", width=1, dash="dash")
     fig.add_shape(
         type="line",
         **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
         layer="below",
-        line={**dict(color="gray", width=1, dash="dash"), **(line_kwds or {})},
+        line=line_defaults | (line_kwds or {}),
     )
 
     return fig
