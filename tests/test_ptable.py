@@ -157,7 +157,7 @@ def test_ptable_heatmap(
     with pytest.raises(ValueError, match=r"Unexpected symbol\(s\) foobar"):
         ptable_heatmap(glass_elem_counts, exclude_elements=["foobar"])
 
-    # test cbar_precision
+    # test cbar_fmt
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=".3f")
     cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
     assert cbar_1st_label == "0.000"
