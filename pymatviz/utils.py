@@ -247,7 +247,7 @@ CrystalSystem = Literal[
 ]
 
 
-def get_crystal_sys(spg: int) -> CrystalSystem:
+def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
     # not using isinstance(n, int) to allow 0-decimal floats
     if not (spg == int(spg) and 0 < spg < 231):
@@ -269,7 +269,10 @@ def get_crystal_sys(spg: int) -> CrystalSystem:
 
 
 def add_identity_line(
-    fig: go.Figure, line_kwds: dict[str, Any] | None = None, trace_idx: int = 0
+    fig: go.Figure,
+    line_kwds: dict[str, Any] | None = None,
+    trace_idx: int = 0,
+    **kwargs: Any,
 ) -> go.Figure:
     """Add a line shape to the background layer of a plotly figure spanning
     from smallest to largest x/y values in the trace specified by trace_idx.
@@ -282,6 +285,7 @@ def add_identity_line(
         trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
             Defaults to 0. Unused if kaleido package is installed and the figure's
             actual x/y-range can be obtained from fig.full_figure_for_development().
+        **kwargs: Additional arguments are passed to fig.add_shape().
 
     Returns:
         Figure: Figure with added identity line.
@@ -331,6 +335,7 @@ def add_identity_line(
         **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
         layer="below",
         line=line_defaults | (line_kwds or {}),
+        **kwargs,
     )
 
     return fig
