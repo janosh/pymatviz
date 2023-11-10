@@ -293,7 +293,7 @@ def df_to_html_table(
             "class='table' style='width: 100%'". Defaults to "".
         script (str): JavaScript string to insert above the table. Will replace the
             opening `<table` tag to allow passing props to it. The default script uses
-            ...props to allow for Svelte props forwarding to the table element. See
+            ...$$props to enable Svelte props forwarding to the table element. See
             source code to inspect default script. Don't forget to include '<table' in
             the somewhere in the script. Defaults to "".
         styles (str): CSS rules to apply to the table element. Defaults to
