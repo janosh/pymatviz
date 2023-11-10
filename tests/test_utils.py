@@ -96,19 +96,43 @@ def test_get_crystal_sys_invalid(spg: int) -> None:
         get_crystal_sys(spg)
 
 
+@pytest.fixture()
+def scatter_fig() -> go.Figure:
+    fig = go.Figure(go.Scatter(x=[1, 10, 100], y=[10, 100, 1000]))
+    fig.add_scatter(x=[1, 10, 100], y=[1, 10, 100])
+    return fig
+
+
+@pytest.mark.parametrize("xaxis_type", ["linear", "log"])
+@pytest.mark.parametrize("yaxis_type", ["linear", "log"])
 @pytest.mark.parametrize("trace_idx", [0, 1])
 @pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
 def test_add_identity_line(
-    plotly_scatter: go.Figure, trace_idx: int, line_kwds: dict[str, str] | None
+    scatter_fig: go.Figure,
+    xaxis_type: str,
+    yaxis_type: str,
+    trace_idx: int,
+    line_kwds: dict[str, str] | None,
 ) -> None:
-    fig = add_identity_line(plotly_scatter, line_kwds=line_kwds, trace_idx=trace_idx)
+    # Set axis types
+    scatter_fig.layout.xaxis.type = xaxis_type
+    scatter_fig.layout.yaxis.type = yaxis_type
+
+    fig = add_identity_line(scatter_fig, line_kwds=line_kwds, trace_idx=trace_idx)
     assert isinstance(fig, go.Figure)
 
-    line = next(shape for shape in fig.layout["shapes"] if shape["type"] == "line")
-    assert line["x0"] == line["y0"]  # fails if we don't handle nan since nan != nan
-    assert line["x1"] == line["y1"]
-    assert line["layer"] == "below"
-    assert line["line"]["color"] == line_kwds["color"] if line_kwds else "gray"
+    # retrieve identity line
+    line = next((shape for shape in fig.layout.shapes if shape.type == "line"), None)
+    assert line is not None
+
+    assert line.layer == "below"
+    assert line.line.color == (line_kwds["color"] if line_kwds else "gray")
+    # check line coordinates
+    assert line.x0 == line.y0
+    assert line.x1 == line.y1
+    # check fig axis types
+    assert fig.layout.xaxis.type == xaxis_type
+    assert fig.layout.yaxis.type == yaxis_type
 
 
 def test_df_to_arrays() -> None:

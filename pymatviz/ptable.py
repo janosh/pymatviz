@@ -429,7 +429,7 @@ def ptable_heatmap_plotly(
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     showscale: bool = True,
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
-    precision: str | None = None,
+    fmt: str | None = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
     font_colors: Sequence[str] = ("#eff", "black"),
@@ -466,7 +466,7 @@ def ptable_heatmap_plotly(
             or not at all (None). Defaults to "value".
             "fraction" and "percent" can be used to make the colors in different
             periodic table heatmap plots comparable.
-        precision (str): f-string format option for heat labels. Defaults to ".1%"
+        fmt (str): f-string format option for heat labels. Defaults to ".1%"
             (1 decimal place) if heat_mode="percent" else ".3g".
         hover_props (list[str] | dict[str, str]): Elemental properties to display in the
             hover tooltip. Can be a list of property names to display only the values
@@ -583,12 +583,12 @@ def ptable_heatmap_plotly(
             label = "excl."
         elif heat_value := heat_value_element_map.get(symbol):
             if heat_mode == "percent":
-                label = f"{heat_value:{precision or '.1%'}}"
+                label = f"{heat_value:{fmt or '.1%'}}"
             else:
                 default_prec = ".1f" if heat_value < 100 else ",.0f"
                 if heat_value > 1e5:
                     default_prec = ".2g"
-                label = f"{heat_value:{precision or default_prec}}".replace("e+0", "e")
+                label = f"{heat_value:{fmt or default_prec}}".replace("e+0", "e")
 
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
         tile_text = (
