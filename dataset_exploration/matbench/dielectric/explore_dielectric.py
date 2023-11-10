@@ -10,7 +10,7 @@ from pymatviz import (
     spacegroup_sunburst,
 )
 from pymatviz.plot_defaults import crystal_sys_order, plt, px
-from pymatviz.utils import get_crystal_sys
+from pymatviz.utils import crystal_sys_from_spg_num
 
 
 """matbench_dielectric dataset
@@ -42,7 +42,7 @@ df_diel["wyckoff"] = [
 ]
 df_diel["n_wyckoff"] = df_diel.wyckoff.map(count_wyckoff_positions)
 
-df_diel["crystal_sys"] = df_diel.spg_num.map(get_crystal_sys)
+df_diel["crystal_sys"] = df_diel.spg_num.map(crystal_sys_from_spg_num)
 
 df_diel["volume"] = [x.volume for x in df_diel.structure]
 df_diel["formula"] = [x.formula for x in df_diel.structure]

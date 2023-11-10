@@ -9,7 +9,7 @@ from pymatviz import (
     spacegroup_sunburst,
 )
 from pymatviz.plot_defaults import plt
-from pymatviz.utils import get_crystal_sys
+from pymatviz.utils import crystal_sys_from_spg_num
 
 
 """Stats for the matbench_perovskites dataset.
@@ -38,7 +38,7 @@ df_perov["volume"] = df_perov.structure.map(lambda struct: struct.volume)
 
 df_perov["formula"] = df_perov.structure.map(lambda cryst: cryst.formula)
 
-df_perov["crystal_sys"] = [get_crystal_sys(x) for x in df_perov.spg_num]
+df_perov["crystal_sys"] = [crystal_sys_from_spg_num(x) for x in df_perov.spg_num]
 
 
 # %%

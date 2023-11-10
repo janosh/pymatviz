@@ -21,7 +21,7 @@ from tqdm import tqdm
 
 from pymatviz import ptable_heatmap, spacegroup_hist, spacegroup_sunburst
 from pymatviz.plot_defaults import crystal_sys_order, plt, px
-from pymatviz.utils import get_crystal_sys
+from pymatviz.utils import crystal_sys_from_spg_num
 
 
 # %%
@@ -33,7 +33,7 @@ df_grvh[["spg_symbol", "spg_num"]] = [
     struct.get_space_group_info()
     for struct in tqdm(df_grvh.structure, desc="Getting matbench_log_gvrh spacegroups")
 ]
-df_grvh["crystal_sys"] = [get_crystal_sys(x) for x in df_grvh.spg_num]
+df_grvh["crystal_sys"] = [crystal_sys_from_spg_num(x) for x in df_grvh.spg_num]
 
 df_grvh["wyckoff"] = [
     get_aflow_label_from_spglib(struct)

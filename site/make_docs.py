@@ -16,7 +16,7 @@ from pymatviz import ROOT
 
 
 os.chdir(ROOT)
-with open("site/package.json") as file:
+with open(f"{ROOT}/site/package.json") as file:
     pkg = json.load(file)
 route = "site/src/routes/api"
 
