@@ -296,29 +296,34 @@ def add_identity_line(
         xaxis_type = full_fig.layout.xaxis.type
         yaxis_type = full_fig.layout.yaxis.type
 
-        if xaxis_type == "log" or yaxis_type == "log":
-            xy_min = min(full_fig.layout.xaxis.range[0], full_fig.layout.yaxis.range[0])
-            xy_max = max(full_fig.layout.xaxis.range[1], full_fig.layout.yaxis.range[1])
-            # Convert to linear space for plotting
-            xy_min, xy_max = 10**xy_min, 10**xy_max
-        else:
-            xy_range = full_fig.layout.xaxis.range + full_fig.layout.yaxis.range
-            xy_min, xy_max = min(xy_range), max(xy_range)
+        x_range = full_fig.layout.xaxis.range
+        y_range = full_fig.layout.yaxis.range
+
+        # Convert log range to linear if necessary
+        if xaxis_type == "log":
+            x_range = [10**val for val in x_range]
+        if yaxis_type == "log":
+            y_range = [10**val for val in y_range]
+
+        xy_min = min(x_range[0], y_range[0])
+        xy_max = max(x_range[1], y_range[1])
     except ValueError:
         trace = fig.data[trace_idx]
         df = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
 
-        x_min, x_max = min(df.x), max(df.x)
-        y_min, y_max = min(df.y), max(df.y)
-
-        # If the axes are logarithmic, adjust the min and max accordingly
+        # Determine ranges based on the type of axes
         if fig.layout.xaxis.type == "log":
-            x_min, x_max = 10**x_min, 10**x_max
-        if fig.layout.yaxis.type == "log":
-            y_min, y_max = 10**y_min, 10**y_max
+            x_range = [10**val for val in (min(df.x), max(df.x))]
+        else:
+            x_range = [min(df.x), max(df.x)]
 
-        xy_min = min(x_min, y_min)
-        xy_max = max(x_max, y_max)
+        if fig.layout.yaxis.type == "log":
+            y_range = [10**val for val in (min(df.y), max(df.y))]
+        else:
+            y_range = [min(df.y), max(df.y)]
+
+        xy_min = min(x_range[0], y_range[0])
+        xy_max = max(x_range[1], y_range[1])
 
     line_defaults = dict(color="gray", width=1, dash="dash")
     fig.add_shape(
