@@ -543,10 +543,8 @@ def si_fmt(
             Defaults to False.
         fmt_spec (str): f-string format specifier. Configure precision and left/right
             padding in returned string. Defaults to ".1f". Can be used to ensure leading
-            or trailing whitespace for shorter numbers. Ex.1: ">10.2f" has 2 decimal
-            places and is at least 10 characters long with leading spaces if necessary.
-            Ex.2: "<20.3g" uses 3 significant digits (g: scientific notation on large
-            numbers) with at least 20 chars through trailing space.
+            or trailing whitespace for shorter numbers. See
+            https://docs.python.org/3/library/string.html#format-specification-mini-language.
         sep (str): Separator between number and postfix. Defaults to "".
 
     Returns:
