@@ -7,7 +7,7 @@ import plotly.express as px
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
-from pymatviz.utils import get_crystal_sys
+from pymatviz.utils import crystal_sys_from_spg_num
 
 
 if TYPE_CHECKING:
@@ -52,7 +52,7 @@ def spacegroup_sunburst(
     df.columns = ["spacegroup", "count"]
 
     try:  # assume column contains integers as space group numbers
-        df["crystal_sys"] = [get_crystal_sys(x) for x in df.spacegroup]
+        df["crystal_sys"] = [crystal_sys_from_spg_num(x) for x in df.spacegroup]
     except ValueError:  # column must be strings of space group symbols
         df["crystal_sys"] = [SpaceGroup(x).crystal_system for x in df.spacegroup]
 

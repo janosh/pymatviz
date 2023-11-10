@@ -292,15 +292,15 @@ def df_to_html_table(
         inline_props (str): Inline props to pass to the table element. Example:
             "class='table' style='width: 100%'". Defaults to "".
         script (str): JavaScript string to insert above the table. Will replace the
-            opening `<table` tag to allow passing props to it. The default script uses
-            ...props to allow for Svelte props forwarding to the table element. See
-            source code to inspect default script. Don't forget to include '<table' in
-            the somewhere in the script. Defaults to "".
+            opening HTML opening table tag to allow passing props to it. The default
+            script uses ...props to enable Svelte props forwarding to the table element.
+            See source code to inspect default script.
         styles (str): CSS rules to apply to the table element. Defaults to
-             TABLE_SCROLL_CSS (overflow: scroll; max-width: 100%; display: block;)
+            TABLE_SCROLL_CSS.
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
-            to the pandas Styler. Defaults to True. If dict, keys are selectors and
-            values CSS strings. Example: {"td, th": "border: none; padding: 4px 6px;"}
+            to the pandas Styler. Defaults to True. If dict, keys are CSS selectors and
+            values CSS strings. Example:
+            dict("td, th": "border: none; padding: 4px 6px;")
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     default_script = """<script lang="ts">
