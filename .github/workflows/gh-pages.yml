@@ -14,5 +14,5 @@ jobs:
       python-version: "3.11"
       working-directory: site
       pre-build: |
-        pip install '..[gh-pages]'
+        pip install -e '..[gh-pages]'
         python ../site/make_docs.py

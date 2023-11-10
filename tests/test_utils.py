@@ -17,8 +17,8 @@ from pymatviz.utils import (
     annotate_bars,
     annotate_metrics,
     bin_df_cols,
+    crystal_sys_from_spg_num,
     df_to_arrays,
-    get_crystal_sys,
     luminance,
     patch_dict,
     pick_bw_for_contrast,
@@ -86,14 +86,14 @@ def test_annotate_metrics_raises(metrics: Any) -> None:
         (230, "cubic"),
     ],
 )
-def test_get_crystal_sys(spg_num: int, crystal_sys: CrystalSystem) -> None:
-    assert crystal_sys == get_crystal_sys(spg_num)
+def test_crystal_sys_from_spg_num(spg_num: int, crystal_sys: CrystalSystem) -> None:
+    assert crystal_sys == crystal_sys_from_spg_num(spg_num)
 
 
 @pytest.mark.parametrize("spg", [-1, 0, 231])
-def test_get_crystal_sys_invalid(spg: int) -> None:
+def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
-        get_crystal_sys(spg)
+        crystal_sys_from_spg_num(spg)
 
 
 @pytest.fixture()

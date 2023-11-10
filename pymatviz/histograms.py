@@ -13,7 +13,7 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.ptable import count_elements
-from pymatviz.utils import annotate_bars, df_to_arrays, get_crystal_sys
+from pymatviz.utils import annotate_bars, crystal_sys_from_spg_num, df_to_arrays
 
 
 if TYPE_CHECKING:
@@ -190,7 +190,7 @@ def spacegroup_hist(
             df = df.reindex(range(1, 231), fill_value=0)
         else:
             df = df.sort_index()
-        df["crystal_sys"] = [get_crystal_sys(x) for x in df.index]
+        df["crystal_sys"] = [crystal_sys_from_spg_num(x) for x in df.index]
         ax.set(xlim=(0, 230))
         xlabel = "International Spacegroup Number"
 
