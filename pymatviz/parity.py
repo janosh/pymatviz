@@ -184,6 +184,9 @@ def density_hexbin(
     weights: ArrayLike | None = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
+    cbar_label: str = "Density",
+    # [x, y, width, height] anchored at lower left corner
+    cbar_coords: tuple[float, float, float, float] = (0.95, 0.03, 0.03, 0.7),
     **kwargs: Any,
 ) -> plt.Axes:
     """Hexagonal-grid scatter plot colored by point density or by density in third
@@ -199,6 +202,10 @@ def density_hexbin(
             Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
+        cbar_label (str, optional): Color bar label. Defaults to "Density".
+        cbar_coords (tuple[float, float, float, float], optional): Color bar position
+            and size: [x, y, width, height] anchored at lower left corner. Defaults to
+            (0.18, 0.8, 0.42, 0.05).
         **kwargs: Additional keyword arguments to pass to ax.hexbin().
 
     Returns:
@@ -210,9 +217,11 @@ def density_hexbin(
     # the scatter plot
     hexbin = ax.hexbin(x, y, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
 
-    cb_ax = ax.inset_axes([0.95, 0.03, 0.03, 0.7])  # [x, y, width, height]
+    cb_ax = ax.inset_axes(cbar_coords)
     plt.colorbar(hexbin, cax=cb_ax)
     cb_ax.yaxis.set_ticks_position("left")
+    # make title vertical
+    cb_ax.set_title(cbar_label, rotation=90, pad=10)
 
     # identity line
     ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
