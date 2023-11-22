@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import TYPE_CHECKING, Any
+import urllib.request
+from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
 
 import pandas as pd
@@ -10,7 +11,13 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
 
-from pymatviz.io import df_to_html_table, df_to_pdf, normalize_and_crop_pdf, save_fig
+from pymatviz.io import (
+    TqdmDownload,
+    df_to_html_table,
+    df_to_pdf,
+    normalize_and_crop_pdf,
+    save_fig,
+)
 
 
 if TYPE_CHECKING:
@@ -223,3 +230,37 @@ def test_df_to_html_table(
 
     # check file contains original dataframe value
     assert str(df.iloc[0, 0]) in content
+
+
+def test_tqdm_download(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    test_url = "https://example.com/testfile"
+    test_file_path = tmp_path / "testfile"
+
+    def mock_urlretrieve(
+        *args: Any,
+        reporthook: Callable[[int, int, int | None], bool] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        # simulate a file download (in chunks)
+        total_size = 1024 * 1024  # 1 MB
+        block_size = 1024  # 1 KB per block
+        num_blocks = total_size // block_size
+
+        for block_num in range(1, num_blocks + 1):
+            if reporthook:
+                reporthook(block_num, block_size, total_size)
+
+    # apply mock urlretrieve
+    monkeypatch.setattr(urllib.request, "urlretrieve", mock_urlretrieve)
+
+    with TqdmDownload(desc=test_url) as pbar:
+        urllib.request.urlretrieve(test_url, test_file_path)
+
+    # TODO mock better so we actually run update_to and can expect pbar.n=1024
+    assert pbar.n == 0
+
+    stdout, stderr = capsys.readouterr()
+    assert stdout == ""
+    assert stderr == "http://example.com/testfile: 0.00B [00:00, ?B/s]"
