@@ -150,8 +150,8 @@ def ptable_heatmap(
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
-    fmt: str | Callable[[float, int], str] | None = None,
-    cbar_fmt: str | Callable[[float, int], str] | None = None,
+    fmt: str | Callable[..., str] | None = None,
+    cbar_fmt: str | Callable[..., str] | None = None,
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
     zero_color: str = "#eff",  # light gray
