@@ -145,6 +145,7 @@ def ptable_heatmap(
     count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
     cbar_max: float | None = None,
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
     colorscale: str = "viridis",
     infty_color: str = "lightskyblue",
     na_color: str = "white",
@@ -170,10 +171,13 @@ def ptable_heatmap(
         count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
-        cbar_title (str, optional): Title for colorbar. Defaults to "Element Count".
-        cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
+        cbar_title (str, optional): Color bar title. Defaults to "Element Count".
+        cbar_max (float, optional): Max value of the color bar range. Will be ignored
             if smaller than the largest plotted value. For creating multiple plots with
             identical color bars for visual comparison. Defaults to 0.
+        cbar_coords (tuple[float, float, float, float], optional): Color bar position
+            and size: [x, y, width, height] anchored at lower left corner. Defaults to
+            (0.18, 0.8, 0.42, 0.05).
         colorscale (str, optional): Matplotlib colormap name to use. Defaults to
             "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
             for available options.
@@ -198,8 +202,8 @@ def ptable_heatmap(
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can try log=True or
             exclude_elements=["O"]. Defaults to ().
-        zero_color (str): Color to use for elements with value zero. Defaults to "#eff"
-            (light gray).
+        zero_color (str): Hex color or recognized matplotlib color name to use for
+            elements with value zero. Defaults to "#eff" (light gray).
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
         label_font_size (int): Font size for element symbols. Defaults to 16.
@@ -327,9 +331,9 @@ def ptable_heatmap(
         ax.add_patch(rect)
 
     if heat_mode is not None:
-        # colorbar position and size: [x, y, width, height]
+        # color bar position and size: [x, y, width, height]
         # anchored at lower left corner
-        cb_ax = ax.inset_axes([0.18, 0.8, 0.42, 0.05], transform=ax.transAxes)
+        cb_ax = ax.inset_axes(cbar_coords, transform=ax.transAxes)
         # format major and minor ticks
         cb_ax.tick_params(which="both", labelsize=14, width=1)
 
