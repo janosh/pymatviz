@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from tqdm import tqdm
 
 
 if TYPE_CHECKING:
@@ -331,3 +332,40 @@ def df_to_html_table(
         html = html.replace("</style>", f"{styles}\n</style>")
     with open(file_path, "w") as file:
         file.write(html)
+
+
+class TqdmDownload(tqdm):
+    """Progress bar for urlretrieve file download.
+
+    Adapted from official TqdmUpTo example.
+    See https://github.com/tqdm/tqdm/blob/4c956c20b83be4312460fc0c4812eeb3fef5e7df/README.rst#hooks-and-callbacks
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Sets default values appropriate for file downloads for unit, unit_scale,
+        unit_divisor, miniters, desc.
+        """
+        for key, val in dict(
+            unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc="Downloading"
+        ).items():
+            kwargs.setdefault(key, val)
+        super().__init__(*args, **kwargs)
+
+    def update_to(
+        self, n_blocks: int = 1, block_size: int = 1, total_size: int | None = None
+    ) -> bool | None:
+        """Update hook for urlretrieve.
+
+        Args:
+            n_blocks (int, optional): Number of blocks transferred so far. Default = 1.
+            block_size (int, optional): Size of each block (in tqdm units). Default = 1.
+            total_size (int, optional): Total size (in tqdm units). If None, remains
+                unchanged. Defaults to None.
+
+        Returns:
+            bool | None: True if tqdm.display() was triggered.
+        """
+        if total_size is not None:
+            self.total = total_size
+        # update sets self.n = n_blocks * block_size
+        return self.update(n_blocks * block_size - self.n)
