@@ -184,7 +184,7 @@ def density_hexbin(
     weights: ArrayLike | None = None,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
-    cbar_label: str = "Density",
+    cbar_label: str | None = "Density",
     # [x, y, width, height] anchored at lower left corner
     cbar_coords: tuple[float, float, float, float] = (0.95, 0.03, 0.03, 0.7),
     **kwargs: Any,
@@ -220,8 +220,9 @@ def density_hexbin(
     cb_ax = ax.inset_axes(cbar_coords)
     plt.colorbar(hexbin, cax=cb_ax)
     cb_ax.yaxis.set_ticks_position("left")
-    # make title vertical
-    cb_ax.set_title(cbar_label, rotation=90, pad=10)
+    if cbar_label:
+        # make title vertical
+        cb_ax.set_title(cbar_label, rotation=90, pad=10)
 
     # identity line
     ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")

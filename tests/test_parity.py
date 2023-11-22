@@ -73,10 +73,21 @@ def test_density_scatter_with_hist(
 
 
 @pytest.mark.parametrize("df, x, y", df_x_y)
+@pytest.mark.parametrize(
+    "cbar_label, cbar_coords",
+    [
+        ("foo", (0.95, 0.03, 0.03, 0.7)),
+        (None, (1, 1, 1, 1)),
+    ],
+)
 def test_density_hexbin(
-    df: pd.DataFrame | None, x: str | ArrayLike, y: str | ArrayLike
+    df: pd.DataFrame | None,
+    x: str | ArrayLike,
+    y: str | ArrayLike,
+    cbar_label: str | None,
+    cbar_coords: tuple[float, float, float, float],
 ) -> None:
-    density_hexbin(df=df, x=x, y=y)
+    density_hexbin(df=df, x=x, y=y, cbar_label=cbar_label, cbar_coords=cbar_coords)
 
 
 @pytest.mark.parametrize("df, x, y", df_x_y)
