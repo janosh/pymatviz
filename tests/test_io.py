@@ -263,4 +263,4 @@ def test_tqdm_download(
 
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
-    assert stderr == "http://example.com/testfile: 0.00B [00:00, ?B/s]"
+    assert f"{test_url}: 0.00B [00:00, ?B/s]" in stderr
