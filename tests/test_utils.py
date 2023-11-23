@@ -397,15 +397,16 @@ def test_pick_bw_for_contrast(
 
 
 def test_si_fmt() -> None:
+    assert si_fmt(0) == "0.0"
+    assert si_fmt(123) == "123.0"
+    assert si_fmt(1234) == "1.2K"
     assert si_fmt(123456) == "123.5K"
-
     assert si_fmt(12345678, fmt_spec=">6.2f", sep=" ") == " 12.35 M"
-
     assert si_fmt(-0.00123, fmt_spec=".3g", binary=False) == "-1.23m"
-
     assert si_fmt(0.00000123, fmt_spec="5.1f", sep="\t", binary=True) == "  1.3\tμ"
-
     assert si_fmt(0.00000123, fmt_spec="5.1f", sep="\t", binary=False) == "  1.2\tμ"
+    assert si_fmt(-1) == "-1.0"
+    assert si_fmt(1.23456789e-10, fmt_spec="5.1f", sep="\t") == "123.5\tp"
 
 
 @pytest.mark.parametrize(

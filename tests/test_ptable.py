@@ -16,7 +16,7 @@ from pymatviz import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
 )
-from pymatviz.utils import df_ptable
+from pymatviz.utils import df_ptable, si_fmt
 
 
 if TYPE_CHECKING:
@@ -157,10 +157,15 @@ def test_ptable_heatmap(
     with pytest.raises(ValueError, match=r"Unexpected symbol\(s\) foobar"):
         ptable_heatmap(glass_elem_counts, exclude_elements=["foobar"])
 
-    # test cbar_fmt
+    # test cbar_fmt as string
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=".3f")
     cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
     assert cbar_1st_label == "0.000"
+
+    # test cbar_fmt as function
+    ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)
+    ax = ptable_heatmap(glass_elem_counts, fmt=lambda x, _: f"{x:.0f}", cbar_fmt=si_fmt)
+    ax = ptable_heatmap(glass_elem_counts, cbar_fmt=lambda x, _: f"{x:.3f} kg")
 
     ax = ptable_heatmap(glass_elem_counts, heat_mode="percent", cbar_fmt=".3%")
     cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
