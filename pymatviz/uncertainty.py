@@ -90,7 +90,7 @@ def qq_gaussian(
     # https://matplotlib.org/3.3.3/tutorials/intermediate/legend_guide.html#multiple-legends-on-the-same-axes
     ax.add_artist(legend1)
 
-    lines, areas = zip(*lines)
+    lines, areas = zip(*lines)  # type: ignore
 
     if len(lines) > 1:
         legend2 = ax.legend(

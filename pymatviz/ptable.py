@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import sys
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Callable, Literal, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -145,12 +145,13 @@ def ptable_heatmap(
     count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
     cbar_max: float | None = None,
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
     colorscale: str = "viridis",
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
-    fmt: str | None = None,
-    cbar_fmt: str | None = None,
+    fmt: str | Callable[..., str] | None = None,
+    cbar_fmt: str | Callable[..., str] | None = None,
     text_color: str | tuple[str, str] = "auto",
     exclude_elements: Sequence[str] = (),
     zero_color: str = "#eff",  # light gray
@@ -170,10 +171,13 @@ def ptable_heatmap(
         count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
-        cbar_title (str, optional): Title for colorbar. Defaults to "Element Count".
-        cbar_max (float, optional): Maximum value of the colorbar range. Will be ignored
+        cbar_title (str, optional): Color bar title. Defaults to "Element Count".
+        cbar_max (float, optional): Max value of the color bar range. Will be ignored
             if smaller than the largest plotted value. For creating multiple plots with
             identical color bars for visual comparison. Defaults to 0.
+        cbar_coords (tuple[float, float, float, float], optional): Color bar position
+            and size: [x, y, width, height] anchored at lower left corner. Defaults to
+            (0.18, 0.8, 0.42, 0.05).
         colorscale (str, optional): Matplotlib colormap name to use. Defaults to
             "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
             for available options.
@@ -198,8 +202,8 @@ def ptable_heatmap(
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can try log=True or
             exclude_elements=["O"]. Defaults to ().
-        zero_color (str): Color to use for elements with value zero. Defaults to "#eff"
-            (light gray).
+        zero_color (str): Hex color or recognized matplotlib color name to use for
+            elements with value zero. Defaults to "#eff" (light gray).
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
         label_font_size (int): Font size for element symbols. Defaults to 16.
@@ -276,7 +280,10 @@ def ptable_heatmap(
         else:
             color = color_map(norm(tile_value))
 
-            if heat_mode == "percent":
+            if callable(fmt):
+                # 2nd arg=0 just for consistency with matplotlib fmt signature
+                label = fmt(tile_value, 0)
+            elif heat_mode == "percent":
                 label = f"{tile_value:{fmt or '.1f'}}"
             else:
                 fmt = fmt or (".0f" if tile_value > 100 else ".1f")
@@ -327,9 +334,9 @@ def ptable_heatmap(
         ax.add_patch(rect)
 
     if heat_mode is not None:
-        # colorbar position and size: [x, y, width, height]
+        # color bar position and size: [x, y, width, height]
         # anchored at lower left corner
-        cb_ax = ax.inset_axes([0.18, 0.8, 0.42, 0.05], transform=ax.transAxes)
+        cb_ax = ax.inset_axes(cbar_coords, transform=ax.transAxes)
         # format major and minor ticks
         cb_ax.tick_params(which="both", labelsize=14, width=1)
 
@@ -338,13 +345,16 @@ def ptable_heatmap(
         def tick_fmt(val: float, _pos: int) -> str:
             # val: value at color axis tick (e.g. 10.0, 20.0, ...)
             # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
-            default_prec = (
+            default_fmt = (
                 ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
             )
-            return f"{val:{cbar_fmt or fmt or default_prec}}"
+            return f"{val:{cbar_fmt or fmt or default_fmt}}"
 
         cbar = fig.colorbar(
-            mappable, cax=cb_ax, orientation="horizontal", format=tick_fmt
+            mappable,
+            cax=cb_ax,
+            orientation="horizontal",
+            format=cbar_fmt if callable(cbar_fmt) else tick_fmt,
         )
 
         cbar.outline.set_linewidth(1)
@@ -663,7 +673,8 @@ def ptable_heatmap_plotly(
         colorbar=log_cbar if log else None,
         zmin=cscale_range[0],
         zmax=cscale_range[1],
-        # https://github.com/plotly/plotly.py/issues/193
+        # zauto=False if cscale_range is set, needed for zmin, zmax to work
+        # see https://github.com/plotly/plotly.py/issues/193
         zauto=cscale_range == (None, None),
         **kwargs,
     )
