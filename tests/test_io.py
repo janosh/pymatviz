@@ -256,10 +256,9 @@ def test_tqdm_download(
     monkeypatch.setattr(urllib.request, "urlretrieve", mock_urlretrieve)
 
     with TqdmDownload(desc=test_url) as pbar:
-        urllib.request.urlretrieve(test_url, test_file_path)
+        urllib.request.urlretrieve(test_url, test_file_path, reporthook=pbar.update_to)
 
-    # TODO mock better so we actually run update_to and can expect pbar.n=1024
-    assert pbar.n == 0
+    assert pbar.n == 1024 * 1024
 
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
