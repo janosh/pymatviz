@@ -8,3 +8,4 @@ tests/fixtures/**/*-failed-diff.png
 examples/*.html
 .env
 *.json.gz
+gnome

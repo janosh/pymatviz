@@ -551,6 +551,7 @@ def si_fmt(
         str: Formatted number.
     """
     factor = 1024 if binary else 1000
+    _scale = ""
 
     if abs(val) >= 1:
         # 1, Kilo, Mega, Giga, Tera, Peta, Exa, Zetta, Yotta
@@ -558,10 +559,9 @@ def si_fmt(
             if abs(val) < factor:
                 break
             val /= factor
-    else:
-        mu_unicode = "\u03BC"
+    elif val != 0:
         # milli, micro, nano, pico, femto, atto, zepto, yocto
-        for _scale in ("", "m", mu_unicode, "n", "p", "f", "a", "z", "y"):
+        for _scale in ("", "m", "μ", "n", "p", "f", "a", "z", "y"):
             if abs(val) > 1:
                 break
             val *= factor
