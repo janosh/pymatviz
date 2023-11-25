@@ -373,9 +373,12 @@ def ptable_heatmap_ratio(
     count_mode: CountMode = "composition",
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
-    not_in_numerator: tuple[str, str] = ("#eff", "gray: not in 1st list"),
-    not_in_denominator: tuple[str, str] = ("lightskyblue", "blue: not in 2nd list"),
-    not_in_either: tuple[str, str] = ("white", "white: not in either"),
+    not_in_numerator: tuple[str, str] | None = ("#eff", "gray: not in 1st list"),
+    not_in_denominator: tuple[str, str] | None = (
+        "lightskyblue",
+        "blue: not in 2nd list",
+    ),
+    not_in_either: tuple[str, str] | None = ("white", "white: not in either"),
     **kwargs: Any,
 ) -> plt.Axes:
     """Display the ratio of two maps from element symbols to heat values or of two sets
@@ -415,22 +418,20 @@ def ptable_heatmap_ratio(
     if normalize:
         values /= values.sum()
 
-    kwargs["zero_color"] = not_in_numerator[0]
-    kwargs["infty_color"] = not_in_denominator[0]
-    kwargs["na_color"] = not_in_either[0]
-
-    ax = ptable_heatmap(values, cbar_title=cbar_title, **kwargs)
-
     # add legend handles
-    for y_pos, color, txt in (
-        (2.1, *not_in_numerator),
-        (1.4, *not_in_denominator),
-        (0.7, *not_in_either),
+    for tup in (
+        (2.1, "zero", *(not_in_numerator or ())),
+        (1.4, "infty", *(not_in_denominator or ())),
+        (0.7, "na", *(not_in_either or ())),
     ):
+        if len(tup) < 3:
+            continue
+        y_pos, key, color, txt = tup
+        kwargs[f"{key}_color"] = color
         bbox = dict(facecolor=color, edgecolor="gray")
         plt.text(0.8, y_pos, txt, fontsize=10, bbox=bbox)
 
-    return ax
+    return ptable_heatmap(values, cbar_title=cbar_title, **kwargs)
 
 
 def ptable_heatmap_plotly(

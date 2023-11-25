@@ -190,8 +190,8 @@ def test_ptable_heatmap_ratio(
     ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
 
     # mixed element counts and composition
-    ptable_heatmap_ratio(glass_formulas, steel_elem_counts)
-    ptable_heatmap_ratio(glass_elem_counts, steel_formulas)
+    ptable_heatmap_ratio(glass_formulas, steel_elem_counts, exclude_elements=("O", "P"))
+    ptable_heatmap_ratio(glass_elem_counts, steel_formulas, not_in_numerator=None)
 
 
 def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
