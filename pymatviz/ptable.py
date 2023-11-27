@@ -180,7 +180,7 @@ def ptable_heatmap(
             and size: [x, y, width, height] anchored at lower left corner. Defaults to
             (0.18, 0.8, 0.42, 0.05).
         cbar_kwargs (dict[str, Any], optional): Additional keyword arguments passed to
-            fig.colorbar(). Defaults to {}.
+            fig.colorbar(). Defaults to None.
         colorscale (str, optional): Matplotlib colormap name to use. Defaults to
             "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
             for available options.
