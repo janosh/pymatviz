@@ -83,13 +83,14 @@ def count_elements(
         if count_mode == "occurrence":
             srs = pd.Series(
                 itertools.chain.from_iterable(
-                    map(str, Composition(comp)) for comp in srs
+                    map(str, Composition(comp, allow_negative=True)) for comp in srs
                 )
             ).value_counts()
         else:
             attr = "element_composition" if count_mode == "composition" else count_mode
             srs = pd.DataFrame(
-                getattr(Composition(formula), attr).as_dict() for formula in srs
+                getattr(Composition(formula, allow_negative=True), attr).as_dict()
+                for formula in srs
             ).sum()  # sum up element occurrences
     else:
         raise ValueError(
@@ -453,7 +454,7 @@ def ptable_heatmap_plotly(
     fmt: str | None = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
-    font_colors: Sequence[str] = ("#eff", "black"),
+    font_colors: Sequence[str] = (),
     gap: float = 5,
     font_size: int | None = None,
     bg_color: str | None = None,
@@ -505,8 +506,8 @@ def ptable_heatmap_plotly(
             the hover tooltip on a new line below the element name"). Defaults to None.
         font_colors (list[str]): One color name or two for [min_color, max_color].
             min_color is applied to annotations with heatmap values less than
-            (max_val - min_val) / 2. Defaults to ("#eff", "black") meaning light text
-            for low values and dark text for high values. May need to be manually
+            (max_val - min_val) / 2. Defaults to None, meaning auto-set to maximize
+            contrast with color scale: white text for dark background and vice versa.
             swapped depending on the colorscale.
         gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
         font_size (int): Element symbol and heat label text size. Any valid CSS size
@@ -567,14 +568,6 @@ def ptable_heatmap_plotly(
         color_bar.setdefault("title", values.name)
 
     values = count_elements(values, count_mode, exclude_elements, fill_value)
-
-    if log and values.dropna()[values != 0].min() <= 1:
-        smaller_1 = values[values <= 1]
-        raise ValueError(
-            "Log color scale requires all heat map values to be > 1 since values <= 1 "
-            f"map to negative log values which throws off the color scale. Got "
-            f"{smaller_1.size} values <= 1: {dict(smaller_1)}"
-        )
 
     if heat_mode in ("fraction", "percent"):
         # normalize heat values
@@ -658,14 +651,6 @@ def ptable_heatmap_plotly(
         # colors on empty tiles of the periodic table
         heatmap_values[row][col] = color_val
 
-    if log:
-        # TODO: see if this ugly code can be handed off to plotly, looks like not atm
-        # https://github.com/janosh/pymatviz/issues/52
-        # https://github.com/plotly/documentation/issues/1611
-        log_cbar = dict(
-            tickvals=np.arange(int(np.log10(values.max())) + 1),
-            ticktext=10 ** np.arange(int(np.log10(values.max())) + 1),
-        )
     if isinstance(font_colors, str):
         font_colors = [font_colors]
     if cscale_range == (None, None):
@@ -677,13 +662,12 @@ def ptable_heatmap_plotly(
         text=hover_texts,
         showscale=showscale,
         colorscale=colorscale,
-        font_colors=font_colors,
+        font_colors=font_colors or None,
         hoverinfo="text",
         xgap=gap,
         ygap=gap,
-        colorbar=log_cbar if log else None,
-        zmin=cscale_range[0],
-        zmax=cscale_range[1],
+        zmin=None if log else cscale_range[0],
+        zmax=None if log else cscale_range[1],
         # zauto=False if cscale_range is set, needed for zmin, zmax to work
         # see https://github.com/plotly/plotly.py/issues/193
         zauto=cscale_range == (None, None),

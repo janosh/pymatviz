@@ -225,6 +225,25 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 
     ptable_heatmap_plotly(glass_formulas, heat_mode="percent")
 
+    # test log color scale with -1, 0, 1 and random negative value
+    for val in (-9.72, -1, 0, 1):
+        ptable_heatmap_plotly([f"H{val}", "O2"], log=True)
+        df_ptable["tmp"] = val
+        fig = ptable_heatmap_plotly(df_ptable["tmp"], log=True)
+        assert isinstance(fig, go.Figure)
+        heatmap = next(
+            trace
+            for trace in fig.data
+            if isinstance(trace, go.Heatmap) and "colorbar" in trace
+        )
+        assert heatmap.colorbar.title.text == "tmp"
+        c_scale = heatmap.colorscale
+        assert isinstance(c_scale, tuple)
+        assert isinstance(c_scale[0], tuple)
+        assert isinstance(c_scale[0][0], float)
+        assert isinstance(c_scale[0][1], str)
+        assert val <= max(c[0] for c in c_scale)
+
     with pytest.raises(ValueError, match="should be string, list of strings or list"):
         # test that bad colorscale raises ValueError
         ptable_heatmap_plotly(glass_formulas, colorscale=lambda: "bad scale")  # type: ignore[arg-type]
