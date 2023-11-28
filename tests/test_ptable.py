@@ -142,9 +142,19 @@ def test_ptable_heatmap(
     # element properties as heatmap values
     ptable_heatmap(df_ptable.atomic_mass, text_color=("red", "blue"))
 
-    # custom max color bar value
-    ptable_heatmap(glass_formulas, cbar_max=1e2)
-    ptable_heatmap(glass_formulas, log=True, cbar_max=1e2)
+    # custom cbar_range
+    ptable_heatmap(glass_formulas, cbar_range=(0, 100))
+    ptable_heatmap(glass_formulas, log=True, cbar_range=(None, 100))
+    ptable_heatmap(glass_formulas, log=True, cbar_range=(1, None))
+
+    with pytest.raises(ValueError, match="Invalid vmin or vmax"):
+        # can't use cbar_min=0 with log=True
+        ptable_heatmap(glass_formulas, log=True, cbar_range=(0, None))
+
+    # cbar_kwargs
+    ax = ptable_heatmap(glass_formulas, cbar_kwargs=dict(orientation="horizontal"))
+    cax = ax.inset_axes([0.1, 0.9, 0.8, 0.05])
+    ptable_heatmap(glass_formulas, cbar_kwargs={"cax": cax, "format": "%.3f"})
 
     # element counts
     ptable_heatmap(glass_elem_counts)
@@ -157,12 +167,12 @@ def test_ptable_heatmap(
     with pytest.raises(ValueError, match=r"Unexpected symbol\(s\) foobar"):
         ptable_heatmap(glass_elem_counts, exclude_elements=["foobar"])
 
-    # test cbar_fmt as string
+    # cbar_fmt as string
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=".3f")
     cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
     assert cbar_1st_label == "0.000"
 
-    # test cbar_fmt as function
+    # cbar_fmt as function
     ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)
     ax = ptable_heatmap(glass_elem_counts, fmt=lambda x, _: f"{x:.0f}", cbar_fmt=si_fmt)
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=lambda x, _: f"{x:.3f} kg")
@@ -171,7 +181,7 @@ def test_ptable_heatmap(
     cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
     assert cbar_1st_label == "0.000%"
 
-    # test tile_size
+    # tile_size
     ptable_heatmap(df_ptable.atomic_mass, tile_size=1)
     ptable_heatmap(df_ptable.atomic_mass, tile_size=(0.9, 1))
 

@@ -144,8 +144,9 @@ def ptable_heatmap(
     ax: plt.Axes | None = None,
     count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
-    cbar_max: float | None = None,
+    cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
+    cbar_kwargs: dict[str, Any] | None = None,
     colorscale: str = "viridis",
     infty_color: str = "lightskyblue",
     na_color: str = "white",
@@ -172,12 +173,14 @@ def ptable_heatmap(
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
         cbar_title (str, optional): Color bar title. Defaults to "Element Count".
-        cbar_max (float, optional): Max value of the color bar range. Will be ignored
-            if smaller than the largest plotted value. For creating multiple plots with
-            identical color bars for visual comparison. Defaults to 0.
+        cbar_range (tuple[float | None, float | None], optional): Color bar range.
+            Can be used e.g. to create multiple plots with identical color bars for
+            visual comparison. Defaults to automatic based on data range.
         cbar_coords (tuple[float, float, float, float], optional): Color bar position
             and size: [x, y, width, height] anchored at lower left corner. Defaults to
             (0.18, 0.8, 0.42, 0.05).
+        cbar_kwargs (dict[str, Any], optional): Additional keyword arguments passed to
+            fig.colorbar(). Defaults to None.
         colorscale (str, optional): Matplotlib colormap name to use. Defaults to
             "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
             for available options.
@@ -252,8 +255,11 @@ def ptable_heatmap(
     norm = LogNorm() if log else Normalize()
 
     norm.autoscale(clean_vals.to_numpy())
-    if cbar_max is not None:
-        norm.vmax = cbar_max
+    if cbar_range is not None and len(cbar_range) == 2:
+        if cbar_range[0] is not None:
+            norm.vmin = cbar_range[0]
+        if cbar_range[1] is not None:
+            norm.vmax = cbar_range[1]
 
     text_style = dict(
         horizontalalignment="center", fontsize=label_font_size, fontweight="semibold"
@@ -350,11 +356,15 @@ def ptable_heatmap(
             )
             return f"{val:{cbar_fmt or fmt or default_fmt}}"
 
+        cbar_kwargs = cbar_kwargs or {}
         cbar = fig.colorbar(
             mappable,
-            cax=cb_ax,
-            orientation="horizontal",
-            format=cbar_fmt if callable(cbar_fmt) else tick_fmt,
+            cax=cbar_kwargs.pop("cax", cb_ax),
+            orientation=cbar_kwargs.pop("orientation", "horizontal"),
+            format=cbar_kwargs.pop(
+                "format", cbar_fmt if callable(cbar_fmt) else tick_fmt
+            ),
+            **cbar_kwargs,
         )
 
         cbar.outline.set_linewidth(1)
