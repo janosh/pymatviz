@@ -15,6 +15,7 @@ from pymatviz import (
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
+    ptable_hists,
 )
 from pymatviz.utils import df_ptable, si_fmt
 
@@ -359,3 +360,23 @@ def test_ptable_heatmap_plotly_label_map(
             any(val in anno.text for val in label_map.values())
             for anno in fig.layout.annotations
         )
+
+
+@pytest.mark.parametrize(
+    "data, symbol_pos, anno_kwds",
+    [
+        (pd.DataFrame({"H": [1, 2, 3], "He": [4, 5, 6]}), (0, 0), {}),
+        (dict(H=[1, 2, 3], He=[4, 5, 6]), (1, 1), dict(text=lambda x: f"{len(x):,}")),
+        (pd.Series([[1, 2, 3], [4, 5, 6]], index=["H", "He"]), (1, 1), dict(xy=(0, 0))),
+    ],
+)
+def test_ptable_hists(
+    data: pd.DataFrame | pd.Series | dict[str, list[int]],
+    symbol_pos: tuple[int, int],
+    anno_kwds: dict[str, Any],
+) -> None:
+    # Test the function with a valid DataFrame
+    fig = ptable_hists(data, symbol_pos=symbol_pos, anno_kwds=anno_kwds)
+    assert isinstance(
+        fig, plt.Figure
+    ), "The function should return a matplotlib Figure object"

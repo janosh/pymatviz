@@ -769,10 +769,10 @@ def ptable_hists(
     plt.subplots_adjust(wspace=0.4, hspace=0.4)
 
     if isinstance(data, pd.Series):
-        data = data.to_dict()
         # use series name as color bar title if available and no title was passed
         if cbar_title == "Values" and data.name:
             cbar_title = data.name
+        data = data.to_dict()
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="list")
 
