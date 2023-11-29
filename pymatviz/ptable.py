@@ -162,7 +162,6 @@ def ptable_heatmap(
     label_font_size: int = 16,
     value_font_size: int = 12,
     tile_size: float | tuple[float, float] = 0.9,
-    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
     rare_earth_voffset: float = 0.5,
     **kwargs: Any,
 ) -> plt.Axes:
@@ -368,7 +367,7 @@ def ptable_heatmap(
         cbar_kwargs = cbar_kwargs or {}
         cbar = fig.colorbar(
             mappable,
-            cax=cbar_kwargs.pop("cax", cb_ax),
+            cax=cbar_kwargs.pop("cax", cbar_ax),
             orientation=cbar_kwargs.pop("orientation", "horizontal"),
             format=cbar_kwargs.pop(
                 "format", cbar_fmt if callable(cbar_fmt) else tick_fmt
@@ -707,20 +706,27 @@ def ptable_heatmap_plotly(
 
 
 def ptable_hists(
-    srs: pd.Series,
+    data: pd.DataFrame | pd.Series | dict[str, list[float]],
     bins: int = 20,
     colormap: str = "viridis",
-    cbar_coords: tuple[float, float, float, float] = (0.25, 0.77, 0.35, 0.02),
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     x_range: tuple[float | None, float | None] | None = None,
     symbol_kwargs: Any = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
-    cbar_title: str = "Histogram Value",
+    cbar_title: str = "Values",
+    cbar_title_kwds: dict[str, Any] | None = None,
+    symbol_pos: tuple[float, float] = (0.5, 0.8),
+    log: bool = False,
+    anno_kwds: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> plt.Figure:
     """Plot histograms of values across the periodic table of elements.
 
     Args:
-        srs (pd.Series): Map from element symbols to histogram values.
+        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
+            symbols to histogram values. E.g. if dict, {"Fe": [1, 2, 3], "O": [4, 5]}.
+            If pd.Series, index is element symbols and values lists. If pd.DataFrame,
+            column names are element symbols histograms are plotted from each column.
         bins (int): Number of bins for the histograms. Defaults to 20.
         colormap (str): Matplotlib colormap name to use. Defaults to "viridis".
             See https://matplotlib.org/stable/users/explain/colors/colormaps
@@ -735,12 +741,24 @@ def ptable_hists(
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
             symbols. Defaults to None.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
+        cbar_title_kwds (dict): Keyword arguments passed to cbar.ax.set_title().
+            Defaults to dict(fontsize=12, pad=10).
+        symbol_pos (tuple[float, float]): Position of element symbols relative to the
+            lower left corner of each tile. Defaults to (0.5, 0.8). (1, 1) is the upper
+            right corner.
+        log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
+        anno_kwds (dict): Keyword arguments passed to plt.annotate() for element
+            annotations. Defaults to None. Useful for adding e.g. number of data points
+            in each histogram. For that, use
+            anno_kwds=dict(text=lambda hist_vals: f"{len(hist_vals):,}")).
+            Recognized keys are text, xy, xycoords, fontsize, and any other
+            plt.annotate() keywords.
         **kwargs: Additional keyword arguments passed to plt.subplots().
             figsize is set to (0.75 * n_columns, 0.75 * n_rows) where n_columns and
             n_rows are the number of columns and rows in the periodic table.
 
     Returns:
-        fig: matplotlib Figure object.
+        plt.Figure: periodic table with a histogram in each element tile.
     """
     symbol_kwargs = symbol_kwargs or {}
     n_rows = df_ptable.row.max()
@@ -750,8 +768,20 @@ def ptable_hists(
     fig, axes = plt.subplots(n_rows, n_columns, **kwargs)
     plt.subplots_adjust(wspace=0.4, hspace=0.4)
 
+    if isinstance(data, pd.Series):
+        data = data.to_dict()
+        # use series name as color bar title if available and no title was passed
+        if cbar_title == "Values" and data.name:
+            cbar_title = data.name
+    elif isinstance(data, pd.DataFrame):
+        data = data.to_dict(orient="list")
+
     # create a normalized color map
-    flat_list = [cn for sublist in srs for cn in sublist]
+    flat_list = [
+        val
+        for sublist in (data.values() if isinstance(data, dict) else data)
+        for val in sublist
+    ]
     norm = Normalize(vmin=min(flat_list), vmax=max(flat_list))
     cmap = plt.get_cmap(colormap)
 
@@ -761,21 +791,12 @@ def ptable_hists(
 
     for Z in range(1, 119):
         element = Element.from_Z(Z)
-        symbol = element.symbol
-        group = element.group
-        row = element.row
-        if element.block == "f":
-            noble = Element.from_row_and_group(row - 1, 18)
-            row += 2
-            group += Z - noble.Z - 2
-
-        if element.is_rare_earth_metal:
-            row += 1  # Lanthanides and actinides are one row below
+        row, group = df_ptable.loc[symbol := element.symbol, ["row", "column"]]
 
         ax = axes[row - 1][group - 1]
         symbol_kwargs.setdefault("fontsize", 10)
         ax.text(
-            *(0.5, 0.8),
+            *symbol_pos,
             symbol_text(element)
             if callable(symbol_text)
             else symbol_text.format(elem=element),
@@ -786,9 +807,23 @@ def ptable_hists(
         )
         ax.axis("on")  # re-enable axes of elements that exist
 
-        hist_data = srs.get(symbol, [])
+        hist_data = data.get(symbol, [])
+        if anno_kwds:
+            anno_kwds.setdefault("xy", (0.8, 0.8))
+            anno_kwds.setdefault("xycoords", "axes fraction")
+            anno_kwds.setdefault("fontsize", 8)
+            anno_kwds.setdefault("horizontalalignment", "center")
+            anno_kwds.setdefault("verticalalignment", "center")
+            anno_text = anno_kwds.get("text")
+            if isinstance(anno_text, dict):
+                anno_text = anno_text.get(symbol)
+            elif callable(anno_text):
+                anno_text = anno_text(hist_data)
+            ax.annotate(**(anno_kwds | {"text": anno_text}))
         if hist_data:
-            _n, bins_array, patches = ax.hist(hist_data, bins=bins, color="C0", alpha=1)
+            _n, bins_array, patches = ax.hist(
+                hist_data, bins=bins, color="C0", alpha=1, log=log
+            )
             if x_range:
                 ax.set_xlim(x_range)
             x_min, x_max = math.floor(min(bins_array)), math.ceil(max(bins_array))
@@ -800,7 +835,6 @@ def ptable_hists(
             if x_min < 0 < x_max:
                 x_ticks = [x_min, 0, x_max]
 
-            y_min, y_max = ax.get_ylim()
             for patch, x_val in zip(patches, bins_array[:-1]):
                 plt.setp(patch, "facecolor", cmap(norm(x_val)))
             ax.set_xticks(x_ticks)
@@ -811,6 +845,8 @@ def ptable_hists(
             ax.set_yticks([])
         for side in ("left", "right", "top"):
             ax.spines[side].set_visible(False)
+        # also hide tick marks
+        ax.tick_params(axis="y", which="both", length=0)
 
     # add colorbar
     cbar_ax = fig.add_axes(cbar_coords)
@@ -820,6 +856,10 @@ def ptable_hists(
         orientation="horizontal",
     )
     # set color bar title
-    cbar_ax.set_title(cbar_title, fontsize=12, pad=10)
+    cbar_title_kwds = cbar_title_kwds or {}
+    cbar_title_kwds.setdefault("fontsize", 12)
+    cbar_title_kwds.setdefault("pad", 10)
+    cbar_title_kwds["label"] = cbar_title
+    cbar_ax.set_title(**cbar_title_kwds)
 
     return fig
