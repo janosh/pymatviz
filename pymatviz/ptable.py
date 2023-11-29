@@ -737,7 +737,7 @@ def ptable_hists(
         x_range (tuple[float | None, float | None]): x-axis range for all histograms.
             Defaults to None.
         symbol_text (str | Callable[[Element], str]): Text to display for each element
-            symbol. Defaults to "{elem.symbol}".
+            symbol. Defaults to lambda elem: elem.symbol.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
             symbols. Defaults to None.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
@@ -750,7 +750,7 @@ def ptable_hists(
         anno_kwds (dict): Keyword arguments passed to plt.annotate() for element
             annotations. Defaults to None. Useful for adding e.g. number of data points
             in each histogram. For that, use
-            anno_kwds=dict(text=lambda hist_vals: f"{len(hist_vals):,}")).
+            anno_kwds=dict(text=lambda hist_vals: str(len(hist_vals))).
             Recognized keys are text, xy, xycoords, fontsize, and any other
             plt.annotate() keywords.
         **kwargs: Additional keyword arguments passed to plt.subplots().
