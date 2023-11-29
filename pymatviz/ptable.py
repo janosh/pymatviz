@@ -791,7 +791,8 @@ def ptable_hists(
 
     for Z in range(1, 119):
         element = Element.from_Z(Z)
-        row, group = df_ptable.loc[symbol := element.symbol, ["row", "column"]]
+        symbol = element.symbol
+        row, group = df_ptable.loc[symbol, ["row", "column"]]
 
         ax = axes[row - 1][group - 1]
         symbol_kwargs.setdefault("fontsize", 10)
