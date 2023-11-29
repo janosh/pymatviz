@@ -65,6 +65,7 @@ def save_fig(
     if not isinstance(fig, go.Figure):
         raise TypeError(
             f"Unsupported figure type {type(fig)}, expected plotly or matplotlib Figure"
+            " or plt.Axes"
         )
     is_pdf = path.lower().endswith((".pdf", ".pdfa"))
     if path.lower().endswith((".svelte", ".html")):
