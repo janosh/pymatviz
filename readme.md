@@ -16,7 +16,8 @@ A toolkit for visualizations in materials informatics.
 
 </h4>
 
-**Note**: This project is not endorsed by [`pymatgen`](https://github.com/materialsproject/pymatgen), but aims to complement it with additional plotting functionality.
+> [!NOTE]
+> If you use `pymatviz` in your research, please cite the [Zenodo DOI](https://zenodo.org/badge/latestdoi/340898532) above.
 
 ## Installation
 
