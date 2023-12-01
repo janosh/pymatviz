@@ -335,6 +335,7 @@ def add_identity_line(
         **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
         layer="below",
         line=line_defaults | (line_kwds or {}),
+        **dict(row="all", col="all"),
         **kwargs,
     )
 
