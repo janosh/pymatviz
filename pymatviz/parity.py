@@ -22,6 +22,7 @@ def hist_density(
     df: pd.DataFrame | None = None,
     sort: bool = True,
     bins: int = 100,
+    method: str = "nearest",
 ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """Return an approximate density of 2d points.
 
@@ -32,6 +33,8 @@ def hist_density(
         sort (bool, optional): Whether to sort points by density so that densest points
             are plotted last. Defaults to True.
         bins (int, optional): Number of bins (histogram resolution). Defaults to 100.
+        method (str, optional): Interpolation method. Defaults to "nearest".
+            See scipy.interpolate.interpn() for options.
 
     Returns:
         tuple[array, array]: x and y values (sorted by density) and density itself
@@ -44,7 +47,7 @@ def hist_density(
         (0.5 * (x_e[1:] + x_e[:-1]), 0.5 * (y_e[1:] + y_e[:-1])),
         data,
         np.vstack([x, y]).T,
-        method="splinef2d",
+        method=method,
         bounds_error=False,
     )
 
