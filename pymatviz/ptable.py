@@ -227,6 +227,8 @@ def ptable_heatmap(
     Returns:
         ax: matplotlib Axes with the heatmap.
     """
+    if not isinstance(log, bool):
+        raise ValueError(f"{log=} must be bool")
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
@@ -370,7 +372,8 @@ def ptable_heatmap(
             cax=cbar_kwargs.pop("cax", cbar_ax),
             orientation=cbar_kwargs.pop("orientation", "horizontal"),
             format=cbar_kwargs.pop(
-                "format", cbar_fmt if callable(cbar_fmt) else tick_fmt
+                "format",
+                cbar_fmt or fmt if any(map(callable, (fmt, cbar_fmt))) else tick_fmt,
             ),
             **cbar_kwargs,
         )

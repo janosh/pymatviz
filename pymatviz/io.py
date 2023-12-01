@@ -284,6 +284,7 @@ def df_to_html_table(
     script: str | None = "",
     styles: str | None = TABLE_SCROLL_CSS,
     styler_css: bool | dict[str, str] = True,
+    sortable: bool = True,
     **kwargs: Any,
 ) -> None:
     """Convert a pandas Styler to a svelte table.
@@ -303,9 +304,11 @@ def df_to_html_table(
             to the pandas Styler. Defaults to True. If dict, keys are CSS selectors and
             values CSS strings. Example:
             dict("td, th": "border: none; padding: 4px 6px;")
+        sortable (bool): Whether to enable sorting the table by clicking on column
+            headers. Defaults to True.
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
-    default_script = """<script lang="ts">
+    sortable_script = """<script lang="ts">
       import { sortable } from 'svelte-zoo/actions'
     </script>
 
@@ -320,7 +323,9 @@ def df_to_html_table(
         )
     html = styler.to_html(**kwargs)
     if script:
-        html = html.replace("<table", f"{script or default_script}")
+        html = html.replace("<table", script)
+    if sortable:
+        html = html.replace("<table", sortable_script)
     if inline_props:
         if "<table " not in html:
             raise ValueError(

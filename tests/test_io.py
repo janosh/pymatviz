@@ -190,7 +190,7 @@ def test_normalize_and_crop_pdf(
         (None, "", None, False),
         ("", "body { margin: 0; padding: 1em; }", "<table class='table'", True),
         (
-            "<script>import { sortable } from 'svelte-zoo/actions'<s/script><table",
+            "<script>import { sortable } from 'svelte-zoo/actions'</script><table",
             "body { margin: 0; padding: 1em; }",
             "style='width: 100%'",
             {"tb, th, td": "border: 1px solid black;"},
@@ -221,7 +221,7 @@ def test_df_to_html_table(
     content = file_path.read_text()
 
     if script is not None:
-        assert script in content
+        assert script.split("<table")[0] in content, content
     if styles is not None:
         assert f"{styles}\n</style>" in content
     if inline_props:
