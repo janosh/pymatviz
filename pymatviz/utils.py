@@ -329,13 +329,16 @@ def add_identity_line(
         xy_min = min(x_range[0], y_range[0])
         xy_max = max(x_range[1], y_range[1])
 
+    if fig._grid_ref is not None:
+        kwargs.setdefault("row", "all")
+        kwargs.setdefault("col", "all")
+
     line_defaults = dict(color="gray", width=1, dash="dash")
     fig.add_shape(
         type="line",
         **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
         layer="below",
         line=line_defaults | (line_kwds or {}),
-        **dict(row="all", col="all"),
         **kwargs,
     )
 
