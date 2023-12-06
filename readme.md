@@ -16,7 +16,6 @@ A toolkit for visualizations in materials informatics.
 
 </h4>
 
-> [!NOTE]
 > If you use `pymatviz` in your research, please cite the [Zenodo DOI](https://zenodo.org/badge/latestdoi/340898532) above.
 
 ## Installation

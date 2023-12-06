@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 from contextlib import contextmanager
+from functools import partial
 from os.path import dirname
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -571,6 +572,9 @@ def si_fmt(
             val *= factor
 
     return f"{val:{fmt_spec}}{sep}{_scale}"
+
+
+si_fmt_int = partial(si_fmt, fmt_spec=".0f")
 
 
 def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
