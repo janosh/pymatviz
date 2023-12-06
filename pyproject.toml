@@ -116,6 +116,7 @@ ignore = [
     "C408",    # unnecessary-collection-call
     "D100",    # Missing docstring in public module
     "D205",    # 1 blank line required between summary line and description
+    "E731",    # do not assign a lambda expression, use a def
     "N806",    # non-lowercase-variable-in-function
     "PD901",   # pandas-df-variable-name
     "PLR",     # pylint refactor

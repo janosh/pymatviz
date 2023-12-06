@@ -17,7 +17,7 @@ from pymatviz import (
     ptable_heatmap_ratio,
     ptable_hists,
 )
-from pymatviz.utils import df_ptable, si_fmt
+from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
 if TYPE_CHECKING:
@@ -175,7 +175,9 @@ def test_ptable_heatmap(
 
     # cbar_fmt as function
     ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)
-    ax = ptable_heatmap(glass_elem_counts, fmt=lambda x, _: f"{x:.0f}", cbar_fmt=si_fmt)
+    ax = ptable_heatmap(
+        glass_elem_counts, fmt=lambda x, _: f"{x:.0f}", cbar_fmt=si_fmt_int
+    )
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=lambda x, _: f"{x:.3f} kg")
 
     ax = ptable_heatmap(glass_elem_counts, heat_mode="percent", cbar_fmt=".3%")
@@ -316,7 +318,7 @@ def test_ptable_heatmap_plotly_color_bar(
     "cscale_range", [(None, None), (None, 10), (2, None), (2, 87123)]
 )
 def test_ptable_heatmap_plotly_cscale_range(
-    cscale_range: tuple[float | None, float | None]
+    cscale_range: tuple[float | None, float | None],
 ) -> None:
     fig = ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)
     trace = fig.data[0]
@@ -342,7 +344,7 @@ def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
     [None, False, {"1.0": "one", "2.0": "two", "3.0": "three", np.nan: "N/A"}],
 )
 def test_ptable_heatmap_plotly_label_map(
-    label_map: dict[str, str] | Literal[False] | None
+    label_map: dict[str, str] | Literal[False] | None,
 ) -> None:
     elem_vals = dict(Al=1.0, Cr=2.0, Fe=3.0, Ni=np.nan)
     fig = ptable_heatmap_plotly(elem_vals, label_map=label_map)
