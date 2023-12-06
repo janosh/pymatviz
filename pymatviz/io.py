@@ -253,7 +253,7 @@ def normalize_and_crop_pdf(
         )
 
         # Crop the normalized PDF
-        cropped_file_path, exit_code, stdout, stderr = crop(
+        cropped_file_path, _exit_code, _stdout, stderr = crop(
             ["--percentRetain", "0", normalized_file_path]
         )
 

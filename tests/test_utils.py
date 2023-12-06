@@ -23,6 +23,7 @@ from pymatviz.utils import (
     patch_dict,
     pick_bw_for_contrast,
     si_fmt,
+    si_fmt_int,
     styled_html_tag,
 )
 from tests.conftest import y_pred, y_true
@@ -407,6 +408,16 @@ def test_si_fmt() -> None:
     assert si_fmt(0.00000123, fmt_spec="5.1f", sep="\t", binary=False) == "  1.2\tμ"
     assert si_fmt(-1) == "-1.0"
     assert si_fmt(1.23456789e-10, fmt_spec="5.1f", sep="\t") == "123.5\tp"
+
+
+def test_si_fmt_int() -> None:
+    assert si_fmt_int(0) == "0"
+    assert si_fmt_int(123) == "123"
+    assert si_fmt_int(1234) == "1K"
+    assert si_fmt_int(123456) == "123K"
+    assert si_fmt_int(12345678, fmt_spec=">6.2f", sep=" ") == " 12.35 M"
+    assert si_fmt_int(-1) == "-1"
+    assert si_fmt_int(1.23456789e-10, sep="\t") == "123\tp"
 
 
 @pytest.mark.parametrize(
