@@ -781,16 +781,20 @@ def ptable_hists(
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="list")
 
-    # create a normalized color map
-    flat_list = [
-        val
-        for sublist in (data.values() if isinstance(data, dict) else data)
-        for val in sublist
-    ]
-    norm = Normalize(vmin=min(flat_list), vmax=max(flat_list))
+    if x_range is not None:
+        vmin, vmax = x_range
+    else:
+        flat_list = [
+            val
+            for sublist in (data.values() if isinstance(data, dict) else data)
+            for val in sublist
+        ]
+        vmin, vmax = min(flat_list), max(flat_list)
+    norm = Normalize(vmin=vmin, vmax=vmax)
     cmap = plt.get_cmap(colormap)
 
     # turn off axis of subplots on the grid that don't correspond to elements
+    ax: plt.Axes
     for ax in axes.flat:
         ax.axis("off")
 
@@ -815,20 +819,28 @@ def ptable_hists(
 
         hist_data = data.get(symbol, [])
         if anno_kwds:
-            anno_kwds.setdefault("xy", (0.8, 0.8))
-            anno_kwds.setdefault("xycoords", "axes fraction")
-            anno_kwds.setdefault("fontsize", 8)
-            anno_kwds.setdefault("horizontalalignment", "center")
-            anno_kwds.setdefault("verticalalignment", "center")
-            anno_text = anno_kwds.get("text")
-            if isinstance(anno_text, dict):
-                anno_text = anno_text.get(symbol)
-            elif callable(anno_text):
-                anno_text = anno_text(hist_data)
-            ax.annotate(**(anno_kwds | {"text": anno_text}))
+            defaults = dict(
+                text=lambda hist_vals: f"{len(hist_vals)}",
+                xy=(0.8, 0.8),
+                xycoords="axes fraction",
+                fontsize=8,
+                horizontalalignment="center",
+                verticalalignment="center",
+            )
+            if callable(anno_kwds):
+                annotation = anno_kwds(hist_data)
+            else:
+                annotation = anno_kwds
+                anno_text = anno_kwds.get("text")
+                if isinstance(anno_text, dict):
+                    anno_text = anno_text.get(symbol)
+                elif callable(anno_text):
+                    anno_text = anno_text(hist_data)
+                annotation["text"] = anno_text
+            ax.annotate(**(defaults | annotation))
         if hist_data:
             _n, bins_array, patches = ax.hist(
-                hist_data, bins=bins, color="C0", alpha=1, log=log
+                hist_data, bins=bins, color="C0", alpha=1, log=log, range=x_range
             )
             if x_range:
                 ax.set_xlim(x_range)
@@ -839,7 +851,8 @@ def ptable_hists(
             if x_ticks[1] is None:
                 x_ticks[1] = x_max
             if x_min < 0 < x_max:
-                x_ticks = [x_min, 0, x_max]
+                # make sure we always show a mark at 0
+                x_ticks.insert(1, 0)
 
             for patch, x_val in zip(patches, bins_array[:-1]):
                 plt.setp(patch, "facecolor", cmap(norm(x_val)))
