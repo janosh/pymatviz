@@ -718,6 +718,7 @@ def ptable_hists(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     cbar_title: str = "Values",
     cbar_title_kwds: dict[str, Any] | None = None,
+    cbar_kwds: dict[str, Any] | None = None,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     log: bool = False,
     anno_kwds: dict[str, Any] | None = None,
@@ -746,6 +747,7 @@ def ptable_hists(
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwds (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
+        cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
         symbol_pos (tuple[float, float]): Position of element symbols relative to the
             lower left corner of each tile. Defaults to (0.5, 0.8). (1, 1) is the upper
             right corner.
@@ -857,7 +859,7 @@ def ptable_hists(
     _cbar = fig.colorbar(
         plt.cm.ScalarMappable(norm=norm, cmap=cmap),
         cax=cbar_ax,
-        orientation="horizontal",
+        **{"orientation": "horizontal"} | (cbar_kwds or {}),
     )
     # set color bar title
     cbar_title_kwds = cbar_title_kwds or {}
