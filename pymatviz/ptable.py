@@ -17,7 +17,7 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
-from pymatviz.utils import df_ptable, pick_bw_for_contrast
+from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
 
 if TYPE_CHECKING:
@@ -142,7 +142,7 @@ def count_elements(
 
 def ptable_heatmap(
     values: ElemValues,
-    log: bool = False,
+    log: bool | Normalize = False,
     ax: plt.Axes | None = None,
     count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
@@ -170,7 +170,9 @@ def ptable_heatmap(
     Args:
         values (dict[str, int | float] | pd.Series | list[str]): Map from element
             symbols to heatmap values or iterable of composition strings/objects.
-        log (bool, optional): Whether color map scale is log or linear.
+        log (bool | Normalize, optional): Whether color map scale is log or linear. Can
+            also take any matplotlib.colors.Normalize subclass such as SymLogNorm as
+            custom color scale. Defaults to False.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
             Reduce or normalize compositions before counting. See count_elements() for
@@ -227,8 +229,15 @@ def ptable_heatmap(
     Returns:
         ax: matplotlib Axes with the heatmap.
     """
-    if not isinstance(log, bool):
-        raise ValueError(f"{log=} must be bool")
+    if fmt is None:
+        fmt = lambda x, _: si_fmt(x, ".1%" if heat_mode == "percent" else ".0f")
+    if cbar_fmt is None:
+        cbar_fmt = fmt
+
+    valid_logs = (bool, Normalize)
+    if not isinstance(log, valid_logs):
+        raise ValueError(f"Invalid {log=}, must be instance of {valid_logs}")
+
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
@@ -262,7 +271,8 @@ def ptable_heatmap(
     else:
         tile_width, tile_height = tile_size
 
-    norm = LogNorm() if log else Normalize()
+    norm_map = {True: LogNorm(), False: Normalize()}
+    norm = norm_map.get(log, log)
 
     norm.autoscale(clean_vals.to_numpy())
     if cbar_range is not None and len(cbar_range) == 2:
@@ -366,15 +376,15 @@ def ptable_heatmap(
             )
             return f"{val:{cbar_fmt or fmt or default_fmt}}"
 
+        if callable(cbar_fmt):
+            tick_fmt = cbar_fmt
+
         cbar_kwargs = cbar_kwargs or {}
         cbar = fig.colorbar(
             mappable,
             cax=cbar_kwargs.pop("cax", cbar_ax),
             orientation=cbar_kwargs.pop("orientation", "horizontal"),
-            format=cbar_kwargs.pop(
-                "format",
-                cbar_fmt or fmt if any(map(callable, (fmt, cbar_fmt))) else tick_fmt,
-            ),
+            format=cbar_kwargs.pop("format", tick_fmt),
             **cbar_kwargs,
         )
 
