@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate
 
-from pymatviz.utils import annotate_metrics, df_to_arrays, with_hist
+from pymatviz.utils import add_identity_line, annotate_metrics, df_to_arrays, with_hist
 
 
 if TYPE_CHECKING:
@@ -114,15 +114,7 @@ def density_scatter(
     ax.scatter(x, y, c=cs, norm=norm, **kwargs)
 
     if identity:
-        x_mid = sum(ax.get_xlim()) / 2
-        ax.axline(
-            (x_mid, x_mid),
-            slope=1,
-            alpha=0.5,
-            zorder=0,
-            linestyle="dashed",
-            color="black",
-        )
+        add_identity_line(ax)
 
     if stats:
         annotate_metrics(x, y, ax=ax, **(stats if isinstance(stats, dict) else {}))
@@ -169,8 +161,7 @@ def scatter_with_err_bar(
     styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
     ax.errorbar(x, y, xerr=xerr, yerr=yerr, **kwargs, **styles)
 
-    # identity line
-    ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
+    add_identity_line(ax)
 
     annotate_metrics(x, y, ax=ax)
 
@@ -227,8 +218,7 @@ def density_hexbin(
         # make title vertical
         cb_ax.set_title(cbar_label, rotation=90, pad=10)
 
-    # identity line
-    ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
+    add_identity_line(ax)
 
     annotate_metrics(x, y, ax=ax, loc="upper left")
 
