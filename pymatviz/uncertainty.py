@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
 
-from pymatviz.utils import df_to_arrays
+from pymatviz.utils import add_identity_line, df_to_arrays
 
 
 if TYPE_CHECKING:
@@ -79,8 +79,7 @@ def qq_gaussian(
         )
         lines.append([line, miscal_area])
 
-    # identity line
-    ax.axline((0, 0), (1, 1), alpha=0.5, zorder=0, linestyle="dashed", color="black")
+    add_identity_line(ax)  # guiding line for perfect calibration
 
     ax.set(xlim=(0, 1), ylim=(0, 1))
     ax.set(xlabel="Theoretical Quantile", ylabel="Observed Quantile")

@@ -98,9 +98,17 @@ def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
 
 
 @pytest.fixture()
-def scatter_fig() -> go.Figure:
+def plotly_scatter() -> go.Figure:
     fig = go.Figure(go.Scatter(x=[1, 10, 100], y=[10, 100, 1000]))
     fig.add_scatter(x=[1, 10, 100], y=[1, 10, 100])
+    return fig
+
+
+@pytest.fixture()
+def matplotlib_scatter() -> plt.Figure:
+    fig, ax = plt.subplots()
+    ax.plot([1, 10, 100], [10, 100, 1000])
+    ax.plot([1, 10, 100], [1, 10, 100])
     return fig
 
 
@@ -109,17 +117,17 @@ def scatter_fig() -> go.Figure:
 @pytest.mark.parametrize("trace_idx", [0, 1])
 @pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
 def test_add_identity_line(
-    scatter_fig: go.Figure,
+    plotly_scatter: go.Figure,
     xaxis_type: str,
     yaxis_type: str,
     trace_idx: int,
     line_kwds: dict[str, str] | None,
 ) -> None:
     # Set axis types
-    scatter_fig.layout.xaxis.type = xaxis_type
-    scatter_fig.layout.yaxis.type = yaxis_type
+    plotly_scatter.layout.xaxis.type = xaxis_type
+    plotly_scatter.layout.yaxis.type = yaxis_type
 
-    fig = add_identity_line(scatter_fig, line_kwds=line_kwds, trace_idx=trace_idx)
+    fig = add_identity_line(plotly_scatter, line_kwds=line_kwds, trace_idx=trace_idx)
     assert isinstance(fig, go.Figure)
 
     # retrieve identity line
@@ -134,6 +142,22 @@ def test_add_identity_line(
     # check fig axis types
     assert fig.layout.xaxis.type == xaxis_type
     assert fig.layout.yaxis.type == yaxis_type
+
+
+@pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
+def test_add_identity_matplotlib(
+    matplotlib_scatter: plt.Figure, line_kwds: dict[str, str] | None
+) -> None:
+    # test Figure
+    fig = add_identity_line(matplotlib_scatter, line_kwds=line_kwds)
+    assert isinstance(fig, plt.Figure)
+
+    # test Axes
+    ax = add_identity_line(matplotlib_scatter.axes[0], line_kwds=line_kwds)
+    assert isinstance(ax, plt.Axes)
+
+    line = fig.axes[0].lines[-1]  # retrieve identity line
+    assert line.get_color() == line_kwds["color"] if line_kwds else "black"
 
 
 def test_df_to_arrays() -> None:

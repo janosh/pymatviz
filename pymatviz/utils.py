@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import scipy.stats
 import sklearn
 from matplotlib.offsetbox import AnchoredText
@@ -19,7 +20,6 @@ from sklearn.metrics import r2_score
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
-    import plotly.graph_objects as go
     from matplotlib.gridspec import GridSpec
     from matplotlib.text import Annotation
     from numpy.typing import ArrayLike
@@ -270,7 +270,7 @@ def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
 
 
 def add_identity_line(
-    fig: go.Figure,
+    fig: go.Figure | plt.Figure | plt.Axes,
     line_kwds: dict[str, Any] | None = None,
     trace_idx: int = 0,
     **kwargs: Any,
@@ -279,18 +279,40 @@ def add_identity_line(
     from smallest to largest x/y values in the trace specified by trace_idx.
 
     Args:
-        fig (Figure): Plotly figure.
+        fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes to
+            add the identity line to.
         line_kwds (dict[str, Any], optional): Keyword arguments for customizing the line
             shape will be passed to fig.add_shape(line=line_kwds). Defaults to
             dict(color="gray", width=1, dash="dash").
         trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
             Defaults to 0. Unused if kaleido package is installed and the figure's
             actual x/y-range can be obtained from fig.full_figure_for_development().
+            Applies only to plotly figures.
         **kwargs: Additional arguments are passed to fig.add_shape().
+
+    Raises:
+        TypeError: If fig is neither a plotly nor a matplotlib figure or axes.
+        ValueError: If fig is a plotly figure and kaleido is not installed and trace_idx
+            is out of range.
 
     Returns:
         Figure: Figure with added identity line.
     """
+    valid_types = (go.Figure, plt.Figure, plt.Axes)
+    if not isinstance(fig, valid_types):
+        raise TypeError(f"fig must be instance of {valid_types}, got {type(fig)}")
+
+    if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
+        ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+
+        x_mid = sum(ax.get_xlim()) / 2
+        ax.axline(
+            (x_mid, x_mid),
+            **dict(slope=1, alpha=0.5, zorder=0, linestyle="dashed", color="black")
+            | (line_kwds or {}),
+        )
+        return fig
+
     # If kaleido is missing, try block raises ValueError: Full figure generation
     # requires the kaleido package. Install with: pip install kaleido
     # If so, we resort to manually computing the xy data ranges which are usually are
