@@ -17,7 +17,7 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
-from pymatviz.utils import df_ptable, pick_bw_for_contrast
+from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
 
 if TYPE_CHECKING:
@@ -142,7 +142,7 @@ def count_elements(
 
 def ptable_heatmap(
     values: ElemValues,
-    log: bool = False,
+    log: bool | Normalize = False,
     ax: plt.Axes | None = None,
     count_mode: CountMode = "composition",
     cbar_title: str = "Element Count",
@@ -170,7 +170,9 @@ def ptable_heatmap(
     Args:
         values (dict[str, int | float] | pd.Series | list[str]): Map from element
             symbols to heatmap values or iterable of composition strings/objects.
-        log (bool, optional): Whether color map scale is log or linear.
+        log (bool | Normalize, optional): Whether color map scale is log or linear. Can
+            also take any matplotlib.colors.Normalize subclass such as SymLogNorm as
+            custom color scale. Defaults to False.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
             Reduce or normalize compositions before counting. See count_elements() for
@@ -227,8 +229,15 @@ def ptable_heatmap(
     Returns:
         ax: matplotlib Axes with the heatmap.
     """
-    if not isinstance(log, bool):
-        raise ValueError(f"{log=} must be bool")
+    if fmt is None:
+        fmt = lambda x, _: si_fmt(x, ".1%" if heat_mode == "percent" else ".0f")
+    if cbar_fmt is None:
+        cbar_fmt = fmt
+
+    valid_logs = (bool, Normalize)
+    if not isinstance(log, valid_logs):
+        raise ValueError(f"Invalid {log=}, must be instance of {valid_logs}")
+
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
@@ -262,7 +271,8 @@ def ptable_heatmap(
     else:
         tile_width, tile_height = tile_size
 
-    norm = LogNorm() if log else Normalize()
+    norm_map = {True: LogNorm(), False: Normalize()}
+    norm = norm_map.get(log, log)
 
     norm.autoscale(clean_vals.to_numpy())
     if cbar_range is not None and len(cbar_range) == 2:
@@ -366,15 +376,15 @@ def ptable_heatmap(
             )
             return f"{val:{cbar_fmt or fmt or default_fmt}}"
 
+        if callable(cbar_fmt):
+            tick_fmt = cbar_fmt
+
         cbar_kwargs = cbar_kwargs or {}
         cbar = fig.colorbar(
             mappable,
             cax=cbar_kwargs.pop("cax", cbar_ax),
             orientation=cbar_kwargs.pop("orientation", "horizontal"),
-            format=cbar_kwargs.pop(
-                "format",
-                cbar_fmt or fmt if any(map(callable, (fmt, cbar_fmt))) else tick_fmt,
-            ),
+            format=cbar_kwargs.pop("format", tick_fmt),
             **cbar_kwargs,
         )
 
@@ -718,6 +728,7 @@ def ptable_hists(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     cbar_title: str = "Values",
     cbar_title_kwds: dict[str, Any] | None = None,
+    cbar_kwds: dict[str, Any] | None = None,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     log: bool = False,
     anno_kwds: dict[str, Any] | None = None,
@@ -746,6 +757,7 @@ def ptable_hists(
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwds (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
+        cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
         symbol_pos (tuple[float, float]): Position of element symbols relative to the
             lower left corner of each tile. Defaults to (0.5, 0.8). (1, 1) is the upper
             right corner.
@@ -779,16 +791,20 @@ def ptable_hists(
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="list")
 
-    # create a normalized color map
-    flat_list = [
-        val
-        for sublist in (data.values() if isinstance(data, dict) else data)
-        for val in sublist
-    ]
-    norm = Normalize(vmin=min(flat_list), vmax=max(flat_list))
+    if x_range is not None:
+        vmin, vmax = x_range
+    else:
+        flat_list = [
+            val
+            for sublist in (data.values() if isinstance(data, dict) else data)
+            for val in sublist
+        ]
+        vmin, vmax = min(flat_list), max(flat_list)
+    norm = Normalize(vmin=vmin, vmax=vmax)
     cmap = plt.get_cmap(colormap)
 
     # turn off axis of subplots on the grid that don't correspond to elements
+    ax: plt.Axes
     for ax in axes.flat:
         ax.axis("off")
 
@@ -813,20 +829,28 @@ def ptable_hists(
 
         hist_data = data.get(symbol, [])
         if anno_kwds:
-            anno_kwds.setdefault("xy", (0.8, 0.8))
-            anno_kwds.setdefault("xycoords", "axes fraction")
-            anno_kwds.setdefault("fontsize", 8)
-            anno_kwds.setdefault("horizontalalignment", "center")
-            anno_kwds.setdefault("verticalalignment", "center")
-            anno_text = anno_kwds.get("text")
-            if isinstance(anno_text, dict):
-                anno_text = anno_text.get(symbol)
-            elif callable(anno_text):
-                anno_text = anno_text(hist_data)
-            ax.annotate(**(anno_kwds | {"text": anno_text}))
+            defaults = dict(
+                text=lambda hist_vals: f"{len(hist_vals)}",
+                xy=(0.8, 0.8),
+                xycoords="axes fraction",
+                fontsize=8,
+                horizontalalignment="center",
+                verticalalignment="center",
+            )
+            if callable(anno_kwds):
+                annotation = anno_kwds(hist_data)
+            else:
+                annotation = anno_kwds
+                anno_text = anno_kwds.get("text")
+                if isinstance(anno_text, dict):
+                    anno_text = anno_text.get(symbol)
+                elif callable(anno_text):
+                    anno_text = anno_text(hist_data)
+                annotation["text"] = anno_text
+            ax.annotate(**(defaults | annotation))
         if hist_data:
             _n, bins_array, patches = ax.hist(
-                hist_data, bins=bins, color="C0", alpha=1, log=log
+                hist_data, bins=bins, color="C0", alpha=1, log=log, range=x_range
             )
             if x_range:
                 ax.set_xlim(x_range)
@@ -837,7 +861,8 @@ def ptable_hists(
             if x_ticks[1] is None:
                 x_ticks[1] = x_max
             if x_min < 0 < x_max:
-                x_ticks = [x_min, 0, x_max]
+                # make sure we always show a mark at 0
+                x_ticks.insert(1, 0)
 
             for patch, x_val in zip(patches, bins_array[:-1]):
                 plt.setp(patch, "facecolor", cmap(norm(x_val)))
@@ -857,7 +882,7 @@ def ptable_hists(
     _cbar = fig.colorbar(
         plt.cm.ScalarMappable(norm=norm, cmap=cmap),
         cax=cbar_ax,
-        orientation="horizontal",
+        **{"orientation": "horizontal"} | (cbar_kwds or {}),
     )
     # set color bar title
     cbar_title_kwds = cbar_title_kwds or {}
