@@ -148,6 +148,7 @@ def test_add_identity_line(
 def test_add_identity_matplotlib(
     matplotlib_scatter: plt.Figure, line_kwds: dict[str, str] | None
 ) -> None:
+    expected_line_color = (line_kwds or {}).get("color", "black")
     # test Figure
     fig = add_identity_line(matplotlib_scatter, line_kwds=line_kwds)
     assert isinstance(fig, plt.Figure)
@@ -157,7 +158,16 @@ def test_add_identity_matplotlib(
     assert isinstance(ax, plt.Axes)
 
     line = fig.axes[0].lines[-1]  # retrieve identity line
-    assert line.get_color() == line_kwds["color"] if line_kwds else "black"
+    assert line.get_color() == expected_line_color
+
+    # test with new log scale axes
+    _fig_log, ax_log = plt.subplots()
+    ax_log.plot([1, 10, 100], [10, 100, 1000])
+    ax_log.set(xscale="log", yscale="log")
+    ax_log = add_identity_line(ax, line_kwds=line_kwds)
+
+    line = fig.axes[0].lines[-1]
+    assert line.get_color() == expected_line_color
 
 
 def test_df_to_arrays() -> None:
