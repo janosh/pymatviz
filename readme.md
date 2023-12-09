@@ -18,21 +18,21 @@ A toolkit for visualizations in materials informatics.
 
 > If you use `pymatviz` in your research, please cite the [Zenodo DOI](https://zenodo.org/badge/latestdoi/340898532) above.
 
-## Installation
+## 🔨 &thinsp; Installation
 
 ```sh
 pip install pymatviz
 ```
 
-## API Docs
+## 💡 &thinsp; API Docs
 
 See the [/api] page.
 
 [/api]: https://janosh.github.io/pymatviz/api
 
-## Usage
+## 📙 &thinsp; Usage
 
-See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`.
+See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`. PRs with additional examples are welcome! 🙏
 
 |                                                                                                                        |                                      |                                                                                                              |                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -143,12 +143,6 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 | [`marchenko_pastur(corr_mat, gamma=ncols/nrows)`](pymatviz/correlation.py) | [`marchenko_pastur(corr_mat_significant_eval, gamma=ncols/nrows)`](pymatviz/correlation.py) |
 | :------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
 |                            ![marchenko-pastur]                             |                            ![marchenko-pastur-significant-eval]                             |
-
-## Glossary
-
-1. **Residual** `y_res = y_true - y_pred`: The difference between ground truth target and model prediction.
-2. **Error** `y_err = abs(y_true - y_pred)`: Absolute error between target and model prediction.
-3. **Uncertainty** `y_std`: The model's estimate for its error, i.e. how much the model thinks its prediction can be trusted (`std` for standard deviation).
 
 [cumulative-error]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-error.svg
 [cumulative-residual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-residual.svg
