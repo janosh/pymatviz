@@ -308,7 +308,8 @@ def add_identity_line(
         x_mid = sum(ax.get_xlim()) / 2
         ax.axline(
             (x_mid, x_mid),
-            **dict(slope=1, alpha=0.5, zorder=0, linestyle="dashed", color="black")
+            (x_mid * 1.01, x_mid * 1.01),
+            **dict(alpha=0.5, zorder=0, linestyle="dashed", color="black")
             | (line_kwds or {}),
         )
         return fig
