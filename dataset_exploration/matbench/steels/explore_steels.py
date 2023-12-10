@@ -9,10 +9,10 @@ https://ml.materialsproject.org/projects/matbench_steels
 
 
 # %%
+import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
 from pymatviz import ptable_heatmap
-from pymatviz.plot_defaults import plt
 
 
 # %%
