@@ -128,3 +128,23 @@ plt.rc("font", size=16)
 plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("figure", dpi=200, titlesize=18)
 plt.rcParams["figure.constrained_layout.use"] = True
+
+
+axis_template = dict(
+    mirror=True,
+    showline=True,
+    ticks="outside",
+    zeroline=True,
+    linewidth=1,
+)
+white_axis_template = axis_template | dict(linecolor="black", gridcolor="lightgray")
+pio.templates["pymatviz_white"] = pio.templates["plotly_white"].update(
+    layout=dict(xaxis=axis_template, yaxis=axis_template)
+)
+black_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
+pio.templates["pymatviz_black"] = pio.templates["plotly_dark"].update(
+    layout=dict(xaxis=axis_template, yaxis=axis_template)
+)
+
+px.defaults.template = "pymatviz_white"
+pio.templates.default = "pymatviz_white"
