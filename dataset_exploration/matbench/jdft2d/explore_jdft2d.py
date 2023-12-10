@@ -1,9 +1,9 @@
 # %%
+import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import ptable_heatmap, spacegroup_hist, spacegroup_sunburst
-from pymatviz.plot_defaults import plt
 
 
 """Stats for the matbench_jdft2d dataset.

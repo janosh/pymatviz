@@ -1,8 +1,8 @@
 # %%
 import pandas as pd
+import plotly.express as px
 
-from pymatviz import ptable_heatmap_plotly, spacegroup_sunburst
-from pymatviz.plot_defaults import crystal_sys_order, px
+from pymatviz import crystal_sys_order, ptable_heatmap_plotly, spacegroup_sunburst
 from pymatviz.utils import crystal_sys_from_spg_num
 
 

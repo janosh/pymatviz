@@ -1,11 +1,12 @@
 # %%
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
+import plotly.express as px
 from matminer.datasets import load_dataset
 from pymatgen.core import Composition
 
 from pymatviz import ptable_heatmap
-from pymatviz.plot_defaults import plt, px
 
 
 """Stats for the matbench_expt_gap dataset.

@@ -1,8 +1,8 @@
 # %%
+import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
 from pymatviz import ptable_heatmap
-from pymatviz.plot_defaults import plt
 
 
 """Stats for the matbench_mp_e_form dataset.

@@ -1,15 +1,17 @@
 # %%
+import matplotlib.pyplot as plt
+import plotly.express as px
 from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import (
+    crystal_sys_order,
     ptable_heatmap,
     ptable_heatmap_plotly,
     spacegroup_hist,
     spacegroup_sunburst,
 )
-from pymatviz.plot_defaults import crystal_sys_order, plt, px
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
