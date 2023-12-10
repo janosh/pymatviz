@@ -1,4 +1,5 @@
 # %%
+import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
@@ -8,7 +9,6 @@ from pymatviz import (
     ptable_heatmap,
     spacegroup_sunburst,
 )
-from pymatviz.plot_defaults import plt
 from pymatviz.utils import crystal_sys_from_spg_num
 
 

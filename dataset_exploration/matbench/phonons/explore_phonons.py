@@ -17,11 +17,11 @@ https://ml.materialsproject.org/projects/matbench_phonons
 
 
 # %%
+import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import ptable_heatmap, spacegroup_hist
-from pymatviz.plot_defaults import plt
 
 
 # %%

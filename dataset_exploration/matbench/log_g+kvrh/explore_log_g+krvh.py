@@ -13,14 +13,20 @@ https://ml.materialsproject.org/projects/matbench_log_kvrh
 # %%
 from time import perf_counter
 
+import matplotlib.pyplot as plt
 import numpy as np
+import plotly.express as px
 from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
 from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from tqdm import tqdm
 
-from pymatviz import ptable_heatmap, spacegroup_hist, spacegroup_sunburst
-from pymatviz.plot_defaults import crystal_sys_order, plt, px
+from pymatviz import (
+    crystal_sys_order,
+    ptable_heatmap,
+    spacegroup_hist,
+    spacegroup_sunburst,
+)
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
