@@ -38,7 +38,13 @@ y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9
 
 
 df = pd.DataFrame(dict(y_true=y_true, y_pred=y_pred))
-df_x_y = [(None, y_true, y_pred), (df, *df.columns[:2])]
+DfOrArrays = tuple[pd.DataFrame | None, str | np.ndarray, str | np.ndarray]
+
+
+@pytest.fixture(params=[(None, y_true, y_pred), (df, *df.columns[:2])])
+def df_or_arrays(request: pytest.FixtureRequest) -> DfOrArrays:
+    return request.param
+
 
 df_clf = pd.DataFrame(dict(y_binary=y_binary, y_proba=y_proba))
 df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]

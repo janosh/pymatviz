@@ -3,45 +3,43 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import pytest
 
 from pymatviz import error_decay_with_uncert, qq_gaussian
-from tests.conftest import df, df_x_y, xs, y_pred, y_true
+from tests.conftest import DfOrArrays, df, xs, y_pred, y_true
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    import pandas as pd
     from numpy.typing import ArrayLike
 
 
 y_std_mock = y_true - y_pred
 
 
-assert len(df_x_y) == 2
-assert len(df_x_y[0]) == 3
-
-
 @pytest.mark.parametrize(
-    "df, x, y, y_std",
+    "y_std",
     [
-        (None, y_true, y_pred, y_std_mock),
-        (None, y_true, y_pred, {"y_std_mock": y_std_mock}),
-        (df, *df.columns[:2], df.columns[0]),  # single std col
-        (df, *df.columns[:2], df.columns[:2]),  # multiple std cols
+        y_std_mock,
+        {"y_std_mock": y_std_mock},
+        df.columns[0],  # single std col
+        df.columns[:2],  # multiple std cols
     ],
 )
 @pytest.mark.parametrize("n_rand", [10, 100, 1000])
 @pytest.mark.parametrize("percentiles", [True, False])
 def test_error_decay_with_uncert(
-    df: pd.DataFrame,
-    x: ArrayLike | str,
-    y: ArrayLike | str,
+    df_or_arrays: DfOrArrays,
     y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
     n_rand: int,
     percentiles: bool,
 ) -> None:
+    df, x, y = df_or_arrays
+    # override y_std if col name but no df provided, would be nonsensical input
+    if df is None and isinstance(y_std, (str, pd.Index)):
+        y_std = y_std_mock
     ax = error_decay_with_uncert(
         x, y, y_std, df=df, n_rand=n_rand, percentiles=percentiles
     )
@@ -56,22 +54,16 @@ def test_error_decay_with_uncert(
 
 
 @pytest.mark.parametrize(
-    "df, x, y, y_std",
-    [
-        (*df_x_y[0], xs),
-        (*df_x_y[0], {"foo": xs, "bar": 0.1 * xs}),
-        (*df_x_y[1], df.columns[0]),
-        (*df_x_y[1], df.columns[:2]),
-    ],
+    "y_std", [xs, {"foo": xs, "bar": 0.1 * xs}, df.columns[0], df.columns[:2]]
 )
 @pytest.mark.parametrize("ax", [None, plt.gca()])
 def test_qq_gaussian(
-    df: pd.DataFrame,
-    x: ArrayLike | str,
-    y: ArrayLike | str,
-    y_std: ArrayLike | dict[str, ArrayLike],
-    ax: plt.Axes,
+    df_or_arrays: DfOrArrays, y_std: ArrayLike | dict[str, ArrayLike], ax: plt.Axes
 ) -> None:
+    df, x, y = df_or_arrays
+    # override y_std if col name but no df provided, would be nonsensical input
+    if df is None and isinstance(y_std, (str, pd.Index)):
+        y_std = xs
     ax = qq_gaussian(x, y, y_std, df=df, ax=ax)
 
     assert isinstance(ax, plt.Axes)
