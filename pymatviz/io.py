@@ -102,7 +102,7 @@ def save_fig(
     else:
         if is_pdf:
             orig_template = fig.layout.template
-            fig.layout.template = "plotly_white"
+            fig.layout.template = "pymatviz_white"
         # hide click-to-show traces in PDF
         hidden_traces = []
         for trace in fig.data:

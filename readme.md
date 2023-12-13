@@ -16,7 +16,11 @@ A toolkit for visualizations in materials informatics.
 
 </h4>
 
-> If you use `pymatviz` in your research, please cite the [Zenodo DOI](https://zenodo.org/badge/latestdoi/340898532) above.
+<slot name="how-to-cite">
+
+> If you use `pymatviz` in your research, [see how to cite](#📖-how-to-cite-pymatviz).
+
+</slot>
 
 ## 🔨 &thinsp; Installation
 
@@ -34,12 +38,12 @@ See the [/api] page.
 
 See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`. PRs with additional examples are welcome! 🙏
 
-|                                                                                                                        |                                      |                                                                                                              |                                                                                                                                       |
-| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| [matbench_dielectric_eda.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)   | [![Launch Codespace]][codespace url] | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/matbench_dielectric_eda.ipynb)  | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)  |
-| [mp_bimodal_e_form.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)               | [![Launch Codespace]][codespace url] | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/mp_bimodal_e_form.ipynb)        | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)        |
-| [matbench_perovskites_eda.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) | [![Launch Codespace]][codespace url] | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/matbench_perovskites_eda.ipynb) | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) |
-| [mprester_ptable.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)                   | [![Launch Codespace]][codespace url] | [![Binder]](https://mybinder.org/v2/gh/janosh/pymatviz/main?labpath=examples/mprester_ptable.ipynb)          | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)          |
+|                                                                                                                        |                                                                                                                                       |                                      |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| [matbench_dielectric_eda.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)   | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)  | [![Launch Codespace]][codespace url] |
+| [mp_bimodal_e_form.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)               | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)        | [![Launch Codespace]][codespace url] |
+| [matbench_perovskites_eda.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) | [![Launch Codespace]][codespace url] |
+| [mprester_ptable.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)                   | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb)          | [![Launch Codespace]][codespace url] |
 
 [Binder]: https://mybinder.org/badge_logo.svg
 [Open in Google Colab]: https://colab.research.google.com/assets/colab-badge.svg
@@ -175,3 +179,21 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [spg-symbol-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-sunburst.svg
 [struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
 [struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
+
+## 📖 &thinsp; How to cite `pymatviz`
+
+[Zenodo record](https://zenodo.org/badge/latestdoi/340898532)
+
+```bib
+@software{riebesell_pymatviz_2022,
+  title = {Pymatviz: visualization toolkit for materials informatics},
+  author = {Riebesell, Janosh},
+  date = {2022-10-01},
+  year = {2022},
+  doi = {10.5281/zenodo.7486816},
+  url = {https://github.com/janosh/pymatviz},
+  note = {10.5281/zenodo.7486816 - https://github.com/janosh/pymatviz},
+  urldate = {2023-01-01}, % optional, replace with date of code use
+  version = {0.7.1}, % replace with the version you use
+}
+```
