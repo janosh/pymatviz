@@ -16,7 +16,7 @@ A toolkit for visualizations in materials informatics.
 
 </h4>
 
-> If you use `pymatviz` in your research, please cite the [Zenodo DOI](https://zenodo.org/badge/latestdoi/340898532) above.
+> If you use `pymatviz` in your research, [see how to cite](#📖-how-to-cite-pymatviz).
 
 ## 🔨 &thinsp; Installation
 
@@ -175,3 +175,21 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [spg-symbol-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-sunburst.svg
 [struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
 [struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
+
+## 📖 &thinsp; How to cite `pymatviz`
+
+[Zenodo record](https://zenodo.org/badge/latestdoi/340898532)
+
+```bib
+@software{riebesell_pymatviz_2022,
+  title = {Pymatviz: visualization toolkit for materials informatics},
+  author = {Riebesell, Janosh},
+  date = {2022-10-01},
+  year = {2022},
+  doi = {10.5281/zenodo.7486816},
+  url = {https://github.com/janosh/pymatviz},
+  note = {10.5281/zenodo.7486816 - https://github.com/janosh/pymatviz},
+  urldate = {2023-01-01}, % optional, replace with date of code use
+  version = {0.7.1}, % replace with the version you use
+}
+```
