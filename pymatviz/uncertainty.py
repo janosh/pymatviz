@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy.stats import norm
 
 from pymatviz.utils import add_identity_line, df_to_arrays
@@ -12,7 +13,6 @@ from pymatviz.utils import add_identity_line, df_to_arrays
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    import pandas as pd
     from numpy.typing import ArrayLike
 
 
@@ -49,12 +49,15 @@ def qq_gaussian(
     Returns:
         ax: The plot's matplotlib Axes.
     """
-    y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
+    if isinstance(y_std, (str, pd.Index)):
+        y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
+    else:
+        y_true, y_pred = df_to_arrays(df, y_true, y_pred)
     assert isinstance(y_true, np.ndarray)
     assert isinstance(y_pred, np.ndarray)
     ax = ax or plt.gca()
 
-    if isinstance(y_std, np.ndarray):
+    if not isinstance(y_std, dict):
         y_std = {"std": y_std}
 
     res = np.abs(y_pred - y_true)
@@ -221,15 +224,18 @@ def error_decay_with_uncert(
         ax: matplotlib Axes object with plotted model error drop curve based on
             excluding data points by order of large to small model uncertainties.
     """
-    y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
-    assert isinstance(y_true, np.ndarray)
+    if isinstance(y_std, (str, pd.Index)):
+        y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
+    else:
+        y_true, y_pred = df_to_arrays(df, y_true, y_pred)
+    assert isinstance(y_true, np.ndarray)  # for mypy
     assert isinstance(y_pred, np.ndarray)
 
     ax = ax or plt.gca()
 
     xs = range(100 if percentiles else len(y_true), 0, -1)
 
-    if isinstance(y_std, np.ndarray):
+    if not isinstance(y_std, dict):
         y_std = {"std": y_std}
 
     for key in y_std:

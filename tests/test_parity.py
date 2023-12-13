@@ -15,11 +15,10 @@ from pymatviz import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
-from tests.conftest import df_x_y
 
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
+    from tests.conftest import DfOrArrays
 
 
 @pytest.mark.parametrize("log_cmap", [True, False])
@@ -29,16 +28,14 @@ if TYPE_CHECKING:
     "stats",
     [False, True, dict(prefix="test", loc="lower right", prop=dict(fontsize=10))],
 )
-@pytest.mark.parametrize("df, x, y", df_x_y)
 def test_density_scatter(
-    df: pd.DataFrame | None,
-    x: ArrayLike | str,
-    y: str | ArrayLike,
+    df_or_arrays: DfOrArrays,
     log_cmap: bool,
     sort: bool,
     cmap: str | None,
     stats: bool | dict[str, Any],
 ) -> None:
+    df, x, y = df_or_arrays
     ax = density_scatter(
         df=df, x=x, y=y, log_cmap=log_cmap, sort=sort, cmap=cmap, stats=stats
     )
@@ -65,14 +62,11 @@ def test_density_scatter_uses_series_name_as_label() -> None:
     assert ax.get_ylabel() == "y"
 
 
-@pytest.mark.parametrize("df, x, y", df_x_y)
-def test_density_scatter_with_hist(
-    df: pd.DataFrame | None, x: str | ArrayLike, y: str | ArrayLike
-) -> None:
+def test_density_scatter_with_hist(df_or_arrays: DfOrArrays) -> None:
+    df, x, y = df_or_arrays
     density_scatter_with_hist(df=df, x=x, y=y)
 
 
-@pytest.mark.parametrize("df, x, y", df_x_y)
 @pytest.mark.parametrize(
     "cbar_label, cbar_coords",
     [
@@ -81,33 +75,26 @@ def test_density_scatter_with_hist(
     ],
 )
 def test_density_hexbin(
-    df: pd.DataFrame | None,
-    x: str | ArrayLike,
-    y: str | ArrayLike,
+    df_or_arrays: DfOrArrays,
     cbar_label: str | None,
     cbar_coords: tuple[float, float, float, float],
 ) -> None:
+    df, x, y = df_or_arrays
     density_hexbin(df=df, x=x, y=y, cbar_label=cbar_label, cbar_coords=cbar_coords)
 
 
-@pytest.mark.parametrize("df, x, y", df_x_y)
-def test_density_hexbin_with_hist(
-    df: pd.DataFrame | None, x: str | ArrayLike, y: str | ArrayLike
-) -> None:
+def test_density_hexbin_with_hist(df_or_arrays: DfOrArrays) -> None:
+    df, x, y = df_or_arrays
     density_hexbin_with_hist(df=df, x=x, y=y)
 
 
-@pytest.mark.parametrize("df, x, y", df_x_y)
-def test_scatter_with_err_bar(
-    df: pd.DataFrame | None, x: str | ArrayLike, y: str | ArrayLike
-) -> None:
+def test_scatter_with_err_bar(df_or_arrays: DfOrArrays) -> None:
+    df, x, y = df_or_arrays
     err = abs(df[x] - df[y]) if df is not None else abs(x - y)  # type: ignore[operator]
     scatter_with_err_bar(df=df, x=x, y=y, yerr=err)
     scatter_with_err_bar(df=df, x=x, y=y, xerr=err)
 
 
-@pytest.mark.parametrize("df, x, y", df_x_y)
-def test_residual_vs_actual(
-    df: pd.DataFrame | None, x: str | ArrayLike, y: str | ArrayLike
-) -> None:
+def test_residual_vs_actual(df_or_arrays: DfOrArrays) -> None:
+    df, x, y = df_or_arrays
     residual_vs_actual(df=df, y_true=x, y_pred=y)
