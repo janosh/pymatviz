@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import platform
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,7 +38,9 @@ y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9
 
 
 df = pd.DataFrame(dict(y_true=y_true, y_pred=y_pred))
-DfOrArrays = tuple[pd.DataFrame | None, str | np.ndarray, str | np.ndarray]
+DfOrArrays = tuple[
+    Union[pd.DataFrame, None], Union[str, np.ndarray], Union[str, np.ndarray]
+]
 
 
 @pytest.fixture(params=[(None, y_true, y_pred), (df, *df.columns[:2])])
