@@ -365,20 +365,33 @@ def test_ptable_heatmap_plotly_label_map(
 
 
 @pytest.mark.parametrize(
-    "data, symbol_pos, anno_kwds",
+    "data, symbol_pos, anno_kwds, hist_kwds",
     [
-        (pd.DataFrame({"H": [1, 2, 3], "He": [4, 5, 6]}), (0, 0), {}),
-        (dict(H=[1, 2, 3], He=[4, 5, 6]), (1, 1), dict(text=lambda x: f"{len(x):,}")),
-        (pd.Series([[1, 2, 3], [4, 5, 6]], index=["H", "He"]), (1, 1), dict(xy=(0, 0))),
+        (pd.DataFrame({"H": [1, 2, 3], "He": [4, 5, 6]}), (0, 0), {}, None),
+        (
+            dict(H=[1, 2, 3], He=[4, 5, 6]),
+            (1, 1),
+            dict(text=lambda x: f"{len(x):,}"),
+            {},
+        ),
+        (
+            pd.Series([[1, 2, 3], [4, 5, 6]], index=["H", "He"]),
+            (1, 1),
+            dict(xy=(0, 0)),
+            lambda hist_vals: dict(color="red"),
+        ),
     ],
 )
 def test_ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[int]],
     symbol_pos: tuple[int, int],
     anno_kwds: dict[str, Any],
+    hist_kwds: dict[str, Any],
 ) -> None:
     # Test the function with a valid DataFrame
-    fig = ptable_hists(data, symbol_pos=symbol_pos, anno_kwds=anno_kwds)
+    fig = ptable_hists(
+        data, symbol_pos=symbol_pos, anno_kwds=anno_kwds, hist_kwds=hist_kwds
+    )
     assert isinstance(
         fig, plt.Figure
     ), "The function should return a matplotlib Figure object"

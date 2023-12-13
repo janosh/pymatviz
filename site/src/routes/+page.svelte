@@ -3,7 +3,12 @@
 </script>
 
 <main>
-  <Readme />
+  <Readme>
+    <span slot="how-to-cite">
+      If you use <code>pymatviz</code> in your research,
+      <a href="#--how-to-cite-pymatviz">see how to cite</a>.
+    </span>
+  </Readme>
 </main>
 
 <style>

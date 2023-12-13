@@ -167,7 +167,7 @@ def annotate_metrics(
     metrics: dict[str, float] | Sequence[str] = ("MAE", "$R^2$"),
     prefix: str = "",
     suffix: str = "",
-    fmt: str = ".4",
+    fmt: str = ".3",
     **kwargs: Any,
 ) -> AnchoredText:
     """Provide a set of x and y values of equal length and an optional Axes
