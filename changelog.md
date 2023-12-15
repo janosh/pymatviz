@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.8.0](https://github.com/janosh/pymatviz/compare/v0.7.3...v0.8.0)
+
+> 15 December 2023
+
+- Add `plot_band_structure` in new `pymatviz/bandstructure.py` module [`#112`](https://github.com/janosh/pymatviz/pull/112)
+- Add `hist_kwds` arg to `ptable_hists` to customize histograms [`#111`](https://github.com/janosh/pymatviz/pull/111)
+- Define custom `pymatviz` plotly templates [`#110`](https://github.com/janosh/pymatviz/pull/110)
+- Support matplotlib `Axes` and `Figure` in `add_identity_line` [`#109`](https://github.com/janosh/pymatviz/pull/109)
+- Tweaks [`#108`](https://github.com/janosh/pymatviz/pull/108)
+- Add function `ptable_hists` [`#100`](https://github.com/janosh/pymatviz/pull/100)
+- `ptable_heatmap_plotly` support 1s, 0s and negative values with `log=True` [`#107`](https://github.com/janosh/pymatviz/pull/107)
+- `ptable_heatmap` add keywords `cbar_range` and `cbar_kwargs` [`#105`](https://github.com/janosh/pymatviz/pull/105)
+- Add class `TqdmDownload` [`#104`](https://github.com/janosh/pymatviz/pull/104)
+- Breaking: rename `get_crystal_sys` to `crystal_sys_from_spg_num` [`#103`](https://github.com/janosh/pymatviz/pull/103)
+- Support semi-log + log-log plots in `add_identity_line` [`#102`](https://github.com/janosh/pymatviz/pull/102)
+- `plot_structure_2d` add special `site_labels: "symbol" | "species"` [`#101`](https://github.com/janosh/pymatviz/pull/101)
+- ptable_heatmap_ratio allow disabling not_in_numerator, not_in_denominator, not_in_numerator [`c4bc03d`](https://github.com/janosh/pymatviz/commit/c4bc03d3b8a6202ab44e2c1bd41bca703608cde4)
+- fix add_identity_line for log-scaled matplotlib Axes: TypeError: 'slope' cannot be used with non-linear scales [`ead0ce9`](https://github.com/janosh/pymatviz/commit/ead0ce916f2a30b602a0310b14d7edd99cde52aa)
+- add and test si_fmt_int in pymatviz/utils.py [`fc40cd7`](https://github.com/janosh/pymatviz/commit/fc40cd7ec93af1a81cd9081b68f96f43be9a8fea)
+
 #### [v0.7.3](https://github.com/janosh/pymatviz/compare/v0.7.2...v0.7.3)
 
 > 4 November 2023
