@@ -11,32 +11,81 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
 AnyBandStructure = Union[BandStructureSymmLine, PhononBandStructureSymmLine]
 
 
+def pretty_sym_point(symbol: str) -> str:
+    """Convert a symbol to a pretty-printed version."""
+    return symbol.replace("GAMMA", "Γ").replace("DELTA", "Δ").replace("SIGMA", "Σ")
+
+
+def get_ticks(bs: PhononBandStructureSymmLine) -> tuple[list[float], list[str]]:
+    """Get all ticks and labels for a band structure plot.
+
+    Returns:
+        tuple[list[float], list[str]]: Ticks and labels for the x-axis of a band
+            structure plot.
+    """
+    ticks_x_pos = []
+    tick_labels: list[str] = []
+    prev_label = bs.qpoints[0].label
+    prev_branch = bs.branches[0]["name"]
+
+    for idx, point in enumerate(bs.qpoints):
+        if point.label is None:
+            continue
+        ticks_x_pos += [bs.distance[idx]]
+
+        branches = (
+            branch["name"]
+            for branch in bs.branches
+            if branch["start_index"] <= idx <= branch["end_index"]
+        )
+        this_branch = next(branches, None)
+
+        if point.label != prev_label and prev_branch != this_branch:
+            tick_labels.pop()
+            ticks_x_pos.pop()
+            tick_labels += [f"{prev_label or ''}|{point.label}"]
+        else:
+            tick_labels += [point.label]
+
+        prev_label = point.label
+        prev_branch = this_branch
+
+    tick_labels = list(map(pretty_sym_point, tick_labels))
+    return ticks_x_pos, tick_labels
+
+
 def plot_band_structure(
-    band_structs: AnyBandStructure | dict[str, AnyBandStructure], **kwargs: Any
+    band_structs: PhononBandStructureSymmLine | dict[str, PhononBandStructureSymmLine],
+    line_kwds: dict[str, Any] | None = None,
+    **kwargs: Any,
 ) -> go.Figure:
-    """Plot single or multiple phonon band structures using Plotly, focusing on the
+    """Plot single or multiple pymatgen band structures using Plotly, focusing on the
     minimum set of overlapping branches.
 
+    Warning: Only tested with phonon band structures so far but plan is to extend to
+    electronic band structures.
+
     Args:
-        band_structs (AnyBandStructure | dict[str, AnyBandStructure]): Single
-            BandStructureSymmLine or PhononBandStructureSymmLine object or a dictionary
+        band_structs (PhononBandStructureSymmLine | dict[str, PhononBandStructure]):
+            Single BandStructureSymmLine or PhononBandStructureSymmLine object or a dict
             with labels mapped to multiple such objects.
+        line_kwds (dict[str, Any]): Passed to Plotly's Figure.add_scatter method.
+
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:
-        A Plotly figure object.
+        go.Figure: Plotly figure object.
     """
     fig = go.Figure()
+    line_kwds = line_kwds or {}
 
-    # Normalize input to a dictionary
-    if not isinstance(band_structs, dict):
+    if not isinstance(band_structs, dict):  # normalize input to dictionary
         band_structs = {"": band_structs}
-    colors = iter(px.colors.qualitative.Plotly)
 
-    # Find common branches by normalized branch names
+    # find common branches by normalized branch names
     common_branches: set[str] = set()
     for bs in band_structs.values():
-        branches = {branch["name"].replace("GAMMA", "Γ") for branch in bs.branches}
+        branches = {pretty_sym_point(branch["name"]) for branch in bs.branches}
         if not common_branches:
             common_branches = branches
         else:
@@ -45,52 +94,78 @@ def plot_band_structure(
     if not common_branches:
         raise ValueError("No common branches found among the band structures.")
 
-    # Plotting only the common branches for each band structure
-    for label, bs in band_structs.items():
-        color = next(colors)
-        first_trace = True
-        for b in bs.branches:
-            normalized_name = b["name"].replace("GAMMA", "Γ")
-            if normalized_name in common_branches:
-                start_index = b["start_index"]
-                end_index = b["end_index"] + 1  # Include the end point
-                distances = bs.distance[start_index:end_index]
-                for band in range(bs.nb_bands):
-                    frequencies = bs.bands[band][start_index:end_index]
-                    # Group traces for toggling and set legend name only for 1st band
-                    fig.add_scatter(
-                        x=distances,
-                        y=frequencies,
-                        mode="lines",
-                        line=dict(color=color),
-                        legendgroup=label,
-                        name=label if first_trace else None,
-                        showlegend=first_trace,
-                        **kwargs,
-                    )
-                    first_trace = False
+    # plotting only the common branches for each band structure
+    first_bs = None
+    colors = px.colors.qualitative.Plotly
+    line_styles = ("solid", "dot", "dash", "longdash", "dashdot", "longdashdot")
 
-    # Add vertical lines for common high-symmetry points
+    for bs_idx, (label, bs) in enumerate(band_structs.items()):
+        color = colors[bs_idx % len(colors)]
+        line_defaults = dict(color=color, width=2.5)
+        line_style = line_styles[bs_idx % len(line_styles)]
+        # 1st bands determine x-axis scale (there are usually slight scale differences
+        # between bands)
+        first_bs = first_bs or bs
+        for branch_idx, branch in enumerate(bs.branches):
+            start_idx = branch["start_index"]
+            end_idx = branch["end_index"] + 1  # Include the end point
+            # using the same first_bs x-axis for all band structures to avoid band
+            # shifting
+            distances = first_bs.distance[start_idx:end_idx]
+            for band in range(bs.nb_bands):
+                frequencies = bs.bands[band][start_idx:end_idx]
+                # group traces for toggling and set legend name only for 1st band
+                fig.add_scatter(
+                    x=distances,
+                    y=frequencies,
+                    mode="lines",
+                    line=line_defaults | line_kwds,
+                    legendgroup=label,
+                    name=label,
+                    showlegend=branch_idx == band == 0,
+                    line_dash=line_style,
+                    **kwargs,
+                )
+
+    # add x-axis labels and vertical lines for common high-symmetry points
     first_bs = next(iter(band_structs.values()))
-    high_symm_points_xs = []
-    high_symm_points = set()
-    for b in first_bs.branches:
-        normalized_name = b["name"].replace("GAMMA", "Γ").replace(r"$\Gamma$", "Γ")
-        if normalized_name in common_branches:
-            high_symm_points.add(
-                first_bs.qpoints[b["start_index"]].label.replace("GAMMA", "Γ")
-            )
-            high_symm_points_xs.append(first_bs.distance[b["start_index"]])
+    x_ticks, x_labels = get_ticks(first_bs)
+    fig.layout.xaxis.update(tickvals=x_ticks, ticktext=x_labels)
 
-    for x_pos in high_symm_points_xs:
+    # remove 0 to avoid duplicate vertical line, looks like graphical artifact
+    for x_pos in {*x_ticks} - {0}:
         fig.add_vline(x=x_pos, line=dict(color="black", width=1))
 
-    fig.layout.title = "Band Structure"
     fig.layout.xaxis.title = "Wave Vector"
     fig.layout.yaxis.title = "Frequency (THz)"
-    fig.layout.xaxis = dict(
-        tickmode="array", tickvals=high_symm_points_xs, ticktext=list(high_symm_points)
+    fig.layout.margin = dict(t=5, b=5, l=5, r=5)
+
+    y_min, y_max = (
+        min(min(bs.bands.ravel()) for bs in band_structs.values()),
+        max(max(bs.bands.ravel()) for bs in band_structs.values()),
     )
-    fig.layout.margin = dict(t=40, b=0, l=0, r=0)
+    if y_min >= -0.01:  # only set y_min=0 if no imaginary frequencies
+        fig.layout.yaxis.range = (0, 1.05 * y_max)
+    else:
+        # no need for y=0 line if y_min = 0
+        fig.add_hline(y=0, line=dict(color="black", width=1))
+
+    axes_kwds = dict(linecolor="black", gridcolor="lightgray")
+    fig.layout.xaxis.update(**axes_kwds)
+    fig.layout.yaxis.update(**axes_kwds)
+
+    # move legend to best position
+    fig.layout.legend.update(
+        x=0.005,
+        y=0.99,
+        orientation="h",
+        yanchor="top",
+        bgcolor="rgba(255, 255, 255, 0.6)",
+        bordercolor="rgba(0, 0, 0, 0.2)",
+        borderwidth=1,
+    )
+
+    # scale font size with figure size
+    fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
 
     return fig
