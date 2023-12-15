@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
-
+TEST_FILES = f"{ROOT}/tests/files"
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
     "symbol"
