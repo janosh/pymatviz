@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.io as pio
 
+from pymatviz.bandstructure import plot_band_structure
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.histograms import (
