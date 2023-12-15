@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import os
 import subprocess
 from os.path import dirname
@@ -28,6 +29,7 @@ def save_fig(
     env_disable: Sequence[str] = ("CI",),
     pdf_sleep: float = 0.6,
     style: str = "",
+    prec: int | None = None,  # Added round keyword argument
     **kwargs: Any,
 ) -> None:
     """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
@@ -51,9 +53,26 @@ def save_fig(
             effect on matplotlib figures.
         style (str, optional): CSS style string to be inserted into the HTML file.
             Defaults to "". Only used if path ends with .svelte or .html.
+        prec (int, optional): Number of significant figures to keep for any float
+            in the exported file. Defaults to None (no rounding). Sensible values are
+            usually 4, 5, 6.
 
         **kwargs: Keyword arguments passed to fig.write_html().
     """
+    if prec is not None:
+        # create a copy of figure and round all floats in fig.data to round significant
+        # figures
+        fig = copy.deepcopy(fig)
+        for trace in fig.data:
+            # trace is a go.Scatter or go.Bar or go.Heatmap or ...
+            if trace.x is not None:
+                trace.x = [
+                    round(x, prec) if isinstance(x, float) else x for x in trace.x
+                ]
+            if trace.y is not None:
+                trace.y = [
+                    round(y, prec) if isinstance(y, float) else y for y in trace.y
+                ]
     if any(var in os.environ for var in env_disable):
         return
     # handle matplotlib figures
