@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
+from pymatgen.util.string import htmlify
 
 
 AnyBandStructure = Union[BandStructureSymmLine, PhononBandStructureSymmLine]
@@ -13,7 +14,13 @@ AnyBandStructure = Union[BandStructureSymmLine, PhononBandStructureSymmLine]
 
 def pretty_sym_point(symbol: str) -> str:
     """Convert a symbol to a pretty-printed version."""
-    return symbol.replace("GAMMA", "Γ").replace("DELTA", "Δ").replace("SIGMA", "Σ")
+    # htmlify maps S0 -> S<sub>0</sub> but leaves S_0 as is so we remove underscores
+    return (
+        htmlify(symbol.replace("_", ""))
+        .replace("GAMMA", "Γ")
+        .replace("DELTA", "Δ")
+        .replace("SIGMA", "Σ")
+    )
 
 
 def get_ticks(bs: PhononBandStructureSymmLine) -> tuple[list[float], list[str]]:
@@ -101,7 +108,7 @@ def plot_band_structure(
 
     for bs_idx, (label, bs) in enumerate(band_structs.items()):
         color = colors[bs_idx % len(colors)]
-        line_defaults = dict(color=color, width=2.5)
+        line_defaults = dict(color=color, width=2)
         line_style = line_styles[bs_idx % len(line_styles)]
         # 1st bands determine x-axis scale (there are usually slight scale differences
         # between bands)
@@ -130,7 +137,7 @@ def plot_band_structure(
     # add x-axis labels and vertical lines for common high-symmetry points
     first_bs = next(iter(band_structs.values()))
     x_ticks, x_labels = get_ticks(first_bs)
-    fig.layout.xaxis.update(tickvals=x_ticks, ticktext=x_labels)
+    fig.layout.xaxis.update(tickvals=x_ticks, ticktext=x_labels, tickangle=0)
 
     # remove 0 to avoid duplicate vertical line, looks like graphical artifact
     for x_pos in {*x_ticks} - {0}:
