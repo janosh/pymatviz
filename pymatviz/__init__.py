@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.io as pio
 
-from pymatviz.bandstructure import plot_band_structure
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.histograms import (
@@ -25,6 +24,7 @@ from pymatviz.parity import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
+from pymatviz.phonons import plot_phonon_bands, plot_phonon_dos
 from pymatviz.ptable import (
     count_elements,
     ptable_heatmap,
@@ -137,6 +137,8 @@ axis_template = dict(
     ticks="outside",
     zeroline=True,
     linewidth=1,
+    showgrid=True,
+    gridcolor="lightgray",
 )
 white_axis_template = axis_template | dict(linecolor="black", gridcolor="lightgray")
 pio.templates["pymatviz_white"] = pio.templates["plotly_white"].update(

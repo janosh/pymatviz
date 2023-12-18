@@ -1,12 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 import plotly.express as px
 import plotly.graph_objects as go
+import scipy.constants as const
 from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
+from pymatgen.phonon.dos import PhononDos
 from pymatgen.util.string import htmlify
+
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 AnyBandStructure = Union[BandStructureSymmLine, PhononBandStructureSymmLine]
@@ -61,7 +67,7 @@ def get_ticks(bs: PhononBandStructureSymmLine) -> tuple[list[float], list[str]]:
     return ticks_x_pos, tick_labels
 
 
-def plot_band_structure(
+def plot_phonon_bands(
     band_structs: PhononBandStructureSymmLine | dict[str, PhononBandStructureSymmLine],
     line_kwds: dict[str, Any] | None = None,
     **kwargs: Any,
@@ -77,7 +83,6 @@ def plot_band_structure(
             Single BandStructureSymmLine or PhononBandStructureSymmLine object or a dict
             with labels mapped to multiple such objects.
         line_kwds (dict[str, Any]): Passed to Plotly's Figure.add_scatter method.
-
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:
@@ -176,3 +181,97 @@ def plot_band_structure(
     fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
 
     return fig
+
+
+def plot_phonon_dos(
+    doses: PhononDos | dict[str, PhononDos],
+    stack: bool = False,
+    sigma: float = 0,
+    units: Literal["THz", "eV", "meV", "Ha", "cm-1"] = "THz",
+    normalize: Literal["max", "sum", "integral"] | None = None,
+    **kwargs: Any,
+) -> go.Figure:
+    """Plot phonon DOS using Plotly.
+
+    Args:
+        doses (PhononDos | dict[str, PhononDos]): PhononDos or dict of multiple.
+        stack (bool): Whether to plot the DOS as a stacked area graph. Defaults to
+            False.
+        sigma (float): Standard deviation for Gaussian smearing. Defaults to None.
+        units (str): Units for the frequencies. Defaults to "THz".
+        legend (dict): Legend configuration.
+        normalize (bool): Whether to normalize the DOS. Defaults to False.
+        **kwargs: Passed to Plotly's Figure.add_scatter method.
+
+    Returns:
+        go.Figure: Plotly figure object.
+    """
+    valid_normalize = (None, "max", "sum", "integral")
+    if normalize not in valid_normalize:
+        raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
+
+    fig = go.Figure()
+
+    for key, dos in ({"": doses} if isinstance(doses, PhononDos) else doses).items():
+        frequencies = dos.frequencies
+        densities = dos.get_smeared_densities(sigma)
+
+        # convert frequencies to specified units
+        frequencies = convert_frequencies(frequencies, units)
+
+        # normalize DOS
+        if normalize == "max":
+            densities = densities / densities.max()
+        elif normalize == "sum":
+            densities = densities / densities.sum()
+        elif normalize == "integral":
+            bin_width = frequencies[1] - frequencies[0]
+            densities = densities / densities.sum() / bin_width
+
+        defaults = dict(mode="lines")
+        if stack:
+            if fig.data:  # for stacked plots, accumulate densities
+                densities = densities + fig.data[-1].y
+            defaults.setdefault("fill", "tonexty")
+
+        fig.add_scatter(x=frequencies, y=densities, name=key, **(defaults | kwargs))
+
+    fig.layout.xaxis.update(title=f"Frequency ({units})")
+    fig.layout.yaxis.update(title="Density of States")
+    fig.layout.margin = dict(t=5, b=5, l=5, r=5)
+    fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
+    fig.layout.legend.update(x=0.005, y=0.99, orientation="h", yanchor="top")
+    fig.layout.template = "pymatviz_white"
+
+    return fig
+
+
+def convert_frequencies(
+    frequencies: np.ndarray,
+    unit: Literal["THz", "eV", "meV", "Ha", "cm-1"] = "THz",
+) -> np.ndarray:
+    """Convert frequencies from THz to specified units.
+
+    Args:
+        frequencies (np.ndarray): Frequencies in THz.
+        unit (str): Target units. One of 'THz', 'eV', 'meV', 'Ha', 'cm-1'.
+
+    Returns:
+        np.ndarray: Converted frequencies.
+    """
+    conversion_factors = {
+        "THz": 1,
+        "eV": const.value("hertz-electron volt relationship") * const.tera,
+        "meV": const.value("hertz-electron volt relationship")
+        * const.tera
+        / const.milli,
+        "Ha": const.value("hertz-hartree relationship") * const.tera,
+        "cm-1": const.value("hertz-inverse meter relationship")
+        * const.tera
+        * const.centi,
+    }
+
+    factor = conversion_factors.get(unit)
+    if factor is None:
+        raise ValueError(f"Invalid {unit=}, must be one of {list(conversion_factors)}")
+    return frequencies * factor
