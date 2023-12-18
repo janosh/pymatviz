@@ -217,8 +217,11 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         sum(anno.text != "" for anno in fig.layout.annotations) == 118
     ), "no annotations should be empty"
 
+    # test hover_props and show_values=False
     ptable_heatmap_plotly(
-        glass_formulas, hover_props=["atomic_mass", "atomic_number", "density"]
+        glass_formulas,
+        hover_props=("atomic_mass", "atomic_number", "density"),
+        show_values=False,
     )
     ptable_heatmap_plotly(
         glass_formulas,
