@@ -469,7 +469,8 @@ def ptable_heatmap_plotly(
     values: ElemValues,
     count_mode: CountMode = "composition",
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
-    showscale: bool = True,
+    show_scale: bool = True,
+    show_values: bool = True,
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     fmt: str | None = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
@@ -502,7 +503,8 @@ def ptable_heatmap_plotly(
             of other builtin color scales. Note "YlGn" and px.colors.sequential.YlGn are
             equivalent. Custom scales are specified as ["blue", "red"] or
             [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
-        showscale (bool): Whether to show a bar for the color scale. Defaults to True.
+        show_scale (bool): Whether to show a bar for the color scale. Defaults to True.
+        show_values (bool): Whether to show numbers on heatmap tiles. Defaults to True.
         heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is (value), normalized as a fraction of the total, as percentages
             or not at all (None). Defaults to "value".
@@ -612,22 +614,26 @@ def ptable_heatmap_plotly(
         row = n_rows - period
         col = group - 1
 
-        label = None  # label (if not None) is placed below the element symbol
-        if symbol in exclude_elements:
-            label = "excl."
-        elif heat_value := heat_value_element_map.get(symbol):
-            if heat_mode == "percent":
-                label = f"{heat_value:{fmt or '.1%'}}"
-            else:
-                default_prec = ".1f" if heat_value < 100 else ",.0f"
-                if heat_value > 1e5:
-                    default_prec = ".2g"
-                label = f"{heat_value:{fmt or default_prec}}".replace("e+0", "e")
+        if show_values:
+            label = ""  # label (if not None) is placed below the element symbol
+            if symbol in exclude_elements:
+                label = "excl."
+            elif heat_value := heat_value_element_map.get(symbol):
+                if heat_mode == "percent":
+                    label = f"{heat_value:{fmt or '.1%'}}"
+                else:
+                    default_prec = ".1f" if heat_value < 100 else ",.0f"
+                    if heat_value > 1e5:
+                        default_prec = ".2g"
+                    label = f"{heat_value:{fmt or default_prec}}".replace("e+0", "e")
 
+            if callable(label_map):
+                label = label_map(label)
+            elif isinstance(label_map, dict):
+                label = label_map.get(label, label)
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
         tile_text = (
-            f"<span {style=}>{symbol}</span><br>"
-            f"{(label_map or {}).get(label, label)}"  # type: ignore[arg-type]
+            f"<span {style=}>{symbol}</span>{f'<br>{label}' if show_values else ''}"
         )
 
         tile_texts[row][col] = tile_text
@@ -680,7 +686,7 @@ def ptable_heatmap_plotly(
         heatmap_values,
         annotation_text=tile_texts,
         text=hover_texts,
-        showscale=showscale,
+        showscale=show_scale,
         colorscale=colorscale,
         font_colors=font_colors or None,
         hoverinfo="text",
