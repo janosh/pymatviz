@@ -484,7 +484,7 @@ def ptable_heatmap_plotly(
     exclude_elements: Sequence[str] = (),
     log: bool = False,
     fill_value: float | None = None,
-    label_map: dict[str, str] | Literal[False] | None = None,
+    label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Create a Plotly figure with an interactive heatmap of the periodic table.
@@ -555,9 +555,10 @@ def ptable_heatmap_plotly(
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
             Piece of advice: colorscale='viridis' and log=True go well together.
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
-        label_map (dict[str, str] | None): Map heat values (after string formatting)
-            to target strings. Defaults to dict.fromkeys((np.nan, None, "nan"), " ")
-            so as not to display 'nan' for missing values. Set to False to disable.
+        label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
+            string formatting) to target strings. Set to False to disable. Defaults to
+            dict.fromkeys((np.nan, None, "nan"), " ") so as not to display 'nan' for
+            missing values.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
 
