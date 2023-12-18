@@ -227,7 +227,14 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         glass_formulas,
         hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
     )
-    ptable_heatmap_plotly(df_ptable.density, fmt=".1f")
+    # test label_map as dict
+    fig = ptable_heatmap_plotly(df_ptable.density, fmt=".1f", label_map={"0": "zero"})
+    # test label_map as callable
+    ptable_heatmap_plotly(
+        df_ptable.density,
+        fmt=".1f",
+        label_map=lambda x: "meaning of life" if x == 42 else x,
+    )
 
     ptable_heatmap_plotly(glass_formulas, heat_mode="percent")
 
