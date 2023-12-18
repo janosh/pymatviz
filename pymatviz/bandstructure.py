@@ -108,7 +108,7 @@ def plot_band_structure(
 
     for bs_idx, (label, bs) in enumerate(band_structs.items()):
         color = colors[bs_idx % len(colors)]
-        line_defaults = dict(color=color, width=2)
+        line_defaults = dict(color=color, width=1.5)
         line_style = line_styles[bs_idx % len(line_styles)]
         # 1st bands determine x-axis scale (there are usually slight scale differences
         # between bands)
