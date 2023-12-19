@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Literal, Union
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.constants as const
-from ffonons import find_last_dos_peak
 from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
 from pymatgen.phonon.dos import PhononDos
@@ -254,7 +253,7 @@ def plot_phonon_dos(
     qual_colors = px.colors.qualitative.Plotly
     if last_peak_anno:
         for idx, (key, dos) in enumerate(doses.items()):
-            last_peak = find_last_dos_peak(dos)
+            last_peak = dos.get_last_peak()
             color = (
                 fig.data[idx].line.color
                 or fig.data[idx].marker.color
