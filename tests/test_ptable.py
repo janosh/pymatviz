@@ -171,7 +171,7 @@ def test_ptable_heatmap(
     # cbar_fmt as string
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=".3f")
     cbar_labels = [label.get_text() for label in ax.child_axes[0].get_xticklabels()]
-    assert cbar_labels[:2] == ["0.000", "50.000"]
+    assert cbar_labels[:2] == ["0.000", "25.000"]
 
     # cbar_fmt as function
     ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)
@@ -187,6 +187,21 @@ def test_ptable_heatmap(
     # tile_size
     ptable_heatmap(df_ptable.atomic_mass, tile_size=1)
     ptable_heatmap(df_ptable.atomic_mass, tile_size=(0.9, 1))
+
+    # bad colorscale should raise ValueError
+    bad_name = "bad color scale"
+    with pytest.raises(
+        ValueError,
+        match=f"{bad_name!r} is not a valid value for name; supported values are "
+        "'Accent', 'Accent_r'",
+    ):
+        ptable_heatmap(glass_formulas, colorscale=bad_name)
+
+    # test text_style
+    ptable_heatmap(glass_formulas, text_style=dict(color="red", fontsize=12))
+
+    # test show_scale (with heat_mode)
+    ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
 
 
 def test_ptable_heatmap_ratio(
