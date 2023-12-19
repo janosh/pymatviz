@@ -150,6 +150,8 @@ def ptable_heatmap(
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
     cbar_kwargs: dict[str, Any] | None = None,
     colorscale: str = "viridis",
+    show_scale: bool = True,
+    show_values: bool = True,
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
@@ -159,6 +161,7 @@ def ptable_heatmap(
     exclude_elements: Sequence[str] = (),
     zero_color: str = "#eff",  # light gray
     zero_symbol: str | float = "-",
+    text_style: dict[str, Any] | None = None,
     label_font_size: int = 16,
     value_font_size: int = 12,
     tile_size: float | tuple[float, float] = 0.9,
@@ -189,6 +192,9 @@ def ptable_heatmap(
         colorscale (str, optional): Matplotlib colormap name to use. Defaults to
             "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
             for available options.
+        show_scale (bool, optional): Whether to show the color bar. Defaults to True.
+        show_values (bool, optional): Whether to show the heatmap values in each tile.
+            Defaults to True.
         infty_color: Color to use for elements with value infinity. Defaults to
             "lightskyblue".
         na_color: Color to use for elements with value infinity. Defaults to "white".
@@ -214,6 +220,10 @@ def ptable_heatmap(
             elements with value zero. Defaults to "#eff" (light gray).
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
+        text_style (dict[str, Any]): Additional keyword arguments passed to
+            plt.text(). Defaults to dict(
+                ha="center", fontsize=label_font_size, fontweight="semibold"
+            )
         label_font_size (int): Font size for element symbols. Defaults to 16.
         value_font_size (int): Font size for heat values. Defaults to 12.
         tile_size (float | tuple[float, float]): Size of each tile in the periodic
@@ -283,7 +293,7 @@ def ptable_heatmap(
 
     text_style = dict(
         horizontalalignment="center", fontsize=label_font_size, fontweight="semibold"
-    )
+    ) | (text_style or {})
 
     for symbol, row, column, *_ in df_ptable.itertuples():
         row = n_rows - row  # invert row count to make periodic table right side up
@@ -322,9 +332,9 @@ def ptable_heatmap(
             (column, row), tile_width, tile_height, edgecolor="gray", facecolor=color
         )
 
-        if heat_mode is None:
+        if heat_mode is None or not show_values:
             # no value to display below in colored rectangle so center element symbol
-            text_style["verticalalignment"] = "center"
+            text_style.setdefault("verticalalignment", "center")
 
         if symbol in exclude_elements:
             text_clr = "black"
@@ -339,15 +349,17 @@ def ptable_heatmap(
         else:
             text_clr = text_color
 
+        text_style.setdefault("color", text_clr)
+
         plt.text(
             column + 0.5 * tile_width,
-            row + 0.5 * tile_height,
+            # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
+            row + (0.5 if show_values else 0.45) * tile_height,
             symbol,
-            color=text_clr,
             **text_style,
         )
 
-        if heat_mode is not None:
+        if heat_mode is not None and show_values:
             plt.text(
                 column + 0.5 * tile_width,
                 row + 0.1 * tile_height,
@@ -359,12 +371,14 @@ def ptable_heatmap(
 
         ax.add_patch(rect)
 
-    if heat_mode is not None:
+    if heat_mode is not None and show_scale:
         # color bar position and size: [x, y, width, height]
         # anchored at lower left corner
         cbar_ax = ax.inset_axes(cbar_coords, transform=ax.transAxes)
         # format major and minor ticks
-        cbar_ax.tick_params(which="both", labelsize=14, width=1)
+        # TODO maybe give user direct control over labelsize, instead of hard-coding
+        # 8pt smaller than default
+        cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"] - 8)  # type: ignore[operator]
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 
