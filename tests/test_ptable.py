@@ -171,7 +171,7 @@ def test_ptable_heatmap(
     # cbar_fmt as string
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=".3f")
     cbar_labels = [label.get_text() for label in ax.child_axes[0].get_xticklabels()]
-    assert cbar_labels[:2] == ["0.000", "50.000"]
+    assert cbar_labels[:2] == ["0.000", "25.000"]
 
     # cbar_fmt as function
     ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)
@@ -187,6 +187,21 @@ def test_ptable_heatmap(
     # tile_size
     ptable_heatmap(df_ptable.atomic_mass, tile_size=1)
     ptable_heatmap(df_ptable.atomic_mass, tile_size=(0.9, 1))
+
+    # bad colorscale should raise ValueError
+    bad_name = "bad color scale"
+    with pytest.raises(
+        ValueError,
+        match=f"{bad_name!r} is not a valid value for name; supported values are "
+        "'Accent', 'Accent_r'",
+    ):
+        ptable_heatmap(glass_formulas, colorscale=bad_name)
+
+    # test text_style
+    ptable_heatmap(glass_formulas, text_style=dict(color="red", fontsize=12))
+
+    # test show_scale (with heat_mode)
+    ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
 
 
 def test_ptable_heatmap_ratio(
@@ -217,14 +232,24 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         sum(anno.text != "" for anno in fig.layout.annotations) == 118
     ), "no annotations should be empty"
 
+    # test hover_props and show_values=False
     ptable_heatmap_plotly(
-        glass_formulas, hover_props=["atomic_mass", "atomic_number", "density"]
+        glass_formulas,
+        hover_props=("atomic_mass", "atomic_number", "density"),
+        show_values=False,
     )
     ptable_heatmap_plotly(
         glass_formulas,
         hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
     )
-    ptable_heatmap_plotly(df_ptable.density, fmt=".1f")
+    # test label_map as dict
+    fig = ptable_heatmap_plotly(df_ptable.density, fmt=".1f", label_map={"0": "zero"})
+    # test label_map as callable
+    ptable_heatmap_plotly(
+        df_ptable.density,
+        fmt=".1f",
+        label_map=lambda x: "meaning of life" if x == 42 else x,
+    )
 
     ptable_heatmap_plotly(glass_formulas, heat_mode="percent")
 
@@ -263,14 +288,14 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 @pytest.mark.parametrize(
     "heat_mode, log", [(None, True), ("fraction", False), ("percent", False)]
 )
-@pytest.mark.parametrize("showscale", [False, True])
+@pytest.mark.parametrize("show_scale", [False, True])
 @pytest.mark.parametrize("font_size", [None, 14])
 @pytest.mark.parametrize("font_colors", [["red"], ("black", "white")])
 def test_ptable_heatmap_plotly_kwarg_combos(
     glass_formulas: list[str],
     exclude_elements: Sequence[str],
     heat_mode: Literal["value", "fraction", "percent"] | None,
-    showscale: bool,
+    show_scale: bool,
     font_size: int,
     font_colors: tuple[str] | tuple[str, str],
     log: bool,
@@ -279,7 +304,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         glass_formulas,
         exclude_elements=exclude_elements,
         heat_mode=heat_mode,
-        showscale=showscale,
+        show_scale=show_scale,
         font_size=font_size,
         font_colors=font_colors,
         log=log,

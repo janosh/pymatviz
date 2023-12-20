@@ -120,6 +120,7 @@ fig = ptable_heatmap_plotly(
     df_ptable.atomic_mass,
     hover_props=["atomic_mass", "atomic_number"],
     hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
+    show_values=False,
 )
 fig.update_layout(
     title=dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)

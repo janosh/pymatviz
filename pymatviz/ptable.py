@@ -150,6 +150,8 @@ def ptable_heatmap(
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
     cbar_kwargs: dict[str, Any] | None = None,
     colorscale: str = "viridis",
+    show_scale: bool = True,
+    show_values: bool = True,
     infty_color: str = "lightskyblue",
     na_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
@@ -159,6 +161,7 @@ def ptable_heatmap(
     exclude_elements: Sequence[str] = (),
     zero_color: str = "#eff",  # light gray
     zero_symbol: str | float = "-",
+    text_style: dict[str, Any] | None = None,
     label_font_size: int = 16,
     value_font_size: int = 12,
     tile_size: float | tuple[float, float] = 0.9,
@@ -189,6 +192,9 @@ def ptable_heatmap(
         colorscale (str, optional): Matplotlib colormap name to use. Defaults to
             "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
             for available options.
+        show_scale (bool, optional): Whether to show the color bar. Defaults to True.
+        show_values (bool, optional): Whether to show the heatmap values in each tile.
+            Defaults to True.
         infty_color: Color to use for elements with value infinity. Defaults to
             "lightskyblue".
         na_color: Color to use for elements with value infinity. Defaults to "white".
@@ -214,6 +220,10 @@ def ptable_heatmap(
             elements with value zero. Defaults to "#eff" (light gray).
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
+        text_style (dict[str, Any]): Additional keyword arguments passed to
+            plt.text(). Defaults to dict(
+                ha="center", fontsize=label_font_size, fontweight="semibold"
+            )
         label_font_size (int): Font size for element symbols. Defaults to 16.
         value_font_size (int): Font size for heat values. Defaults to 12.
         tile_size (float | tuple[float, float]): Size of each tile in the periodic
@@ -283,7 +293,7 @@ def ptable_heatmap(
 
     text_style = dict(
         horizontalalignment="center", fontsize=label_font_size, fontweight="semibold"
-    )
+    ) | (text_style or {})
 
     for symbol, row, column, *_ in df_ptable.itertuples():
         row = n_rows - row  # invert row count to make periodic table right side up
@@ -322,9 +332,9 @@ def ptable_heatmap(
             (column, row), tile_width, tile_height, edgecolor="gray", facecolor=color
         )
 
-        if heat_mode is None:
+        if heat_mode is None or not show_values:
             # no value to display below in colored rectangle so center element symbol
-            text_style["verticalalignment"] = "center"
+            text_style.setdefault("verticalalignment", "center")
 
         if symbol in exclude_elements:
             text_clr = "black"
@@ -339,15 +349,17 @@ def ptable_heatmap(
         else:
             text_clr = text_color
 
+        text_style.setdefault("color", text_clr)
+
         plt.text(
             column + 0.5 * tile_width,
-            row + 0.5 * tile_height,
+            # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
+            row + (0.5 if show_values else 0.45) * tile_height,
             symbol,
-            color=text_clr,
             **text_style,
         )
 
-        if heat_mode is not None:
+        if heat_mode is not None and show_values:
             plt.text(
                 column + 0.5 * tile_width,
                 row + 0.1 * tile_height,
@@ -359,12 +371,14 @@ def ptable_heatmap(
 
         ax.add_patch(rect)
 
-    if heat_mode is not None:
+    if heat_mode is not None and show_scale:
         # color bar position and size: [x, y, width, height]
         # anchored at lower left corner
         cbar_ax = ax.inset_axes(cbar_coords, transform=ax.transAxes)
         # format major and minor ticks
-        cbar_ax.tick_params(which="both", labelsize=14, width=1)
+        # TODO maybe give user direct control over labelsize, instead of hard-coding
+        # 8pt smaller than default
+        cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"] - 8)  # type: ignore[operator]
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 
@@ -469,7 +483,8 @@ def ptable_heatmap_plotly(
     values: ElemValues,
     count_mode: CountMode = "composition",
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
-    showscale: bool = True,
+    show_scale: bool = True,
+    show_values: bool = True,
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     fmt: str | None = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
@@ -483,7 +498,7 @@ def ptable_heatmap_plotly(
     exclude_elements: Sequence[str] = (),
     log: bool = False,
     fill_value: float | None = None,
-    label_map: dict[str, str] | Literal[False] | None = None,
+    label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Create a Plotly figure with an interactive heatmap of the periodic table.
@@ -502,7 +517,8 @@ def ptable_heatmap_plotly(
             of other builtin color scales. Note "YlGn" and px.colors.sequential.YlGn are
             equivalent. Custom scales are specified as ["blue", "red"] or
             [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
-        showscale (bool): Whether to show a bar for the color scale. Defaults to True.
+        show_scale (bool): Whether to show a bar for the color scale. Defaults to True.
+        show_values (bool): Whether to show numbers on heatmap tiles. Defaults to True.
         heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is (value), normalized as a fraction of the total, as percentages
             or not at all (None). Defaults to "value".
@@ -553,9 +569,10 @@ def ptable_heatmap_plotly(
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
             Piece of advice: colorscale='viridis' and log=True go well together.
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
-        label_map (dict[str, str] | None): Map heat values (after string formatting)
-            to target strings. Defaults to dict.fromkeys((np.nan, None, "nan"), " ")
-            so as not to display 'nan' for missing values. Set to False to disable.
+        label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
+            string formatting) to target strings. Set to False to disable. Defaults to
+            dict.fromkeys((np.nan, None, "nan"), " ") so as not to display 'nan' for
+            missing values.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
 
@@ -612,22 +629,26 @@ def ptable_heatmap_plotly(
         row = n_rows - period
         col = group - 1
 
-        label = None  # label (if not None) is placed below the element symbol
-        if symbol in exclude_elements:
-            label = "excl."
-        elif heat_value := heat_value_element_map.get(symbol):
-            if heat_mode == "percent":
-                label = f"{heat_value:{fmt or '.1%'}}"
-            else:
-                default_prec = ".1f" if heat_value < 100 else ",.0f"
-                if heat_value > 1e5:
-                    default_prec = ".2g"
-                label = f"{heat_value:{fmt or default_prec}}".replace("e+0", "e")
+        if show_values:
+            label = ""  # label (if not None) is placed below the element symbol
+            if symbol in exclude_elements:
+                label = "excl."
+            elif heat_value := heat_value_element_map.get(symbol):
+                if heat_mode == "percent":
+                    label = f"{heat_value:{fmt or '.1%'}}"
+                else:
+                    default_prec = ".1f" if heat_value < 100 else ",.0f"
+                    if heat_value > 1e5:
+                        default_prec = ".2g"
+                    label = f"{heat_value:{fmt or default_prec}}".replace("e+0", "e")
 
+            if callable(label_map):
+                label = label_map(label)
+            elif isinstance(label_map, dict):
+                label = label_map.get(label, label)
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
         tile_text = (
-            f"<span {style=}>{symbol}</span><br>"
-            f"{(label_map or {}).get(label, label)}"  # type: ignore[arg-type]
+            f"<span {style=}>{symbol}</span>{f'<br>{label}' if show_values else ''}"
         )
 
         tile_texts[row][col] = tile_text
@@ -680,7 +701,7 @@ def ptable_heatmap_plotly(
         heatmap_values,
         annotation_text=tile_texts,
         text=hover_texts,
-        showscale=showscale,
+        showscale=show_scale,
         colorscale=colorscale,
         font_colors=font_colors or None,
         hoverinfo="text",
