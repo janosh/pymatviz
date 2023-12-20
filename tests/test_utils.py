@@ -36,12 +36,15 @@ if TYPE_CHECKING:
 
 
 def _extract_anno_from_fig(fig: go.Figure | plt.Figure, idx: int = -1) -> str:
-    # get plotly or matplotlib annotation text. idx=-1 gets the most recently
+    # get plotly or matplotlib annotation text. idx=-1 gets the most recently added
     # annotation
+    if not isinstance(fig, (go.Figure, plt.Figure)):
+        raise TypeError(f"Unexpected {type(fig)=}")
+
     if isinstance(fig, go.Figure):
         anno_text = fig.layout.annotations[idx].text
     else:
-        text_box = fig.artists[idx]
+        text_box = fig.axes[0].artists[idx]
         anno_text = text_box.txt.get_text()
 
     return anno_text
