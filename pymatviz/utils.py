@@ -262,7 +262,7 @@ def annotate_metrics(
     text += suffix
 
     if backend == "matplotlib":
-        ax = fig.axes[0] if fig else plt.gca()
+        ax = (fig.gca() if isinstance(fig, plt.Figure) else fig) or plt.gca()
 
         defaults = dict(frameon=False, loc="upper left")
         text_box = AnchoredText(text, **(defaults | kwargs))
