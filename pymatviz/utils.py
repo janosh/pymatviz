@@ -27,6 +27,9 @@ if TYPE_CHECKING:
 PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
 TEST_FILES = f"{ROOT}/tests/files"
+VALID_BACKENDS = ("matplotlib", "plotly")
+Backend = Literal["matplotlib", "plotly"]
+
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
     "symbol"
@@ -160,11 +163,27 @@ def annotate_bars(
             ) from exc
 
 
+metric_labels_mpl = {"R2": "$R^2$", "R2_adj": "$R^2_{adj}$"}
+metric_labels_plotly = {"R2": "R<sup>2</sup>", "R2_adj": "R<sup>2</sup><sub>adj</sub>"}
+
+
+def pretty_metric_label(key: str, backend: Literal["matplotlib", "plotly"]) -> str:
+    """Map metric keys to their pretty-printed labels."""
+    if backend not in VALID_BACKENDS:
+        raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
+
+    if backend == "plotly":
+        label = metric_labels_plotly.get(key, key)
+    else:
+        label = metric_labels_mpl.get(key, key)
+    return label
+
+
 def annotate_metrics(
     xs: ArrayLike,
     ys: ArrayLike,
-    ax: plt.Axes | None = None,
-    metrics: dict[str, float] | Sequence[str] = ("MAE", "$R^2$"),
+    fig: plt.Axes | plt.Figure | go.Figure | None = None,
+    metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
     prefix: str = "",
     suffix: str = "",
     fmt: str = ".3",
@@ -181,7 +200,7 @@ def annotate_metrics(
             subset of recognized keys MAE, R2, R2_adj, RMSE, MSE, MAPE or the names of
             sklearn.metrics.regression functions or any dict of metric names and values.
             Defaults to ("MAE", "R2").
-        ax (Axes, optional): matplotlib Axes on which to add the box. Defaults to None.
+        fig (Axes, optional): matplotlib Axes on which to add the box. Defaults to None.
         loc (str, optional): Where on the plot to place the AnchoredText object.
             Defaults to "lower right".
         fmt (str, optional): f-string float format for metrics. Defaults to '.4'.
@@ -195,17 +214,26 @@ def annotate_metrics(
     Returns:
         AnchoredText: Instance containing the metrics.
     """
+    valid_ax_types = (plt.Figure, plt.Axes, go.Figure)
+    if not (fig is None or isinstance(fig, valid_ax_types)):
+        raise TypeError(
+            f"Unexpected type for fig: {type(fig)}, must be one of None, "
+            f"{', '.join(valid_ax_types)}"
+        )
+
     if isinstance(metrics, str):
         metrics = [metrics]
     if not isinstance(metrics, (dict, list, tuple, set)):
         raise TypeError(f"metrics must be dict|list|tuple|set, not {type(metrics)}")
+
+    backend: Backend = "plotly" if isinstance(fig, go.Figure) else "matplotlib"
+
     funcs = {
         "MAE": lambda x, y: np.abs(x - y).mean(),
         "RMSE": lambda x, y: (((x - y) ** 2).mean()) ** 0.5,
         "MSE": lambda x, y: ((x - y) ** 2).mean(),
         "MAPE": mape,
         "R2": r2_score,
-        "$R^2$": r2_score,
         # TODO: check this for correctness
         "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
     }
@@ -216,25 +244,40 @@ def annotate_metrics(
     if bad_keys := set(metrics) - set(funcs):
         raise ValueError(f"Unrecognized metrics: {bad_keys}")
 
-    ax = ax or plt.gca()
-    nans = np.isnan(xs) | np.isnan(ys)
-    xs, ys = xs[~nans], ys[~nans]
+    nan_mask = np.isnan(xs) | np.isnan(ys)
+    xs, ys = xs[~nan_mask], ys[~nan_mask]
 
     text = prefix
+    newline = "\n" if backend == "matplotlib" else "<br>"
+
     if isinstance(metrics, dict):
         for key, val in metrics.items():
-            text += f"{key} = {val:{fmt}}\n"
+            label = pretty_metric_label(key, backend)
+            text += f"{label} = {val:{fmt}}{newline}"
     else:
-        for metric in metrics:
-            text += f"{metric} = {funcs[metric](xs, ys):{fmt}}\n"
+        for key in metrics:
+            value = funcs[key](xs, ys)
+            label = pretty_metric_label(key, backend)
+            text += f"{label} = {value:{fmt}}{newline}"
     text += suffix
 
-    kwargs.setdefault("frameon", False)
-    kwargs.setdefault("loc", "lower right")
-    text_box = AnchoredText(text, **kwargs)
-    ax.add_artist(text_box)
+    if backend == "matplotlib":
+        ax = fig.axes[0] if fig else plt.gca()
 
-    return text_box
+        defaults = dict(frameon=False, loc="upper left")
+        text_box = AnchoredText(text, **(defaults | kwargs))
+        ax.add_artist(text_box)
+    elif backend == "plotly":
+        assert isinstance(fig, go.Figure)
+        defaults = dict(
+            xref="paper", yref="paper", x=0.02, y=0.96, showarrow=False, font_size=16
+        )
+
+        fig.add_annotation(text=text, **(defaults | kwargs))
+    else:
+        raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
+
+    return fig
 
 
 CrystalSystem = Literal[
