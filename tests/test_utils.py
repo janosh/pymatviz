@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
+from random import random
 from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import patch
 
@@ -9,9 +10,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
-from matplotlib.offsetbox import AnchoredText
 
 from pymatviz.utils import (
+    Backend,
     CrystalSystem,
     add_identity_line,
     annotate_bars,
@@ -22,6 +23,7 @@ from pymatviz.utils import (
     luminance,
     patch_dict,
     pick_bw_for_contrast,
+    pretty_metric_label,
     si_fmt,
     si_fmt_int,
     styled_html_tag,
@@ -33,6 +35,21 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+def _extract_anno_from_fig(fig: go.Figure | plt.Figure, idx: int = -1) -> str:
+    # get plotly or matplotlib annotation text. idx=-1 gets the most recently added
+    # annotation
+    if not isinstance(fig, (go.Figure, plt.Figure)):
+        raise TypeError(f"Unexpected {type(fig)=}")
+
+    if isinstance(fig, go.Figure):
+        anno_text = fig.layout.annotations[idx].text
+    else:
+        text_box = fig.axes[0].artists[idx]
+        anno_text = text_box.txt.get_text()
+
+    return anno_text
+
+
 @pytest.mark.parametrize(
     "metrics, fmt",
     [
@@ -40,31 +57,51 @@ if TYPE_CHECKING:
         (["RMSE"], ".1"),
         (("MAPE", "MSE"), ".2"),
         ({"MAE", "R2", "RMSE"}, ".3"),
-        ({"MAE": 1.4, "$R^2$": 0.2, "RMSE": 1.9}, ".0"),
+        ({"MAE": 1.4, "R2": 0.2, "RMSE": 1.9}, ".0"),
     ],
 )
-def test_annotate_metrics(metrics: dict[str, float] | Sequence[str], fmt: str) -> None:
-    text_box = annotate_metrics(y_pred, y_true, metrics=metrics, fmt=fmt)
+def test_annotate_metrics(
+    metrics: dict[str, float] | Sequence[str],
+    fmt: str,
+    plotly_scatter: go.Figure,
+    matplotlib_scatter: plt.Figure,
+) -> None:
+    # randomly switch between plotly and matplotlib
+    fig = plotly_scatter if random() > 0.5 else matplotlib_scatter
 
-    assert isinstance(text_box, AnchoredText)
+    out_fig = annotate_metrics(y_pred, y_true, metrics=metrics, fmt=fmt, fig=fig)
+
+    assert out_fig is fig
+    backend: Backend = "plotly" if isinstance(out_fig, go.Figure) else "matplotlib"
 
     expected = dict(MAE=0.113, R2=0.765, RMSE=0.144, MAPE=0.5900, MSE=0.0206)
 
-    txt = ""
+    expected_text = ""
+    newline = "<br>" if isinstance(out_fig, go.Figure) else "\n"
     if isinstance(metrics, dict):
         for key, val in metrics.items():
-            txt += f"{key} = {val:{fmt}}\n"
+            label = pretty_metric_label(key, backend)
+            if key == "R2":
+                print(f"{label=}")
+            expected_text += f"{label} = {val:{fmt}}{newline}"
     else:
         for key in [metrics] if isinstance(metrics, str) else metrics:
-            txt += f"{key} = {expected[key]:{fmt}}\n"
+            label = pretty_metric_label(key, backend)
+            if key == "R2":
+                print(f"{label=}")
+            expected_text += f"{label} = {expected[key]:{fmt}}{newline}"
 
-    assert text_box.txt.get_text() == txt
+    anno_text = _extract_anno_from_fig(out_fig)
+    assert anno_text == expected_text, f"{anno_text=}"
 
-    prefix, suffix = "Metrics:\n", "\nthe end"
-    text_box = annotate_metrics(
-        y_pred, y_true, metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix
+    prefix, suffix = f"Metrics:{newline}", f"{newline}the end"
+    out_fig = annotate_metrics(
+        y_pred, y_true, metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix, fig=fig
     )
-    assert text_box.txt.get_text() == prefix + txt + suffix
+    anno_text_with_fixes = _extract_anno_from_fig(out_fig)
+    assert (
+        anno_text_with_fixes == prefix + expected_text + suffix
+    ), f"{anno_text_with_fixes=}"
 
 
 @pytest.mark.parametrize("metrics", [42, datetime.now()])
@@ -95,21 +132,6 @@ def test_crystal_sys_from_spg_num(spg_num: int, crystal_sys: CrystalSystem) -> N
 def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         crystal_sys_from_spg_num(spg)
-
-
-@pytest.fixture()
-def plotly_scatter() -> go.Figure:
-    fig = go.Figure(go.Scatter(x=[1, 10, 100], y=[10, 100, 1000]))
-    fig.add_scatter(x=[1, 10, 100], y=[1, 10, 100])
-    return fig
-
-
-@pytest.fixture()
-def matplotlib_scatter() -> plt.Figure:
-    fig, ax = plt.subplots()
-    ax.plot([1, 10, 100], [10, 100, 1000])
-    ax.plot([1, 10, 100], [1, 10, 100])
-    return fig
 
 
 @pytest.mark.parametrize("xaxis_type", ["linear", "log"])

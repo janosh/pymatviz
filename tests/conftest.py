@@ -7,14 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Lattice, Structure
 
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-
-    import plotly.graph_objects as go
 
 
 # if platform is windows, set matplotlib backend to "Agg" to fix
@@ -89,8 +88,23 @@ def structures() -> list[Structure]:
 
 
 @pytest.fixture()
-def plotly_scatter() -> go.Figure:
+def plotly_scatter_two_ys() -> go.Figure:
     xs = np.arange(7)
     y1 = xs**2
     y2 = xs**0.5
     return px.scatter(x=xs, y=[y1, y2])
+
+
+@pytest.fixture()
+def plotly_scatter() -> go.Figure:
+    fig = go.Figure(go.Scatter(x=[1, 10, 100], y=[10, 100, 1000]))
+    fig.add_scatter(x=[1, 10, 100], y=[1, 10, 100])
+    return fig
+
+
+@pytest.fixture()
+def matplotlib_scatter() -> plt.Figure:
+    fig, ax = plt.subplots()
+    ax.plot([1, 10, 100], [10, 100, 1000])
+    ax.plot([1, 10, 100], [1, 10, 100])
+    return fig
