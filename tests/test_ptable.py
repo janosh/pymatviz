@@ -288,14 +288,14 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 @pytest.mark.parametrize(
     "heat_mode, log", [(None, True), ("fraction", False), ("percent", False)]
 )
-@pytest.mark.parametrize("showscale", [False, True])
+@pytest.mark.parametrize("show_scale", [False, True])
 @pytest.mark.parametrize("font_size", [None, 14])
 @pytest.mark.parametrize("font_colors", [["red"], ("black", "white")])
 def test_ptable_heatmap_plotly_kwarg_combos(
     glass_formulas: list[str],
     exclude_elements: Sequence[str],
     heat_mode: Literal["value", "fraction", "percent"] | None,
-    showscale: bool,
+    show_scale: bool,
     font_size: int,
     font_colors: tuple[str] | tuple[str, str],
     log: bool,
@@ -304,7 +304,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         glass_formulas,
         exclude_elements=exclude_elements,
         heat_mode=heat_mode,
-        showscale=showscale,
+        show_scale=show_scale,
         font_size=font_size,
         font_colors=font_colors,
         log=log,
