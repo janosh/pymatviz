@@ -189,6 +189,7 @@ def plot_phonon_dos(
     sigma: float = 0,
     units: Literal["THz", "eV", "meV", "Ha", "cm-1"] = "THz",
     normalize: Literal["max", "sum", "integral"] | None = None,
+    last_peak_anno: str | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot phonon DOS using Plotly.
@@ -201,6 +202,10 @@ def plot_phonon_dos(
         units (str): Units for the frequencies. Defaults to "THz".
         legend (dict): Legend configuration.
         normalize (bool): Whether to normalize the DOS. Defaults to False.
+        last_peak_anno (str): Annotation for last DOS peak with f-string placeholders
+            for key (of dict containing multiple DOSes), last_peak frequency and units.
+            Defaults to None, meaning last peak annotation is disabled. Set to "" to
+            enable with a sensible default string.
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:
@@ -209,10 +214,13 @@ def plot_phonon_dos(
     valid_normalize = (None, "max", "sum", "integral")
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
+    if last_peak_anno == "":
+        last_peak_anno = "ω<sub>{key}</sub></span>={last_peak:.1f} {units}"
 
     fig = go.Figure()
+    doses = {"": doses} if isinstance(doses, PhononDos) else doses
 
-    for key, dos in ({"": doses} if isinstance(doses, PhononDos) else doses).items():
+    for key, dos in doses.items():
         frequencies = dos.frequencies
         densities = dos.get_smeared_densities(sigma)
 
@@ -241,7 +249,29 @@ def plot_phonon_dos(
     fig.layout.margin = dict(t=5, b=5, l=5, r=5)
     fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
     fig.layout.legend.update(x=0.005, y=0.99, orientation="h", yanchor="top")
-    fig.layout.template = "pymatviz_white"
+
+    qual_colors = px.colors.qualitative.Plotly
+    if last_peak_anno:
+        for idx, (key, dos) in enumerate(doses.items()):
+            last_peak = dos.get_last_peak()
+            color = (
+                fig.data[idx].line.color
+                or fig.data[idx].marker.color
+                or qual_colors[idx % len(qual_colors)]
+            )
+
+            anno = dict(
+                text=last_peak_anno.format(key=key, last_peak=last_peak, units=units),
+                font=dict(color=color),
+                xanchor="right",
+                yshift=idx * -30,  # shift downward with increasing index
+            )
+            fig.add_vline(
+                x=last_peak,
+                line=dict(color=color, dash="dot"),
+                name=f"last phDOS peak {key}",
+                annotation=anno,
+            )
 
     return fig
 

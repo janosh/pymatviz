@@ -138,15 +138,14 @@ axis_template = dict(
     zeroline=True,
     linewidth=1,
     showgrid=True,
-    gridcolor="lightgray",
 )
 white_axis_template = axis_template | dict(linecolor="black", gridcolor="lightgray")
 pio.templates["pymatviz_white"] = pio.templates["plotly_white"].update(
-    layout=dict(xaxis=axis_template, yaxis=axis_template)
+    layout=dict(xaxis=white_axis_template, yaxis=white_axis_template)
 )
 black_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
 pio.templates["pymatviz_black"] = pio.templates["plotly_dark"].update(
-    layout=dict(xaxis=axis_template, yaxis=axis_template)
+    layout=dict(xaxis=black_axis_template, yaxis=black_axis_template)
 )
 
 px.defaults.template = "pymatviz_white"

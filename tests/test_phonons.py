@@ -73,12 +73,12 @@ def test_prety_sym_point(sym_point: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "units, stack, sigma, normalize",
+    "units, stack, sigma, normalize, last_peak_anno",
     [
-        ("eV", False, 0.01, "max"),
-        ("meV", False, 0.05, "sum"),
-        ("cm-1", True, 0.1, "integral"),
-        ("THz", True, 0.1, None),
+        ("eV", False, 0.01, "max", "{key}={last_peak:.1f}"),
+        ("meV", False, 0.05, "sum", "{key}={last_peak:.4} ({units})"),
+        ("cm-1", True, 0.1, "integral", None),
+        ("THz", True, 0.1, None, ""),
     ],
 )
 def test_plot_phonon_dos(
@@ -87,10 +87,16 @@ def test_plot_phonon_dos(
     stack: bool,
     sigma: float,
     normalize: Literal["max", "sum", "integral"] | None,
+    last_peak_anno: str | None,
 ) -> None:
     fig = plot_phonon_dos(
-        phonon_doses, stack=stack, sigma=sigma, normalize=normalize, units=units
-    )  # test dict
+        phonon_doses,  # test dict
+        stack=stack,
+        sigma=sigma,
+        normalize=normalize,
+        units=units,
+        last_peak_anno=last_peak_anno,
+    )
 
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == f"Frequency ({units})"
@@ -98,10 +104,11 @@ def test_plot_phonon_dos(
     assert fig.layout.font.size == 16
 
     fig = plot_phonon_dos(
-        phonon_doses["mp-2691-Cd4Se4"],
+        phonon_doses["mp-2691-Cd4Se4"],  # test single
         stack=stack,
         sigma=sigma,
         normalize=normalize,
         units=units,
-    )  # test single
+        last_peak_anno=last_peak_anno,
+    )
     assert isinstance(fig, go.Figure)

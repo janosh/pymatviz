@@ -117,7 +117,7 @@ def density_scatter(
         add_identity_line(ax)
 
     if stats:
-        annotate_metrics(x, y, ax=ax, **(stats if isinstance(stats, dict) else {}))
+        annotate_metrics(x, y, fig=ax, **(stats if isinstance(stats, dict) else {}))
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
@@ -163,7 +163,7 @@ def scatter_with_err_bar(
 
     add_identity_line(ax)
 
-    annotate_metrics(x, y, ax=ax)
+    annotate_metrics(x, y, fig=ax)
 
     ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
 
@@ -220,7 +220,7 @@ def density_hexbin(
 
     add_identity_line(ax)
 
-    annotate_metrics(x, y, ax=ax, loc="upper left")
+    annotate_metrics(x, y, fig=ax, loc="upper left")
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
