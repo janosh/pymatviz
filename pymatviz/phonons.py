@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any, Literal, Union
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.constants as const
+from plotly.subplots import make_subplots
 from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
-from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
+from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 from pymatgen.util.string import htmlify
 
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-AnyBandStructure = Union[BandStructureSymmLine, PhononBandStructureSymmLine]
+AnyBandStructure = Union[BandStructureSymmLine, PhononBands]
 
 
 def pretty_sym_point(symbol: str) -> str:
@@ -29,7 +30,7 @@ def pretty_sym_point(symbol: str) -> str:
     )
 
 
-def get_ticks(bs: PhononBandStructureSymmLine) -> tuple[list[float], list[str]]:
+def get_ticks(bs: PhononBands) -> tuple[list[float], list[str]]:
     """Get all ticks and labels for a band structure plot.
 
     Returns:
@@ -68,7 +69,7 @@ def get_ticks(bs: PhononBandStructureSymmLine) -> tuple[list[float], list[str]]:
 
 
 def plot_phonon_bands(
-    band_structs: PhononBandStructureSymmLine | dict[str, PhononBandStructureSymmLine],
+    band_structs: PhononBands | dict[str, PhononBands],
     line_kwds: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
@@ -97,6 +98,11 @@ def plot_phonon_bands(
     # find common branches by normalized branch names
     common_branches: set[str] = set()
     for bs in band_structs.values():
+        if not isinstance(bs, PhononBands):
+            type_name = type(bs).__name__
+            raise TypeError(
+                f"Only {PhononBands.__name__} objects supported, got {type_name}"
+            )
         branches = {pretty_sym_point(branch["name"]) for branch in bs.branches}
         if not common_branches:
             common_branches = branches
@@ -113,8 +119,8 @@ def plot_phonon_bands(
 
     for bs_idx, (label, bs) in enumerate(band_structs.items()):
         color = colors[bs_idx % len(colors)]
-        line_defaults = dict(color=color, width=1.5)
         line_style = line_styles[bs_idx % len(line_styles)]
+        line_defaults = dict(color=color, width=1.5, dash=line_style)
         # 1st bands determine x-axis scale (there are usually slight scale differences
         # between bands)
         first_bs = first_bs or bs
@@ -135,7 +141,6 @@ def plot_phonon_bands(
                     legendgroup=label,
                     name=label,
                     showlegend=branch_idx == band == 0,
-                    line_dash=line_style,
                     **kwargs,
                 )
 
@@ -144,37 +149,37 @@ def plot_phonon_bands(
     x_ticks, x_labels = get_ticks(first_bs)
     fig.layout.xaxis.update(tickvals=x_ticks, ticktext=x_labels, tickangle=0)
 
-    # remove 0 to avoid duplicate vertical line, looks like graphical artifact
-    for x_pos in {*x_ticks} - {0}:
+    # remove 0 and the last line to avoid duplicate vertical line, looks like
+    # graphical artifact
+    for x_pos in {*x_ticks} - {0, x_ticks[-1]}:
         fig.add_vline(x=x_pos, line=dict(color="black", width=1))
 
     fig.layout.xaxis.title = "Wave Vector"
     fig.layout.yaxis.title = "Frequency (THz)"
     fig.layout.margin = dict(t=5, b=5, l=5, r=5)
 
-    y_min, y_max = (
-        min(min(bs.bands.ravel()) for bs in band_structs.values()),
-        max(max(bs.bands.ravel()) for bs in band_structs.values()),
-    )
-    if y_min >= -0.01:  # only set y_min=0 if no imaginary frequencies
-        fig.layout.yaxis.range = (0, 1.05 * y_max)
-    else:
-        # no need for y=0 line if y_min = 0
+    # get y-axis range from all band structures
+    y_min = min(min(bs.bands.ravel()) for bs in band_structs.values())
+    y_max = max(max(bs.bands.ravel()) for bs in band_structs.values())
+
+    if y_min < -0.1:  # no need for y=0 line if y_min = 0
         fig.add_hline(y=0, line=dict(color="black", width=1))
+    if y_min >= -0.01:  # set y_min=0 if below tolerance for imaginary frequencies
+        y_min = 0
+    fig.layout.yaxis.range = (1.05 * y_min, 1.05 * y_max)
 
     axes_kwds = dict(linecolor="black", gridcolor="lightgray")
     fig.layout.xaxis.update(**axes_kwds)
     fig.layout.yaxis.update(**axes_kwds)
 
-    # move legend to best position
+    # move legend to top left corner
     fig.layout.legend.update(
         x=0.005,
         y=0.99,
         orientation="h",
         yanchor="top",
         bgcolor="rgba(255, 255, 255, 0.6)",
-        bordercolor="rgba(0, 0, 0, 0.2)",
-        borderwidth=1,
+        tracegroupgap=0,
     )
 
     # scale font size with figure size
@@ -221,6 +226,10 @@ def plot_phonon_dos(
     doses = {"": doses} if isinstance(doses, PhononDos) else doses
 
     for key, dos in doses.items():
+        if not isinstance(dos, PhononDos):
+            raise TypeError(
+                f"Only PhononDos objects supported, got {type(dos).__name__}"
+            )
         frequencies = dos.frequencies
         densities = dos.get_smeared_densities(sigma)
 
@@ -305,3 +314,77 @@ def convert_frequencies(
     if factor is None:
         raise ValueError(f"Invalid {unit=}, must be one of {list(conversion_factors)}")
     return frequencies * factor
+
+
+def plot_phonon_bands_and_dos(
+    band_structs: PhononBands | dict[str, PhononBands],
+    doses: PhononDos | dict[str, PhononDos],
+    bands_kwargs: dict[str, Any] | None = None,
+    dos_kwargs: dict[str, Any] | None = None,
+    subplot_kwargs: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> go.Figure:
+    """Plot phonon DOS and band structure using Plotly.
+
+    Args:
+        doses (PhononDos | dict[str, PhononDos]): PhononDos or dict of multiple.
+        band_structs (PhononBandStructureSymmLine | dict[str, PhononBandStructure]):
+            Single BandStructureSymmLine or PhononBandStructureSymmLine object or a dict
+            with labels mapped to multiple such objects.
+        bands_kwargs (dict[str, Any]): Passed to Plotly's Figure.add_scatter method.
+        dos_kwargs (dict[str, Any]): Passed to Plotly's Figure.add_scatter method.
+        subplot_kwargs (dict[str, Any]): Passed to Plotly's make_subplots method.
+            Defaults to dict(shared_yaxes=True, column_widths=(0.8, 0.2),
+            horizontal_spacing=0.01).
+        **kwargs: Passed to Plotly's Figure.add_scatter method.
+
+    Returns:
+        go.Figure: Plotly figure object.
+    """
+    if not isinstance(band_structs, dict):  # normalize input to dictionary
+        band_structs = {"": band_structs}
+    if not isinstance(doses, dict):  # normalize input to dictionary
+        doses = {"": doses}
+    if (band_keys := set(band_structs)) != (dos_keys := set(doses)):
+        raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
+
+    subplot_defaults = dict(
+        shared_yaxes=True, column_widths=(0.8, 0.2), horizontal_spacing=0.01
+    )
+    fig = make_subplots(rows=1, cols=2, **subplot_defaults | (subplot_kwargs or {}))
+
+    # plot band structure
+    bands_fig = plot_phonon_bands(band_structs, **kwargs | (bands_kwargs or {}))
+    # import band structure layout to main figure
+    fig.update_layout(bands_fig.layout)
+
+    fig.add_traces(bands_fig.data, rows=1, cols=1)
+
+    # plot density of states
+    dos_fig = plot_phonon_dos(doses, **kwargs | (dos_kwargs or {}))
+    # swap DOS x and y axes (for 90 degrees rotation)
+    for trace in dos_fig.data:
+        trace.x, trace.y = trace.y, trace.x
+
+    fig.add_traces(dos_fig.data, rows=1, cols=2)
+    # transfer zero line from DOS to band structure
+    if fig.layout.yaxis.range[0] < -0.1:
+        fig.add_hline(y=0, line=dict(color="black", width=1), row=1, col=2)
+
+    # put traces with same labels into the same legend group and hide the legend for
+    # the 2nd subplot, give them the same color as the corresponding band structure
+    line_map: dict[str, dict[str, Any]] = {}
+    for trace in fig.data:
+        trace.legendgroup = trace.name
+        trace.showlegend = trace.showlegend and trace.xaxis == "x2"
+        trace.line = line_map.setdefault(trace.name, trace.line)
+
+    # transfer axes labels from DOS to parent figure (since DOS may have custom units
+    # for x-axis)
+    fig.layout.xaxis2.update(title=dos_fig.layout.yaxis.title.text)
+    fig.layout.yaxis.update(title=dos_fig.layout.xaxis.title.text)
+
+    # set y-axis range to match band structure
+    fig.layout.yaxis.update(range=bands_fig.layout.yaxis.range)
+
+    return fig
