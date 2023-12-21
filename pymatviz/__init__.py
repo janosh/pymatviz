@@ -24,7 +24,11 @@ from pymatviz.parity import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
-from pymatviz.phonons import plot_phonon_bands, plot_phonon_dos
+from pymatviz.phonons import (
+    plot_phonon_bands,
+    plot_phonon_bands_and_dos,
+    plot_phonon_dos,
+)
 from pymatviz.ptable import (
     count_elements,
     ptable_heatmap,
