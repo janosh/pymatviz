@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from glob import glob
-from typing import Literal
+from typing import Literal, Union
 
 import plotly.graph_objects as go
 import pytest
@@ -15,7 +15,7 @@ from pymatviz.phonons import pretty_sym_point
 from pymatviz.utils import TEST_FILES
 
 
-BandsDoses = dict[str, dict[str, PhononBands | PhononDos]]
+BandsDoses = dict[str, dict[str, Union[PhononBands, PhononDos]]]
 
 
 @pytest.fixture()
