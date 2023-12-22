@@ -285,8 +285,8 @@ def residual_vs_actual(
         ax: The plot's matplotlib Axes.
     """
     y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    assert isinstance(y_true, np.ndarray)
-    assert isinstance(y_pred, np.ndarray)
+    assert isinstance(y_true, np.ndarray)  # noqa: S101
+    assert isinstance(y_pred, np.ndarray)  # noqa: S101
     ax = ax or plt.gca()
 
     y_err = y_true - y_pred

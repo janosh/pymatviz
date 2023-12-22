@@ -268,8 +268,7 @@ def annotate_metrics(
         defaults = dict(frameon=False, loc="upper left")
         text_box = AnchoredText(text, **(defaults | kwargs))
         ax.add_artist(text_box)
-    elif backend == "plotly":
-        assert isinstance(fig, go.Figure)
+    elif isinstance(fig, go.Figure):
         defaults = dict(
             xref="paper", yref="paper", x=0.02, y=0.96, showarrow=False, font_size=16
         )
@@ -397,7 +396,7 @@ def add_identity_line(
         xy_min = min(x_range[0], y_range[0])
         xy_max = max(x_range[1], y_range[1])
 
-    if fig._grid_ref is not None:
+    if fig._grid_ref is not None:  # noqa: SLF001
         kwargs.setdefault("row", "all")
         kwargs.setdefault("col", "all")
 
@@ -517,7 +516,7 @@ def bin_df_cols(
     df_bin[bin_counts_col] = group.size()
 
     if verbose:
-        print(
+        print(  # noqa: T201
             f"{1 - len(df_bin) / len(df):.1%} row reduction from binning: from "
             f"{len(df_bin):,} to {len(df):,}"
         )
