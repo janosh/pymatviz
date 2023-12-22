@@ -153,7 +153,8 @@ def save_and_compress_svg(
     Raises:
         ValueError: If fig is None and plt.gcf() is empty.
     """
-    assert not filename.endswith(".svg"), f"{filename = } should not include .svg"
+    if filename.endswith(".svg"):
+        raise ValueError(f"{filename=} should not include .svg")
     filepath = f"{ROOT}/assets/{filename}.svg"
     if isinstance(fig, plt.Axes):
         fig = fig.figure
@@ -164,7 +165,7 @@ def save_and_compress_svg(
     plt.close()
 
     if (svgo := which("svgo")) is not None:
-        subprocess.run([svgo, "--multipass", filepath], check=True)
+        subprocess.run([svgo, "--multipass", filepath], check=True)  # noqa: S603
 
 
 DEFAULT_DF_STYLES: Final = {
@@ -253,7 +254,7 @@ def normalize_and_crop_pdf(
         if on_gs_not_found == "ignore":
             return
         if on_gs_not_found == "warn":
-            print("Ghostscript not found, skipping PDF normalization and cropping")
+            print("Ghostscript not found, skipping PDF normalization and cropping")  # noqa: T201
             return
         raise RuntimeError("Ghostscript not found in PATH")
     try:
@@ -262,7 +263,7 @@ def normalize_and_crop_pdf(
 
         # Normalize the PDF with Ghostscript
         subprocess.run(
-            [
+            [  # noqa: S603
                 *"gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4".split(),
                 *"-dPDFSETTINGS=/default -dNOPAUSE -dQUIET -dBATCH".split(),
                 f"-sOutputFile={normalized_file_path}",
@@ -277,7 +278,7 @@ def normalize_and_crop_pdf(
         )
 
         if stderr:
-            print(f"pdfCropMargins {stderr=}")
+            print(f"pdfCropMargins {stderr=}")  # noqa: T201
             # something went wrong, remove the cropped PDF
             os.remove(cropped_file_path)
         else:
@@ -289,8 +290,6 @@ def normalize_and_crop_pdf(
     except ImportError as exc:
         msg = "pdfCropMargins not installed\nrun pip install pdfCropMargins"
         raise ImportError(msg) from exc
-    except Exception as exc:
-        raise RuntimeError("Error cropping PDF margins") from exc
 
 
 TABLE_SCROLL_CSS = "table { overflow: scroll; max-width: 100%; display: block; }"

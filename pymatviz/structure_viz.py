@@ -56,7 +56,6 @@ def _angles_to_rotation_matrix(
     for angle in angles.split(","):
         radians = math.radians(float(angle[:-1]))
         xyz = angle[-1]
-        assert xyz in "xyz"
         dim = "xyz".index(xyz)
         sin = math.sin(radians)
         cos = math.cos(radians)
@@ -255,10 +254,10 @@ def plot_structure_2d(
         atomic_radii = 0.7 * covalent_radii * (atomic_radii or 1)
     else:
         # atomic_radii is assumed to be a map from element symbols to atomic radii
-        assert isinstance(atomic_radii, dict)
         # make sure all present elements are assigned a radius
         missing = set(elements_at_sites) - set(atomic_radii)
-        assert not missing, f"atomic_radii is missing keys: {missing}"
+        if missing:
+            raise ValueError(f"atomic_radii is missing keys: {missing}")
 
     radii_at_sites = np.array(
         [atomic_radii[el] for el in elements_at_sites]  # type: ignore[index]

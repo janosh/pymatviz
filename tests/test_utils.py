@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from random import random
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
@@ -81,14 +81,10 @@ def test_annotate_metrics(
     if isinstance(metrics, dict):
         for key, val in metrics.items():
             label = pretty_metric_label(key, backend)
-            if key == "R2":
-                print(f"{label=}")
             expected_text += f"{label} = {val:{fmt}}{newline}"
     else:
         for key in [metrics] if isinstance(metrics, str) else metrics:
             label = pretty_metric_label(key, backend)
-            if key == "R2":
-                print(f"{label=}")
             expected_text += f"{label} = {expected[key]:{fmt}}{newline}"
 
     anno_text = _extract_anno_from_fig(out_fig)
@@ -104,8 +100,8 @@ def test_annotate_metrics(
     ), f"{anno_text_with_fixes=}"
 
 
-@pytest.mark.parametrize("metrics", [42, datetime.now()])
-def test_annotate_metrics_raises(metrics: Any) -> None:
+@pytest.mark.parametrize("metrics", [42, datetime.now(tz=timezone.utc)])
+def test_annotate_metrics_raises(metrics: dict[str, float] | Sequence[str]) -> None:
     with pytest.raises(
         TypeError, match=f"metrics must be dict|list|tuple|set, not {type(metrics)}"
     ):
@@ -197,7 +193,6 @@ def test_df_to_arrays() -> None:
     x1, y1 = df_to_arrays(None, y_true, y_pred)
     x_col, y_col = df.columns[:2]
     x2, y2 = df_to_arrays(df, x_col, y_col)
-    # TODO find a mypy-compat way to check for exact equality
     assert x1 == pytest.approx(x2)
     assert y1 == pytest.approx(y2)
     assert x1 == pytest.approx(y_true)
@@ -243,7 +238,7 @@ def test_bin_df_cols(
     kde_col: str,
     expected_n_rows: int,
 ) -> None:
-    df: pd.DataFrame = pd._testing.makeDataFrame()  # random data
+    df: pd.DataFrame = pd._testing.makeDataFrame()  # random data  # noqa: SLF001
     idx_col = "index"
     df.index.name = idx_col
     bin_counts_col = "bin_counts"

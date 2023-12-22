@@ -45,12 +45,20 @@ def test_error_decay_with_uncert(
     )
 
     assert isinstance(ax, plt.Axes)
-    # assert ax.get_title() == "Error Decay"
-    assert ax.get_ylabel() == "MAE"
-    if percentiles:
-        assert ax.get_xlabel() == "Confidence percentiles"
-    else:
-        assert ax.get_xlabel() == "Excluded samples"
+    # check legend labels
+    assert {itm.get_text() for itm in ax.get_legend().get_texts()} <= {
+        "std",
+        "y_std_mock",
+        "error",
+        "random",
+        "y_pred",
+        "y_true",
+    }
+    x_label, y_label = ax.get_xlabel(), ax.get_ylabel()
+    assert y_label == "MAE"
+    assert x_label == "Confidence percentiles" if percentiles else "Excluded samples"
+
+    assert ax.get_xlim() in ((-3.95, 104.95), (-5.0, 105.0))
 
 
 @pytest.mark.parametrize(

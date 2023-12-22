@@ -7,6 +7,7 @@ from typing import Literal, Union
 import plotly.graph_objects as go
 import pytest
 from monty.io import zopen
+from monty.json import MontyDecoder
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 
@@ -16,24 +17,26 @@ from pymatviz.utils import TEST_FILES
 
 
 BandsDoses = dict[str, dict[str, Union[PhononBands, PhononDos]]]
+bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 
 
 @pytest.fixture()
-def phonon_bands_doses() -> BandsDoses:
+def phonon_bands_doses_mp_2758() -> BandsDoses:
     with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-pbe.json.lzma") as file:
-        dft_dct = json.loads(file.read())
+        dft_dct = json.loads(file.read(), cls=MontyDecoder)
     with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:
-        ml_dct = json.loads(file.read())
+        ml_dct = json.loads(file.read(), cls=MontyDecoder)
 
-    bands = {
-        "DFT": PhononBands.from_dict(dft_dct["phonon_bandstructure"]),
-        "MACE": PhononBands.from_dict(ml_dct["phonon_bandstructure"]),
-    }
-    doses = {
-        "DFT": PhononDos.from_dict(dft_dct["phonon_dos"]),
-        "MACE": PhononDos.from_dict(ml_dct["phonon_dos"]),
-    }
+    bands = {"DFT": dft_dct[bs_key], "MACE": ml_dct[bs_key]}
+    doses = {"DFT": dft_dct[dos_key], "MACE": ml_dct[dos_key]}
     return {"bands": bands, "doses": doses}
+
+
+@pytest.fixture()
+def phonon_bands_doses_mp_2691() -> BandsDoses:
+    # with zopen(f"{TEST_FILES}/mp-2691-Cd4Se4-pbe.json.lzma") as file:
+    with zopen(f"{TEST_FILES}/mp-2667-Cs1Au1-pbe.json.lzma") as file:
+        return json.loads(file.read(), cls=MontyDecoder)
 
 
 @pytest.fixture()
@@ -41,16 +44,16 @@ def phonon_doses() -> dict[str, PhononDos]:
     paths = glob(f"{TEST_FILES}/mp-*-pbe.json.lzma")
     assert len(paths) >= 2
     return {
-        path.split("/")[-1].split("-pbe")[0]: PhononDos.from_dict(
-            json.loads(zopen(path).read())["phonon_dos"]
-        )
+        path.split("/")[-1].split("-pbe")[0]: json.loads(
+            zopen(path).read(), cls=MontyDecoder
+        )[dos_key]
         for path in paths
     }
 
 
-def test_plot_phonon_bands(phonon_bands_doses: BandsDoses) -> None:
+def test_plot_phonon_bands(phonon_bands_doses_mp_2758: BandsDoses) -> None:
     # test single band structure
-    fig = plot_phonon_bands(phonon_bands_doses["bands"]["DFT"])
+    fig = plot_phonon_bands(phonon_bands_doses_mp_2758["bands"]["DFT"])
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Wave Vector"
     assert fig.layout.yaxis.title.text == "Frequency (THz)"
@@ -62,13 +65,8 @@ def test_plot_phonon_bands(phonon_bands_doses: BandsDoses) -> None:
     assert fig.layout.yaxis.range == pytest.approx((0, 5.36385427095))
 
     # test dict of band structures
-    fig = plot_phonon_bands(phonon_bands_doses["bands"])
+    fig = plot_phonon_bands(phonon_bands_doses_mp_2758["bands"])
     assert isinstance(fig, go.Figure)
-
-    # with pytest.raises(
-    #     ValueError, match="No common branches found among the band structures"
-    # ):
-    #     plot_band_structure(phonon_bands_doses)
 
     with pytest.raises(
         TypeError, match=f"Only {PhononBands.__name__} objects supported, got str"
@@ -94,7 +92,7 @@ def test_prety_sym_point(sym_point: str, expected: str) -> None:
     ],
 )
 def test_plot_phonon_dos(
-    phonon_bands_doses: BandsDoses,
+    phonon_bands_doses_mp_2758: BandsDoses,
     units: Literal["eV", "meV", "cm-1", "THz"],
     stack: bool,
     sigma: float,
@@ -102,7 +100,7 @@ def test_plot_phonon_dos(
     last_peak_anno: str | None,
 ) -> None:
     fig = plot_phonon_dos(
-        phonon_bands_doses["doses"],  # test dict
+        phonon_bands_doses_mp_2758["doses"],  # test dict
         stack=stack,
         sigma=sigma,
         normalize=normalize,
@@ -116,7 +114,7 @@ def test_plot_phonon_dos(
     assert fig.layout.font.size == 16
 
     fig = plot_phonon_dos(
-        phonon_bands_doses["doses"]["DFT"],  # test single
+        phonon_bands_doses_mp_2758["doses"]["DFT"],  # test single
         stack=stack,
         sigma=sigma,
         normalize=normalize,
@@ -136,7 +134,7 @@ def test_plot_phonon_dos(
     ],
 )
 def test_plot_phonon_bands_and_dos(
-    phonon_bands_doses: BandsDoses,
+    phonon_bands_doses_mp_2758: BandsDoses,
     phonon_doses: dict[str, PhononDos],  # different keys
     units: Literal["eV", "meV", "cm-1", "THz"],
     stack: bool,
@@ -144,7 +142,10 @@ def test_plot_phonon_bands_and_dos(
     normalize: Literal["max", "sum", "integral"] | None,
     last_peak_anno: str | None,
 ) -> None:
-    bands, doses = phonon_bands_doses["bands"], phonon_bands_doses["doses"]
+    bands, doses = (
+        phonon_bands_doses_mp_2758["bands"],
+        phonon_bands_doses_mp_2758["doses"],
+    )
     dos_kwargs = dict(
         stack=stack,
         sigma=sigma,

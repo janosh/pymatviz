@@ -34,7 +34,7 @@ else:
     url = "https://s3.amazonaws.com/publications.matr.io/7/deployment/data/files"
     with_feat_str = "w" if (with_feat := False) else "wo"
     dataset_url = f"{url}/camd_data_to_release_{with_feat_str}features.json"
-    data = requests.get(dataset_url).json()
+    data = requests.get(dataset_url, timeout=10).json()
     df = pd.DataFrame(data)
     df = pd.to_csv(f"camd-2022-{with_feat_str}-features.csv.bz2")
 

@@ -272,7 +272,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         assert isinstance(c_scale[0][1], str)
         assert val <= max(c[0] for c in c_scale)
 
-    with pytest.raises(ValueError, match="should be string, list of strings or list"):
+    with pytest.raises(TypeError, match="should be string, list of strings or list"):
         # test that bad colorscale raises ValueError
         ptable_heatmap_plotly(glass_formulas, colorscale=lambda: "bad scale")  # type: ignore[arg-type]
 
@@ -403,7 +403,7 @@ def test_ptable_heatmap_plotly_label_map(
             pd.Series([[1, 2, 3], [4, 5, 6]], index=["H", "He"]),
             (1, 1),
             dict(xy=(0, 0)),
-            lambda hist_vals: dict(color="red"),
+            lambda _hist_vals: dict(color="red"),
         ),
     ],
 )

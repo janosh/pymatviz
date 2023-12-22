@@ -60,6 +60,20 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heat maps of the periodic table 
 |  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)  | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py) |
 |            ![ptable-heatmap-plotly-more-hover-data]            |                     ![ptable-heatmap-plotly-log]                      |
 
+## Phonons
+
+See [`pymatviz/phonons.py`](pymatviz/phonons.py).
+
+|           [`plot_phonon_bands(bands_dict)`](pymatviz/phonons.py)           | [`plot_phonon_dos(doses_dict)`](pymatviz/phonons.py) |
+| :------------------------------------------------------------------------: | :--------------------------------------------------: |
+|                              ![phonon-bands]                               |                    ![phonon-dos]                     |
+| [`plot_phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons.py) |                                                      |
+|                          ![phonon-bands-and-dos]                           |                                                      |
+
+[phonon-bands]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/phonon-bands-mp-2758.svg
+[phonon-dos]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/phonon-dos-mp-2758.svg
+[phonon-bands-and-dos]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/phonon-bands-and-dos-mp-2758.svg
+
 ### Dash app using `ptable_heatmap_plotly()`
 
 See [`examples/mprester_ptable.ipynb`](https://github.com/janosh/pymatviz/blob/main/examples/mprester_ptable.ipynb).

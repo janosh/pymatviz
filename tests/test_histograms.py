@@ -30,7 +30,8 @@ def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
     assert len(ax.lines) == 1
     legend = ax.get_legend()
     assert len(ax.patches) == bins or 10
-    assert legend._get_loc() == 2  # 2 meaning 'upper left'
+    # check legend position is 'upper left' by default
+    assert legend._get_loc() == 2  # noqa: SLF001
 
 
 @pytest.mark.parametrize("bins", [None, 1, 100])

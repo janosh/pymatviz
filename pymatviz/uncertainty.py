@@ -53,8 +53,8 @@ def qq_gaussian(
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    assert isinstance(y_true, np.ndarray)
-    assert isinstance(y_pred, np.ndarray)
+    assert isinstance(y_true, np.ndarray)  # noqa: S101
+    assert isinstance(y_pred, np.ndarray)  # noqa: S101
     ax = ax or plt.gca()
 
     if not isinstance(y_std, dict):
@@ -92,7 +92,7 @@ def qq_gaussian(
     # https://matplotlib.org/3.3.3/tutorials/intermediate/legend_guide.html#multiple-legends-on-the-same-axes
     ax.add_artist(legend1)
 
-    lines, areas = zip(*lines)  # type: ignore
+    lines, areas = zip(*lines)  # type: ignore[assignment]
 
     if len(lines) > 1:
         legend2 = ax.legend(
@@ -103,7 +103,8 @@ def qq_gaussian(
             ncol=2,
             frameon=False,
         )
-        legend2._legend_box.align = "left"  # https://stackoverflow.com/a/44620643
+        # https://stackoverflow.com/a/44620643
+        legend2._legend_box.align = "left"  # noqa: SLF001
     else:
         ax.legend(
             lines,
@@ -228,8 +229,8 @@ def error_decay_with_uncert(
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    assert isinstance(y_true, np.ndarray)  # for mypy
-    assert isinstance(y_pred, np.ndarray)
+    assert isinstance(y_true, np.ndarray)  # for mypy  # noqa: S101
+    assert isinstance(y_pred, np.ndarray)  # noqa: S101
 
     ax = ax or plt.gca()
 

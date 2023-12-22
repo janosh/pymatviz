@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import math
-import sys
+import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Callable, Literal, get_args
 
@@ -246,7 +246,7 @@ def ptable_heatmap(
 
     valid_logs = (bool, Normalize)
     if not isinstance(log, valid_logs):
-        raise ValueError(f"Invalid {log=}, must be instance of {valid_logs}")
+        raise TypeError(f"Invalid {log=}, must be instance of {valid_logs}")
 
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
@@ -254,7 +254,10 @@ def ptable_heatmap(
         )
     if "cmap" in kwargs:
         colorscale = kwargs.pop("cmap")
-        print("cmap argument is deprecated, use colorscale instead.", file=sys.stderr)
+        warnings.warn(
+            "cmap argument is deprecated, use colorscale instead",
+            category=DeprecationWarning,
+        )
 
     values = count_elements(values, count_mode, exclude_elements)
 
@@ -593,8 +596,8 @@ def ptable_heatmap_plotly(
     ):
         pass
     else:
-        raise ValueError(
-            f"{colorscale = } should be string, list of strings or list of "
+        raise TypeError(
+            f"{colorscale=} should be string, list of strings or list of "
             "tuples(float, str)"
         )
 
@@ -906,7 +909,7 @@ def ptable_hists(
         ax.set_yticks([])  # disable y ticks for all elements
 
         for side in ("left", "right", "top"):
-            ax.spines[side].set_visible(False)
+            ax.spines[side].set_visible(b=False)
         # also hide tick marks
         ax.tick_params(axis="y", which="both", length=0)
 
