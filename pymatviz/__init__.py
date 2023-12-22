@@ -79,8 +79,8 @@ volume_col = "volume"
 volume_per_atom_col = "volume_per_atom"
 
 small_font = "font-size: 0.9em; font-weight: lighter;"
-eV_per_atom = styled_html_tag("(eV/atom)", tag="span", style=small_font)
-eV = styled_html_tag("(eV)", tag="span", style=small_font)
+eV_per_atom = styled_html_tag("(eV/atom)", tag="span", style=small_font)  # noqa: N816
+eV = styled_html_tag("(eV)", tag="span", style=small_font)  # noqa: N816
 elem_charge = styled_html_tag("(e)", tag="span", style=small_font)  # elementary charge
 cubic_angstrom = styled_html_tag("(Å<sup>3</sup>)", tag="span", style=small_font)
 angstrom = styled_html_tag("(Å)", tag="span", style=small_font)
@@ -114,9 +114,9 @@ px.defaults.labels |= {
     "energy_per_atom": "Energy (eV/atom)",
 }
 
-# uncomment to hide math loading MathJax message in bottom left corner of plotly PDFs
+# to hide math loading MathJax message in bottom left corner of plotly PDFs
 # https://github.com/plotly/Kaleido/issues/122#issuecomment-994906924
-# pio.kaleido.scope.mathjax = None
+# use pio.kaleido.scope.mathjax = None
 
 
 """

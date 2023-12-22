@@ -119,7 +119,7 @@ def test_df_to_pdf(
         pdfCropMargins = None
 
     # Create a test DataFrame and Styler object
-    df: pd.DataFrame = pd._testing.makeDataFrame()  # random data
+    df: pd.DataFrame = pd._testing.makeDataFrame()  # random data  # noqa: SLF001
     file_path = tmp_path / "test_df_to.pdf"
 
     kwds = dict(
@@ -204,7 +204,7 @@ def test_df_to_html_table(
     inline_props: str,
     styler_css: bool | dict[str, str],
 ) -> None:
-    df = pd._testing.makeMixedDataFrame()
+    df = pd._testing.makeMixedDataFrame()  # noqa: SLF001
 
     file_path = tmp_path / "test_df.svelte"
 
@@ -225,7 +225,6 @@ def test_df_to_html_table(
     if styles is not None:
         assert f"{styles}\n</style>" in content
     if inline_props:
-        print(f"{content=}")
         assert inline_props in content
 
     # check file contains original dataframe value
@@ -242,7 +241,7 @@ def test_tqdm_download(
     block_size = 1024  # 1 KB per block
 
     def mock_urlretrieve(
-        *args: Any,
+        *args: Any,  # noqa: ARG001
         reporthook: Callable[[int, int, int | None], bool] | None = None,
     ) -> None:
         # simulate a file download (in chunks)
@@ -256,7 +255,7 @@ def test_tqdm_download(
     monkeypatch.setattr(urllib.request, "urlretrieve", mock_urlretrieve)
 
     with TqdmDownload(desc=test_url) as pbar:
-        urllib.request.urlretrieve(test_url, test_file_path, reporthook=pbar.update_to)
+        urllib.request.urlretrieve(test_url, test_file_path, reporthook=pbar.update_to)  # noqa: S310
 
     assert pbar.n == total_size
     assert pbar.total == total_size

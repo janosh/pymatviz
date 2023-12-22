@@ -45,7 +45,7 @@ def mean_atomic_prop(comp: Composition, prop: str) -> float | None:
     """Get the mean value of an atomic property for a given pymatgen composition."""
     try:
         return sum(getattr(el, prop) * amt for el, amt in comp.items()) / comp.num_atoms
-    except Exception:
+    except ZeroDivisionError:
         print(f"Could not compute mean {prop} for {comp}")
         return None
 

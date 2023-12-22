@@ -125,9 +125,9 @@ fig = px.violin(
 ).update_traces(jitter=1)
 
 
-def rgb_color(val: float, max: float) -> str:
+def rgb_color(val: float, max_val: float) -> str:
     """Convert a value between 0 and max to a color between red and blue."""
-    return f"rgb({255 * val / max:.1f}, 0, {255 * (max - val) / max:.1f})"
+    return f"rgb({255 * val / max_val:.1f}, 0, {255 * (max_val - val) / max_val:.1f})"
 
 
 x_ticks = {}

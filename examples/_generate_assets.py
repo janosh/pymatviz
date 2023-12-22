@@ -1,9 +1,14 @@
 # %%
+import json
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matminer.datasets import load_dataset
+from monty.io import zopen
 from pymatgen.ext.matproj import MPRester
+from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
+from pymatgen.phonon.dos import PhononDos
 from tqdm import tqdm
 
 from pymatviz.correlation import marchenko_pastur
@@ -23,13 +28,18 @@ from pymatviz.parity import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
+from pymatviz.phonons import (
+    plot_phonon_bands,
+    plot_phonon_bands_and_dos,
+    plot_phonon_dos,
+)
 from pymatviz.ptable import ptable_heatmap, ptable_heatmap_plotly, ptable_heatmap_ratio
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import df_ptable
+from pymatviz.utils import TEST_FILES, df_ptable
 
 
 # %%
@@ -310,3 +320,34 @@ code_anno = dict(
 )
 fig.add_annotation(code_anno)
 save_and_compress_svg(fig, "sankey-from-2-df-cols-randints")
+
+
+# %% plot phonon bands and DOS
+with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-pbe.json.lzma") as file:
+    dft_dct = json.loads(file.read())
+with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:
+    ml_dct = json.loads(file.read())
+
+bands = {
+    "DFT": PhononBands.from_dict(dft_dct["phonon_bandstructure"]),
+    "MACE": PhononBands.from_dict(ml_dct["phonon_bandstructure"]),
+}
+doses = {
+    "DFT": PhononDos.from_dict(dft_dct["phonon_dos"]),
+    "MACE": PhononDos.from_dict(ml_dct["phonon_dos"]),
+}
+
+fig = plot_phonon_bands(bands)
+fig.layout.title = dict(text="Phonon Bands of Sr4Se4 (mp-2758)", x=0.5, y=0.98)
+fig.layout.margin = dict(l=0, r=0, b=0, t=40)
+save_and_compress_svg(fig, "phonon-bands-mp-2758")
+
+fig = plot_phonon_dos(doses)
+fig.layout.title = dict(text="Phonon DOS of Sr4Se4 (mp-2758)", x=0.5, y=0.98)
+fig.layout.margin = dict(l=0, r=0, b=0, t=40)
+save_and_compress_svg(fig, "phonon-dos-mp-2758")
+
+fig = plot_phonon_bands_and_dos(bands, doses)
+fig.layout.title = dict(text="Phonon Bands and DOS of Sr4Se4 (mp-2758)", x=0.5, y=0.98)
+fig.layout.margin = dict(l=0, r=0, b=0, t=40)
+save_and_compress_svg(fig, "phonon-bands-and-dos-mp-2758")
