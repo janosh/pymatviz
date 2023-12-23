@@ -110,11 +110,18 @@ See [`pymatviz/structure_viz.py`](pymatviz/structure_viz.py). Currently structur
 
 See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 
-| [`spacegroup_hist([65, 134, 225, ...])`](pymatviz/histograms.py) |         [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/histograms.py)          |
-| :--------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
-|                         ![spg-num-hist]                          |                                      ![spg-symbol-hist]                                       |
-|    [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)     | [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/ptable.py) |
-|                         ![residual-hist]                         |                                 ![hist-elemental-prevalence]                                  |
+| [`spacegroup_hist([65, 134, 225, ...], backend="matplotlib")`](pymatviz/histograms.py) | [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](pymatviz/histograms.py) |
+| :------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
+|                               ![spg-num-hist-matplotlib]                               |                                   ![spg-symbol-hist-matplotlib]                                    |
+|   [`spacegroup_hist([65, 134, 225, ...], backend="plotly")`](pymatviz/histograms.py)   |   [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histograms.py)   |
+|                                 ![spg-num-hist-plotly]                                 |                                     ![spg-symbol-hist-plotly]                                      |
+|               [`residual_hist(y_true, y_pred)`](pymatviz/histograms.py)                |   [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/ptable.py)    |
+|                                    ![residual-hist]                                    |                                    ![hist-elemental-prevalence]                                    |
+
+[spg-symbol-hist-plotly]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist-plotly.svg
+[spg-num-hist-plotly]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-hist-plotly.svg
+[spg-num-hist-matplotlib]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-hist-matplotlib.svg
+[spg-symbol-hist-matplotlib]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist-matplotlib.svg
 
 ## Parity Plots
 
@@ -187,9 +194,7 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [sankey-from-2-df-cols-randints]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-from-2-df-cols-randints.svg
 [sankey-spglib-vs-aflow-spacegroups]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-spglib-vs-aflow-spacegroups.svg
 [scatter-with-err-bar]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/scatter-with-err-bar.svg
-[spg-num-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-hist.svg
 [spg-num-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-sunburst.svg
-[spg-symbol-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist.svg
 [spg-symbol-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-sunburst.svg
 [struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
 [struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg

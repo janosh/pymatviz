@@ -7,6 +7,7 @@ from importlib.metadata import PackageNotFoundError, version
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.io as pio
+from pymatgen.symmetry.groups import SYMM_DATA
 
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
@@ -60,6 +61,12 @@ except PackageNotFoundError:
 crystal_sys_order = (
     "cubic hexagonal trigonal tetragonal orthorhombic monoclinic triclinic".split()
 )
+# map of space group numbers to symbols
+spg_num_to_symbol = {
+    v["int_number"]: k for k, v in SYMM_DATA["space_group_encoding"].items()
+}
+spg_num_to_symbol = dict(sorted(spg_num_to_symbol.items()))  # sort
+
 
 bandgap_col = "band_gap"
 charge_col = "total_charge"
