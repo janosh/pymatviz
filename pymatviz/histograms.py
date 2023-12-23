@@ -199,7 +199,7 @@ def spacegroup_hist(
         "cubic": "darkred",
     }
 
-    if df_data.index.is_numeric():  # assume index is space group numbers
+    if df_data.index.inferred_type == "integer":  # assume index is space group numbers
         df_data = df_data.reindex(range(1, 231), fill_value=0).sort_index()
         if not show_empty_bins:
             df_data = df_data.query(f"{count_col} > 0")
