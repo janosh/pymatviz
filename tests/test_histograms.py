@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import pytest
 
 from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
     import pandas as pd
     from numpy.typing import ArrayLike
     from pymatgen.core import Structure
+
+    from pymatviz.utils import Backend
 
 
 y_std_mock = y_true - y_pred
@@ -54,35 +57,40 @@ def test_true_pred_hist(
 
 @pytest.mark.parametrize("xticks", ["all", "crys_sys_edges", 1, 50])
 @pytest.mark.parametrize("show_counts", [True, False])
-@pytest.mark.parametrize("include_missing", [True, False])
-def test_spacegroup_hist_num(
+@pytest.mark.parametrize("show_empty_bins", [True, False])
+@pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
+def test_spacegroup_hist(
     spg_symbols: list[str],
     structures: list[Structure],
+    backend: Backend,
     xticks: Literal["all", "crys_sys_edges", 1, 50],
     show_counts: bool,
-    include_missing: bool,
+    show_empty_bins: bool,
 ) -> None:
     # spg numbers
-    spacegroup_hist(
+    fig = spacegroup_hist(
         range(1, 231),
         xticks=xticks,
         show_counts=show_counts,
-        include_missing=include_missing,
+        show_empty_bins=show_empty_bins,
+        backend=backend,
     )
+    assert isinstance(fig, plt.Axes if backend == "matplotlib" else go.Figure)
 
     # spg symbols
-    ax = spacegroup_hist(
+    fig = spacegroup_hist(
         spg_symbols,
         xticks=xticks,
         show_counts=show_counts,
-        include_missing=include_missing,
+        show_empty_bins=show_empty_bins,
+        backend=backend,
     )
-    assert isinstance(ax, plt.Axes)
 
     # pmg structures
     spacegroup_hist(
         structures,
         xticks=xticks,
         show_counts=show_counts,
-        include_missing=include_missing,
+        show_empty_bins=show_empty_bins,
+        backend=backend,
     )
