@@ -201,11 +201,12 @@ save_and_compress_svg(ax, "hist-elemental-prevalence")
 
 
 # %%
-ax = spacegroup_hist(df_phonons.spg_num)
-save_and_compress_svg(ax, "spg-num-hist")
+for backend in ("plotly", "matplotlib"):
+    fig = spacegroup_hist(df_phonons.spg_num, backend=backend)  # type: ignore[arg-type]
+    save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 
-ax = spacegroup_hist(df_phonons.spg_symbol)
-save_and_compress_svg(ax, "spg-symbol-hist")
+    fig = spacegroup_hist(df_phonons.spg_symbol, backend=backend)  # type: ignore[arg-type]
+    save_and_compress_svg(fig, f"spg-symbol-hist-{backend}")
 
 
 # %% Sunburst Plots
