@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import pytest
 
 from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
-from tests.conftest import df, y_pred, y_true
+from tests.conftest import df_regr, y_pred, y_true
 
 
 if TYPE_CHECKING:
@@ -41,7 +41,10 @@ def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
 @pytest.mark.parametrize("cmap", ["hot", "Blues"])
 @pytest.mark.parametrize(
     "df, y_true, y_pred, y_std",
-    [(None, y_true, y_pred, y_std_mock), (df, *df.columns[:2], df.columns[0])],
+    [
+        (None, y_true, y_pred, y_std_mock),
+        (df_regr, *df_regr.columns[:2], df_regr.columns[0]),
+    ],
 )
 def test_true_pred_hist(
     df: pd.DataFrame | None,

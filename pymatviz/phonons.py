@@ -349,7 +349,7 @@ def plot_phonon_bands_and_dos(
         raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
 
     subplot_defaults = dict(
-        shared_yaxes=True, column_widths=(0.8, 0.2), horizontal_spacing=0.01
+        shared_yaxes=True, column_widths=(0.8, 0.2), horizontal_spacing=0.03
     )
     fig = make_subplots(rows=1, cols=2, **subplot_defaults | (subplot_kwargs or {}))
 
@@ -379,9 +379,8 @@ def plot_phonon_bands_and_dos(
         trace.showlegend = trace.showlegend and trace.xaxis == "x2"
         trace.line = line_map.setdefault(trace.name, trace.line)
 
-    # transfer axes labels from DOS to parent figure (since DOS may have custom units
-    # for x-axis)
-    fig.layout.xaxis2.update(title=dos_fig.layout.yaxis.title.text)
+    fig.layout.xaxis2.update(title="DOS")
+    # transfer x-axis label from DOS fig to parent fig (since DOS may have custom units)
     fig.layout.yaxis.update(title=dos_fig.layout.xaxis.title.text)
 
     # set y-axis range to match band structure

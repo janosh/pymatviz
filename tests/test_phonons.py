@@ -159,7 +159,7 @@ def test_plot_phonon_bands_and_dos(
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Wave Vector"
     assert fig.layout.yaxis.title.text == f"Frequency ({units})"
-    assert fig.layout.xaxis2.title.text == "Density of States"
+    assert fig.layout.xaxis2.title.text == "DOS"
     assert fig.layout.font.size == 16
     # check legend labels
     assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
