@@ -204,12 +204,12 @@ def test_df_to_html_table(
     inline_props: str,
     styler_css: bool | dict[str, str],
 ) -> None:
-    df = pd._testing.makeMixedDataFrame()  # noqa: SLF001
+    df_mixed = pd._testing.makeMixedDataFrame()  # noqa: SLF001
 
     file_path = tmp_path / "test_df.svelte"
 
     df_to_html_table(
-        df.style,
+        df_mixed.style,
         file_path,
         script=script,
         styles=styles,
@@ -228,7 +228,7 @@ def test_df_to_html_table(
         assert inline_props in content
 
     # check file contains original dataframe value
-    assert str(df.iloc[0, 0]) in content
+    assert str(df_mixed.iloc[0, 0]) in content
 
 
 def test_tqdm_download(

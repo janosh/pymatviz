@@ -299,7 +299,7 @@ def ptable_heatmap(
     ) | (text_style or {})
 
     for symbol, row, column, *_ in df_ptable.itertuples():
-        row = n_rows - row  # invert row count to make periodic table right side up
+        period = n_rows - row  # invert row count to make periodic table right side up
         tile_value = values.get(symbol)
 
         # inf (float/0) or NaN (0/0) are expected when passing in values from
@@ -329,10 +329,10 @@ def ptable_heatmap(
                 label = f"{tile_value:{fmt}}"
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             label = label.replace("e+0", "e")
-        if row < 3:  # vertical offset for lanthanides + actinides
-            row += rare_earth_voffset
+        if period < 3:  # vertical offset for lanthanides + actinides
+            period += rare_earth_voffset
         rect = Rectangle(
-            (column, row), tile_width, tile_height, edgecolor="gray", facecolor=color
+            (column, period), tile_width, tile_height, edgecolor="gray", facecolor=color
         )
 
         if heat_mode is None or not show_values:
@@ -357,7 +357,7 @@ def ptable_heatmap(
         plt.text(
             column + 0.5 * tile_width,
             # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
-            row + (0.5 if show_values else 0.45) * tile_height,
+            period + (0.5 if show_values else 0.45) * tile_height,
             symbol,
             **text_style,
         )
@@ -365,7 +365,7 @@ def ptable_heatmap(
         if heat_mode is not None and show_values:
             plt.text(
                 column + 0.5 * tile_width,
-                row + 0.1 * tile_height,
+                period + 0.1 * tile_height,
                 label,
                 fontsize=value_font_size,
                 horizontalalignment="center",

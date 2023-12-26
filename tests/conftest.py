@@ -36,13 +36,13 @@ y_binary = np.random.choice([0, 1], 100)
 y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
 
 
-df = pd.DataFrame(dict(y_true=y_true, y_pred=y_pred))
+df_regr = pd.DataFrame(dict(y_true=y_true, y_pred=y_pred))  # regression
 DfOrArrays = tuple[
     Union[pd.DataFrame, None], Union[str, np.ndarray], Union[str, np.ndarray]
 ]
 
 
-@pytest.fixture(params=[(None, y_true, y_pred), (df, *df.columns[:2])])
+@pytest.fixture(params=[(None, y_true, y_pred), (df_regr, *df_regr.columns[:2])])
 def df_or_arrays(request: pytest.FixtureRequest) -> DfOrArrays:
     return request.param
 

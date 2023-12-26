@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from pymatviz import error_decay_with_uncert, qq_gaussian
-from tests.conftest import DfOrArrays, df, xs, y_pred, y_true
+from tests.conftest import DfOrArrays, df_regr, xs, y_pred, y_true
 
 
 if TYPE_CHECKING:
@@ -24,8 +24,8 @@ y_std_mock = y_true - y_pred
     [
         y_std_mock,
         {"y_std_mock": y_std_mock},
-        df.columns[0],  # single std col
-        df.columns[:2],  # multiple std cols
+        df_regr.columns[0],  # single std col
+        df_regr.columns[:2],  # multiple std cols
     ],
 )
 @pytest.mark.parametrize("n_rand", [10, 100, 1000])
@@ -62,7 +62,7 @@ def test_error_decay_with_uncert(
 
 
 @pytest.mark.parametrize(
-    "y_std", [xs, {"foo": xs, "bar": 0.1 * xs}, df.columns[0], df.columns[:2]]
+    "y_std", [xs, {"foo": xs, "bar": 0.1 * xs}, df_regr.columns[0], df_regr.columns[:2]]
 )
 @pytest.mark.parametrize("ax", [None, plt.gca()])
 def test_qq_gaussian(

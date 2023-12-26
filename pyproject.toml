@@ -84,30 +84,28 @@ select = ["ALL"]
 ignore = [
     "ANN101",
     "ANN401",
-    "B028",    # No explicit stacklevel keyword argument found
-    "C408",    # unnecessary-collection-call
+    "B028",   # No explicit stacklevel keyword argument found
+    "C408",   # unnecessary-collection-call
     "C901",
-    "COM812",  # trailing comma missing
-    "D100",    # Missing docstring in public module
-    "D205",    # 1 blank line required between summary line and description
-    "E731",    # do not assign a lambda expression, use a def
+    "COM812", # trailing comma missing
+    "D100",   # Missing docstring in public module
+    "D205",   # 1 blank line required between summary line and description
+    "E731",   # do not assign a lambda expression, use a def
     "EM101",
     "EM102",
     "ERA001",
     "FBT001",
     "FBT002",
     "FIX002",
-    "N806",    # non-lowercase-variable-in-function
+    "N806",   # non-lowercase-variable-in-function
     "NPY002",
-    "PD901",   # pandas-df-variable-name
-    "PLR",     # pylint refactor
-    "PLW2901", # Outer for loop variable overwritten by inner assignment target
-    "PT006",   # pytest-parametrize-names-wrong-type
-    "PT011",   # pytest-raises-too-broad
+    "PLR",    # pylint refactor
+    "PT006",  # pytest-parametrize-names-wrong-type
+    "PT011",  # pytest-raises-too-broad
     "PTH",
-    "RUF001",  # ambiguous-unicode-character-string
+    "RUF001", # ambiguous-unicode-character-string
     "S311",
-    "SIM105",  # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
+    "SIM105", # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
     "TD",
     "TRY003",
 ]
