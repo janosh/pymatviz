@@ -306,8 +306,9 @@ for mp_id, struct in disordered_structs.items():
 
 
 # %% Sankey diagram of random integers
-df = pd.DataFrame(np.random.randint(1, 6, size=(100, 2)), columns=["col_a", "col_b"])
-fig = sankey_from_2_df_cols(df, df.columns, labels_with_counts="percent")
+cols = ["col_a", "col_b"]
+df_rand_ints = pd.DataFrame(np.random.randint(1, 6, size=(100, 2)), columns=cols)
+fig = sankey_from_2_df_cols(df_rand_ints, cols, labels_with_counts="percent")
 rand_int_title = "Two sets of 100 random integers from 1 to 5"
 fig.update_layout(title=dict(text=rand_int_title, x=0.5, y=0.87))
 code_anno = dict(

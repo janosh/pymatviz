@@ -189,10 +189,10 @@ def test_add_identity_matplotlib(
 
 
 def test_df_to_arrays() -> None:
-    df = pd.DataFrame([y_true, y_pred]).T
+    df_regr = pd.DataFrame([y_true, y_pred]).T
     x1, y1 = df_to_arrays(None, y_true, y_pred)
-    x_col, y_col = df.columns[:2]
-    x2, y2 = df_to_arrays(df, x_col, y_col)
+    x_col, y_col = df_regr.columns[:2]
+    x2, y2 = df_to_arrays(df_regr, x_col, y_col)
     assert x1 == pytest.approx(x2)
     assert y1 == pytest.approx(y2)
     assert x1 == pytest.approx(y_true)
@@ -203,7 +203,7 @@ def test_df_to_arrays() -> None:
 
     bad_col_name = "not-real-col-name"
     with pytest.raises(KeyError) as exc:
-        df_to_arrays(df, bad_col_name, df.columns[0])
+        df_to_arrays(df_regr, bad_col_name, df_regr.columns[0])
 
     assert "not-real-col-name" in str(exc.value)
 
@@ -272,12 +272,13 @@ def test_bin_df_cols(
         assert uniq_bins == expected
 
 
-def test_bin_df_cols_raises_value_error() -> None:
-    df = pd.DataFrame({"col1": [1, 2, 3, 4], "col2": [2, 3, 4, 5]})
+def test_bin_df_cols_raises() -> None:
+    df_dummy = pd.DataFrame({"col1": [1, 2, 3, 4], "col2": [2, 3, 4, 5]})
     bin_by_cols = ["col1", "col2"]
 
+    # test error when passing n_bins as list but list has wrong length
     with pytest.raises(ValueError) as exc:
-        bin_df_cols(df, bin_by_cols, n_bins=[2])
+        bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])
 
     assert "len(bin_by_cols)=2 != len(n_bins)=1" in str(exc.value)
 

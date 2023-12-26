@@ -380,18 +380,18 @@ def add_identity_line(
         xy_max = max(x_range[1], y_range[1])
     except ValueError:
         trace = fig.data[trace_idx]
-        df = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
+        df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
 
         # Determine ranges based on the type of axes
         if fig.layout.xaxis.type == "log":
-            x_range = [10**val for val in (min(df.x), max(df.x))]
+            x_range = [10**val for val in (min(df_xy.x), max(df_xy.x))]
         else:
-            x_range = [min(df.x), max(df.x)]
+            x_range = [min(df_xy.x), max(df_xy.x)]
 
         if fig.layout.yaxis.type == "log":
-            y_range = [10**val for val in (min(df.y), max(df.y))]
+            y_range = [10**val for val in (min(df_xy.y), max(df_xy.y))]
         else:
-            y_range = [min(df.y), max(df.y)]
+            y_range = [min(df_xy.y), max(df_xy.y)]
 
         xy_min = min(x_range[0], y_range[0])
         xy_max = max(x_range[1], y_range[1])
@@ -472,7 +472,7 @@ def df_to_arrays(
 
 
 def bin_df_cols(
-    df: pd.DataFrame,
+    df_in: pd.DataFrame,
     bin_by_cols: Sequence[str],
     group_by_cols: Sequence[str] = (),
     n_bins: int | Sequence[int] = 100,
@@ -483,7 +483,7 @@ def bin_df_cols(
     """Bin columns of a DataFrame.
 
     Args:
-        df (pd.DataFrame): DataFrame to bin.
+        df_in (pd.DataFrame): Input dataframe to bin.
         bin_by_cols (Sequence[str]): Columns to bin.
         group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
         n_bins (int): Number of bins to use. Defaults to 100.
@@ -502,28 +502,28 @@ def bin_df_cols(
     if len(bin_by_cols) != len(n_bins):
         raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
 
-    index_name = df.index.name
+    index_name = df_in.index.name
 
     for col, bins in zip(bin_by_cols, n_bins):
-        df[f"{col}_bins"] = pd.cut(df[col].values, bins=bins)
+        df_in[f"{col}_bins"] = pd.cut(df_in[col].values, bins=bins)
 
-    if df.index.name not in df:
-        df = df.reset_index()
+    if df_in.index.name not in df_in:
+        df_in = df_in.reset_index()
 
-    group = df.groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
+    group = df_in.groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
 
     df_bin = group.first().dropna()
     df_bin[bin_counts_col] = group.size()
 
     if verbose:
         print(  # noqa: T201
-            f"{1 - len(df_bin) / len(df):.1%} row reduction from binning: from "
-            f"{len(df_bin):,} to {len(df):,}"
+            f"{1 - len(df_bin) / len(df_in):.1%} row reduction from binning: from "
+            f"{len(df_bin):,} to {len(df_in):,}"
         )
 
     if kde_col:
         # compute kernel density estimate for each bin
-        values = df[bin_by_cols].dropna().T
+        values = df_in[bin_by_cols].dropna().T
         model_kde = scipy.stats.gaussian_kde(values)
 
         xy_binned = df_bin[bin_by_cols].T

@@ -48,17 +48,23 @@ def spacegroup_sunburst(
     else:
         series = pd.Series(data)
 
-    df = pd.DataFrame(series.value_counts().reset_index())
-    df.columns = ["spacegroup", "count"]
+    df_spg_counts = pd.DataFrame(series.value_counts().reset_index())
+    df_spg_counts.columns = ["spacegroup", "count"]
 
     try:  # assume column contains integers as space group numbers
-        df["crystal_sys"] = [crystal_sys_from_spg_num(x) for x in df.spacegroup]
+        df_spg_counts["crystal_sys"] = [
+            crystal_sys_from_spg_num(x) for x in df_spg_counts.spacegroup
+        ]
     except ValueError:  # column must be strings of space group symbols
-        df["crystal_sys"] = [SpaceGroup(x).crystal_system for x in df.spacegroup]
+        df_spg_counts["crystal_sys"] = [
+            SpaceGroup(x).crystal_system for x in df_spg_counts.spacegroup
+        ]
 
     kwargs.setdefault("color_discrete_sequence", px.colors.qualitative.G10)
 
-    fig = px.sunburst(df, path=["crystal_sys", "spacegroup"], values="count", **kwargs)
+    fig = px.sunburst(
+        df_spg_counts, path=["crystal_sys", "spacegroup"], values="count", **kwargs
+    )
 
     if show_counts == "percent":
         fig.data[0].textinfo = "label+percent entry"
