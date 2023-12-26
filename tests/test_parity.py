@@ -21,8 +21,8 @@ if TYPE_CHECKING:
     from tests.conftest import DfOrArrays
 
 
-@pytest.mark.parametrize("log_cmap", [True, False])
-@pytest.mark.parametrize("sort", [True, False])
+@pytest.mark.parametrize("log_density", [True, False])
+@pytest.mark.parametrize("hist_density_kwargs", [None, {}, dict(bins=20, sort=True)])
 @pytest.mark.parametrize("cmap", [None, "Greens"])
 @pytest.mark.parametrize(
     "stats",
@@ -30,14 +30,20 @@ if TYPE_CHECKING:
 )
 def test_density_scatter(
     df_or_arrays: DfOrArrays,
-    log_cmap: bool,
-    sort: bool,
+    log_density: bool,
+    hist_density_kwargs: dict[str, int | bool | str] | None,
     cmap: str | None,
     stats: bool | dict[str, Any],
 ) -> None:
     df, x, y = df_or_arrays
     ax = density_scatter(
-        df=df, x=x, y=y, log_cmap=log_cmap, sort=sort, cmap=cmap, stats=stats
+        df=df,
+        x=x,
+        y=y,
+        log_density=log_density,
+        hist_density_kwargs=hist_density_kwargs,
+        cmap=cmap,
+        stats=stats,
     )
     assert isinstance(ax, plt.Axes)
     assert ax.get_xlabel() == x if isinstance(x, str) else "Actual"
@@ -56,7 +62,7 @@ def test_density_scatter_raises_on_bad_stats_type(stats: Any) -> None:
 def test_density_scatter_uses_series_name_as_label() -> None:
     x = pd.Series(np.random.rand(5), name="x")
     y = pd.Series(np.random.rand(5), name="y")
-    ax = density_scatter(x=x, y=y)
+    ax = density_scatter(x=x, y=y, log_density=False)
 
     assert ax.get_xlabel() == "x"
     assert ax.get_ylabel() == "y"

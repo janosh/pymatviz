@@ -66,7 +66,7 @@ def marchenko_pastur(
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     ax = ax or plt.gca()
 
