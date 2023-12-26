@@ -47,7 +47,7 @@ def qq_gaussian(
         ax (Axes): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     if isinstance(y_std, (str, pd.Index)):
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
@@ -222,7 +222,7 @@ def error_decay_with_uncert(
     ax.get_ylim()[1]]).
 
     Returns:
-        ax: matplotlib Axes object with plotted model error drop curve based on
+        plt.Axes: matplotlib Axes object with plotted model error drop curve based on
             excluding data points by order of large to small model uncertainties.
     """
     if isinstance(y_std, (str, pd.Index)):

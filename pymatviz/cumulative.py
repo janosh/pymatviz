@@ -22,7 +22,7 @@ def cumulative_residual(
         **kwargs: Additional keyword arguments passed to ax.fill_between().
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     ax = ax or plt.gca()
 
@@ -75,7 +75,7 @@ def cumulative_error(
         **kwargs: Additional keyword arguments passed to ax.plot().
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     ax = ax or plt.gca()
 

@@ -37,26 +37,25 @@ def hist_density(
             See scipy.interpolate.interpn() for options.
 
     Returns:
-        tuple[array, array]: x and y values (sorted by density) and density itself
+        tuple[np.array, np.array, np.array]: x and y values (sorted by density) and
+            density itself
     """
-    x, y = df_to_arrays(df, x, y)
+    xs, ys = df_to_arrays(df, x, y)
 
-    data, x_e, y_e = np.histogram2d(x, y, bins=bins)
+    counts, x_bins, y_bins = np.histogram2d(xs, ys, bins=bins)
 
+    # get bin centers
+    points = 0.5 * (x_bins[1:] + x_bins[:-1]), 0.5 * (y_bins[1:] + y_bins[:-1])
     zs = scipy.interpolate.interpn(
-        (0.5 * (x_e[1:] + x_e[:-1]), 0.5 * (y_e[1:] + y_e[:-1])),
-        data,
-        np.vstack([x, y]).T,
-        method=method,
-        bounds_error=False,
+        points, counts, np.vstack([xs, ys]).T, method=method, bounds_error=False
     )
 
-    # Sort the points by density, so that the densest points are plotted last
+    # sort points by density, so that the densest points are plotted last
     if sort:
-        idx = zs.argsort()
-        x, y, zs = x[idx], y[idx], zs[idx]
+        sort_idx = zs.argsort()
+        xs, ys, zs = xs[sort_idx], ys[sort_idx], zs[sort_idx]
 
-    return x, y, zs
+    return xs, ys, zs
 
 
 def density_scatter(
@@ -64,9 +63,9 @@ def density_scatter(
     y: ArrayLike | str,
     df: pd.DataFrame | None = None,
     ax: plt.Axes | None = None,
-    sort: bool = True,
-    log_cmap: bool = True,
-    density_bins: int = 100,
+    log_density: bool = True,
+    hist_density_kwargs: dict[str, Any] | None = None,
+    color_bar: bool | dict[str, Any] = True,
     xlabel: str | None = None,
     ylabel: str | None = None,
     identity: bool = True,
@@ -81,9 +80,13 @@ def density_scatter(
         df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         sort (bool, optional): Whether to sort the data. Defaults to True.
-        log_cmap (bool, optional): Whether to log the color scale. Defaults to True.
-        density_bins (int, optional): How many density_bins to use for the density
-            histogram, i.e. granularity of the density color scale. Defaults to 100.
+        log_density (bool, optional): Whether to log the density color scale.
+            Defaults to True.
+        hist_density_kwargs (dict, optional): Passed to hist_density(). Use to change
+            sort (by density, default True), bins (default 100), or method (for
+            interpolation, default "nearest").
+        color_bar (bool | dict, optional): Whether to add a color bar. Defaults to True.
+            If dict, unpacked into ax.figure.colorbar(). E.g. dict(label="Density").
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         identity (bool, optional): Whether to add an identity/parity line (y = x).
@@ -91,11 +94,11 @@ def density_scatter(
         stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
             and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
             E.g. stats=dict(loc="upper left", prefix="Title", prop=dict(fontsize=16)).
-        **kwargs: Additional keyword arguments to pass to ax.scatter(). E.g. cmap to
-            change the color map.
+        **kwargs: Passed to ax.scatter(). Defaults to dict(s=6) to control marker size.
+            Other common keys are cmap, vmin, vamx, alpha, edgecolors, linewidths.
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes:
     """
     if not isinstance(stats, (bool, dict)):
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
@@ -104,22 +107,26 @@ def density_scatter(
     if ylabel is None:
         ylabel = getattr(y, "name", y if isinstance(y, str) else "Predicted")
 
-    x, y = df_to_arrays(df, x, y)
+    xs, ys = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
 
-    x, y, cs = hist_density(x, y, sort=sort, bins=density_bins)
+    xs, ys, cs = hist_density(xs, ys, **(hist_density_kwargs or {}))
 
-    norm = mpl.colors.LogNorm() if log_cmap else None
-
-    ax.scatter(x, y, c=cs, norm=norm, **kwargs)
+    # decrease marker size
+    defaults = dict(s=6, norm=mpl.colors.LogNorm() if log_density else None)
+    ax.scatter(xs, ys, c=cs, **defaults | kwargs)
 
     if identity:
         add_identity_line(ax)
 
     if stats:
-        annotate_metrics(x, y, fig=ax, **(stats if isinstance(stats, dict) else {}))
+        annotate_metrics(xs, ys, fig=ax, **(stats if isinstance(stats, dict) else {}))
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
+
+    if color_bar:
+        kwds = dict(label="Density") if color_bar is True else color_bar
+        color_bar = ax.figure.colorbar(ax.collections[0], **kwds)
 
     return ax
 
@@ -153,7 +160,7 @@ def scatter_with_err_bar(
         **kwargs: Additional keyword arguments to pass to ax.errorbar().
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     x, y = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
@@ -203,7 +210,7 @@ def density_hexbin(
         **kwargs: Additional keyword arguments to pass to ax.hexbin().
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     x, y = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
@@ -282,7 +289,7 @@ def residual_vs_actual(
         **kwargs: Additional keyword arguments passed to plt.plot()
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     y_true, y_pred = df_to_arrays(df, y_true, y_pred)
     assert isinstance(y_true, np.ndarray)  # noqa: S101
