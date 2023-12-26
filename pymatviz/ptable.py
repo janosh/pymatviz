@@ -237,7 +237,7 @@ def ptable_heatmap(
         **kwargs: Additional keyword arguments passed to plt.figure().
 
     Returns:
-        ax: matplotlib Axes with the heatmap.
+        plt.Axes: matplotlib Axes with the heatmap.
     """
     if fmt is None:
         fmt = lambda x, _: si_fmt(x, ".1%" if heat_mode == "percent" else ".0f")
@@ -455,7 +455,7 @@ def ptable_heatmap_ratio(
         **kwargs: Additional keyword arguments passed to ptable_heatmap().
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     values_num = count_elements(values_num, count_mode)
 

@@ -116,5 +116,5 @@ isort.split-on-trailing-comma = false
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/*" = ["D103", "S101"]
-"examples/*" = ["E402", "INP001", "T201"]
+"examples/*" = ["INP001", "T201"] # T201: print found
 "site/*" = ["INP001", "S602"]

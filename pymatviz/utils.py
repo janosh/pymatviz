@@ -70,7 +70,7 @@ def with_hist(
         bins (int, optional): Resolution/bin count of the histograms. Defaults to 100.
 
     Returns:
-        ax: The matplotlib Axes to be used for the main plot.
+        plt.Axes: The matplotlib Axes to be used for the main plot.
     """
     fig = plt.gcf()
 

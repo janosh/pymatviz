@@ -49,7 +49,7 @@ def residual_hist(
         **kwargs: Additional keyword arguments to pass to matplotlib.Axes.
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     ax = ax or plt.gca()
 
@@ -103,7 +103,7 @@ def true_pred_hist(
         **kwargs: Additional keyword arguments to pass to ax.hist().
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     y_true, y_pred, y_std = np.array([y_true, y_pred, y_std])
@@ -407,7 +407,7 @@ def hist_elemental_prevalence(
         **kwargs (int): Keyword arguments passed to pandas.Series.plot.bar().
 
     Returns:
-        ax: The plot's matplotlib Axes.
+        plt.Axes: matplotlib Axes object
     """
     ax = ax or plt.gca()
 
