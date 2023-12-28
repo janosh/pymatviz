@@ -13,7 +13,6 @@ from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.histograms import (
     hist_elemental_prevalence,
-    residual_hist,
     spacegroup_hist,
     true_pred_hist,
 )

@@ -15,7 +15,6 @@ from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.histograms import (
     hist_elemental_prevalence,
-    residual_hist,
     spacegroup_hist,
     true_pred_hist,
 )
@@ -190,9 +189,6 @@ save_and_compress_svg(ax, "precision-recall-curve")
 
 
 # %% Histogram Plots
-ax = residual_hist(y_true, y_pred)
-save_and_compress_svg(ax, "residual-hist")
-
 ax = true_pred_hist(y_true, y_pred, y_std)
 save_and_compress_svg(ax, "true-pred-hist")
 
