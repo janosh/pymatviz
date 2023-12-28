@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz import spacegroup_hist, true_pred_hist
+from pymatviz import elements_hist, spacegroup_hist, true_pred_hist
 from tests.conftest import df_regr, y_pred, y_true
 
 
@@ -81,3 +81,18 @@ def test_spacegroup_hist(
         show_empty_bins=show_empty_bins,
         backend=backend,
     )
+
+
+def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
+    ax = elements_hist(glass_formulas)
+    assert isinstance(ax, plt.Axes)
+    plt.clf()
+
+    ax = elements_hist(glass_formulas, log=True)
+    plt.clf()
+
+    ax = elements_hist(glass_formulas, keep_top=10)
+    plt.clf()
+
+    elements_hist(glass_formulas, keep_top=10, bar_values="count")
+    plt.clf()
