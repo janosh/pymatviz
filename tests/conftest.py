@@ -108,3 +108,18 @@ def matplotlib_scatter() -> plt.Figure:
     ax.plot([1, 10, 100], [10, 100, 1000])
     ax.plot([1, 10, 100], [1, 10, 100])
     return fig
+
+
+@pytest.fixture()
+def glass_formulas() -> list[str]:
+    """First 20 materials in the Matbench glass dataset.
+
+    from matminer.datasets import load_dataset
+
+    load_dataset("matbench_glass").composition.head(20)
+    """
+    return (
+        "Al Al(NiB)2 Al10Co21B19 Al10Co23B17 Al10Co27B13 Al10Co29B11 Al10Co31B9 "
+        "Al10Co33B7 Al10Cr3Si7 Al10Fe23B17 Al10Fe27B13 Al10Fe31B9 Al10Fe33B7 "
+        "Al10Ni23B17 Al10Ni27B13 Al10Ni29B11 Al10Ni31B9 Al10Ni33B7 Al11(CrSi2)3"
+    ).split()

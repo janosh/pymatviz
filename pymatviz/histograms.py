@@ -332,7 +332,7 @@ def spacegroup_hist(
     return ax
 
 
-def hist_elemental_prevalence(
+def elements_hist(
     formulas: ElemValues,
     count_mode: CountMode = "composition",
     log: bool = False,
@@ -344,7 +344,7 @@ def hist_elemental_prevalence(
     rotation: int = 45,
     **kwargs: Any,
 ) -> plt.Axes:
-    """Plot a histogram of the prevalence of each element in a materials dataset.
+    """Plot a histogram of elements (e.g. to show occurrence in a dataset).
 
     Adapted from https://github.com/kaaiian/ML_figures (https://git.io/JmbaI).
 

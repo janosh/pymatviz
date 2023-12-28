@@ -11,7 +11,6 @@ from plotly.exceptions import PlotlyError
 
 from pymatviz import (
     count_elements,
-    hist_elemental_prevalence,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
@@ -26,21 +25,6 @@ if TYPE_CHECKING:
     from pymatgen.core import Composition
 
     from pymatviz.ptable import CountMode
-
-
-@pytest.fixture()
-def glass_formulas() -> list[str]:
-    """First 20 materials in the Matbench glass dataset.
-
-    from matminer.datasets import load_dataset
-
-    load_dataset("matbench_glass").composition.head(20)
-    """
-    return (
-        "Al Al(NiB)2 Al10Co21B19 Al10Co23B17 Al10Co27B13 Al10Co29B11 Al10Co31B9 "
-        "Al10Co33B7 Al10Cr3Si7 Al10Fe23B17 Al10Fe27B13 Al10Fe31B9 Al10Fe33B7 "
-        "Al10Ni23B17 Al10Ni27B13 Al10Ni29B11 Al10Ni31B9 Al10Ni33B7 Al11(CrSi2)3"
-    ).split()
 
 
 @pytest.fixture()
@@ -101,21 +85,6 @@ def test_count_elements_bad_atomic_nums(range_limits: tuple[int, int]) -> None:
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
         # string and integer keys for atomic numbers should be handled equally
         count_elements({str(idx): 0 for idx in range(*range_limits)})
-
-
-def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
-    ax = hist_elemental_prevalence(glass_formulas)
-    assert isinstance(ax, plt.Axes)
-    plt.clf()
-
-    ax = hist_elemental_prevalence(glass_formulas, log=True)
-    plt.clf()
-
-    ax = hist_elemental_prevalence(glass_formulas, keep_top=10)
-    plt.clf()
-
-    hist_elemental_prevalence(glass_formulas, keep_top=10, bar_values="count")
-    plt.clf()
 
 
 def test_ptable_heatmap(

@@ -110,13 +110,13 @@ See [`pymatviz/structure_viz.py`](pymatviz/structure_viz.py). Currently structur
 
 See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 
-|    [`spacegroup_hist([65, 134, 225, ...], backend="matplotlib")`](pymatviz/histograms.py)     | [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](pymatviz/histograms.py) |
-| :-------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
-|                                  ![spg-num-hist-matplotlib]                                   |                                   ![spg-symbol-hist-matplotlib]                                    |
-|      [`spacegroup_hist([65, 134, 225, ...], backend="plotly")`](pymatviz/histograms.py)       |   [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histograms.py)   |
-|                                    ![spg-num-hist-plotly]                                     |                                     ![spg-symbol-hist-plotly]                                      |
-| [`hist_elemental_prevalence(compositions, log=True, bar_values='count')`](pymatviz/ptable.py) |                                                                                                    |
-|                                 ![hist-elemental-prevalence]                                  |                                                                                                    |
+| [`spacegroup_hist([65, 134, 225, ...], backend="matplotlib")`](pymatviz/histograms.py) | [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](pymatviz/histograms.py) |
+| :------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
+|                               ![spg-num-hist-matplotlib]                               |                                   ![spg-symbol-hist-matplotlib]                                    |
+|   [`spacegroup_hist([65, 134, 225, ...], backend="plotly")`](pymatviz/histograms.py)   |   [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histograms.py)   |
+|                                 ![spg-num-hist-plotly]                                 |                                     ![spg-symbol-hist-plotly]                                      |
+|   [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/ptable.py)    |                                                                                                    |
+|                                    ![elements-hist]                                    |                                                                                                    |
 
 [spg-symbol-hist-plotly]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-hist-plotly.svg
@@ -177,7 +177,7 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [density-scatter]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-scatter.svg
 [error-decay-with-uncert-multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/error-decay-with-uncert-multiple.svg
 [error-decay-with-uncert]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/error-decay-with-uncert.svg
-[hist-elemental-prevalence]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/hist-elemental-prevalence.svg
+[elements-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/elements-hist.svg
 [marchenko-pastur-significant-eval]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko-pastur-significant-eval.svg
 [marchenko-pastur]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko-pastur.svg
 [matbench-phonons-structures-2d]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/matbench-phonons-structures-2d.svg

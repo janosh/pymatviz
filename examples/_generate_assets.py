@@ -13,11 +13,7 @@ from tqdm import tqdm
 
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cumulative_error, cumulative_residual
-from pymatviz.histograms import (
-    hist_elemental_prevalence,
-    spacegroup_hist,
-    true_pred_hist,
-)
+from pymatviz.histograms import elements_hist, spacegroup_hist, true_pred_hist
 from pymatviz.io import save_and_compress_svg
 from pymatviz.parity import (
     density_hexbin,
@@ -192,7 +188,7 @@ save_and_compress_svg(ax, "precision-recall-curve")
 ax = true_pred_hist(y_true, y_pred, y_std)
 save_and_compress_svg(ax, "true-pred-hist")
 
-ax = hist_elemental_prevalence(df_expt_gap.composition, keep_top=15, v_offset=1)
+ax = elements_hist(df_expt_gap.composition, keep_top=15, v_offset=1)
 save_and_compress_svg(ax, "hist-elemental-prevalence")
 
 
