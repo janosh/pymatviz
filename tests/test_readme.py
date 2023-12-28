@@ -8,7 +8,5 @@ def test_no_missing_images() -> None:
     base_url = "https://raw.githubusercontent.com/janosh/pymatviz/main/assets/"
     images = [text.split(".svg\n")[0] for text in readme.split(base_url)[1:]]
 
-    for idx, image in enumerate(images, 1):
-        assert os.path.isfile(
-            f"assets/{image}.svg"
-        ), f"Missing readme {image=} ({idx=})"
+    for idx, img in enumerate(images, 1):
+        assert os.path.isfile(f"assets/{img}.svg"), f"Missing readme {img=} ({idx=})"

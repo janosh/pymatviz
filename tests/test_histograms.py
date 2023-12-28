@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz import residual_hist, spacegroup_hist, true_pred_hist
+from pymatviz import spacegroup_hist, true_pred_hist
 from tests.conftest import df_regr, y_pred, y_true
 
 
@@ -19,22 +19,6 @@ if TYPE_CHECKING:
 
 
 y_std_mock = y_true - y_pred
-
-
-@pytest.mark.parametrize("bins", [None, 1, 100])
-@pytest.mark.parametrize("xlabel", [None, "foo"])
-def test_residual_hist(bins: int | None, xlabel: str | None) -> None:
-    ax = residual_hist(y_true - y_pred, bins=bins, xlabel=xlabel)
-
-    assert isinstance(ax, plt.Axes)
-    assert (
-        ax.get_xlabel() == xlabel or r"Residual ($y_\mathrm{test} - y_\mathrm{pred}$)"
-    )
-    assert len(ax.lines) == 1
-    legend = ax.get_legend()
-    assert len(ax.patches) == bins or 10
-    # check legend position is 'upper left' by default
-    assert legend._get_loc() == 2  # noqa: SLF001
 
 
 @pytest.mark.parametrize("bins", [None, 1, 100])
@@ -70,7 +54,7 @@ def test_spacegroup_hist(
     show_counts: bool,
     show_empty_bins: bool,
 ) -> None:
-    # spg numbers
+    # spacegroup numbers
     fig = spacegroup_hist(
         range(1, 231),
         xticks=xticks,
@@ -80,7 +64,7 @@ def test_spacegroup_hist(
     )
     assert isinstance(fig, plt.Axes if backend == "matplotlib" else go.Figure)
 
-    # spg symbols
+    # spacegroup symbols
     fig = spacegroup_hist(
         spg_symbols,
         xticks=xticks,

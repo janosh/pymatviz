@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import scipy.stats
 from matplotlib import transforms
 from matplotlib.ticker import FixedLocator
 from pymatgen.core import Structure
@@ -28,47 +27,6 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
     from pymatviz.ptable import CountMode, ElemValues
-
-
-def residual_hist(
-    y_res: ArrayLike,
-    ax: plt.Axes | None = None,
-    xlabel: str | None = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
-    **kwargs: Any,
-) -> plt.Axes:
-    r"""Plot the residual distribution overlaid with a Gaussian kernel density estimate.
-
-    Adapted from https://github.com/kaaiian/ML_figures (https://git.io/Jmb2O).
-
-    Args:
-        y_res (array): Residuals between y_true and y_pred, i.e.
-            targets - model predictions.
-        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        xlabel (str, optional): x-axis label. Defaults to
-            `'Residual ($y_\mathrm{true} - y_\mathrm{pred}$'`)
-        **kwargs: Additional keyword arguments to pass to matplotlib.Axes.
-
-    Returns:
-        plt.Axes: matplotlib Axes object
-    """
-    ax = ax or plt.gca()
-
-    ax.hist(
-        y_res, bins=kwargs.pop("bins", 50), density=True, edgecolor="black", **kwargs
-    )
-
-    # Gaussian kernel density estimation: evaluates the Gaussian
-    # probability density estimated based on the points in y_res
-    kde = scipy.stats.gaussian_kde(y_res)
-    x_range = np.linspace(min(y_res), max(y_res), 100)
-
-    label = "Gaussian kernel density estimate"
-    ax.plot(x_range, kde(x_range), linewidth=3, color="orange", label=label)
-
-    ax.set(xlabel=xlabel)
-    ax.legend(loc="upper left", framealpha=0.5, handlelength=1)
-
-    return ax
 
 
 def true_pred_hist(
