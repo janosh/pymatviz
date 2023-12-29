@@ -33,11 +33,11 @@ def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
     lambda_m = (sigma * (1 - np.sqrt(1 / gamma))) ** 2  # Largest eigenvalue
     lambda_p = (sigma * (1 + np.sqrt(1 / gamma))) ** 2  # Smallest eigenvalue
 
-    prefac = gamma / (2 * np.pi * sigma**2 * x)
+    pre_fac = gamma / (2 * np.pi * sigma**2 * x)
     root = np.sqrt((lambda_p - x) * (x - lambda_m))
     unit_step = x > lambda_p or x < lambda_m
 
-    return prefac * root * (0 if unit_step else 1)
+    return pre_fac * root * (0 if unit_step else 1)
 
 
 def marchenko_pastur(
@@ -70,17 +70,17 @@ def marchenko_pastur(
     """
     ax = ax or plt.gca()
 
-    # use eigvalsh for speed since correlation matrix is symmetric
-    evals = np.linalg.eigvalsh(matrix)
+    # use eigvalsh (over eigvals) for speed since correlation matrix is symmetric
+    eigen_vals = np.linalg.eigvalsh(matrix)
 
     lambda_m = (sigma * (1 - np.sqrt(1 / gamma))) ** 2  # Largest eigenvalue
     lambda_p = (sigma * (1 + np.sqrt(1 / gamma))) ** 2  # Smallest eigenvalue
 
     if filter_high_evals:
         # Remove eigenvalues larger than those expected in a purely random matrix
-        evals = evals[evals <= lambda_p + 1]
+        eigen_vals = eigen_vals[eigen_vals <= lambda_p + 1]
 
-    ax.hist(evals, bins=50, edgecolor="black", density=True)
+    ax.hist(eigen_vals, bins=50, edgecolor="black", density=True)
 
     # Plot the theoretical density
     mp_pdf = np.vectorize(lambda x: marchenko_pastur_pdf(x, gamma, sigma))
@@ -92,11 +92,7 @@ def marchenko_pastur(
     rank = np.linalg.matrix_rank(matrix)
     n_rows = len(matrix)
 
-    plt.text(
-        *[0.95, 0.9],
-        f"rank deficiency: {rank}/{n_rows} {'(None)' if n_rows == rank else ''}",
-        transform=ax.transAxes,
-        ha="right",
-    )
+    rank_str = f"rank deficiency: {rank}/{n_rows} {'(None)' if n_rows == rank else ''}"
+    plt.text(*[0.95, 0.9], rank_str, transform=ax.transAxes, ha="right")
 
     return ax

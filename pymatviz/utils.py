@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats
 import sklearn
@@ -343,7 +344,8 @@ def add_identity_line(
     """
     valid_types = (go.Figure, plt.Figure, plt.Axes)
     if not isinstance(fig, valid_types):
-        raise TypeError(f"fig must be instance of {valid_types}, got {type(fig)}")
+        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
+        raise TypeError(f"{fig=} must be instance of {type_names}")
 
     if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
@@ -408,6 +410,64 @@ def add_identity_line(
         line=line_defaults | (line_kwds or {}),
         **kwargs,
     )
+
+    return fig
+
+
+def add_ecdf_line(
+    fig: go.Figure,
+    values: ArrayLike = (),
+    trace_idx: int = 0,
+    trace_kwargs: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> go.Figure:
+    """Add an empirical cumulative distribution function (ECDF) line to a plotly figure.
+
+    Support for matplotlib planned but not implemented. PRs welcome.
+
+    Args:
+        fig (go.Figure): plotly figure to add the ECDF line to.
+        values (array, optional): Values to compute the ECDF from. Defaults to () which
+            means use the x-values of trace at trace_idx in fig.
+        trace_idx (int, optional): Index of the trace whose x-values to use for
+            computing the ECDF. Defaults to 0. Unused if values is not empty.
+        trace_kwargs (dict[str, Any], optional): Passed to trace_ecdf.update().
+            Defaults to None. Use e.g. to set trace name (default "Cumulative") or
+            line_color (default "gray").
+        **kwargs: Passed to fig.add_trace().
+
+    Returns:
+        Figure: Figure with added ECDF line.
+    """
+    valid_types = (go.Figure,)
+    if not isinstance(fig, valid_types):
+        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
+        raise TypeError(f"{fig=} must be instance of {type_names}")
+
+    ecdf = px.ecdf(values if len(values) else fig.data[trace_idx].x).data[0]
+
+    # if fig has facets, add ECDF to all subplots
+    add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
+
+    fig.add_trace(ecdf, **add_trace_defaults | kwargs)
+    # move ECDF line to secondary y-axis
+    # set color to darkened version of primary y-axis color
+    trace_defaults = dict(yaxis="y2", name="Cumulative", line=dict(color="gray"))
+    trace_kwargs = trace_defaults | (trace_kwargs or {})
+    fig.data[-1].update(**trace_kwargs)
+
+    color = trace_kwargs.get("line_color", trace_kwargs.get("line", {}).get("color"))
+
+    yaxis_defaults = dict(
+        title=trace_kwargs["name"],
+        side="right",
+        overlaying="y",
+        range=(0, 1),
+        showgrid=False,
+        color=color,
+        linecolor=color,
+    )
+    fig.layout.yaxis2 = yaxis_defaults | getattr(fig.layout, "yaxis2", {})
 
     return fig
 
