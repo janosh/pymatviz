@@ -343,7 +343,8 @@ def add_identity_line(
     """
     valid_types = (go.Figure, plt.Figure, plt.Axes)
     if not isinstance(fig, valid_types):
-        raise TypeError(f"fig must be instance of {valid_types}, got {type(fig)}")
+        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
+        raise TypeError(f"{fig=} must be instance of {type_names}")
 
     if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()

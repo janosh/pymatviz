@@ -188,6 +188,16 @@ def test_add_identity_matplotlib(
     assert line.get_color() == expected_line_color
 
 
+def test_add_identity_raises() -> None:
+    for fig in (None, "foo", 42.0):
+        with pytest.raises(
+            TypeError,
+            match=f"{fig=} must be instance of plotly.graph_objs._figure.Figure | "
+            f"matplotlib.figure.Figure | matplotlib.axes._axes.Axes",
+        ):
+            add_identity_line(fig)
+
+
 def test_df_to_arrays() -> None:
     df_regr = pd.DataFrame([y_true, y_pred]).T
     x1, y1 = df_to_arrays(None, y_true, y_pred)
