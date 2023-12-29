@@ -14,6 +14,7 @@ import pytest
 from pymatviz.utils import (
     Backend,
     CrystalSystem,
+    add_ecdf_line,
     add_identity_line,
     annotate_bars,
     annotate_metrics,
@@ -186,6 +187,16 @@ def test_add_identity_matplotlib(
 
     line = fig.axes[0].lines[-1]
     assert line.get_color() == expected_line_color
+
+
+def test_add_identity_raises() -> None:
+    for fig in (None, "foo", 42.0):
+        with pytest.raises(
+            TypeError,
+            match=f"{fig=} must be instance of plotly.graph_objs._figure.Figure | "
+            f"matplotlib.figure.Figure | matplotlib.axes._axes.Axes",
+        ):
+            add_identity_line(fig)
 
 
 def test_df_to_arrays() -> None:
@@ -486,3 +497,36 @@ def test_styled_html_tag(text: str, tag: str, style: str) -> None:
     assert (
         styled_html_tag(text, tag=tag, style=style) == f"<{tag} {style=}>{text}</{tag}>"
     )
+
+
+@pytest.mark.parametrize(
+    "trace_kwargs",
+    [None, {}, {"name": "foo", "line_color": "red"}],
+)
+def test_add_ecdf_line(
+    plotly_scatter: go.Figure,
+    trace_kwargs: dict[str, str] | None,
+) -> None:
+    fig = add_ecdf_line(plotly_scatter, trace_kwargs=trace_kwargs)
+    assert isinstance(fig, go.Figure)
+
+    trace_kwargs = trace_kwargs or {}
+
+    ecdf = fig.data[-1]  # retrieve ecdf line
+    expected_name = trace_kwargs.get("name", "Cumulative")
+    expected_color = trace_kwargs.get("line_color", "gray")
+    assert ecdf.name == expected_name
+    assert ecdf.line.color == expected_color
+    assert ecdf.yaxis == "y2"
+    assert fig.layout.yaxis2.range == (0, 1)
+    assert fig.layout.yaxis2.title.text == expected_name
+    assert fig.layout.yaxis2.color == expected_color
+
+
+def test_add_ecdf_line_raises() -> None:
+    for fig in (None, "foo", 42.0):
+        with pytest.raises(
+            TypeError,
+            match=f"{fig=} must be instance of plotly.graph_objs._figure.Figure",
+        ):
+            add_ecdf_line(fig)
