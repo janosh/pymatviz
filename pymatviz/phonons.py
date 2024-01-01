@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal, Union, no_type_check
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -30,7 +30,7 @@ def pretty_sym_point(symbol: str) -> str:
     )
 
 
-def get_ticks(bs: PhononBands) -> tuple[list[float], list[str]]:
+def get_band_xaxis_ticks(bs: PhononBands) -> tuple[list[float], list[str]]:
     """Get all ticks and labels for a band structure plot.
 
     Returns:
@@ -68,9 +68,35 @@ def get_ticks(bs: PhononBands) -> tuple[list[float], list[str]]:
     return ticks_x_pos, tick_labels
 
 
+@no_type_check
+def _shaded_range(
+    fig: go.Figure,
+    shaded_ys: dict[tuple[str | float, str | float], dict[str, Any]] | bool | None,
+) -> go.Figure:
+    if shaded_ys is False:
+        return fig
+
+    shade_defaults = dict(layer="below", row="all", col="all")
+    y_lim = dict(zip(("y_min", "y_max"), fig.layout.yaxis.range))
+
+    shaded_ys = shaded_ys or {(0, "y_min"): dict(fillcolor="gray", opacity=0.07)}
+    for (y0, y1), kwds in shaded_ys.items():
+        for y in (y0, y1):
+            if isinstance(y, str) and y not in y_lim:
+                raise ValueError(f"Invalid {y=}, must be one of {[*y_lim]}")
+        fig.add_hrect(
+            y0=y_lim.get(y0, y0), y1=y_lim.get(y1, y1), **shade_defaults | kwds
+        )
+
+    return fig
+
+
 def plot_phonon_bands(
     band_structs: PhononBands | dict[str, PhononBands],
     line_kwds: dict[str, Any] | None = None,
+    shaded_ys: dict[tuple[str | float, str | float], dict[str, Any]]
+    | bool
+    | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot single or multiple pymatgen band structures using Plotly, focusing on the
@@ -84,6 +110,13 @@ def plot_phonon_bands(
             Single BandStructureSymmLine or PhononBandStructureSymmLine object or a dict
             with labels mapped to multiple such objects.
         line_kwds (dict[str, Any]): Passed to Plotly's Figure.add_scatter method.
+        shaded_ys (dict[tuple[float | str, float | str], dict]): Keys are y-ranges
+            (min, max) tuple and values are kwargs for shaded regions created by
+            fig.add_hrect(). Defaults to single entry (0, "y_min"):
+            dict(fillcolor="gray", opacity=0.07). "y_min" and "y_max" will be replaced
+            with the figure's y-axis range. dict(layer="below", row="all", col="all") is
+            always passed to add_hrect but can be overridden by the user. Set to False
+            to disable.
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:
@@ -146,7 +179,7 @@ def plot_phonon_bands(
 
     # add x-axis labels and vertical lines for common high-symmetry points
     first_bs = next(iter(band_structs.values()))
-    x_ticks, x_labels = get_ticks(first_bs)
+    x_ticks, x_labels = get_band_xaxis_ticks(first_bs)
     fig.layout.xaxis.update(tickvals=x_ticks, ticktext=x_labels, tickangle=0)
 
     # remove 0 and the last line to avoid duplicate vertical line, looks like
@@ -184,6 +217,8 @@ def plot_phonon_bands(
 
     # scale font size with figure size
     fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
+
+    _shaded_range(fig, shaded_ys)
 
     return fig
 
