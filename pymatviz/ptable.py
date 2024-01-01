@@ -381,7 +381,7 @@ def ptable_heatmap(
         # format major and minor ticks
         # TODO maybe give user direct control over labelsize, instead of hard-coding
         # 8pt smaller than default
-        cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"] - 8)  # type: ignore[operator]
+        cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"])
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 

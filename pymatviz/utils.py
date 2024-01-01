@@ -52,11 +52,12 @@ for Z, symbol in enumerate(df_ptable.index, 1):
     element_symbols[Z] = symbol
 
 
-def with_hist(
+def with_marginal_hist(
     xs: ArrayLike,
     ys: ArrayLike,
     cell: GridSpec | None = None,
     bins: int = 100,
+    fig: plt.Figure | plt.Axes | None = None,
 ) -> plt.Axes:
     """Call before creating a plot and use the returned `ax_main` for all
     subsequent plotting ops to create a grid of plots with the main plot in the
@@ -64,16 +65,20 @@ def with_hist(
     and near the right edge.
 
     Args:
-        xs (array): x values.
-        ys (array): y values.
+        xs (array): Marginal histogram values along x-axis.
+        ys (array): Marginal histogram values along y-axis.
         cell (GridSpec, optional): Cell of a plt GridSpec at which to add the
             grid of plots. Defaults to None.
         bins (int, optional): Resolution/bin count of the histograms. Defaults to 100.
+        fig (Figure, optional): matplotlib Figure or Axes to add the marginal histograms
+            to. Defaults to None.
 
     Returns:
         plt.Axes: The matplotlib Axes to be used for the main plot.
     """
-    fig = plt.gcf()
+    if fig is None or isinstance(fig, plt.Axes):
+        ax_main = fig or plt.gca()
+        fig = ax_main.figure
 
     gs = (cell.subgridspec if cell else fig.add_gridspec)(
         2, 2, width_ratios=(6, 1), height_ratios=(1, 5), wspace=0, hspace=0

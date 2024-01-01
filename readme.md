@@ -200,7 +200,7 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 
 ## 📖 &thinsp; How to cite `pymatviz`
 
-[Zenodo record](https://zenodo.org/badge/latestdoi/340898532)
+You can cite the [Zenodo record](https://zenodo.org/badge/latestdoi/340898532) using the following BibTeX entry:
 
 ```bib
 @software{riebesell_pymatviz_2022,
@@ -211,7 +211,7 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
   doi = {10.5281/zenodo.7486816},
   url = {https://github.com/janosh/pymatviz},
   note = {10.5281/zenodo.7486816 - https://github.com/janosh/pymatviz},
-  urldate = {2023-01-01}, % optional, replace with date of code use
+  urldate = {2023-01-01}, % optional, replace with your date of access
   version = {0.7.1}, % replace with the version you use
 }
 ```
