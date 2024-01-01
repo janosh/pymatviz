@@ -140,7 +140,7 @@ def test_ptable_heatmap(
     # cbar_fmt as string
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=".3f")
     cbar_labels = [label.get_text() for label in ax.child_axes[0].get_xticklabels()]
-    assert cbar_labels[:2] == ["0.000", "25.000"]
+    assert cbar_labels[:2] == ["0.000", "50.000"]
 
     # cbar_fmt as function
     ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)

@@ -7,7 +7,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate
 
-from pymatviz.utils import add_identity_line, annotate_metrics, df_to_arrays, with_hist
+from pymatviz.utils import (
+    add_identity_line,
+    annotate_metrics,
+    df_to_arrays,
+    with_marginal_hist,
+)
 
 
 if TYPE_CHECKING:
@@ -162,15 +167,15 @@ def scatter_with_err_bar(
     Returns:
         plt.Axes: matplotlib Axes object
     """
-    x, y = df_to_arrays(df, x, y)
+    xs, ys = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
 
     styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
-    ax.errorbar(x, y, xerr=xerr, yerr=yerr, **kwargs, **styles)
+    ax.errorbar(xs, ys, xerr=xerr, yerr=yerr, **kwargs, **styles)
 
     add_identity_line(ax)
 
-    annotate_metrics(x, y, fig=ax)
+    annotate_metrics(xs, ys, fig=ax)
 
     ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
 
@@ -212,11 +217,11 @@ def density_hexbin(
     Returns:
         plt.Axes: matplotlib Axes object
     """
-    x, y = df_to_arrays(df, x, y)
+    xs, ys = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
 
     # the scatter plot
-    hexbin = ax.hexbin(x, y, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
+    hexbin = ax.hexbin(xs, ys, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
 
     cb_ax = ax.inset_axes(cbar_coords)
     plt.colorbar(hexbin, cax=cb_ax)
@@ -227,7 +232,7 @@ def density_hexbin(
 
     add_identity_line(ax)
 
-    annotate_metrics(x, y, fig=ax, loc="upper left")
+    annotate_metrics(xs, ys, fig=ax, loc="upper left")
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
@@ -240,14 +245,15 @@ def density_scatter_with_hist(
     df: pd.DataFrame | None = None,
     cell: GridSpec | None = None,
     bins: int = 100,
+    ax: plt.Axes | None = None,
     **kwargs: Any,
 ) -> plt.Axes:
     """Scatter plot colored (and optionally sorted) by density with histograms along
     each dimension.
     """
-    x, y = df_to_arrays(df, x, y)
-    ax_scatter = with_hist(x, y, cell, bins)
-    return density_scatter(x, y, ax=ax_scatter, **kwargs)
+    xs, ys = df_to_arrays(df, x, y)
+    ax_scatter = with_marginal_hist(xs, ys, cell, bins, fig=ax)
+    return density_scatter(xs, ys, ax=ax_scatter, **kwargs)
 
 
 def density_hexbin_with_hist(
@@ -261,9 +267,9 @@ def density_hexbin_with_hist(
     """Hexagonal-grid scatter plot colored by density or by third dimension passed
     color_by with histograms along each dimension.
     """
-    x, y = df_to_arrays(df, x, y)
-    ax_scatter = with_hist(x, y, cell, bins)
-    return density_hexbin(x, y, ax=ax_scatter, **kwargs)
+    xs, ys = df_to_arrays(df, x, y)
+    ax_scatter = with_marginal_hist(xs, ys, cell, bins)
+    return density_hexbin(xs, ys, ax=ax_scatter, **kwargs)
 
 
 def residual_vs_actual(
