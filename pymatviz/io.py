@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from tqdm import tqdm
+from weasyprint import HTML
 
 
 if TYPE_CHECKING:
@@ -109,13 +110,13 @@ def save_fig(
         if path.lower().endswith(".svelte"):
             # insert {...$$props} into top-level div to be able to post-process and
             # style plotly figures from within Svelte files
-            with open(path) as file:
+            with open(path, encoding="utf-8") as file:
                 text = file.read().replace("<div>", "<div {...$$props}>", 1)
-            with open(path, "w") as file:
+            with open(path, "w", encoding="utf-8") as file:
                 # add trailing newline for pre-commit end-of-file commit hook
                 file.write(text + "\n")
         if style:
-            with open(path, "r+") as file:
+            with open(path, "r+", encoding="utf-8") as file:
                 # replace first '<div ' with '<div {style=} '
                 file.write(file.read().replace("<div ", f"<div {style=} ", 1))
     else:
@@ -203,12 +204,6 @@ def df_to_pdf(
             values CSS strings. Example: dict("td, th": "border: none; padding: 4px;")
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
-    try:
-        from weasyprint import HTML
-    except ImportError as exc:
-        msg = "weasyprint not installed\nrun pip install weasyprint"
-        raise ImportError(msg) from exc
-
     if styler_css:
         styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
         styler.set_table_styles(
@@ -354,7 +349,7 @@ def df_to_html_table(
     if styles is not None:
         # insert styles at end of closing </style> tag so they override default styles
         html = html.replace("</style>", f"{styles}\n</style>")
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(html)
 
 

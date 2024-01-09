@@ -286,7 +286,7 @@ def spacegroup_hist(
     for crys_sys, count, width, color in crys_sys_counts.itertuples():
         x1 = x0 + width
 
-        for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
+        for patch in ax.patches[0 if x0 == 1 else x0: x1 + 1]:
             patch.set_facecolor(color)
 
         text_kwds = dict(transform=trans, horizontalalignment="center") | (
