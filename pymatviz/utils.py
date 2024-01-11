@@ -299,7 +299,13 @@ CrystalSystem = Literal[
 
 def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
-    if 1 <= spg <= 2:
+    if not isinstance(spg, int):
+        raise TypeError(f"Expect integer for space group number, got {type(spg)}")
+
+    if spg < 1 or spg > 230:
+        raise ValueError(f"Invalid space group number {spg}")
+
+    elif 1 <= spg <= 2:
         return "triclinic"
     elif spg <= 15:
         return "monoclinic"
@@ -311,10 +317,8 @@ def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
         return "trigonal"
     elif spg <= 194:
         return "hexagonal"
-    elif spg <= 230:
-        return "cubic"
     else:
-        raise ValueError(f"Invalid space group number {spg}.")
+        return "cubic"
 
 
 def add_identity_line(
