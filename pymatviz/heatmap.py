@@ -3,11 +3,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.colors import Colormap
-from typing import Any
 
 from pymatviz.colormaps import blend_two
 
@@ -20,10 +21,9 @@ def heatmap(
     ax: plt.Axes = None,
     x_label: str = "X label",
     y_label: str = "Y label",
-    **kwargs: Any
+    **kwargs: Any,
 ) -> plt.Axes:
-    """
-    Create a heatmap from a 2D Pandas DataFrame.
+    """Create a heatmap from a 2D Pandas DataFrame.
 
     Parameters:
     - df (pd.DataFrame): The input DataFrame containing the data to be visualized. The index is used as tick labels.
@@ -68,7 +68,7 @@ def heatmap(
 
     # Set x/y axes tick labels
     ax.set_xticks(range(len(df.columns)))
-    ax.set_xticklabels(df.columns, rotation='vertical')
+    ax.set_xticklabels(df.columns, rotation="vertical")
 
     ax.set_yticks(range(len(df.index)))
     ax.set_yticklabels(df.index)
