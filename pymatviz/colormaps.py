@@ -5,8 +5,7 @@
 from __future__ import annotations
 
 import numpy as np
-from matplotlib.colors import Colormap
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import Colormap, LinearSegmentedColormap
 
 
 def blend_two(
@@ -16,8 +15,7 @@ def blend_two(
     max_value: float,
     separator: float = None,
 ) -> Colormap:
-    """
-    Blend two matplotlib colormaps above and below a specified separator value.
+    """Blend two matplotlib colormaps above and below a specified separator value.
 
     Parameters:
     - cmap_above (Colormap): The colormap for values above the separator.
@@ -45,7 +43,9 @@ def blend_two(
 
     # Load separate colormaps
     colors_cmap_above = cmap_above(np.linspace(0, 1, int(separator_position * 256)))
-    colors_cmap_below = cmap_below(np.linspace(0, 1, int((1 - separator_position) * 256)))
+    colors_cmap_below = cmap_below(
+        np.linspace(0, 1, int((1 - separator_position) * 256))
+    )
 
     # Blend the colors
     blended_colors = np.vstack((colors_cmap_below, colors_cmap_above))
