@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Final, Literal
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from tqdm import tqdm
-from weasyprint import HTML
 
 
 if TYPE_CHECKING:
