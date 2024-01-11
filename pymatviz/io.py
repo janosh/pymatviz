@@ -203,6 +203,12 @@ def df_to_pdf(
             values CSS strings. Example: dict("td, th": "border: none; padding: 4px;")
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
+    try:
+        from weasyprint import HTML
+    except ImportError as exc:
+        msg = "weasyprint not installed\nrun pip install weasyprint"
+        raise ImportError(msg) from exc
+
     if styler_css:
         styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
         styler.set_table_styles(
