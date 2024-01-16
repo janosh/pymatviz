@@ -3,17 +3,13 @@
 
 from __future__ import annotations
 
-from typing import List
-
-import numpy as np
 import matplotlib
-from matplotlib.colors import Colormap
-from matplotlib.colors import ListedColormap
-from matplotlib.colors import LinearSegmentedColormap
+import numpy as np
+from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
 
 
 def combine_two_colormaps(
-    cmaps: List[Colormap | str],
+    cmaps: list[Colormap | str],
     node: float = 0.5,
     N: int = 256,
     reverse: bool = False,
@@ -45,7 +41,7 @@ def combine_two_colormaps(
     Examples:
     >>> combined_cmap = combine_two_colormaps(['viridis', 'plasma'], node=0.3, N=128, reverse=True)
 
-    TODO:
+    Todo:
     - Generalize to a list of Colormaps.
     """
     # Check cmap datatype and convert to List[Colormap]
@@ -54,7 +50,7 @@ def combine_two_colormaps(
     elif any(not isinstance(cmap, Colormap) for cmap in cmaps):
         raise TypeError(
             "Invalid datatype in the list. It must contain either all Colormaps or strings."
-            )
+        )
 
     # Sample two source colormaps
     cmap_0 = cmaps[0](np.linspace(0, 1, int(N * node)))
@@ -63,14 +59,12 @@ def combine_two_colormaps(
     # Merge Colormaps
     if reverse:
         return LinearSegmentedColormap.from_list(
-            "composite_cmap_r",
-            np.vstack((cmap_0, cmap_1))
-            ).reversed()
+            "composite_cmap_r", np.vstack((cmap_0, cmap_1))
+        ).reversed()
     else:
         return LinearSegmentedColormap.from_list(
-            "composite_cmap",
-            np.vstack((cmap_0, cmap_1))
-            )
+            "composite_cmap", np.vstack((cmap_0, cmap_1))
+        )
 
 
 def truncate(
