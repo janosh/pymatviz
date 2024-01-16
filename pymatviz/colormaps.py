@@ -42,6 +42,9 @@ def combine_two_colormaps(
     - https://matplotlib.org/stable/users/explain/colors/colormap-manipulation.html
     - https://stackoverflow.com/questions/31051488/combining-two-matplotlib-colormaps/31052741#31052741
 
+    Examples:
+    >>> combined_cmap = combine_two_colormaps(['viridis', 'plasma'], node=0.3, N=128, reverse=True)
+
     TODO:
     - Generalize to a list of Colormaps.
     """
