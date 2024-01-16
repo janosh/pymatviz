@@ -1,16 +1,13 @@
-"""Plotter for heatmaps."""
+"""Heatmap plotter."""
 
 
 from __future__ import annotations
 
 from typing import Any
 
-import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.colors import Colormap
-
-from pymatviz.colormaps import blend_two
 
 
 def heatmap(
@@ -54,11 +51,17 @@ def heatmap(
     ```
     """
     # Type and value checks
-    assert isinstance(df, pd.DataFrame)
-    assert isinstance(cmap, Colormap)
-    assert isinstance(add_cbar, bool)
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Heatmap plotter expect a pd.DataFrame as input.")
+    if not isinstance(cmap, Colormap):
+        raise TypeError(
+            f"Heatmap plotter expect a Colormap instance, got {type(cmap)}."
+            )
+    if not isinstance(add_cbar, bool):
+        raise TypeError("add_cbar should be bool.")
 
-    assert df.ndim == 2
+    if df.ndim != 2:
+        raise ValueError("Heatmap plotter expect a 2D datasheet to plot.")
 
     # Initialize ax for plotting
     ax = ax or plt.gca()
@@ -83,27 +86,3 @@ def heatmap(
         cbar.set_label(cbar_label)
 
     return ax
-
-
-# TODO: move to "tests"
-# Test area
-if __name__ == "__main__":
-    # Test heatmap plotter with mixing enthalpy datasheet
-    data_df = pd.read_csv("./heatmap-testdata-enthalpy.csv")
-
-    # Set the first column as index
-    data_df.set_index(data_df.columns[0], inplace=True)
-
-    # Generate custom colormap
-    custom_cmap = blend_two(
-        min_value=data_df.min().min(),
-        max_value=data_df.max().max(),
-        separator=3.5,
-        cmap_above=matplotlib.colormaps["Reds"],
-        cmap_below=matplotlib.colormaps["Blues_r"],
-    )
-
-    # Test plotter
-    ax = heatmap(data_df, custom_cmap)
-
-    plt.show()
