@@ -4,9 +4,10 @@
 from __future__ import annotations
 
 from io import StringIO
-import pandas as pd
+
 import matplotlib
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from pymatviz.heatmap import heatmap
 

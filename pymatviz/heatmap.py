@@ -56,7 +56,7 @@ def heatmap(
     if not isinstance(cmap, Colormap):
         raise TypeError(
             f"Heatmap plotter expect a Colormap instance, got {type(cmap)}."
-            )
+        )
     if not isinstance(add_cbar, bool):
         raise TypeError("add_cbar should be bool.")
 
