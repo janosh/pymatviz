@@ -56,3 +56,24 @@ def test_truncate(cmap, start, end, N):
     truncated_cmap = truncate(cmap, start, end, N)
 
     assert isinstance(truncated_cmap, Colormap)
+
+
+def test_truncate_type_error():
+    with pytest.raises(TypeError) as excinfo:
+        truncate(123, 0.2, 0.8, N=128)
+
+    assert "Expect type Colormap or str for cmap" in str(excinfo.value)
+
+
+def test_truncate_value_error_start_end():
+    with pytest.raises(ValueError) as excinfo:
+        truncate('viridis', 0.8, 0.2, N=128)
+
+    assert "Invalid Colormap start or end point" in str(excinfo.value)
+
+
+def test_truncate_value_error_N():
+    with pytest.raises(ValueError) as excinfo:
+        truncate('viridis', 0.2, 0.8, N=-128)
+
+    assert "Invalid number of RGB quantization levels" in str(excinfo.value)
