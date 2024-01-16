@@ -3,61 +3,55 @@
 
 from __future__ import annotations
 
+from typing import List
+
 import numpy as np
 import matplotlib
 from matplotlib.colors import Colormap
-from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.colors import ListedColormap
+from matplotlib.colors import LinearSegmentedColormap
 
 
-def composite_colormaps(
-    cmap_above: str | Colormap,  # TODO: double-check type hint
-    cmap_below: str | Colormap,
-    min_value: float,  # TODO: what is this?
-    max_value: float,  # TODO: what is this?
-    separator: float = None,
+def combine_two_colormaps(
+    cmaps: List[Colormap, Colormap] | List[str, str],
+    node: float = 0.5,
     N: int = 256,
+    reverse: bool = False,
 ) -> Colormap:
-    """Create a composite matplotlib Colormap by merging two colormaps
-        above and below a specified separator value.
+    """Create a composite matplotlib Colormap by combining two colormaps.
 
-    Parameters:
-    - cmap_above (str | Colormap): The colormap for values above the separator.
-    - cmap_below (str | Colormap): The colormap for values below the separator.
-    - separator (float, optional): The separator value between min and max values.  # TODO:
-        Defaults to the average of min/max values.
-    - N (int): The number of RGB quantization levels. Defaults to 256.
-
-    Returns:
-    - Colormap: A composite colormap created by merging the provided colormaps.
-
-    Raises:
-    - AssertionError: If the separator is not within the valid range.
+    # NOTE: order of cmaps: bottom to top
 
     References:
-    - https://stackoverflow.com/questions/31051488/combining-two-matplotlib-colormaps/31052741#31052741
+        - https://matplotlib.org/stable/users/explain/colors/colormap-manipulation.html
+        - https://stackoverflow.com/questions/31051488/combining-two-matplotlib-colormaps/31052741#31052741
 
-    TODO: generalize to composite "multiple" Colormaps?
+    TODO:
+        - generalize to list of Colormaps
     """
-    # Check and load Colormaps
-    if isinstance(cmap_above, str):
-        cmap_above = matplotlib.colormaps[cmap_above]
-    elif not isinstance(cmap_above, Colormap):
-        raise TypeError(f"Expect type Colormap or str for cmap_above, got {type(cmap_above)}.")
+    # Check cmap datatype and convert to List[Colormap]
+    if all(isinstance(cmap, str) for cmap in cmaps):
+        cmaps = [matplotlib.colormaps[s] for s in cmaps]
+    elif any(not isinstance(cmap, Colormap) for cmap in cmaps):
+        raise TypeError(
+            "Invalid datatype in the list. It must contain either all Colormaps or strings."
+            )
 
-    if isinstance(cmap_below, str):
-        cmap_below = matplotlib.colormaps[cmap_below]
-    elif not isinstance(cmap_below, Colormap):
-        raise TypeError(f"Expect type Colormap or str for cmap_below, got {type(cmap_below)}.")
+    # Sample two source colormaps
+    cmap_0 = cmaps[0](np.linspace(0, 1, int(N * node)))
+    cmap_1 = cmaps[1](np.linspace(0, 1, N - int(N * node)))
 
-    # Merge two Colormaps
-    colors_cmap_above = cmap_above(np.linspace(0, 1, int(separator_position * N)))
-    colors_cmap_below = cmap_below(
-        np.linspace(0, 1, int((1 - separator_position) * N))
-    )
-    blended_colors = np.vstack((colors_cmap_below, colors_cmap_above))
-
-    return LinearSegmentedColormap.from_list("custom_colormap", blended_colors, N=N)
+    # Merge Colormaps
+    if reverse:
+        return LinearSegmentedColormap.from_list(
+            "composite_cmap_r",
+            np.vstack((cmap_0, cmap_1))
+            ).reversed()
+    else:
+        return LinearSegmentedColormap.from_list(
+            "composite_cmap",
+            np.vstack((cmap_0, cmap_1))
+            )
 
 
 def truncate(
@@ -87,7 +81,6 @@ def truncate(
 
     Examples:
     >>> truncated_cmap = truncate('viridis', 0.2, 0.8, N=128)
-    >>> plot_colormap(truncated_cmap)  # Custom function to visualize colormaps.
 
     References:
     - https://matplotlib.org/stable/api/_as_gen/matplotlib.colors.Colormap.html
