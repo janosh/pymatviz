@@ -13,21 +13,37 @@ from matplotlib.colors import LinearSegmentedColormap
 
 
 def combine_two_colormaps(
-    cmaps: List[Colormap, Colormap] | List[str, str],
+    cmaps: List[Colormap | str],
     node: float = 0.5,
     N: int = 256,
     reverse: bool = False,
 ) -> Colormap:
     """Create a composite matplotlib Colormap by combining two colormaps.
 
-    # NOTE: order of cmaps: bottom to top
+    This function takes a list of two colormaps (or their names as strings)
+    and creates a composite colormap by blending them together.
+
+    Parameters:
+    - cmaps (List[Colormap | str]): A list containing two colormaps or their names as strings.
+    - node (float, optional): The blending point between the two colormaps, in range [0, 1]. Defaults to 0.5.
+    - N (int, optional): The number of RGB quantization levels. Defaults to 256.
+    - reverse (bool, optional): Reverse the resulting colormap.
+
+    Returns:
+    - Colormap: The composite colormap.
+
+    Raises:
+    - TypeError: If the list contains mixed datatypes or invalid colormap names.
+
+    Note:
+    - The colormaps are combined from bottom to top by default.
 
     References:
-        - https://matplotlib.org/stable/users/explain/colors/colormap-manipulation.html
-        - https://stackoverflow.com/questions/31051488/combining-two-matplotlib-colormaps/31052741#31052741
+    - https://matplotlib.org/stable/users/explain/colors/colormap-manipulation.html
+    - https://stackoverflow.com/questions/31051488/combining-two-matplotlib-colormaps/31052741#31052741
 
     TODO:
-        - generalize to list of Colormaps
+    - Generalize to a list of Colormaps.
     """
     # Check cmap datatype and convert to List[Colormap]
     if all(isinstance(cmap, str) for cmap in cmaps):
