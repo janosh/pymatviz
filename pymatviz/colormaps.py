@@ -53,9 +53,7 @@ def combine_two(
     if all(isinstance(cmap, str) for cmap in cmaps):
         cmaps = [matplotlib.colormaps[s] for s in cmaps]
     elif any(not isinstance(cmap, Colormap) for cmap in cmaps):
-        raise TypeError(
-            "Invalid datatype. Expect either all Colormaps or all strings."
-        )
+        raise TypeError("Invalid datatype. Expect either all Colormaps or all strings.")
 
     # Sample two source colormaps
     cmap_0 = cmaps[0](np.linspace(0, 1, int(N * node)))
@@ -110,8 +108,10 @@ def truncate(
     if isinstance(cmap, str):
         cmap = matplotlib.colormaps[cmap]
     elif not isinstance(cmap, Colormap):
-        raise TypeError(f"Expect type Colormap or str for cmap, \
-            got {type(cmap)}.")
+        raise TypeError(
+            f"Expect type Colormap or str for cmap, \
+            got {type(cmap)}."
+        )
 
     if not 0 <= start < end <= 1:
         raise ValueError("Invalid Colormap start or end point.")
