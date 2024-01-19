@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
 
 
-def combine_two_colormaps(
+def combine_two(
     cmaps: list[Colormap | str],
     node: float = 0.5,
     N: int = 256,
@@ -20,16 +20,20 @@ def combine_two_colormaps(
     and creates a composite colormap by blending them together.
 
     Parameters:
-    - cmaps (List[Colormap | str]): A list containing two colormaps or their names as strings.
-    - node (float, optional): The blending point between the two colormaps, in range [0, 1]. Defaults to 0.5.
-    - N (int, optional): The number of RGB quantization levels. Defaults to 256.
+    - cmaps (List[Colormap | str]): A list containing two colormaps or
+        their names as strings.
+    - node (float, optional): The blending point between the two colormaps,
+        in range [0, 1]. Defaults to 0.5.
+    - N (int, optional): The number of RGB quantization levels.
+        Defaults to 256.
     - reverse (bool, optional): Reverse the resulting colormap.
 
     Returns:
     - Colormap: The composite colormap.
 
     Raises:
-    - TypeError: If the list contains mixed datatypes or invalid colormap names.
+    - TypeError: If the list contains mixed datatypes or
+        invalid colormap names.
 
     Note:
     - The colormaps are combined from bottom to top by default.
@@ -39,7 +43,8 @@ def combine_two_colormaps(
     - https://stackoverflow.com/questions/31051488/combining-two-matplotlib-colormaps/31052741#31052741
 
     Examples:
-    >>> combined_cmap = combine_two_colormaps(['viridis', 'plasma'], node=0.3, N=128, reverse=True)
+    >>> combined_cmap = combine_two_colormaps(['viridis', 'plasma'],
+            node=0.3, N=128, reverse=True)
 
     Todo:
     - Generalize to a list of Colormaps.
@@ -49,7 +54,7 @@ def combine_two_colormaps(
         cmaps = [matplotlib.colormaps[s] for s in cmaps]
     elif any(not isinstance(cmap, Colormap) for cmap in cmaps):
         raise TypeError(
-            "Invalid datatype in the list. It must contain either all Colormaps or strings."
+            "Invalid datatype. Expect either all Colormaps or all strings."
         )
 
     # Sample two source colormaps
@@ -80,9 +85,12 @@ def truncate(
 
     Parameters:
     - cmap (str or Colormap): The original Colormap.
-    - start (float): The starting point of the truncated colormap (in range [0, 1]).
-    - end (float): The ending point of the truncated colormap (in range [0, 1]).
-    - N (int, optional): The number of RGB quantization levels. Defaults to 256.
+    - start (float): The starting point of the truncated colormap,
+        in range [0, 1].
+    - end (float): The ending point of the truncated colormap,
+        in range [0, 1].
+    - N (int, optional): The number of RGB quantization levels.
+        Defaults to 256.
 
     Returns:
     - Colormap: The truncated colormap.
@@ -102,7 +110,8 @@ def truncate(
     if isinstance(cmap, str):
         cmap = matplotlib.colormaps[cmap]
     elif not isinstance(cmap, Colormap):
-        raise TypeError(f"Expect type Colormap or str for cmap, got {type(cmap)}.")
+        raise TypeError(f"Expect type Colormap or str for cmap, \
+            got {type(cmap)}.")
 
     if not 0 <= start < end <= 1:
         raise ValueError("Invalid Colormap start or end point.")

@@ -1,4 +1,5 @@
 """Unit tests for colormaps."""
+# TODO: refine result colormap with precise comparison (e.g. from colormap[start:end])
 
 
 from __future__ import annotations
@@ -7,7 +8,7 @@ import matplotlib
 import pytest
 from matplotlib.colors import Colormap
 
-from pymatviz.colormaps import combine_two_colormaps, truncate
+from pymatviz.colormaps import combine_two, truncate
 
 
 @pytest.mark.parametrize(
@@ -23,8 +24,8 @@ from pymatviz.colormaps import combine_two_colormaps, truncate
         ("Reds", "Blues_r", 0.25, 128, True),
     ],
 )
-def test_combine_two_colormaps(cmap1, cmap2, node, N, reverse):
-    result_cmap = combine_two_colormaps([cmap1, cmap2], node=node, N=N, reverse=reverse)
+def test_combine_two(cmap1, cmap2, node, N, reverse):
+    result_cmap = combine_two([cmap1, cmap2], node=node, N=N, reverse=reverse)
 
     assert isinstance(result_cmap, Colormap)
 
@@ -37,11 +38,11 @@ def test_combine_two_colormaps(cmap1, cmap2, node, N, reverse):
 )
 def test_combine_two_colormaps_invalid(cmap1, cmap2, node, N, reverse):
     with pytest.raises(TypeError) as excinfo:
-        combine_two_colormaps([cmap1, cmap2], node=node, N=N, reverse=reverse)
+        combine_two([cmap1, cmap2], node=node, N=N, reverse=reverse)
 
     assert (
         str(excinfo.value)
-        == "Invalid datatype in the list. It must contain either all Colormaps or strings."
+        == "Invalid datatype. Expect either all Colormaps or all strings."
     )
 
 

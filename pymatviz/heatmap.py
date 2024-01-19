@@ -23,11 +23,14 @@ def heatmap(
     """Create a heatmap from a 2D Pandas DataFrame.
 
     Parameters:
-    - df (pd.DataFrame): The input DataFrame containing the data to visualize. The index is used as tick labels.
+    - df (pd.DataFrame): The input DataFrame containing the data to visualize.
+        The index is used as tick labels.
     - cmap (Colormap): Matplotlib colormap to be used for coloring the heatmap.
     - add_cbar (bool, optional): Whether to add a colorbar. Default is True.
-    - cbar_label (str, optional): Label for the colorbar. Default is "Colorbar label".
-    - ax (plt.Axes, optional): Matplotlib Axes on which to plot the heatmap. If not provided, the current Axes is used.
+    - cbar_label (str, optional): Label for the colorbar.
+        Default is "Colorbar label".
+    - ax (plt.Axes, optional): Matplotlib Axes on which to plot the heatmap.
+        If not provided, the current Axes is used.
     - x_label (str, optional): Label for the x-axis. Default is "X label".
     - y_label (str, optional): Label for the y-axis. Default is "Y label".
 
