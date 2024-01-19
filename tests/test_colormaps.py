@@ -68,13 +68,13 @@ def test_truncate_type_error():
 
 def test_truncate_value_error_start_end():
     with pytest.raises(ValueError) as excinfo:
-        truncate('viridis', 0.8, 0.2, N=128)
+        truncate("viridis", 0.8, 0.2, N=128)
 
     assert "Invalid Colormap start or end point" in str(excinfo.value)
 
 
 def test_truncate_value_error_N():
     with pytest.raises(ValueError) as excinfo:
-        truncate('viridis', 0.2, 0.8, N=-128)
+        truncate("viridis", 0.2, 0.8, N=-128)
 
     assert "Invalid number of RGB quantization levels" in str(excinfo.value)
