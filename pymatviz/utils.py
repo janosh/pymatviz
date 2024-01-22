@@ -142,7 +142,7 @@ def annotate_bars(
         x_pos = rect.get_x() + rect.get_width() / 2 + h_offset
 
         if ax.get_yscale() == "log":
-            y_pos = y_pos + np.log(v_offset if v_offset > 1 else 1)
+            y_pos = y_pos + np.log(max(1, v_offset))
         else:
             y_pos = y_pos + v_offset
 
@@ -276,7 +276,13 @@ def annotate_metrics(
         ax.add_artist(text_box)
     elif isinstance(fig, go.Figure):
         defaults = dict(
-            xref="paper", yref="paper", x=0.02, y=0.96, showarrow=False, font_size=16
+            xref="paper",
+            yref="paper",
+            x=0.02,
+            y=0.96,
+            showarrow=False,
+            font_size=16,
+            align="left",
         )
 
         fig.add_annotation(text=text, **(defaults | kwargs))

@@ -123,3 +123,18 @@ def glass_formulas() -> list[str]:
         "Al10Co33B7 Al10Cr3Si7 Al10Fe23B17 Al10Fe27B13 Al10Fe31B9 Al10Fe33B7 "
         "Al10Ni23B17 Al10Ni27B13 Al10Ni29B11 Al10Ni31B9 Al10Ni33B7 Al11(CrSi2)3"
     ).split()
+
+
+@pytest.fixture()
+def df_float() -> pd.DataFrame:
+    rng = np.random.default_rng(0)
+    return pd.DataFrame(rng.random(size=(30, 5)), columns=[*"ABCDE"])
+
+
+@pytest.fixture()
+def df_mixed() -> pd.DataFrame:
+    rng = np.random.default_rng(0)
+    floats = rng.random(size=30)
+    bools = rng.choice([True, False], size=30)
+    strings = rng.choice([*"abcdef"], size=30)
+    return pd.DataFrame(dict(floats=floats, bools=bools, strings=strings))
