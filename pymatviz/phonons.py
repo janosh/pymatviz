@@ -137,10 +137,7 @@ def plot_phonon_bands(
                 f"Only {PhononBands.__name__} objects supported, got {type_name}"
             )
         branches = {pretty_sym_point(branch["name"]) for branch in bs.branches}
-        if common_branches:
-            common_branches = common_branches & branches
-        else:
-            common_branches = branches
+        common_branches = common_branches & branches if common_branches else branches
 
     if not common_branches:
         raise ValueError("No common branches found among the band structures.")

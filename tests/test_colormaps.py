@@ -25,7 +25,9 @@ from pymatviz.colormaps import combine_two, truncate
     ],
 )
 def test_combine_two(cmap1, cmap2, node, N, reverse):
-    result_cmap = combine_two([cmap1, cmap2], node=node, N=N, reverse=reverse)
+    result_cmap = combine_two(
+        [cmap1, cmap2], node=node, n_rgb_levels=N, reverse=reverse
+    )
 
     assert isinstance(result_cmap, Colormap)
 
@@ -38,7 +40,7 @@ def test_combine_two(cmap1, cmap2, node, N, reverse):
 )
 def test_combine_two_colormaps_invalid(cmap1, cmap2, node, N, reverse):
     with pytest.raises(TypeError) as excinfo:
-        combine_two([cmap1, cmap2], node=node, N=N, reverse=reverse)
+        combine_two([cmap1, cmap2], node=node, n_rgb_levels=N, reverse=reverse)
 
     assert (
         str(excinfo.value)
@@ -61,20 +63,20 @@ def test_truncate(cmap, start, end, N):
 
 def test_truncate_type_error():
     with pytest.raises(TypeError) as excinfo:
-        truncate(123, 0.2, 0.8, N=128)
+        truncate(123, 0.2, 0.8, n_rgb_levels=128)
 
     assert "Expect type Colormap or str for cmap" in str(excinfo.value)
 
 
 def test_truncate_value_error_start_end():
     with pytest.raises(ValueError) as excinfo:
-        truncate("viridis", 0.8, 0.2, N=128)
+        truncate("viridis", 0.8, 0.2, n_rgb_levels=128)
 
     assert "Invalid Colormap start or end point" in str(excinfo.value)
 
 
 def test_truncate_value_error_N():
     with pytest.raises(ValueError) as excinfo:
-        truncate("viridis", 0.2, 0.8, N=-128)
+        truncate("viridis", 0.2, 0.8, n_rgb_levels=-128)
 
     assert "Invalid number of RGB quantization levels" in str(excinfo.value)

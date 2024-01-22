@@ -1,4 +1,13 @@
-"""pymatviz: A Python package for visualizing materials data."""
+"""pymatviz: A Python package for visualizing materials data.
+
+Importing this module has side-effects that apply sensible (often, not always) global
+defaults settings for plotly and matplotlib like increasing font size, prettier
+axis labels (plotly only) and higher figure resolution (matplotlib only).
+
+To use it, simply import this module before generating any plots:
+
+import pymatviz
+"""
 
 from __future__ import annotations
 
@@ -119,15 +128,6 @@ px.defaults.labels |= {
 # to hide math loading MathJax message in bottom left corner of plotly PDFs
 # https://github.com/plotly/Kaleido/issues/122#issuecomment-994906924
 # use pio.kaleido.scope.mathjax = None
-
-
-# Importing this module has side-effects that apply sensible (often, not always) global
-# defaults settings for plotly and matplotlib like increasing font size, prettier
-# axis labels (plotly only) and higher figure resolution (matplotlib only).
-
-# To use it, simply import this module before generating any plots:
-
-# import pymatviz
 
 
 plt.rc("font", size=16)

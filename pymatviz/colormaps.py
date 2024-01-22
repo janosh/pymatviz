@@ -11,18 +11,18 @@ from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
 def combine_two(
     cmaps: list[Colormap | str],
     node: float = 0.5,
-    N: int = 256,
+    n_rgb_levels: int = 256,
     reverse: bool = False,
 ) -> Colormap:
-    """Create a composite matplotlib Colormap by combining two colormaps.
+    """Create a composite matplotlib Colormap by combining two color maps.
 
-    This function takes a list of two colormaps (or their names as strings)
+    This function takes a list of two color maps (or their names as strings)
     and creates a composite colormap by blending them together.
 
     Parameters:
-    - cmaps (List[Colormap | str]): A list containing two colormaps or
+    - cmaps (List[Colormap | str]): A list containing two color maps or
         their names as strings.
-    - node (float, optional): The blending point between the two colormaps,
+    - node (float, optional): The blending point between the two color maps,
         in range [0, 1]. Defaults to 0.5.
     - N (int, optional): The number of RGB quantization levels.
         Defaults to 256.
@@ -36,7 +36,7 @@ def combine_two(
         invalid colormap names.
 
     Note:
-    - The colormaps are combined from bottom to top by default.
+    - The color maps are combined from bottom to top by default.
 
     References:
     - https://matplotlib.org/stable/users/explain/colors/colormap-manipulation.html
@@ -47,34 +47,35 @@ def combine_two(
             node=0.3, N=128, reverse=True)
 
     Todo:
-    - Generalize to a list of Colormaps.
+    - Generalize to a list of color maps.
     """
     # Check cmap datatype and convert to List[Colormap]
     if all(isinstance(cmap, str) for cmap in cmaps):
         cmaps = [matplotlib.colormaps[s] for s in cmaps]
     elif any(not isinstance(cmap, Colormap) for cmap in cmaps):
-        raise TypeError("Invalid datatype. Expect either all Colormaps or all strings.")
+        raise TypeError(
+            "Invalid datatype. Expect either all color maps or all strings."
+        )
 
     # Sample two source colormaps
-    cmap_0 = cmaps[0](np.linspace(0, 1, int(N * node)))
-    cmap_1 = cmaps[1](np.linspace(0, 1, N - int(N * node)))
+    cmap_0 = cmaps[0](np.linspace(0, 1, int(n_rgb_levels * node)))
+    cmap_1 = cmaps[1](np.linspace(0, 1, n_rgb_levels - int(n_rgb_levels * node)))
 
-    # Merge Colormaps
+    # Merge color maps
     if reverse:
         return LinearSegmentedColormap.from_list(
             "composite_cmap_r", np.vstack((cmap_0, cmap_1))
         ).reversed()
-    else:
-        return LinearSegmentedColormap.from_list(
-            "composite_cmap", np.vstack((cmap_0, cmap_1))
-        )
+    return LinearSegmentedColormap.from_list(
+        "composite_cmap", np.vstack((cmap_0, cmap_1))
+    )
 
 
 def truncate(
     cmap: str | Colormap,
     start: float,
     end: float,
-    N: int = 256,
+    n_rgb_levels: int = 256,
 ) -> Colormap:
     """Truncate a matplotlib Colormap to a specified range.
 
@@ -116,7 +117,7 @@ def truncate(
     if not 0 <= start < end <= 1:
         raise ValueError("Invalid Colormap start or end point.")
 
-    if not isinstance(N, int) or N <= 0:
-        raise ValueError(f"Invalid number of RGB quantization levels {N}.")
+    if not isinstance(n_rgb_levels, int) or n_rgb_levels <= 0:
+        raise ValueError(f"Invalid number of RGB quantization levels {n_rgb_levels}.")
 
-    return ListedColormap(cmap(np.linspace(start, end, N)))
+    return ListedColormap(cmap(np.linspace(start, end, n_rgb_levels)))

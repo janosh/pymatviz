@@ -111,11 +111,11 @@ def save_fig(
             # style plotly figures from within Svelte files
             with open(path, encoding="utf-8") as file:
                 text = file.read().replace("<div>", "<div {...$$props}>", 1)
-            with open(path, "w", encoding="utf-8") as file:
+            with open(path, mode="w", encoding="utf-8") as file:
                 # add trailing newline for pre-commit end-of-file commit hook
                 file.write(text + "\n")
         if style:
-            with open(path, "r+", encoding="utf-8") as file:
+            with open(path, mode="r+", encoding="utf-8") as file:
                 # replace first '<div ' with '<div {style=} '
                 file.write(file.read().replace("<div ", f"<div {style=} ", 1))
     else:
@@ -354,7 +354,7 @@ def df_to_html_table(
     if styles is not None:
         # insert styles at end of closing </style> tag so they override default styles
         html = html.replace("</style>", f"{styles}\n</style>")
-    with open(file_path, "w", encoding="utf-8") as file:
+    with open(file_path, mode="w", encoding="utf-8") as file:
         file.write(html)
 
 
