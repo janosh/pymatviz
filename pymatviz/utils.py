@@ -176,7 +176,10 @@ def pretty_metric_label(key: str, backend: Literal["matplotlib", "plotly"]) -> s
 
     symbol_mapping = {
         "R2": {"matplotlib": "$R^2$", "plotly": "R<sup>2</sup>"},
-        "R2_adj": {"matplotlib": "$R^2_{adj}$", "plotly": "R<sup>2</sup><sub>adj</sub>"},
+        "R2_adj": {
+            "matplotlib": "$R^2_{adj}$",
+            "plotly": "R<sup>2</sup><sub>adj</sub>",
+        },
     }
 
     return symbol_mapping.get(key, {}).get(backend, key)

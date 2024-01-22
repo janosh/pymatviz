@@ -356,17 +356,17 @@ composite_cmap = combine_two([cmap_top, cmap_bottom])
 
 # Load mixing enthalpy datasheet for heatmap
 heatmap_df = pd.read_csv(
-    f"{TEST_FILES}/mixing-enthalpy.csv.gz",
-    compression='gzip',
-    index_col=0
-    )
+    f"{TEST_FILES}/mixing-enthalpy.csv.gz", compression="gzip", index_col=0
+)
 
 fig = heatmap(
-    heatmap_df, composite_cmap,
+    heatmap_df,
+    composite_cmap,
     cbar_label="Mixing Enthalpy (eV)",
-    x_label="Elements", y_label="Elements"
-    )
+    x_label="Elements",
+    y_label="Elements",
+)
 
-fig.tick_params(axis='both', labelsize=11)
+fig.tick_params(axis="both", labelsize=11)
 
 save_and_compress_svg(fig, "heatmap-mixing-enthalpy")
