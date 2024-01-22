@@ -6,7 +6,6 @@ import urllib.request
 from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
 
-import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
@@ -22,6 +21,8 @@ from pymatviz.io import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pandas as pd
 
 
 @pytest.mark.parametrize("fig", [go.Figure(), plt.figure()])
@@ -108,6 +109,7 @@ def test_df_to_pdf(
     styler_css: bool,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    df_float: pd.DataFrame,
 ) -> None:
     try:
         import weasyprint
@@ -118,12 +120,10 @@ def test_df_to_pdf(
     except ImportError:
         pdfCropMargins = None
 
-    # Create a test DataFrame and Styler object
-    df: pd.DataFrame = pd._testing.makeDataFrame()  # random data  # noqa: SLF001
     file_path = tmp_path / "test_df_to.pdf"
 
     kwds = dict(
-        styler=df.style,
+        styler=df_float.style,
         file_path=file_path,
         crop=crop,
         size=size,
@@ -203,9 +203,8 @@ def test_df_to_html_table(
     styles: str | None,
     inline_props: str,
     styler_css: bool | dict[str, str],
+    df_mixed: pd.DataFrame,
 ) -> None:
-    df_mixed = pd._testing.makeMixedDataFrame()  # noqa: SLF001
-
     file_path = tmp_path / "test_df.svelte"
 
     df_to_html_table(
@@ -218,17 +217,17 @@ def test_df_to_html_table(
     )
 
     assert file_path.is_file()
-    content = file_path.read_text()
+    html_text = file_path.read_text()
 
     if script is not None:
-        assert script.split("<table")[0] in content, content
+        assert script.split("<table")[0] in html_text, html_text
     if styles is not None:
-        assert f"{styles}\n</style>" in content
+        assert f"{styles}\n</style>" in html_text
     if inline_props:
-        assert inline_props in content
+        assert inline_props in html_text
 
     # check file contains original dataframe value
-    assert str(df_mixed.iloc[0, 0]) in content
+    assert str(df_mixed.iloc[0, 0].round(6)) in html_text
 
 
 def test_tqdm_download(
