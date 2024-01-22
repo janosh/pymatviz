@@ -169,20 +169,17 @@ def annotate_bars(
             ) from exc
 
 
-metric_labels_mpl = {"R2": "$R^2$", "R2_adj": "$R^2_{adj}$"}
-metric_labels_plotly = {"R2": "R<sup>2</sup>", "R2_adj": "R<sup>2</sup><sub>adj</sub>"}
-
-
 def pretty_metric_label(key: str, backend: Literal["matplotlib", "plotly"]) -> str:
     """Map metric keys to their pretty-printed labels."""
     if backend not in VALID_BACKENDS:
         raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
 
-    if backend == "plotly":
-        label = metric_labels_plotly.get(key, key)
-    else:
-        label = metric_labels_mpl.get(key, key)
-    return label
+    symbol_mapping = {
+        "R2": {"matplotlib": "$R^2$", "plotly": "R<sup>2</sup>"},
+        "R2_adj": {"matplotlib": "$R^2_{adj}$", "plotly": "R<sup>2</sup><sub>adj</sub>"},
+    }
+
+    return symbol_mapping.get(key, {}).get(backend, key)
 
 
 def annotate_metrics(
