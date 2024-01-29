@@ -1,6 +1,7 @@
 # %%
 import json
 
+import cmasher as cmr
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -11,7 +12,7 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 from pymatgen.phonon.dos import PhononDos
 from tqdm import tqdm
 
-from pymatviz.colormaps import combine_two, truncate
+from pymatviz.colormaps import combine_two
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.heatmap import heatmap
@@ -349,8 +350,8 @@ save_and_compress_svg(fig, "phonon-bands-and-dos-mp-2758")
 
 # %% Plot heatmap (with mixing enthalpy data)
 # Generate custom colormap
-cmap_top = truncate("Reds_r", 0.25, 0.75)
-cmap_bottom = truncate("Blues", 0.25, 0.75)
+cmap_top = cmr.get_sub_cmap("Reds_r", 0.25, 0.75)
+cmap_bottom = cmr.get_sub_cmap("Blues", 0.25, 0.75)
 
 composite_cmap = combine_two([cmap_top, cmap_bottom])
 
