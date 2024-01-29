@@ -349,17 +349,21 @@ save_and_compress_svg(fig, "phonon-bands-and-dos-mp-2758")
 
 
 # %% Plot heatmap (with mixing enthalpy data)
-# Generate custom colormap
-cmap_top = cmr.get_sub_cmap("Reds_r", 0.25, 0.75)
-cmap_bottom = cmr.get_sub_cmap("Blues", 0.25, 0.75)
-
-composite_cmap = combine_two([cmap_top, cmap_bottom])
-
 # Load mixing enthalpy datasheet for heatmap
 heatmap_df = pd.read_csv(
     f"{TEST_FILES}/mixing-enthalpy.csv.gz", compression="gzip", index_col=0
 )
+vmin = heatmap_df.values.min()
+vmax = heatmap_df.values.max()
 
+# Generate custom colormap
+cmap_top = cmr.get_sub_cmap("Blues_r", 0.25, 0.75)
+cmap_bottom = cmr.get_sub_cmap("Reds", 0.25, 0.75)
+
+# Make sure node is at zero
+composite_cmap = combine_two([cmap_top, cmap_bottom], node=-vmin / (vmax-vmin))
+
+# Generate heatmap
 fig = heatmap(
     heatmap_df,
     composite_cmap,
@@ -369,5 +373,7 @@ fig = heatmap(
 )
 
 fig.tick_params(axis="both", labelsize=11)
-
 save_and_compress_svg(fig, "heatmap-mixing-enthalpy")
+
+
+# %%
