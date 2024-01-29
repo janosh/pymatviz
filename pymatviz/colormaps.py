@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import matplotlib
 import numpy as np
-from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
+from matplotlib.colors import Colormap, LinearSegmentedColormap
 
 
 def combine_two(

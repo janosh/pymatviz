@@ -8,7 +8,7 @@ import matplotlib
 import pytest
 from matplotlib.colors import Colormap
 
-from pymatviz.colormaps import combine_two, truncate
+from pymatviz.colormaps import combine_two
 
 
 @pytest.mark.parametrize(
