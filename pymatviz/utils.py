@@ -4,7 +4,7 @@ import ast
 from contextlib import contextmanager
 from functools import partial
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,8 +28,8 @@ if TYPE_CHECKING:
 PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
 TEST_FILES = f"{ROOT}/tests/files"
-VALID_BACKENDS = ("matplotlib", "plotly")
 Backend = Literal["matplotlib", "plotly"]
+VALID_BACKENDS = mpl_key, plotly_key = get_args(Backend)
 
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
@@ -142,7 +142,7 @@ def annotate_bars(
         x_pos = rect.get_x() + rect.get_width() / 2 + h_offset
 
         if ax.get_yscale() == "log":
-            y_pos = y_pos + np.log(v_offset if v_offset > 1 else 1)
+            y_pos = y_pos + np.log(max(1, v_offset))
         else:
             y_pos = y_pos + v_offset
 
@@ -169,17 +169,14 @@ def annotate_bars(
             ) from exc
 
 
-def pretty_metric_label(key: str, backend: Literal["matplotlib", "plotly"]) -> str:
-    """Map metric keys to their pretty-printed labels."""
+def pretty_metric_label(key: str, backend: Backend) -> str:
+    """Map metric keys to their pretty labels."""
     if backend not in VALID_BACKENDS:
         raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
 
     symbol_mapping = {
-        "R2": {"matplotlib": "$R^2$", "plotly": "R<sup>2</sup>"},
-        "R2_adj": {
-            "matplotlib": "$R^2_{adj}$",
-            "plotly": "R<sup>2</sup><sub>adj</sub>",
-        },
+        "R2": {mpl_key: "$R^2$", plotly_key: "R<sup>2</sup>"},
+        "R2_adj": {mpl_key: "$R^2_{adj}$", plotly_key: "R<sup>2</sup><sub>adj</sub>"},
     }
 
     return symbol_mapping.get(key, {}).get(backend, key)

@@ -37,7 +37,7 @@ from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import TEST_FILES, df_ptable
 
 
-# %% Initiate canvas and load test data
+# %% configure matplotlib and load test data
 plt.rc("font", size=14)
 plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("axes", titlesize=16, titleweight="bold")
@@ -192,7 +192,7 @@ ax = elements_hist(df_expt_gap.composition, keep_top=15, v_offset=1)
 save_and_compress_svg(ax, "hist-elemental-prevalence")
 
 
-# %% Spacegroup Histograms
+# %% Spacegroup histograms
 for backend in ("plotly", "matplotlib"):
     fig = spacegroup_hist(df_phonons.spg_num, backend=backend)  # type: ignore[arg-type]
     save_and_compress_svg(fig, f"spg-num-hist-{backend}")
@@ -245,10 +245,10 @@ ax = marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
 save_and_compress_svg(ax, "marchenko-pastur-rank-deficient")
 
 
-# %% Plot Matbench phonons structures
+# %% Plot Matbench phonon structures
 n_rows, n_cols = 3, 4
 fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows))
-title = f"{len(axs.flat)} Matbench Phonons Structures"
+title = f"{len(axs.flat)} Matbench phonon structures"
 fig.suptitle(title, fontweight="bold", fontsize=20)
 
 for row, ax in zip(df_phonons.itertuples(), axs.flat):
