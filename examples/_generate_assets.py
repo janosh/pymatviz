@@ -1,7 +1,6 @@
 # %%
 import json
 
-import cmasher as cmr
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -12,10 +11,8 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 from pymatgen.phonon.dos import PhononDos
 from tqdm import tqdm
 
-from pymatviz.colormaps import combine_two
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cumulative_error, cumulative_residual
-from pymatviz.heatmap import heatmap
 from pymatviz.histograms import elements_hist, spacegroup_hist, true_pred_hist
 from pymatviz.io import save_and_compress_svg
 from pymatviz.parity import (
@@ -346,31 +343,3 @@ fig = plot_phonon_bands_and_dos(bands, doses)
 fig.layout.title = dict(text="Phonon Bands and DOS of Sr4Se4 (mp-2758)", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=40)
 save_and_compress_svg(fig, "phonon-bands-and-dos-mp-2758")
-
-
-# %% Plot heatmap (with mixing enthalpy data)
-# Load mixing enthalpy datasheet for heatmap
-heatmap_df = pd.read_csv(
-    f"{TEST_FILES}/mixing-enthalpy.csv.gz", compression="gzip", index_col=0
-)
-vmin = heatmap_df.values.min()
-vmax = heatmap_df.values.max()
-
-# Generate custom colormap
-cmap_top = cmr.get_sub_cmap("Blues_r", 0.25, 0.75)
-cmap_bottom = cmr.get_sub_cmap("Reds", 0.25, 0.75)
-
-# Make sure node is at zero
-composite_cmap = combine_two([cmap_top, cmap_bottom], node=-vmin / (vmax - vmin))
-
-# Generate heatmap
-fig = heatmap(
-    heatmap_df,
-    composite_cmap,
-    cbar_label="Mixing Enthalpy (eV)",
-    x_label="Elements",
-    y_label="Elements",
-)
-
-fig.tick_params(axis="both", labelsize=11)
-save_and_compress_svg(fig, "heatmap-mixing-enthalpy")
