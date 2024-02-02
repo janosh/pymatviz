@@ -303,9 +303,7 @@ CrystalSystem = Literal[
 def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
     if not isinstance(spg, int):
-        raise TypeError(
-            f"Expect integer for space group number, got {type(spg).__name__}"
-        )
+        raise TypeError(f"Expect integer space group number, got {spg=}")
 
     if not (1 <= spg <= 230):
         raise ValueError(f"Invalid space group number {spg}, must be 1 <= num <= 230")
