@@ -153,13 +153,6 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 | :------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
 |                   ![marchenko-pastur][marchenko-pastur]                    |           ![marchenko-pastur-significant-eval][marchenko-pastur-significant-eval]           |
 
-## Heatmap with Custom Colormap
-
-See [`pymatviz/heatmap.py`](pymatviz/heatmap.py).
-| [`heatmap(df, cmap)`](pymatviz/heatmap.py) |
-| :----------------------------------------: |
-|            ![heatmap][heatmap]             |
-
 ## 📖 &thinsp; How to cite `pymatviz`
 
 You can cite the [Zenodo record](https://zenodo.org/badge/latestdoi/340898532) using the following BibTeX entry:
