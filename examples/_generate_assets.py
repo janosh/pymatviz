@@ -43,7 +43,7 @@ from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import TEST_FILES, df_ptable
 
 
-# %%
+# %% configure matplotlib and load test data
 plt.rc("font", size=14)
 plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("axes", titlesize=16, titleweight="bold")
@@ -206,7 +206,7 @@ ax = elements_hist(df_expt_gap.composition, keep_top=15, v_offset=1)
 save_and_compress_svg(ax, "hist-elemental-prevalence")
 
 
-# %%
+# %% Spacegroup histograms
 for backend in ("plotly", "matplotlib"):
     fig = spacegroup_hist(df_phonons.spg_num, backend=backend)  # type: ignore[arg-type]
     save_and_compress_svg(fig, f"spg-num-hist-{backend}")
@@ -259,10 +259,10 @@ ax = marchenko_pastur(corr_mat_rank_deficient, gamma=n_cols / n_rows)
 save_and_compress_svg(ax, "marchenko-pastur-rank-deficient")
 
 
-# %%
+# %% Plot Matbench phonon structures
 n_rows, n_cols = 3, 4
 fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows))
-title = f"{len(axs.flat)} Matbench Phonons Structures"
+title = f"{len(axs.flat)} Matbench phonon structures"
 fig.suptitle(title, fontweight="bold", fontsize=20)
 
 for row, ax in zip(df_phonons.itertuples(), axs.flat):
@@ -280,14 +280,12 @@ fig.show()
 save_and_compress_svg(fig, "matbench-phonons-structures-2d")
 
 
-# %% plot some disordered structures in 2d
+# %% Plot some disordered structures in 2D
 disordered_structs = {
     mp_id: MPRester().get_structure_by_material_id(mp_id, conventional_unit_cell=True)
     for mp_id in ["mp-19017", "mp-12712"]
 }
 
-
-# %%
 for mp_id, struct in disordered_structs.items():
     for site in struct:  # disorder structures in-place
         if "Fe" in site.species:
@@ -330,7 +328,7 @@ fig.add_annotation(code_anno)
 save_and_compress_svg(fig, "sankey-from-2-df-cols-randints")
 
 
-# %% plot phonon bands and DOS
+# %% Plot phonon bands and DOS
 with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-pbe.json.lzma") as file:
     dft_dct = json.loads(file.read())
 with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:

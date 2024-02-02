@@ -185,9 +185,7 @@ def get_std_decay(y_true: ArrayLike, y_pred: ArrayLike, y_std: ArrayLike) -> Arr
     # increasing count of the number of samples in each element of cumsum()
     n_inc = range(1, len(abs_err) + 1)
 
-    decay_by_std = abs_err[y_std_sort].cumsum() / n_inc
-
-    return decay_by_std  # noqa: RET504
+    return abs_err[y_std_sort].cumsum() / n_inc
 
 
 def error_decay_with_uncert(
