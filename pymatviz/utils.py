@@ -302,7 +302,8 @@ CrystalSystem = Literal[
 
 def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
-    if not isinstance(spg, int):
+    # ensure integer or float with no decimal part
+    if not (isinstance(spg, (int, float)) and spg == int(spg)):
         raise TypeError(f"Expect integer space group number, got {spg=}")
 
     if not (1 <= spg <= 230):

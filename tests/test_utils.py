@@ -134,11 +134,10 @@ def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
         crystal_sys_from_spg_num(spg)
 
 
-@pytest.mark.parametrize("spg", [1.0, "3"])
+@pytest.mark.parametrize("spg", [1.2, "3"])
 def test_crystal_sys_from_spg_num_typeerror(spg: int) -> None:
     with pytest.raises(
-        TypeError,
-        match=f"Expect integer for space group number, got {type(spg).__name__}",
+        TypeError, match=f"Expect integer space group number, got {spg=}"
     ):
         crystal_sys_from_spg_num(spg)
 
