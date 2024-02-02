@@ -273,7 +273,13 @@ def annotate_metrics(
         ax.add_artist(text_box)
     elif isinstance(fig, go.Figure):
         defaults = dict(
-            xref="paper", yref="paper", x=0.02, y=0.96, showarrow=False, font_size=16
+            xref="paper",
+            yref="paper",
+            x=0.02,
+            y=0.96,
+            showarrow=False,
+            font_size=16,
+            align="left",
         )
 
         fig.add_annotation(text=text, **(defaults | kwargs))

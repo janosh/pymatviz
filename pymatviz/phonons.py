@@ -68,10 +68,13 @@ def get_band_xaxis_ticks(bs: PhononBands) -> tuple[list[float], list[str]]:
     return ticks_x_pos, tick_labels
 
 
+YMin = Union[float, Literal["y_min"]]
+YMax = Union[float, Literal["y_max"]]
+
+
 @no_type_check
 def _shaded_range(
-    fig: go.Figure,
-    shaded_ys: dict[tuple[str | float, str | float], dict[str, Any]] | bool | None,
+    fig: go.Figure, shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None
 ) -> go.Figure:
     if shaded_ys is False:
         return fig
@@ -81,9 +84,9 @@ def _shaded_range(
 
     shaded_ys = shaded_ys or {(0, "y_min"): dict(fillcolor="gray", opacity=0.07)}
     for (y0, y1), kwds in shaded_ys.items():
-        for y in (y0, y1):
-            if isinstance(y, str) and y not in y_lim:
-                raise ValueError(f"Invalid {y=}, must be one of {[*y_lim]}")
+        for y_val in (y0, y1):
+            if isinstance(y_val, str) and y_val not in y_lim:
+                raise ValueError(f"Invalid {y_val=}, must be one of {[*y_lim]}")
         fig.add_hrect(
             y0=y_lim.get(y0, y0), y1=y_lim.get(y1, y1), **shade_defaults | kwds
         )
@@ -94,9 +97,7 @@ def _shaded_range(
 def plot_phonon_bands(
     band_structs: PhononBands | dict[str, PhononBands],
     line_kwds: dict[str, Any] | None = None,
-    shaded_ys: dict[tuple[str | float, str | float], dict[str, Any]]
-    | bool
-    | None = None,
+    shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot single or multiple pymatgen band structures using Plotly, focusing on the
@@ -386,7 +387,11 @@ def plot_phonon_bands_and_dos(
     fig = make_subplots(rows=1, cols=2, **subplot_defaults | (subplot_kwargs or {}))
 
     # plot band structure
-    bands_fig = plot_phonon_bands(band_structs, **kwargs | (bands_kwargs or {}))
+    bands_kwargs = bands_kwargs or {}
+    shaded_ys = bands_kwargs.pop("shaded_ys", None)
+    # disable shaded_ys for bands, would cause double shading due to _shaded_range below
+    bands_kwargs["shaded_ys"] = False
+    bands_fig = plot_phonon_bands(band_structs, **kwargs | bands_kwargs)
     # import band structure layout to main figure
     fig.update_layout(bands_fig.layout)
 
@@ -417,5 +422,7 @@ def plot_phonon_bands_and_dos(
 
     # set y-axis range to match band structure
     fig.layout.yaxis.update(range=bands_fig.layout.yaxis.range)
+
+    _shaded_range(fig, shaded_ys)
 
     return fig

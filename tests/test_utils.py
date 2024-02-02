@@ -248,7 +248,7 @@ def test_df_to_arrays_strict(strict: bool) -> None:
     [
         (["A"], [], 2, [2], True, "", 2),
         (["A", "B"], [], 2, [2, 2], True, "kde", 4),
-        (["A", "B"], [], [2, 3], [2, 3], False, "kde", 5),
+        (["A", "B"], [], [2, 3], [2, 3], False, "kde", 6),
         (["A"], ["B"], 2, [2], False, "", 30),
     ],
 )
@@ -260,13 +260,13 @@ def test_bin_df_cols(
     verbose: bool,
     kde_col: str,
     expected_n_rows: int,
+    df_float: pd.DataFrame,
 ) -> None:
-    df: pd.DataFrame = pd._testing.makeDataFrame()  # random data  # noqa: SLF001
     idx_col = "index"
-    df.index.name = idx_col
+    df_float.index.name = idx_col
     bin_counts_col = "bin_counts"
     df_binned = bin_df_cols(
-        df,
+        df_float,
         bin_by_cols,
         group_by_cols,
         n_bins,
@@ -276,13 +276,13 @@ def test_bin_df_cols(
     )
 
     # ensure binned DataFrame has a minimum set of expected columns
-    expected_cols = {bin_counts_col, *df, *(f"{col}_bins" for col in bin_by_cols)}
+    expected_cols = {bin_counts_col, *df_float, *(f"{col}_bins" for col in bin_by_cols)}
     assert {*df_binned} >= expected_cols
     assert len(df_binned) == expected_n_rows
 
     # validate the number of unique bins for each binned column
     df_grouped = (
-        df.reset_index(names=idx_col)
+        df_float.reset_index(names=idx_col)
         .groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
         .first()
         .dropna()
