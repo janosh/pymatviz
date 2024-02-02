@@ -55,7 +55,7 @@ def spacegroup_sunburst(
         df_spg_counts["crystal_sys"] = [
             crystal_sys_from_spg_num(x) for x in df_spg_counts.spacegroup
         ]
-    except ValueError:  # column must be strings of space group symbols
+    except (ValueError, TypeError):  # column must be strings of space group symbols
         df_spg_counts["crystal_sys"] = [
             SpaceGroup(x).crystal_system for x in df_spg_counts.spacegroup
         ]

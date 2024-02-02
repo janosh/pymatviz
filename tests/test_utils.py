@@ -127,7 +127,18 @@ def test_crystal_sys_from_spg_num(spg_num: int, crystal_sys: CrystalSystem) -> N
 
 @pytest.mark.parametrize("spg", [-1, 0, 231])
 def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
-    with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
+    with pytest.raises(
+        ValueError,
+        match=f"Invalid space group number {spg}, must be 1 <= num <= 230",
+    ):
+        crystal_sys_from_spg_num(spg)
+
+
+@pytest.mark.parametrize("spg", [1.2, "3"])
+def test_crystal_sys_from_spg_num_typeerror(spg: int) -> None:
+    with pytest.raises(
+        TypeError, match=f"Expect integer space group number, got {spg=}"
+    ):
         crystal_sys_from_spg_num(spg)
 
 

@@ -80,7 +80,7 @@ def test_count_elements_by_atomic_nums() -> None:
 @pytest.mark.parametrize("range_limits", [(-1, 10), (100, 200)])
 def test_count_elements_bad_atomic_nums(range_limits: tuple[int, int]) -> None:
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
-        count_elements({idx: 0 for idx in range(*range_limits)})
+        count_elements(dict.fromkeys(range(*range_limits), 0))
 
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
         # string and integer keys for atomic numbers should be handled equally

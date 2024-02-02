@@ -4,7 +4,7 @@ import ast
 from contextlib import contextmanager
 from functools import partial
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,8 +28,8 @@ if TYPE_CHECKING:
 PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
 TEST_FILES = f"{ROOT}/tests/files"
-VALID_BACKENDS = ("matplotlib", "plotly")
 Backend = Literal["matplotlib", "plotly"]
+VALID_BACKENDS = mpl_key, plotly_key = get_args(Backend)
 
 
 df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
@@ -169,20 +169,17 @@ def annotate_bars(
             ) from exc
 
 
-metric_labels_mpl = {"R2": "$R^2$", "R2_adj": "$R^2_{adj}$"}
-metric_labels_plotly = {"R2": "R<sup>2</sup>", "R2_adj": "R<sup>2</sup><sub>adj</sub>"}
-
-
-def pretty_metric_label(key: str, backend: Literal["matplotlib", "plotly"]) -> str:
-    """Map metric keys to their pretty-printed labels."""
+def pretty_metric_label(key: str, backend: Backend) -> str:
+    """Map metric keys to their pretty labels."""
     if backend not in VALID_BACKENDS:
         raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
 
-    if backend == "plotly":
-        label = metric_labels_plotly.get(key, key)
-    else:
-        label = metric_labels_mpl.get(key, key)
-    return label
+    symbol_mapping = {
+        "R2": {mpl_key: "$R^2$", plotly_key: "R<sup>2</sup>"},
+        "R2_adj": {mpl_key: "$R^2_{adj}$", plotly_key: "R<sup>2</sup><sub>adj</sub>"},
+    }
+
+    return symbol_mapping.get(key, {}).get(backend, key)
 
 
 def annotate_metrics(
@@ -305,21 +302,24 @@ CrystalSystem = Literal[
 
 def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
-    # not using isinstance(n, int) to allow 0-decimal floats
-    if not (spg == int(spg) and 0 < spg < 231):
-        raise ValueError(f"Invalid space group {spg}")
+    # ensure integer or float with no decimal part
+    if not (isinstance(spg, (int, float)) and spg == int(spg)):
+        raise TypeError(f"Expect integer space group number, got {spg=}")
 
-    if 0 < spg < 3:
+    if not (1 <= spg <= 230):
+        raise ValueError(f"Invalid space group number {spg}, must be 1 <= num <= 230")
+
+    if 1 <= spg <= 2:
         return "triclinic"
-    if spg < 16:
+    if spg <= 15:
         return "monoclinic"
-    if spg < 75:
+    if spg <= 74:
         return "orthorhombic"
-    if spg < 143:
+    if spg <= 142:
         return "tetragonal"
-    if spg < 168:
+    if spg <= 167:
         return "trigonal"
-    if spg < 195:
+    if spg <= 194:
         return "hexagonal"
     return "cubic"
 
