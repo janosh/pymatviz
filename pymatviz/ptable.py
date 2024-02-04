@@ -1089,7 +1089,7 @@ def ptable_scatters(
                     **(scatter_kwargs or {}),
                 )
 
-            ax.tick_params(labelsize=8, direction="in")
+            ax.tick_params(labelsize=8, direction="out")
 
         # Disable ticks for elements without data
         else:
