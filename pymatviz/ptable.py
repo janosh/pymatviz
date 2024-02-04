@@ -173,18 +173,18 @@ def ptable_heatmap(
     Args:
         values (dict[str, int | float] | pd.Series | list[str]): Map from element
             symbols to heatmap values or iterable of composition strings/objects.
-        log (bool | Normalize, optional): Whether color map scale is log or linear. Can
+        log (bool | Normalize, optional): Whether colormap scale is log or linear. Can
             also take any matplotlib.colors.Normalize subclass such as SymLogNorm as
             custom color scale. Defaults to False.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
         count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
-        cbar_title (str, optional): Color bar title. Defaults to "Element Count".
-        cbar_range (tuple[float | None, float | None], optional): Color bar range.
-            Can be used e.g. to create multiple plots with identical color bars for
+        cbar_title (str, optional): Colorbar title. Defaults to "Element Count".
+        cbar_range (tuple[float | None, float | None], optional): Colorbar range.
+            Can be used e.g. to create multiple plots with identical colorbars for
             visual comparison. Defaults to automatic based on data range.
-        cbar_coords (tuple[float, float, float, float], optional): Color bar position
+        cbar_coords (tuple[float, float, float, float], optional): Colorbar position
             and size: [x, y, width, height] anchored at lower left corner. Defaults to
             (0.18, 0.8, 0.42, 0.05).
         cbar_kwargs (dict[str, Any], optional): Additional keyword arguments passed to
@@ -192,7 +192,7 @@ def ptable_heatmap(
         colorscale (str, optional): Matplotlib colormap name to use. Defaults to
             "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
             for available options.
-        show_scale (bool, optional): Whether to show the color bar. Defaults to True.
+        show_scale (bool, optional): Whether to show the colorbar. Defaults to True.
         show_values (bool, optional): Whether to show the heatmap values in each tile.
             Defaults to True.
         infty_color: Color to use for elements with value infinity. Defaults to
@@ -229,7 +229,7 @@ def ptable_heatmap(
         tile_size (float | tuple[float, float]): Size of each tile in the periodic
             table as a fraction of available space before touching neighboring tiles.
             1 or (1, 1) means no gaps between tiles. Defaults to 0.9.
-        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
+        cbar_coords (tuple[float, float, float, float]): Colorbar position and size:
             [x, y, width, height] anchored at lower left corner of the bar. Defaults to
             (0.18, 0.8, 0.42, 0.05).
         rare_earth_voffset (float): Vertical offset for lanthanides and actinides
@@ -375,7 +375,7 @@ def ptable_heatmap(
         ax.add_patch(rect)
 
     if heat_mode is not None and show_scale:
-        # color bar position and size: [x, y, width, height]
+        # colorbar position and size: [x, y, width, height]
         # anchored at lower left corner
         cbar_ax = ax.inset_axes(cbar_coords, transform=ax.transAxes)
         # format major and minor ticks
@@ -444,7 +444,7 @@ def ptable_heatmap_ratio(
         count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
-        cbar_title (str): Title for the color bar. Defaults to "Element Ratio".
+        cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator. Defaults to
             ('#eff', 'gray: not in 1st list').
@@ -553,10 +553,10 @@ def ptable_heatmap_plotly(
             allowed. Defaults to automatic font size based on plot size. Element symbols
             will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
-        color_bar (dict[str, Any]): Plotly color bar properties documented at
+        color_bar (dict[str, Any]): Plotly colorbar properties documented at
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to
             dict(orientation="h"). Commonly used keys are:
-            - title: color bar title
+            - title: colorbar title
             - titleside: "top" | "bottom" | "right" | "left"
             - tickmode: "array" | "auto" | "linear" | "log" | "date" | "category"
             - tickvals: list of tick values
@@ -564,7 +564,7 @@ def ptable_heatmap_plotly(
             - tickformat: f-string format option for tick labels
             - len: fraction of plot height or width depending on orientation
             - thickness: fraction of plot height or width depending on orientation
-        cscale_range (tuple[float | None, float | None]): Color bar range. Defaults to
+        cscale_range (tuple[float | None, float | None]): Colorbar range. Defaults to
             (None, None) meaning the range is automatically determined from the data.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
             oxygen overpowers everything, you can do exclude_elements=['O'].
@@ -603,7 +603,7 @@ def ptable_heatmap_plotly(
 
     color_bar = color_bar or {}
     color_bar.setdefault("orientation", "h")
-    # if values is a series with a name, use it as the color bar title
+    # if values is a series with a name, use it as the colorbar title
     if isinstance(values, pd.Series) and values.name:
         color_bar.setdefault("title", values.name)
 
@@ -818,7 +818,7 @@ def ptable_hists(
     kwargs.setdefault("figsize", (0.75 * n_columns, 0.75 * n_rows))
     fig, axes = plt.subplots(n_rows, n_columns, **kwargs)
 
-    # Use series name as colorbar title if available and no title was passed
+    # Use series name as colorbar title if available when no title was passed
     if isinstance(data, pd.Series) and cbar_title == "Values" and data.name:
         cbar_title = data.name
         data = data.to_dict()
@@ -956,7 +956,7 @@ def ptable_scatters(
     return_axes: bool = False,
     **kwargs: Any,
 ) -> plt.Figure:
-    """Plot scatter plots nested inside a periodic table.
+    """Plot scatter plots for each element nested inside a periodic table.
 
     Args:
         data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from
@@ -1009,7 +1009,7 @@ def ptable_scatters(
     kwargs.setdefault("figsize", (0.75 * n_columns, 0.75 * n_rows))
     fig, axes = plt.subplots(n_rows, n_columns, **kwargs)
 
-    # Use series name as colorbar title if available and no title was passed
+    # Use series name as colorbar title if available when no title was passed
     if isinstance(data, pd.Series) and cbar_title == "Values" and data.name:
         cbar_title = data.name
         data = data.to_dict()
