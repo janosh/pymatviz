@@ -762,46 +762,51 @@ def ptable_hists(
     return_axes: bool = False,
     **kwargs: Any,
 ) -> plt.Figure:
-    """Plot histograms of values across the periodic table of elements.
+    """Plot histograms for each element nested inside a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
-            symbols to histogram values. E.g. if dict, {"Fe": [1, 2, 3], "O": [4, 5]}.
-            If pd.Series, index is element symbols and values lists. If pd.DataFrame,
-            column names are element symbols histograms are plotted from each column.
+        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from
+            element symbols to histogram values. E.g. if dict,
+            {"Fe": [1, 2, 3], "O": [4, 5]}. If pd.Series, index is element
+            symbols and values lists. If pd.DataFrame, column names are
+            element symbols histograms are plotted from each column.
         bins (int): Number of bins for the histograms. Defaults to 20.
-        colormap (str): Matplotlib colormap name to use. Defaults to None. See options
-            at https://matplotlib.org/stable/users/explain/colors/colormaps.
-        hist_kwds (dict | Callable): Keywords passed to ax.hist() for each histogram.
-            If callable, it is called with the histogram values for each element and
-            should return a dict of keyword arguments. Defaults to None.
-        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
-            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
-            (0.25, 0.77, 0.35, 0.02).
-        x_range (tuple[float | None, float | None]): x-axis range for all histograms.
+        colormap (str): Matplotlib colormap name to use. Defaults to None.
+            See options at https://matplotlib.org/stable/users/explain/colors/colormaps.
+        hist_kwds (dict | Callable): Keywords passed to ax.hist() for each
+            histogram. If callable, it is called with the histogram values for
+            each element and should return a dict of keyword arguments.
             Defaults to None.
-        symbol_text (str | Callable[[Element], str]): Text to display for each element
-            symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
-            symbols. Defaults to None.
-        cbar_title (str): Color bar title. Defaults to "Histogram Value".
+        cbar_coords (tuple[float, float, float, float]): Colorbar position
+            and size: [x, y, width, height] anchored at lower left corner of
+            the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
+        x_range (tuple[float | None, float | None]): x-axis range for
+            all histograms. Defaults to None.
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+        cbar_title (str): Colorbar title. Defaults to "Values".
         cbar_title_kwds (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
         cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
-        symbol_pos (tuple[float, float]): Position of element symbols relative to the
-            lower left corner of each tile. Defaults to (0.5, 0.8). (1, 1) is the upper
-            right corner.
-        log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
-        anno_kwds (dict): Keyword arguments passed to plt.annotate() for element
-            annotations. Defaults to None. Useful for adding e.g. number of data points
-            in each histogram. For that, use
+        symbol_pos (tuple[float, float]): Position of element symbols relative
+            to the lower left corner of each tile. Defaults to (0.5, 0.8).
+            (1, 1) is the upper right corner.
+        log (bool): Whether to log scale y-axis of each histogram.
+            Defaults to False.
+        anno_kwds (dict): Keyword arguments passed to plt.annotate() for
+            element annotations. Defaults to None. Useful for adding
+            e.g. number of data points in each histogram. For that, use
             anno_kwds=lambda hist_vals: dict(text=len(hist_vals)).
             Recognized keys are text, xy, xycoords, fontsize, and any other
             plt.annotate() keywords.
-        return_axes (bool): Whether to return the matplotlib Figure and Axes objects.
-            Defaults to False.
+        return_axes (bool): Whether to return the matplotlib Figure and
+            Axes objects. Defaults to False.
         **kwargs: Additional keyword arguments passed to plt.subplots().
-            figsize is set to (0.75 * n_columns, 0.75 * n_rows) where n_columns and
+
+    Notes:
+        figsize is set to (0.75 * n_columns, 0.75 * n_rows) where n_columns and
             n_rows are the number of columns and rows in the periodic table.
 
     Returns:
@@ -813,11 +818,11 @@ def ptable_hists(
     kwargs.setdefault("figsize", (0.75 * n_columns, 0.75 * n_rows))
     fig, axes = plt.subplots(n_rows, n_columns, **kwargs)
 
-    if isinstance(data, pd.Series):
-        # use series name as color bar title if available and no title was passed
-        if cbar_title == "Values" and data.name:
-            cbar_title = data.name
+    # Use series name as colorbar title if available and no title was passed
+    if isinstance(data, pd.Series) and cbar_title == "Values" and data.name:
+        cbar_title = data.name
         data = data.to_dict()
+
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="list")
 
@@ -834,9 +839,13 @@ def ptable_hists(
 
     cmap = None
     if colormap:
-        cmap = plt.get_cmap(colormap) if isinstance(colormap, str) else colormap
+        cmap = (
+            plt.get_cmap(colormap)
+            if isinstance(colormap, str)
+            else colormap
+        )
 
-    # turn off axis of subplots on the grid that don't correspond to elements
+    # Turn off axis of subplots on the grid that don't correspond to elements
     ax: plt.Axes
     for ax in axes.flat:
         ax.axis("off")
@@ -910,10 +919,10 @@ def ptable_hists(
 
         for side in ("left", "right", "top"):
             ax.spines[side].set_visible(b=False)
-        # also hide tick marks
+        # Hide y ticks
         ax.tick_params(axis="y", which="both", length=0)
 
-    # add colorbar
+    # Add colorbar
     if isinstance(cmap, Colormap):
         cbar_ax = fig.add_axes(cbar_coords)
         _cbar = fig.colorbar(
@@ -921,7 +930,205 @@ def ptable_hists(
             cax=cbar_ax,
             **{"orientation": "horizontal"} | (cbar_kwds or {}),
         )
-        # set color bar title
+        # Set colorbar title
+        cbar_title_kwds = cbar_title_kwds or {}
+        cbar_title_kwds.setdefault("fontsize", 12)
+        cbar_title_kwds.setdefault("pad", 10)
+        cbar_title_kwds["label"] = cbar_title
+        cbar_ax.set_title(**cbar_title_kwds)
+
+    if return_axes:
+        return fig, axes
+    return fig
+
+
+def ptable_scatters(
+    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    colormap: str | None = None,
+    scatter_kwds: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
+    x_range: tuple[float | None, float | None] | None = None,
+    symbol_kwargs: Any = None,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.8),
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+    cbar_title: str = "Values",
+    cbar_title_kwds: dict[str, Any] | None = None,
+    cbar_kwds: dict[str, Any] | None = None,
+    anno_kwds: dict[str, Any] | None = None,
+    return_axes: bool = False,
+    **kwargs: Any,
+) -> plt.Figure:
+    """Plot scatter plots nested inside a periodic table.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from
+            element symbols to scatter plots. E.g. if dict,
+            {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}.
+            If pd.Series, index is element symbols and values lists.
+            If pd.DataFrame, column names are element symbols,
+            scatter plots are plotted from each column.                      # TODO: more detailed explanation?
+        colormap (str): Matplotlib colormap name to use. Defaults to None.
+        scatter_kwds (dict | Callable): Keywords passed to ax.hist() for each
+            scatter plot. If callable, it is called with the scatter plot
+            values for each element and should return a dict of
+            keyword arguments. Defaults to None.
+        x_range (tuple[float | None, float | None]): x-axis range for        # TODO: needed for scatter plots?
+            all scatter plots. Defaults to None.
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+        symbol_pos (tuple[float, float]): Position of element symbols
+            relative to the lower left corner of each tile.
+            Defaults to (0.5, 0.8). (1, 1) is the upper right corner.
+        cbar_coords (tuple[float, float, float, float]): Colorbar
+            position and size: [x, y, width, height] anchored at lower left
+            corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
+        cbar_title (str): Colorbar title. Defaults to "Values".
+        cbar_title_kwds (dict): Keyword arguments passed to
+            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
+        cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
+        anno_kwds (dict): Keyword arguments passed to plt.annotate()
+            for element annotations. Defaults to None. Useful for adding
+            e.g. number of data points in each scatter plot. For that, use
+            anno_kwds=lambda scatter_vals: dict(text=len(scatter_vals)).
+            Recognized keys are text, xy, xycoords, fontsize, and any other
+            plt.annotate() keywords.
+        return_axes (bool): Whether to return the matplotlib Figure and Axes
+            objects. Defaults to False.
+        **kwargs: Additional keyword arguments passed to plt.subplots().
+
+    Notes:
+        figsize is set to (0.75 * n_columns, 0.75 * n_rows) where n_columns and
+            n_rows are the number of columns and rows in the periodic table.
+
+    Returns:
+        plt.Figure: periodic table with a scatter plot in each element tile.
+    """
+    n_rows = df_ptable.row.max()
+    n_columns = df_ptable.column.max()
+
+    kwargs.setdefault("figsize", (0.75 * n_columns, 0.75 * n_rows))
+    fig, axes = plt.subplots(n_rows, n_columns, **kwargs)
+
+    # Use series name as colorbar title if available and no title was passed
+    if isinstance(data, pd.Series) and cbar_title == "Values" and data.name:
+        cbar_title = data.name
+        data = data.to_dict()
+
+    elif isinstance(data, pd.DataFrame):
+        data = data.to_dict(orient="list")
+
+    if x_range is not None:
+        vmin, vmax = x_range
+    else:
+        flat_list = [
+            val
+            for sublist in (data.values() if isinstance(data, dict) else data)
+            for val in sublist
+        ]
+        vmin, vmax = min(flat_list), max(flat_list)
+    norm = Normalize(vmin=vmin, vmax=vmax)
+
+    cmap = None
+    if colormap:
+        cmap = (
+            plt.get_cmap(colormap)
+            if isinstance(colormap, str)
+            else colormap
+        )
+
+    # Turn off axis of subplots on the grid that don't correspond to elements
+    ax: plt.Axes
+    for ax in axes.flat:
+        ax.axis("off")
+
+    symbol_kwargs = symbol_kwargs or {}
+    for Z in range(1, 119):
+        element = Element.from_Z(Z)
+        symbol = element.symbol
+        row, group = df_ptable.loc[symbol, ["row", "column"]]
+
+        ax = axes[row - 1][group - 1]
+        symbol_kwargs.setdefault("fontsize", 10)
+        ax.text(
+            *symbol_pos,
+            symbol_text(element)
+            if callable(symbol_text)
+            else symbol_text.format(elem=element),
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+            **symbol_kwargs,
+        )
+        ax.axis("on")  # re-enable axes of elements that exist
+
+        hist_data = data.get(symbol, [])
+        if anno_kwds:
+            defaults = dict(
+                text=lambda hist_vals: si_fmt_int(len(hist_vals)),
+                xy=(0.8, 0.8),
+                xycoords="axes fraction",
+                fontsize=8,
+                horizontalalignment="center",
+                verticalalignment="center",
+            )
+            if callable(anno_kwds):
+                annotation = anno_kwds(hist_data)
+            else:
+                annotation = anno_kwds
+                anno_text = anno_kwds.get("text")
+                if isinstance(anno_text, dict):
+                    anno_text = anno_text.get(symbol)
+                elif callable(anno_text):
+                    anno_text = anno_text(hist_data)
+                annotation["text"] = anno_text
+            ax.annotate(**(defaults | annotation))
+        if hist_data:
+            if callable(scatter_kwds):
+                hist_kwargs = scatter_kwds(hist_data)
+            else:
+                hist_kwargs = scatter_kwds
+            _n, bins_array, patches = ax.hist(
+                hist_data, bins=bins, log=log, range=x_range, **(hist_kwargs or {})
+            )
+            if x_range:
+                ax.set_xlim(x_range)
+            x_min, x_max = math.floor(min(bins_array)), math.ceil(max(bins_array))
+            x_ticks = list(x_range or [x_min, x_max])
+            if x_ticks[0] is None:
+                x_ticks[0] = x_min
+            if x_ticks[1] is None:
+                x_ticks[1] = x_max
+            if x_min < 0 < x_max:
+                # make sure we always show a mark at 0
+                x_ticks.insert(1, 0)
+
+            if cmap:
+                for patch, x_val in zip(patches, bins_array[:-1]):
+                    plt.setp(patch, "facecolor", cmap(norm(x_val)))
+            ax.set_xticks(x_ticks)
+            ax.tick_params(labelsize=8, direction="in")
+        else:  # disable ticks for elements without data
+            ax.set_xticks([])
+        ax.set_yticks([])  # disable y ticks for all elements
+
+        for side in ("left", "right", "top"):
+            ax.spines[side].set_visible(b=False)
+        # Hide y ticks
+        ax.tick_params(axis="y", which="both", length=0)
+
+    # Add colorbar
+    if isinstance(cmap, Colormap):
+        cbar_ax = fig.add_axes(cbar_coords)
+        _cbar = fig.colorbar(
+            plt.cm.ScalarMappable(norm=norm, cmap=cmap),
+            cax=cbar_ax,
+            **{"orientation": "horizontal"} | (cbar_kwds or {}),
+        )
+        # Set colorbar title
         cbar_title_kwds = cbar_title_kwds or {}
         cbar_title_kwds.setdefault("fontsize", 12)
         cbar_title_kwds.setdefault("pad", 10)
