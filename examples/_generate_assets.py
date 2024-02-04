@@ -34,6 +34,7 @@ from pymatviz.ptable import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
+    ptable_scatters,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
@@ -154,12 +155,28 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 # %% Histograms nested within a periodic table
 elements = [Element.from_Z(z) for z in range(1, 119)]
-data_dict = {e.symbol: np.random.randint(0, 20, 20).tolist() for e in elements}
+data_dict = {ele.symbol: np.random.randint(0, 20, 20).tolist() for ele in elements}
 fig = ptable_hists(
     data_dict, colormap="coolwarm", cbar_title="Periodic Table Histograms"
 )
 
 save_and_compress_svg(fig, "ptable_hists")
+
+
+# %% Scatter plots nested within a periodic table
+elements = [Element.from_Z(z) for z in range(1, 119)]
+data_dict = {
+    ele.symbol:
+    [np.random.randint(0, 20, 10).tolist(),
+        np.random.randint(0, 20, 10).tolist(),
+        np.random.randint(0, 20, 10).tolist()] for ele in elements}
+
+fig = ptable_scatters(
+    data_dict, colormap="coolwarm",
+    cbar_title="Periodic Table Scatter Plots"
+    )
+
+save_and_compress_svg(fig, "ptable_scatters")
 
 
 # %% Uncertainty Plots

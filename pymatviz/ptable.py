@@ -887,6 +887,7 @@ def ptable_hists(
                     anno_text = anno_text(hist_data)
                 annotation["text"] = anno_text
             ax.annotate(**(defaults | annotation))
+
         if hist_data:
             hist_kwargs = hist_kwds(hist_data) if callable(hist_kwds) else hist_kwds
             _n, bins_array, patches = ax.hist(
@@ -921,7 +922,7 @@ def ptable_hists(
     # Add colorbar
     if isinstance(cmap, Colormap):
         cbar_ax = fig.add_axes(cbar_coords)
-        _cbar = fig.colorbar(
+        fig.colorbar(
             plt.cm.ScalarMappable(norm=norm, cmap=cmap),
             cax=cbar_ax,
             **{"orientation": "horizontal"} | (cbar_kwds or {}),
@@ -962,16 +963,16 @@ def ptable_scatters(
         data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from
             element symbols to scatter plots. E.g. if dict,
             {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}.
+            You could also add a 3rd list for coloring, e.g.
+            {"Fe": [[1, 2], [3, 4], [5, 6]]}.
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
-            scatter plots are plotted from each column.                      # TODO: more detailed explanation?
+            scatter plots are plotted from each column.
         colormap (str): Matplotlib colormap name to use. Defaults to None.
         scatter_kwds (dict | Callable): Keywords passed to ax.hist() for each
             scatter plot. If callable, it is called with the scatter plot
             values for each element and should return a dict of
             keyword arguments. Defaults to None.
-        x_range (tuple[float | None, float | None]): x-axis range for        # TODO: needed for scatter plots?
-            all scatter plots. Defaults to None.
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
@@ -997,17 +998,16 @@ def ptable_scatters(
         **kwargs: Additional keyword arguments passed to plt.subplots().
 
     Notes:
-        figsize is set to (0.75 * n_columns, 0.75 * n_rows) where n_columns and
-            n_rows are the number of columns and rows in the periodic table.
+        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
 
     Returns:
         plt.Figure: periodic table with a scatter plot in each element tile.
     """
-    n_rows = df_ptable.row.max()
-    n_columns = df_ptable.column.max()
+    n_periods = df_ptable.row.max()
+    n_groups = df_ptable.column.max()
 
-    kwargs.setdefault("figsize", (0.75 * n_columns, 0.75 * n_rows))
-    fig, axes = plt.subplots(n_rows, n_columns, **kwargs)
+    kwargs.setdefault("figsize", (0.75 * n_groups, 0.75 * n_periods))
+    fig, axes = plt.subplots(n_periods, n_groups, **kwargs)
 
     # Use series name as colorbar title if available when no title was passed
     if isinstance(data, pd.Series) and cbar_title == "Values" and data.name:
@@ -1016,17 +1016,6 @@ def ptable_scatters(
 
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="list")
-
-    if x_range is not None:
-        vmin, vmax = x_range
-    else:
-        flat_list = [
-            val
-            for sublist in (data.values() if isinstance(data, dict) else data)
-            for val in sublist
-        ]
-        vmin, vmax = min(flat_list), max(flat_list)
-    norm = Normalize(vmin=vmin, vmax=vmax)
 
     cmap = None
     if colormap:
@@ -1057,7 +1046,8 @@ def ptable_scatters(
         )
         ax.axis("on")  # re-enable axes of elements that exist
 
-        hist_data = data.get(symbol, [])
+        scatter_data = data.get(symbol, [])
+
         if anno_kwds:
             defaults = dict(
                 text=lambda hist_vals: si_fmt_int(len(hist_vals)),
@@ -1068,58 +1058,68 @@ def ptable_scatters(
                 verticalalignment="center",
             )
             if callable(anno_kwds):
-                annotation = anno_kwds(hist_data)
+                annotation = anno_kwds(scatter_data)
             else:
                 annotation = anno_kwds
                 anno_text = anno_kwds.get("text")
                 if isinstance(anno_text, dict):
                     anno_text = anno_text.get(symbol)
                 elif callable(anno_text):
-                    anno_text = anno_text(hist_data)
+                    anno_text = anno_text(scatter_data)
                 annotation["text"] = anno_text
             ax.annotate(**(defaults | annotation))
-        if hist_data:
+
+        if scatter_data:
             if callable(scatter_kwds):
-                hist_kwargs = scatter_kwds(hist_data)
+                scatter_kwargs = scatter_kwds(scatter_data)
             else:
-                hist_kwargs = scatter_kwds
-            _n, bins_array, patches = ax.hist(
-                hist_data, bins=bins, log=log, range=x_range, **(hist_kwargs or {})
-            )
-            if x_range:
-                ax.set_xlim(x_range)
-            x_min, x_max = math.floor(min(bins_array)), math.ceil(max(bins_array))
-            x_ticks = list(x_range or [x_min, x_max])
-            if x_ticks[0] is None:
-                x_ticks[0] = x_min
-            if x_ticks[1] is None:
-                x_ticks[1] = x_max
-            if x_min < 0 < x_max:
-                # make sure we always show a mark at 0
-                x_ticks.insert(1, 0)
+                scatter_kwargs = scatter_kwds
 
-            if cmap:
-                for patch, x_val in zip(patches, bins_array[:-1]):
-                    plt.setp(patch, "facecolor", cmap(norm(x_val)))
-            ax.set_xticks(x_ticks)
+            # Plot without colormap when data len is 2
+            if len(scatter_data) == 2:
+                ax.scatter(
+                    scatter_data[0], scatter_data[1],
+                    **(scatter_kwargs or {}))
+
+            # Plot with colormap when data len is 3
+            elif len(scatter_data) == 3:
+                ax.scatter(
+                    scatter_data[0], scatter_data[1],
+                    c=scatter_data[2], cmap=cmap,
+                    **(scatter_kwargs or {}))
+
             ax.tick_params(labelsize=8, direction="in")
-        else:  # disable ticks for elements without data
-            ax.set_xticks([])
-        ax.set_yticks([])  # disable y ticks for all elements
 
-        for side in ("left", "right", "top"):
+        # Disable ticks for elements without data
+        else:
+            ax.set_xticks([])
+
+        # Disable y ticks for all elements
+        ax.set_yticks([])
+
+        # Hide y ticks and right/top boarders
+        for side in ("right", "top"):
             ax.spines[side].set_visible(b=False)
-        # Hide y ticks
         ax.tick_params(axis="y", which="both", length=0)
 
-    # Add colorbar
-    if isinstance(cmap, Colormap):
+    # Add colorbar if data dimensionality is 3
+    if isinstance(cmap, Colormap) \
+            and {len(data) for data in data.values()} == {3}:
+        # Get the min/max values for norm calculation
+        third_lists = [data[2] for data in data.values()]
+        vmin = min(min(third_list) for third_list in third_lists)
+        vmax = max(max(third_list) for third_list in third_lists)
+
+        norm = Normalize(vmin=vmin, vmax=vmax)
+
         cbar_ax = fig.add_axes(cbar_coords)
-        _cbar = fig.colorbar(
+
+        fig.colorbar(
             plt.cm.ScalarMappable(norm=norm, cmap=cmap),
             cax=cbar_ax,
             **{"orientation": "horizontal"} | (cbar_kwds or {}),
         )
+
         # Set colorbar title
         cbar_title_kwds = cbar_title_kwds or {}
         cbar_title_kwds.setdefault("fontsize", 12)
