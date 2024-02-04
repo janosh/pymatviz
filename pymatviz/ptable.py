@@ -839,11 +839,7 @@ def ptable_hists(
 
     cmap = None
     if colormap:
-        cmap = (
-            plt.get_cmap(colormap)
-            if isinstance(colormap, str)
-            else colormap
-        )
+        cmap = plt.get_cmap(colormap) if isinstance(colormap, str) else colormap
 
     # Turn off axis of subplots on the grid that don't correspond to elements
     ax: plt.Axes
@@ -1034,11 +1030,7 @@ def ptable_scatters(
 
     cmap = None
     if colormap:
-        cmap = (
-            plt.get_cmap(colormap)
-            if isinstance(colormap, str)
-            else colormap
-        )
+        cmap = plt.get_cmap(colormap) if isinstance(colormap, str) else colormap
 
     # Turn off axis of subplots on the grid that don't correspond to elements
     ax: plt.Axes
