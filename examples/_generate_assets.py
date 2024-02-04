@@ -166,15 +166,17 @@ save_and_compress_svg(fig, "ptable_hists")
 # %% Scatter plots nested within a periodic table
 elements = [Element.from_Z(z) for z in range(1, 119)]
 data_dict = {
-    ele.symbol:
-    [np.random.randint(0, 20, 10).tolist(),
+    ele.symbol: [
         np.random.randint(0, 20, 10).tolist(),
-        np.random.randint(0, 20, 10).tolist()] for ele in elements}
+        np.random.randint(0, 20, 10).tolist(),
+        np.random.randint(0, 20, 10).tolist(),
+    ]
+    for ele in elements
+}
 
 fig = ptable_scatters(
-    data_dict, colormap="coolwarm",
-    cbar_title="Periodic Table Scatter Plots"
-    )
+    data_dict, colormap="coolwarm", cbar_title="Periodic Table Scatter Plots"
+)
 
 save_and_compress_svg(fig, "ptable_scatters")
 

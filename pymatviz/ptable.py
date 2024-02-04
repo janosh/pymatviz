@@ -1077,16 +1077,17 @@ def ptable_scatters(
 
             # Plot without colormap when data len is 2
             if len(scatter_data) == 2:
-                ax.scatter(
-                    scatter_data[0], scatter_data[1],
-                    **(scatter_kwargs or {}))
+                ax.scatter(scatter_data[0], scatter_data[1], **(scatter_kwargs or {}))
 
             # Plot with colormap when data len is 3
             elif len(scatter_data) == 3:
                 ax.scatter(
-                    scatter_data[0], scatter_data[1],
-                    c=scatter_data[2], cmap=cmap,
-                    **(scatter_kwargs or {}))
+                    scatter_data[0],
+                    scatter_data[1],
+                    c=scatter_data[2],
+                    cmap=cmap,
+                    **(scatter_kwargs or {}),
+                )
 
             ax.tick_params(labelsize=8, direction="in")
 
@@ -1103,8 +1104,7 @@ def ptable_scatters(
         ax.tick_params(axis="y", which="both", length=0)
 
     # Add colorbar if data dimensionality is 3
-    if isinstance(cmap, Colormap) \
-            and {len(data) for data in data.values()} == {3}:
+    if isinstance(cmap, Colormap) and {len(data) for data in data.values()} == {3}:
         # Get the min/max values for norm calculation
         third_lists = [data[2] for data in data.values()]
         vmin = min(min(third_list) for third_list in third_lists)
