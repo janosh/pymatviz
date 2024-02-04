@@ -95,7 +95,7 @@ def test_ptable_heatmap(
 
     ptable_heatmap(glass_formulas, log=True)
 
-    # custom color map
+    # custom colormap
     ptable_heatmap(glass_formulas, log=True, colorscale="summer")
 
     # heat_mode normalized to total count
@@ -298,9 +298,9 @@ def test_ptable_heatmap_plotly_color_bar(
     glass_formulas: list[str], color_bar: dict[str, Any]
 ) -> None:
     fig = ptable_heatmap_plotly(glass_formulas, color_bar=color_bar)
-    # check color bar has expected length
+    # check colorbar has expected length
     assert fig.data[0].colorbar.len == color_bar.get("len", 0.4)
-    # check color bar has expected title side
+    # check colorbar has expected title side
     assert (
         fig.data[0].colorbar.title.side == "right"
         if color_bar.get("orientation") == "v"
@@ -317,7 +317,7 @@ def test_ptable_heatmap_plotly_cscale_range(
     fig = ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)
     trace = fig.data[0]
     assert "colorbar" in trace
-    # check for correct color bar range
+    # check for correct colorbar range
     if cscale_range == (None, None):
         # if both None, range is dynamic based on plotted data
         assert trace["zmin"] == pytest.approx(df_ptable.density.min())
