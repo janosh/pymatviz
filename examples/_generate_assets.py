@@ -160,7 +160,7 @@ fig = ptable_hists(
     data_dict, colormap="coolwarm", cbar_title="Periodic Table Histograms"
 )
 
-save_and_compress_svg(fig, "ptable_hists")
+save_and_compress_svg(fig, "ptable-hists")
 
 
 # %% Scatter plots nested within a periodic table
@@ -178,7 +178,7 @@ fig = ptable_scatters(
     data_dict, colormap="coolwarm", cbar_title="Periodic Table Scatter Plots"
 )
 
-save_and_compress_svg(fig, "ptable_scatters")
+save_and_compress_svg(fig, "ptable-scatters")
 
 
 # %% Uncertainty Plots
