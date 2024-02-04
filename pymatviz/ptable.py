@@ -1094,14 +1094,11 @@ def ptable_scatters(
         # Disable ticks for elements without data
         else:
             ax.set_xticks([])
+            ax.set_yticks([])
 
-        # Disable y ticks for all elements
-        ax.set_yticks([])
-
-        # Hide y ticks and right/top boarders
+        # Hide right/top boarders
         for side in ("right", "top"):
             ax.spines[side].set_visible(b=False)
-        ax.tick_params(axis="y", which="both", length=0)
 
     # Add colorbar if data dimensionality is 3
     if isinstance(cmap, Colormap) and {len(data) for data in data.values()} == {3}:
