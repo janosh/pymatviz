@@ -15,6 +15,7 @@ from pymatviz import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
+    ptable_scatters,
 )
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -386,6 +387,36 @@ def test_ptable_hists(
     fig = ptable_hists(
         data, symbol_pos=symbol_pos, anno_kwds=anno_kwds, hist_kwds=hist_kwds
     )
+    assert isinstance(
+        fig, plt.Figure
+    ), "The function should return a matplotlib Figure object"
+
+
+def test_ptable_scatters() -> None:
+    """Test ptable_scatters."""
+    fig = ptable_scatters(
+        data={"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},
+        colormap="coolwarm",
+        cbar_title="Test ptable_scatters"
+    )
+    assert isinstance(
+        fig, plt.Figure
+    ), "The function should return a matplotlib Figure object"
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},  # dict[str, list[int]]
+        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),  # pd.DataFrame
+        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"])  # pd.Series
+    ]
+)
+def test_ptable_scatters_datatypes(
+    data: pd.DataFrame | pd.Series | dict[str, list[int]],
+) -> None:
+    """Test ptable_scatters with various input data types."""
+    fig = ptable_scatters(data)
     assert isinstance(
         fig, plt.Figure
     ), "The function should return a matplotlib Figure object"
