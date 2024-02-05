@@ -888,7 +888,7 @@ def ptable_hists(
                 annotation["text"] = anno_text
             ax.annotate(**(defaults | annotation))
 
-        if hist_data:
+        if hist_data is not None:
             hist_kwargs = hist_kwds(hist_data) if callable(hist_kwds) else hist_kwds
             _n, bins_array, patches = ax.hist(
                 hist_data, bins=bins, log=log, range=x_range, **(hist_kwargs or {})
@@ -1068,7 +1068,7 @@ def ptable_scatters(
                 annotation["text"] = anno_text
             ax.annotate(**(defaults | annotation))
 
-        if scatter_data:
+        if scatter_data is not None:
             if callable(scatter_kwds):
                 scatter_kwargs = scatter_kwds(scatter_data)
             else:

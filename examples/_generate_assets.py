@@ -155,7 +155,7 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 # %% Histograms nested within a periodic table
 elements = [Element.from_Z(z) for z in range(1, 119)]
-data_dict = {ele.symbol: np.random.randint(0, 20, 20).tolist() for ele in elements}
+data_dict = {ele.symbol: np.random.randint(0, 20, 20) for ele in elements}
 fig = ptable_hists(
     data_dict, colormap="coolwarm", cbar_title="Periodic Table Histograms"
 )
@@ -167,9 +167,9 @@ save_and_compress_svg(fig, "ptable-hists")
 elements = [Element.from_Z(z) for z in range(1, 119)]
 data_dict = {
     ele.symbol: [
-        np.random.randint(0, 20, 10).tolist(),
-        np.random.randint(0, 20, 10).tolist(),
-        np.random.randint(0, 20, 10).tolist(),
+        np.random.randint(0, 20, 10),
+        np.random.randint(0, 20, 10),
+        np.random.randint(0, 20, 10),
     ]
     for ele in elements
 }
