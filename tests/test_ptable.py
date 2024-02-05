@@ -397,7 +397,7 @@ def test_ptable_scatters() -> None:
     fig = ptable_scatters(
         data={"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},
         colormap="coolwarm",
-        cbar_title="Test ptable_scatters"
+        cbar_title="Test ptable_scatters",
     )
     assert isinstance(
         fig, plt.Figure
@@ -408,9 +408,13 @@ def test_ptable_scatters() -> None:
     "data",
     [
         {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},  # dict[str, list[int]]
-        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),  # pd.DataFrame
-        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"])  # pd.Series
-    ]
+        pd.DataFrame(
+            {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}
+        ),  # pd.DataFrame
+        pd.Series(
+            [[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]
+        ),  # pd.Series
+    ],
 )
 def test_ptable_scatters_datatypes(
     data: pd.DataFrame | pd.Series | dict[str, list[int]],
