@@ -63,9 +63,12 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table c
 ## Nested Periodic Table
 
 See [`pymatviz/ptable.py`](pymatviz/ptable.py). Plot histogram plots and scatter plots nested within periodic table.
-| [`ptable_hists(data, colormap="coolwarm"`](pymatviz/ptable.py) | [`ptable_scatters(data, colormap="coolwarm"`](pymatviz/ptable.py)    |
-| :------------------------------------------------------------: | :------------------------------------------------------------:    |
-|                       ![ptable_hists]                          |                       ![ptable_scatters]                          |
+| [`ptable_hists(data, colormap="coolwarm"`](pymatviz/ptable.py) | [`ptable_scatters(data, colormap="coolwarm"`](pymatviz/ptable.py) |
+| :------------------------------------------------------------: | :---------------------------------------------------------------: |
+|                        ![ptable-hists]                         |                        ![ptable-scatters]                         |
+
+[ptable-hists]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-hists.svg
+[ptable-scatters]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-scatters.svg
 
 ## Phonons
 
@@ -195,8 +198,6 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [ptable-heatmap-plotly-more-hover-data]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-plotly-more-hover-data.svg
 [ptable-heatmap-ratio]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-ratio.svg
 [ptable-heatmap]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap.svg
-[ptable_hists]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_hists.svg
-[ptable_scatters]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable_scatters.svg
 [residual-vs-actual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/residual-vs-actual.svg
 [roc-curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/roc-curve.svg
 [sankey-from-2-df-cols-randints]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-from-2-df-cols-randints.svg
