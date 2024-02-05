@@ -940,12 +940,11 @@ def ptable_hists(
 
 
 def ptable_scatters(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     colormap: str | None = None,
     scatter_kwds: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
-    x_range: tuple[float | None, float | None] | None = None,
     symbol_kwargs: Any = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
@@ -957,11 +956,11 @@ def ptable_scatters(
     return_axes: bool = False,
     **kwargs: Any,
 ) -> plt.Figure:
-    """Plot scatter plots for each element nested inside a periodic table.
+    """Plot scatter plots for each element, nested inside a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from
-            element symbols to scatter plots. E.g. if dict,
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]):
+            Map from element symbols to scatter plots. E.g. if dict,
             {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}.
             You could also add a 3rd list for coloring, e.g.
             {"Fe": [[1, 2], [3, 4], [5, 6]]}.
