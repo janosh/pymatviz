@@ -401,7 +401,10 @@ def test_ptable_hists(
 def test_ptable_scatters() -> None:
     """Test ptable_scatters with 3rd color dimension."""
     fig = ptable_scatters(
-        data={"Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]], "O": [[10, 11], [12, 13], [14, 15]]},
+        data={
+            "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+            "O": [[10, 11], [12, 13], [14, 15]],
+        },
         colormap="coolwarm",
         cbar_title="Test ptable_scatters",
     )
@@ -413,11 +416,21 @@ def test_ptable_scatters() -> None:
 @pytest.mark.parametrize(
     "data",
     [
-        {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},  # dict[str, list[list[float]])
-        {"Fe": np.array([[1, 2, 3], [4, 5, 6]]), "O": np.array([[7, 8], [9, 10]])},  # dict[str, np.ndarray)
-        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),  # pd.DataFrame
-        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"])  # pd.Series
-    ]
+        {
+            "Fe": [[1, 2, 3], [4, 5, 6]],
+            "O": [[7, 8], [9, 10]],
+        },  # dict[str, list[list[float]])
+        {
+            "Fe": np.array([[1, 2, 3], [4, 5, 6]]),
+            "O": np.array([[7, 8], [9, 10]]),
+        },  # dict[str, np.ndarray)
+        pd.DataFrame(
+            {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}
+        ),  # pd.DataFrame
+        pd.Series(
+            [[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]
+        ),  # pd.Series
+    ],
 )
 def test_ptable_scatters_datatypes(
     data: pd.DataFrame | pd.Series | dict[str, list[int]],
