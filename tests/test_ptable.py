@@ -299,9 +299,9 @@ def test_ptable_heatmap_plotly_color_bar(
     glass_formulas: list[str], color_bar: dict[str, Any]
 ) -> None:
     fig = ptable_heatmap_plotly(glass_formulas, color_bar=color_bar)
-    # check colorbar has expected length
+    # check color bar has expected length
     assert fig.data[0].colorbar.len == color_bar.get("len", 0.4)
-    # check colorbar has expected title side
+    # check color bar has expected title side
     assert (
         fig.data[0].colorbar.title.side == "right"
         if color_bar.get("orientation") == "v"
@@ -318,7 +318,7 @@ def test_ptable_heatmap_plotly_cscale_range(
     fig = ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)
     trace = fig.data[0]
     assert "colorbar" in trace
-    # check for correct colorbar range
+    # check for correct color bar range
     if cscale_range == (None, None):
         # if both None, range is dynamic based on plotted data
         assert trace["zmin"] == pytest.approx(df_ptable.density.min())
@@ -389,13 +389,10 @@ def test_ptable_hists(
     anno_kwds: dict[str, Any],
     hist_kwds: dict[str, Any],
 ) -> None:
-    # Test the function with a valid DataFrame
     fig = ptable_hists(
         data, symbol_pos=symbol_pos, anno_kwds=anno_kwds, hist_kwds=hist_kwds
     )
-    assert isinstance(
-        fig, plt.Figure
-    ), "The function should return a matplotlib Figure object"
+    assert isinstance(fig, plt.Figure)
 
 
 def test_ptable_scatters() -> None:
@@ -408,28 +405,16 @@ def test_ptable_scatters() -> None:
         colormap="coolwarm",
         cbar_title="Test ptable_scatters",
     )
-    assert isinstance(
-        fig, plt.Figure
-    ), "The function should return a matplotlib Figure object"
+    assert isinstance(fig, plt.Figure)
 
 
 @pytest.mark.parametrize(
     "data",
     [
-        {
-            "Fe": [[1, 2, 3], [4, 5, 6]],
-            "O": [[7, 8], [9, 10]],
-        },  # dict[str, list[list[float]])
-        {
-            "Fe": np.array([[1, 2, 3], [4, 5, 6]]),
-            "O": np.array([[7, 8], [9, 10]]),
-        },  # dict[str, np.ndarray)
-        pd.DataFrame(
-            {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}
-        ),  # pd.DataFrame
-        pd.Series(
-            [[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]
-        ),  # pd.Series
+        {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},
+        {"Fe": np.array([[1, 2, 3], [4, 5, 6]]), "O": np.array([[7, 8], [9, 10]])},
+        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),
+        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]),
     ],
 )
 def test_ptable_scatters_datatypes(
@@ -437,6 +422,5 @@ def test_ptable_scatters_datatypes(
 ) -> None:
     """Test ptable_scatters with various input data types."""
     fig = ptable_scatters(data)
-    assert isinstance(
-        fig, plt.Figure
-    ), "The function should return a matplotlib Figure object"
+    assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 180
