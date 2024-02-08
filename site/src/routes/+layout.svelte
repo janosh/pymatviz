@@ -50,7 +50,7 @@
     <a href="{repository}/discussion"><Icon icon="mdi:chat" inline />&ensp;Discussion</a>
   </nav>
   <img
-    src="https://raw.githubusercontent.com/janosh/pymatviz/main/site/static/favicon.svg"
+    src="https://github.com/janosh/pymatviz/raw/main/site/static/favicon.svg"
     alt="Logo"
     height="40px"
   />
