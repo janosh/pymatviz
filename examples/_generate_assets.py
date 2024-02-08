@@ -153,18 +153,19 @@ fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 
-# %% Histograms nested within a periodic table
-elements = [Element.from_Z(z) for z in range(1, 119)]
-data_dict = {ele.symbol: np.random.randint(0, 20, 20) for ele in elements}
+# %% Histograms laid out in as a periodic table
+elements = [*map(Element.from_Z, range(1, 119))]
+# generate random parity data with y \approx x with some noise
+data_dict = {
+    ele.symbol: np.random.randn(100) + np.random.randn(100) for ele in elements
+}
 fig = ptable_hists(
     data_dict, colormap="coolwarm", cbar_title="Periodic Table Histograms"
 )
-
 save_and_compress_svg(fig, "ptable-hists")
 
 
-# %% Scatter plots nested within a periodic table
-elements = [Element.from_Z(z) for z in range(1, 119)]
+# %% Scatter plots laid out as a periodic table
 data_dict = {
     ele.symbol: [
         np.random.randint(0, 20, 10),
@@ -177,8 +178,7 @@ data_dict = {
 fig = ptable_scatters(
     data_dict, colormap="coolwarm", cbar_title="Periodic Table Scatter Plots"
 )
-
-save_and_compress_svg(fig, "ptable-scatters")
+# save_and_compress_svg(fig, "ptable-scatters")
 
 
 # %% Uncertainty Plots

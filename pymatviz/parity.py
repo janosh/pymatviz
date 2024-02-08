@@ -90,7 +90,7 @@ def density_scatter(
         hist_density_kwargs (dict, optional): Passed to hist_density(). Use to change
             sort (by density, default True), bins (default 100), or method (for
             interpolation, default "nearest").
-        color_bar (bool | dict, optional): Whether to add a colorbar. Defaults to True.
+        color_bar (bool | dict, optional): Whether to add a color bar. Defaults to True.
             If dict, unpacked into ax.figure.colorbar(). E.g. dict(label="Density").
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
@@ -208,8 +208,8 @@ def density_hexbin(
             Defaults to None.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
-        cbar_label (str, optional): Colorbar label. Defaults to "Density".
-        cbar_coords (tuple[float, float, float, float], optional): Colorbar position
+        cbar_label (str, optional): Color bar label. Defaults to "Density".
+        cbar_coords (tuple[float, float, float, float], optional): Color bar position
             and size: [x, y, width, height] anchored at lower left corner. Defaults to
             (0.18, 0.8, 0.42, 0.05).
         **kwargs: Additional keyword arguments to pass to ax.hexbin().
