@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="https://raw.githubusercontent.com/janosh/pymatviz/main/site/static/favicon.svg" alt="Logo" height="60px">
+<img src="https://github.com/janosh/pymatviz/raw/main/site/static/favicon.svg" alt="Logo" height="60px">
 <br class="hide-in-docs">
 pymatviz
 </h1>
@@ -52,13 +52,23 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 ## Periodic Table
 
-See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heat maps of the periodic table can be plotted both with `matplotlib` and `plotly`. `plotly` supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
+See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table can be plotted both with `matplotlib` and `plotly`. `plotly` supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
 
 | [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable.py) |    [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable.py)     |
 | :------------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                       ![ptable-heatmap]                        |                        ![ptable-heatmap-ratio]                        |
 |  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)  | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py) |
 |            ![ptable-heatmap-plotly-more-hover-data]            |                     ![ptable-heatmap-plotly-log]                      |
+
+## Nested Periodic Table
+
+See [`pymatviz/ptable.py`](pymatviz/ptable.py). Plot histogram plots and scatter plots nested within periodic table.
+| [`ptable_hists(data, colormap="coolwarm"`](pymatviz/ptable.py) | [`ptable_scatters(data, colormap="coolwarm"`](pymatviz/ptable.py) |
+| :------------------------------------------------------------: | :---------------------------------------------------------------: |
+|                        ![ptable-hists]                         |                        ![ptable-scatters]                         |
+
+[ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
+[ptable-scatters]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-scatters.svg
 
 ## Phonons
 
@@ -70,9 +80,9 @@ See [`pymatviz/phonons.py`](pymatviz/phonons.py).
 | [`plot_phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons.py) |                                                      |
 |                          ![phonon-bands-and-dos]                           |                                                      |
 
-[phonon-bands]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/phonon-bands-mp-2758.svg
-[phonon-dos]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/phonon-dos-mp-2758.svg
-[phonon-bands-and-dos]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/phonon-bands-and-dos-mp-2758.svg
+[phonon-bands]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-mp-2758.svg
+[phonon-dos]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-dos-mp-2758.svg
+[phonon-bands-and-dos]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-and-dos-mp-2758.svg
 
 ### Dash app using `ptable_heatmap_plotly()`
 
@@ -118,10 +128,10 @@ See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 |   [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/ptable.py)    |                                                                                                    |
 |                                    ![elements-hist]                                    |                                                                                                    |
 
-[spg-symbol-hist-plotly]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist-plotly.svg
-[spg-num-hist-plotly]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-hist-plotly.svg
-[spg-num-hist-matplotlib]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-hist-matplotlib.svg
-[spg-symbol-hist-matplotlib]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-hist-matplotlib.svg
+[spg-symbol-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-plotly.svg
+[spg-num-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-plotly.svg
+[spg-num-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-matplotlib.svg
+[spg-symbol-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-matplotlib.svg
 
 ## Parity Plots
 
@@ -169,34 +179,34 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 | :------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
 |                            ![marchenko-pastur]                             |                            ![marchenko-pastur-significant-eval]                             |
 
-[cumulative-error]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-error.svg
-[cumulative-residual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/cumulative-residual.svg
-[density-hexbin-with-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-hexbin-with-hist.svg
-[density-hexbin]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-hexbin.svg
-[density-scatter-with-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-scatter-with-hist.svg
-[density-scatter]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/density-scatter.svg
-[error-decay-with-uncert-multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/error-decay-with-uncert-multiple.svg
-[error-decay-with-uncert]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/error-decay-with-uncert.svg
-[elements-hist]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/elements-hist.svg
-[marchenko-pastur-significant-eval]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko-pastur-significant-eval.svg
-[marchenko-pastur]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/marchenko-pastur.svg
-[matbench-phonons-structures-2d]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/matbench-phonons-structures-2d.svg
-[normal-prob-plot-multiple]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal-prob-plot-multiple.svg
-[normal-prob-plot]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/normal-prob-plot.svg
-[precision-recall-curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/precision-recall-curve.svg
-[ptable-heatmap-plotly-log]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-plotly-log.svg
-[ptable-heatmap-plotly-more-hover-data]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-plotly-more-hover-data.svg
-[ptable-heatmap-ratio]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap-ratio.svg
-[ptable-heatmap]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/ptable-heatmap.svg
-[residual-vs-actual]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/residual-vs-actual.svg
-[roc-curve]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/roc-curve.svg
-[sankey-from-2-df-cols-randints]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-from-2-df-cols-randints.svg
-[sankey-spglib-vs-aflow-spacegroups]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/sankey-spglib-vs-aflow-spacegroups.svg
-[scatter-with-err-bar]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/scatter-with-err-bar.svg
-[spg-num-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-num-sunburst.svg
-[spg-symbol-sunburst]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/spg-symbol-sunburst.svg
-[struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
-[struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: https://raw.githubusercontent.com/janosh/pymatviz/main/assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
+[cumulative-error]: https://github.com/janosh/pymatviz/raw/main/assets/cumulative-error.svg
+[cumulative-residual]: https://github.com/janosh/pymatviz/raw/main/assets/cumulative-residual.svg
+[density-hexbin-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-hexbin-with-hist.svg
+[density-hexbin]: https://github.com/janosh/pymatviz/raw/main/assets/density-hexbin.svg
+[density-scatter-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-with-hist.svg
+[density-scatter]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter.svg
+[error-decay-with-uncert-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/error-decay-with-uncert-multiple.svg
+[error-decay-with-uncert]: https://github.com/janosh/pymatviz/raw/main/assets/error-decay-with-uncert.svg
+[elements-hist]: https://github.com/janosh/pymatviz/raw/main/assets/elements-hist.svg
+[marchenko-pastur-significant-eval]: https://github.com/janosh/pymatviz/raw/main/assets/marchenko-pastur-significant-eval.svg
+[marchenko-pastur]: https://github.com/janosh/pymatviz/raw/main/assets/marchenko-pastur.svg
+[matbench-phonons-structures-2d]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-phonons-structures-2d.svg
+[normal-prob-plot-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/normal-prob-plot-multiple.svg
+[normal-prob-plot]: https://github.com/janosh/pymatviz/raw/main/assets/normal-prob-plot.svg
+[precision-recall-curve]: https://github.com/janosh/pymatviz/raw/main/assets/precision-recall-curve.svg
+[ptable-heatmap-plotly-log]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-plotly-log.svg
+[ptable-heatmap-plotly-more-hover-data]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-plotly-more-hover-data.svg
+[ptable-heatmap-ratio]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-ratio.svg
+[ptable-heatmap]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap.svg
+[residual-vs-actual]: https://github.com/janosh/pymatviz/raw/main/assets/residual-vs-actual.svg
+[roc-curve]: https://github.com/janosh/pymatviz/raw/main/assets/roc-curve.svg
+[sankey-from-2-df-cols-randints]: https://github.com/janosh/pymatviz/raw/main/assets/sankey-from-2-df-cols-randints.svg
+[sankey-spglib-vs-aflow-spacegroups]: https://github.com/janosh/pymatviz/raw/main/assets/sankey-spglib-vs-aflow-spacegroups.svg
+[scatter-with-err-bar]: https://github.com/janosh/pymatviz/raw/main/assets/scatter-with-err-bar.svg
+[spg-num-sunburst]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-sunburst.svg
+[spg-symbol-sunburst]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-sunburst.svg
+[struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: https://github.com/janosh/pymatviz/raw/main/assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
+[struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: https://github.com/janosh/pymatviz/raw/main/assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
 
 ## 📖 &thinsp; How to cite `pymatviz`
 
