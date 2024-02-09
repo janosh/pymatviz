@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from matminer.datasets import load_dataset
 from monty.io import zopen
+from pymatgen.core.periodic_table import Element
 from pymatgen.ext.matproj import MPRester
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
@@ -28,7 +29,13 @@ from pymatviz.phonons import (
     plot_phonon_bands_and_dos,
     plot_phonon_dos,
 )
-from pymatviz.ptable import ptable_heatmap, ptable_heatmap_plotly, ptable_heatmap_ratio
+from pymatviz.ptable import (
+    ptable_heatmap,
+    ptable_heatmap_plotly,
+    ptable_heatmap_ratio,
+    ptable_hists,
+    ptable_scatters,
+)
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
@@ -144,6 +151,34 @@ title = "Elements in Matbench Experimental Bandgap (log scale)"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
 fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
+
+
+# %% Histograms laid out in as a periodic table
+elements = [*map(Element.from_Z, range(1, 119))]
+# generate random parity data with y \approx x with some noise
+data_dict = {
+    ele.symbol: np.random.randn(100) + np.random.randn(100) for ele in elements
+}
+fig = ptable_hists(
+    data_dict, colormap="coolwarm", cbar_title="Periodic Table Histograms"
+)
+save_and_compress_svg(fig, "ptable-hists")
+
+
+# %% Scatter plots laid out as a periodic table
+data_dict = {
+    ele.symbol: [
+        np.random.randint(0, 20, 10),
+        np.random.randint(0, 20, 10),
+        np.random.randint(0, 20, 10),
+    ]
+    for ele in elements
+}
+
+fig = ptable_scatters(
+    data_dict, colormap="coolwarm", cbar_title="Periodic Table Scatter Plots"
+)
+# save_and_compress_svg(fig, "ptable-scatters")
 
 
 # %% Uncertainty Plots

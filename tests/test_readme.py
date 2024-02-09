@@ -1,11 +1,13 @@
 import os
 
+from pymatviz import ROOT
+
 
 def test_no_missing_images() -> None:
     """Test that all images in the readme are present in repo."""
-    with open("readme.md") as file:
+    with open(f"{ROOT}/readme.md") as file:
         readme = file.read()
-    base_url = "https://raw.githubusercontent.com/janosh/pymatviz/main/assets/"
+    base_url = "https://github.com/janosh/pymatviz/raw/main/assets/"
     images = [text.split(".svg\n")[0] for text in readme.split(base_url)[1:]]
 
     for idx, img in enumerate(images, 1):

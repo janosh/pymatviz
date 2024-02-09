@@ -15,6 +15,7 @@ from pymatviz import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
+    ptable_scatters,
 )
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -95,7 +96,7 @@ def test_ptable_heatmap(
 
     ptable_heatmap(glass_formulas, log=True)
 
-    # custom color map
+    # custom colormap
     ptable_heatmap(glass_formulas, log=True, colorscale="summer")
 
     # heat_mode normalized to total count
@@ -369,6 +370,12 @@ def test_ptable_heatmap_plotly_label_map(
             {},
         ),
         (
+            dict(H=np.array([1, 2, 3]), He=np.array([4, 5, 6])),
+            (1, 1),
+            dict(text=lambda x: f"{len(x):,}"),
+            {},
+        ),
+        (
             pd.Series([[1, 2, 3], [4, 5, 6]], index=["H", "He"]),
             (1, 1),
             dict(xy=(0, 0)),
@@ -382,10 +389,38 @@ def test_ptable_hists(
     anno_kwds: dict[str, Any],
     hist_kwds: dict[str, Any],
 ) -> None:
-    # Test the function with a valid DataFrame
     fig = ptable_hists(
         data, symbol_pos=symbol_pos, anno_kwds=anno_kwds, hist_kwds=hist_kwds
     )
-    assert isinstance(
-        fig, plt.Figure
-    ), "The function should return a matplotlib Figure object"
+    assert isinstance(fig, plt.Figure)
+
+
+def test_ptable_scatters() -> None:
+    """Test ptable_scatters with 3rd color dimension."""
+    fig = ptable_scatters(
+        data={
+            "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+            "O": [[10, 11], [12, 13], [14, 15]],
+        },
+        colormap="coolwarm",
+        cbar_title="Test ptable_scatters",
+    )
+    assert isinstance(fig, plt.Figure)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},
+        {"Fe": np.array([[1, 2, 3], [4, 5, 6]]), "O": np.array([[7, 8], [9, 10]])},
+        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),
+        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]),
+    ],
+)
+def test_ptable_scatters_datatypes(
+    data: pd.DataFrame | pd.Series | dict[str, list[int]],
+) -> None:
+    """Test ptable_scatters with various input data types."""
+    fig = ptable_scatters(data)
+    assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 180
