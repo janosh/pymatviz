@@ -912,7 +912,7 @@ def ptable_hists(
         # Hide y ticks
         ax.tick_params(axis="y", which="both", length=0)
 
-    # Add colorbar
+    # Add color bar
     if isinstance(cmap, Colormap):
         cbar_ax = fig.add_axes(cbar_coords)
         fig.colorbar(
@@ -920,7 +920,7 @@ def ptable_hists(
             cax=cbar_ax,
             **{"orientation": "horizontal"} | (cbar_kwds or {}),
         )
-        # Set colorbar title
+        # Set color bar title
         cbar_title_kwds = cbar_title_kwds or {}
         cbar_title_kwds.setdefault("fontsize", 12)
         cbar_title_kwds.setdefault("pad", 10)
