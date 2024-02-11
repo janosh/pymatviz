@@ -4,8 +4,7 @@ The majority of datasets explored in this directory are from the [`matbench`](ht
 
 - [`ricci_carrier_transport`](https://hackingmaterials.lbl.gov/matminer/dataset_summary): [Electronic Transport Properties by F. Ricci et al.][carrier_transport] from MPContribs which contains 48,000 DFT Seebeck coefficients ([Paper](https://www.nature.com/articles/sdata201785)). [[Download link][carrier_transport.json.gz] (from [here](https://git.io/JOMwY))].
 - [`boltztrap_mp`](https://hackingmaterials.lbl.gov/matminer/dataset_summary) which contains ~9000 effective mass and thermoelectric properties calculated by the BoltzTraP software package.
-- [`tri_camd_2022`](https://data.matr.io/7): Toyota Research Institute's 2nd active learning crystal discovery dataset from Computational Autonomy for
-Materials Discovery (CAMD)
+- [`tri_camd_2022`](https://data.matr.io/7): Toyota Research Institute's 2nd active learning crystal discovery dataset from Computational Autonomy for Materials Discovery (CAMD)
 - `WBM`: From the paper [Predicting stable crystalline compounds using chemical similarity](https://www.nature.com/articles/s41524-020-00481-6) published Jan 26, 2021 in Nature. A dataset generated with DFT building on earlier work by some of the same authors published in [The optimal one dimensional periodic table: a modified Pettifor chemical scale from data mining](https://doi.org/10.1088/1367-2630/18/9/093011). Kindly shared by the author Hai-Chen Wang on email request.
 
 ## [MatBench v0.1](https://matbench.materialsproject.org)
@@ -38,6 +37,7 @@ Detailed information about how each dataset was created and prepared for use is 
 | [`matbench_steels`]        | `yield strength` (MPa)       | 312          | regression     | composition | [download][matbench_steels.json.gz]        |
 
 <!-- markdown-link-check-disable -->
+
 [ml.materialsproject.org]: https://ml.materialsproject.org
 [matbench_dielectric.json.gz]: https://ml.materialsproject.org/projects/matbench_dielectric.json.gz
 [`matbench_dielectric`]: https://ml.materialsproject.org/projects/matbench_dielectric
@@ -67,6 +67,7 @@ Detailed information about how each dataset was created and prepared for use is 
 [`matbench_steels`]: https://ml.materialsproject.org/projects/matbench_steels
 [carrier_transport]: https://contribs.materialsproject.org/projects/carrier_transport
 [carrier_transport.json.gz]: https://contribs.materialsproject.org/projects/carrier_transport.json.gz
+
 <!-- markdown-link-check-enable-->
 
 ### Leaderboard

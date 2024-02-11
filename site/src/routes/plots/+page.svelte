@@ -1,7 +1,8 @@
 <script lang="ts">
   const figs = import.meta.glob(`$root/assets/*.svg`, {
     eager: true,
-    as: `url`,
+    query: `?url`,
+    import: `default`,
   })
 </script>
 
