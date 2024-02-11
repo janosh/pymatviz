@@ -1,12 +1,16 @@
 import { compile } from 'mdsvex'
 
 export const load = async ({ params }) => {
-  const files = import.meta.glob(`./**/*.py`, { eager: true, as: `raw` })
+  const files = import.meta.glob(`./**/*.py`, {
+    eager: true,
+    query: `?raw`,
+    import: `default`,
+  })
   const { slug } = params
 
   // exclude files starting with _
   const matches = Object.keys(files).filter(
-    (key) => key.startsWith(`./${slug}/`) && !key.startsWith(`./${slug}/_`)
+    (key) => key.startsWith(`./${slug}/`) && !key.startsWith(`./${slug}/_`),
   )
 
   // if no paths start with `./${slug}`, throw an error
