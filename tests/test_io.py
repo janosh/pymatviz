@@ -207,7 +207,15 @@ def test_df_to_html_table(
 ) -> None:
     file_path = tmp_path / "test_df.svelte"
 
-    df_to_html_table(
+    html1 = df_to_html_table(
+        df_mixed.style,
+        script=script,
+        styles=styles,
+        inline_props=inline_props,
+        styler_css=styler_css,
+    )
+    assert not file_path.is_file()
+    html2 = df_to_html_table(
         df_mixed.style,
         file_path,
         script=script,
@@ -215,9 +223,11 @@ def test_df_to_html_table(
         inline_props=inline_props,
         styler_css=styler_css,
     )
+    assert html1 == html2
 
     assert file_path.is_file()
     html_text = file_path.read_text()
+    assert html2 == html_text
 
     if script is not None:
         assert script.split("<table")[0] in html_text, html_text
