@@ -297,7 +297,7 @@ TABLE_SCROLL_CSS = "table { overflow: scroll; max-width: 100%; display: block; }
 
 def df_to_html_table(
     styler: Styler,
-    file_path: str | Path,
+    file_path: str | Path | None = None,
     inline_props: str | None = "",
     script: str | None = "",
     styles: str | None = TABLE_SCROLL_CSS,
@@ -305,7 +305,7 @@ def df_to_html_table(
     sortable: bool = True,
     post_process: Callable[[str], str] | None = None,
     **kwargs: Any,
-) -> None:
+) -> str:
     """Convert a pandas Styler to a svelte table.
 
     Args:
@@ -328,6 +328,9 @@ def df_to_html_table(
         post_process (Callable[[str], str]): Function to post-process the HTML string
             before writing it to file. Defaults to None.
         **kwargs: Keyword arguments passed to Styler.to_html().
+
+    Returns:
+        str: pandas Styler as HTML.
     """
     sortable_script = """<script lang="ts">
       import { sortable } from 'svelte-zoo/actions'
@@ -359,8 +362,11 @@ def df_to_html_table(
         html = html.replace("</style>", f"{styles}\n</style>")
     if callable(post_process):
         html = post_process(html)
-    with open(file_path, mode="w", encoding="utf-8") as file:
-        file.write(html)
+    if file_path:
+        with open(file_path, mode="w", encoding="utf-8") as file:
+            file.write(html)
+
+    return html
 
 
 class TqdmDownload(tqdm):
