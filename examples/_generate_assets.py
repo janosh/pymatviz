@@ -178,7 +178,7 @@ data_dict = {
 fig = ptable_scatters(
     data_dict, colormap="coolwarm", cbar_title="Periodic Table Scatter Plots"
 )
-# save_and_compress_svg(fig, "ptable-scatters")
+save_and_compress_svg(fig, "ptable-scatters")
 
 
 # %% Uncertainty Plots

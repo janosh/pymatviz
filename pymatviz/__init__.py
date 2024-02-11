@@ -15,6 +15,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.graph_objects as go
 import plotly.io as pio
 from pymatgen.symmetry.groups import SYMM_DATA
 
@@ -56,8 +57,9 @@ from pymatviz.utils import (
 )
 
 
+PKG_NAME = "pymatviz"
 try:
-    __version__ = version("pymatviz")
+    __version__ = version(PKG_NAME)
 except PackageNotFoundError:
     pass  # package not installed
 
@@ -136,7 +138,6 @@ plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("figure", dpi=200, titlesize=18)
 plt.rcParams["figure.constrained_layout.use"] = True
 
-
 axis_template = dict(
     mirror=True,
     showline=True,
@@ -146,13 +147,18 @@ axis_template = dict(
     showgrid=True,
 )
 white_axis_template = axis_template | dict(linecolor="black", gridcolor="lightgray")
-pio.templates["pymatviz_white"] = pio.templates["plotly_white"].update(
-    layout=dict(xaxis=white_axis_template, yaxis=white_axis_template)
-)
-black_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
-pio.templates["pymatviz_black"] = pio.templates["plotly_dark"].update(
-    layout=dict(xaxis=black_axis_template, yaxis=black_axis_template)
-)
+pmv_white_template = go.layout.Template(pio.templates["plotly_white"])
 
-px.defaults.template = "pymatviz_white"
-pio.templates.default = "pymatviz_white"
+pio.templates[f"{PKG_NAME}_white"] = pmv_white_template.update(
+    layout=dict(
+        xaxis=white_axis_template, yaxis=white_axis_template, font=dict(color="black")
+    )
+)
+dark_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
+pmv_dark_template = go.layout.Template(pio.templates["plotly_dark"])
+
+pio.templates[f"{PKG_NAME}_dark"] = pmv_dark_template.update(
+    layout=dict(
+        xaxis=dark_axis_template, yaxis=dark_axis_template, font=dict(color="white")
+    )
+)

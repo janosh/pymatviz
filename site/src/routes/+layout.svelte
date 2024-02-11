@@ -20,7 +20,11 @@
     })
 
   const notebooks = Object.keys(
-    import.meta.glob(`$root/examples/*.html`, { eager: true, as: `url` })
+    import.meta.glob(`$root/examples/*.html`, {
+      eager: true,
+      query: `?url`,
+      import: `default`,
+    }),
   ).map((path) => {
     const filename = path.split(`/`).at(-1)?.replace(`.html`, ``)
     return `/notebooks/${filename}`

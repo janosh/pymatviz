@@ -8,11 +8,11 @@
         "examples/matbench_dielectric_eda.ipynb",
         "examples/matbench_perovskites_eda.ipynb",
         "examples/mp_bimodal_e_form.ipynb",
-        "examples/mprester_ptable.ipynb"
-      ]
+        "examples/mprester_ptable.ipynb",
+      ],
     },
     "vscode": {
-      "extensions": ["ms-toolsai.jupyter", "ms-python.python"]
-    }
-  }
+      "extensions": ["ms-toolsai.jupyter", "ms-python.python"],
+    },
+  },
 }

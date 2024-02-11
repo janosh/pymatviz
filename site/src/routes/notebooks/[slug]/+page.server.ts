@@ -5,7 +5,8 @@ export const load = async ({ params }) => {
 
   const notebooks = await import.meta.glob(`$root/examples/*.html`, {
     eager: true,
-    as: `raw`,
+    query: `?raw`,
+    import: `default`,
   })
 
   const path = `../examples/${slug}.ipynb`
@@ -14,7 +15,7 @@ export const load = async ({ params }) => {
 
   // get prev/next with wrap around
   const routes = Object.keys(notebooks).map((key) =>
-    key.replace(`../examples/`, `/notebooks/`).replace(`.html`, ``)
+    key.replace(`../examples/`, `/notebooks/`).replace(`.html`, ``),
   )
 
   return { html, slug, path, routes }
