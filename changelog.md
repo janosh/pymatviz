@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.8.1](https://github.com/janosh/pymatviz/compare/v0.8.0...v0.8.1)
+
+> 11 February 2024
+
+- Breaking: rename custom plotly template `pymatviz_(black-&gt;dark)` [`#123`](https://github.com/janosh/pymatviz/pull/123)
+- Add ptable_scatter [`#122`](https://github.com/janosh/pymatviz/pull/122)
+- Minor format tweaks [`#120`](https://github.com/janosh/pymatviz/pull/120)
+- Add `pytest` fixtures `df_(float|mixed)` to replace deleted `pd._testing.make(Mixed)DataFrame()` [`#121`](https://github.com/janosh/pymatviz/pull/121)
+- `add_ecdf_line()` utility for plotting empirical cumulative distribution functions [`#117`](https://github.com/janosh/pymatviz/pull/117)
+- Spacegroup hist plotly [`#116`](https://github.com/janosh/pymatviz/pull/116)
+- Add `plot_phonon_bands_and_dos()` [`#115`](https://github.com/janosh/pymatviz/pull/115)
+- Add `show_values: bool = True` to `ptable_heatmap_plotly()` and `last_peak_anno: str` to `plot_phonon_dos()` [`#114`](https://github.com/janosh/pymatviz/pull/114)
+- Add `plot_phonon_dos()` for interactive plotly DOS plots [`#113`](https://github.com/janosh/pymatviz/pull/113)
+- _generate_assets.py add code for assets/(phonon-bands-and-dos-dft|phonon-bands-dft|phonon-dos-dft).svg [`93f72dc`](https://github.com/janosh/pymatviz/commit/93f72dcf46ab67a7713541b903f56d690e7791da)
+- ruff enable PD901+PLW2901 and fix violations [`36f4771`](https://github.com/janosh/pymatviz/commit/36f477103cfc82109bbb175a052f0fc22109f0d3)
+- breaking: absorb keywords sort and density_bins into hist_density_kwargs [`64da6b2`](https://github.com/janosh/pymatviz/commit/64da6b2da3d34ecda8028adc0a874c364e68bf62)
+- breaking: rename elements_hist to hist_elemental_prevalence in pymatviz/histograms.py [`ebd067a`](https://github.com/janosh/pymatviz/commit/ebd067aa8cee15a7de44676fb37e2f3e472439eb)
+- gray-shade negative frequencies in phonon bands and bands+DOS plots [`882a6ca`](https://github.com/janosh/pymatviz/commit/882a6caaa06acbcadbcfc3d8e2d7fe6aa8ce630e)
+- breaking: remove residual_hist() from pymatviz/histograms.py [`7780f68`](https://github.com/janosh/pymatviz/commit/7780f68d593dcdabe750a6b2b868f3bddfea7476)
+- mv dataset_exploration examples [`8bfa4b8`](https://github.com/janosh/pymatviz/commit/8bfa4b8c958db1fd7f3877ad7c8d2a2864ba6936)
+
 #### [v0.8.0](https://github.com/janosh/pymatviz/compare/v0.7.3...v0.8.0)
 
 > 15 December 2023
