@@ -6,7 +6,7 @@ import subprocess
 from os.path import dirname
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Callable, Final, Literal
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -303,6 +303,7 @@ def df_to_html_table(
     styles: str | None = TABLE_SCROLL_CSS,
     styler_css: bool | dict[str, str] = True,
     sortable: bool = True,
+    post_process: Callable[[str], str] | None = None,
     **kwargs: Any,
 ) -> None:
     """Convert a pandas Styler to a svelte table.
@@ -313,17 +314,19 @@ def df_to_html_table(
         inline_props (str): Inline props to pass to the table element. Example:
             "class='table' style='width: 100%'". Defaults to "".
         script (str): JavaScript string to insert above the table. Will replace the
-            opening HTML opening table tag to allow passing props to it. The default
+            opening HTML opening <table tag to allow passing props to it. The default
             script uses ...props to enable Svelte props forwarding to the table element.
             See source code to inspect default script.
-        styles (str): CSS rules to apply to the table element. Defaults to
-            TABLE_SCROLL_CSS.
+        styles (str): CSS rules to insert at the bottom of the <style> tag element.
+            Defaults to TABLE_SCROLL_CSS.
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
             to the pandas Styler. Defaults to True. If dict, keys are CSS selectors and
             values CSS strings. Example:
             dict("td, th": "border: none; padding: 4px 6px;")
         sortable (bool): Whether to enable sorting the table by clicking on column
-            headers. Defaults to True.
+            headers. Defaults to True. Requires npm install svelte-zoo.
+        post_process (Callable[[str], str]): Function to post-process the HTML string
+            before writing it to file. Defaults to None.
         **kwargs: Keyword arguments passed to Styler.to_html().
     """
     sortable_script = """<script lang="ts">
@@ -354,6 +357,8 @@ def df_to_html_table(
     if styles is not None:
         # insert styles at end of closing </style> tag so they override default styles
         html = html.replace("</style>", f"{styles}\n</style>")
+    if callable(post_process):
+        html = post_process(html)
     with open(file_path, mode="w", encoding="utf-8") as file:
         file.write(html)
 
