@@ -118,3 +118,8 @@ lint.isort.split-on-trailing-comma = false
 "tests/*" = ["D103", "S101"]
 "examples/*" = ["INP001", "T201"] # T201: print found
 "site/*" = ["INP001", "S602"]
+
+[tool.pyright]
+typeCheckingMode = "off"
+reportPossiblyUnboundVariable = true
+reportUnboundVariable = true
