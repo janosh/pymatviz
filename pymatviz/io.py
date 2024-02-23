@@ -210,9 +210,10 @@ def df_to_pdf(
         raise ImportError(msg) from exc
 
     if styler_css:
-        styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
+        styler_css = DEFAULT_DF_STYLES if styler_css is True else styler_css
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()],
+            overwrite=False,
         )
 
     styler.set_uuid("")
@@ -292,7 +293,15 @@ def normalize_and_crop_pdf(
         raise ImportError(msg) from exc
 
 
-TABLE_SCROLL_CSS = "table { overflow: scroll; max-width: 100%; display: block; }"
+ALLOW_TABLE_SCROLL = "table { overflow: scroll; max-width: 100%; display: block; }"
+# https://stackoverflow.com/a/38994837
+HIDE_SCROLL_BAR = """
+table {
+    scrollbar-width: none;  /* Firefox */
+}
+table::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+}"""
 
 
 def df_to_html_table(
@@ -300,7 +309,7 @@ def df_to_html_table(
     file_path: str | Path | None = None,
     inline_props: str | None = "",
     script: str | None = "",
-    styles: str | None = TABLE_SCROLL_CSS,
+    styles: str | None = ALLOW_TABLE_SCROLL + HIDE_SCROLL_BAR,
     styler_css: bool | dict[str, str] = True,
     sortable: bool = True,
     post_process: Callable[[str], str] | None = None,
