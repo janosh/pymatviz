@@ -355,6 +355,8 @@ def plot_phonon_bands_and_dos(
     bands_kwargs: dict[str, Any] | None = None,
     dos_kwargs: dict[str, Any] | None = None,
     subplot_kwargs: dict[str, Any] | None = None,
+    all_line_kwargs: dict[str, Any] | None = None,
+    per_line_kwargs: dict[str, dict[str, Any]] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot phonon DOS and band structure using Plotly.
@@ -369,6 +371,10 @@ def plot_phonon_bands_and_dos(
         subplot_kwargs (dict[str, Any]): Passed to Plotly's make_subplots method.
             Defaults to dict(shared_yaxes=True, column_widths=(0.8, 0.2),
             horizontal_spacing=0.01).
+        all_line_kwargs (dict[str, Any]): Passed to trace.update for each in fig.data.
+            Modify line appearance for all traces. Defaults to None.
+        per_line_kwargs (dict[str, str]): Map of line labels to kwargs for trace.update.
+            Modify line appearance for specific traces. Defaults to None.
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:
@@ -408,13 +414,18 @@ def plot_phonon_bands_and_dos(
     if fig.layout.yaxis.range[0] < -0.1:
         fig.add_hline(y=0, line=dict(color="black", width=1), row=1, col=2)
 
-    # put traces with same labels into the same legend group and hide the legend for
-    # the 2nd subplot, give them the same color as the corresponding band structure
     line_map: dict[str, dict[str, Any]] = {}
     for trace in fig.data:
+        # put traces with same labels into the same legend group
         trace.legendgroup = trace.name
+        # hide legend for all BS lines, show only DOS line
         trace.showlegend = trace.showlegend and trace.xaxis == "x2"
+        # give all lines with same name the same appearance (esp. color)
         trace.line = line_map.setdefault(trace.name, trace.line)
+
+        trace.update(all_line_kwargs or {})
+        if trace_kwargs := (per_line_kwargs or {}).get(trace.name):
+            trace.update(trace_kwargs)
 
     fig.layout.xaxis2.update(title="DOS")
     # transfer x-axis label from DOS fig to parent fig (since DOS may have custom units)
