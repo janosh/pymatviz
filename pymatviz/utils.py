@@ -485,7 +485,7 @@ def add_ecdf_line(
 
 def df_to_arrays(
     df: pd.DataFrame | None,
-    *args: str | Sequence[str] | ArrayLike,
+    *args: str | Sequence[str] | Sequence[ArrayLike],
     strict: bool = True,
 ) -> list[ArrayLike | dict[str, ArrayLike]]:
     """If df is None, this is a no-op: args are returned as-is. If df is a
@@ -503,11 +503,13 @@ def df_to_arrays(
         TypeError: If df is not pd.DataFrame and not None.
 
     Returns:
-        tuple[ArrayLike, ArrayLike]: Input arrays or arrays from dataframe columns.
+        list[ArrayLike | dict[str, ArrayLike]]: Array data for each column name or
+            dictionary of column names and array data.
     """
     if df is None:
         if cols := [arg for arg in args if isinstance(arg, str)]:
             raise ValueError(f"got column names but no df to get data from: {cols}")
+        # pass through args as-is
         return args  # type: ignore[return-value]
 
     if not isinstance(df, pd.DataFrame):

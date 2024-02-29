@@ -632,8 +632,8 @@ def ptable_heatmap_plotly(
         row = n_rows - period
         col = group - 1
 
+        label = ""  # label (if not None) is placed below the element symbol
         if show_values:
-            label = ""  # label (if not None) is placed below the element symbol
             if symbol in exclude_elements:
                 label = "excl."
             elif heat_value := heat_value_element_map.get(symbol):

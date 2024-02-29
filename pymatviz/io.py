@@ -30,6 +30,7 @@ def save_fig(
     pdf_sleep: float = 0.6,
     style: str = "",
     prec: int | None = None,  # Added round keyword argument
+    template: str | None = None,
     **kwargs: Any,
 ) -> None:
     """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
@@ -56,9 +57,17 @@ def save_fig(
         prec (int, optional): Number of significant figures to keep for any float
             in the exported file. Defaults to None (no rounding). Sensible values are
             usually 4, 5, 6.
+        template (str, optional): Temporary plotly to apply to the figure before
+            saving. Will be reset to the original after. Defaults to "pymatviz_white" if
+            path ends with .pdf or .pdfa, else None. Set to None to disable. Only used
+            if fig is a plotly figure.
 
         **kwargs: Keyword arguments passed to fig.write_html().
     """
+    is_pdf = path.lower().endswith((".pdf", ".pdfa"))
+    if template is None and is_pdf:
+        template = "pymatviz_white"
+
     if prec is not None:
         # create a copy of figure and round all floats in fig.data to round significant
         # figures
@@ -86,7 +95,6 @@ def save_fig(
             f"Unsupported figure type {type(fig)}, expected plotly or matplotlib Figure"
             " or plt.Axes"
         )
-    is_pdf = path.lower().endswith((".pdf", ".pdfa"))
     if path.lower().endswith((".svelte", ".html")):
         config = dict(
             showTips=False,
@@ -119,9 +127,9 @@ def save_fig(
                 # replace first '<div ' with '<div {style=} '
                 file.write(file.read().replace("<div ", f"<div {style=} ", 1))
     else:
-        if is_pdf:
-            orig_template = fig.layout.template
-            fig.layout.template = "pymatviz_white"
+        orig_template = fig.layout.template
+        if is_pdf and template:
+            fig.layout.template = template
         # hide click-to-show traces in PDF
         hidden_traces = []
         for trace in fig.data:
@@ -210,9 +218,10 @@ def df_to_pdf(
         raise ImportError(msg) from exc
 
     if styler_css:
-        styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
+        styler_css = DEFAULT_DF_STYLES if styler_css is True else styler_css
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()],
+            overwrite=False,
         )
 
     styler.set_uuid("")
@@ -292,7 +301,15 @@ def normalize_and_crop_pdf(
         raise ImportError(msg) from exc
 
 
-TABLE_SCROLL_CSS = "table { overflow: scroll; max-width: 100%; display: block; }"
+ALLOW_TABLE_SCROLL = "table { overflow: scroll; max-width: 100%; display: block; }"
+# https://stackoverflow.com/a/38994837
+HIDE_SCROLL_BAR = """
+table {
+    scrollbar-width: none;  /* Firefox */
+}
+table::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+}"""
 
 
 def df_to_html_table(
@@ -300,7 +317,7 @@ def df_to_html_table(
     file_path: str | Path | None = None,
     inline_props: str | None = "",
     script: str | None = "",
-    styles: str | None = TABLE_SCROLL_CSS,
+    styles: str | None = ALLOW_TABLE_SCROLL + HIDE_SCROLL_BAR,
     styler_css: bool | dict[str, str] = True,
     sortable: bool = True,
     post_process: Callable[[str], str] | None = None,
