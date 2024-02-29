@@ -147,6 +147,7 @@ axis_template = dict(
     showgrid=True,
 )
 white_axis_template = axis_template | dict(linecolor="black", gridcolor="lightgray")
+# inherit from plotly_white template
 pmv_white_template = go.layout.Template(pio.templates["plotly_white"])
 
 pio.templates[f"{PKG_NAME}_white"] = pmv_white_template.update(
@@ -155,6 +156,7 @@ pio.templates[f"{PKG_NAME}_white"] = pmv_white_template.update(
     )
 )
 dark_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
+# inherit from plotly_dark template
 pmv_dark_template = go.layout.Template(pio.templates["plotly_dark"])
 
 pio.templates[f"{PKG_NAME}_dark"] = pmv_dark_template.update(
