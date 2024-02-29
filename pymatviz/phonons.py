@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Union, no_type_check
+import sys
+from typing import TYPE_CHECKING, Any, Literal, Union, get_args, no_type_check
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -13,8 +14,9 @@ from pymatgen.util.string import htmlify
 
 
 if TYPE_CHECKING:
-    import numpy as np
+    from collections.abc import Sequence
 
+    import numpy as np
 
 AnyBandStructure = Union[BandStructureSymmLine, PhononBands]
 
@@ -30,36 +32,41 @@ def pretty_sym_point(symbol: str) -> str:
     )
 
 
-def get_band_xaxis_ticks(bs: PhononBands) -> tuple[list[float], list[str]]:
+def get_band_xaxis_ticks(
+    band_struct: PhononBands, branches: Sequence[str] | set[str] = ()
+) -> tuple[list[float], list[str]]:
     """Get all ticks and labels for a band structure plot.
 
     Returns:
         tuple[list[float], list[str]]: Ticks and labels for the x-axis of a band
             structure plot.
+        branches (Sequence[str]): Branches to plot. Defaults to empty tuple, meaning all
+            branches are plotted.
     """
-    ticks_x_pos = []
+    ticks_x_pos: list[float] = []
     tick_labels: list[str] = []
-    prev_label = bs.qpoints[0].label
-    prev_branch = bs.branches[0]["name"]
+    prev_label = band_struct.qpoints[0].label
+    prev_branch = band_struct.branches[0]["name"]
 
-    for idx, point in enumerate(bs.qpoints):
+    for idx, point in enumerate(band_struct.qpoints):
         if point.label is None:
             continue
-        ticks_x_pos += [bs.distance[idx]]
 
-        branches = (
+        branch_names = (
             branch["name"]
-            for branch in bs.branches
+            for branch in band_struct.branches
             if branch["start_index"] <= idx <= branch["end_index"]
         )
-        this_branch = next(branches, None)
+        this_branch = next(branch_names, None)
 
         if point.label != prev_label and prev_branch != this_branch:
             tick_labels.pop()
             ticks_x_pos.pop()
             tick_labels += [f"{prev_label or ''}|{point.label}"]
-        else:
+            ticks_x_pos += [band_struct.distance[idx]]
+        elif this_branch in branches:
             tick_labels += [point.label]
+            ticks_x_pos += [band_struct.distance[idx]]
 
         prev_label = point.label
         prev_branch = this_branch
@@ -94,9 +101,14 @@ def _shaded_range(
     return fig
 
 
+BranchMode = Literal["union", "intersection"]
+
+
 def plot_phonon_bands(
     band_structs: PhononBands | dict[str, PhononBands],
-    line_kwds: dict[str, Any] | None = None,
+    line_kwargs: dict[str, Any] | None = None,
+    branches: Sequence[str] = (),
+    branch_mode: BranchMode = "union",
     shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None = None,
     **kwargs: Any,
 ) -> go.Figure:
@@ -110,7 +122,12 @@ def plot_phonon_bands(
         band_structs (PhononBandStructureSymmLine | dict[str, PhononBandStructure]):
             Single BandStructureSymmLine or PhononBandStructureSymmLine object or a dict
             with labels mapped to multiple such objects.
-        line_kwds (dict[str, Any]): Passed to Plotly's Figure.add_scatter method.
+        line_kwargs (dict[str, Any]): Passed to Plotly's Figure.add_scatter method.
+        branches (Sequence[str]): Branches to plot. Defaults to empty tuple, meaning all
+            branches are plotted.
+        branch_mode ("union" | "intersection"): Whether to plot union or intersection
+            of branches in case of multiple band structures with non-overlapping
+            branches. Defaults to "union".
         shaded_ys (dict[tuple[float | str, float | str], dict]): Keys are y-ranges
             (min, max) tuple and values are kwargs for shaded regions created by
             fig.add_hrect(). Defaults to single entry (0, "y_min"):
@@ -124,24 +141,53 @@ def plot_phonon_bands(
         go.Figure: Plotly figure object.
     """
     fig = go.Figure()
-    line_kwds = line_kwds or {}
+    line_kwargs = line_kwargs or {}
+
+    if isinstance(branches, str):
+        branches = [branches]
+
+    if branch_mode not in get_args(BranchMode):
+        raise ValueError(
+            f"Invalid {branch_mode=}, must be one of {get_args(BranchMode)}"
+        )
 
     if not isinstance(band_structs, dict):  # normalize input to dictionary
         band_structs = {"": band_structs}
 
     # find common branches by normalized branch names
     common_branches: set[str] = set()
-    for bs in band_structs.values():
+    for idx, bs in enumerate(band_structs.values()):
         if not isinstance(bs, PhononBands):
-            type_name = type(bs).__name__
             raise TypeError(
-                f"Only {PhononBands.__name__} objects supported, got {type_name}"
+                f"Only {PhononBands.__name__} supported, got {type(bs).__name__}"
             )
-        branches = {pretty_sym_point(branch["name"]) for branch in bs.branches}
-        common_branches = common_branches & branches if common_branches else branches
+        bs_branches = {branch["name"] for branch in bs.branches}
+        common_branches = (
+            bs_branches
+            if idx == 0
+            # calc set union/intersect (& or |) depending on branch_mode
+            else getattr(common_branches, branch_mode)(bs_branches)
+        )
+    missing_branches = set(branches) - common_branches
+    avail_branches = "\n- ".join(common_branches)
+    if branches:
+        common_branches &= set(branches)
 
-    if not common_branches:
-        raise ValueError("No common branches found among the band structures.")
+    if common_branches == set():
+        available = "\n- ".join(
+            f"{key}: {', '.join(branch['name'] for branch in bs.branches)}"
+            for key, bs in band_structs.items()
+        )
+        msg = f"No common branches with {branch_mode=}.\n- {available}"
+        if branches:
+            msg += f"\n- Only branches {branches} were requested."
+        raise ValueError(msg)
+
+    if missing_branches:
+        print(  # noqa: T201 # keep this warning after "No common branches" error
+            f"Warning: {missing_branches=}, available branches:\n- {avail_branches}",
+            file=sys.stderr,
+        )
 
     # plotting only the common branches for each band structure
     first_bs = None
@@ -156,6 +202,8 @@ def plot_phonon_bands(
         # between bands)
         first_bs = first_bs or bs
         for branch_idx, branch in enumerate(bs.branches):
+            if branch["name"] not in common_branches:
+                continue
             start_idx = branch["start_index"]
             end_idx = branch["end_index"] + 1  # Include the end point
             # using the same first_bs x-axis for all band structures to avoid band
@@ -168,7 +216,7 @@ def plot_phonon_bands(
                     x=distances,
                     y=frequencies,
                     mode="lines",
-                    line=line_defaults | line_kwds,
+                    line=line_defaults | line_kwargs,
                     legendgroup=label,
                     name=label,
                     showlegend=branch_idx == band == 0,
@@ -177,7 +225,7 @@ def plot_phonon_bands(
 
     # add x-axis labels and vertical lines for common high-symmetry points
     first_bs = next(iter(band_structs.values()))
-    x_ticks, x_labels = get_band_xaxis_ticks(first_bs)
+    x_ticks, x_labels = get_band_xaxis_ticks(first_bs, branches=common_branches)
     fig.layout.xaxis.update(tickvals=x_ticks, ticktext=x_labels, tickangle=0)
 
     # remove 0 and the last line to avoid duplicate vertical line, looks like
@@ -199,9 +247,9 @@ def plot_phonon_bands(
         y_min = 0
     fig.layout.yaxis.range = (1.05 * y_min, 1.05 * y_max)
 
-    axes_kwds = dict(linecolor="black", gridcolor="lightgray")
-    fig.layout.xaxis.update(**axes_kwds)
-    fig.layout.yaxis.update(**axes_kwds)
+    axes_kwargs = dict(linecolor="black", gridcolor="lightgray")
+    fig.layout.xaxis.update(**axes_kwargs)
+    fig.layout.yaxis.update(**axes_kwargs)
 
     # move legend to top left corner
     fig.layout.legend.update(
@@ -355,6 +403,8 @@ def plot_phonon_bands_and_dos(
     bands_kwargs: dict[str, Any] | None = None,
     dos_kwargs: dict[str, Any] | None = None,
     subplot_kwargs: dict[str, Any] | None = None,
+    all_line_kwargs: dict[str, Any] | None = None,
+    per_line_kwargs: dict[str, dict[str, Any]] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot phonon DOS and band structure using Plotly.
@@ -369,6 +419,10 @@ def plot_phonon_bands_and_dos(
         subplot_kwargs (dict[str, Any]): Passed to Plotly's make_subplots method.
             Defaults to dict(shared_yaxes=True, column_widths=(0.8, 0.2),
             horizontal_spacing=0.01).
+        all_line_kwargs (dict[str, Any]): Passed to trace.update for each in fig.data.
+            Modify line appearance for all traces. Defaults to None.
+        per_line_kwargs (dict[str, str]): Map of line labels to kwargs for trace.update.
+            Modify line appearance for specific traces. Defaults to None.
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:
@@ -408,13 +462,18 @@ def plot_phonon_bands_and_dos(
     if fig.layout.yaxis.range[0] < -0.1:
         fig.add_hline(y=0, line=dict(color="black", width=1), row=1, col=2)
 
-    # put traces with same labels into the same legend group and hide the legend for
-    # the 2nd subplot, give them the same color as the corresponding band structure
     line_map: dict[str, dict[str, Any]] = {}
     for trace in fig.data:
+        # put traces with same labels into the same legend group
         trace.legendgroup = trace.name
+        # hide legend for all BS lines, show only DOS line
         trace.showlegend = trace.showlegend and trace.xaxis == "x2"
+        # give all lines with same name the same appearance (esp. color)
         trace.line = line_map.setdefault(trace.name, trace.line)
+
+        trace.update(all_line_kwargs or {})
+        if trace_kwargs := (per_line_kwargs or {}).get(trace.name):
+            trace.update(trace_kwargs)
 
     fig.layout.xaxis2.update(title="DOS")
     # transfer x-axis label from DOS fig to parent fig (since DOS may have custom units)

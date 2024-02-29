@@ -4,8 +4,11 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.express as px
+import plotly.io as pio
 from matminer.datasets import load_dataset
 from monty.io import zopen
+from monty.json import MontyDecoder
 from pymatgen.core.periodic_table import Element
 from pymatgen.ext.matproj import MPRester
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
@@ -51,6 +54,8 @@ plt.rc("axes", titlesize=16, titleweight="bold")
 plt.rc("figure", dpi=200, titlesize=20, titleweight="bold")
 plt.rcParams["figure.constrained_layout.use"] = True
 
+px.defaults.template = "pymatviz_white"
+pio.templates.default = "pymatviz_white"
 
 # random classification data
 np.random.seed(42)
@@ -350,31 +355,31 @@ save_and_compress_svg(fig, "sankey-from-2-df-cols-randints")
 
 
 # %% Plot phonon bands and DOS
-with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-pbe.json.lzma") as file:
-    dft_dct = json.loads(file.read())
-with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:
-    ml_dct = json.loads(file.read())
+mp_id, formula = "mp-2758", "Sr4Se4"
+bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 
-bands = {
-    "DFT": PhononBands.from_dict(dft_dct["phonon_bandstructure"]),
-    "MACE": PhononBands.from_dict(ml_dct["phonon_bandstructure"]),
-}
-doses = {
-    "DFT": PhononDos.from_dict(dft_dct["phonon_dos"]),
-    "MACE": PhononDos.from_dict(ml_dct["phonon_dos"]),
-}
+with zopen(f"{TEST_FILES}/{mp_id}-{formula}-pbe.json.lzma") as file:
+    dft_ph_doc = json.loads(file.read(), cls=MontyDecoder)
+with zopen(f"{TEST_FILES}/{mp_id}-{formula}-mace-y7uhwpje.json.lzma") as file:
+    ml_ph_doc = json.loads(file.read(), cls=MontyDecoder)
 
-fig = plot_phonon_bands(bands)
-fig.layout.title = dict(text="Phonon Bands of Sr4Se4 (mp-2758)", x=0.5, y=0.98)
+docs = {"DFT": dft_ph_doc, "MACE": ml_ph_doc}
+ph_bands: dict[str, PhononBands] = {key: doc[bs_key] for key, doc in docs.items()}
+ph_doses: dict[str, PhononDos] = {key: doc[dos_key] for key, doc in docs.items()}
+
+fig = plot_phonon_bands(ph_bands)
+fig.layout.title = dict(text=f"Phonon Bands of {formula} ({mp_id})", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=40)
-save_and_compress_svg(fig, "phonon-bands-mp-2758")
+save_and_compress_svg(fig, f"phonon-bands-{mp_id}")
 
-fig = plot_phonon_dos(doses)
-fig.layout.title = dict(text="Phonon DOS of Sr4Se4 (mp-2758)", x=0.5, y=0.98)
+fig = plot_phonon_dos(ph_doses)
+fig.layout.title = dict(text=f"Phonon DOS of {formula} ({mp_id})", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=40)
-save_and_compress_svg(fig, "phonon-dos-mp-2758")
+save_and_compress_svg(fig, f"phonon-dos-{mp_id}")
 
-fig = plot_phonon_bands_and_dos(bands, doses)
-fig.layout.title = dict(text="Phonon Bands and DOS of Sr4Se4 (mp-2758)", x=0.5, y=0.98)
+fig = plot_phonon_bands_and_dos(ph_bands, ph_doses)
+fig.layout.title = dict(
+    text=f"Phonon Bands and DOS of {formula} ({mp_id})", x=0.5, y=0.98
+)
 fig.layout.margin = dict(l=0, r=0, b=0, t=40)
-save_and_compress_svg(fig, "phonon-bands-and-dos-mp-2758")
+save_and_compress_svg(fig, f"phonon-bands-and-dos-{mp_id}")
