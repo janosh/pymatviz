@@ -143,6 +143,9 @@ def plot_phonon_bands(
     fig = go.Figure()
     line_kwargs = line_kwargs or {}
 
+    if isinstance(branches, str):
+        branches = [branches]
+
     if branch_mode not in get_args(BranchMode):
         raise ValueError(
             f"Invalid {branch_mode=}, must be one of {get_args(BranchMode)}"

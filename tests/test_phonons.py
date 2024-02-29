@@ -12,7 +12,7 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 from pymatgen.phonon.dos import PhononDos
 
 from pymatviz import plot_phonon_bands, plot_phonon_bands_and_dos, plot_phonon_dos
-from pymatviz.phonons import pretty_sym_point
+from pymatviz.phonons import BranchMode, pretty_sym_point
 from pymatviz.utils import TEST_FILES
 
 
@@ -51,34 +51,73 @@ def phonon_doses() -> dict[str, PhononDos]:
     }
 
 
-def test_plot_phonon_bands(phonon_bands_doses_mp_2758: BandsDoses) -> None:
+@pytest.mark.parametrize(
+    "branches, branch_mode", [(["GAMMA-X", "X-U"], "union"), ((), "intersection")]
+)
+def test_plot_phonon_bands(
+    phonon_bands_doses_mp_2758: BandsDoses,
+    branches: tuple[str, str],
+    branch_mode: BranchMode,
+) -> None:
     # test single band structure
-    fig = plot_phonon_bands(phonon_bands_doses_mp_2758["bands"]["DFT"])
+    fig = plot_phonon_bands(
+        phonon_bands_doses_mp_2758["bands"]["DFT"],
+        branch_mode=branch_mode,
+        branches=branches,
+    )
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Wave Vector"
     assert fig.layout.yaxis.title.text == "Frequency (THz)"
     assert fig.layout.font.size == 16
 
-    x_labels = ("Γ", "X", "X", "U|K", "Γ", "Γ", "L", "L", "W", "W", "X")
-    assert fig.layout.xaxis.ticktext == x_labels
+    if branches == ():
+        x_labels = ["Γ", "X", "X", "U|K", "Γ", "Γ", "L", "L", "W", "W", "X"]
+    else:
+        x_labels = ["Γ", "X", "X", "U|K"]
+    assert list(fig.layout.xaxis.ticktext) == x_labels
     assert fig.layout.xaxis.range is None
     assert fig.layout.yaxis.range == pytest.approx((0, 5.36385427095))
 
     # test dict of band structures
-    fig = plot_phonon_bands(phonon_bands_doses_mp_2758["bands"])
+    fig = plot_phonon_bands(
+        phonon_bands_doses_mp_2758["bands"], branch_mode=branch_mode, branches=branches
+    )
     assert isinstance(fig, go.Figure)
 
     with pytest.raises(
-        TypeError, match=f"Only {PhononBands.__name__} objects supported, got str"
+        TypeError, match=f"Only {PhononBands.__name__} supported, got str"
     ):
         plot_phonon_bands("invalid input")
+
+
+def test_plot_phonon_bands_raises(
+    phonon_bands_doses_mp_2758: BandsDoses, capsys: pytest.CaptureFixture
+) -> None:
+    with pytest.raises(ValueError) as exc:
+        plot_phonon_bands(
+            phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",)
+        )
+
+    assert (
+        "No common branches with branch_mode='union'.\n"
+        "- : GAMMA-X, X-U, K-GAMMA, GAMMA-L, L-W, W-X\n"
+        "- Only branches ('foo-bar',) were requested." in str(exc.value)
+    )
+
+    # issues warning when requesting some available and some unavailable branches
+    plot_phonon_bands(
+        phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("X-U", "foo-bar")
+    )
+    stdout, stderr = capsys.readouterr()
+    assert stdout == ""
+    assert "Warning: missing_branches={'foo-bar'}, available branches:" in stderr
 
 
 @pytest.mark.parametrize(
     "sym_point, expected",
     [("Γ", "Γ"), ("Γ|DELTA", "Γ|Δ"), ("GAMMA", "Γ"), ("S_0|SIGMA", "S<sub>0</sub>|Σ")],
 )
-def test_prety_sym_point(sym_point: str, expected: str) -> None:
+def test_pretty_sym_point(sym_point: str, expected: str) -> None:
     assert pretty_sym_point(sym_point) == expected
 
 
