@@ -230,15 +230,12 @@ def test_df_to_arrays() -> None:
     assert "not-real-col-name" in str(exc.value)
 
 
-@pytest.mark.parametrize("strict", [True, False])
-def test_df_to_arrays_strict(strict: bool) -> None:
-    try:
-        args = df_to_arrays(42, "foo", "bar", strict=strict)
-    except TypeError as exc:
-        if strict:
-            assert "df should be pandas DataFrame or None" in str(exc)  # noqa: PT017
-        else:
-            assert args == ("foo", "bar")
+def test_df_to_arrays_strict() -> None:
+    args = df_to_arrays(42, "foo", "bar", strict=False)
+    assert args == ("foo", "bar")
+
+    with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
+        df_to_arrays(42, "foo", "bar", strict=True)
 
 
 @pytest.mark.parametrize(

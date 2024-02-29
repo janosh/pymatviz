@@ -22,19 +22,19 @@ A toolkit for visualizations in materials informatics.
 
 </slot>
 
-## 🔨 &thinsp; Installation
+## Installation
 
 ```sh
 pip install pymatviz
 ```
 
-## 💡 &thinsp; API Docs
+## API Docs
 
 See the [/api] page.
 
 [/api]: https://janosh.github.io/pymatviz/api
 
-## 📙 &thinsp; Usage
+## Usage
 
 See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz`. PRs with additional examples are welcome! 🙏
 
@@ -58,15 +58,8 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table c
 |                       ![ptable-heatmap]                        |                        ![ptable-heatmap-ratio]                        |
 |  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)  | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py) |
 |            ![ptable-heatmap-plotly-more-hover-data]            |                     ![ptable-heatmap-plotly-log]                      |
-
-## Nested Periodic Table
-
-See [`pymatviz/ptable.py`](pymatviz/ptable.py). Plot histogram plots and scatter plots nested within periodic table.
-| [`ptable_hists(data, colormap="coolwarm"`](pymatviz/ptable.py) | [`ptable_scatters(data, colormap="coolwarm"`](pymatviz/ptable.py) |
-| :------------------------------------------------------------: | :---------------------------------------------------------------: |
-
-<!-- prettier-ignore -->
-|                        ![ptable-hists]                         |                        ![ptable-scatters]                         |
+| [`ptable_hists(data, colormap="coolwarm"`](pymatviz/ptable.py) |   [`ptable_scatters(data, colormap="coolwarm"`](pymatviz/ptable.py)   |
+|                        ![ptable-hists]                         |                          ![ptable-scatters]                           |
 
 [ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
 [ptable-scatters]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-scatters.svg
@@ -146,7 +139,7 @@ See [`pymatviz/parity.py`](pymatviz/parity.py).
 | [`scatter_with_err_bar(xs, ys, yerr, ...)`](pymatviz/parity.py) | [`residual_vs_actual(y_true, y_pred, ...)`](pymatviz/parity.py) |
 |                     ![scatter-with-err-bar]                     |                      ![residual-vs-actual]                      |
 
-## Uncertainty Calibration
+## Uncertainty
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
@@ -156,7 +149,7 @@ See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 | [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py) |
 |                         ![error-decay-with-uncert]                          |                        ![error-decay-with-uncert-multiple]                        |
 
-## Cumulative Error & Residual
+## Cumulative Metrics
 
 See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
 
@@ -164,7 +157,7 @@ See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
 | :----------------------------------------------------------: | :-------------------------------------------------------------: |
 |                     ![cumulative-error]                      |                     ![cumulative-residual]                      |
 
-## Classification Metrics
+## Classification
 
 See [`pymatviz/relevance.py`](pymatviz/relevance.py).
 
@@ -209,9 +202,9 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 [struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: https://github.com/janosh/pymatviz/raw/main/assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
 [struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: https://github.com/janosh/pymatviz/raw/main/assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
 
-## 📖 &thinsp; How to cite `pymatviz`
+## How to cite `pymatviz`
 
-You can cite the [Zenodo record](https://zenodo.org/badge/latestdoi/340898532) using the following BibTeX entry:
+See [`citation.cff`](citation.cff) or cite the [Zenodo record](https://zenodo.org/badge/latestdoi/340898532) using the following BibTeX entry:
 
 ```bib
 @software{riebesell_pymatviz_2022,
