@@ -673,9 +673,7 @@ def pick_bw_for_contrast(
     return "black" if light_bg else "white"
 
 
-def si_fmt(
-    val: float, fmt_spec: str = ".1f", sep: str = "", binary: bool = False
-) -> str:
+def si_fmt(val: float, fmt: str = ".1f", sep: str = "", binary: bool = False) -> str:
     """Convert large numbers into human readable format using SI prefixes in binary
     (1024) or metric (1000) mode.
 
@@ -685,7 +683,7 @@ def si_fmt(
         val (int | float): Some numerical value to format.
         binary (bool, optional): If True, scaling factor is 2^10 = 1024 else 1000.
             Defaults to False.
-        fmt_spec (str): f-string format specifier. Configure precision and left/right
+        fmt (str): f-string format specifier. Configure precision and left/right
             padding in returned string. Defaults to ".1f". Can be used to ensure leading
             or trailing whitespace for shorter numbers. See
             https://docs.python.org/3/library/string.html#format-specification-mini-language.
@@ -710,10 +708,10 @@ def si_fmt(
                 break
             val *= factor
 
-    return f"{val:{fmt_spec}}{sep}{_scale}"
+    return f"{val:{fmt}}{sep}{_scale}"
 
 
-si_fmt_int = partial(si_fmt, fmt_spec=".0f")
+si_fmt_int = partial(si_fmt, fmt=".0f")
 
 
 def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:

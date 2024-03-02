@@ -18,7 +18,7 @@ A toolkit for visualizations in materials informatics.
 
 <slot name="how-to-cite">
 
-> If you use `pymatviz` in your research, [see how to cite](#--how-to-cite-pymatviz).
+> If you use `pymatviz` in your research, [see how to cite](#how-to-cite-pymatviz).
 
 </slot>
 
