@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import inspect
 import itertools
 import math
 import warnings
 from collections.abc import Sequence
+from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Literal, get_args
 
 import matplotlib.pyplot as plt
@@ -240,7 +242,7 @@ def ptable_heatmap(
         plt.Axes: matplotlib Axes with the heatmap.
     """
     if fmt is None:
-        fmt = lambda x, _: si_fmt(x, ".1%" if heat_mode == "percent" else ".0f")
+        fmt = partial(si_fmt, fmt=".1%" if heat_mode == "percent" else ".0f")
     if cbar_fmt is None:
         cbar_fmt = fmt
 
@@ -320,8 +322,13 @@ def ptable_heatmap(
             color = color_map(norm(tile_value))
 
             if callable(fmt):
-                # 2nd arg=0 just for consistency with matplotlib fmt signature
-                label = fmt(tile_value, 0)
+                if len(inspect.signature(fmt).parameters) == 2:
+                    # 2nd arg=0 needed for matplotlib which always passes 2 positional
+                    # args to fmt()
+                    label = fmt(tile_value, 0)
+                else:
+                    label = fmt(tile_value)
+
             elif heat_mode == "percent":
                 label = f"{tile_value:{fmt or '.1f'}}"
             else:

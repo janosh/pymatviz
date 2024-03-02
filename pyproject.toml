@@ -97,6 +97,7 @@ lint.ignore = [
     "FBT001",
     "FBT002",
     "FIX002",
+    "ISC001",
     "N806",   # non-lowercase-variable-in-function
     "NPY002",
     "PLR",    # pylint refactor

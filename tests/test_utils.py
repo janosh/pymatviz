@@ -427,8 +427,9 @@ def test_annotate_bars(
         "adjustText not installed, falling back to default matplotlib label "
         "placement. Use pip install adjustText."
     )
-    with patch.dict("sys.modules", {"adjustText": None}), pytest.raises(
-        ImportError, match=err_msg
+    with (
+        patch.dict("sys.modules", {"adjustText": None}),
+        pytest.raises(ImportError, match=err_msg),
     ):
         annotate_bars(ax, adjust_test_pos=True)
 
@@ -473,12 +474,12 @@ def test_si_fmt() -> None:
     assert si_fmt(123) == "123.0"
     assert si_fmt(1234) == "1.2K"
     assert si_fmt(123456) == "123.5K"
-    assert si_fmt(12345678, fmt_spec=">6.2f", sep=" ") == " 12.35 M"
-    assert si_fmt(-0.00123, fmt_spec=".3g", binary=False) == "-1.23m"
-    assert si_fmt(0.00000123, fmt_spec="5.1f", sep="\t", binary=True) == "  1.3\tμ"
-    assert si_fmt(0.00000123, fmt_spec="5.1f", sep="\t", binary=False) == "  1.2\tμ"
+    assert si_fmt(12345678, fmt=">6.2f", sep=" ") == " 12.35 M"
+    assert si_fmt(-0.00123, fmt=".3g", binary=False) == "-1.23m"
+    assert si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=True) == "  1.3\tμ"
+    assert si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=False) == "  1.2\tμ"
     assert si_fmt(-1) == "-1.0"
-    assert si_fmt(1.23456789e-10, fmt_spec="5.1f", sep="\t") == "123.5\tp"
+    assert si_fmt(1.23456789e-10, fmt="5.1f", sep="\t") == "123.5\tp"
 
 
 def test_si_fmt_int() -> None:
@@ -486,7 +487,7 @@ def test_si_fmt_int() -> None:
     assert si_fmt_int(123) == "123"
     assert si_fmt_int(1234) == "1K"
     assert si_fmt_int(123456) == "123K"
-    assert si_fmt_int(12345678, fmt_spec=">6.2f", sep=" ") == " 12.35 M"
+    assert si_fmt_int(12345678, fmt=">6.2f", sep=" ") == " 12.35 M"
     assert si_fmt_int(-1) == "-1"
     assert si_fmt_int(1.23456789e-10, sep="\t") == "123\tp"
 
