@@ -18,7 +18,6 @@ Retrieved April 2, 2019.
 https://ml.materialsproject.org/projects/matbench_mp_e_form
 """
 
-
 # %%
 df_e_form = load_dataset("matbench_mp_e_form")
 

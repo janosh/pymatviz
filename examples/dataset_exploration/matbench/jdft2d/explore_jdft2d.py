@@ -19,7 +19,6 @@ Matbench v0.1 dataset for predicting exfoliation energies from crystal structure
 https://ml.materialsproject.org/projects/matbench_jdft2d
 """
 
-
 # %%
 df_2d = load_dataset("matbench_jdft2d")
 
