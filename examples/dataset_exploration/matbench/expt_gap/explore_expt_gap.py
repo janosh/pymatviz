@@ -32,7 +32,6 @@ e_above_hull.
 https://ml.materialsproject.org/projects/matbench_expt_gap
 """
 
-
 # %%
 df_gap = load_dataset("matbench_expt_gap")
 

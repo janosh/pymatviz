@@ -15,7 +15,6 @@ Entries: 106113
 https://ml.materialsproject.org/projects/matbench_mp_gap
 """
 
-
 # %%
 df_gap = load_dataset("matbench_mp_gap")
 

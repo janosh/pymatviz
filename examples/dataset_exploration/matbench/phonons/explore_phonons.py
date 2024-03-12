@@ -15,7 +15,6 @@ than 150meV.
 https://ml.materialsproject.org/projects/matbench_phonons
 """
 
-
 # %%
 import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset

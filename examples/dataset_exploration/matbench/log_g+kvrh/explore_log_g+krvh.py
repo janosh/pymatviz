@@ -9,7 +9,6 @@ https://ml.materialsproject.org/projects/matbench_log_gvrh
 https://ml.materialsproject.org/projects/matbench_log_kvrh
 """
 
-
 # %%
 from time import perf_counter
 

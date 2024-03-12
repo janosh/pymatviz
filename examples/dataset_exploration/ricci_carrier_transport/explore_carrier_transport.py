@@ -17,7 +17,6 @@ Extensive column descriptions and metadata at
 https://hackingmaterials.lbl.gov/matminer/dataset_summary.html#ricci-boltztrap-mp-tabular.
 """
 
-
 # %%
 import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset

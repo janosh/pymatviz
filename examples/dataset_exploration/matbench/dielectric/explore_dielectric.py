@@ -29,7 +29,6 @@ those containing noble gases. Retrieved April 2, 2019.
 https://ml.materialsproject.org/projects/matbench_dielectric
 """
 
-
 # %%
 df_diel = load_dataset("matbench_dielectric")
 
