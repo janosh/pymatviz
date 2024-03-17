@@ -8,6 +8,7 @@ import numpy as np
 import scipy.interpolate
 
 from pymatviz.utils import (
+    add_best_fit_line,
     add_identity_line,
     annotate_metrics,
     df_to_arrays,
@@ -73,7 +74,8 @@ def density_scatter(
     color_bar: bool | dict[str, Any] = True,
     xlabel: str | None = None,
     ylabel: str | None = None,
-    identity: bool = True,
+    identity_line: bool | dict[str, Any] = True,
+    best_fit_line: bool | dict[str, Any] = True,
     stats: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Axes:
@@ -94,8 +96,10 @@ def density_scatter(
             If dict, unpacked into ax.figure.colorbar(). E.g. dict(label="Density").
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
-        identity (bool, optional): Whether to add an identity/parity line (y = x).
-            Defaults to True.
+        identity_line (bool | dict[str, Any], optional): Whether to add an parity line
+            (y = x). Defaults to True. Pass a dict to customize line properties.
+        best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
+            Defaults to True. Pass a dict to customize line properties.
         stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
             and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
             E.g. stats=dict(loc="upper left", prefix="Title", prop=dict(fontsize=16)).
@@ -121,8 +125,14 @@ def density_scatter(
     defaults = dict(s=6, norm=mpl.colors.LogNorm() if log_density else None)
     ax.scatter(xs, ys, c=cs, **defaults | kwargs)
 
-    if identity:
-        add_identity_line(ax)
+    if identity_line:
+        add_identity_line(
+            ax, **(identity_line if isinstance(identity_line, dict) else {})
+        )
+    if best_fit_line:
+        add_best_fit_line(
+            ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
+        )
 
     if stats:
         annotate_metrics(xs, ys, fig=ax, **(stats if isinstance(stats, dict) else {}))
@@ -143,6 +153,8 @@ def scatter_with_err_bar(
     xerr: ArrayLike | None = None,
     yerr: ArrayLike | None = None,
     ax: plt.Axes | None = None,
+    identity_line: bool | dict[str, Any] = True,
+    best_fit_line: bool | dict[str, Any] = True,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
     title: str | None = None,
@@ -159,6 +171,10 @@ def scatter_with_err_bar(
         xerr (array, optional): Horizontal error bars. Defaults to None.
         yerr (array, optional): Vertical error bars. Defaults to None.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
+        identity_line (bool | dict[str, Any], optional): Whether to add an parity line
+            (y = x). Defaults to True. Pass a dict to customize line properties.
+        best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
+            Defaults to True. Pass a dict to customize line properties.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         title (str, optional): Plot tile. Defaults to None.
@@ -173,7 +189,14 @@ def scatter_with_err_bar(
     styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
     ax.errorbar(xs, ys, xerr=xerr, yerr=yerr, **kwargs, **styles)
 
-    add_identity_line(ax)
+    if identity_line:
+        add_identity_line(
+            ax, **(identity_line if isinstance(identity_line, dict) else {})
+        )
+    if best_fit_line:
+        add_best_fit_line(
+            ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
+        )
 
     annotate_metrics(xs, ys, fig=ax)
 
@@ -188,6 +211,8 @@ def density_hexbin(
     df: pd.DataFrame | None = None,
     ax: plt.Axes | None = None,
     weights: ArrayLike | None = None,
+    identity_line: bool | dict[str, Any] = True,
+    best_fit_line: bool | dict[str, Any] = True,
     xlabel: str = "Actual",
     ylabel: str = "Predicted",
     cbar_label: str | None = "Density",
@@ -206,6 +231,10 @@ def density_hexbin(
         weights (array, optional): If given, these values are accumulated in the bins.
             Otherwise, every point has value 1. Must be of the same length as x and y.
             Defaults to None.
+        identity_line (bool | dict[str, Any], optional): Whether to add an parity line
+            (y = x). Defaults to True. Pass a dict to customize line properties.
+        best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
+            Defaults to True. Pass a dict to customize line properties.
         xlabel (str, optional): x-axis label. Defaults to "Actual".
         ylabel (str, optional): y-axis label. Defaults to "Predicted".
         cbar_label (str, optional): Color bar label. Defaults to "Density".
@@ -230,7 +259,14 @@ def density_hexbin(
         # make title vertical
         cb_ax.set_title(cbar_label, rotation=90, pad=10)
 
-    add_identity_line(ax)
+    if identity_line:
+        add_identity_line(
+            ax, **(identity_line if isinstance(identity_line, dict) else {})
+        )
+    if best_fit_line:
+        add_best_fit_line(
+            ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
+        )
 
     annotate_metrics(xs, ys, fig=ax, loc="upper left")
 

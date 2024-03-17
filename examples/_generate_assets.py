@@ -69,7 +69,7 @@ y_proba = np.clip(
 # random regression data
 rand_regression_size = 500
 y_true = np.random.normal(5, 4, rand_regression_size)
-y_pred = y_true + np.random.normal(0, 1, rand_regression_size)
+y_pred = 1.2 * y_true - 2 * np.random.normal(0, 1, rand_regression_size)
 y_std = (y_true - y_pred) * 10 * np.random.normal(0, 0.1, rand_regression_size)
 
 

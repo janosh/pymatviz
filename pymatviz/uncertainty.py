@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,6 +22,7 @@ def qq_gaussian(
     y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
     df: pd.DataFrame | None = None,
     ax: plt.Axes | None = None,
+    identity_line: bool | dict[str, Any] = True,
 ) -> plt.Axes:
     """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array) or
     multiple (passed as dict) sets of uncertainty estimates for a single pair of ground
@@ -45,6 +46,8 @@ def qq_gaussian(
             uncertainty) or column names in df.
         df (pd.DataFrame, optional): DataFrame with y_true, y_pred and y_std columns.
         ax (Axes): matplotlib Axes on which to plot. Defaults to None.
+        identity_line (bool | dict[str, Any], optional): Whether to add a parity line
+            (y = x). Defaults to True. Pass a dict to customize line properties.
 
     Returns:
         plt.Axes: matplotlib Axes object
@@ -82,7 +85,10 @@ def qq_gaussian(
         )
         lines.append([line, miscal_area])
 
-    add_identity_line(ax)  # guiding line for perfect calibration
+    if identity_line:  # guiding line for perfect calibration
+        add_identity_line(
+            ax, **(identity_line if isinstance(identity_line, dict) else {})
+        )
 
     ax.set(xlim=(0, 1), ylim=(0, 1))
     ax.set(xlabel="Theoretical Quantile", ylabel="Observed Quantile")
