@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from pymatviz.utils import add_identity_line, df_to_arrays
+from pymatviz.powerups import add_identity_line
+from pymatviz.utils import df_to_arrays
 
 
 if TYPE_CHECKING:

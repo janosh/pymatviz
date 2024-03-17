@@ -91,12 +91,14 @@ ax = density_scatter_with_hist(y_pred, y_true)
 save_and_compress_svg(ax, "density-scatter-with-hist")
 
 
-ax = density_hexbin(y_pred, y_true)
+ax = density_hexbin(
+    y_pred, y_true, best_fit_line={"annotate_params": {"loc": "lower center"}}
+)
 save_and_compress_svg(ax, "density-scatter-hex")
 
 
 ax = density_hexbin_with_hist(
-    y_pred, y_true, best_fit_line=dict(annotate_params=dict(loc="lower center"))
+    y_pred, y_true, best_fit_line={"annotate_params": {"loc": "lower center"}}
 )
 save_and_compress_svg(ax, "density-scatter-hex-with-hist")
 

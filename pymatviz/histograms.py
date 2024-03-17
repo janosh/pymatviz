@@ -13,10 +13,10 @@ from matplotlib.ticker import FixedLocator
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
+from pymatviz.powerups import annotate_bars
 from pymatviz.ptable import count_elements
 from pymatviz.utils import (
     Backend,
-    annotate_bars,
     crystal_sys_from_spg_num,
     df_to_arrays,
     plotly_key,

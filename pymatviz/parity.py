@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate
 
-from pymatviz.utils import (
+from pymatviz.powerups import (
     add_best_fit_line,
     add_identity_line,
     annotate_metrics,
-    df_to_arrays,
     with_marginal_hist,
 )
+from pymatviz.utils import df_to_arrays
 
 
 if TYPE_CHECKING:
