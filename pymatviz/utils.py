@@ -249,26 +249,28 @@ def annotate_metrics(
     coefficient of determination.
 
     Args:
-        xs (array, optional): x values.
-        ys (array, optional): y values.
-        metrics (dict[str, float] | list[str], optional): Metrics to show. Can be a
+        xs (array): x values.
+        ys (array): y values.
+        fig (plt.Axes | plt.Figure | go.Figure | None, optional): matplotlib Axes or
+            Figure or plotly Figure on which to add the annotation. Defaults to None.
+        metrics (dict[str, float] | Sequence[str], optional): Metrics to show. Can be a
             subset of recognized keys MAE, R2, R2_adj, RMSE, MSE, MAPE or the names of
             sklearn.metrics.regression functions or any dict of metric names and values.
             Defaults to ("MAE", "R2").
-        fig (Axes, optional): matplotlib Axes on which to add the box. Defaults to None.
-        loc (str, optional): Where on the plot to place the AnchoredText object.
-            Defaults to "lower right".
-        fmt (str, optional): f-string float format for metrics. Defaults to '.4'.
         prefix (str, optional): Title or other string to prepend to metrics.
             Defaults to "".
         suffix (str, optional): Text to append after metrics. Defaults to "".
-        **kwargs: Additional arguments (rotation, arrowprops, frameon, loc, etc.) are
-            passed to matplotlib.offsetbox.AnchoredText. Sets default loc="lower right"
-            and frameon=False.
+        fmt (str, optional): f-string float format for metrics. Defaults to '.3'.
+        **kwargs: Additional arguments to pass to annotate().
 
     Returns:
-        AnchoredText: Instance containing the metrics.
+        plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
+    if isinstance(metrics, str):
+        metrics = [metrics]
+    if not isinstance(metrics, (dict, list, tuple, set)):
+        raise TypeError(f"metrics must be dict|list|tuple|set, not {type(metrics)}")
+
     valid_ax_types = (plt.Figure, plt.Axes, go.Figure)
     if not (fig is None or isinstance(fig, valid_ax_types)):
         raise TypeError(
@@ -276,12 +278,7 @@ def annotate_metrics(
             f"{', '.join(valid_ax_types)}"
         )
 
-    if isinstance(metrics, str):
-        metrics = [metrics]
-    if not isinstance(metrics, (dict, list, tuple, set)):
-        raise TypeError(f"metrics must be dict|list|tuple|set, not {type(metrics)}")
-
-    backend: Backend = "plotly" if isinstance(fig, go.Figure) else "matplotlib"
+    backend: Backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
 
     funcs = {
         "MAE": lambda x, y: np.abs(x - y).mean(),
@@ -303,7 +300,7 @@ def annotate_metrics(
     xs, ys = xs[~nan_mask], ys[~nan_mask]
 
     text = prefix
-    newline = "\n" if backend == "matplotlib" else "<br>"
+    newline = "\n" if backend == mpl_key else "<br>"
 
     if isinstance(metrics, dict):
         for key, val in metrics.items():
@@ -316,29 +313,7 @@ def annotate_metrics(
             text += f"{label} = {value:{fmt}}{newline}"
     text += suffix
 
-    if backend == "matplotlib":
-        ax = plt.gca()
-        fig = fig or ax.figure
-
-        defaults = dict(frameon=False, loc="upper left")
-        text_box = AnchoredText(text, **(defaults | kwargs))
-        ax.add_artist(text_box)
-    elif isinstance(fig, go.Figure):
-        defaults = dict(
-            xref="paper",
-            yref="paper",
-            x=0.02,
-            y=0.96,
-            showarrow=False,
-            font_size=16,
-            align="left",
-        )
-
-        fig.add_annotation(text=text, **(defaults | kwargs))
-    else:
-        raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
-
-    return fig
+    return annotate(text, fig, **kwargs)
 
 
 CrystalSystem = Literal[
