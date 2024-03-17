@@ -205,14 +205,13 @@ def annotate(
     if not (fig is None or isinstance(fig, valid_ax_types)):
         raise TypeError(
             f"Unexpected type for fig: {type(fig)}, must be one of None, "
-            f"{', '.join(valid_ax_types)}"
+            f"{', '.join(map(str, valid_ax_types))}"
         )
 
     backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
 
     if backend == mpl_key:
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
-        fig = ax.figure
 
         defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
         text_box = AnchoredText(text, **(defaults | kwargs))
@@ -275,7 +274,7 @@ def annotate_metrics(
     if not (fig is None or isinstance(fig, valid_ax_types)):
         raise TypeError(
             f"Unexpected type for fig: {type(fig)}, must be one of None, "
-            f"{', '.join(valid_ax_types)}"
+            f"{', '.join(map(str, valid_ax_types))}"
         )
 
     backend: Backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
@@ -466,6 +465,108 @@ def add_identity_line(
         line=line_defaults | (line_kwds or {}),
         **kwargs,
     )
+
+    return fig
+
+
+def add_best_fit_line(
+    fig: go.Figure | plt.Figure | plt.Axes,
+    xs: ArrayLike = (),
+    ys: ArrayLike = (),
+    trace_idx: int = 0,
+    line_kwds: dict[str, Any] | None = None,
+    annotate_params: bool | dict[str, Any] = True,
+    **kwargs: Any,
+) -> go.Figure:
+    """Add line of best fit according to least squares to a plotly or matplotlib figure.
+
+    Args:
+        fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes to
+            add the best fit line to.
+        xs (array, optional): x-values to use for fitting. Defaults to () which
+            means use the x-values of trace at trace_idx in fig.
+        ys (array, optional): y-values to use for fitting. Defaults to () which
+            means use the y-values of trace at trace_idx in fig.
+        trace_idx (int, optional): Index of the trace to use for measuring x/y values
+            for fitting if xs and ys are not provided. Defaults to 0.
+        line_kwds (dict[str, Any], optional): Keyword arguments for customizing the line
+            shape. For plotly, will be passed to fig.add_shape(line=line_kwds).
+            For matplotlib, will be passed to ax.plot(). Defaults to None.
+        annotate_params (dict[str, Any], optional): Pass dict to customize
+            the annotation of the best fit line. Set to False to disable annotation.
+            Defaults to True.
+        **kwargs: Additional arguments are passed to fig.add_shape() for plotly or
+            ax.plot() for matplotlib.
+
+    Raises:
+        TypeError: If fig is neither a plotly nor a matplotlib figure or axes.
+        ValueError: If fig is a plotly figure and xs and ys are not provided and
+            trace_idx is out of range.
+
+    Returns:
+        Figure: Figure with added best fit line.
+    """
+    valid_types = (go.Figure, plt.Figure, plt.Axes)
+    if not isinstance(fig, valid_types):
+        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
+        raise TypeError(f"{fig=} must be instance of {type_names}")
+
+    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
+    kwargs.setdefault("color", "blue")
+
+    if 0 in {len(xs), len(ys)}:
+        if isinstance(fig, go.Figure):
+            if not len(xs) or not len(ys):
+                trace = fig.data[trace_idx]
+                xs, ys = trace.x, trace.y
+        else:
+            ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+            if not len(xs) or not len(ys):
+                # get scatter data
+                artist = ax.get_children()[trace_idx]
+                if isinstance(artist, plt.Line2D):
+                    xs, ys = artist.get_xdata(), artist.get_ydata()
+                else:
+                    xs, ys = artist.get_offsets().T
+    slope, intercept = np.polyfit(xs, ys, 1)
+
+    x_min = get_fig_xy_range(fig)[0][0]
+
+    x0, x1 = x_min, x_min + 1
+    y0, y1 = slope * x0 + intercept, slope * x1 + intercept
+
+    if annotate_params:
+        if backend == mpl_key:
+            defaults = dict(loc="lower right", color=kwargs["color"])
+        else:
+            defaults = dict(
+                xref="paper",
+                yref="paper",
+                x=0.02,
+                y=0.96,
+                showarrow=False,
+                font_color=kwargs["color"],
+            )
+        if isinstance(annotate_params, dict):
+            defaults |= annotate_params
+        annotate(f"LS fit: y = {slope:.2}x + {intercept:.2}", fig=fig, **defaults)
+
+    if backend == mpl_key:
+        ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+
+        defaults = dict(alpha=0.7, linestyle="--", zorder=1)
+        ax.axline((x0, y0), (x1, y1), **(defaults | (line_kwds or {})) | kwargs)
+
+        return fig
+
+    if fig._grid_ref is not None:  # noqa: SLF001
+        for key in ("row", "col"):
+            kwargs.setdefault(key, "all")
+
+    line_kwds = dict(
+        color=kwargs.pop("color"), width=2, dash="dash", **(line_kwds or {})
+    )
+    fig.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=line_kwds, **kwargs)
 
     return fig
 
