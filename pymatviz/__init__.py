@@ -48,13 +48,7 @@ from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import (
-    PKG_DIR,
-    ROOT,
-    annotate_bars,
-    annotate_metrics,
-    styled_html_tag,
-)
+from pymatviz.utils import PKG_DIR, ROOT, styled_html_tag
 
 
 PKG_NAME = "pymatviz"
