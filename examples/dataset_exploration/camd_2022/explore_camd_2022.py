@@ -21,7 +21,8 @@ import pandas as pd
 import requests
 from pymatgen.symmetry.groups import SpaceGroup
 
-from pymatviz import annotate_bars, count_elements, ptable_heatmap, spacegroup_sunburst
+from pymatviz import count_elements, ptable_heatmap, spacegroup_sunburst
+from pymatviz.powerups import annotate_bars
 
 
 # %% Download data (if needed)

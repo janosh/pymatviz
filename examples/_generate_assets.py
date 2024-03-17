@@ -69,7 +69,7 @@ y_proba = np.clip(
 # random regression data
 rand_regression_size = 500
 y_true = np.random.normal(5, 4, rand_regression_size)
-y_pred = y_true + np.random.normal(0, 1, rand_regression_size)
+y_pred = 1.2 * y_true - 2 * np.random.normal(0, 1, rand_regression_size)
 y_std = (y_true - y_pred) * 10 * np.random.normal(0, 0.1, rand_regression_size)
 
 
@@ -91,11 +91,15 @@ ax = density_scatter_with_hist(y_pred, y_true)
 save_and_compress_svg(ax, "density-scatter-with-hist")
 
 
-ax = density_hexbin(y_pred, y_true)
+ax = density_hexbin(
+    y_pred, y_true, best_fit_line={"annotate_params": {"loc": "lower center"}}
+)
 save_and_compress_svg(ax, "density-scatter-hex")
 
 
-ax = density_hexbin_with_hist(y_pred, y_true)
+ax = density_hexbin_with_hist(
+    y_pred, y_true, best_fit_line={"annotate_params": {"loc": "lower center"}}
+)
 save_and_compress_svg(ax, "density-scatter-hex-with-hist")
 
 
@@ -187,7 +191,7 @@ save_and_compress_svg(fig, "ptable-scatters")
 
 
 # %% Uncertainty Plots
-ax = qq_gaussian(y_pred, y_true, y_std)
+ax = qq_gaussian(y_pred, y_true, y_std, identity_line={"line_kwds": {"color": "red"}})
 save_and_compress_svg(ax, "normal-prob-plot")
 
 

@@ -13,12 +13,13 @@ from matplotlib.ticker import FixedLocator
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
+from pymatviz.powerups import annotate_bars
 from pymatviz.ptable import count_elements
 from pymatviz.utils import (
     Backend,
-    annotate_bars,
     crystal_sys_from_spg_num,
     df_to_arrays,
+    plotly_key,
     si_fmt_int,
 )
 
@@ -193,7 +194,7 @@ def spacegroup_hist(
     xlim = (0, len(df_data) - 1)
 
     fig_title = f"{count_col} per crystal system" if show_counts else None
-    if backend == "plotly":
+    if backend == plotly_key:
         df_plot = df_data if show_empty_bins else df_data.reset_index()
 
         fig = px.bar(
