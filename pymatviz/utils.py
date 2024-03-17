@@ -32,9 +32,8 @@ Backend = Literal["matplotlib", "plotly"]
 VALID_BACKENDS = mpl_key, plotly_key = get_args(Backend)
 
 
-df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
-    "symbol"
-)
+elements_csv = f"{ROOT}/pymatviz/elements.csv"
+df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
 
 # http://jmol.sourceforge.net/jscolors
 jmol_colors = df_ptable.jmol_color.dropna().map(ast.literal_eval)
@@ -169,7 +168,7 @@ def annotate_bars(
             ) from exc
 
 
-def pretty_metric_label(key: str, backend: Backend) -> str:
+def pretty_label(key: str, backend: Backend) -> str:
     """Map metric keys to their pretty labels."""
     if backend not in VALID_BACKENDS:
         raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
@@ -255,12 +254,12 @@ def annotate_metrics(
 
     if isinstance(metrics, dict):
         for key, val in metrics.items():
-            label = pretty_metric_label(key, backend)
+            label = pretty_label(key, backend)
             text += f"{label} = {val:{fmt}}{newline}"
     else:
         for key in metrics:
             value = funcs[key](xs, ys)
-            label = pretty_metric_label(key, backend)
+            label = pretty_label(key, backend)
             text += f"{label} = {value:{fmt}}{newline}"
     text += suffix
 

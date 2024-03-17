@@ -24,7 +24,7 @@ from pymatviz.utils import (
     luminance,
     patch_dict,
     pick_bw_for_contrast,
-    pretty_metric_label,
+    pretty_label,
     si_fmt,
     si_fmt_int,
     styled_html_tag,
@@ -81,11 +81,11 @@ def test_annotate_metrics(
     newline = "<br>" if isinstance(out_fig, go.Figure) else "\n"
     if isinstance(metrics, dict):
         for key, val in metrics.items():
-            label = pretty_metric_label(key, backend)
+            label = pretty_label(key, backend)
             expected_text += f"{label} = {val:{fmt}}{newline}"
     else:
         for key in [metrics] if isinstance(metrics, str) else metrics:
-            label = pretty_metric_label(key, backend)
+            label = pretty_label(key, backend)
             expected_text += f"{label} = {expected[key]:{fmt}}{newline}"
 
     anno_text = _extract_anno_from_fig(out_fig)
