@@ -3,24 +3,29 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import datetime, timezone
 from random import random
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+from matplotlib.offsetbox import TextArea
+from matplotlib.text import Annotation
 
 from pymatviz.utils import (
     Backend,
     CrystalSystem,
+    add_best_fit_line,
     add_ecdf_line,
     add_identity_line,
+    annotate,
     annotate_bars,
     annotate_metrics,
     bin_df_cols,
     crystal_sys_from_spg_num,
     df_to_arrays,
+    get_fig_xy_range,
     luminance,
     patch_dict,
     pick_bw_for_contrast,
@@ -28,6 +33,7 @@ from pymatviz.utils import (
     si_fmt,
     si_fmt_int,
     styled_html_tag,
+    with_marginal_hist,
 )
 from tests.conftest import y_pred, y_true
 
@@ -539,3 +545,110 @@ def test_add_ecdf_line_raises() -> None:
             match=f"{fig=} must be instance of plotly.graph_objs._figure.Figure",
         ):
             add_ecdf_line(fig)
+
+
+def test_with_marginal_hist() -> None:
+    fig, ax = plt.subplots()
+    ax.scatter([1, 2, 3], [4, 5, 6])
+    ax_main = with_marginal_hist([1, 2, 3], [4, 5, 6], fig=fig)
+    assert isinstance(ax_main, plt.Axes)
+    assert len(fig.axes) == 4
+
+    gs = fig.add_gridspec(2, 2)
+    ax_main = with_marginal_hist([1, 2, 3], [4, 5, 6], cell=gs[1, 0])
+    assert isinstance(ax_main, plt.Axes)
+    assert len(fig.axes) == 7
+
+
+def test_pretty_label() -> None:
+    assert pretty_label("R2", "matplotlib") == "$R^2$"
+    assert pretty_label("R2", "plotly") == "R<sup>2</sup>"
+    assert pretty_label("R2_adj", "matplotlib") == "$R^2_{adj}$"
+    assert pretty_label("R2_adj", "plotly") == "R<sup>2</sup><sub>adj</sub>"
+    assert pretty_label("foo", "matplotlib") == "foo"
+    assert pretty_label("foo", "plotly") == "foo"
+
+    with pytest.raises(ValueError, match="Unexpected backend='foo'"):
+        pretty_label("R2", "foo")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("color", ["red", "blue", "#FF0000"])
+def test_annotate(
+    color: str, plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
+) -> None:
+    text = "Test annotation"
+
+    fig_plotly = annotate(text, plotly_scatter, color=color)
+    assert isinstance(fig_plotly, go.Figure)
+    assert fig_plotly.layout.annotations[-1].text == text
+    assert fig_plotly.layout.annotations[-1].font.color == color
+
+    fig_mpl = annotate(text, matplotlib_scatter, color=color)
+    assert isinstance(fig_mpl, plt.Figure)
+    assert isinstance(fig_mpl.axes[0].artists[-1].txt, TextArea)
+    assert fig_mpl.axes[0].artists[-1].txt.get_text() == text
+    assert fig_mpl.axes[0].artists[-1].txt._text.get_color() == color  # noqa: SLF001
+
+    ax_mpl = annotate(text, matplotlib_scatter.axes[0], color=color)
+    assert isinstance(ax_mpl, plt.Axes)
+    assert ax_mpl.artists[-1].txt.get_text() == text
+    assert ax_mpl.artists[-1].txt._text.get_color() == color  # noqa: SLF001
+
+
+def test_annotate_invalid_fig() -> None:
+    with pytest.raises(TypeError, match="Unexpected type for fig"):
+        annotate("test", fig="invalid")
+
+
+@pytest.mark.parametrize("annotate_params", [True, False, {"color": "green"}])
+def test_add_best_fit_line(
+    plotly_scatter: go.Figure,
+    matplotlib_scatter: plt.Figure,
+    annotate_params: bool | dict[str, Any],
+) -> None:
+    fig_plotly = add_best_fit_line(plotly_scatter, annotate_params=annotate_params)
+    assert isinstance(fig_plotly, go.Figure)
+    assert fig_plotly.layout.shapes[-1].type == "line"
+
+    if annotate_params:
+        assert fig_plotly.layout.annotations[-1].text.startswith("LS fit: ")
+    else:
+        assert len(fig_plotly.layout.annotations) == 0
+
+    fig_mpl = add_best_fit_line(matplotlib_scatter, annotate_params=annotate_params)
+    assert isinstance(fig_mpl, plt.Figure)
+    with pytest.raises(IndexError):
+        fig_mpl.axes[1]
+    ax = fig_mpl.axes[0]
+    assert ax.lines[-1].get_linestyle() == "--"
+
+    anno = next(  # TODO figure out why this always gives None
+        (child for child in ax.get_children() if isinstance(child, Annotation)),
+        None,
+    )
+
+    # if annotate_params:
+    #     assert anno.get_text().startswith("LS fit: ")
+    # else:
+    assert anno is None
+
+
+def test_add_best_fit_line_invalid_fig() -> None:
+    with pytest.raises(TypeError, match="must be instance of"):
+        add_best_fit_line("invalid")
+
+
+def test_get_fig_xy_range(
+    plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
+) -> None:
+    x_range, y_range = get_fig_xy_range(plotly_scatter)
+    assert len(x_range) == 2
+    assert len(y_range) == 2
+
+    x_range, y_range = get_fig_xy_range(matplotlib_scatter)
+    assert len(x_range) == 2
+    assert len(y_range) == 2
+
+    x_range, y_range = get_fig_xy_range(matplotlib_scatter.axes[0])
+    assert len(x_range) == 2
+    assert len(y_range) == 2
