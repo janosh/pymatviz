@@ -442,56 +442,17 @@ def add_identity_line(
         type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
         raise TypeError(f"{fig=} must be instance of {type_names}")
 
+    (x_min, x_max), (y_min, y_max) = get_fig_xy_range(fig, trace_idx=trace_idx)
+
     if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
-        x_mid = sum(ax.get_xlim()) / 2
-        ax.axline(
-            (x_mid, x_mid),
-            (x_mid * 1.01, x_mid * 1.01),
-            **dict(alpha=0.5, zorder=0, linestyle="dashed", color="black")
-            | (line_kwds or {}),
-        )
+        line_defaults = dict(alpha=0.5, zorder=0, linestyle="dashed", color="black")
+        ax.axline((x_min, x_min), (x_max, x_max), **line_defaults | (line_kwds or {}))
         return fig
 
-    # If kaleido is missing, try block raises ValueError: Full figure generation
-    # requires the kaleido package. Install with: pip install kaleido
-    # If so, we resort to manually computing the xy data ranges which are usually are
-    # close to but not the same as the axes limits.
-    try:
-        # https://stackoverflow.com/a/62042077
-        full_fig = fig.full_figure_for_development(warn=False)
-        xaxis_type = full_fig.layout.xaxis.type
-        yaxis_type = full_fig.layout.yaxis.type
-
-        x_range = full_fig.layout.xaxis.range
-        y_range = full_fig.layout.yaxis.range
-
-        # Convert log range to linear if necessary
-        if xaxis_type == "log":
-            x_range = [10**val for val in x_range]
-        if yaxis_type == "log":
-            y_range = [10**val for val in y_range]
-
-        xy_min = min(x_range[0], y_range[0])
-        xy_max = max(x_range[1], y_range[1])
-    except ValueError:
-        trace = fig.data[trace_idx]
-        df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
-
-        # Determine ranges based on the type of axes
-        if fig.layout.xaxis.type == "log":
-            x_range = [10**val for val in (min(df_xy.x), max(df_xy.x))]
-        else:
-            x_range = [min(df_xy.x), max(df_xy.x)]
-
-        if fig.layout.yaxis.type == "log":
-            y_range = [10**val for val in (min(df_xy.y), max(df_xy.y))]
-        else:
-            y_range = [min(df_xy.y), max(df_xy.y)]
-
-        xy_min = min(x_range[0], y_range[0])
-        xy_max = max(x_range[1], y_range[1])
+    xy_min = min(x_min, y_min)
+    xy_max = max(x_max, y_max)
 
     if fig._grid_ref is not None:  # noqa: SLF001
         kwargs.setdefault("row", "all")
