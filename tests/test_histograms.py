@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import pytest
 
 from pymatviz import elements_hist, spacegroup_hist, true_pred_hist
+from pymatviz.utils import VALID_BACKENDS, mpl_key
 from tests.conftest import df_regr, y_pred, y_true
 
 
@@ -45,7 +46,7 @@ def test_true_pred_hist(
 @pytest.mark.parametrize("xticks", ["all", "crys_sys_edges", 1, 50])
 @pytest.mark.parametrize("show_counts", [True, False])
 @pytest.mark.parametrize("show_empty_bins", [True, False])
-@pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
+@pytest.mark.parametrize("backend", VALID_BACKENDS)
 def test_spacegroup_hist(
     spg_symbols: list[str],
     structures: list[Structure],
@@ -62,7 +63,7 @@ def test_spacegroup_hist(
         show_empty_bins=show_empty_bins,
         backend=backend,
     )
-    assert isinstance(fig, plt.Axes if backend == "matplotlib" else go.Figure)
+    assert isinstance(fig, plt.Axes if backend == mpl_key else go.Figure)
 
     # spacegroup symbols
     fig = spacegroup_hist(

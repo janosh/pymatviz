@@ -9,20 +9,14 @@ from typing import TYPE_CHECKING, Any, Literal, get_args
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats
-import sklearn
 from matplotlib.offsetbox import AnchoredText
-from sklearn.metrics import mean_absolute_percentage_error as mape
-from sklearn.metrics import r2_score
 
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
-    from matplotlib.gridspec import GridSpec
-    from matplotlib.text import Annotation
     from numpy.typing import ArrayLike
 
 PKG_DIR = dirname(__file__)
@@ -32,9 +26,8 @@ Backend = Literal["matplotlib", "plotly"]
 VALID_BACKENDS = mpl_key, plotly_key = get_args(Backend)
 
 
-df_ptable = pd.read_csv(f"{ROOT}/pymatviz/elements.csv", comment="#").set_index(
-    "symbol"
-)
+elements_csv = f"{ROOT}/pymatviz/elements.csv"
+df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
 
 # http://jmol.sourceforge.net/jscolors
 jmol_colors = df_ptable.jmol_color.dropna().map(ast.literal_eval)
@@ -52,124 +45,7 @@ for Z, symbol in enumerate(df_ptable.index, 1):
     element_symbols[Z] = symbol
 
 
-def with_marginal_hist(
-    xs: ArrayLike,
-    ys: ArrayLike,
-    cell: GridSpec | None = None,
-    bins: int = 100,
-    fig: plt.Figure | plt.Axes | None = None,
-) -> plt.Axes:
-    """Call before creating a plot and use the returned `ax_main` for all
-    subsequent plotting ops to create a grid of plots with the main plot in the
-    lower left and narrow histograms along its x- and/or y-axes displayed above
-    and near the right edge.
-
-    Args:
-        xs (array): Marginal histogram values along x-axis.
-        ys (array): Marginal histogram values along y-axis.
-        cell (GridSpec, optional): Cell of a plt GridSpec at which to add the
-            grid of plots. Defaults to None.
-        bins (int, optional): Resolution/bin count of the histograms. Defaults to 100.
-        fig (Figure, optional): matplotlib Figure or Axes to add the marginal histograms
-            to. Defaults to None.
-
-    Returns:
-        plt.Axes: The matplotlib Axes to be used for the main plot.
-    """
-    if fig is None or isinstance(fig, plt.Axes):
-        ax_main = fig or plt.gca()
-        fig = ax_main.figure
-
-    gs = (cell.subgridspec if cell else fig.add_gridspec)(
-        2, 2, width_ratios=(6, 1), height_ratios=(1, 5), wspace=0, hspace=0
-    )
-
-    ax_main = fig.add_subplot(gs[1, 0])
-    ax_histx = fig.add_subplot(gs[0, 0], sharex=ax_main)
-    ax_histy = fig.add_subplot(gs[1, 1], sharey=ax_main)
-
-    # x_hist
-    ax_histx.hist(xs, bins=bins, rwidth=0.8)
-    ax_histx.axis("off")
-
-    # y_hist
-    ax_histy.hist(ys, bins=bins, rwidth=0.8, orientation="horizontal")
-    ax_histy.axis("off")
-
-    return ax_main
-
-
-def annotate_bars(
-    ax: plt.Axes | None = None,
-    v_offset: float = 10,
-    h_offset: float = 0,
-    labels: Sequence[str | int | float] | None = None,
-    fontsize: int = 14,
-    y_max_headroom: float = 1.2,
-    adjust_test_pos: bool = False,
-    **kwargs: Any,
-) -> None:
-    """Annotate each bar in bar plot with a label.
-
-    Args:
-        ax (Axes): The matplotlib axes to annotate.
-        v_offset (int): Vertical offset between the labels and the bars.
-        h_offset (int): Horizontal offset between the labels and the bars.
-        labels (list[str]): Labels used for annotating bars. If not provided, defaults
-            to the y-value of each bar.
-        fontsize (int): Annotated text size in pts. Defaults to 14.
-        y_max_headroom (float): Will be multiplied with the y-value of the tallest bar
-            to increase the y-max of the plot, thereby making room for text above all
-            bars. Defaults to 1.2.
-        adjust_test_pos (bool): If True, use adjustText to prevent overlapping labels.
-            Defaults to False.
-        **kwargs: Additional arguments (rotation, arrowprops, etc.) are passed to
-            ax.annotate().
-    """
-    ax = ax or plt.gca()
-
-    if labels is None:
-        labels = [int(patch.get_height()) for patch in ax.patches]
-    elif len(labels) != len(ax.patches):
-        raise ValueError(
-            f"Got {len(labels)} labels but {len(ax.patches)} bars to annotate"
-        )
-
-    y_max: float = 0
-    texts: list[Annotation] = []
-    for rect, label in zip(ax.patches, labels):
-        y_pos = rect.get_height()
-        x_pos = rect.get_x() + rect.get_width() / 2 + h_offset
-
-        if ax.get_yscale() == "log":
-            y_pos = y_pos + np.log(max(1, v_offset))
-        else:
-            y_pos = y_pos + v_offset
-
-        y_max = max(y_max, y_pos)
-
-        txt = f"{label:,}" if isinstance(label, (int, float)) else label
-        # place label at end of the bar and center horizontally
-        anno = ax.annotate(
-            txt, (x_pos, y_pos), ha="center", fontsize=fontsize, **kwargs
-        )
-        texts.append(anno)
-
-    # ensure enough vertical space to display label above highest bar
-    ax.set(ylim=(None, y_max * y_max_headroom))
-    if adjust_test_pos:
-        try:
-            from adjustText import adjust_text
-
-            adjust_text(texts, ax=ax)
-        except ImportError as exc:
-            raise ImportError(
-                "adjustText not installed, falling back to default matplotlib "
-                "label placement. Use pip install adjustText."
-            ) from exc
-
-
-def pretty_metric_label(key: str, backend: Backend) -> str:
+def pretty_label(key: str, backend: Backend) -> str:
     """Map metric keys to their pretty labels."""
     if backend not in VALID_BACKENDS:
         raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
@@ -182,109 +58,54 @@ def pretty_metric_label(key: str, backend: Backend) -> str:
     return symbol_mapping.get(key, {}).get(backend, key)
 
 
-def annotate_metrics(
-    xs: ArrayLike,
-    ys: ArrayLike,
+def annotate(
+    text: str,
     fig: plt.Axes | plt.Figure | go.Figure | None = None,
-    metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
-    prefix: str = "",
-    suffix: str = "",
-    fmt: str = ".3",
+    color: str = "black",
     **kwargs: Any,
-) -> AnchoredText:
-    """Provide a set of x and y values of equal length and an optional Axes
-    object on which to print the values' mean absolute error and R^2
-    coefficient of determination.
+) -> plt.Axes | plt.Figure | go.Figure:
+    """Annotate a matplotlib or plotly figure.
 
     Args:
-        xs (array, optional): x values.
-        ys (array, optional): y values.
-        metrics (dict[str, float] | list[str], optional): Metrics to show. Can be a
-            subset of recognized keys MAE, R2, R2_adj, RMSE, MSE, MAPE or the names of
-            sklearn.metrics.regression functions or any dict of metric names and values.
-            Defaults to ("MAE", "R2").
-        fig (Axes, optional): matplotlib Axes on which to add the box. Defaults to None.
-        loc (str, optional): Where on the plot to place the AnchoredText object.
-            Defaults to "lower right".
-        fmt (str, optional): f-string float format for metrics. Defaults to '.4'.
-        prefix (str, optional): Title or other string to prepend to metrics.
-            Defaults to "".
-        suffix (str, optional): Text to append after metrics. Defaults to "".
-        **kwargs: Additional arguments (rotation, arrowprops, frameon, loc, etc.) are
-            passed to matplotlib.offsetbox.AnchoredText. Sets default loc="lower right"
-            and frameon=False.
+        text (str): The text to use for annotation.
+        fig (plt.Axes | plt.Figure | go.Figure | None, optional): The matplotlib Axes,
+            Figure or plotly Figure to annotate. If None, the current matplotlib Axes
+            will be used. Defaults to None.
+        color (str, optional): The color of the text. Defaults to "black".
+        **kwargs: Additional arguments to pass to matplotlib's AnchoredText or plotly's
+            fig.add_annotation().
 
     Returns:
-        AnchoredText: Instance containing the metrics.
+        plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
     valid_ax_types = (plt.Figure, plt.Axes, go.Figure)
     if not (fig is None or isinstance(fig, valid_ax_types)):
         raise TypeError(
             f"Unexpected type for fig: {type(fig)}, must be one of None, "
-            f"{', '.join(valid_ax_types)}"
+            f"{', '.join(map(str, valid_ax_types))}"
         )
 
-    if isinstance(metrics, str):
-        metrics = [metrics]
-    if not isinstance(metrics, (dict, list, tuple, set)):
-        raise TypeError(f"metrics must be dict|list|tuple|set, not {type(metrics)}")
+    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
 
-    backend: Backend = "plotly" if isinstance(fig, go.Figure) else "matplotlib"
+    if backend == mpl_key:
+        ax = fig if isinstance(fig, plt.Axes) else plt.gca()
 
-    funcs = {
-        "MAE": lambda x, y: np.abs(x - y).mean(),
-        "RMSE": lambda x, y: (((x - y) ** 2).mean()) ** 0.5,
-        "MSE": lambda x, y: ((x - y) ** 2).mean(),
-        "MAPE": mape,
-        "R2": r2_score,
-        # TODO: check this for correctness
-        "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
-    }
-    for key in set(metrics) - set(funcs):
-        func = getattr(sklearn.metrics, key, None)
-        if func:
-            funcs[key] = func
-    if bad_keys := set(metrics) - set(funcs):
-        raise ValueError(f"Unrecognized metrics: {bad_keys}")
-
-    nan_mask = np.isnan(xs) | np.isnan(ys)
-    xs, ys = xs[~nan_mask], ys[~nan_mask]
-
-    text = prefix
-    newline = "\n" if backend == "matplotlib" else "<br>"
-
-    if isinstance(metrics, dict):
-        for key, val in metrics.items():
-            label = pretty_metric_label(key, backend)
-            text += f"{label} = {val:{fmt}}{newline}"
-    else:
-        for key in metrics:
-            value = funcs[key](xs, ys)
-            label = pretty_metric_label(key, backend)
-            text += f"{label} = {value:{fmt}}{newline}"
-    text += suffix
-
-    if backend == "matplotlib":
-        ax = plt.gca()
-        fig = fig or ax.figure
-
-        defaults = dict(frameon=False, loc="upper left")
+        defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
         text_box = AnchoredText(text, **(defaults | kwargs))
         ax.add_artist(text_box)
-    elif isinstance(fig, go.Figure):
+    else:  # plotly
+        fig = fig or go.Figure()
         defaults = dict(
             xref="paper",
             yref="paper",
             x=0.02,
             y=0.96,
             showarrow=False,
-            font_size=16,
+            font=dict(size=16, color=color),
             align="left",
         )
 
         fig.add_annotation(text=text, **(defaults | kwargs))
-    else:
-        raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
 
     return fig
 
@@ -324,51 +145,25 @@ def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     return "cubic"
 
 
-def add_identity_line(
-    fig: go.Figure | plt.Figure | plt.Axes,
-    line_kwds: dict[str, Any] | None = None,
-    trace_idx: int = 0,
-    **kwargs: Any,
-) -> go.Figure:
-    """Add a line shape to the background layer of a plotly figure spanning
-    from smallest to largest x/y values in the trace specified by trace_idx.
+def get_fig_xy_range(
+    fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Get the x and y range of a plotly or matplotlib figure.
 
     Args:
-        fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes to
-            add the identity line to.
-        line_kwds (dict[str, Any], optional): Keyword arguments for customizing the line
-            shape will be passed to fig.add_shape(line=line_kwds). Defaults to
-            dict(color="gray", width=1, dash="dash").
+        fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes.
         trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
             Defaults to 0. Unused if kaleido package is installed and the figure's
             actual x/y-range can be obtained from fig.full_figure_for_development().
-            Applies only to plotly figures.
-        **kwargs: Additional arguments are passed to fig.add_shape().
-
-    Raises:
-        TypeError: If fig is neither a plotly nor a matplotlib figure or axes.
-        ValueError: If fig is a plotly figure and kaleido is not installed and trace_idx
-            is out of range.
 
     Returns:
-        Figure: Figure with added identity line.
+        tuple[float, float, float, float]: The x and y range of the figure in the format
+            (x_min, x_max, y_min, y_max).
     """
-    valid_types = (go.Figure, plt.Figure, plt.Axes)
-    if not isinstance(fig, valid_types):
-        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
-        raise TypeError(f"{fig=} must be instance of {type_names}")
-
     if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
-        x_mid = sum(ax.get_xlim()) / 2
-        ax.axline(
-            (x_mid, x_mid),
-            (x_mid * 1.01, x_mid * 1.01),
-            **dict(alpha=0.5, zorder=0, linestyle="dashed", color="black")
-            | (line_kwds or {}),
-        )
-        return fig
+        return ax.get_xlim(), ax.get_ylim()
 
     # If kaleido is missing, try block raises ValueError: Full figure generation
     # requires the kaleido package. Install with: pip install kaleido
@@ -389,8 +184,6 @@ def add_identity_line(
         if yaxis_type == "log":
             y_range = [10**val for val in y_range]
 
-        xy_min = min(x_range[0], y_range[0])
-        xy_max = max(x_range[1], y_range[1])
     except ValueError:
         trace = fig.data[trace_idx]
         df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
@@ -406,81 +199,7 @@ def add_identity_line(
         else:
             y_range = [min(df_xy.y), max(df_xy.y)]
 
-        xy_min = min(x_range[0], y_range[0])
-        xy_max = max(x_range[1], y_range[1])
-
-    if fig._grid_ref is not None:  # noqa: SLF001
-        kwargs.setdefault("row", "all")
-        kwargs.setdefault("col", "all")
-
-    line_defaults = dict(color="gray", width=1, dash="dash")
-    fig.add_shape(
-        type="line",
-        **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
-        layer="below",
-        line=line_defaults | (line_kwds or {}),
-        **kwargs,
-    )
-
-    return fig
-
-
-def add_ecdf_line(
-    fig: go.Figure,
-    values: ArrayLike = (),
-    trace_idx: int = 0,
-    trace_kwargs: dict[str, Any] | None = None,
-    **kwargs: Any,
-) -> go.Figure:
-    """Add an empirical cumulative distribution function (ECDF) line to a plotly figure.
-
-    Support for matplotlib planned but not implemented. PRs welcome.
-
-    Args:
-        fig (go.Figure): plotly figure to add the ECDF line to.
-        values (array, optional): Values to compute the ECDF from. Defaults to () which
-            means use the x-values of trace at trace_idx in fig.
-        trace_idx (int, optional): Index of the trace whose x-values to use for
-            computing the ECDF. Defaults to 0. Unused if values is not empty.
-        trace_kwargs (dict[str, Any], optional): Passed to trace_ecdf.update().
-            Defaults to None. Use e.g. to set trace name (default "Cumulative") or
-            line_color (default "gray").
-        **kwargs: Passed to fig.add_trace().
-
-    Returns:
-        Figure: Figure with added ECDF line.
-    """
-    valid_types = (go.Figure,)
-    if not isinstance(fig, valid_types):
-        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
-        raise TypeError(f"{fig=} must be instance of {type_names}")
-
-    ecdf = px.ecdf(values if len(values) else fig.data[trace_idx].x).data[0]
-
-    # if fig has facets, add ECDF to all subplots
-    add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
-
-    fig.add_trace(ecdf, **add_trace_defaults | kwargs)
-    # move ECDF line to secondary y-axis
-    # set color to darkened version of primary y-axis color
-    trace_defaults = dict(yaxis="y2", name="Cumulative", line=dict(color="gray"))
-    trace_kwargs = trace_defaults | (trace_kwargs or {})
-    fig.data[-1].update(**trace_kwargs)
-
-    color = trace_kwargs.get("line_color", trace_kwargs.get("line", {}).get("color"))
-
-    yaxis_defaults = dict(
-        title=trace_kwargs["name"],
-        side="right",
-        overlaying="y",
-        range=(0, 1),
-        showgrid=False,
-        color=color,
-        linecolor=color,
-    )
-    fig.layout.yaxis2 = yaxis_defaults | getattr(fig.layout, "yaxis2", {})
-
-    return fig
+    return x_range, y_range
 
 
 def df_to_arrays(

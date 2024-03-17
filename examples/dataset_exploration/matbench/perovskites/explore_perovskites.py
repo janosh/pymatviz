@@ -3,12 +3,8 @@ import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from pymatviz import (
-    annotate_bars,
-    plot_structure_2d,
-    ptable_heatmap,
-    spacegroup_sunburst,
-)
+from pymatviz import plot_structure_2d, ptable_heatmap, spacegroup_sunburst
+from pymatviz.powerups import annotate_bars
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
