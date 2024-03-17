@@ -181,6 +181,59 @@ def pretty_label(key: str, backend: Backend) -> str:
     return symbol_mapping.get(key, {}).get(backend, key)
 
 
+def annotate(
+    text: str,
+    fig: plt.Axes | plt.Figure | go.Figure | None = None,
+    color: str = "black",
+    **kwargs: Any,
+) -> plt.Axes | plt.Figure | go.Figure:
+    """Annotate a matplotlib or plotly figure.
+
+    Args:
+        text (str): The text to use for annotation.
+        fig (plt.Axes | plt.Figure | go.Figure | None, optional): The matplotlib Axes,
+            Figure or plotly Figure to annotate. If None, the current matplotlib Axes
+            will be used. Defaults to None.
+        color (str, optional): The color of the text. Defaults to "black".
+        **kwargs: Additional arguments to pass to matplotlib's AnchoredText or plotly's
+            fig.add_annotation().
+
+    Returns:
+        plt.Axes | plt.Figure | go.Figure: The annotated figure.
+    """
+    valid_ax_types = (plt.Figure, plt.Axes, go.Figure)
+    if not (fig is None or isinstance(fig, valid_ax_types)):
+        raise TypeError(
+            f"Unexpected type for fig: {type(fig)}, must be one of None, "
+            f"{', '.join(valid_ax_types)}"
+        )
+
+    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
+
+    if backend == mpl_key:
+        ax = fig if isinstance(fig, plt.Axes) else plt.gca()
+        fig = ax.figure
+
+        defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
+        text_box = AnchoredText(text, **(defaults | kwargs))
+        ax.add_artist(text_box)
+    else:  # plotly
+        fig = fig or go.Figure()
+        defaults = dict(
+            xref="paper",
+            yref="paper",
+            x=0.02,
+            y=0.96,
+            showarrow=False,
+            font=dict(size=16, color=color),
+            align="left",
+        )
+
+        fig.add_annotation(text=text, **(defaults | kwargs))
+
+    return fig
+
+
 def annotate_metrics(
     xs: ArrayLike,
     ys: ArrayLike,
