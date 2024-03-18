@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import ast
 from contextlib import contextmanager
-from functools import partial
+from functools import partial, wraps
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,6 +23,7 @@ PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
 TEST_FILES = f"{ROOT}/tests/files"
 Backend = Literal["matplotlib", "plotly"]
+AxOrFig = Union[plt.Axes, plt.Figure, go.Figure]
 VALID_BACKENDS = mpl_key, plotly_key = get_args(Backend)
 
 
@@ -445,3 +446,20 @@ def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
     """
     style = style or "font-size: 0.8em; font-weight: lighter;"
     return f"<{tag} {style=}>{text}</{tag}>"
+
+
+def validate_fig(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    """Decorator to validate the type of fig keyword argument in a function."""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        # TODO use typing.ParamSpec to type wrapper once py310 is oldest supported
+        fig = kwargs.get("fig", None)
+        if not (fig is None or isinstance(fig, AxOrFig)):
+            raise TypeError(
+                f"Unexpected type for fig: {type(fig).__name__}, must be one of None, "
+                f"{', '.join(map(str, get_args(AxOrFig)))}"
+            )
+        return func(*args, **kwargs)
+
+    return wrapper
