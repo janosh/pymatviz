@@ -334,9 +334,9 @@ def test_get_fig_xy_range(
             assert isinstance(val, float)
 
     # test invalid input
+    # currently suboptimal behavior: fig must be passed as kwarg to trigger helpful
+    # error message
     with pytest.raises(
-        TypeError,
-        match="fig must be instance of plotly.graph_objs._figure.Figure | "
-        "matplotlib.figure.Figure | matplotlib.axes._axes.Axes",
+        TypeError, match="Unexpected type for fig: str, must be one of None"
     ):
-        get_fig_xy_range("invalid")
+        get_fig_xy_range(fig="invalid")

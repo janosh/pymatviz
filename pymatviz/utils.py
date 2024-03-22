@@ -96,63 +96,6 @@ def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     return "cubic"
 
 
-def get_fig_xy_range(
-    fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
-) -> tuple[tuple[float, float], tuple[float, float]]:
-    """Get the x and y range of a plotly or matplotlib figure.
-
-    Args:
-        fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes.
-        trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
-            Defaults to 0. Unused if kaleido package is installed and the figure's
-            actual x/y-range can be obtained from fig.full_figure_for_development().
-
-    Returns:
-        tuple[float, float, float, float]: The x and y range of the figure in the format
-            (x_min, x_max, y_min, y_max).
-    """
-    if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
-        ax = fig if isinstance(fig, plt.Axes) else fig.gca()
-
-        return ax.get_xlim(), ax.get_ylim()
-
-    # If kaleido is missing, try block raises ValueError: Full figure generation
-    # requires the kaleido package. Install with: pip install kaleido
-    # If so, we resort to manually computing the xy data ranges which are usually are
-    # close to but not the same as the axes limits.
-    try:
-        # https://stackoverflow.com/a/62042077
-        full_fig = fig.full_figure_for_development(warn=False)
-        xaxis_type = full_fig.layout.xaxis.type
-        yaxis_type = full_fig.layout.yaxis.type
-
-        x_range = full_fig.layout.xaxis.range
-        y_range = full_fig.layout.yaxis.range
-
-        # Convert log range to linear if necessary
-        if xaxis_type == "log":
-            x_range = [10**val for val in x_range]
-        if yaxis_type == "log":
-            y_range = [10**val for val in y_range]
-
-    except ValueError:
-        trace = fig.data[trace_idx]
-        df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
-
-        # Determine ranges based on the type of axes
-        if fig.layout.xaxis.type == "log":
-            x_range = [10**val for val in (min(df_xy.x), max(df_xy.x))]
-        else:
-            x_range = [min(df_xy.x), max(df_xy.x)]
-
-        if fig.layout.yaxis.type == "log":
-            y_range = [10**val for val in (min(df_xy.y), max(df_xy.y))]
-        else:
-            y_range = [min(df_xy.y), max(df_xy.y)]
-
-    return x_range, y_range
-
-
 def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | Sequence[str] | Sequence[ArrayLike],
@@ -457,3 +400,61 @@ def annotate(
         raise ValueError(f"Unexpected {fig=}")
 
     return fig
+
+
+@validate_fig
+def get_fig_xy_range(
+    fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Get the x and y range of a plotly or matplotlib figure.
+
+    Args:
+        fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes.
+        trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
+            Defaults to 0. Unused if kaleido package is installed and the figure's
+            actual x/y-range can be obtained from fig.full_figure_for_development().
+
+    Returns:
+        tuple[float, float, float, float]: The x and y range of the figure in the format
+            (x_min, x_max, y_min, y_max).
+    """
+    if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
+        ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+
+        return ax.get_xlim(), ax.get_ylim()
+
+    # If kaleido is missing, try block raises ValueError: Full figure generation
+    # requires the kaleido package. Install with: pip install kaleido
+    # If so, we resort to manually computing the xy data ranges which are usually are
+    # close to but not the same as the axes limits.
+    try:
+        # https://stackoverflow.com/a/62042077
+        full_fig = fig.full_figure_for_development(warn=False)
+        xaxis_type = full_fig.layout.xaxis.type
+        yaxis_type = full_fig.layout.yaxis.type
+
+        x_range = full_fig.layout.xaxis.range
+        y_range = full_fig.layout.yaxis.range
+
+        # Convert log range to linear if necessary
+        if xaxis_type == "log":
+            x_range = [10**val for val in x_range]
+        if yaxis_type == "log":
+            y_range = [10**val for val in y_range]
+
+    except ValueError:
+        trace = fig.data[trace_idx]
+        df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
+
+        # Determine ranges based on the type of axes
+        if fig.layout.xaxis.type == "log":
+            x_range = [10**val for val in (min(df_xy.x), max(df_xy.x))]
+        else:
+            x_range = [min(df_xy.x), max(df_xy.x)]
+
+        if fig.layout.yaxis.type == "log":
+            y_range = [10**val for val in (min(df_xy.y), max(df_xy.y))]
+        else:
+            y_range = [min(df_xy.y), max(df_xy.y)]
+
+    return x_range, y_range
