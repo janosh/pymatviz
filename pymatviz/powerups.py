@@ -11,12 +11,14 @@ from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
 from pymatviz.utils import (
+    AxOrFig,
     Backend,
     annotate,
     get_fig_xy_range,
     mpl_key,
     plotly_key,
     pretty_label,
+    validate_fig,
 )
 
 
@@ -146,10 +148,11 @@ def annotate_bars(
             ) from exc
 
 
+@validate_fig
 def annotate_metrics(
     xs: ArrayLike,
     ys: ArrayLike,
-    fig: plt.Axes | plt.Figure | go.Figure | None = None,
+    fig: AxOrFig | None = None,
     metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
     prefix: str = "",
     suffix: str = "",
@@ -181,13 +184,8 @@ def annotate_metrics(
     if isinstance(metrics, str):
         metrics = [metrics]
     if not isinstance(metrics, (dict, list, tuple, set)):
-        raise TypeError(f"metrics must be dict|list|tuple|set, not {type(metrics)}")
-
-    valid_ax_types = (plt.Figure, plt.Axes, go.Figure)
-    if not (fig is None or isinstance(fig, valid_ax_types)):
         raise TypeError(
-            f"Unexpected type for fig: {type(fig)}, must be one of None, "
-            f"{', '.join(map(str, valid_ax_types))}"
+            f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
         )
 
     backend: Backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
