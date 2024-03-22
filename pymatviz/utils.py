@@ -16,8 +16,12 @@ from matplotlib.offsetbox import AnchoredText
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
+    from typing import ParamSpec, TypeVar
 
     from numpy.typing import ArrayLike
+
+    P = ParamSpec("P")
+    R = TypeVar("R")
 
 PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
@@ -25,6 +29,15 @@ TEST_FILES = f"{ROOT}/tests/files"
 Backend = Literal["matplotlib", "plotly"]
 AxOrFig = Union[plt.Axes, plt.Figure, go.Figure]
 VALID_BACKENDS = mpl_key, plotly_key = get_args(Backend)
+CrystalSystem = Literal[
+    "triclinic",
+    "monoclinic",
+    "orthorhombic",
+    "tetragonal",
+    "trigonal",
+    "hexagonal",
+    "cubic",
+]
 
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
@@ -57,69 +70,6 @@ def pretty_label(key: str, backend: Backend) -> str:
     }
 
     return symbol_mapping.get(key, {}).get(backend, key)
-
-
-def annotate(
-    text: str,
-    fig: plt.Axes | plt.Figure | go.Figure | None = None,
-    color: str = "black",
-    **kwargs: Any,
-) -> plt.Axes | plt.Figure | go.Figure:
-    """Annotate a matplotlib or plotly figure.
-
-    Args:
-        text (str): The text to use for annotation.
-        fig (plt.Axes | plt.Figure | go.Figure | None, optional): The matplotlib Axes,
-            Figure or plotly Figure to annotate. If None, the current matplotlib Axes
-            will be used. Defaults to None.
-        color (str, optional): The color of the text. Defaults to "black".
-        **kwargs: Additional arguments to pass to matplotlib's AnchoredText or plotly's
-            fig.add_annotation().
-
-    Returns:
-        plt.Axes | plt.Figure | go.Figure: The annotated figure.
-    """
-    valid_ax_types = (plt.Figure, plt.Axes, go.Figure)
-    if not (fig is None or isinstance(fig, valid_ax_types)):
-        raise TypeError(
-            f"Unexpected type for fig: {type(fig)}, must be one of None, "
-            f"{', '.join(map(str, valid_ax_types))}"
-        )
-
-    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
-
-    if backend == mpl_key:
-        ax = fig if isinstance(fig, plt.Axes) else plt.gca()
-
-        defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
-        text_box = AnchoredText(text, **(defaults | kwargs))
-        ax.add_artist(text_box)
-    else:  # plotly
-        fig = fig or go.Figure()
-        defaults = dict(
-            xref="paper",
-            yref="paper",
-            x=0.02,
-            y=0.96,
-            showarrow=False,
-            font=dict(size=16, color=color),
-            align="left",
-        )
-
-        fig.add_annotation(text=text, **(defaults | kwargs))
-
-    return fig
-
-
-CrystalSystem = Literal[
-    "triclinic",
-    "monoclinic",
-    "orthorhombic",
-    "tetragonal",
-    "trigonal",
-    "hexagonal",
-    "cubic",
-]
 
 
 def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
@@ -448,14 +398,14 @@ def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
     return f"<{tag} {style=}>{text}</{tag}>"
 
 
-def validate_fig(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
+def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
     """Decorator to validate the type of fig keyword argument in a function."""
 
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         # TODO use typing.ParamSpec to type wrapper once py310 is oldest supported
         fig = kwargs.get("fig", None)
-        if not (fig is None or isinstance(fig, AxOrFig)):
+        if not (fig is None or isinstance(fig, (plt.Axes, plt.Figure, go.Figure))):
             raise TypeError(
                 f"Unexpected type for fig: {type(fig).__name__}, must be one of None, "
                 f"{', '.join(map(str, get_args(AxOrFig)))}"
@@ -463,3 +413,47 @@ def validate_fig(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
         return func(*args, **kwargs)
 
     return wrapper
+
+
+@validate_fig
+def annotate(
+    text: str, fig: AxOrFig | None = None, color: str = "black", **kwargs: Any
+) -> AxOrFig:
+    """Annotate a matplotlib or plotly figure.
+
+    Args:
+        text (str): The text to use for annotation.
+        fig (plt.Axes | plt.Figure | go.Figure | None, optional): The matplotlib Axes,
+            Figure or plotly Figure to annotate. If None, the current matplotlib Axes
+            will be used. Defaults to None.
+        color (str, optional): The color of the text. Defaults to "black".
+        **kwargs: Additional arguments to pass to matplotlib's AnchoredText or plotly's
+            fig.add_annotation().
+
+    Returns:
+        plt.Axes | plt.Figure | go.Figure: The annotated figure.
+    """
+    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
+
+    if backend == mpl_key:
+        ax = fig if isinstance(fig, plt.Axes) else plt.gca()
+
+        defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
+        text_box = AnchoredText(text, **(defaults | kwargs))
+        ax.add_artist(text_box)
+    elif isinstance(fig, go.Figure):
+        defaults = dict(
+            xref="paper",
+            yref="paper",
+            x=0.02,
+            y=0.96,
+            showarrow=False,
+            font=dict(size=16, color=color),
+            align="left",
+        )
+
+        fig.add_annotation(text=text, **(defaults | kwargs))
+    else:
+        raise ValueError(f"Unexpected {fig=}")
+
+    return fig
