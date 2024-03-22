@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import ast
 from contextlib import contextmanager
-from functools import partial
+from functools import partial, wraps
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,14 +16,28 @@ from matplotlib.offsetbox import AnchoredText
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
+    from typing import ParamSpec, TypeVar
 
     from numpy.typing import ArrayLike
+
+    P = ParamSpec("P")
+    R = TypeVar("R")
 
 PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
 TEST_FILES = f"{ROOT}/tests/files"
 Backend = Literal["matplotlib", "plotly"]
+AxOrFig = Union[plt.Axes, plt.Figure, go.Figure]
 VALID_BACKENDS = mpl_key, plotly_key = get_args(Backend)
+CrystalSystem = Literal[
+    "triclinic",
+    "monoclinic",
+    "orthorhombic",
+    "tetragonal",
+    "trigonal",
+    "hexagonal",
+    "cubic",
+]
 
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
@@ -58,69 +72,6 @@ def pretty_label(key: str, backend: Backend) -> str:
     return symbol_mapping.get(key, {}).get(backend, key)
 
 
-def annotate(
-    text: str,
-    fig: plt.Axes | plt.Figure | go.Figure | None = None,
-    color: str = "black",
-    **kwargs: Any,
-) -> plt.Axes | plt.Figure | go.Figure:
-    """Annotate a matplotlib or plotly figure.
-
-    Args:
-        text (str): The text to use for annotation.
-        fig (plt.Axes | plt.Figure | go.Figure | None, optional): The matplotlib Axes,
-            Figure or plotly Figure to annotate. If None, the current matplotlib Axes
-            will be used. Defaults to None.
-        color (str, optional): The color of the text. Defaults to "black".
-        **kwargs: Additional arguments to pass to matplotlib's AnchoredText or plotly's
-            fig.add_annotation().
-
-    Returns:
-        plt.Axes | plt.Figure | go.Figure: The annotated figure.
-    """
-    valid_ax_types = (plt.Figure, plt.Axes, go.Figure)
-    if not (fig is None or isinstance(fig, valid_ax_types)):
-        raise TypeError(
-            f"Unexpected type for fig: {type(fig)}, must be one of None, "
-            f"{', '.join(map(str, valid_ax_types))}"
-        )
-
-    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
-
-    if backend == mpl_key:
-        ax = fig if isinstance(fig, plt.Axes) else plt.gca()
-
-        defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
-        text_box = AnchoredText(text, **(defaults | kwargs))
-        ax.add_artist(text_box)
-    else:  # plotly
-        fig = fig or go.Figure()
-        defaults = dict(
-            xref="paper",
-            yref="paper",
-            x=0.02,
-            y=0.96,
-            showarrow=False,
-            font=dict(size=16, color=color),
-            align="left",
-        )
-
-        fig.add_annotation(text=text, **(defaults | kwargs))
-
-    return fig
-
-
-CrystalSystem = Literal[
-    "triclinic",
-    "monoclinic",
-    "orthorhombic",
-    "tetragonal",
-    "trigonal",
-    "hexagonal",
-    "cubic",
-]
-
-
 def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
     # ensure integer or float with no decimal part
@@ -143,63 +94,6 @@ def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
     if spg <= 194:
         return "hexagonal"
     return "cubic"
-
-
-def get_fig_xy_range(
-    fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
-) -> tuple[tuple[float, float], tuple[float, float]]:
-    """Get the x and y range of a plotly or matplotlib figure.
-
-    Args:
-        fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes.
-        trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
-            Defaults to 0. Unused if kaleido package is installed and the figure's
-            actual x/y-range can be obtained from fig.full_figure_for_development().
-
-    Returns:
-        tuple[float, float, float, float]: The x and y range of the figure in the format
-            (x_min, x_max, y_min, y_max).
-    """
-    if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
-        ax = fig if isinstance(fig, plt.Axes) else fig.gca()
-
-        return ax.get_xlim(), ax.get_ylim()
-
-    # If kaleido is missing, try block raises ValueError: Full figure generation
-    # requires the kaleido package. Install with: pip install kaleido
-    # If so, we resort to manually computing the xy data ranges which are usually are
-    # close to but not the same as the axes limits.
-    try:
-        # https://stackoverflow.com/a/62042077
-        full_fig = fig.full_figure_for_development(warn=False)
-        xaxis_type = full_fig.layout.xaxis.type
-        yaxis_type = full_fig.layout.yaxis.type
-
-        x_range = full_fig.layout.xaxis.range
-        y_range = full_fig.layout.yaxis.range
-
-        # Convert log range to linear if necessary
-        if xaxis_type == "log":
-            x_range = [10**val for val in x_range]
-        if yaxis_type == "log":
-            y_range = [10**val for val in y_range]
-
-    except ValueError:
-        trace = fig.data[trace_idx]
-        df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
-
-        # Determine ranges based on the type of axes
-        if fig.layout.xaxis.type == "log":
-            x_range = [10**val for val in (min(df_xy.x), max(df_xy.x))]
-        else:
-            x_range = [min(df_xy.x), max(df_xy.x)]
-
-        if fig.layout.yaxis.type == "log":
-            y_range = [10**val for val in (min(df_xy.y), max(df_xy.y))]
-        else:
-            y_range = [min(df_xy.y), max(df_xy.y)]
-
-    return x_range, y_range
 
 
 def df_to_arrays(
@@ -445,3 +339,122 @@ def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
     """
     style = style or "font-size: 0.8em; font-weight: lighter;"
     return f"<{tag} {style=}>{text}</{tag}>"
+
+
+def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
+    """Decorator to validate the type of fig keyword argument in a function."""
+
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        # TODO use typing.ParamSpec to type wrapper once py310 is oldest supported
+        fig = kwargs.get("fig", None)
+        if not (fig is None or isinstance(fig, (plt.Axes, plt.Figure, go.Figure))):
+            raise TypeError(
+                f"Unexpected type for fig: {type(fig).__name__}, must be one of None, "
+                f"{', '.join(map(str, get_args(AxOrFig)))}"
+            )
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@validate_fig
+def annotate(
+    text: str, fig: AxOrFig | None = None, color: str = "black", **kwargs: Any
+) -> AxOrFig:
+    """Annotate a matplotlib or plotly figure.
+
+    Args:
+        text (str): The text to use for annotation.
+        fig (plt.Axes | plt.Figure | go.Figure | None, optional): The matplotlib Axes,
+            Figure or plotly Figure to annotate. If None, the current matplotlib Axes
+            will be used. Defaults to None.
+        color (str, optional): The color of the text. Defaults to "black".
+        **kwargs: Additional arguments to pass to matplotlib's AnchoredText or plotly's
+            fig.add_annotation().
+
+    Returns:
+        plt.Axes | plt.Figure | go.Figure: The annotated figure.
+    """
+    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
+
+    if backend == mpl_key:
+        ax = fig if isinstance(fig, plt.Axes) else plt.gca()
+
+        defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
+        text_box = AnchoredText(text, **(defaults | kwargs))
+        ax.add_artist(text_box)
+    elif isinstance(fig, go.Figure):
+        defaults = dict(
+            xref="paper",
+            yref="paper",
+            x=0.02,
+            y=0.96,
+            showarrow=False,
+            font=dict(size=16, color=color),
+            align="left",
+        )
+
+        fig.add_annotation(text=text, **(defaults | kwargs))
+    else:
+        raise ValueError(f"Unexpected {fig=}")
+
+    return fig
+
+
+@validate_fig
+def get_fig_xy_range(
+    fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Get the x and y range of a plotly or matplotlib figure.
+
+    Args:
+        fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes.
+        trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
+            Defaults to 0. Unused if kaleido package is installed and the figure's
+            actual x/y-range can be obtained from fig.full_figure_for_development().
+
+    Returns:
+        tuple[float, float, float, float]: The x and y range of the figure in the format
+            (x_min, x_max, y_min, y_max).
+    """
+    if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
+        ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+
+        return ax.get_xlim(), ax.get_ylim()
+
+    # If kaleido is missing, try block raises ValueError: Full figure generation
+    # requires the kaleido package. Install with: pip install kaleido
+    # If so, we resort to manually computing the xy data ranges which are usually are
+    # close to but not the same as the axes limits.
+    try:
+        # https://stackoverflow.com/a/62042077
+        full_fig = fig.full_figure_for_development(warn=False)
+        xaxis_type = full_fig.layout.xaxis.type
+        yaxis_type = full_fig.layout.yaxis.type
+
+        x_range = full_fig.layout.xaxis.range
+        y_range = full_fig.layout.yaxis.range
+
+        # Convert log range to linear if necessary
+        if xaxis_type == "log":
+            x_range = [10**val for val in x_range]
+        if yaxis_type == "log":
+            y_range = [10**val for val in y_range]
+
+    except ValueError:
+        trace = fig.data[trace_idx]
+        df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
+
+        # Determine ranges based on the type of axes
+        if fig.layout.xaxis.type == "log":
+            x_range = [10**val for val in (min(df_xy.x), max(df_xy.x))]
+        else:
+            x_range = [min(df_xy.x), max(df_xy.x)]
+
+        if fig.layout.yaxis.type == "log":
+            y_range = [10**val for val in (min(df_xy.y), max(df_xy.y))]
+        else:
+            y_range = [min(df_xy.y), max(df_xy.y)]
+
+    return x_range, y_range
