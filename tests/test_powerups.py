@@ -8,21 +8,18 @@ from unittest.mock import patch
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import pytest
-from matplotlib.offsetbox import TextArea
 from matplotlib.text import Annotation
 
 from pymatviz.powerups import (
-    Backend,
     add_best_fit_line,
     add_ecdf_line,
     add_identity_line,
-    annotate,
     annotate_bars,
     annotate_metrics,
     get_fig_xy_range,
-    pretty_label,
     with_marginal_hist,
 )
+from pymatviz.utils import Backend, pretty_label
 from tests.conftest import y_pred, y_true
 
 
@@ -96,11 +93,16 @@ def test_annotate_metrics(
 
 
 @pytest.mark.parametrize("metrics", [42, datetime.now(tz=timezone.utc)])
-def test_annotate_metrics_raises(metrics: dict[str, float] | Sequence[str]) -> None:
-    with pytest.raises(
-        TypeError, match=f"metrics must be dict|list|tuple|set, not {type(metrics)}"
-    ):
-        annotate_metrics(y_pred, y_true, metrics=metrics)
+def test_annotate_metrics_bad_metrics(metrics: int | datetime) -> None:
+    err_msg = f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
+    with pytest.raises(TypeError, match=err_msg):
+        annotate_metrics(y_pred, y_true, metrics=metrics)  # type: ignore[arg-type]
+
+
+def test_annote_metrics_bad_fig() -> None:
+    err_msg = "Unexpected type for fig: str, must be one of"
+    with pytest.raises(TypeError, match=err_msg):
+        annotate_metrics(y_pred, y_true, fig="invalid")
 
 
 @pytest.mark.parametrize("xaxis_type", ["linear", "log"])
@@ -279,46 +281,6 @@ def test_with_marginal_hist() -> None:
     assert len(fig.axes) == 7
 
 
-def test_pretty_label() -> None:
-    assert pretty_label("R2", "matplotlib") == "$R^2$"
-    assert pretty_label("R2", "plotly") == "R<sup>2</sup>"
-    assert pretty_label("R2_adj", "matplotlib") == "$R^2_{adj}$"
-    assert pretty_label("R2_adj", "plotly") == "R<sup>2</sup><sub>adj</sub>"
-    assert pretty_label("foo", "matplotlib") == "foo"
-    assert pretty_label("foo", "plotly") == "foo"
-
-    with pytest.raises(ValueError, match="Unexpected backend='foo'"):
-        pretty_label("R2", "foo")  # type: ignore[arg-type]
-
-
-@pytest.mark.parametrize("color", ["red", "blue", "#FF0000"])
-def test_annotate(
-    color: str, plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
-) -> None:
-    text = "Test annotation"
-
-    fig_plotly = annotate(text, plotly_scatter, color=color)
-    assert isinstance(fig_plotly, go.Figure)
-    assert fig_plotly.layout.annotations[-1].text == text
-    assert fig_plotly.layout.annotations[-1].font.color == color
-
-    fig_mpl = annotate(text, matplotlib_scatter, color=color)
-    assert isinstance(fig_mpl, plt.Figure)
-    assert isinstance(fig_mpl.axes[0].artists[-1].txt, TextArea)
-    assert fig_mpl.axes[0].artists[-1].txt.get_text() == text
-    assert fig_mpl.axes[0].artists[-1].txt._text.get_color() == color  # noqa: SLF001
-
-    ax_mpl = annotate(text, matplotlib_scatter.axes[0], color=color)
-    assert isinstance(ax_mpl, plt.Axes)
-    assert ax_mpl.artists[-1].txt.get_text() == text
-    assert ax_mpl.artists[-1].txt._text.get_color() == color  # noqa: SLF001
-
-
-def test_annotate_invalid_fig() -> None:
-    with pytest.raises(TypeError, match="Unexpected type for fig"):
-        annotate("test", fig="invalid")
-
-
 @pytest.mark.parametrize("annotate_params", [True, False, {"color": "green"}])
 def test_add_best_fit_line(
     plotly_scatter: go.Figure,
@@ -360,14 +322,21 @@ def test_add_best_fit_line_invalid_fig() -> None:
 def test_get_fig_xy_range(
     plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
 ) -> None:
-    x_range, y_range = get_fig_xy_range(plotly_scatter)
-    assert len(x_range) == 2
-    assert len(y_range) == 2
+    for fig in (plotly_scatter, matplotlib_scatter, matplotlib_scatter.axes[0]):
+        x_range, y_range = get_fig_xy_range(fig)
+        assert isinstance(x_range, tuple)
+        assert isinstance(y_range, tuple)
+        assert len(x_range) == 2
+        assert len(y_range) == 2
+        assert x_range[0] < x_range[1]
+        assert y_range[0] < y_range[1]
+        for val in (*x_range, *y_range):
+            assert isinstance(val, float)
 
-    x_range, y_range = get_fig_xy_range(matplotlib_scatter)
-    assert len(x_range) == 2
-    assert len(y_range) == 2
-
-    x_range, y_range = get_fig_xy_range(matplotlib_scatter.axes[0])
-    assert len(x_range) == 2
-    assert len(y_range) == 2
+    # test invalid input
+    with pytest.raises(
+        TypeError,
+        match="fig must be instance of plotly.graph_objs._figure.Figure | "
+        "matplotlib.figure.Figure | matplotlib.axes._axes.Axes",
+    ):
+        get_fig_xy_range("invalid")
