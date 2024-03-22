@@ -1,24 +1,28 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Literal
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+from matplotlib.offsetbox import TextArea
 
 from pymatviz.utils import (
     CrystalSystem,
+    annotate,
     bin_df_cols,
     crystal_sys_from_spg_num,
     df_to_arrays,
     luminance,
     patch_dict,
     pick_bw_for_contrast,
+    pretty_label,
     si_fmt,
     si_fmt_int,
     styled_html_tag,
+    validate_fig,
 )
 from tests.conftest import y_pred, y_true
 
@@ -305,3 +309,63 @@ def test_styled_html_tag(text: str, tag: str, style: str) -> None:
     assert (
         styled_html_tag(text, tag=tag, style=style) == f"<{tag} {style=}>{text}</{tag}>"
     )
+
+
+def test_pretty_label() -> None:
+    assert pretty_label("R2", "matplotlib") == "$R^2$"
+    assert pretty_label("R2", "plotly") == "R<sup>2</sup>"
+    assert pretty_label("R2_adj", "matplotlib") == "$R^2_{adj}$"
+    assert pretty_label("R2_adj", "plotly") == "R<sup>2</sup><sub>adj</sub>"
+    assert pretty_label("foo", "matplotlib") == "foo"
+    assert pretty_label("foo", "plotly") == "foo"
+
+    with pytest.raises(ValueError, match="Unexpected backend='foo'"):
+        pretty_label("R2", "foo")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("color", ["red", "blue", "#FF0000"])
+def test_annotate(
+    color: str, plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
+) -> None:
+    text = "Test annotation"
+
+    fig_plotly = annotate(text, plotly_scatter, color=color)
+    assert isinstance(fig_plotly, go.Figure)
+    assert fig_plotly.layout.annotations[-1].text == text
+    assert fig_plotly.layout.annotations[-1].font.color == color
+
+    fig_mpl = annotate(text, matplotlib_scatter, color=color)
+    assert isinstance(fig_mpl, plt.Figure)
+    assert isinstance(fig_mpl.axes[0].artists[-1].txt, TextArea)
+    assert fig_mpl.axes[0].artists[-1].txt.get_text() == text
+    assert fig_mpl.axes[0].artists[-1].txt._text.get_color() == color  # noqa: SLF001
+
+    ax_mpl = annotate(text, matplotlib_scatter.axes[0], color=color)
+    assert isinstance(ax_mpl, plt.Axes)
+    assert ax_mpl.artists[-1].txt.get_text() == text
+    assert ax_mpl.artists[-1].txt._text.get_color() == color  # noqa: SLF001
+
+
+def test_annotate_invalid_fig() -> None:
+    with pytest.raises(TypeError, match="Unexpected type for fig: str, must be one of"):
+        annotate("test", fig="invalid")
+
+
+def test_validate_fig_decorator_raises(capsys: pytest.CaptureFixture[str]) -> None:
+    @validate_fig
+    def generic_func(fig: Any = None, **kwargs: Any) -> Any:
+        return fig, kwargs
+
+    # check no error on valid fig types
+    for fig in (None, go.Figure(), plt.gcf(), plt.gca()):
+        generic_func(fig=fig)
+        stdout, stderr = capsys.readouterr()
+        assert stdout == ""
+        assert stderr == ""
+
+    # check TypeError on invalid fig types
+    for invalid in (42, "invalid"):
+        with pytest.raises(
+            TypeError, match=f"Unexpected type for fig: {type(invalid).__name__}"
+        ):
+            generic_func(fig=invalid)
