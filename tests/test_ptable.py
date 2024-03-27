@@ -15,7 +15,7 @@ from pymatviz import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
-    ptable_scatters,
+    ptable_scatter_line,
 )
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -395,15 +395,15 @@ def test_ptable_hists(
     assert isinstance(fig, plt.Figure)
 
 
-def test_ptable_scatters() -> None:
-    """Test ptable_scatters with 3rd color dimension."""
-    fig = ptable_scatters(
+def test_ptable_scatter_line() -> None:
+    """Test ptable_scatter_line with 3rd color dimension."""
+    fig = ptable_scatter_line(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
         },
         colormap="coolwarm",
-        cbar_title="Test ptable_scatters",
+        cbar_title="Test ptable_scatter_line",
     )
     assert isinstance(fig, plt.Figure)
 
@@ -417,10 +417,10 @@ def test_ptable_scatters() -> None:
         pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]),
     ],
 )
-def test_ptable_scatters_datatypes(
+def test_ptable_scatter_line_datatypes(
     data: pd.DataFrame | pd.Series | dict[str, list[int]],
 ) -> None:
-    """Test ptable_scatters with various input data types."""
-    fig = ptable_scatters(data)
+    """Test ptable_scatter_line with various input data types."""
+    fig = ptable_scatter_line(data)
     assert isinstance(fig, plt.Figure)
     assert len(fig.axes) == 180

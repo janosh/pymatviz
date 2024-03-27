@@ -58,7 +58,7 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table c
 |                       ![ptable-heatmap]                        |                        ![ptable-heatmap-ratio]                        |
 |  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)  | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py) |
 |            ![ptable-heatmap-plotly-more-hover-data]            |                     ![ptable-heatmap-plotly-log]                      |
-| [`ptable_hists(data, colormap="coolwarm"`](pymatviz/ptable.py) |   [`ptable_scatters(data, colormap="coolwarm"`](pymatviz/ptable.py)   |
+| [`ptable_hists(data, colormap="coolwarm"`](pymatviz/ptable.py) | [`ptable_scatter_line(data, colormap="coolwarm"`](pymatviz/ptable.py) |
 |                        ![ptable-hists]                         |                          ![ptable-scatters]                           |
 
 [ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
