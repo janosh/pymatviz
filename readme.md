@@ -68,15 +68,16 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table c
 
 See [`pymatviz/phonons.py`](pymatviz/phonons.py).
 
-|           [`plot_phonon_bands(bands_dict)`](pymatviz/phonons.py)           | [`plot_phonon_dos(doses_dict)`](pymatviz/phonons.py) |
-| :------------------------------------------------------------------------: | :--------------------------------------------------: |
-|                              ![phonon-bands]                               |                    ![phonon-dos]                     |
-| [`plot_phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons.py) |                                                      |
-|                          ![phonon-bands-and-dos]                           |                                                      |
+|           [`plot_phonon_bands(bands_dict)`](pymatviz/phonons.py)           |             [`plot_phonon_dos(doses_dict)`](pymatviz/phonons.py)             |
+| :------------------------------------------------------------------------: | :--------------------------------------------------------------------------: |
+|                              ![phonon-bands]                               |                                ![phonon-dos]                                 |
+| [`plot_phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons.py) | [`plot_phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons.py) |
+|                      ![phonon-bands-and-dos-mp-2758]                       |                       ![phonon-bands-and-dos-mp-23907]                       |
 
 [phonon-bands]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-mp-2758.svg
 [phonon-dos]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-dos-mp-2758.svg
-[phonon-bands-and-dos]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-and-dos-mp-2758.svg
+[phonon-bands-and-dos-mp-2758]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-and-dos-mp-2758.svg
+[phonon-bands-and-dos-mp-23907]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-and-dos-mp-23907.svg
 
 ### Dash app using `ptable_heatmap_plotly()`
 

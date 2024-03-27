@@ -22,31 +22,31 @@ bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 
 @pytest.fixture()
 def phonon_bands_doses_mp_2758() -> BandsDoses:
-    with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-pbe.json.lzma") as file:
+    with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.lzma") as file:
         dft_dct = json.loads(file.read(), cls=MontyDecoder)
-    with zopen(f"{TEST_FILES}/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:
+    with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:
         ml_dct = json.loads(file.read(), cls=MontyDecoder)
 
-    bands = {"DFT": dft_dct[bs_key], "MACE": ml_dct[bs_key]}
-    doses = {"DFT": dft_dct[dos_key], "MACE": ml_dct[dos_key]}
+    bands = {"DFT": getattr(dft_dct, bs_key), "MACE": getattr(ml_dct, bs_key)}
+    doses = {"DFT": getattr(dft_dct, dos_key), "MACE": getattr(ml_dct, dos_key)}
     return {"bands": bands, "doses": doses}
 
 
 @pytest.fixture()
-def phonon_bands_doses_mp_2691() -> BandsDoses:
-    # with zopen(f"{TEST_FILES}/mp-2691-Cd4Se4-pbe.json.lzma") as file:
-    with zopen(f"{TEST_FILES}/mp-2667-Cs1Au1-pbe.json.lzma") as file:
+def phonon_bands_doses_mp_2667() -> BandsDoses:
+    # with zopen(f"{TEST_FILES}/phonons/mp-2691-Cd4Se4-pbe.json.lzma") as file:
+    with zopen(f"{TEST_FILES}/phonons/mp-2667-Cs1Au1-pbe.json.lzma") as file:
         return json.loads(file.read(), cls=MontyDecoder)
 
 
 @pytest.fixture()
 def phonon_doses() -> dict[str, PhononDos]:
-    paths = glob(f"{TEST_FILES}/mp-*-pbe.json.lzma")
+    paths = glob(f"{TEST_FILES}/phonons/mp-*-pbe.json.lzma")
     assert len(paths) >= 2
     return {
-        path.split("/")[-1].split("-pbe")[0]: json.loads(
-            zopen(path).read(), cls=MontyDecoder
-        )[dos_key]
+        path.split("/")[-1].split("-pbe")[0]: getattr(
+            json.loads(zopen(path).read(), cls=MontyDecoder), dos_key
+        )
         for path in paths
     }
 
