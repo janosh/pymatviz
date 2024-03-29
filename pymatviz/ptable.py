@@ -944,7 +944,7 @@ def ptable_hists(
     return fig
 
 
-def ptable_scatter_line(
+def ptable_plots(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     plot_kwds: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]

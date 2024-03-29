@@ -38,7 +38,7 @@ from pymatviz.ptable import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
-    ptable_scatter_line,
+    ptable_plots,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
@@ -184,7 +184,7 @@ data_dict = {
     for elem in Element
 }
 
-fig = ptable_scatter_line(
+fig = ptable_plots(
     data_dict,
     colormap="coolwarm",
     cbar_title="Periodic Table Scatter Plots",
