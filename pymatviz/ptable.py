@@ -766,6 +766,7 @@ def ptable_hists(
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     log: bool = False,
     anno_kwds: dict[str, Any] | None = None,
+    on_empty: Literal["show", "hide"] = "hide",
     **kwargs: Any,
 ) -> plt.Figure:
     """Plot small histograms for each element laid out in a periodic table.
@@ -805,6 +806,8 @@ def ptable_hists(
             anno_kwds=lambda hist_vals: dict(text=len(hist_vals)).
             Recognized keys are text, xy, xycoords, fontsize, and any other
             plt.annotate() keywords.
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
         **kwargs: Additional keyword arguments passed to plt.subplots(). Defaults to
             dict(figsize=(0.75 * n_columns, 0.75 * n_rows)) with n_columns/n_rows the
             number of columns/rows in the periodic table.
@@ -854,6 +857,11 @@ def ptable_hists(
 
         ax = axes[row - 1][group - 1]
         symbol_kwargs.setdefault("fontsize", 10)
+        hist_data = data.get(symbol, [])
+
+        if len(hist_data) == 0 and on_empty == "hide":
+            continue
+
         ax.text(
             *symbol_pos,
             symbol_text(element)
@@ -866,7 +874,6 @@ def ptable_hists(
         )
         ax.axis("on")  # re-enable axes of elements that exist
 
-        hist_data = data.get(symbol, [])
         if anno_kwds:
             defaults = dict(
                 text=lambda hist_vals: si_fmt_int(len(hist_vals)),
@@ -952,6 +959,7 @@ def ptable_scatter_line(
     cbar_title_kwds: dict[str, Any] | None = None,
     cbar_kwds: dict[str, Any] | None = None,
     anno_kwds: dict[str, Any] | None = None,
+    on_empty: Literal["hide", "show"] = "hide",
     **kwargs: Any,
 ) -> plt.Figure:
     """Make scatter or line plots for each element, nested inside a periodic table.
@@ -999,6 +1007,8 @@ def ptable_scatter_line(
             anno_kwds=lambda plot_vals: dict(text=len(plot_vals)).
             Recognized keys are text, xy, xycoords, fontsize, and any other
             plt.annotate() keywords.
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
         **kwargs: Additional keyword arguments passed to plt.subplots().
 
     Notes:
@@ -1035,6 +1045,10 @@ def ptable_scatter_line(
         row, group = df_ptable.loc[symbol, ["row", "column"]]
 
         ax = axes[row - 1][group - 1]
+        plot_data = np.array(data.get(symbol, []))
+        if len(plot_data) == 0 and on_empty == "hide":
+            continue
+
         ax.text(
             *symbol_pos,
             symbol_text(element)
@@ -1046,11 +1060,6 @@ def ptable_scatter_line(
             **symbol_kwargs,
         )
         ax.axis("on")
-        # make sure axes is square to fill the tile
-        # this was a bad idea
-        # ax.set_aspect("equal")
-
-        plot_data = np.array(data.get(symbol, []))
 
         if anno_kwds:
             defaults = dict(
