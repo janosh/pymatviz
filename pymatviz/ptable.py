@@ -6,8 +6,9 @@ import math
 import warnings
 from collections.abc import Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Literal, get_args
+from typing import TYPE_CHECKING, Any, Callable, Final, Literal, get_args
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -32,6 +33,23 @@ if TYPE_CHECKING:
 CountMode = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
 ]
+ELEM_CLASS_COLORS: Final = {
+    "Diatomic Nonmetal": "green",
+    "Noble Gas": "purple",
+    "Alkali Metal": "red",
+    "Alkaline Earth Metal": "orange",
+    "Metalloid": "darkgreen",
+    "Polyatomic Nonmetal": "teal",
+    "Transition Metal": "blue",
+    "Post Transition Metal": "cyan",
+    "Lanthanide": "brown",
+    "Actinide": "gray",
+    "Nonmetal": "green",
+    "Halogen": "teal",
+    "Metal": "lightblue",
+    "Alkaline Metal": "magenta",
+    "Transactinide": "olive",
+}
 
 
 def count_elements(
@@ -960,6 +978,9 @@ def ptable_plots(
     cbar_kwds: dict[str, Any] | None = None,
     anno_kwds: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
+    color_elem_types: Literal["symbol", "background", "both", False]
+    | dict[str, str | tuple[int, int, int]] = "background",
+    elem_type_legend: bool = True,
     **kwargs: Any,
 ) -> plt.Figure:
     """Make scatter or line plots for each element, nested inside a periodic table.
@@ -1009,6 +1030,15 @@ def ptable_plots(
             plt.annotate() keywords.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        color_elem_types ("symbol" | "background" | "both" | False | dict[str, str]):
+            Whether to color element symbols or
+            backgrounds according to their type. Defaults to "symbol". If a dict is
+            passed, it should map element types to colors. Will be merged into default
+            dict so doesn't need to contain all element types. See source code for
+            recognized keys. Example:
+            {"Noble Gas": "gray", "Halogen": "teal"}. If False, no coloring is done.
+        elem_type_legend (bool): Whether to show a color legend for element classes.
+            Defaults to True.
         **kwargs: Additional keyword arguments passed to plt.subplots().
 
     Notes:
@@ -1017,6 +1047,20 @@ def ptable_plots(
     Returns:
         plt.Figure: periodic table with a subplot in each element tile.
     """
+    if isinstance(color_elem_types, dict) and (
+        bad_keys := set(color_elem_types) - set(ELEM_CLASS_COLORS)
+    ):
+        raise ValueError(
+            f"Invalid color_elem_types: {', '.join(bad_keys)}. Recognized keys are: "
+            f"{', '.join(ELEM_CLASS_COLORS)}."
+        )
+    if isinstance(color_elem_types, str) and (
+        color_elem_types not in (valid_vals := ("symbol", "background", "both"))
+    ):
+        raise ValueError(
+            f"Invalid {color_elem_types=}, should be one of {valid_vals} or dict|False."
+        )
+
     n_periods = df_ptable.row.max()
     n_groups = df_ptable.column.max()
 
@@ -1027,9 +1071,9 @@ def ptable_plots(
     if isinstance(data, pd.Series) and cbar_title == "Values" and data.name:
         cbar_title = data.name
         data = data.to_dict()
-
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="list")
+    # data is guaranteed to be a dict from here (should have element symbols as keys)
 
     cmap = plt.get_cmap(colormap) if colormap else None
 
@@ -1040,6 +1084,11 @@ def ptable_plots(
 
     symbol_kwargs = symbol_kwargs or {}
     symbol_kwargs.setdefault("fontsize", 10)
+
+    elem_class_colors = ELEM_CLASS_COLORS | (
+        color_elem_types if isinstance(color_elem_types, dict) else {}
+    )
+
     for element in Element:
         symbol = element.symbol
         row, group = df_ptable.loc[symbol, ["row", "column"]]
@@ -1048,6 +1097,10 @@ def ptable_plots(
         plot_data = np.array(data.get(symbol, []))
         if len(plot_data) == 0 and on_empty == "hide":
             continue
+
+        if color_elem_types in ("symbol", "both"):
+            elem_class = df_ptable.loc[symbol, "type"]
+            symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
 
         ax.text(
             *symbol_pos,
@@ -1059,6 +1112,12 @@ def ptable_plots(
             transform=ax.transAxes,
             **symbol_kwargs,
         )
+
+        if color_elem_types in ("background", "both"):
+            elem_class = df_ptable.loc[symbol, "type"]
+            bg_color = elem_class_colors.get(elem_class, "white")
+            ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
+
         ax.axis("on")
 
         if anno_kwds:
@@ -1111,7 +1170,7 @@ def ptable_plots(
             ax.set_xticks([])
             ax.set_yticks([])
 
-        # Hide right/top boarders
+        # Hide right/top borders
         for side in ("right", "top"):
             ax.spines[side].set_visible(b=False)
 
@@ -1138,5 +1197,30 @@ def ptable_plots(
         cbar_title_kwds.setdefault("pad", 10)
         cbar_title_kwds["label"] = cbar_title
         cbar_ax.set_title(**cbar_title_kwds)
+
+    if elem_type_legend and color_elem_types:
+        visible_types = set(df_ptable.loc[[*data]]["type"].unique())
+        font_size = 10
+        legend_elements = [
+            plt.Line2D(
+                *([0], [0]),
+                marker="s",
+                color="w",
+                label=elem_class,
+                markerfacecolor=color,
+                markersize=1.2 * font_size,
+            )
+            for elem_class, color in elem_class_colors.items()
+            if elem_class in visible_types
+        ]
+        plt.legend(
+            handles=legend_elements,
+            loc="center left",
+            bbox_to_anchor=(-23, -2),
+            ncol=5,
+            frameon=False,
+            fontsize=font_size,
+            handlelength=0,
+        )
 
     return fig
