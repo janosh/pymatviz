@@ -59,10 +59,10 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table c
 |  [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)  | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py) |
 |            ![ptable-heatmap-plotly-more-hover-data]            |                     ![ptable-heatmap-plotly-log]                      |
 | [`ptable_hists(data, colormap="coolwarm"`](pymatviz/ptable.py) |    [`ptable_plots(data, colormap="coolwarm"`](pymatviz/ptable.py)     |
-|                        ![ptable-hists]                         |                          ![ptable-scatters]                           |
+|                        ![ptable-hists]                         |                            ![ptable-plots]                            |
 
 [ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
-[ptable-scatters]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-scatters.svg
+[ptable-plots]: https://github.com/janosh/pymatviz/raw/main/examples/diatomics/homo-nuclear-mace-medium.svg
 
 ## Phonons
 
