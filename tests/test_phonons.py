@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
-from functools import partial
 from glob import glob
 from typing import Literal, Union
 
 import plotly.graph_objects as go
 import pytest
 from monty.io import zopen
-from monty.json import MontyDecoder
+from monty.json import MontyDecoder, MSONable
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 
@@ -21,23 +20,20 @@ BandsDoses = dict[str, dict[str, Union[PhononBands, PhononDos]]]
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 # enable loading PhononDBDocParsed with @module set to uninstalled ffonons.dbs.phonondb
 # by changing to identical dataclass in pymatviz.phonons module
-hot_swap_ffonons_to_pmv_module_hook = (
-    lambda dct: dct | {"@module": "pymatviz.phonons", "@class": "PhononDBDoc"}
-    if dct.get("@module") == "ffonons.dbs.phonondb"
-    else dct
-)
-load_json = partial(
-    json.loads, object_hook=hot_swap_ffonons_to_pmv_module_hook, cls=MontyDecoder
-)
+MSONable.REDIRECT = {
+    "ffonons.dbs.phonondb": {
+        "PhononDBDocParsed": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"}
+    }
+}
 
 
 @pytest.fixture()
 def phonon_bands_doses_mp_2758() -> BandsDoses:
     with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.lzma") as file:
-        dft_dct = load_json(file.read())
+        dft_dct = json.loads(file.read(), cls=MontyDecoder)
 
     with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:
-        ml_dct = load_json(file.read())
+        ml_dct = json.loads(file.read(), cls=MontyDecoder)
 
     bands = {"DFT": getattr(dft_dct, bs_key), "MACE": getattr(ml_dct, bs_key)}
     doses = {"DFT": getattr(dft_dct, dos_key), "MACE": getattr(ml_dct, dos_key)}
@@ -48,7 +44,7 @@ def phonon_bands_doses_mp_2758() -> BandsDoses:
 def phonon_bands_doses_mp_2667() -> BandsDoses:
     # with zopen(f"{TEST_FILES}/phonons/mp-2691-Cd4Se4-pbe.json.lzma") as file:
     with zopen(f"{TEST_FILES}/phonons/mp-2667-Cs1Au1-pbe.json.lzma") as file:
-        return load_json(file.read())
+        return json.loads(file.read(), cls=MontyDecoder)
 
 
 @pytest.fixture()
@@ -57,7 +53,7 @@ def phonon_doses() -> dict[str, PhononDos]:
     assert len(paths) >= 2
     return {
         path.split("/")[-1].split("-pbe")[0]: getattr(
-            load_json(zopen(path).read()), dos_key
+            json.loads(zopen(path).read(), cls=MontyDecoder), dos_key
         )
         for path in paths
     }
