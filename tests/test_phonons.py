@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from functools import partial
 from glob import glob
 from typing import Literal, Union
 
@@ -18,14 +19,25 @@ from pymatviz.utils import TEST_FILES
 
 BandsDoses = dict[str, dict[str, Union[PhononBands, PhononDos]]]
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
+# enable loading PhononDBDocParsed with @module set to uninstalled ffonons.dbs.phonondb
+# by changing to identical dataclass in pymatviz.phonons module
+hot_swap_ffonons_to_pmv_module_hook = (
+    lambda dct: dct | {"@module": "pymatviz.phonons", "@class": "PhononDBDoc"}
+    if dct.get("@module") == "ffonons.dbs.phonondb"
+    else dct
+)
+load_json = partial(
+    json.loads, object_hook=hot_swap_ffonons_to_pmv_module_hook, cls=MontyDecoder
+)
 
 
 @pytest.fixture()
 def phonon_bands_doses_mp_2758() -> BandsDoses:
     with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.lzma") as file:
-        dft_dct = json.loads(file.read(), cls=MontyDecoder)
+        dft_dct = load_json(file.read())
+
     with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:
-        ml_dct = json.loads(file.read(), cls=MontyDecoder)
+        ml_dct = load_json(file.read())
 
     bands = {"DFT": getattr(dft_dct, bs_key), "MACE": getattr(ml_dct, bs_key)}
     doses = {"DFT": getattr(dft_dct, dos_key), "MACE": getattr(ml_dct, dos_key)}
@@ -36,7 +48,7 @@ def phonon_bands_doses_mp_2758() -> BandsDoses:
 def phonon_bands_doses_mp_2667() -> BandsDoses:
     # with zopen(f"{TEST_FILES}/phonons/mp-2691-Cd4Se4-pbe.json.lzma") as file:
     with zopen(f"{TEST_FILES}/phonons/mp-2667-Cs1Au1-pbe.json.lzma") as file:
-        return json.loads(file.read(), cls=MontyDecoder)
+        return load_json(file.read())
 
 
 @pytest.fixture()
@@ -45,7 +57,7 @@ def phonon_doses() -> dict[str, PhononDos]:
     assert len(paths) >= 2
     return {
         path.split("/")[-1].split("-pbe")[0]: getattr(
-            json.loads(zopen(path).read(), cls=MontyDecoder), dos_key
+            load_json(zopen(path).read()), dos_key
         )
         for path in paths
     }

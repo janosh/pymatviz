@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Union, get_args, no_type_check
 
 import plotly.express as px
@@ -17,8 +18,30 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import numpy as np
+    from pymatgen.core import Structure
 
 AnyBandStructure = Union[BandStructureSymmLine, PhononBands]
+
+
+@dataclass
+class PhononDBDoc:
+    """Dataclass for phonon DB docs."""
+
+    structure: Structure
+    primitive: Structure
+    supercell: list[list[int]]  # 3x3 matrix
+    nac_params: dict[str, Any]  # non-analytical corrections based on Born charges
+    phonon_bandstructure: PhononBands
+    phonon_dos: PhononDos
+    free_energies: list[float]  # vibrational part of free energies per formula unit
+    internal_energies: list[float]  # vibrational part of internal energies per f.u.
+    heat_capacities: list[float]
+    entropies: list[float]
+    temps: list[float]  # temperatures
+    has_imaginary_modes: bool  # whether imaginary modes are present anywhere in the BS
+    thermal_displacement_data: dict[str, Any] | None = None
+    mp_id: str | None = None  # material ID
+    formula: str | None = None  # chemical formula
 
 
 def pretty_sym_point(symbol: str) -> str:
