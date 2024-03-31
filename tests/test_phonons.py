@@ -23,18 +23,21 @@ bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 MSONable.REDIRECT["ffonons.dbs.phonondb"] = {
     "PhononDBDocParsed": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"}
 }
+MSONable.REDIRECT["atomate2.common.schemas.phonons"] = {
+    "PhononBSDOSDoc": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"}
+}
 
 
 @pytest.fixture()
 def phonon_bands_doses_mp_2758() -> BandsDoses:
     with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.lzma") as file:
-        dft_dct = json.loads(file.read(), cls=MontyDecoder)
+        dft_doc = json.loads(file.read(), cls=MontyDecoder)
 
     with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-mace-y7uhwpje.json.lzma") as file:
-        ml_dct = json.loads(file.read(), cls=MontyDecoder)
+        ml_doc = json.loads(file.read(), cls=MontyDecoder)
 
-    bands = {"DFT": getattr(dft_dct, bs_key), "MACE": getattr(ml_dct, bs_key)}
-    doses = {"DFT": getattr(dft_dct, dos_key), "MACE": getattr(ml_dct, dos_key)}
+    bands = {"DFT": getattr(dft_doc, bs_key), "MACE": getattr(ml_doc, bs_key)}
+    doses = {"DFT": getattr(dft_doc, dos_key), "MACE": getattr(ml_doc, dos_key)}
     return {"bands": bands, "doses": doses}
 
 
