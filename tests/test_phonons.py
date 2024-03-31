@@ -20,10 +20,8 @@ BandsDoses = dict[str, dict[str, Union[PhononBands, PhononDos]]]
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 # enable loading PhononDBDocParsed with @module set to uninstalled ffonons.dbs.phonondb
 # by changing to identical dataclass in pymatviz.phonons module
-MSONable.REDIRECT = {
-    "ffonons.dbs.phonondb": {
-        "PhononDBDocParsed": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"}
-    }
+MSONable.REDIRECT["ffonons.dbs.phonondb"] = {
+    "PhononDBDocParsed": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"}
 }
 
 
