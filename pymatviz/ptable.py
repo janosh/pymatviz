@@ -6,8 +6,9 @@ import math
 import warnings
 from collections.abc import Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Literal, get_args
+from typing import TYPE_CHECKING, Any, Callable, Final, Literal, get_args
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -32,6 +33,23 @@ if TYPE_CHECKING:
 CountMode = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
 ]
+ELEM_CLASS_COLORS: Final = {
+    "Diatomic Nonmetal": "green",
+    "Noble Gas": "purple",
+    "Alkali Metal": "red",
+    "Alkaline Earth Metal": "orange",
+    "Metalloid": "darkgreen",
+    "Polyatomic Nonmetal": "teal",
+    "Transition Metal": "blue",
+    "Post Transition Metal": "cyan",
+    "Lanthanide": "brown",
+    "Actinide": "gray",
+    "Nonmetal": "green",
+    "Halogen": "teal",
+    "Metal": "lightblue",
+    "Alkaline Metal": "magenta",
+    "Transactinide": "olive",
+}
 
 
 def count_elements(
@@ -766,6 +784,7 @@ def ptable_hists(
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     log: bool = False,
     anno_kwds: dict[str, Any] | None = None,
+    on_empty: Literal["show", "hide"] = "hide",
     **kwargs: Any,
 ) -> plt.Figure:
     """Plot small histograms for each element laid out in a periodic table.
@@ -805,6 +824,8 @@ def ptable_hists(
             anno_kwds=lambda hist_vals: dict(text=len(hist_vals)).
             Recognized keys are text, xy, xycoords, fontsize, and any other
             plt.annotate() keywords.
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
         **kwargs: Additional keyword arguments passed to plt.subplots(). Defaults to
             dict(figsize=(0.75 * n_columns, 0.75 * n_rows)) with n_columns/n_rows the
             number of columns/rows in the periodic table.
@@ -854,6 +875,11 @@ def ptable_hists(
 
         ax = axes[row - 1][group - 1]
         symbol_kwargs.setdefault("fontsize", 10)
+        hist_data = data.get(symbol, [])
+
+        if len(hist_data) == 0 and on_empty == "hide":
+            continue
+
         ax.text(
             *symbol_pos,
             symbol_text(element)
@@ -866,7 +892,6 @@ def ptable_hists(
         )
         ax.axis("on")  # re-enable axes of elements that exist
 
-        hist_data = data.get(symbol, [])
         if anno_kwds:
             defaults = dict(
                 text=lambda hist_vals: si_fmt_int(len(hist_vals)),
@@ -937,13 +962,14 @@ def ptable_hists(
     return fig
 
 
-def ptable_scatters(
+def ptable_plots(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    colormap: str | None = None,
-    scatter_kwds: dict[str, Any]
+    plot_kwds: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
-    symbol_kwargs: Any = None,
+    colormap: str | None = None,
+    ax_kwds: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
@@ -951,24 +977,37 @@ def ptable_scatters(
     cbar_title_kwds: dict[str, Any] | None = None,
     cbar_kwds: dict[str, Any] | None = None,
     anno_kwds: dict[str, Any] | None = None,
+    on_empty: Literal["hide", "show"] = "hide",
+    color_elem_types: Literal["symbol", "background", "both", False]
+    | dict[str, str | tuple[int, int, int]] = "background",
+    elem_type_legend: bool = True,
     **kwargs: Any,
 ) -> plt.Figure:
-    """Plot scatter plots for each element, nested inside a periodic table.
+    """Make scatter or line plots for each element, nested inside a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]):
-            Map from element symbols to scatter plots. E.g. if dict,
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+            Map from element symbols to plot data. E.g. if dict,
             {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}.
             You could also add a 3rd list for coloring, e.g.
             {"Fe": [[1, 2], [3, 4], [5, 6]]}.
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
-            scatter plots are plotted from each column.
+            plots are created from each column.
+        plot_kwds (dict | Callable): Keywords passed to ax.plot() for each subplot.
+            If callable, it is called with the plot data for each element and
+            should return a dict of keyword arguments. Useful for setting markers,
+            colors, etc. Example: use plot_kwds=dict(marker="o", linestyle="") for
+            scatter (default is line) or as dynamic callable:
+            plot_kwds=lambda plot_vals: dict(
+                linestyle="-" if len(plot_vals) > 40 else ""
+            )
         colormap (str): Matplotlib colormap name to use. Defaults to None.
-        scatter_kwds (dict | Callable): Keywords passed to ax.hist() for each
-            scatter plot. If callable, it is called with the scatter plot
-            values for each element and should return a dict of
-            keyword arguments. Defaults to None.
+        ax_kwds (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
@@ -985,18 +1024,43 @@ def ptable_scatters(
         cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
         anno_kwds (dict): Keyword arguments passed to plt.annotate()
             for element annotations. Defaults to None. Useful for adding
-            e.g. number of data points in each scatter plot. For that, use
-            anno_kwds=lambda scatter_vals: dict(text=len(scatter_vals)).
+            e.g. number of data points in each plot. For that, use
+            anno_kwds=lambda plot_vals: dict(text=len(plot_vals)).
             Recognized keys are text, xy, xycoords, fontsize, and any other
             plt.annotate() keywords.
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        color_elem_types ("symbol" | "background" | "both" | False | dict[str, str]):
+            Whether to color element symbols or
+            backgrounds according to their type. Defaults to "symbol". If a dict is
+            passed, it should map element types to colors. Will be merged into default
+            dict so doesn't need to contain all element types. See source code for
+            recognized keys. Example:
+            {"Noble Gas": "gray", "Halogen": "teal"}. If False, no coloring is done.
+        elem_type_legend (bool): Whether to show a color legend for element classes.
+            Defaults to True.
         **kwargs: Additional keyword arguments passed to plt.subplots().
 
     Notes:
         Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
 
     Returns:
-        plt.Figure: periodic table with a scatter plot in each element tile.
+        plt.Figure: periodic table with a subplot in each element tile.
     """
+    if isinstance(color_elem_types, dict) and (
+        bad_keys := set(color_elem_types) - set(ELEM_CLASS_COLORS)
+    ):
+        raise ValueError(
+            f"Invalid color_elem_types: {', '.join(bad_keys)}. Recognized keys are: "
+            f"{', '.join(ELEM_CLASS_COLORS)}."
+        )
+    if isinstance(color_elem_types, str) and (
+        color_elem_types not in (valid_vals := ("symbol", "background", "both"))
+    ):
+        raise ValueError(
+            f"Invalid {color_elem_types=}, should be one of {valid_vals} or dict|False."
+        )
+
     n_periods = df_ptable.row.max()
     n_groups = df_ptable.column.max()
 
@@ -1007,13 +1071,11 @@ def ptable_scatters(
     if isinstance(data, pd.Series) and cbar_title == "Values" and data.name:
         cbar_title = data.name
         data = data.to_dict()
-
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="list")
+    # data is guaranteed to be a dict from here (should have element symbols as keys)
 
-    cmap = None
-    if colormap:
-        cmap = plt.get_cmap(colormap) if isinstance(colormap, str) else colormap
+    cmap = plt.get_cmap(colormap) if colormap else None
 
     # Turn off axis of subplots on the grid that don't correspond to elements
     ax: plt.Axes
@@ -1021,13 +1083,25 @@ def ptable_scatters(
         ax.axis("off")
 
     symbol_kwargs = symbol_kwargs or {}
-    for Z in range(1, 119):
-        element = Element.from_Z(Z)
+    symbol_kwargs.setdefault("fontsize", 10)
+
+    elem_class_colors = ELEM_CLASS_COLORS | (
+        color_elem_types if isinstance(color_elem_types, dict) else {}
+    )
+
+    for element in Element:
         symbol = element.symbol
         row, group = df_ptable.loc[symbol, ["row", "column"]]
 
         ax = axes[row - 1][group - 1]
-        symbol_kwargs.setdefault("fontsize", 10)
+        plot_data = np.array(data.get(symbol, []))
+        if len(plot_data) == 0 and on_empty == "hide":
+            continue
+
+        if color_elem_types in ("symbol", "both"):
+            elem_class = df_ptable.loc[symbol, "type"]
+            symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
+
         ax.text(
             *symbol_pos,
             symbol_text(element)
@@ -1038,15 +1112,17 @@ def ptable_scatters(
             transform=ax.transAxes,
             **symbol_kwargs,
         )
-        ax.axis("on")
-        # make sure axes is square to fill the tile
-        ax.set_aspect("equal")
 
-        scatter_data = data.get(symbol, [])
+        if color_elem_types in ("background", "both"):
+            elem_class = df_ptable.loc[symbol, "type"]
+            bg_color = elem_class_colors.get(elem_class, "white")
+            ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
+
+        ax.axis("on")
 
         if anno_kwds:
             defaults = dict(
-                text=lambda hist_vals: si_fmt_int(len(hist_vals)),
+                text=lambda plot_vals: si_fmt_int(len(plot_vals)),
                 xy=(0.8, 0.8),
                 xycoords="axes fraction",
                 fontsize=8,
@@ -1054,45 +1130,47 @@ def ptable_scatters(
                 verticalalignment="center",
             )
             if callable(anno_kwds):
-                annotation = anno_kwds(scatter_data)
+                annotation = anno_kwds(plot_data)
             else:
                 annotation = anno_kwds
                 anno_text = anno_kwds.get("text")
                 if isinstance(anno_text, dict):
                     anno_text = anno_text.get(symbol)
                 elif callable(anno_text):
-                    anno_text = anno_text(scatter_data)
+                    anno_text = anno_text(plot_data)
                 annotation["text"] = anno_text
             ax.annotate(**(defaults | annotation))
 
-        if scatter_data is not None:
-            if callable(scatter_kwds):
-                scatter_kwargs = scatter_kwds(scatter_data)  # type: ignore[arg-type]
+        if plot_data is not None:
+            if callable(plot_kwds):
+                scatter_kwargs = plot_kwds(plot_data)
             else:
-                scatter_kwargs = scatter_kwds or {}
+                scatter_kwargs = plot_kwds or {}
 
             # Plot without colormap when data len is 2
-            if len(scatter_data) == 2:
-                ax.scatter(scatter_data[0], scatter_data[1], **(scatter_kwargs or {}))
+            if plot_data.ndim == 2:
+                ax.plot(plot_data[0], plot_data[1], **(scatter_kwargs or {}))
 
             # Plot with colormap when data len is 3
-            elif len(scatter_data) == 3:
-                ax.scatter(
-                    scatter_data[0],
-                    scatter_data[1],
-                    c=scatter_data[2],
+            elif plot_data.ndim == 3:
+                ax.plot(
+                    plot_data[0],
+                    plot_data[1],
+                    c=plot_data[2],
                     cmap=cmap,
                     **(scatter_kwargs or {}),
                 )
 
             ax.tick_params(labelsize=8, direction="out")
+            if ax_kwds:
+                ax.set(**ax_kwds(plot_data) if callable(ax_kwds) else ax_kwds)
 
         # Disable ticks for elements without data
         else:
             ax.set_xticks([])
             ax.set_yticks([])
 
-        # Hide right/top boarders
+        # Hide right/top borders
         for side in ("right", "top"):
             ax.spines[side].set_visible(b=False)
 
@@ -1119,5 +1197,31 @@ def ptable_scatters(
         cbar_title_kwds.setdefault("pad", 10)
         cbar_title_kwds["label"] = cbar_title
         cbar_ax.set_title(**cbar_title_kwds)
+
+    if elem_type_legend and color_elem_types:
+        elems_with_data = list(data) if isinstance(data, dict) else data.index
+        visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
+        font_size = 10
+        legend_elements = [
+            plt.Line2D(
+                *([0], [0]),
+                marker="s",
+                color="w",
+                label=elem_class,
+                markerfacecolor=color,
+                markersize=1.2 * font_size,
+            )
+            for elem_class, color in elem_class_colors.items()
+            if elem_class in visible_elem_types
+        ]
+        plt.legend(
+            handles=legend_elements,
+            loc="center left",
+            bbox_to_anchor=(-23, -2),
+            ncol=5,
+            frameon=False,
+            fontsize=font_size,
+            handlelength=0,
+        )
 
     return fig
