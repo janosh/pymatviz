@@ -1199,7 +1199,8 @@ def ptable_plots(
         cbar_ax.set_title(**cbar_title_kwds)
 
     if elem_type_legend and color_elem_types:
-        visible_types = set(df_ptable.loc[[*data]]["type"].unique())
+        elems_with_data = list(data) if isinstance(data, dict) else data.index
+        visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
         font_size = 10
         legend_elements = [
             plt.Line2D(
@@ -1211,7 +1212,7 @@ def ptable_plots(
                 markersize=1.2 * font_size,
             )
             for elem_class, color in elem_class_colors.items()
-            if elem_class in visible_types
+            if elem_class in visible_elem_types
         ]
         plt.legend(
             handles=legend_elements,
