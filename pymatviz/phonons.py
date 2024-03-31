@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Union, get_args, no_type_check
 
 import plotly.express as px
@@ -17,8 +18,51 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import numpy as np
+    from pymatgen.core import Structure
+    from typing_extensions import Self
 
 AnyBandStructure = Union[BandStructureSymmLine, PhononBands]
+
+
+@dataclass
+class PhononDBDoc:
+    """Dataclass for phonon DB docs."""
+
+    structure: Structure
+    phonon_bandstructure: PhononBands
+    phonon_dos: PhononDos
+    free_energies: list[float]  # vibrational part of free energies per formula unit
+    internal_energies: list[float]  # vibrational part of internal energies per f.u.
+    heat_capacities: list[float]
+    entropies: list[float]
+    temps: list[float] | None = None  # temperatures
+    # whether imaginary modes are present in the BS
+    has_imaginary_modes: bool | None = None
+    primitive: Structure | None = None
+    supercell: list[list[int]] | None = None  # 3x3 matrix
+    # non-analytical corrections based on Born charges
+    nac_params: dict[str, Any] | None = None
+    thermal_displacement_data: dict[str, Any] | None = None
+    mp_id: str | None = None  # material ID
+    formula: str | None = None  # chemical formula
+
+    def __new__(cls, **kwargs: Any) -> Self:
+        """Ignore unexpected and initialize dataclass with known kwargs."""
+        try:
+            cls_init = cls.__initializer  # type: ignore[has-type]
+        except AttributeError:
+            # store original init on the class in a different place
+            cls.__initializer = cls_init = cls.__init__
+            # replace init with noop to avoid raising on unexpected kwargs
+            cls.__init__ = lambda *args, **kwargs: None  # type: ignore[method-assign] # noqa: ARG005
+
+        ret = object.__new__(cls)
+        known_kwargs = {
+            key: val for key, val in kwargs.items() if key in cls.__annotations__
+        }
+        cls_init(ret, **known_kwargs)
+
+        return ret
 
 
 def pretty_sym_point(symbol: str) -> str:
