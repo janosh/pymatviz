@@ -1,5 +1,6 @@
 # %%
 import json
+from glob import glob
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,7 +38,7 @@ from pymatviz.ptable import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
-    ptable_scatters,
+    ptable_plots,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
@@ -163,10 +164,9 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 
 # %% Histograms laid out in as a periodic table
-elements = [*map(Element.from_Z, range(1, 119))]
 # generate random parity data with y \approx x with some noise
 data_dict = {
-    ele.symbol: np.random.randn(100) + np.random.randn(100) for ele in elements
+    elem.symbol: np.random.randn(100) + np.random.randn(100) for elem in Element
 }
 fig = ptable_hists(
     data_dict, colormap="coolwarm", cbar_title="Periodic Table Histograms"
@@ -176,16 +176,19 @@ save_and_compress_svg(fig, "ptable-hists")
 
 # %% Scatter plots laid out as a periodic table
 data_dict = {
-    ele.symbol: [
+    elem.symbol: [
         np.random.randint(0, 20, 10),
         np.random.randint(0, 20, 10),
         np.random.randint(0, 20, 10),
     ]
-    for ele in elements
+    for elem in Element
 }
 
-fig = ptable_scatters(
-    data_dict, colormap="coolwarm", cbar_title="Periodic Table Scatter Plots"
+fig = ptable_plots(
+    data_dict,
+    colormap="coolwarm",
+    cbar_title="Periodic Table Scatter Plots",
+    plot_kwds=dict(marker="o", linestyle=""),
 )
 save_and_compress_svg(fig, "ptable-scatters")
 
@@ -359,31 +362,38 @@ save_and_compress_svg(fig, "sankey-from-2-df-cols-randints")
 
 
 # %% Plot phonon bands and DOS
-mp_id, formula = "mp-2758", "Sr4Se4"
-bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
+bs_key, dos_key, pbe_key = "phonon_bandstructure", "phonon_dos", "pbe"
 
-with zopen(f"{TEST_FILES}/{mp_id}-{formula}-pbe.json.lzma") as file:
-    dft_ph_doc = json.loads(file.read(), cls=MontyDecoder)
-with zopen(f"{TEST_FILES}/{mp_id}-{formula}-mace-y7uhwpje.json.lzma") as file:
-    ml_ph_doc = json.loads(file.read(), cls=MontyDecoder)
+for mp_id, formula in (
+    ("mp-2758", "Sr4Se4"),
+    ("mp-23907", "H2"),
+):
+    docs = {}
+    for path in glob(f"{TEST_FILES}/phonons/{mp_id}-{formula}-*.json.lzma"):
+        key = path.split("-")[-1].split(".")[0]
+        with zopen(path) as file:
+            docs[key] = json.loads(file.read(), cls=MontyDecoder)
 
-docs = {"DFT": dft_ph_doc, "MACE": ml_ph_doc}
-ph_bands: dict[str, PhononBands] = {key: doc[bs_key] for key, doc in docs.items()}
-ph_doses: dict[str, PhononDos] = {key: doc[dos_key] for key, doc in docs.items()}
+    ph_bands: dict[str, PhononBands] = {
+        key: getattr(doc, bs_key) for key, doc in docs.items()
+    }
+    ph_doses: dict[str, PhononDos] = {
+        key: getattr(doc, dos_key) for key, doc in docs.items()
+    }
 
-fig = plot_phonon_bands(ph_bands)
-fig.layout.title = dict(text=f"Phonon Bands of {formula} ({mp_id})", x=0.5, y=0.98)
-fig.layout.margin = dict(l=0, r=0, b=0, t=40)
-save_and_compress_svg(fig, f"phonon-bands-{mp_id}")
+    fig = plot_phonon_bands(ph_bands)
+    fig.layout.title = dict(text=f"Phonon Bands of {formula} ({mp_id})", x=0.5, y=0.98)
+    fig.layout.margin = dict(l=0, r=0, b=0, t=40)
+    save_and_compress_svg(fig, f"phonon-bands-{mp_id}")
 
-fig = plot_phonon_dos(ph_doses)
-fig.layout.title = dict(text=f"Phonon DOS of {formula} ({mp_id})", x=0.5, y=0.98)
-fig.layout.margin = dict(l=0, r=0, b=0, t=40)
-save_and_compress_svg(fig, f"phonon-dos-{mp_id}")
+    fig = plot_phonon_dos(ph_doses)
+    fig.layout.title = dict(text=f"Phonon DOS of {formula} ({mp_id})", x=0.5, y=0.98)
+    fig.layout.margin = dict(l=0, r=0, b=0, t=40)
+    save_and_compress_svg(fig, f"phonon-dos-{mp_id}")
 
-fig = plot_phonon_bands_and_dos(ph_bands, ph_doses)
-fig.layout.title = dict(
-    text=f"Phonon Bands and DOS of {formula} ({mp_id})", x=0.5, y=0.98
-)
-fig.layout.margin = dict(l=0, r=0, b=0, t=40)
-save_and_compress_svg(fig, f"phonon-bands-and-dos-{mp_id}")
+    fig = plot_phonon_bands_and_dos(ph_bands, ph_doses)
+    fig.layout.title = dict(
+        text=f"Phonon Bands and DOS of {formula} ({mp_id})", x=0.5, y=0.98
+    )
+    fig.layout.margin = dict(l=0, r=0, b=0, t=40)
+    save_and_compress_svg(fig, f"phonon-bands-and-dos-{mp_id}")

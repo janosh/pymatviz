@@ -16,35 +16,36 @@ https://ml.materialsproject.org/projects/matbench_phonons
 """
 
 # %%
-import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import ptable_heatmap, spacegroup_hist
+from pymatviz.io import save_fig
 
 
 # %%
-df_phonon = load_dataset("matbench_phonons")
+df_phonon = load_dataset(data_name := "matbench_phonons")
+formula_col, volume_col, spg_col = "formula", "volume", "spg_num"
 
-df_phonon[["spg_symbol", "spg_num"]] = [
+df_phonon[["spg_symbol", spg_col]] = [
     struct.get_space_group_info() for struct in tqdm(df_phonon.structure)
 ]
 
 
 # %%
-df_phonon.hist(column="last phdos peak", bins=50)
-plt.savefig("phonons-last-dos-peak-hist.pdf")
+ax = df_phonon.hist(column="last phdos peak", bins=50)
+save_fig(ax, "phonons-last-dos-peak-hist.pdf")
 
 
 # %%
-df_phonon["formula"] = df_phonon.structure.map(lambda cryst: cryst.formula)
-df_phonon["volume"] = df_phonon.structure.map(lambda cryst: cryst.volume)
+df_phonon[formula_col] = df_phonon.structure.map(lambda cryst: cryst.formula)
+df_phonon[volume_col] = df_phonon.structure.map(lambda cryst: cryst.volume)
 
-ptable_heatmap(df_phonon.formula, log=True)
-plt.title("Elemental prevalence in the Matbench phonons dataset")
-plt.savefig("phonons-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_phonon[formula_col], log=True)
+ax.set(title="Elemental prevalence in the Matbench phonons dataset")
+save_fig(ax, "phonons-ptable-heatmap.pdf")
 
 
 # %%
-spacegroup_hist(df_phonon.spg_num)
-plt.savefig("phonons-spacegroup-hist.pdf")
+ax = spacegroup_hist(df_phonon[spg_col])
+save_fig(ax, "phonons-spacegroup-hist.pdf")
