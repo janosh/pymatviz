@@ -785,6 +785,9 @@ def ptable_hists(
     log: bool = False,
     anno_kwds: dict[str, Any] | None = None,
     on_empty: Literal["show", "hide"] = "hide",
+    color_elem_types: Literal["symbol", "background", "both", False]
+    | dict[str, str | tuple[int, int, int]] = "background",
+    elem_type_legend: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Figure:
     """Plot small histograms for each element laid out in a periodic table.
@@ -826,6 +829,12 @@ def ptable_hists(
             plt.annotate() keywords.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        color_elem_types ('symbol' | 'background' | 'both' | False | dict): Whether to
+            color element symbols, tile backgrounds, or both based on element type.
+            If dict, it should map element types to colors. Defaults to "background".
+        elem_type_legend (bool | dict): Whether to show a legend for element
+            types. Defaults to True. If dict, used as kwargs to plt.legend(), e.g. to
+            set the legend title, use {"title": "Element Types"}.
         **kwargs: Additional keyword arguments passed to plt.subplots(). Defaults to
             dict(figsize=(0.75 * n_columns, 0.75 * n_rows)) with n_columns/n_rows the
             number of columns/rows in the periodic table.
@@ -867,9 +876,12 @@ def ptable_hists(
     for ax in axes.flat:
         ax.axis("off")
 
+    elem_class_colors = ELEM_CLASS_COLORS | (
+        color_elem_types if isinstance(color_elem_types, dict) else {}
+    )
+
     symbol_kwargs = symbol_kwargs or {}
-    for Z in range(1, 119):
-        element = Element.from_Z(Z)
+    for element in Element:
         symbol = element.symbol
         row, group = df_ptable.loc[symbol, ["row", "column"]]
 
@@ -879,6 +891,14 @@ def ptable_hists(
 
         if len(hist_data) == 0 and on_empty == "hide":
             continue
+
+        if color_elem_types:
+            elem_class = df_ptable.loc[symbol, "type"]
+            if color_elem_types in ("symbol", "both"):
+                symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
+            if color_elem_types in ("background", "both"):
+                bg_color = elem_class_colors.get(elem_class, "white")
+                ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
 
         ax.text(
             *symbol_pos,
@@ -958,6 +978,12 @@ def ptable_hists(
         cbar_title_kwds.setdefault("pad", 10)
         cbar_title_kwds["label"] = cbar_title
         cbar_ax.set_title(**cbar_title_kwds)
+
+    if elem_type_legend and color_elem_types:
+        legend_kwargs = elem_type_legend if isinstance(elem_type_legend, dict) else {}
+        add_element_type_legend(
+            data=data, elem_class_colors=elem_class_colors, legend_kwargs=legend_kwargs
+        )
 
     return fig
 
