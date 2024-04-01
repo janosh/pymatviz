@@ -786,7 +786,7 @@ def ptable_hists(
     anno_kwds: dict[str, Any] | None = None,
     on_empty: Literal["show", "hide"] = "hide",
     color_elem_types: Literal["symbol", "background", "both", False]
-    | dict[str, str | tuple[int, int, int]] = "background",
+    | dict[str, str] = "background",
     elem_type_legend: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Figure:
@@ -1005,7 +1005,7 @@ def ptable_plots(
     anno_kwds: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
     color_elem_types: Literal["symbol", "background", "both", False]
-    | dict[str, str | tuple[int, int, int]] = "background",
+    | dict[str, str] = "background",
     elem_type_legend: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Figure:
@@ -1236,7 +1236,7 @@ def ptable_plots(
 
 def add_element_type_legend(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
-    elem_class_colors: dict[str, str | tuple[int, int, int]],
+    elem_class_colors: dict[str, str] | None = None,
     legend_kwargs: dict[str, Any] | None = None,
 ) -> None:
     """Add a legend to a matplotlib figure showing the colors of element types.
@@ -1244,12 +1244,14 @@ def add_element_type_legend(
     Args:
         data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
             to plot data. Used only to determine which element types are present.
-        elem_class_colors (dict[str, str | tuple[int, int, int]]): Map from element
+        elem_class_colors (dict[str, str]): Map from element
             types to colors. E.g. {"Alkali Metal": "red", "Noble Gas": "blue"}.
         legend_kwargs (dict): Keyword arguments passed to plt.legend() for customizing
             legend appearance. Defaults to None.
     """
-    elems_with_data = list(data) if isinstance(data, dict) else data.index
+    elem_class_colors = ELEM_CLASS_COLORS | (elem_class_colors or {})
+    # else case list(data) covers dict and DataFrame
+    elems_with_data = data.index if isinstance(data, pd.Series) else list(data)
     visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
     font_size = 10
     legend_elements = [
