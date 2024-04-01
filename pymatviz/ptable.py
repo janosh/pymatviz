@@ -1100,9 +1100,13 @@ def ptable_plots(
         if len(plot_data) == 0 and on_empty == "hide":
             continue
 
-        if color_elem_types in ("symbol", "both"):
+        if color_elem_types:
             elem_class = df_ptable.loc[symbol, "type"]
-            symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
+            if color_elem_types in ("symbol", "both"):
+                symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
+            if color_elem_types in ("background", "both"):
+                bg_color = elem_class_colors.get(elem_class, "white")
+                ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
 
         ax.text(
             *symbol_pos,
@@ -1114,11 +1118,6 @@ def ptable_plots(
             transform=ax.transAxes,
             **symbol_kwargs,
         )
-
-        if color_elem_types in ("background", "both"):
-            elem_class = df_ptable.loc[symbol, "type"]
-            bg_color = elem_class_colors.get(elem_class, "white")
-            ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
 
         ax.axis("on")
 
