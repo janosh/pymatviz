@@ -980,7 +980,7 @@ def ptable_plots(
     on_empty: Literal["hide", "show"] = "hide",
     color_elem_types: Literal["symbol", "background", "both", False]
     | dict[str, str | tuple[int, int, int]] = "background",
-    elem_type_legend: bool = True,
+    elem_type_legend: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Figure:
     """Make scatter or line plots for each element, nested inside a periodic table.
@@ -1037,7 +1037,9 @@ def ptable_plots(
             dict so doesn't need to contain all element types. See source code for
             recognized keys. Example:
             {"Noble Gas": "gray", "Halogen": "teal"}. If False, no coloring is done.
-        elem_type_legend (bool): Whether to show a color legend for element classes.
+        elem_type_legend (bool | dict): Whether to show a legend for element
+            types. Defaults to True. If dict, used as kwargs to plt.legend(), e.g. to
+            set the legend title, use {"title": "Element Types"}.
             Defaults to True.
         **kwargs: Additional keyword arguments passed to plt.subplots().
 
@@ -1199,29 +1201,50 @@ def ptable_plots(
         cbar_ax.set_title(**cbar_title_kwds)
 
     if elem_type_legend and color_elem_types:
-        elems_with_data = list(data) if isinstance(data, dict) else data.index
-        visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
-        font_size = 10
-        legend_elements = [
-            plt.Line2D(
-                *([0], [0]),
-                marker="s",
-                color="w",
-                label=elem_class,
-                markerfacecolor=color,
-                markersize=1.2 * font_size,
-            )
-            for elem_class, color in elem_class_colors.items()
-            if elem_class in visible_elem_types
-        ]
-        plt.legend(
-            handles=legend_elements,
-            loc="center left",
-            bbox_to_anchor=(-23, -2),
-            ncol=5,
-            frameon=False,
-            fontsize=font_size,
-            handlelength=0,
+        legend_kwargs = elem_type_legend if isinstance(elem_type_legend, dict) else None
+        add_element_type_legend(
+            data=data, elem_class_colors=elem_class_colors, legend_kwargs=legend_kwargs
         )
 
     return fig
+
+
+def add_element_type_legend(
+    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    elem_class_colors: dict[str, str | tuple[int, int, int]],
+    legend_kwargs: dict[str, Any] | None = None,
+) -> None:
+    """Add a legend to a matplotlib figure showing the colors of element types.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
+            to plot data. Used only to determine which element types are present.
+        elem_class_colors (dict[str, str | tuple[int, int, int]]): Map from element
+            types to colors. E.g. {"Alkali Metal": "red", "Noble Gas": "blue"}.
+        legend_kwargs (dict): Keyword arguments passed to plt.legend() for customizing
+            legend appearance. Defaults to None.
+    """
+    elems_with_data = list(data) if isinstance(data, dict) else data.index
+    visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
+    font_size = 10
+    legend_elements = [
+        plt.Line2D(
+            *([0], [0]),
+            marker="s",
+            color="w",
+            label=elem_class,
+            markerfacecolor=color,
+            markersize=1.2 * font_size,
+        )
+        for elem_class, color in elem_class_colors.items()
+        if elem_class in visible_elem_types
+    ]
+    legend_kwargs = dict(
+        loc="center left",
+        bbox_to_anchor=(0, -42),
+        ncol=6,
+        frameon=False,
+        fontsize=font_size,
+        handlelength=1,  # more compact legend
+    ) | (legend_kwargs or {})
+    plt.legend(handles=legend_elements, **legend_kwargs)
