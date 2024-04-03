@@ -792,7 +792,6 @@ def ptable_hists(
 ) -> plt.Figure:
     """Plot small histograms for each element laid out in a periodic table.
 
-
     Args:
         data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
             symbols to histogram values. E.g. if dict, {"Fe": [1, 2, 3], "O": [4, 5]}.
