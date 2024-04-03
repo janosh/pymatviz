@@ -116,9 +116,9 @@ lint.isort.split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/*" = ["D103", "S101"]
-"examples/*" = ["INP001", "T201"] # T201: print found
-"site/*" = ["INP001", "S602"]
+"tests/*" = ["D", "S101"]
+"examples/*" = ["INP001", "T201"]  # T201: print found
+"site/*" = ["D", "INP001", "S602"]
 
 [tool.pyright]
 typeCheckingMode = "off"

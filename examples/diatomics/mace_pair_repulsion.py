@@ -22,16 +22,18 @@ from mace.calculators import MACECalculator, mace_mp
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+__date__ = "2024-03-31"
+
 
 # %%
 @contextmanager
-def timer() -> Generator[None, None, None]:
+def timer(label: str = "") -> Generator[None, None, None]:
     """Context manager for timing code execution."""
     start = time.perf_counter()
     try:
         yield
     finally:
-        print(f"Took {time.perf_counter() - start:.3}s.")
+        print(f"{label} took {time.perf_counter() - start:.3}s.")
 
 
 def generate_diatomics(
@@ -89,9 +91,8 @@ def generate_homonuclear(calculator: MACECalculator, label: str) -> None:
     # homo-nuclear diatomics
     for z0 in allowed_atomic_numbers:
         z1 = z0
-        chemical_formula = f"{chemical_symbols[z0]}{chemical_symbols[z1]}"
-        print(f"running {chemical_formula} .. {z0}-{z1}.", end="")
-        with timer():
+        formula = f"{chemical_symbols[z0]}{chemical_symbols[z1]}"
+        with timer(formula):
             results[f"{z0}-{z1}"] = calc_one_pair(z0, z1, calculator, distances)
     with lzma.open(f"homo-nuclear-{label}.json.lzma", "wt") as file:
         json.dump(results, file)
@@ -112,9 +113,8 @@ def generate_fixed_any(z0: int, calculator: MACECalculator, label: str) -> None:
     results = {"distances": list(distances)}
     # hetero-nuclear diatomics
     for z1 in allowed_atomic_numbers:
-        chemical_formula = f"{chemical_symbols[z0]}{chemical_symbols[z1]}"
-        print(f"running {chemical_formula} .. {z0}-{z1}")
-        with timer():
+        formula = f"{chemical_symbols[z0]}{chemical_symbols[z1]}"
+        with timer(formula):
             results[f"{z0}-{z1}"] = calc_one_pair(z0, z1, calculator, distances)
     with lzma.open(f"{label}-{z0}-X.json.lzma", "wt") as file:
         json.dump(results, file)

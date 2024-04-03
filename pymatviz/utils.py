@@ -271,8 +271,7 @@ def luminance(color: tuple[float, float, float]) -> float:
 def pick_bw_for_contrast(
     color: tuple[float, float, float], text_color_threshold: float = 0.7
 ) -> str:
-    """Choose black or white text color for a given background color based on
-    luminance.
+    """Choose black or white text color for a given background color based on luminance.
 
     Args:
         color (tuple[float, float, float]): RGB color tuple with values in [0, 1].
@@ -287,8 +286,9 @@ def pick_bw_for_contrast(
 
 
 def si_fmt(val: float, fmt: str = ".1f", sep: str = "", binary: bool = False) -> str:
-    """Convert large numbers into human readable format using SI prefixes in binary
-    (1024) or metric (1000) mode.
+    """Convert large numbers into human readable format using SI prefixes.
+
+    Supports binary (1024) and metric (1000) mode.
 
     https://nist.gov/pml/weights-and-measures/metric-si-prefixes
 
@@ -328,8 +328,10 @@ si_fmt_int = partial(si_fmt, fmt=".0f")
 
 
 def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
-    """Wrap text in a span with custom style. Style defaults to decreased font size
-    and weight e.g. to display units in plotly labels and annotations.
+    """Wrap text in a span with custom style.
+
+    Style defaults to decreased font size and weight e.g. to display units
+    in plotly labels and annotations.
 
     Args:
         text (str): Text to wrap in span.

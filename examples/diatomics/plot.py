@@ -22,6 +22,7 @@ from pymatviz.utils import df_ptable
 
 
 module_dir = os.path.dirname(__file__)
+__date__ = "2024-03-31"
 
 
 # %%
