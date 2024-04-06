@@ -410,23 +410,10 @@ def plot_structure_2d(
         ):
             try:
                 struct.add_oxidation_state_by_guess()
-            except ValueError as exc:  # fails for disordered structures
-                raise ValueError(
-                    "Charge balance analysis requires integer values in Composition"
-                ) from exc
+            except ValueError:  # fails for disordered structures
+                "Charge balance analysis requires integer values in Composition"
 
-        try:
-            structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
-        except AttributeError:  # Many NearNeighbors subclasses don't support
-            # disordered structures raising AttributeError. in that case, we create new
-            # structure with majority species on each site.
-            # TODO: remove this exception case once
-            # https://github.com/materialsproject/pymatgen/pull/2630 is released
-            struct_copy = struct.copy()
-            for site in struct_copy:
-                # get majority species for each site
-                site.species = max(site.species, key=site.species.get)
-            structure_graph = neighbor_strategy_cls().get_bonded_structure(struct_copy)
+        structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
 
         bonds = structure_graph.graph.edges(data=True)
         for bond in bonds:
