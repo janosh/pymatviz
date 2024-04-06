@@ -1,3 +1,8 @@
+"""Hierarchical multi-level pie charts (i.e. sunbursts).
+
+E.g. for crystal symmetry distributions.
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal

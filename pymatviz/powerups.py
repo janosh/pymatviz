@@ -1,3 +1,7 @@
+"""Powerups/enhancements such as parity lines, annotations and marginals for matplotlib
+and plotly figures.
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

@@ -1,3 +1,5 @@
+"""Plot distributions of correlation matrix eigenvalues."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

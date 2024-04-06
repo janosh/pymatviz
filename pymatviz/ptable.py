@@ -1,3 +1,5 @@
+"""Various periodic table heatmaps with matplotlib and plotly."""
+
 from __future__ import annotations
 
 import inspect

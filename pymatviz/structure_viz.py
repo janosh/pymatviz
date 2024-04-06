@@ -1,3 +1,5 @@
+"""2D plots of pymatgen structures with matplotlib."""
+
 from __future__ import annotations
 
 import math
@@ -126,7 +128,7 @@ def plot_structure_2d(
     standardize_struct: bool | None = None,
     axis: bool | str = "off",
 ) -> plt.Axes:
-    """Plot pymatgen structure object in 2d. Uses matplotlib.
+    """Plot pymatgen structures in 2d with matplotlib.
 
     Inspired by ASE's ase.visualize.plot.plot_atoms()
     https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
