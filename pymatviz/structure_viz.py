@@ -50,7 +50,7 @@ def _angles_to_rotation_matrix(
     """
     if rotation is None:
         rotation = np.eye(3)
-    if angles == "":
+    if not angles:
         return rotation.copy()  # return initial rotation matrix if no angles
 
     for angle in angles.split(","):
@@ -410,8 +410,10 @@ def plot_structure_2d(
         ):
             try:
                 struct.add_oxidation_state_by_guess()
-            except ValueError:  # fails for disordered structures
-                "Charge balance analysis requires integer values in Composition"
+            except ValueError as exc:  # fails for disordered structures
+                raise ValueError(
+                    "Charge balance analysis requires integer values in Composition"
+                ) from exc
 
         try:
             structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)

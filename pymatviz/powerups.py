@@ -200,8 +200,7 @@ def annotate_metrics(
         "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
     }
     for key in set(metrics) - set(funcs):
-        func = getattr(sklearn.metrics, key, None)
-        if func:
+        if func := getattr(sklearn.metrics, key, None):
             funcs[key] = func
     if bad_keys := set(metrics) - set(funcs):
         raise ValueError(f"Unrecognized metrics: {bad_keys}")

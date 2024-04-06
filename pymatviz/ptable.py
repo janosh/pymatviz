@@ -616,11 +616,9 @@ def ptable_heatmap_plotly(
 
     if isinstance(colorscale, (str, type(None))):
         colorscale = px.colors.get_colorscale(colorscale or "viridis")
-    elif isinstance(colorscale, Sequence) and isinstance(
+    elif not isinstance(colorscale, Sequence) or not isinstance(
         colorscale[0], (str, list, tuple)
     ):
-        pass
-    else:
         raise TypeError(
             f"{colorscale=} should be string, list of strings or list of "
             "tuples(float, str)"

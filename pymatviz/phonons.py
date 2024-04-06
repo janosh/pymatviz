@@ -384,10 +384,10 @@ def plot_phonon_dos(
     fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
     fig.layout.legend.update(x=0.005, y=0.99, orientation="h", yanchor="top")
 
-    qual_colors = px.colors.qualitative.Plotly
     if last_peak_anno:
         for idx, (key, dos) in enumerate(doses.items()):
             last_peak = dos.get_last_peak()
+            qual_colors = px.colors.qualitative.Plotly
             color = (
                 fig.data[idx].line.color
                 or fig.data[idx].marker.color
