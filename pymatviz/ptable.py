@@ -164,7 +164,7 @@ def count_elements(
 
 def ptable_diags(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    colormap: str | None = None,
+    colormap: str,
     ax_kwds: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
@@ -190,7 +190,7 @@ def ptable_diags(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
-        colormap (str): Matplotlib colormap name to use. Defaults to None.
+        colormap (str): Matplotlib colormap name to use.
         ax_kwds (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
@@ -265,8 +265,6 @@ def ptable_diags(
         data = data.to_dict(orient="list")
     # data is guaranteed to be a dict from here (should have element symbols as keys)
 
-    cmap = plt.get_cmap(colormap) if colormap else None
-
     # Turn off axis of subplots on the grid that don't correspond to elements
     ax: plt.Axes
     for ax in axes.flat:
@@ -278,6 +276,18 @@ def ptable_diags(
     elem_class_colors = ELEM_CLASS_COLORS | (
         color_elem_types if isinstance(color_elem_types, dict) else {}
     )
+
+    # Get colormap
+    cmap = plt.get_cmap(colormap)
+
+    # Get the min/max values for norm calculation
+    all_values = [val for pair in data.values() for val in pair]
+    vmin = min(all_values)
+    vmax = max(all_values)
+
+    norm = Normalize(vmin=vmin, vmax=vmax)
+
+    scaled_data = {key: [norm(val) for val in pair] for key, pair in data.items()}
 
     for element in Element:
         symbol = element.symbol
@@ -331,18 +341,16 @@ def ptable_diags(
             ax.annotate(**(defaults | annotation))
 
         if plot_data is not None:
-            # Plot diagonally-split tiles
+            # Determine the filling colors
+            top_color = cmap(scaled_data[symbol][0])
+            bottom_color = cmap(scaled_data[symbol][1])
+
+            # Fill areas above and below the line
+            # TODO: avoid hard-coding alpha
             x = np.linspace(0, 10, 10)
             y = np.linspace(10, 0, 10)
-
-            # Determine the filling colors
-            # TODO:
-            top_color = "red"
-            bottom_color = "purple"
-
-            # Fill areas above and below the line with different colors
-            ax.fill_between(x, y, 10, color=top_color, alpha=0.3)
-            ax.fill_between(x, y, 0, color=bottom_color, alpha=0.3)
+            ax.fill_between(x, y, 10, color=top_color, alpha=0.5)
+            ax.fill_between(x, y, 0, color=bottom_color, alpha=0.5)
 
             ax.set_xlim(0, 10)
             ax.set_ylim(0, 10)
@@ -359,28 +367,20 @@ def ptable_diags(
             ax.spines[side].set_visible(b=False)
 
     # Add colorbar
-    if isinstance(cmap, Colormap):
-        # Get the min/max values for norm calculation
-        all_values = [val for pair in data.values() for val in pair]
-        vmin = min(all_values)
-        vmax = max(all_values)
+    cbar_ax = fig.add_axes(cbar_coords)
 
-        norm = Normalize(vmin=vmin, vmax=vmax)
+    fig.colorbar(
+        plt.cm.ScalarMappable(norm=norm, cmap=cmap),
+        cax=cbar_ax,
+        **{"orientation": "horizontal"} | (cbar_kwds or {}),
+    )
 
-        cbar_ax = fig.add_axes(cbar_coords)
-
-        fig.colorbar(
-            plt.cm.ScalarMappable(norm=norm, cmap=cmap),
-            cax=cbar_ax,
-            **{"orientation": "horizontal"} | (cbar_kwds or {}),
-        )
-
-        # Set colorbar title
-        cbar_title_kwds = cbar_title_kwds or {}
-        cbar_title_kwds.setdefault("fontsize", 12)
-        cbar_title_kwds.setdefault("pad", 10)
-        cbar_title_kwds["label"] = cbar_title
-        cbar_ax.set_title(**cbar_title_kwds)
+    # Set colorbar title
+    cbar_title_kwds = cbar_title_kwds or {}
+    cbar_title_kwds.setdefault("fontsize", 12)
+    cbar_title_kwds.setdefault("pad", 10)
+    cbar_title_kwds["label"] = cbar_title
+    cbar_ax.set_title(**cbar_title_kwds)
 
     if elem_type_legend and color_elem_types:
         legend_kwargs = elem_type_legend if isinstance(elem_type_legend, dict) else None
