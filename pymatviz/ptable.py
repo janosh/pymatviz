@@ -346,11 +346,10 @@ def ptable_diags(
             bottom_color = cmap(scaled_data[symbol][1])
 
             # Fill areas above and below the line
-            # TODO: avoid hard-coding alpha
             x = np.linspace(0, 10, 10)
             y = np.linspace(10, 0, 10)
-            ax.fill_between(x, y, 10, color=top_color, alpha=0.5)
-            ax.fill_between(x, y, 0, color=bottom_color, alpha=0.5)
+            ax.fill_between(x, y, 10, color=top_color)
+            ax.fill_between(x, y, 0, color=bottom_color)
 
             ax.set_xlim(0, 10)
             ax.set_ylim(0, 10)
@@ -362,8 +361,8 @@ def ptable_diags(
             if ax_kwds:
                 ax.set(**ax_kwds(plot_data) if callable(ax_kwds) else ax_kwds)
 
-        # Hide right/top borders
-        for side in ("right", "top"):
+        # Hide all borders
+        for side in ("right", "top", "left", "bottom"):
             ax.spines[side].set_visible(b=False)
 
     # Add colorbar
