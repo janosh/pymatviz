@@ -168,7 +168,7 @@ def ptable_diags(
     ax_kwds: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
-    symbol_pos: tuple[float, float] = (0.5, 0.8),
+    symbol_pos: tuple[float, float] = (0.5, 0.5),
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     cbar_title: str = "Values",
     cbar_title_kwds: dict[str, Any] | None = None,
@@ -202,7 +202,7 @@ def ptable_diags(
             element symbols. Defaults to None.
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
-            Defaults to (0.5, 0.8). (1, 1) is the upper right corner.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         cbar_coords (tuple[float, float, float, float]): Colorbar
             position and size: [x, y, width, height] anchored at lower left
             corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
@@ -271,7 +271,7 @@ def ptable_diags(
         ax.axis("off")
 
     symbol_kwargs = symbol_kwargs or {}
-    symbol_kwargs.setdefault("fontsize", 10)
+    symbol_kwargs.setdefault("fontsize", 18)
 
     elem_class_colors = ELEM_CLASS_COLORS | (
         color_elem_types if isinstance(color_elem_types, dict) else {}
@@ -287,6 +287,7 @@ def ptable_diags(
 
     norm = Normalize(vmin=vmin, vmax=vmax)
 
+    # Scale data for easier color mapping
     scaled_data = {key: [norm(val) for val in pair] for key, pair in data.items()}
 
     for element in Element:
@@ -341,15 +342,11 @@ def ptable_diags(
             ax.annotate(**(defaults | annotation))
 
         if plot_data is not None:
-            # Determine the filling colors
-            top_color = cmap(scaled_data[symbol][0])
-            bottom_color = cmap(scaled_data[symbol][1])
-
             # Fill areas above and below the line
             x = np.linspace(0, 10, 10)
             y = np.linspace(10, 0, 10)
-            ax.fill_between(x, y, 10, color=top_color)
-            ax.fill_between(x, y, 0, color=bottom_color)
+            ax.fill_between(x, y, 10, color=cmap(scaled_data[symbol][0]))
+            ax.fill_between(x, y, 0, color=cmap(scaled_data[symbol][1]))
 
             ax.set_xlim(0, 10)
             ax.set_ylim(0, 10)
