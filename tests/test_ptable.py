@@ -417,19 +417,24 @@ def test_ptable_splits() -> None:
     """Test ptable_splits with arbitrary data length."""
     data_dict = {
         elem.symbol: [
-            random.randint(0, 10)
-            for _ in range(random.randint(1, 4))  # random length
+            random.randint(0, 10)  # random heat value for each split
+            # random number of 1-4 splits per element
+            for _ in range(random.randint(1, 4))
         ]
         for elem in Element
     }
 
+    cbar_title = "Periodic Table Evenly-Split Tiles Plots"
     fig = ptable_splits(
         data_dict,
         colormap="coolwarm",
         start_angle=135,
-        cbar_title="Periodic Table Evenly-Split Tiles Plots",
+        cbar_title=cbar_title,
     )
     assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 181
+    cbar_ax = fig.axes[-1]
+    assert cbar_ax.get_title() == cbar_title
 
 
 @pytest.mark.parametrize(
