@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     import plotly.graph_objects as go
 
-    ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
+    ElemValues: TypeAlias = dict[str | int, float] | pd.Series | Sequence[str]
 
 CountMode = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
@@ -511,6 +511,15 @@ def ptable_heatmap(
     Returns:
         plt.Axes: matplotlib Axes with the heatmap.
     """
+
+    def tick_fmt(val: float, _pos: int) -> str:
+        # val: value at color axis tick (e.g. 10.0, 20.0, ...)
+        # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
+        default_fmt = (
+            ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
+        )
+        return f"{val:{cbar_fmt or fmt or default_fmt}}"
+
     if fmt is None:
         fmt = partial(si_fmt, fmt=".1%" if heat_mode == "percent" else ".0f")
     if cbar_fmt is None:
@@ -661,14 +670,6 @@ def ptable_heatmap(
         cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"])
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
-
-        def tick_fmt(val: float, _pos: int) -> str:
-            # val: value at color axis tick (e.g. 10.0, 20.0, ...)
-            # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
-            default_fmt = (
-                ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
-            )
-            return f"{val:{cbar_fmt or fmt or default_fmt}}"
 
         if callable(cbar_fmt):
             tick_fmt = cbar_fmt
@@ -1424,11 +1425,11 @@ def ptable_plots(
                 scatter_kwargs = plot_kwds or {}
 
             # Plot without colormap when data len is 2
-            if plot_data.ndim == 2:
+            if len(plot_data) == 2:
                 ax.plot(plot_data[0], plot_data[1], **(scatter_kwargs or {}))
 
             # Plot with colormap when data len is 3
-            elif plot_data.ndim == 3:
+            elif len(plot_data) == 3:
                 ax.plot(
                     plot_data[0],
                     plot_data[1],
