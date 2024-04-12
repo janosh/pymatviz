@@ -251,11 +251,16 @@ def ptable_diags(
                 and proceeds counter-clockwise.
         """
         # Plot the pie chart
-        ax.pie(np.ones(len(colors)), colors=colors, startangle=start_angle)
+        ax.pie(
+            np.ones(len(colors)),
+            colors=colors,
+            startangle=start_angle,
+            wedgeprops=dict(clip_on=True),
+        )
 
         # Crop a central rectangle from the pie chart
-        path = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
-        ax.set_clip_path(path)
+        rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
+        ax.set_clip_path(rect)
 
         ax.set_xlim(-0.5, 0.5)
         ax.set_ylim(-0.5, 0.5)
