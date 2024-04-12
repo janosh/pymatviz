@@ -162,9 +162,10 @@ def count_elements(
     return srs
 
 
-def ptable_diags(
+def ptable_splits(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     colormap: str,
+    start_angle: float = 135,
     ax_kwds: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
@@ -180,7 +181,7 @@ def ptable_diags(
     elem_type_legend: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Figure:
-    """Plot diagonally-split tiles, nested inside a periodic table.
+    """Plot evenly-split tiles, nested inside a periodic table.
 
     Args:
         data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
@@ -191,6 +192,9 @@ def ptable_diags(
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
         colormap (str): Matplotlib colormap name to use.
+        start_angle (float): The starting angle for the splits in degrees,
+                and the split proceeds counter-clockwise (0 refers to
+                the x-axis). Defaults to 135 degrees.
         ax_kwds (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
@@ -240,8 +244,8 @@ def ptable_diags(
 
     def plot_split_rectangle(
         ax: plt.axes,
-        colors: list,
-        start_angle: float = 135,
+        colors: list[tuple[float, float, float]],
+        start_angle: float,
     ) -> None:
         """Helper function to plot an evenly-split rectangle.
 
@@ -249,7 +253,6 @@ def ptable_diags(
             colors (list): A list of colors to fill each split of the rectangle.
             start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
-                Defaults to 135 degrees.
         """
         # Plot the pie chart
         ax.pie(
@@ -378,7 +381,7 @@ def ptable_diags(
             colors = [cmap(data) for data in scaled_data[symbol]]
 
             # Plot split rectangle
-            plot_split_rectangle(ax, colors)
+            plot_split_rectangle(ax, colors=colors, start_angle=start_angle)
 
             if ax_kwds:
                 ax.set(**ax_kwds(plot_data) if callable(ax_kwds) else ax_kwds)

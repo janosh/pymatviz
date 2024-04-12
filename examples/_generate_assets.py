@@ -35,12 +35,12 @@ from pymatviz.phonons import (
     plot_phonon_dos,
 )
 from pymatviz.ptable import (
-    ptable_diags,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
     ptable_plots,
+    ptable_splits,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
@@ -195,21 +195,22 @@ fig = ptable_plots(
 save_and_compress_svg(fig, "ptable-scatters")
 
 
-# %% Diagonally-split tile plots laid out as a periodic table
+# %% Evenly-split tile plots laid out as a periodic table
 data_dict = {
     elem.symbol: [
-        random.randint(0, 10),
-        random.randint(10, 20),
+        random.randint(0, 10)
+        for _ in range(random.randint(1, 4))  # random length
     ]
     for elem in Element
 }
 
-fig = ptable_diags(
+fig = ptable_splits(
     data_dict,
     colormap="coolwarm",
-    cbar_title="Periodic Table Diagonally-Split Tiles Plots",
+    start_angle=135,
+    cbar_title="Periodic Table Evenly-Split Tiles Plots",
 )
-save_and_compress_svg(fig, "ptable-diags")
+save_and_compress_svg(fig, "ptable-splits")
 
 
 # %% Uncertainty Plots
