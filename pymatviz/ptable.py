@@ -254,24 +254,14 @@ def ptable_diags(
         ax.pie(np.ones(len(colors)), colors=colors, startangle=start_angle)
 
         # Crop a central rectangle from the pie chart
-        path = plt.Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
-        ax.add_patch(path)
+        path = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
+        ax.set_clip_path(path)
 
         ax.set_xlim(-0.5, 0.5)
         ax.set_ylim(-0.5, 0.5)
 
         # Hide axes
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.spines["bottom"].set_visible(False)
-        ax.spines["left"].set_visible(False)
-
-        # Hide axes ticks
-        ax.tick_params(
-            axis="both", which="both", bottom=False, top=False, left=False, right=False
-        )
-
-        # ax.set_aspect('equal', adjustable='box')  # not seem to work?
+        ax.axis("off")
 
     if isinstance(color_elem_types, dict) and (
         bad_keys := set(color_elem_types) - set(ELEM_CLASS_COLORS)
