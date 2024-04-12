@@ -239,16 +239,17 @@ def ptable_diags(
     """
 
     def plot_split_rectangle(
+        ax: plt.axes,
         colors: list,
-        start_angle: float = 0,
+        start_angle: float = 135,
     ) -> None:
         """Helper function to plot an evenly-split rectangle.
 
         Parameters:
             colors (list): A list of colors to fill each split of the rectangle.
-            start_angle (float): The starting angle for the splits in degrees.
-                Defaults to 0, where the split starts from the upper side of the x-axis
-                and proceeds counter-clockwise.
+            start_angle (float): The starting angle for the splits in degrees,
+                and the split proceeds counter-clockwise (0 refers to the x-axis).
+                Defaults to 135 degrees.
         """
         # Plot the pie chart
         ax.pie(
@@ -373,11 +374,11 @@ def ptable_diags(
             ax.annotate(**(defaults | annotation))
 
         if plot_data is not None:
-            # TODO:
             # Map data to colors
             colors = [cmap(data) for data in scaled_data[symbol]]
 
-            plot_split_rectangle(colors)
+            # Plot split rectangle
+            plot_split_rectangle(ax, colors)
 
             if ax_kwds:
                 ax.set(**ax_kwds(plot_data) if callable(ax_kwds) else ax_kwds)
