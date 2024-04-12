@@ -237,6 +237,42 @@ def ptable_diags(
     Returns:
         plt.Figure: periodic table with a subplot in each element tile.
     """
+
+    def plot_split_rectangle(
+        colors: list,
+        start_angle: float = 0,
+    ) -> None:
+        """Helper function to plot an evenly-split rectangle.
+
+        Parameters:
+            colors (list): A list of colors to fill each split of the rectangle.
+            start_angle (float): The starting angle for the splits in degrees.
+                Defaults to 0, where the split starts from the upper side of the x-axis
+                and proceeds counter-clockwise.
+        """
+        # Plot the pie chart
+        ax.pie(np.ones(len(colors)), colors=colors, startangle=start_angle)
+
+        # Crop a central rectangle from the pie chart
+        path = plt.Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
+        ax.add_patch(path)
+
+        ax.set_xlim(-0.5, 0.5)
+        ax.set_ylim(-0.5, 0.5)
+
+        # Hide axes
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+
+        # Hide axes ticks
+        ax.tick_params(
+            axis="both", which="both", bottom=False, top=False, left=False, right=False
+        )
+
+        # ax.set_aspect('equal', adjustable='box')  # not seem to work?
+
     if isinstance(color_elem_types, dict) and (
         bad_keys := set(color_elem_types) - set(ELEM_CLASS_COLORS)
     ):
@@ -342,18 +378,11 @@ def ptable_diags(
             ax.annotate(**(defaults | annotation))
 
         if plot_data is not None:
-            # Fill areas above and below the line
-            x = np.linspace(0, 10, 10)
-            y = np.linspace(10, 0, 10)
-            ax.fill_between(x, y, 10, color=cmap(scaled_data[symbol][0]))
-            ax.fill_between(x, y, 0, color=cmap(scaled_data[symbol][1]))
+            # TODO:
+            # Map data to colors
+            colors = [cmap(data) for data in scaled_data[symbol]]
 
-            ax.set_xlim(0, 10)
-            ax.set_ylim(0, 10)
-
-            # Disable ticks
-            ax.set_xticks([])
-            ax.set_yticks([])
+            plot_split_rectangle(colors)
 
             if ax_kwds:
                 ax.set(**ax_kwds(plot_data) if callable(ax_kwds) else ax_kwds)
