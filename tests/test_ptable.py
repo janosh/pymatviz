@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib as mpl
@@ -9,6 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from plotly.exceptions import PlotlyError
+from pymatgen.core.periodic_table import Element
 
 from pymatviz import (
     count_elements,
@@ -17,6 +19,7 @@ from pymatviz import (
     ptable_heatmap_ratio,
     ptable_hists,
     ptable_plots,
+    ptable_splits,
 )
 from pymatviz.ptable import add_element_type_legend
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
@@ -406,6 +409,25 @@ def test_ptable_plots() -> None:
         },
         colormap="coolwarm",
         cbar_title="Test ptable_plots",
+    )
+    assert isinstance(fig, plt.Figure)
+
+
+def test_ptable_splits() -> None:
+    """Test ptable_splits with arbitrary data length."""
+    data_dict = {
+        elem.symbol: [
+            random.randint(0, 10)
+            for _ in range(random.randint(1, 4))  # random length
+        ]
+        for elem in Element
+    }
+
+    fig = ptable_splits(
+        data_dict,
+        colormap="coolwarm",
+        start_angle=135,
+        cbar_title="Periodic Table Evenly-Split Tiles Plots",
     )
     assert isinstance(fig, plt.Figure)
 
