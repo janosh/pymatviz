@@ -8,11 +8,6 @@ authors:
     email: janosh.riebesell@gmail.com
     orcid: https://orcid.org/0000-0001-5233-3462
     github: janosh
-  - family-names: Yang
-    given-names: Haoyu
-    affiliation: Queensland University of Technology
-    email: yanghaoyu97@outlook.com
-    github: DanielYang59
   - family-names: Goodall
     given-names: Rhys
     affiliation: University of Cambridge
@@ -23,6 +18,10 @@ authors:
     affiliation: University of Utah
     orcid: https://orcid.org/0000-0002-4491-6876
     github: sgbaird
+  - family-names: Yang
+    given-names: Haoyu (Daniel)
+    email: yanghaoyu97@outlook.com
+    github: DanielYang59
 license: MIT
 license-url: https://github.com/janosh/pymatviz/blob/main/license"
 repository-code: https://github.com/janosh/pymatviz
