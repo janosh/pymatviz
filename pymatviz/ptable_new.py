@@ -28,6 +28,16 @@ class PTableProjector:
         data: Any,
         **kwargs: Any,
     ) -> None:
+        """Initialize a ptable projector.
+
+        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
+
+        Args:
+            colormap (str | Colormap): The colormap to use.
+            data (Any): The data to be visualized.
+            **kwargs (Any): Additional keyword arguments to
+                be passed to the matplotlib subplots function.
+        """
         # Get colormap
         self.cmap = colormap
 
@@ -45,22 +55,42 @@ class PTableProjector:
 
     @property
     def cmap(self) -> Colormap:
+        """The global Colormap used.
+
+        Returns:
+            Colormap: The Colormap used.
+        """
         return self._cmap
 
     @cmap.setter
     def cmap(self, colormap: str | Colormap) -> None:
+        """Args:
+        colormap (str | Colormap): The colormap to use.
+        """
         self._cmap = plt.get_cmap(colormap)
 
     @property
     def data(self) -> pd.DataFrame:
+        """The preprocessed data.
+
+        Returns:
+            pd.DataFrame: The preprocessed data.
+        """
         return self._data
 
     @data.setter
     def data(self, data: Any) -> None:
+        """Set and preprocess the data.
+
+        TODO: add more details
+
+        Parameters:
+            data (Any): The data to be used.
+        """
         # TODO: add data preprocessing function
         self._data = data
 
-        # Get vmin/vmax  # TODO
+        # Get vmin/vmax from metadata  # TODO
         vmin = "TODO"
         vmax = "TODO"
 
@@ -68,7 +98,10 @@ class PTableProjector:
         self._norm = Normalize(vmin=vmin, vmax=vmax)
 
     def set_style(self) -> None:
-        """Set global styles."""
+        """Set global styles.
+
+        Todo:
+        """
 
     def add_child_plots(
         self,
@@ -164,7 +197,7 @@ if __name__ == "__main__":
     ) -> None:
         """Helper function to plot an evenly-split rectangle.
 
-        Parameters:
+        Args:
             colors (list): A list of colors to fill each split of the rectangle.
             start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
@@ -203,6 +236,8 @@ if __name__ == "__main__":
 
     # Call child plotter
     child_args = {"start_angle": 135}
+
+    # TODO: need "colors" mapper
 
     plotter.add_child_plots(plot_split_rectangle, child_args)
 
