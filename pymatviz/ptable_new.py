@@ -34,23 +34,67 @@ if TYPE_CHECKING:
 CountMode = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
 ]
-ELEM_CLASS_COLORS: Final = {
-    "Diatomic Nonmetal": "green",
-    "Noble Gas": "purple",
-    "Alkali Metal": "red",
-    "Alkaline Earth Metal": "orange",
-    "Metalloid": "darkgreen",
-    "Polyatomic Nonmetal": "teal",
-    "Transition Metal": "blue",
-    "Post Transition Metal": "cyan",
-    "Lanthanide": "brown",
-    "Actinide": "gray",
-    "Nonmetal": "green",
-    "Halogen": "teal",
-    "Metal": "lightblue",
-    "Alkaline Metal": "magenta",
-    "Transactinide": "olive",
-}
+
+
+def add_element_type_legend(
+    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    elem_class_colors: dict[str, str] | None = None,
+    legend_kwargs: dict[str, Any] | None = None,
+) -> None:
+    """Add a legend to a matplotlib figure showing the colors of element types.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
+            to plot data. Used only to determine which element types are present.
+        elem_class_colors (dict[str, str]): Map from element
+            types to colors. E.g. {"Alkali Metal": "red", "Noble Gas": "blue"}.
+        legend_kwargs (dict): Keyword arguments passed to plt.legend() for customizing
+            legend appearance. Defaults to None.
+    """
+    ELEM_CLASS_COLORS: Final = {
+        "Diatomic Nonmetal": "green",
+        "Noble Gas": "purple",
+        "Alkali Metal": "red",
+        "Alkaline Earth Metal": "orange",
+        "Metalloid": "darkgreen",
+        "Polyatomic Nonmetal": "teal",
+        "Transition Metal": "blue",
+        "Post Transition Metal": "cyan",
+        "Lanthanide": "brown",
+        "Actinide": "gray",
+        "Nonmetal": "green",
+        "Halogen": "teal",
+        "Metal": "lightblue",
+        "Alkaline Metal": "magenta",
+        "Transactinide": "olive",
+    }
+
+    elem_class_colors = ELEM_CLASS_COLORS | (elem_class_colors or {})
+    # else case list(data) covers dict and DataFrame
+    elems_with_data = data.index if isinstance(data, pd.Series) else list(data)
+    visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
+    font_size = 10
+    legend_elements = [
+        plt.Line2D(
+            *([0], [0]),
+            marker="s",
+            color="w",
+            label=elem_class,
+            markerfacecolor=color,
+            markersize=1.2 * font_size,
+        )
+        for elem_class, color in elem_class_colors.items()
+        if elem_class in visible_elem_types
+    ]
+    legend_kwargs = dict(
+        loc="center left",
+        bbox_to_anchor=(0, -42),
+        ncol=6,
+        frameon=False,
+        fontsize=font_size,
+        handlelength=1,  # more compact legend
+    ) | (legend_kwargs or {})
+    plt.legend(handles=legend_elements, **legend_kwargs)
 
 
 def count_elements(
@@ -1365,46 +1409,3 @@ def ptable_splits(
     cbar_ax.set_title(**cbar_title_kwds)
 
     return fig
-
-
-def add_element_type_legend(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
-    elem_class_colors: dict[str, str] | None = None,
-    legend_kwargs: dict[str, Any] | None = None,
-) -> None:
-    """Add a legend to a matplotlib figure showing the colors of element types.
-
-    Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
-            to plot data. Used only to determine which element types are present.
-        elem_class_colors (dict[str, str]): Map from element
-            types to colors. E.g. {"Alkali Metal": "red", "Noble Gas": "blue"}.
-        legend_kwargs (dict): Keyword arguments passed to plt.legend() for customizing
-            legend appearance. Defaults to None.
-    """
-    elem_class_colors = ELEM_CLASS_COLORS | (elem_class_colors or {})
-    # else case list(data) covers dict and DataFrame
-    elems_with_data = data.index if isinstance(data, pd.Series) else list(data)
-    visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
-    font_size = 10
-    legend_elements = [
-        plt.Line2D(
-            *([0], [0]),
-            marker="s",
-            color="w",
-            label=elem_class,
-            markerfacecolor=color,
-            markersize=1.2 * font_size,
-        )
-        for elem_class, color in elem_class_colors.items()
-        if elem_class in visible_elem_types
-    ]
-    legend_kwargs = dict(
-        loc="center left",
-        bbox_to_anchor=(0, -42),
-        ncol=6,
-        frameon=False,
-        fontsize=font_size,
-        handlelength=1,  # more compact legend
-    ) | (legend_kwargs or {})
-    plt.legend(handles=legend_elements, **legend_kwargs)
