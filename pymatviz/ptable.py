@@ -10,7 +10,6 @@ from collections.abc import Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Any, Callable, Final, Literal, get_args
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -786,9 +785,6 @@ def ptable_hists(
     log: bool = False,
     anno_kwds: dict[str, Any] | None = None,
     on_empty: Literal["show", "hide"] = "hide",
-    color_elem_types: Literal["symbol", "background", "both", False]
-    | dict[str, str] = "background",
-    elem_type_legend: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Figure:
     """Plot small histograms for each element laid out in a periodic table.
@@ -829,12 +825,6 @@ def ptable_hists(
             plt.annotate() keywords.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        color_elem_types ('symbol' | 'background' | 'both' | False | dict): Whether to
-            color element symbols, tile backgrounds, or both based on element type.
-            If dict, it should map element types to colors. Defaults to "background".
-        elem_type_legend (bool | dict): Whether to show a legend for element
-            types. Defaults to True. If dict, used as kwargs to plt.legend(), e.g. to
-            set the legend title, use {"title": "Element Types"}.
         **kwargs: Additional keyword arguments passed to plt.subplots(). Defaults to
             dict(figsize=(0.75 * n_columns, 0.75 * n_rows)) with n_columns/n_rows the
             number of columns/rows in the periodic table.
@@ -876,10 +866,6 @@ def ptable_hists(
     for ax in axes.flat:
         ax.axis("off")
 
-    elem_class_colors = ELEM_CLASS_COLORS | (
-        color_elem_types if isinstance(color_elem_types, dict) else {}
-    )
-
     symbol_kwargs = symbol_kwargs or {}
     for element in Element:
         symbol = element.symbol
@@ -891,14 +877,6 @@ def ptable_hists(
 
         if len(hist_data) == 0 and on_empty == "hide":
             continue
-
-        if color_elem_types:
-            elem_class = df_ptable.loc[symbol, "type"]
-            if color_elem_types in ("symbol", "both"):
-                symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
-            if color_elem_types in ("background", "both"):
-                bg_color = elem_class_colors.get(elem_class, "white")
-                ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
 
         ax.text(
             *symbol_pos,
@@ -979,12 +957,6 @@ def ptable_hists(
         cbar_title_kwds["label"] = cbar_title
         cbar_ax.set_title(**cbar_title_kwds)
 
-    if elem_type_legend and color_elem_types:
-        legend_kwargs = elem_type_legend if isinstance(elem_type_legend, dict) else {}
-        add_element_type_legend(
-            data=data, elem_class_colors=elem_class_colors, legend_kwargs=legend_kwargs
-        )
-
     return fig
 
 
@@ -1004,9 +976,6 @@ def ptable_plots(
     cbar_kwds: dict[str, Any] | None = None,
     anno_kwds: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
-    color_elem_types: Literal["symbol", "background", "both", False]
-    | dict[str, str] = "background",
-    elem_type_legend: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Figure:
     """Make scatter or line plots for each element, nested inside a periodic table.
@@ -1056,17 +1025,6 @@ def ptable_plots(
             plt.annotate() keywords.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        color_elem_types ("symbol" | "background" | "both" | False | dict[str, str]):
-            Whether to color element symbols or
-            backgrounds according to their type. Defaults to "symbol". If a dict is
-            passed, it should map element types to colors. Will be merged into default
-            dict so doesn't need to contain all element types. See source code for
-            recognized keys. Example:
-            {"Noble Gas": "gray", "Halogen": "teal"}. If False, no coloring is done.
-        elem_type_legend (bool | dict): Whether to show a legend for element
-            types. Defaults to True. If dict, used as kwargs to plt.legend(), e.g. to
-            set the legend title, use {"title": "Element Types"}.
-            Defaults to True.
         **kwargs: Additional keyword arguments passed to plt.subplots().
 
     Notes:
@@ -1075,20 +1033,6 @@ def ptable_plots(
     Returns:
         plt.Figure: periodic table with a subplot in each element tile.
     """
-    if isinstance(color_elem_types, dict) and (
-        bad_keys := set(color_elem_types) - set(ELEM_CLASS_COLORS)
-    ):
-        raise ValueError(
-            f"Invalid color_elem_types: {', '.join(bad_keys)}. Recognized keys are: "
-            f"{', '.join(ELEM_CLASS_COLORS)}."
-        )
-    if isinstance(color_elem_types, str) and (
-        color_elem_types not in (valid_vals := ("symbol", "background", "both"))
-    ):
-        raise ValueError(
-            f"Invalid {color_elem_types=}, should be one of {valid_vals} or dict|False."
-        )
-
     n_periods = df_ptable.row.max()
     n_groups = df_ptable.column.max()
 
@@ -1113,10 +1057,6 @@ def ptable_plots(
     symbol_kwargs = symbol_kwargs or {}
     symbol_kwargs.setdefault("fontsize", 10)
 
-    elem_class_colors = ELEM_CLASS_COLORS | (
-        color_elem_types if isinstance(color_elem_types, dict) else {}
-    )
-
     for element in Element:
         symbol = element.symbol
         row, group = df_ptable.loc[symbol, ["row", "column"]]
@@ -1125,14 +1065,6 @@ def ptable_plots(
         plot_data = np.array(data.get(symbol, []))
         if len(plot_data) == 0 and on_empty == "hide":
             continue
-
-        if color_elem_types:
-            elem_class = df_ptable.loc[symbol, "type"]
-            if color_elem_types in ("symbol", "both"):
-                symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
-            if color_elem_types in ("background", "both"):
-                bg_color = elem_class_colors.get(elem_class, "white")
-                ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
 
         ax.text(
             *symbol_pos,
@@ -1225,12 +1157,6 @@ def ptable_plots(
         cbar_title_kwds["label"] = cbar_title
         cbar_ax.set_title(**cbar_title_kwds)
 
-    if elem_type_legend and color_elem_types:
-        legend_kwargs = elem_type_legend if isinstance(elem_type_legend, dict) else None
-        add_element_type_legend(
-            data=data, elem_class_colors=elem_class_colors, legend_kwargs=legend_kwargs
-        )
-
     return fig
 
 
@@ -1248,9 +1174,6 @@ def ptable_splits(
     cbar_kwds: dict[str, Any] | None = None,
     anno_kwds: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
-    color_elem_types: Literal["symbol", "background", "both", False]
-    | dict[str, str] = "background",
-    elem_type_legend: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Figure:
     """Plot evenly-split tiles, nested inside a periodic table.
@@ -1294,17 +1217,6 @@ def ptable_splits(
             plt.annotate() keywords.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        color_elem_types ("symbol" | "background" | "both" | False | dict[str, str]):
-            Whether to color element symbols or
-            backgrounds according to their type. Defaults to "symbol". If a dict is
-            passed, it should map element types to colors. Will be merged into default
-            dict so doesn't need to contain all element types. See source code for
-            recognized keys. Example:
-            {"Noble Gas": "gray", "Halogen": "teal"}. If False, no coloring is done.
-        elem_type_legend (bool | dict): Whether to show a legend for element
-            types. Defaults to True. If dict, used as kwargs to plt.legend(), e.g. to
-            set the legend title, use {"title": "Element Types"}.
-            Defaults to True.
         **kwargs: Additional keyword arguments passed to plt.subplots().
 
     Notes:
@@ -1344,20 +1256,6 @@ def ptable_splits(
         # Hide axes
         ax.axis("off")
 
-    if isinstance(color_elem_types, dict) and (
-        bad_keys := set(color_elem_types) - set(ELEM_CLASS_COLORS)
-    ):
-        raise ValueError(
-            f"Invalid color_elem_types: {', '.join(bad_keys)}. Recognized keys are: "
-            f"{', '.join(ELEM_CLASS_COLORS)}."
-        )
-    if isinstance(color_elem_types, str) and (
-        color_elem_types not in (valid_vals := ("symbol", "background", "both"))
-    ):
-        raise ValueError(
-            f"Invalid {color_elem_types=}, should be one of {valid_vals} or dict|False."
-        )
-
     n_periods = df_ptable.row.max()
     n_groups = df_ptable.column.max()
 
@@ -1380,10 +1278,6 @@ def ptable_splits(
     symbol_kwargs = symbol_kwargs or {}
     symbol_kwargs.setdefault("fontsize", 18)
 
-    elem_class_colors = ELEM_CLASS_COLORS | (
-        color_elem_types if isinstance(color_elem_types, dict) else {}
-    )
-
     # Get colormap
     cmap = plt.get_cmap(colormap)
 
@@ -1405,14 +1299,6 @@ def ptable_splits(
         plot_data = np.array(data.get(symbol, []))
         if len(plot_data) == 0 and on_empty == "hide":
             continue
-
-        if color_elem_types:
-            elem_class = df_ptable.loc[symbol, "type"]
-            if color_elem_types in {"symbol", "both"}:
-                symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
-            if color_elem_types in {"background", "both"}:
-                bg_color = elem_class_colors.get(elem_class, "white")
-                ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
 
         ax.text(
             *symbol_pos,
@@ -1477,12 +1363,6 @@ def ptable_splits(
     cbar_title_kwds.setdefault("pad", 10)
     cbar_title_kwds["label"] = cbar_title
     cbar_ax.set_title(**cbar_title_kwds)
-
-    if elem_type_legend and color_elem_types:
-        legend_kwargs = elem_type_legend if isinstance(elem_type_legend, dict) else None
-        add_element_type_legend(
-            data=data, elem_class_colors=elem_class_colors, legend_kwargs=legend_kwargs
-        )
 
     return fig
 
