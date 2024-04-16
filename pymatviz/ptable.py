@@ -1311,8 +1311,6 @@ def ptable_splits(
             **symbol_kwargs,
         )
 
-        ax.axis("on")
-
         if anno_kwds:
             defaults = dict(
                 text=lambda plot_vals: si_fmt_int(len(plot_vals)),
