@@ -25,7 +25,7 @@ from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
 if TYPE_CHECKING:
-    from typing import  Any, Callable, Final, TypeAlias
+    from typing import Any, Callable, Final, TypeAlias
 
     import plotly.graph_objects as go
 
