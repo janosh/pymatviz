@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
@@ -18,6 +19,72 @@ if TYPE_CHECKING:
 
     from matplotlib.colors import Colormap
 
+# ----------------------------------------------------------
+# This block might need to be relocated.
+# Data types supported by ptable plotters
+PTableSupportedDataType = (
+    dict[str, float | Sequence[float] | np.ndarray] | pd.DataFrame | pd.Series
+)
+
+
+def _data_preprocessor(data: PTableSupportedDataType) -> pd.DataFrame:
+    """Preprocess input data, including:
+        - Convert all data types to pd.DataFrame.
+        - Impute missing values.
+        - Handle anomalies such as NaN, infinity.
+        - Write vmin/vmax as metadata into the DataFrame.
+
+    Returns:
+        pd.DataFrame: The preprocessed DataFrame with element names as index
+            and values as columns. The DataFrame also contains metadata for
+            vmin and vmax.
+
+    Example:
+        >>> data: dict = {"H": 1.0, "He": [2.0, 4.0]}
+        OR
+        >>> data: pd.DataFrame = pd.DataFrame({"Element": ["H", "He"], "Value": [1.0, [2.0, 4.0]]})
+        OR
+        >>> data: pd.Series = pd.Series({"H": 1.0, "He": [2.0, 4.0]})
+        TODO: wrong example: Series need same length values
+
+        >>> preprocess_data(data)
+
+        Element   Value
+        H         1.0
+        He        [2.0, 4.0]
+
+        Metadata:
+            vmin: 1.0
+            vmax: 4.0
+    """
+    if isinstance(data, pd.DataFrame):
+        df = data
+
+    elif isinstance(data, pd.Series):
+        df = data.to_frame()
+
+    elif isinstance(data, dict):
+        df = (
+            pd.DataFrame(data)
+            # .explode("Value")  # TODO: double-check
+            .reset_index()
+            .rename(columns={"index": "Element"})
+        )
+
+    else:
+        raise TypeError(
+            f"Unsupported data type, choose from: {PTableSupportedDataType}."
+        )
+
+    # Get and write vmin/vmax into metadata
+    df.attrs["vmin"] = df["Value"].min()
+    df.attrs["vmax"] = df["Value"].max()
+
+    return df
+
+
+# ----------------------------------------------------------
+
 
 class PTableProjector:
     """Project (nest) a custom plot into a periodic table."""
@@ -25,7 +92,7 @@ class PTableProjector:
     def __init__(
         self,
         colormap: str | Colormap,
-        data: Any,
+        data: PTableSupportedDataType,  # TODO: narrow supported data type
         **kwargs: Any,
     ) -> None:
         """Initialize a ptable projector.
@@ -34,7 +101,7 @@ class PTableProjector:
 
         Args:
             colormap (str | Colormap): The colormap to use.
-            data (Any): The data to be visualized.
+            data (PTableSupportedDataType): The data to be visualized.
             **kwargs (Any): Additional keyword arguments to
                 be passed to the matplotlib subplots function.
         """
@@ -82,20 +149,18 @@ class PTableProjector:
     def data(self, data: Any) -> None:
         """Set and preprocess the data.
 
-        TODO: add more details
+        TODO: add more details about data
 
         Parameters:
             data (Any): The data to be used.
         """
-        # TODO: add data preprocessing function
-        self._data = data
-
-        # Get vmin/vmax from metadata  # TODO
-        vmin = "TODO"
-        vmax = "TODO"
+        # Preprocess data
+        self._data = _data_preprocessor(data)
 
         # Normalize data for colorbar
-        self._norm = Normalize(vmin=vmin, vmax=vmax)
+        self._norm = Normalize(
+            vmin=self._data.attrs.get("vmin"), vmax=self._data.attrs.get("vmax")
+        )
 
     def set_style(self) -> None:
         """Set global styles.
