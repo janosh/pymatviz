@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,15 +19,15 @@ if TYPE_CHECKING:
 
     from matplotlib.colors import Colormap
 
-# ----------------------------------------------------------
+# ----------------------------------------------------------------------------
 # This block might need to be relocated.
+
 # Data types supported by ptable plotters
-PTableSupportedDataType = (
-    dict[str, float | Sequence[float] | np.ndarray] | pd.DataFrame | pd.Series
-)
+SupportedValueType = Union[float, Sequence[float], np.ndarray]
+SupportedDataType = Union[dict[str, SupportedValueType], pd.DataFrame, pd.Series]
 
 
-def _data_preprocessor(data: PTableSupportedDataType) -> pd.DataFrame:
+def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     """Preprocess input data, including:
         - Convert all data types to pd.DataFrame.
         - Impute missing values.
@@ -36,13 +36,14 @@ def _data_preprocessor(data: PTableSupportedDataType) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names as index
-            and values as columns. The DataFrame also contains metadata for
-            vmin and vmax.
+            and values as columns.
 
     Example:
         >>> data: dict = {"H": 1.0, "He": [2.0, 4.0]}
         OR
-        >>> data: pd.DataFrame = pd.DataFrame({"Element": ["H", "He"], "Value": [1.0, [2.0, 4.0]]})
+        >>> data: pd.DataFrame = pd.DataFrame({
+            "Element": ["H", "He"], "Value": [1.0, [2.0, 4.0]]
+        })
         OR
         >>> data: pd.Series = pd.Series({"H": 1.0, "He": [2.0, 4.0]})
         TODO: wrong example: Series need same length values
@@ -58,13 +59,13 @@ def _data_preprocessor(data: PTableSupportedDataType) -> pd.DataFrame:
             vmax: 4.0
     """
     if isinstance(data, pd.DataFrame):
-        df = data
+        data_df = data
 
     elif isinstance(data, pd.Series):
-        df = data.to_frame()
+        data_df = data.to_frame()
 
     elif isinstance(data, dict):
-        df = (
+        data_df = (
             pd.DataFrame(data)
             # .explode("Value")  # TODO: double-check
             .reset_index()
@@ -72,18 +73,16 @@ def _data_preprocessor(data: PTableSupportedDataType) -> pd.DataFrame:
         )
 
     else:
-        raise TypeError(
-            f"Unsupported data type, choose from: {PTableSupportedDataType}."
-        )
+        raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
     # Get and write vmin/vmax into metadata
-    df.attrs["vmin"] = df["Value"].min()
-    df.attrs["vmax"] = df["Value"].max()
+    data_df.attrs["vmin"] = data_df["Value"].min()
+    data_df.attrs["vmax"] = data_df["Value"].max()
 
-    return df
+    return data_df
 
 
-# ----------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 
 class PTableProjector:
@@ -92,7 +91,7 @@ class PTableProjector:
     def __init__(
         self,
         colormap: str | Colormap,
-        data: PTableSupportedDataType,  # TODO: narrow supported data type
+        data: SupportedDataType,
         **kwargs: Any,
     ) -> None:
         """Initialize a ptable projector.
@@ -101,7 +100,7 @@ class PTableProjector:
 
         Args:
             colormap (str | Colormap): The colormap to use.
-            data (PTableSupportedDataType): The data to be visualized.
+            data (SupportedDataType): The data to be visualized.
             **kwargs (Any): Additional keyword arguments to
                 be passed to the matplotlib subplots function.
         """
@@ -146,13 +145,11 @@ class PTableProjector:
         return self._data
 
     @data.setter
-    def data(self, data: Any) -> None:
+    def data(self, data: SupportedDataType) -> None:
         """Set and preprocess the data.
 
-        TODO: add more details about data
-
         Parameters:
-            data (Any): The data to be used.
+            data (SupportedDataType): The data to be used.
         """
         # Preprocess data
         self._data = _data_preprocessor(data)
@@ -163,10 +160,7 @@ class PTableProjector:
         )
 
     def set_style(self) -> None:
-        """Set global styles.
-
-        Todo:
-        """
+        """Set global styles."""
 
     def add_child_plots(
         self,
@@ -263,6 +257,7 @@ if __name__ == "__main__":
         """Helper function to plot an evenly-split rectangle.
 
         Args:
+            ax (plt.axes): The axis to plot on.
             colors (list): A list of colors to fill each split of the rectangle.
             start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
