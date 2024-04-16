@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.colors import Normalize
 from pymatgen.core import Element
 
 from pymatviz.utils import df_ptable
@@ -59,6 +60,13 @@ class PTableProjector:
         # TODO: add data preprocessing function
         self._data = data
 
+        # Get vmin/vmax  # TODO
+        vmin = "TODO"
+        vmax = "TODO"
+
+        # Normalize data for colorbar
+        self._norm = Normalize(vmin=vmin, vmax=vmax)
+
     def set_style(self) -> None:
         """Set global styles."""
 
@@ -67,6 +75,7 @@ class PTableProjector:
         child_plotter: Callable,
         child_args: dict,
         on_empty: Literal["hide", "show"] = "hide",
+        hide_axis: bool = True,
     ) -> None:
         """Add selected custom child plots."""
         for element in Element:
@@ -80,15 +89,13 @@ class PTableProjector:
             if len(plot_data) == 0 and on_empty == "hide":
                 continue
 
-            # Call child plotter for each tile
+            # Call child plotter
             if plot_data is not None:
-                # Call child plotter
                 child_plotter(ax, **child_args)
 
-            # Hide axis boarders
-            # TODO: Make this an arg too?
-            for side in ("right", "top", "left", "bottom"):
-                ax.spines[side].set_visible(b=False)
+            # Hide axis
+            if hide_axis:
+                ax.axis("off")
 
     def add_ele_symbols(
         self,
@@ -131,8 +138,7 @@ class PTableProjector:
         cbar_ax = self.fig.add_axes(coords)
 
         self.fig.colorbar(
-            # TODO: fix norm
-            plt.cm.ScalarMappable(norm=norm, cmap=self.cmap),
+            plt.cm.ScalarMappable(norm=self._norm, cmap=self.cmap),
             cax=cbar_ax,
             **cbar_kwds,
         )
@@ -177,9 +183,6 @@ if __name__ == "__main__":
 
         ax.set_xlim(-0.5, 0.5)
         ax.set_ylim(-0.5, 0.5)
-
-        # Hide axes
-        ax.axis("off")
 
     # Generate test data
     import random
