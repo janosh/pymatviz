@@ -1372,11 +1372,9 @@ class PTableProjector:
 
     def set_style(self) -> None:
         """Set global styles."""
-        pass
 
     def add_child_plots(self) -> None:
         """Add selected custom child plots."""
-        pass
 
     def add_ele_symbols(
         self,
