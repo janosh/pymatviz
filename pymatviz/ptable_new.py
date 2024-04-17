@@ -37,7 +37,8 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
     TODO: add imputation and anomaly handling
 
-    TODO: handle and unit test value as np.ndarray
+    TODO: handle and unit test value as np.ndarray, maybe convert
+    all values to list/array internally (including float)
 
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names as index
@@ -81,8 +82,8 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
     # Get and write vmin/vmax into metadata
-    all_values = [val if isinstance(val, list) else [val] for val in data_df["Value"]]
-    flattened_values = [item for sublist in all_values for item in sublist]
+    all_values: list = [val if isinstance(val, list) else [val] for val in data_df["Value"]]
+    flattened_values: list[float] = [item for sublist in all_values for item in sublist]
 
     data_df.attrs["vmin"] = min(flattened_values)
     data_df.attrs["vmax"] = max(flattened_values)
@@ -110,7 +111,7 @@ class PTableProjector:
             colormap (str | Colormap): The colormap to use.
             data (SupportedDataType): The data to be visualized.
             **kwargs (Any): Additional keyword arguments to
-                be passed to the matplotlib subplots function.
+                pass to the plt.subplots function call.
         """
         # Get colormap
         self.cmap: Colormap = colormap
@@ -133,7 +134,7 @@ class PTableProjector:
 
     @property
     def cmap(self) -> Colormap:
-        """The global Colormap used.
+        """The global Colormap.
 
         Returns:
             Colormap: The Colormap used.
@@ -164,12 +165,16 @@ class PTableProjector:
             data (SupportedDataType): The data to be used.
         """
         # Preprocess data
-        self._data = _data_preprocessor(data)
+        _data: pd.DataFrame = _data_preprocessor(data)
 
         # Normalize data for colorbar
-        self._norm = Normalize(
-            vmin=self._data.attrs.get("vmin"), vmax=self._data.attrs.get("vmax")
+        self._norm: Normalize = Normalize(
+            vmin=_data.attrs["vmin"], vmax=_data.attrs["vmax"]
         )
+
+        _data['Value'] = _data['Value'].map(self._norm)
+
+        self._data = _data
 
     def set_style(self) -> None:
         """Set global styles."""
@@ -182,18 +187,18 @@ class PTableProjector:
     ) -> None:
         """Add selected custom child plots."""
         for element in Element:
-            # Get axis by element symbol
-            symbol = element.symbol
+            # Get axis index by element symbol
+            symbol: str = element.symbol
             row, column = df_ptable.loc[symbol, ["row", "column"]]
-            ax = self.axes[row - 1][column - 1]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
 
-            # Check tile data
+            # Get and check tile data
             plot_data: SupportedValueType = self.data.loc[symbol, "Value"]
             if len(plot_data) == 0 and on_empty == "hide":
                 continue
 
             # Call child plotter
-            if plot_data:
+            if len(plot_data) > 0:
                 child_plotter(ax, plot_data, **child_args)
 
     def add_ele_symbols(
@@ -209,10 +214,10 @@ class PTableProjector:
 
         # Add symbol for each element
         for element in Element:
-            # Get axes by element symbol
-            symbol = element.symbol
+            # Get axis index by element symbol
+            symbol: str = element.symbol
             row, column = df_ptable.loc[symbol, ["row", "column"]]
-            ax = self.axes[row - 1][column - 1]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
 
             ax.text(
                 *pos,
@@ -253,7 +258,10 @@ class PTableProjector:
 
 
 class ChildPlotters:
-    """Some pre-defined child plotters."""
+    """Collect some pre-defined child plotters.
+
+    TODO: add instruction for adding custom plotters.
+    """
 
     @staticmethod
     def plot_split_rectangle(
@@ -272,10 +280,9 @@ class ChildPlotters:
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
         """
         # Map values to colors
-        # TODO: support np.ndarray
         if isinstance(data, float):
             colors = [cmap(data)]
-        elif isinstance(data, Sequence):
+        elif isinstance(data, (Sequence, np.ndarray)):
             colors = [cmap(value) for value in data]
         else:
             raise TypeError("Unsupported data type.")
@@ -303,8 +310,8 @@ if __name__ == "__main__":
 
     test_data = {
         elem.symbol: [
-            random.randint(0, 10),
-            random.randint(10, 20),
+            random.randint(0, 50),
+            random.randint(50, 100),
         ]
         for elem in Element
     }
@@ -323,4 +330,8 @@ if __name__ == "__main__":
     plotter.add_ele_symbols()
     plotter.add_colorbar(title="Test Colorbar")
 
-    plt.show()
+    from pymatviz.io import save_and_compress_svg
+
+    # plt.show()
+
+    save_and_compress_svg(plotter.fig, "ptable_new")
