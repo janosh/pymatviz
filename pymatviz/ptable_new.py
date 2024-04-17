@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 # This block might need to be relocated.
 
 # Data types supported by ptable plotters
+# TODO: clarify data type after preprocessing
 SupportedValueType = Union[float, Sequence[float], np.ndarray]
 SupportedDataType = Union[dict[str, SupportedValueType], pd.DataFrame, pd.Series]
 
@@ -35,7 +36,7 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         - Handle anomalies such as NaN, infinity.
         - Write vmin/vmax as metadata into the DataFrame.
 
-    TODO: add imputation and anomaly handling
+    TODO: add and test imputation and anomaly handling
 
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names
@@ -167,7 +168,7 @@ class PTableProjector:
 
     @data.setter
     def data(self, data: SupportedDataType) -> None:
-        """Set and preprocess the data.
+        """Set and preprocess the data, also set normalizer.
 
         Parameters:
             data (SupportedDataType): The data to be used.
@@ -185,8 +186,8 @@ class PTableProjector:
 
     def add_child_plots(
         self,
-        child_plotter: Callable,
-        child_args: dict,
+        child_plotter: Callable[[plt.axes, *Any], None],
+        child_args: dict[str, Any],
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
         """Add selected custom child plots."""
@@ -197,7 +198,7 @@ class PTableProjector:
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             # Get and check tile data
-            plot_data: SupportedValueType = self.data.loc[symbol, "Value"]
+            plot_data: np.ndarray | Sequence[float] = self.data.loc[symbol, "Value"]
             if len(plot_data) == 0 and on_empty == "hide":
                 continue
 
@@ -209,7 +210,7 @@ class PTableProjector:
         self,
         text: Callable[[Element], str] = lambda elem: elem.symbol,
         pos: tuple[float, float] = (0.5, 0.5),
-        kwargs: dict | None = None,
+        kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add element symbols for each tile."""
         # Update symbol args
@@ -236,8 +237,8 @@ class PTableProjector:
         self,
         title: str,
         coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-        cbar_kwds: dict | None = None,
-        title_kwds: dict | None = None,
+        cbar_kwds: dict[str, Any] | None = None,
+        title_kwds: dict[str, Any] | None = None,
     ) -> None:
         """Add a global colorbar."""
         # Update colorbar args
@@ -277,7 +278,7 @@ class ChildPlotters:
     @staticmethod
     def split_rectangle(
         ax: plt.axes,
-        data: Sequence | np.ndarray,
+        data: Sequence[float] | np.ndarray,
         norm: Normalize,
         cmap: Colormap,
         start_angle: float,
