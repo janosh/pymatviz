@@ -266,13 +266,23 @@ class ChildPlotters:
     """
 
     @staticmethod
-    def plot_split_rectangle(
+    def heatmap(
         ax: plt.axes,
         data: SupportedValueType,
+    ) -> None:
+        """The basic heatmap plotter."""
+
+    @staticmethod
+    def split_rectangle(
+        ax: plt.axes,
+        data: SupportedValueType,  # unify to single type
         cmap: Colormap,
         start_angle: float,
     ) -> None:
-        """Child plotter for an evenly-split rectangle.
+        """An evenly-split rectangle.
+
+        Could evenly split an rectangle to arbitrary parts,
+        depending on the length of the data (could mix and match).
 
         Args:
             ax (plt.axes): The axis to plot on.
@@ -304,6 +314,27 @@ class ChildPlotters:
         ax.set_xlim(-0.5, 0.5)
         ax.set_ylim(-0.5, 0.5)
 
+    @staticmethod
+    def scatter(
+        ax: plt.axes,
+        data: SupportedValueType,
+    ) -> None:
+        """Scatter plotter."""
+
+    @staticmethod
+    def line(
+        ax: plt.axes,
+        data: SupportedValueType,
+    ) -> None:
+        """Line plotter."""
+
+    @staticmethod
+    def hists(
+        ax: plt.axes,
+        data: SupportedValueType,
+    ) -> None:
+        """Histograms plotter."""
+
 
 # Test area
 if __name__ == "__main__":
@@ -327,13 +358,14 @@ if __name__ == "__main__":
     # Call child plotter
     child_args = {"start_angle": 135, "cmap": plotter.cmap}
 
-    plotter.add_child_plots(ChildPlotters.plot_split_rectangle, child_args)
+    plotter.add_child_plots(ChildPlotters.split_rectangle, child_args)
 
+    # Add element symbols and colorbar
     plotter.add_ele_symbols()
     plotter.add_colorbar(title="Test Colorbar")
 
-    from pymatviz.io import save_and_compress_svg
-
     # plt.show()
 
-    save_and_compress_svg(plotter.fig, "ptable_new")
+    from pymatviz.io import save_and_compress_svg
+
+    save_and_compress_svg(plotter.fig, "ptable-splits")
