@@ -1332,7 +1332,7 @@ def ptable_splits(
                 annotation["text"] = anno_text
             ax.annotate(**(defaults | annotation))
 
-        if plot_data is not None:
+        if plot_data:
             # Map data to colors
             colors = [cmap(data) for data in scaled_data[symbol]]
 

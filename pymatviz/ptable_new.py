@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import Normalize
+from matplotlib.patches import Rectangle
 from pymatgen.core import Element
 
 from pymatviz.utils import df_ptable
@@ -110,10 +111,10 @@ class PTableProjector:
                 be passed to the matplotlib subplots function.
         """
         # Get colormap
-        self.cmap = colormap
+        self.cmap: Colormap = colormap
 
         # Preprocess data
-        self.data = data
+        self.data: pd.DataFrame = data
 
         # Initialize periodic table canvas
         n_periods = df_ptable.row.max()
@@ -182,12 +183,12 @@ class PTableProjector:
             ax = self.axes[row - 1][column - 1]
 
             # Check tile data
-            plot_data = np.array(self.data.get(symbol, []))
+            plot_data: SupportedValueType = self.data.loc[symbol, "Value"]
             if len(plot_data) == 0 and on_empty == "hide":
                 continue
 
             # Call child plotter
-            if plot_data is not None:
+            if plot_data:
                 child_plotter(ax, plot_data, **child_args)
 
             # Hide axis
@@ -249,11 +250,10 @@ class PTableProjector:
         cbar_ax.set_title(**title_kwds)
 
 
-# Test area
-if __name__ == "__main__":
-    # Def test child plotter
-    from matplotlib.patches import Rectangle
+class ChildPlotters:
+    """Some pre-defined child plotters."""
 
+    @staticmethod
     def plot_split_rectangle(
         ax: plt.axes,
         data: SupportedValueType,
@@ -270,7 +270,12 @@ if __name__ == "__main__":
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
         """
         # Map values to colors
-        colors = [cmap(value) for value in data]
+        if isinstance(data, float):
+            colors = [cmap(data)]
+        elif isinstance(data, Sequence):
+            colors = [cmap(value) for value in data]
+        else:
+            raise TypeError("Unsupported data type.")
 
         # Plot the pie chart
         ax.pie(
@@ -287,6 +292,9 @@ if __name__ == "__main__":
         ax.set_xlim(-0.5, 0.5)
         ax.set_ylim(-0.5, 0.5)
 
+
+# Test area
+if __name__ == "__main__":
     # Generate test data
     import random
 
@@ -307,7 +315,7 @@ if __name__ == "__main__":
     # Call child plotter
     child_args = {"start_angle": 135, "cmap": plotter.cmap}
 
-    plotter.add_child_plots(plot_split_rectangle, child_args)
+    plotter.add_child_plots(ChildPlotters.plot_split_rectangle, child_args)
 
     plotter.add_ele_symbols()
     plotter.add_colorbar(title="Test Colorbar")
