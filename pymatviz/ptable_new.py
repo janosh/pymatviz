@@ -34,6 +34,8 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         - Handle anomalies such as NaN, infinity.
         - Write vmin/vmax as metadata into the DataFrame.
 
+    TODO: add imputation and anomaly handling
+
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names as index
             and values as columns.
@@ -50,9 +52,9 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
         >>> preprocess_data(data)
 
-        Element   Value
-        H         1.0
-        He        [2.0, 4.0]
+             Element   Value
+        0    H         1.0
+        1    He        [2.0, 4.0]
 
         Metadata:
             vmin: 1.0
@@ -62,22 +64,22 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         data_df = data
 
     elif isinstance(data, pd.Series):
-        data_df = data.to_frame()
+        data_df = data.to_frame(name="Value")
 
     elif isinstance(data, dict):
-        data_df = (
-            pd.DataFrame(data)
-            # .explode("Value")  # TODO: double-check
-            .reset_index()
-            .rename(columns={"index": "Element"})
+        data_df = pd.DataFrame(data.items(), columns=["Element", "Value"]).set_index(
+            "Element"
         )
 
     else:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
     # Get and write vmin/vmax into metadata
-    data_df.attrs["vmin"] = data_df["Value"].min()
-    data_df.attrs["vmax"] = data_df["Value"].max()
+    all_values = [val if isinstance(val, list) else [val] for val in data_df["Value"]]
+    flattened_values = [item for sublist in all_values for item in sublist]
+
+    data_df.attrs["vmin"] = min(flattened_values)
+    data_df.attrs["vmax"] = max(flattened_values)
 
     return data_df
 
