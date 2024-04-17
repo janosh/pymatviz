@@ -37,6 +37,8 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
     TODO: add imputation and anomaly handling
 
+    TODO: handle and unit test value as np.ndarray
+
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names as index
             and values as columns.
@@ -125,6 +127,10 @@ class PTableProjector:
 
         self.fig, self.axes = plt.subplots(n_periods, n_groups, **kwargs)
 
+        # Turn off all axes
+        for ax in self.axes.flat:
+            ax.axis("off")
+
     @property
     def cmap(self) -> Colormap:
         """The global Colormap used.
@@ -173,7 +179,6 @@ class PTableProjector:
         child_plotter: Callable,
         child_args: dict,
         on_empty: Literal["hide", "show"] = "hide",
-        hide_axis: bool = True,
     ) -> None:
         """Add selected custom child plots."""
         for element in Element:
@@ -191,10 +196,6 @@ class PTableProjector:
             if plot_data:
                 child_plotter(ax, plot_data, **child_args)
 
-            # Hide axis
-            if hide_axis:
-                ax.axis("off")
-
     def add_ele_symbols(
         self,
         text: Callable[[Element], str] = lambda elem: elem.symbol,
@@ -202,6 +203,7 @@ class PTableProjector:
         kwargs: dict | None = None,
     ) -> None:
         """Add element symbols for each tile."""
+        # Update symbol args
         kwargs = kwargs or {}
         kwargs.setdefault("fontsize", 18)
 
@@ -229,7 +231,7 @@ class PTableProjector:
         title_kwds: dict | None = None,
     ) -> None:
         """Add a global colorbar."""
-        # Update colorbar keyword args
+        # Update colorbar args
         cbar_kwds = {"orientation": "horizontal"} | (cbar_kwds or {})
 
         # Add colorbar
@@ -270,6 +272,7 @@ class ChildPlotters:
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
         """
         # Map values to colors
+        # TODO: support np.ndarray
         if isinstance(data, float):
             colors = [cmap(data)]
         elif isinstance(data, Sequence):
