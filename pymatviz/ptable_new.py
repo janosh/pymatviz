@@ -37,12 +37,9 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
     TODO: add imputation and anomaly handling
 
-    TODO: handle and unit test value as np.ndarray, maybe convert
-    all values to list/array internally (including float)
-
     Returns:
-        pd.DataFrame: The preprocessed DataFrame with element names as index
-            and values as columns.
+        pd.DataFrame: The preprocessed DataFrame with element names
+            as index and values as columns.
 
     Example:
         >>> data: dict = {"H": 1.0, "He": [2.0, 4.0]}
@@ -59,7 +56,7 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         >>> preprocess_data(data)
 
              Element   Value
-        0    H         1.0
+        0    H         [1.0, ]
         1    He        [2.0, 4.0]
 
         Metadata:
@@ -81,11 +78,15 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     else:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
+    # Convert all values to np.array
+    data_df["Value"] = data_df["Value"].map(
+        lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
+    )
+
     # Get and write vmin/vmax into metadata
-    all_values: list = [
-        val if isinstance(val, list) else [val] for val in data_df["Value"]
+    flattened_values: list[float] = [
+        item for sublist in data_df["Value"] for item in sublist
     ]
-    flattened_values: list[float] = [item for sublist in all_values for item in sublist]
 
     data_df.attrs["vmin"] = min(flattened_values)
     data_df.attrs["vmax"] = max(flattened_values)
@@ -276,7 +277,7 @@ class ChildPlotters:
     @staticmethod
     def split_rectangle(
         ax: plt.axes,
-        data: SupportedValueType,  # unify to single type
+        data: Sequence | np.ndarray,
         norm: Normalize,
         cmap: Colormap,
         start_angle: float,
@@ -288,16 +289,15 @@ class ChildPlotters:
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The value correspond to the child plotter.
+            data (Sequence | np.ndarray): The values for to
+                the child plotter.
             norm (Normalize): Normalizer for data-color mapping.
             cmap (Colormap): Colormap used for value mapping.
             start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
         """
         # Map values to colors
-        if isinstance(data, float):
-            colors = [cmap(norm(data))]
-        elif isinstance(data, (Sequence, np.ndarray)):
+        if isinstance(data, (Sequence, np.ndarray)):
             colors = [cmap(norm(value)) for value in data]
         else:
             raise TypeError("Unsupported data type.")

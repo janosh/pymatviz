@@ -2,27 +2,30 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+import numpy as np
 import pandas as pd
 import pytest
+from numpy.testing import assert_allclose
 
 from pymatviz.ptable_new import _data_preprocessor
 
 
 class TestDataPreprocessor:
-    test_dict: ClassVar = {"H": 1.0, "He": [2.0, 4.0]}
+    test_dict: ClassVar = {"H": 1.0, "He": [2.0, 4.0], "Li": np.array([6.0, 8.0])}
 
     @staticmethod
     def _validate_output_df(output_df: pd.DataFrame) -> None:
         assert isinstance(output_df, pd.DataFrame)
 
         assert output_df.columns.tolist() == ["Value"]
-        assert output_df.index.tolist() == ["H", "He"]
+        assert output_df.index.tolist() == ["H", "He", "Li"]
 
-        assert output_df.loc["H", "Value"] == 1.0
-        assert output_df.loc["He", "Value"] == [2.0, 4.0]
+        assert_allclose(output_df.loc["H", "Value"], [1.0])
+        assert_allclose(output_df.loc["He", "Value"], [2.0, 4.0])
+        assert_allclose(output_df.loc["Li", "Value"], [6.0, 8.0])
 
         assert output_df.attrs["vmin"] == 1.0
-        assert output_df.attrs["vmax"] == 4.0
+        assert output_df.attrs["vmax"] == 8.0
 
     def test_with_pd_dataframe(self) -> None:
         input_df: pd.DataFrame = pd.DataFrame(
