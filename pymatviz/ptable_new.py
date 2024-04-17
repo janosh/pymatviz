@@ -82,7 +82,9 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
     # Get and write vmin/vmax into metadata
-    all_values: list = [val if isinstance(val, list) else [val] for val in data_df["Value"]]
+    all_values: list = [
+        val if isinstance(val, list) else [val] for val in data_df["Value"]
+    ]
     flattened_values: list[float] = [item for sublist in all_values for item in sublist]
 
     data_df.attrs["vmin"] = min(flattened_values)
@@ -172,7 +174,7 @@ class PTableProjector:
             vmin=_data.attrs["vmin"], vmax=_data.attrs["vmax"]
         )
 
-        _data['Value'] = _data['Value'].map(self._norm)
+        _data["Value"] = _data["Value"].map(self._norm)
 
         self._data = _data
 
