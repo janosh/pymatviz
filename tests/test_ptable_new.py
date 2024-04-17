@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 import pandas as pd
 
 from pymatviz.ptable_new import _data_preprocessor
@@ -31,15 +33,23 @@ class TestDataPreprocessor:
         self._validate_output_df(output_df)
 
     def test_with_pd_series(self):
-        pass
+        input_series = pd.Series(self.test_dict)
+
+        output_df = _data_preprocessor(input_series)
+
+        self._validate_output_df(output_df)
 
     def test_with_dict(self):
-        output_df = _data_preprocessor(self.test_dict)
+        input_dict = self.test_dict
+
+        output_df = _data_preprocessor(input_dict)
 
         self._validate_output_df(output_df)
 
     def test_unsupported_type(self):
-        pass
+        with pytest.raises(TypeError, match="Unsupported data type"):
+            invalid_data = [0, 1, 2]
+            _data_preprocessor(invalid_data)
 
     def test_missing_imputate(self):
         pass

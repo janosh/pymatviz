@@ -42,13 +42,15 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
     Example:
         >>> data: dict = {"H": 1.0, "He": [2.0, 4.0]}
+
         OR
-        >>> data: pd.DataFrame = pd.DataFrame({
-            "Element": ["H", "He"], "Value": [1.0, [2.0, 4.0]]
-        })
+        >>> data: pd.DataFrame = pd.DataFrame(
+            {"H": 1.0, "He": [2.0, 4.0]}.items(),
+            columns=["Element", "Value"]
+            ).set_index("Element")
+
         OR
         >>> data: pd.Series = pd.Series({"H": 1.0, "He": [2.0, 4.0]})
-        TODO: wrong example: Series need same length values
 
         >>> preprocess_data(data)
 
@@ -65,6 +67,7 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
     elif isinstance(data, pd.Series):
         data_df = data.to_frame(name="Value")
+        data_df.index.name = "Element"
 
     elif isinstance(data, dict):
         data_df = pd.DataFrame(data.items(), columns=["Element", "Value"]).set_index(
