@@ -188,7 +188,7 @@ class PTableProjector:
 
             # Call child plotter
             if plot_data is not None:
-                child_plotter(ax, **child_args)
+                child_plotter(ax, plot_data, **child_args)
 
             # Hide axis
             if hide_axis:
@@ -256,17 +256,22 @@ if __name__ == "__main__":
 
     def plot_split_rectangle(
         ax: plt.axes,
-        colors: list[tuple[float, float, float]],
+        data: SupportedValueType,
+        cmap: Colormap,
         start_angle: float,
     ) -> None:
-        """Helper function to plot an evenly-split rectangle.
+        """Child plotter for an evenly-split rectangle.
 
         Args:
             ax (plt.axes): The axis to plot on.
-            colors (list): A list of colors to fill each split of the rectangle.
+            data (SupportedValueType): The value correspond to the child plotter.
+            cmap (Colormap): Colormap used for value mapping.
             start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
         """
+        # Map values to colors
+        colors = [cmap(value) for value in data]
+
         # Plot the pie chart
         ax.pie(
             np.ones(len(colors)),
@@ -300,11 +305,11 @@ if __name__ == "__main__":
     )
 
     # Call child plotter
-    child_args = {"start_angle": 135}
-
-    # TODO: need "colors" mapper
+    child_args = {"start_angle": 135, "cmap": plotter.cmap}
 
     plotter.add_child_plots(plot_split_rectangle, child_args)
 
     plotter.add_ele_symbols()
     plotter.add_colorbar(title="Test Colorbar")
+
+    plt.show()
