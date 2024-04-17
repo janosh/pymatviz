@@ -159,6 +159,11 @@ class PTableProjector:
         """
         return self._data
 
+    @property
+    def norm(self) -> Normalize:
+        """Data min-max normalizer."""
+        return self._norm
+
     @data.setter
     def data(self, data: SupportedDataType) -> None:
         """Set and preprocess the data.
@@ -167,16 +172,12 @@ class PTableProjector:
             data (SupportedDataType): The data to be used.
         """
         # Preprocess data
-        _data: pd.DataFrame = _data_preprocessor(data)
+        self._data: pd.DataFrame = _data_preprocessor(data)
 
         # Normalize data for colorbar
         self._norm: Normalize = Normalize(
-            vmin=_data.attrs["vmin"], vmax=_data.attrs["vmax"]
+            vmin=self._data.attrs["vmin"], vmax=self._data.attrs["vmax"]
         )
-
-        _data["Value"] = _data["Value"].map(self._norm)
-
-        self._data = _data
 
     def set_style(self) -> None:
         """Set global styles."""
@@ -276,6 +277,7 @@ class ChildPlotters:
     def split_rectangle(
         ax: plt.axes,
         data: SupportedValueType,  # unify to single type
+        norm: Normalize,
         cmap: Colormap,
         start_angle: float,
     ) -> None:
@@ -287,15 +289,16 @@ class ChildPlotters:
         Args:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The value correspond to the child plotter.
+            norm (Normalize): Normalizer for data-color mapping.
             cmap (Colormap): Colormap used for value mapping.
             start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
         """
         # Map values to colors
         if isinstance(data, float):
-            colors = [cmap(data)]
+            colors = [cmap(norm(data))]
         elif isinstance(data, (Sequence, np.ndarray)):
-            colors = [cmap(value) for value in data]
+            colors = [cmap(norm(value)) for value in data]
         else:
             raise TypeError("Unsupported data type.")
 
@@ -356,7 +359,7 @@ if __name__ == "__main__":
     )
 
     # Call child plotter
-    child_args = {"start_angle": 135, "cmap": plotter.cmap}
+    child_args = {"start_angle": 135, "cmap": plotter.cmap, "norm": plotter.norm}
 
     plotter.add_child_plots(ChildPlotters.split_rectangle, child_args)
 
