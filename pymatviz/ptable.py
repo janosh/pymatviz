@@ -211,9 +211,16 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     flattened_values: list[float] = [
         item for sublist in data_df["Value"] for item in sublist
     ]
+    try:
+        data_df.attrs["vmin"] = min(flattened_values)
+        data_df.attrs["vmax"] = max(flattened_values)
 
-    data_df.attrs["vmin"] = min(flattened_values)
-    data_df.attrs["vmax"] = max(flattened_values)
+    except ValueError:
+        # Let it pass to test plotter
+        data_df.attrs["vmin"] = 0
+        data_df.attrs["vmax"] = 1
+        # DEBUG: method failed for nested arrays (line plotter)
+        warnings.warn("Normalize failed.")
 
     return data_df
 
@@ -1026,6 +1033,7 @@ def ptable_scatters(
     # ax_kwds: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
 ) -> plt.Figure:
+    """Make scatter plots for each element, nested inside a periodic table."""
     plotter = PTableProjector(
         colormap=colormap,
         data=data,
@@ -1058,24 +1066,41 @@ def ptable_lines(
     plot_kwds: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
+    child_args: dict[str, Any] | None = None,
     # ax_kwds: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
 ) -> plt.Figure:
+    """Line plots for each element, nested inside a periodic table.
+
+    TODO: finish docstring
+    """
+    # Re-initialize kwds as empty dict if None
+    child_args = child_args or {}
+    plot_kwds = plot_kwds or {}
+    symbol_kwargs = symbol_kwargs or {}
+
+    # Initialize periodic table plotter
     plotter = PTableProjector(
-        colormap=colormap,
         data=data,
+        colormap=None,
         # **plot_kwds,  # TODO
     )
 
     # Call child plotter: line
-    # child_args = {
-
-    # }
-
     plotter.add_child_plots(
         ChildPlotters.line,
-        # child_args=child_args,
+        child_args=child_args,
         on_empty=on_empty,
+    )
+
+    # Add element symbols
+    plotter.add_ele_symbols(
+        text=symbol_text,
+        pos=symbol_pos,
+        kwargs=symbol_kwargs,
     )
 
     return plotter.fig
@@ -1149,8 +1174,8 @@ def ptable_splits(
 
     # Initialize periodic table plotter
     plotter = PTableProjector(
-        colormap=colormap,
         data=data,
+        colormap=colormap,
         **plot_kwds,
     )
 
@@ -1190,17 +1215,18 @@ class PTableProjector:
 
     def __init__(
         self,
-        colormap: str | Colormap,
         data: SupportedDataType,
+        colormap: str | Colormap | None,
         **kwargs: Any,
     ) -> None:
         """Initialize a ptable projector.
 
-        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
+        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods),
+        and axes would be turned off by default.
 
         Args:
-            colormap (str | Colormap): The colormap to use.
             data (SupportedDataType): The data to be visualized.
+            colormap (str | Colormap | None): The colormap to use.
             **kwargs (Any): Additional keyword arguments to
                 pass to the plt.subplots function call.
         """
@@ -1224,7 +1250,7 @@ class PTableProjector:
             ax.axis("off")
 
     @property
-    def cmap(self) -> Colormap:
+    def cmap(self) -> Colormap | None:
         """The global Colormap.
 
         Returns:
@@ -1233,11 +1259,15 @@ class PTableProjector:
         return self._cmap
 
     @cmap.setter
-    def cmap(self, colormap: str | Colormap) -> None:
+    def cmap(self, colormap: str | Colormap | None) -> None:
         """Args:
-        colormap (str | Colormap): The colormap to use.
+        colormap (str | Colormap | None): The colormap to use.
         """
-        self._cmap = plt.get_cmap(colormap)
+        if colormap is None:
+            self._cmap = None
+
+        else:
+            self._cmap = plt.get_cmap(colormap)
 
     @property
     def data(self) -> pd.DataFrame:
@@ -1331,6 +1361,10 @@ class PTableProjector:
         # Update colorbar args
         cbar_kwds = {"orientation": "horizontal"} | (cbar_kwds or {})
 
+        # Check colormap
+        if self.cmap is None:
+            raise ValueError("Cannot add colorbar without colormap.")
+
         # Add colorbar
         cbar_ax = self.fig.add_axes(coords)
 
@@ -1391,7 +1425,7 @@ class ChildPlotters:
             wedgeprops=dict(clip_on=True),
         )
 
-        # Crop a central rectangle from the pie chart
+        # Crop the central rectangle from the pie chart
         rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
         ax.set_clip_path(rect)
 
@@ -1424,7 +1458,13 @@ class ChildPlotters:
             data (SupportedValueType): The values for to
                 the child plotter.
         """
-        ax.plot(data)
+        # Add line
+        # TODO: pass args/kwargs
+        ax.plot(data[0], data[1])
+
+        # Hide the right and top spines
+        ax.axis("on")  # turned off by default
+        ax.spines[["right", "top"]].set_visible(False)
 
     @staticmethod
     def hist(
