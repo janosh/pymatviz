@@ -1003,10 +1003,6 @@ def ptable_lines(
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
     # ax_kwds: dict[str, Any] | None = None,
-    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-    cbar_title: str = "Values",
-    cbar_title_kwds: dict[str, Any] | None = None,
-    cbar_kwds: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
 ) -> plt.Figure:
     plotter = PTableProjector(
@@ -1026,14 +1022,6 @@ def ptable_lines(
         on_empty=on_empty,
     )
 
-    # Add colorbar
-    plotter.add_colorbar(
-        title=cbar_title,
-        coords=cbar_coords,
-        cbar_kwds=cbar_kwds,
-        title_kwds=cbar_title_kwds,
-    )
-
     return plotter.fig
 
 
@@ -1044,7 +1032,7 @@ def ptable_splits(
     | None = None,
     colormap: str | None = None,
     start_angle: float = 135,
-    # ax_kwds: dict[str, Any] | None = None,
+    ax_kwds: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
@@ -1054,13 +1042,60 @@ def ptable_splits(
     cbar_kwds: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
 ) -> plt.Figure:
-    """Plot
-    TODO: add docstring
+    """Plot evenly-split tiles, nested inside a periodic table.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+            Map from element symbols to plot data. E.g. if dict,
+            {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
+            be plotted on the lower-left corner and the 2nd on the upper-right.
+            If pd.Series, index is element symbols and values lists.
+            If pd.DataFrame, column names are element symbols,
+            plots are created from each column.
+        colormap (str): Matplotlib colormap name to use.
+        start_angle (float): The starting angle for the splits in degrees,
+                and the split proceeds counter-clockwise (0 refers to
+                the x-axis). Defaults to 135 degrees.
+        ax_kwds (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+        symbol_pos (tuple[float, float]): Position of element symbols
+            relative to the lower left corner of each tile.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
+        cbar_coords (tuple[float, float, float, float]): Colorbar
+            position and size: [x, y, width, height] anchored at lower left
+            corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
+        cbar_title (str): Colorbar title. Defaults to "Values".
+        cbar_title_kwds (dict): Keyword arguments passed to
+            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
+        cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+
+    Notes:
+        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
+
+    Returns:
+        plt.Figure: periodic table with a subplot in each element tile.
     """
+    # Re-initialize kwds as empty dict if None
+    plot_kwds = plot_kwds or {}
+    ax_kwds = ax_kwds or {}  # TODO: not used
+    symbol_kwargs = symbol_kwargs or {}
+    cbar_title_kwds = cbar_title_kwds or {}
+    cbar_kwds = cbar_kwds or {}
+
+    # Initialize periodic table plotter
     plotter = PTableProjector(
         colormap=colormap,
         data=data,
-        # **plot_kwds,  # TODO
+        **plot_kwds,
     )
 
     # Call child plotter: evenly split rectangle
@@ -1077,7 +1112,11 @@ def ptable_splits(
     )
 
     # Add element symbols
-    plotter.add_ele_symbols(text=symbol_text, pos=symbol_pos, kwargs=symbol_kwargs)
+    plotter.add_ele_symbols(
+        text=symbol_text,
+        pos=symbol_pos,
+        kwargs=symbol_kwargs,
+    )
 
     # Add colorbar
     plotter.add_colorbar(

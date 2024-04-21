@@ -279,9 +279,10 @@ class ChildPlotters:
         cmap: Colormap,
         start_angle: float,
     ) -> None:
-        """A basic rectangle-shaped heatmap, could also be evenly
-        split into arbitrary parts, depending on the length of
-        the data (could mix and match).
+        """Rectangle heatmap plotter, could be evenly split.
+
+        Could be evenly split, depending on the
+        length of the data (could mix and match).
 
         Args:
             ax (plt.axes): The axis to plot on.
@@ -298,7 +299,7 @@ class ChildPlotters:
         else:
             raise TypeError("Unsupported data type.")
 
-        # Plot the pie chart
+        # Add the pie chart
         ax.pie(
             np.ones(len(colors)),
             colors=colors,
@@ -318,18 +319,39 @@ class ChildPlotters:
         ax: plt.axes,
         data: SupportedValueType,
     ) -> None:
-        """Scatter plotter."""
+        """Scatter plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+        """
+        ax.scatter(data)
 
     @staticmethod
     def line(
         ax: plt.axes,
         data: SupportedValueType,
     ) -> None:
-        """Line plotter."""
+        """Line plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+        """
+        ax.plot(data)
 
     @staticmethod
-    def hists(
+    def histogram(
         ax: plt.axes,
         data: SupportedValueType,
     ) -> None:
-        """Histograms plotter."""
+        """Histogram plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+        """
+        ax.hist(data)

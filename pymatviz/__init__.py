@@ -41,7 +41,8 @@ from pymatviz.ptable import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
-    ptable_plots,
+    ptable_lines,
+    ptable_scatters,
     ptable_splits,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
