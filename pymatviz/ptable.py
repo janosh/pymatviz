@@ -44,72 +44,6 @@ CountMode = Literal[
 ]
 
 
-def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
-    """Preprocess input data for ptable plotters, including:
-        - Convert all data types to pd.DataFrame.
-        - Impute missing values.
-        - Handle anomalies such as NaN, infinity.
-        - Write vmin/vmax as metadata into the DataFrame.
-
-    TODO: add and test imputation and anomaly handling
-
-    Returns:
-        pd.DataFrame: The preprocessed DataFrame with element names
-            as index and values as columns.
-
-    Example:
-        >>> data: dict = {"H": 1.0, "He": [2.0, 4.0]}
-
-        OR
-        >>> data: pd.DataFrame = pd.DataFrame(
-            {"H": 1.0, "He": [2.0, 4.0]}.items(),
-            columns=["Element", "Value"]
-            ).set_index("Element")
-
-        OR
-        >>> data: pd.Series = pd.Series({"H": 1.0, "He": [2.0, 4.0]})
-
-        >>> preprocess_data(data)
-
-             Element   Value
-        0    H         [1.0, ]
-        1    He        [2.0, 4.0]
-
-        Metadata:
-            vmin: 1.0
-            vmax: 4.0
-    """
-    if isinstance(data, pd.DataFrame):
-        data_df = data
-
-    elif isinstance(data, pd.Series):
-        data_df = data.to_frame(name="Value")
-        data_df.index.name = "Element"
-
-    elif isinstance(data, dict):
-        data_df = pd.DataFrame(data.items(), columns=["Element", "Value"]).set_index(
-            "Element"
-        )
-
-    else:
-        raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
-
-    # Convert all values to np.array
-    data_df["Value"] = data_df["Value"].map(
-        lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
-    )
-
-    # Get and write vmin/vmax into metadata
-    flattened_values: list[float] = [
-        item for sublist in data_df["Value"] for item in sublist
-    ]
-
-    data_df.attrs["vmin"] = min(flattened_values)
-    data_df.attrs["vmax"] = max(flattened_values)
-
-    return data_df
-
-
 def count_elements(
     values: ElemValues,
     count_mode: CountMode = "composition",
@@ -216,6 +150,72 @@ def count_elements(
             ) from exc
 
     return srs
+
+
+def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
+    """Preprocess input data for ptable plotters, including:
+        - Convert all data types to pd.DataFrame.
+        - Impute missing values.
+        - Handle anomalies such as NaN, infinity.
+        - Write vmin/vmax as metadata into the DataFrame.
+
+    TODO: add and test imputation and anomaly handling
+
+    Returns:
+        pd.DataFrame: The preprocessed DataFrame with element names
+            as index and values as columns.
+
+    Example:
+        >>> data: dict = {"H": 1.0, "He": [2.0, 4.0]}
+
+        OR
+        >>> data: pd.DataFrame = pd.DataFrame(
+            {"H": 1.0, "He": [2.0, 4.0]}.items(),
+            columns=["Element", "Value"]
+            ).set_index("Element")
+
+        OR
+        >>> data: pd.Series = pd.Series({"H": 1.0, "He": [2.0, 4.0]})
+
+        >>> preprocess_data(data)
+
+             Element   Value
+        0    H         [1.0, ]
+        1    He        [2.0, 4.0]
+
+        Metadata:
+            vmin: 1.0
+            vmax: 4.0
+    """
+    if isinstance(data, pd.DataFrame):
+        data_df = data
+
+    elif isinstance(data, pd.Series):
+        data_df = data.to_frame(name="Value")
+        data_df.index.name = "Element"
+
+    elif isinstance(data, dict):
+        data_df = pd.DataFrame(data.items(), columns=["Element", "Value"]).set_index(
+            "Element"
+        )
+
+    else:
+        raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
+
+    # Convert all values to np.array
+    data_df["Value"] = data_df["Value"].map(
+        lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
+    )
+
+    # Get and write vmin/vmax into metadata
+    flattened_values: list[float] = [
+        item for sublist in data_df["Value"] for item in sublist
+    ]
+
+    data_df.attrs["vmin"] = min(flattened_values)
+    data_df.attrs["vmax"] = max(flattened_values)
+
+    return data_df
 
 
 def ptable_heatmap(
