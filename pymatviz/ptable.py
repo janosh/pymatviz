@@ -21,6 +21,7 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
+from pymatviz.ptable_new import ChildPlotters, PTableProjector
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
@@ -1158,3 +1159,54 @@ def ptable_plots(
         cbar_ax.set_title(**cbar_title_kwds)
 
     return fig
+
+
+def ptable_splits(
+    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    plot_kwds: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
+    colormap: str | None = None,
+    start_angle: float = 135,
+    # ax_kwds: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.5),
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+    cbar_title: str = "Values",
+    cbar_title_kwds: dict[str, Any] | None = None,
+    cbar_kwds: dict[str, Any] | None = None,
+    on_empty: Literal["hide", "show"] = "hide",
+    **kwargs: Any,
+) -> plt.Figure:
+    plotter = PTableProjector(
+        colormap=colormap,
+        data=data,
+        # kwargs=plot_kwds,
+    )
+
+    # Call child plotter
+    child_args = {
+        "start_angle": start_angle,
+        "cmap": plotter.cmap,
+        "norm": plotter.norm,
+    }
+
+    plotter.add_child_plots(
+        ChildPlotters.rectangle,
+        child_args=child_args,
+        on_empty=on_empty,
+    )
+
+    # Add element symbols
+    plotter.add_ele_symbols(text=symbol_text, pos=symbol_pos, kwargs=symbol_kwargs)
+
+    # Add colorbar
+    plotter.add_colorbar(
+        title=cbar_title,
+        coords=cbar_coords,
+        cbar_kwds=cbar_kwds,
+        title_kwds=cbar_title_kwds,
+    )
+
+    return plotter.fig

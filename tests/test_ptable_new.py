@@ -27,7 +27,7 @@ class TestDataPreprocessor:
         assert output_df.attrs["vmin"] == 1.0
         assert output_df.attrs["vmax"] == 8.0
 
-    def test_with_pd_dataframe(self) -> None:
+    def test_from_pd_dataframe(self) -> None:
         input_df: pd.DataFrame = pd.DataFrame(
             self.test_dict.items(), columns=["Element", "Value"]
         ).set_index("Element")
@@ -36,14 +36,14 @@ class TestDataPreprocessor:
 
         self._validate_output_df(output_df)
 
-    def test_with_pd_series(self) -> None:
+    def test_from_pd_series(self) -> None:
         input_series: pd.Series = pd.Series(self.test_dict)
 
         output_df = _data_preprocessor(input_series)
 
         self._validate_output_df(output_df)
 
-    def test_with_dict(self) -> None:
+    def test_from_dict(self) -> None:
         input_dict = self.test_dict
 
         output_df = _data_preprocessor(input_dict)

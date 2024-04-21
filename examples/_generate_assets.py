@@ -206,7 +206,7 @@ data_dict = {
 }
 
 fig = ptable_splits(
-    data_dict,
+    data=data_dict,
     colormap="coolwarm",
     start_angle=135,
     cbar_title="Periodic Table Evenly-Split Tiles Plots",

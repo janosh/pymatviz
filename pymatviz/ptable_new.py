@@ -25,8 +25,11 @@ if TYPE_CHECKING:
 
 # Data types supported by ptable plotters
 # TODO: clarify data type after preprocessing
-SupportedValueType = Union[float, Sequence[float], np.ndarray]
-SupportedDataType = Union[dict[str, SupportedValueType], pd.DataFrame, pd.Series]
+SupportedValueType = Union[Sequence[float], np.ndarray]
+
+SupportedDataType = Union[
+    dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
+]
 
 
 def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
@@ -269,28 +272,20 @@ class ChildPlotters:
     """
 
     @staticmethod
-    def heatmap(
+    def rectangle(
         ax: plt.axes,
         data: SupportedValueType,
-    ) -> None:
-        """The basic heatmap plotter."""
-
-    @staticmethod
-    def split_rectangle(
-        ax: plt.axes,
-        data: Sequence[float] | np.ndarray,
         norm: Normalize,
         cmap: Colormap,
         start_angle: float,
     ) -> None:
-        """An evenly-split rectangle.
-
-        Could evenly split an rectangle to arbitrary parts,
-        depending on the length of the data (could mix and match).
+        """A basic rectangle-shaped heatmap, could also be evenly
+        split into arbitrary parts, depending on the length of
+        the data (could mix and match).
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (Sequence | np.ndarray): The values for to
+            data (SupportedValueType): The values for to
                 the child plotter.
             norm (Normalize): Normalizer for data-color mapping.
             cmap (Colormap): Colormap used for value mapping.
@@ -338,38 +333,3 @@ class ChildPlotters:
         data: SupportedValueType,
     ) -> None:
         """Histograms plotter."""
-
-
-# Test area
-if __name__ == "__main__":
-    # Generate test data
-    import random
-
-    test_data = {
-        elem.symbol: [
-            random.randint(0, 50),
-            random.randint(50, 100),
-        ]
-        for elem in Element
-    }
-
-    # Test projector
-    plotter = PTableProjector(
-        colormap="coolwarm",
-        data=test_data,
-    )
-
-    # Call child plotter
-    child_args = {"start_angle": 135, "cmap": plotter.cmap, "norm": plotter.norm}
-
-    plotter.add_child_plots(ChildPlotters.split_rectangle, child_args)
-
-    # Add element symbols and colorbar
-    plotter.add_ele_symbols()
-    plotter.add_colorbar(title="Test Colorbar")
-
-    # plt.show()
-
-    from pymatviz.io import save_and_compress_svg
-
-    save_and_compress_svg(plotter.fig, "ptable-splits")
