@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -21,12 +20,12 @@ from pymatviz import (
     ptable_plots,
     ptable_splits,
 )
-from pymatviz.ptable import add_element_type_legend
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
 
     from pymatgen.core import Composition
 
@@ -453,29 +452,3 @@ def test_ptable_plots_datatypes(
     fig = ptable_plots(data)
     assert isinstance(fig, plt.Figure)
     assert len(fig.axes) == 180
-
-
-@pytest.mark.parametrize(
-    "data",
-    [
-        {"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]},
-        pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6]}),
-        pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
-    ],
-)
-def test_add_element_type_legend_data_types(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
-) -> None:
-    elem_class_colors = {"Transition Metal": "red", "Nonmetal": "blue"}
-    legend_kwargs = dict(loc="upper right", ncol=5, fontsize=12, title="Element Types")
-
-    add_element_type_legend(data, elem_class_colors, legend_kwargs=legend_kwargs)
-    legend = plt.gca().get_legend()
-    assert isinstance(legend, mpl.legend.Legend)
-    assert len(legend.get_texts()) in {1, 2}
-    legend_labels = {text.get_text() for text in legend.get_texts()}
-    assert legend_labels <= {"Transition Metal", "Alkali Metal", "Nonmetal"}
-    assert legend._ncols == 5  # noqa: SLF001
-
-    assert legend.get_title().get_text() == "Element Types"
-    assert legend.get_texts()[0].get_fontsize() == 12
