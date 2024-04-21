@@ -8,7 +8,7 @@ import math
 import warnings
 from collections.abc import Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Final, Literal, get_args
+from typing import TYPE_CHECKING, Any, Callable, Final, Literal, Union, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +21,6 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
-from pymatviz.ptable_new import ChildPlotters, PTableProjector
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
@@ -31,6 +30,14 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
 
     ElemValues: TypeAlias = dict[str | int, float] | pd.Series | Sequence[str]
+
+# Data types supported by ptable plotters
+# TODO: clarify data type after preprocessing
+SupportedValueType = Union[Sequence[float], np.ndarray]
+
+SupportedDataType = Union[
+    dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
+]
 
 CountMode = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
@@ -52,6 +59,72 @@ ELEM_CLASS_COLORS: Final = {
     "Alkaline Metal": "magenta",
     "Transactinide": "olive",
 }
+
+
+def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
+    """Preprocess input data for ptable plotters, including:
+        - Convert all data types to pd.DataFrame.
+        - Impute missing values.
+        - Handle anomalies such as NaN, infinity.
+        - Write vmin/vmax as metadata into the DataFrame.
+
+    TODO: add and test imputation and anomaly handling
+
+    Returns:
+        pd.DataFrame: The preprocessed DataFrame with element names
+            as index and values as columns.
+
+    Example:
+        >>> data: dict = {"H": 1.0, "He": [2.0, 4.0]}
+
+        OR
+        >>> data: pd.DataFrame = pd.DataFrame(
+            {"H": 1.0, "He": [2.0, 4.0]}.items(),
+            columns=["Element", "Value"]
+            ).set_index("Element")
+
+        OR
+        >>> data: pd.Series = pd.Series({"H": 1.0, "He": [2.0, 4.0]})
+
+        >>> preprocess_data(data)
+
+             Element   Value
+        0    H         [1.0, ]
+        1    He        [2.0, 4.0]
+
+        Metadata:
+            vmin: 1.0
+            vmax: 4.0
+    """
+    if isinstance(data, pd.DataFrame):
+        data_df = data
+
+    elif isinstance(data, pd.Series):
+        data_df = data.to_frame(name="Value")
+        data_df.index.name = "Element"
+
+    elif isinstance(data, dict):
+        data_df = pd.DataFrame(data.items(), columns=["Element", "Value"]).set_index(
+            "Element"
+        )
+
+    else:
+        raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
+
+    # Convert all values to np.array
+    data_df["Value"] = data_df["Value"].map(
+        lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
+    )
+
+    # Get and write vmin/vmax into metadata
+    flattened_values: list[float] = [
+        item for sublist in data_df["Value"] for item in sublist
+    ]
+
+    data_df.attrs["vmin"] = min(flattened_values)
+    data_df.attrs["vmax"] = max(flattened_values)
+
+    return data_df
 
 
 def count_elements(
@@ -1127,3 +1200,259 @@ def ptable_splits(
     )
 
     return plotter.fig
+
+
+class PTableProjector:
+    """Project (nest) a custom plot into a periodic table."""
+
+    def __init__(
+        self,
+        colormap: str | Colormap,
+        data: SupportedDataType,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize a ptable projector.
+
+        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
+
+        Args:
+            colormap (str | Colormap): The colormap to use.
+            data (SupportedDataType): The data to be visualized.
+            **kwargs (Any): Additional keyword arguments to
+                pass to the plt.subplots function call.
+        """
+        # Get colormap
+        self.cmap: Colormap = colormap
+
+        # Preprocess data
+        self.data: pd.DataFrame = data
+
+        # Initialize periodic table canvas
+        n_periods = df_ptable.row.max()
+        n_groups = df_ptable.column.max()
+
+        # Set figure size
+        kwargs.setdefault("figsize", (0.75 * n_groups, 0.75 * n_periods))
+
+        self.fig, self.axes = plt.subplots(n_periods, n_groups, **kwargs)
+
+        # Turn off all axes
+        for ax in self.axes.flat:
+            ax.axis("off")
+
+    @property
+    def cmap(self) -> Colormap:
+        """The global Colormap.
+
+        Returns:
+            Colormap: The Colormap used.
+        """
+        return self._cmap
+
+    @cmap.setter
+    def cmap(self, colormap: str | Colormap) -> None:
+        """Args:
+        colormap (str | Colormap): The colormap to use.
+        """
+        self._cmap = plt.get_cmap(colormap)
+
+    @property
+    def data(self) -> pd.DataFrame:
+        """The preprocessed data.
+
+        Returns:
+            pd.DataFrame: The preprocessed data.
+        """
+        return self._data
+
+    @property
+    def norm(self) -> Normalize:
+        """Data min-max normalizer."""
+        return self._norm
+
+    @data.setter
+    def data(self, data: SupportedDataType) -> None:
+        """Set and preprocess the data, also set normalizer.
+
+        Parameters:
+            data (SupportedDataType): The data to be used.
+        """
+        # Preprocess data
+        self._data: pd.DataFrame = _data_preprocessor(data)
+
+        # Normalize data for colorbar
+        self._norm: Normalize = Normalize(
+            vmin=self._data.attrs["vmin"], vmax=self._data.attrs["vmax"]
+        )
+
+    def set_style(self) -> None:
+        """Set global styles."""
+
+    def add_child_plots(
+        self,
+        child_plotter: Callable[[plt.axes, Any], None],
+        child_args: dict[str, Any],
+        on_empty: Literal["hide", "show"] = "hide",
+    ) -> None:
+        """Add selected custom child plots."""
+        for element in Element:
+            # Get axis index by element symbol
+            symbol: str = element.symbol
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            # Get and check tile data
+            plot_data: np.ndarray | Sequence[float] = self.data.loc[symbol, "Value"]
+            if len(plot_data) == 0 and on_empty == "hide":
+                continue
+
+            # Call child plotter
+            if len(plot_data) > 0:
+                child_plotter(ax, plot_data, **child_args)
+
+    def add_ele_symbols(
+        self,
+        text: Callable[[Element], str] = lambda elem: elem.symbol,
+        pos: tuple[float, float] = (0.5, 0.5),
+        kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Add element symbols for each tile."""
+        # Update symbol args
+        kwargs = kwargs or {}
+        kwargs.setdefault("fontsize", 18)
+
+        # Add symbol for each element
+        for element in Element:
+            # Get axis index by element symbol
+            symbol: str = element.symbol
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            ax.text(
+                *pos,
+                text(element) if callable(text) else text.format(elem=element),
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                **kwargs,
+            )
+
+    def add_colorbar(
+        self,
+        title: str,
+        coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+        cbar_kwds: dict[str, Any] | None = None,
+        title_kwds: dict[str, Any] | None = None,
+    ) -> None:
+        """Add a global colorbar."""
+        # Update colorbar args
+        cbar_kwds = {"orientation": "horizontal"} | (cbar_kwds or {})
+
+        # Add colorbar
+        cbar_ax = self.fig.add_axes(coords)
+
+        self.fig.colorbar(
+            plt.cm.ScalarMappable(norm=self._norm, cmap=self.cmap),
+            cax=cbar_ax,
+            **cbar_kwds,
+        )
+
+        # Set colorbar title
+        title_kwds = title_kwds or {}
+        title_kwds.setdefault("fontsize", 12)
+        title_kwds.setdefault("pad", 10)
+        title_kwds["label"] = title
+
+        cbar_ax.set_title(**title_kwds)
+
+
+class ChildPlotters:
+    """Collect some pre-defined child plotters.
+
+    TODO: add instruction for adding custom plotters.
+    """
+
+    @staticmethod
+    def rectangle(
+        ax: plt.axes,
+        data: SupportedValueType,
+        norm: Normalize,
+        cmap: Colormap,
+        start_angle: float,
+    ) -> None:
+        """Rectangle heatmap plotter, could be evenly split.
+
+        Could be evenly split, depending on the
+        length of the data (could mix and match).
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+            norm (Normalize): Normalizer for data-color mapping.
+            cmap (Colormap): Colormap used for value mapping.
+            start_angle (float): The starting angle for the splits in degrees,
+                and the split proceeds counter-clockwise (0 refers to the x-axis).
+        """
+        # Map values to colors
+        if isinstance(data, (Sequence, np.ndarray)):
+            colors = [cmap(norm(value)) for value in data]
+        else:
+            raise TypeError("Unsupported data type.")
+
+        # Add the pie chart
+        ax.pie(
+            np.ones(len(colors)),
+            colors=colors,
+            startangle=start_angle,
+            wedgeprops=dict(clip_on=True),
+        )
+
+        # Crop a central rectangle from the pie chart
+        rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
+        ax.set_clip_path(rect)
+
+        ax.set_xlim(-0.5, 0.5)
+        ax.set_ylim(-0.5, 0.5)
+
+    @staticmethod
+    def scatter(
+        ax: plt.axes,
+        data: SupportedValueType,
+    ) -> None:
+        """Scatter plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+        """
+        ax.scatter(data)
+
+    @staticmethod
+    def line(
+        ax: plt.axes,
+        data: SupportedValueType,
+    ) -> None:
+        """Line plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+        """
+        ax.plot(data)
+
+    @staticmethod
+    def hist(
+        ax: plt.axes,
+        data: SupportedValueType,
+    ) -> None:
+        """Histogram plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+        """
+        ax.hist(data)

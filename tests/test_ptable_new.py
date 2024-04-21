@@ -1,3 +1,5 @@
+# TODO: merge this into `test_ptable`
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -7,7 +9,7 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from pymatviz.ptable_new import _data_preprocessor
+from pymatviz.ptable import _data_preprocessor
 
 
 class TestDataPreprocessor:

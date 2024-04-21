@@ -36,6 +36,8 @@ from pymatviz.phonons import (
     plot_phonon_dos,
 )
 from pymatviz.ptable import (
+    ChildPlotters,
+    PTableProjector,
     count_elements,
     ptable_heatmap,
     ptable_heatmap_plotly,
