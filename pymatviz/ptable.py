@@ -8,7 +8,7 @@ import math
 import warnings
 from collections.abc import Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Final, Literal, Union, get_args
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -42,23 +42,6 @@ SupportedDataType = Union[
 CountMode = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
 ]
-ELEM_CLASS_COLORS: Final = {
-    "Diatomic Nonmetal": "green",
-    "Noble Gas": "purple",
-    "Alkali Metal": "red",
-    "Alkaline Earth Metal": "orange",
-    "Metalloid": "darkgreen",
-    "Polyatomic Nonmetal": "teal",
-    "Transition Metal": "blue",
-    "Post Transition Metal": "cyan",
-    "Lanthanide": "brown",
-    "Actinide": "gray",
-    "Nonmetal": "green",
-    "Halogen": "teal",
-    "Metal": "lightblue",
-    "Alkaline Metal": "magenta",
-    "Transactinide": "olive",
-}
 
 
 def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
