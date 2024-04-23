@@ -1275,7 +1275,9 @@ class PTableProjector:
 
     @cmap.setter
     def cmap(self, colormap: str | Colormap | None) -> None:
-        """Args:
+        """The global colormap used.
+
+        Args:
         colormap (str | Colormap | None): The colormap to use.
         """
         if colormap is None:
@@ -1302,7 +1304,7 @@ class PTableProjector:
     def data(self, data: SupportedDataType) -> None:
         """Set and preprocess the data, also set normalizer.
 
-        Parameters:
+        Args:
             data (SupportedDataType): The data to be used.
         """
         # Preprocess data
@@ -1313,9 +1315,6 @@ class PTableProjector:
             vmin=self._data.attrs["vmin"], vmax=self._data.attrs["vmax"]
         )
 
-    def set_style(self) -> None:
-        """Set global styles."""
-
     def add_child_plots(
         self,
         child_plotter: Callable[[plt.axes, Any], None],
@@ -1323,9 +1322,13 @@ class PTableProjector:
         ax_kwargs: dict[str, Any],
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
-        """Add selected custom child plots.
+        """Add custom child plots to the periodic table grid.
 
-        TODO: add docstring (clarify ax_kwargs and child_args)
+        Args:
+            child_plotter: A callable for the child plotter.
+            child_args: Arguments to pass to the child plotter call.
+            ax_kwargs: Keyword arguments to pass to ax.set().
+            on_empty: Whether to "show" or "hide" tiles for elements without data.
         """
         for element in Element:
             # Get axis index by element symbol
@@ -1342,7 +1345,7 @@ class PTableProjector:
             if len(plot_data) > 0:
                 child_plotter(ax, plot_data, child_args)
 
-            # Pass axis args  # TODO: double check this
+            # Pass axis kwargs
             if ax_kwargs:
                 ax.set(**ax_kwargs)
 
@@ -1352,7 +1355,16 @@ class PTableProjector:
         pos: tuple[float, float] = (0.5, 0.5),
         kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """Add element symbols for each tile."""
+        """Add element symbols for each tile.
+
+        Args:
+            text: A callable or string specifying how to display the element symbol.
+                If a callable is provided, it should accept an Element object and return a string.
+                If a string is provided, it can contain a format specifier for the element symbol,
+                e.g., "{elem.symbol}".
+            pos: The position of the text relative to the axes.
+            kwargs: Additional keyword arguments to pass to the `ax.text`.
+        """
         # Update symbol args
         kwargs = kwargs or {}
         kwargs.setdefault("fontsize", 18)
@@ -1380,7 +1392,15 @@ class PTableProjector:
         cbar_kwargs: dict[str, Any] | None = None,
         title_kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """Add a global colorbar."""
+        """Add a global colorbar.
+
+        Args:
+            title: Title for the colorbar.
+            coords: Coordinates of the colorbar (left, bottom, width, height).
+                    Defaults to (0.18, 0.8, 0.42, 0.02).
+            cbar_kwargs: Additional keyword arguments to pass to fig.colorbar().
+            title_kwargs: Additional keyword arguments for the colorbar title.
+        """
         # Update colorbar args
         cbar_kwargs = {"orientation": "horizontal"} | (cbar_kwargs or {})
 
