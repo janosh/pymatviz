@@ -1026,12 +1026,12 @@ def ptable_hists(
 
 def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    child_args: dict[str, Any] | None = None,
-    ax_kwargs: dict[str, Any] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
+    child_args: dict[str, Any] | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
     """Make scatter plots for each element, nested inside a periodic table.
 
@@ -1074,12 +1074,12 @@ def ptable_scatters(
 
 def ptable_lines(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    child_args: dict[str, Any] | None = None,
-    ax_kwargs: dict[str, Any] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
+    child_args: dict[str, Any] | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
     """Line plots for each element, nested inside a periodic table.
 
@@ -1119,20 +1119,20 @@ def ptable_lines(
 
 def ptable_splits(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    plot_kwargs: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
     colormap: str | None = None,
     start_angle: float = 135,
-    ax_kwargs: dict[str, Any] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     cbar_title: str = "Values",
+    on_empty: Literal["hide", "show"] = "hide",
+    ax_kwargs: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+    plot_kwargs: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
-    on_empty: Literal["hide", "show"] = "hide",
 ) -> plt.Figure:
     """Plot evenly-split tiles, nested inside a periodic table.
 
@@ -1280,11 +1280,7 @@ class PTableProjector:
         Args:
         colormap (str | Colormap | None): The colormap to use.
         """
-        if colormap is None:
-            self._cmap = None
-
-        else:
-            self._cmap = plt.get_cmap(colormap)
+        self._cmap = None if colormap is None else plt.get_cmap(colormap)
 
     @property
     def data(self) -> pd.DataFrame:
@@ -1358,10 +1354,11 @@ class PTableProjector:
         """Add element symbols for each tile.
 
         Args:
-            text: A callable or string specifying how to display the element symbol.
-                If a callable is provided, it should accept an Element object and return a string.
-                If a string is provided, it can contain a format specifier for the element symbol,
-                e.g., "{elem.symbol}".
+            text: A callable or string specifying how to display
+                the element symbol. If a callable is provided,
+                it should accept an Element object and return a string.
+                If a string is provided, it can contain a format
+                specifier for the element symbol, e.g., "{elem.symbol}".
             pos: The position of the text relative to the axes.
             kwargs: Additional keyword arguments to pass to the `ax.text`.
         """

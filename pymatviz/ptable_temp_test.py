@@ -1,3 +1,5 @@
+"""Temporary asset generator, to be merged and removed."""
+
 # %%
 import random
 
