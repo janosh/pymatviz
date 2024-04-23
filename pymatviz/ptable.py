@@ -1472,7 +1472,7 @@ class ChildPlotters:
 
         # Adjust tick labels
         # TODO: how to achieve this from external?
-        ax.tick_params(axis='both', which='major', labelsize=8)
+        ax.tick_params(axis="both", which="major", labelsize=8)
 
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
@@ -1496,7 +1496,7 @@ class ChildPlotters:
 
         # Adjust tick labels
         # TODO: how to achieve this from external?
-        ax.tick_params(axis='both', which='major', labelsize=8)
+        ax.tick_params(axis="both", which="major", labelsize=8)
 
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
