@@ -1076,8 +1076,11 @@ def ptable_lines(
     """
     # Re-initialize kwds as empty dict if None
     ax_kwds = ax_kwds or {}
+
     child_args = child_args or {}
+
     symbol_kwargs = symbol_kwargs or {}
+    symbol_kwargs.setdefault("fontsize", 10)
 
     # Initialize periodic table plotter
     plotter = PTableProjector(
@@ -1467,6 +1470,10 @@ class ChildPlotters:
         """
         # Add line
         ax.plot(data[0], data[1], **child_args)
+
+        # Adjust tick labels
+        # TODO: how to achieve this from external?
+        ax.tick_params(axis='both', which='major', labelsize=8)
 
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
