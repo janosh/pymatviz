@@ -1026,36 +1026,47 @@ def ptable_hists(
 
 def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    plot_kwds: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
-    colormap: str | None = None,
-    # ax_kwds: dict[str, Any] | None = None,
+    child_args: dict[str, Any] | None = None,
+    ax_kwds: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
 ) -> plt.Figure:
-    """Make scatter plots for each element, nested inside a periodic table."""
+    """Make scatter plots for each element, nested inside a periodic table.
+
+    TODO: allow colormap with 3rd data dimension
+
+    TODO: finish docstring.
+
+    """
+    # Re-initialize kwds as empty dict if None
+    ax_kwds = ax_kwds or {}
+
+    child_args = child_args or {}
+
+    symbol_kwargs = symbol_kwargs or {}
+    symbol_kwargs.setdefault("fontsize", 12)
+
+    # Initialize periodic table plotter
     plotter = PTableProjector(
-        colormap=colormap,
         data=data,
-        # **plot_kwds,  # TODO
+        colormap=None,
     )
 
-    # Call child plotter: scatter
-    # child_args = {
-    # }
-
+    # Call child plotter: Scatter
     plotter.add_child_plots(
         ChildPlotters.scatter,
-        # child_args=child_args,
+        child_args=child_args,
+        ax_kwds=ax_kwds,
         on_empty=on_empty,
     )
 
-    # Add colorbar
-    plotter.add_colorbar(
-        title=cbar_title,
-        coords=cbar_coords,
-        cbar_kwds=cbar_kwds,
-        title_kwds=cbar_title_kwds,
+    # Add element symbols
+    plotter.add_ele_symbols(
+        text=symbol_text,
+        pos=symbol_pos,
+        kwargs=symbol_kwargs,
     )
 
     return plotter.fig
@@ -1453,7 +1464,19 @@ class ChildPlotters:
             data (SupportedValueType): The values for to
                 the child plotter.
         """
-        ax.scatter(data, **child_args)
+        # Add scatter
+        if len(data) == 2:
+            ax.scatter(x=data[0], y=data[1], **child_args)
+        elif len(data) == 3:
+            ax.scatter(x=data[0], y=data[1], c=data[2], **child_args)
+
+        # Adjust tick labels
+        # TODO: how to achieve this from external?
+        ax.tick_params(axis='both', which='major', labelsize=8)
+
+        # Hide the right and top spines
+        ax.axis("on")  # turned off by default
+        ax.spines[["right", "top"]].set_visible(False)
 
     @staticmethod
     def line(
