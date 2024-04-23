@@ -220,7 +220,7 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         data_df.attrs["vmin"] = 0
         data_df.attrs["vmax"] = 1
         # DEBUG: method failed for nested arrays (line plotter)
-        warnings.warn("Normalize failed.")
+        warnings.warn("Normalization failed.")
 
     return data_df
 
@@ -1063,11 +1063,8 @@ def ptable_scatters(
 
 def ptable_lines(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    plot_kwds: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
     child_args: dict[str, Any] | None = None,
-    # ax_kwds: dict[str, Any] | None = None,
+    ax_kwds: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
@@ -1078,21 +1075,21 @@ def ptable_lines(
     TODO: finish docstring
     """
     # Re-initialize kwds as empty dict if None
+    ax_kwds = ax_kwds or {}
     child_args = child_args or {}
-    plot_kwds = plot_kwds or {}
     symbol_kwargs = symbol_kwargs or {}
 
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
         colormap=None,
-        # **plot_kwds,  # TODO
     )
 
     # Call child plotter: line
     plotter.add_child_plots(
         ChildPlotters.line,
         child_args=child_args,
+        ax_kwds=ax_kwds,
         on_empty=on_empty,
     )
 
@@ -1305,9 +1302,13 @@ class PTableProjector:
         self,
         child_plotter: Callable[[plt.axes, Any], None],
         child_args: dict[str, Any],
+        ax_kwds: dict[str, Any],
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
-        """Add selected custom child plots."""
+        """Add selected custom child plots.
+
+        TODO: add docstring (clatify ax_kwds and child_args)
+        """
         for element in Element:
             # Get axis index by element symbol
             symbol: str = element.symbol
@@ -1321,7 +1322,11 @@ class PTableProjector:
 
             # Call child plotter
             if len(plot_data) > 0:
-                child_plotter(ax, plot_data, **child_args)
+                child_plotter(ax, plot_data, child_args)
+
+            # Pass axis args  # TODO: double check this
+            if ax_kwds:
+                ax.set(**ax_kwds)
 
     def add_ele_symbols(
         self,
@@ -1436,6 +1441,7 @@ class ChildPlotters:
     def scatter(
         ax: plt.axes,
         data: SupportedValueType,
+        child_args: dict[str, Any]
     ) -> None:
         """Scatter plotter.
 
@@ -1444,12 +1450,13 @@ class ChildPlotters:
             data (SupportedValueType): The values for to
                 the child plotter.
         """
-        ax.scatter(data)
+        ax.scatter(data, **child_args)
 
     @staticmethod
     def line(
         ax: plt.axes,
         data: SupportedValueType,
+        child_args: dict[str, Any],
     ) -> None:
         """Line plotter.
 
@@ -1459,8 +1466,7 @@ class ChildPlotters:
                 the child plotter.
         """
         # Add line
-        # TODO: pass args/kwargs
-        ax.plot(data[0], data[1])
+        ax.plot(data[0], data[1], **child_args)
 
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
@@ -1470,6 +1476,7 @@ class ChildPlotters:
     def hist(
         ax: plt.axes,
         data: SupportedValueType,
+        child_args: dict[str, Any],
     ) -> None:
         """Histogram plotter.
 
@@ -1478,4 +1485,4 @@ class ChildPlotters:
             data (SupportedValueType): The values for to
                 the child plotter.
         """
-        ax.hist(data)
+        ax.hist(data, **child_args)
