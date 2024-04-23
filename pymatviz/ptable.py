@@ -1439,9 +1439,7 @@ class ChildPlotters:
 
     @staticmethod
     def scatter(
-        ax: plt.axes,
-        data: SupportedValueType,
-        child_args: dict[str, Any]
+        ax: plt.axes, data: SupportedValueType, child_args: dict[str, Any]
     ) -> None:
         """Scatter plotter.
 
