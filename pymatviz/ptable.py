@@ -1027,7 +1027,7 @@ def ptable_hists(
 def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     child_args: dict[str, Any] | None = None,
-    ax_kwds: dict[str, Any] | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
@@ -1040,8 +1040,8 @@ def ptable_scatters(
     TODO: finish docstring.
 
     """
-    # Re-initialize kwds as empty dict if None
-    ax_kwds = ax_kwds or {}
+    # Re-initialize kwargs as empty dict if None
+    ax_kwargs = ax_kwargs or {}
 
     child_args = child_args or {}
 
@@ -1058,7 +1058,7 @@ def ptable_scatters(
     plotter.add_child_plots(
         ChildPlotters.scatter,
         child_args=child_args,
-        ax_kwds=ax_kwds,
+        ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
 
@@ -1075,7 +1075,7 @@ def ptable_scatters(
 def ptable_lines(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     child_args: dict[str, Any] | None = None,
-    ax_kwds: dict[str, Any] | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
@@ -1085,8 +1085,8 @@ def ptable_lines(
 
     TODO: finish docstring
     """
-    # Re-initialize kwds as empty dict if None
-    ax_kwds = ax_kwds or {}
+    # Re-initialize kwargs as empty dict if None
+    ax_kwargs = ax_kwargs or {}
 
     child_args = child_args or {}
 
@@ -1103,7 +1103,7 @@ def ptable_lines(
     plotter.add_child_plots(
         ChildPlotters.line,
         child_args=child_args,
-        ax_kwds=ax_kwds,
+        ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
 
@@ -1119,19 +1119,19 @@ def ptable_lines(
 
 def ptable_splits(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    plot_kwds: dict[str, Any]
+    plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
     colormap: str | None = None,
     start_angle: float = 135,
-    ax_kwds: dict[str, Any] | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     cbar_title: str = "Values",
-    cbar_title_kwds: dict[str, Any] | None = None,
-    cbar_kwds: dict[str, Any] | None = None,
+    cbar_title_kwargs: dict[str, Any] | None = None,
+    cbar_kwargs: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
 ) -> plt.Figure:
     """Plot evenly-split tiles, nested inside a periodic table.
@@ -1148,7 +1148,7 @@ def ptable_splits(
         start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to
                 the x-axis). Defaults to 135 degrees.
-        ax_kwds (dict): Keyword arguments passed to ax.set() for each plot.
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
@@ -1164,9 +1164,9 @@ def ptable_splits(
             position and size: [x, y, width, height] anchored at lower left
             corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
         cbar_title (str): Colorbar title. Defaults to "Values".
-        cbar_title_kwds (dict): Keyword arguments passed to
+        cbar_title_kwargs (dict): Keyword arguments passed to
             cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
-        cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
+        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
 
@@ -1176,18 +1176,18 @@ def ptable_splits(
     Returns:
         plt.Figure: periodic table with a subplot in each element tile.
     """
-    # Re-initialize kwds as empty dict if None
-    plot_kwds = plot_kwds or {}
-    ax_kwds = ax_kwds or {}  # TODO: not used
+    # Re-initialize kwargs as empty dict if None
+    plot_kwargs = plot_kwargs or {}
+    ax_kwargs = ax_kwargs or {}
     symbol_kwargs = symbol_kwargs or {}
-    cbar_title_kwds = cbar_title_kwds or {}
-    cbar_kwds = cbar_kwds or {}
+    cbar_title_kwargs = cbar_title_kwargs or {}
+    cbar_kwargs = cbar_kwargs or {}
 
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
         colormap=colormap,
-        **plot_kwds,
+        **plot_kwargs,
     )
 
     # Call child plotter: evenly split rectangle
@@ -1200,6 +1200,7 @@ def ptable_splits(
     plotter.add_child_plots(
         ChildPlotters.rectangle,
         child_args=child_args,
+        ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
 
@@ -1214,15 +1215,18 @@ def ptable_splits(
     plotter.add_colorbar(
         title=cbar_title,
         coords=cbar_coords,
-        cbar_kwds=cbar_kwds,
-        title_kwds=cbar_title_kwds,
+        cbar_kwargs=cbar_kwargs,
+        title_kwargs=cbar_title_kwargs,
     )
 
     return plotter.fig
 
 
 class PTableProjector:
-    """Project (nest) a custom plot into a periodic table."""
+    """Project (nest) a custom plot into a periodic table.
+
+    TODO: clarify scope of "plot/ax/child"
+    """
 
     def __init__(
         self,
@@ -1316,12 +1320,12 @@ class PTableProjector:
         self,
         child_plotter: Callable[[plt.axes, Any], None],
         child_args: dict[str, Any],
-        ax_kwds: dict[str, Any],
+        ax_kwargs: dict[str, Any],
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
         """Add selected custom child plots.
 
-        TODO: add docstring (clatify ax_kwds and child_args)
+        TODO: add docstring (clarify ax_kwargs and child_args)
         """
         for element in Element:
             # Get axis index by element symbol
@@ -1339,8 +1343,8 @@ class PTableProjector:
                 child_plotter(ax, plot_data, child_args)
 
             # Pass axis args  # TODO: double check this
-            if ax_kwds:
-                ax.set(**ax_kwds)
+            if ax_kwargs:
+                ax.set(**ax_kwargs)
 
     def add_ele_symbols(
         self,
@@ -1373,12 +1377,12 @@ class PTableProjector:
         self,
         title: str,
         coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-        cbar_kwds: dict[str, Any] | None = None,
-        title_kwds: dict[str, Any] | None = None,
+        cbar_kwargs: dict[str, Any] | None = None,
+        title_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add a global colorbar."""
         # Update colorbar args
-        cbar_kwds = {"orientation": "horizontal"} | (cbar_kwds or {})
+        cbar_kwargs = {"orientation": "horizontal"} | (cbar_kwargs or {})
 
         # Check colormap
         if self.cmap is None:
@@ -1390,16 +1394,16 @@ class PTableProjector:
         self.fig.colorbar(
             plt.cm.ScalarMappable(norm=self._norm, cmap=self.cmap),
             cax=cbar_ax,
-            **cbar_kwds,
+            **cbar_kwargs,
         )
 
         # Set colorbar title
-        title_kwds = title_kwds or {}
-        title_kwds.setdefault("fontsize", 12)
-        title_kwds.setdefault("pad", 10)
-        title_kwds["label"] = title
+        title_kwargs = title_kwargs or {}
+        title_kwargs.setdefault("fontsize", 12)
+        title_kwargs.setdefault("pad", 10)
+        title_kwargs["label"] = title
 
-        cbar_ax.set_title(**title_kwds)
+        cbar_ax.set_title(**title_kwargs)
 
 
 class ChildPlotters:
