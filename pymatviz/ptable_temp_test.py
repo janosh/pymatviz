@@ -9,17 +9,14 @@ from matminer.datasets import load_dataset
 from pymatgen.core.periodic_table import Element
 from tqdm import tqdm
 
+from pymatviz.io import save_and_compress_svg
 from pymatviz.ptable import (
-    ptable_heatmap,
     ptable_heatmap_plotly,
-    ptable_heatmap_ratio,
     ptable_hists,
     ptable_lines,
     ptable_scatters,
     ptable_splits,
 )
-
-from pymatviz.io import save_and_compress_svg
 from pymatviz.utils import df_ptable
 
 
@@ -41,6 +38,7 @@ df_phonons = load_dataset("matbench_phonons")
 df_phonons[["spg_symbol", "spg_num"]] = [
     struct.get_space_group_info() for struct in tqdm(df_phonons.structure)
 ]
+
 
 # %% Plotly interactive periodic table heatmap
 fig = ptable_heatmap_plotly(
@@ -91,8 +89,8 @@ data_dict = {
 
 fig = ptable_scatters(
     data_dict,
-    #colormap="coolwarm",
-    #cbar_title="Periodic Table Scatter Plots",
+    # colormap="coolwarm",
+    # cbar_title="Periodic Table Scatter Plots",
     child_args=dict(marker="o", linestyle=""),
 )
 save_and_compress_svg(fig, "ptable-scatters")
@@ -130,5 +128,3 @@ fig = ptable_splits(
     cbar_title="Periodic Table Evenly-Split Tiles Plots",
 )
 save_and_compress_svg(fig, "ptable-splits")
-
-# %%
