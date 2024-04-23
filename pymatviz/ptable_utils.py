@@ -1,19 +1,20 @@
 """Utils for periodic table plotters."""
 
-import warnings
 import itertools
+import warnings
 from collections.abc import Sequence
-from typing import Literal, Union, Sequence, get_args, TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Union, get_args
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition, Element
 from matplotlib.colors import Colormap, Normalize
 from matplotlib.patches import Rectangle
+from pandas.api.types import is_numeric_dtype, is_string_dtype
+from pymatgen.core import Composition, Element
 
 from pymatviz.utils import df_ptable
+
 
 if TYPE_CHECKING:
     from typing import Any, TypeAlias
