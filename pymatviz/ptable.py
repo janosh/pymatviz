@@ -1080,7 +1080,7 @@ def ptable_lines(
     child_args = child_args or {}
 
     symbol_kwargs = symbol_kwargs or {}
-    symbol_kwargs.setdefault("fontsize", 10)
+    symbol_kwargs.setdefault("fontsize", 12)
 
     # Initialize periodic table plotter
     plotter = PTableProjector(
@@ -1442,7 +1442,9 @@ class ChildPlotters:
 
     @staticmethod
     def scatter(
-        ax: plt.axes, data: SupportedValueType, child_args: dict[str, Any]
+        ax: plt.axes,
+        data: SupportedValueType,
+        child_args: dict[str, Any],
     ) -> None:
         """Scatter plotter.
 
