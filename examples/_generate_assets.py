@@ -39,7 +39,8 @@ from pymatviz.ptable import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
-    ptable_plots,
+    ptable_lines,
+    ptable_scatters,
     ptable_splits,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
@@ -181,18 +182,37 @@ data_dict = {
     elem.symbol: [
         np.random.randint(0, 20, 10),
         np.random.randint(0, 20, 10),
-        np.random.randint(0, 20, 10),
+        # np.random.randint(0, 20, 10),  # TODO: allow 3rd dim
     ]
     for elem in Element
 }
 
-fig = ptable_plots(
+fig = ptable_scatters(
     data_dict,
-    colormap="coolwarm",
-    cbar_title="Periodic Table Scatter Plots",
-    plot_kwds=dict(marker="o", linestyle=""),
+    # colormap="coolwarm",
+    # cbar_title="Periodic Table Scatter Plots",
+    child_args=dict(marker="o", linestyle=""),
+    symbol_pos=(0.5, 1.2),
+    symbol_kwargs=dict(fontsize=14),
 )
 save_and_compress_svg(fig, "ptable-scatters")
+
+
+# %% Line plots laid out as a periodic table
+data_dict = {
+    elem.symbol: [
+        np.linspace(0, 10, 10),
+        np.sin(2 * np.pi * np.linspace(0, 10, 10)) + np.random.normal(0, 0.2, 10),
+    ]
+    for elem in Element
+}
+
+fig = ptable_lines(
+    data_dict,
+    symbol_pos=(0.5, 1.2),
+    symbol_kwargs=dict(fontsize=14),
+)
+save_and_compress_svg(fig, "ptable-lines")
 
 
 # %% Evenly-split tile plots laid out as a periodic table
@@ -200,7 +220,6 @@ data_dict = {
     elem.symbol: [
         random.randint(0, 10),
         random.randint(10, 20),
-        # random.randint(20, 30),
     ]
     for elem in Element
 }

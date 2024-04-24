@@ -199,7 +199,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
             for value in item:  # item is always a list
                 try:
                     flattened_values.append(float(value))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError):  # noqa: PERF203
                     try:
                         flattened_values.extend(list(map(float, value)))
                     except (TypeError, ValueError) as exc:
@@ -241,7 +241,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
 def handle_missing_and_anomaly(
     df: pd.DataFrame,
-    missing_strategy: Literal["zero", "mean"] = "mean",
+    # missing_strategy: Literal["zero", "mean"] = "mean",
 ) -> pd.DataFrame:
     """Handle missing value (NaN) and anomaly (infinity).
 
@@ -252,7 +252,6 @@ def handle_missing_and_anomaly(
 
     TODO: finish this function
     """
-    assert missing_strategy  # place holder
     return df
 
 
@@ -514,7 +513,7 @@ class ChildPlotters:
     def scatter(
         ax: plt.axes,
         data: SupportedValueType,
-        **child_args,
+        **child_args: Any,
     ) -> None:
         """Scatter plotter.
 
@@ -542,7 +541,7 @@ class ChildPlotters:
     def line(
         ax: plt.axes,
         data: SupportedValueType,
-        **child_args,
+        **child_args: Any,
     ) -> None:
         """Line plotter.
 
