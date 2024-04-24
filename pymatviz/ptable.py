@@ -3,24 +3,23 @@
 from __future__ import annotations
 
 import inspect
-import math
 import itertools
+import math
 import warnings
-import warnings
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 from collections.abc import Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Literal, Union, get_args
 
-from matplotlib.colors import Colormap, Normalize, LogNorm
-from matplotlib.patches import Rectangle
-from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition, Element
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
 from matplotlib.cm import get_cmap
+from matplotlib.colors import Colormap, LogNorm, Normalize
+from matplotlib.patches import Rectangle
+from pandas.api.types import is_numeric_dtype, is_string_dtype
+from pymatgen.core import Composition, Element
 
 from pymatviz.ptable_utils import ChildPlotters, PTableProjector, count_elements
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
@@ -153,6 +152,7 @@ def count_elements(
             ) from exc
 
     return srs
+
 
 def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     """Preprocess input data for ptable plotters, including:
@@ -527,8 +527,6 @@ class ChildPlotters:
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
         ax.spines[["right", "top"]].set_visible(False)
-
-
 
 
 def ptable_heatmap(
