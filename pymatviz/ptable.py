@@ -258,7 +258,10 @@ def handle_missing_and_anomaly(
 class PTableProjector:
     """Project (nest) a custom plot into a periodic table.
 
-    TODO: clarify scope of "plot/ax/child"
+    Scopes mentioned in this plotter:
+        plot: Refers to the global scope.
+        ax: Refers to the axis where child plotter would plot.
+        child: Refers to the child plotter itself, for example, ax.plot().
     """
 
     def __init__(
@@ -461,10 +464,7 @@ class PTableProjector:
 
 
 class ChildPlotters:
-    """Collect some pre-defined child plotters.
-
-    TODO: add instruction for adding custom plotters.
-    """
+    """Collect some pre-defined child plotters."""
 
     @staticmethod
     def rectangle(
@@ -1373,10 +1373,33 @@ def ptable_scatters(
 ) -> plt.Figure:
     """Make scatter plots for each element, nested inside a periodic table.
 
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+            Map from element symbols to plot data. E.g. if dict,
+            {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
+            be plotted on the lower-left corner and the 2nd on the upper-right.
+            If pd.Series, index is element symbols and values lists.
+            If pd.DataFrame, column names are element symbols,
+            plots are created from each column.
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+        symbol_pos (tuple[float, float]): Position of element symbols
+            relative to the lower left corner of each tile.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        child_args: Arguments to pass to the child plotter call.
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
+
     TODO: allow colormap with 3rd data dimension
-
-    TODO: finish docstring.
-
     """
     # Re-initialize kwargs as empty dict if None
     ax_kwargs = ax_kwargs or {}
@@ -1421,7 +1444,31 @@ def ptable_lines(
 ) -> plt.Figure:
     """Line plots for each element, nested inside a periodic table.
 
-    TODO: finish docstring
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+            Map from element symbols to plot data. E.g. if dict,
+            {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
+            be plotted on the lower-left corner and the 2nd on the upper-right.
+            If pd.Series, index is element symbols and values lists.
+            If pd.DataFrame, column names are element symbols,
+            plots are created from each column.
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+        symbol_pos (tuple[float, float]): Position of element symbols
+            relative to the lower left corner of each tile.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        child_args: Arguments to pass to the child plotter call.
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
     """
     # Re-initialize kwargs as empty dict if None
     ax_kwargs = ax_kwargs or {}
