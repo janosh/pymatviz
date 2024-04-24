@@ -500,18 +500,17 @@ def test_ptable_scatters() -> None:
     assert isinstance(fig, plt.Figure)
 
 
-@pytest.mark.skip()
-def test_ptable_scatters_colored() -> None:
-    """Test ptable_scatters with 3rd color dimension."""
-    fig = ptable_scatters(
-        data={
-            "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-            "O": [[10, 11], [12, 13], [14, 15]],
-        },
-        colormap="coolwarm",
-        cbar_title="Test ptable_scatters",
-    )
-    assert isinstance(fig, plt.Figure)
+# def test_ptable_scatters_colored() -> None:
+#     """Test ptable_scatters with 3rd color dimension."""
+#     fig = ptable_scatters(
+#         data={
+#             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+#             "O": [[10, 11], [12, 13], [14, 15]],
+#         },
+#         colormap="coolwarm",
+#         cbar_title="Test ptable_scatters",
+#     )
+#     assert isinstance(fig, plt.Figure)
 
 
 def test_ptable_splits() -> None:

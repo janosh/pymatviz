@@ -415,7 +415,7 @@ class PTableProjector:
 
             ax.text(
                 *pos,
-                text(element) if callable(text) else text.format(elem=element),
+                text(element) if callable(text) else text.format(elem=element),  # type: ignore[attr-defined]
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
@@ -1367,6 +1367,9 @@ def ptable_scatters(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
+    plot_kwargs: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
     child_args: dict[str, Any] | None = None,
     ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
@@ -1402,6 +1405,7 @@ def ptable_scatters(
     TODO: allow colormap with 3rd data dimension
     """
     # Re-initialize kwargs as empty dict if None
+    plot_kwargs = plot_kwargs or {}
     ax_kwargs = ax_kwargs or {}
 
     child_args = child_args or {}
@@ -1410,10 +1414,7 @@ def ptable_scatters(
     symbol_kwargs.setdefault("fontsize", 12)
 
     # Initialize periodic table plotter
-    plotter = PTableProjector(
-        data=data,
-        colormap=None,
-    )
+    plotter = PTableProjector(data=data, colormap=None, plot_kwargs=plot_kwargs)  # type: ignore[arg-type]
 
     # Call child plotter: Scatter
     plotter.add_child_plots(
@@ -1425,7 +1426,7 @@ def ptable_scatters(
 
     # Add element symbols
     plotter.add_ele_symbols(
-        text=symbol_text,
+        text=symbol_text,  # type: ignore[arg-type]
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )
@@ -1438,6 +1439,9 @@ def ptable_lines(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
+    plot_kwargs: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
     child_args: dict[str, Any] | None = None,
     ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
@@ -1471,6 +1475,7 @@ def ptable_lines(
                 pass to the plt.subplots function call.
     """
     # Re-initialize kwargs as empty dict if None
+    plot_kwargs = plot_kwargs or {}
     ax_kwargs = ax_kwargs or {}
 
     child_args = child_args or {}
@@ -1482,6 +1487,7 @@ def ptable_lines(
     plotter = PTableProjector(
         data=data,
         colormap=None,
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
     )
 
     # Call child plotter: line
@@ -1494,7 +1500,7 @@ def ptable_lines(
 
     # Add element symbols
     plotter.add_ele_symbols(
-        text=symbol_text,
+        text=symbol_text,  # type: ignore[arg-type]
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )
@@ -1574,7 +1580,7 @@ def ptable_splits(
     plotter = PTableProjector(
         data=data,
         colormap=colormap,
-        plot_kwargs=plot_kwargs,
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
     )
 
     # Call child plotter: evenly split rectangle
@@ -1585,7 +1591,7 @@ def ptable_splits(
     }
 
     plotter.add_child_plots(
-        ChildPlotters.rectangle,
+        ChildPlotters.rectangle,  # type: ignore[arg-type]
         child_args=child_args,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
@@ -1593,7 +1599,7 @@ def ptable_splits(
 
     # Add element symbols
     plotter.add_ele_symbols(
-        text=symbol_text,
+        text=symbol_text,  # type: ignore[arg-type]
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )
