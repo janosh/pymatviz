@@ -18,6 +18,8 @@ from pymatviz import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
+    ptable_lines,
+    ptable_scatters,
     ptable_splits,
 )
 from pymatviz.ptable import data_preprocessor
@@ -476,37 +478,40 @@ def test_ptable_hists(
     assert isinstance(fig, plt.Figure)
 
 
-@pytest.mark.skip()
-def test_ptable_plots() -> None:
-    """Test ptable_plots with 3rd color dimension."""
-    fig = ptable_plots(
+def test_ptable_lines() -> None:
+    """Test ptable_lines."""
+    fig = ptable_lines(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
         },
-        colormap="coolwarm",
-        cbar_title="Test ptable_plots",
+    )
+    assert isinstance(fig, plt.Figure)
+
+
+def test_ptable_scatters() -> None:
+    """Test ptable_scatters."""
+    fig = ptable_scatters(
+        data={
+            "Fe": [[1, 2, 3], [4, 5, 6]],
+            "O": [[10, 11], [12, 13]],
+        }
     )
     assert isinstance(fig, plt.Figure)
 
 
 @pytest.mark.skip()
-@pytest.mark.parametrize(
-    "data",
-    [
-        {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},
-        {"Fe": np.array([[1, 2, 3], [4, 5, 6]]), "O": np.array([[7, 8], [9, 10]])},
-        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),
-        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]),
-    ],
-)
-def test_ptable_plots_datatypes(
-    data: pd.DataFrame | pd.Series | dict[str, list[int]],
-) -> None:
-    """Test ptable_plots with various input data types."""
-    fig = ptable_plots(data)
+def test_ptable_scatters_colored() -> None:
+    """Test ptable_scatters with 3rd color dimension."""
+    fig = ptable_scatters(
+        data={
+            "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+            "O": [[10, 11], [12, 13], [14, 15]],
+        },
+        colormap="coolwarm",
+        cbar_title="Test ptable_scatters",
+    )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 180
 
 
 def test_ptable_splits() -> None:

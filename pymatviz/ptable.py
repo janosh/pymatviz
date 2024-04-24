@@ -370,14 +370,14 @@ class PTableProjector:
             # Get and check tile data
             try:
                 plot_data: np.ndarray | Sequence[float] = self.data.loc[symbol, "Value"]
-            except KeyError:
+            except KeyError:  # skip element without data
                 plot_data = None
 
             if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
                 continue
 
             # Call child plotter
-            child_plotter(ax, plot_data, child_args)
+            child_plotter(ax, plot_data, **child_args)
 
             # Pass axis kwargs
             if ax_kwargs:
@@ -514,7 +514,7 @@ class ChildPlotters:
     def scatter(
         ax: plt.axes,
         data: SupportedValueType,
-        child_args: dict[str, Any],
+        **child_args,
     ) -> None:
         """Scatter plotter.
 
@@ -542,7 +542,7 @@ class ChildPlotters:
     def line(
         ax: plt.axes,
         data: SupportedValueType,
-        child_args: dict[str, Any],
+        **child_args,
     ) -> None:
         """Line plotter.
 
