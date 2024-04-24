@@ -18,10 +18,9 @@ from pymatviz import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_hists,
-    #    ptable_plots,
     ptable_splits,
 )
-from pymatviz.ptable import _data_preprocessor
+from pymatviz.ptable import data_preprocessor
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
@@ -56,21 +55,21 @@ class TestDataPreprocessor:
             self.test_dict.items(), columns=["Element", "Value"]
         ).set_index("Element")
 
-        output_df: pd.DataFrame = _data_preprocessor(input_df)
+        output_df: pd.DataFrame = data_preprocessor(input_df)
 
         self._validate_output_df(output_df)
 
     def test_from_pd_series(self) -> None:
         input_series: pd.Series = pd.Series(self.test_dict)
 
-        output_df = _data_preprocessor(input_series)
+        output_df = data_preprocessor(input_series)
 
         self._validate_output_df(output_df)
 
     def test_from_dict(self) -> None:
         input_dict = self.test_dict
 
-        output_df = _data_preprocessor(input_dict)
+        output_df = data_preprocessor(input_dict)
 
         self._validate_output_df(output_df)
 
@@ -78,13 +77,13 @@ class TestDataPreprocessor:
         invalid_data = [0, 1, 2]
 
         with pytest.raises(TypeError, match="Unsupported data type"):
-            _data_preprocessor(invalid_data)
+            data_preprocessor(invalid_data)
 
     def test_get_vmin_vmax(self) -> None:
         # Test without nested list/array
         test_dict_0 = {"H": 1.0, "He": [2.0, 4.0], "Li": np.array([6.0, 8.0])}
 
-        output_df_0 = _data_preprocessor(test_dict_0)
+        output_df_0 = data_preprocessor(test_dict_0)
 
         assert output_df_0.attrs["vmin"] == 1.0
         assert output_df_0.attrs["vmax"] == 8.0
@@ -96,15 +95,17 @@ class TestDataPreprocessor:
             "Li": [np.array([6.0, 7.0]), np.array([8.0, 9.0])],
         }
 
-        output_df_1 = _data_preprocessor(test_dict_1)
+        output_df_1 = data_preprocessor(test_dict_1)
 
         assert output_df_1.attrs["vmin"] == 1.0
         assert output_df_1.attrs["vmax"] == 9.0
 
-    def test_missing_impute(self) -> None:
+
+class TestMissingAnomalyHandle:
+    def test_handle_missing(self) -> None:
         pass
 
-    def test_anomaly_handle(self) -> None:
+    def test_handle_infinity(self) -> None:
         pass
 
 

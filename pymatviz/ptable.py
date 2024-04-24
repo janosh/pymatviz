@@ -25,11 +25,9 @@ from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Literal, TypeAlias
+    from typing import Any, Callable, TypeAlias
 
     import plotly.graph_objects as go
-
-    from pymatviz.ptable_utils import CountMode, ElemValues
 
 # Data types supported by ptable plotters
 SupportedValueType: TypeAlias = Union[Sequence[float], np.ndarray]
@@ -153,40 +151,43 @@ def count_elements(
     return srs
 
 
-def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
+def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     """Preprocess input data for ptable plotters, including:
         - Convert all data types to pd.DataFrame.
         - Impute missing values.
         - Handle anomalies such as NaN, infinity.
         - Write vmin/vmax as metadata into the DataFrame.
 
-    TODO: add and test imputation and anomaly handling
-
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names
             as index and values as columns.
 
     Example:
-        >>> data: dict = {"H": 1.0, "He": [2.0, 4.0]}
+        >>> data_dict: dict = {
+            "H": 1.0,
+            "He": [2.0, 4.0],
+            "Li": [[6.0, 8.0], [10.0, 12.0]],
+        }
 
         OR
-        >>> data: pd.DataFrame = pd.DataFrame(
-            {"H": 1.0, "He": [2.0, 4.0]}.items(),
+        >>> data_df: pd.DataFrame = pd.DataFrame(
+            data_dict.items(),
             columns=["Element", "Value"]
             ).set_index("Element")
 
         OR
-        >>> data: pd.Series = pd.Series({"H": 1.0, "He": [2.0, 4.0]})
+        >>> data_series: pd.Series = pd.Series(data_dict)
 
-        >>> preprocess_data(data)
+        >>> preprocess_data(data_dict/df/series)
 
              Element   Value
         0    H         [1.0, ]
         1    He        [2.0, 4.0]
+        2    Li        [[6.0, 8.0], [10.0, 12.0]]
 
         Metadata:
             vmin: 1.0
-            vmax: 4.0
+            vmax: 12.0
     """
 
     def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
@@ -194,15 +195,18 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         # Flatten the DataFrame
         flattened_values: list[float] = []
 
-        for value in df["Value"]:
-            for subvalue in value:
-                if isinstance(subvalue, (float, int)):
-                    flattened_values.append(subvalue)
-                elif isinstance(subvalue, Sequence):
-                    flattened_values.extend(subvalue)
-                elif isinstance(subvalue, np.ndarray):
-                    flattened_values.extend(subvalue.tolist())
+        for item in df["Value"]:
+            for value in item:  # item is always a list
+                if isinstance(value, (float, int)):
+                    flattened_values.append(value)
+                elif isinstance(value, Sequence):
+                    flattened_values.extend(value)
+                elif isinstance(value, np.ndarray):
+                    flattened_values.extend(value.tolist())
+                else:
+                    raise TypeError(f"Unsupported data type {type(value)}")
 
+        # Set vmin and vmax
         df.attrs["vmin"] = min(flattened_values)
         df.attrs["vmax"] = max(flattened_values)
 
@@ -229,8 +233,22 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
     )
 
+    # Handle missing and anomaly
+    data_df = handle_missing_and_anomaly(data_df)
+
     # Write vmin/vmax into metadata
     return set_vmin_vmax(data_df)
+
+
+def handle_missing_and_anomaly(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Handle missing value (NaN) and anomaly (infinity).
+
+    TODO: finish this function
+
+    """
+    return df
 
 
 class PTableProjector:
@@ -243,7 +261,7 @@ class PTableProjector:
         self,
         data: SupportedDataType,
         colormap: str | Colormap | None,
-        **kwargs: Any,
+        plot_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -253,7 +271,7 @@ class PTableProjector:
         Args:
             data (SupportedDataType): The data to be visualized.
             colormap (str | Colormap | None): The colormap to use.
-            **kwargs (Any): Additional keyword arguments to
+            plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
         """
         # Get colormap
@@ -267,9 +285,10 @@ class PTableProjector:
         n_groups = df_ptable.column.max()
 
         # Set figure size
-        kwargs.setdefault("figsize", (0.75 * n_groups, 0.75 * n_periods))
+        plot_kwargs = plot_kwargs or {}
+        plot_kwargs.setdefault("figsize", (0.75 * n_groups, 0.75 * n_periods))
 
-        self.fig, self.axes = plt.subplots(n_periods, n_groups, **kwargs)
+        self.fig, self.axes = plt.subplots(n_periods, n_groups, **plot_kwargs)
 
         # Turn off all axes
         for ax in self.axes.flat:
@@ -302,11 +321,6 @@ class PTableProjector:
         """
         return self._data
 
-    @property
-    def norm(self) -> Normalize:
-        """Data min-max normalizer."""
-        return self._norm
-
     @data.setter
     def data(self, data: SupportedDataType) -> None:
         """Set and preprocess the data, also set normalizer.
@@ -315,12 +329,17 @@ class PTableProjector:
             data (SupportedDataType): The data to be used.
         """
         # Preprocess data
-        self._data: pd.DataFrame = _data_preprocessor(data)
+        self._data: pd.DataFrame = data_preprocessor(data)
 
         # Normalize data for colorbar
         self._norm: Normalize = Normalize(
             vmin=self._data.attrs["vmin"], vmax=self._data.attrs["vmax"]
         )
+
+    @property
+    def norm(self) -> Normalize:
+        """Data min-max normalizer."""
+        return self._norm
 
     def add_child_plots(
         self,
@@ -495,6 +514,7 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for to
                 the child plotter.
+            child_args (dict): args to pass to the child plotter call
         """
         # Add scatter
         if len(data) == 2:
@@ -522,6 +542,7 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for to
                 the child plotter.
+            child_args (dict): args to pass to the child plotter call
         """
         # Add line
         ax.plot(data[0], data[1], **child_args)
@@ -1479,6 +1500,8 @@ def ptable_splits(
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
 
     Notes:
         Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
@@ -1497,7 +1520,7 @@ def ptable_splits(
     plotter = PTableProjector(
         data=data,
         colormap=colormap,
-        **plot_kwargs,
+        plot_kwargs=plot_kwargs,
     )
 
     # Call child plotter: evenly split rectangle
