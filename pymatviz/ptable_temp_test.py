@@ -8,11 +8,8 @@ import numpy as np
 from pymatgen.core.periodic_table import Element
 
 from pymatviz.io import save_and_compress_svg
-from pymatviz.ptable import (
-    ptable_lines,
-    ptable_scatters,
-    ptable_splits,
-)
+from pymatviz.ptable import ptable_lines, ptable_scatters, ptable_splits
+
 
 # %% Configure matplotlib and load test data
 plt.rc("font", size=14)
