@@ -58,13 +58,13 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table c
 |                                 ![ptable-heatmap]                                 |                        ![ptable-heatmap-ratio]                        |
 |           [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)            | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py) |
 |                     ![ptable-heatmap-plotly-more-hover-data]                      |                     ![ptable-heatmap-plotly-log]                      |
-|          [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable.py)          |    [`ptable_plots(data, colormap="coolwarm")`](pymatviz/ptable.py)    |
-|                                  ![ptable-hists]                                  |                            ![ptable-plots]                            |
+|          [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable.py)          |              [`ptable_lines(data)`](pymatviz/ptable.py)               |
+|                                  ![ptable-hists]                                  |                            ![ptable-lines]                            |
 | [`ptable_splits(data, colormap="coolwarm", start_angle=135)`](pymatviz/ptable.py) |
 |                                 ![ptable-splits]                                  |
 
 [ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
-[ptable-plots]: https://github.com/janosh/pymatviz/raw/main/examples/diatomics/homo-nuclear-mace-medium.svg
+[ptable-lines]: https://github.com/janosh/pymatviz/raw/main/examples/diatomics/homo-nuclear-mace-medium.svg
 [ptable-splits]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-splits.svg
 
 ## Phonons
