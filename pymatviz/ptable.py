@@ -197,14 +197,13 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
         for item in df["Value"]:
             for value in item:  # item is always a list
-                if isinstance(value, (float, int)):
-                    flattened_values.append(value)
-                elif isinstance(value, Sequence):
-                    flattened_values.extend(value)
-                elif isinstance(value, np.ndarray):
-                    flattened_values.extend(value.tolist())
-                else:
-                    raise TypeError(f"Unsupported data type {type(value)}")
+                try:
+                    flattened_values.append(float(value))
+                except (TypeError, ValueError):
+                    try:
+                        flattened_values.extend(list(map(float, value)))
+                    except (TypeError, ValueError) as exc:
+                        raise TypeError(f"Unsupported data type {type(value)}") from exc
 
         # Set vmin and vmax
         df.attrs["vmin"] = min(flattened_values)
@@ -242,12 +241,18 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
 def handle_missing_and_anomaly(
     df: pd.DataFrame,
+    missing_strategy: Literal["zero", "mean"] = "mean",
 ) -> pd.DataFrame:
     """Handle missing value (NaN) and anomaly (infinity).
 
-    TODO: finish this function
+    Infinity would be replaced by vmax(∞) or vmin(-∞).
+    Missing values would be handled by selected strategy:
+        - zero: impute with zeros
+        - mean: impute with mean value
 
+    TODO: finish this function
     """
+    assert missing_strategy  # place holder
     return df
 
 
@@ -363,13 +368,16 @@ class PTableProjector:
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             # Get and check tile data
-            plot_data: np.ndarray | Sequence[float] = self.data.loc[symbol, "Value"]
-            if len(plot_data) == 0 and on_empty == "hide":
+            try:
+                plot_data: np.ndarray | Sequence[float] = self.data.loc[symbol, "Value"]
+            except KeyError:
+                plot_data = None
+
+            if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
                 continue
 
             # Call child plotter
-            if len(plot_data) > 0:
-                child_plotter(ax, plot_data, child_args)
+            child_plotter(ax, plot_data, child_args)
 
             # Pass axis kwargs
             if ax_kwargs:
