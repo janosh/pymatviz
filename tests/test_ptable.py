@@ -80,7 +80,28 @@ class TestDataPreprocessor:
         with pytest.raises(TypeError, match="Unsupported data type"):
             _data_preprocessor(invalid_data)
 
-    def test_missing_imputate(self) -> None:
+    def test_get_vmin_vmax(self) -> None:
+        # Test without nested list/array
+        test_dict_0 = {"H": 1.0, "He": [2.0, 4.0], "Li": np.array([6.0, 8.0])}
+
+        output_df_0 = _data_preprocessor(test_dict_0)
+
+        assert output_df_0.attrs["vmin"] == 1.0
+        assert output_df_0.attrs["vmax"] == 8.0
+
+        # Test with nested list/array
+        test_dict_1 = {
+            "H": 1.0,
+            "He": [[2.0, 3.0], [4.0, 5.0]],
+            "Li": [np.array([6.0, 7.0]), np.array([8.0, 9.0])],
+        }
+
+        output_df_1 = _data_preprocessor(test_dict_1)
+
+        assert output_df_1.attrs["vmin"] == 1.0
+        assert output_df_1.attrs["vmax"] == 9.0
+
+    def test_missing_impute(self) -> None:
         pass
 
     def test_anomaly_handle(self) -> None:
@@ -468,6 +489,25 @@ def test_ptable_plots() -> None:
     assert isinstance(fig, plt.Figure)
 
 
+@pytest.mark.skip()
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},
+        {"Fe": np.array([[1, 2, 3], [4, 5, 6]]), "O": np.array([[7, 8], [9, 10]])},
+        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),
+        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]),
+    ],
+)
+def test_ptable_plots_datatypes(
+    data: pd.DataFrame | pd.Series | dict[str, list[int]],
+) -> None:
+    """Test ptable_plots with various input data types."""
+    fig = ptable_plots(data)
+    assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 180
+
+
 def test_ptable_splits() -> None:
     """Test ptable_splits with arbitrary data length."""
     data_dict = {
@@ -490,22 +530,3 @@ def test_ptable_splits() -> None:
     assert len(fig.axes) == 181
     cbar_ax = fig.axes[-1]
     assert cbar_ax.get_title() == cbar_title
-
-
-@pytest.mark.skip()
-@pytest.mark.parametrize(
-    "data",
-    [
-        {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},
-        {"Fe": np.array([[1, 2, 3], [4, 5, 6]]), "O": np.array([[7, 8], [9, 10]])},
-        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),
-        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]),
-    ],
-)
-def test_ptable_plots_datatypes(
-    data: pd.DataFrame | pd.Series | dict[str, list[int]],
-) -> None:
-    """Test ptable_plots with various input data types."""
-    fig = ptable_plots(data)
-    assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 180

@@ -21,7 +21,6 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
-from pymatviz.ptable_utils import ChildPlotters, PTableProjector, count_elements
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
@@ -189,6 +188,27 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
             vmin: 1.0
             vmax: 4.0
     """
+
+    def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
+        """Write vmin and vmax to DataFrame metadata."""
+        # Flatten the DataFrame
+        flattened_values: list[float] = []
+
+        for value in df["Value"]:
+            for subvalue in value:
+                if isinstance(subvalue, (float, int)):
+                    flattened_values.append(subvalue)
+                elif isinstance(subvalue, Sequence):
+                    flattened_values.extend(subvalue)
+                elif isinstance(subvalue, np.ndarray):
+                    flattened_values.extend(subvalue.tolist())
+
+        df.attrs["vmin"] = min(flattened_values)
+        df.attrs["vmax"] = max(flattened_values)
+
+        return df
+
+    # Check and handle different supported data types
     if isinstance(data, pd.DataFrame):
         data_df = data
 
@@ -209,22 +229,8 @@ def _data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
     )
 
-    # Get and write vmin/vmax into metadata
-    flattened_values: list[float] = [
-        item for sublist in data_df["Value"] for item in sublist
-    ]
-    try:
-        data_df.attrs["vmin"] = min(flattened_values)
-        data_df.attrs["vmax"] = max(flattened_values)
-
-    except ValueError:
-        # Let it pass to test plotter
-        data_df.attrs["vmin"] = 0
-        data_df.attrs["vmax"] = 1
-        # DEBUG: method failed for nested arrays
-        warnings.warn("Normalization failed.")
-
-    return data_df
+    # Write vmin/vmax into metadata
+    return set_vmin_vmax(data_df)
 
 
 class PTableProjector:
