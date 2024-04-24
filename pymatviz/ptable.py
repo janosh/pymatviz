@@ -40,7 +40,7 @@ CountMode: TypeAlias = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
 ]
 
-ElemValues: TypeAlias = dict[str | int, float] | pd.Series | Sequence[str]
+ElemValues: TypeAlias = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
 
 
 def count_elements(
