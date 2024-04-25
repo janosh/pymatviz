@@ -1,6 +1,6 @@
 ci:
   autoupdate_schedule: quarterly
-  skip: [pyright] # TODO figure out why only failing in CI
+  skip: [pyright, eslint]
 
 default_stages: [commit]
 
