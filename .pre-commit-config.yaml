@@ -73,7 +73,7 @@ repos:
         exclude: ^(site/src/figs/.+\.svelte|data/wbm/20.+\..+|site/src/(routes|figs).+\.(yaml|json)|changelog.md)$
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.0.0-rc.0
+    rev: v9.1.1
     hooks:
       - id: eslint
         types: [file]
@@ -87,8 +87,9 @@ repos:
           - "@typescript-eslint/eslint-plugin"
           - "@typescript-eslint/parser"
           - svelte-eslint-parser
+        entry: sh -c 'export ESLINT_USE_FLAT_CONFIG=false && eslint "$@"' # TODO: replace with new config file
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.359
+    rev: v1.1.360
     hooks:
       - id: pyright
