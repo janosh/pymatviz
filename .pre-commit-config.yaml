@@ -1,6 +1,6 @@
 ci:
   autoupdate_schedule: quarterly
-  skip: [pyright, eslint]
+  skip: [pyright]
 
 default_stages: [commit]
 
@@ -73,7 +73,7 @@ repos:
         exclude: ^(site/src/figs/.+\.svelte|data/wbm/20.+\..+|site/src/(routes|figs).+\.(yaml|json)|changelog.md)$
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.1.0
+    rev: v9.0.0-rc.0
     hooks:
       - id: eslint
         types: [file]
