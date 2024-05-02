@@ -25,22 +25,22 @@ from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, TypeAlias
+    from typing import Any, Callable
 
     import plotly.graph_objects as go
 
 # Data types supported by ptable plotters
-SupportedValueType: TypeAlias = Union[Sequence[float], np.ndarray]
+SupportedValueType = Union[Sequence[float], np.ndarray]
 
-SupportedDataType: TypeAlias = Union[
+SupportedDataType = Union[
     dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
 ]
 
-CountMode: TypeAlias = Literal[
+CountMode = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
 ]
 
-ElemValues: TypeAlias = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
+ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
 
 
 def count_elements(
