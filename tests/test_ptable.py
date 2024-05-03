@@ -23,8 +23,7 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.ptable import data_preprocessor
-from pymatviz.ptable import add_element_type_legend
+from pymatviz.ptable import add_element_type_legend, data_preprocessor
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
