@@ -844,6 +844,113 @@ def ptable_heatmap(
     return ax
 
 
+def ptable_heatmap_splits(
+    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    colormap: str | None = None,
+    start_angle: float = 135,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.5),
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+    cbar_title: str = "Values",
+    on_empty: Literal["hide", "show"] = "hide",
+    ax_kwargs: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+    plot_kwargs: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
+    cbar_title_kwargs: dict[str, Any] | None = None,
+    cbar_kwargs: dict[str, Any] | None = None,
+) -> plt.Figure:
+    """Plot evenly-split heatmaps, nested inside a periodic table.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+            Map from element symbols to plot data. E.g. if dict,
+            {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
+            be plotted on the lower-left corner and the 2nd on the upper-right.
+            If pd.Series, index is element symbols and values lists.
+            If pd.DataFrame, column names are element symbols,
+            plots are created from each column.
+        colormap (str): Matplotlib colormap name to use.
+        start_angle (float): The starting angle for the splits in degrees,
+                and the split proceeds counter-clockwise (0 refers to
+                the x-axis). Defaults to 135 degrees.
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+        symbol_pos (tuple[float, float]): Position of element symbols
+            relative to the lower left corner of each tile.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
+        cbar_coords (tuple[float, float, float, float]): Colorbar
+            position and size: [x, y, width, height] anchored at lower left
+            corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
+        cbar_title (str): Colorbar title. Defaults to "Values".
+        cbar_title_kwargs (dict): Keyword arguments passed to
+            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
+        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
+
+    Notes:
+        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
+
+    Returns:
+        plt.Figure: periodic table with a subplot in each element tile.
+    """
+    # Re-initialize kwargs as empty dict if None
+    plot_kwargs = plot_kwargs or {}
+    ax_kwargs = ax_kwargs or {}
+    symbol_kwargs = symbol_kwargs or {}
+    cbar_title_kwargs = cbar_title_kwargs or {}
+    cbar_kwargs = cbar_kwargs or {}
+
+    # Initialize periodic table plotter
+    plotter = PTableProjector(
+        data=data,
+        colormap=colormap,
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+    )
+
+    # Call child plotter: evenly split rectangle
+    child_args = {
+        "start_angle": start_angle,
+        "cmap": plotter.cmap,
+        "norm": plotter.norm,
+    }
+
+    plotter.add_child_plots(
+        ChildPlotters.rectangle,  # type: ignore[arg-type]
+        child_args=child_args,
+        ax_kwargs=ax_kwargs,
+        on_empty=on_empty,
+    )
+
+    # Add element symbols
+    plotter.add_ele_symbols(
+        text=symbol_text,  # type: ignore[arg-type]
+        pos=symbol_pos,
+        kwargs=symbol_kwargs,
+    )
+
+    # Add colorbar
+    plotter.add_colorbar(
+        title=cbar_title,
+        coords=cbar_coords,
+        cbar_kwargs=cbar_kwargs,
+        title_kwargs=cbar_title_kwargs,
+    )
+
+    return plotter.fig
+
+
 def ptable_heatmap_ratio(
     values_num: ElemValues,
     values_denom: ElemValues,
@@ -1503,113 +1610,6 @@ def ptable_lines(
         text=symbol_text,  # type: ignore[arg-type]
         pos=symbol_pos,
         kwargs=symbol_kwargs,
-    )
-
-    return plotter.fig
-
-
-def ptable_splits(
-    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    colormap: str | None = None,
-    start_angle: float = 135,
-    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
-    symbol_pos: tuple[float, float] = (0.5, 0.5),
-    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-    cbar_title: str = "Values",
-    on_empty: Literal["hide", "show"] = "hide",
-    ax_kwargs: dict[str, Any] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
-    plot_kwargs: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
-    cbar_title_kwargs: dict[str, Any] | None = None,
-    cbar_kwargs: dict[str, Any] | None = None,
-) -> plt.Figure:
-    """Plot evenly-split tiles, nested inside a periodic table.
-
-    Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
-            Map from element symbols to plot data. E.g. if dict,
-            {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
-            be plotted on the lower-left corner and the 2nd on the upper-right.
-            If pd.Series, index is element symbols and values lists.
-            If pd.DataFrame, column names are element symbols,
-            plots are created from each column.
-        colormap (str): Matplotlib colormap name to use.
-        start_angle (float): The starting angle for the splits in degrees,
-                and the split proceeds counter-clockwise (0 refers to
-                the x-axis). Defaults to 135 degrees.
-        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
-            Use to set x/y labels, limits, etc. Defaults to None. Example:
-            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
-            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
-            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
-        symbol_text (str | Callable[[Element], str]): Text to display for
-            each element symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
-            element symbols. Defaults to None.
-        symbol_pos (tuple[float, float]): Position of element symbols
-            relative to the lower left corner of each tile.
-            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        cbar_coords (tuple[float, float, float, float]): Colorbar
-            position and size: [x, y, width, height] anchored at lower left
-            corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
-        cbar_title (str): Colorbar title. Defaults to "Values".
-        cbar_title_kwargs (dict): Keyword arguments passed to
-            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
-        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
-            data. Defaults to "hide".
-        plot_kwargs (dict): Additional keyword arguments to
-                pass to the plt.subplots function call.
-
-    Notes:
-        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
-
-    Returns:
-        plt.Figure: periodic table with a subplot in each element tile.
-    """
-    # Re-initialize kwargs as empty dict if None
-    plot_kwargs = plot_kwargs or {}
-    ax_kwargs = ax_kwargs or {}
-    symbol_kwargs = symbol_kwargs or {}
-    cbar_title_kwargs = cbar_title_kwargs or {}
-    cbar_kwargs = cbar_kwargs or {}
-
-    # Initialize periodic table plotter
-    plotter = PTableProjector(
-        data=data,
-        colormap=colormap,
-        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
-    )
-
-    # Call child plotter: evenly split rectangle
-    child_args = {
-        "start_angle": start_angle,
-        "cmap": plotter.cmap,
-        "norm": plotter.norm,
-    }
-
-    plotter.add_child_plots(
-        ChildPlotters.rectangle,  # type: ignore[arg-type]
-        child_args=child_args,
-        ax_kwargs=ax_kwargs,
-        on_empty=on_empty,
-    )
-
-    # Add element symbols
-    plotter.add_ele_symbols(
-        text=symbol_text,  # type: ignore[arg-type]
-        pos=symbol_pos,
-        kwargs=symbol_kwargs,
-    )
-
-    # Add colorbar
-    plotter.add_colorbar(
-        title=cbar_title,
-        coords=cbar_coords,
-        cbar_kwargs=cbar_kwargs,
-        title_kwargs=cbar_title_kwargs,
     )
 
     return plotter.fig

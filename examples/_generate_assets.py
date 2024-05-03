@@ -38,10 +38,10 @@ from pymatviz.ptable import (
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
+    ptable_heatmap_splits,
     ptable_hists,
     ptable_lines,
     ptable_scatters,
-    ptable_splits,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
@@ -224,13 +224,13 @@ data_dict = {
     for elem in Element
 }
 
-fig = ptable_splits(
+fig = ptable_heatmap_splits(
     data=data_dict,
     colormap="coolwarm",
     start_angle=135,
-    cbar_title="Periodic Table Evenly-Split Tiles Plots",
+    cbar_title="Periodic Table Evenly-Split Heatmap Plots",
 )
-save_and_compress_svg(fig, "ptable-splits")
+save_and_compress_svg(fig, "ptable-heatmap-splits")
 
 
 # %% Uncertainty Plots

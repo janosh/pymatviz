@@ -17,10 +17,10 @@ from pymatviz import (
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
+    ptable_heatmap_splits,
     ptable_hists,
     ptable_lines,
     ptable_scatters,
-    ptable_splits,
 )
 from pymatviz.ptable import data_preprocessor
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
@@ -255,6 +255,30 @@ def test_ptable_heatmap(
 
     # test show_scale (with heat_mode)
     ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
+
+
+def test_ptable_heatmap_splits() -> None:
+    """Test ptable_heatmap_splits with arbitrary data length."""
+    data_dict = {
+        elem.symbol: [
+            random.randint(0, 10)  # random heat value for each split
+            # random number of 1-4 splits per element
+            for _ in range(random.randint(1, 4))
+        ]
+        for elem in Element
+    }
+
+    cbar_title = "Periodic Table Evenly-Split Tiles Plots"
+    fig = ptable_heatmap_splits(
+        data_dict,
+        colormap="coolwarm",
+        start_angle=135,
+        cbar_title=cbar_title,
+    )
+    assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 181
+    cbar_ax = fig.axes[-1]
+    assert cbar_ax.get_title() == cbar_title
 
 
 def test_ptable_heatmap_ratio(
@@ -500,38 +524,15 @@ def test_ptable_scatters() -> None:
     assert isinstance(fig, plt.Figure)
 
 
-# def test_ptable_scatters_colored() -> None:
-#     """Test ptable_scatters with 3rd color dimension."""
-#     fig = ptable_scatters(
-#         data={
-#             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-#             "O": [[10, 11], [12, 13], [14, 15]],
-#         },
-#         colormap="coolwarm",
-#         cbar_title="Test ptable_scatters",
-#     )
-#     assert isinstance(fig, plt.Figure)
-
-
-def test_ptable_splits() -> None:
-    """Test ptable_splits with arbitrary data length."""
-    data_dict = {
-        elem.symbol: [
-            random.randint(0, 10)  # random heat value for each split
-            # random number of 1-4 splits per element
-            for _ in range(random.randint(1, 4))
-        ]
-        for elem in Element
-    }
-
-    cbar_title = "Periodic Table Evenly-Split Tiles Plots"
-    fig = ptable_splits(
-        data_dict,
-        colormap="coolwarm",
-        start_angle=135,
-        cbar_title=cbar_title,
+@pytest.mark.skip(reason="3rd color dimension not implemented yet")  # TODO:
+def test_ptable_scatters_colored() -> None:
+    """Test ptable_scatters with 3rd color dimension."""
+    fig = ptable_scatters(
+        data={
+            "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+            "O": [[10, 11], [12, 13], [14, 15]],
+        },
+        # colormap="coolwarm",
+        # cbar_title="Test ptable_scatters",
     )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 181
-    cbar_ax = fig.axes[-1]
-    assert cbar_ax.get_title() == cbar_title
