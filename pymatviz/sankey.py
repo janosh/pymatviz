@@ -1,3 +1,5 @@
+"""Sankey diagram for comparing distributions in two dataframe columns."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal

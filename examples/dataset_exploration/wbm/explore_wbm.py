@@ -10,10 +10,10 @@ __author__ = "Janosh Riebesell"
 __date__ = "2022-08-18"
 
 
-# %% download wbm-steps-summary.csv (23.31 MB)
-df_wbm = pd.read_csv(
-    "https://figshare.com/files/37542841?private_link=ff0ad14505f9624f0c05"
-).set_index("material_id", drop=False)
+# %% download wbm-summary.csv (12 MB)
+df_wbm = pd.read_csv("https://figshare.com/ndownloader/files/44225498").set_index(
+    "material_id", drop=False
+)
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
 df_wbm["spg_num"] = df_wbm.wyckoff.str.split("_").str[2].astype(int)

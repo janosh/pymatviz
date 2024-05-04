@@ -1,3 +1,5 @@
+"""Plot the cumulative distribution of residuals and absolute errors."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

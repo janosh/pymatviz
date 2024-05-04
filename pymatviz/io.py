@@ -1,3 +1,5 @@
+"""I/O utilities for saving figures and dataframes to various image formats."""
+
 from __future__ import annotations
 
 import copy

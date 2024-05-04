@@ -1,3 +1,5 @@
+"""Various periodic table heatmaps with matplotlib and plotly."""
+
 from __future__ import annotations
 
 import inspect
@@ -6,7 +8,7 @@ import math
 import warnings
 from collections.abc import Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Final, Literal, get_args
+from typing import TYPE_CHECKING, Literal, Union, get_args
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -24,15 +26,23 @@ from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
 if TYPE_CHECKING:
-    from typing import TypeAlias
+    from typing import Any, Callable, Final
 
     import plotly.graph_objects as go
 
-    ElemValues: TypeAlias = dict[str | int, int | float] | pd.Series | Sequence[str]
+# Data types supported by ptable plotters
+SupportedValueType = Union[Sequence[float], np.ndarray]
+
+SupportedDataType = Union[
+    dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
+]
 
 CountMode = Literal[
     "composition", "fractional_composition", "reduced_composition", "occurrence"
 ]
+
+ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
+
 ELEM_CLASS_COLORS: Final = {
     "Diatomic Nonmetal": "green",
     "Noble Gas": "purple",
@@ -50,6 +60,50 @@ ELEM_CLASS_COLORS: Final = {
     "Alkaline Metal": "magenta",
     "Transactinide": "olive",
 }
+
+
+def add_element_type_legend(
+    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    elem_class_colors: dict[str, str] | None = None,
+    legend_kwargs: dict[str, Any] | None = None,
+) -> None:
+    """Add a legend to a matplotlib figure showing the colors of element types.
+
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
+            to plot data. Used only to determine which element types are present.
+        elem_class_colors (dict[str, str]): Map from element
+            types to colors. E.g. {"Alkali Metal": "red", "Noble Gas": "blue"}.
+        legend_kwargs (dict): Keyword arguments passed to plt.legend() for customizing
+            legend appearance. Defaults to None.
+    """
+    elem_class_colors = ELEM_CLASS_COLORS | (elem_class_colors or {})
+    # else case list(data) covers dict and DataFrame
+    elems_with_data = data.index if isinstance(data, pd.Series) else list(data)
+    visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
+    font_size = 10
+    legend_elements = [
+        plt.Line2D(
+            *([0], [0]),
+            marker="s",
+            color="w",
+            label=elem_class,
+            markerfacecolor=color,
+            markersize=1.2 * font_size,
+        )
+        for elem_class, color in elem_class_colors.items()
+        if elem_class in visible_elem_types
+    ]
+    legend_kwargs = dict(
+        loc="center left",
+        bbox_to_anchor=(0, -42),
+        ncol=6,
+        frameon=False,
+        fontsize=font_size,
+        handlelength=1,  # more compact legend
+    ) | (legend_kwargs or {})
+    plt.legend(handles=legend_elements, **legend_kwargs)
 
 
 def count_elements(
@@ -160,6 +214,418 @@ def count_elements(
     return srs
 
 
+def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
+    """Preprocess input data for ptable plotters, including:
+        - Convert all data types to pd.DataFrame.
+        - Impute missing values.
+        - Handle anomalies such as NaN, infinity.
+        - Write vmin/vmax as metadata into the DataFrame.
+
+    Returns:
+        pd.DataFrame: The preprocessed DataFrame with element names
+            as index and values as columns.
+
+    Example:
+        >>> data_dict: dict = {
+            "H": 1.0,
+            "He": [2.0, 4.0],
+            "Li": [[6.0, 8.0], [10.0, 12.0]],
+        }
+
+        OR
+        >>> data_df: pd.DataFrame = pd.DataFrame(
+            data_dict.items(),
+            columns=["Element", "Value"]
+            ).set_index("Element")
+
+        OR
+        >>> data_series: pd.Series = pd.Series(data_dict)
+
+        >>> preprocess_data(data_dict/df/series)
+
+             Element   Value
+        0    H         [1.0, ]
+        1    He        [2.0, 4.0]
+        2    Li        [[6.0, 8.0], [10.0, 12.0]]
+
+        Metadata:
+            vmin: 1.0
+            vmax: 12.0
+    """
+
+    def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
+        """Write vmin and vmax to DataFrame metadata."""
+        # Flatten the DataFrame
+        flattened_values: list[float] = []
+
+        for item in df["Value"]:
+            for value in item:  # item is always a list
+                try:
+                    flattened_values.append(float(value))
+                except (TypeError, ValueError):  # noqa: PERF203
+                    try:
+                        flattened_values.extend(list(map(float, value)))
+                    except (TypeError, ValueError) as exc:
+                        raise TypeError(f"Unsupported data type {type(value)}") from exc
+
+        # Set vmin and vmax
+        df.attrs["vmin"] = min(flattened_values)
+        df.attrs["vmax"] = max(flattened_values)
+
+        return df
+
+    # Check and handle different supported data types
+    if isinstance(data, pd.DataFrame):
+        data_df = data
+
+    elif isinstance(data, pd.Series):
+        data_df = data.to_frame(name="Value")
+        data_df.index.name = "Element"
+
+    elif isinstance(data, dict):
+        data_df = pd.DataFrame(data.items(), columns=["Element", "Value"]).set_index(
+            "Element"
+        )
+
+    else:
+        raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
+
+    # Convert all values to np.array
+    data_df["Value"] = data_df["Value"].map(
+        lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
+    )
+
+    # Handle missing and anomaly
+    data_df = handle_missing_and_anomaly(data_df)
+
+    # Write vmin/vmax into metadata
+    return set_vmin_vmax(data_df)
+
+
+def handle_missing_and_anomaly(
+    df: pd.DataFrame,
+    # missing_strategy: Literal["zero", "mean"] = "mean",
+) -> pd.DataFrame:
+    """Handle missing value (NaN) and anomaly (infinity).
+
+    Infinity would be replaced by vmax(∞) or vmin(-∞).
+    Missing values would be handled by selected strategy:
+        - zero: impute with zeros
+        - mean: impute with mean value
+
+    TODO: finish this function
+    """
+    return df
+
+
+class PTableProjector:
+    """Project (nest) a custom plot into a periodic table.
+
+    Scopes mentioned in this plotter:
+        plot: Refers to the global scope.
+        ax: Refers to the axis where child plotter would plot.
+        child: Refers to the child plotter itself, for example, ax.plot().
+    """
+
+    def __init__(
+        self,
+        data: SupportedDataType,
+        colormap: str | Colormap | None,
+        plot_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize a ptable projector.
+
+        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods),
+        and axes would be turned off by default.
+
+        Args:
+            data (SupportedDataType): The data to be visualized.
+            colormap (str | Colormap | None): The colormap to use.
+            plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
+        """
+        # Get colormap
+        self.cmap: Colormap = colormap
+
+        # Preprocess data
+        self.data: pd.DataFrame = data
+
+        # Initialize periodic table canvas
+        n_periods = df_ptable.row.max()
+        n_groups = df_ptable.column.max()
+
+        # Set figure size
+        plot_kwargs = plot_kwargs or {}
+        plot_kwargs.setdefault("figsize", (0.75 * n_groups, 0.75 * n_periods))
+
+        self.fig, self.axes = plt.subplots(n_periods, n_groups, **plot_kwargs)
+
+        # Turn off all axes
+        for ax in self.axes.flat:
+            ax.axis("off")
+
+    @property
+    def cmap(self) -> Colormap | None:
+        """The global Colormap.
+
+        Returns:
+            Colormap: The Colormap used.
+        """
+        return self._cmap
+
+    @cmap.setter
+    def cmap(self, colormap: str | Colormap | None) -> None:
+        """The global colormap used.
+
+        Args:
+        colormap (str | Colormap | None): The colormap to use.
+        """
+        self._cmap = None if colormap is None else plt.get_cmap(colormap)
+
+    @property
+    def data(self) -> pd.DataFrame:
+        """The preprocessed data.
+
+        Returns:
+            pd.DataFrame: The preprocessed data.
+        """
+        return self._data
+
+    @data.setter
+    def data(self, data: SupportedDataType) -> None:
+        """Set and preprocess the data, also set normalizer.
+
+        Args:
+            data (SupportedDataType): The data to be used.
+        """
+        # Preprocess data
+        self._data: pd.DataFrame = data_preprocessor(data)
+
+        # Normalize data for colorbar
+        self._norm: Normalize = Normalize(
+            vmin=self._data.attrs["vmin"], vmax=self._data.attrs["vmax"]
+        )
+
+    @property
+    def norm(self) -> Normalize:
+        """Data min-max normalizer."""
+        return self._norm
+
+    def add_child_plots(
+        self,
+        child_plotter: Callable[[plt.axes, Any], None],
+        child_args: dict[str, Any],
+        ax_kwargs: dict[str, Any],
+        on_empty: Literal["hide", "show"] = "hide",
+    ) -> None:
+        """Add custom child plots to the periodic table grid.
+
+        Args:
+            child_plotter: A callable for the child plotter.
+            child_args: Arguments to pass to the child plotter call.
+            ax_kwargs: Keyword arguments to pass to ax.set().
+            on_empty: Whether to "show" or "hide" tiles for elements without data.
+        """
+        for element in Element:
+            # Get axis index by element symbol
+            symbol: str = element.symbol
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            # Get and check tile data
+            try:
+                plot_data: np.ndarray | Sequence[float] = self.data.loc[symbol, "Value"]
+            except KeyError:  # skip element without data
+                plot_data = None
+
+            if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
+                continue
+
+            # Call child plotter
+            child_plotter(ax, plot_data, **child_args)
+
+            # Pass axis kwargs
+            if ax_kwargs:
+                ax.set(**ax_kwargs)
+
+    def add_ele_symbols(
+        self,
+        text: Callable[[Element], str] = lambda elem: elem.symbol,
+        pos: tuple[float, float] = (0.5, 0.5),
+        kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Add element symbols for each tile.
+
+        Args:
+            text: A callable or string specifying how to display
+                the element symbol. If a callable is provided,
+                it should accept an Element object and return a string.
+                If a string is provided, it can contain a format
+                specifier for the element symbol, e.g., "{elem.symbol}".
+            pos: The position of the text relative to the axes.
+            kwargs: Additional keyword arguments to pass to the `ax.text`.
+        """
+        # Update symbol args
+        kwargs = kwargs or {}
+        kwargs.setdefault("fontsize", 18)
+
+        # Add symbol for each element
+        for element in Element:
+            # Get axis index by element symbol
+            symbol: str = element.symbol
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            ax.text(
+                *pos,
+                text(element) if callable(text) else text.format(elem=element),  # type: ignore[attr-defined]
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                **kwargs,
+            )
+
+    def add_colorbar(
+        self,
+        title: str,
+        coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+        cbar_kwargs: dict[str, Any] | None = None,
+        title_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Add a global colorbar.
+
+        Args:
+            title: Title for the colorbar.
+            coords: Coordinates of the colorbar (left, bottom, width, height).
+                    Defaults to (0.18, 0.8, 0.42, 0.02).
+            cbar_kwargs: Additional keyword arguments to pass to fig.colorbar().
+            title_kwargs: Additional keyword arguments for the colorbar title.
+        """
+        # Update colorbar args
+        cbar_kwargs = {"orientation": "horizontal"} | (cbar_kwargs or {})
+
+        # Check colormap
+        if self.cmap is None:
+            raise ValueError("Cannot add colorbar without colormap.")
+
+        # Add colorbar
+        cbar_ax = self.fig.add_axes(coords)
+
+        self.fig.colorbar(
+            plt.cm.ScalarMappable(norm=self._norm, cmap=self.cmap),
+            cax=cbar_ax,
+            **cbar_kwargs,
+        )
+
+        # Set colorbar title
+        title_kwargs = title_kwargs or {}
+        title_kwargs.setdefault("fontsize", 12)
+        title_kwargs.setdefault("pad", 10)
+        title_kwargs["label"] = title
+
+        cbar_ax.set_title(**title_kwargs)
+
+
+class ChildPlotters:
+    """Collect some pre-defined child plotters."""
+
+    @staticmethod
+    def rectangle(
+        ax: plt.axes,
+        data: SupportedValueType,
+        norm: Normalize,
+        cmap: Colormap,
+        start_angle: float,
+    ) -> None:
+        """Rectangle heatmap plotter, could be evenly split.
+
+        Could be evenly split, depending on the
+        length of the data (could mix and match).
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+            norm (Normalize): Normalizer for data-color mapping.
+            cmap (Colormap): Colormap used for value mapping.
+            start_angle (float): The starting angle for the splits in degrees,
+                and the split proceeds counter-clockwise (0 refers to the x-axis).
+        """
+        # Map values to colors
+        if isinstance(data, (Sequence, np.ndarray)):
+            colors = [cmap(norm(value)) for value in data]
+        else:
+            raise TypeError("Unsupported data type.")
+
+        # Add the pie chart
+        ax.pie(
+            np.ones(len(colors)),
+            colors=colors,
+            startangle=start_angle,
+            wedgeprops=dict(clip_on=True),
+        )
+
+        # Crop the central rectangle from the pie chart
+        rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
+        ax.set_clip_path(rect)
+
+        ax.set_xlim(-0.5, 0.5)
+        ax.set_ylim(-0.5, 0.5)
+
+    @staticmethod
+    def scatter(
+        ax: plt.axes,
+        data: SupportedValueType,
+        **child_args: Any,
+    ) -> None:
+        """Scatter plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+            child_args (dict): args to pass to the child plotter call
+        """
+        # Add scatter
+        if len(data) == 2:
+            ax.scatter(x=data[0], y=data[1], **child_args)
+        elif len(data) == 3:
+            ax.scatter(x=data[0], y=data[1], c=data[2], **child_args)
+
+        # Adjust tick labels
+        # TODO: how to achieve this from external?
+        ax.tick_params(axis="both", which="major", labelsize=8)
+
+        # Hide the right and top spines
+        ax.axis("on")  # turned off by default
+        ax.spines[["right", "top"]].set_visible(False)
+
+    @staticmethod
+    def line(
+        ax: plt.axes,
+        data: SupportedValueType,
+        **child_args: Any,
+    ) -> None:
+        """Line plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+            child_args (dict): args to pass to the child plotter call
+        """
+        # Add line
+        ax.plot(data[0], data[1], **child_args)
+
+        # Adjust tick labels
+        # TODO: how to achieve this from external?
+        ax.tick_params(axis="both", which="major", labelsize=8)
+
+        # Hide the right and top spines
+        ax.axis("on")  # turned off by default
+        ax.spines[["right", "top"]].set_visible(False)
+
+
 def ptable_heatmap(
     values: ElemValues,
     log: bool | Normalize = False,
@@ -259,6 +725,15 @@ def ptable_heatmap(
     Returns:
         plt.Axes: matplotlib Axes with the heatmap.
     """
+
+    def tick_fmt(val: float, _pos: int) -> str:
+        # val: value at color axis tick (e.g. 10.0, 20.0, ...)
+        # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
+        default_fmt = (
+            ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
+        )
+        return f"{val:{cbar_fmt or fmt or default_fmt}}"
+
     if fmt is None:
         fmt = partial(si_fmt, fmt=".1%" if heat_mode == "percent" else ".0f")
     if cbar_fmt is None:
@@ -410,14 +885,6 @@ def ptable_heatmap(
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 
-        def tick_fmt(val: float, _pos: int) -> str:
-            # val: value at color axis tick (e.g. 10.0, 20.0, ...)
-            # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
-            default_fmt = (
-                ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
-            )
-            return f"{val:{cbar_fmt or fmt or default_fmt}}"
-
         if callable(cbar_fmt):
             tick_fmt = cbar_fmt
 
@@ -438,6 +905,113 @@ def ptable_heatmap(
 
     plt.axis("off")
     return ax
+
+
+def ptable_heatmap_splits(
+    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    colormap: str | None = None,
+    start_angle: float = 135,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.5),
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+    cbar_title: str = "Values",
+    on_empty: Literal["hide", "show"] = "hide",
+    ax_kwargs: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+    plot_kwargs: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
+    cbar_title_kwargs: dict[str, Any] | None = None,
+    cbar_kwargs: dict[str, Any] | None = None,
+) -> plt.Figure:
+    """Plot evenly-split heatmaps, nested inside a periodic table.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+            Map from element symbols to plot data. E.g. if dict,
+            {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
+            be plotted on the lower-left corner and the 2nd on the upper-right.
+            If pd.Series, index is element symbols and values lists.
+            If pd.DataFrame, column names are element symbols,
+            plots are created from each column.
+        colormap (str): Matplotlib colormap name to use.
+        start_angle (float): The starting angle for the splits in degrees,
+                and the split proceeds counter-clockwise (0 refers to
+                the x-axis). Defaults to 135 degrees.
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+        symbol_pos (tuple[float, float]): Position of element symbols
+            relative to the lower left corner of each tile.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
+        cbar_coords (tuple[float, float, float, float]): Colorbar
+            position and size: [x, y, width, height] anchored at lower left
+            corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
+        cbar_title (str): Colorbar title. Defaults to "Values".
+        cbar_title_kwargs (dict): Keyword arguments passed to
+            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
+        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
+
+    Notes:
+        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
+
+    Returns:
+        plt.Figure: periodic table with a subplot in each element tile.
+    """
+    # Re-initialize kwargs as empty dict if None
+    plot_kwargs = plot_kwargs or {}
+    ax_kwargs = ax_kwargs or {}
+    symbol_kwargs = symbol_kwargs or {}
+    cbar_title_kwargs = cbar_title_kwargs or {}
+    cbar_kwargs = cbar_kwargs or {}
+
+    # Initialize periodic table plotter
+    plotter = PTableProjector(
+        data=data,
+        colormap=colormap,
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+    )
+
+    # Call child plotter: evenly split rectangle
+    child_args = {
+        "start_angle": start_angle,
+        "cmap": plotter.cmap,
+        "norm": plotter.norm,
+    }
+
+    plotter.add_child_plots(
+        ChildPlotters.rectangle,  # type: ignore[arg-type]
+        child_args=child_args,
+        ax_kwargs=ax_kwargs,
+        on_empty=on_empty,
+    )
+
+    # Add element symbols
+    plotter.add_ele_symbols(
+        text=symbol_text,  # type: ignore[arg-type]
+        pos=symbol_pos,
+        kwargs=symbol_kwargs,
+    )
+
+    # Add colorbar
+    plotter.add_colorbar(
+        title=cbar_title,
+        coords=cbar_coords,
+        cbar_kwargs=cbar_kwargs,
+        title_kwargs=cbar_title_kwargs,
+    )
+
+    return plotter.fig
 
 
 def ptable_heatmap_ratio(
@@ -616,11 +1190,9 @@ def ptable_heatmap_plotly(
 
     if isinstance(colorscale, (str, type(None))):
         colorscale = px.colors.get_colorscale(colorscale or "viridis")
-    elif isinstance(colorscale, Sequence) and isinstance(
+    elif not isinstance(colorscale, Sequence) or not isinstance(
         colorscale[0], (str, list, tuple)
     ):
-        pass
-    else:
         raise TypeError(
             f"{colorscale=} should be string, list of strings or list of "
             "tuples(float, str)"
@@ -987,48 +1559,29 @@ def ptable_hists(
     return fig
 
 
-def ptable_plots(
+def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    plot_kwds: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
-    colormap: str | None = None,
-    ax_kwds: dict[str, Any] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
-    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-    cbar_title: str = "Values",
-    cbar_title_kwds: dict[str, Any] | None = None,
-    cbar_kwds: dict[str, Any] | None = None,
-    anno_kwds: dict[str, Any] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
-    color_elem_types: Literal["symbol", "background", "both", False]
-    | dict[str, str] = "background",
-    elem_type_legend: bool | dict[str, Any] = True,
-    **kwargs: Any,
+    plot_kwargs: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
+    child_args: dict[str, Any] | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
-    """Make scatter or line plots for each element, nested inside a periodic table.
+    """Make scatter plots for each element, nested inside a periodic table.
 
     Args:
         data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
             Map from element symbols to plot data. E.g. if dict,
-            {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}.
-            You could also add a 3rd list for coloring, e.g.
-            {"Fe": [[1, 2], [3, 4], [5, 6]]}.
+            {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
+            be plotted on the lower-left corner and the 2nd on the upper-right.
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
-        plot_kwds (dict | Callable): Keywords passed to ax.plot() for each subplot.
-            If callable, it is called with the plot data for each element and
-            should return a dict of keyword arguments. Useful for setting markers,
-            colors, etc. Example: use plot_kwds=dict(marker="o", linestyle="") for
-            scatter (default is line) or as dynamic callable:
-            plot_kwds=lambda plot_vals: dict(
-                linestyle="-" if len(plot_vals) > 40 else ""
-            )
-        colormap (str): Matplotlib colormap name to use. Defaults to None.
-        ax_kwds (dict): Keyword arguments passed to ax.set() for each plot.
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
@@ -1039,238 +1592,114 @@ def ptable_plots(
             element symbols. Defaults to None.
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
-            Defaults to (0.5, 0.8). (1, 1) is the upper right corner.
-        cbar_coords (tuple[float, float, float, float]): Colorbar
-            position and size: [x, y, width, height] anchored at lower left
-            corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
-        cbar_title (str): Colorbar title. Defaults to "Values".
-        cbar_title_kwds (dict): Keyword arguments passed to
-            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
-        cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
-        anno_kwds (dict): Keyword arguments passed to plt.annotate()
-            for element annotations. Defaults to None. Useful for adding
-            e.g. number of data points in each plot. For that, use
-            anno_kwds=lambda plot_vals: dict(text=len(plot_vals)).
-            Recognized keys are text, xy, xycoords, fontsize, and any other
-            plt.annotate() keywords.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        color_elem_types ("symbol" | "background" | "both" | False | dict[str, str]):
-            Whether to color element symbols or
-            backgrounds according to their type. Defaults to "symbol". If a dict is
-            passed, it should map element types to colors. Will be merged into default
-            dict so doesn't need to contain all element types. See source code for
-            recognized keys. Example:
-            {"Noble Gas": "gray", "Halogen": "teal"}. If False, no coloring is done.
-        elem_type_legend (bool | dict): Whether to show a legend for element
-            types. Defaults to True. If dict, used as kwargs to plt.legend(), e.g. to
-            set the legend title, use {"title": "Element Types"}.
-            Defaults to True.
-        **kwargs: Additional keyword arguments passed to plt.subplots().
+        child_args: Arguments to pass to the child plotter call.
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
 
-    Notes:
-        Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
-
-    Returns:
-        plt.Figure: periodic table with a subplot in each element tile.
+    TODO: allow colormap with 3rd data dimension
     """
-    if isinstance(color_elem_types, dict) and (
-        bad_keys := set(color_elem_types) - set(ELEM_CLASS_COLORS)
-    ):
-        raise ValueError(
-            f"Invalid color_elem_types: {', '.join(bad_keys)}. Recognized keys are: "
-            f"{', '.join(ELEM_CLASS_COLORS)}."
-        )
-    if isinstance(color_elem_types, str) and (
-        color_elem_types not in (valid_vals := ("symbol", "background", "both"))
-    ):
-        raise ValueError(
-            f"Invalid {color_elem_types=}, should be one of {valid_vals} or dict|False."
-        )
+    # Re-initialize kwargs as empty dict if None
+    plot_kwargs = plot_kwargs or {}
+    ax_kwargs = ax_kwargs or {}
 
-    n_periods = df_ptable.row.max()
-    n_groups = df_ptable.column.max()
-
-    kwargs.setdefault("figsize", (0.75 * n_groups, 0.75 * n_periods))
-    fig, axes = plt.subplots(n_periods, n_groups, **kwargs)
-
-    # Use series name as colorbar title if available when no title was passed
-    if isinstance(data, pd.Series) and cbar_title == "Values" and data.name:
-        cbar_title = data.name
-        data = data.to_dict()
-    elif isinstance(data, pd.DataFrame):
-        data = data.to_dict(orient="list")
-    # data is guaranteed to be a dict from here (should have element symbols as keys)
-
-    cmap = plt.get_cmap(colormap) if colormap else None
-
-    # Turn off axis of subplots on the grid that don't correspond to elements
-    ax: plt.Axes
-    for ax in axes.flat:
-        ax.axis("off")
+    child_args = child_args or {}
 
     symbol_kwargs = symbol_kwargs or {}
-    symbol_kwargs.setdefault("fontsize", 10)
+    symbol_kwargs.setdefault("fontsize", 12)
 
-    elem_class_colors = ELEM_CLASS_COLORS | (
-        color_elem_types if isinstance(color_elem_types, dict) else {}
+    # Initialize periodic table plotter
+    plotter = PTableProjector(data=data, colormap=None, plot_kwargs=plot_kwargs)  # type: ignore[arg-type]
+
+    # Call child plotter: Scatter
+    plotter.add_child_plots(
+        ChildPlotters.scatter,
+        child_args=child_args,
+        ax_kwargs=ax_kwargs,
+        on_empty=on_empty,
     )
 
-    for element in Element:
-        symbol = element.symbol
-        row, group = df_ptable.loc[symbol, ["row", "column"]]
+    # Add element symbols
+    plotter.add_ele_symbols(
+        text=symbol_text,  # type: ignore[arg-type]
+        pos=symbol_pos,
+        kwargs=symbol_kwargs,
+    )
 
-        ax = axes[row - 1][group - 1]
-        plot_data = np.array(data.get(symbol, []))
-        if len(plot_data) == 0 and on_empty == "hide":
-            continue
-
-        if color_elem_types:
-            elem_class = df_ptable.loc[symbol, "type"]
-            if color_elem_types in ("symbol", "both"):
-                symbol_kwargs["color"] = elem_class_colors.get(elem_class, "black")
-            if color_elem_types in ("background", "both"):
-                bg_color = elem_class_colors.get(elem_class, "white")
-                ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
-
-        ax.text(
-            *symbol_pos,
-            symbol_text(element)
-            if callable(symbol_text)
-            else symbol_text.format(elem=element),
-            ha="center",
-            va="center",
-            transform=ax.transAxes,
-            **symbol_kwargs,
-        )
-
-        ax.axis("on")
-
-        if anno_kwds:
-            defaults = dict(
-                text=lambda plot_vals: si_fmt_int(len(plot_vals)),
-                xy=(0.8, 0.8),
-                xycoords="axes fraction",
-                fontsize=8,
-                horizontalalignment="center",
-                verticalalignment="center",
-            )
-            if callable(anno_kwds):
-                annotation = anno_kwds(plot_data)
-            else:
-                annotation = anno_kwds
-                anno_text = anno_kwds.get("text")
-                if isinstance(anno_text, dict):
-                    anno_text = anno_text.get(symbol)
-                elif callable(anno_text):
-                    anno_text = anno_text(plot_data)
-                annotation["text"] = anno_text
-            ax.annotate(**(defaults | annotation))
-
-        if plot_data is not None:
-            if callable(plot_kwds):
-                scatter_kwargs = plot_kwds(plot_data)
-            else:
-                scatter_kwargs = plot_kwds or {}
-
-            # Plot without colormap when data len is 2
-            if plot_data.ndim == 2:
-                ax.plot(plot_data[0], plot_data[1], **(scatter_kwargs or {}))
-
-            # Plot with colormap when data len is 3
-            elif plot_data.ndim == 3:
-                ax.plot(
-                    plot_data[0],
-                    plot_data[1],
-                    c=plot_data[2],
-                    cmap=cmap,
-                    **(scatter_kwargs or {}),
-                )
-
-            ax.tick_params(labelsize=8, direction="out")
-            if ax_kwds:
-                ax.set(**ax_kwds(plot_data) if callable(ax_kwds) else ax_kwds)
-
-        # Disable ticks for elements without data
-        else:
-            ax.set_xticks([])
-            ax.set_yticks([])
-
-        # Hide right/top borders
-        for side in ("right", "top"):
-            ax.spines[side].set_visible(b=False)
-
-    # Add colorbar if data dimensionality is 3
-    if isinstance(cmap, Colormap) and {len(data) for data in data.values()} == {3}:
-        # Get the min/max values for norm calculation
-        third_lists = [data[2] for data in data.values()]
-        vmin = min(min(third_list) for third_list in third_lists)
-        vmax = max(max(third_list) for third_list in third_lists)
-
-        norm = Normalize(vmin=vmin, vmax=vmax)
-
-        cbar_ax = fig.add_axes(cbar_coords)
-
-        fig.colorbar(
-            plt.cm.ScalarMappable(norm=norm, cmap=cmap),
-            cax=cbar_ax,
-            **{"orientation": "horizontal"} | (cbar_kwds or {}),
-        )
-
-        # Set colorbar title
-        cbar_title_kwds = cbar_title_kwds or {}
-        cbar_title_kwds.setdefault("fontsize", 12)
-        cbar_title_kwds.setdefault("pad", 10)
-        cbar_title_kwds["label"] = cbar_title
-        cbar_ax.set_title(**cbar_title_kwds)
-
-    if elem_type_legend and color_elem_types:
-        legend_kwargs = elem_type_legend if isinstance(elem_type_legend, dict) else None
-        add_element_type_legend(
-            data=data, elem_class_colors=elem_class_colors, legend_kwargs=legend_kwargs
-        )
-
-    return fig
+    return plotter.fig
 
 
-def add_element_type_legend(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
-    elem_class_colors: dict[str, str] | None = None,
-    legend_kwargs: dict[str, Any] | None = None,
-) -> None:
-    """Add a legend to a matplotlib figure showing the colors of element types.
+def ptable_lines(
+    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.8),
+    on_empty: Literal["hide", "show"] = "hide",
+    plot_kwargs: dict[str, Any]
+    | Callable[[Sequence[float]], dict[str, Any]]
+    | None = None,
+    child_args: dict[str, Any] | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+) -> plt.Figure:
+    """Line plots for each element, nested inside a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
-            to plot data. Used only to determine which element types are present.
-        elem_class_colors (dict[str, str]): Map from element
-            types to colors. E.g. {"Alkali Metal": "red", "Noble Gas": "blue"}.
-        legend_kwargs (dict): Keyword arguments passed to plt.legend() for customizing
-            legend appearance. Defaults to None.
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+            Map from element symbols to plot data. E.g. if dict,
+            {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
+            be plotted on the lower-left corner and the 2nd on the upper-right.
+            If pd.Series, index is element symbols and values lists.
+            If pd.DataFrame, column names are element symbols,
+            plots are created from each column.
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+        symbol_pos (tuple[float, float]): Position of element symbols
+            relative to the lower left corner of each tile.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        child_args: Arguments to pass to the child plotter call.
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
     """
-    elem_class_colors = ELEM_CLASS_COLORS | (elem_class_colors or {})
-    # else case list(data) covers dict and DataFrame
-    elems_with_data = data.index if isinstance(data, pd.Series) else list(data)
-    visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
-    font_size = 10
-    legend_elements = [
-        plt.Line2D(
-            *([0], [0]),
-            marker="s",
-            color="w",
-            label=elem_class,
-            markerfacecolor=color,
-            markersize=1.2 * font_size,
-        )
-        for elem_class, color in elem_class_colors.items()
-        if elem_class in visible_elem_types
-    ]
-    legend_kwargs = dict(
-        loc="center left",
-        bbox_to_anchor=(0, -42),
-        ncol=6,
-        frameon=False,
-        fontsize=font_size,
-        handlelength=1,  # more compact legend
-    ) | (legend_kwargs or {})
-    plt.legend(handles=legend_elements, **legend_kwargs)
+    # Re-initialize kwargs as empty dict if None
+    plot_kwargs = plot_kwargs or {}
+    ax_kwargs = ax_kwargs or {}
+
+    child_args = child_args or {}
+
+    symbol_kwargs = symbol_kwargs or {}
+    symbol_kwargs.setdefault("fontsize", 12)
+
+    # Initialize periodic table plotter
+    plotter = PTableProjector(
+        data=data,
+        colormap=None,
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+    )
+
+    # Call child plotter: line
+    plotter.add_child_plots(
+        ChildPlotters.line,
+        child_args=child_args,
+        ax_kwargs=ax_kwargs,
+        on_empty=on_empty,
+    )
+
+    # Add element symbols
+    plotter.add_ele_symbols(
+        text=symbol_text,  # type: ignore[arg-type]
+        pos=symbol_pos,
+        kwargs=symbol_kwargs,
+    )
+
+    return plotter.fig

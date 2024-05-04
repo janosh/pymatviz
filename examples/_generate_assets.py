@@ -1,5 +1,6 @@
 # %%
 import json
+import random
 from glob import glob
 
 import matplotlib.pyplot as plt
@@ -37,8 +38,10 @@ from pymatviz.ptable import (
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
+    ptable_heatmap_splits,
     ptable_hists,
-    ptable_plots,
+    ptable_lines,
+    ptable_scatters,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
@@ -48,7 +51,7 @@ from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import TEST_FILES, df_ptable
 
 
-# %% configure matplotlib and load test data
+# %% Configure matplotlib and load test data
 plt.rc("font", size=14)
 plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("axes", titlesize=16, titleweight="bold")
@@ -58,7 +61,7 @@ plt.rcParams["figure.constrained_layout.use"] = True
 px.defaults.template = "pymatviz_white"
 pio.templates.default = "pymatviz_white"
 
-# random classification data
+# Random classification data
 np.random.seed(42)
 rand_clf_size = 100
 y_binary = np.random.choice([0, 1], size=rand_clf_size)
@@ -67,7 +70,7 @@ y_proba = np.clip(
 )
 
 
-# random regression data
+# Random regression data
 rand_regression_size = 500
 y_true = np.random.normal(5, 4, rand_regression_size)
 y_pred = 1.2 * y_true - 2 * np.random.normal(0, 1, rand_regression_size)
@@ -164,7 +167,7 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 
 # %% Histograms laid out in as a periodic table
-# generate random parity data with y \approx x with some noise
+# Generate random parity data with y \approx x with some noise
 data_dict = {
     elem.symbol: np.random.randn(100) + np.random.randn(100) for elem in Element
 }
@@ -179,18 +182,55 @@ data_dict = {
     elem.symbol: [
         np.random.randint(0, 20, 10),
         np.random.randint(0, 20, 10),
-        np.random.randint(0, 20, 10),
+        # np.random.randint(0, 20, 10),  # TODO: allow 3rd dim
     ]
     for elem in Element
 }
 
-fig = ptable_plots(
+fig = ptable_scatters(
     data_dict,
-    colormap="coolwarm",
-    cbar_title="Periodic Table Scatter Plots",
-    plot_kwds=dict(marker="o", linestyle=""),
+    # colormap="coolwarm",
+    # cbar_title="Periodic Table Scatter Plots",
+    child_args=dict(marker="o", linestyle=""),
+    symbol_pos=(0.5, 1.2),
+    symbol_kwargs=dict(fontsize=14),
 )
 save_and_compress_svg(fig, "ptable-scatters")
+
+
+# %% Line plots laid out as a periodic table
+data_dict = {
+    elem.symbol: [
+        np.linspace(0, 10, 10),
+        np.sin(2 * np.pi * np.linspace(0, 10, 10)) + np.random.normal(0, 0.2, 10),
+    ]
+    for elem in Element
+}
+
+fig = ptable_lines(
+    data_dict,
+    symbol_pos=(0.5, 1.2),
+    symbol_kwargs=dict(fontsize=14),
+)
+save_and_compress_svg(fig, "ptable-lines")
+
+
+# %% Evenly-split tile plots laid out as a periodic table
+data_dict = {
+    elem.symbol: [
+        random.randint(0, 10),
+        random.randint(10, 20),
+    ]
+    for elem in Element
+}
+
+fig = ptable_heatmap_splits(
+    data=data_dict,
+    colormap="coolwarm",
+    start_angle=135,
+    cbar_title="Periodic Table Evenly-Split Heatmap Plots",
+)
+save_and_compress_svg(fig, "ptable-heatmap-splits")
 
 
 # %% Uncertainty Plots
@@ -261,7 +301,7 @@ save_and_compress_svg(fig, "spg-symbol-sunburst")
 
 
 # %% Correlation Plots
-# plot eigenvalue distribution of a pure-noise correlation matrix
+# Plot eigenvalue distribution of a pure-noise correlation matrix
 # i.e. the correlation matrix contains no significant correlations
 # beyond the spurious correlation that occurs randomly
 n_rows, n_cols = 500, 1000
@@ -272,7 +312,7 @@ corr_mat = np.corrcoef(rand_wide_mat)
 ax = marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
 save_and_compress_svg(ax, "marchenko-pastur")
 
-# plot eigenvalue distribution of a correlation matrix with significant
+# Plot eigenvalue distribution of a correlation matrix with significant
 # (i.e. non-noise) eigenvalue
 n_rows, n_cols = 50, 400
 linear_matrix = np.arange(n_rows * n_cols).reshape(n_rows, n_cols) / n_cols
@@ -282,7 +322,7 @@ corr_mat = np.corrcoef(linear_matrix + rand_wide_mat[:n_rows, :n_cols])
 ax = marchenko_pastur(corr_mat, gamma=n_cols / n_rows)
 save_and_compress_svg(ax, "marchenko-pastur-significant-eval")
 
-# plot eigenvalue distribution of a rank-deficient correlation matrix
+# Plot eigenvalue distribution of a rank-deficient correlation matrix
 n_rows, n_cols = 600, 500
 rand_tall_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
 

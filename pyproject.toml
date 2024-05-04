@@ -88,7 +88,6 @@ lint.ignore = [
     "C408",   # unnecessary-collection-call
     "C901",
     "COM812", # trailing comma missing
-    "D100",   # Missing docstring in public module
     "D205",   # 1 blank line required between summary line and description
     "E731",   # do not assign a lambda expression, use a def
     "EM101",
@@ -117,7 +116,9 @@ lint.isort.split-on-trailing-comma = false
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/*" = ["D", "S101"]
-"examples/*" = ["INP001", "T201"]  # T201: print found
+# T201: print found
+# D100: Missing docstring in public module
+"examples/*" = ["D100", "INP001", "T201"]
 "site/*" = ["D", "INP001", "S602"]
 
 [tool.pyright]
