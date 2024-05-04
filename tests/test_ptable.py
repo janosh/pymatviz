@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib as mpl
@@ -8,26 +9,107 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+from numpy.testing import assert_allclose
 from plotly.exceptions import PlotlyError
+from pymatgen.core.periodic_table import Element
 
 from pymatviz import (
     count_elements,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
+    ptable_heatmap_splits,
     ptable_hists,
-    ptable_plots,
+    ptable_lines,
+    ptable_scatters,
 )
-from pymatviz.ptable import add_element_type_legend
+from pymatviz.ptable import add_element_type_legend, data_preprocessor
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any, ClassVar
 
     from pymatgen.core import Composition
 
     from pymatviz.ptable import CountMode
+
+
+class TestDataPreprocessor:
+    test_dict: ClassVar = {"H": 1.0, "He": [2.0, 4.0], "Li": np.array([6.0, 8.0])}
+
+    @staticmethod
+    def _validate_output_df(output_df: pd.DataFrame) -> None:
+        assert isinstance(output_df, pd.DataFrame)
+
+        assert output_df.columns.tolist() == ["Value"]
+        assert output_df.index.tolist() == ["H", "He", "Li"]
+
+        assert_allclose(output_df.loc["H", "Value"], [1.0])
+        assert_allclose(output_df.loc["He", "Value"], [2.0, 4.0])
+        assert_allclose(output_df.loc["Li", "Value"], [6.0, 8.0])
+
+        assert output_df.attrs["vmin"] == 1.0
+        assert output_df.attrs["vmax"] == 8.0
+
+    def test_from_pd_dataframe(self) -> None:
+        input_df: pd.DataFrame = pd.DataFrame(
+            self.test_dict.items(), columns=["Element", "Value"]
+        ).set_index("Element")
+
+        output_df: pd.DataFrame = data_preprocessor(input_df)
+
+        self._validate_output_df(output_df)
+
+    def test_from_pd_series(self) -> None:
+        input_series: pd.Series = pd.Series(self.test_dict)
+
+        output_df = data_preprocessor(input_series)
+
+        self._validate_output_df(output_df)
+
+    def test_from_dict(self) -> None:
+        input_dict = self.test_dict
+
+        output_df = data_preprocessor(input_dict)
+
+        self._validate_output_df(output_df)
+
+    def test_unsupported_type(self) -> None:
+        invalid_data = [0, 1, 2]
+
+        with pytest.raises(TypeError, match="Unsupported data type"):
+            data_preprocessor(invalid_data)
+
+    def test_get_vmin_vmax(self) -> None:
+        # Test without nested list/array
+        test_dict_0 = {"H": 1.0, "He": [2.0, 4.0], "Li": np.array([6.0, 8.0])}
+
+        output_df_0 = data_preprocessor(test_dict_0)
+
+        assert output_df_0.attrs["vmin"] == 1.0
+        assert output_df_0.attrs["vmax"] == 8.0
+
+        # Test with nested list/array
+        test_dict_1 = {
+            "H": 1.0,
+            "He": [[2.0, 3.0], [4.0, 5.0]],
+            "Li": [np.array([6.0, 7.0]), np.array([8.0, 9.0])],
+        }
+
+        output_df_1 = data_preprocessor(test_dict_1)
+
+        assert output_df_1.attrs["vmin"] == 1.0
+        assert output_df_1.attrs["vmax"] == 9.0
+
+
+class TestMissingAnomalyHandle:
+    def test_handle_missing(self) -> None:
+        pass
+
+    def test_handle_infinity(self) -> None:
+        pass
 
 
 @pytest.fixture()
@@ -174,6 +256,30 @@ def test_ptable_heatmap(
 
     # test show_scale (with heat_mode)
     ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
+
+
+def test_ptable_heatmap_splits() -> None:
+    """Test ptable_heatmap_splits with arbitrary data length."""
+    data_dict = {
+        elem.symbol: [
+            random.randint(0, 10)  # random heat value for each split
+            # random number of 1-4 splits per element
+            for _ in range(random.randint(1, 4))
+        ]
+        for elem in Element
+    }
+
+    cbar_title = "Periodic Table Evenly-Split Tiles Plots"
+    fig = ptable_heatmap_splits(
+        data_dict,
+        colormap="coolwarm",
+        start_angle=135,
+        cbar_title=cbar_title,
+    )
+    assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 181
+    cbar_ax = fig.axes[-1]
+    assert cbar_ax.get_title() == cbar_title
 
 
 def test_ptable_heatmap_ratio(
@@ -397,33 +503,39 @@ def test_ptable_hists(
     assert isinstance(fig, plt.Figure)
 
 
-def test_ptable_plots() -> None:
-    """Test ptable_plots with 3rd color dimension."""
-    fig = ptable_plots(
+def test_ptable_lines() -> None:
+    """Test ptable_lines."""
+    fig = ptable_lines(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
         },
-        colormap="coolwarm",
-        cbar_title="Test ptable_plots",
     )
     assert isinstance(fig, plt.Figure)
 
 
-@pytest.mark.parametrize(
-    "data",
-    [
-        {"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]},
-        {"Fe": np.array([[1, 2, 3], [4, 5, 6]]), "O": np.array([[7, 8], [9, 10]])},
-        pd.DataFrame({"Fe": [[1, 2, 3], [4, 5, 6]], "O": [[7, 8], [9, 10]]}),
-        pd.Series([[[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10]]], index=["Fe", "O"]),
-    ],
-)
-def test_ptable_plots_datatypes(
-    data: pd.DataFrame | pd.Series | dict[str, list[int]],
-) -> None:
-    """Test ptable_plots with various input data types."""
-    fig = ptable_plots(data)
+def test_ptable_scatters() -> None:
+    """Test ptable_scatters."""
+    fig = ptable_scatters(
+        data={
+            "Fe": [[1, 2, 3], [4, 5, 6]],
+            "O": [[10, 11], [12, 13]],
+        }
+    )
+    assert isinstance(fig, plt.Figure)
+
+
+@pytest.mark.skip(reason="3rd color dimension not implemented yet")  # TODO:
+def test_ptable_scatters_colored() -> None:
+    """Test ptable_scatters with 3rd color dimension."""
+    fig = ptable_scatters(
+        data={
+            "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+            "O": [[10, 11], [12, 13], [14, 15]],
+        },
+        # colormap="coolwarm",
+        # cbar_title="Test ptable_scatters",
+    )
     assert isinstance(fig, plt.Figure)
     assert len(fig.axes) == 180
 

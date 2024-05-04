@@ -16,7 +16,7 @@ from ase.data import chemical_symbols
 from matplotlib.backends.backend_pdf import PdfPages
 from pymatgen.core import Element
 
-from pymatviz import ptable_plots
+from pymatviz import ptable_plots  # type: ignore[attr-defined]  # TODO:
 from pymatviz.io import save_fig
 from pymatviz.utils import df_ptable
 

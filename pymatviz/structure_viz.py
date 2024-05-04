@@ -1,3 +1,5 @@
+"""2D plots of pymatgen structures with matplotlib."""
+
 from __future__ import annotations
 
 import math
@@ -50,7 +52,7 @@ def _angles_to_rotation_matrix(
     """
     if rotation is None:
         rotation = np.eye(3)
-    if angles == "":
+    if not angles:
         return rotation.copy()  # return initial rotation matrix if no angles
 
     for angle in angles.split(","):
@@ -126,7 +128,7 @@ def plot_structure_2d(
     standardize_struct: bool | None = None,
     axis: bool | str = "off",
 ) -> plt.Axes:
-    """Plot pymatgen structure object in 2d. Uses matplotlib.
+    """Plot pymatgen structures in 2d with matplotlib.
 
     Inspired by ASE's ase.visualize.plot.plot_atoms()
     https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
@@ -413,18 +415,7 @@ def plot_structure_2d(
             except ValueError:  # fails for disordered structures
                 "Charge balance analysis requires integer values in Composition"
 
-        try:
-            structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
-        except AttributeError:  # Many NearNeighbors subclasses don't support
-            # disordered structures raising AttributeError. in that case, we create new
-            # structure with majority species on each site.
-            # TODO: remove this exception case once
-            # https://github.com/materialsproject/pymatgen/pull/2630 is released
-            struct_copy = struct.copy()
-            for site in struct_copy:
-                # get majority species for each site
-                site.species = max(site.species, key=site.species.get)
-            structure_graph = neighbor_strategy_cls().get_bonded_structure(struct_copy)
+        structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
 
         bonds = structure_graph.graph.edges(data=True)
         for bond in bonds:
