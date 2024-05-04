@@ -36,12 +36,16 @@ from pymatviz.phonons import (
     plot_phonon_dos,
 )
 from pymatviz.ptable import (
+    ChildPlotters,
+    PTableProjector,
     count_elements,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
+    ptable_heatmap_splits,
     ptable_hists,
-    ptable_plots,
+    ptable_lines,
+    ptable_scatters,
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols

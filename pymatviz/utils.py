@@ -1,3 +1,5 @@
+"""pymatviz utility functions."""
+
 from __future__ import annotations
 
 import ast
@@ -16,7 +18,7 @@ from matplotlib.offsetbox import AnchoredText
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
-    from typing import ParamSpec, TypeVar
+    from typing import Final, ParamSpec, TypeVar
 
     from numpy.typing import ArrayLike
 
@@ -42,6 +44,24 @@ CrystalSystem = Literal[
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
+
+ELEM_CLASS_COLORS: Final = {
+    "Diatomic Nonmetal": "green",
+    "Noble Gas": "purple",
+    "Alkali Metal": "red",
+    "Alkaline Earth Metal": "orange",
+    "Metalloid": "darkgreen",
+    "Polyatomic Nonmetal": "teal",
+    "Transition Metal": "blue",
+    "Post Transition Metal": "cyan",
+    "Lanthanide": "brown",
+    "Actinide": "gray",
+    "Nonmetal": "green",
+    "Halogen": "teal",
+    "Metal": "lightblue",
+    "Alkaline Metal": "magenta",
+    "Transactinide": "olive",
+}
 
 # http://jmol.sourceforge.net/jscolors
 jmol_colors = df_ptable.jmol_color.dropna().map(ast.literal_eval)
@@ -72,10 +92,10 @@ def pretty_label(key: str, backend: Backend) -> str:
     return symbol_mapping.get(key, {}).get(backend, key)
 
 
-def crystal_sys_from_spg_num(spg: int) -> CrystalSystem:
+def crystal_sys_from_spg_num(spg: float) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
-    # ensure integer or float with no decimal part
-    if not (isinstance(spg, (int, float)) and spg == int(spg)):
+    # Ensure integer or float with no decimal part
+    if not isinstance(spg, (int, float)) or spg != int(spg):
         raise TypeError(f"Expect integer space group number, got {spg=}")
 
     if not (1 <= spg <= 230):
