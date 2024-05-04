@@ -450,18 +450,17 @@ class PTableProjector:
 
     def add_ele_symbols(
         self,
-        text: Callable[[Element], str] = lambda elem: elem.symbol,
+        text: str | Callable[[Element], str] = lambda elem: elem.symbol,
         pos: tuple[float, float] = (0.5, 0.5),
         kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add element symbols for each tile.
 
         Args:
-            text: A callable or string specifying how to display
-                the element symbol. If a callable is provided,
-                it should accept an Element object and return a string.
-                If a string is provided, it can contain a format
-                specifier for the element symbol, e.g., "{elem.symbol}".
+            text (str | Callable): The text to add to the tile.
+                If a callable, it should accept a pymatgen Element object and return a
+                string. If a string, it can contain a format
+                specifier for an `elem` variable which will be replaced by the element.
             pos: The position of the text relative to the axes.
             kwargs: Additional keyword arguments to pass to the `ax.text`.
         """
@@ -476,13 +475,9 @@ class PTableProjector:
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
+            anno = text(element) if callable(text) else text.format(elem=element)
             ax.text(
-                *pos,
-                text(element) if callable(text) else text.format(elem=element),  # type: ignore[attr-defined]
-                ha="center",
-                va="center",
-                transform=ax.transAxes,
-                **kwargs,
+                *pos, anno, ha="center", va="center", transform=ax.transAxes, **kwargs
             )
 
     def add_colorbar(
@@ -998,7 +993,7 @@ def ptable_heatmap_splits(
 
     # Add element symbols
     plotter.add_ele_symbols(
-        text=symbol_text,  # type: ignore[arg-type]
+        text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )
@@ -1623,7 +1618,7 @@ def ptable_scatters(
 
     # Add element symbols
     plotter.add_ele_symbols(
-        text=symbol_text,  # type: ignore[arg-type]
+        text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )
@@ -1697,7 +1692,7 @@ def ptable_lines(
 
     # Add element symbols
     plotter.add_ele_symbols(
-        text=symbol_text,  # type: ignore[arg-type]
+        text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )

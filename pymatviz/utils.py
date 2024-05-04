@@ -334,7 +334,7 @@ def si_fmt(val: float, fmt: str = ".1f", sep: str = "", binary: bool = False) ->
             if abs(val) < factor:
                 break
             val /= factor
-    elif val != 0:
+    elif val != 0 and abs(val) < 0.1:
         # milli, micro, nano, pico, femto, atto, zepto, yocto
         for _scale in ("", "m", "μ", "n", "p", "f", "a", "z", "y"):
             if abs(val) > 1:

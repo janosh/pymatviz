@@ -213,7 +213,7 @@ See [`citation.cff`](citation.cff) or cite the [Zenodo record](https://zenodo.or
 ```bib
 @software{riebesell_pymatviz_2022,
   title = {Pymatviz: visualization toolkit for materials informatics},
-  author = {Riebesell, Janosh and Goodall, Rhys and Baird, Sterling G. and Yang, Haoyu},
+  author = {Riebesell, Janosh and Yang, Haoyu and Goodall, Rhys and Baird, Sterling G.},
   date = {2022-10-01},
   year = {2022},
   doi = {10.5281/zenodo.7486816},

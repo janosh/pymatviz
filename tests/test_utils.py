@@ -281,6 +281,10 @@ def test_si_fmt() -> None:
     assert si_fmt(-0.00123, fmt=".3g", binary=False) == "-1.23m"
     assert si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=True) == "  1.3\tμ"
     assert si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=False) == "  1.2\tμ"
+    assert si_fmt(0.321, fmt=".2f") == "0.32"
+    assert si_fmt(-0.93) == "-0.9"
+    assert si_fmt(-0.93, fmt=".2f") == "-0.93"
+    assert si_fmt(-0.1) == "-0.1"
     assert si_fmt(-1) == "-1.0"
     assert si_fmt(1.23456789e-10, fmt="5.1f", sep="\t") == "123.5\tp"
 
