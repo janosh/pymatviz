@@ -255,23 +255,12 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
     def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
         """Write vmin and vmax to DataFrame metadata."""
-        # Flatten the DataFrame
-        flattened_values: list[float] = []
+        # flatten up to triple nested lists
+        values = df["Value"].explode().explode().explode()
+        numeric_values = pd.to_numeric(values, errors="coerce")
 
-        for item in df["Value"]:
-            for value in item:  # item is always a list
-                try:
-                    flattened_values.append(float(value))
-                except (TypeError, ValueError):  # noqa: PERF203
-                    try:
-                        flattened_values.extend(list(map(float, value)))
-                    except (TypeError, ValueError) as exc:
-                        raise TypeError(f"Unsupported data type {type(value)}") from exc
-
-        # Set vmin and vmax
-        df.attrs["vmin"] = min(flattened_values)
-        df.attrs["vmax"] = max(flattened_values)
-
+        df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
+        df.attrs["vmax"] = numeric_values.max()
         return df
 
     # Check and handle different supported data types
@@ -295,7 +284,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
     )
 
-    # Handle missing and anomaly
+    # Handle missing and anomalous values
     data_df = handle_missing_and_anomaly(data_df)
 
     # Write vmin/vmax into metadata
