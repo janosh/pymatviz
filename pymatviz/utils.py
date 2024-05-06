@@ -305,7 +305,13 @@ def pick_bw_for_contrast(
     return "black" if light_bg else "white"
 
 
-def si_fmt(val: float, fmt: str = ".1f", sep: str = "", binary: bool = False) -> str:
+def si_fmt(
+    val: float,
+    fmt: str = ".1f",
+    sep: str = "",
+    binary: bool = False,
+    decimal_threshold: float = 0.01,
+) -> str:
     """Convert large numbers into human readable format using SI prefixes.
 
     Supports binary (1024) and metric (1000) mode.
@@ -321,6 +327,11 @@ def si_fmt(val: float, fmt: str = ".1f", sep: str = "", binary: bool = False) ->
             or trailing whitespace for shorter numbers. See
             https://docs.python.org/3/library/string.html#format-specification-mini-language.
         sep (str): Separator between number and postfix. Defaults to "".
+        decimal_threshold (float): abs(value) below 1 but above this threshold will be
+            left as decimals. Only below this threshold is a greek suffix added (milli,
+            micro, etc.). Defaults to 0.01. i.e. 0.01 -> "0.01" while
+            0.0099 -> "9.9m". Setting decimal_threshold=0.1 would format 0.01 as "10m"
+            and leave 0.1 as is.
 
     Returns:
         str: Formatted number.
@@ -334,10 +345,10 @@ def si_fmt(val: float, fmt: str = ".1f", sep: str = "", binary: bool = False) ->
             if abs(val) < factor:
                 break
             val /= factor
-    elif val != 0 and abs(val) < 0.1:
+    elif val != 0 and abs(val) < decimal_threshold:
         # milli, micro, nano, pico, femto, atto, zepto, yocto
         for _scale in ("", "m", "μ", "n", "p", "f", "a", "z", "y"):
-            if abs(val) > 1:
+            if abs(val) >= 1:
                 break
             val *= factor
 

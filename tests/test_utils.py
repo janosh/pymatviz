@@ -285,6 +285,8 @@ def test_si_fmt() -> None:
     assert si_fmt(-0.93) == "-0.9"
     assert si_fmt(-0.93, fmt=".2f") == "-0.93"
     assert si_fmt(-0.1) == "-0.1"
+    assert si_fmt(-0.001) == "-1.0m"
+    assert si_fmt(-0.001, decimal_threshold=0.001, fmt=".3f") == "-0.001"
     assert si_fmt(-1) == "-1.0"
     assert si_fmt(1.23456789e-10, fmt="5.1f", sep="\t") == "123.5\tp"
 
