@@ -84,24 +84,24 @@ class TestDataPreprocessor:
 
     def test_get_vmin_vmax(self) -> None:
         # Test without nested list/array
-        test_dict_0 = {"H": 1.0, "He": [2.0, 4.0], "Li": np.array([6.0, 8.0])}
+        test_dict_0 = {"H": 1, "He": [2, 4], "Li": np.array([6, 8])}
 
         output_df_0 = data_preprocessor(test_dict_0)
 
-        assert output_df_0.attrs["vmin"] == 1.0
-        assert output_df_0.attrs["vmax"] == 8.0
+        assert output_df_0.attrs["vmin"] == 1
+        assert output_df_0.attrs["vmax"] == 8
 
         # Test with nested list/array
         test_dict_1 = {
-            "H": 1.0,
-            "He": [[2.0, 3.0], [4.0, 5.0]],
-            "Li": [np.array([6.0, 7.0]), np.array([8.0, 9.0])],
+            "H": 1,
+            "He": [[2, 3], [4, 5]],
+            "Li": [np.array([6, 7]), np.array([8, 9])],
         }
 
         output_df_1 = data_preprocessor(test_dict_1)
 
-        assert output_df_1.attrs["vmin"] == 1.0
-        assert output_df_1.attrs["vmax"] == 9.0
+        assert output_df_1.attrs["vmin"] == 1
+        assert output_df_1.attrs["vmax"] == 9
 
 
 class TestMissingAnomalyHandle:
