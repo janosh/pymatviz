@@ -322,6 +322,7 @@ class PTableProjector:
         data: SupportedDataType,
         colormap: str | Colormap | None,
         plot_kwargs: dict[str, Any] | None = None,
+        hide_f_block: bool = False,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -333,9 +334,12 @@ class PTableProjector:
             colormap (str | Colormap | None): The colormap to use.
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
+            hide_f_block: Hide f-block (Lanthanum and Actinium series).
         """
         # Get colormap
         self.cmap: Colormap = colormap
+
+        self.hide_f_block = hide_f_block
 
         # Preprocess data
         self.data: pd.DataFrame = data
@@ -418,6 +422,10 @@ class PTableProjector:
             on_empty: Whether to "show" or "hide" tiles for elements without data.
         """
         for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
             # Get axis index by element symbol
             symbol: str = element.symbol
             row, column = df_ptable.loc[symbol, ["row", "column"]]
@@ -461,6 +469,10 @@ class PTableProjector:
 
         # Add symbol for each element
         for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
             # Get axis index by element symbol
             symbol: str = element.symbol
             row, column = df_ptable.loc[symbol, ["row", "column"]]
@@ -903,6 +915,7 @@ def ptable_heatmap_splits(
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     cbar_title: str = "Values",
     on_empty: Literal["hide", "show"] = "hide",
+    hide_f_block: bool = False,
     ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     plot_kwargs: dict[str, Any]
@@ -946,6 +959,7 @@ def ptable_heatmap_splits(
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series).
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
 
@@ -967,6 +981,7 @@ def ptable_heatmap_splits(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        hide_f_block=hide_f_block,
     )
 
     # Call child plotter: evenly split rectangle
