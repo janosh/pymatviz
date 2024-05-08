@@ -318,6 +318,7 @@ class PTableProjector:
 
     def __init__(
         self,
+        *,
         data: SupportedDataType,
         colormap: str | Colormap | None,
         plot_kwargs: dict[str, Any] | None = None,
@@ -404,6 +405,7 @@ class PTableProjector:
         self,
         child_plotter: Callable[[plt.axes, Any], None],
         child_args: dict[str, Any],
+        *,
         ax_kwargs: dict[str, Any],
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
@@ -473,6 +475,7 @@ class PTableProjector:
         self,
         title: str,
         coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+        *,
         cbar_kwargs: dict[str, Any] | None = None,
         title_kwargs: dict[str, Any] | None = None,
     ) -> None:
