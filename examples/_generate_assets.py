@@ -11,8 +11,8 @@ import plotly.io as pio
 from matminer.datasets import load_dataset
 from monty.io import zopen
 from monty.json import MontyDecoder
+from mp_api.client import MPRester
 from pymatgen.core.periodic_table import Element
-from pymatgen.ext.matproj import MPRester
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 from tqdm import tqdm
