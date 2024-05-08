@@ -128,7 +128,7 @@ def plot_structure_2d(
     standardize_struct: bool | None = None,
     axis: bool | str = "off",
 ) -> plt.Axes:
-    """Plot pymatgen structures in 2d with matplotlib.
+    """Plot pymatgen structures in 2D with matplotlib.
 
     Inspired by ASE's ase.visualize.plot.plot_atoms()
     https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
@@ -372,7 +372,7 @@ def plot_structure_2d(
                         (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                     )
 
-                    bbox = dict(facecolor="none", edgecolor="none", pad=1)
+                    bbox = dict(facecolor="none", edgecolor="none", pad=1, alpha=0)
                     bbox.update(site_labels_bbox or {})
                     txt_kwds = dict(
                         ha="center", va="center", bbox=bbox, **(label_kwargs or {})
