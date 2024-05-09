@@ -1,11 +1,15 @@
-"""2D plots of pymatgen structures with matplotlib."""
+"""2D plots of pymatgen structures with matplotlib.
+
+plot_structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
+inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib.
+"""
 
 from __future__ import annotations
 
 import math
 import warnings
 from itertools import product
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +22,7 @@ from pymatviz.utils import covalent_radii, jmol_colors
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any, Literal
 
     from numpy.typing import ArrayLike
     from pymatgen.core import Structure
@@ -28,10 +33,6 @@ class ExperimentalWarning(Warning):
 
 
 warnings.simplefilter("once", ExperimentalWarning)
-
-
-# plot_structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
-# inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
 
 
 def _angles_to_rotation_matrix(
@@ -52,8 +53,10 @@ def _angles_to_rotation_matrix(
     """
     if rotation is None:
         rotation = np.eye(3)
+
+    # Return initial rotation matrix if no angles
     if not angles:
-        return rotation.copy()  # return initial rotation matrix if no angles
+        return rotation.copy()
 
     for angle in angles.split(","):
         radians = math.radians(float(angle[:-1]))
@@ -127,6 +130,7 @@ def plot_structure_2d(
     bond_kwargs: dict[str, Any] | None = None,
     standardize_struct: bool | None = None,
     axis: bool | str = "off",
+    occlude_labels: bool = True,
 ) -> plt.Axes:
     """Plot pymatgen structures in 2D with matplotlib.
 
@@ -137,7 +141,7 @@ def plot_structure_2d(
 
     For example, these two snippets should give very similar output:
 
-    ```py
+    ```python
     from pymatgen.ext.matproj import MPRester
 
     mp_19017 = MPRester().get_structure_by_material_id("mp-19017")
@@ -182,10 +186,10 @@ def plot_structure_2d(
             colors, either a named color (str) or rgb(a) values like (0.2, 0.3, 0.6).
             Defaults to JMol colors (https://jmol.sourceforge.net/jscolors).
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
-        show_unit_cell (bool, optional): Whether to draw unit cell. Defaults to True.
-        show_bonds (bool | NearNeighbors, optional): Whether to draw bonds. If True, use
+        show_unit_cell (bool, optional): Whether to plot unit cell. Defaults to True.
+        show_bonds (bool | NearNeighbors, optional): Whether to plot bonds. If True, use
             pymatgen.analysis.local_env.CrystalNN to infer the structure's connectivity.
-            If False, don't draw bonds. If a subclass of
+            If False, don't plot bonds. If a subclass of
             pymatgen.analysis.local_env.NearNeighbors, use that to determine
             connectivity. Options include VoronoiNN, MinimumDistanceNN, OpenBabelNN,
             CovalentBondNN, dtc. Defaults to True.
@@ -202,7 +206,7 @@ def plot_structure_2d(
         label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text like
             {"fontsize": 14}. Defaults to None.
         bond_kwargs (dict, optional): Keyword arguments for the matplotlib.path.Path
-            class used to draw chemical bonds. Allowed are edgecolor, facecolor, color,
+            class used to plot chemical bonds. Allowed are edgecolor, facecolor, color,
             linewidth, linestyle, antialiased, hatch, fill, capstyle, joinstyle.
             Defaults to None.
         standardize_struct (bool, optional): Whether to standardize the structure using
@@ -213,6 +217,8 @@ def plot_structure_2d(
         axis (bool | str, optional): Whether/how to show plot axes. Defaults to "off".
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.axis for
             details.
+        occlude_labels (bool): Whether to include occlusion effect,
+            i.e. atoms in the foreground will occlude those in the background.
 
     Raises:
         ValueError: On invalid site_labels.
@@ -228,7 +234,7 @@ def plot_structure_2d(
             f" the number of sites in the crystal ({len(struct)=})"
         )
 
-    # default behavior in case of no user input is to standardize if any fractional
+    # Default behavior in case of no user input: standardize if any fractional
     # coordinates are negative
     has_sites_outside_unit_cell = any(any(site.frac_coords < 0) for site in struct)
     if standardize_struct is False and has_sites_outside_unit_cell:
@@ -243,6 +249,8 @@ def plot_structure_2d(
         from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
         struct = SpacegroupAnalyzer(struct).get_conventional_standard_structure()
+
+    # Get default colors
     if colors is None:
         colors = jmol_colors
 
@@ -257,15 +265,14 @@ def plot_structure_2d(
     else:
         # atomic_radii is assumed to be a map from element symbols to atomic radii
         # make sure all present elements are assigned a radius
-        missing = set(elements_at_sites) - set(atomic_radii)
-        if missing:
+        if missing := set(elements_at_sites) - set(atomic_radii):
             raise ValueError(f"atomic_radii is missing keys: {missing}")
 
     radii_at_sites = np.array(
         [atomic_radii[el] for el in elements_at_sites]  # type: ignore[index]
     )
 
-    n_atoms = len(struct)
+    # Generate lines for plotting unit cell
     rotation_matrix = _angles_to_rotation_matrix(rotation)
     unit_cell = struct.lattice.matrix
 
@@ -280,6 +287,8 @@ def plot_structure_2d(
         unit_cell_lines = None
         cell_vertices = None
 
+    # Zip atoms and unit cell lines together
+    n_atoms = len(struct)
     n_lines = len(lines)
 
     positions = np.empty((n_atoms + n_lines, 3))
@@ -287,7 +296,7 @@ def plot_structure_2d(
     positions[:n_atoms] = site_coords
     positions[n_atoms:] = lines
 
-    # determine which lines should be hidden behind other objects
+    # Determine which unit cell line should be hidden behind other objects
     for idx in range(n_lines):
         this_layer = unit_cell_lines[z_indices[idx]]
         occluded_top = ((site_coords - lines[idx] + this_layer) ** 2).sum(
@@ -299,6 +308,7 @@ def plot_structure_2d(
         if any(occluded_top & occluded_bottom):
             z_indices[idx] = -1
 
+    # Apply rotation matrix
     positions = np.dot(positions, rotation_matrix)
     rotated_site_coords = positions[:n_atoms]
 
@@ -320,14 +330,14 @@ def plot_structure_2d(
         unit_cell_lines = np.dot(unit_cell_lines, rotation_matrix)[:, :2] * scale
 
     special_site_labels = ("symbol", "species")
-    # sort positions by 3rd dim so we draw from back to front in z-axis (out-of-plane)
+    # Sort positions by 3rd dim so we plot from back to front in z-axis (out-of-plane)
     for idx in positions[:, 2].argsort():
         xy = positions[idx, :2]
         start = 0
         if idx < n_atoms:
-            # loop over all species on a site (usually just 1 for ordered sites)
+            # Loop over all species on a site (usually just 1 for ordered sites)
             for specie, occupancy in struct[idx].species.items():
-                # strip oxidation state from element symbol (e.g. Ta5+ to Ta)
+                # Strip oxidation state from element symbol (e.g. Ta5+ to Ta)
                 elem_symbol = specie.symbol
                 radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
                 face_color = colors[elem_symbol]
@@ -348,7 +358,7 @@ def plot_structure_2d(
                 elif site_labels is False:
                     txt = ""
                 elif isinstance(site_labels, dict):
-                    # try element incl. oxidation state as dict key first (e.g. Na+),
+                    # Try element incl. oxidation state as dict key first (e.g. Na+),
                     # then just element as fallback
                     txt = site_labels.get(
                         repr(specie), site_labels.get(elem_symbol, "")
@@ -364,7 +374,7 @@ def plot_structure_2d(
                     )
 
                 if site_labels:
-                    # place element symbol half way along outer wedge edge for
+                    # Place element symbol half way along outer wedge edge for
                     # disordered sites
                     half_way = 2 * np.pi * (start + occupancy / 2)
                     direction = np.array([math.cos(half_way), math.sin(half_way)])
@@ -380,9 +390,11 @@ def plot_structure_2d(
                     ax.text(*(xy + text_offset), txt, **txt_kwds)
 
                 start += occupancy
-        else:  # draw unit cell
+
+        # Plot unit cell
+        else:
             cell_idx = idx - n_atoms
-            # only draw line if not obstructed by an atom
+            # Only plot lines not obstructed by an atom
             if z_indices[cell_idx] != -1:
                 hxy = unit_cell_lines[z_indices[cell_idx]]
                 path = PathPatch(Path((xy + hxy, xy - hxy)))
@@ -404,16 +416,18 @@ def plot_structure_2d(
             )
 
         # If structure doesn't have any oxidation states yet, guess them from chemical
-        # composition. Helps CrystalNN and other strategies to estimate better bond
-        # connectivity. Uses getattr on site.specie since it's often a pymatgen Element
+        # composition. Use CrystalNN and other strategies to better estimate bond
+        # connectivity. Use getattr on site.specie since it's often a pymatgen Element
         # which has no oxi_state
         if not any(
             hasattr(getattr(site, "specie", None), "oxi_state") for site in struct
         ):
             try:
                 struct.add_oxidation_state_by_guess()
-            except ValueError:  # fails for disordered structures
-                "Charge balance analysis requires integer values in Composition"
+            except ValueError as err:  # fails for disordered structures
+                raise ValueError(
+                    "Charge balance analysis requires integer values in Composition."
+                ) from err
 
         structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
 
