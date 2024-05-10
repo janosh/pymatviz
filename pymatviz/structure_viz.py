@@ -18,7 +18,7 @@ from matplotlib.path import Path
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pymatviz.utils import covalent_radii, jmol_colors
+from pymatviz.utils import ExperimentalWarning, covalent_radii, jmol_colors
 
 
 if TYPE_CHECKING:
@@ -27,13 +27,6 @@ if TYPE_CHECKING:
 
     from numpy.typing import ArrayLike
     from pymatgen.core import Structure
-
-
-class ExperimentalWarning(Warning):
-    """Warning for experimental features."""
-
-
-warnings.simplefilter("once", ExperimentalWarning)
 
 
 def _angles_to_rotation_matrix(
@@ -86,28 +79,27 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
         - z-indices that sort plot elements into out-of-plane layers
         - lines used to plot the unit cell
     """
-    n_lines = 0
+    n_lines = n1 = 0
     segments = []
-    for c in range(3):
-        norm = math.sqrt(sum(cell[c] ** 2))
+    for idx in range(3):
+        norm = math.sqrt(sum(cell[idx] ** 2))
         segment = max(2, int(norm / 0.3))
         segments.append(segment)
         n_lines += 4 * segment
 
     lines = np.empty((n_lines, 3))
-    z_indices = np.empty(n_lines, int)
+    z_indices = np.empty(n_lines, dtype=int)
     unit_cell_lines = np.zeros((3, 3))
 
-    n1 = 0
-    for c in range(3):
-        segment = segments[c]
-        dd = cell[c] / (4 * segment - 2)
-        unit_cell_lines[c] = dd
+    for idx in range(3):
+        segment = segments[idx]
+        dd = cell[idx] / (4 * segment - 2)
+        unit_cell_lines[idx] = dd
         P = np.arange(1, 4 * segment + 1, 4)[:, None] * dd
-        z_indices[n1:] = c
+        z_indices[n1:] = idx
         for i, j in [(0, 0), (0, 1), (1, 0), (1, 1)]:
             n2 = n1 + segment
-            lines[n1:n2] = P + i * cell[c - 2] + j * cell[c - 1]
+            lines[n1:n2] = P + i * cell[idx - 2] + j * cell[idx - 1]
             n1 = n2
 
     return lines, z_indices, unit_cell_lines
