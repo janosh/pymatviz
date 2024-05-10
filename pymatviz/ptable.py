@@ -651,6 +651,7 @@ def ptable_heatmap(
     value_font_size: int = 12,
     tile_size: float | tuple[float, float] = 0.9,
     rare_earth_voffset: float = 0.5,
+    hide_f_block: bool = False,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
@@ -719,6 +720,8 @@ def ptable_heatmap(
             (0.18, 0.8, 0.42, 0.05).
         rare_earth_voffset (float): Vertical offset for lanthanides and actinides
             (row 6 and 7) from the rest of the periodic table. Defaults to 0.5.
+        hide_f_block (bool): Whether to hide the f-block (lanthanides and actinides).
+            Defaults to False.
         **kwargs: Additional keyword arguments passed to plt.figure().
 
     Returns:
@@ -793,6 +796,9 @@ def ptable_heatmap(
     ) | (text_style or {})
 
     for symbol, row, column, *_ in df_ptable.itertuples():
+        if hide_f_block and (row in (6, 7)):
+            continue
+
         period = n_rows - row  # invert row count to make periodic table right side up
         tile_value = values.get(symbol)
 

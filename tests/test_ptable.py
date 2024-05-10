@@ -177,6 +177,11 @@ def test_ptable_heatmap(
 ) -> None:
     ax = ptable_heatmap(glass_formulas)
     assert isinstance(ax, plt.Axes)
+    assert len(ax.texts) == 236
+    # ensure only 118 elements are labeled
+    labels = {txt.get_text() for txt in ax.texts}
+    allowed_labels = {*df_ptable.index} | {*map(str, range(182))} | {"-"}
+    assert labels <= allowed_labels, f"{labels - allowed_labels=}"
 
     ptable_heatmap(glass_formulas, log=True)
 
