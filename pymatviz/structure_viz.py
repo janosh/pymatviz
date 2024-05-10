@@ -16,6 +16,7 @@ import numpy as np
 from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.utils import covalent_radii, jmol_colors
 
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
 
 
 class ExperimentalWarning(Warning):
-    """Used for experimental show_bonds feature."""
+    """Warning for experimental features."""
 
 
 warnings.simplefilter("once", ExperimentalWarning)
@@ -246,8 +247,6 @@ def plot_structure_2d(
     elif standardize_struct is None:
         standardize_struct = has_sites_outside_unit_cell
     if standardize_struct:
-        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-
         struct = SpacegroupAnalyzer(struct).get_conventional_standard_structure()
 
     # Get default colors
@@ -272,7 +271,7 @@ def plot_structure_2d(
         [atomic_radii[el] for el in elements_at_sites]  # type: ignore[index]
     )
 
-    # Generate lines for plotting unit cell
+    # Generate lines for unit cell
     rotation_matrix = _angles_to_rotation_matrix(rotation)
     unit_cell = struct.lattice.matrix
 
@@ -312,6 +311,7 @@ def plot_structure_2d(
     positions = np.dot(positions, rotation_matrix)
     rotated_site_coords = positions[:n_atoms]
 
+    # Normalize wedge positions
     min_coords = (rotated_site_coords - radii_at_sites[:, None]).min(0)
     max_coords = (rotated_site_coords + radii_at_sites[:, None]).max(0)
 
@@ -326,19 +326,23 @@ def plot_structure_2d(
     positions *= scale
     positions -= offset
 
+    # Rotate and scale unit cell lines
     if n_lines > 0:
         unit_cell_lines = np.dot(unit_cell_lines, rotation_matrix)[:, :2] * scale
 
     special_site_labels = ("symbol", "species")
-    # Sort positions by 3rd dim so we plot from back to front in z-axis (out-of-plane)
+    # Sort positions by 3rd dim to plot from back to front along z-axis (out-of-plane)
     for idx in positions[:, 2].argsort():
         xy = positions[idx, :2]
         start = 0
         if idx < n_atoms:
             # Loop over all species on a site (usually just 1 for ordered sites)
-            for specie, occupancy in struct[idx].species.items():
+            for species, occupancy in struct[idx].species.items():
+                # Define the occlusion order
+                zorder = positions[idx][2]
+
                 # Strip oxidation state from element symbol (e.g. Ta5+ to Ta)
-                elem_symbol = specie.symbol
+                elem_symbol = species.symbol
                 radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
                 face_color = colors[elem_symbol]
                 wedge = Wedge(
@@ -348,23 +352,25 @@ def plot_structure_2d(
                     360 * (start + occupancy),
                     facecolor=face_color,
                     edgecolor="black",
+                    zorder=zorder,
                 )
                 ax.add_patch(wedge)
 
+                # Generate labels
                 if site_labels == "symbol":
                     txt = elem_symbol
-                elif site_labels in ("species", True):
-                    txt = specie
+                elif site_labels in {"species", True}:
+                    txt = species
                 elif site_labels is False:
                     txt = ""
                 elif isinstance(site_labels, dict):
                     # Try element incl. oxidation state as dict key first (e.g. Na+),
                     # then just element as fallback
                     txt = site_labels.get(
-                        repr(specie), site_labels.get(elem_symbol, "")
+                        repr(species), site_labels.get(elem_symbol, "")
                     )
                     if txt in special_site_labels:
-                        txt = specie if txt == "species" else elem_symbol
+                        txt = species if txt == "species" else elem_symbol
                 elif isinstance(site_labels, (list, tuple)):
                     txt = site_labels[idx]  # idx runs from 0 to n_atoms
                 else:
@@ -373,6 +379,7 @@ def plot_structure_2d(
                         f"{', '.join(special_site_labels)}, dict, list)"
                     )
 
+                # Add labels
                 if site_labels:
                     # Place element symbol half way along outer wedge edge for
                     # disordered sites
@@ -383,10 +390,14 @@ def plot_structure_2d(
                     )
 
                     bbox = dict(facecolor="none", edgecolor="none", pad=1, alpha=0)
-                    bbox.update(site_labels_bbox or {})
+                    bbox |= site_labels_bbox or {}
+
                     txt_kwds = dict(
                         ha="center", va="center", bbox=bbox, **(label_kwargs or {})
                     )
+                    if occlude_labels:
+                        txt_kwds["zorder"] = zorder
+
                     ax.text(*(xy + text_offset), txt, **txt_kwds)
 
                 start += occupancy
