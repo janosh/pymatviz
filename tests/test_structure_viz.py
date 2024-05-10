@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -69,14 +69,10 @@ def test_plot_structure_2d_axis(axis: str | bool) -> None:
     "site_labels",
     [True, False, "symbol", "species", {"Fe": "Iron"}, {"Fe": 1.0}, ["Fe", "O"]],
 )
-@pytest.mark.parametrize("site_labels_bbox", [None, {}, {"boxstyle": "round"}])
 def test_plot_structure_2d_site_labels(
     site_labels: bool | str | dict[str, str | float] | Sequence[str],
-    site_labels_bbox: dict[str, Any] | None,
 ) -> None:
-    ax = plot_structure_2d(
-        disordered_struct, site_labels=site_labels, site_labels_bbox=site_labels_bbox
-    )
+    ax = plot_structure_2d(disordered_struct, site_labels=site_labels)
     if site_labels is False:
         assert not ax.axes.texts
     else:
