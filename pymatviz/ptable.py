@@ -1566,6 +1566,7 @@ def ptable_scatters(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
+    hide_f_block: bool = False,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
@@ -1597,6 +1598,7 @@ def ptable_scatters(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series).
         child_args: Arguments to pass to the child plotter call.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
@@ -1613,7 +1615,12 @@ def ptable_scatters(
     symbol_kwargs.setdefault("fontsize", 12)
 
     # Initialize periodic table plotter
-    plotter = PTableProjector(data=data, colormap=None, plot_kwargs=plot_kwargs)  # type: ignore[arg-type]
+    plotter = PTableProjector(
+        data=data,
+        colormap=None,
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        hide_f_block=hide_f_block,
+    )
 
     # Call child plotter: Scatter
     plotter.add_child_plots(
@@ -1638,6 +1645,7 @@ def ptable_lines(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
+    hide_f_block: bool = False,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
@@ -1669,6 +1677,7 @@ def ptable_lines(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series).
         child_args: Arguments to pass to the child plotter call.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
@@ -1687,6 +1696,7 @@ def ptable_lines(
         data=data,
         colormap=None,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        hide_f_block=hide_f_block,
     )
 
     # Call child plotter: line
