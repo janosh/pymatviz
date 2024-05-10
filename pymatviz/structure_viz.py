@@ -335,12 +335,14 @@ def plot_structure_2d(
     for idx in positions[:, 2].argsort():
         xy = positions[idx, :2]
         start = 0
+        zorder = positions[idx][2]
 
         if idx < n_atoms:
             # Loop over all species on a site (usually just 1 for ordered sites)
             for species, occupancy in struct[idx].species.items():
                 # Strip oxidation state from element symbol (e.g. Ta5+ to Ta)
                 elem_symbol = species.symbol
+
                 radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
                 face_color = colors[elem_symbol]
                 wedge = Wedge(
@@ -350,7 +352,7 @@ def plot_structure_2d(
                     360 * (start + occupancy),
                     facecolor=face_color,
                     edgecolor="black",
-                    zorder=z_indices[idx],
+                    zorder=zorder,
                 )
                 ax.add_patch(wedge)
 
@@ -393,7 +395,7 @@ def plot_structure_2d(
                     txt_kwds = dict(
                         ha="center",
                         va="center",
-                        zorder=z_indices[idx],
+                        zorder=zorder,
                         bbox=bbox,
                         **(label_kwargs or {}),
                     )
@@ -407,7 +409,7 @@ def plot_structure_2d(
             # Only plot lines not obstructed by an atom
             if z_indices[cell_idx] != -1:
                 hxy = unit_cell_lines[z_indices[cell_idx]]
-                path = PathPatch(Path((xy + hxy, xy - hxy)), zorder=z_indices[cell_idx])
+                path = PathPatch(Path((xy + hxy, xy - hxy)), zorder=zorder)
                 ax.add_patch(path)
 
     if show_bonds:
