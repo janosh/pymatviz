@@ -131,7 +131,6 @@ def plot_structure_2d(
     bond_kwargs: dict[str, Any] | None = None,
     standardize_struct: bool | None = None,
     axis: bool | str = "off",
-    occlude_labels: bool = True,
 ) -> plt.Axes:
     """Plot pymatgen structures in 2D with matplotlib.
 
@@ -218,8 +217,6 @@ def plot_structure_2d(
         axis (bool | str, optional): Whether/how to show plot axes. Defaults to "off".
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.axis for
             details.
-        occlude_labels (bool): Whether to include occlusion effect,
-            i.e. atoms in the foreground will occlude those in the background.
 
     Raises:
         ValueError: On invalid site_labels.
@@ -298,12 +295,15 @@ def plot_structure_2d(
     # Determine which unit cell line should be hidden behind other objects
     for idx in range(n_lines):
         this_layer = unit_cell_lines[z_indices[idx]]
+
         occluded_top = ((site_coords - lines[idx] + this_layer) ** 2).sum(
             1
         ) < radii_at_sites**2
+
         occluded_bottom = ((site_coords - lines[idx] - this_layer) ** 2).sum(
             1
         ) < radii_at_sites**2
+
         if any(occluded_top & occluded_bottom):
             z_indices[idx] = -1
 
@@ -335,12 +335,10 @@ def plot_structure_2d(
     for idx in positions[:, 2].argsort():
         xy = positions[idx, :2]
         start = 0
+
         if idx < n_atoms:
             # Loop over all species on a site (usually just 1 for ordered sites)
             for species, occupancy in struct[idx].species.items():
-                # Define the occlusion order
-                zorder = positions[idx][2]
-
                 # Strip oxidation state from element symbol (e.g. Ta5+ to Ta)
                 elem_symbol = species.symbol
                 radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
@@ -352,14 +350,14 @@ def plot_structure_2d(
                     360 * (start + occupancy),
                     facecolor=face_color,
                     edgecolor="black",
-                    zorder=zorder,
+                    zorder=z_indices[idx],
                 )
                 ax.add_patch(wedge)
 
                 # Generate labels
                 if site_labels == "symbol":
                     txt = elem_symbol
-                elif site_labels in {"species", True}:
+                elif site_labels in ("species", True):
                     txt = species
                 elif site_labels is False:
                     txt = ""
@@ -393,11 +391,12 @@ def plot_structure_2d(
                     bbox |= site_labels_bbox or {}
 
                     txt_kwds = dict(
-                        ha="center", va="center", bbox=bbox, **(label_kwargs or {})
+                        ha="center",
+                        va="center",
+                        zorder=z_indices[idx],
+                        bbox=bbox,
+                        **(label_kwargs or {}),
                     )
-                    if occlude_labels:
-                        txt_kwds["zorder"] = zorder
-
                     ax.text(*(xy + text_offset), txt, **txt_kwds)
 
                 start += occupancy
@@ -408,7 +407,7 @@ def plot_structure_2d(
             # Only plot lines not obstructed by an atom
             if z_indices[cell_idx] != -1:
                 hxy = unit_cell_lines[z_indices[cell_idx]]
-                path = PathPatch(Path((xy + hxy, xy - hxy)))
+                path = PathPatch(Path((xy + hxy, xy - hxy)), zorder=z_indices[cell_idx])
                 ax.add_patch(path)
 
     if show_bonds:
@@ -435,10 +434,9 @@ def plot_structure_2d(
         ):
             try:
                 struct.add_oxidation_state_by_guess()
-            except ValueError as err:  # fails for disordered structures
-                raise ValueError(
-                    "Charge balance analysis requires integer values in Composition."
-                ) from err
+            except ValueError:  # fails for disordered structures
+                # Charge balance analysis requires integer values in Composition
+                pass
 
         structure_graph = neighbor_strategy_cls().get_bonded_structure(struct)
 
