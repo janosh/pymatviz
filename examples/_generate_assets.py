@@ -11,8 +11,9 @@ import plotly.io as pio
 from matminer.datasets import load_dataset
 from monty.io import zopen
 from monty.json import MontyDecoder
+from mp_api.client import MPRester
+from pymatgen.core import Structure
 from pymatgen.core.periodic_table import Element
-from pymatgen.ext.matproj import MPRester
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 from tqdm import tqdm
@@ -60,6 +61,8 @@ plt.rcParams["figure.constrained_layout.use"] = True
 
 px.defaults.template = "pymatviz_white"
 pio.templates.default = "pymatviz_white"
+
+struct: Structure  # for type hinting
 
 # Random classification data
 np.random.seed(42)
@@ -339,8 +342,11 @@ fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows))
 title = f"{len(axs.flat)} Matbench phonon structures"
 fig.suptitle(title, fontweight="bold", fontsize=20)
 
-for row, ax in zip(df_phonons.itertuples(), axs.flat):
-    idx, struct, *_, spg_num = row
+for idx, (row, ax) in enumerate(zip(df_phonons.itertuples(), axs.flat), start=1):
+    struct = row.structure
+    spg_num = struct.get_space_group_info()[1]
+    struct.add_oxidation_state_by_guess()
+
     plot_structure_2d(
         struct,
         ax=ax,
