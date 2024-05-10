@@ -650,7 +650,7 @@ def ptable_heatmap(
     label_font_size: int = 16,
     value_font_size: int = 12,
     tile_size: float | tuple[float, float] = 0.9,
-    rare_earth_voffset: float = 0.5,
+    f_block_voffset: float = 0.5,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
@@ -717,7 +717,7 @@ def ptable_heatmap(
         cbar_coords (tuple[float, float, float, float]): Color bar position and size:
             [x, y, width, height] anchored at lower left corner of the bar. Defaults to
             (0.18, 0.8, 0.42, 0.05).
-        rare_earth_voffset (float): Vertical offset for lanthanides and actinides
+        f_block_voffset (float): Vertical offset for lanthanides and actinides
             (row 6 and 7) from the rest of the periodic table. Defaults to 0.5.
         **kwargs: Additional keyword arguments passed to plt.figure().
 
@@ -829,7 +829,7 @@ def ptable_heatmap(
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             label = label.replace("e+0", "e")
         if period < 3:  # vertical offset for lanthanides + actinides
-            period += rare_earth_voffset
+            period += f_block_voffset
         rect = Rectangle(
             (column, period), tile_width, tile_height, edgecolor="gray", facecolor=color
         )
