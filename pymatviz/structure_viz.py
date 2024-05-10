@@ -389,14 +389,10 @@ def plot_structure_2d(
                         (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                     )
 
-                    bbox = dict(facecolor="none", edgecolor="none", pad=1, alpha=0)
-                    bbox |= site_labels_bbox or {}
-
                     txt_kwds = dict(
                         ha="center",
                         va="center",
                         zorder=zorder,
-                        bbox=bbox,
                         **(label_kwargs or {}),
                     )
                     ax.text(*(xy + text_offset), txt, **txt_kwds)
