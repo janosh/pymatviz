@@ -48,7 +48,7 @@ test = [
     "pytest-cov",
     "weasyprint",
 ]
-data-src = ["matminer"]
+data-src = ["matminer", "mp_api",]
 export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
 # needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
@@ -105,7 +105,7 @@ lint.ignore = [
     "PTH",
     "RUF001", # ambiguous-unicode-character-string
     "S311",
-    "SIM105", # Use contextlib.suppress(FileNotFoundError) instead of try-except-pass
+    "SIM105", # Use contextlib.suppress() instead of try-except-pass
     "TD",
     "TRY003",
 ]
