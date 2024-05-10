@@ -126,7 +126,6 @@ def plot_structure_2d(
     | Literal["symbol", "species"]
     | dict[str, str | float]
     | Sequence[str | float] = True,
-    site_labels_bbox: dict[str, Any] | None = None,
     label_kwargs: dict[str, Any] | None = None,
     bond_kwargs: dict[str, Any] | None = None,
     standardize_struct: bool | None = None,
@@ -201,8 +200,6 @@ def plot_structure_2d(
             number of sites in the crystal. If a string, must be "symbol" or
             "species". "symbol" hides the oxidation state, "species" shows it
             (equivalent to True). Defaults to True.
-        site_labels_bbox (dict, optional): Keyword arguments for matplotlib.text.Text
-            bbox like {"facecolor": "white", "alpha": 0.5}. Defaults to None.
         label_kwargs (dict, optional): Keyword arguments for matplotlib.text.Text like
             {"fontsize": 14}. Defaults to None.
         bond_kwargs (dict, optional): Keyword arguments for the matplotlib.path.Path
