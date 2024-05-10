@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import warnings
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
@@ -77,6 +78,13 @@ element_symbols: dict[int, str] = {}
 for Z, symbol in enumerate(df_ptable.index, 1):
     atomic_numbers[symbol] = Z
     element_symbols[Z] = symbol
+
+
+class ExperimentalWarning(Warning):
+    """Warning for experimental features."""
+
+
+warnings.simplefilter("once", ExperimentalWarning)
 
 
 def pretty_label(key: str, backend: Backend) -> str:
