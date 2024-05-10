@@ -229,6 +229,7 @@ fig = ptable_heatmap_splits(
     colormap="coolwarm",
     start_angle=135,
     cbar_title="Periodic Table Evenly-Split Heatmap Plots",
+    hide_f_block=True,
 )
 save_and_compress_svg(fig, "ptable-heatmap-splits")
 
