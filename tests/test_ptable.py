@@ -267,7 +267,7 @@ def test_ptable_heatmap_splits() -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
     data_dict = {
         elem.symbol: [
-            random.randint(0, 10)  # random heat value for each split
+            random.randint(0, 10)  # random value for each split
             # random number of 1-4 splits per element
             for _ in range(random.randint(1, 4))
         ]
@@ -288,10 +288,10 @@ def test_ptable_heatmap_splits() -> None:
 
 
 def test_ptable_heatmap_splits_hide_f_block() -> None:
-    """Test ptable_heatmap_splits f block hidden."""
+    """Test ptable_heatmap_splits with f block hidden."""
     data_dict = {
         elem.symbol: [
-            random.randint(0, 10)  # random heat value for each split
+            random.randint(0, 10)  # random value for each split
             for _ in range(2)
         ]
         for elem in Element
