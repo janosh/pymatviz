@@ -44,20 +44,20 @@ class TestDataPreprocessor:
     def _validate_output_df(output_df: pd.DataFrame) -> None:
         assert isinstance(output_df, pd.DataFrame)
 
-        assert output_df.columns.tolist() == ["Value"]
-        assert output_df.index.tolist() == ["H", "He", "Li"]
+        assert list(output_df) == [Key.heat_val]
+        assert list(output_df.index) == ["H", "He", "Li"]
 
-        assert_allclose(output_df.loc["H", "Value"], [1.0])
-        assert_allclose(output_df.loc["He", "Value"], [2.0, 4.0])
-        assert_allclose(output_df.loc["Li", "Value"], [6.0, 8.0])
+        assert_allclose(output_df.loc["H", Key.heat_val], [1.0])
+        assert_allclose(output_df.loc["He", Key.heat_val], [2.0, 4.0])
+        assert_allclose(output_df.loc["Li", Key.heat_val], [6.0, 8.0])
 
         assert output_df.attrs["vmin"] == 1.0
         assert output_df.attrs["vmax"] == 8.0
 
     def test_from_pd_dataframe(self) -> None:
         input_df: pd.DataFrame = pd.DataFrame(
-            self.test_dict.items(), columns=["Element", "Value"]
-        ).set_index("Element")
+            self.test_dict.items(), columns=[Key.element, Key.heat_val]
+        ).set_index(Key.element)
 
         output_df: pd.DataFrame = data_preprocessor(input_df)
 

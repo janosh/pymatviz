@@ -239,8 +239,8 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         OR
         >>> data_df: pd.DataFrame = pd.DataFrame(
             data_dict.items(),
-            columns=["Element", "Value"]
-            ).set_index("Element")
+            columns=["element", "heat_val"]
+            ).set_index("element")
 
         OR
         >>> data_series: pd.Series = pd.Series(data_dict)
