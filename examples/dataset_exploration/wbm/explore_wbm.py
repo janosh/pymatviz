@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 from pymatviz import crystal_sys_order, ptable_heatmap_plotly, spacegroup_sunburst
+from pymatviz.enums import Key
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
@@ -12,13 +13,13 @@ __date__ = "2022-08-18"
 
 # %% download wbm-summary.csv (12 MB)
 df_wbm = pd.read_csv("https://figshare.com/ndownloader/files/44225498").set_index(
-    "material_id", drop=False
+    Key.mat_id, drop=False
 )
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
-df_wbm["spg_num"] = df_wbm.wyckoff.str.split("_").str[2].astype(int)
-df_wbm["crystal_sys"] = df_wbm.spg_num.map(crystal_sys_from_spg_num)
-df_wbm["energy_per_atom"] = df_wbm.energy / df_wbm.n_sites
+df_wbm[Key.spacegroup] = df_wbm.wyckoff.str.split("_").str[2].astype(int)
+df_wbm[Key.crystal_system] = df_wbm[Key.spacegroup].map(crystal_sys_from_spg_num)
+df_wbm[Key.energy_per_atom] = df_wbm.energy / df_wbm.n_sites
 
 
 # %%
@@ -46,15 +47,15 @@ df_wbm_non_metals = df_wbm.query("bandgap_pbe > 0")
 
 fig = px.violin(
     df_wbm_non_metals,
-    color="crystal_sys",
-    x="crystal_sys",
-    y="energy_per_atom",
-    hover_name="formula",
+    color=Key.crystal_system,
+    x=Key.crystal_system,
+    y=Key.energy_per_atom,
+    hover_name=Key.formula,
 ).update_traces(jitter=1)
 
 x_ticks = {}  # custom x axis tick labels
 for cry_sys, df_group in sorted(
-    df_wbm_non_metals.groupby("crystal_sys"),
+    df_wbm_non_metals.groupby(Key.crystal_system),
     key=lambda x: crystal_sys_order.index(x[0]),
 ):
     x_ticks[cry_sys] = (
@@ -79,7 +80,7 @@ fig.show()
 
 
 # %%
-fig = spacegroup_sunburst(df_wbm.spg_num, show_counts="percent")
+fig = spacegroup_sunburst(df_wbm[Key.spacegroup], show_counts="percent")
 fig.update_layout(title="Matbench Perovskites spacegroup sunburst")
 
 fig.write_image("wbm-spacegroup-sunburst.pdf")
@@ -87,12 +88,12 @@ fig.show()
 
 
 # %%
-fig = px.scatter(df_wbm, x="spg_num", y="volume", color="crystal_sys")
+fig = px.scatter(df_wbm, x=Key.spacegroup, y=Key.volume, color=Key.crystal_system)
 
 fig.update_layout(title="WBM volume by spacegroup number")
 
 
 # %%
-fig = px.scatter(df_wbm, x="spg_num", y="energy", color="crystal_sys")
+fig = px.scatter(df_wbm, x=Key.spacegroup, y=Key.energy, color=Key.crystal_system)
 
 fig.update_layout(title="WBM energy by spacegroup number")

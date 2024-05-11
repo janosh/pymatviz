@@ -22,6 +22,7 @@ import requests
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz import count_elements, ptable_heatmap, spacegroup_sunburst
+from pymatviz.enums import Key
 from pymatviz.powerups import annotate_bars
 
 
@@ -56,8 +57,8 @@ annotate_bars(v_offset=3e3)
 
 
 # %%
-df_camd["spg_num"] = [SpaceGroup(x).int_number for x in df_camd.space_group]
+df_camd[Key.spacegroup] = [SpaceGroup(spg).int_number for spg in df_camd.space_group]
 
-fig = spacegroup_sunburst(df_camd.spg_num, show_counts="percent")
+fig = spacegroup_sunburst(df_camd[Key.spacegroup], show_counts="percent")
 fig.write_image("camd-2022-spacegroup-sunburst.pdf")
 fig.show()

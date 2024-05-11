@@ -7,6 +7,7 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Composition
 
 from pymatviz import ptable_heatmap
+from pymatviz.enums import Key
 
 
 """Stats for the matbench_expt_gap dataset.
@@ -70,7 +71,7 @@ fig = px.scatter(
     y="gap expt",
     color="n_elems",
     size="mean_mass",
-    hover_name="composition",
+    hover_name=Key.composition,
     log_x=True,
 )
 fig.update_layout(title="Marker size = mean atomic mass")

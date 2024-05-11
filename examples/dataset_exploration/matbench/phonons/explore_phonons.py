@@ -20,32 +20,33 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import ptable_heatmap, spacegroup_hist
+from pymatviz.enums import Key
 from pymatviz.io import save_fig
 
 
 # %%
 df_phonon = load_dataset(data_name := "matbench_phonons")
-formula_col, volume_col, spg_col = "formula", "volume", "spg_num"
+last_dos_peak = "last phdos peak"
 
-df_phonon[["spg_symbol", spg_col]] = [
-    struct.get_space_group_info() for struct in tqdm(df_phonon.structure)
+df_phonon[["spg_symbol", Key.spacegroup]] = [
+    struct.get_space_group_info() for struct in tqdm(df_phonon[Key.structure])
 ]
 
 
 # %%
-ax = df_phonon.hist(column="last phdos peak", bins=50)
+ax = df_phonon.hist(column=last_dos_peak, bins=50)
 save_fig(ax, "phonons-last-dos-peak-hist.pdf")
 
 
 # %%
-df_phonon[formula_col] = df_phonon.structure.map(lambda cryst: cryst.formula)
-df_phonon[volume_col] = df_phonon.structure.map(lambda cryst: cryst.volume)
+df_phonon[Key.formula] = df_phonon[Key.structure].map(lambda cryst: cryst.formula)
+df_phonon[Key.volume] = df_phonon[Key.structure].map(lambda cryst: cryst.volume)
 
-ax = ptable_heatmap(df_phonon[formula_col], log=True)
+ax = ptable_heatmap(df_phonon[Key.formula], log=True)
 ax.set(title="Elemental prevalence in the Matbench phonons dataset")
 save_fig(ax, "phonons-ptable-heatmap.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_phonon[spg_col])
+ax = spacegroup_hist(df_phonon[Key.spacegroup])
 save_fig(ax, "phonons-spacegroup-hist.pdf")

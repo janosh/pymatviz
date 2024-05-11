@@ -26,6 +26,7 @@ from pymatviz import (
     spacegroup_hist,
     spacegroup_sunburst,
 )
+from pymatviz.enums import Key
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
@@ -34,20 +35,24 @@ df_grvh = load_dataset("matbench_log_gvrh")
 df_kvrh = load_dataset("matbench_log_kvrh")
 
 # getting space group symbols and numbers for 10,987 structures takes about 45 sec
-df_grvh[["spg_symbol", "spg_num"]] = [
+df_grvh[[Key.spacegroup_symbol, Key.spacegroup]] = [
     struct.get_space_group_info()
-    for struct in tqdm(df_grvh.structure, desc="Getting matbench_log_gvrh spacegroups")
+    for struct in tqdm(
+        df_grvh[Key.structure], desc="Getting matbench_log_gvrh spacegroups"
+    )
 ]
-df_grvh["crystal_sys"] = [crystal_sys_from_spg_num(x) for x in df_grvh.spg_num]
+df_grvh[Key.crystal_system] = [
+    crystal_sys_from_spg_num(x) for x in df_grvh[Key.spacegroup]
+]
 
 df_grvh["wyckoff"] = [
     get_aflow_label_from_spglib(struct)
     for struct in tqdm(
-        df_grvh.structure, desc="Getting matbench_log_gvrh Wyckoff strings"
+        df_grvh[Key.structure], desc="Getting matbench_log_gvrh Wyckoff strings"
     )
 ]
 df_grvh["n_wyckoff"] = df_grvh.wyckoff.map(count_wyckoff_positions)
-df_grvh["formula"] = [x.formula for x in df_grvh.structure]
+df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
 
 # %%
@@ -68,10 +73,10 @@ plt.savefig("log_g+kvrh-target-hist.pdf")
 
 
 # %%
-df_grvh["volume"] = [x.volume for x in df_grvh.structure]
-df_grvh["formula"] = [x.formula for x in df_grvh.structure]
+df_grvh[Key.volume] = [x.volume for x in df_grvh[Key.structure]]
+df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
-df_grvh.hist(column="volume", bins=50, log=True, alpha=0.8)
+df_grvh.hist(column=Key.volume, bins=50, log=True, alpha=0.8)
 plt.savefig("log_gvrh-volume-hist.pdf")
 
 
@@ -79,12 +84,12 @@ plt.savefig("log_gvrh-volume-hist.pdf")
 start = perf_counter()
 radius = 5
 df_grvh[f"neighbor_list_r{radius}"] = [
-    x.get_neighbor_list(r=radius) for x in df_grvh.structure
+    x.get_neighbor_list(r=radius) for x in df_grvh[Key.structure]
 ]
 print(f"took {perf_counter() - start:.3f} sec")
 
 df_kvrh[f"neighbor_list_r{radius}"] = [
-    x.get_neighbor_list(r=radius) for x in df_kvrh.structure
+    x.get_neighbor_list(r=radius) for x in df_kvrh[Key.structure]
 ]
 
 
@@ -99,7 +104,7 @@ def has_isolated_atom(crystal: Structure, radius: float = 5) -> bool:
     return (dists.min(1) > radius).any()
 
 
-df_grvh["isolated_r5"] = df_grvh.structure.map(has_isolated_atom)
+df_grvh["isolated_r5"] = df_grvh[Key.structure].map(has_isolated_atom)
 print(f"took {perf_counter() - start:.3f} sec")
 
 
@@ -115,13 +120,13 @@ for idx, structure, target, *_ in df_grvh.query("graph_size == 0").itertuples():
 
 
 # %%
-df_grvh["volume"] = df_grvh.structure.map(lambda struct: struct.volume)
+df_grvh[Key.volume] = df_grvh[Key.structure].map(lambda struct: struct.volume)
 
-df_grvh.hist(column="volume", bins=50, log=True)
+df_grvh.hist(column=Key.volume, bins=50, log=True)
 
 
 # %%
-df_grvh["formula"] = df_grvh.structure.map(lambda struct: struct.formula)
+df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
 ptable_heatmap(df_grvh.formula, log=True)
 plt.title("Elemental prevalence in the Matbench bulk/shear modulus datasets")
@@ -129,12 +134,12 @@ plt.savefig("log_gvrh-ptable-heatmap.pdf")
 
 
 # %%
-spacegroup_hist(df_grvh.spg_num)
+spacegroup_hist(df_grvh[Key.spacegroup])
 plt.savefig("log_gvrh-spacegroup-hist.pdf")
 
 
 # %%
-fig = spacegroup_sunburst(df_grvh.spg_num, show_counts="percent")
+fig = spacegroup_sunburst(df_grvh[Key.spacegroup], show_counts="percent")
 fig.update_layout(title="Spacegroup sunburst of the JARVIS DFT 2D dataset")
 fig.write_image("log_gvrh-spacegroup-sunburst.pdf")
 fig.show()
@@ -143,13 +148,13 @@ fig.show()
 # %%
 fig = px.violin(
     df_grvh,
-    color="crystal_sys",
-    x="crystal_sys",
+    color=Key.crystal_system,
+    x=Key.crystal_system,
     y="n_wyckoff",
     points="all",
-    hover_data=["spg_num"],
-    hover_name="formula",
-    category_orders={"crystal_sys": crystal_sys_order},
+    hover_data=[Key.spacegroup],
+    hover_name=Key.formula,
+    category_orders={Key.crystal_system: crystal_sys_order},
     log_y=True,
 ).update_traces(jitter=1)
 
@@ -161,7 +166,7 @@ def rgb_color(val: float, max_val: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_grvh.groupby("crystal_sys"), key=lambda x: crystal_sys_order.index(x[0])
+    df_grvh.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
 ):
     n_wyckoff_top = df_group.n_wyckoff.mean()
     clr = rgb_color(n_wyckoff_top, 14)
