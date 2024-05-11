@@ -28,11 +28,11 @@ https://ml.materialsproject.org/projects/matbench_perovskites
 df_perov = load_dataset("matbench_perovskites")
 
 df_perov[[Key.spacegroup_symbol, Key.spacegroup]] = [
-    struct.get_space_group_info() for struct in tqdm(df_perov.structure)
+    struct.get_space_group_info() for struct in tqdm(df_perov[Key.structure])
 ]
-df_perov[Key.volume] = df_perov.structure.map(lambda struct: struct.volume)
+df_perov[Key.volume] = df_perov[Key.structure].map(lambda struct: struct.volume)
 
-df_perov[Key.formula] = df_perov.structure.map(lambda cryst: cryst.formula)
+df_perov[Key.formula] = df_perov[Key.structure].map(lambda cryst: cryst.formula)
 
 df_perov[Key.crystal_system] = [
     crystal_sys_from_spg_num(x) for x in df_perov[Key.spacegroup]
@@ -43,7 +43,7 @@ df_perov[Key.crystal_system] = [
 n_rows, n_cols = 3, 4
 fig, axs = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows))
 
-for struct, ax in zip(df_perov.structure, axs.flat):
+for struct, ax in zip(df_perov[Key.structure], axs.flat):
     plot_structure_2d(struct, ax=ax)
     ax.set_title(struct.formula, fontsize=14)
 

@@ -29,7 +29,7 @@ plt.savefig("mp_e_form_hist.pdf")
 
 
 # %%
-df_e_form[Key.formula] = df_e_form.structure.map(lambda struct: struct.formula)
+df_e_form[Key.formula] = df_e_form[Key.structure].map(lambda struct: struct.formula)
 
 
 # %%

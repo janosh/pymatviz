@@ -35,19 +35,19 @@ df_diel = load_dataset("matbench_dielectric")
 
 df_diel[[Key.spacegroup_symbol, Key.spacegroup]] = [
     struct.get_space_group_info()
-    for struct in tqdm(df_diel.structure, desc="Getting spacegroups")
+    for struct in tqdm(df_diel[Key.structure], desc="Getting spacegroups")
 ]
 
 df_diel["wyckoff"] = [
     get_aflow_label_from_spglib(struct)
-    for struct in tqdm(df_diel.structure, desc="Getting Wyckoff strings")
+    for struct in tqdm(df_diel[Key.structure], desc="Getting Wyckoff strings")
 ]
 df_diel["n_wyckoff"] = df_diel.wyckoff.map(count_wyckoff_positions)
 
 df_diel[Key.crystal_system] = df_diel[Key.spacegroup].map(crystal_sys_from_spg_num)
 
-df_diel[Key.volume] = [x.volume for x in df_diel.structure]
-df_diel[Key.formula] = [x.formula for x in df_diel.structure]
+df_diel[Key.volume] = [x.volume for x in df_diel[Key.structure]]
+df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%

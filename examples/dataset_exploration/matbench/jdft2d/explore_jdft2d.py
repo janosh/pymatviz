@@ -24,7 +24,7 @@ https://ml.materialsproject.org/projects/matbench_jdft2d
 df_2d = load_dataset("matbench_jdft2d")
 
 df_2d[[Key.spacegroup_symbol, Key.spacegroup]] = [
-    struct.get_space_group_info() for struct in tqdm(df_2d.structure)
+    struct.get_space_group_info() for struct in tqdm(df_2d[Key.structure])
 ]
 
 df_2d.describe()
@@ -36,8 +36,8 @@ plt.savefig("jdft2d-exfoliation-energy-hist.pdf")
 
 
 # %%
-df_2d[Key.volume] = [x.volume for x in df_2d.structure]
-df_2d[Key.formula] = [x.formula for x in df_2d.structure]
+df_2d[Key.volume] = [x.volume for x in df_2d[Key.structure]]
+df_2d[Key.formula] = [x.formula for x in df_2d[Key.structure]]
 
 ptable_heatmap(df_2d.formula, log=True)
 plt.title("Elemental prevalence in the Matbench Jarvis DFT 2D dataset")

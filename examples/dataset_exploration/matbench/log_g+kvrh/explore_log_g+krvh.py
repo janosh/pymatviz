@@ -37,7 +37,9 @@ df_kvrh = load_dataset("matbench_log_kvrh")
 # getting space group symbols and numbers for 10,987 structures takes about 45 sec
 df_grvh[[Key.spacegroup_symbol, Key.spacegroup]] = [
     struct.get_space_group_info()
-    for struct in tqdm(df_grvh.structure, desc="Getting matbench_log_gvrh spacegroups")
+    for struct in tqdm(
+        df_grvh[Key.structure], desc="Getting matbench_log_gvrh spacegroups"
+    )
 ]
 df_grvh[Key.crystal_system] = [
     crystal_sys_from_spg_num(x) for x in df_grvh[Key.spacegroup]
@@ -46,11 +48,11 @@ df_grvh[Key.crystal_system] = [
 df_grvh["wyckoff"] = [
     get_aflow_label_from_spglib(struct)
     for struct in tqdm(
-        df_grvh.structure, desc="Getting matbench_log_gvrh Wyckoff strings"
+        df_grvh[Key.structure], desc="Getting matbench_log_gvrh Wyckoff strings"
     )
 ]
 df_grvh["n_wyckoff"] = df_grvh.wyckoff.map(count_wyckoff_positions)
-df_grvh[Key.formula] = [x.formula for x in df_grvh.structure]
+df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
 
 # %%
@@ -71,8 +73,8 @@ plt.savefig("log_g+kvrh-target-hist.pdf")
 
 
 # %%
-df_grvh[Key.volume] = [x.volume for x in df_grvh.structure]
-df_grvh[Key.formula] = [x.formula for x in df_grvh.structure]
+df_grvh[Key.volume] = [x.volume for x in df_grvh[Key.structure]]
+df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
 df_grvh.hist(column=Key.volume, bins=50, log=True, alpha=0.8)
 plt.savefig("log_gvrh-volume-hist.pdf")
@@ -82,12 +84,12 @@ plt.savefig("log_gvrh-volume-hist.pdf")
 start = perf_counter()
 radius = 5
 df_grvh[f"neighbor_list_r{radius}"] = [
-    x.get_neighbor_list(r=radius) for x in df_grvh.structure
+    x.get_neighbor_list(r=radius) for x in df_grvh[Key.structure]
 ]
 print(f"took {perf_counter() - start:.3f} sec")
 
 df_kvrh[f"neighbor_list_r{radius}"] = [
-    x.get_neighbor_list(r=radius) for x in df_kvrh.structure
+    x.get_neighbor_list(r=radius) for x in df_kvrh[Key.structure]
 ]
 
 
@@ -102,7 +104,7 @@ def has_isolated_atom(crystal: Structure, radius: float = 5) -> bool:
     return (dists.min(1) > radius).any()
 
 
-df_grvh["isolated_r5"] = df_grvh.structure.map(has_isolated_atom)
+df_grvh["isolated_r5"] = df_grvh[Key.structure].map(has_isolated_atom)
 print(f"took {perf_counter() - start:.3f} sec")
 
 
@@ -118,13 +120,13 @@ for idx, structure, target, *_ in df_grvh.query("graph_size == 0").itertuples():
 
 
 # %%
-df_grvh[Key.volume] = df_grvh.structure.map(lambda struct: struct.volume)
+df_grvh[Key.volume] = df_grvh[Key.structure].map(lambda struct: struct.volume)
 
 df_grvh.hist(column=Key.volume, bins=50, log=True)
 
 
 # %%
-df_grvh[Key.formula] = df_grvh.structure.map(lambda struct: struct.formula)
+df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
 ptable_heatmap(df_grvh.formula, log=True)
 plt.title("Elemental prevalence in the Matbench bulk/shear modulus datasets")

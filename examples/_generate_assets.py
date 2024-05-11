@@ -86,7 +86,7 @@ df_expt_gap = load_dataset("matbench_expt_gap")
 df_phonons = load_dataset("matbench_phonons")
 
 df_phonons[["spg_symbol", Key.spacegroup]] = [
-    struct.get_space_group_info() for struct in tqdm(df_phonons.structure)
+    struct.get_space_group_info() for struct in tqdm(df_phonons[Key.structure])
 ]
 
 
@@ -344,7 +344,7 @@ title = f"{len(axs.flat)} Matbench phonon structures"
 fig.suptitle(title, fontweight="bold", fontsize=20)
 
 for idx, (row, ax) in enumerate(zip(df_phonons.itertuples(), axs.flat), start=1):
-    struct = row.structure
+    struct = row[Key.structure]
     spg_num = struct.get_space_group_info()[1]
     struct.add_oxidation_state_by_guess()
 

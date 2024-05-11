@@ -29,7 +29,7 @@ df_phonon = load_dataset(data_name := "matbench_phonons")
 last_dos_peak = "last phdos peak"
 
 df_phonon[["spg_symbol", Key.spacegroup]] = [
-    struct.get_space_group_info() for struct in tqdm(df_phonon.structure)
+    struct.get_space_group_info() for struct in tqdm(df_phonon[Key.structure])
 ]
 
 
@@ -39,8 +39,8 @@ save_fig(ax, "phonons-last-dos-peak-hist.pdf")
 
 
 # %%
-df_phonon[Key.formula] = df_phonon.structure.map(lambda cryst: cryst.formula)
-df_phonon[Key.volume] = df_phonon.structure.map(lambda cryst: cryst.volume)
+df_phonon[Key.formula] = df_phonon[Key.structure].map(lambda cryst: cryst.formula)
+df_phonon[Key.volume] = df_phonon[Key.structure].map(lambda cryst: cryst.volume)
 
 ax = ptable_heatmap(df_phonon[Key.formula], log=True)
 ax.set(title="Elemental prevalence in the Matbench phonons dataset")

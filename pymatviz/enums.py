@@ -98,7 +98,7 @@ class Key(LabelEnum):
     spacegroup = "spacegroup", "Spacegroup Number"
     spacegroup_symbol = "spacegroup_symbol", "Spacegroup Symbol"
     stress = "stress", "Stress"
-    struct = "structure", "Structure"
+    structure = "structure", "Structure"
     task_id = "task_id", "Task ID"  # unique identifier for a compute task
     task_type = "task_type", "Task Type"
     volume = "volume", "Volume (Å³)"

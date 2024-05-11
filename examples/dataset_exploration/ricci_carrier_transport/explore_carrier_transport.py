@@ -31,7 +31,7 @@ df_carrier = load_dataset("ricci_boltztrap_mp_tabular")
 
 # getting space group symbols and numbers takes about 2 min
 df_carrier[[Key.spacegroup_symbol, Key.spacegroup]] = [
-    struct.get_space_group_info() for struct in tqdm(df_carrier.structure)
+    struct.get_space_group_info() for struct in tqdm(df_carrier[Key.structure])
 ]
 
 

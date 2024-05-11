@@ -185,7 +185,9 @@ def spacegroup_hist(
         # sort df by crystal system going from smallest to largest spacegroup numbers
         # e.g. triclinic (1-2) comes first, cubic (195-230) last
         sys_order = dict(zip(crystal_sys_colors, range(len(crystal_sys_colors))))
-        df_data = df_data.loc[df_data.crystal_sys.map(sys_order).sort_values().index]
+        df_data = df_data.loc[
+            df_data[Key.crystal_system].map(sys_order).sort_values().index
+        ]
 
         x_label = "International Spacegroup Symbol"
 
@@ -208,7 +210,7 @@ def spacegroup_hist(
             df_plot,
             x=df_plot.index,
             y=count_col,
-            color=df_data.crystal_sys,
+            color=df_data[Key.crystal_system],
             color_discrete_map=crystal_sys_colors,
             **kwargs,
         )
