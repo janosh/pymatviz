@@ -177,6 +177,11 @@ def test_ptable_heatmap(
 ) -> None:
     ax = ptable_heatmap(glass_formulas)
     assert isinstance(ax, plt.Axes)
+    assert len(ax.texts) == 236
+    # ensure only 118 elements are labeled
+    labels = {txt.get_text() for txt in ax.texts}
+    allowed_labels = {*df_ptable.index} | {*map(str, range(182))} | {"-"}
+    assert labels <= allowed_labels, f"{labels - allowed_labels=}"
 
     ptable_heatmap(glass_formulas, log=True)
 
@@ -258,11 +263,12 @@ def test_ptable_heatmap(
     ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
 
 
-def test_ptable_heatmap_splits() -> None:
+@pytest.mark.parametrize("hide_f_block", [False, True])
+def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
     data_dict = {
         elem.symbol: [
-            random.randint(0, 10)  # random heat value for each split
+            random.randint(0, 10)  # random value for each split
             # random number of 1-4 splits per element
             for _ in range(random.randint(1, 4))
         ]
@@ -275,9 +281,10 @@ def test_ptable_heatmap_splits() -> None:
         colormap="coolwarm",
         start_angle=135,
         cbar_title=cbar_title,
+        hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 181
+    assert len(fig.axes) == 127 if hide_f_block else 181
     cbar_ax = fig.axes[-1]
     assert cbar_ax.get_title() == cbar_title
 
@@ -503,29 +510,35 @@ def test_ptable_hists(
     assert isinstance(fig, plt.Figure)
 
 
-def test_ptable_lines() -> None:
+@pytest.mark.parametrize("hide_f_block", [False, True])
+def test_ptable_lines(hide_f_block: bool) -> None:
     """Test ptable_lines."""
     fig = ptable_lines(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
         },
+        hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 126 if hide_f_block else 181
 
 
-def test_ptable_scatters() -> None:
+@pytest.mark.parametrize("hide_f_block", [False, True])
+def test_ptable_scatters(hide_f_block: bool) -> None:
     """Test ptable_scatters."""
     fig = ptable_scatters(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6]],
             "O": [[10, 11], [12, 13]],
-        }
+        },
+        hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 126 if hide_f_block else 181
 
 
-@pytest.mark.skip(reason="3rd color dimension not implemented yet")  # TODO:
+@pytest.mark.skip(reason="3rd color dimension not implemented yet")
 def test_ptable_scatters_colored() -> None:
     """Test ptable_scatters with 3rd color dimension."""
     fig = ptable_scatters(
