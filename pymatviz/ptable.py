@@ -348,6 +348,9 @@ class PTableProjector:
         n_periods = df_ptable.row.max()
         n_groups = df_ptable.column.max()
 
+        if self.hide_f_block:
+            n_periods -= 3
+
         # Set figure size
         plot_kwargs = plot_kwargs or {}
         plot_kwargs.setdefault("figsize", (0.75 * n_groups, 0.75 * n_periods))
