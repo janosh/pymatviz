@@ -31,9 +31,6 @@ if TYPE_CHECKING:
 
     import plotly.graph_objects as go
 
-# Column names used for ptable data
-element_col = "Element"
-value_col = "Value"
 
 # Data types supported by ptable plotters
 SupportedValueType = Union[Sequence[float], np.ndarray]
@@ -242,8 +239,8 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         OR
         >>> data_df: pd.DataFrame = pd.DataFrame(
             data_dict.items(),
-            columns=[{element_col}, {value_col}]
-            ).set_index({element_col})
+            columns=["Element", "Value"]
+            ).set_index("Element")
 
         OR
         >>> data_series: pd.Series = pd.Series(data_dict)
@@ -263,7 +260,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
         """Write vmin and vmax to DataFrame metadata."""
         # flatten up to triple nested lists
-        values = df[value_col].explode().explode().explode()
+        values = df[Key.heat_val].explode().explode().explode()
         numeric_values = pd.to_numeric(values, errors="coerce")
 
         df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
@@ -275,19 +272,19 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         data_df = data
 
     elif isinstance(data, pd.Series):
-        data_df = data.to_frame(name=value_col)
-        data_df.index.name = element_col
+        data_df = data.to_frame(name=Key.heat_val)
+        data_df.index.name = Key.element
 
     elif isinstance(data, dict):
         data_df = pd.DataFrame(
-            data.items(), columns=[element_col, value_col]
-        ).set_index(element_col)
+            data.items(), columns=[Key.element, Key.heat_val]
+        ).set_index(Key.element)
 
     else:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
     # Convert all values to np.array
-    data_df[value_col] = data_df[value_col].map(
+    data_df[Key.heat_val] = data_df[Key.heat_val].map(
         lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
     )
 
@@ -357,7 +354,7 @@ class PTableProjector:
                     for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
                     # check if data is present for f-block elements
                     if (elem := Element.from_Z(atom_num).symbol) in self.data.index  # type: ignore[union-attr]
-                    and self.data.loc[elem, value_col]  # type: ignore[union-attr]
+                    and self.data.loc[elem, Key.heat_val]  # type: ignore[union-attr]
                 }
             )
 
@@ -440,7 +437,7 @@ class PTableProjector:
             # Get and check tile data
             try:
                 plot_data: np.ndarray | Sequence[float] = self.data.loc[
-                    symbol, value_col
+                    symbol, Key.heat_val
                 ]
             except KeyError:  # skip element without data
                 plot_data = None
