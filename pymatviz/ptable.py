@@ -322,7 +322,7 @@ class PTableProjector:
         data: SupportedDataType,
         colormap: str | Colormap | None,
         plot_kwargs: dict[str, Any] | None = None,
-        hide_f_block: bool = False,
+        hide_f_block: bool | None = None,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -334,15 +334,26 @@ class PTableProjector:
             colormap (str | Colormap | None): The colormap to use.
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
-            hide_f_block: Hide f-block (Lanthanum and Actinium series).
+            hide_f_block: Hide f-block (Lanthanum and Actinium series). Defaults to
+                None, meaning hide if no data is provided for f-block elements.
         """
         # Get colormap
         self.cmap: Colormap = colormap
 
-        self.hide_f_block = hide_f_block
-
         # Preprocess data
         self.data: pd.DataFrame = data
+
+        if hide_f_block is None:
+            hide_f_block = bool(
+                {
+                    atom_num
+                    for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
+                    # check if data is present for f-block elements
+                    if self.data["Value"].iloc[atom_num]  # type: ignore[union-attr]
+                }
+            )
+
+        self.hide_f_block = hide_f_block
 
         # Initialize periodic table canvas
         n_periods = df_ptable.row.max()
@@ -363,38 +374,22 @@ class PTableProjector:
 
     @property
     def cmap(self) -> Colormap | None:
-        """The global Colormap.
-
-        Returns:
-            Colormap: The Colormap used.
-        """
+        """The periodic table's matplotlib Colormap instance."""
         return self._cmap
 
     @cmap.setter
     def cmap(self, colormap: str | Colormap | None) -> None:
-        """The global colormap used.
-
-        Args:
-        colormap (str | Colormap | None): The colormap to use.
-        """
+        """Set the periodic table's matplotlib Colormap instance."""
         self._cmap = None if colormap is None else plt.get_cmap(colormap)
 
     @property
     def data(self) -> pd.DataFrame:
-        """The preprocessed data.
-
-        Returns:
-            pd.DataFrame: The preprocessed data.
-        """
+        """The preprocessed data."""
         return self._data
 
     @data.setter
     def data(self, data: SupportedDataType) -> None:
-        """Set and preprocess the data, also set normalizer.
-
-        Args:
-            data (SupportedDataType): The data to be used.
-        """
+        """Set and preprocess the data. Also set normalizer."""
         # Preprocess data
         self._data: pd.DataFrame = data_preprocessor(data)
 
@@ -654,7 +649,7 @@ def ptable_heatmap(
     value_font_size: int = 12,
     tile_size: float | tuple[float, float] = 0.9,
     f_block_voffset: float = 0.5,
-    hide_f_block: bool = False,
+    hide_f_block: bool | None = None,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
@@ -723,8 +718,8 @@ def ptable_heatmap(
             (0.18, 0.8, 0.42, 0.05).
         f_block_voffset (float): Vertical offset for lanthanides and actinides
             (row 6 and 7) from the rest of the periodic table. Defaults to 0.5.
-        hide_f_block (bool): Whether to hide the f-block (lanthanides and actinides).
-            Defaults to False.
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         **kwargs: Additional keyword arguments passed to plt.figure().
 
     Returns:
@@ -924,7 +919,7 @@ def ptable_heatmap_splits(
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     cbar_title: str = "Values",
     on_empty: Literal["hide", "show"] = "hide",
-    hide_f_block: bool = False,
+    hide_f_block: bool | None = None,
     ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     plot_kwargs: dict[str, Any]
@@ -968,7 +963,8 @@ def ptable_heatmap_splits(
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series).
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
 
@@ -1575,7 +1571,7 @@ def ptable_scatters(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
-    hide_f_block: bool = False,
+    hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
@@ -1607,7 +1603,8 @@ def ptable_scatters(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series).
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         child_args: Arguments to pass to the child plotter call.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
@@ -1654,7 +1651,7 @@ def ptable_lines(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
-    hide_f_block: bool = False,
+    hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
@@ -1686,7 +1683,8 @@ def ptable_lines(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series).
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         child_args: Arguments to pass to the child plotter call.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
