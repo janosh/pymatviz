@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.8.2](https://github.com/janosh/pymatviz/compare/v0.8.1...v0.8.2)
+
+> 11 May 2024
+
+- Add `pymatviz/enums.py` for SSOT on dataframe column and dict key names [`#143`](https://github.com/janosh/pymatviz/pull/143)
+- Add keyword `hide_f_block: bool = None` (La and Ac series) to `ptable` plotters [`#140`](https://github.com/janosh/pymatviz/pull/140)
+- Remove text background and fix z-order in `structure_viz` [`#139`](https://github.com/janosh/pymatviz/pull/139)
+- Refactor `ptable` plotters and add `ptable_heatmap` with diagonally-split tiles [`#131`](https://github.com/janosh/pymatviz/pull/131)
+- Migrate to flat `eslint` config file [`#137`](https://github.com/janosh/pymatviz/pull/137)
+- Copy color options for element types from `ptable_plots` to `ptable_hists` [`#129`](https://github.com/janosh/pymatviz/pull/129)
+- MACE-MP pair repulsion curves [`#127`](https://github.com/janosh/pymatviz/pull/127)
+- Add `validate_fig` decorator utility [`#126`](https://github.com/janosh/pymatviz/pull/126)
+- `add_best_fit_line()` power-up [`#125`](https://github.com/janosh/pymatviz/pull/125)
+- `plot_phonon_bands()` add kwargs `branch_mode: "union" | "intersection" = "union"` and `branches: Sequence[str] = ()` [`#124`](https://github.com/janosh/pymatviz/pull/124)
+- breaking: rename fmt_spec keyword to fmt in si_fmt() for code base consistency [`4d3091e`](https://github.com/janosh/pymatviz/commit/4d3091edb209621c2dcc0d299f34a1b039fea8de)
+- add decimal_threshold: float = 0.01 to si_fmt() [`6ecf68a`](https://github.com/janosh/pymatviz/commit/6ecf68a5f449d8c6b93a16c553d6233433612948)
+- fix docs build error and address bullet point 3 in #138 [`492cd53`](https://github.com/janosh/pymatviz/commit/492cd5301f9b241291a49f24a4d8adbbd50ae5c6)
+- update bibtex citation author list [`aa132d9`](https://github.com/janosh/pymatviz/commit/aa132d92f28ec76a22b7bfe180dc97317592dd37)
+
 #### [v0.8.1](https://github.com/janosh/pymatviz/compare/v0.8.0...v0.8.1)
 
 > 11 February 2024
