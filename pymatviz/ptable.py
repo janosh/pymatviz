@@ -349,7 +349,8 @@ class PTableProjector:
                     atom_num
                     for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
                     # check if data is present for f-block elements
-                    if self.data["Value"].iloc[atom_num]  # type: ignore[union-attr]
+                    if (elem := Element.from_Z(atom_num).symbol) in self.data.index  # type: ignore[union-attr]
+                    and self.data.loc[elem, "Value"]  # type: ignore[union-attr]
                 }
             )
 
