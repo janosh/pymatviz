@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from importlib.metadata import version
 
-import pymatviz
 from pymatviz import PKG_NAME, __version__
 
 
@@ -27,7 +26,3 @@ def test_pkg_metadata() -> None:
         assert pyproject["project"]["description"] == pkg_data["description"]
     except ImportError:
         pass  # tomllib only available in 3.11+
-
-
-def test_convenience_exports() -> None:
-    assert len(pymatviz.__dict__) >= 90

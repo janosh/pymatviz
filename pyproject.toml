@@ -48,7 +48,7 @@ test = [
     "pytest-cov",
     "weasyprint",
 ]
-data-src = ["matminer", "mp_api",]
+data-src = ["matminer", "mp_api"]
 export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
 # needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
@@ -80,9 +80,12 @@ no_implicit_optional = false
 
 [tool.ruff]
 target-version = "py39"
-lint.select = ["ALL"]
-lint.ignore = [
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
     "ANN101",
+    "ANN102",
     "ANN401",
     "B028",   # No explicit stacklevel keyword argument found
     "C408",   # unnecessary-collection-call
@@ -109,9 +112,12 @@ lint.ignore = [
     "TD",
     "TRY003",
 ]
-lint.pydocstyle.convention = "google"
-lint.isort.lines-after-imports = 2
-lint.isort.split-on-trailing-comma = false
+pydocstyle.convention = "google"
+isort.lines-after-imports = 2
+isort.split-on-trailing-comma = false
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]

@@ -12,6 +12,7 @@ import plotly.express as px
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
+from pymatviz.enums import Key
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
@@ -54,21 +55,24 @@ def spacegroup_sunburst(
         series = pd.Series(data)
 
     df_spg_counts = pd.DataFrame(series.value_counts().reset_index())
-    df_spg_counts.columns = ["spacegroup", "count"]
+    df_spg_counts.columns = [Key.spacegroup, "count"]
 
     try:  # assume column contains integers as space group numbers
-        df_spg_counts["crystal_sys"] = [
-            crystal_sys_from_spg_num(x) for x in df_spg_counts.spacegroup
+        df_spg_counts[Key.crystal_system] = [
+            crystal_sys_from_spg_num(x) for x in df_spg_counts[Key.spacegroup]
         ]
     except (ValueError, TypeError):  # column must be strings of space group symbols
-        df_spg_counts["crystal_sys"] = [
-            SpaceGroup(x).crystal_system for x in df_spg_counts.spacegroup
+        df_spg_counts[Key.crystal_system] = [
+            SpaceGroup(x).crystal_system for x in df_spg_counts[Key.spacegroup]
         ]
 
     kwargs.setdefault("color_discrete_sequence", px.colors.qualitative.G10)
 
     fig = px.sunburst(
-        df_spg_counts, path=["crystal_sys", "spacegroup"], values="count", **kwargs
+        df_spg_counts,
+        path=[Key.crystal_system, Key.spacegroup],
+        values="count",
+        **kwargs,
     )
 
     if show_counts == "percent":

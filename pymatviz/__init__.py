@@ -21,6 +21,7 @@ from pymatgen.symmetry.groups import SYMM_DATA
 
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
+from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histograms import elements_hist, spacegroup_hist, true_pred_hist
 from pymatviz.parity import (
     density_hexbin,
@@ -73,58 +74,13 @@ spg_num_to_symbol = {
 spg_num_to_symbol = dict(sorted(spg_num_to_symbol.items()))  # sort
 
 
-bandgap_col = "band_gap"
-charge_col = "total_charge"
-crystal_sys_col = "crystal_system"
-e_above_hull_col = "energy_above_hull"
-e_form_col = "formation_energy_per_atom"
-energy_col = "energy"
-formula_pretty_col = "formula_pretty"
-formula_col = "formula"
-id_col = "material_id"
-n_elems_col = "nelements"
-oxi_guesses_col = "oxi_state_guesses"
-spg_col = "spacegroup_number"
-structure_col = "structure"
-symmetry_col = "symmetry"
-volume_col = "volume"
-volume_per_atom_col = "volume_per_atom"
-
-small_font = "font-size: 0.9em; font-weight: lighter;"
-eV_per_atom = styled_html_tag("(eV/atom)", tag="span", style=small_font)  # noqa: N816
-eV = styled_html_tag("(eV)", tag="span", style=small_font)  # noqa: N816
-elem_charge = styled_html_tag("(e)", tag="span", style=small_font)  # elementary charge
-cubic_angstrom = styled_html_tag("(Å<sup>3</sup>)", tag="span", style=small_font)
-angstrom = styled_html_tag("(Å)", tag="span", style=small_font)
-angstrom_per_atom = styled_html_tag("(Å/atom)", tag="span", style=small_font)
-
 px.defaults.labels |= {
-    bandgap_col: "Band Gap",
-    charge_col: f"Charge {elem_charge}",
-    crystal_sys_col: "Crystal System",
-    e_above_hull_col: f"E<sub>hull dist</sub> {eV_per_atom}",
-    e_form_col: f"E<sub>form</sub> {eV_per_atom}",
-    energy_col: f"Energy {eV}",
-    formula_pretty_col: "Formula",
-    formula_col: "Formula",
-    id_col: "Material ID",
-    n_elems_col: "N<sub>elements</sub>",
-    oxi_guesses_col: "Oxidation State Guesses",
-    spg_col: "Spacegroup",
-    structure_col: "Structure",
-    symmetry_col: "Symmetry",
-    volume_col: f"Volume {cubic_angstrom}",
-    volume_per_atom_col: f"Volume {angstrom_per_atom}",
     "n_atoms": "Atom Count",
     "n_elems": "Element Count",
     "gap expt": "Experimental band gap (eV)",
-    "crystal_sys": "Crystal system",
     "n": "Refractive index n",
-    "spg_num": "Space group",
     "n_wyckoff": "Number of Wyckoff positions",
-    "n_sites": "Number of unit cell sites",
-    "energy_per_atom": "Energy (eV/atom)",
-}
+} | Key.val_label_dict()
 
 # to hide math loading MathJax message in bottom left corner of plotly PDFs
 # https://github.com/plotly/Kaleido/issues/122#issuecomment-994906924

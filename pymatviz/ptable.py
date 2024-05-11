@@ -22,6 +22,7 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
+from pymatviz.enums import Key
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
@@ -30,9 +31,6 @@ if TYPE_CHECKING:
 
     import plotly.graph_objects as go
 
-# Column names used for ptable data
-element_col = "Element"
-value_col = "Value"
 
 # Data types supported by ptable plotters
 SupportedValueType = Union[Sequence[float], np.ndarray]
@@ -42,7 +40,7 @@ SupportedDataType = Union[
 ]
 
 CountMode = Literal[
-    "composition", "fractional_composition", "reduced_composition", "occurrence"
+    Key.composition, "fractional_composition", "reduced_composition", "occurrence"
 ]
 
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
@@ -112,7 +110,7 @@ def add_element_type_legend(
 
 def count_elements(
     values: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = Key.composition,
     exclude_elements: Sequence[str] = (),
     fill_value: float | None = 0,
 ) -> pd.Series:
@@ -166,7 +164,9 @@ def count_elements(
                 )
             ).value_counts()
         else:
-            attr = "element_composition" if count_mode == "composition" else count_mode
+            attr = (
+                "element_composition" if count_mode == Key.composition else count_mode
+            )
             srs = pd.DataFrame(
                 getattr(Composition(formula, allow_negative=True), attr).as_dict()
                 for formula in srs
@@ -239,13 +239,13 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         OR
         >>> data_df: pd.DataFrame = pd.DataFrame(
             data_dict.items(),
-            columns=[{element_col}, {value_col}]
-            ).set_index({element_col})
+            columns=["element", "heat_val"]
+            ).set_index("element")
 
         OR
         >>> data_series: pd.Series = pd.Series(data_dict)
 
-        >>> preprocess_data(data_dict/df/series)
+        >>> preprocess_data(data_dict / df / series)
 
              Element   Value
         0    H         [1.0, ]
@@ -260,7 +260,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
         """Write vmin and vmax to DataFrame metadata."""
         # flatten up to triple nested lists
-        values = df[value_col].explode().explode().explode()
+        values = df[Key.heat_val].explode().explode().explode()
         numeric_values = pd.to_numeric(values, errors="coerce")
 
         df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
@@ -272,19 +272,19 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         data_df = data
 
     elif isinstance(data, pd.Series):
-        data_df = data.to_frame(name=value_col)
-        data_df.index.name = element_col
+        data_df = data.to_frame(name=Key.heat_val)
+        data_df.index.name = Key.element
 
     elif isinstance(data, dict):
         data_df = pd.DataFrame(
-            data.items(), columns=[element_col, value_col]
-        ).set_index(element_col)
+            data.items(), columns=[Key.element, Key.heat_val]
+        ).set_index(Key.element)
 
     else:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
     # Convert all values to np.array
-    data_df[value_col] = data_df[value_col].map(
+    data_df[Key.heat_val] = data_df[Key.heat_val].map(
         lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
     )
 
@@ -354,7 +354,7 @@ class PTableProjector:
                     for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
                     # check if data is present for f-block elements
                     if (elem := Element.from_Z(atom_num).symbol) in self.data.index  # type: ignore[union-attr]
-                    and self.data.loc[elem, value_col]  # type: ignore[union-attr]
+                    and self.data.loc[elem, Key.heat_val]  # type: ignore[union-attr]
                 }
             )
 
@@ -437,7 +437,7 @@ class PTableProjector:
             # Get and check tile data
             try:
                 plot_data: np.ndarray | Sequence[float] = self.data.loc[
-                    symbol, value_col
+                    symbol, Key.heat_val
                 ]
             except KeyError:  # skip element without data
                 plot_data = None
@@ -634,7 +634,7 @@ def ptable_heatmap(
     values: ElemValues,
     log: bool | Normalize = False,
     ax: plt.Axes | None = None,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = Key.composition,
     cbar_title: str = "Element Count",
     cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
@@ -1031,7 +1031,7 @@ def ptable_heatmap_splits(
 def ptable_heatmap_ratio(
     values_num: ElemValues,
     values_denom: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = Key.composition,
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] | None = ("#eff", "gray: not in 1st list"),
@@ -1097,7 +1097,7 @@ def ptable_heatmap_ratio(
 
 def ptable_heatmap_plotly(
     values: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = Key.composition,
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     show_scale: bool = True,
     show_values: bool = True,

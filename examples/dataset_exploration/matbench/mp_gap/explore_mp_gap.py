@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
 from pymatviz import ptable_heatmap
+from pymatviz.enums import Key
 
 
 """Stats for the matbench_mp_gap dataset.
@@ -26,12 +27,12 @@ plt.savefig("pbe_gap_hist.pdf")
 
 
 # %%
-df_gap["volume/atom"] = df_gap.structure.map(
+df_gap["volume/atom"] = df_gap[Key.structure].map(
     lambda cryst: cryst.volume / cryst.num_sites
 )
-df_gap["num_sites"] = df_gap.structure.map(lambda cryst: cryst.num_sites)
+df_gap["num_sites"] = df_gap[Key.structure].map(lambda cryst: cryst.num_sites)
 
-df_gap["formula"] = df_gap.structure.map(lambda cryst: cryst.formula)
+df_gap[Key.formula] = df_gap[Key.structure].map(lambda cryst: cryst.formula)
 
 
 # %%

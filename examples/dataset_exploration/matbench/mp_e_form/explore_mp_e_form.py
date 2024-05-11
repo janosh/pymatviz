@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
 from pymatviz import ptable_heatmap
+from pymatviz.enums import Key
 
 
 """Stats for the matbench_mp_e_form dataset.
@@ -28,7 +29,7 @@ plt.savefig("mp_e_form_hist.pdf")
 
 
 # %%
-df_e_form["formula"] = df_e_form.structure.map(lambda struct: struct.formula)
+df_e_form[Key.formula] = df_e_form[Key.structure].map(lambda struct: struct.formula)
 
 
 # %%
