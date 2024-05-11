@@ -510,29 +510,35 @@ def test_ptable_hists(
     assert isinstance(fig, plt.Figure)
 
 
-def test_ptable_lines() -> None:
+@pytest.mark.parametrize("hide_f_block", [False, True])
+def test_ptable_lines(hide_f_block: bool) -> None:
     """Test ptable_lines."""
     fig = ptable_lines(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
         },
+        hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 126 if hide_f_block else 181
 
 
-def test_ptable_scatters() -> None:
+@pytest.mark.parametrize("hide_f_block", [False, True])
+def test_ptable_scatters(hide_f_block: bool) -> None:
     """Test ptable_scatters."""
     fig = ptable_scatters(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6]],
             "O": [[10, 11], [12, 13]],
-        }
+        },
+        hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
+    assert len(fig.axes) == 126 if hide_f_block else 181
 
 
-@pytest.mark.skip(reason="3rd color dimension not implemented yet")  # TODO:
+@pytest.mark.skip(reason="3rd color dimension not implemented yet")
 def test_ptable_scatters_colored() -> None:
     """Test ptable_scatters with 3rd color dimension."""
     fig = ptable_scatters(
