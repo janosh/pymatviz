@@ -4,6 +4,7 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import plot_structure_2d, ptable_heatmap, spacegroup_sunburst
+from pymatviz.enums import Key
 from pymatviz.powerups import annotate_bars
 from pymatviz.utils import crystal_sys_from_spg_num
 
@@ -26,14 +27,16 @@ https://ml.materialsproject.org/projects/matbench_perovskites
 # %%
 df_perov = load_dataset("matbench_perovskites")
 
-df_perov[["spg_symbol", "spg_num"]] = [
+df_perov[[Key.spacegroup_symbol, Key.spacegroup]] = [
     struct.get_space_group_info() for struct in tqdm(df_perov.structure)
 ]
-df_perov["volume"] = df_perov.structure.map(lambda struct: struct.volume)
+df_perov[Key.volume] = df_perov.structure.map(lambda struct: struct.volume)
 
-df_perov["formula"] = df_perov.structure.map(lambda cryst: cryst.formula)
+df_perov[Key.formula] = df_perov.structure.map(lambda cryst: cryst.formula)
 
-df_perov["crystal_sys"] = [crystal_sys_from_spg_num(x) for x in df_perov.spg_num]
+df_perov[Key.crystal_system] = [
+    crystal_sys_from_spg_num(x) for x in df_perov[Key.spacegroup]
+]
 
 
 # %%
@@ -59,7 +62,7 @@ plt.savefig("perovskites-ptable-heatmap.pdf")
 
 
 # %%
-df_perov["crystal_sys"].value_counts().plot.bar()
+df_perov[Key.crystal_system].value_counts().plot.bar()
 
 plt.title("Crystal systems in Matbench Perovskites")
 plt.xticks(rotation="horizontal")
@@ -70,11 +73,11 @@ plt.savefig("perovskites-crystal-system-counts.pdf")
 
 
 # %%
-df_perov.plot.scatter(x="volume", y="e_form", c="spg_num", colormap="viridis")
+df_perov.plot.scatter(x=Key.volume, y="e_form", c=Key.spacegroup, colormap="viridis")
 
 
 # %%
-fig = spacegroup_sunburst(df_perov.spg_num, show_counts="percent")
+fig = spacegroup_sunburst(df_perov[Key.spacegroup], show_counts="percent")
 fig.update_layout(title="Matbench Perovskites spacegroup sunburst")
 fig.write_image("perovskite-spacegroup-sunburst.pdf")
 fig.show()

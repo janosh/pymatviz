@@ -20,6 +20,7 @@ from tqdm import tqdm
 
 from pymatviz.correlation import marchenko_pastur
 from pymatviz.cumulative import cumulative_error, cumulative_residual
+from pymatviz.enums import Key
 from pymatviz.histograms import elements_hist, spacegroup_hist, true_pred_hist
 from pymatviz.io import save_and_compress_svg
 from pymatviz.parity import (
@@ -84,7 +85,7 @@ df_steels = load_dataset("matbench_steels")
 df_expt_gap = load_dataset("matbench_expt_gap")
 df_phonons = load_dataset("matbench_phonons")
 
-df_phonons[["spg_symbol", "spg_num"]] = [
+df_phonons[["spg_symbol", Key.spacegroup]] = [
     struct.get_space_group_info() for struct in tqdm(df_phonons.structure)
 ]
 
@@ -285,7 +286,7 @@ save_and_compress_svg(ax, "hist-elemental-prevalence")
 
 # %% Spacegroup histograms
 for backend in ("plotly", "matplotlib"):
-    fig = spacegroup_hist(df_phonons.spg_num, backend=backend)  # type: ignore[arg-type]
+    fig = spacegroup_hist(df_phonons[Key.spacegroup], backend=backend)  # type: ignore[arg-type]
     save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 
     fig = spacegroup_hist(df_phonons.spg_symbol, backend=backend)  # type: ignore[arg-type]
@@ -293,7 +294,7 @@ for backend in ("plotly", "matplotlib"):
 
 
 # %% Sunburst Plots
-fig = spacegroup_sunburst(df_phonons.spg_num, show_counts="percent")
+fig = spacegroup_sunburst(df_phonons[Key.spacegroup], show_counts="percent")
 title = "Matbench Phonons Spacegroup Sunburst"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18))
 save_and_compress_svg(fig, "spg-num-sunburst")

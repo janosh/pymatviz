@@ -23,13 +23,14 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import ptable_heatmap, spacegroup_hist
+from pymatviz.enums import Key
 
 
 # %%
 df_carrier = load_dataset("ricci_boltztrap_mp_tabular")
 
 # getting space group symbols and numbers takes about 2 min
-df_carrier[["spg_symbol", "spg_num"]] = [
+df_carrier[[Key.spacegroup_symbol, Key.spacegroup]] = [
     struct.get_space_group_info() for struct in tqdm(df_carrier.structure)
 ]
 
@@ -80,6 +81,6 @@ plt.savefig("carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%
-spacegroup_hist(df_carrier.spg_num)
+spacegroup_hist(df_carrier[Key.spacegroup])
 plt.title("Spacegroup distribution in the Ricci carrier transport dataset")
 plt.savefig("carrier-transport-spacegroup-hist.pdf")

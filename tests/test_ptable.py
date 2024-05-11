@@ -23,6 +23,7 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
+from pymatviz.enums import Key
 from pymatviz.ptable import add_element_type_legend, data_preprocessor
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -142,7 +143,7 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
 @pytest.mark.parametrize(
     "count_mode, counts",
     [
-        ("composition", {"Fe": 22, "O": 63, "P": 12}),
+        (Key.composition, {"Fe": 22, "O": 63, "P": 12}),
         ("fractional_composition", {"Fe": 2.5, "O": 5, "P": 0.5}),
         ("reduced_composition", {"Fe": 13, "O": 27, "P": 3}),
         ("occurrence", {"Fe": 8, "O": 8, "P": 3}),

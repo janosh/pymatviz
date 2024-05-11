@@ -22,6 +22,7 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
+from pymatviz.enums import Key
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt, si_fmt_int
 
 
@@ -42,7 +43,7 @@ SupportedDataType = Union[
 ]
 
 CountMode = Literal[
-    "composition", "fractional_composition", "reduced_composition", "occurrence"
+    Key.composition, "fractional_composition", "reduced_composition", "occurrence"
 ]
 
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
@@ -112,7 +113,7 @@ def add_element_type_legend(
 
 def count_elements(
     values: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = Key.composition,
     exclude_elements: Sequence[str] = (),
     fill_value: float | None = 0,
 ) -> pd.Series:
@@ -166,7 +167,9 @@ def count_elements(
                 )
             ).value_counts()
         else:
-            attr = "element_composition" if count_mode == "composition" else count_mode
+            attr = (
+                "element_composition" if count_mode == Key.composition else count_mode
+            )
             srs = pd.DataFrame(
                 getattr(Composition(formula, allow_negative=True), attr).as_dict()
                 for formula in srs
@@ -245,7 +248,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         OR
         >>> data_series: pd.Series = pd.Series(data_dict)
 
-        >>> preprocess_data(data_dict/df/series)
+        >>> preprocess_data(data_dict / df / series)
 
              Element   Value
         0    H         [1.0, ]
@@ -634,7 +637,7 @@ def ptable_heatmap(
     values: ElemValues,
     log: bool | Normalize = False,
     ax: plt.Axes | None = None,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = Key.composition,
     cbar_title: str = "Element Count",
     cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
@@ -1031,7 +1034,7 @@ def ptable_heatmap_splits(
 def ptable_heatmap_ratio(
     values_num: ElemValues,
     values_denom: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = Key.composition,
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] | None = ("#eff", "gray: not in 1st list"),
@@ -1097,7 +1100,7 @@ def ptable_heatmap_ratio(
 
 def ptable_heatmap_plotly(
     values: ElemValues,
-    count_mode: CountMode = "composition",
+    count_mode: CountMode = Key.composition,
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     show_scale: bool = True,
     show_values: bool = True,

@@ -12,6 +12,7 @@ from pymatviz import (
     spacegroup_hist,
     spacegroup_sunburst,
 )
+from pymatviz.enums import Key
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
@@ -32,7 +33,7 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 # %%
 df_diel = load_dataset("matbench_dielectric")
 
-df_diel[["spg_symbol", "spg_num"]] = [
+df_diel[[Key.spacegroup_symbol, Key.spacegroup]] = [
     struct.get_space_group_info()
     for struct in tqdm(df_diel.structure, desc="Getting spacegroups")
 ]
@@ -43,10 +44,10 @@ df_diel["wyckoff"] = [
 ]
 df_diel["n_wyckoff"] = df_diel.wyckoff.map(count_wyckoff_positions)
 
-df_diel["crystal_sys"] = df_diel.spg_num.map(crystal_sys_from_spg_num)
+df_diel[Key.crystal_system] = df_diel[Key.spacegroup].map(crystal_sys_from_spg_num)
 
-df_diel["volume"] = [x.volume for x in df_diel.structure]
-df_diel["formula"] = [x.formula for x in df_diel.structure]
+df_diel[Key.volume] = [x.volume for x in df_diel.structure]
+df_diel[Key.formula] = [x.formula for x in df_diel.structure]
 
 
 # %%
@@ -63,13 +64,13 @@ fig.update_layout(title=dict(text=title, x=0.4, y=0.94, font_size=20))
 
 
 # %%
-ax = spacegroup_hist(df_diel.spg_num)
+ax = spacegroup_hist(df_diel[Key.spacegroup])
 ax.set_title("Space group histogram", y=1.1)
 plt.savefig("dielectric-spacegroup-hist.pdf")
 
 
 # %%
-fig = spacegroup_sunburst(df_diel.spg_num, show_counts="percent")
+fig = spacegroup_sunburst(df_diel[Key.spacegroup], show_counts="percent")
 fig.update_layout(title="Space group sunburst")
 # fig.write_image("dielectric-spacegroup-sunburst.pdf")
 fig.show()
@@ -78,17 +79,17 @@ fig.show()
 # %%
 fig = px.violin(
     df_diel,
-    color="crystal_sys",
-    x="crystal_sys",
+    color=Key.crystal_system,
+    x=Key.crystal_system,
     y="n",
     points="all",
-    hover_data=["spg_num"],
-    hover_name="formula",
+    hover_data=[Key.spacegroup],
+    hover_name=Key.formula,
 ).update_traces(jitter=1)
 
 x_ticks = {}  # custom x axis tick labels
 for cry_sys, df_group in sorted(
-    df_diel.groupby("crystal_sys"), key=lambda x: crystal_sys_order.index(x[0])
+    df_diel.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
 ):
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
@@ -113,13 +114,13 @@ fig.show()
 # %%
 fig = px.violin(
     df_diel,
-    color="crystal_sys",
-    x="crystal_sys",
+    color=Key.crystal_system,
+    x=Key.crystal_system,
     y="n_wyckoff",
     points="all",
-    hover_data=["spg_num"],
-    hover_name="formula",
-    category_orders={"crystal_sys": crystal_sys_order},
+    hover_data=[Key.spacegroup],
+    hover_name=Key.formula,
+    category_orders={Key.crystal_system: crystal_sys_order},
     log_y=True,
 ).update_traces(jitter=1)
 
@@ -131,7 +132,7 @@ def rgb_color(val: float, max_val: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_diel.groupby("crystal_sys"), key=lambda x: crystal_sys_order.index(x[0])
+    df_diel.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
 ):
     n_wyckoff = df_group.n_wyckoff.mean()
     clr = rgb_color(n_wyckoff, 14)
@@ -158,12 +159,12 @@ fig.show()
 # %%
 fig = px.scatter(
     df_diel.round(2),
-    x="volume",
+    x=Key.volume,
     y="n",
-    color="crystal_sys",
+    color=Key.crystal_system,
     size="n",
-    hover_data=["spg_num"],
-    hover_name="formula",
+    hover_data=[Key.spacegroup],
+    hover_name=Key.formula,
     range_x=[0, 1500],
 )
 title = "<b>Matbench Dielectric: Refractive Index vs. Volume</b>"
