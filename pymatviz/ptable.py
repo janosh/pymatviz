@@ -30,6 +30,10 @@ if TYPE_CHECKING:
 
     import plotly.graph_objects as go
 
+# Column names used for ptable data
+element_col = "Element"
+value_col = "Value"
+
 # Data types supported by ptable plotters
 SupportedValueType = Union[Sequence[float], np.ndarray]
 
@@ -235,8 +239,8 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         OR
         >>> data_df: pd.DataFrame = pd.DataFrame(
             data_dict.items(),
-            columns=["Element", "Value"]
-            ).set_index("Element")
+            columns=[{element_col}, {value_col}]
+            ).set_index({element_col})
 
         OR
         >>> data_series: pd.Series = pd.Series(data_dict)
@@ -256,7 +260,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
         """Write vmin and vmax to DataFrame metadata."""
         # flatten up to triple nested lists
-        values = df["Value"].explode().explode().explode()
+        values = df[value_col].explode().explode().explode()
         numeric_values = pd.to_numeric(values, errors="coerce")
 
         df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
@@ -268,19 +272,19 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         data_df = data
 
     elif isinstance(data, pd.Series):
-        data_df = data.to_frame(name="Value")
-        data_df.index.name = "Element"
+        data_df = data.to_frame(name=value_col)
+        data_df.index.name = element_col
 
     elif isinstance(data, dict):
-        data_df = pd.DataFrame(data.items(), columns=["Element", "Value"]).set_index(
-            "Element"
-        )
+        data_df = pd.DataFrame(
+            data.items(), columns=[element_col, value_col]
+        ).set_index(element_col)
 
     else:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
     # Convert all values to np.array
-    data_df["Value"] = data_df["Value"].map(
+    data_df[value_col] = data_df[value_col].map(
         lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
     )
 
@@ -318,9 +322,11 @@ class PTableProjector:
 
     def __init__(
         self,
+        *,
         data: SupportedDataType,
         colormap: str | Colormap | None,
         plot_kwargs: dict[str, Any] | None = None,
+        hide_f_block: bool | None = None,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -332,6 +338,8 @@ class PTableProjector:
             colormap (str | Colormap | None): The colormap to use.
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
+            hide_f_block: Hide f-block (Lanthanum and Actinium series). Defaults to
+                None, meaning hide if no data is provided for f-block elements.
         """
         # Get colormap
         self.cmap: Colormap = colormap
@@ -339,9 +347,25 @@ class PTableProjector:
         # Preprocess data
         self.data: pd.DataFrame = data
 
+        if hide_f_block is None:
+            hide_f_block = bool(
+                {
+                    atom_num
+                    for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
+                    # check if data is present for f-block elements
+                    if (elem := Element.from_Z(atom_num).symbol) in self.data.index  # type: ignore[union-attr]
+                    and self.data.loc[elem, value_col]  # type: ignore[union-attr]
+                }
+            )
+
+        self.hide_f_block = hide_f_block
+
         # Initialize periodic table canvas
         n_periods = df_ptable.row.max()
         n_groups = df_ptable.column.max()
+
+        if self.hide_f_block:
+            n_periods -= 3
 
         # Set figure size
         plot_kwargs = plot_kwargs or {}
@@ -355,38 +379,22 @@ class PTableProjector:
 
     @property
     def cmap(self) -> Colormap | None:
-        """The global Colormap.
-
-        Returns:
-            Colormap: The Colormap used.
-        """
+        """The periodic table's matplotlib Colormap instance."""
         return self._cmap
 
     @cmap.setter
     def cmap(self, colormap: str | Colormap | None) -> None:
-        """The global colormap used.
-
-        Args:
-        colormap (str | Colormap | None): The colormap to use.
-        """
+        """Set the periodic table's matplotlib Colormap instance."""
         self._cmap = None if colormap is None else plt.get_cmap(colormap)
 
     @property
     def data(self) -> pd.DataFrame:
-        """The preprocessed data.
-
-        Returns:
-            pd.DataFrame: The preprocessed data.
-        """
+        """The preprocessed data."""
         return self._data
 
     @data.setter
     def data(self, data: SupportedDataType) -> None:
-        """Set and preprocess the data, also set normalizer.
-
-        Args:
-            data (SupportedDataType): The data to be used.
-        """
+        """Set and preprocess the data. Also set normalizer."""
         # Preprocess data
         self._data: pd.DataFrame = data_preprocessor(data)
 
@@ -404,6 +412,7 @@ class PTableProjector:
         self,
         child_plotter: Callable[[plt.axes, Any], None],
         child_args: dict[str, Any],
+        *,
         ax_kwargs: dict[str, Any],
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
@@ -416,6 +425,10 @@ class PTableProjector:
             on_empty: Whether to "show" or "hide" tiles for elements without data.
         """
         for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
             # Get axis index by element symbol
             symbol: str = element.symbol
             row, column = df_ptable.loc[symbol, ["row", "column"]]
@@ -423,7 +436,9 @@ class PTableProjector:
 
             # Get and check tile data
             try:
-                plot_data: np.ndarray | Sequence[float] = self.data.loc[symbol, "Value"]
+                plot_data: np.ndarray | Sequence[float] = self.data.loc[
+                    symbol, value_col
+                ]
             except KeyError:  # skip element without data
                 plot_data = None
 
@@ -459,6 +474,10 @@ class PTableProjector:
 
         # Add symbol for each element
         for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
             # Get axis index by element symbol
             symbol: str = element.symbol
             row, column = df_ptable.loc[symbol, ["row", "column"]]
@@ -473,6 +492,7 @@ class PTableProjector:
         self,
         title: str,
         coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+        *,
         cbar_kwargs: dict[str, Any] | None = None,
         title_kwargs: dict[str, Any] | None = None,
     ) -> None:
@@ -635,7 +655,8 @@ def ptable_heatmap(
     label_font_size: int = 16,
     value_font_size: int = 12,
     tile_size: float | tuple[float, float] = 0.9,
-    rare_earth_voffset: float = 0.5,
+    f_block_voffset: float = 0.5,
+    hide_f_block: bool | None = None,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
@@ -702,8 +723,10 @@ def ptable_heatmap(
         cbar_coords (tuple[float, float, float, float]): Color bar position and size:
             [x, y, width, height] anchored at lower left corner of the bar. Defaults to
             (0.18, 0.8, 0.42, 0.05).
-        rare_earth_voffset (float): Vertical offset for lanthanides and actinides
+        f_block_voffset (float): Vertical offset for lanthanides and actinides
             (row 6 and 7) from the rest of the periodic table. Defaults to 0.5.
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         **kwargs: Additional keyword arguments passed to plt.figure().
 
     Returns:
@@ -778,6 +801,9 @@ def ptable_heatmap(
     ) | (text_style or {})
 
     for symbol, row, column, *_ in df_ptable.itertuples():
+        if hide_f_block and (row in (6, 7)):
+            continue
+
         period = n_rows - row  # invert row count to make periodic table right side up
         tile_value = values.get(symbol)
 
@@ -814,7 +840,7 @@ def ptable_heatmap(
             # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
             label = label.replace("e+0", "e")
         if period < 3:  # vertical offset for lanthanides + actinides
-            period += rare_earth_voffset
+            period += f_block_voffset
         rect = Rectangle(
             (column, period), tile_width, tile_height, edgecolor="gray", facecolor=color
         )
@@ -900,6 +926,7 @@ def ptable_heatmap_splits(
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     cbar_title: str = "Values",
     on_empty: Literal["hide", "show"] = "hide",
+    hide_f_block: bool | None = None,
     ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     plot_kwargs: dict[str, Any]
@@ -943,6 +970,8 @@ def ptable_heatmap_splits(
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
 
@@ -964,6 +993,7 @@ def ptable_heatmap_splits(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        hide_f_block=hide_f_block,
     )
 
     # Call child plotter: evenly split rectangle
@@ -1548,6 +1578,7 @@ def ptable_scatters(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
+    hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
@@ -1579,6 +1610,8 @@ def ptable_scatters(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         child_args: Arguments to pass to the child plotter call.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
@@ -1595,7 +1628,12 @@ def ptable_scatters(
     symbol_kwargs.setdefault("fontsize", 12)
 
     # Initialize periodic table plotter
-    plotter = PTableProjector(data=data, colormap=None, plot_kwargs=plot_kwargs)  # type: ignore[arg-type]
+    plotter = PTableProjector(
+        data=data,
+        colormap=None,
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        hide_f_block=hide_f_block,
+    )
 
     # Call child plotter: Scatter
     plotter.add_child_plots(
@@ -1620,6 +1658,7 @@ def ptable_lines(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
+    hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
@@ -1651,6 +1690,8 @@ def ptable_lines(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         child_args: Arguments to pass to the child plotter call.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
@@ -1669,6 +1710,7 @@ def ptable_lines(
         data=data,
         colormap=None,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        hide_f_block=hide_f_block,
     )
 
     # Call child plotter: line
