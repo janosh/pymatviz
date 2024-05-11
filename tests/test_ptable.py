@@ -263,7 +263,8 @@ def test_ptable_heatmap(
     ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
 
 
-def test_ptable_heatmap_splits() -> None:
+@pytest.mark.parametrize("hide_f_block", [False, True])
+def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
     data_dict = {
         elem.symbol: [
@@ -280,33 +281,12 @@ def test_ptable_heatmap_splits() -> None:
         colormap="coolwarm",
         start_angle=135,
         cbar_title=cbar_title,
+        hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 181
+    assert len(fig.axes) == 127 if hide_f_block else 181
     cbar_ax = fig.axes[-1]
     assert cbar_ax.get_title() == cbar_title
-
-
-def test_ptable_heatmap_splits_hide_f_block() -> None:
-    """Test ptable_heatmap_splits with f block hidden."""
-    data_dict = {
-        elem.symbol: [
-            random.randint(0, 10)  # random value for each split
-            for _ in range(2)
-        ]
-        for elem in Element
-    }
-
-    cbar_title = "Periodic Table with f-block hidden"
-    fig = ptable_heatmap_splits(
-        data_dict,
-        colormap="coolwarm",
-        start_angle=135,
-        cbar_title=cbar_title,
-        hide_f_block=True,
-    )
-    assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 127
 
 
 def test_ptable_heatmap_ratio(
