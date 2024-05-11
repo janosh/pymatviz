@@ -3,6 +3,8 @@ import pandas as pd
 from matminer.datasets import load_dataset
 from pymatgen.ext.matproj import MPRester
 
+from pymatviz.enums import Key
+
 
 """
 Unprocessed data in data/carrier_transport.json.gz obtained from https://git.io/JOMwY.
@@ -25,7 +27,7 @@ df_carrier.index.name = "mp_id"
 with MPRester() as mpr:
     strucs = mpr.query(
         {"task_ids": {"$in": df_carrier.index.to_list()}},
-        ["task_ids", "structure"],
+        ["task_ids", Key.structure],
     )
 
 
@@ -35,7 +37,7 @@ struc_df = pd.DataFrame(strucs).explode("task_ids").set_index("task_ids")
 
 df_carrier[struc_df.columns] = struc_df
 
-df_carrier["pretty_formula"] = [struct.formula for struct in df_carrier.structure]
+df_carrier[Key.formula] = [struct.formula for struct in df_carrier[Key.structure]]
 
 
 # %% move all units from rows to header
