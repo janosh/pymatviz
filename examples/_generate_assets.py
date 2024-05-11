@@ -220,22 +220,23 @@ save_and_compress_svg(fig, "ptable-lines")
 
 
 # %% Evenly-split tile plots laid out as a periodic table
-data_dict = {
-    elem.symbol: [
-        random.randint(0, 10),
-        random.randint(10, 20),
-    ]
-    for elem in Element
-}
+for n_splits in (2, 3, 4):
+    data_dict = {
+        elem.symbol: [
+            random.randint(10 * n_splits, 20 * (n_splits + 1)) for _ in range(n_splits)
+        ]
+        for elem in Element
+    }
 
-fig = ptable_heatmap_splits(
-    data=data_dict,
-    colormap="coolwarm",
-    start_angle=135,
-    cbar_title="Periodic Table Evenly-Split Heatmap Plots",
-    hide_f_block=True,
-)
-save_and_compress_svg(fig, "ptable-heatmap-splits")
+    fig = ptable_heatmap_splits(
+        data=data_dict,
+        colormap="coolwarm",
+        start_angle=135 if n_splits % 2 == 0 else 90,
+        cbar_title="Periodic Table Evenly-Split Heatmap Plots",
+        hide_f_block=True,
+    )
+    fig.show()
+    save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")
 
 
 # %% Uncertainty Plots
