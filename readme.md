@@ -53,19 +53,20 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table can be plotted both with `matplotlib` and `plotly`. `plotly` supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
 
-|                        [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable.py)                        |    [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable.py)     |
-| :----------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------: |
-|                                              ![ptable-heatmap]                                               |                        ![ptable-heatmap-ratio]                        |
-|                         [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py) |
-|                                   ![ptable-heatmap-plotly-more-hover-data]                                   |                     ![ptable-heatmap-plotly-log]                      |
-|                       [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable.py)                        |              [`ptable_lines(data)`](pymatviz/ptable.py)               |
-|                                               ![ptable-hists]                                                |                            ![ptable-lines]                            |
-| [`ptable_heatmap_splits(data, colormap="coolwarm", start_angle=135, hide_f_block=True)`](pymatviz/ptable.py) |
-|                                           ![ptable-heatmap-splits]                                           |
+|                    [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable.py)                    |                   [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable.py)                    |
+| :--------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------: |
+|                                          ![ptable-heatmap]                                           |                                       ![ptable-heatmap-ratio]                                       |
+|                     [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)                     |                [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py)                |
+|                               ![ptable-heatmap-plotly-more-hover-data]                               |                                    ![ptable-heatmap-plotly-log]                                     |
+|                   [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable.py)                    |                             [`ptable_lines(data)`](pymatviz/ptable.py)                              |
+|                                           ![ptable-hists]                                            |                                           ![ptable-lines]                                           |
+| [`ptable_heatmap_splits(2_vals_per_elem, colormap="coolwarm", start_angle=135)`](pymatviz/ptable.py) | [`ptable_heatmap_splits(3_vals_per_elem, colormap="coolwarm", start_angle=90)`](pymatviz/ptable.py) |
+|                                      ![ptable-heatmap-splits-2]                                      |                                     ![ptable-heatmap-splits-3]                                      |
 
 [ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
 [ptable-lines]: https://github.com/janosh/pymatviz/raw/main/examples/diatomics/homo-nuclear-mace-medium.svg
-[ptable-heatmap-splits]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-splits.svg
+[ptable-heatmap-splits-2]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-splits-2.svg
+[ptable-heatmap-splits-3]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-splits-3.svg
 
 ## Phonons
 
