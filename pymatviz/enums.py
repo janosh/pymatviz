@@ -13,17 +13,21 @@ if TYPE_CHECKING:
 
 
 @unique
-class LabelEnum(Enum):  # migrate to StrEnum once only 3.11+ supported
+class LabelEnum(str, Enum):  # migrate to StrEnum once only 3.11+ supported
     """Enum with optional label and description attributes plus dict() methods."""
 
     def __new__(
         cls, val: str, label: str | None = None, desc: str | None = None
     ) -> Self:
         """Create a new class."""
-        member = object.__new__(cls)
+        member = str.__new__(cls)
         member._value_ = val
         member.__dict__ |= dict(label=label, desc=desc)
         return member
+
+    def __str__(self) -> str:
+        """Return the value of the enum."""
+        return self.value
 
     @property
     def label(self) -> str:
@@ -103,3 +107,14 @@ class Key(LabelEnum):
     task_type = "task_type", "Task Type"
     volume = "volume", "Volume (Å³)"
     wyckoff = "wyckoff", "Aflow-style Wyckoff Label"  # crystallographic site symmetry
+
+
+@unique
+class Model(LabelEnum):
+    """Model names."""
+
+    # key, label, color
+    m3gnet_ms = "m3gnet", "M3GNet-MS", "blue"
+    chgnet_030 = "chgnet-v0.3.0", "CHGNet v0.3.0", "orange"
+    mace_mp = "mace-mp-0-medium", "MACE-MP", "green"
+    pbe = "pbe", "PBE", "gray"
