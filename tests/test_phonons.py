@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from glob import glob
 from typing import Literal, Union
 
@@ -93,15 +94,15 @@ def test_plot_phonon_bands(
     )
     assert isinstance(fig, go.Figure)
 
-    with pytest.raises(
-        TypeError, match=f"Only {PhononBands.__name__} supported, got str"
-    ):
-        plot_phonon_bands("invalid input")
-
 
 def test_plot_phonon_bands_raises(
     phonon_bands_doses_mp_2758: BandsDoses, capsys: pytest.CaptureFixture
 ) -> None:
+    with pytest.raises(
+        TypeError, match=f"Only {PhononBands.__name__} or dict supported, got str"
+    ):
+        plot_phonon_bands("invalid input")
+
     with pytest.raises(ValueError) as exc:
         plot_phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",)
@@ -120,6 +121,15 @@ def test_plot_phonon_bands_raises(
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
     assert "Warning: missing_branches={'foo-bar'}, available branches:" in stderr
+
+    with pytest.raises(ValueError, match="Invalid branch_mode='invalid'"):
+        plot_phonon_bands(
+            phonon_bands_doses_mp_2758["bands"]["DFT"],
+            branch_mode="invalid",  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(ValueError, match="Empty band structure dict"):
+        plot_phonon_bands({})
 
 
 @pytest.mark.parametrize(
@@ -170,6 +180,22 @@ def test_plot_phonon_dos(
         last_peak_anno=last_peak_anno,
     )
     assert isinstance(fig, go.Figure)
+
+
+def test_plot_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
+    with pytest.raises(
+        TypeError, match=f"Only {PhononDos.__name__} or dict supported, got str"
+    ):
+        plot_phonon_dos("invalid input")
+
+    with pytest.raises(ValueError, match="Empty DOS dict"):
+        plot_phonon_dos({})
+
+    expected_msg = (
+        "Invalid unit='invalid', must be one of ['THz', 'eV', 'meV', 'Ha', 'cm-1']"
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_msg)):
+        plot_phonon_dos(phonon_bands_doses_mp_2758["doses"], units="invalid")  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(

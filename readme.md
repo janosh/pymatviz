@@ -40,6 +40,7 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 |                                                                                                                        |                                                                                                                                       |                                      |
 | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| [mlff_phonons.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/mlff_phonons.ipynb)                         | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mlff_phonons.ipynb)             | [![Launch Codespace]][codespace url] |
 | [matbench_dielectric_eda.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)   | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_dielectric_eda.ipynb)  | [![Launch Codespace]][codespace url] |
 | [mp_bimodal_e_form.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)               | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/mp_bimodal_e_form.ipynb)        | [![Launch Codespace]][codespace url] |
 | [matbench_perovskites_eda.ipynb](https://github.com/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) | [![Open in Google Colab]](https://colab.research.google.com/github/janosh/pymatviz/blob/main/examples/matbench_perovskites_eda.ipynb) | [![Launch Codespace]][codespace url] |
@@ -70,7 +71,7 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table c
 
 ## Phonons
 
-See [`pymatviz/phonons.py`](pymatviz/phonons.py).
+See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main/examples/mlff_phonons.ipynb) for usage example.
 
 |           [`plot_phonon_bands(bands_dict)`](pymatviz/phonons.py)           |             [`plot_phonon_dos(doses_dict)`](pymatviz/phonons.py)             |
 | :------------------------------------------------------------------------: | :--------------------------------------------------------------------------: |
