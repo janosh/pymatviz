@@ -197,16 +197,20 @@ def plot_phonon_bands(
             f"Invalid {branch_mode=}, must be one of {get_args(BranchMode)}"
         )
 
+    if type(band_structs) not in {PhononBands, dict}:
+        cls_name = PhononBands.__name__
+        raise TypeError(
+            f"Only {cls_name} or dict supported, got {type(band_structs).__name__}"
+        )
+    if isinstance(band_structs, dict) and len(band_structs) == 0:
+        raise ValueError("Empty band structure dict")
+
     if not isinstance(band_structs, dict):  # normalize input to dictionary
         band_structs = {"": band_structs}
 
     # find common branches by normalized branch names
     common_branches: set[str] = set()
     for idx, bs in enumerate(band_structs.values()):
-        if not isinstance(bs, PhononBands):
-            raise TypeError(
-                f"Only {PhononBands.__name__} supported, got {type(bs).__name__}"
-            )
         bs_branches = {branch["name"] for branch in bs.branches}
         common_branches = (
             bs_branches
@@ -346,6 +350,14 @@ def plot_phonon_dos(
     valid_normalize = (None, "max", "sum", "integral")
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
+
+    if type(doses) not in {PhononDos, dict}:
+        raise TypeError(
+            f"Only {PhononDos.__name__} or dict supported, got {type(doses).__name__}"
+        )
+    if isinstance(doses, dict) and len(doses) == 0:
+        raise ValueError("Empty DOS dict")
+
     if last_peak_anno == "":
         last_peak_anno = "ω<sub>{key}</sub></span>={last_peak:.1f} {units}"
 
