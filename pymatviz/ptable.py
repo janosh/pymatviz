@@ -324,7 +324,7 @@ class PTableProjector:
         self,
         *,
         data: SupportedDataType,
-        colormap: str | Colormap | None,
+        colormap: str | Colormap = "viridis",
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | None = None,
     ) -> None:
@@ -335,7 +335,7 @@ class PTableProjector:
 
         Args:
             data (SupportedDataType): The data to be visualized.
-            colormap (str | Colormap | None): The colormap to use.
+            colormap (str | Colormap): The colormap to use. Defaults to "viridis".
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
             hide_f_block: Hide f-block (Lanthanum and Actinium series). Defaults to
@@ -919,7 +919,7 @@ def ptable_heatmap(
 
 def ptable_heatmap_splits(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    colormap: str | None = None,
+    colormap: str | Colormap = "viridis",
     start_angle: float = 135,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
@@ -1356,7 +1356,7 @@ def ptable_heatmap_plotly(
 def ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
     bins: int = 20,
-    colormap: str | None = None,
+    colormap: str | Colormap = "viridis",
     hist_kwds: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
@@ -1384,8 +1384,8 @@ def ptable_hists(
             If pd.Series, index is element symbols and values lists. If pd.DataFrame,
             column names are element symbols histograms are plotted from each column.
         bins (int): Number of bins for the histograms. Defaults to 20.
-        colormap (str): Matplotlib colormap name to use. Defaults to None. See options
-            at https://matplotlib.org/stable/users/explain/colors/colormaps.
+        colormap (str): Matplotlib colormap name to use. Defaults to 'viridis'. See
+            options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         hist_kwds (dict | Callable): Keywords passed to ax.hist() for each histogram.
             If callable, it is called with the histogram values for each element and
             should return a dict of keyword arguments. Defaults to None.
