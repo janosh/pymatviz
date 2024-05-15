@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from enum import Enum, unique
-from typing import TYPE_CHECKING
+from enum import ReprEnum, unique
+from typing import TYPE_CHECKING, Any
 
 from pymatviz.utils import styled_html_tag
 
@@ -12,22 +12,51 @@ if TYPE_CHECKING:
     from typing import Self
 
 
-@unique
-class LabelEnum(str, Enum):  # migrate to StrEnum once only 3.11+ supported
-    """Enum with optional label and description attributes plus dict() methods."""
+class StrEnum(str, ReprEnum):
+    """Enum where members are also (and must be) strings.
+
+    Copied from std lib due to being 3.11+.
+    """
+
+    def __new__(cls, *values: Any) -> Self:
+        """Values must already be str."""
+        if len(values) > 3:
+            raise TypeError(f"too many arguments for str(): {values!r}")
+        if len(values) == 1 and not isinstance(values[0], str):
+            # it must be a string
+            raise TypeError(f"{values[0]!r} is not a string")
+        if len(values) >= 2 and not isinstance(values[1], str):
+            # check that encoding argument is a string
+            raise TypeError(f"encoding must be a string, not {values[1]!r}")
+        if len(values) == 3 and not isinstance(values[2], str):
+            # check that errors argument is a string
+            raise TypeError(f"errors must be a string, not {values[2]!r}")
+        value = str(*values)
+        member = str.__new__(cls, value)
+        member._value_ = value
+        return member
+
+    def _generate_next_value_(  # type: ignore[override]
+        self,
+        start: int,  # noqa: ARG002
+        count: int,  # noqa: ARG002
+        last_values: list[str],  # noqa: ARG002
+    ) -> str:
+        """Return the lower-cased version of the member name."""
+        return self.lower()
+
+
+class LabelEnum(StrEnum):
+    """StrEnum with optional label and description attributes plus dict() methods."""
 
     def __new__(
         cls, val: str, label: str | None = None, desc: str | None = None
     ) -> Self:
         """Create a new class."""
-        member = str.__new__(cls)
+        member = str.__new__(cls, val)
         member._value_ = val
         member.__dict__ |= dict(label=label, desc=desc)
         return member
-
-    def __str__(self) -> str:
-        """Return the value of the enum."""
-        return self.value
 
     @property
     def label(self) -> str:
