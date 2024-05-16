@@ -133,6 +133,7 @@ def test_df_to_pdf(
     try:
         df_to_pdf(**kwds)
     except ImportError as exc:
+        # check we're raising helpful error messages on missing deps
         if weasyprint is None:
             assert "weasyprint not installed\n" in str(exc)  # noqa: PT017
             return
@@ -218,7 +219,7 @@ def test_df_to_html_table(
     assert not file_path.is_file()
     html2 = df_to_html_table(
         df_mixed.style,
-        file_path,
+        file_path=file_path,
         script=script,
         styles=styles,
         inline_props=inline_props,

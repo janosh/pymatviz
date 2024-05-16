@@ -255,17 +255,6 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
             vmin: 1.0
             vmax: 12.0
     """
-
-    def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
-        """Write vmin and vmax to DataFrame metadata."""
-        # flatten up to triple nested lists
-        values = df[Key.heat_val.value].explode().explode().explode()
-        numeric_values = pd.to_numeric(values, errors="coerce")
-
-        df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
-        df.attrs["vmax"] = numeric_values.max()
-        return df
-
     # Check and handle different supported data types
     if isinstance(data, pd.DataFrame):
         data_df = data
@@ -290,8 +279,14 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     # Handle missing and anomalous values
     data_df = handle_missing_and_anomaly(data_df)
 
-    # Write vmin/vmax into metadata
-    return set_vmin_vmax(data_df)
+    # flatten up to triple nested lists
+    values = data_df[Key.heat_val.value].explode().explode().explode()
+    numeric_values = pd.to_numeric(values, errors="coerce")
+
+    # Write vmin/vmax into df.attrs for colorbar
+    data_df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
+    data_df.attrs["vmax"] = numeric_values.max()
+    return data_df
 
 
 def handle_missing_and_anomaly(
