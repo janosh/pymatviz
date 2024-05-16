@@ -253,7 +253,7 @@ def test_ptable_heatmap(
     # cbar_fmt as function
     ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)
     ax = ptable_heatmap(
-        glass_elem_counts, fmt=lambda x, _: f"{x:.0f}", cbar_fmt=si_fmt_int
+        glass_elem_counts, fmt=lambda x: f"{x:.0f}", cbar_fmt=si_fmt_int
     )
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=lambda x, _: f"{x:.3f} kg")
 
