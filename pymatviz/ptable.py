@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import itertools
 import math
 import warnings
@@ -827,12 +826,7 @@ def ptable_heatmap(
             color = color_map(norm(tile_value))
 
             if callable(fmt):
-                if len(inspect.signature(fmt).parameters) == 2:
-                    # 2nd arg=0 needed for matplotlib which always passes 2 positional
-                    # args to fmt()
-                    label = fmt(tile_value, 0)
-                else:
-                    label = fmt(tile_value)
+                label = fmt(tile_value)
 
             elif heat_mode == "percent":
                 label = f"{tile_value:{fmt or '.1f'}}"
@@ -898,7 +892,8 @@ def ptable_heatmap(
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 
         if callable(cbar_fmt):
-            tick_fmt = cbar_fmt
+            # 2nd _pos arg is always passed by matplotlib but we don't need it
+            tick_fmt = lambda val, _pos: cbar_fmt(val)
 
         cbar_kwargs = cbar_kwargs or {}
         cbar = fig.colorbar(
