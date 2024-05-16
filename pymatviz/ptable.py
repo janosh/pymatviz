@@ -284,7 +284,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
     # Convert all values to np.array
     data_df[Key.heat_val.value] = data_df[Key.heat_val.value].map(
-        lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
+        lambda x: np.array([x]) if isinstance(x, (float, int)) else np.array(list(x))
     )
 
     # Handle missing and anomalous values

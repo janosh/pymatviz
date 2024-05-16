@@ -267,7 +267,7 @@ def test_ptable_heatmap(
 @pytest.mark.parametrize("hide_f_block", [False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
-    data_dict = {
+    data_dict: dict[str, Any] = {
         elem.symbol: [
             random.randint(0, 10)  # random value for each split
             # random number of 1-4 splits per element
@@ -275,6 +275,13 @@ def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
         ]
         for elem in Element
     }
+
+    # Also test different data types
+    data_dict["H"] = {"a": 1, "b": 2}.values()
+    data_dict["He"] = [1, 2]
+    data_dict["Li"] = np.array([1, 2])
+    data_dict["Be"] = 1
+    data_dict["B"] = 2.0
 
     cbar_title = "Periodic Table Evenly-Split Tiles Plots"
     fig = ptable_heatmap_splits(
