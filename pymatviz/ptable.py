@@ -260,19 +260,19 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         data_df = data
 
     elif isinstance(data, pd.Series):
-        data_df = data.to_frame(name=Key.heat_val.value)
+        data_df = data.to_frame(name=Key.heat_val)
         data_df.index.name = Key.element
 
     elif isinstance(data, dict):
         data_df = pd.DataFrame(
-            data.items(), columns=[Key.element, Key.heat_val.value]
+            data.items(), columns=[Key.element, Key.heat_val]
         ).set_index(Key.element)
 
     else:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
-    # Convert all values to np.array
-    data_df[Key.heat_val.value] = data_df[Key.heat_val.value].map(
+    # Convert all values to 1D np.array
+    data_df[Key.heat_val] = data_df[Key.heat_val].map(
         lambda x: np.array([x]) if isinstance(x, (float, int)) else np.array(list(x))
     )
 
@@ -280,7 +280,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     data_df = handle_missing_and_anomaly(data_df)
 
     # flatten up to triple nested lists
-    values = data_df[Key.heat_val.value].explode().explode().explode()
+    values = data_df[Key.heat_val].explode().explode().explode()
     numeric_values = pd.to_numeric(values, errors="coerce")
 
     # Write vmin/vmax into df.attrs for colorbar
@@ -348,7 +348,7 @@ class PTableProjector:
                     for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
                     # check if data is present for f-block elements
                     if (elem := Element.from_Z(atom_num).symbol) in self.data.index  # type: ignore[union-attr]
-                    and self.data.loc[elem, Key.heat_val.value]  # type: ignore[union-attr]
+                    and self.data.loc[elem, Key.heat_val]  # type: ignore[union-attr]
                 }
             )
 
@@ -431,7 +431,7 @@ class PTableProjector:
             # Get and check tile data
             try:
                 plot_data: np.ndarray | Sequence[float] = self.data.loc[
-                    symbol, Key.heat_val.value
+                    symbol, Key.heat_val
                 ]
             except KeyError:  # skip element without data
                 plot_data = None
