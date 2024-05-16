@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Any, Literal
+import re
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -24,7 +25,11 @@ from pymatviz import (
     ptable_scatters,
 )
 from pymatviz.enums import Key
-from pymatviz.ptable import add_element_type_legend, data_preprocessor
+from pymatviz.ptable import (
+    SupportedDataType,
+    add_element_type_legend,
+    data_preprocessor,
+)
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
@@ -87,10 +92,13 @@ class TestDataPreprocessor:
         self._validate_output_df(output_df)
 
     def test_unsupported_type(self) -> None:
-        invalid_data = [0, 1, 2]
-
-        with pytest.raises(TypeError, match="Unsupported data type"):
-            data_preprocessor(invalid_data)
+        for invalid_data in ([0, 1, 2], range(5), "test", None):
+            err_msg = (
+                f"{type(invalid_data).__name__} unsupported, "
+                f"choose from {get_args(SupportedDataType)}"
+            )
+            with pytest.raises(TypeError, match=re.escape(err_msg)):
+                data_preprocessor(invalid_data)
 
     def test_get_vmin_vmax(self) -> None:
         # Test without nested list/array

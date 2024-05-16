@@ -31,9 +31,10 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
 
 
-# Data types supported by ptable plotters
+# Data types used internally by ptable plotters
 SupportedValueType = Union[Sequence[float], np.ndarray]
 
+# data types that can be passed to PTableProjector and data_preprocessor
 SupportedDataType = Union[
     dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
 ]
@@ -269,10 +270,15 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         ).set_index(Key.element)
 
     else:
-        raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
+        type_name = type(data).__name__
+        raise TypeError(
+            f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
+        )
 
     # Convert all values to 1D np.array
     data_df[Key.heat_val] = [
+        # str is Iterable too so would be converted to list of chars but users shouldn't
+        # pass strings anyways
         np.array(list(val) if isinstance(val, Iterable) else [val])
         for val in data_df[Key.heat_val]
     ]
