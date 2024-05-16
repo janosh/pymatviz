@@ -39,10 +39,12 @@ if TYPE_CHECKING:
 
 class TestDataPreprocessor:
     test_dict: ClassVar = {
-        "H": 1.0,
-        "He": [2.0, 4.0],
-        "Li": np.array([6.0, 8.0]),
-        "Be": {"a": 2, "b": 3}.values(),
+        "H": 1,  # int
+        "He": [2.0, 4.0],  # float list
+        "Li": np.array([6.0, 8.0]),  # float array
+        "Na": 11.0,  # float
+        "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
+        "Al": {-1, 2.3},  # mixed int/float set
     }
 
     @staticmethod
@@ -50,15 +52,16 @@ class TestDataPreprocessor:
         assert isinstance(output_df, pd.DataFrame)
 
         assert list(output_df) == [Key.heat_val]
-        assert list(output_df.index) == ["H", "He", "Li", "Be"]
+        assert list(output_df.index) == ["H", "He", "Li", "Na", "Mg", "Al"]
 
         assert_allclose(output_df.loc["H", Key.heat_val], [1.0])
         assert_allclose(output_df.loc["He", Key.heat_val], [2.0, 4.0])
         assert_allclose(output_df.loc["Li", Key.heat_val], [6.0, 8.0])
-        assert_allclose(output_df.loc["Be", Key.heat_val], [2, 3])
+        assert_allclose(output_df.loc["Na", Key.heat_val], [11.0])
+        assert_allclose(output_df.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
-        assert output_df.attrs["vmin"] == 1.0
-        assert output_df.attrs["vmax"] == 8.0
+        assert output_df.attrs["vmin"] == -1.0
+        assert output_df.attrs["vmax"] == 14.0
 
     def test_from_pd_dataframe(self) -> None:
         input_df: pd.DataFrame = pd.DataFrame(

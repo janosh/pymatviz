@@ -6,7 +6,7 @@ import inspect
 import itertools
 import math
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Literal, Union, get_args
 
@@ -272,9 +272,10 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
 
     # Convert all values to 1D np.array
-    data_df[Key.heat_val] = data_df[Key.heat_val].map(
-        lambda x: np.array([x]) if isinstance(x, (float, int)) else np.array(list(x))
-    )
+    data_df[Key.heat_val] = [
+        np.array(list(val) if isinstance(val, Iterable) else [val])
+        for val in data_df[Key.heat_val]
+    ]
 
     # Handle missing and anomalous values
     data_df = handle_missing_and_anomaly(data_df)
