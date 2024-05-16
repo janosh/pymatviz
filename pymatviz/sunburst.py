@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 def spacegroup_sunburst(
     data: Sequence[int | str] | pd.Series,
+    *,
     show_counts: Literal["value", "percent", False] = False,
     **kwargs: Any,
 ) -> go.Figure:

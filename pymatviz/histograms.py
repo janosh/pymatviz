@@ -108,6 +108,7 @@ def true_pred_hist(
 
 def spacegroup_hist(
     data: Sequence[int | str | Structure] | pd.Series,
+    *,
     show_counts: bool = True,
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     show_empty_bins: bool = False,
@@ -339,6 +340,7 @@ def spacegroup_hist(
 
 def elements_hist(
     formulas: ElemValues,
+    *,
     count_mode: CountMode = Key.composition,
     log: bool = False,
     keep_top: int | None = None,

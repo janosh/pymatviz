@@ -631,6 +631,7 @@ class ChildPlotters:
 
 def ptable_heatmap(
     values: ElemValues,
+    *,
     log: bool | Normalize = False,
     ax: plt.Axes | None = None,
     count_mode: CountMode = Key.composition,
@@ -1030,6 +1031,7 @@ def ptable_heatmap_splits(
 def ptable_heatmap_ratio(
     values_num: ElemValues,
     values_denom: ElemValues,
+    *,
     count_mode: CountMode = Key.composition,
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
@@ -1096,6 +1098,7 @@ def ptable_heatmap_ratio(
 
 def ptable_heatmap_plotly(
     values: ElemValues,
+    *,
     count_mode: CountMode = Key.composition,
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     show_scale: bool = True,
@@ -1354,6 +1357,7 @@ def ptable_heatmap_plotly(
 
 def ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    *,
     bins: int = 20,
     colormap: str | Colormap = "viridis",
     hist_kwds: dict[str, Any]

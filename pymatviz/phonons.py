@@ -321,6 +321,7 @@ def plot_phonon_bands(
 
 def plot_phonon_dos(
     doses: PhononDos | dict[str, PhononDos],
+    *,
     stack: bool = False,
     sigma: float = 0,
     units: Literal["THz", "eV", "meV", "Ha", "cm-1"] = "THz",
