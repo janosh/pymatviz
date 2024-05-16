@@ -227,8 +227,8 @@ def plot_structure_2d(
     has_sites_outside_unit_cell = any(any(site.frac_coords < 0) for site in struct)
     if standardize_struct is False and has_sites_outside_unit_cell:
         warnings.warn(
-            "your structure has negative fractional coordinates, you may want to set "
-            "standardize=True",
+            "your structure has negative fractional coordinates but you passed "
+            f"{standardize_struct=}, you may want to set standardize_struct=True",
             UserWarning,
         )
     elif standardize_struct is None:
@@ -403,6 +403,7 @@ def plot_structure_2d(
             "Warning: the show_bonds feature of plot_structure_2d() is experimental. "
             "Issues and PRs with improvements welcome.",
             category=ExperimentalWarning,
+            stacklevel=2,
         )
         if show_bonds is True:
             neighbor_strategy_cls = CrystalNN
