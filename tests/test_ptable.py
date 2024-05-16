@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Any, Literal
+import re
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -24,7 +25,11 @@ from pymatviz import (
     ptable_scatters,
 )
 from pymatviz.enums import Key
-from pymatviz.ptable import add_element_type_legend, data_preprocessor
+from pymatviz.ptable import (
+    SupportedDataType,
+    add_element_type_legend,
+    data_preprocessor,
+)
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
@@ -38,25 +43,34 @@ if TYPE_CHECKING:
 
 
 class TestDataPreprocessor:
-    test_dict: ClassVar = {"H": 1.0, "He": [2.0, 4.0], "Li": np.array([6.0, 8.0])}
+    test_dict: ClassVar = {
+        "H": 1,  # int
+        "He": [2.0, 4.0],  # float list
+        "Li": np.array([6.0, 8.0]),  # float array
+        "Na": 11.0,  # float
+        "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
+        "Al": {-1, 2.3},  # mixed int/float set
+    }
 
     @staticmethod
     def _validate_output_df(output_df: pd.DataFrame) -> None:
         assert isinstance(output_df, pd.DataFrame)
 
-        assert list(output_df) == [Key.heat_val.value]
-        assert list(output_df.index) == ["H", "He", "Li"]
+        assert list(output_df) == [Key.heat_val]
+        assert list(output_df.index) == ["H", "He", "Li", "Na", "Mg", "Al"]
 
-        assert_allclose(output_df.loc["H", Key.heat_val.value], [1.0])
-        assert_allclose(output_df.loc["He", Key.heat_val.value], [2.0, 4.0])
-        assert_allclose(output_df.loc["Li", Key.heat_val.value], [6.0, 8.0])
+        assert_allclose(output_df.loc["H", Key.heat_val], [1.0])
+        assert_allclose(output_df.loc["He", Key.heat_val], [2.0, 4.0])
+        assert_allclose(output_df.loc["Li", Key.heat_val], [6.0, 8.0])
+        assert_allclose(output_df.loc["Na", Key.heat_val], [11.0])
+        assert_allclose(output_df.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
-        assert output_df.attrs["vmin"] == 1.0
-        assert output_df.attrs["vmax"] == 8.0
+        assert output_df.attrs["vmin"] == -1.0
+        assert output_df.attrs["vmax"] == 14.0
 
     def test_from_pd_dataframe(self) -> None:
         input_df: pd.DataFrame = pd.DataFrame(
-            self.test_dict.items(), columns=[Key.element, Key.heat_val.value]
+            self.test_dict.items(), columns=[Key.element, Key.heat_val]
         ).set_index(Key.element)
 
         output_df: pd.DataFrame = data_preprocessor(input_df)
@@ -78,10 +92,13 @@ class TestDataPreprocessor:
         self._validate_output_df(output_df)
 
     def test_unsupported_type(self) -> None:
-        invalid_data = [0, 1, 2]
-
-        with pytest.raises(TypeError, match="Unsupported data type"):
-            data_preprocessor(invalid_data)
+        for invalid_data in ([0, 1, 2], range(5), "test", None):
+            err_msg = (
+                f"{type(invalid_data).__name__} unsupported, "
+                f"choose from {get_args(SupportedDataType)}"
+            )
+            with pytest.raises(TypeError, match=re.escape(err_msg)):
+                data_preprocessor(invalid_data)
 
     def test_get_vmin_vmax(self) -> None:
         # Test without nested list/array
@@ -236,7 +253,7 @@ def test_ptable_heatmap(
     # cbar_fmt as function
     ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)
     ax = ptable_heatmap(
-        glass_elem_counts, fmt=lambda x, _: f"{x:.0f}", cbar_fmt=si_fmt_int
+        glass_elem_counts, fmt=lambda x: f"{x:.0f}", cbar_fmt=si_fmt_int
     )
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=lambda x, _: f"{x:.3f} kg")
 
@@ -267,7 +284,7 @@ def test_ptable_heatmap(
 @pytest.mark.parametrize("hide_f_block", [False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
-    data_dict = {
+    data_dict: dict[str, Any] = {
         elem.symbol: [
             random.randint(0, 10)  # random value for each split
             # random number of 1-4 splits per element
@@ -275,6 +292,13 @@ def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
         ]
         for elem in Element
     }
+
+    # Also test different data types
+    data_dict["H"] = {"a": 1, "b": 2}.values()
+    data_dict["He"] = [1, 2]
+    data_dict["Li"] = np.array([1, 2])
+    data_dict["Be"] = 1
+    data_dict["B"] = 2.0
 
     cbar_title = "Periodic Table Evenly-Split Tiles Plots"
     fig = ptable_heatmap_splits(

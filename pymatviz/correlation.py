@@ -45,6 +45,7 @@ def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
 def marchenko_pastur(
     matrix: ArrayLike,
     gamma: float,
+    *,
     sigma: float = 1,
     filter_high_evals: bool = False,
     ax: plt.Axes | None = None,

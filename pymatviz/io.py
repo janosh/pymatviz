@@ -189,6 +189,7 @@ DEFAULT_DF_STYLES: Final = {
 def df_to_pdf(
     styler: Styler,
     file_path: str | Path,
+    *,
     crop: bool = True,
     size: str | None = None,
     style: str = "",
@@ -316,6 +317,7 @@ table::-webkit-scrollbar {
 
 def df_to_html_table(
     styler: Styler,
+    *,
     file_path: str | Path | None = None,
     inline_props: str | None = "",
     script: str | None = "",

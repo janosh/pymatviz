@@ -84,6 +84,7 @@ def with_marginal_hist(
 
 def annotate_bars(
     ax: plt.Axes | None = None,
+    *,
     v_offset: float = 10,
     h_offset: float = 0,
     labels: Sequence[str | int | float] | None = None,
@@ -292,6 +293,7 @@ def add_identity_line(
 
 def add_best_fit_line(
     fig: go.Figure | plt.Figure | plt.Axes,
+    *,
     xs: ArrayLike = (),
     ys: ArrayLike = (),
     trace_idx: int = 0,

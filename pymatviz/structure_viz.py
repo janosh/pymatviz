@@ -107,6 +107,7 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
 
 def plot_structure_2d(
     struct: Structure,
+    *,
     ax: plt.Axes | None = None,
     rotation: str = "10x,10y,0z",
     atomic_radii: float | dict[str, float] | None = None,

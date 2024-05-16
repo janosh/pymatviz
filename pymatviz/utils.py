@@ -188,6 +188,7 @@ def df_to_arrays(
 def bin_df_cols(
     df_in: pd.DataFrame,
     bin_by_cols: Sequence[str],
+    *,
     group_by_cols: Sequence[str] = (),
     n_bins: int | Sequence[int] = 100,
     bin_counts_col: str = "bin_counts",
@@ -315,6 +316,7 @@ def pick_bw_for_contrast(
 
 def si_fmt(
     val: float,
+    *,
     fmt: str = ".1f",
     sep: str = "",
     binary: bool = False,

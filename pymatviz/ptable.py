@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import inspect
 import itertools
 import math
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Literal, Union, get_args
 
@@ -16,7 +15,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
-from matplotlib.cm import get_cmap
 from matplotlib.colors import Colormap, LogNorm, Normalize
 from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
@@ -32,9 +30,10 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
 
 
-# Data types supported by ptable plotters
+# Data types used internally by ptable plotters
 SupportedValueType = Union[Sequence[float], np.ndarray]
 
+# data types that can be passed to PTableProjector and data_preprocessor
 SupportedDataType = Union[
     dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
 ]
@@ -256,43 +255,44 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
             vmin: 1.0
             vmax: 12.0
     """
-
-    def set_vmin_vmax(df: pd.DataFrame) -> pd.DataFrame:
-        """Write vmin and vmax to DataFrame metadata."""
-        # flatten up to triple nested lists
-        values = df[Key.heat_val.value].explode().explode().explode()
-        numeric_values = pd.to_numeric(values, errors="coerce")
-
-        df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
-        df.attrs["vmax"] = numeric_values.max()
-        return df
-
     # Check and handle different supported data types
     if isinstance(data, pd.DataFrame):
         data_df = data
 
     elif isinstance(data, pd.Series):
-        data_df = data.to_frame(name=Key.heat_val.value)
+        data_df = data.to_frame(name=Key.heat_val)
         data_df.index.name = Key.element
 
     elif isinstance(data, dict):
         data_df = pd.DataFrame(
-            data.items(), columns=[Key.element, Key.heat_val.value]
+            data.items(), columns=[Key.element, Key.heat_val]
         ).set_index(Key.element)
 
     else:
-        raise TypeError(f"Unsupported data type, choose from: {SupportedDataType}.")
+        type_name = type(data).__name__
+        raise TypeError(
+            f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
+        )
 
-    # Convert all values to np.array
-    data_df[Key.heat_val.value] = data_df[Key.heat_val.value].map(
-        lambda x: np.array([x]) if isinstance(x, float) else np.array(x)
-    )
+    # Convert all values to 1D np.array
+    data_df[Key.heat_val] = [
+        # str is Iterable too so would be converted to list of chars but users shouldn't
+        # pass strings anyways
+        np.array(list(val) if isinstance(val, Iterable) else [val])
+        for val in data_df[Key.heat_val]
+    ]
 
     # Handle missing and anomalous values
     data_df = handle_missing_and_anomaly(data_df)
 
-    # Write vmin/vmax into metadata
-    return set_vmin_vmax(data_df)
+    # flatten up to triple nested lists
+    values = data_df[Key.heat_val].explode().explode().explode()
+    numeric_values = pd.to_numeric(values, errors="coerce")
+
+    # Write vmin/vmax into df.attrs for colorbar
+    data_df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
+    data_df.attrs["vmax"] = numeric_values.max()
+    return data_df
 
 
 def handle_missing_and_anomaly(
@@ -324,7 +324,7 @@ class PTableProjector:
         self,
         *,
         data: SupportedDataType,
-        colormap: str | Colormap | None,
+        colormap: str | Colormap = "viridis",
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | None = None,
     ) -> None:
@@ -335,7 +335,7 @@ class PTableProjector:
 
         Args:
             data (SupportedDataType): The data to be visualized.
-            colormap (str | Colormap | None): The colormap to use.
+            colormap (str | Colormap): The colormap to use. Defaults to "viridis".
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
             hide_f_block: Hide f-block (Lanthanum and Actinium series). Defaults to
@@ -354,7 +354,7 @@ class PTableProjector:
                     for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
                     # check if data is present for f-block elements
                     if (elem := Element.from_Z(atom_num).symbol) in self.data.index  # type: ignore[union-attr]
-                    and self.data.loc[elem, Key.heat_val.value]  # type: ignore[union-attr]
+                    and self.data.loc[elem, Key.heat_val]  # type: ignore[union-attr]
                 }
             )
 
@@ -437,7 +437,7 @@ class PTableProjector:
             # Get and check tile data
             try:
                 plot_data: np.ndarray | Sequence[float] = self.data.loc[
-                    symbol, Key.heat_val.value
+                    symbol, Key.heat_val
                 ]
             except KeyError:  # skip element without data
                 plot_data = None
@@ -632,6 +632,7 @@ class ChildPlotters:
 
 def ptable_heatmap(
     values: ElemValues,
+    *,
     log: bool | Normalize = False,
     ax: plt.Axes | None = None,
     count_mode: CountMode = Key.composition,
@@ -771,7 +772,7 @@ def ptable_heatmap(
         values /= clean_vals.sum()
         clean_vals /= clean_vals.sum()  # normalize as well for norm.autoscale() below
 
-    color_map = get_cmap(colorscale)
+    color_map = plt.get_cmap(colorscale)
 
     n_rows = df_ptable.row.max()
     n_columns = df_ptable.column.max()
@@ -825,12 +826,7 @@ def ptable_heatmap(
             color = color_map(norm(tile_value))
 
             if callable(fmt):
-                if len(inspect.signature(fmt).parameters) == 2:
-                    # 2nd arg=0 needed for matplotlib which always passes 2 positional
-                    # args to fmt()
-                    label = fmt(tile_value, 0)
-                else:
-                    label = fmt(tile_value)
+                label = fmt(tile_value)
 
             elif heat_mode == "percent":
                 label = f"{tile_value:{fmt or '.1f'}}"
@@ -896,7 +892,8 @@ def ptable_heatmap(
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 
         if callable(cbar_fmt):
-            tick_fmt = cbar_fmt
+            # 2nd _pos arg is always passed by matplotlib but we don't need it
+            tick_fmt = lambda val, _pos: cbar_fmt(val)
 
         cbar_kwargs = cbar_kwargs or {}
         cbar = fig.colorbar(
@@ -919,7 +916,7 @@ def ptable_heatmap(
 
 def ptable_heatmap_splits(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
-    colormap: str | None = None,
+    colormap: str | Colormap = "viridis",
     start_angle: float = 135,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
@@ -1031,6 +1028,7 @@ def ptable_heatmap_splits(
 def ptable_heatmap_ratio(
     values_num: ElemValues,
     values_denom: ElemValues,
+    *,
     count_mode: CountMode = Key.composition,
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
@@ -1097,6 +1095,7 @@ def ptable_heatmap_ratio(
 
 def ptable_heatmap_plotly(
     values: ElemValues,
+    *,
     count_mode: CountMode = Key.composition,
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     show_scale: bool = True,
@@ -1355,8 +1354,9 @@ def ptable_heatmap_plotly(
 
 def ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    *,
     bins: int = 20,
-    colormap: str | None = None,
+    colormap: str | Colormap = "viridis",
     hist_kwds: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
@@ -1384,8 +1384,8 @@ def ptable_hists(
             If pd.Series, index is element symbols and values lists. If pd.DataFrame,
             column names are element symbols histograms are plotted from each column.
         bins (int): Number of bins for the histograms. Defaults to 20.
-        colormap (str): Matplotlib colormap name to use. Defaults to None. See options
-            at https://matplotlib.org/stable/users/explain/colors/colormaps.
+        colormap (str): Matplotlib colormap name to use. Defaults to 'viridis'. See
+            options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         hist_kwds (dict | Callable): Keywords passed to ax.hist() for each histogram.
             If callable, it is called with the histogram values for each element and
             should return a dict of keyword arguments. Defaults to None.
