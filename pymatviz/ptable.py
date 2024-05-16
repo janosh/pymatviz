@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
-from matplotlib.cm import get_cmap
 from matplotlib.colors import Colormap, LogNorm, Normalize
 from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
@@ -771,7 +770,7 @@ def ptable_heatmap(
         values /= clean_vals.sum()
         clean_vals /= clean_vals.sum()  # normalize as well for norm.autoscale() below
 
-    color_map = get_cmap(colorscale)
+    color_map = plt.get_cmap(colorscale)
 
     n_rows = df_ptable.row.max()
     n_columns = df_ptable.column.max()
