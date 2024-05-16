@@ -38,18 +38,24 @@ if TYPE_CHECKING:
 
 
 class TestDataPreprocessor:
-    test_dict: ClassVar = {"H": 1.0, "He": [2.0, 4.0], "Li": np.array([6.0, 8.0])}
+    test_dict: ClassVar = {
+        "H": 1.0,
+        "He": [2.0, 4.0],
+        "Li": np.array([6.0, 8.0]),
+        "Be": {"a": 2, "b": 3}.values(),
+    }
 
     @staticmethod
     def _validate_output_df(output_df: pd.DataFrame) -> None:
         assert isinstance(output_df, pd.DataFrame)
 
         assert list(output_df) == [Key.heat_val]
-        assert list(output_df.index) == ["H", "He", "Li"]
+        assert list(output_df.index) == ["H", "He", "Li", "Be"]
 
         assert_allclose(output_df.loc["H", Key.heat_val], [1.0])
         assert_allclose(output_df.loc["He", Key.heat_val], [2.0, 4.0])
         assert_allclose(output_df.loc["Li", Key.heat_val], [6.0, 8.0])
+        assert_allclose(output_df.loc["Be", Key.heat_val], [2, 3])
 
         assert output_df.attrs["vmin"] == 1.0
         assert output_df.attrs["vmax"] == 8.0
