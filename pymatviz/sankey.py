@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 def sankey_from_2_df_cols(
     df: pd.DataFrame,
     cols: list[str],
+    *,
     labels_with_counts: bool | Literal["percent"] = True,
     **kwargs: Any,
 ) -> go.Figure:

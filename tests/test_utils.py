@@ -129,8 +129,8 @@ def test_bin_df_cols(
     df_binned = bin_df_cols(
         df_float,
         bin_by_cols,
-        group_by_cols,
-        n_bins,
+        group_by_cols=group_by_cols,
+        n_bins=n_bins,
         verbose=verbose,
         bin_counts_col=bin_counts_col,
         kde_col=kde_col,

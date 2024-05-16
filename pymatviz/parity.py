@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 def hist_density(
     x: ArrayLike | str,
     y: ArrayLike | str,
+    *,
     df: pd.DataFrame | None = None,
     sort: bool = True,
     bins: int = 100,
@@ -69,6 +70,7 @@ def hist_density(
 def density_scatter(
     x: ArrayLike | str,
     y: ArrayLike | str,
+    *,
     df: pd.DataFrame | None = None,
     ax: plt.Axes | None = None,
     log_density: bool = True,
@@ -151,6 +153,7 @@ def density_scatter(
 def scatter_with_err_bar(
     x: ArrayLike | str,
     y: ArrayLike | str,
+    *,
     df: pd.DataFrame | None = None,
     xerr: ArrayLike | None = None,
     yerr: ArrayLike | None = None,
@@ -210,6 +213,7 @@ def scatter_with_err_bar(
 def density_hexbin(
     x: ArrayLike | str,
     y: ArrayLike | str,
+    *,
     df: pd.DataFrame | None = None,
     ax: plt.Axes | None = None,
     weights: ArrayLike | None = None,

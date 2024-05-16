@@ -108,6 +108,7 @@ def true_pred_hist(
 
 def spacegroup_hist(
     data: Sequence[int | str | Structure] | pd.Series,
+    *,
     show_counts: bool = True,
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     show_empty_bins: bool = False,
@@ -149,7 +150,6 @@ def spacegroup_hist(
         series = pd.Series(data)
 
     count_col = "Counts"
-    crys_sys_col = Key.crystal_system.value
     df_data = series.value_counts(sort=False).to_frame(name=count_col)
 
     crystal_sys_colors = {
@@ -166,7 +166,9 @@ def spacegroup_hist(
         df_data = df_data.reindex(range(1, 231), fill_value=0).sort_index()
         if not show_empty_bins:
             df_data = df_data.query(f"{count_col} > 0")
-        df_data[crys_sys_col] = [crystal_sys_from_spg_num(x) for x in df_data.index]
+        df_data[Key.crystal_system] = [
+            crystal_sys_from_spg_num(x) for x in df_data.index
+        ]
 
         xlim = (df_data.index.min() - 0.5, df_data.index.max() + 0.5)
         x_label = "International Spacegroup Number"
@@ -177,18 +179,22 @@ def spacegroup_hist(
         #     idx = [SpaceGroup.from_int_number(x).symbol for x in range(1, 231)]
         #     df = df.reindex(idx, fill_value=0)
         df_data = df_data[df_data[count_col] > 0]
-        df_data[crys_sys_col] = [SpaceGroup(x).crystal_system for x in df_data.index]
+        df_data[Key.crystal_system] = [
+            SpaceGroup(x).crystal_system for x in df_data.index
+        ]
 
         # sort df by crystal system going from smallest to largest spacegroup numbers
         # e.g. triclinic (1-2) comes first, cubic (195-230) last
         sys_order = dict(zip(crystal_sys_colors, range(len(crystal_sys_colors))))
-        df_data = df_data.loc[df_data[crys_sys_col].map(sys_order).sort_values().index]
+        df_data = df_data.loc[
+            df_data[Key.crystal_system].map(sys_order).sort_values().index
+        ]
 
         x_label = "International Spacegroup Symbol"
 
     # count rows per crystal system
-    crys_sys_counts = df_data.groupby(crys_sys_col).sum(count_col)
-    crys_sys_counts["width"] = df_data.value_counts(crys_sys_col)
+    crys_sys_counts = df_data.groupby(Key.crystal_system).sum(count_col)
+    crys_sys_counts["width"] = df_data.value_counts(Key.crystal_system)
     crys_sys_counts["color"] = pd.Series(crystal_sys_colors)
 
     # sort by key order in dict crys_colors
@@ -205,7 +211,7 @@ def spacegroup_hist(
             df_plot,
             x=df_plot.index,
             y=count_col,
-            color=df_data[crys_sys_col],
+            color=df_data[Key.crystal_system],
             color_discrete_map=crystal_sys_colors,
             **kwargs,
         )
@@ -339,6 +345,7 @@ def spacegroup_hist(
 
 def elements_hist(
     formulas: ElemValues,
+    *,
     count_mode: CountMode = Key.composition,
     log: bool = False,
     keep_top: int | None = None,
