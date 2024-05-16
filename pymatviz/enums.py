@@ -12,13 +12,7 @@ if TYPE_CHECKING:
     from typing import Any, Self
 
 
-class ReprEnum(Enum):
-    """Only changes the repr(), leaving str() and format()
-    to the mixed-in type.
-    """
-
-
-class StrEnum(str, ReprEnum):
+class StrEnum(str, Enum):
     """Enum where members are also (and must be) strings.
 
     Copied from std lib due to being 3.11+.
