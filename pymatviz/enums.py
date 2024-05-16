@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
-from enum import ReprEnum, unique
-from typing import TYPE_CHECKING, Any
+from enum import Enum, unique
+from typing import TYPE_CHECKING
 
 from pymatviz.utils import styled_html_tag
 
 
 if TYPE_CHECKING:
-    from typing import Self
+    from typing import Any, Self
+
+
+class ReprEnum(Enum):
+    """Only changes the repr(), leaving str() and format()
+    to the mixed-in type.
+    """
 
 
 class StrEnum(str, ReprEnum):
