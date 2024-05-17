@@ -281,7 +281,7 @@ def test_ptable_heatmap(
     ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
 
 
-@pytest.mark.parametrize("hide_f_block", [False, True])
+@pytest.mark.parametrize("hide_f_block", [None, False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
     data_dict: dict[str, Any] = {

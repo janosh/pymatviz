@@ -103,10 +103,14 @@ axis_template = dict(
 white_axis_template = axis_template | dict(linecolor="black", gridcolor="lightgray")
 # inherit from plotly_white template
 pmv_white_template = go.layout.Template(pio.templates["plotly_white"])
+common_layout = dict(margin=dict(l=10, r=10, t=10, b=10))
 
 pio.templates[f"{PKG_NAME}_white"] = pmv_white_template.update(
     layout=dict(
-        xaxis=white_axis_template, yaxis=white_axis_template, font=dict(color="black")
+        xaxis=white_axis_template,
+        yaxis=white_axis_template,
+        font=dict(color="black"),
+        **common_layout,
     )
 )
 dark_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
@@ -115,6 +119,9 @@ pmv_dark_template = go.layout.Template(pio.templates["plotly_dark"])
 
 pio.templates[f"{PKG_NAME}_dark"] = pmv_dark_template.update(
     layout=dict(
-        xaxis=dark_axis_template, yaxis=dark_axis_template, font=dict(color="white")
+        xaxis=dark_axis_template,
+        yaxis=dark_axis_template,
+        font=dict(color="white"),
+        **common_layout,
     )
 )

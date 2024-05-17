@@ -231,8 +231,10 @@ def annotate_metrics(
 
 def add_identity_line(
     fig: go.Figure | plt.Figure | plt.Axes,
+    *,
     line_kwds: dict[str, Any] | None = None,
     trace_idx: int = 0,
+    retain_xy_limits: bool = False,
     **kwargs: Any,
 ) -> go.Figure:
     """Add a line shape to the background layer of a plotly figure spanning
@@ -248,6 +250,8 @@ def add_identity_line(
             Defaults to 0. Unused if kaleido package is installed and the figure's
             actual x/y-range can be obtained from fig.full_figure_for_development().
             Applies only to plotly figures.
+        retain_xy_limits (bool, optional): If True, the x/y-axis limits will be retained
+            after adding the identity line. Defaults to False.
         **kwargs: Additional arguments are passed to fig.add_shape().
 
     Raises:
@@ -287,6 +291,9 @@ def add_identity_line(
         line=line_defaults | (line_kwds or {}),
         **kwargs,
     )
+    if retain_xy_limits:
+        fig.update_xaxes(range=[x_min, x_max])
+        fig.update_yaxes(range=[y_min, y_max])
 
     return fig
 

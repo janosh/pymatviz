@@ -78,3 +78,21 @@ def test_plot_structure_2d_site_labels(
     else:
         label = ax.axes.texts[0].get_text()
         assert label in ("Fe", "O", "1.0", "Iron")
+
+
+def test_plot_structure_2d_warns() -> None:
+    # for sites with negative fractional coordinates
+    orig_coords = disordered_struct[0].frac_coords.copy()
+    disordered_struct[0].frac_coords = [-0.1, 0.1, 0.1]
+    standardize_struct = False
+    try:
+        with pytest.warns(
+            UserWarning,
+            match=(
+                "your structure has negative fractional coordinates but you passed "
+                f"{standardize_struct=}, you may want to set standardize_struct=True"
+            ),
+        ):
+            plot_structure_2d(disordered_struct, standardize_struct=standardize_struct)
+    finally:
+        disordered_struct[0].frac_coords = orig_coords

@@ -105,22 +105,38 @@ def test_annote_metrics_bad_fig() -> None:
         annotate_metrics(y_pred, y_true, fig="invalid")
 
 
-@pytest.mark.parametrize("xaxis_type", ["linear", "log"])
-@pytest.mark.parametrize("yaxis_type", ["linear", "log"])
-@pytest.mark.parametrize("trace_idx", [0, 1])
-@pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
+@pytest.mark.parametrize(
+    ("xaxis_type", "yaxis_type", "trace_idx", "line_kwds", "retain_xy_limits"),
+    [
+        ("linear", "log", 0, None, True),
+        ("log", "linear", 1, {"color": "red"}, False),
+        ("log", "log", 0, {"color": "green"}, True),
+        ("linear", "linear", 1, None, False),
+    ],
+)
 def test_add_identity_line(
     plotly_scatter: go.Figure,
     xaxis_type: str,
     yaxis_type: str,
     trace_idx: int,
     line_kwds: dict[str, str] | None,
+    retain_xy_limits: bool,
 ) -> None:
     # Set axis types
     plotly_scatter.layout.xaxis.type = xaxis_type
     plotly_scatter.layout.yaxis.type = yaxis_type
 
-    fig = add_identity_line(plotly_scatter, line_kwds=line_kwds, trace_idx=trace_idx)
+    # record initial axis limits
+    dev_fig_pre = plotly_scatter.full_figure_for_development(warn=False)
+    x_range_pre = dev_fig_pre.layout.xaxis.range
+    y_range_pre = dev_fig_pre.layout.yaxis.range
+
+    fig = add_identity_line(
+        plotly_scatter,
+        line_kwds=line_kwds,
+        trace_idx=trace_idx,
+        retain_xy_limits=retain_xy_limits,
+    )
     assert isinstance(fig, go.Figure)
 
     # retrieve identity line
@@ -135,6 +151,18 @@ def test_add_identity_line(
     # check fig axis types
     assert fig.layout.xaxis.type == xaxis_type
     assert fig.layout.yaxis.type == yaxis_type
+
+    if retain_xy_limits:
+        assert dev_fig_pre.layout.xaxis.range == x_range_pre
+        assert dev_fig_pre.layout.yaxis.range == y_range_pre
+    else:
+        dev_fig_post = fig.full_figure_for_development(warn=False)
+        x_range_post = dev_fig_post.layout.xaxis.range
+        y_range_post = dev_fig_post.layout.yaxis.range
+        # this assumes that the x and y axis had different ranges initially which became
+        # equalized by adding an identity line (which is the case for plotly_scatter)
+        assert x_range_post != x_range_pre
+        assert y_range_post != y_range_pre
 
 
 @pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
