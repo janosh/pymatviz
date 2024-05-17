@@ -117,6 +117,10 @@ class Key(LabelEnum):
     element = "element", "Element"
     energy = "energy", f"Energy {eV}"
     energy_per_atom = "energy_per_atom", f"Energy {eV_per_atom}"
+    cohesive_energy_per_atom = (
+        "cohesive_energy_per_atom",
+        f"Cohesive Energy {eV_per_atom}",
+    )
     final_struct = "final_structure", "Final Structure"
     forces = "forces", "Forces"
     form_energy = "formation_energy_per_atom", f"Formation Energy {eV_per_atom}"
