@@ -258,8 +258,13 @@ def test_ptable_heatmap(
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=lambda x, _: f"{x:.3f} kg")
 
     ax = ptable_heatmap(glass_elem_counts, heat_mode="percent", cbar_fmt=".3%")
-    cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
+    cbar_ax = ax.child_axes[0]
+    cbar_1st_label = cbar_ax.get_xticklabels()[0].get_text()
     assert cbar_1st_label == "0.000%"
+    cbar_title = cbar_ax.title
+    assert str(cbar_title) == "Text(0.5, 1.0, 'Element Count')"
+    # check colorbar title font color is black and hence visible on white background
+    assert cbar_title.get_color() == "black"
 
     # tile_size
     ptable_heatmap(df_ptable.atomic_mass, tile_size=1)
@@ -469,9 +474,10 @@ def test_ptable_heatmap_plotly_cscale_range(
 
 def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
     cscale_range = (0, 10, 20)
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(
+        ValueError, match=re.escape(f"{cscale_range=} should have length 2")
+    ):
         ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)  # type: ignore[arg-type]
-    assert f"{cscale_range=} should have length 2" in str(exc.value)
 
 
 @pytest.mark.parametrize(
@@ -546,7 +552,8 @@ def test_ptable_lines(hide_f_block: bool) -> None:
         hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 126 if hide_f_block else 181
+    expected_n_axes = 126 if hide_f_block else 180
+    assert len(fig.axes) == expected_n_axes
 
 
 @pytest.mark.parametrize("hide_f_block", [False, True])
