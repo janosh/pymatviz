@@ -11,14 +11,17 @@ import plotly.io as pio
 from pymatgen.core import Composition, Structure
 from tqdm import tqdm
 
-from pymatviz import pmv_white_template
+from pymatviz import pmv_dark_template
 from pymatviz.enums import Key
+from pymatviz.histograms import spacegroup_hist
+from pymatviz.io import save_fig
 from pymatviz.powerups import add_identity_line
 from pymatviz.ptable import count_elements, ptable_heatmap, ptable_heatmap_splits
+from pymatviz.sunburst import spacegroup_sunburst
 
 
-px.defaults.template = pmv_white_template
-pio.templates.default = pmv_white_template
+px.defaults.template = pmv_dark_template
+pio.templates.default = pmv_dark_template
 module_dir = os.path.dirname(__file__)
 
 
@@ -137,7 +140,7 @@ pbe_col = "PBE energy"
 df_per_elem[pbe_col] = (df_pbe_frac_comp * df_pbe[col_name].to_numpy()[:, None]).mean()
 
 
-# %% cohesive energies should look nearly identical between r2scan and pbe
+# %% cohesive energies should (and do) look nearly identical between r2scan and pbe
 per_elem_cohesive_energy = {
     key: list(dct.values()) for key, dct in df_per_elem.to_dict(orient="index").items()
 }
@@ -148,9 +151,14 @@ fig = ptable_heatmap_splits(
 
 
 # %% which elements have a higher share of missing r2scan data
-fig = ptable_heatmap(
-    (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts, fmt=".1%", cbar_fmt=".0%"
+ax = ptable_heatmap(
+    (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
+    fmt=".1%",
+    cbar_fmt=".0%",
+    cbar_title="Fraction of missing PBE calcs missing r2SCAN",
 )
+
+save_fig(ax, "matpes-missing-r2scan-data-ptable.pdf")
 
 
 # %% per-elem mean abs magmoms
@@ -162,3 +170,38 @@ df_per_elem_magmoms = pd.DataFrame(
 ax = ptable_heatmap(
     df_per_elem_magmoms, cbar_title=r"Mean |magmom| ($\mu_B$)", fmt=".1f"
 )
+save_fig(ax, "matpes-magmoms-ptable.pdf")
+
+
+# %% spacegroup distribution
+df_r2scan[Key.spacegroup] = [
+    struct.get_space_group_info()[1]
+    for struct in tqdm(df_r2scan[Key.structure], desc="r2scan spacegroups")
+]
+
+
+# %%
+fig = spacegroup_sunburst(
+    df_r2scan[Key.spacegroup],
+    title="r2SCAN spacegroup distribution",
+    show_counts="percent",
+)
+fig.layout.title.update(text=f"{n_r2scan:,} r2SCAN spacegroups", x=0.5, y=0.97)
+fig.layout.margin = dict(l=0, r=0, b=0, t=30)
+fig.show()
+save_fig(fig, "matpes-r2scan-spacegroup-sunburst.pdf")
+
+
+# %% spacegroup histogram
+fig = spacegroup_hist(
+    df_r2scan[Key.spacegroup], title="r2SCAN spacegroup histogram", log=True
+)
+fig.show()
+save_fig(fig, "matpes-r2scan-spacegroup-hist.pdf")
+
+
+# %%
+df_pbe[Key.spacegroup] = [
+    struct.get_space_group_info()[1]
+    for struct in tqdm(df_pbe[Key.structure], desc="pbe spacegroups")
+]

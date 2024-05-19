@@ -103,7 +103,7 @@ def test_plot_phonon_bands_raises(
     ):
         plot_phonon_bands("invalid input")
 
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(ValueError) as exc:  # noqa: PT011
         plot_phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",)
         )
@@ -242,7 +242,7 @@ def test_plot_phonon_bands_and_dos(
     assert isinstance(fig, go.Figure)
 
     band_keys, dos_keys = set(bands), set(phonon_doses)
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(
+        ValueError, match=f"{band_keys=} and {dos_keys=} must be identical"
+    ):
         plot_phonon_bands_and_dos(bands, phonon_doses)
-
-    assert str(exc.value) == f"{band_keys=} and {dos_keys=} must be identical"

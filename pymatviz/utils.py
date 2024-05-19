@@ -31,7 +31,7 @@ ROOT = dirname(PKG_DIR)
 TEST_FILES = f"{ROOT}/tests/files"
 Backend = Literal["matplotlib", "plotly"]
 AxOrFig = Union[plt.Axes, plt.Figure, go.Figure]
-VALID_BACKENDS = mpl_key, plotly_key = get_args(Backend)
+VALID_BACKENDS = MPL_BACKEND, PLOTLY_BACKEND = get_args(Backend)
 CrystalSystem = Literal[
     "triclinic",
     "monoclinic",
@@ -93,8 +93,11 @@ def pretty_label(key: str, backend: Backend) -> str:
         raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
 
     symbol_mapping = {
-        "R2": {mpl_key: "$R^2$", plotly_key: "R<sup>2</sup>"},
-        "R2_adj": {mpl_key: "$R^2_{adj}$", plotly_key: "R<sup>2</sup><sub>adj</sub>"},
+        "R2": {MPL_BACKEND: "$R^2$", PLOTLY_BACKEND: "R<sup>2</sup>"},
+        "R2_adj": {
+            MPL_BACKEND: "$R^2_{adj}$",
+            PLOTLY_BACKEND: "R<sup>2</sup><sub>adj</sub>",
+        },
     }
 
     return symbol_mapping.get(key, {}).get(backend, key)
@@ -419,9 +422,9 @@ def annotate(
     Returns:
         plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
-    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
+    backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
 
-    if backend == mpl_key:
+    if backend == MPL_BACKEND:
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
 
         defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))

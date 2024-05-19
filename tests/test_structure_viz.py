@@ -56,7 +56,8 @@ def test_plot_structure_2d(
     ).value_counts()
     assert patch_counts["Wedge"] == len(disordered_struct.composition)
 
-    assert patch_counts["PathPatch"] > 182
+    min_expected_n_patches = 182
+    assert patch_counts["PathPatch"] > min_expected_n_patches
 
 
 @pytest.mark.parametrize("axis", [True, False, "on", "off", "square", "equal"])

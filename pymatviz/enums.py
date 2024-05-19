@@ -140,6 +140,8 @@ class Key(LabelEnum):
     task_type = "task_type", "Task Type"
     volume = "volume", "Volume (Å³)"
     wyckoff = "wyckoff", "Aflow-style Wyckoff Label"  # crystallographic site symmetry
+    phonon_bandstructure = "phonon_bandstructure", "Phonon Band Structure"
+    phonon_dos = "phonon_dos", "Phonon Density of States"
 
 
 @unique

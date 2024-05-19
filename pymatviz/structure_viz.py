@@ -248,11 +248,10 @@ def plot_structure_2d(
     if atomic_radii is None or isinstance(atomic_radii, float):
         # atomic_radii is a scaling factor for the default set of radii
         atomic_radii = 0.7 * covalent_radii * (atomic_radii or 1)
-    else:
+    elif missing := set(elements_at_sites) - set(atomic_radii):
         # atomic_radii is assumed to be a map from element symbols to atomic radii
         # make sure all present elements are assigned a radius
-        if missing := set(elements_at_sites) - set(atomic_radii):
-            raise ValueError(f"atomic_radii is missing keys: {missing}")
+        raise ValueError(f"atomic_radii is missing keys: {missing}")
 
     radii_at_sites = np.array(
         [atomic_radii[el] for el in elements_at_sites]  # type: ignore[index]
