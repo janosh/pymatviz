@@ -161,7 +161,7 @@ def test_bin_df_cols_raises() -> None:
     bin_by_cols = ["col1", "col2"]
 
     # test error when passing n_bins as list but list has wrong length
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(ValueError) as exc:  # noqa: PT011
         bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])
 
     assert "len(bin_by_cols)=2 != len(n_bins)=1" in str(exc.value)

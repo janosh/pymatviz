@@ -106,7 +106,6 @@ ignore = [
     "PLR0915", # too-many-statements
     "PLR2004", # magic-number-comparison
     "PT006",   # pytest-parametrize-names-wrong-type
-    "PT011",   # pytest-raises-too-broad
     "PTH",
     "RUF001",  # ambiguous-unicode-character-string
     "S311",

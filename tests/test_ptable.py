@@ -474,9 +474,10 @@ def test_ptable_heatmap_plotly_cscale_range(
 
 def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
     cscale_range = (0, 10, 20)
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(
+        ValueError, match=re.escape(f"{cscale_range=} should have length 2")
+    ):
         ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)  # type: ignore[arg-type]
-    assert f"{cscale_range=} should have length 2" in str(exc.value)
 
 
 @pytest.mark.parametrize(
