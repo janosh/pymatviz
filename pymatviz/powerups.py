@@ -15,12 +15,12 @@ from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
 from pymatviz.utils import (
+    MPL_BACKEND,
+    PLOTLY_BACKEND,
     AxOrFig,
     Backend,
     annotate,
     get_fig_xy_range,
-    mpl_key,
-    plotly_key,
     pretty_label,
     validate_fig,
 )
@@ -193,7 +193,7 @@ def annotate_metrics(
             f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
         )
 
-    backend: Backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
+    backend: Backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
 
     funcs = {
         "MAE": lambda x, y: np.abs(x - y).mean(),
@@ -213,7 +213,7 @@ def annotate_metrics(
     xs, ys = xs[~nan_mask], ys[~nan_mask]
 
     text = prefix
-    newline = "\n" if backend == mpl_key else "<br>"
+    newline = "\n" if backend == MPL_BACKEND else "<br>"
 
     if isinstance(metrics, dict):
         for key, val in metrics.items():
@@ -341,7 +341,7 @@ def add_best_fit_line(
         type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
         raise TypeError(f"{fig=} must be instance of {type_names}")
 
-    backend = plotly_key if isinstance(fig, go.Figure) else mpl_key
+    backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
     kwargs.setdefault("color", "blue")
 
     if 0 in {len(xs), len(ys)}:
@@ -366,7 +366,7 @@ def add_best_fit_line(
     y0, y1 = slope * x0 + intercept, slope * x1 + intercept
 
     if annotate_params:
-        if backend == mpl_key:
+        if backend == MPL_BACKEND:
             defaults = dict(loc="lower right", color=kwargs["color"])
         else:
             defaults = dict(
@@ -381,7 +381,7 @@ def add_best_fit_line(
             defaults |= annotate_params
         annotate(f"LS fit: y = {slope:.2}x + {intercept:.2}", fig=fig, **defaults)
 
-    if backend == mpl_key:
+    if backend == MPL_BACKEND:
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
         defaults = dict(alpha=0.7, linestyle="--", zorder=1)

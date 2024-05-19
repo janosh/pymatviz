@@ -19,10 +19,10 @@ from pymatviz.enums import Key
 from pymatviz.powerups import annotate_bars
 from pymatviz.ptable import count_elements
 from pymatviz.utils import (
+    PLOTLY_BACKEND,
     Backend,
     crystal_sys_from_spg_num,
     df_to_arrays,
-    plotly_key,
     si_fmt_int,
 )
 
@@ -115,6 +115,7 @@ def spacegroup_hist(
     ax: plt.Axes | None = None,
     backend: Backend = "plotly",
     text_kwargs: dict[str, Any] | None = None,
+    log: bool = False,
     **kwargs: Any,
 ) -> plt.Axes | go.Figure:
     """Plot a histogram of spacegroups shaded by crystal system.
@@ -137,6 +138,7 @@ def spacegroup_hist(
         text_kwargs (dict, optional): Keyword arguments passed to
             matplotlib.Axes.text(). Defaults to None. Has no effect if backend is
             "plotly".
+        log (bool, optional): Whether to log scale the y-axis. Defaults to False.
         kwargs: Keywords passed to pd.Series.plot.bar() or plotly.express.bar().
 
     Returns:
@@ -204,7 +206,7 @@ def spacegroup_hist(
     xlim = (0, len(df_data) - 1)
 
     fig_title = f"{count_col} per crystal system" if show_counts else None
-    if backend == plotly_key:
+    if backend == PLOTLY_BACKEND:
         df_plot = df_data if show_empty_bins else df_data.reset_index()
 
         fig = px.bar(
@@ -255,8 +257,9 @@ def spacegroup_hist(
         fig.update_layout(showlegend=False)
         fig.layout.title.update(text=fig_title, x=0.5)
         fig.layout.xaxis.update(showgrid=False, title=x_label, range=xlim)
-        ylim = (0, int(df_data[count_col].max() * 1.05))
-        fig.layout.yaxis.update(range=ylim)
+        count_max = df_data[count_col].max()
+        y_max = np.log10(count_max * 1.05) if log else count_max * 1.05
+        fig.layout.yaxis.update(range=(0, y_max), type="log" if log else None)
         fig.layout.margin = dict(l=0, r=0, t=40, b=0)
 
         if isinstance(xticks, int):
@@ -290,7 +293,7 @@ def spacegroup_hist(
     ax.set(xlabel=x_label)
 
     # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
-    trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+    transform = transforms.blended_transform_factory(ax.transData, ax.transAxes)
 
     # add crystal system labels and dividers
     x0 = 0
@@ -300,7 +303,7 @@ def spacegroup_hist(
         for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
             patch.set_facecolor(color)
 
-        text_kwds = dict(transform=trans, horizontalalignment="center") | (
+        text_kwds = dict(transform=transform, horizontalalignment="center") | (
             text_kwargs or {}
         )
         crys_sys_anno_kwds = dict(
@@ -319,13 +322,16 @@ def spacegroup_hist(
             *[0, 1],
             facecolor=color,
             alpha=0.1,
-            transform=trans,
+            transform=transform,
             edgecolor="black",
         )
         x0 += width
 
     ax.yaxis.grid(visible=True)
     ax.xaxis.grid(visible=False)
+    ax.set_ylim(0, None)
+    if log:
+        ax.set_yscale("log")
 
     if xticks == "crys_sys_edges" or isinstance(xticks, int):
         if isinstance(xticks, int):
@@ -339,7 +345,6 @@ def spacegroup_hist(
 
         ax.xaxis.set_major_locator(major_loc)
     plt.xticks(rotation=90)
-
     return ax
 
 
