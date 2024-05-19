@@ -7,6 +7,7 @@ from monty.json import MontyDecoder
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 
+from pymatviz.enums import Key
 from pymatviz.io import save_and_compress_svg
 from pymatviz.phonons import (
     plot_phonon_bands,
@@ -17,8 +18,6 @@ from pymatviz.utils import TEST_FILES
 
 
 # %% Plot phonon bands and DOS
-bs_key, dos_key, pbe_key = "phonon_bandstructure", "phonon_dos", "pbe"
-
 for mp_id, formula in (
     ("mp-2758", "Sr4Se4"),
     ("mp-23907", "H2"),
@@ -30,10 +29,10 @@ for mp_id, formula in (
             docs[key] = json.loads(file.read(), cls=MontyDecoder)
 
     ph_bands: dict[str, PhononBands] = {
-        key: getattr(doc, bs_key) for key, doc in docs.items()
+        key: getattr(doc, Key.phonon_bandstructure) for key, doc in docs.items()
     }
     ph_doses: dict[str, PhononDos] = {
-        key: getattr(doc, dos_key) for key, doc in docs.items()
+        key: getattr(doc, Key.phonon_dos) for key, doc in docs.items()
     }
 
     fig = plot_phonon_bands(ph_bands)

@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import pytest
 
 from pymatviz import elements_hist, spacegroup_hist, true_pred_hist
-from pymatviz.utils import VALID_BACKENDS, mpl_key
+from pymatviz.utils import MPL_BACKEND, PLOTLY_BACKEND, VALID_BACKENDS
 from tests.conftest import df_regr, y_pred, y_true
 
 
@@ -43,10 +43,16 @@ def test_true_pred_hist(
     assert isinstance(ax, plt.Axes)
 
 
-@pytest.mark.parametrize("xticks", ["all", "crys_sys_edges", 1, 50])
-@pytest.mark.parametrize("show_counts", [True, False])
-@pytest.mark.parametrize("show_empty_bins", [True, False])
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
+@pytest.mark.parametrize(
+    ("xticks", "show_counts", "show_empty_bins", "log"),
+    [
+        ("all", True, True, True),
+        ("crys_sys_edges", False, False, False),
+        (1, True, False, True),
+        (50, False, True, False),
+    ],
+)
 def test_spacegroup_hist(
     spg_symbols: list[str],
     structures: list[Structure],
@@ -54,18 +60,25 @@ def test_spacegroup_hist(
     xticks: Literal["all", "crys_sys_edges", 1, 50],
     show_counts: bool,
     show_empty_bins: bool,
+    log: bool,
 ) -> None:
-    # spacegroup numbers
+    # test spacegroups as integers
     fig = spacegroup_hist(
         range(1, 231),
         xticks=xticks,
         show_counts=show_counts,
         show_empty_bins=show_empty_bins,
         backend=backend,
+        log=log,
     )
-    assert isinstance(fig, plt.Axes if backend == mpl_key else go.Figure)
+    assert isinstance(fig, plt.Axes if backend == MPL_BACKEND else go.Figure)
+    y_min, y_max = fig.get_ylim() if backend == MPL_BACKEND else fig.layout.yaxis.range
+    assert y_min == 0
+    assert y_max == pytest.approx(
+        0.02118929 if log and backend == PLOTLY_BACKEND else 1.05
+    ), f"{y_max=} {log=} {backend=}"
 
-    # spacegroup symbols
+    # test spacegroups as symbols
     fig = spacegroup_hist(
         spg_symbols,
         xticks=xticks,
@@ -74,7 +87,7 @@ def test_spacegroup_hist(
         backend=backend,
     )
 
-    # pmg structures
+    # test spacegroups determined on-the-fly from structures
     spacegroup_hist(
         structures,
         xticks=xticks,
