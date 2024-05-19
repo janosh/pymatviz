@@ -546,7 +546,8 @@ def test_ptable_lines(hide_f_block: bool) -> None:
         hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 126 if hide_f_block else 181
+    expected_n_axes = 126 if hide_f_block else 181
+    assert len(fig.axes) == expected_n_axes
 
 
 @pytest.mark.parametrize("hide_f_block", [False, True])

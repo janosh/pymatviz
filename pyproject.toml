@@ -87,26 +87,30 @@ ignore = [
     "ANN101",
     "ANN102",
     "ANN401",
-    "B028",   # No explicit stacklevel keyword argument found
-    "C408",   # unnecessary-collection-call
+    "B028",    # No explicit stacklevel keyword argument found
+    "C408",    # unnecessary-collection-call
     "C901",
-    "COM812", # trailing comma missing
-    "D205",   # 1 blank line required between summary line and description
-    "E731",   # do not assign a lambda expression, use a def
+    "COM812",  # trailing comma missing
+    "D205",    # 1 blank line required between summary line and description
+    "E731",    # do not assign a lambda expression, use a def
     "EM101",
     "EM102",
     "ERA001",
     "FIX002",
     "ISC001",
-    "N806",   # non-lowercase-variable-in-function
+    "N806",    # non-lowercase-variable-in-function
     "NPY002",
-    "PLR",    # pylint refactor
-    "PT006",  # pytest-parametrize-names-wrong-type
-    "PT011",  # pytest-raises-too-broad
+    "PLR0911", # too-many-return-statements
+    "PLR0912", # too-many-branches
+    "PLR0913", # function-with-too-many-arguments
+    "PLR0915", # too-many-statements
+    "PLR2004", # magic-number-comparison
+    "PT006",   # pytest-parametrize-names-wrong-type
+    "PT011",   # pytest-raises-too-broad
     "PTH",
-    "RUF001", # ambiguous-unicode-character-string
+    "RUF001",  # ambiguous-unicode-character-string
     "S311",
-    "SIM105", # Use contextlib.suppress() instead of try-except-pass
+    "SIM105",  # Use contextlib.suppress() instead of try-except-pass
     "TD",
     "TRY003",
 ]
