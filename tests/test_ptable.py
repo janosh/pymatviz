@@ -258,8 +258,13 @@ def test_ptable_heatmap(
     ax = ptable_heatmap(glass_elem_counts, cbar_fmt=lambda x, _: f"{x:.3f} kg")
 
     ax = ptable_heatmap(glass_elem_counts, heat_mode="percent", cbar_fmt=".3%")
-    cbar_1st_label = ax.child_axes[0].get_xticklabels()[0].get_text()
+    cbar_ax = ax.child_axes[0]
+    cbar_1st_label = cbar_ax.get_xticklabels()[0].get_text()
     assert cbar_1st_label == "0.000%"
+    cbar_title = cbar_ax.title
+    assert str(cbar_title) == "Text(0.5, 1.0, 'Element Count')"
+    # check colorbar title font color is black and hence visible on white background
+    assert cbar_title.get_color() == "black"
 
     # tile_size
     ptable_heatmap(df_ptable.atomic_mass, tile_size=1)
