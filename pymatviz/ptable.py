@@ -883,7 +883,10 @@ def ptable_heatmap(
     if heat_mode is not None and show_scale:
         # colorbar position and size: [x, y, width, height]
         # anchored at lower left corner
-        cbar_ax = ax.inset_axes(cbar_coords, transform=ax.transAxes)
+        cbar_kwargs = cbar_kwargs or {}
+        cbar_ax = cbar_kwargs.pop("cax", None) or ax.inset_axes(
+            cbar_coords, transform=ax.transAxes
+        )
         # format major and minor ticks
         # TODO maybe give user direct control over labelsize, instead of hard-coding
         # 8pt smaller than default
@@ -895,16 +898,18 @@ def ptable_heatmap(
             # 2nd _pos arg is always passed by matplotlib but we don't need it
             tick_fmt = lambda val, _pos: cbar_fmt(val)
 
-        cbar_kwargs = cbar_kwargs or {}
         cbar = fig.colorbar(
             mappable,
-            cax=cbar_kwargs.pop("cax", cbar_ax),
+            cax=cbar_ax,
             orientation=cbar_kwargs.pop("orientation", "horizontal"),
             format=cbar_kwargs.pop("format", tick_fmt),
             **cbar_kwargs,
         )
 
         cbar.outline.set_linewidth(1)
+        if text_style.get("color") == "white":
+            text_style.pop("color")  # don't want to apply possibly 'white' default
+            # text color (depending on colorscale) to color bar with white background
         cbar_ax.set_title(cbar_title, pad=10, **text_style)
 
     plt.ylim(0.3, n_rows + 0.1)
