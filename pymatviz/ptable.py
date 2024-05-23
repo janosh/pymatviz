@@ -648,11 +648,12 @@ class ChildPlotters:
             cmap (Colormap): Colormap.
             cbar_axis (Literal["x", "y"]): The axis colormap
                 would be based on.
+            child_kwargs: args to pass to the child plotter call.
         """
         # Add histogram
         n, bins, patches = ax.hist(data, **child_kwargs)
 
-        # Scale values differently according to axis
+        # Scale values according to axis
         if cbar_axis == "x":
             bin_centers = 0.5 * (bins[:-1] + bins[1:])
 
@@ -674,7 +675,7 @@ class ChildPlotters:
         ax.spines[["right", "top", "left"]].set_visible(False)
 
         # Adjust tick labels
-        # TODO: how to achieve this from external?
+        # TODO: how to control this from external?
         ax.tick_params(axis="both", which="major", labelsize=8)
 
 
@@ -1419,7 +1420,7 @@ def ptable_hists(
     x_range: tuple[float | None, float | None] | None = None,
     log: bool = False,
     # Figure-scope
-    colormap: str | Colormap = "viridis",
+    colormap: str | Colormap | None = "viridis",
     on_empty: Literal["show", "hide"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any] | None = None,
@@ -1429,7 +1430,7 @@ def ptable_hists(
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
     # Colorbar
-    cbar_axis: Literal["x", "y"] = "x",  # TODO: add docstring
+    cbar_axis: Literal["x", "y"] = "x",
     cbar_title: str = "Values",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
@@ -1438,7 +1439,8 @@ def ptable_hists(
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_kwargs: dict[str, Any] | None = None,
-    # TODO: handle the following
+    # Legend for element types
+    # TODO: color_elem_types doesn't seem to work
     color_elem_types: Literal["symbol", "background", "both", False]
     | dict[str, str] = "background",
     elem_type_legend: bool | dict[str, Any] = True,
@@ -1453,18 +1455,26 @@ def ptable_hists(
         bins (int): Number of bins for the histograms. Defaults to 20.
         colormap (str): Matplotlib colormap name to use. Defaults to 'viridis'. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
-        hist_kwargs (dict | Callable): Keywords passed to ax.hist() for each histogram.
+        plot_kwargs (dict): Additional keyword arguments to
+            pass to the plt.subplots function call.
+        child_kwargs (dict | Callable): Keywords passed to ax.hist() for each histogram.
             If callable, it is called with the histogram values for each element and
             should return a dict of keyword arguments. Defaults to None.
         cbar_coords (tuple[float, float, float, float]): Color bar position and size:
             [x, y, width, height] anchored at lower left corner of the bar. Defaults to
             (0.25, 0.77, 0.35, 0.02).
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
         x_range (tuple[float | None, float | None]): x-axis range for all histograms.
             Defaults to None.
         symbol_text (str | Callable[[Element], str]): Text to display for each element
             symbol. Defaults to lambda elem: elem.symbol.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
             symbols. Defaults to None.
+        cbar_axis (Literal["x", "y"]): The axis colormap would be based on.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
@@ -1473,15 +1483,11 @@ def ptable_hists(
             lower left corner of each tile. Defaults to (0.5, 0.8). (1, 1) is the upper
             right corner.
         log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
-        anno_kwargs (dict): Keyword arguments passed to plt.annotate() for element
-            annotations. Defaults to None. Useful for adding e.g. number of data points
-            in each histogram. For that, use
-            anno_kwargs=lambda hist_vals: dict(text=len(hist_vals)).
-            Recognized keys are text, xy, xycoords, fontsize, and any other
-            plt.annotate() keywords.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-             ("symbol" | "background" | "both" | False | dict): Whether to
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
+        color_elem_types ("symbol" | "background" | "both" | False | dict): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             If dict, it should map element types to colors. Defaults to "background".
         elem_type_legend (bool | dict): Whether to show a legend for element
@@ -1532,13 +1538,29 @@ def ptable_hists(
         kwargs=symbol_kwargs,
     )
 
-    # Add colorbar
-    plotter.add_colorbar(
-        title=cbar_title,
-        coords=cbar_coords,
-        cbar_kwargs=cbar_kwargs,
-        title_kwargs=cbar_title_kwargs,
-    )
+    if colormap is not None:
+        # Add colorbar
+        plotter.add_colorbar(
+            title=cbar_title,
+            coords=cbar_coords,
+            cbar_kwargs=cbar_kwargs,
+            title_kwargs=cbar_title_kwargs,
+        )
+
+        # Add element type legend
+        if elem_type_legend and color_elem_types:
+            legend_kwargs = (
+                elem_type_legend if isinstance(elem_type_legend, dict) else {}
+            )
+
+            elem_class_colors = ELEM_CLASS_COLORS | (
+                color_elem_types if isinstance(color_elem_types, dict) else {}
+            )
+            add_element_type_legend(
+                data=data,
+                elem_class_colors=elem_class_colors,
+                legend_kwargs=legend_kwargs,
+            )
 
     return plotter.fig
 
