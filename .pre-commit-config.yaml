@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
+    rev: v0.4.5
     hooks:
       - id: ruff
         args: [--fix]
@@ -40,7 +40,7 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.6
+    rev: v2.3.0
     hooks:
       - id: codespell
         stages: [commit, commit-msg]
@@ -87,6 +87,6 @@ repos:
           - typescript-eslint
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.363
+    rev: v1.1.364
     hooks:
       - id: pyright

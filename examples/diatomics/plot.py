@@ -38,7 +38,7 @@ def plot_on_ax(
         formula (str): Chemical formula of the pair.
     """
     shift = energy[-1]
-    energy = energy - shift
+    energy -= shift
 
     ax.plot(distances, energy, marker=".")
     ax.axhline(0, color="tab:gray")

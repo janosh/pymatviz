@@ -433,7 +433,7 @@ class PTableProjector:
         """Element type based colors.
 
         Example:
-            {"Nonmetal": "green", "Halogen": "teal", "Metal": "lightblue"}
+            dict(Nonmetal="green", Halogen="teal", Metal="lightblue")
         """
         return self._elem_type_colors or {}
 
