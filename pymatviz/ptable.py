@@ -928,20 +928,25 @@ def ptable_heatmap(
 def ptable_heatmap_splits(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
+    # Heatmap-split specific
     start_angle: float = 135,
+    # Figure-scope
     colormap: str | Colormap = "viridis",
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
+    # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
+    # Symbol
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
     symbol_kwargs: dict[str, Any] | None = None,
-    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+    # Colorbar
     cbar_title: str = "Values",
     cbar_title_kwargs: dict[str, Any] | None = None,
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     cbar_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
     """Plot evenly-split heatmaps, nested inside a periodic table.
@@ -1367,28 +1372,33 @@ def ptable_heatmap_plotly(
 def ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
     *,
+    # Histogram-specific
     bins: int = 20,
     x_range: tuple[float | None, float | None] | None = None,
     log: bool = False,
+    # Figure-scope
     colormap: str | Colormap = "viridis",
+    on_empty: Literal["show", "hide"] = "hide",
+    hide_f_block: bool | None = None,
+    plot_kwargs: dict[str, Any] | None = None,
+    # Axis-scope
+    ax_kwargs: dict[str, Any] | None = None,
     child_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
-    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-    symbol_kwargs: Any = None,
-    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    # Colorbar
     cbar_title: str = "Values",
     cbar_title_kwargs: dict[str, Any] | None = None,
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
     cbar_kwargs: dict[str, Any] | None = None,
+    # Symbol
     symbol_pos: tuple[float, float] = (0.5, 0.8),
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_kwargs: dict[str, Any] | None = None,
-    on_empty: Literal["show", "hide"] = "hide",
+    # TODO: handle the following
     color_elem_types: Literal["symbol", "background", "both", False]
-    | dict[str, str] = "background",  # TODO:
-    elem_type_legend: bool | dict[str, Any] = True,  # TODO:
-    hide_f_block: bool | None = None,
-    plot_kwargs: dict[str, Any] | None = None,
-    ax_kwargs: dict[str, Any] | None = None,
+    | dict[str, str] = "background",
+    elem_type_legend: bool | dict[str, Any] = True,
 ) -> plt.Figure:
     """Plot histograms for each element laid out in a periodic table.
 
@@ -1488,13 +1498,16 @@ def ptable_hists(
 def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
+    # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
+    # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
     child_kwargs: dict[str, Any] | None = None,
+    # Symbol
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
@@ -1569,13 +1582,16 @@ def ptable_scatters(
 def ptable_lines(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
+    # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
+    # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
     child_kwargs: dict[str, Any] | None = None,
+    # Symbol
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
