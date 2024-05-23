@@ -80,7 +80,10 @@ data_dict = {
     elem.symbol: np.random.randn(100) + np.random.randn(100) for elem in Element
 }
 fig = ptable_hists(
-    data_dict, colormap="coolwarm", cbar_title="Periodic Table Histograms"
+    data_dict,
+    colormap="coolwarm",
+    cbar_title="Periodic Table Histograms",
+    cbar_axis="x",
 )
 save_and_compress_svg(fig, "ptable-hists")
 

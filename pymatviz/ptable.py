@@ -614,7 +614,7 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for to
                 the child plotter.
-            child_kwargs (dict): args to pass to the child plotter call
+            child_kwargs (dict): args to pass to the child plotter call.
         """
         # Add line
         ax.plot(data[0], data[1], **child_kwargs)
@@ -631,9 +631,39 @@ class ChildPlotters:
     def histogram(
         ax: plt.axes,
         data: SupportedValueType,
+        cmap: Colormap,
+        cbar_axis: Literal["x", "y"],
         **child_kwargs: Any,
     ) -> None:
-        ax.hist(data, **child_kwargs)
+        """Histogram plotter.
+
+        Taken from https://stackoverflow.com/questions/23061657/
+        plot-histogram-with-colors-taken-from-colormap
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for to
+                the child plotter.
+            cmap (Colormap): Colormap.
+            cbar_axis (Literal["x", "y"]): The axis colormap
+                would be based on.
+        """
+        # Add histogram
+        n, bins, patches = ax.hist(data, **child_kwargs)
+
+        # Scale values differently according to axis
+        if cbar_axis == "x":
+            bin_centers = 0.5 * (bins[:-1] + bins[1:])
+
+            cols = bin_centers - min(bin_centers)
+            cols /= max(cols)
+
+        else:
+            cols = (n - n.min()) / (n.max() - n.min())
+
+        # Apply colors
+        for col, patch in zip(cols, patches):
+            plt.setp(patch, "facecolor", cmap(col))
 
 
 def ptable_heatmap(
@@ -1387,6 +1417,7 @@ def ptable_hists(
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
     # Colorbar
+    cbar_axis: Literal["x", "y"] = "x",  # TODO: add docstring
     cbar_title: str = "Values",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
@@ -1436,9 +1467,9 @@ def ptable_hists(
             anno_kwargs=lambda hist_vals: dict(text=len(hist_vals)).
             Recognized keys are text, xy, xycoords, fontsize, and any other
             plt.annotate() keywords.
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-             ('symbol' | 'background' | 'both' | False | dict): Whether to
+             ("symbol" | "background" | "both" | False | dict): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             If dict, it should map element types to colors. Defaults to "background".
         elem_type_legend (bool | dict): Whether to show a legend for element
@@ -1468,6 +1499,8 @@ def ptable_hists(
         "bins": bins,
         "range": x_range,
         "log": log,
+        "cbar_axis": cbar_axis,
+        "cmap": plotter.cmap,
     }
 
     plotter.add_child_plots(
