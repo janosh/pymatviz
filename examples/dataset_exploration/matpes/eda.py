@@ -82,8 +82,8 @@ add_identity_line(fig, retain_xy_limits=True)
 fig.show()
 
 
-# %% plot histograms of mean forces per atom for both functionals
-total_force_col = "Σ|force<sub>i</sub>| per-atom"
+# %% plot histograms of absolute sum of forces on each atom
+total_force_col = "Σ|force<sub>i</sub>| (eV/Å)"
 df_pbe[total_force_col] = df_pbe[Key.forces].map(lambda arr: np.abs(arr).sum(axis=1))
 df_r2scan[total_force_col] = df_r2scan[Key.forces].map(
     lambda arr: np.abs(arr).sum(axis=1)

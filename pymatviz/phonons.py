@@ -378,9 +378,9 @@ def plot_phonon_dos(
 
         # normalize DOS
         if normalize == "max":
-            densities = densities / densities.max()
+            densities /= densities.max()
         elif normalize == "sum":
-            densities = densities / densities.sum()
+            densities /= densities.sum()
         elif normalize == "integral":
             bin_width = frequencies[1] - frequencies[0]
             densities = densities / densities.sum() / bin_width
@@ -388,7 +388,7 @@ def plot_phonon_dos(
         defaults = dict(mode="lines")
         if stack:
             if fig.data:  # for stacked plots, accumulate densities
-                densities = densities + fig.data[-1].y
+                densities += fig.data[-1].y
             defaults.setdefault("fill", "tonexty")
 
         fig.add_scatter(x=frequencies, y=densities, name=key, **(defaults | kwargs))
