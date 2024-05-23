@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import math
 import itertools
+import math
 import warnings
 from collections.abc import Iterable, Sequence
 from functools import partial
