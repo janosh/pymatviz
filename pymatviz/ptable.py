@@ -930,17 +930,17 @@ def ptable_heatmap_splits(
     *,
     colormap: str | Colormap = "viridis",
     start_angle: float = 135,
-    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
-    symbol_pos: tuple[float, float] = (0.5, 0.5),
-    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-    cbar_title: str = "Values",
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
-    ax_kwargs: dict[str, Any] | None = None,
-    symbol_kwargs: dict[str, Any] | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.5),
+    symbol_kwargs: dict[str, Any] | None = None,
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+    cbar_title: str = "Values",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
@@ -1488,16 +1488,16 @@ def ptable_hists(
 def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
-    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
-    symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
-    child_kwargs: dict[str, Any] | None = None,
     ax_kwargs: dict[str, Any] | None = None,
+    child_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.8),
 ) -> plt.Figure:
     """Make scatter plots for each element, nested inside a periodic table.
 
@@ -1569,16 +1569,16 @@ def ptable_scatters(
 def ptable_lines(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
-    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
-    symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
-    child_kwargs: dict[str, Any] | None = None,
     ax_kwargs: dict[str, Any] | None = None,
+    child_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.8),
 ) -> plt.Figure:
     """Line plots for each element, nested inside a periodic table.
 
