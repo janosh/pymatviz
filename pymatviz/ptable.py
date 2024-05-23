@@ -488,7 +488,7 @@ class PTableProjector:
 
         cbar_ax.set_title(**title_kwargs)
 
-    def set_ele_bg_color(
+    def set_ele_background_color(
         self,
         elem_class_colors: dict,
     ) -> None:
@@ -505,24 +505,23 @@ class PTableProjector:
 
     def add_element_type_legend(
         self,
-        data: pd.DataFrame | pd.Series | dict[str, list[float]],
-        elem_class_colors: dict[str, str] | None = None,
-        legend_kwargs: dict[str, Any] | None = None,
+        elem_class_colors: dict[str, str],
+        legend_kwargs: dict[str, Any],
     ) -> None:
-        """Add a legend to show the colors of element types.
+        """Add a legend to show the colors based on element types.
 
         Args:
-            data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
-                to plot data. Used only to determine which element types are present.
             elem_class_colors (dict[str, str]): Map from element
                 types to colors. E.g. {"Alkali Metal": "red", "Noble Gas": "blue"}.
             legend_kwargs (dict): Keyword arguments passed to plt.legend() for customizing
-                legend appearance. Defaults to None.
+                legend appearance.
         """
-        elem_class_colors = ELEM_CLASS_COLORS | (elem_class_colors or {})
-        # else case list(data) covers dict and DataFrame
-        elems_with_data = data.index if isinstance(data, pd.Series) else list(data)
+        # Check present element types
+        elems_with_data = (
+            self.data.index if isinstance(self.data, pd.Series) else list(self.data)
+        )
         visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
+
         font_size = 10
         legend_elements = [
             plt.Line2D(
@@ -536,14 +535,19 @@ class PTableProjector:
             for elem_class, color in elem_class_colors.items()
             if elem_class in visible_elem_types
         ]
-        legend_kwargs = dict(
-            loc="center left",
-            bbox_to_anchor=(0, -42),
-            ncol=6,
-            frameon=False,
-            fontsize=font_size,
-            handlelength=1,  # more compact legend
-        ) | (legend_kwargs or {})
+
+        legend_kwargs = (
+            dict(
+                loc="center left",
+                bbox_to_anchor=(0, -42),
+                ncol=6,
+                frameon=False,
+                fontsize=font_size,
+                handlelength=1,  # more compact legend
+            )
+            | legend_kwargs
+        )
+
         plt.legend(handles=legend_elements, **legend_kwargs)
 
 
@@ -1457,10 +1461,11 @@ def ptable_hists(
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_kwargs: dict[str, Any] | None = None,
-    # Legend/colors for element types
+    # Element types based colors and legend
     color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
     elem_type_colors: dict[str, str] | None = None,
-    elem_type_legend: bool | dict[str, Any] = False,
+    add_elem_type_legend: bool = False,
+    elem_type_legend_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
     """Plot histograms for each element laid out in a periodic table.
 
@@ -1509,8 +1514,9 @@ def ptable_hists(
             Defaults to "background".
         elem_type_colors (dict | None): dict to map element types to colors.
             None to use default element type colors.
-        elem_type_legend (bool | dict): Whether to show a legend for element
-            types. Defaults to True. If dict, used as kwargs to plt.legend(), e.g. to
+        add_elem_type_legend (bool): Whether to show a legend for element
+            types. Defaults to True.
+        elem_type_legend_kwargs (dict): kwargs to plt.legend(), e.g. to
             set the legend title, use {"title": "Element Types"}.
 
     Returns:
@@ -1526,10 +1532,9 @@ def ptable_hists(
     cbar_title_kwargs = cbar_title_kwargs or {}
     cbar_kwargs = cbar_kwargs or {}
 
-    # Get element type colors  # TODO: make this reusable in PTable Plotter
-    elem_type_colors = ELEM_CLASS_COLORS | (
-        elem_type_colors if isinstance(elem_type_colors, dict) else {}
-    )
+    # Get element type based colors
+    # NOTE: needed by both legend maker and element color setter
+    elem_type_colors = ELEM_CLASS_COLORS | (elem_type_colors or {})
 
     # Initialize periodic table plotter
     plotter = PTableProjector(
@@ -1564,7 +1569,7 @@ def ptable_hists(
 
     # Color elements
     if color_elem_strategy != "off":
-        plotter.set_ele_bg_color(elem_type_colors)
+        plotter.set_ele_background_color(elem_type_colors)
 
     if colormap is not None:
         # Add colorbar
@@ -1576,16 +1581,12 @@ def ptable_hists(
         )
 
         # Add element type legend
-        # TODO: clarify legend appear strategy
-        if elem_type_legend and color_elem_strategy:
-            legend_kwargs = (
-                elem_type_legend if isinstance(elem_type_legend, dict) else {}
-            )
+        if add_elem_type_legend:
+            elem_type_legend_kwargs = elem_type_legend_kwargs or {}
 
             plotter.add_element_type_legend(
-                data=data,
                 elem_class_colors=elem_type_colors,
-                legend_kwargs=legend_kwargs,
+                legend_kwargs=elem_type_legend_kwargs,
             )
 
     return plotter.fig
