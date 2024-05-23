@@ -927,6 +927,7 @@ def ptable_heatmap(
 
 def ptable_heatmap_splits(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    *,
     colormap: str | Colormap = "viridis",
     start_angle: float = 135,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
@@ -1365,6 +1366,7 @@ def ptable_heatmap_plotly(
 
 def ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    *,
     bins: int = 20,
     colormap: str | Colormap = "viridis",
     hist_kwds: dict[str, Any]
@@ -1486,6 +1488,7 @@ def ptable_hists(
 
 def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    *,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
@@ -1566,6 +1569,7 @@ def ptable_scatters(
 
 def ptable_lines(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    *,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     on_empty: Literal["hide", "show"] = "hide",
