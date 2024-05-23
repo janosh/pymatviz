@@ -99,7 +99,7 @@ fig = ptable_scatters(
     data_dict,
     # colormap="coolwarm",
     # cbar_title="Periodic Table Scatter Plots",
-    child_args=dict(marker="o", linestyle=""),
+    child_kwargs=dict(marker="o", linestyle=""),
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
 )

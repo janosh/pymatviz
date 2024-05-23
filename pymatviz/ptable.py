@@ -409,7 +409,7 @@ class PTableProjector:
     def add_child_plots(
         self,
         child_plotter: Callable[[plt.axes, Any], None],
-        child_args: dict[str, Any],
+        child_kwargs: dict[str, Any],
         *,
         ax_kwargs: dict[str, Any],
         on_empty: Literal["hide", "show"] = "hide",
@@ -418,7 +418,7 @@ class PTableProjector:
 
         Args:
             child_plotter: A callable for the child plotter.
-            child_args: Arguments to pass to the child plotter call.
+            child_kwargs: Arguments to pass to the child plotter call.
             ax_kwargs: Keyword arguments to pass to ax.set().
             on_empty: Whether to "show" or "hide" tiles for elements without data.
         """
@@ -444,7 +444,7 @@ class PTableProjector:
                 continue
 
             # Call child plotter
-            child_plotter(ax, plot_data, **child_args)
+            child_plotter(ax, plot_data, **child_kwargs)
 
             # Pass axis kwargs
             if ax_kwargs:
@@ -529,7 +529,7 @@ class PTableProjector:
 
 
 class ChildPlotters:
-    """Collect some pre-defined child plotters."""
+    """Collection of pre-defined child plotters."""
 
     @staticmethod
     def rectangle(
@@ -578,7 +578,7 @@ class ChildPlotters:
     def scatter(
         ax: plt.axes,
         data: SupportedValueType,
-        **child_args: Any,
+        **child_kwargs: Any,
     ) -> None:
         """Scatter plotter.
 
@@ -586,13 +586,13 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for to
                 the child plotter.
-            child_args (dict): args to pass to the child plotter call
+            child_kwargs (dict): args to pass to the child plotter call
         """
         # Add scatter
         if len(data) == 2:
-            ax.scatter(x=data[0], y=data[1], **child_args)
+            ax.scatter(x=data[0], y=data[1], **child_kwargs)
         elif len(data) == 3:
-            ax.scatter(x=data[0], y=data[1], c=data[2], **child_args)
+            ax.scatter(x=data[0], y=data[1], c=data[2], **child_kwargs)
 
         # Adjust tick labels
         # TODO: how to achieve this from external?
@@ -606,7 +606,7 @@ class ChildPlotters:
     def line(
         ax: plt.axes,
         data: SupportedValueType,
-        **child_args: Any,
+        **child_kwargs: Any,
     ) -> None:
         """Line plotter.
 
@@ -614,10 +614,10 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for to
                 the child plotter.
-            child_args (dict): args to pass to the child plotter call
+            child_kwargs (dict): args to pass to the child plotter call
         """
         # Add line
-        ax.plot(data[0], data[1], **child_args)
+        ax.plot(data[0], data[1], **child_kwargs)
 
         # Adjust tick labels
         # TODO: how to achieve this from external?
@@ -631,7 +631,7 @@ class ChildPlotters:
     def histogram(
         ax: plt.axes,
         data: SupportedValueType,
-        **child_args: Any,
+        **child_kwargs: Any,
     ) -> None:
         pass
 
@@ -1006,7 +1006,7 @@ def ptable_heatmap_splits(
     )
 
     # Call child plotter: evenly split rectangle
-    child_args = {
+    child_kwargs = {
         "start_angle": start_angle,
         "cmap": plotter.cmap,
         "norm": plotter.norm,
@@ -1014,7 +1014,7 @@ def ptable_heatmap_splits(
 
     plotter.add_child_plots(
         ChildPlotters.rectangle,  # type: ignore[arg-type]
-        child_args=child_args,
+        child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
@@ -1367,9 +1367,9 @@ def ptable_heatmap_plotly(
 def ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
     *,
-    bins: int = 20,
+    bins: int = 20,  # TODO: pack this inside child_kwargs?
     colormap: str | Colormap = "viridis",
-    hist_kwds: dict[str, Any]
+    child_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
@@ -1380,14 +1380,13 @@ def ptable_hists(
     cbar_title_kwds: dict[str, Any] | None = None,  # TODO: rename to kwargs
     cbar_kwds: dict[str, Any] | None = None,  # TODO: rename to kwargs
     symbol_pos: tuple[float, float] = (0.5, 0.8),
-    log: bool = False,
-    anno_kwds: dict[str, Any] | None = None,
+    log: bool = False,  # TODO: pack this inside child_kwargs?
+    anno_kwds: dict[str, Any] | None = None,  # TODO: where should this go?
     on_empty: Literal["show", "hide"] = "hide",
     color_elem_types: Literal["symbol", "background", "both", False]
     | dict[str, str] = "background",
     elem_type_legend: bool | dict[str, Any] = True,
     hide_f_block: bool | None = None,
-    **kwargs: Any,
 ) -> plt.Figure:
     """Plot histograms for each element laid out in a periodic table.
 
@@ -1427,15 +1426,12 @@ def ptable_hists(
             plt.annotate() keywords.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        color_elem_types ('symbol' | 'background' | 'both' | False | dict): Whether to
+             ('symbol' | 'background' | 'both' | False | dict): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             If dict, it should map element types to colors. Defaults to "background".
         elem_type_legend (bool | dict): Whether to show a legend for element
             types. Defaults to True. If dict, used as kwargs to plt.legend(), e.g. to
             set the legend title, use {"title": "Element Types"}.
-        **kwargs: Additional keyword arguments passed to plt.subplots(). Defaults to
-            dict(figsize=(0.75 * n_columns, 0.75 * n_rows)) with n_columns/n_rows the
-            number of columns/rows in the periodic table.
 
     Returns:
         plt.Figure: periodic table with a histogram in each element tile.
@@ -1447,6 +1443,11 @@ def ptable_hists(
     cbar_title_kwargs = cbar_title_kwds or {}
     cbar_kwargs = cbar_kwds or {}
 
+    # TODO: properly handle the following
+    # elem_class_colors = ELEM_CLASS_COLORS | (
+    #     color_elem_types if isinstance(color_elem_types, dict) else {}
+    # )
+
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
@@ -1456,14 +1457,14 @@ def ptable_hists(
     )
 
     # Call child plotter: histogram
-    child_args = {
+    child_kwargs = {
         "cmap": plotter.cmap,
         "norm": plotter.norm,
     }
 
     plotter.add_child_plots(
         ChildPlotters.histogram,
-        child_args=child_args,
+        child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
@@ -1496,7 +1497,7 @@ def ptable_scatters(
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
-    child_args: dict[str, Any] | None = None,
+    child_kwargs: dict[str, Any] | None = None,
     ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
@@ -1526,7 +1527,7 @@ def ptable_scatters(
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
-        child_args: Arguments to pass to the child plotter call.
+        child_kwargs: Arguments to pass to the child plotter call.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
 
@@ -1536,7 +1537,7 @@ def ptable_scatters(
     plot_kwargs = plot_kwargs or {}
     ax_kwargs = ax_kwargs or {}
 
-    child_args = child_args or {}
+    child_kwargs = child_kwargs or {}
 
     symbol_kwargs = symbol_kwargs or {}
     symbol_kwargs.setdefault("fontsize", 12)
@@ -1552,7 +1553,7 @@ def ptable_scatters(
     # Call child plotter: Scatter
     plotter.add_child_plots(
         ChildPlotters.scatter,
-        child_args=child_args,
+        child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
@@ -1577,7 +1578,7 @@ def ptable_lines(
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
-    child_args: dict[str, Any] | None = None,
+    child_kwargs: dict[str, Any] | None = None,
     ax_kwargs: dict[str, Any] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
@@ -1607,7 +1608,7 @@ def ptable_lines(
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
-        child_args: Arguments to pass to the child plotter call.
+        child_kwargs: Arguments to pass to the child plotter call.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
     """
@@ -1615,7 +1616,7 @@ def ptable_lines(
     plot_kwargs = plot_kwargs or {}
     ax_kwargs = ax_kwargs or {}
 
-    child_args = child_args or {}
+    child_kwargs = child_kwargs or {}
 
     symbol_kwargs = symbol_kwargs or {}
     symbol_kwargs.setdefault("fontsize", 12)
@@ -1631,7 +1632,7 @@ def ptable_lines(
     # Call child plotter: line
     plotter.add_child_plots(
         ChildPlotters.line,
-        child_args=child_args,
+        child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
