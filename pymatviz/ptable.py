@@ -633,7 +633,7 @@ class ChildPlotters:
         data: SupportedValueType,
         **child_kwargs: Any,
     ) -> None:
-        pass
+        ax.hist(data, **child_kwargs)
 
 
 def ptable_heatmap(
@@ -1367,26 +1367,28 @@ def ptable_heatmap_plotly(
 def ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
     *,
-    bins: int = 20,  # TODO: pack this inside child_kwargs?
+    bins: int = 20,
+    x_range: tuple[float | None, float | None] | None = None,
+    log: bool = False,
     colormap: str | Colormap = "viridis",
     child_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-    x_range: tuple[float | None, float | None] | None = None,  # TODO:
     symbol_kwargs: Any = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     cbar_title: str = "Values",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
-    log: bool = False,  # TODO: pack this inside child_kwargs?
-    anno_kwargs: dict[str, Any] | None = None,  # TODO: where should this go?
+    anno_kwargs: dict[str, Any] | None = None,  # TODO: rename to symbol_kwargs
     on_empty: Literal["show", "hide"] = "hide",
     color_elem_types: Literal["symbol", "background", "both", False]
     | dict[str, str] = "background",  # TODO:
     elem_type_legend: bool | dict[str, Any] = True,  # TODO:
     hide_f_block: bool | None = None,
+    plot_kwargs: dict[str, Any] | None = None,
+    ax_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
     """Plot histograms for each element laid out in a periodic table.
 
@@ -1453,8 +1455,9 @@ def ptable_hists(
 
     # Call child plotter: histogram
     child_kwargs = {
-        "cmap": plotter.cmap,
-        "norm": plotter.norm,
+        "bins": bins,
+        "range": x_range,
+        "log": log,
     }
 
     plotter.add_child_plots(
