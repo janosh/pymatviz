@@ -672,8 +672,20 @@ class ChildPlotters:
                 would be based on.
             child_kwargs: args to pass to the child plotter call.
         """
+        # Preprocess x_range if only one boundary is given
+        x_range = child_kwargs.pop("range", None)
+
+        if x_range is None or x_range == [None, None]:
+            x_range = [np.min(data), np.max(data)]
+
+        elif x_range[0] is None:
+            x_range = [np.min(data), x_range[1]]
+
+        else:
+            x_range = [x_range[0], np.max(data)]
+
         # Add histogram
-        n, bins, patches = ax.hist(data, **child_kwargs)
+        n, bins, patches = ax.hist(data, range=x_range, **child_kwargs)
 
         # Scale values according to axis
         if cbar_axis == "x":
@@ -689,16 +701,18 @@ class ChildPlotters:
         for col, patch in zip(cols, patches):
             plt.setp(patch, "facecolor", cmap(col))
 
-        # Set x-ticks to min/max only
-        ax.set_xticks([math.floor(np.min(data)), math.ceil(np.max(data))])
+        # Adjust tick labels
+        # TODO: how to control this from external?
+        ax.tick_params(axis="both", which="major", labelsize=8)
+        ax.set_yticklabels([])
+        ax.set_yticks([])
 
         # Hide the right, left and top spines
         ax.axis("on")
         ax.spines[["right", "top", "left"]].set_visible(False)
 
-        # Adjust tick labels
-        # TODO: how to control this from external?
-        ax.tick_params(axis="both", which="major", labelsize=8)
+        # Set x-ticks to min/max only
+        ax.set_xticks([math.floor(x_range[0]), math.ceil(x_range[1])])
 
 
 def ptable_heatmap(
