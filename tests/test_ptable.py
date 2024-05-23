@@ -536,7 +536,7 @@ def test_ptable_hists(
     hist_kwargs: dict[str, Any],
 ) -> None:
     fig = ptable_hists(
-        data, symbol_pos=symbol_pos, anno_kwargs=anno_kwargs, hist_kwargs=hist_kwargs
+        data, symbol_pos=symbol_pos, symbol_kwargs=anno_kwargs, hist_kwargs=hist_kwargs
     )
     assert isinstance(fig, plt.Figure)
 

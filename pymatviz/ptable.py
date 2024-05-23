@@ -928,8 +928,8 @@ def ptable_heatmap(
 def ptable_heatmap_splits(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
-    colormap: str | Colormap = "viridis",
     start_angle: float = 135,
+    colormap: str | Colormap = "viridis",
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
@@ -1381,7 +1381,7 @@ def ptable_hists(
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
-    anno_kwargs: dict[str, Any] | None = None,  # TODO: rename to symbol_kwargs
+    symbol_kwargs: dict[str, Any] | None = None,
     on_empty: Literal["show", "hide"] = "hide",
     color_elem_types: Literal["symbol", "background", "both", False]
     | dict[str, str] = "background",  # TODO:
