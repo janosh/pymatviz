@@ -1482,7 +1482,10 @@ def ptable_hists(
     # Re-initialize kwargs as empty dict if None
     plot_kwargs = plot_kwargs or {}
     ax_kwargs = ax_kwargs or {}
+
     symbol_kwargs = symbol_kwargs or {}
+    symbol_kwargs.setdefault("fontsize", 12)
+
     cbar_title_kwargs = cbar_title_kwargs or {}
     cbar_kwargs = cbar_kwargs or {}
 
@@ -1504,7 +1507,7 @@ def ptable_hists(
     }
 
     plotter.add_child_plots(
-        ChildPlotters.histogram,
+        ChildPlotters.histogram,  # type: ignore[arg-type]
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
@@ -1580,7 +1583,6 @@ def ptable_scatters(
     # Re-initialize kwargs as empty dict if None
     plot_kwargs = plot_kwargs or {}
     ax_kwargs = ax_kwargs or {}
-
     child_kwargs = child_kwargs or {}
 
     symbol_kwargs = symbol_kwargs or {}
@@ -1662,7 +1664,6 @@ def ptable_lines(
     # Re-initialize kwargs as empty dict if None
     plot_kwargs = plot_kwargs or {}
     ax_kwargs = ax_kwargs or {}
-
     child_kwargs = child_kwargs or {}
 
     symbol_kwargs = symbol_kwargs or {}
