@@ -506,7 +506,7 @@ def test_ptable_heatmap_plotly_label_map(
 
 
 @pytest.mark.parametrize(
-    "data, symbol_pos, anno_kwds, hist_kwds",
+    "data, symbol_pos, anno_kwargs, hist_kwargs",
     [
         (pd.DataFrame({"H": [1, 2, 3], "He": [4, 5, 6]}), (0, 0), {}, None),
         (
@@ -532,11 +532,11 @@ def test_ptable_heatmap_plotly_label_map(
 def test_ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[int]],
     symbol_pos: tuple[int, int],
-    anno_kwds: dict[str, Any],
-    hist_kwds: dict[str, Any],
+    anno_kwargs: dict[str, Any],
+    hist_kwargs: dict[str, Any],
 ) -> None:
     fig = ptable_hists(
-        data, symbol_pos=symbol_pos, anno_kwds=anno_kwds, hist_kwds=hist_kwds
+        data, symbol_pos=symbol_pos, anno_kwargs=anno_kwargs, hist_kwargs=hist_kwargs
     )
     assert isinstance(fig, plt.Figure)
 

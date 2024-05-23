@@ -1373,19 +1373,19 @@ def ptable_hists(
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
-    x_range: tuple[float | None, float | None] | None = None,
+    x_range: tuple[float | None, float | None] | None = None,  # TODO:
     symbol_kwargs: Any = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     cbar_title: str = "Values",
-    cbar_title_kwds: dict[str, Any] | None = None,  # TODO: rename to kwargs
-    cbar_kwds: dict[str, Any] | None = None,  # TODO: rename to kwargs
+    cbar_title_kwargs: dict[str, Any] | None = None,
+    cbar_kwargs: dict[str, Any] | None = None,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     log: bool = False,  # TODO: pack this inside child_kwargs?
-    anno_kwds: dict[str, Any] | None = None,  # TODO: where should this go?
+    anno_kwargs: dict[str, Any] | None = None,  # TODO: where should this go?
     on_empty: Literal["show", "hide"] = "hide",
     color_elem_types: Literal["symbol", "background", "both", False]
-    | dict[str, str] = "background",
-    elem_type_legend: bool | dict[str, Any] = True,
+    | dict[str, str] = "background",  # TODO:
+    elem_type_legend: bool | dict[str, Any] = True,  # TODO:
     hide_f_block: bool | None = None,
 ) -> plt.Figure:
     """Plot histograms for each element laid out in a periodic table.
@@ -1398,7 +1398,7 @@ def ptable_hists(
         bins (int): Number of bins for the histograms. Defaults to 20.
         colormap (str): Matplotlib colormap name to use. Defaults to 'viridis'. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
-        hist_kwds (dict | Callable): Keywords passed to ax.hist() for each histogram.
+        hist_kwargs (dict | Callable): Keywords passed to ax.hist() for each histogram.
             If callable, it is called with the histogram values for each element and
             should return a dict of keyword arguments. Defaults to None.
         cbar_coords (tuple[float, float, float, float]): Color bar position and size:
@@ -1411,17 +1411,17 @@ def ptable_hists(
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
             symbols. Defaults to None.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
-        cbar_title_kwds (dict): Keyword arguments passed to cbar.ax.set_title().
+        cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
-        cbar_kwds (dict): Keyword arguments passed to fig.colorbar().
+        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
         symbol_pos (tuple[float, float]): Position of element symbols relative to the
             lower left corner of each tile. Defaults to (0.5, 0.8). (1, 1) is the upper
             right corner.
         log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
-        anno_kwds (dict): Keyword arguments passed to plt.annotate() for element
+        anno_kwargs (dict): Keyword arguments passed to plt.annotate() for element
             annotations. Defaults to None. Useful for adding e.g. number of data points
             in each histogram. For that, use
-            anno_kwds=lambda hist_vals: dict(text=len(hist_vals)).
+            anno_kwargs=lambda hist_vals: dict(text=len(hist_vals)).
             Recognized keys are text, xy, xycoords, fontsize, and any other
             plt.annotate() keywords.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
@@ -1440,13 +1440,8 @@ def ptable_hists(
     plot_kwargs = plot_kwargs or {}
     ax_kwargs = ax_kwargs or {}
     symbol_kwargs = symbol_kwargs or {}
-    cbar_title_kwargs = cbar_title_kwds or {}
-    cbar_kwargs = cbar_kwds or {}
-
-    # TODO: properly handle the following
-    # elem_class_colors = ELEM_CLASS_COLORS | (
-    #     color_elem_types if isinstance(color_elem_types, dict) else {}
-    # )
+    cbar_title_kwargs = cbar_title_kwargs or {}
+    cbar_kwargs = cbar_kwargs or {}
 
     # Initialize periodic table plotter
     plotter = PTableProjector(
