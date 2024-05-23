@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import itertools
 import warnings
 from collections.abc import Iterable, Sequence
@@ -664,6 +665,17 @@ class ChildPlotters:
         # Apply colors
         for col, patch in zip(cols, patches):
             plt.setp(patch, "facecolor", cmap(col))
+
+        # Set x-ticks to min/max only
+        ax.set_xticks([math.floor(np.min(data)), math.ceil(np.max(data))])
+
+        # Hide the right, left and top spines
+        ax.axis("on")
+        ax.spines[["right", "top", "left"]].set_visible(False)
+
+        # Adjust tick labels
+        # TODO: how to achieve this from external?
+        ax.tick_params(axis="both", which="major", labelsize=8)
 
 
 def ptable_heatmap(
