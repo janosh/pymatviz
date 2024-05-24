@@ -142,7 +142,6 @@ class TestPTableProjector:
         "data",
         [
             {"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]},
-            # pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6]}),  # TODO: allow this?
             pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
         ],
     )
@@ -557,7 +556,6 @@ def test_ptable_heatmap_plotly_label_map(
 @pytest.mark.parametrize(
     "data, symbol_pos, hist_kwargs",
     [
-        # (pd.DataFrame({"H": [1, 2, 3], "He": [4, 5, 6]}), (0, 0), None),  # TODO:
         ({"H": [1, 2, 3], "He": [4, 5, 6]}, (0, 0), None),
         (
             dict(H=[1, 2, 3], He=[4, 5, 6]),
