@@ -9,6 +9,7 @@ from collections.abc import Iterable, Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Literal, Union, get_args
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -428,12 +429,8 @@ class PTableProjector:
         default: str = "white",
     ) -> str:
         """Get element type based color."""
-        try:
-            elem_type = df_ptable.loc[elem_symbol, "type"]
-            return self.elem_type_colors.get(elem_type, default)
-
-        except KeyError:
-            return default
+        elem_type = df_ptable.loc[elem_symbol].get("type", None)
+        return self.elem_type_colors.get(elem_type, default)
 
     def add_child_plots(
         self,
@@ -600,21 +597,19 @@ class PTableProjector:
             if elem_class in self.elem_types
         ]
 
-        kwargs = (
-            dict(
-                loc="center left",
-                bbox_to_anchor=(0, -42),
-                ncol=6,
-                frameon=False,
-                fontsize=font_size,
-                handlelength=1,  # more compact legend
-            )
-            | kwargs
+        elem_type_legend_defaults = dict(
+            loc="center left",
+            bbox_to_anchor=(0, -42),
+            ncol=6,
+            frameon=False,
+            fontsize=font_size,
+            handlelength=1,  # more compact legend
         )
+        kwargs = elem_type_legend_defaults | kwargs
 
         plt.legend(handles=legend_elements, **kwargs)
 
-    def set_elem_background_color(self) -> None:
+    def set_elem_background_color(self, alpha: float = 0.1) -> None:
         """Set element tile background color by element type."""
         for element in Element:
             # Hide f-block
@@ -627,7 +622,8 @@ class PTableProjector:
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             # Set background color by element type
-            ax.set_facecolor(self.get_elem_type_color(symbol))
+            rgb = mpl.colors.to_rgb(self.get_elem_type_color(symbol))
+            ax.set_facecolor((*rgb, alpha))
 
 
 class ChildPlotters:
