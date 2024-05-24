@@ -413,7 +413,7 @@ class PTableProjector:
 
     @property
     def elem_colors(self) -> dict[str, Any]:
-        """Element-based colors, has higher priority than elem_type_colors."""
+        """Element-based colors."""
         return self._elem_colors
 
     @elem_colors.setter
@@ -615,10 +615,7 @@ class PTableProjector:
         plt.legend(handles=legend_elements, **kwargs)
 
     def set_elem_background_color(self) -> None:
-        """Set element tile background color.
-
-        TODO: clarify color source: element_type or element
-        """
+        """Set element tile background color by element type."""
         for element in Element:
             # Hide f-block
             if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
@@ -700,7 +697,7 @@ class ChildPlotters:
             ax.scatter(x=data[0], y=data[1], c=data[2], **child_kwargs)
 
         # Adjust tick labels
-        # TODO: how to achieve this from external?
+        # TODO: how to control this from external?
         ax.tick_params(axis="both", which="major", labelsize=8)
 
         # Hide the right and top spines
@@ -725,7 +722,7 @@ class ChildPlotters:
         ax.plot(data[0], data[1], **child_kwargs)
 
         # Adjust tick labels
-        # TODO: how to achieve this from external?
+        # TODO: how to control this from external?
         ax.tick_params(axis="both", which="major", labelsize=8)
 
         # Hide the right and top spines
