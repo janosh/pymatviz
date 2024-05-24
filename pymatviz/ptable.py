@@ -25,7 +25,7 @@ from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Final
+    from typing import Any, Callable
 
     import plotly.graph_objects as go
 
@@ -43,24 +43,6 @@ CountMode = Literal[
 ]
 
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
-
-ELEM_CLASS_COLORS: Final = {
-    "Diatomic Nonmetal": "green",
-    "Noble Gas": "purple",
-    "Alkali Metal": "red",
-    "Alkaline Earth Metal": "orange",
-    "Metalloid": "darkgreen",
-    "Polyatomic Nonmetal": "teal",
-    "Transition Metal": "blue",
-    "Post Transition Metal": "cyan",
-    "Lanthanide": "brown",
-    "Actinide": "gray",
-    "Nonmetal": "green",
-    "Halogen": "teal",
-    "Metal": "lightblue",
-    "Alkaline Metal": "magenta",
-    "Transactinide": "olive",
-}
 
 
 def count_elements(
@@ -271,9 +253,9 @@ class PTableProjector:
     """Project (nest) a custom plot into a periodic table.
 
     Scopes mentioned in this plotter:
-        plot: Refers to the global scope.
-        ax: Refers to the axis where child plotter would plot.
-        child: Refers to the child plotter itself, for example, ax.plot().
+        plot: Refers to the global Figure.
+        axis: Refers to the Axis where child plotter would plot.
+        child: Refers to the child plotter, for example, ax.plot().
     """
 
     def __init__(
@@ -283,6 +265,8 @@ class PTableProjector:
         colormap: str | Colormap = "viridis",
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | None = None,
+        elem_type_colors: dict[str, str] | None = None,
+        elem_colors: dict[str, Any] | None = None,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -294,11 +278,15 @@ class PTableProjector:
             colormap (str | Colormap): The colormap to use. Defaults to "viridis".
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
-            hide_f_block: Hide f-block (Lanthanum and Actinium series). Defaults to
-                None, meaning hide if no data is provided for f-block elements.
+            hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults
+                to None, meaning hide if no data provided for f-block elements.
+            elem_type_colors (dict | None): Element typed based colors.
+            elem_colors (dict | None): Element-specific colors.
         """
-        # Get colormap
+        # Set colors
         self.cmap: Colormap = colormap
+        self.elem_type_colors = elem_type_colors  # type: ignore[assignment]
+        self.elem_colors = elem_colors  # type: ignore[assignment]
 
         # Preprocess data
         self.data: pd.DataFrame = data
@@ -364,6 +352,51 @@ class PTableProjector:
         """Data min-max normalizer."""
         return self._norm
 
+    @property
+    def elem_type_colors(self) -> dict[str, str]:
+        """Element type based colors.
+
+        Example:
+            {
+                "Nonmetal": "green",
+                "Halogen": "teal",
+                "Metal": "lightblue",
+            }
+        """
+        return self._elem_type_colors
+
+    @elem_type_colors.setter
+    def elem_type_colors(self, elem_type_colors: dict[str, str] | None) -> None:
+        default_elem_type_colors: dict[str, str] = {
+            "Diatomic Nonmetal": "green",
+            "Noble Gas": "purple",
+            "Alkali Metal": "red",
+            "Alkaline Earth Metal": "orange",
+            "Metalloid": "darkgreen",
+            "Polyatomic Nonmetal": "teal",
+            "Transition Metal": "blue",
+            "Post Transition Metal": "cyan",
+            "Lanthanide": "brown",
+            "Actinide": "gray",
+            "Nonmetal": "green",
+            "Halogen": "teal",
+            "Metal": "lightblue",
+            "Alkaline Metal": "magenta",
+            "Transactinide": "olive",
+        }
+
+        self._elem_type_colors = default_elem_type_colors | (elem_type_colors or {})
+
+    @property
+    def elem_colors(self) -> dict[str, Any]:
+        """Element-based colors, has higher priority than elem_type_colors."""
+        return self._elem_colors
+
+    @elem_colors.setter
+    def elem_colors(self, elem_colors: dict[str, Any] | None) -> None:
+        # TODO: set default colors
+        self._elem_colors = elem_colors or {}
+
     def add_child_plots(
         self,
         child_plotter: Callable[[plt.axes, Any], None],
@@ -408,12 +441,11 @@ class PTableProjector:
             if ax_kwargs:
                 ax.set(**ax_kwargs)
 
-    def add_ele_symbols(
+    def add_elem_symbols(
         self,
         text: str | Callable[[Element], str] = lambda elem: elem.symbol,
         pos: tuple[float, float] = (0.5, 0.5),
         *,
-        colors: dict | None = None,
         kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add element symbols for each tile.
@@ -424,7 +456,6 @@ class PTableProjector:
                 string. If a string, it can contain a format
                 specifier for an `elem` variable which will be replaced by the element.
             pos: The position of the text relative to the axes.
-            colors (dict | None): Symbol colors.
             kwargs: Additional keyword arguments to pass to the `ax.text`.
         """
         # Update symbol args
@@ -488,10 +519,7 @@ class PTableProjector:
 
         cbar_ax.set_title(**title_kwargs)
 
-    def set_ele_background_color(
-        self,
-        elem_class_colors: dict,
-    ) -> None:
+    def set_ele_background_color(self) -> None:
         """Set element tile background color."""
         for element in Element:
             symbol = element.symbol
@@ -500,21 +528,18 @@ class PTableProjector:
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             # Set background color
-            bg_color = elem_class_colors.get(elem_class, "white")
+            bg_color = self.elem_type_colors.get(elem_class, "white")
             ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
 
     def add_element_type_legend(
         self,
-        elem_class_colors: dict[str, str],
         legend_kwargs: dict[str, Any],
     ) -> None:
         """Add a legend to show the colors based on element types.
 
         Args:
-            elem_class_colors (dict[str, str]): Map from element
-                types to colors. E.g. {"Alkali Metal": "red", "Noble Gas": "blue"}.
-            legend_kwargs (dict): Keyword arguments passed to plt.legend() for customizing
-                legend appearance.
+            legend_kwargs (dict): Keyword arguments passed to plt.legend() for
+                customizing legend appearance.
         """
         # Check present element types
         elems_with_data = (
@@ -532,7 +557,7 @@ class PTableProjector:
                 markerfacecolor=color,
                 markersize=1.2 * font_size,
             )
-            for elem_class, color in elem_class_colors.items()
+            for elem_class, color in self.elem_type_colors.items()
             if elem_class in visible_elem_types
         ]
 
@@ -1104,7 +1129,7 @@ def ptable_heatmap_splits(
     )
 
     # Add element symbols
-    plotter.add_ele_symbols(
+    plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
@@ -1523,7 +1548,7 @@ def ptable_hists(
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
-        color_elem_types ("symbol" | "background" | "both" | False): Whether to
+        color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
         elem_type_colors (dict | None): dict to map element types to colors.
@@ -1546,16 +1571,13 @@ def ptable_hists(
     cbar_title_kwargs = cbar_title_kwargs or {}
     cbar_kwargs = cbar_kwargs or {}
 
-    # Get element type based colors
-    # NOTE: needed by both legend maker and element color setter
-    elem_type_colors = ELEM_CLASS_COLORS | (elem_type_colors or {})
-
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
         hide_f_block=hide_f_block,
+        elem_type_colors=elem_type_colors,
     )
 
     # Call child plotter: histogram
@@ -1575,7 +1597,7 @@ def ptable_hists(
     )
 
     # Add element symbols
-    plotter.add_ele_symbols(
+    plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
@@ -1583,7 +1605,7 @@ def ptable_hists(
 
     # Color elements
     if color_elem_strategy != "off":
-        plotter.set_ele_background_color(elem_type_colors)
+        plotter.set_ele_background_color()
 
     if colormap is not None:
         # Add colorbar
@@ -1599,7 +1621,6 @@ def ptable_hists(
             elem_type_legend_kwargs = elem_type_legend_kwargs or {}
 
             plotter.add_element_type_legend(
-                elem_class_colors=elem_type_colors,
                 legend_kwargs=elem_type_legend_kwargs,
             )
 
@@ -1680,7 +1701,7 @@ def ptable_scatters(
     )
 
     # Add element symbols
-    plotter.add_ele_symbols(
+    plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
@@ -1761,7 +1782,7 @@ def ptable_lines(
     )
 
     # Add element symbols
-    plotter.add_ele_symbols(
+    plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,

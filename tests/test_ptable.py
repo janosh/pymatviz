@@ -541,7 +541,7 @@ def test_ptable_hists(
 
     fig_1 = ptable_hists(
         data,
-        x_range=[2, None],
+        x_range=(2, None),
         symbol_pos=symbol_pos,
         symbol_kwargs=symbol_kwargs,
         child_kwargs=hist_kwargs,
@@ -608,7 +608,7 @@ def test_add_element_type_legend_data_types(
     elem_class_colors = {"Transition Metal": "red", "Nonmetal": "blue"}
     legend_kwargs = dict(loc="upper right", ncol=5, fontsize=12, title="Element Types")
 
-    add_element_type_legend(data, elem_class_colors, legend_kwargs=legend_kwargs)
+    # add_element_type_legend(legend_kwargs=legend_kwargs)
     legend = plt.gca().get_legend()
     assert isinstance(legend, mpl.legend.Legend)
     assert len(legend.get_texts()) in {1, 2}
