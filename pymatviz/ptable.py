@@ -9,7 +9,6 @@ from collections.abc import Iterable, Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Literal, Union, get_args
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -552,11 +551,12 @@ class PTableProjector:
         """Add a legend to show the colors based on element types.
 
         Args:
-            legend_kwargs (dict): Keyword arguments passed to plt.legend() for
-                customizing legend appearance.
+            legend_kwargs (dict): Keyword arguments passed to plt.legend()
+                for customizing legend appearance.
         """
         font_size = 10
 
+        # Get present elements
         legend_elements = [
             plt.Line2D(
                 *([0], [0]),
@@ -587,14 +587,20 @@ class PTableProjector:
     def set_elem_background_color(self) -> None:
         """Set element tile background color."""
         for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
+            # Get element axis
             symbol = element.symbol
-            elem_class = df_ptable.loc[symbol, "type"]
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
-            # Set background color
-            bg_color = self.elem_type_colors.get(elem_class, "white")
-            ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
+            # Set background color by element type
+            # TODO: clarify color priority: element_type vs element
+            elem_type = df_ptable.loc[symbol, "type"]
+            color = self.elem_type_colors.get(elem_type, "white")
+            ax.set_facecolor(color)
 
 
 class ChildPlotters:
@@ -1619,6 +1625,7 @@ def ptable_hists(
     )
 
     # Add element symbols
+    # TODO: apply color_elem_strategy to symbols
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,

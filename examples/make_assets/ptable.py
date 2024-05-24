@@ -84,7 +84,8 @@ fig = ptable_hists(
     colormap="coolwarm",
     cbar_title="Periodic Table Histograms",
     cbar_axis="x",
-    color_elem_strategy="off",
+    color_elem_strategy="background",
+    add_elem_type_legend=True,
     # x_range=(0, None),
 )
 save_and_compress_svg(fig, "ptable-hists")
