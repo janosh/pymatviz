@@ -252,6 +252,15 @@ def handle_missing_and_anomaly(
 class PTableProjector:
     """Project (nest) a custom plot into a periodic table.
 
+    Attributes:
+        cmap (Colormap | None): Colormap.
+        data (pd.DataFrame): Data for plotting.
+        norm (Normalize): Data min-max normalizer.
+        hide_f_block (bool): Whether to hide f-block.
+        elem_types (set[str]): Types of elements present.
+        elem_type_colors (dict[str, str]): Element typed based colors.
+        elem_colors (dict): Element based colors.
+
     Scopes mentioned in this plotter:
         plot: Refers to the global Figure.
         axis: Refers to the Axis where child plotter would plot.
@@ -411,6 +420,7 @@ class PTableProjector:
     @elem_colors.setter
     def elem_colors(self, elem_colors: dict[str, Any] | None) -> None:
         # TODO: set default colors
+        # TODO: what is the type of values?
         self._elem_colors = elem_colors or {}
 
     def add_child_plots(
