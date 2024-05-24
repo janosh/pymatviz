@@ -348,6 +348,7 @@ class PTableProjector:
 
     @hide_f_block.setter
     def hide_f_block(self, hide_f_block: bool | None) -> None:
+        """If hide_f_block is None, would detect if data is present."""
         if hide_f_block is None:
             self._hide_f_block = bool(
                 {
