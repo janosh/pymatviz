@@ -354,7 +354,7 @@ class PTableProjector:
                 {
                     atom_num
                     for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
-                    # check if data is present for f-block elements
+                    # Check if data is present for f-block elements
                     if (elem := Element.from_Z(atom_num).symbol) in self.data.index
                     and len(self.data.loc[elem, Key.heat_val]) > 0
                 }
@@ -1074,35 +1074,40 @@ def ptable_heatmap_splits(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
-        colormap (str): Matplotlib colormap name to use.
+
         start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to
                 the x-axis). Defaults to 135 degrees.
-        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
-            Use to set x/y labels, limits, etc. Defaults to None. Example:
-            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
-            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
-            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
-        symbol_text (str | Callable[[Element], str]): Text to display for
-            each element symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
-            element symbols. Defaults to None.
-        symbol_pos (tuple[float, float]): Position of element symbols
-            relative to the lower left corner of each tile.
-            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        cbar_coords (tuple[float, float, float, float]): Colorbar
-            position and size: [x, y, width, height] anchored at lower left
-            corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
-        cbar_title (str): Colorbar title. Defaults to "Values".
-        cbar_title_kwargs (dict): Keyword arguments passed to
-            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
-        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
+
+        colormap (str): Matplotlib colormap name to use.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
+
+        ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
+            Use to set x/y labels, limits, etc. Defaults to None. Example:
+            dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
+            ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+
+        symbol_text (str | Callable[[Element], str]): Text to display for
+            each element symbol. Defaults to lambda elem: elem.symbol.
+        symbol_pos (tuple[float, float]): Position of element symbols
+            relative to the lower left corner of each tile.
+            Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
+
+        cbar_title (str): Colorbar title. Defaults to "Values".
+        cbar_title_kwargs (dict): Keyword arguments passed to
+            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
+        cbar_coords (tuple[float, float, float, float]): Colorbar
+            position and size: [x, y, width, height] anchored at lower left
+            corner of the bar. Defaults to (0.25, 0.77, 0.35, 0.02).
+        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
     Notes:
         Default figsize is set to (0.75 * n_groups, 0.75 * n_periods).
@@ -1524,41 +1529,47 @@ def ptable_hists(
             symbols to histogram values. E.g. if dict, {"Fe": [1, 2, 3], "O": [4, 5]}.
             If pd.Series, index is element symbols and values lists. If pd.DataFrame,
             column names are element symbols histograms are plotted from each column.
+
         bins (int): Number of bins for the histograms. Defaults to 20.
+        x_range (tuple[float | None, float | None]): x-axis range for all histograms.
+            Defaults to None.
+        log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
+
         colormap (str): Matplotlib colormap name to use. Defaults to 'viridis'. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
-        child_kwargs (dict | Callable): Keywords passed to ax.hist() for each histogram.
-            If callable, it is called with the histogram values for each element and
-            should return a dict of keyword arguments. Defaults to None.
-        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
-            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
-            (0.25, 0.77, 0.35, 0.02).
+
         ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
-        x_range (tuple[float | None, float | None]): x-axis range for all histograms.
-            Defaults to None.
-        symbol_text (str | Callable[[Element], str]): Text to display for each element
-            symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
-            symbols. Defaults to None.
+        child_kwargs (dict | Callable): Keywords passed to ax.hist() for each histogram.
+            If callable, it is called with the histogram values for each element and
+            should return a dict of keyword arguments. Defaults to None.
+
         cbar_axis (Literal["x", "y"]): The axis colormap would be based on.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
+        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
+            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
+            (0.25, 0.77, 0.35, 0.02).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
+
         symbol_pos (tuple[float, float]): Position of element symbols relative to the
             lower left corner of each tile. Defaults to (0.5, 0.8). (1, 1) is the upper
             right corner.
-        log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
-        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
-            data. Defaults to "hide".
-        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
-            None, meaning hide if no data is provided for f-block elements.
+        symbol_text (str | Callable[[Element], str]): Text to display for each element
+            symbol. Defaults to lambda elem: elem.symbol.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
+            symbols. Defaults to None.
+
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -1651,9 +1662,9 @@ def ptable_scatters(
     ax_kwargs: dict[str, Any] | None = None,
     child_kwargs: dict[str, Any] | None = None,
     # Symbol
-    symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
+    symbol_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
     """Make scatter plots for each element, nested inside a periodic table.
 
@@ -1665,25 +1676,28 @@ def ptable_scatters(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
+
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
+
         ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+        child_kwargs: Arguments to pass to the child plotter call.
+
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
-            element symbols. Defaults to None.
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
-            data. Defaults to "hide".
-        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
-            None, meaning hide if no data is provided for f-block elements.
-        child_kwargs: Arguments to pass to the child plotter call.
-        plot_kwargs (dict): Additional keyword arguments to
-                pass to the plt.subplots function call.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
 
     TODO: allow colormap with 3rd data dimension
     """
@@ -1748,25 +1762,28 @@ def ptable_lines(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
+
+        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+            data. Defaults to "hide".
+        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
+            None, meaning hide if no data is provided for f-block elements.
+        plot_kwargs (dict): Additional keyword arguments to
+                pass to the plt.subplots function call.
+
         ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
+        child_kwargs: Arguments to pass to the child plotter call.
+
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
-            element symbols. Defaults to None.
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
-            data. Defaults to "hide".
-        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
-            None, meaning hide if no data is provided for f-block elements.
-        child_kwargs: Arguments to pass to the child plotter call.
-        plot_kwargs (dict): Additional keyword arguments to
-                pass to the plt.subplots function call.
+        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+            element symbols. Defaults to None.
     """
     # Re-initialize kwargs as empty dict if None
     plot_kwargs = plot_kwargs or {}
