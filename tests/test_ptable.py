@@ -562,6 +562,7 @@ def test_ptable_hists(
     )
     assert isinstance(fig_0, plt.Figure)
 
+    # Test partial x_range
     fig_1 = ptable_hists(
         data,
         x_range=(2, None),

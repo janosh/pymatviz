@@ -535,19 +535,7 @@ class PTableProjector:
 
         cbar_ax.set_title(**title_kwargs)
 
-    def set_ele_background_color(self) -> None:
-        """Set element tile background color."""
-        for element in Element:
-            symbol = element.symbol
-            elem_class = df_ptable.loc[symbol, "type"]
-            row, column = df_ptable.loc[symbol, ["row", "column"]]
-            ax: plt.Axes = self.axes[row - 1][column - 1]
-
-            # Set background color
-            bg_color = self.elem_type_colors.get(elem_class, "white")
-            ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
-
-    def add_element_type_legend(
+    def add_elem_type_legend(
         self,
         legend_kwargs: dict[str, Any],
     ) -> None:
@@ -585,6 +573,18 @@ class PTableProjector:
         )
 
         plt.legend(handles=legend_elements, **legend_kwargs)
+
+    def set_elem_background_color(self) -> None:
+        """Set element tile background color."""
+        for element in Element:
+            symbol = element.symbol
+            elem_class = df_ptable.loc[symbol, "type"]
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            # Set background color
+            bg_color = self.elem_type_colors.get(elem_class, "white")
+            ax.set_facecolor((*mpl.colors.to_rgb(bg_color), 0.07))
 
 
 class ChildPlotters:
@@ -1627,7 +1627,7 @@ def ptable_hists(
 
     # Color elements
     if color_elem_strategy != "off":
-        plotter.set_ele_background_color()
+        plotter.set_elem_background_color()
 
     if colormap is not None:
         # Add colorbar
@@ -1642,7 +1642,7 @@ def ptable_hists(
         if add_elem_type_legend:
             elem_type_legend_kwargs = elem_type_legend_kwargs or {}
 
-            plotter.add_element_type_legend(
+            plotter.add_elem_type_legend(
                 legend_kwargs=elem_type_legend_kwargs,
             )
 
