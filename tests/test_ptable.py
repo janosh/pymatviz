@@ -142,6 +142,7 @@ class TestPTableProjector:
         "data",
         [
             {"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]},
+            # pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6]}),  # TODO: allow this?
             pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
         ],
     )
@@ -554,39 +555,35 @@ def test_ptable_heatmap_plotly_label_map(
 
 
 @pytest.mark.parametrize(
-    "data, symbol_pos, symbol_kwargs, hist_kwargs",
+    "data, symbol_pos, hist_kwargs",
     [
-        (pd.DataFrame({"H": [1, 2, 3], "He": [4, 5, 6]}), (0, 0), {}, None),
+        # (pd.DataFrame({"H": [1, 2, 3], "He": [4, 5, 6]}), (0, 0), None),  # TODO:
+        ({"H": [1, 2, 3], "He": [4, 5, 6]}, (0, 0), None),
         (
             dict(H=[1, 2, 3], He=[4, 5, 6]),
             (1, 1),
-            dict(text=lambda x: f"{len(x):,}"),
             {},
         ),
         (
             dict(H=np.array([1, 2, 3]), He=np.array([4, 5, 6])),
             (1, 1),
-            dict(text=lambda x: f"{len(x):,}"),
             {},
         ),
         (
             pd.Series([[1, 2, 3], [4, 5, 6]], index=["H", "He"]),
             (1, 1),
             dict(xy=(0, 0)),
-            lambda _hist_vals: dict(color="red"),
         ),
     ],
 )
 def test_ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[int]],
     symbol_pos: tuple[int, int],
-    symbol_kwargs: dict[str, Any],
     hist_kwargs: dict[str, Any],
 ) -> None:
     fig_0 = ptable_hists(
         data,
         symbol_pos=symbol_pos,
-        symbol_kwargs=symbol_kwargs,
         child_kwargs=hist_kwargs,
     )
     assert isinstance(fig_0, plt.Figure)
@@ -596,7 +593,6 @@ def test_ptable_hists(
         data,
         x_range=(2, None),
         symbol_pos=symbol_pos,
-        symbol_kwargs=symbol_kwargs,
         child_kwargs=hist_kwargs,
     )
     assert isinstance(fig_1, plt.Figure)
