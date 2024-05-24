@@ -422,6 +422,19 @@ class PTableProjector:
         # TODO: what is the type of values (str or what)?
         self._elem_colors = elem_colors or {}
 
+    def get_elem_type_color(
+        self,
+        elem_symbol: str,
+        default: str = "white",
+    ) -> str:
+        """Get element type based color."""
+        try:
+            elem_type = df_ptable.loc[elem_symbol, "type"]
+            return self.elem_type_colors.get(elem_type, default)
+
+        except KeyError:
+            return default
+
     def add_child_plots(
         self,
         child_plotter: Callable[[plt.axes, Any], None],
@@ -473,19 +486,21 @@ class PTableProjector:
     def add_elem_symbols(
         self,
         text: str | Callable[[Element], str] = lambda elem: elem.symbol,
-        pos: tuple[float, float] = (0.5, 0.5),
         *,
+        pos: tuple[float, float] = (0.5, 0.5),
+        coloring: bool = False,
         kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add element symbols for each tile.
 
         Args:
             text (str | Callable): The text to add to the tile.
-                If a callable, it should accept a pymatgen Element object and return a
+                If a callable, it should accept a pymatgen Element and return a
                 string. If a string, it can contain a format
                 specifier for an `elem` variable which will be replaced by the element.
-            pos: The position of the text relative to the axes.
-            kwargs: Additional keyword arguments to pass to the `ax.text`.
+            pos (tuple): The position of the text relative to the axes.
+            coloring (bool): Whether to color symbol by element types.
+            kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
         """
         # Update symbol kwargs
         kwargs = kwargs or {}
@@ -502,9 +517,16 @@ class PTableProjector:
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
-            anno = text(element) if callable(text) else text.format(elem=element)
+            content = text(element) if callable(text) else text.format(elem=element)
+
             ax.text(
-                *pos, anno, ha="center", va="center", transform=ax.transAxes, **kwargs
+                *pos,
+                content,
+                color=self.elem_type_colors[symbol] if coloring else "black",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                **kwargs,
             )
 
     def add_colorbar(
@@ -591,7 +613,10 @@ class PTableProjector:
         plt.legend(handles=legend_elements, **kwargs)
 
     def set_elem_background_color(self) -> None:
-        """Set element tile background color."""
+        """Set element tile background color.
+
+        TODO: clarify color source: element_type or element
+        """
         for element in Element:
             # Hide f-block
             if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
@@ -603,10 +628,7 @@ class PTableProjector:
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             # Set background color by element type
-            # TODO: clarify color priority: element_type vs element
-            elem_type = df_ptable.loc[symbol, "type"]
-            color = self.elem_type_colors.get(elem_type, "white")
-            ax.set_facecolor(color)
+            ax.set_facecolor(self.get_elem_type_color(symbol))
 
 
 class ChildPlotters:
@@ -1624,10 +1646,10 @@ def ptable_hists(
     )
 
     # Add element symbols
-    # TODO: apply color_elem_strategy to symbols
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
+        coloring=color_elem_strategy in {"both", "symbol"},
         kwargs=symbol_kwargs,
     )
 
