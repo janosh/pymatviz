@@ -420,7 +420,7 @@ class PTableProjector:
     @elem_colors.setter
     def elem_colors(self, elem_colors: dict[str, Any] | None) -> None:
         # TODO: set default colors
-        # TODO: what is the type of values?
+        # TODO: what is the type of values (str or what)?
         self._elem_colors = elem_colors or {}
 
     def add_child_plots(
@@ -486,7 +486,7 @@ class PTableProjector:
         """
         # Update symbol args
         kwargs = kwargs or {}
-        kwargs.setdefault("fontsize", 18)
+        kwargs.setdefault("fontsize", 12)
 
         # Add symbol for each element
         for element in Element:
@@ -1593,21 +1593,11 @@ def ptable_hists(
     Returns:
         plt.Figure: periodic table with a histogram in each element tile.
     """
-    # Re-initialize kwargs as empty dict if None
-    plot_kwargs = plot_kwargs or {}
-    ax_kwargs = ax_kwargs or {}
-
-    symbol_kwargs = symbol_kwargs or {}
-    symbol_kwargs.setdefault("fontsize", 12)
-
-    cbar_title_kwargs = cbar_title_kwargs or {}
-    cbar_kwargs = cbar_kwargs or {}
-
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
         colormap=colormap,
-        plot_kwargs=plot_kwargs,
+        plot_kwargs=plot_kwargs or {},
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
@@ -1624,7 +1614,7 @@ def ptable_hists(
     plotter.add_child_plots(
         ChildPlotters.histogram,  # type: ignore[arg-type]
         child_kwargs=child_kwargs,
-        ax_kwargs=ax_kwargs,
+        ax_kwargs=ax_kwargs or {},
         on_empty=on_empty,
     )
 
@@ -1632,29 +1622,27 @@ def ptable_hists(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        kwargs=symbol_kwargs,
+        kwargs=symbol_kwargs or {},
     )
 
-    # Color elements
-    if color_elem_strategy != "off":
+    # Color element tile background
+    if color_elem_strategy in {"both", "background"}:
         plotter.set_elem_background_color()
 
+    # Add colorbar
     if colormap is not None:
-        # Add colorbar
         plotter.add_colorbar(
             title=cbar_title,
             coords=cbar_coords,
-            cbar_kwargs=cbar_kwargs,
-            title_kwargs=cbar_title_kwargs,
+            cbar_kwargs=cbar_kwargs or {},
+            title_kwargs=cbar_title_kwargs or {},
         )
 
-        # Add element type legend
-        if add_elem_type_legend:
-            elem_type_legend_kwargs = elem_type_legend_kwargs or {}
-
-            plotter.add_elem_type_legend(
-                legend_kwargs=elem_type_legend_kwargs,
-            )
+    # Add element type legend
+    if add_elem_type_legend:
+        plotter.add_elem_type_legend(
+            legend_kwargs=elem_type_legend_kwargs or {},
+        )
 
     return plotter.fig
 
@@ -1711,27 +1699,19 @@ def ptable_scatters(
 
     TODO: allow colormap with 3rd data dimension
     """
-    # Re-initialize kwargs as empty dict if None
-    plot_kwargs = plot_kwargs or {}
-    ax_kwargs = ax_kwargs or {}
-    child_kwargs = child_kwargs or {}
-
-    symbol_kwargs = symbol_kwargs or {}
-    symbol_kwargs.setdefault("fontsize", 12)
-
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
         colormap=None,
-        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs or {},  # type: ignore[arg-type]
         hide_f_block=hide_f_block,
     )
 
     # Call child plotter: Scatter
     plotter.add_child_plots(
         ChildPlotters.scatter,
-        child_kwargs=child_kwargs,
-        ax_kwargs=ax_kwargs,
+        child_kwargs=child_kwargs or {},
+        ax_kwargs=ax_kwargs or {},
         on_empty=on_empty,
     )
 
@@ -1739,7 +1719,7 @@ def ptable_scatters(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        kwargs=symbol_kwargs,
+        kwargs=symbol_kwargs or {},
     )
 
     return plotter.fig
@@ -1795,27 +1775,19 @@ def ptable_lines(
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
     """
-    # Re-initialize kwargs as empty dict if None
-    plot_kwargs = plot_kwargs or {}
-    ax_kwargs = ax_kwargs or {}
-    child_kwargs = child_kwargs or {}
-
-    symbol_kwargs = symbol_kwargs or {}
-    symbol_kwargs.setdefault("fontsize", 12)
-
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
         colormap=None,
-        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs or {},  # type: ignore[arg-type]
         hide_f_block=hide_f_block,
     )
 
     # Call child plotter: line
     plotter.add_child_plots(
         ChildPlotters.line,
-        child_kwargs=child_kwargs,
-        ax_kwargs=ax_kwargs,
+        child_kwargs=child_kwargs or {},
+        ax_kwargs=ax_kwargs or {},
         on_empty=on_empty,
     )
 
@@ -1823,7 +1795,7 @@ def ptable_lines(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        kwargs=symbol_kwargs,
+        kwargs=symbol_kwargs or {},
     )
 
     return plotter.fig
