@@ -128,16 +128,45 @@ class TestPTableProjector:
         "Al": {-1, 2.3},  # mixed int/float set
     }
 
-    projector = PTableProjector(data=test_dict)
-
     def test_property_elem_types(self) -> None:
-        assert self.projector.elem_types == {
+        projector = PTableProjector(data=self.test_dict)
+        assert projector.elem_types == {
             "Noble Gas",
             "Metal",
             "Alkaline Earth Metal",
             "Nonmetal",
             "Alkali Metal",
         }
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            {"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]},
+            pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
+        ],
+    )
+    def test_add_element_type_legend_data_types(
+        self,
+        data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    ) -> None:
+        elem_type_colors = {"Transition Metal": "red", "Nonmetal": "blue"}
+
+        projector = PTableProjector(data=data, elem_type_colors=elem_type_colors)
+
+        legend_kwargs = dict(
+            loc="upper right", ncol=5, fontsize=12, title="Element Types"
+        )
+        projector.add_elem_type_legend(kwargs=legend_kwargs)
+
+        legend = plt.gca().get_legend()
+        assert isinstance(legend, mpl.legend.Legend)
+        assert len(legend.get_texts()) in {1, 2}
+        legend_labels = {text.get_text() for text in legend.get_texts()}
+        assert legend_labels <= {"Transition Metal", "Alkali Metal", "Nonmetal"}
+        assert legend._ncols == 5  # noqa: SLF001
+
+        assert legend.get_title().get_text() == "Element Types"
+        assert legend.get_texts()[0].get_fontsize() == 12
 
 
 class TestMissingAnomalyHandle:
@@ -615,30 +644,3 @@ def test_ptable_scatters_colored() -> None:
     )
     assert isinstance(fig, plt.Figure)
     assert len(fig.axes) == 180
-
-
-@pytest.mark.skip()  # TODO: fix unit test for this
-@pytest.mark.parametrize(
-    "data",
-    [
-        {"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]},
-        pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6]}),
-        pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
-    ],
-)
-def test_add_element_type_legend_data_types(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
-) -> None:
-    elem_class_colors = {"Transition Metal": "red", "Nonmetal": "blue"}
-    legend_kwargs = dict(loc="upper right", ncol=5, fontsize=12, title="Element Types")
-
-    # add_element_type_legend(legend_kwargs=legend_kwargs)
-    legend = plt.gca().get_legend()
-    assert isinstance(legend, mpl.legend.Legend)
-    assert len(legend.get_texts()) in {1, 2}
-    legend_labels = {text.get_text() for text in legend.get_texts()}
-    assert legend_labels <= {"Transition Metal", "Alkali Metal", "Nonmetal"}
-    assert legend._ncols == 5  # noqa: SLF001
-
-    assert legend.get_title().get_text() == "Element Types"
-    assert legend.get_texts()[0].get_fontsize() == 12
