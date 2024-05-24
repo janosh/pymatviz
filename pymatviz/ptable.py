@@ -353,6 +353,11 @@ class PTableProjector:
         return self._norm
 
     @property
+    def elem_types(self) -> set[str]:
+        """Element types present in data."""
+        return set(df_ptable.loc[self.data.index, "type"])
+
+    @property
     def elem_type_colors(self) -> dict[str, str]:
         """Element type based colors.
 
@@ -541,13 +546,8 @@ class PTableProjector:
             legend_kwargs (dict): Keyword arguments passed to plt.legend() for
                 customizing legend appearance.
         """
-        # Check present element types
-        elems_with_data = (
-            self.data.index if isinstance(self.data, pd.Series) else list(self.data)
-        )
-        visible_elem_types = df_ptable.loc[elems_with_data, "type"].unique()
-
         font_size = 10
+
         legend_elements = [
             plt.Line2D(
                 *([0], [0]),
@@ -558,7 +558,7 @@ class PTableProjector:
                 markersize=1.2 * font_size,
             )
             for elem_class, color in self.elem_type_colors.items()
-            if elem_class in visible_elem_types
+            if elem_class in self.elem_types
         ]
 
         legend_kwargs = (

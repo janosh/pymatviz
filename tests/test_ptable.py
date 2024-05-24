@@ -25,7 +25,7 @@ from pymatviz import (
     ptable_scatters,
 )
 from pymatviz.enums import Key
-from pymatviz.ptable import SupportedDataType, data_preprocessor
+from pymatviz.ptable import PTableProjector, SupportedDataType, data_preprocessor
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
@@ -118,7 +118,30 @@ class TestDataPreprocessor:
         assert output_df_1.attrs["vmax"] == 9
 
 
+class TestPTableProjector:
+    test_dict: ClassVar = {
+        "H": 1,  # int
+        "He": [2.0, 4.0],  # float list
+        "Li": np.array([6.0, 8.0]),  # float array
+        "Na": 11.0,  # float
+        "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
+        "Al": {-1, 2.3},  # mixed int/float set
+    }
+
+    projector = PTableProjector(data=test_dict)
+
+    def test_property_elem_types(self) -> None:
+        assert self.projector.elem_types == {
+            "Noble Gas",
+            "Metal",
+            "Alkaline Earth Metal",
+            "Nonmetal",
+            "Alkali Metal",
+        }
+
+
 class TestMissingAnomalyHandle:
+    # TODO: finish this unit test
     def test_handle_missing(self) -> None:
         pass
 
