@@ -522,7 +522,7 @@ class PTableProjector:
             ax.text(
                 *pos,
                 content,
-                color=self.elem_type_colors[symbol] if coloring else "black",
+                color=self.get_elem_type_color(symbol, "black"),
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
