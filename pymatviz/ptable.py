@@ -425,9 +425,9 @@ class PTableProjector:
     def add_child_plots(
         self,
         child_plotter: Callable[[plt.axes, Any], None],
-        child_kwargs: dict[str, Any],
         *,
-        ax_kwargs: dict[str, Any],
+        child_kwargs: dict[str, Any] | None = None,
+        ax_kwargs: dict[str, Any] | None = None,
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
         """Add custom child plots to the periodic table grid.
@@ -438,6 +438,10 @@ class PTableProjector:
             ax_kwargs: Keyword arguments to pass to ax.set().
             on_empty: Whether to "show" or "hide" tiles for elements without data.
         """
+        # Update kwargs
+        child_kwargs = child_kwargs or {}
+        ax_kwargs = ax_kwargs or {}
+
         for element in Element:
             # Hide f-block
             if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
@@ -483,7 +487,7 @@ class PTableProjector:
             pos: The position of the text relative to the axes.
             kwargs: Additional keyword arguments to pass to the `ax.text`.
         """
-        # Update symbol args
+        # Update symbol kwargs
         kwargs = kwargs or {}
         kwargs.setdefault("fontsize", 12)
 
@@ -520,12 +524,17 @@ class PTableProjector:
             cbar_kwargs: Additional keyword arguments to pass to fig.colorbar().
             title_kwargs: Additional keyword arguments for the colorbar title.
         """
-        # Update colorbar args
+        # Update kwargs
         cbar_kwargs = {"orientation": "horizontal"} | (cbar_kwargs or {})
+
+        title_kwargs = title_kwargs or {}
+        title_kwargs.setdefault("fontsize", 12)
+        title_kwargs.setdefault("pad", 10)
+        title_kwargs["label"] = title
 
         # Check colormap
         if self.cmap is None:
-            raise ValueError("Cannot add colorbar without colormap.")
+            raise ValueError("Cannot add colorbar without a colormap.")
 
         # Add colorbar
         cbar_ax = self.fig.add_axes(coords)
@@ -537,23 +546,20 @@ class PTableProjector:
         )
 
         # Set colorbar title
-        title_kwargs = title_kwargs or {}
-        title_kwargs.setdefault("fontsize", 12)
-        title_kwargs.setdefault("pad", 10)
-        title_kwargs["label"] = title
-
         cbar_ax.set_title(**title_kwargs)
 
     def add_elem_type_legend(
         self,
-        legend_kwargs: dict[str, Any],
+        kwargs: dict[str, Any] | None,
     ) -> None:
         """Add a legend to show the colors based on element types.
 
         Args:
-            legend_kwargs (dict): Keyword arguments passed to plt.legend()
-                for customizing legend appearance.
+            kwargs (dict | None): Keyword arguments passed to
+                plt.legend() for customizing legend appearance.
         """
+        kwargs = kwargs or {}
+
         font_size = 10
 
         # Get present elements
@@ -570,7 +576,7 @@ class PTableProjector:
             if elem_class in self.elem_types
         ]
 
-        legend_kwargs = (
+        kwargs = (
             dict(
                 loc="center left",
                 bbox_to_anchor=(0, -42),
@@ -579,10 +585,10 @@ class PTableProjector:
                 fontsize=font_size,
                 handlelength=1,  # more compact legend
             )
-            | legend_kwargs
+            | kwargs
         )
 
-        plt.legend(handles=legend_elements, **legend_kwargs)
+        plt.legend(handles=legend_elements, **kwargs)
 
     def set_elem_background_color(self) -> None:
         """Set element tile background color."""
@@ -1131,13 +1137,6 @@ def ptable_heatmap_splits(
     Returns:
         plt.Figure: periodic table with a subplot in each element tile.
     """
-    # Re-initialize kwargs as empty dict if None
-    plot_kwargs = plot_kwargs or {}
-    ax_kwargs = ax_kwargs or {}
-    symbol_kwargs = symbol_kwargs or {}
-    cbar_title_kwargs = cbar_title_kwargs or {}
-    cbar_kwargs = cbar_kwargs or {}
-
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
@@ -1603,7 +1602,7 @@ def ptable_hists(
     plotter = PTableProjector(
         data=data,
         colormap=colormap,
-        plot_kwargs=plot_kwargs or {},
+        plot_kwargs=plot_kwargs,
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
@@ -1620,7 +1619,7 @@ def ptable_hists(
     plotter.add_child_plots(
         ChildPlotters.histogram,  # type: ignore[arg-type]
         child_kwargs=child_kwargs,
-        ax_kwargs=ax_kwargs or {},
+        ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
 
@@ -1629,7 +1628,7 @@ def ptable_hists(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        kwargs=symbol_kwargs or {},
+        kwargs=symbol_kwargs,
     )
 
     # Color element tile background
@@ -1641,14 +1640,14 @@ def ptable_hists(
         plotter.add_colorbar(
             title=cbar_title,
             coords=cbar_coords,
-            cbar_kwargs=cbar_kwargs or {},
-            title_kwargs=cbar_title_kwargs or {},
+            cbar_kwargs=cbar_kwargs,
+            title_kwargs=cbar_title_kwargs,
         )
 
     # Add element type legend
     if add_elem_type_legend:
         plotter.add_elem_type_legend(
-            legend_kwargs=elem_type_legend_kwargs or {},
+            kwargs=elem_type_legend_kwargs,
         )
 
     return plotter.fig
@@ -1710,15 +1709,15 @@ def ptable_scatters(
     plotter = PTableProjector(
         data=data,
         colormap=None,
-        plot_kwargs=plot_kwargs or {},  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,
     )
 
     # Call child plotter: Scatter
     plotter.add_child_plots(
         ChildPlotters.scatter,
-        child_kwargs=child_kwargs or {},
-        ax_kwargs=ax_kwargs or {},
+        child_kwargs=child_kwargs,
+        ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
 
@@ -1726,7 +1725,7 @@ def ptable_scatters(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        kwargs=symbol_kwargs or {},
+        kwargs=symbol_kwargs,
     )
 
     return plotter.fig
@@ -1786,15 +1785,15 @@ def ptable_lines(
     plotter = PTableProjector(
         data=data,
         colormap=None,
-        plot_kwargs=plot_kwargs or {},  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,
     )
 
     # Call child plotter: line
     plotter.add_child_plots(
         ChildPlotters.line,
-        child_kwargs=child_kwargs or {},
-        ax_kwargs=ax_kwargs or {},
+        child_kwargs=child_kwargs,
+        ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
 
@@ -1802,7 +1801,7 @@ def ptable_lines(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        kwargs=symbol_kwargs or {},
+        kwargs=symbol_kwargs,
     )
 
     return plotter.fig
