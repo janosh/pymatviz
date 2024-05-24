@@ -291,18 +291,7 @@ class PTableProjector:
         # Preprocess data
         self.data: pd.DataFrame = data
 
-        if hide_f_block is None:
-            hide_f_block = bool(
-                {
-                    atom_num
-                    for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
-                    # check if data is present for f-block elements
-                    if (elem := Element.from_Z(atom_num).symbol) in self.data.index  # type: ignore[union-attr]
-                    and len(self.data.loc[elem, Key.heat_val]) > 0  # type: ignore[union-attr]
-                }
-            )
-
-        self.hide_f_block = hide_f_block
+        self.hide_f_block = hide_f_block  # type: ignore[assignment]  # TODO: fix there 3 ignores
 
         # Initialize periodic table canvas
         n_periods = df_ptable.row.max()
@@ -351,6 +340,27 @@ class PTableProjector:
     def norm(self) -> Normalize:
         """Data min-max normalizer."""
         return self._norm
+
+    @property
+    def hide_f_block(self) -> bool:
+        """Whether to hide f-block in plots."""
+        return self._hide_f_block
+
+    @hide_f_block.setter
+    def hide_f_block(self, hide_f_block: bool | None) -> None:
+        if hide_f_block is None:
+            self._hide_f_block = bool(
+                {
+                    atom_num
+                    for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
+                    # check if data is present for f-block elements
+                    if (elem := Element.from_Z(atom_num).symbol) in self.data.index
+                    and len(self.data.loc[elem, Key.heat_val]) > 0
+                }
+            )
+
+        else:
+            self._hide_f_block = hide_f_block
 
     @property
     def elem_types(self) -> set[str]:
