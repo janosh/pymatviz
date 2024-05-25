@@ -597,7 +597,7 @@ class PTableProjector:
             if elem_class in self.elem_types
         ]
 
-        elem_type_legend_defaults = dict(
+        default_legend_kwargs = dict(
             loc="center left",
             bbox_to_anchor=(0, -42),
             ncol=6,
@@ -605,12 +605,16 @@ class PTableProjector:
             fontsize=font_size,
             handlelength=1,  # more compact legend
         )
-        kwargs = elem_type_legend_defaults | kwargs
+        kwargs = default_legend_kwargs | kwargs
 
         plt.legend(handles=legend_elements, **kwargs)
 
     def set_elem_background_color(self, alpha: float = 0.1) -> None:
-        """Set element tile background color by element type."""
+        """Set element tile background color by element type.
+
+        Args:
+            alpha (float): transparency
+        """
         for element in Element:
             # Hide f-block
             if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
