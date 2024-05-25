@@ -300,7 +300,7 @@ class PTableProjector:
         # Preprocess data
         self.data: pd.DataFrame = data
 
-        self.hide_f_block = hide_f_block  # type: ignore[assignment]  # TODO: fix there 3 ignores
+        self.hide_f_block = hide_f_block  # type: ignore[assignment]
 
         # Initialize periodic table canvas
         n_periods = df_ptable.row.max()
