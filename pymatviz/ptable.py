@@ -420,7 +420,7 @@ class PTableProjector:
     @elem_colors.setter
     def elem_colors(self, elem_colors: dict[str, Any] | None) -> None:
         # TODO: set default colors
-        # TODO: what is the type of values (str or what)?
+        # TODO: what is the type of values (str, tuple[float, ...] or both)
         self._elem_colors = elem_colors or {}
 
     def get_elem_type_color(
@@ -429,7 +429,12 @@ class PTableProjector:
         default: str = "white",
     ) -> str:
         """Get element type based color."""
-        elem_type = df_ptable.loc[elem_symbol].get("type", None)
+        if elem_symbol in df_ptable.index:
+            elem_type = df_ptable.loc[elem_symbol].get("type", None)
+        else:
+            warnings.warn(f"Failed to find color for {elem_symbol}, using default.")
+            elem_type = None
+
         return self.elem_type_colors.get(elem_type, default)
 
     def add_child_plots(
