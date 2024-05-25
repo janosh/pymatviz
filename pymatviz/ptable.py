@@ -429,12 +429,7 @@ class PTableProjector:
         default: str = "white",
     ) -> str:
         """Get element type based color."""
-        if elem_symbol in df_ptable.index:
-            elem_type = df_ptable.loc[elem_symbol].get("type", None)
-        else:
-            warnings.warn(f"Failed to find color for {elem_symbol}, using default.")
-            elem_type = None
-
+        elem_type = df_ptable.loc[elem_symbol].get("type", None)
         return self.elem_type_colors.get(elem_type, default)
 
     def add_child_plots(

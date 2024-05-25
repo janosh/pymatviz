@@ -143,7 +143,6 @@ class TestPTableProjector:
 
         assert projector.get_elem_type_color("H") == "green"
         assert projector.get_elem_type_color("Fe") == "blue"
-        assert projector.get_elem_type_color("NONE", "Hello") == "Hello"
 
     @pytest.mark.parametrize(
         "data",
