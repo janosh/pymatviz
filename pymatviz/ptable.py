@@ -1690,6 +1690,11 @@ def ptable_scatters(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     symbol_kwargs: dict[str, Any] | None = None,
+    # Element types based colors and legend
+    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    elem_type_colors: dict[str, str] | None = None,
+    add_elem_type_legend: bool = False,
+    elem_type_legend_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
     """Make scatter plots for each element, nested inside a periodic table.
 
@@ -1724,6 +1729,16 @@ def ptable_scatters(
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
 
+        color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
+            color element symbols, tile backgrounds, or both based on element type.
+            Defaults to "background".
+        elem_type_colors (dict | None): dict to map element types to colors.
+            None to use default element type colors.
+        add_elem_type_legend (bool): Whether to show a legend for element
+            types. Defaults to True.
+        elem_type_legend_kwargs (dict): kwargs to plt.legend(), e.g. to
+            set the legend title, use {"title": "Element Types"}.
+
     TODO: allow colormap with 3rd data dimension
     """
     # Initialize periodic table plotter
@@ -1732,6 +1747,7 @@ def ptable_scatters(
         colormap=None,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,
+        elem_type_colors=elem_type_colors,
     )
 
     # Call child plotter: Scatter
@@ -1746,8 +1762,19 @@ def ptable_scatters(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
+        coloring=color_elem_strategy in {"both", "symbol"},
         kwargs=symbol_kwargs,
     )
+
+    # Color element tile background
+    if color_elem_strategy in {"both", "background"}:
+        plotter.set_elem_background_color()
+
+    # Add element type legend
+    if add_elem_type_legend:
+        plotter.add_elem_type_legend(
+            kwargs=elem_type_legend_kwargs,
+        )
 
     return plotter.fig
 
@@ -1768,6 +1795,11 @@ def ptable_lines(
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
+    # Element types based colors and legend
+    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    elem_type_colors: dict[str, str] | None = None,
+    add_elem_type_legend: bool = False,
+    elem_type_legend_kwargs: dict[str, Any] | None = None,
 ) -> plt.Figure:
     """Line plots for each element, nested inside a periodic table.
 
@@ -1801,6 +1833,16 @@ def ptable_lines(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
+
+        color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
+            color element symbols, tile backgrounds, or both based on element type.
+            Defaults to "background".
+        elem_type_colors (dict | None): dict to map element types to colors.
+            None to use default element type colors.
+        add_elem_type_legend (bool): Whether to show a legend for element
+            types. Defaults to True.
+        elem_type_legend_kwargs (dict): kwargs to plt.legend(), e.g. to
+            set the legend title, use {"title": "Element Types"}.
     """
     # Initialize periodic table plotter
     plotter = PTableProjector(
@@ -1808,6 +1850,7 @@ def ptable_lines(
         colormap=None,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,
+        elem_type_colors=elem_type_colors,
     )
 
     # Call child plotter: line
@@ -1822,7 +1865,18 @@ def ptable_lines(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
+        coloring=color_elem_strategy in {"both", "symbol"},
         kwargs=symbol_kwargs,
     )
+
+    # Color element tile background
+    if color_elem_strategy in {"both", "background"}:
+        plotter.set_elem_background_color()
+
+    # Add element type legend
+    if add_elem_type_legend:
+        plotter.add_elem_type_legend(
+            kwargs=elem_type_legend_kwargs,
+        )
 
     return plotter.fig
