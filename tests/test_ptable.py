@@ -45,7 +45,7 @@ class TestDataPreprocessor:
         "Li": np.array([6.0, 8.0]),  # float array
         "Na": 11.0,  # float
         "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
-        "Al": {-1, 2.3},  # mixed int/float set
+        "Al": [-1, 2.3],  # mixed int/float
     }
 
     @staticmethod
@@ -72,6 +72,25 @@ class TestDataPreprocessor:
         output_df: pd.DataFrame = data_preprocessor(input_df)
 
         self._validate_output_df(output_df)
+
+    def test_from_bad_pd_dataframe(self) -> None:
+        """Test auto-fix of badly formatted pd.DataFrame."""
+        input_df_0 = pd.DataFrame(self.test_dict)
+
+        # Elements as a row, and no proper row/column names
+        output_df_0 = data_preprocessor(input_df_0)
+
+        assert_allclose(output_df_0.loc["He", Key.heat_val], [2.0, 4.0])
+        assert_allclose(output_df_0.loc["Li", Key.heat_val], [6.0, 8.0])
+        assert_allclose(output_df_0.loc["Mg", Key.heat_val], [-1.0, 14.0])
+
+        # Elements as a column, and no proper row/column names
+        input_df_1 = input_df_0.copy().transpose()
+        output_df_1 = data_preprocessor(input_df_1)
+
+        assert_allclose(output_df_1.loc["He", Key.heat_val], [2.0, 4.0])
+        assert_allclose(output_df_1.loc["Li", Key.heat_val], [6.0, 8.0])
+        assert_allclose(output_df_1.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
     def test_from_pd_series(self) -> None:
         input_series: pd.Series = pd.Series(self.test_dict)

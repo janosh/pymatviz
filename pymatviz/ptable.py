@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 # Data types used internally by ptable plotters
 SupportedValueType = Union[Sequence[float], np.ndarray]
 
-# data types that can be passed to PTableProjector and data_preprocessor
+# Data types that can be passed to PTableProjector and data_preprocessor
 SupportedDataType = Union[
     dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
 ]
@@ -193,9 +193,77 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
             vmin: 1.0
             vmax: 12.0
     """
+
+    def format_pd_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """Fix pd.DataFrame that does not meet expected format."""
+
+        def fix_df_elem_as_col(df: pd.DataFrame) -> pd.DataFrame:
+            """Fix pd.DataFrame where elements are in a single column."""
+            # Copy and reset index to move element names to a column
+            new_df = df.copy()
+            new_df = new_df.reset_index()
+
+            # Find the column with element names
+            elem_col_name = None
+            for col in new_df.columns:
+                if set(new_df[col]).issubset(set(map(str, Element))):
+                    elem_col_name = col
+                    break
+
+            # Fix failed: cannot find the elements column
+            if elem_col_name is None:
+                return None
+
+            # Rename the column with elements and set it as index
+            new_df = new_df.rename(columns={elem_col_name: Key.element})
+            new_df = new_df.set_index(Key.element)
+
+            # Zip the remaining values into a single column
+            value_cols = [
+                col_name for col_name in new_df.columns if col_name != Key.element
+            ]
+            new_df[Key.heat_val] = new_df[value_cols].apply(list, axis=1)
+
+            # Drop the old value columns
+            return new_df[[Key.heat_val]]
+
+        # Check if input DataFrame is in expected format
+        if Key.element == df.index.name and Key.heat_val in df.columns:
+            return df
+
+        # Re-format it to expected
+        warnings.warn("pd.DataFrame has unexpected format, trying to fix.")
+
+        # Try to search for elements as a column
+        fixed_df = fix_df_elem_as_col(df)
+        if fixed_df is not None:
+            return fixed_df
+
+        # Try to search for elements as a row
+        fixed_df = fix_df_elem_as_col(df.transpose())
+        if fixed_df is not None:
+            return fixed_df
+
+        raise RuntimeError("Cannot fix provided DataFrame.")
+
+    def handle_missing_and_anomaly(
+        df: pd.DataFrame,
+        # missing_strategy: Literal["zero", "mean"] = "mean",
+    ) -> pd.DataFrame:
+        """Handle missing value (NaN) and anomaly (infinity).
+
+        Infinity would be replaced by vmax(∞) or vmin(-∞).
+        Missing values would be handled by selected strategy:
+            - zero: impute with zeros
+            - mean: impute with mean value
+
+        TODO: finish this function
+        """
+        return df
+
     # Check and handle different supported data types
     if isinstance(data, pd.DataFrame):
-        data_df = data
+        data_df = format_pd_dataframe(data)
 
     elif isinstance(data, pd.Series):
         data_df = data.to_frame(name=Key.heat_val)
@@ -231,22 +299,6 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     data_df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
     data_df.attrs["vmax"] = numeric_values.max()
     return data_df
-
-
-def handle_missing_and_anomaly(
-    df: pd.DataFrame,
-    # missing_strategy: Literal["zero", "mean"] = "mean",
-) -> pd.DataFrame:
-    """Handle missing value (NaN) and anomaly (infinity).
-
-    Infinity would be replaced by vmax(∞) or vmin(-∞).
-    Missing values would be handled by selected strategy:
-        - zero: impute with zeros
-        - mean: impute with mean value
-
-    TODO: finish this function
-    """
-    return df
 
 
 class PTableProjector:
