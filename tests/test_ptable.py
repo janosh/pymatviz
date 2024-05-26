@@ -582,6 +582,7 @@ def test_ptable_heatmap_plotly_label_map(
     "data, symbol_pos, hist_kwargs",
     [
         ({"H": [1, 2, 3], "He": [4, 5, 6]}, (0, 0), None),
+        (pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6]}), (0, 0), None),
         (
             dict(H=[1, 2, 3], He=[4, 5, 6]),
             (1, 1),
