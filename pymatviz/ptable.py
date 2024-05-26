@@ -275,15 +275,15 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         ).set_index(Key.element)
 
     else:
-        type_name = type(data).__name__
+        type_name = type(data).__name__  # line too long
         raise TypeError(
             f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
         )
 
     # Convert all values to 1D np.array
     data_df[Key.heat_val] = [
-        # str is Iterable too so would be converted to list of chars but users shouldn't
-        # pass strings anyways
+        # String is Iterable too so would be converted to list of chars
+        # but users shouldn't pass strings anyway
         np.array(list(val) if isinstance(val, Iterable) else [val])
         for val in data_df[Key.heat_val]
     ]
@@ -291,7 +291,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     # Handle missing and anomalous values
     data_df = handle_missing_and_anomaly(data_df)
 
-    # flatten up to triple nested lists
+    # Flatten up to triple nested lists
     values = data_df[Key.heat_val].explode().explode().explode()
     numeric_values = pd.to_numeric(values, errors="coerce")
 
