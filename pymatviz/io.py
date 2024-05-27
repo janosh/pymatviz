@@ -177,8 +177,8 @@ def save_and_compress_svg(
     plt.close()
 
     # Compress SVG if svgo is available
-    if which("svgo") is not None:
-        subprocess.run([which("svgo"), "--multipass", filepath], check=True)  # noqa: S603
+    if (svgo := which("svgo")) is not None:
+        subprocess.run([svgo, "--multipass", filepath], check=True)  # noqa: S603
 
 
 DEFAULT_DF_STYLES: Final = {
