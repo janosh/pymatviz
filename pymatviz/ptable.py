@@ -232,7 +232,9 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
             return df
 
         # Re-format it to expected
-        warnings.warn("pd.DataFrame has unexpected format, trying to fix.")
+        warnings.warn(
+            "pd.DataFrame has unexpected format, trying to fix.", stacklevel=2
+        )
 
         # Try to search for elements as a column
         fixed_df = fix_df_elem_as_col(df)
@@ -246,19 +248,47 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
         raise RuntimeError("Cannot fix provided DataFrame.")
 
-    def handle_missing_and_anomaly(
+    def handle_missing_and_infinity(
         df: pd.DataFrame,
         # missing_strategy: Literal["zero", "mean"] = "mean",
     ) -> pd.DataFrame:
-        """Handle missing value (NaN) and anomaly (infinity).
+        """Handle missing value (NaN) and infinity.
 
         Infinity would be replaced by vmax(∞) or vmin(-∞).
-        Missing values would be handled by selected strategy:
-            - zero: impute with zeros
-            - mean: impute with mean value
-
-        TODO: finish this function
+        Missing value would be replaced by selected strategy:
+            - zero: replace with zero
+            - mean: replace with mean value
         """
+
+        def check_for_missing_inf(data: pd.Series) -> tuple[bool, bool]:
+            """Check if there is NaN or infinity in DataFrame.
+
+            Returns:
+                tuple[bool, bool]: Has NaN, has infinity.
+            """
+            # Check if there is missing value or infinity
+            all_values = data[Key.heat_val].explode().explode().explode()
+
+            # Convert to numeric, forcing non-numeric types to NaN
+            all_values = pd.to_numeric(all_values, errors="coerce")
+
+            has_nan = False
+            has_inf = False
+            # Check for NaN
+            if all_values.isna().to_numpy().any():
+                warnings.warn("NaN found in data.", stacklevel=2)
+                has_nan = True
+
+            # Check for infinity
+            if np.isinf(all_values).to_numpy().any():
+                warnings.warn("Infinity found in data.", stacklevel=2)
+                has_inf = True
+
+            return has_nan, has_inf
+
+        # Check for NaN and infinity
+        has_nan, has_inf = check_for_missing_inf(df)
+
         return df
 
     # Check and handle different supported data types
@@ -289,7 +319,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
     ]
 
     # Handle missing and anomalous values
-    data_df = handle_missing_and_anomaly(data_df)
+    data_df = handle_missing_and_infinity(data_df)
 
     # Flatten up to triple nested lists
     values = data_df[Key.heat_val].explode().explode().explode()
@@ -951,6 +981,7 @@ def ptable_heatmap(
         warnings.warn(
             "cmap argument is deprecated, use colorscale instead",
             category=DeprecationWarning,
+            stacklevel=2,
         )
 
     values = count_elements(values, count_mode, exclude_elements)
