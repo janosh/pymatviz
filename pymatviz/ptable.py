@@ -21,7 +21,7 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
 from pymatviz.enums import Key
-from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
+from pymatviz.utils import ELEM_TYPE_COLORS, df_ptable, pick_bw_for_contrast, si_fmt
 
 
 if TYPE_CHECKING:
@@ -346,7 +346,7 @@ class PTableProjector:
         """
         # Set colors
         self.cmap: Colormap = colormap
-        self.elem_type_colors = elem_type_colors  # type: ignore[assignment]
+        self._elem_type_colors = elem_type_colors or ELEM_TYPE_COLORS
         self.elem_colors = elem_colors  # type: ignore[assignment]
 
         # Preprocess data
@@ -411,15 +411,14 @@ class PTableProjector:
     def hide_f_block(self, hide_f_block: bool | None) -> None:
         """If hide_f_block is None, would detect if data is present."""
         if hide_f_block is None:
-            self._hide_f_block = bool(
-                {
-                    atom_num
-                    for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
-                    # Check if data is present for f-block elements
-                    if (elem := Element.from_Z(atom_num).symbol) in self.data.index
-                    and len(self.data.loc[elem, Key.heat_val]) > 0
-                }
-            )
+            f_block_elements_with_data = {
+                atom_num
+                for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
+                # Check if data is present for f-block elements
+                if (elem := Element.from_Z(atom_num).symbol) in self.data.index
+                and len(self.data.loc[elem, Key.heat_val]) > 0
+            }
+            self._hide_f_block = bool(f_block_elements_with_data)
 
         else:
             self._hide_f_block = hide_f_block
@@ -434,35 +433,13 @@ class PTableProjector:
         """Element type based colors.
 
         Example:
-            {
-                "Nonmetal": "green",
-                "Halogen": "teal",
-                "Metal": "lightblue",
-            }
+            {"Nonmetal": "green", "Halogen": "teal", "Metal": "lightblue"}
         """
-        return self._elem_type_colors
+        return self._elem_type_colors or {}
 
     @elem_type_colors.setter
-    def elem_type_colors(self, elem_type_colors: dict[str, str] | None) -> None:
-        default_elem_type_colors: dict[str, str] = {
-            "Diatomic Nonmetal": "green",
-            "Noble Gas": "purple",
-            "Alkali Metal": "red",
-            "Alkaline Earth Metal": "orange",
-            "Metalloid": "darkgreen",
-            "Polyatomic Nonmetal": "teal",
-            "Transition Metal": "blue",
-            "Post Transition Metal": "cyan",
-            "Lanthanide": "brown",
-            "Actinide": "gray",
-            "Nonmetal": "green",
-            "Halogen": "teal",
-            "Metal": "lightblue",
-            "Alkaline Metal": "magenta",
-            "Transactinide": "olive",
-        }
-
-        self._elem_type_colors = default_elem_type_colors | (elem_type_colors or {})
+    def elem_type_colors(self, elem_type_colors: dict[str, str]) -> None:
+        self._elem_type_colors |= elem_type_colors or {}
 
     @property
     def elem_colors(self) -> dict[str, Any]:
@@ -480,7 +457,7 @@ class PTableProjector:
         elem_symbol: str,
         default: str = "white",
     ) -> str:
-        """Get element type based color."""
+        """Get element type color by element symbol."""
         elem_type = df_ptable.loc[elem_symbol].get("type", None)
         return self.elem_type_colors.get(elem_type, default)
 
@@ -537,7 +514,7 @@ class PTableProjector:
         text: str | Callable[[Element], str] = lambda elem: elem.symbol,
         *,
         pos: tuple[float, float] = (0.5, 0.5),
-        coloring: bool = False,
+        text_color: str = "black",
         kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add element symbols for each tile.
@@ -548,7 +525,8 @@ class PTableProjector:
                 string. If a string, it can contain a format
                 specifier for an `elem` variable which will be replaced by the element.
             pos (tuple): The position of the text relative to the axes.
-            coloring (bool): Whether to color symbol by element types.
+            text_color (bool): The color of the text. Defaults to "black".
+                Pass "element-type" to color symbol by self.elem_type_colors.
             kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
         """
         # Update symbol kwargs
@@ -568,12 +546,11 @@ class PTableProjector:
 
             content = text(element) if callable(text) else text.format(elem=element)
 
+            elem_type_color = self.get_elem_type_color(symbol, default=text_color)
             ax.text(
                 *pos,
                 content,
-                color=self.get_elem_type_color(symbol, "black")
-                if coloring
-                else "black",
+                color=elem_type_color if text_color == "element-type" else text_color,
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
@@ -593,7 +570,7 @@ class PTableProjector:
         Args:
             title: Title for the colorbar.
             coords: Coordinates of the colorbar (left, bottom, width, height).
-                    Defaults to (0.18, 0.8, 0.42, 0.02).
+                Defaults to (0.18, 0.8, 0.42, 0.02).
             cbar_kwargs: Additional keyword arguments to pass to fig.colorbar().
             title_kwargs: Additional keyword arguments for the colorbar title.
         """
@@ -1694,7 +1671,9 @@ def ptable_hists(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        coloring=color_elem_strategy in {"both", "symbol"},
+        text_color="element-types"
+        if color_elem_strategy in {"both", "symbol"}
+        else "black",
         kwargs=symbol_kwargs,
     )
 
@@ -1806,7 +1785,9 @@ def ptable_scatters(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        coloring=color_elem_strategy in {"both", "symbol"},
+        text_color="element-types"
+        if color_elem_strategy in {"both", "symbol"}
+        else "black",
         kwargs=symbol_kwargs,
     )
 
@@ -1909,7 +1890,9 @@ def ptable_lines(
     plotter.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        coloring=color_elem_strategy in {"both", "symbol"},
+        text_color="element-types"
+        if color_elem_strategy in {"both", "symbol"}
+        else "black",
         kwargs=symbol_kwargs,
     )
 
