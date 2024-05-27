@@ -25,11 +25,7 @@ from pymatviz import (
     ptable_scatters,
 )
 from pymatviz.enums import Key
-from pymatviz.ptable import (
-    SupportedDataType,
-    add_element_type_legend,
-    data_preprocessor,
-)
+from pymatviz.ptable import PTableProjector, SupportedDataType, data_preprocessor
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
@@ -77,6 +73,31 @@ class TestDataPreprocessor:
 
         self._validate_output_df(output_df)
 
+    def test_from_bad_pd_dataframe(self) -> None:
+        """Test auto-fix of badly formatted pd.DataFrame."""
+        test_dict = {
+            "He": [2.0, 4.0],  # float list
+            "Li": np.array([6.0, 8.0]),  # float array
+            "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
+        }
+
+        input_df_0 = pd.DataFrame(test_dict)
+
+        # Elements as a row, and no proper row/column names
+        output_df_0 = data_preprocessor(input_df_0)
+
+        assert_allclose(output_df_0.loc["He", Key.heat_val], [2.0, 4.0])
+        assert_allclose(output_df_0.loc["Li", Key.heat_val], [6.0, 8.0])
+        assert_allclose(output_df_0.loc["Mg", Key.heat_val], [-1.0, 14.0])
+
+        # Elements as a column, and no proper row/column names
+        input_df_1 = input_df_0.copy().transpose()
+        output_df_1 = data_preprocessor(input_df_1)
+
+        assert_allclose(output_df_1.loc["He", Key.heat_val], [2.0, 4.0])
+        assert_allclose(output_df_1.loc["Li", Key.heat_val], [6.0, 8.0])
+        assert_allclose(output_df_1.loc["Mg", Key.heat_val], [-1.0, 14.0])
+
     def test_from_pd_series(self) -> None:
         input_series: pd.Series = pd.Series(self.test_dict)
 
@@ -122,7 +143,69 @@ class TestDataPreprocessor:
         assert output_df_1.attrs["vmax"] == 9
 
 
+class TestPTableProjector:
+    test_dict: ClassVar = {
+        "H": 1,  # int
+        "He": [2.0, 4.0],  # float list
+        "Li": np.array([6.0, 8.0]),  # float array
+        "Na": 11.0,  # float
+        "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
+        "Al": {-1, 2.3},  # mixed int/float set
+    }
+
+    def test_property_elem_types(self) -> None:
+        projector = PTableProjector(data=self.test_dict)
+        assert projector.elem_types == {
+            "Noble Gas",
+            "Metal",
+            "Alkaline Earth Metal",
+            "Nonmetal",
+            "Alkali Metal",
+        }
+
+    def test_get_elem_type_color(self) -> None:
+        projector = PTableProjector(data=self.test_dict)
+
+        assert projector.get_elem_type_color("H") == "green"
+        assert projector.get_elem_type_color("Fe") == "blue"
+
+    @pytest.mark.parametrize(
+        "data, elem_type_colors",
+        [
+            # data=dict, elem colors=empty dict
+            ({"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]}, {}),
+            (  # data=series, elem colors=dict
+                pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
+                {"Transition Metal": "red", "Nonmetal": "blue"},
+            ),
+            # data=dataframe, elem colors=None
+            (pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6], "P": [7, 8, 9]}), None),
+        ],
+    )
+    def test_add_element_type_legend_data_types(
+        self,
+        data: pd.DataFrame | pd.Series | dict[str, list[float]],
+        elem_type_colors: dict[str, str] | None,
+    ) -> None:
+        projector = PTableProjector(data=data, elem_type_colors=elem_type_colors)
+
+        legend_title = "Element Types"
+        legend_kwargs = dict(loc="upper right", ncol=5, fontsize=12, title=legend_title)
+        projector.add_elem_type_legend(kwargs=legend_kwargs)
+
+        legend = plt.gca().get_legend()
+        assert isinstance(legend, mpl.legend.Legend)
+        assert len(legend.get_texts()) in {1, 2}
+        legend_labels = {text.get_text() for text in legend.get_texts()}
+        assert legend_labels <= {"Transition Metal", "Alkali Metal", "Nonmetal"}
+        assert legend._ncols == 5  # noqa: SLF001
+
+        assert legend.get_title().get_text() == legend_title
+        assert legend.get_texts()[0].get_fontsize() == 12
+
+
 class TestMissingAnomalyHandle:
+    # TODO: finish this unit test
     def test_handle_missing(self) -> None:
         pass
 
@@ -506,39 +589,47 @@ def test_ptable_heatmap_plotly_label_map(
 
 
 @pytest.mark.parametrize(
-    "data, symbol_pos, anno_kwds, hist_kwds",
+    "data, symbol_pos, hist_kwargs",
     [
-        (pd.DataFrame({"H": [1, 2, 3], "He": [4, 5, 6]}), (0, 0), {}, None),
+        ({"H": [1, 2, 3], "He": [4, 5, 6]}, (0, 0), None),
+        (pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6]}), (0, 0), None),
         (
             dict(H=[1, 2, 3], He=[4, 5, 6]),
             (1, 1),
-            dict(text=lambda x: f"{len(x):,}"),
             {},
         ),
         (
             dict(H=np.array([1, 2, 3]), He=np.array([4, 5, 6])),
             (1, 1),
-            dict(text=lambda x: f"{len(x):,}"),
             {},
         ),
         (
             pd.Series([[1, 2, 3], [4, 5, 6]], index=["H", "He"]),
             (1, 1),
             dict(xy=(0, 0)),
-            lambda _hist_vals: dict(color="red"),
         ),
     ],
 )
 def test_ptable_hists(
     data: pd.DataFrame | pd.Series | dict[str, list[int]],
     symbol_pos: tuple[int, int],
-    anno_kwds: dict[str, Any],
-    hist_kwds: dict[str, Any],
+    hist_kwargs: dict[str, Any],
 ) -> None:
-    fig = ptable_hists(
-        data, symbol_pos=symbol_pos, anno_kwds=anno_kwds, hist_kwds=hist_kwds
+    fig_0 = ptable_hists(
+        data,
+        symbol_pos=symbol_pos,
+        child_kwargs=hist_kwargs,
     )
-    assert isinstance(fig, plt.Figure)
+    assert isinstance(fig_0, plt.Figure)
+
+    # Test partial x_range
+    fig_1 = ptable_hists(
+        data,
+        x_range=(2, None),
+        symbol_pos=symbol_pos,
+        child_kwargs=hist_kwargs,
+    )
+    assert isinstance(fig_1, plt.Figure)
 
 
 @pytest.mark.parametrize("hide_f_block", [False, True])
@@ -583,29 +674,3 @@ def test_ptable_scatters_colored() -> None:
     )
     assert isinstance(fig, plt.Figure)
     assert len(fig.axes) == 180
-
-
-@pytest.mark.parametrize(
-    "data",
-    [
-        {"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]},
-        pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6]}),
-        pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
-    ],
-)
-def test_add_element_type_legend_data_types(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
-) -> None:
-    elem_class_colors = {"Transition Metal": "red", "Nonmetal": "blue"}
-    legend_kwargs = dict(loc="upper right", ncol=5, fontsize=12, title="Element Types")
-
-    add_element_type_legend(data, elem_class_colors, legend_kwargs=legend_kwargs)
-    legend = plt.gca().get_legend()
-    assert isinstance(legend, mpl.legend.Legend)
-    assert len(legend.get_texts()) in {1, 2}
-    legend_labels = {text.get_text() for text in legend.get_texts()}
-    assert legend_labels <= {"Transition Metal", "Alkali Metal", "Nonmetal"}
-    assert legend._ncols == 5  # noqa: SLF001
-
-    assert legend.get_title().get_text() == "Element Types"
-    assert legend.get_texts()[0].get_fontsize() == 12
