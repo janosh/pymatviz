@@ -346,7 +346,7 @@ class PTableProjector:
         """
         # Set colors
         self.cmap: Colormap = colormap
-        self._elem_type_colors = elem_type_colors or ELEM_TYPE_COLORS
+        self._elem_type_colors = ELEM_TYPE_COLORS | (elem_type_colors or {})
         self.elem_colors = elem_colors  # type: ignore[assignment]
 
         # Preprocess data

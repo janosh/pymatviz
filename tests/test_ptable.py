@@ -170,23 +170,27 @@ class TestPTableProjector:
         assert projector.get_elem_type_color("Fe") == "blue"
 
     @pytest.mark.parametrize(
-        "data",
+        "data, elem_type_colors",
         [
-            {"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]},
-            pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
+            # data=dict, elem colors=empty dict
+            ({"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]}, {}),
+            (  # data=series, elem colors=dict
+                pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
+                {"Transition Metal": "red", "Nonmetal": "blue"},
+            ),
+            # data=dataframe, elem colors=None
+            (pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6], "P": [7, 8, 9]}), None),
         ],
     )
     def test_add_element_type_legend_data_types(
         self,
         data: pd.DataFrame | pd.Series | dict[str, list[float]],
+        elem_type_colors: dict[str, str] | None,
     ) -> None:
-        elem_type_colors = {"Transition Metal": "red", "Nonmetal": "blue"}
-
         projector = PTableProjector(data=data, elem_type_colors=elem_type_colors)
 
-        legend_kwargs = dict(
-            loc="upper right", ncol=5, fontsize=12, title="Element Types"
-        )
+        legend_title = "Element Types"
+        legend_kwargs = dict(loc="upper right", ncol=5, fontsize=12, title=legend_title)
         projector.add_elem_type_legend(kwargs=legend_kwargs)
 
         legend = plt.gca().get_legend()
@@ -196,7 +200,7 @@ class TestPTableProjector:
         assert legend_labels <= {"Transition Metal", "Alkali Metal", "Nonmetal"}
         assert legend._ncols == 5  # noqa: SLF001
 
-        assert legend.get_title().get_text() == "Element Types"
+        assert legend.get_title().get_text() == legend_title
         assert legend.get_texts()[0].get_fontsize() == 12
 
 
