@@ -188,6 +188,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         should be the index instead of a column.
         Maybe support both, as it appears pass element as a
         column (without setting it as index) is easier
+        What is the default behavior when pd.from_csv()?
 
              Element   Value
         0    H         [1.0, ]
