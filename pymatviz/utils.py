@@ -46,7 +46,7 @@ CrystalSystem = Literal[
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
 
-ELEM_CLASS_COLORS: Final = {
+ELEM_TYPE_COLORS: Final = {
     "Diatomic Nonmetal": "green",
     "Noble Gas": "purple",
     "Alkali Metal": "red",
