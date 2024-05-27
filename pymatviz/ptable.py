@@ -597,13 +597,9 @@ class PTableProjector:
             cbar_kwargs: Additional keyword arguments to pass to fig.colorbar().
             title_kwargs: Additional keyword arguments for the colorbar title.
         """
-        # Update kwargs
+        # Update colorbar kwargs
         cbar_kwargs = {"orientation": "horizontal"} | (cbar_kwargs or {})
-
-        title_kwargs = title_kwargs or {}
-        title_kwargs.setdefault("fontsize", 12)
-        title_kwargs.setdefault("pad", 10)
-        title_kwargs["label"] = title
+        title_kwargs = {"fontsize": 12, "pad": 10} | (title_kwargs or {})
 
         # Check colormap
         if self.cmap is None:
@@ -1169,11 +1165,9 @@ def ptable_heatmap_splits(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
-
         start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to
                 the x-axis). Defaults to 135 degrees.
-
         colormap (str): Matplotlib colormap name to use.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
@@ -1181,13 +1175,11 @@ def ptable_heatmap_splits(
             None, meaning hide if no data is provided for f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
-
         ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
-
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
         symbol_pos (tuple[float, float]): Position of element symbols
@@ -1758,14 +1750,12 @@ def ptable_scatters(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
-
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
-
         ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
