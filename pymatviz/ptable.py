@@ -599,7 +599,9 @@ class PTableProjector:
         """
         # Update colorbar kwargs
         cbar_kwargs = {"orientation": "horizontal"} | (cbar_kwargs or {})
-        title_kwargs = {"fontsize": 12, "pad": 10} | (title_kwargs or {})
+        title_kwargs = {"fontsize": 12, "pad": 10, "label": title} | (
+            title_kwargs or {}
+        )
 
         # Check colormap
         if self.cmap is None:
