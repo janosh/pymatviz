@@ -184,6 +184,11 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
 
         >>> preprocess_data(data_dict / df / series)
 
+        # TODO: the following example looks incorrect, element
+        should be the index instead of a column.
+        Maybe support both, as it appears pass element as a
+        column (without setting it as index) is easier
+
              Element   Value
         0    H         [1.0, ]
         1    He        [2.0, 4.0]
@@ -261,7 +266,7 @@ def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
         """
 
         def check_for_missing_inf(data: pd.Series) -> tuple[bool, bool]:
-            """Check if there is NaN or infinity in DataFrame.
+            """Check if there is NaN or infinity in pandas Series.
 
             Returns:
                 tuple[bool, bool]: Has NaN, has infinity.
