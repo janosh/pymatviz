@@ -174,7 +174,8 @@ class TestPTableProjector:
         [
             # data=dict, elem colors=empty dict
             ({"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]}, {}),
-            (  # data=series, elem colors=dict
+            # data=series, elem colors=dict
+            (
                 pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
                 {"Transition Metal": "red", "Nonmetal": "blue"},
             ),
