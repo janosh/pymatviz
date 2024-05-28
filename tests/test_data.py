@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import ClassVar, get_args
+from typing import TYPE_CHECKING, get_args
 
 import numpy as np
 import pandas as pd
@@ -13,8 +13,13 @@ from pymatviz._data import (
     check_for_missing_inf,
     get_df_nest_level,
     preprocess_ptable_data,
+    replace_missing_and_infinity,
 )
 from pymatviz.enums import Key
+
+
+if TYPE_CHECKING:
+    from typing import ClassVar
 
 
 class TestPreprocessPtableData:
@@ -202,17 +207,59 @@ def test_get_df_nest_level() -> None:
 
 
 class TestReplaceMissingAndInfinity:
-    def test_normal_dataframe(self) -> None:
-        pass
-
+    @pytest.mark.skip()
     def test_replace_missing(self) -> None:
-        pass
+        df_with_nan = pd.DataFrame(
+            {
+                "Fe": [1, 2, 3],
+                "O": [4, 5, np.nan],
+            }.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
+
+        # Test missing strategy: mean (default)
+        processed_df_mean = replace_missing_and_infinity(df_with_nan, Key.heat_val)
+        assert_allclose(processed_df_mean.loc["O", Key.heat_val], [4, 5, 3])
+
+        # Test missing strategy: zero
+        processed_df_zero = replace_missing_and_infinity(
+            df_with_nan, Key.heat_val, "zero"
+        )
+        assert_allclose(processed_df_zero.loc["O", Key.heat_val], [4, 5, 0])
 
     def test_replace_infinity(self) -> None:
-        pass
+        df_with_inf = pd.DataFrame(
+            {
+                "Fe": [1, 2, np.inf],
+                "O": [4, 5, 6],
+            }.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
+
+        processed_df = replace_missing_and_infinity(df_with_inf, Key.heat_val)
+        assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 6])
 
     def test_replace_both(self) -> None:
-        pass
+        df_with_both = pd.DataFrame(
+            {
+                "Fe": [1, 2, np.inf],
+                "O": [4, 5, np.nan],
+            }.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
+
+        processed_df = replace_missing_and_infinity(df_with_both, Key.heat_val, "zero")
+        assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 5])
+        assert_allclose(processed_df.loc["O", Key.heat_val], [4, 5, 0])
 
     def test_too_deep_nest(self) -> None:
-        pass
+        df_level_2 = pd.DataFrame(
+            {
+                "Fe": [1, 2, 3],
+                "O": [[4, 5], [6, np.nan]],
+            }.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
+
+        with pytest.raises(RuntimeError, match="Unable to replace NaN and inf"):
+            replace_missing_and_infinity(df_level_2, col=Key.heat_val)

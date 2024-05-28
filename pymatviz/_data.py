@@ -107,17 +107,57 @@ def replace_missing_and_infinity(
     # Check for NaN and infinity
     has_nan, has_inf = check_for_missing_inf(df, Key.heat_val)
 
+    if not has_nan and not has_inf:
+        return df
+
     # Can only handle nest level 1 at this moment
     if (has_nan or has_inf) and get_df_nest_level(df, col) > 1:
-        raise RuntimeError("Unable to process NaN and inf for nest level >1.")
+        raise RuntimeError("Unable to replace NaN and inf for nest level >1.")
 
-    # Replace missing value with selected strategy
-    if has_nan:
-        pass
+    # Get replacement value for missing and infinity
+    values = df[col].explode()
+    numeric_values = pd.to_numeric(values, errors="coerce")
 
-    # Replace infinity
-    if has_inf:
-        pass
+    replacement_nan = 0 if missing_strategy == "zero" else numeric_values.mean()
+    replacement_inf_pos = numeric_values[numeric_values != np.inf].max()
+    replacement_inf_neg = numeric_values[numeric_values != -np.inf].min()
+
+    # Perform replacement
+    def replace_list(
+        values: SupportedValueType,
+        replacement_nan: float,
+        replacement_inf_pos: float,
+        replacement_inf_neg: float,
+    ) -> np.ndarray:
+        """Replace NaN and infinity in a given list/scalar value."""
+        return np.array(
+            [
+                replacement_nan
+                if pd.isna(v)
+                else replacement_inf_pos
+                if v == np.inf
+                else replacement_inf_neg
+                if v == -np.inf
+                else v
+                for v in values
+            ]
+        )
+
+    df[col] = df[col].apply(
+        lambda x: replace_list(
+            x, replacement_nan, replacement_inf_pos, replacement_inf_neg
+        )
+        if isinstance(x, (list, np.ndarray))
+        else (
+            replacement_nan
+            if pd.isna(x)
+            else replacement_inf_pos
+            if x == np.inf
+            else replacement_inf_neg
+            if x == -np.inf
+            else x
+        )
+    )
 
     return df
 
