@@ -11,6 +11,7 @@ from numpy.testing import assert_allclose
 from pymatviz._data import (
     SupportedDataType,
     check_for_missing_inf,
+    get_df_nest_level,
     preprocess_ptable_data,
 )
 from pymatviz.enums import Key
@@ -122,7 +123,7 @@ class TestDataPreprocessor:
 
 
 def test_check_for_missing_inf() -> None:
-    # Test a normal dataframe
+    # Test a normal DataFrame
     normal_df = pd.DataFrame(
         {
             "Fe": [1, 2, 3],
@@ -131,9 +132,9 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(normal_df) == (False, False)
+    assert check_for_missing_inf(normal_df, Key.heat_val) == (False, False)
 
-    # Test dataframe with missing value (NaN)
+    # Test DataFrame with missing value (NaN)
     df_with_missing = pd.DataFrame(
         {
             "Fe": [1, 2, np.nan],
@@ -142,9 +143,9 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_missing) == (True, False)
+    assert check_for_missing_inf(df_with_missing, Key.heat_val) == (True, False)
 
-    # Test dataframe with infinity
+    # Test DataFrame with infinity
     df_with_inf = pd.DataFrame(
         {
             "Fe": [1, 2, np.inf],
@@ -153,9 +154,9 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_inf) == (False, True)
+    assert check_for_missing_inf(df_with_inf, Key.heat_val) == (False, True)
 
-    # Test dataframe with missing value (NaN) and infinity
+    # Test DataFrame with missing value (NaN) and infinity
     df_with_nan_inf = pd.DataFrame(
         {
             "Fe": [1, 2, np.inf],
@@ -164,11 +165,43 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_nan_inf) == (True, True)
+    assert check_for_missing_inf(df_with_nan_inf, Key.heat_val) == (True, True)
+
+
+def test_get_df_nest_level() -> None:
+    df_level_0 = pd.DataFrame(
+        {
+            "Fe": 1,
+            "O": 2,
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert get_df_nest_level(df_level_0, Key.heat_val) == 0
+
+    df_level_1 = pd.DataFrame(
+        {
+            "Fe": [1, 2, 3],
+            "O": [4, 5, 6],
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert get_df_nest_level(df_level_1, Key.heat_val) == 1
+
+    df_level_2 = pd.DataFrame(
+        {
+            "Fe": [1, 2, 3],
+            "O": [[4, 5], [6, 7]],  # get max level
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert get_df_nest_level(df_level_2, Key.heat_val) == 2
 
 
 class TestMissingAnomalyHandle:
-    # TODO: finish this unit test
+    # TODO: finish this
     def test_handle_missing(self) -> None:
         pass
 

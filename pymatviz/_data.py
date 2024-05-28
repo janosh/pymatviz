@@ -20,14 +20,18 @@ SupportedDataType = Union[
 ]
 
 
-def check_for_missing_inf(df: pd.DataFrame) -> tuple[bool, bool]:
-    """Check if there is NaN or infinity in pandas DataFrame.
+def check_for_missing_inf(df: pd.DataFrame, col: str) -> tuple[bool, bool]:
+    """Check if there is NaN or infinity in a DataFrame column.
+
+    Args:
+        df (pd.DataFrame): DataFrame to check.
+        col (str): Name of the column to check.
 
     Returns:
         tuple[bool, bool]: Has NaN, has infinity.
     """
     # Check if there is missing value or infinity
-    all_values = df[Key.heat_val].explode().explode().explode()
+    all_values = df[col].explode().explode().explode()
 
     # Convert to numeric, forcing non-numeric types to NaN
     all_values = pd.to_numeric(all_values, errors="coerce")
@@ -45,6 +49,36 @@ def check_for_missing_inf(df: pd.DataFrame) -> tuple[bool, bool]:
         has_inf = True
 
     return has_nan, has_inf
+
+
+def get_df_nest_level(df: pd.DataFrame, col: str, max_level: int = 5) -> int:
+    """Check for maximum nest level in a DataFrame.
+
+    Definition of nest level:
+        Level 0: "Fe": 1
+        Level 1: "Co": [1, 2]
+        Level 2: "Co": [[1, 2], [3, 4], ]
+        ...
+
+    Args:
+        df (pd.DataFrame): The DataFrame to check.
+        col (str): Name of the column to check.
+        max_level (int): Max nest level to try up to.
+
+    Returns:
+        int: The maximum nest level.
+    """
+    current_level = 0
+    while current_level <= max_level:
+        # Check if any element in the column is a list
+        if df[col].apply(lambda x: isinstance(x, list)).any():
+            current_level += 1
+            # Explode the lists into separate rows
+            df = df.explode(col)
+        else:
+            return current_level
+
+    return current_level
 
 
 def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
@@ -158,7 +192,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
             - mean: replace with mean value
         """
         # Check for NaN and infinity
-        has_nan, has_inf = check_for_missing_inf(df)
+        has_nan, has_inf = check_for_missing_inf(df, Key.heat_val)
 
         return df
 
