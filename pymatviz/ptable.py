@@ -310,7 +310,7 @@ class PTableProjector:
 
     def add_child_plots(
         self,
-        child_plotter: Callable[[plt.axes, Any], None],
+        child_plotter: Callable[..., None],
         *,
         child_kwargs: dict[str, Any] | None = None,
         tick_kwargs: dict[str, Any] | None = None,
@@ -355,7 +355,7 @@ class PTableProjector:
                 continue
 
             # Call child plotter
-            child_plotter(ax, plot_data, tick_kwargs=tick_kwargs, **child_kwargs)  # type: ignore[call-arg]
+            child_plotter(ax, plot_data, tick_kwargs=tick_kwargs, **child_kwargs)
 
             # Pass axis kwargs
             if ax_kwargs:
@@ -1055,7 +1055,7 @@ def ptable_heatmap_splits(
     }
 
     plotter.add_child_plots(
-        ChildPlotters.rectangle,  # type: ignore[arg-type]
+        ChildPlotters.rectangle,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
@@ -1519,7 +1519,7 @@ def ptable_hists(
     }
 
     plotter.add_child_plots(
-        ChildPlotters.histogram,  # type: ignore[arg-type]
+        ChildPlotters.histogram,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
@@ -1633,7 +1633,7 @@ def ptable_scatters(
 
     # Call child plotter: Scatter
     plotter.add_child_plots(
-        ChildPlotters.scatter,  # type: ignore[arg-type]
+        ChildPlotters.scatter,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
@@ -1738,7 +1738,7 @@ def ptable_lines(
 
     # Call child plotter: line
     plotter.add_child_plots(
-        ChildPlotters.line,  # type: ignore[arg-type]
+        ChildPlotters.line,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
