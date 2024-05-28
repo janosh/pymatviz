@@ -1,14 +1,20 @@
 """Utils for data preprocessing and related tasks."""
 
+from __future__ import annotations
+
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import Union, get_args
+from typing import TYPE_CHECKING, Union, get_args
 
 import numpy as np
 import pandas as pd
 from pymatgen.core import Element
 
 from pymatviz.enums import Key
+
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 
 # Data types used internally by ptable plotters
@@ -81,19 +87,37 @@ def get_df_nest_level(df: pd.DataFrame, col: str, max_level: int = 5) -> int:
     return current_level
 
 
-def handle_missing_and_infinity(
+def replace_missing_and_infinity(
     df: pd.DataFrame,
-    # missing_strategy: Literal["zero", "mean"] = "mean",
+    col: str,
+    missing_strategy: Literal["zero", "mean"] = "mean",
 ) -> pd.DataFrame:
-    """Handle missing value (NaN) and infinity.
+    """Replace missing value (NaN) and infinity.
 
     Infinity would be replaced by vmax(∞) or vmin(-∞).
     Missing value would be replaced by selected strategy:
         - zero: replace with zero
         - mean: replace with mean value
+
+    Args:
+        df (DataFrame): DataFrame to process.
+        col (str): Name of the column to process.
+        missing_strategy: missing value replacement strategy.
     """
     # Check for NaN and infinity
     has_nan, has_inf = check_for_missing_inf(df, Key.heat_val)
+
+    # Can only handle nest level 1 at this moment
+    if (has_nan or has_inf) and get_df_nest_level(df, col) > 1:
+        raise RuntimeError("Unable to process NaN and inf for nest level >1.")
+
+    # Replace missing value with selected strategy
+    if has_nan:
+        pass
+
+    # Replace infinity
+    if has_inf:
+        pass
 
     return df
 
@@ -223,7 +247,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
     ]
 
     # Handle missing value and infinity
-    data_df = handle_missing_and_infinity(data_df)
+    data_df = replace_missing_and_infinity(data_df, col=Key.heat_val)
 
     # Flatten up to triple nested lists
     values = data_df[Key.heat_val].explode().explode().explode()

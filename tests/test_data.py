@@ -17,7 +17,7 @@ from pymatviz._data import (
 from pymatviz.enums import Key
 
 
-class TestDataPreprocessor:
+class TestPreprocessPtableData:
     test_dict: ClassVar = {
         "H": 1,  # int
         "He": [2.0, 4.0],  # float list
@@ -201,10 +201,18 @@ def test_get_df_nest_level() -> None:
     assert get_df_nest_level(df_level_2, Key.heat_val) == 2
 
 
-class TestMissingAnomalyHandle:
-    # TODO: finish this
-    def test_handle_missing(self) -> None:
+class TestReplaceMissingAndInfinity:
+    def test_normal_dataframe(self) -> None:
         pass
 
-    def test_handle_infinity(self) -> None:
+    def test_replace_missing(self) -> None:
+        pass
+
+    def test_replace_infinity(self) -> None:
+        pass
+
+    def test_replace_both(self) -> None:
+        pass
+
+    def test_too_deep_nest(self) -> None:
         pass
