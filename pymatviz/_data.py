@@ -124,12 +124,19 @@ def replace_missing_and_infinity(
 
     # Perform replacement
     def replace_list(
-        values: SupportedValueType,
+        value: SupportedValueType,
         replacement_nan: float,
         replacement_inf_pos: float,
         replacement_inf_neg: float,
     ) -> np.ndarray:
-        """Replace NaN and infinity in a given list/scalar value."""
+        """Replace NaN and infinity in a given list/scalar value.
+
+        Args:
+            value (SupportedValueType): Value to be processed.
+            replacement_nan (float): Replacement for missing value.
+            replacement_inf_pos (float): Replacement for ∞.
+            replacement_inf_neg (float): Replacement for -∞.
+        """
         return np.array(
             [
                 replacement_nan
@@ -139,7 +146,7 @@ def replace_missing_and_infinity(
                 else replacement_inf_neg
                 if val == -np.inf
                 else val
-                for val in values
+                for val in value
             ]
         )
 
@@ -191,20 +198,16 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
 
         >>> preprocess_data(data_dict / df / series)
 
-        # TODO: the following example looks incorrect, element
-        should be the index instead of a column.
-        Maybe support both, as it appears pass element as a
-        column (without setting it as index) is easier
-        What is the default behavior when pd.from_csv()?
+        >>> data_df
+            Element   Value
+            H         [1.0, ]
+            He        [2.0, 4.0]
+            Li        [[6.0, 8.0], [10.0, 11.0]]
 
-             Element   Value
-        0    H         [1.0, ]
-        1    He        [2.0, 4.0]
-        2    Li        [[6.0, 8.0], [10.0, 12.0]]
-
-        Metadata:
+        Metadata (data_df.attrs):
             vmin: 1.0
-            vmax: 12.0
+            mean: 6.0
+            vmax: 11.0
     """
 
     def format_pd_dataframe(df: pd.DataFrame) -> pd.DataFrame:
