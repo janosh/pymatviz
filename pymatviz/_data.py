@@ -26,18 +26,18 @@ SupportedDataType = Union[
 ]
 
 
-def check_for_missing_inf(df: pd.DataFrame, col: str) -> tuple[bool, bool]:
+def check_for_missing_inf(df_in: pd.DataFrame, col: str) -> tuple[bool, bool]:
     """Check if there is NaN or infinity in a DataFrame column.
 
     Args:
-        df (pd.DataFrame): DataFrame to check.
+        df_in (pd.DataFrame): DataFrame to check.
         col (str): Name of the column to check.
 
     Returns:
         tuple[bool, bool]: Has NaN, has infinity.
     """
     # Check if there is missing value or infinity
-    all_values = df[col].explode().explode().explode()
+    all_values = df_in[col].explode().explode().explode()
 
     # Convert to numeric, forcing non-numeric types to NaN
     all_values = pd.to_numeric(all_values, errors="coerce")
@@ -45,19 +45,19 @@ def check_for_missing_inf(df: pd.DataFrame, col: str) -> tuple[bool, bool]:
     # Check for NaN
     has_nan = False
     if all_values.isna().to_numpy().any():
-        warnings.warn("NaN found in data.", stacklevel=2)
+        warnings.warn("NaN found in data", stacklevel=2)
         has_nan = True
 
     # Check for infinity
     has_inf = False
     if np.isinf(all_values).to_numpy().any():
-        warnings.warn("Infinity found in data.", stacklevel=2)
+        warnings.warn("Infinity found in data", stacklevel=2)
         has_inf = True
 
     return has_nan, has_inf
 
 
-def get_df_nest_level(df: pd.DataFrame, col: str, max_level: int = 5) -> int:
+def get_df_nest_level(df_in: pd.DataFrame, col: str, max_level: int = 10) -> int:
     """Check for maximum nest level in a DataFrame column.
 
     Definition of nest level:
@@ -67,9 +67,9 @@ def get_df_nest_level(df: pd.DataFrame, col: str, max_level: int = 5) -> int:
         ...
 
     Args:
-        df (pd.DataFrame): The DataFrame to check.
+        df_in (pd.DataFrame): The DataFrame to check.
         col (str): Name of the column to check.
-        max_level (int): Max nest level to try up to.
+        max_level (int): Max nest level to try up to. Defaults to 10.
 
     Returns:
         int: The maximum nest level.
@@ -77,10 +77,10 @@ def get_df_nest_level(df: pd.DataFrame, col: str, max_level: int = 5) -> int:
     current_level = 0
     while current_level <= max_level:
         # Check if any element in the column is a list
-        if df[col].apply(lambda x: isinstance(x, list)).any():
+        if df_in[col].map(lambda x: isinstance(x, list)).any():
             current_level += 1
             # Explode the lists into separate rows
-            df = df.explode(col)
+            df_in = df_in.explode(col)
         else:
             return current_level
 
@@ -88,7 +88,7 @@ def get_df_nest_level(df: pd.DataFrame, col: str, max_level: int = 5) -> int:
 
 
 def replace_missing_and_infinity(
-    df: pd.DataFrame,
+    df_in: pd.DataFrame,
     col: str,
     missing_strategy: Literal["zero", "mean"] = "mean",
 ) -> pd.DataFrame:
@@ -100,22 +100,22 @@ def replace_missing_and_infinity(
         - mean: replace with mean value
 
     Args:
-        df (DataFrame): DataFrame to process.
+        df_in (DataFrame): DataFrame to process.
         col (str): Name of the column to process.
         missing_strategy: missing value replacement strategy.
     """
     # Check for NaN and infinity
-    has_nan, has_inf = check_for_missing_inf(df, Key.heat_val)
+    has_nan, has_inf = check_for_missing_inf(df_in, Key.heat_val)
 
     if not has_nan and not has_inf:
-        return df
+        return df_in
 
     # Can only handle nest level 1 at this moment
-    if (has_nan or has_inf) and get_df_nest_level(df, col) > 1:
-        raise RuntimeError("Unable to replace NaN and inf for nest level >1.")
+    if (has_nan or has_inf) and get_df_nest_level(df_in, col) > 1:
+        raise RuntimeError("Unable to replace NaN and inf for nest level > 1")
 
     # Get replacement value for missing and infinity
-    values = df[col].explode()
+    values = df_in[col].explode()
     numeric_values = pd.to_numeric(values, errors="coerce")
 
     replacement_nan = 0 if missing_strategy == "zero" else numeric_values.mean()
@@ -150,7 +150,7 @@ def replace_missing_and_infinity(
             ]
         )
 
-    df[col] = df[col].apply(
+    df_in[col] = df_in[col].apply(
         lambda val: replace_list(
             val, replacement_nan, replacement_inf_pos, replacement_inf_neg
         )
@@ -166,7 +166,7 @@ def replace_missing_and_infinity(
         )
     )
 
-    return df
+    return df_in
 
 
 def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:

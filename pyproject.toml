@@ -1,7 +1,3 @@
-[build-system]
-requires = ["setuptools>=61.2"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "pymatviz"
 version = "0.8.2"
@@ -64,6 +60,10 @@ pymatviz = ["*.csv"]
 [tool.distutils.bdist_wheel]
 universal = true
 
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p no:warnings"
@@ -100,7 +100,6 @@ ignore = [
     "ISC001",
     "N806",    # non-lowercase-variable-in-function
     "NPY002",
-    "PD901",   # use "df" as variable name
     "PLR0911", # too-many-return-statements
     "PLR0912", # too-many-branches
     "PLR0913", # function-with-too-many-arguments
