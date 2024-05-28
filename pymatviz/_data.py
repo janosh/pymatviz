@@ -133,29 +133,29 @@ def replace_missing_and_infinity(
         return np.array(
             [
                 replacement_nan
-                if pd.isna(v)
+                if pd.isna(val)
                 else replacement_inf_pos
-                if v == np.inf
+                if val == np.inf
                 else replacement_inf_neg
-                if v == -np.inf
-                else v
-                for v in values
+                if val == -np.inf
+                else val
+                for val in values
             ]
         )
 
     df[col] = df[col].apply(
-        lambda x: replace_list(
-            x, replacement_nan, replacement_inf_pos, replacement_inf_neg
+        lambda val: replace_list(
+            val, replacement_nan, replacement_inf_pos, replacement_inf_neg
         )
-        if isinstance(x, (list, np.ndarray))
+        if isinstance(val, (list, np.ndarray))
         else (
             replacement_nan
-            if pd.isna(x)
+            if pd.isna(val)
             else replacement_inf_pos
-            if x == np.inf
+            if val == np.inf
             else replacement_inf_neg
-            if x == -np.inf
-            else x
+            if val == -np.inf
+            else val
         )
     )
 

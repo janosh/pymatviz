@@ -355,7 +355,7 @@ class PTableProjector:
                 continue
 
             # Call child plotter
-            child_plotter(ax, plot_data, tick_kwargs=tick_kwargs, **child_kwargs)
+            child_plotter(ax, plot_data, tick_kwargs=tick_kwargs, **child_kwargs)  # type: ignore[call-arg]
 
             # Pass axis kwargs
             if ax_kwargs:
