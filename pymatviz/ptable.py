@@ -355,7 +355,6 @@ class PTableProjector:
                 continue
 
             # Call child plotter
-            # DEBUG: why getting mypy error for "tick_kwargs"?
             child_plotter(ax, plot_data, tick_kwargs=tick_kwargs, **child_kwargs)
 
             # Pass axis kwargs
