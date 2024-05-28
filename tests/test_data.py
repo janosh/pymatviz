@@ -217,15 +217,17 @@ class TestReplaceMissingAndInfinity:
         ).set_index(Key.element)
 
         # Test missing strategy: mean (default)
-        processed_df_mean = replace_missing_and_infinity(
-            df_with_nan.copy(), Key.heat_val
-        )
+        with pytest.warns(match="NaN found in data"):
+            processed_df_mean = replace_missing_and_infinity(
+                df_with_nan.copy(), Key.heat_val
+            )
         assert_allclose(processed_df_mean.loc["O", Key.heat_val], [4, 5, 3])
 
         # Test missing strategy: zero
-        processed_df_zero = replace_missing_and_infinity(
-            df_with_nan.copy(), Key.heat_val, "zero"
-        )
+        with pytest.warns(match="NaN found in data"):
+            processed_df_zero = replace_missing_and_infinity(
+                df_with_nan.copy(), Key.heat_val, "zero"
+            )
         assert_allclose(processed_df_zero.loc["O", Key.heat_val], [4, 5, 0])
 
     def test_replace_infinity(self) -> None:
@@ -237,7 +239,8 @@ class TestReplaceMissingAndInfinity:
             columns=[Key.element, Key.heat_val],
         ).set_index(Key.element)
 
-        processed_df = replace_missing_and_infinity(df_with_inf, Key.heat_val)
+        with pytest.warns(match="Infinity found in data"):
+            processed_df = replace_missing_and_infinity(df_with_inf, Key.heat_val)
         assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 6])
 
     def test_replace_both(self) -> None:
