@@ -52,12 +52,12 @@ def check_for_missing_inf(df: pd.DataFrame, col: str) -> tuple[bool, bool]:
 
 
 def get_df_nest_level(df: pd.DataFrame, col: str, max_level: int = 5) -> int:
-    """Check for maximum nest level in a DataFrame.
+    """Check for maximum nest level in a DataFrame column.
 
     Definition of nest level:
-        Level 0: "Fe": 1
-        Level 1: "Co": [1, 2]
-        Level 2: "Co": [[1, 2], [3, 4], ]
+        Level 0 (no list):       "Fe": 1
+        Level 1 (flat list):     "Co": [1, 2]
+        Level 2 (nested lists):  "Ni": [[1, 2], [3, 4], ]
         ...
 
     Args:

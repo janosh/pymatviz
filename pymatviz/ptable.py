@@ -313,6 +313,7 @@ class PTableProjector:
         child_plotter: Callable[[plt.axes, Any], None],
         *,
         child_kwargs: dict[str, Any] | None = None,
+        tick_kwargs: dict[str, Any] | None = None,
         ax_kwargs: dict[str, Any] | None = None,
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
@@ -321,12 +322,16 @@ class PTableProjector:
         Args:
             child_plotter: A callable for the child plotter.
             child_kwargs: Arguments to pass to the child plotter call.
+            tick_kwargs: kwargs to pass to ax.tick_params().
             ax_kwargs: Keyword arguments to pass to ax.set().
             on_empty: Whether to "show" or "hide" tiles for elements without data.
         """
         # Update kwargs
         child_kwargs = child_kwargs or {}
         ax_kwargs = ax_kwargs or {}
+        tick_kwargs = {"axis": "both", "which": "major", "labelsize": 8} | (
+            tick_kwargs or {}
+        )
 
         for element in Element:
             # Hide f-block
@@ -350,7 +355,8 @@ class PTableProjector:
                 continue
 
             # Call child plotter
-            child_plotter(ax, plot_data, **child_kwargs)
+            # DEBUG: why getting mypy error for "tick_kwargs"?
+            child_plotter(ax, plot_data, tick_kwargs=tick_kwargs, **child_kwargs)
 
             # Pass axis kwargs
             if ax_kwargs:
@@ -514,6 +520,7 @@ class ChildPlotters:
         norm: Normalize,
         cmap: Colormap,
         start_angle: float,
+        tick_kwargs: dict[str, Any],  # noqa: ARG004
     ) -> None:
         """Rectangle heatmap plotter, could be evenly split.
 
@@ -528,6 +535,7 @@ class ChildPlotters:
             cmap (Colormap): Colormap used for value mapping.
             start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
+            tick_kwargs: For compatibility with other plotters.
         """
         # Map values to colors
         if isinstance(data, (Sequence, np.ndarray)):
@@ -554,6 +562,7 @@ class ChildPlotters:
     def scatter(
         ax: plt.axes,
         data: SupportedValueType,
+        tick_kwargs: dict[str, Any],
         **child_kwargs: Any,
     ) -> None:
         """Scatter plotter.
@@ -562,7 +571,8 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for to
                 the child plotter.
-            child_kwargs (dict): args to pass to the child plotter call
+            child_kwargs (dict): kwargs to pass to the child plotter call.
+            tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
         # Add scatter
         if len(data) == 2:
@@ -570,9 +580,8 @@ class ChildPlotters:
         elif len(data) == 3:
             ax.scatter(x=data[0], y=data[1], c=data[2], **child_kwargs)
 
-        # Adjust tick labels
-        # TODO: how to control this from external?
-        ax.tick_params(axis="both", which="major", labelsize=8)
+        # Set tick labels
+        ax.tick_params(**tick_kwargs)
 
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
@@ -582,6 +591,7 @@ class ChildPlotters:
     def line(
         ax: plt.axes,
         data: SupportedValueType,
+        tick_kwargs: dict[str, Any],
         **child_kwargs: Any,
     ) -> None:
         """Line plotter.
@@ -590,14 +600,14 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for to
                 the child plotter.
-            child_kwargs (dict): args to pass to the child plotter call.
+            child_kwargs (dict): kwargs to pass to the child plotter call.
+            tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
         # Add line
         ax.plot(data[0], data[1], **child_kwargs)
 
-        # Adjust tick labels
-        # TODO: how to control this from external?
-        ax.tick_params(axis="both", which="major", labelsize=8)
+        # Set tick labels
+        ax.tick_params(**tick_kwargs)
 
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
@@ -609,6 +619,7 @@ class ChildPlotters:
         data: SupportedValueType,
         cmap: Colormap,
         cbar_axis: Literal["x", "y"],
+        tick_kwargs: dict[str, Any],
         **child_kwargs: Any,
     ) -> None:
         """Histogram plotter.
@@ -623,7 +634,8 @@ class ChildPlotters:
             cmap (Colormap): Colormap.
             cbar_axis (Literal["x", "y"]): The axis colormap
                 would be based on.
-            child_kwargs: args to pass to the child plotter call.
+            child_kwargs: kwargs to pass to the child plotter call.
+            tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
         # Preprocess x_range if only one boundary is given
         x_range = child_kwargs.pop("range", None)
@@ -654,9 +666,8 @@ class ChildPlotters:
         for col, patch in zip(cols, patches):
             plt.setp(patch, "facecolor", cmap(col))
 
-        # Adjust tick labels
-        # TODO: how to control this from external?
-        ax.tick_params(axis="both", which="major", labelsize=8)
+        # Set tick labels
+        ax.tick_params(**tick_kwargs)
         ax.set_yticklabels([])
         ax.set_yticks([])
 
@@ -1623,7 +1634,7 @@ def ptable_scatters(
 
     # Call child plotter: Scatter
     plotter.add_child_plots(
-        ChildPlotters.scatter,
+        ChildPlotters.scatter,  # type: ignore[arg-type]
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
@@ -1728,7 +1739,7 @@ def ptable_lines(
 
     # Call child plotter: line
     plotter.add_child_plots(
-        ChildPlotters.line,
+        ChildPlotters.line,  # type: ignore[arg-type]
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
