@@ -81,6 +81,23 @@ def get_df_nest_level(df: pd.DataFrame, col: str, max_level: int = 5) -> int:
     return current_level
 
 
+def handle_missing_and_infinity(
+    df: pd.DataFrame,
+    # missing_strategy: Literal["zero", "mean"] = "mean",
+) -> pd.DataFrame:
+    """Handle missing value (NaN) and infinity.
+
+    Infinity would be replaced by vmax(∞) or vmin(-∞).
+    Missing value would be replaced by selected strategy:
+        - zero: replace with zero
+        - mean: replace with mean value
+    """
+    # Check for NaN and infinity
+    has_nan, has_inf = check_for_missing_inf(df, Key.heat_val)
+
+    return df
+
+
 def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
     """Preprocess input data for ptable plotters, including:
         - Convert all data types to pd.DataFrame.
@@ -127,7 +144,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
     """
 
     def format_pd_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-        """Fix pd.DataFrame that does not meet expected format."""
+        """Format pd.DataFrame that may not meet expected format."""
 
         def fix_df_elem_as_col(df: pd.DataFrame) -> pd.DataFrame:
             """Fix pd.DataFrame where elements are in a single column."""
@@ -164,9 +181,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
             return df
 
         # Re-format it to expected
-        warnings.warn(
-            "pd.DataFrame has unexpected format, trying to fix.", stacklevel=2
-        )
+        warnings.warn("DataFrame has unexpected format, trying to fix.", stacklevel=2)
 
         # Try to search for elements as a column
         fixed_df = fix_df_elem_as_col(df)
@@ -180,23 +195,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
 
         raise RuntimeError("Cannot fix provided DataFrame.")
 
-    def handle_missing_and_infinity(
-        df: pd.DataFrame,
-        # missing_strategy: Literal["zero", "mean"] = "mean",
-    ) -> pd.DataFrame:
-        """Handle missing value (NaN) and infinity.
-
-        Infinity would be replaced by vmax(∞) or vmin(-∞).
-        Missing value would be replaced by selected strategy:
-            - zero: replace with zero
-            - mean: replace with mean value
-        """
-        # Check for NaN and infinity
-        has_nan, has_inf = check_for_missing_inf(df, Key.heat_val)
-
-        return df
-
-    # Check and handle different supported data types
+    # Convert supported data types to DataFrame
     if isinstance(data, pd.DataFrame):
         data_df = format_pd_dataframe(data)
 
@@ -223,14 +222,15 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
         for val in data_df[Key.heat_val]
     ]
 
-    # Handle missing and anomalous values
+    # Handle missing value and infinity
     data_df = handle_missing_and_infinity(data_df)
 
     # Flatten up to triple nested lists
     values = data_df[Key.heat_val].explode().explode().explode()
     numeric_values = pd.to_numeric(values, errors="coerce")
 
-    # Write vmin/vmax into df.attrs for colorbar
-    data_df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
+    # Write vmin/vmax/mean into df.attrs
+    data_df.attrs["vmin"] = numeric_values.min()
+    data_df.attrs["mean"] = numeric_values.mean()
     data_df.attrs["vmax"] = numeric_values.max()
     return data_df

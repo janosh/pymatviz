@@ -41,6 +41,7 @@ class TestDataPreprocessor:
         assert_allclose(output_df.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
         assert output_df.attrs["vmin"] == -1.0
+        assert output_df.attrs["mean"] == 4.63
         assert output_df.attrs["vmax"] == 14.0
 
     def test_from_pd_dataframe(self) -> None:
