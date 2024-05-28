@@ -20,6 +20,33 @@ SupportedDataType = Union[
 ]
 
 
+def check_for_missing_inf(df: pd.DataFrame) -> tuple[bool, bool]:
+    """Check if there is NaN or infinity in pandas DataFrame.
+
+    Returns:
+        tuple[bool, bool]: Has NaN, has infinity.
+    """
+    # Check if there is missing value or infinity
+    all_values = df[Key.heat_val].explode().explode().explode()
+
+    # Convert to numeric, forcing non-numeric types to NaN
+    all_values = pd.to_numeric(all_values, errors="coerce")
+
+    # Check for NaN
+    has_nan = False
+    if all_values.isna().to_numpy().any():
+        warnings.warn("NaN found in data.", stacklevel=2)
+        has_nan = True
+
+    # Check for infinity
+    has_inf = False
+    if np.isinf(all_values).to_numpy().any():
+        warnings.warn("Infinity found in data.", stacklevel=2)
+        has_inf = True
+
+    return has_nan, has_inf
+
+
 def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
     """Preprocess input data for ptable plotters, including:
         - Convert all data types to pd.DataFrame.
@@ -130,33 +157,6 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
             - zero: replace with zero
             - mean: replace with mean value
         """
-
-        def check_for_missing_inf(data: pd.Series) -> tuple[bool, bool]:
-            """Check if there is NaN or infinity in pandas Series.
-
-            Returns:
-                tuple[bool, bool]: Has NaN, has infinity.
-            """
-            # Check if there is missing value or infinity
-            all_values = data[Key.heat_val].explode().explode().explode()
-
-            # Convert to numeric, forcing non-numeric types to NaN
-            all_values = pd.to_numeric(all_values, errors="coerce")
-
-            has_nan = False
-            has_inf = False
-            # Check for NaN
-            if all_values.isna().to_numpy().any():
-                warnings.warn("NaN found in data.", stacklevel=2)
-                has_nan = True
-
-            # Check for infinity
-            if np.isinf(all_values).to_numpy().any():
-                warnings.warn("Infinity found in data.", stacklevel=2)
-                has_inf = True
-
-            return has_nan, has_inf
-
         # Check for NaN and infinity
         has_nan, has_inf = check_for_missing_inf(df)
 

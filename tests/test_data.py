@@ -8,7 +8,11 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from pymatviz._data import SupportedDataType, preprocess_ptable_data
+from pymatviz._data import (
+    SupportedDataType,
+    check_for_missing_inf,
+    preprocess_ptable_data,
+)
 from pymatviz.enums import Key
 
 
@@ -115,6 +119,52 @@ class TestDataPreprocessor:
 
         assert output_df_1.attrs["vmin"] == 1
         assert output_df_1.attrs["vmax"] == 9
+
+
+def test_check_for_missing_inf() -> None:
+    # Test a normal dataframe
+    normal_df = pd.DataFrame(
+        {
+            "Fe": [1, 2, 3],
+            "O": [4, 5, 6],
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert check_for_missing_inf(normal_df) == (False, False)
+
+    # Test dataframe with missing value (NaN)
+    df_with_missing = pd.DataFrame(
+        {
+            "Fe": [1, 2, np.nan],
+            "O": [4, 5, 6],
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert check_for_missing_inf(df_with_missing) == (True, False)
+
+    # Test dataframe with infinity
+    df_with_inf = pd.DataFrame(
+        {
+            "Fe": [1, 2, np.inf],
+            "O": [4, 5, 6],
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert check_for_missing_inf(df_with_inf) == (False, True)
+
+    # Test dataframe with missing value (NaN) and infinity
+    df_with_nan_inf = pd.DataFrame(
+        {
+            "Fe": [1, 2, np.inf],
+            "O": [4, 5, np.nan],
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert check_for_missing_inf(df_with_nan_inf) == (True, True)
 
 
 class TestMissingAnomalyHandle:
