@@ -207,7 +207,6 @@ def test_get_df_nest_level() -> None:
 
 
 class TestReplaceMissingAndInfinity:
-    @pytest.mark.skip()
     def test_replace_missing(self) -> None:
         df_with_nan = pd.DataFrame(
             {
@@ -218,12 +217,14 @@ class TestReplaceMissingAndInfinity:
         ).set_index(Key.element)
 
         # Test missing strategy: mean (default)
-        processed_df_mean = replace_missing_and_infinity(df_with_nan, Key.heat_val)
+        processed_df_mean = replace_missing_and_infinity(
+            df_with_nan.copy(), Key.heat_val
+        )
         assert_allclose(processed_df_mean.loc["O", Key.heat_val], [4, 5, 3])
 
         # Test missing strategy: zero
         processed_df_zero = replace_missing_and_infinity(
-            df_with_nan, Key.heat_val, "zero"
+            df_with_nan.copy(), Key.heat_val, "zero"
         )
         assert_allclose(processed_df_zero.loc["O", Key.heat_val], [4, 5, 0])
 
