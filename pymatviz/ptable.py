@@ -20,11 +20,7 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
-from pymatviz._data import (
-    SupportedDataType,
-    SupportedValueType,
-    ptable_data_preprocessor,
-)
+from pymatviz._data import SupportedDataType, SupportedValueType, preprocess_ptable_data
 from pymatviz.enums import Key
 from pymatviz.utils import ELEM_TYPE_COLORS, df_ptable, pick_bw_for_contrast, si_fmt
 
@@ -241,7 +237,7 @@ class PTableProjector:
     def data(self, data: SupportedDataType) -> None:
         """Set and preprocess the data. Also set normalizer."""
         # Preprocess data
-        self._data: pd.DataFrame = ptable_data_preprocessor(data)
+        self._data: pd.DataFrame = preprocess_ptable_data(data)
 
         # Normalize data for colorbar
         self._norm: Normalize = Normalize(

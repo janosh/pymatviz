@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from pymatviz._data import SupportedDataType, ptable_data_preprocessor
+from pymatviz._data import SupportedDataType, preprocess_ptable_data
 from pymatviz.enums import Key
 
 
@@ -43,7 +43,7 @@ class TestDataPreprocessor:
             self.test_dict.items(), columns=[Key.element, Key.heat_val]
         ).set_index(Key.element)
 
-        output_df: pd.DataFrame = ptable_data_preprocessor(input_df)
+        output_df: pd.DataFrame = preprocess_ptable_data(input_df)
 
         self._validate_output_df(output_df)
 
@@ -58,7 +58,7 @@ class TestDataPreprocessor:
         input_df_0 = pd.DataFrame(test_dict)
 
         # Elements as a row, and no proper row/column names
-        output_df_0 = ptable_data_preprocessor(input_df_0)
+        output_df_0 = preprocess_ptable_data(input_df_0)
 
         assert_allclose(output_df_0.loc["He", Key.heat_val], [2.0, 4.0])
         assert_allclose(output_df_0.loc["Li", Key.heat_val], [6.0, 8.0])
@@ -66,7 +66,7 @@ class TestDataPreprocessor:
 
         # Elements as a column, and no proper row/column names
         input_df_1 = input_df_0.copy().transpose()
-        output_df_1 = ptable_data_preprocessor(input_df_1)
+        output_df_1 = preprocess_ptable_data(input_df_1)
 
         assert_allclose(output_df_1.loc["He", Key.heat_val], [2.0, 4.0])
         assert_allclose(output_df_1.loc["Li", Key.heat_val], [6.0, 8.0])
@@ -75,14 +75,14 @@ class TestDataPreprocessor:
     def test_from_pd_series(self) -> None:
         input_series: pd.Series = pd.Series(self.test_dict)
 
-        output_df = ptable_data_preprocessor(input_series)
+        output_df = preprocess_ptable_data(input_series)
 
         self._validate_output_df(output_df)
 
     def test_from_dict(self) -> None:
         input_dict = self.test_dict
 
-        output_df = ptable_data_preprocessor(input_dict)
+        output_df = preprocess_ptable_data(input_dict)
 
         self._validate_output_df(output_df)
 
@@ -93,13 +93,13 @@ class TestDataPreprocessor:
                 f"choose from {get_args(SupportedDataType)}"
             )
             with pytest.raises(TypeError, match=re.escape(err_msg)):
-                ptable_data_preprocessor(invalid_data)
+                preprocess_ptable_data(invalid_data)
 
     def test_get_vmin_vmax(self) -> None:
         # Test without nested list/array
         test_dict_0 = {"H": 1, "He": [2, 4], "Li": np.array([6, 8])}
 
-        output_df_0 = ptable_data_preprocessor(test_dict_0)
+        output_df_0 = preprocess_ptable_data(test_dict_0)
 
         assert output_df_0.attrs["vmin"] == 1
         assert output_df_0.attrs["vmax"] == 8
@@ -111,7 +111,7 @@ class TestDataPreprocessor:
             "Li": [np.array([6, 7]), np.array([8, 9])],
         }
 
-        output_df_1 = ptable_data_preprocessor(test_dict_1)
+        output_df_1 = preprocess_ptable_data(test_dict_1)
 
         assert output_df_1.attrs["vmin"] == 1
         assert output_df_1.attrs["vmax"] == 9

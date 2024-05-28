@@ -20,7 +20,7 @@ SupportedDataType = Union[
 ]
 
 
-def ptable_data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
+def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
     """Preprocess input data for ptable plotters, including:
         - Convert all data types to pd.DataFrame.
         - Impute missing values.
