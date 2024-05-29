@@ -57,7 +57,7 @@ def check_for_missing_inf(df_in: pd.DataFrame, col: str) -> tuple[bool, bool]:
     return has_nan, has_inf
 
 
-def get_df_nest_level(df_in: pd.DataFrame, col: str, max_level: int = 10) -> int:
+def get_df_nest_level(df_in: pd.DataFrame, col: str) -> int:
     """Check for maximum nest level in a DataFrame column.
 
     Definition of nest level:
@@ -69,22 +69,11 @@ def get_df_nest_level(df_in: pd.DataFrame, col: str, max_level: int = 10) -> int
     Args:
         df_in (pd.DataFrame): The DataFrame to check.
         col (str): Name of the column to check.
-        max_level (int): Max nest level to try up to. Defaults to 10.
 
     Returns:
         int: The maximum nest level.
     """
-    current_level = 0
-    while current_level <= max_level:
-        # Check if any element in the column is a list or np.ndarray
-        if df_in[col].map(lambda x: isinstance(x, (list, np.ndarray))).any():
-            current_level += 1
-            # Explode the lists into separate rows
-            df_in = df_in.explode(col)
-        else:
-            return current_level
-
-    return current_level
+    return df_in[col].apply(lambda val: np.array(val).ndim).max()
 
 
 def replace_missing_and_infinity(
