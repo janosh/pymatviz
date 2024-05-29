@@ -84,11 +84,13 @@ class TestPreprocessPtableData:
         assert_allclose(output_df_1.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
         # No elements column/row at all
-        df_without_complet_elem = pd.DataFrame({
-            "Hellow": [2.0, 4.0],  # Not an element
-            "Li": np.array([6.0, 8.0]),
-            "Mg": {"a": -1, "b": 14.0}.values(),
-        })
+        df_without_complet_elem = pd.DataFrame(
+            {
+                "Hellow": [2.0, 4.0],  # Not an element
+                "Li": np.array([6.0, 8.0]),
+                "Mg": {"a": -1, "b": 14.0}.values(),
+            }
+        )
         with pytest.raises(ValueError, match="Cannot normalize the given DataFrame"):
             preprocess_ptable_data(df_without_complet_elem)
 
