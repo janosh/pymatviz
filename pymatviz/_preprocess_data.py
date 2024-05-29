@@ -227,7 +227,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
             value_cols = [
                 col_name for col_name in new_df.columns if col_name != Key.element
             ]
-            new_df[Key.heat_val] = new_df[value_cols].map(list)
+            new_df[Key.heat_val] = new_df[value_cols].apply(list, axis=1)
 
             # Drop the old value columns
             return new_df[[Key.heat_val]]
