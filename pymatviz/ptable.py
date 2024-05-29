@@ -20,7 +20,11 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
-from pymatviz._data import SupportedDataType, SupportedValueType, preprocess_ptable_data
+from pymatviz._preprocess_data import (
+    SupportedDataType,
+    SupportedValueType,
+    preprocess_ptable_data,
+)
 from pymatviz.enums import Key
 from pymatviz.utils import ELEM_TYPE_COLORS, df_ptable, pick_bw_for_contrast, si_fmt
 
