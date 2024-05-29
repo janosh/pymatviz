@@ -111,42 +111,16 @@ def replace_missing_and_infinity(
     replacement_inf_pos = numeric_values[numeric_values != np.inf].max()
     replacement_inf_neg = numeric_values[numeric_values != -np.inf].min()
 
-    # Perform replacement
-    def replace_list(
-        value: SupportedValueType,
-        replacement_nan: float,
-        replacement_inf_pos: float,
-        replacement_inf_neg: float,
-    ) -> np.ndarray:
-        """Replace NaN and infinity in a given list/scalar value.
-
-        Args:
-            value (SupportedValueType): Value to be processed.
-            replacement_nan (float): Replacement for missing value.
-            replacement_inf_pos (float): Replacement for ∞.
-            replacement_inf_neg (float): Replacement for -∞.
-        """
-        replacements = {
-            np.nan: replacement_nan,
-            np.inf: replacement_inf_pos,
-            -np.inf: replacement_inf_neg,
-        }
-        return np.array([replacements.get(val, val) for val in value])
+    replacements = {
+        np.nan: replacement_nan,
+        np.inf: replacement_inf_pos,
+        -np.inf: replacement_inf_neg,
+    }
 
     df_in[col] = df_in[col].apply(
-        lambda val: replace_list(
-            val, replacement_nan, replacement_inf_pos, replacement_inf_neg
-        )
-        if isinstance(val, (list, np.ndarray))
-        else (
-            replacement_nan
-            if pd.isna(val)
-            else replacement_inf_pos
-            if val == np.inf
-            else replacement_inf_neg
-            if val == -np.inf
-            else val
-        )
+        lambda val: replacements.get(val, val)
+        if isinstance(val, float)
+        else np.array([replacements.get(v, v) for v in val])
     )
 
     return df_in
@@ -157,7 +131,11 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
         - Convert all data types to pd.DataFrame.
         - Impute missing values.
         - Handle anomalies such as NaN, infinity.
-        - Write vmin/vmax as metadata into the DataFrame.
+        - Write vmin/vmax as metadata into the DataFrame for later color mapping.
+
+    Args:
+        data (dict[str, float | Sequence[float]] | pd.DataFrame | pd.Series): Input data
+            to preprocess.
 
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names
