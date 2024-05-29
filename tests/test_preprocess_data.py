@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from pymatviz._data import (
+from pymatviz._preprocess_data import (
     SupportedDataType,
     check_for_missing_inf,
     get_df_nest_level,
