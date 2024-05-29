@@ -126,18 +126,12 @@ def replace_missing_and_infinity(
             replacement_inf_pos (float): Replacement for ∞.
             replacement_inf_neg (float): Replacement for -∞.
         """
-        return np.array(
-            [
-                replacement_nan
-                if pd.isna(val)
-                else replacement_inf_pos
-                if val == np.inf
-                else replacement_inf_neg
-                if val == -np.inf
-                else val
-                for val in value
-            ]
-        )
+        replacements = {
+            np.nan: replacement_nan,
+            np.inf: replacement_inf_pos,
+            -np.inf: replacement_inf_neg,
+        }
+        return np.array([replacements.get(val, val) for val in value])
 
     df_in[col] = df_in[col].apply(
         lambda val: replace_list(
