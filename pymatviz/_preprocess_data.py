@@ -17,13 +17,13 @@ if TYPE_CHECKING:
     from typing import Literal
 
 
-# Data types used internally by ptable plotters
-SupportedValueType = Union[Sequence[float], np.ndarray]
-
 # Data types that can be passed to PTableProjector and data_preprocessor
 SupportedDataType = Union[
     dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
 ]
+
+# Data types used internally by ptable plotters (returned by preprocess_ptable_data)
+SupportedValueType = Union[Sequence[float], np.ndarray]
 
 
 def check_for_missing_inf(df_in: pd.DataFrame, col: str) -> tuple[bool, bool]:

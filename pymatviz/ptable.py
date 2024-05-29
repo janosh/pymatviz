@@ -532,8 +532,7 @@ class ChildPlotters:
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for to
-                the child plotter.
+            data (SupportedValueType): The values for the child plotter.
             norm (Normalize): Normalizer for data-color mapping.
             cmap (Colormap): Colormap used for value mapping.
             start_angle (float): The starting angle for the splits in degrees,
@@ -572,8 +571,7 @@ class ChildPlotters:
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for to
-                the child plotter.
+            data (SupportedValueType): The values for the child plotter.
             child_kwargs (dict): kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
@@ -601,8 +599,7 @@ class ChildPlotters:
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for to
-                the child plotter.
+            data (SupportedValueType): The values for the child plotter.
             child_kwargs (dict): kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
@@ -632,8 +629,7 @@ class ChildPlotters:
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for to
-                the child plotter.
+            data (SupportedValueType): The values for the child plotter.
             cmap (Colormap): Colormap.
             cbar_axis (Literal["x", "y"]): The axis colormap
                 would be based on.
