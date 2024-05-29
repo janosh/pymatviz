@@ -183,7 +183,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
             # Find the column with element names
             elem_col_name = None
             for col in new_df.columns:
-                if set(new_df[col]).issubset({str, Element}):
+                if set(new_df[col]).issubset(set(map(str, Element))):
                     elem_col_name = col
                     break
 
