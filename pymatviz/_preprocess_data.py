@@ -73,7 +73,7 @@ def get_df_nest_level(df_in: pd.DataFrame, col: str) -> int:
     Returns:
         int: The maximum nest level.
     """
-    return df_in[col].apply(lambda val: np.array(val).ndim).max()
+    return df_in[col].map(lambda val: np.array(val).ndim).max()
 
 
 def replace_missing_and_infinity(
@@ -227,7 +227,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
             value_cols = [
                 col_name for col_name in new_df.columns if col_name != Key.element
             ]
-            new_df[Key.heat_val] = new_df[value_cols].apply(list, axis=1)
+            new_df[Key.heat_val] = new_df[value_cols].map(list)
 
             # Drop the old value columns
             return new_df[[Key.heat_val]]
