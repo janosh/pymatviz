@@ -73,7 +73,7 @@ def get_df_nest_level(df_in: pd.DataFrame, col: str) -> int:
     Returns:
         int: The maximum nest level.
     """
-    return df_in[col].map(lambda val: np.array(val).ndim).max()
+    return df_in[col].map(lambda val: np.asarray(val).ndim).max()
 
 
 def replace_missing_and_infinity(
