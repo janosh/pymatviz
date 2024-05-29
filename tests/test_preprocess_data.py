@@ -175,6 +175,7 @@ def test_check_for_missing_inf() -> None:
 
 
 def test_get_df_nest_level() -> None:
+    # Test nest level 0
     df_level_0 = pd.DataFrame(
         {
             "Fe": 1,
@@ -185,6 +186,7 @@ def test_get_df_nest_level() -> None:
 
     assert get_df_nest_level(df_level_0, Key.heat_val) == 0
 
+    # Test nest level 1
     df_level_1 = pd.DataFrame(
         {
             "Fe": [1, 2, 3],
@@ -195,6 +197,17 @@ def test_get_df_nest_level() -> None:
 
     assert get_df_nest_level(df_level_1, Key.heat_val) == 1
 
+    df_level_1_arr = pd.DataFrame(
+        {
+            "Fe": 1,
+            "O": np.array([4, 5, 6]),
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert get_df_nest_level(df_level_1_arr, Key.heat_val) == 1
+
+    # Test nest level 2
     df_level_2 = pd.DataFrame(
         {
             "Fe": [1, 2, 3],
@@ -204,6 +217,16 @@ def test_get_df_nest_level() -> None:
     ).set_index(Key.element)
 
     assert get_df_nest_level(df_level_2, Key.heat_val) == 2
+
+    df_level_2_arr = pd.DataFrame(
+        {
+            "Fe": [1, 2, 3],
+            "O": np.array([[4, 5], [6, 7]]),  # get max level
+        }.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert get_df_nest_level(df_level_2_arr, Key.heat_val) == 2
 
 
 class TestReplaceMissingAndInfinity:

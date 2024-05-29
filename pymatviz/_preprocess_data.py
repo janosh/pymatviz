@@ -76,8 +76,8 @@ def get_df_nest_level(df_in: pd.DataFrame, col: str, max_level: int = 10) -> int
     """
     current_level = 0
     while current_level <= max_level:
-        # Check if any element in the column is a list
-        if df_in[col].map(lambda x: isinstance(x, list)).any():
+        # Check if any element in the column is a list or np.ndarray
+        if df_in[col].map(lambda x: isinstance(x, (list, np.ndarray))).any():
             current_level += 1
             # Explode the lists into separate rows
             df_in = df_in.explode(col)
