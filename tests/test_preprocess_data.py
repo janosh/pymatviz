@@ -86,7 +86,7 @@ class TestPreprocessPtableData:
         # No elements column/row at all
         df_without_complet_elem = pd.DataFrame(
             {
-                "Hellow": [2.0, 4.0],  # Not an element
+                "Hello": [2.0, 4.0],  # Not an element
                 "Li": np.array([6.0, 8.0]),
                 "Mg": {"a": -1, "b": 14.0}.values(),
             }

@@ -127,16 +127,20 @@ def replace_missing_and_infinity(
     return df_in
 
 
-def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
+def preprocess_ptable_data(
+    data: SupportedDataType,
+    missing_strategy: Literal["zero", "mean"] = "mean",
+) -> pd.DataFrame:
     """Preprocess input data for ptable plotters, including:
         - Convert all data types to pd.DataFrame.
-        - Impute missing values.
-        - Handle anomalies such as NaN, infinity.
-        - Write vmin/vmax as metadata into the DataFrame for later color mapping.
+        - Replace missing values (NaN) by selected strategy.
+        - Replace infinities with vmax(∞) or vmin(-∞).
+        - Write vmin/mean/vmax as metadata into the DataFrame.
 
     Args:
-        data (dict[str, float | Sequence[float]] | pd.DataFrame | pd.Series): Input data
-            to preprocess.
+        data (dict[str, float | Sequence[float]] | pd.DataFrame | pd.Series):
+            Input data to preprocess.
+        missing_strategy: missing value replacement strategy.
 
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names
@@ -250,8 +254,10 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
         for val in data_df[Key.heat_val]
     ]
 
-    # Handle missing value and infinity
-    data_df = replace_missing_and_infinity(data_df, col=Key.heat_val)
+    # Replace missing value and infinity
+    data_df = replace_missing_and_infinity(
+        data_df, col=Key.heat_val, missing_strategy=missing_strategy
+    )
 
     # Flatten up to triple nested lists
     values = data_df[Key.heat_val].explode().explode().explode()
