@@ -83,8 +83,9 @@ class TestPreprocessPtableData:
         assert_allclose(output_df_1.loc["Li", Key.heat_val], [6.0, 8.0])
         assert_allclose(output_df_1.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
-        # No elements column/row at all
-        df_without_complet_elem = pd.DataFrame(
+    def test_df_cannot_fix(self) -> None:
+        # No complete elements column/row
+        df_without_complete_elem = pd.DataFrame(
             {
                 "Hello": [2.0, 4.0],  # Not an element
                 "Li": np.array([6.0, 8.0]),
@@ -92,7 +93,7 @@ class TestPreprocessPtableData:
             }
         )
         with pytest.raises(ValueError, match="Cannot normalize the given DataFrame"):
-            preprocess_ptable_data(df_without_complet_elem)
+            preprocess_ptable_data(df_without_complete_elem)
 
     def test_from_pd_series(self) -> None:
         input_series: pd.Series = pd.Series(self.test_dict)
