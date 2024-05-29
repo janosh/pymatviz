@@ -17,7 +17,8 @@ if TYPE_CHECKING:
     from typing import Literal
 
 
-# Data types that can be passed to PTableProjector and data_preprocessor
+# Data types that can be passed to PTableProjector and normalized by data_preprocessor
+# to SupportedValueType
 SupportedDataType = Union[
     dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
 ]
@@ -177,13 +178,12 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
         def fix_df_elem_as_col(df: pd.DataFrame) -> pd.DataFrame:
             """Fix pd.DataFrame where elements are in a single column."""
             # Copy and reset index to move element names to a column
-            new_df = df.copy()
-            new_df = new_df.reset_index()
+            new_df = df.copy().reset_index()
 
             # Find the column with element names
             elem_col_name = None
             for col in new_df.columns:
-                if set(new_df[col]).issubset(set(map(str, Element))):
+                if set(new_df[col]).issubset({str, Element}):
                     elem_col_name = col
                     break
 
@@ -221,7 +221,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
         if fixed_df is not None:
             return fixed_df
 
-        raise RuntimeError("Cannot fix provided DataFrame.")
+        raise ValueError(f"Cannot normalize the given DataFrame:\n{df.describe()}")
 
     # Convert supported data types to DataFrame
     if isinstance(data, pd.DataFrame):
@@ -257,7 +257,7 @@ def preprocess_ptable_data(data: SupportedDataType) -> pd.DataFrame:
     values = data_df[Key.heat_val].explode().explode().explode()
     numeric_values = pd.to_numeric(values, errors="coerce")
 
-    # Write vmin/vmax/mean into df.attrs
+    # Write vmin/mean/vmax into df.attrs
     data_df.attrs["vmin"] = numeric_values.min()
     data_df.attrs["mean"] = numeric_values.mean()
     data_df.attrs["vmax"] = numeric_values.max()
