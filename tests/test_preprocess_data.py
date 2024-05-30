@@ -66,22 +66,22 @@ class TestPreprocessPtableData:
             "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
         }
 
-        input_df_0 = pd.DataFrame(test_dict)
+        df_in = pd.DataFrame(test_dict)
 
         # Elements as a row, and no proper row/column names
-        output_df_0 = preprocess_ptable_data(input_df_0)
+        df_out = preprocess_ptable_data(df_in)
 
-        assert_allclose(output_df_0.loc["He", Key.heat_val], [2.0, 4.0])
-        assert_allclose(output_df_0.loc["Li", Key.heat_val], [6.0, 8.0])
-        assert_allclose(output_df_0.loc["Mg", Key.heat_val], [-1.0, 14.0])
+        assert_allclose(df_out.loc["He", Key.heat_val], [2.0, 4.0])
+        assert_allclose(df_out.loc["Li", Key.heat_val], [6.0, 8.0])
+        assert_allclose(df_out.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
         # Elements as a column, and no proper row/column names
-        input_df_1 = input_df_0.copy().transpose()
-        output_df_1 = preprocess_ptable_data(input_df_1)
+        df_in_transp = pd.DataFrame(test_dict).transpose()
+        df_out_transp = preprocess_ptable_data(df_in_transp)
 
-        assert_allclose(output_df_1.loc["He", Key.heat_val], [2.0, 4.0])
-        assert_allclose(output_df_1.loc["Li", Key.heat_val], [6.0, 8.0])
-        assert_allclose(output_df_1.loc["Mg", Key.heat_val], [-1.0, 14.0])
+        assert_allclose(df_out_transp.loc["He", Key.heat_val], [2.0, 4.0])
+        assert_allclose(df_out_transp.loc["Li", Key.heat_val], [6.0, 8.0])
+        assert_allclose(df_out_transp.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
     def test_df_cannot_fix(self) -> None:
         # No complete elements column/row
@@ -92,7 +92,7 @@ class TestPreprocessPtableData:
                 "Mg": {"a": -1, "b": 14.0}.values(),
             }
         )
-        with pytest.raises(ValueError, match="Cannot normalize the given DataFrame"):
+        with pytest.raises(KeyError, match="Cannot handle dataframe="):
             preprocess_ptable_data(df_without_complete_elem)
 
     def test_from_pd_series(self) -> None:

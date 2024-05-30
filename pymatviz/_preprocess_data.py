@@ -225,7 +225,10 @@ def preprocess_ptable_data(
         if fixed_df is not None:
             return fixed_df
 
-        raise ValueError(f"Cannot normalize the given DataFrame:\n{df.describe()}")
+        raise KeyError(
+            f"Cannot handle dataframe={df}, needs row/column named "
+            f"{Key.element} and {Key.heat_val}"
+        )
 
     # Convert supported data types to DataFrame
     if isinstance(data, pd.DataFrame):
@@ -234,37 +237,31 @@ def preprocess_ptable_data(
     elif isinstance(data, pd.Series):
         data_df = data.to_frame(name=Key.heat_val)
         data_df.index.name = Key.element
-
     elif isinstance(data, dict):
         data_df = pd.DataFrame(
             data.items(), columns=[Key.element, Key.heat_val]
         ).set_index(Key.element)
-
     else:
-        type_name = type(data).__name__  # line too long
+        type_name = type(data).__name__
         raise TypeError(
             f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
         )
 
-    # Convert all values to 1D np.array
-    data_df[Key.heat_val] = [
-        # String is Iterable too so would be converted to list of chars
-        # but users shouldn't pass strings anyway
-        np.array(list(val) if isinstance(val, Iterable) else [val])
-        for val in data_df[Key.heat_val]
-    ]
+    data_df[Key.heat_val] = data_df[Key.heat_val].apply(
+        lambda val: np.array(list(val))
+        if isinstance(val, Iterable) and not isinstance(val, str)
+        else np.array([val])
+    )
 
-    # Replace missing value and infinity
     data_df = replace_missing_and_infinity(
         data_df, col=Key.heat_val, missing_strategy=missing_strategy
     )
 
-    # Flatten up to triple nested lists
-    values = data_df[Key.heat_val].explode().explode().explode()
-    numeric_values = pd.to_numeric(values, errors="coerce")
-
-    # Write vmin/mean/vmax into df.attrs
+    numeric_values = pd.to_numeric(
+        data_df[Key.heat_val].explode().explode().explode(), errors="coerce"
+    )
     data_df.attrs["vmin"] = numeric_values.min()
     data_df.attrs["mean"] = numeric_values.mean()
     data_df.attrs["vmax"] = numeric_values.max()
+
     return data_df
