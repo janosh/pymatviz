@@ -241,12 +241,12 @@ class PTableProjector:
     def data(self, data: SupportedDataType) -> None:
         """Set and preprocess the data. Also set normalizer."""
         # Preprocess data
-        self._data: pd.DataFrame = preprocess_ptable_data(data)
+        self._data = preprocess_ptable_data(data)
 
         # Normalize data for colorbar
-        self._norm: Normalize = Normalize(
-            vmin=self._data.attrs["vmin"], vmax=self._data.attrs["vmax"]
-        )
+        vmin = self._data.attrs["vmin"]
+        vmax = self._data.attrs["vmax"]
+        self._norm = Normalize(vmin=vmin, vmax=vmax)
 
     @property
     def norm(self) -> Normalize:
@@ -269,7 +269,7 @@ class PTableProjector:
                 if (elem := Element.from_Z(atom_num).symbol) in self.data.index
                 and len(self.data.loc[elem, Key.heat_val]) > 0
             }
-            self._hide_f_block = bool(f_block_elements_with_data)
+            self._hide_f_block = not bool(f_block_elements_with_data)
 
         else:
             self._hide_f_block = hide_f_block

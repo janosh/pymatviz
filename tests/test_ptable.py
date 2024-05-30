@@ -47,7 +47,7 @@ class TestPTableProjector:
         "Al": {-1, 2.3},  # mixed int/float set
     }
 
-    def test_property_elem_types(self) -> None:
+    def test_elem_types(self) -> None:
         projector = PTableProjector(data=self.test_dict)
         assert projector.elem_types == {
             "Noble Gas",
@@ -56,6 +56,16 @@ class TestPTableProjector:
             "Nonmetal",
             "Alkali Metal",
         }
+
+    def test_hide_f_block(self) -> None:
+        # check default is True if no f-block elements in data
+        assert PTableProjector(data=self.test_dict).hide_f_block is True
+        assert PTableProjector(data={"H": 1}).hide_f_block is True
+        # check default is False if f-block elements in data
+        assert PTableProjector(data=self.test_dict | {"La": 1}).hide_f_block is False
+        assert PTableProjector(data={"La": 1}).hide_f_block is False
+        # check override
+        assert PTableProjector(data={"La": 1}, hide_f_block=True).hide_f_block is True
 
     def test_get_elem_type_color(self) -> None:
         projector = PTableProjector(data=self.test_dict)
