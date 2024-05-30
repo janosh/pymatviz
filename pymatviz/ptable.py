@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 import math
 import warnings
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Literal, Union, get_args
 
@@ -20,6 +20,11 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
+from pymatviz._preprocess_data import (
+    SupportedDataType,
+    SupportedValueType,
+    preprocess_ptable_data,
+)
 from pymatviz.enums import Key
 from pymatviz.utils import ELEM_TYPE_COLORS, df_ptable, pick_bw_for_contrast, si_fmt
 
@@ -29,14 +34,6 @@ if TYPE_CHECKING:
 
     import plotly.graph_objects as go
 
-
-# Data types used internally by ptable plotters
-SupportedValueType = Union[Sequence[float], np.ndarray]
-
-# Data types that can be passed to PTableProjector and data_preprocessor
-SupportedDataType = Union[
-    dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
-]
 
 CountMode = Literal[
     Key.composition, "fractional_composition", "reduced_composition", "occurrence"
@@ -155,152 +152,6 @@ def count_elements(
     return srs
 
 
-def data_preprocessor(data: SupportedDataType) -> pd.DataFrame:
-    """Preprocess input data for ptable plotters, including:
-        - Convert all data types to pd.DataFrame.
-        - Impute missing values.
-        - Handle anomalies such as NaN, infinity.
-        - Write vmin/vmax as metadata into the DataFrame.
-
-    Returns:
-        pd.DataFrame: The preprocessed DataFrame with element names
-            as index and values as columns.
-
-    Example:
-        >>> data_dict: dict = {
-            "H": 1.0,
-            "He": [2.0, 4.0],
-            "Li": [[6.0, 8.0], [10.0, 12.0]],
-        }
-
-        OR
-        >>> data_df: pd.DataFrame = pd.DataFrame(
-            data_dict.items(),
-            columns=["element", "heat_val"]
-            ).set_index("element")
-
-        OR
-        >>> data_series: pd.Series = pd.Series(data_dict)
-
-        >>> preprocess_data(data_dict / df / series)
-
-             Element   Value
-        0    H         [1.0, ]
-        1    He        [2.0, 4.0]
-        2    Li        [[6.0, 8.0], [10.0, 12.0]]
-
-        Metadata:
-            vmin: 1.0
-            vmax: 12.0
-    """
-
-    def format_pd_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-        """Fix pd.DataFrame that does not meet expected format."""
-
-        def fix_df_elem_as_col(df: pd.DataFrame) -> pd.DataFrame:
-            """Fix pd.DataFrame where elements are in a single column."""
-            # Copy and reset index to move element names to a column
-            new_df = df.copy()
-            new_df = new_df.reset_index()
-
-            # Find the column with element names
-            elem_col_name = None
-            for col in new_df.columns:
-                if set(new_df[col]).issubset(set(map(str, Element))):
-                    elem_col_name = col
-                    break
-
-            # Fix failed: cannot find the elements column
-            if elem_col_name is None:
-                return None
-
-            # Rename the column with elements and set it as index
-            new_df = new_df.rename(columns={elem_col_name: Key.element})
-            new_df = new_df.set_index(Key.element)
-
-            # Zip the remaining values into a single column
-            value_cols = [
-                col_name for col_name in new_df.columns if col_name != Key.element
-            ]
-            new_df[Key.heat_val] = new_df[value_cols].apply(list, axis=1)
-
-            # Drop the old value columns
-            return new_df[[Key.heat_val]]
-
-        # Check if input DataFrame is in expected format
-        if Key.element == df.index.name and Key.heat_val in df.columns:
-            return df
-
-        # Re-format it to expected
-        warnings.warn("pd.DataFrame has unexpected format, trying to fix.")
-
-        # Try to search for elements as a column
-        fixed_df = fix_df_elem_as_col(df)
-        if fixed_df is not None:
-            return fixed_df
-
-        # Try to search for elements as a row
-        fixed_df = fix_df_elem_as_col(df.transpose())
-        if fixed_df is not None:
-            return fixed_df
-
-        raise RuntimeError("Cannot fix provided DataFrame.")
-
-    def handle_missing_and_anomaly(
-        df: pd.DataFrame,
-        # missing_strategy: Literal["zero", "mean"] = "mean",
-    ) -> pd.DataFrame:
-        """Handle missing value (NaN) and anomaly (infinity).
-
-        Infinity would be replaced by vmax(∞) or vmin(-∞).
-        Missing values would be handled by selected strategy:
-            - zero: impute with zeros
-            - mean: impute with mean value
-
-        TODO: finish this function
-        """
-        return df
-
-    # Check and handle different supported data types
-    if isinstance(data, pd.DataFrame):
-        data_df = format_pd_dataframe(data)
-
-    elif isinstance(data, pd.Series):
-        data_df = data.to_frame(name=Key.heat_val)
-        data_df.index.name = Key.element
-
-    elif isinstance(data, dict):
-        data_df = pd.DataFrame(
-            data.items(), columns=[Key.element, Key.heat_val]
-        ).set_index(Key.element)
-
-    else:
-        type_name = type(data).__name__  # line too long
-        raise TypeError(
-            f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
-        )
-
-    # Convert all values to 1D np.array
-    data_df[Key.heat_val] = [
-        # String is Iterable too so would be converted to list of chars
-        # but users shouldn't pass strings anyway
-        np.array(list(val) if isinstance(val, Iterable) else [val])
-        for val in data_df[Key.heat_val]
-    ]
-
-    # Handle missing and anomalous values
-    data_df = handle_missing_and_anomaly(data_df)
-
-    # Flatten up to triple nested lists
-    values = data_df[Key.heat_val].explode().explode().explode()
-    numeric_values = pd.to_numeric(values, errors="coerce")
-
-    # Write vmin/vmax into df.attrs for colorbar
-    data_df.attrs["vmin"] = numeric_values.min()  # ignores NaNs
-    data_df.attrs["vmax"] = numeric_values.max()
-    return data_df
-
-
 class PTableProjector:
     """Project (nest) a custom plot into a periodic table.
 
@@ -390,7 +241,7 @@ class PTableProjector:
     def data(self, data: SupportedDataType) -> None:
         """Set and preprocess the data. Also set normalizer."""
         # Preprocess data
-        self._data: pd.DataFrame = data_preprocessor(data)
+        self._data: pd.DataFrame = preprocess_ptable_data(data)
 
         # Normalize data for colorbar
         self._norm: Normalize = Normalize(
@@ -463,9 +314,10 @@ class PTableProjector:
 
     def add_child_plots(
         self,
-        child_plotter: Callable[[plt.axes, Any], None],
+        child_plotter: Callable[..., None],
         *,
         child_kwargs: dict[str, Any] | None = None,
+        tick_kwargs: dict[str, Any] | None = None,
         ax_kwargs: dict[str, Any] | None = None,
         on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
@@ -474,12 +326,16 @@ class PTableProjector:
         Args:
             child_plotter: A callable for the child plotter.
             child_kwargs: Arguments to pass to the child plotter call.
+            tick_kwargs: kwargs to pass to ax.tick_params().
             ax_kwargs: Keyword arguments to pass to ax.set().
             on_empty: Whether to "show" or "hide" tiles for elements without data.
         """
         # Update kwargs
         child_kwargs = child_kwargs or {}
         ax_kwargs = ax_kwargs or {}
+        tick_kwargs = {"axis": "both", "which": "major", "labelsize": 8} | (
+            tick_kwargs or {}
+        )
 
         for element in Element:
             # Hide f-block
@@ -503,7 +359,7 @@ class PTableProjector:
                 continue
 
             # Call child plotter
-            child_plotter(ax, plot_data, **child_kwargs)
+            child_plotter(ax, plot_data, tick_kwargs=tick_kwargs, **child_kwargs)
 
             # Pass axis kwargs
             if ax_kwargs:
@@ -667,6 +523,7 @@ class ChildPlotters:
         norm: Normalize,
         cmap: Colormap,
         start_angle: float,
+        tick_kwargs: dict[str, Any],  # noqa: ARG004
     ) -> None:
         """Rectangle heatmap plotter, could be evenly split.
 
@@ -675,12 +532,12 @@ class ChildPlotters:
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for to
-                the child plotter.
+            data (SupportedValueType): The values for the child plotter.
             norm (Normalize): Normalizer for data-color mapping.
             cmap (Colormap): Colormap used for value mapping.
             start_angle (float): The starting angle for the splits in degrees,
                 and the split proceeds counter-clockwise (0 refers to the x-axis).
+            tick_kwargs: For compatibility with other plotters.
         """
         # Map values to colors
         if isinstance(data, (Sequence, np.ndarray)):
@@ -707,15 +564,16 @@ class ChildPlotters:
     def scatter(
         ax: plt.axes,
         data: SupportedValueType,
+        tick_kwargs: dict[str, Any],
         **child_kwargs: Any,
     ) -> None:
         """Scatter plotter.
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for to
-                the child plotter.
-            child_kwargs (dict): args to pass to the child plotter call
+            data (SupportedValueType): The values for the child plotter.
+            child_kwargs (dict): kwargs to pass to the child plotter call.
+            tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
         # Add scatter
         if len(data) == 2:
@@ -723,9 +581,8 @@ class ChildPlotters:
         elif len(data) == 3:
             ax.scatter(x=data[0], y=data[1], c=data[2], **child_kwargs)
 
-        # Adjust tick labels
-        # TODO: how to control this from external?
-        ax.tick_params(axis="both", which="major", labelsize=8)
+        # Set tick labels
+        ax.tick_params(**tick_kwargs)
 
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
@@ -735,22 +592,22 @@ class ChildPlotters:
     def line(
         ax: plt.axes,
         data: SupportedValueType,
+        tick_kwargs: dict[str, Any],
         **child_kwargs: Any,
     ) -> None:
         """Line plotter.
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for to
-                the child plotter.
-            child_kwargs (dict): args to pass to the child plotter call.
+            data (SupportedValueType): The values for the child plotter.
+            child_kwargs (dict): kwargs to pass to the child plotter call.
+            tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
         # Add line
         ax.plot(data[0], data[1], **child_kwargs)
 
-        # Adjust tick labels
-        # TODO: how to control this from external?
-        ax.tick_params(axis="both", which="major", labelsize=8)
+        # Set tick labels
+        ax.tick_params(**tick_kwargs)
 
         # Hide the right and top spines
         ax.axis("on")  # turned off by default
@@ -762,6 +619,7 @@ class ChildPlotters:
         data: SupportedValueType,
         cmap: Colormap,
         cbar_axis: Literal["x", "y"],
+        tick_kwargs: dict[str, Any],
         **child_kwargs: Any,
     ) -> None:
         """Histogram plotter.
@@ -771,12 +629,12 @@ class ChildPlotters:
 
         Args:
             ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for to
-                the child plotter.
+            data (SupportedValueType): The values for the child plotter.
             cmap (Colormap): Colormap.
             cbar_axis (Literal["x", "y"]): The axis colormap
                 would be based on.
-            child_kwargs: args to pass to the child plotter call.
+            child_kwargs: kwargs to pass to the child plotter call.
+            tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
         # Preprocess x_range if only one boundary is given
         x_range = child_kwargs.pop("range", None)
@@ -807,9 +665,8 @@ class ChildPlotters:
         for col, patch in zip(cols, patches):
             plt.setp(patch, "facecolor", cmap(col))
 
-        # Adjust tick labels
-        # TODO: how to control this from external?
-        ax.tick_params(axis="both", which="major", labelsize=8)
+        # Set tick labels
+        ax.tick_params(**tick_kwargs)
         ax.set_yticklabels([])
         ax.set_yticks([])
 
@@ -951,6 +808,7 @@ def ptable_heatmap(
         warnings.warn(
             "cmap argument is deprecated, use colorscale instead",
             category=DeprecationWarning,
+            stacklevel=2,
         )
 
     values = count_elements(values, count_mode, exclude_elements)
@@ -1197,7 +1055,7 @@ def ptable_heatmap_splits(
     }
 
     plotter.add_child_plots(
-        ChildPlotters.rectangle,  # type: ignore[arg-type]
+        ChildPlotters.rectangle,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
@@ -1661,7 +1519,7 @@ def ptable_hists(
     }
 
     plotter.add_child_plots(
-        ChildPlotters.histogram,  # type: ignore[arg-type]
+        ChildPlotters.histogram,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
