@@ -127,7 +127,7 @@ df_pbe_frac_comp = pd.DataFrame(
     comp.as_dict() for comp in df_pbe[frac_comp_col]
 ).set_index(df_pbe.index)
 
-if any(df_r2scan_frac_comp.sum(axis=1).round(6) != 1):
+if any(df_r2scan_frac_comp.sum(axis="columns").round(6) != 1):
     raise ValueError("composition fractions don't sum to 1")
 
 df_per_elem = pd.DataFrame()
