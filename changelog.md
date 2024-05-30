@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.8.3](https://github.com/janosh/pymatviz/compare/v0.8.2...v0.8.3)
+
+> 30 May 2024
+
+- Fix `PTableProjector.hide_f_block` property [`#154`](https://github.com/janosh/pymatviz/pull/154)
+- Handle missing value (NaN) and infinity for ptable data [`#152`](https://github.com/janosh/pymatviz/pull/152)
+- [Enhancement/Breaking] Refactor `ptable_hists`  [`#149`](https://github.com/janosh/pymatviz/pull/149)
+- Add keyword `log: bool = False` to `spacegroup_hist` to log scale y-axis [`#148`](https://github.com/janosh/pymatviz/pull/148)
+- MatPES EDA script [`#147`](https://github.com/janosh/pymatviz/pull/147)
+- Fix `ptable_heatmap_splits` `TypeErrors` [`#146`](https://github.com/janosh/pymatviz/pull/146)
+- Add `mlff_phonons.ipynb` example notebook [`#144`](https://github.com/janosh/pymatviz/pull/144)
+- split examples/_generate_assets.py by pymatviz module whose plot functions are made assets for [`ef3f066`](https://github.com/janosh/pymatviz/commit/ef3f066a4d80589a724d552903a54da1edeb6164)
+- show ptable-heatmap-splits-3 in readme [`1be63ea`](https://github.com/janosh/pymatviz/commit/1be63eadd824fb726d507ff13bbfaf73538e9c98)
+- fix docs build: ParseError: Unexpected character '“' [`fbb2c8f`](https://github.com/janosh/pymatviz/commit/fbb2c8f67d483b48d6adfd768f80717c98e74061)
+
 #### [v0.8.2](https://github.com/janosh/pymatviz/compare/v0.8.1...v0.8.2)
 
 > 11 May 2024
