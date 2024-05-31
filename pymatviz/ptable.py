@@ -525,10 +525,8 @@ class ChildPlotters:
         start_angle: float,
         tick_kwargs: dict[str, Any],  # noqa: ARG004
     ) -> None:
-        """Rectangle heatmap plotter, could be evenly split.
-
-        Could be evenly split, depending on the
-        length of the data (could mix and match).
+        """Rectangle heatmap plotter. Could be evenly split,
+        depending on the length of the data (could mix and match).
 
         Args:
             ax (plt.axes): The axis to plot on.
@@ -1561,6 +1559,7 @@ def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
     # Figure-scope
+    colormap: str | Colormap | None = "viridis",
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
@@ -1569,6 +1568,11 @@ def ptable_scatters(
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
     child_kwargs: dict[str, Any] | None = None,
+    # Colorbar
+    cbar_title: str = "Values",
+    cbar_title_kwargs: dict[str, Any] | None = None,
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+    cbar_kwargs: dict[str, Any] | None = None,
     # Symbol
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
@@ -1589,6 +1593,8 @@ def ptable_scatters(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
+        colormap (str): Matplotlib colormap name to use. Defaults to 'viridis'. See
+            options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
@@ -1601,6 +1607,14 @@ def ptable_scatters(
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
         child_kwargs: Arguments to pass to the child plotter call.
+
+        cbar_title (str): Color bar title. Defaults to "Histogram Value".
+        cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
+            Defaults to dict(fontsize=12, pad=10).
+        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
+            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
+            (0.25, 0.77, 0.35, 0.02).
+        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
@@ -1650,6 +1664,16 @@ def ptable_scatters(
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
         plotter.set_elem_background_color()
+
+    # Add colorbar if data length is 3
+    # TODO:
+    if colormap is not None:
+        plotter.add_colorbar(
+            title=cbar_title,
+            coords=cbar_coords,
+            cbar_kwargs=cbar_kwargs,
+            title_kwargs=cbar_title_kwargs,
+        )
 
     # Add element type legend
     if add_elem_type_legend:
