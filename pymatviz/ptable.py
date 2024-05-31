@@ -1619,8 +1619,6 @@ def ptable_scatters(
             types. Defaults to True.
         elem_type_legend_kwargs (dict): kwargs to plt.legend(), e.g. to
             set the legend title, use {"title": "Element Types"}.
-
-    TODO: allow colormap with 3rd data dimension
     """
     # Initialize periodic table plotter
     plotter = PTableProjector(
