@@ -157,17 +157,14 @@ def plot_structure_2d(
     Multiple structures in single figure example:
 
     ```py
-    import matplotlib.pyplot as plt
     from pymatgen.ext.matproj import MPRester
     from pymatviz import plot_structure_2d
 
-    structures = [
-        MPRester().get_structure_by_material_id(f"mp-{idx}") for idx in range(1, 5)
-    ]
-    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
-
-    for struct, ax in zip(structures, axs.flat):
-        plot_structure_2d(struct, ax=ax)
+    structures = {
+        (mp_id := f"mp-{idx}"): MPRester().get_structure_by_material_id(mp_id)
+        for idx in range(1, 5)
+    }
+    plot_structure_2d(structures)
     ```
 
     Args:
@@ -470,25 +467,27 @@ def plot_structure_2d(
         n_cols = min(n_cols, n_structs)
         n_rows = math.ceil(n_structs / n_cols)
 
-        fig, axs = plt.subplots(
-            n_rows,
-            n_cols,
-            **dict(figsize=(3 * n_cols, 3 * n_rows)) | (subplot_kwargs or {}),
-        )
+        subplot_kwargs = dict(figsize=(3 * n_cols, 3 * n_rows), **subplot_kwargs or {})
+        fig, axs = plt.subplots(n_rows, n_cols, **subplot_kwargs)
 
         for idx, (struct_or_key, ax) in enumerate(zip(structures, axs.flat), start=1):
-            if isinstance(struct_or_key, str) and isinstance(structures, dict):
-                subplot_title = struct_or_key
-                struct_i = structures[struct_or_key]
+            if isinstance(structures, dict):
+                key = struct_or_key
+                struct_i = structures[key]
             elif isinstance(struct_or_key, Structure):
-                props = struct_or_key.properties
-                if id_key := next(iter(set(props) & {Key.mat_id, "id", "ID"}), None):
-                    subplot_title = props[id_key]
-                else:
-                    subplot_title = struct_or_key.formula
+                key = idx
                 struct_i = struct_or_key
             else:
-                raise TypeError(f"Expected pymatgen Structure or str, got {struct=}")
+                raise TypeError(f"Expected pymatgen Structure or dict, got {struct=}")
+
+            props = struct_i.properties
+            if id_key := next(iter(set(props) & {Key.mat_id, "id", "ID"}), None):
+                subplot_title = props[id_key]
+            elif isinstance(key, int):
+                spg_num = struct_i.get_space_group_info()[1]
+                subplot_title = f"{struct_i.formula} ({spg_num})"
+            else:
+                subplot_title = key
 
             plot_structure_2d(
                 struct_i,
