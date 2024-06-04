@@ -129,14 +129,14 @@ def test_plot_structure_2d_multiple() -> None:
     assert isinstance(fig, plt.Figure)
     assert isinstance(axs, np.ndarray)
     assert axs.shape == (2, 3)
-    ax_titles = [f"{idx + 1}. {key}" for idx, key in enumerate(struct_dict)]
-    assert [ax.get_title() for ax in axs.flat] == ax_titles + [""] * 2
+    sub_titles = [f"{idx + 1}. {key}" for idx, key in enumerate(struct_dict)]
+    assert [ax.get_title() for ax in axs.flat] == sub_titles + [""] * 2
 
     # Test pandas.Series[Structure]
     struct_series = pd.Series(struct_dict)
     fig, axs = plot_structure_2d(struct_series)
     assert axs.shape == (4,)  # default n_cols=4
-    assert [ax.get_title() for ax in axs.flat] == ax_titles
+    assert [ax.get_title() for ax in axs.flat] == sub_titles
     # Test subplot_kwargs
     fig, axs = plot_structure_2d(struct_series, subplot_kwargs={"squeeze": False})
     assert axs.shape == (1, 4)  # default n_cols=4
@@ -147,4 +147,16 @@ def test_plot_structure_2d_multiple() -> None:
     assert axs.flat[0].get_title() == f"1. {struct1.properties['id']}"
     assert axs.flat[1].get_title() == f"2. {struct2.properties[Key.mat_id]}"
     assert axs.flat[2].get_title() == f"3. {struct3.properties['ID']}"
-    assert axs.flat[3].get_title() == f"4. {struct4.formula}"
+    struct4_title = f"4. {struct4.formula} ({struct4.get_space_group_info()[1]})"
+    assert axs.flat[3].get_title() == struct4_title
+
+    # Test subplot_title
+    def subplot_title(struct: Structure, key: str | int) -> str:
+        return f"{key} - {struct.formula}"
+
+    fig, axs = plot_structure_2d(struct_series, subplot_title=subplot_title)
+    sub_titles = [
+        f"{idx}. {subplot_title(struct, key)}"
+        for idx, (key, struct) in enumerate(struct_dict.items(), start=1)
+    ]
+    assert [ax.get_title() for ax in axs.flat] == sub_titles
