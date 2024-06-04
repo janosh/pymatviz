@@ -147,7 +147,7 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(normal_df, Key.heat_val) == (False, False)
+    assert check_for_missing_inf(normal_df, col=Key.heat_val) == (False, False)
 
     # Test DataFrame with missing value (NaN)
     df_with_missing = pd.DataFrame(
@@ -155,7 +155,7 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_missing, Key.heat_val) == (True, False)
+    assert check_for_missing_inf(df_with_missing, col=Key.heat_val) == (True, False)
 
     # Test DataFrame with infinity
     df_with_inf = pd.DataFrame(
@@ -163,7 +163,7 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_inf, Key.heat_val) == (False, True)
+    assert check_for_missing_inf(df_with_inf, col=Key.heat_val) == (False, True)
 
     # Test DataFrame with missing value (NaN) and infinity
     df_with_nan_inf = pd.DataFrame(
@@ -171,7 +171,7 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_nan_inf, Key.heat_val) == (True, True)
+    assert check_for_missing_inf(df_with_nan_inf, col=Key.heat_val) == (True, True)
 
 
 def test_get_df_nest_level() -> None:
@@ -181,7 +181,7 @@ def test_get_df_nest_level() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert get_df_nest_level(df_level_0, Key.heat_val) == 0
+    assert get_df_nest_level(df_level_0, col=Key.heat_val) == 0
 
     # Test nest level 1
     df_level_1 = pd.DataFrame(
@@ -189,14 +189,14 @@ def test_get_df_nest_level() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert get_df_nest_level(df_level_1, Key.heat_val) == 1
+    assert get_df_nest_level(df_level_1, col=Key.heat_val) == 1
 
     df_level_1_arr = pd.DataFrame(
         {"Fe": 1, "O": np.array([4, 5, 6])}.items(),
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert get_df_nest_level(df_level_1_arr, Key.heat_val) == 1
+    assert get_df_nest_level(df_level_1_arr, col=Key.heat_val) == 1
 
     # Test nest level 2
     df_level_2 = pd.DataFrame(
@@ -204,7 +204,7 @@ def test_get_df_nest_level() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert get_df_nest_level(df_level_2, Key.heat_val) == 2
+    assert get_df_nest_level(df_level_2, col=Key.heat_val) == 2
 
     df_level_2_arr = pd.DataFrame(
         {
@@ -214,7 +214,7 @@ def test_get_df_nest_level() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert get_df_nest_level(df_level_2_arr, Key.heat_val) == 2
+    assert get_df_nest_level(df_level_2_arr, col=Key.heat_val) == 2
 
 
 class TestReplaceMissingAndInfinity:
@@ -263,6 +263,8 @@ class TestReplaceMissingAndInfinity:
             {"Fe": [1, 2, 3], "O": [[4, 5], [6, np.nan]]}.items(),
             columns=[Key.element, Key.heat_val],
         ).set_index(Key.element)
+        nest_level = get_df_nest_level(df_level_2, col=Key.heat_val)
 
-        with pytest.raises(RuntimeError, match="Unable to replace NaN and inf"):
+        err_msg = f"Unable to replace NaN and inf for nest_level>1, got {nest_level}"
+        with pytest.raises(NotImplementedError, match=err_msg):
             replace_missing_and_infinity(df_level_2, col=Key.heat_val)
