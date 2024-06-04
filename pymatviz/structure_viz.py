@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 import warnings
 from itertools import product
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -127,6 +127,7 @@ def plot_structure_2d(
     axis: bool | str = "off",
     n_cols: int = 4,
     subplot_kwargs: dict[str, Any] | None = None,
+    subplot_title: Callable[[Structure, str | int], str] | None = None,
 ) -> plt.Axes | tuple[plt.Figure, plt.Axes]:
     """Plot pymatgen structures in 2D with matplotlib.
 
@@ -211,6 +212,10 @@ def plot_structure_2d(
         n_cols (int, optional): Number of columns for subplots. Defaults to 4.
         subplot_kwargs (dict, optional): Unused if only a single structure is passed.
             Keyword arguments for plt.subplots(). Defaults to None.
+        subplot_title (Callable[[Structure, str | int], str], optional): Should return
+            subplot titles. Receives the structure and its key or index when passed as
+            a dict or pandas.Series. Defaults to None in which case the title is the
+            structure's material id if available, otherwise its formula and space group.
 
     Raises:
         ValueError: On invalid site_labels.
@@ -482,12 +487,14 @@ def plot_structure_2d(
 
             props = struct_i.properties
             if id_key := next(iter(set(props) & {Key.mat_id, "id", "ID"}), None):
-                subplot_title = props[id_key]
+                sub_title = props[id_key]
             elif isinstance(key, int):
                 spg_num = struct_i.get_space_group_info()[1]
-                subplot_title = f"{struct_i.formula} ({spg_num})"
+                sub_title = f"{struct_i.formula} ({spg_num})"
             else:
-                subplot_title = key
+                sub_title = key
+            if callable(subplot_title):
+                sub_title = subplot_title(struct_i, key)
 
             plot_structure_2d(
                 struct_i,
@@ -504,7 +511,7 @@ def plot_structure_2d(
                 standardize_struct=standardize_struct,
                 axis=axis,
             )
-            ax.set_title(f"{idx}. {subplot_title}", fontsize=14)
+            ax.set_title(f"{idx}. {sub_title}", fontsize=14)
 
         # Hide unused axes
         for ax in axs.flat[n_structs:]:

@@ -27,7 +27,7 @@ SupportedDataType = Union[
 SupportedValueType = Union[Sequence[float], np.ndarray]
 
 
-def check_for_missing_inf(df_in: pd.DataFrame, col: str) -> tuple[bool, bool]:
+def check_for_missing_inf(df_in: pd.DataFrame, *, col: str) -> tuple[bool, bool]:
     """Check if there is NaN or infinity in a DataFrame column.
 
     Args:
@@ -58,7 +58,7 @@ def check_for_missing_inf(df_in: pd.DataFrame, col: str) -> tuple[bool, bool]:
     return has_nan, has_inf
 
 
-def get_df_nest_level(df_in: pd.DataFrame, col: str) -> int:
+def get_df_nest_level(df_in: pd.DataFrame, *, col: str) -> int:
     """Check for maximum nest level in a DataFrame column.
 
     Definition of nest level:
@@ -95,14 +95,17 @@ def replace_missing_and_infinity(
         missing_strategy: missing value replacement strategy.
     """
     # Check for NaN and infinity
-    has_nan, has_inf = check_for_missing_inf(df_in, Key.heat_val)
+    has_nan, has_inf = check_for_missing_inf(df_in, col=Key.heat_val)
 
     if not has_nan and not has_inf:
         return df_in
 
-    # Can only handle nest level 1 at this moment
-    if (has_nan or has_inf) and get_df_nest_level(df_in, col) > 1:
-        raise RuntimeError("Unable to replace NaN and inf for nest level > 1")
+    nest_level = get_df_nest_level(df_in, col=col)
+    if (has_nan or has_inf) and nest_level > 1:
+        # Can only handle nest level 1 at this moment
+        raise NotImplementedError(
+            f"Unable to replace NaN and inf for nest_level>1, got {nest_level}"
+        )
 
     # Get replacement value for missing and infinity
     values = df_in[col].explode()
