@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
 from pymatgen.analysis.local_env import NearNeighbors, VoronoiNN
 from pymatgen.core import Lattice, Structure
 
+from pymatviz.enums import Key
 from pymatviz.structure_viz import plot_structure_2d
 
 
@@ -15,9 +17,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 lattice = Lattice.cubic(5)
-disordered_struct = Structure(
-    lattice, [{"Fe": 0.75, "C": 0.25}, "O"], [[0, 0, 0], [0.5, 0.5, 0.5]]
-)
+coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
+disordered_struct = Structure(lattice, [{"Fe": 0.75, "C": 0.25}, "O"], coords=coords)
 
 
 @pytest.mark.parametrize("radii", [None, 0.5])
@@ -63,6 +64,7 @@ def test_plot_structure_2d(
 @pytest.mark.parametrize("axis", [True, False, "on", "off", "square", "equal"])
 def test_plot_structure_2d_axis(axis: str | bool) -> None:
     ax = plot_structure_2d(disordered_struct, axis=axis)
+    assert isinstance(ax, plt.Axes)
     assert ax.axes.axison == (axis not in (False, "off"))
 
 
@@ -74,6 +76,7 @@ def test_plot_structure_2d_site_labels(
     site_labels: bool | str | dict[str, str | float] | Sequence[str],
 ) -> None:
     ax = plot_structure_2d(disordered_struct, site_labels=site_labels)
+    assert isinstance(ax, plt.Axes)
     if site_labels is False:
         assert not ax.axes.texts
     else:
@@ -97,3 +100,63 @@ def test_plot_structure_2d_warns() -> None:
             plot_structure_2d(disordered_struct, standardize_struct=standardize_struct)
     finally:
         disordered_struct[0].frac_coords = orig_coords
+
+    # warns when passing subplot_kwargs for a single structure
+    with pytest.warns(
+        UserWarning, match="subplot_kwargs are ignored when plotting a single structure"
+    ):
+        plot_structure_2d(disordered_struct, subplot_kwargs={"facecolor": "red"})
+
+
+struct1 = Structure(lattice, ["Fe", "O"], coords=coords)
+struct1.properties = {"id": "struct1"}
+struct2 = Structure(lattice, ["Co", "O"], coords=coords)
+struct2.properties = {Key.mat_id: "struct2"}
+struct3 = Structure(lattice, ["Ni", "O"], coords=coords)
+struct3.properties = {"ID": "struct3", "name": "nickel oxide"}  # extra properties
+struct4 = Structure(lattice, ["Cu", "O"], coords=coords)
+
+
+def test_plot_structure_2d_multiple() -> None:
+    # Test dict[str, Structure]
+    struct_dict = {
+        "struct1": struct1,
+        "struct2": struct2,
+        "struct3": struct3,
+        "struct4": struct4,
+    }
+    fig, axs = plot_structure_2d(struct_dict, n_cols=3)
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(axs, np.ndarray)
+    assert axs.shape == (2, 3)
+    sub_titles = [f"{idx + 1}. {key}" for idx, key in enumerate(struct_dict)]
+    assert [ax.get_title() for ax in axs.flat] == sub_titles + [""] * 2
+
+    # Test pandas.Series[Structure]
+    struct_series = pd.Series(struct_dict)
+    fig, axs = plot_structure_2d(struct_series)
+    assert axs.shape == (4,)  # default n_cols=4
+    assert [ax.get_title() for ax in axs.flat] == sub_titles
+    # Test subplot_kwargs
+    fig, axs = plot_structure_2d(struct_series, subplot_kwargs={"squeeze": False})
+    assert axs.shape == (1, 4)  # default n_cols=4
+
+    # Test list[Structure]
+    fig, axs = plot_structure_2d(list(struct_dict.values()), n_cols=2)
+    assert axs.shape == (2, 2)
+    assert axs.flat[0].get_title() == f"1. {struct1.properties['id']}"
+    assert axs.flat[1].get_title() == f"2. {struct2.properties[Key.mat_id]}"
+    assert axs.flat[2].get_title() == f"3. {struct3.properties['ID']}"
+    struct4_title = f"4. {struct4.formula} ({struct4.get_space_group_info()[1]})"
+    assert axs.flat[3].get_title() == struct4_title
+
+    # Test subplot_title
+    def subplot_title(struct: Structure, key: str | int) -> str:
+        return f"{key} - {struct.formula}"
+
+    fig, axs = plot_structure_2d(struct_series, subplot_title=subplot_title)
+    sub_titles = [
+        f"{idx}. {subplot_title(struct, key)}"
+        for idx, (key, struct) in enumerate(struct_dict.items(), start=1)
+    ]
+    assert [ax.get_title() for ax in axs.flat] == sub_titles
