@@ -1047,7 +1047,7 @@ def ptable_heatmap_splits(
         plt.Figure: periodic table with a subplot in each element tile.
     """
     # Initialize periodic table plotter
-    plotter = PTableProjector(
+    projector = PTableProjector(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
@@ -1057,11 +1057,11 @@ def ptable_heatmap_splits(
     # Call child plotter: evenly split rectangle
     child_kwargs = {
         "start_angle": start_angle,
-        "cmap": plotter.cmap,
-        "norm": plotter.norm,
+        "cmap": projector.cmap,
+        "norm": projector.norm,
     }
 
-    plotter.add_child_plots(
+    projector.add_child_plots(
         ChildPlotters.rectangle,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
@@ -1069,21 +1069,21 @@ def ptable_heatmap_splits(
     )
 
     # Add element symbols
-    plotter.add_elem_symbols(
+    projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )
 
     # Add colorbar
-    plotter.add_colorbar(
+    projector.add_colorbar(
         title=cbar_title,
         coords=cbar_coords,
         cbar_kwargs=cbar_kwargs,
         title_kwargs=cbar_title_kwargs,
     )
 
-    return plotter.fig
+    return projector.fig
 
 
 def ptable_heatmap_ratio(
@@ -1508,7 +1508,7 @@ def ptable_hists(
         plt.Figure: periodic table with a histogram in each element tile.
     """
     # Initialize periodic table plotter
-    plotter = PTableProjector(
+    projector = PTableProjector(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
@@ -1522,10 +1522,10 @@ def ptable_hists(
         "range": x_range,
         "log": log,
         "cbar_axis": cbar_axis,
-        "cmap": plotter.cmap,
+        "cmap": projector.cmap,
     }
 
-    plotter.add_child_plots(
+    projector.add_child_plots(
         ChildPlotters.histogram,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
@@ -1533,7 +1533,7 @@ def ptable_hists(
     )
 
     # Add element symbols
-    plotter.add_elem_symbols(
+    projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         text_color="element-types"
@@ -1544,11 +1544,11 @@ def ptable_hists(
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
-        plotter.set_elem_background_color()
+        projector.set_elem_background_color()
 
     # Add colorbar
     if colormap is not None:
-        plotter.add_colorbar(
+        projector.add_colorbar(
             title=cbar_title,
             coords=cbar_coords,
             cbar_kwargs=cbar_kwargs,
@@ -1557,11 +1557,11 @@ def ptable_hists(
 
     # Add element type legend
     if add_elem_type_legend:
-        plotter.add_elem_type_legend(
+        projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
         )
 
-    return plotter.fig
+    return projector.fig
 
 
 def ptable_scatters(
@@ -1616,7 +1616,6 @@ def ptable_scatters(
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
         child_kwargs: Arguments to pass to the child plotter call.
-
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
@@ -1624,7 +1623,6 @@ def ptable_scatters(
             [x, y, width, height] anchored at lower left corner of the bar. Defaults to
             (0.25, 0.77, 0.35, 0.02).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
-
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
         symbol_pos (tuple[float, float]): Position of element symbols
@@ -1644,7 +1642,7 @@ def ptable_scatters(
             set the legend title, use {"title": "Element Types"}.
     """
     # Initialize periodic table plotter
-    plotter = PTableProjector(
+    projector = PTableProjector(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
@@ -1653,9 +1651,9 @@ def ptable_scatters(
     )
 
     # Call child plotter: Scatter
-    child_kwargs = {"cmap": plotter.cmap, "norm": plotter.norm}
+    child_kwargs = {"cmap": projector.cmap, "norm": projector.norm}
 
-    plotter.add_child_plots(
+    projector.add_child_plots(
         ChildPlotters.scatter,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
@@ -1663,7 +1661,7 @@ def ptable_scatters(
     )
 
     # Add element symbols
-    plotter.add_elem_symbols(
+    projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         text_color="element-types"
@@ -1674,11 +1672,11 @@ def ptable_scatters(
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
-        plotter.set_elem_background_color()
+        projector.set_elem_background_color()
 
     # Add colorbar if colormap is given and data length is 3
     if colormap is not None:
-        plotter.add_colorbar(
+        projector.add_colorbar(
             title=cbar_title,
             coords=cbar_coords,
             cbar_kwargs=cbar_kwargs,
@@ -1687,11 +1685,11 @@ def ptable_scatters(
 
     # Add element type legend
     if add_elem_type_legend:
-        plotter.add_elem_type_legend(
+        projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
         )
 
-    return plotter.fig
+    return projector.fig
 
 
 def ptable_lines(
@@ -1760,7 +1758,7 @@ def ptable_lines(
             set the legend title, use {"title": "Element Types"}.
     """
     # Initialize periodic table plotter
-    plotter = PTableProjector(
+    projector = PTableProjector(
         data=data,
         colormap=None,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
@@ -1769,7 +1767,7 @@ def ptable_lines(
     )
 
     # Call child plotter: line
-    plotter.add_child_plots(
+    projector.add_child_plots(
         ChildPlotters.line,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
@@ -1777,7 +1775,7 @@ def ptable_lines(
     )
 
     # Add element symbols
-    plotter.add_elem_symbols(
+    projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         text_color="element-types"
@@ -1788,12 +1786,12 @@ def ptable_lines(
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
-        plotter.set_elem_background_color()
+        projector.set_elem_background_color()
 
     # Add element type legend
     if add_elem_type_legend:
-        plotter.add_elem_type_legend(
+        projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
         )
 
-    return plotter.fig
+    return projector.fig
