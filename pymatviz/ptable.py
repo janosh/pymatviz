@@ -1425,9 +1425,7 @@ def ptable_hists(
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
-    child_kwargs: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
+    child_kwargs: dict[str, Any] | None = None,
     # Colorbar
     cbar_axis: Literal["x", "y"] = "x",
     cbar_title: str = "Values",
@@ -1471,9 +1469,8 @@ def ptable_hists(
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
-        child_kwargs (dict | Callable): Keywords passed to ax.hist() for each histogram.
-            If callable, it is called with the histogram values for each element and
-            should return a dict of keyword arguments. Defaults to None.
+        child_kwargs (dict): Keywords passed to ax.hist() for each histogram.
+            Defaults to None.
 
         cbar_axis (Literal["x", "y"]): The axis colormap would be based on.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
@@ -1515,7 +1512,8 @@ def ptable_hists(
     )
 
     # Call child plotter: histogram
-    child_kwargs = {
+    child_kwargs = child_kwargs or {}
+    child_kwargs |= {
         "bins": bins,
         "range": x_range,
         "log": log,
@@ -1651,7 +1649,8 @@ def ptable_scatters(
     )
 
     # Call child plotter: Scatter
-    child_kwargs = {"cmap": plotter.cmap, "norm": plotter.norm}
+    child_kwargs = child_kwargs or {}
+    child_kwargs |= {"cmap": plotter.cmap, "norm": plotter.norm}
 
     plotter.add_child_plots(
         ChildPlotters.scatter,
