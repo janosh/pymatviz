@@ -94,9 +94,9 @@ save_and_compress_svg(fig, "ptable-hists")
 # %% Scatter plots laid out as a periodic table
 data_dict = {
     elem.symbol: [
-        np.random.randint(0, 20, 10),
-        np.random.randint(0, 20, 10),
-        np.random.randint(0, 20, 10),
+        np.arange(10) + np.random.normal(0, 1, 10),
+        np.arange(10) + np.random.normal(0, 1, 10),
+        np.arange(10) + np.random.normal(0, 1, 10),
     ]
     for elem in Element
 }
