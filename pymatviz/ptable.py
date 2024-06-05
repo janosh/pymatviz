@@ -299,7 +299,7 @@ class PTableProjector:
 
     @elem_colors.setter
     def elem_colors(self, elem_colors: dict[str, Any] | None) -> None:
-        # TODO: set default colors
+        # TODO: set default colors for each element
         self._elem_colors = elem_colors or {}
 
     def get_elem_type_color(
@@ -337,13 +337,12 @@ class PTableProjector:
         )
 
         for element in Element:
-            symbol: str = element.symbol
-
             # Hide f-block
             if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
                 continue
 
             # Get axis index
+            symbol: str = element.symbol
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
