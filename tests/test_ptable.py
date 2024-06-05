@@ -552,12 +552,12 @@ def test_ptable_scatters(hide_f_block: bool) -> None:
             "O": [[10, 11], [12, 13]],
         },
         hide_f_block=hide_f_block,
+        colormap=None,  # avoid adding colormap
     )
     assert isinstance(fig, plt.Figure)
     assert len(fig.axes) == 126 if hide_f_block else 181
 
 
-@pytest.mark.skip(reason="3rd color dimension not implemented yet")
 def test_ptable_scatters_colored() -> None:
     """Test ptable_scatters with 3rd color dimension."""
     fig = ptable_scatters(
@@ -565,8 +565,8 @@ def test_ptable_scatters_colored() -> None:
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
         },
-        # colormap="coolwarm",
-        # cbar_title="Test ptable_scatters",
+        colormap="coolwarm",
+        cbar_title="Test ptable_scatters",
     )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 180
+    assert len(fig.axes) == 127

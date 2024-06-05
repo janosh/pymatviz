@@ -1671,7 +1671,7 @@ def ptable_scatters(
     if color_elem_strategy in {"both", "background"}:
         plotter.set_elem_background_color()
 
-    # Add colorbar if data length is 3
+    # Add colorbar if colormap is given and data length is 3
     if colormap is not None:
         plotter.add_colorbar(
             title=cbar_title,
