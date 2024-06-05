@@ -7,7 +7,7 @@ import math
 import warnings
 from collections.abc import Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Literal, Union, get_args
+from typing import TYPE_CHECKING, Literal, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -25,7 +25,7 @@ from pymatviz._preprocess_data import (
     SupportedValueType,
     preprocess_ptable_data,
 )
-from pymatviz.enums import Key
+from pymatviz.enums import ElemColorMode, ElemCountMode, Key
 from pymatviz.utils import ELEM_TYPE_COLORS, df_ptable, pick_bw_for_contrast, si_fmt
 
 
@@ -35,16 +35,12 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
 
 
-CountMode = Literal[
-    Key.composition, "fractional_composition", "reduced_composition", "occurrence"
-]
-
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
 
 
 def count_elements(
     values: ElemValues,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     exclude_elements: Sequence[str] = (),
     fill_value: float | None = 0,
 ) -> pd.Series:
@@ -82,8 +78,9 @@ def count_elements(
     Returns:
         pd.Series: Map element symbols to heatmap values.
     """
-    if count_mode not in get_args(CountMode):
-        raise ValueError(f"Invalid {count_mode=} must be one of {get_args(CountMode)}")
+    valid_count_modes = list(ElemCountMode.key_val_dict())
+    if count_mode not in valid_count_modes:
+        raise ValueError(f"Invalid {count_mode=} must be one of {valid_count_modes}")
     # ensure values is Series if we got dict/list/tuple
     srs = pd.Series(values)
 
@@ -409,7 +406,9 @@ class PTableProjector:
             ax.text(
                 *pos,
                 content,
-                color=elem_type_color if text_color == "element-types" else text_color,
+                color=elem_type_color
+                if text_color == ElemColorMode.element_types
+                else text_color,
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
@@ -690,7 +689,7 @@ def ptable_heatmap(
     *,
     log: bool | Normalize = False,
     ax: plt.Axes | None = None,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     cbar_title: str = "Element Count",
     cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
@@ -1090,7 +1089,7 @@ def ptable_heatmap_ratio(
     values_num: ElemValues,
     values_denom: ElemValues,
     *,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] | None = ("#eff", "gray: not in 1st list"),
@@ -1113,17 +1112,17 @@ def ptable_heatmap_ratio(
             in the denominator.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
-        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
         cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator. Defaults to
-            ('#eff', 'gray: not in 1st list').
+            ("#eff", "gray: not in 1st list").
         not_in_denominator (tuple[str, str]): See not_in_numerator. Defaults to
-            ('lightskyblue', 'blue: not in 2nd list').
+            ("lightskyblue", "blue: not in 2nd list").
         not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
-            ('white', 'white: not in either').
+            ("white", "white: not in either").
         **kwargs: Additional keyword arguments passed to ptable_heatmap().
 
     Returns:
@@ -1157,7 +1156,7 @@ def ptable_heatmap_ratio(
 def ptable_heatmap_plotly(
     values: ElemValues,
     *,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     show_scale: bool = True,
     show_values: bool = True,
@@ -1534,7 +1533,7 @@ def ptable_hists(
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color="element-types"
+        text_color=ElemColorMode.element_types
         if color_elem_strategy in {"both", "symbol"}
         else "black",
         kwargs=symbol_kwargs,
@@ -1663,7 +1662,7 @@ def ptable_scatters(
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color="element-types"
+        text_color=ElemColorMode.element_types
         if color_elem_strategy in {"both", "symbol"}
         else "black",
         kwargs=symbol_kwargs,
@@ -1777,7 +1776,7 @@ def ptable_lines(
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color="element-types"
+        text_color=ElemColorMode.element_types
         if color_elem_strategy in {"both", "symbol"}
         else "black",
         kwargs=symbol_kwargs,

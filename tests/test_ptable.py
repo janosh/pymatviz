@@ -23,7 +23,7 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.enums import Key
+from pymatviz.enums import ElemCountMode, Key
 from pymatviz.ptable import PTableProjector
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -33,8 +33,6 @@ if TYPE_CHECKING:
     from typing import Any, ClassVar
 
     from pymatgen.core import Composition
-
-    from pymatviz.ptable import CountMode
 
 
 class TestPTableProjector:
@@ -145,7 +143,7 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
         ("occurrence", {"Fe": 8, "O": 8, "P": 3}),
     ],
 )
-def test_count_elements(count_mode: CountMode, counts: dict[str, float]) -> None:
+def test_count_elements(count_mode: ElemCountMode, counts: dict[str, float]) -> None:
     series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, count_mode=count_mode)
     expected = pd.Series(counts, index=df_ptable.index, name="count").fillna(0)
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
