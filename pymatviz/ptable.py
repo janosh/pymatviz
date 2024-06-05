@@ -337,12 +337,13 @@ class PTableProjector:
         )
 
         for element in Element:
+            symbol: str = element.symbol
+
             # Hide f-block
             if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
                 continue
 
-            # Get axis index by element symbol
-            symbol: str = element.symbol
+            # Get axis index
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
@@ -396,6 +397,9 @@ class PTableProjector:
 
             # Get axis index by element symbol
             symbol: str = element.symbol
+            if symbol not in self.data.index:
+                continue
+
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
