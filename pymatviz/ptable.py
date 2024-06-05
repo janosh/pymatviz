@@ -300,7 +300,6 @@ class PTableProjector:
     @elem_colors.setter
     def elem_colors(self, elem_colors: dict[str, Any] | None) -> None:
         # TODO: set default colors
-        # TODO: what is the type of values (str, tuple[float, ...] or both)
         self._elem_colors = elem_colors or {}
 
     def get_elem_type_color(
@@ -382,7 +381,7 @@ class PTableProjector:
                 specifier for an `elem` variable which will be replaced by the element.
             pos (tuple): The position of the text relative to the axes.
             text_color (bool): The color of the text. Defaults to "black".
-                Pass "element-type" to color symbol by self.elem_type_colors.
+                Pass "element-types" to color symbol by self.elem_type_colors.
             kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
         """
         # Update symbol kwargs
@@ -402,11 +401,12 @@ class PTableProjector:
 
             content = text(element) if callable(text) else text.format(elem=element)
 
-            elem_type_color = self.get_elem_type_color(symbol, default=text_color)
+            elem_type_color = self.get_elem_type_color(symbol, default="black")
+
             ax.text(
                 *pos,
                 content,
-                color=elem_type_color if text_color == "element-type" else text_color,
+                color=elem_type_color if text_color == "element-types" else text_color,
                 ha="center",
                 va="center",
                 transform=ax.transAxes,

@@ -16,7 +16,7 @@ from ase.data import chemical_symbols
 from matplotlib.backends.backend_pdf import PdfPages
 from pymatgen.core import Element
 
-from pymatviz import ptable_plots  # type: ignore[attr-defined]  # TODO:
+from pymatviz import ptable_lines
 from pymatviz.io import save_fig
 from pymatviz.utils import df_ptable
 
@@ -172,12 +172,12 @@ diatomic_curves = {
 # plot_homo_nuclear("medium")
 # plot_hetero_nuclear("medium")
 
-ax = ptable_plots(
+ax = ptable_lines(
     diatomic_curves,
-    ax_kwds=dict(ylim=(-10, 10), yticklabels=[]),
-    plot_kwds=dict(color="darkblue", linestyle="solid"),
-    color_elem_types="symbol",
-    elem_type_legend=False,
+    ax_kwargs=dict(ylim=(-10, 10), yticklabels=[]),
+    child_kwargs=dict(color="darkblue", linestyle="solid"),
+    color_elem_strategy="symbol",
+    add_elem_type_legend=False,
 )
 save_fig(ax, f"{module_dir}/homo-nuclear-mace-{model_size}.svg")
 
