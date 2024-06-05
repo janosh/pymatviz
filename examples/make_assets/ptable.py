@@ -96,15 +96,15 @@ data_dict = {
     elem.symbol: [
         np.random.randint(0, 20, 10),
         np.random.randint(0, 20, 10),
-        # np.random.randint(0, 20, 10),  # TODO: allow 3rd dim
+        np.random.randint(0, 20, 10),
     ]
     for elem in Element
 }
 
 fig = ptable_scatters(
     data_dict,
-    # colormap="coolwarm",
-    # cbar_title="Periodic Table Scatter Plots",
+    colormap="coolwarm",
+    cbar_title="Periodic Table Scatter Plots",
     child_kwargs=dict(marker="o", linestyle=""),
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),

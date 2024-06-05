@@ -562,6 +562,8 @@ class ChildPlotters:
     def scatter(
         ax: plt.axes,
         data: SupportedValueType,
+        norm: Normalize,
+        cmap: Colormap,
         tick_kwargs: dict[str, Any],
         **child_kwargs: Any,
     ) -> None:
@@ -570,6 +572,8 @@ class ChildPlotters:
         Args:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for the child plotter.
+            norm (Normalize): Normalizer for data-color mapping.
+            cmap (Colormap): Colormap.
             child_kwargs (dict): kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
@@ -577,7 +581,7 @@ class ChildPlotters:
         if len(data) == 2:
             ax.scatter(x=data[0], y=data[1], **child_kwargs)
         elif len(data) == 3:
-            ax.scatter(x=data[0], y=data[1], c=data[2], **child_kwargs)
+            ax.scatter(x=data[0], y=data[1], c=cmap(norm(data[2])), **child_kwargs)
 
         # Set tick labels
         ax.tick_params(**tick_kwargs)
@@ -1637,13 +1641,15 @@ def ptable_scatters(
     # Initialize periodic table plotter
     plotter = PTableProjector(
         data=data,
-        colormap=None,
+        colormap=colormap,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
 
     # Call child plotter: Scatter
+    child_kwargs = {"cmap": plotter.cmap, "norm": plotter.norm}
+
     plotter.add_child_plots(
         ChildPlotters.scatter,
         child_kwargs=child_kwargs,
@@ -1666,7 +1672,6 @@ def ptable_scatters(
         plotter.set_elem_background_color()
 
     # Add colorbar if data length is 3
-    # TODO:
     if colormap is not None:
         plotter.add_colorbar(
             title=cbar_title,
