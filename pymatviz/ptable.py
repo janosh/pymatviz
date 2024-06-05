@@ -517,7 +517,9 @@ class PTableProjector:
 
 
 class ChildPlotters:
-    """Collection of pre-defined child plotters."""
+    """Child plotters for PTableProjector with methods to make different types
+    (line/scatter/histogram) for individual element tiles.
+    """
 
     @staticmethod
     def rectangle(
