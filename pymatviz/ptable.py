@@ -341,7 +341,7 @@ class PTableProjector:
             if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
                 continue
 
-            # Get axis index
+            # Get axis index by element symbol
             symbol: str = element.symbol
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
@@ -1600,7 +1600,7 @@ def ptable_scatters(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
-        colormap (str): Matplotlib colormap name to use. Defaults to 'viridis'. See
+        colormap (str): Matplotlib colormap name to use. Defaults to None'. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
