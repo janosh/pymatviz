@@ -552,7 +552,6 @@ def test_ptable_scatters(hide_f_block: bool) -> None:
             "O": [[10, 11], [12, 13]],
         },
         hide_f_block=hide_f_block,
-        colormap=None,  # avoid adding colormap
     )
     assert isinstance(fig, plt.Figure)
     assert len(fig.axes) == 126 if hide_f_block else 181

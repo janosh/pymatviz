@@ -1563,7 +1563,7 @@ def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
     # Figure-scope
-    colormap: str | Colormap | None = "viridis",
+    colormap: str | Colormap | None = None,
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
