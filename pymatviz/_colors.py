@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 
 if TYPE_CHECKING:
     from typing import Final
 
-Color = tuple[float, float, float] | tuple[float, float, float, float]
+Color = Union[tuple[float, float, float], tuple[float, float, float, float]]
 
 # Element type based colors
 ELEM_TYPE_COLORS: Final = {
