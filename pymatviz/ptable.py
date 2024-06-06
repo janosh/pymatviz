@@ -26,7 +26,7 @@ from pymatviz._preprocess_data import (
     preprocess_ptable_data,
 )
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
-from pymatviz.enums import ElemColorMode, ElemCountMode, Key
+from pymatviz.enums import ElemColorMode, ElemColors, ElemCountMode, Key
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
 
@@ -177,7 +177,7 @@ class PTableProjector:
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | None = None,
         elem_type_colors: dict[str, str] | None = None,
-        elem_colors: dict[str, Any] | None = None,
+        elem_colors: ElemColors | dict[str, ColorType] | None = None,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -299,13 +299,13 @@ class PTableProjector:
     @elem_colors.setter
     def elem_colors(
         self,
-        elem_colors: Literal["vesta", "jmol"] | dict[str, ColorType] = "vesta",
+        elem_colors: ElemColors | dict[str, ColorType] | None = ElemColors.vesta,
     ) -> None:
         """Args:
-        elem_colors (Literal["vesta", "jmol"] | dict): Use VESTA or Jmol color
+        elem_colors ("vesta" | "jmol" | dict[str, ColorType]): Use VESTA or Jmol color
             mapping, or a custom {"element", Color} mapping. Defaults to "vesta".
         """
-        if elem_colors == "vesta":
+        if elem_colors in ("vesta", None):
             self._elem_colors = ELEM_COLORS_VESTA
         elif elem_colors == "jmol":
             self._elem_colors = ELEM_COLORS_JMOL
@@ -313,7 +313,7 @@ class PTableProjector:
             self._elem_colors = elem_colors
         else:
             raise ValueError(
-                f"Invalid elem_colors. Must be 'vesta', 'jmol', or a custom dict, "
+                f"elem_colors must be 'vesta', 'jmol', or a custom dict, "
                 f"got {elem_colors=}"
             )
 

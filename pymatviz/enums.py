@@ -178,3 +178,16 @@ class ElemColorMode(LabelEnum):
 
     # key, label, color
     element_types = "element-types", "Element Types", "blue"
+
+
+@unique
+class ElemColors(LabelEnum):
+    """Mode of coloring elements in structure visualizations or periodic table
+    plots.
+    """
+
+    # key, label, color
+    jmol = "jmol", "Jmol", "Java-based molecular visualization"
+    # https://wikipedia.org/wiki/Jmol"
+    vesta = "vesta", "VESTA", "Visualisation for Electronic Structural Analysis"
+    # https://jp-minerals.org/vesta

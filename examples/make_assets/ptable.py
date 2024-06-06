@@ -19,6 +19,7 @@ from pymatviz.ptable import (
 from pymatviz.utils import df_ptable
 
 
+# %%
 df_expt_gap = load_dataset("matbench_expt_gap")
 df_steels = load_dataset("matbench_steels")
 

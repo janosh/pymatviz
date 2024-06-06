@@ -23,7 +23,7 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.enums import ElemCountMode, Key
+from pymatviz.enums import ElemColors, ElemCountMode, Key
 from pymatviz.ptable import PTableProjector
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -54,6 +54,31 @@ class TestPTableProjector:
             "Nonmetal",
             "Alkali Metal",
         }
+
+    def test_elem_colors(self) -> None:
+        data = self.test_dict
+        projector = PTableProjector(data=data)
+        color_subset = {
+            "Ac": (0.4392156862745098, 0.6705882352941176, 0.9803921568627451),
+            "Zr": (0, 1, 0),
+        }
+        assert projector.elem_colors.items() > color_subset.items()
+
+        vesta_colors = PTableProjector(
+            data=data, elem_colors=ElemColors.vesta
+        ).elem_colors
+        assert vesta_colors == projector.elem_colors
+        jmol_colors = PTableProjector(
+            data=data, elem_colors=ElemColors.jmol
+        ).elem_colors
+        assert jmol_colors != projector.elem_colors
+
+        with pytest.raises(
+            ValueError,
+            match="elem_colors must be 'vesta', 'jmol', or a custom dict, "
+            "got elem_colors='foobar'",
+        ):
+            PTableProjector(data=data, elem_colors="foobar")  # type: ignore[arg-type]
 
     def test_hide_f_block(self) -> None:
         # check default is True if no f-block elements in data
