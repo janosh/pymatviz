@@ -257,7 +257,10 @@ def plot_structure_2d(
 
         # Get default colors
         if colors is None:
-            colors = ELEM_COLORS_JMOL  # type: ignore[assignment]
+            colors = {
+                element: tuple(color / 255 for color in colors)  # type: ignore[misc]
+                for element, colors in ELEM_COLORS_JMOL.items()
+            }
 
         # Get any element at each site, only used for occlusion calculation which won't
         # be perfect for disordered sites. Plotting wedges of different radii for
