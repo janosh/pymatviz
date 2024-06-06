@@ -29,8 +29,8 @@ ELEM_TYPE_COLORS: Final = {
     "Transactinide": "olive",
 }
 
-# The following element-based colors are taken from elementari:
-# https://github.com/janosh/elementari
+# The following element-based colors are copied from elementari:
+# https://github.com/janosh/elementari/blob/85a044cd/src/lib/colors.ts#L20-L242
 ELEM_COLORS_JMOL: dict[str, Color] = {
     "H": (255, 255, 255),
     "He": (217, 255, 255),
@@ -211,7 +211,6 @@ ELEM_COLORS_VESTA: dict[str, Color] = {
     "N": (176, 185, 230),
     "Na": (249, 220, 60),
     "Nb": (115, 194, 201),
-    "Nd": (199, 255, 199),  # codespell:ignore
     "Ne": (254, 55, 181),
     "Ni": (183, 187, 189),
     "No": (189, 13, 135),
@@ -246,7 +245,6 @@ ELEM_COLORS_VESTA: dict[str, Color] = {
     "Ta": (77, 166, 255),
     "Tb": (48, 255, 199),
     "Tc": (59, 158, 158),
-    "Te": (212, 122, 0),  # codespell:ignore
     "Th": (0, 186, 255),
     "Ti": (120, 202, 255),
     "Tl": (166, 84, 77),

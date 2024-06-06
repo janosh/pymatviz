@@ -20,7 +20,7 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pymatviz._colors import ELEM_COLORS_JMOL
+from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.enums import Key
 from pymatviz.utils import ExperimentalWarning, covalent_radii
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import ArrayLike
 
-    from pymatviz._colors import Color
+    from pymatviz.colors import Color
 
 
 def _angles_to_rotation_matrix(

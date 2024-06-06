@@ -20,12 +20,12 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
-from pymatviz._colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
 from pymatviz._preprocess_data import (
     SupportedDataType,
     SupportedValueType,
     preprocess_ptable_data,
 )
+from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
 from pymatviz.enums import ElemColorMode, ElemCountMode, Key
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
     import plotly.graph_objects as go
 
-    from pymatviz._colors import Color
+    from pymatviz.colors import Color
 
 
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
