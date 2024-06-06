@@ -7,7 +7,7 @@ import math
 import warnings
 from collections.abc import Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Literal, Union, get_args
+from typing import TYPE_CHECKING, Literal, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -25,26 +25,24 @@ from pymatviz._preprocess_data import (
     SupportedValueType,
     preprocess_ptable_data,
 )
-from pymatviz.enums import Key
-from pymatviz.utils import ELEM_TYPE_COLORS, df_ptable, pick_bw_for_contrast, si_fmt
+from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
+from pymatviz.enums import ElemColorMode, ElemColors, ElemCountMode, Key
+from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
 
 if TYPE_CHECKING:
     from typing import Any, Callable
 
     import plotly.graph_objects as go
+    from matplotlib.typing import ColorType
 
-
-CountMode = Literal[
-    Key.composition, "fractional_composition", "reduced_composition", "occurrence"
-]
 
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
 
 
 def count_elements(
     values: ElemValues,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     exclude_elements: Sequence[str] = (),
     fill_value: float | None = 0,
 ) -> pd.Series:
@@ -82,15 +80,16 @@ def count_elements(
     Returns:
         pd.Series: Map element symbols to heatmap values.
     """
-    if count_mode not in get_args(CountMode):
-        raise ValueError(f"Invalid {count_mode=} must be one of {get_args(CountMode)}")
-    # ensure values is Series if we got dict/list/tuple
+    valid_count_modes = list(ElemCountMode.key_val_dict())
+    if count_mode not in valid_count_modes:
+        raise ValueError(f"Invalid {count_mode=} must be one of {valid_count_modes}")
+    # Ensure values is Series if we got dict/list/tuple
     srs = pd.Series(values)
 
     if is_numeric_dtype(srs):
         pass
     elif is_string_dtype(srs):
-        # assume all items in values are composition strings
+        # Assume all items in values are composition strings
         if count_mode == "occurrence":
             srs = pd.Series(
                 itertools.chain.from_iterable(
@@ -112,13 +111,13 @@ def count_elements(
         )
 
     try:
-        # if index consists entirely of strings representing integers, convert to ints
+        # If index consists entirely of strings representing integers, convert to ints
         srs.index = srs.index.astype(int)
     except (ValueError, TypeError):
         pass
 
     if pd.api.types.is_integer_dtype(srs.index):
-        # if index is all integers, assume they represent atomic
+        # If index is all integers, assume they represent atomic
         # numbers and map them to element symbols (H: 1, He: 2, ...)
         idx_min, idx_max = srs.index.min(), srs.index.max()
         if idx_max > 118 or idx_min < 1:
@@ -132,7 +131,7 @@ def count_elements(
         )
         srs.index = srs.index.map(map_atomic_num_to_elem_symbol)
 
-    # ensure all elements are present in returned Series (with value zero if they
+    # Ensure all elements are present in returned Series (with value zero if they
     # weren't in values before)
     srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
 
@@ -178,7 +177,7 @@ class PTableProjector:
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | None = None,
         elem_type_colors: dict[str, str] | None = None,
-        elem_colors: dict[str, Any] | None = None,
+        elem_colors: ElemColors | dict[str, ColorType] | None = None,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -293,15 +292,30 @@ class PTableProjector:
         self._elem_type_colors |= elem_type_colors or {}
 
     @property
-    def elem_colors(self) -> dict[str, Any]:
+    def elem_colors(self) -> dict[str, ColorType]:
         """Element-based colors."""
         return self._elem_colors
 
     @elem_colors.setter
-    def elem_colors(self, elem_colors: dict[str, Any] | None) -> None:
-        # TODO: set default colors
-        # TODO: what is the type of values (str, tuple[float, ...] or both)
-        self._elem_colors = elem_colors or {}
+    def elem_colors(
+        self,
+        elem_colors: ElemColors | dict[str, ColorType] | None = ElemColors.vesta,
+    ) -> None:
+        """Args:
+        elem_colors ("vesta" | "jmol" | dict[str, ColorType]): Use VESTA or Jmol color
+            mapping, or a custom {"element", Color} mapping. Defaults to "vesta".
+        """
+        if elem_colors in ("vesta", None):
+            self._elem_colors = ELEM_COLORS_VESTA
+        elif elem_colors == "jmol":
+            self._elem_colors = ELEM_COLORS_JMOL
+        elif isinstance(elem_colors, dict):
+            self._elem_colors = elem_colors
+        else:
+            raise ValueError(
+                f"elem_colors must be 'vesta', 'jmol', or a custom dict, "
+                f"got {elem_colors=}"
+            )
 
     def get_elem_type_color(
         self,
@@ -382,7 +396,7 @@ class PTableProjector:
                 specifier for an `elem` variable which will be replaced by the element.
             pos (tuple): The position of the text relative to the axes.
             text_color (bool): The color of the text. Defaults to "black".
-                Pass "element-type" to color symbol by self.elem_type_colors.
+                Pass "element-types" to color symbol by self.elem_type_colors.
             kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
         """
         # Update symbol kwargs
@@ -397,16 +411,22 @@ class PTableProjector:
 
             # Get axis index by element symbol
             symbol: str = element.symbol
+            if symbol not in self.data.index:
+                continue
+
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             content = text(element) if callable(text) else text.format(elem=element)
 
-            elem_type_color = self.get_elem_type_color(symbol, default=text_color)
+            elem_type_color = self.get_elem_type_color(symbol, default="black")
+
             ax.text(
                 *pos,
                 content,
-                color=elem_type_color if text_color == "element-type" else text_color,
+                color=elem_type_color
+                if text_color == ElemColorMode.element_types
+                else text_color,
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
@@ -514,7 +534,9 @@ class PTableProjector:
 
 
 class ChildPlotters:
-    """Collection of pre-defined child plotters."""
+    """Child plotters for PTableProjector with methods to make different types
+    (line/scatter/histogram) for individual element tiles.
+    """
 
     @staticmethod
     def rectangle(
@@ -525,10 +547,8 @@ class ChildPlotters:
         start_angle: float,
         tick_kwargs: dict[str, Any],  # noqa: ARG004
     ) -> None:
-        """Rectangle heatmap plotter, could be evenly split.
-
-        Could be evenly split, depending on the
-        length of the data (could mix and match).
+        """Rectangle heatmap plotter. Could be evenly split,
+        depending on the length of the data (could mix and match).
 
         Args:
             ax (plt.axes): The axis to plot on.
@@ -564,6 +584,8 @@ class ChildPlotters:
     def scatter(
         ax: plt.axes,
         data: SupportedValueType,
+        norm: Normalize,
+        cmap: Colormap,
         tick_kwargs: dict[str, Any],
         **child_kwargs: Any,
     ) -> None:
@@ -572,6 +594,8 @@ class ChildPlotters:
         Args:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for the child plotter.
+            norm (Normalize): Normalizer for data-color mapping.
+            cmap (Colormap): Colormap.
             child_kwargs (dict): kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
@@ -579,7 +603,7 @@ class ChildPlotters:
         if len(data) == 2:
             ax.scatter(x=data[0], y=data[1], **child_kwargs)
         elif len(data) == 3:
-            ax.scatter(x=data[0], y=data[1], c=data[2], **child_kwargs)
+            ax.scatter(x=data[0], y=data[1], c=cmap(norm(data[2])), **child_kwargs)
 
         # Set tick labels
         ax.tick_params(**tick_kwargs)
@@ -683,7 +707,7 @@ def ptable_heatmap(
     *,
     log: bool | Normalize = False,
     ax: plt.Axes | None = None,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     cbar_title: str = "Element Count",
     cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
@@ -1040,7 +1064,7 @@ def ptable_heatmap_splits(
         plt.Figure: periodic table with a subplot in each element tile.
     """
     # Initialize periodic table plotter
-    plotter = PTableProjector(
+    projector = PTableProjector(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
@@ -1050,11 +1074,11 @@ def ptable_heatmap_splits(
     # Call child plotter: evenly split rectangle
     child_kwargs = {
         "start_angle": start_angle,
-        "cmap": plotter.cmap,
-        "norm": plotter.norm,
+        "cmap": projector.cmap,
+        "norm": projector.norm,
     }
 
-    plotter.add_child_plots(
+    projector.add_child_plots(
         ChildPlotters.rectangle,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
@@ -1062,28 +1086,28 @@ def ptable_heatmap_splits(
     )
 
     # Add element symbols
-    plotter.add_elem_symbols(
+    projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )
 
     # Add colorbar
-    plotter.add_colorbar(
+    projector.add_colorbar(
         title=cbar_title,
         coords=cbar_coords,
         cbar_kwargs=cbar_kwargs,
         title_kwargs=cbar_title_kwargs,
     )
 
-    return plotter.fig
+    return projector.fig
 
 
 def ptable_heatmap_ratio(
     values_num: ElemValues,
     values_denom: ElemValues,
     *,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     normalize: bool = False,
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] | None = ("#eff", "gray: not in 1st list"),
@@ -1106,17 +1130,17 @@ def ptable_heatmap_ratio(
             in the denominator.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
-        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
         cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator. Defaults to
-            ('#eff', 'gray: not in 1st list').
+            ("#eff", "gray: not in 1st list").
         not_in_denominator (tuple[str, str]): See not_in_numerator. Defaults to
-            ('lightskyblue', 'blue: not in 2nd list').
+            ("lightskyblue", "blue: not in 2nd list").
         not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
-            ('white', 'white: not in either').
+            ("white", "white: not in either").
         **kwargs: Additional keyword arguments passed to ptable_heatmap().
 
     Returns:
@@ -1150,7 +1174,7 @@ def ptable_heatmap_ratio(
 def ptable_heatmap_plotly(
     values: ElemValues,
     *,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     show_scale: bool = True,
     show_values: bool = True,
@@ -1420,9 +1444,7 @@ def ptable_hists(
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
-    child_kwargs: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
+    child_kwargs: dict[str, Any] | None = None,
     # Colorbar
     cbar_axis: Literal["x", "y"] = "x",
     cbar_title: str = "Values",
@@ -1466,9 +1488,8 @@ def ptable_hists(
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
-        child_kwargs (dict | Callable): Keywords passed to ax.hist() for each histogram.
-            If callable, it is called with the histogram values for each element and
-            should return a dict of keyword arguments. Defaults to None.
+        child_kwargs (dict): Keywords passed to ax.hist() for each histogram.
+            Defaults to None.
 
         cbar_axis (Literal["x", "y"]): The axis colormap would be based on.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
@@ -1501,7 +1522,7 @@ def ptable_hists(
         plt.Figure: periodic table with a histogram in each element tile.
     """
     # Initialize periodic table plotter
-    plotter = PTableProjector(
+    projector = PTableProjector(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
@@ -1510,15 +1531,16 @@ def ptable_hists(
     )
 
     # Call child plotter: histogram
-    child_kwargs = {
+    child_kwargs = child_kwargs or {}
+    child_kwargs |= {
         "bins": bins,
         "range": x_range,
         "log": log,
         "cbar_axis": cbar_axis,
-        "cmap": plotter.cmap,
+        "cmap": projector.cmap,
     }
 
-    plotter.add_child_plots(
+    projector.add_child_plots(
         ChildPlotters.histogram,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
@@ -1526,10 +1548,10 @@ def ptable_hists(
     )
 
     # Add element symbols
-    plotter.add_elem_symbols(
+    projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color="element-types"
+        text_color=ElemColorMode.element_types
         if color_elem_strategy in {"both", "symbol"}
         else "black",
         kwargs=symbol_kwargs,
@@ -1537,11 +1559,11 @@ def ptable_hists(
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
-        plotter.set_elem_background_color()
+        projector.set_elem_background_color()
 
     # Add colorbar
     if colormap is not None:
-        plotter.add_colorbar(
+        projector.add_colorbar(
             title=cbar_title,
             coords=cbar_coords,
             cbar_kwargs=cbar_kwargs,
@@ -1550,17 +1572,18 @@ def ptable_hists(
 
     # Add element type legend
     if add_elem_type_legend:
-        plotter.add_elem_type_legend(
+        projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
         )
 
-    return plotter.fig
+    return projector.fig
 
 
 def ptable_scatters(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
     # Figure-scope
+    colormap: str | Colormap | None = None,
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
     plot_kwargs: dict[str, Any]
@@ -1569,6 +1592,11 @@ def ptable_scatters(
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
     child_kwargs: dict[str, Any] | None = None,
+    # Colorbar
+    cbar_title: str = "Values",
+    cbar_title_kwargs: dict[str, Any] | None = None,
+    cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+    cbar_kwargs: dict[str, Any] | None = None,
     # Symbol
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
@@ -1589,6 +1617,8 @@ def ptable_scatters(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
+        colormap (str): Matplotlib colormap name to use. Defaults to None'. See
+            options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
@@ -1601,7 +1631,13 @@ def ptable_scatters(
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
         child_kwargs: Arguments to pass to the child plotter call.
-
+        cbar_title (str): Color bar title. Defaults to "Histogram Value".
+        cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
+            Defaults to dict(fontsize=12, pad=10).
+        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
+            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
+            (0.25, 0.77, 0.35, 0.02).
+        cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
         symbol_pos (tuple[float, float]): Position of element symbols
@@ -1619,20 +1655,21 @@ def ptable_scatters(
             types. Defaults to True.
         elem_type_legend_kwargs (dict): kwargs to plt.legend(), e.g. to
             set the legend title, use {"title": "Element Types"}.
-
-    TODO: allow colormap with 3rd data dimension
     """
     # Initialize periodic table plotter
-    plotter = PTableProjector(
+    projector = PTableProjector(
         data=data,
-        colormap=None,
+        colormap=colormap,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
 
     # Call child plotter: Scatter
-    plotter.add_child_plots(
+    child_kwargs = child_kwargs or {}
+    child_kwargs |= {"cmap": projector.cmap, "norm": projector.norm}
+
+    projector.add_child_plots(
         ChildPlotters.scatter,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
@@ -1640,10 +1677,10 @@ def ptable_scatters(
     )
 
     # Add element symbols
-    plotter.add_elem_symbols(
+    projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color="element-types"
+        text_color=ElemColorMode.element_types
         if color_elem_strategy in {"both", "symbol"}
         else "black",
         kwargs=symbol_kwargs,
@@ -1651,15 +1688,24 @@ def ptable_scatters(
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
-        plotter.set_elem_background_color()
+        projector.set_elem_background_color()
+
+    # Add colorbar if colormap is given and data length is 3
+    if colormap is not None:
+        projector.add_colorbar(
+            title=cbar_title,
+            coords=cbar_coords,
+            cbar_kwargs=cbar_kwargs,
+            title_kwargs=cbar_title_kwargs,
+        )
 
     # Add element type legend
     if add_elem_type_legend:
-        plotter.add_elem_type_legend(
+        projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
         )
 
-    return plotter.fig
+    return projector.fig
 
 
 def ptable_lines(
@@ -1728,7 +1774,7 @@ def ptable_lines(
             set the legend title, use {"title": "Element Types"}.
     """
     # Initialize periodic table plotter
-    plotter = PTableProjector(
+    projector = PTableProjector(
         data=data,
         colormap=None,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
@@ -1737,7 +1783,7 @@ def ptable_lines(
     )
 
     # Call child plotter: line
-    plotter.add_child_plots(
+    projector.add_child_plots(
         ChildPlotters.line,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
@@ -1745,10 +1791,10 @@ def ptable_lines(
     )
 
     # Add element symbols
-    plotter.add_elem_symbols(
+    projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color="element-types"
+        text_color=ElemColorMode.element_types
         if color_elem_strategy in {"both", "symbol"}
         else "black",
         kwargs=symbol_kwargs,
@@ -1756,12 +1802,12 @@ def ptable_lines(
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
-        plotter.set_elem_background_color()
+        projector.set_elem_background_color()
 
     # Add element type legend
     if add_elem_type_legend:
-        plotter.add_elem_type_legend(
+        projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
         )
 
-    return plotter.fig
+    return projector.fig
