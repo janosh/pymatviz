@@ -23,7 +23,7 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.enums import Key
+from pymatviz.enums import ElemColors, ElemCountMode, Key
 from pymatviz.ptable import PTableProjector
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -33,8 +33,6 @@ if TYPE_CHECKING:
     from typing import Any, ClassVar
 
     from pymatgen.core import Composition
-
-    from pymatviz.ptable import CountMode
 
 
 class TestPTableProjector:
@@ -56,6 +54,31 @@ class TestPTableProjector:
             "Nonmetal",
             "Alkali Metal",
         }
+
+    def test_elem_colors(self) -> None:
+        data = self.test_dict
+        projector = PTableProjector(data=data)
+        color_subset = {
+            "Ac": (0.4392156862745098, 0.6705882352941176, 0.9803921568627451),
+            "Zr": (0, 1, 0),
+        }
+        assert projector.elem_colors.items() > color_subset.items()
+
+        vesta_colors = PTableProjector(
+            data=data, elem_colors=ElemColors.vesta
+        ).elem_colors
+        assert vesta_colors == projector.elem_colors
+        jmol_colors = PTableProjector(
+            data=data, elem_colors=ElemColors.jmol
+        ).elem_colors
+        assert jmol_colors != projector.elem_colors
+
+        with pytest.raises(
+            ValueError,
+            match="elem_colors must be 'vesta', 'jmol', or a custom dict, "
+            "got elem_colors='foobar'",
+        ):
+            PTableProjector(data=data, elem_colors="foobar")  # type: ignore[arg-type]
 
     def test_hide_f_block(self) -> None:
         # check default is True if no f-block elements in data
@@ -145,7 +168,7 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
         ("occurrence", {"Fe": 8, "O": 8, "P": 3}),
     ],
 )
-def test_count_elements(count_mode: CountMode, counts: dict[str, float]) -> None:
+def test_count_elements(count_mode: ElemCountMode, counts: dict[str, float]) -> None:
     series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, count_mode=count_mode)
     expected = pd.Series(counts, index=df_ptable.index, name="count").fillna(0)
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
@@ -557,7 +580,6 @@ def test_ptable_scatters(hide_f_block: bool) -> None:
     assert len(fig.axes) == 126 if hide_f_block else 181
 
 
-@pytest.mark.skip(reason="3rd color dimension not implemented yet")
 def test_ptable_scatters_colored() -> None:
     """Test ptable_scatters with 3rd color dimension."""
     fig = ptable_scatters(
@@ -565,8 +587,8 @@ def test_ptable_scatters_colored() -> None:
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
         },
-        # colormap="coolwarm",
-        # cbar_title="Test ptable_scatters",
+        colormap="coolwarm",
+        cbar_title="Test ptable_scatters",
     )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 180
+    assert len(fig.axes) == 127

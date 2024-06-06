@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 import warnings
 from contextlib import contextmanager
 from functools import partial, wraps
@@ -19,7 +18,7 @@ from matplotlib.offsetbox import AnchoredText
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
-    from typing import Final, ParamSpec, TypeVar
+    from typing import ParamSpec, TypeVar
 
     from numpy.typing import ArrayLike
 
@@ -42,30 +41,8 @@ CrystalSystem = Literal[
     "cubic",
 ]
 
-
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
-
-ELEM_TYPE_COLORS: Final = {
-    "Diatomic Nonmetal": "green",
-    "Noble Gas": "purple",
-    "Alkali Metal": "red",
-    "Alkaline Earth Metal": "orange",
-    "Metalloid": "darkgreen",
-    "Polyatomic Nonmetal": "teal",
-    "Transition Metal": "blue",
-    "Post Transition Metal": "cyan",
-    "Lanthanide": "brown",
-    "Actinide": "gray",
-    "Nonmetal": "green",
-    "Halogen": "teal",
-    "Metal": "lightblue",
-    "Alkaline Metal": "magenta",
-    "Transactinide": "olive",
-}
-
-# http://jmol.sourceforge.net/jscolors
-jmol_colors = df_ptable.jmol_color.dropna().map(ast.literal_eval)
 
 # fallback value (in nanometers) for covalent radius of an element
 # see https://wikipedia.org/wiki/Atomic_radii_of_the_elements

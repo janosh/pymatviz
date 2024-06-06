@@ -19,6 +19,7 @@ from pymatviz.ptable import (
 from pymatviz.utils import df_ptable
 
 
+# %%
 df_expt_gap = load_dataset("matbench_expt_gap")
 df_steels = load_dataset("matbench_steels")
 
@@ -92,24 +93,46 @@ save_and_compress_svg(fig, "ptable-hists")
 
 
 # %% Scatter plots laid out as a periodic table
-data_dict = {
+data_dict = {  # random parity data with y = x + noise
     elem.symbol: [
-        np.random.randint(0, 20, 10),
-        np.random.randint(0, 20, 10),
-        # np.random.randint(0, 20, 10),  # TODO: allow 3rd dim
+        np.arange(10) + np.random.normal(0, 1, 10),
+        np.arange(10) + np.random.normal(0, 1, 10),
+        np.arange(10) + np.random.normal(0, 1, 10),
     ]
     for elem in Element
 }
 
 fig = ptable_scatters(
     data_dict,
-    # colormap="coolwarm",
-    # cbar_title="Periodic Table Scatter Plots",
-    child_kwargs=dict(marker="o", linestyle=""),
+    colormap="coolwarm",
+    cbar_title="Periodic Table Scatter Plots",
+    child_kwargs=dict(marker="o", linestyle="", s=10),
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
 )
-save_and_compress_svg(fig, "ptable-scatters")
+save_and_compress_svg(fig, "ptable-scatters-parity")
+
+
+# %% 2nd ptable_scatters example
+data_dict = {  # random parabola data with y = x^2 + noise
+    elem.symbol: [
+        np.arange(10),
+        (np.arange(10) - 4) ** 2 + np.random.normal(0, 1, 10),
+        np.arange(10) + np.random.normal(0, 10, 10),
+    ]
+    for elem in Element
+}
+
+fig = ptable_scatters(
+    data_dict,
+    colormap="inferno",
+    cbar_title="Periodic Table Scatter Plots",
+    child_kwargs=dict(marker="o", linestyle="", s=8, alpha=1),
+    symbol_pos=(0.5, 1.2),
+    symbol_kwargs=dict(fontsize=14),
+    color_elem_strategy="off",
+)
+save_and_compress_svg(fig, "ptable-scatters-parabola")
 
 
 # %% Line plots laid out as a periodic table
