@@ -61,14 +61,15 @@ See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table c
 |                               ![ptable-heatmap-plotly-more-hover-data]                               |                                    ![ptable-heatmap-plotly-log]                                     |
 |                   [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable.py)                    |                             [`ptable_lines(data)`](pymatviz/ptable.py)                              |
 |                                           ![ptable-hists]                                            |                                           ![ptable-lines]                                           |
-|                  [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable.py)                  |                                                                                                     |
-|                                          ![ptable-scatters]                                          |                                                                                                     |
+|                  [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable.py)                  |                 [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable.py)                  |
+|                                      ![ptable-scatters-parity]                                       |                                     ![ptable-scatters-parabola]                                     |
 | [`ptable_heatmap_splits(2_vals_per_elem, colormap="coolwarm", start_angle=135)`](pymatviz/ptable.py) | [`ptable_heatmap_splits(3_vals_per_elem, colormap="coolwarm", start_angle=90)`](pymatviz/ptable.py) |
 |                                      ![ptable-heatmap-splits-2]                                      |                                     ![ptable-heatmap-splits-3]                                      |
 
 [ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
 [ptable-lines]: https://github.com/janosh/pymatviz/raw/main/examples/diatomics/homo-nuclear-mace-medium.svg
-[ptable-scatters]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-scatters.svg
+[ptable-scatters-parity]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-scatters-parity.svg
+[ptable-scatters-parabola]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-scatters-parabola.svg
 [ptable-heatmap-splits-2]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-splits-2.svg
 [ptable-heatmap-splits-3]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-splits-3.svg
 
