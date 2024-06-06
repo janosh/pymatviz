@@ -34,8 +34,7 @@ if TYPE_CHECKING:
     from typing import Any, Callable
 
     import plotly.graph_objects as go
-
-    from pymatviz.colors import Color
+    from matplotlib.typing import ColorType
 
 
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
@@ -293,14 +292,14 @@ class PTableProjector:
         self._elem_type_colors |= elem_type_colors or {}
 
     @property
-    def elem_colors(self) -> dict[str, Color]:
+    def elem_colors(self) -> dict[str, ColorType]:
         """Element-based colors."""
         return self._elem_colors
 
     @elem_colors.setter
     def elem_colors(
         self,
-        elem_colors: Literal["vesta", "jmol"] | dict[str, Color] = "vesta",
+        elem_colors: Literal["vesta", "jmol"] | dict[str, ColorType] = "vesta",
     ) -> None:
         """Args:
         elem_colors (Literal["vesta", "jmol"] | dict): Use VESTA or Jmol color
@@ -310,9 +309,13 @@ class PTableProjector:
             self._elem_colors = ELEM_COLORS_VESTA
         elif elem_colors == "jmol":
             self._elem_colors = ELEM_COLORS_JMOL
-
         elif isinstance(elem_colors, dict):
             self._elem_colors = elem_colors
+        else:
+            raise ValueError(
+                f"Invalid elem_colors. Must be 'vesta', 'jmol', or a custom dict, "
+                f"got {elem_colors=}"
+            )
 
     def get_elem_type_color(
         self,

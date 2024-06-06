@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union, cast
+from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
     from typing import Final
 
-Color = Union[tuple[float, float, float], tuple[float, float, float, float]]
+    from matplotlib.typing import ColorType
+
 
 # Element type based colors
 ELEM_TYPE_COLORS: Final = {
@@ -31,7 +32,7 @@ ELEM_TYPE_COLORS: Final = {
 
 # The following element-based colors are copied from elementari:
 # https://github.com/janosh/elementari/blob/85a044cd/src/lib/colors.ts#L20-L242
-ELEM_COLORS_JMOL: dict[str, Color] = {
+ELEM_COLORS_JMOL: dict[str, ColorType] = {
     "H": (255, 255, 255),
     "He": (217, 255, 255),
     "Li": (204, 128, 255),
@@ -145,11 +146,11 @@ ELEM_COLORS_JMOL: dict[str, Color] = {
 
 # Scale color value to [0, 1] for matplotlib
 ELEM_COLORS_JMOL = {
-    element: cast(tuple[float, float, float], tuple(color / 255 for color in colors))
-    for element, colors in ELEM_COLORS_JMOL.items()
+    elem: tuple(color / 255 for color in colors)
+    for elem, colors in ELEM_COLORS_JMOL.items()
 }
 
-ELEM_COLORS_VESTA: dict[str, Color] = {
+ELEM_COLORS_VESTA: dict[str, ColorType] = {
     "Ac": (112, 171, 250),
     "Ag": (192, 192, 192),
     "Al": (129, 178, 214),
@@ -260,6 +261,6 @@ ELEM_COLORS_VESTA: dict[str, Color] = {
 }
 
 ELEM_COLORS_VESTA = {
-    element: cast(tuple[float, float, float], tuple(color / 255 for color in colors))
-    for element, colors in ELEM_COLORS_VESTA.items()
+    elem: tuple(color / 255 for color in colors)
+    for elem, colors in ELEM_COLORS_VESTA.items()
 }
