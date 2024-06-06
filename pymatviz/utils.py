@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 import warnings
 from contextlib import contextmanager
 from functools import partial, wraps
@@ -44,9 +43,6 @@ CrystalSystem = Literal[
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
-
-# http://jmol.sourceforge.net/jscolors
-jmol_colors = df_ptable.jmol_color.dropna().map(ast.literal_eval)
 
 # fallback value (in nanometers) for covalent radius of an element
 # see https://wikipedia.org/wiki/Atomic_radii_of_the_elements

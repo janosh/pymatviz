@@ -20,8 +20,9 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
+from pymatviz._colors import ELEM_COLORS_JMOL
 from pymatviz.enums import Key
-from pymatviz.utils import ExperimentalWarning, covalent_radii, jmol_colors
+from pymatviz.utils import ExperimentalWarning, covalent_radii
 
 
 if TYPE_CHECKING:
@@ -29,6 +30,8 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     from numpy.typing import ArrayLike
+
+    from pymatviz._colors import Color
 
 
 def _angles_to_rotation_matrix(
@@ -113,7 +116,7 @@ def plot_structure_2d(
     ax: plt.Axes | None = None,
     rotation: str = "10x,10y,0z",
     atomic_radii: float | dict[str, float] | None = None,
-    colors: dict[str, str | list[float]] | None = None,
+    colors: dict[str, str | Color] | None = None,
     scale: float = 1,
     show_unit_cell: bool = True,
     show_bonds: bool | NearNeighbors = False,
@@ -254,7 +257,7 @@ def plot_structure_2d(
 
         # Get default colors
         if colors is None:
-            colors = jmol_colors
+            colors = ELEM_COLORS_JMOL  # type: ignore[assignment]
 
         # Get any element at each site, only used for occlusion calculation which won't
         # be perfect for disordered sites. Plotting wedges of different radii for
@@ -349,6 +352,7 @@ def plot_structure_2d(
                     elem_symbol = species.symbol
 
                     radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
+                    assert colors is not None  # noqa: S101
                     face_color = colors[elem_symbol]
                     wedge = Wedge(
                         xy,
