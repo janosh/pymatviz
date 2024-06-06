@@ -153,3 +153,41 @@ class Model(LabelEnum):
     chgnet_030 = "chgnet-v0.3.0", "CHGNet v0.3.0", "orange"
     mace_mp = "mace-mp-0-medium", "MACE-MP", "green"
     pbe = "pbe", "PBE", "gray"
+
+
+@unique
+class ElemCountMode(LabelEnum):
+    """Mode of counting elements in a chemical formula."""
+
+    # key, label, color
+    composition = "composition", "Composition", "blue"
+    fractional_composition = (
+        "fractional_composition",
+        "Fractional Composition",
+        "orange",
+    )
+    reduced_composition = "reduced_composition", "Reduced Composition", "green"
+    occurrence = "occurrence", "Occurrence", "gray"
+
+
+@unique
+class ElemColorMode(LabelEnum):
+    """Mode of coloring elements in structure visualizations or periodic table
+    plots.
+    """
+
+    # key, label, color
+    element_types = "element-types", "Element Types", "blue"
+
+
+@unique
+class ElemColors(LabelEnum):
+    """Mode of coloring elements in structure visualizations or periodic table
+    plots.
+    """
+
+    # key, label, color
+    jmol = "jmol", "Jmol", "Java-based molecular visualization"
+    # https://wikipedia.org/wiki/Jmol"
+    vesta = "vesta", "VESTA", "Visualisation for Electronic Structural Analysis"
+    # https://jp-minerals.org/vesta

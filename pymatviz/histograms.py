@@ -15,7 +15,7 @@ from matplotlib.ticker import FixedLocator
 from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
-from pymatviz.enums import Key
+from pymatviz.enums import ElemCountMode, Key
 from pymatviz.powerups import annotate_bars
 from pymatviz.ptable import count_elements
 from pymatviz.utils import (
@@ -30,7 +30,7 @@ from pymatviz.utils import (
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
-    from pymatviz.ptable import CountMode, ElemValues
+    from pymatviz.ptable import ElemValues
 
 
 def true_pred_hist(
@@ -351,7 +351,7 @@ def spacegroup_hist(
 def elements_hist(
     formulas: ElemValues,
     *,
-    count_mode: CountMode = Key.composition,
+    count_mode: ElemCountMode = ElemCountMode.composition,
     log: bool = False,
     keep_top: int | None = None,
     ax: plt.Axes | None = None,

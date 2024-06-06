@@ -20,14 +20,16 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
+from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.enums import Key
-from pymatviz.utils import ExperimentalWarning, covalent_radii, jmol_colors
+from pymatviz.utils import ExperimentalWarning, covalent_radii
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any, Literal
 
+    from matplotlib.typing import ColorType
     from numpy.typing import ArrayLike
 
 
@@ -113,7 +115,7 @@ def plot_structure_2d(
     ax: plt.Axes | None = None,
     rotation: str = "10x,10y,0z",
     atomic_radii: float | dict[str, float] | None = None,
-    colors: dict[str, str | list[float]] | None = None,
+    colors: dict[str, str | ColorType] | None = None,
     scale: float = 1,
     show_unit_cell: bool = True,
     show_bonds: bool | NearNeighbors = False,
@@ -254,7 +256,7 @@ def plot_structure_2d(
 
         # Get default colors
         if colors is None:
-            colors = jmol_colors
+            colors = ELEM_COLORS_JMOL
 
         # Get any element at each site, only used for occlusion calculation which won't
         # be perfect for disordered sites. Plotting wedges of different radii for
