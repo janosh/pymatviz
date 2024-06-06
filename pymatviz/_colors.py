@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, cast
 
 
 if TYPE_CHECKING:
@@ -143,6 +143,12 @@ ELEM_COLORS_JMOL: dict[str, Color] = {
     "Mt": (235, 0, 38),
 }
 
+# Scale color value to [0, 1] for matplotlib
+ELEM_COLORS_JMOL = {
+    element: cast(tuple[float, float, float], tuple(color / 255 for color in colors))
+    for element, colors in ELEM_COLORS_JMOL.items()
+}
+
 ELEM_COLORS_VESTA: dict[str, Color] = {
     "Ac": (112, 171, 250),
     "Ag": (192, 192, 192),
@@ -253,4 +259,9 @@ ELEM_COLORS_VESTA: dict[str, Color] = {
     "Yb": (0, 191, 56),
     "Zn": (143, 143, 129),
     "Zr": (0, 255, 0),
+}
+
+ELEM_COLORS_VESTA = {
+    element: cast(tuple[float, float, float], tuple(color / 255 for color in colors))
+    for element, colors in ELEM_COLORS_VESTA.items()
 }
