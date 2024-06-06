@@ -20,19 +20,22 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
+from pymatviz._colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
 from pymatviz._preprocess_data import (
     SupportedDataType,
     SupportedValueType,
     preprocess_ptable_data,
 )
 from pymatviz.enums import ElemColorMode, ElemCountMode, Key
-from pymatviz.utils import ELEM_TYPE_COLORS, df_ptable, pick_bw_for_contrast, si_fmt
+from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
 
 if TYPE_CHECKING:
     from typing import Any, Callable
 
     import plotly.graph_objects as go
+
+    from pymatviz._colors import Color
 
 
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
@@ -81,13 +84,13 @@ def count_elements(
     valid_count_modes = list(ElemCountMode.key_val_dict())
     if count_mode not in valid_count_modes:
         raise ValueError(f"Invalid {count_mode=} must be one of {valid_count_modes}")
-    # ensure values is Series if we got dict/list/tuple
+    # Ensure values is Series if we got dict/list/tuple
     srs = pd.Series(values)
 
     if is_numeric_dtype(srs):
         pass
     elif is_string_dtype(srs):
-        # assume all items in values are composition strings
+        # Assume all items in values are composition strings
         if count_mode == "occurrence":
             srs = pd.Series(
                 itertools.chain.from_iterable(
@@ -109,13 +112,13 @@ def count_elements(
         )
 
     try:
-        # if index consists entirely of strings representing integers, convert to ints
+        # If index consists entirely of strings representing integers, convert to ints
         srs.index = srs.index.astype(int)
     except (ValueError, TypeError):
         pass
 
     if pd.api.types.is_integer_dtype(srs.index):
-        # if index is all integers, assume they represent atomic
+        # If index is all integers, assume they represent atomic
         # numbers and map them to element symbols (H: 1, He: 2, ...)
         idx_min, idx_max = srs.index.min(), srs.index.max()
         if idx_max > 118 or idx_min < 1:
@@ -129,7 +132,7 @@ def count_elements(
         )
         srs.index = srs.index.map(map_atomic_num_to_elem_symbol)
 
-    # ensure all elements are present in returned Series (with value zero if they
+    # Ensure all elements are present in returned Series (with value zero if they
     # weren't in values before)
     srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
 
@@ -290,14 +293,26 @@ class PTableProjector:
         self._elem_type_colors |= elem_type_colors or {}
 
     @property
-    def elem_colors(self) -> dict[str, Any]:
+    def elem_colors(self) -> dict[str, Color]:
         """Element-based colors."""
         return self._elem_colors
 
     @elem_colors.setter
-    def elem_colors(self, elem_colors: dict[str, Any] | None) -> None:
-        # TODO: set default colors for each element
-        self._elem_colors = elem_colors or {}
+    def elem_colors(
+        self,
+        elem_colors: Literal["vesta", "jmol"] | dict[str, Color] = "vesta",
+    ) -> None:
+        """Args:
+        elem_colors (Literal["vesta", "jmol"] | dict): Use VESTA or Jmol color
+            mapping, or a custom {"element", Color} mapping. Defaults to "vesta".
+        """
+        if elem_colors == "vesta":
+            self._elem_colors = ELEM_COLORS_VESTA
+        elif elem_colors == "jmol":
+            self._elem_colors = ELEM_COLORS_JMOL
+
+        elif isinstance(elem_colors, dict):
+            self._elem_colors = elem_colors
 
     def get_elem_type_color(
         self,
