@@ -701,34 +701,44 @@ class ChildPlotters:
 
 
 def ptable_heatmap(
-    values: ElemValues,
+    data,
     *,
-    log: bool | Normalize = False,
+    # TODO: to be removed
     ax: plt.Axes | None = None,
-    count_mode: ElemCountMode = ElemCountMode.composition,
+    exclude_elements: Sequence[str] = (),  # control by elements in data
+    count_mode: ElemCountMode = ElemCountMode.composition,  # separate data preprocess stage
+
+    # Heatmap-split specific
+    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
+    tile_size: float | tuple[float, float] = 0.9,  # control by child_kwargs
+    infty_color: str = "lightskyblue",
+    na_color: str = "white",
+    zero_color: str = "#eff",  # light gray
+    zero_symbol: str | float = "-",
+    show_values: bool = True,
+
+    # Figure-scope
+    f_block_voffset: float = 0.5,
+    hide_f_block: bool | None = None,
+    log: bool | Normalize = False,
+
+    # Axis-scope
+
+    # Symbol
+    text_color: str | tuple[str, str] = "auto",
+    text_style: dict[str, Any] | None = None,
+    label_font_size: int = 16,  # control by symbol_kwargs
+    value_font_size: int = 12,  # control by symbol_kwargs
+    fmt: str | Callable[..., str] | None = None,  # control by symbol_kwargs?
+
+    # Colorbar
+    show_scale: bool = True,  # rename to show_cbar?
     cbar_title: str = "Element Count",
     cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
+    cbar_fmt: str | Callable[..., str] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
     colorscale: str = "viridis",
-    show_scale: bool = True,
-    show_values: bool = True,
-    infty_color: str = "lightskyblue",
-    na_color: str = "white",
-    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
-    fmt: str | Callable[..., str] | None = None,
-    cbar_fmt: str | Callable[..., str] | None = None,
-    text_color: str | tuple[str, str] = "auto",
-    exclude_elements: Sequence[str] = (),
-    zero_color: str = "#eff",  # light gray
-    zero_symbol: str | float = "-",
-    text_style: dict[str, Any] | None = None,
-    label_font_size: int = 16,
-    value_font_size: int = 12,
-    tile_size: float | tuple[float, float] = 0.9,
-    f_block_voffset: float = 0.5,
-    hide_f_block: bool | None = None,
-    **kwargs: Any,
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
 
