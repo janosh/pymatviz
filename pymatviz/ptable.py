@@ -806,190 +806,190 @@ def ptable_heatmap(
         plt.Axes: matplotlib Axes with the heatmap.
     """
 
-    def tick_fmt(val: float, _pos: int) -> str:
-        # val: value at color axis tick (e.g. 10.0, 20.0, ...)
-        # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
-        default_fmt = (
-            ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
-        )
-        return f"{val:{cbar_fmt or fmt or default_fmt}}"
+    # def tick_fmt(val: float, _pos: int) -> str:
+    #     # val: value at color axis tick (e.g. 10.0, 20.0, ...)
+    #     # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
+    #     default_fmt = (
+    #         ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
+    #     )
+    #     return f"{val:{cbar_fmt or fmt or default_fmt}}"
 
-    if fmt is None:
-        fmt = partial(si_fmt, fmt=".1%" if heat_mode == "percent" else ".0f")
-    if cbar_fmt is None:
-        cbar_fmt = fmt
+    # if fmt is None:
+    #     fmt = partial(si_fmt, fmt=".1%" if heat_mode == "percent" else ".0f")
+    # if cbar_fmt is None:
+    #     cbar_fmt = fmt
 
-    valid_logs = (bool, Normalize)
-    if not isinstance(log, valid_logs):
-        raise TypeError(f"Invalid {log=}, must be instance of {valid_logs}")
+    # valid_logs = (bool, Normalize)
+    # if not isinstance(log, valid_logs):
+    #     raise TypeError(f"Invalid {log=}, must be instance of {valid_logs}")
 
-    if log and heat_mode in ("fraction", "percent"):
-        raise ValueError(
-            "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
-        )
-    if "cmap" in kwargs:
-        colorscale = kwargs.pop("cmap")
-        warnings.warn(
-            "cmap argument is deprecated, use colorscale instead",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
+    # if log and heat_mode in ("fraction", "percent"):
+    #     raise ValueError(
+    #         "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
+    #     )
+    # if "cmap" in kwargs:
+    #     colorscale = kwargs.pop("cmap")
+    #     warnings.warn(
+    #         "cmap argument is deprecated, use colorscale instead",
+    #         category=DeprecationWarning,
+    #         stacklevel=2,
+    #     )
 
-    values = count_elements(values, count_mode, exclude_elements)
+    # values = count_elements(values, count_mode, exclude_elements)
 
-    # replace positive and negative infinities with NaN values, then drop all NaNs
-    clean_vals = values.replace([np.inf, -np.inf], np.nan).dropna()
+    # # replace positive and negative infinities with NaN values, then drop all NaNs
+    # clean_vals = values.replace([np.inf, -np.inf], np.nan).dropna()
 
-    if heat_mode in ("fraction", "percent"):
-        # ignore inf values in sum() else all would be set to 0 by normalizing
-        values /= clean_vals.sum()
-        clean_vals /= clean_vals.sum()  # normalize as well for norm.autoscale() below
+    # if heat_mode in ("fraction", "percent"):
+    #     # ignore inf values in sum() else all would be set to 0 by normalizing
+    #     values /= clean_vals.sum()
+    #     clean_vals /= clean_vals.sum()  # normalize as well for norm.autoscale() below
 
-    color_map = plt.get_cmap(colorscale)
+    # color_map = plt.get_cmap(colorscale)
 
-    n_rows = df_ptable.row.max()
-    n_columns = df_ptable.column.max()
+    # n_rows = df_ptable.row.max()
+    # n_columns = df_ptable.column.max()
 
-    # TODO can we pass as a kwarg and still ensure aspect ratio respected?
-    fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows), **kwargs)
+    # # TODO can we pass as a kwarg and still ensure aspect ratio respected?
+    # fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows), **kwargs)
 
-    ax = ax or plt.gca()
+    # ax = ax or plt.gca()
 
-    if isinstance(tile_size, (float, int)):
-        tile_width = tile_height = tile_size
-    else:
-        tile_width, tile_height = tile_size
+    # if isinstance(tile_size, (float, int)):
+    #     tile_width = tile_height = tile_size
+    # else:
+    #     tile_width, tile_height = tile_size
 
-    norm_map = {True: LogNorm(), False: Normalize()}
-    norm = norm_map.get(log, log)
+    # norm_map = {True: LogNorm(), False: Normalize()}
+    # norm = norm_map.get(log, log)
 
-    norm.autoscale(clean_vals.to_numpy())
-    if cbar_range is not None and len(cbar_range) == 2:
-        if cbar_range[0] is not None:
-            norm.vmin = cbar_range[0]
-        if cbar_range[1] is not None:
-            norm.vmax = cbar_range[1]
+    # norm.autoscale(clean_vals.to_numpy())
+    # if cbar_range is not None and len(cbar_range) == 2:
+    #     if cbar_range[0] is not None:
+    #         norm.vmin = cbar_range[0]
+    #     if cbar_range[1] is not None:
+    #         norm.vmax = cbar_range[1]
 
-    text_style = dict(
-        horizontalalignment="center", fontsize=label_font_size, fontweight="semibold"
-    ) | (text_style or {})
+    # text_style = dict(
+    #     horizontalalignment="center", fontsize=label_font_size, fontweight="semibold"
+    # ) | (text_style or {})
 
-    for symbol, row, column, *_ in df_ptable.itertuples():
-        if hide_f_block and (row in (6, 7)):
-            continue
+    # for symbol, row, column, *_ in df_ptable.itertuples():
+    #     if hide_f_block and (row in (6, 7)):
+    #         continue
 
-        period = n_rows - row  # invert row count to make periodic table right side up
-        tile_value = values.get(symbol)
+    #     period = n_rows - row  # invert row count to make periodic table right side up
+    #     tile_value = values.get(symbol)
 
-        # inf (float/0) or NaN (0/0) are expected when passing in values from
-        # ptable_heatmap_ratio
-        if symbol in exclude_elements:
-            color = "white"
-            label = "excl."
-        elif tile_value == np.inf:
-            color = infty_color  # not in denominator
-            label = r"$\infty$"
-        elif pd.isna(tile_value):
-            color = na_color  # neither numerator nor denominator
-            label = r"$0\,/\,0$"
-        elif tile_value == 0:
-            color = zero_color
-            label = str(zero_symbol)
-        else:
-            color = color_map(norm(tile_value))
+    #     # inf (float/0) or NaN (0/0) are expected when passing in values from
+    #     # ptable_heatmap_ratio
+    #     if symbol in exclude_elements:
+    #         color = "white"
+    #         label = "excl."
+    #     elif tile_value == np.inf:
+    #         color = infty_color  # not in denominator
+    #         label = r"$\infty$"
+    #     elif pd.isna(tile_value):
+    #         color = na_color  # neither numerator nor denominator
+    #         label = r"$0\,/\,0$"
+    #     elif tile_value == 0:
+    #         color = zero_color
+    #         label = str(zero_symbol)
+    #     else:
+    #         color = color_map(norm(tile_value))
 
-            if callable(fmt):
-                label = fmt(tile_value)
+    #         if callable(fmt):
+    #             label = fmt(tile_value)
 
-            elif heat_mode == "percent":
-                label = f"{tile_value:{fmt or '.1f'}}"
-            else:
-                fmt = fmt or (".0f" if tile_value > 100 else ".1f")
-                label = f"{tile_value:{fmt}}"
-            # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
-            label = label.replace("e+0", "e")
-        if period < 3:  # vertical offset for lanthanides + actinides
-            period += f_block_voffset
-        rect = Rectangle(
-            (column, period), tile_width, tile_height, edgecolor="gray", facecolor=color
-        )
+    #         elif heat_mode == "percent":
+    #             label = f"{tile_value:{fmt or '.1f'}}"
+    #         else:
+    #             fmt = fmt or (".0f" if tile_value > 100 else ".1f")
+    #             label = f"{tile_value:{fmt}}"
+    #         # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
+    #         label = label.replace("e+0", "e")
+    #     if period < 3:  # vertical offset for lanthanides + actinides
+    #         period += f_block_voffset
+    #     rect = Rectangle(
+    #         (column, period), tile_width, tile_height, edgecolor="gray", facecolor=color
+    #     )
 
-        if heat_mode is None or not show_values:
-            # no value to display below in colored rectangle so center element symbol
-            text_style.setdefault("verticalalignment", "center")
+    #     if heat_mode is None or not show_values:
+    #         # no value to display below in colored rectangle so center element symbol
+    #         text_style.setdefault("verticalalignment", "center")
 
-        if symbol in exclude_elements:
-            text_clr = "black"
-        elif text_color == "auto":
-            if isinstance(color, (tuple, list)) and len(color) >= 3:
-                # treat color as RGB tuple and choose black or white text for contrast
-                text_clr = pick_bw_for_contrast(color)
-            else:
-                text_clr = "black"
-        elif isinstance(text_color, (tuple, list)):
-            text_clr = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
-        else:
-            text_clr = text_color
+    #     if symbol in exclude_elements:
+    #         text_clr = "black"
+    #     elif text_color == "auto":
+    #         if isinstance(color, (tuple, list)) and len(color) >= 3:
+    #             # treat color as RGB tuple and choose black or white text for contrast
+    #             text_clr = pick_bw_for_contrast(color)
+    #         else:
+    #             text_clr = "black"
+    #     elif isinstance(text_color, (tuple, list)):
+    #         text_clr = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
+    #     else:
+    #         text_clr = text_color
 
-        text_style.setdefault("color", text_clr)
+    #     text_style.setdefault("color", text_clr)
 
-        plt.text(
-            column + 0.5 * tile_width,
-            # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
-            period + (0.5 if show_values else 0.45) * tile_height,
-            symbol,
-            **text_style,
-        )
+    #     plt.text(
+    #         column + 0.5 * tile_width,
+    #         # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
+    #         period + (0.5 if show_values else 0.45) * tile_height,
+    #         symbol,
+    #         **text_style,
+    #     )
 
-        if heat_mode is not None and show_values:
-            plt.text(
-                column + 0.5 * tile_width,
-                period + 0.1 * tile_height,
-                label,
-                fontsize=value_font_size,
-                horizontalalignment="center",
-                color=text_clr,
-            )
+    #     if heat_mode is not None and show_values:
+    #         plt.text(
+    #             column + 0.5 * tile_width,
+    #             period + 0.1 * tile_height,
+    #             label,
+    #             fontsize=value_font_size,
+    #             horizontalalignment="center",
+    #             color=text_clr,
+    #         )
 
-        ax.add_patch(rect)
+    #     ax.add_patch(rect)
 
-    if heat_mode is not None and show_scale:
-        # colorbar position and size: [x, y, width, height]
-        # anchored at lower left corner
-        cbar_kwargs = cbar_kwargs or {}
-        cbar_ax = cbar_kwargs.pop("cax", None) or ax.inset_axes(
-            cbar_coords, transform=ax.transAxes
-        )
-        # format major and minor ticks
-        # TODO maybe give user direct control over labelsize, instead of hard-coding
-        # 8pt smaller than default
-        cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"])
+    # if heat_mode is not None and show_scale:
+    #     # colorbar position and size: [x, y, width, height]
+    #     # anchored at lower left corner
+    #     cbar_kwargs = cbar_kwargs or {}
+    #     cbar_ax = cbar_kwargs.pop("cax", None) or ax.inset_axes(
+    #         cbar_coords, transform=ax.transAxes
+    #     )
+    #     # format major and minor ticks
+    #     # TODO maybe give user direct control over labelsize, instead of hard-coding
+    #     # 8pt smaller than default
+    #     cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"])
 
-        mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
+    #     mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
 
-        if callable(cbar_fmt):
-            # 2nd _pos arg is always passed by matplotlib but we don't need it
-            tick_fmt = lambda val, _pos: cbar_fmt(val)
+    #     if callable(cbar_fmt):
+    #         # 2nd _pos arg is always passed by matplotlib but we don't need it
+    #         tick_fmt = lambda val, _pos: cbar_fmt(val)
 
-        cbar = fig.colorbar(
-            mappable,
-            cax=cbar_ax,
-            orientation=cbar_kwargs.pop("orientation", "horizontal"),
-            format=cbar_kwargs.pop("format", tick_fmt),
-            **cbar_kwargs,
-        )
+    #     cbar = fig.colorbar(
+    #         mappable,
+    #         cax=cbar_ax,
+    #         orientation=cbar_kwargs.pop("orientation", "horizontal"),
+    #         format=cbar_kwargs.pop("format", tick_fmt),
+    #         **cbar_kwargs,
+    #     )
 
-        cbar.outline.set_linewidth(1)
-        if text_style.get("color") == "white":
-            text_style.pop("color")  # don't want to apply possibly 'white' default
-            # text color (depending on colorscale) to color bar with white background
-        cbar_ax.set_title(cbar_title, pad=10, **text_style)
+    #     cbar.outline.set_linewidth(1)
+    #     if text_style.get("color") == "white":
+    #         text_style.pop("color")  # don't want to apply possibly 'white' default
+    #         # text color (depending on colorscale) to color bar with white background
+    #     cbar_ax.set_title(cbar_title, pad=10, **text_style)
 
-    plt.ylim(0.3, n_rows + 0.1)
-    plt.xlim(0.9, n_columns + 1)
+    # plt.ylim(0.3, n_rows + 0.1)
+    # plt.xlim(0.9, n_columns + 1)
 
-    plt.axis("off")
-    return ax
+    # plt.axis("off")
+    # return ax
 
 
 def ptable_heatmap_splits(
