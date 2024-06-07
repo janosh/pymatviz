@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import itertools
 import math
-import warnings
 from collections.abc import Sequence
-from functools import partial
 from typing import TYPE_CHECKING, Literal, Union
 
 import matplotlib as mpl
@@ -15,7 +13,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
-from matplotlib.colors import Colormap, LogNorm, Normalize
+from matplotlib.colors import Colormap, Normalize
 from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
@@ -27,7 +25,7 @@ from pymatviz._preprocess_data import (
 )
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
 from pymatviz.enums import ElemColorMode, ElemColors, ElemCountMode, Key
-from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
