@@ -707,7 +707,6 @@ def ptable_heatmap(
     ax: plt.Axes | None = None,
     exclude_elements: Sequence[str] = (),  # control by elements in data
     count_mode: ElemCountMode = ElemCountMode.composition,  # separate data preprocess stage
-
     # Heatmap-split specific
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     tile_size: float | tuple[float, float] = 0.9,  # control by child_kwargs
@@ -716,21 +715,17 @@ def ptable_heatmap(
     zero_color: str = "#eff",  # light gray
     zero_symbol: str | float = "-",
     show_values: bool = True,
-
     # Figure-scope
     f_block_voffset: float = 0.5,
     hide_f_block: bool | None = None,
     log: bool | Normalize = False,
-
     # Axis-scope
-
     # Symbol
     text_color: str | tuple[str, str] = "auto",
     text_style: dict[str, Any] | None = None,
     label_font_size: int = 16,  # control by symbol_kwargs
     value_font_size: int = 12,  # control by symbol_kwargs
     fmt: str | Callable[..., str] | None = None,  # control by symbol_kwargs?
-
     # Colorbar
     show_scale: bool = True,  # rename to show_cbar?
     cbar_title: str = "Element Count",
