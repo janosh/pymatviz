@@ -297,13 +297,13 @@ class PTableProjector:
     @elem_colors.setter
     def elem_colors(
         self,
-        elem_colors: ElemColors | dict[str, ColorType] | None = ElemColors.vesta,
+        elem_colors: ElemColors | dict[str, ColorType] = ElemColors.vesta,
     ) -> None:
         """Args:
         elem_colors ("vesta" | "jmol" | dict[str, ColorType]): Use VESTA or Jmol color
             mapping, or a custom {"element", Color} mapping. Defaults to "vesta".
         """
-        if elem_colors in ("vesta", None):
+        if elem_colors == "vesta":
             self._elem_colors = ELEM_COLORS_VESTA
         elif elem_colors == "jmol":
             self._elem_colors = ELEM_COLORS_JMOL
@@ -707,7 +707,7 @@ def ptable_heatmap(
     ax: plt.Axes | None = None,
     exclude_elements: Sequence[str] = (),  # control by elements in data
     count_mode: ElemCountMode = ElemCountMode.composition,  # separate data preprocess stage
-    # Heatmap-split specific
+    # Heatmap specific
     heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     tile_size: float | tuple[float, float] = 0.9,  # control by child_kwargs
     infty_color: str = "lightskyblue",
@@ -715,10 +715,10 @@ def ptable_heatmap(
     zero_color: str = "#eff",  # light gray
     zero_symbol: str | float = "-",
     show_values: bool = True,
+    log: bool | Normalize = False,
     # Figure-scope
     f_block_voffset: float = 0.5,
     hide_f_block: bool | None = None,
-    log: bool | Normalize = False,
     # Axis-scope
     # Symbol
     text_color: str | tuple[str, str] = "auto",
@@ -733,7 +733,7 @@ def ptable_heatmap(
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
     cbar_fmt: str | Callable[..., str] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
-    colorscale: str = "viridis",
+    colorscale: str = "viridis",  # rename to colormap?
 ) -> plt.Axes:
     """Plot a heatmap across the periodic table of elements.
 
