@@ -232,6 +232,7 @@ def plot_structure_2d(
             warnings.warn(
                 "subplot_kwargs are ignored when plotting a single structure",
                 UserWarning,
+                stacklevel=2,
             )
 
         if isinstance(site_labels, (list, tuple)) and len(site_labels) != len(struct):
@@ -248,6 +249,7 @@ def plot_structure_2d(
                 "your structure has negative fractional coordinates but you passed "
                 f"{standardize_struct=}, you may want to set standardize_struct=True",
                 UserWarning,
+                stacklevel=2,
             )
         elif standardize_struct is None:
             standardize_struct = has_sites_outside_unit_cell

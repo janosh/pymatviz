@@ -26,6 +26,9 @@ from pymatviz import ptable_heatmap, spacegroup_hist
 from pymatviz.enums import Key
 
 
+# ruff: noqa: RUF001
+
+
 # %%
 df_carrier = load_dataset("ricci_boltztrap_mp_tabular")
 

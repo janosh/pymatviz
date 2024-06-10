@@ -87,7 +87,6 @@ ignore = [
     "ANN101",
     "ANN102",
     "ANN401",
-    "B028",    # No explicit stacklevel keyword argument found
     "C408",    # unnecessary-collection-call
     "C901",
     "COM812",  # trailing comma missing
@@ -107,7 +106,6 @@ ignore = [
     "PLR2004", # magic-number-comparison
     "PT006",   # pytest-parametrize-names-wrong-type
     "PTH",
-    "RUF001",  # ambiguous-unicode-character-string
     "S311",
     "SIM105",  # Use contextlib.suppress() instead of try-except-pass
     "TD",

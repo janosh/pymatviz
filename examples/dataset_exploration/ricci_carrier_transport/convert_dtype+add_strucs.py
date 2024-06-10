@@ -9,6 +9,8 @@ from pymatviz.enums import Key
 """
 Unprocessed data in data/carrier_transport.json.gz obtained from https://git.io/JOMwY.
 """
+# ruff: noqa: RUF001
+
 
 # %%
 df_carrier = load_dataset("ricci_boltztrap_mp_tabular")

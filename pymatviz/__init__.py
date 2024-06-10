@@ -92,6 +92,11 @@ plt.rc("savefig", bbox="tight", dpi=200)
 plt.rc("figure", dpi=200, titlesize=18)
 plt.rcParams["figure.constrained_layout.use"] = True
 
+# activate the pymatviz white/dark templates by setting
+# `pio.templates.default = "pymatviz_white|pymatviz_dark"`
+# when using plotly or graph objects or
+# `px.defaults.template = "pymatviz_white|pymatviz_dark"`
+# when using plotly express
 axis_template = dict(
     mirror=True,
     showline=True,
