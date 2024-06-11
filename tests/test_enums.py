@@ -1,6 +1,19 @@
 from __future__ import annotations
 
-from pymatviz.enums import Key, Model
+import sys
+
+from pymatviz.enums import Key, Model, StrEnum
+
+
+def test_str_enum() -> None:
+    assert issubclass(StrEnum, str)
+    if sys.version_info >= (3, 11):
+        from enum import StrEnum as StdStrEnum
+
+        assert StrEnum is StdStrEnum
+    else:
+        assert issubclass(StrEnum, str)
+        assert StrEnum.__name__ == "StrEnum"
 
 
 def test_model_enum() -> None:
