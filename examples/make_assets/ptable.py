@@ -1,7 +1,6 @@
 # %%
 import random
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matminer.datasets import load_dataset
 from pymatgen.core.periodic_table import Element
@@ -29,23 +28,29 @@ ax = ptable_heatmap(df_expt_gap.composition, log=True)
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
-plt.set_title(title, y=0.96, fontsize=16, fontweight="bold")
+ax.set_title(title, y=0.96, fontsize=16, fontweight="bold")
 save_and_compress_svg(ax, "ptable-heatmap")
 
+
+# %%
 ax = ptable_heatmap(df_ptable.atomic_mass)
-plt.set_title("Atomic Mass Heatmap", y=0.96, fontsize=16, fontweight="bold")
+ax.set_title("Atomic Mass Heatmap", y=0.96, fontsize=16, fontweight="bold")
 save_and_compress_svg(ax, "ptable-heatmap-atomic-mass")
 
+
+# %%
 ax = ptable_heatmap(
     df_expt_gap.composition, heat_mode="percent", exclude_elements=["O"]
 )
 title = "Elements in Matbench Experimental Band Gap (percent)"
-plt.set_title(title, y=0.96, fontsize=16, fontweight="bold")
+ax.set_title(title, y=0.96, fontsize=16, fontweight="bold")
 save_and_compress_svg(ax, "ptable-heatmap-percent")
 
+
+# %%
 ax = ptable_heatmap_ratio(df_expt_gap.composition, df_steels.composition, log=True)
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
-plt.set_title(title, y=0.96, fontsize=16, fontweight="bold")
+ax.set_title(title, y=0.96, fontsize=16, fontweight="bold")
 save_and_compress_svg(ax, "ptable-heatmap-ratio")
 
 
@@ -62,12 +67,16 @@ fig.update_layout(
 fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-more-hover-data")
 
+
+# %%
 fig = ptable_heatmap_plotly(df_expt_gap.composition, heat_mode="percent")
 title = "Elements in Matbench Experimental Bandgap"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
 fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-percent-labels")
 
+
+# %%
 fig = ptable_heatmap_plotly(df_expt_gap.composition, log=True, colorscale="viridis")
 title = "Elements in Matbench Experimental Bandgap (log scale)"
 fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
