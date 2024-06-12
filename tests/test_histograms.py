@@ -6,41 +6,18 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz import elements_hist, plot_histogram, spacegroup_hist, true_pred_hist
+from pymatviz import elements_hist, plot_histogram, spacegroup_hist
 from pymatviz.utils import MPL_BACKEND, PLOTLY_BACKEND, VALID_BACKENDS
-from tests.conftest import df_regr, y_pred, y_true
+from tests.conftest import y_pred, y_true
 
 
 if TYPE_CHECKING:
-    import pandas as pd
-    from numpy.typing import ArrayLike
     from pymatgen.core import Structure
 
     from pymatviz.utils import Backend
 
 
 y_std_mock = y_true - y_pred
-
-
-@pytest.mark.parametrize("bins", [None, 1, 100])
-@pytest.mark.parametrize("cmap", ["hot", "Blues"])
-@pytest.mark.parametrize(
-    "df, y_true, y_pred, y_std",
-    [
-        (None, y_true, y_pred, y_std_mock),
-        (df_regr, *df_regr.columns[:2], df_regr.columns[0]),
-    ],
-)
-def test_true_pred_hist(
-    df: pd.DataFrame | None,
-    y_true: ArrayLike | str,
-    y_pred: ArrayLike | str,
-    y_std: ArrayLike | dict[str, ArrayLike] | str | list[str],
-    bins: int | None,
-    cmap: str,
-) -> None:
-    ax = true_pred_hist(y_true, y_pred, y_std, df, bins=bins, cmap=cmap)
-    assert isinstance(ax, plt.Axes)
 
 
 @pytest.mark.parametrize("backend", VALID_BACKENDS)

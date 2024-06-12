@@ -23,88 +23,12 @@ from pymatviz.utils import (
     PLOTLY_BACKEND,
     Backend,
     crystal_sys_from_spg_num,
-    df_to_arrays,
     si_fmt_int,
 )
 
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
-
     from pymatviz.ptable import ElemValues
-
-
-def true_pred_hist(
-    y_true: ArrayLike | str,
-    y_pred: ArrayLike | str,
-    y_std: ArrayLike | str,
-    df: pd.DataFrame | None = None,
-    ax: plt.Axes | None = None,
-    cmap: str = "hot",
-    truth_color: str = "blue",
-    true_label: str = r"$y_\mathrm{true}$",
-    pred_label: str = r"$y_\mathrm{pred}$",
-    **kwargs: Any,
-) -> plt.Axes:
-    r"""Plot a histogram of model predictions with bars colored by the mean uncertainty
-    of predictions in that bin. Overlaid by a more transparent histogram of ground truth
-    values.
-
-    Args:
-        y_true (array | str): ground truth targets as array or df column name.
-        y_pred (array | str): model predictions as array or df column name.
-        y_std (array | str): model uncertainty as array or df column name.
-        df (DataFrame, optional): DataFrame containing y_true, y_pred, and y_std.
-        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        cmap (str, optional): string identifier of a plt colormap. Defaults to 'hot'.
-        truth_color (str, optional): Face color to use for y_true bars.
-            Defaults to 'blue'.
-        true_label (str, optional): Label for y_true bars. Defaults to
-            '$y_\mathrm{true}$'.
-        pred_label (str, optional): Label for y_pred bars. Defaults to
-            '$y_\mathrm{true}$'.
-        **kwargs: Additional keyword arguments to pass to ax.hist().
-
-    Returns:
-        plt.Axes: matplotlib Axes object
-    """
-    y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
-    y_true, y_pred, y_std = np.array([y_true, y_pred, y_std])
-    ax = ax or plt.gca()
-
-    color_map = getattr(plt.cm, cmap)
-
-    _, bin_edges, bars = ax.hist(y_pred, alpha=0.8, label=pred_label, **kwargs)
-    kwargs.pop("bins", None)
-    ax.hist(
-        y_true,
-        bins=bin_edges,
-        alpha=0.2,
-        color=truth_color,
-        label=true_label,
-        **kwargs,
-    )
-
-    for xmin, xmax, rect in zip(bin_edges, bin_edges[1:], bars.patches):
-        y_preds_in_rect = np.logical_and(y_pred > xmin, y_pred < xmax).nonzero()
-
-        color_value = y_std[y_preds_in_rect].mean()
-
-        rect.set_color(color_map(color_value))
-
-    ax.legend(frameon=False)
-
-    norm = plt.cm.colors.Normalize(vmax=y_std.max(), vmin=y_std.min())
-    cbar = plt.colorbar(
-        plt.cm.ScalarMappable(norm=norm, cmap=color_map), pad=0.075, ax=ax
-    )
-    cbar.outline.set_linewidth(1)
-    cbar.set_label(r"mean $y_\mathrm{std}$ of prediction in bin")
-    cbar.ax.yaxis.set_ticks_position("left")
-
-    ax.figure.set_size_inches(12, 7)
-
-    return ax
 
 
 def spacegroup_hist(
