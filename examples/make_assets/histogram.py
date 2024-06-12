@@ -4,12 +4,7 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz.enums import Key
-from pymatviz.histograms import (
-    elements_hist,
-    plot_histogram,
-    spacegroup_hist,
-    true_pred_hist,
-)
+from pymatviz.histograms import elements_hist, plot_histogram, spacegroup_hist
 from pymatviz.io import save_and_compress_svg
 from pymatviz.templates import set_plotly_template
 from pymatviz.utils import VALID_BACKENDS
@@ -35,11 +30,10 @@ y_std = (y_true - y_pred) * 10 * np.random.normal(0, 0.1, rand_regression_size)
 
 
 # %% Histogram Plots
-ax = true_pred_hist(y_true, y_pred, y_std)
-save_and_compress_svg(ax, "true-pred-hist")
-
-ax = elements_hist(df_expt_gap.composition, keep_top=15, v_offset=1)
-save_and_compress_svg(ax, "hist-elemental-prevalence")
+ax = elements_hist(
+    df_expt_gap.composition, keep_top=15, v_offset=200, rotation=0, fontsize=12
+)
+save_and_compress_svg(ax, "elements-hist")
 
 
 # %% Spacegroup histograms

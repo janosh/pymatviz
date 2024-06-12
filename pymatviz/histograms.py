@@ -360,6 +360,7 @@ def elements_hist(
     h_offset: int = 0,
     v_offset: int = 10,
     rotation: int = 45,
+    fontsize: int = 12,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a histogram of elements (e.g. to show occurrence in a dataset).
@@ -380,6 +381,7 @@ def elements_hist(
         h_offset (int): Horizontal offset for bar height labels. Defaults to 0.
         v_offset (int): Vertical offset for bar height labels. Defaults to 10.
         rotation (int): Bar label angle. Defaults to 45.
+        fontsize (int): Font size for bar labels. Defaults to 12.
         **kwargs (int): Keyword arguments passed to pandas.Series.plot.bar().
 
     Returns:
@@ -403,11 +405,16 @@ def elements_hist(
     if bar_values is not None:
         if bar_values == "percent":
             sum_elements = non_zero.sum()
-            labels = [f"{el / sum_elements:.1%}" for el in non_zero.to_numpy()]
+            labels = [f"{el / sum_elements:.0%}" for el in non_zero.to_numpy()]
         else:
             labels = non_zero.astype(int).to_list()
         annotate_bars(
-            ax, labels=labels, h_offset=h_offset, v_offset=v_offset, rotation=rotation
+            ax,
+            labels=labels,
+            h_offset=h_offset,
+            v_offset=v_offset,
+            rotation=rotation,
+            fontsize=fontsize,
         )
 
     return ax
