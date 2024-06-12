@@ -22,7 +22,7 @@ from pymatgen.symmetry.groups import SYMM_DATA
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
-from pymatviz.histograms import elements_hist, spacegroup_hist, true_pred_hist
+from pymatviz.histograms import elements_hist, plot_histogram, spacegroup_hist
 from pymatviz.parity import (
     density_hexbin,
     density_hexbin_with_hist,
@@ -52,6 +52,11 @@ from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
+from pymatviz.templates import (
+    pmv_dark_template,
+    pmv_white_template,
+    set_plotly_template,
+)
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import PKG_DIR, ROOT, styled_html_tag
 
@@ -85,48 +90,3 @@ px.defaults.labels |= {
 # to hide math loading MathJax message in bottom left corner of plotly PDFs
 # https://github.com/plotly/Kaleido/issues/122#issuecomment-994906924
 # use pio.kaleido.scope.mathjax = None
-
-
-plt.rc("font", size=16)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=200, titlesize=18)
-plt.rcParams["figure.constrained_layout.use"] = True
-
-# activate the pymatviz white/dark templates by setting
-# `pio.templates.default = "pymatviz_white|pymatviz_dark"`
-# when using plotly or graph objects or
-# `px.defaults.template = "pymatviz_white|pymatviz_dark"`
-# when using plotly express
-axis_template = dict(
-    mirror=True,
-    showline=True,
-    ticks="outside",
-    zeroline=True,
-    linewidth=1,
-    showgrid=True,
-)
-white_axis_template = axis_template | dict(linecolor="black", gridcolor="lightgray")
-# inherit from plotly_white template
-pmv_white_template = go.layout.Template(pio.templates["plotly_white"])
-common_layout = dict(margin=dict(l=10, r=10, t=10, b=10))
-
-pio.templates[f"{PKG_NAME}_white"] = pmv_white_template.update(
-    layout=dict(
-        xaxis=white_axis_template,
-        yaxis=white_axis_template,
-        font=dict(color="black"),
-        **common_layout,
-    )
-)
-dark_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
-# inherit from plotly_dark template
-pmv_dark_template = go.layout.Template(pio.templates["plotly_dark"])
-
-pio.templates[f"{PKG_NAME}_dark"] = pmv_dark_template.update(
-    layout=dict(
-        xaxis=dark_axis_template,
-        yaxis=dark_axis_template,
-        font=dict(color="white"),
-        **common_layout,
-    )
-)

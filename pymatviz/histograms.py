@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,91 +19,16 @@ from pymatviz.enums import ElemCountMode, Key
 from pymatviz.powerups import annotate_bars
 from pymatviz.ptable import count_elements
 from pymatviz.utils import (
+    MPL_BACKEND,
     PLOTLY_BACKEND,
     Backend,
     crystal_sys_from_spg_num,
-    df_to_arrays,
     si_fmt_int,
 )
 
 
 if TYPE_CHECKING:
-    from numpy.typing import ArrayLike
-
     from pymatviz.ptable import ElemValues
-
-
-def true_pred_hist(
-    y_true: ArrayLike | str,
-    y_pred: ArrayLike | str,
-    y_std: ArrayLike | str,
-    df: pd.DataFrame | None = None,
-    ax: plt.Axes | None = None,
-    cmap: str = "hot",
-    truth_color: str = "blue",
-    true_label: str = r"$y_\mathrm{true}$",
-    pred_label: str = r"$y_\mathrm{pred}$",
-    **kwargs: Any,
-) -> plt.Axes:
-    r"""Plot a histogram of model predictions with bars colored by the mean uncertainty
-    of predictions in that bin. Overlaid by a more transparent histogram of ground truth
-    values.
-
-    Args:
-        y_true (array | str): ground truth targets as array or df column name.
-        y_pred (array | str): model predictions as array or df column name.
-        y_std (array | str): model uncertainty as array or df column name.
-        df (DataFrame, optional): DataFrame containing y_true, y_pred, and y_std.
-        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        cmap (str, optional): string identifier of a plt colormap. Defaults to 'hot'.
-        truth_color (str, optional): Face color to use for y_true bars.
-            Defaults to 'blue'.
-        true_label (str, optional): Label for y_true bars. Defaults to
-            '$y_\mathrm{true}$'.
-        pred_label (str, optional): Label for y_pred bars. Defaults to
-            '$y_\mathrm{true}$'.
-        **kwargs: Additional keyword arguments to pass to ax.hist().
-
-    Returns:
-        plt.Axes: matplotlib Axes object
-    """
-    y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
-    y_true, y_pred, y_std = np.array([y_true, y_pred, y_std])
-    ax = ax or plt.gca()
-
-    color_map = getattr(plt.cm, cmap)
-
-    _, bin_edges, bars = ax.hist(y_pred, alpha=0.8, label=pred_label, **kwargs)
-    kwargs.pop("bins", None)
-    ax.hist(
-        y_true,
-        bins=bin_edges,
-        alpha=0.2,
-        color=truth_color,
-        label=true_label,
-        **kwargs,
-    )
-
-    for xmin, xmax, rect in zip(bin_edges, bin_edges[1:], bars.patches):
-        y_preds_in_rect = np.logical_and(y_pred > xmin, y_pred < xmax).nonzero()
-
-        color_value = y_std[y_preds_in_rect].mean()
-
-        rect.set_color(color_map(color_value))
-
-    ax.legend(frameon=False)
-
-    norm = plt.cm.colors.Normalize(vmax=y_std.max(), vmin=y_std.min())
-    cbar = plt.colorbar(
-        plt.cm.ScalarMappable(norm=norm, cmap=color_map), pad=0.075, ax=ax
-    )
-    cbar.outline.set_linewidth(1)
-    cbar.set_label(r"mean $y_\mathrm{std}$ of prediction in bin")
-    cbar.ax.yaxis.set_ticks_position("left")
-
-    ax.figure.set_size_inches(12, 7)
-
-    return ax
 
 
 def spacegroup_hist(
@@ -113,7 +38,7 @@ def spacegroup_hist(
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     show_empty_bins: bool = False,
     ax: plt.Axes | None = None,
-    backend: Backend = "plotly",
+    backend: Backend = PLOTLY_BACKEND,
     text_kwargs: dict[str, Any] | None = None,
     log: bool = False,
     **kwargs: Any,
@@ -359,6 +284,7 @@ def elements_hist(
     h_offset: int = 0,
     v_offset: int = 10,
     rotation: int = 45,
+    fontsize: int = 12,
     **kwargs: Any,
 ) -> plt.Axes:
     """Plot a histogram of elements (e.g. to show occurrence in a dataset).
@@ -379,6 +305,7 @@ def elements_hist(
         h_offset (int): Horizontal offset for bar height labels. Defaults to 0.
         v_offset (int): Vertical offset for bar height labels. Defaults to 10.
         rotation (int): Bar label angle. Defaults to 45.
+        fontsize (int): Font size for bar labels. Defaults to 12.
         **kwargs (int): Keyword arguments passed to pandas.Series.plot.bar().
 
     Returns:
@@ -402,11 +329,81 @@ def elements_hist(
     if bar_values is not None:
         if bar_values == "percent":
             sum_elements = non_zero.sum()
-            labels = [f"{el / sum_elements:.1%}" for el in non_zero.to_numpy()]
+            labels = [f"{el / sum_elements:.0%}" for el in non_zero.to_numpy()]
         else:
             labels = non_zero.astype(int).to_list()
         annotate_bars(
-            ax, labels=labels, h_offset=h_offset, v_offset=v_offset, rotation=rotation
+            ax,
+            labels=labels,
+            h_offset=h_offset,
+            v_offset=v_offset,
+            rotation=rotation,
+            fontsize=fontsize,
         )
 
     return ax
+
+
+def plot_histogram(
+    values: Sequence[float],
+    *,
+    bins: int | Sequence[float] | str = 100,
+    x_range: tuple[float | None, float | None] | None = None,
+    density: bool = False,
+    bin_width: float = 1.2,
+    log_y: bool = False,
+    backend: Backend = PLOTLY_BACKEND,
+    fig_kwargs: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> plt.Figure | go.Figure:
+    """Get a histogram with plotly (default) or matplotlib backend but using fast numpy
+    pre-processing before handing the data off to the plot function.
+
+    Such a common use case when dealing with large datasets that it's worth having a
+    dedicated function for it. Speedup example:
+
+        gaussian = np.random.normal(0, 1, 1_000_000_000)
+        plot_histogram(gaussian)  # takes 17s
+        px.histogram(gaussian)  # ran for 3m45s before crashing the Jupyter kernel
+
+    Args:
+        values (list or array-like): The values to plot as a histogram.
+        bins (int or sequence, optional): The number of bins or the bin edges to use for
+            the histogram. If not provided, a default value will be used.
+        x_range (tuple, optional): The range of values to include in the histogram. If
+            not provided, the whole range of values will be used. Defaults to None.
+        density (bool, optional): Whether to normalize the histogram. Defaults to False.
+        bin_width (float, optional): The width of the histogram bins as a fraction of
+            distance between bin edges. Defaults to 1.2 (20% overlap).
+        log_y (bool, optional): Whether to log scale the y-axis. Defaults to False.
+        backend (str, optional): The plotting backend to use. Can be either 'matplotlib'
+            or 'plotly'. Defaults to 'plotly'.
+        fig_kwargs (dict, optional): Additional keyword arguments to pass to the figure
+            creation function (plt.figure for Matplotlib or go.Figure for Plotly).
+        **kwargs: Additional keyword arguments to pass to the plotting function
+            (plt.bar for Matplotlib or go.Figure.add_bar for Plotly).
+
+    Returns:
+        plt.Figure | go.Figure: The figure object containing the histogram.
+    """
+    fig_kwargs = fig_kwargs or {}
+
+    # Use np.histogram to compute the histogram values and bin edges
+    hist_vals, bin_edges = np.histogram(
+        values, bins=bins, range=x_range, density=density
+    )
+
+    if backend == MPL_BACKEND:
+        fig = plt.figure(**fig_kwargs)
+        plt.bar(bin_edges[:-1], hist_vals, **kwargs)
+        plt.yscale("log" if log_y else "linear")
+    elif backend == PLOTLY_BACKEND:
+        fig = go.Figure(**fig_kwargs)
+        fig.add_bar(x=bin_edges, y=hist_vals, **kwargs)
+        _bin_width = (bin_edges[1] - bin_edges[0]) * bin_width
+        fig.update_traces(width=_bin_width, marker_line_width=0)
+        fig.update_yaxes(type="log" if log_y else "linear")
+    else:
+        raise ValueError(f"Unsupported {backend=}. Must be one of {get_args(Backend)}")
+
+    return fig

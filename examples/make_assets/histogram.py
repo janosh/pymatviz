@@ -4,10 +4,16 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz.enums import Key
-from pymatviz.histograms import elements_hist, spacegroup_hist, true_pred_hist
+from pymatviz.histograms import elements_hist, plot_histogram, spacegroup_hist
 from pymatviz.io import save_and_compress_svg
+from pymatviz.templates import set_plotly_template
+from pymatviz.utils import VALID_BACKENDS
 
 
+set_plotly_template("pymatviz_white")
+
+
+# %%
 df_phonons = load_dataset("matbench_phonons")
 df_expt_gap = load_dataset("matbench_expt_gap")
 
@@ -24,17 +30,22 @@ y_std = (y_true - y_pred) * 10 * np.random.normal(0, 0.1, rand_regression_size)
 
 
 # %% Histogram Plots
-ax = true_pred_hist(y_true, y_pred, y_std)
-save_and_compress_svg(ax, "true-pred-hist")
-
-ax = elements_hist(df_expt_gap.composition, keep_top=15, v_offset=1)
-save_and_compress_svg(ax, "hist-elemental-prevalence")
+ax = elements_hist(
+    df_expt_gap.composition, keep_top=15, v_offset=200, rotation=0, fontsize=12
+)
+save_and_compress_svg(ax, "elements-hist")
 
 
 # %% Spacegroup histograms
-for backend in ("plotly", "matplotlib"):
-    fig = spacegroup_hist(df_phonons[Key.spacegroup], backend=backend)  # type: ignore[arg-type]
+for backend in VALID_BACKENDS:
+    fig = spacegroup_hist(df_phonons[Key.spacegroup], backend=backend)
     save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 
-    fig = spacegroup_hist(df_phonons.spg_symbol, backend=backend)  # type: ignore[arg-type]
+    fig = spacegroup_hist(df_phonons.spg_symbol, backend=backend)
     save_and_compress_svg(fig, f"spg-symbol-hist-{backend}")
+
+
+# %% matbench experimental band gap distribution
+fig = plot_histogram(df_expt_gap["gap expt"], log_y=True)
+
+save_and_compress_svg(fig, "matbench-expt-gap-hist")
