@@ -348,26 +348,31 @@ def plot_histogram(
     values: Sequence[float],
     *,
     bins: int | Sequence[float] | str = 100,
+    x_range: tuple[float | None, float | None] | None = None,
+    density: bool = False,
     bin_width: float = 1.2,
     log_y: bool = False,
     backend: Backend = PLOTLY_BACKEND,
     fig_kwargs: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> plt.Figure | go.Figure:
-    """Plot a histogram using plotly (default) or matplotlib backend but faster numpy
+    """Get a histogram with plotly (default) or matplotlib backend but using fast numpy
     pre-processing before handing the data off to the plot function.
 
     Such a common use case when dealing with large datasets that it's worth having a
     dedicated function for it. Speedup example:
 
         gaussian = np.random.normal(0, 1, 1_000_000_000)
-        plot_histogram(gaussian) takes 17s
-        px.histogram(gaussian) ran for 3m45s before crashing the Jupyter kernel
+        plot_histogram(gaussian)  # takes 17s
+        px.histogram(gaussian)  # ran for 3m45s before crashing the Jupyter kernel
 
     Args:
         values (list or array-like): The values to plot as a histogram.
         bins (int or sequence, optional): The number of bins or the bin edges to use for
             the histogram. If not provided, a default value will be used.
+        x_range (tuple, optional): The range of values to include in the histogram. If
+            not provided, the whole range of values will be used. Defaults to None.
+        density (bool, optional): Whether to normalize the histogram. Defaults to False.
         bin_width (float, optional): The width of the histogram bins as a fraction of
             distance between bin edges. Defaults to 1.2 (20% overlap).
         log_y (bool, optional): Whether to log scale the y-axis. Defaults to False.
@@ -379,12 +384,14 @@ def plot_histogram(
             (plt.bar for Matplotlib or go.Figure.add_bar for Plotly).
 
     Returns:
-        The figure object (plt.Figure for Matplotlib or px.Figure for Plotly).
+        plt.Figure | go.Figure: The figure object containing the histogram.
     """
     fig_kwargs = fig_kwargs or {}
 
     # Use np.histogram to compute the histogram values and bin edges
-    hist_vals, bin_edges = np.histogram(values, bins=bins)
+    hist_vals, bin_edges = np.histogram(
+        values, bins=bins, range=x_range, density=density
+    )
 
     if backend == MPL_BACKEND:
         fig = plt.figure(**fig_kwargs)
