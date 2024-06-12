@@ -22,7 +22,12 @@ from pymatgen.symmetry.groups import SYMM_DATA
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
-from pymatviz.histograms import elements_hist, spacegroup_hist, true_pred_hist
+from pymatviz.histograms import (
+    elements_hist,
+    plot_histogram,
+    spacegroup_hist,
+    true_pred_hist,
+)
 from pymatviz.parity import (
     density_hexbin,
     density_hexbin_with_hist,

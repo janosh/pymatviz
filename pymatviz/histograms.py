@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,6 +19,7 @@ from pymatviz.enums import ElemCountMode, Key
 from pymatviz.powerups import annotate_bars
 from pymatviz.ptable import count_elements
 from pymatviz.utils import (
+    MPL_BACKEND,
     PLOTLY_BACKEND,
     Backend,
     crystal_sys_from_spg_num,
@@ -113,7 +114,7 @@ def spacegroup_hist(
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     show_empty_bins: bool = False,
     ax: plt.Axes | None = None,
-    backend: Backend = "plotly",
+    backend: Backend = PLOTLY_BACKEND,
     text_kwargs: dict[str, Any] | None = None,
     log: bool = False,
     **kwargs: Any,
@@ -410,3 +411,61 @@ def elements_hist(
         )
 
     return ax
+
+
+def plot_histogram(
+    values: Sequence[float],
+    *,
+    bins: int | Sequence[float] | str = 100,
+    bin_width: float = 1.2,
+    log_y: bool = False,
+    backend: Backend = PLOTLY_BACKEND,
+    fig_kwargs: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> plt.Figure | go.Figure:
+    """Plot a histogram using plotly (default) or matplotlib backend but faster numpy
+    pre-processing before handing the data off to the plot function.
+
+    Such a common use case when dealing with large datasets that it's worth having a
+    dedicated function for it. Speedup example:
+
+        gaussian = np.random.normal(0, 1, 1_000_000_000)
+        plot_histogram(gaussian) takes 17s
+        px.histogram(gaussian) ran for 3m45s before crashing the Jupyter kernel
+
+    Args:
+        values (list or array-like): The values to plot as a histogram.
+        bins (int or sequence, optional): The number of bins or the bin edges to use for
+            the histogram. If not provided, a default value will be used.
+        bin_width (float, optional): The width of the histogram bins as a fraction of
+            distance between bin edges. Defaults to 1.2 (20% overlap).
+        log_y (bool, optional): Whether to log scale the y-axis. Defaults to False.
+        backend (str, optional): The plotting backend to use. Can be either 'matplotlib'
+            or 'plotly'. Defaults to 'plotly'.
+        fig_kwargs (dict, optional): Additional keyword arguments to pass to the figure
+            creation function (plt.figure for Matplotlib or go.Figure for Plotly).
+        **kwargs: Additional keyword arguments to pass to the plotting function
+            (plt.bar for Matplotlib or go.Figure.add_bar for Plotly).
+
+    Returns:
+        The figure object (plt.Figure for Matplotlib or px.Figure for Plotly).
+    """
+    fig_kwargs = fig_kwargs or {}
+
+    # Use np.histogram to compute the histogram values and bin edges
+    hist_vals, bin_edges = np.histogram(values, bins=bins)
+
+    if backend == MPL_BACKEND:
+        fig = plt.figure(**fig_kwargs)
+        plt.bar(bin_edges[:-1], hist_vals, **kwargs)
+        plt.yscale("log" if log_y else "linear")
+    elif backend == PLOTLY_BACKEND:
+        fig = go.Figure(**fig_kwargs)
+        fig.add_bar(x=bin_edges, y=hist_vals, **kwargs)
+        _bin_width = (bin_edges[1] - bin_edges[0]) * bin_width
+        fig.update_traces(width=_bin_width, marker_line_width=0)
+        fig.update_yaxes(type="log" if log_y else "linear")
+    else:
+        raise ValueError(f"Unsupported {backend=}. Must be one of {get_args(Backend)}")
+
+    return fig
