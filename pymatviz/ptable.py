@@ -1158,20 +1158,22 @@ def ptable_heatmap_ratio(
     if normalize:
         values /= values.sum()
 
+    ax = ptable_heatmap(values, cbar_title=cbar_title, **kwargs)
+
     # add legend handles
     for tup in (
-        (2.1, "zero", *(not_in_numerator or ())),
-        (1.4, "infty", *(not_in_denominator or ())),
-        (0.7, "na", *(not_in_either or ())),
+        (0.18, "zero", *(not_in_numerator or ())),
+        (0.12, "infty", *(not_in_denominator or ())),
+        (0.06, "na", *(not_in_either or ())),
     ):
         if len(tup) < 3:
             continue
         y_pos, key, color, txt = tup
         kwargs[f"{key}_color"] = color
         bbox = dict(facecolor=color, edgecolor="gray")
-        plt.text(0.8, y_pos, txt, fontsize=10, bbox=bbox)
+        ax.text(0.005, y_pos, txt, fontsize=10, bbox=bbox, transform=ax.transAxes)
 
-    return ptable_heatmap(values, cbar_title=cbar_title, **kwargs)
+    return ax
 
 
 def ptable_heatmap_plotly(

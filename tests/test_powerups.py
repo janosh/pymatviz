@@ -19,7 +19,7 @@ from pymatviz.powerups import (
     get_fig_xy_range,
     with_marginal_hist,
 )
-from pymatviz.utils import Backend, pretty_label
+from pymatviz.utils import MPL_BACKEND, PLOTLY_BACKEND, Backend, pretty_label
 from tests.conftest import y_pred, y_true
 
 
@@ -64,7 +64,7 @@ def test_annotate_metrics(
     out_fig = annotate_metrics(y_pred, y_true, metrics=metrics, fmt=fmt, fig=fig)
 
     assert out_fig is fig
-    backend: Backend = "plotly" if isinstance(out_fig, go.Figure) else "matplotlib"
+    backend: Backend = PLOTLY_BACKEND if isinstance(out_fig, go.Figure) else MPL_BACKEND
 
     expected = dict(MAE=0.113, R2=0.765, RMSE=0.144, MAPE=0.5900, MSE=0.0206)
 
