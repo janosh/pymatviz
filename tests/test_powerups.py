@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
+import plotly.express as px
 import plotly.graph_objects as go
 import pytest
-from matplotlib.text import Annotation
+from matplotlib.offsetbox import AnchoredText
 
 from pymatviz.powerups import (
     add_best_fit_line,
@@ -276,24 +277,37 @@ def test_add_ecdf_line(
 
     trace_kwargs = trace_kwargs or {}
 
-    ecdf = fig.data[-1]  # retrieve ecdf line
+    ecdf_trace = fig.data[-1]  # retrieve ecdf line
     expected_name = trace_kwargs.get("name", "Cumulative")
     expected_color = trace_kwargs.get("line_color", "gray")
-    assert ecdf.name == expected_name
-    assert ecdf.line.color == expected_color
-    assert ecdf.yaxis == "y2"
+    assert ecdf_trace.name == expected_name
+    assert ecdf_trace.line.color == expected_color
+    assert ecdf_trace.yaxis == "y2"
     assert fig.layout.yaxis2.range == (0, 1)
     assert fig.layout.yaxis2.title.text == expected_name
     assert fig.layout.yaxis2.color == expected_color
 
 
 def test_add_ecdf_line_raises() -> None:
+    # check TypeError when passing invalid fig
     for fig in (None, "foo", 42.0):
         with pytest.raises(
             TypeError,
             match=f"{fig=} must be instance of plotly.graph_objs._figure.Figure",
         ):
             add_ecdf_line(fig)
+
+    # check ValueError when x-values cannot be auto-determined
+    fig_violin = px.violin(x=[1, 2, 3], y=[4, 5, 6])
+    violin_trace = type(fig_violin.data[0])
+    qual_name = f"{violin_trace.__module__}.{violin_trace.__qualname__}"
+    with pytest.raises(
+        ValueError, match=f"Cannot auto-determine x-values for ECDF from {qual_name}"
+    ):
+        add_ecdf_line(fig_violin)
+
+    # check ValueError disappears when passing x-values explicitly
+    add_ecdf_line(fig_violin, values=[1, 2, 3])
 
 
 def test_with_marginal_hist() -> None:
@@ -315,31 +329,40 @@ def test_add_best_fit_line(
     matplotlib_scatter: plt.Figure,
     annotate_params: bool | dict[str, Any],
 ) -> None:
+    # test plotly
     fig_plotly = add_best_fit_line(plotly_scatter, annotate_params=annotate_params)
     assert isinstance(fig_plotly, go.Figure)
-    assert fig_plotly.layout.shapes[-1].type == "line"
+    best_fit_line = fig_plotly.layout.shapes[-1]  # retrieve best fit line
+    assert best_fit_line.type == "line"
+    expected_color = (
+        annotate_params.get("color") if isinstance(annotate_params, dict) else "navy"
+    )
+    assert best_fit_line.line.color == expected_color
 
     if annotate_params:
         assert fig_plotly.layout.annotations[-1].text.startswith("LS fit: ")
+        assert fig_plotly.layout.annotations[-1].font.color == expected_color
     else:
         assert len(fig_plotly.layout.annotations) == 0
 
+    # test matplotlib
     fig_mpl = add_best_fit_line(matplotlib_scatter, annotate_params=annotate_params)
     assert isinstance(fig_mpl, plt.Figure)
     with pytest.raises(IndexError):
         fig_mpl.axes[1]
     ax = fig_mpl.axes[0]
     assert ax.lines[-1].get_linestyle() == "--"
+    assert ax.lines[-1].get_color() == expected_color
 
-    anno = next(  # TODO figure out why this always gives None
-        (child for child in ax.get_children() if isinstance(child, Annotation)),
+    anno: AnchoredText = next(  # TODO figure out why this always gives None
+        (child for child in ax.get_children() if isinstance(child, AnchoredText)),
         None,
     )
 
-    # if annotate_params:
-    #     assert anno.get_text().startswith("LS fit: ")
-    # else:
-    assert anno is None
+    if annotate_params:
+        assert anno.txt.get_text().startswith("LS fit: ")
+    else:
+        assert anno is None
 
 
 def test_add_best_fit_line_invalid_fig() -> None:

@@ -121,6 +121,12 @@ class Key(LabelEnum):
     element = "element", "Element"
     energy = "energy", f"Energy {eV}"
     energy_per_atom = "energy_per_atom", f"Energy {eV_per_atom}"
+    # PBE, PBEsol, PBE+U, r2SCAN, etc.
+    dft_functional = "dft_functional", "DFT Functional"
+    uncorrected_energy_per_atom = (
+        "uncorrected_energy_per_atom",
+        f"Uncorrected Energy {eV_per_atom}",
+    )
     cohesive_energy_per_atom = (
         "cohesive_energy_per_atom",
         f"Cohesive Energy {eV_per_atom}",
@@ -131,6 +137,7 @@ class Key(LabelEnum):
     formula = "formula", "Formula"
     formula_pretty = "formula_pretty", "Pretty Formula"
     heat_val = "heat_val", "Heatmap Value"  # used by PTableProjector for ptable data
+    id = "id", "ID"
     init_struct = "initial_structure", "Initial Structure"
     magmoms = "magmoms", "Magnetic Moments"
     mat_id = "material_id", "Material ID"
@@ -138,11 +145,14 @@ class Key(LabelEnum):
     oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
     spacegroup = "spacegroup", "Spacegroup Number"
     spacegroup_symbol = "spacegroup_symbol", "Spacegroup Symbol"
+    step = "step", "Step"
     stress = "stress", "Stress"
     structure = "structure", "Structure"
+    task = "task", "Task"
     task_id = "task_id", "Task ID"  # unique identifier for a compute task
     task_type = "task_type", "Task Type"
     volume = "volume", "Volume (Å³)"
+    vol_per_atom = "volume_per_atom", f"Volume per Atom {cubic_angstrom}"
     wyckoff = "wyckoff", "Aflow-style Wyckoff Label"  # crystallographic site symmetry
     phonon_bandstructure = "phonon_bandstructure", "Phonon Band Structure"
     phonon_dos = "phonon_dos", "Phonon Density of States"
