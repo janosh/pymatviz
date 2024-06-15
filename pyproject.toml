@@ -26,7 +26,7 @@ urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.9"
 dependencies = [
     "matplotlib>=3.6.2",
-    "numpy>=1.21.0",
+    "numpy>=1.21.0,<2",
     "pandas>=2.0.0",
     "plotly",
     "pymatgen",

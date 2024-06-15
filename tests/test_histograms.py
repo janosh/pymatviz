@@ -3,15 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
 from pymatviz import elements_hist, plot_histogram, spacegroup_hist
 from pymatviz.utils import MPL_BACKEND, PLOTLY_BACKEND, VALID_BACKENDS
-from tests.conftest import y_pred, y_true
+from tests.conftest import df_regr, y_pred, y_true
 
 
 if TYPE_CHECKING:
+    import numpy as np
     from pymatgen.core import Structure
 
     from pymatviz.utils import Backend
@@ -92,8 +94,11 @@ def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
 @pytest.mark.parametrize("log_y", [True, False])
 @pytest.mark.parametrize("backend", VALID_BACKENDS)
 @pytest.mark.parametrize("bins", [20, 100])
-def test_plot_histogram(log_y: bool, backend: Backend, bins: int) -> None:
-    fig = plot_histogram(y_true, backend=backend, log_y=log_y, bins=bins)
+@pytest.mark.parametrize("values", [y_true, df_regr.y_true])
+def test_plot_histogram(
+    values: np.ndarray | pd.Series, log_y: bool, backend: Backend, bins: int
+) -> None:
+    fig = plot_histogram(values, backend=backend, log_y=log_y, bins=bins)
     if backend == MPL_BACKEND:
         assert isinstance(fig, plt.Figure)
         y_min, y_max = fig.axes[0].get_ylim()
@@ -105,6 +110,10 @@ def test_plot_histogram(log_y: bool, backend: Backend, bins: int) -> None:
         }[(log_y, bins)]
         assert y_min == pytest.approx(y_min_exp)
         assert y_max == pytest.approx(y_max_exp)
+
+        if isinstance(values, pd.Series):
+            assert fig.axes[0].get_xlabel() == values.name
+        assert fig.axes[0].get_ylabel() == "Count"
     else:
         assert isinstance(fig, go.Figure)
         dev_fig = fig.full_figure_for_development()
@@ -117,3 +126,7 @@ def test_plot_histogram(log_y: bool, backend: Backend, bins: int) -> None:
         }[(log_y, bins)]
         assert y_min == pytest.approx(y_min_exp)
         assert y_max == pytest.approx(y_max_exp)
+
+        if isinstance(values, pd.Series):
+            assert fig.layout.xaxis.title.text == values.name
+        assert fig.layout.yaxis.title.text == "Count"
