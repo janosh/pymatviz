@@ -129,7 +129,7 @@ See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 |                               ![spg-num-hist-matplotlib]                               |                                   ![spg-symbol-hist-matplotlib]                                    |
 |   [`spacegroup_hist([65, 134, 225, ...], backend="plotly")`](pymatviz/histograms.py)   |   [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histograms.py)   |
 |                                 ![spg-num-hist-plotly]                                 |                                     ![spg-symbol-hist-plotly]                                      |
-| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histograms.py)  |          [`plot_histogram(df_expt_gap["gap expt"], log_y=True)`](pymatviz/histograms.py)           |
+| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histograms.py)  |          [`plot_histogram(df_matbench["gap expt"], log_y=True)`](pymatviz/histograms.py)           |
 |                                    ![elements-hist]                                    |                                     ![matbench-expt-gap-hist]                                      |
 
 [spg-symbol-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-plotly.svg

@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from matplotlib.offsetbox import AnchoredText
     from matplotlib.text import Annotation
     from numpy.typing import ArrayLike
+    from plotly.basedatatypes import BaseTraceType
 
 
 def with_marginal_hist(
@@ -342,7 +343,13 @@ def add_best_fit_line(
         raise TypeError(f"{fig=} must be instance of {type_names}")
 
     backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
-    kwargs.setdefault("color", "blue")
+    # default to navy color but let annotate_params override
+    kwargs.setdefault(
+        "color",
+        annotate_params.get("color", "navy")
+        if isinstance(annotate_params, dict)
+        else "navy",
+    )
 
     if 0 in {len(xs), len(ys)}:
         if isinstance(fig, go.Figure):
@@ -431,12 +438,30 @@ def add_ecdf_line(
         type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
         raise TypeError(f"{fig=} must be instance of {type_names}")
 
-    ecdf = px.ecdf(values if len(values) else fig.data[trace_idx].x).data[0]
+    if values == ():
+        target_trace: BaseTraceType = fig.data[trace_idx]
+        if isinstance(target_trace, (go.Histogram, go.Scatter)):
+            values = target_trace.x
+        elif isinstance(target_trace, go.Bar):
+            xs, ys = target_trace.x, target_trace.y
+            values = np.repeat(xs[:-1], ys)
+
+        else:
+            cls = type(target_trace)
+            qual_name = cls.__module__ + "." + cls.__qualname__
+            raise ValueError(
+                f"Cannot auto-determine x-values for ECDF from {qual_name}, "
+                "pass values explicitly. Currently only Histogram, Scatter, Box, "
+                "and Violin traces are supported and may well need more testing. "
+                "Please report issues at https://github.com/janosh/pymatviz/issues."
+            )
+
+    ecdf_trace = px.ecdf(values).data[0]
 
     # if fig has facets, add ECDF to all subplots
     add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
 
-    fig.add_trace(ecdf, **add_trace_defaults | kwargs)
+    fig.add_trace(ecdf_trace, **add_trace_defaults | kwargs)
     # move ECDF line to secondary y-axis
     # set color to darkened version of primary y-axis color
     trace_defaults = dict(yaxis="y2", name="Cumulative", line=dict(color="gray"))
@@ -454,6 +479,7 @@ def add_ecdf_line(
         color=color,
         linecolor=color,
     )
+    # make secondary ECDF y-axis inherit primary y-axis styles
     fig.layout.yaxis2 = yaxis_defaults | getattr(fig.layout, "yaxis2", {})
 
     return fig

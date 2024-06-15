@@ -397,12 +397,22 @@ def plot_histogram(
         fig = plt.figure(**fig_kwargs)
         plt.bar(bin_edges[:-1], hist_vals, **kwargs)
         plt.yscale("log" if log_y else "linear")
+
+        if isinstance(values, pd.Series):
+            plt.xlabel(values.name)
+        plt.ylabel("Density" if density else "Count")
+
     elif backend == PLOTLY_BACKEND:
         fig = go.Figure(**fig_kwargs)
+        kwargs = {"showlegend": False, **kwargs}
         fig.add_bar(x=bin_edges, y=hist_vals, **kwargs)
         _bin_width = (bin_edges[1] - bin_edges[0]) * bin_width
         fig.update_traces(width=_bin_width, marker_line_width=0)
         fig.update_yaxes(type="log" if log_y else "linear")
+
+        if isinstance(values, pd.Series):
+            fig.layout.xaxis.title = values.name
+        fig.layout.yaxis.title = "Density" if density else "Count"
     else:
         raise ValueError(f"Unsupported {backend=}. Must be one of {get_args(Backend)}")
 
