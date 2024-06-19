@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
 import scipy.interpolate
 
 from pymatviz.powerups import (
@@ -15,7 +17,7 @@ from pymatviz.powerups import (
     annotate_metrics,
     with_marginal_hist,
 )
-from pymatviz.utils import df_to_arrays
+from pymatviz.utils import bin_df_cols, df_to_arrays
 
 
 if TYPE_CHECKING:
@@ -83,19 +85,18 @@ def density_scatter(
     stats: bool | dict[str, Any] = True,
     **kwargs: Any,
 ) -> plt.Axes:
-    """Scatter plot colored (and optionally sorted) by density.
+    """Scatter plot colored by density using matplotlib backend.
 
     Args:
         x (array | str): x-values or dataframe column name.
         y (array | str): y-values or dataframe column name.
         df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        sort (bool, optional): Whether to sort the data. Defaults to True.
         log_density (bool, optional): Whether to log the density color scale.
             Defaults to True.
         hist_density_kwargs (dict, optional): Passed to hist_density(). Use to change
             sort (by density, default True), bins (default 100), or method (for
-            interpolation, default "nearest").
+            interpolation, default "nearest"). matplotlib backend only.
         color_bar (bool | dict, optional): Whether to add a color bar. Defaults to True.
             If dict, unpacked into ax.figure.colorbar(). E.g. dict(label="Density").
         xlabel (str, optional): x-axis label. Defaults to "Actual".
@@ -107,11 +108,10 @@ def density_scatter(
         stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
             and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
             E.g. stats=dict(loc="upper left", prefix="Title", prop=dict(fontsize=16)).
-        **kwargs: Passed to ax.scatter(). Defaults to dict(s=6) to control marker size.
-            Other common keys are cmap, vmin, vamx, alpha, edgecolors, linewidths.
+        **kwargs: Passed to ax.scatter().
 
     Returns:
-        plt.Axes:
+        plt.Axes: The plot object.
     """
     if not isinstance(stats, (bool, dict)):
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
@@ -148,6 +148,78 @@ def density_scatter(
         color_bar = ax.figure.colorbar(ax.collections[0], **kwds)
 
     return ax
+
+
+def density_scatter_plotly(
+    df: pd.DataFrame,
+    *,
+    x: str,
+    y: str,
+    log_density: bool = True,
+    identity_line: bool | dict[str, Any] = True,
+    best_fit_line: bool | dict[str, Any] = True,
+    stats: bool | dict[str, Any] = True,
+    n_bins: int = 200,
+    **kwargs: Any,
+) -> go.Figure:
+    """Scatter plot colored by density using plotly backend.
+
+    Args:
+        x (str): x-values dataframe column name.
+        y (str): y-values dataframe column name.
+        df (pd.DataFrame): DataFrame with x and y columns.
+        log_density (bool, optional): Whether to log the density color scale.
+            Defaults to True.
+        color_bar (bool | dict, optional): Whether to add a color bar. Defaults to True.
+            If dict, unpacked into fig.update_traces(marker=dict(colorbar=...)).
+            E.g. dict(title="Density").
+        xlabel (str, optional): x-axis label. Defaults to x.
+        ylabel (str, optional): y-axis label. Defaults to y.
+        identity_line (bool | dict[str, Any], optional): Whether to add an parity line
+            (y = x). Defaults to True. Pass a dict to customize line properties.
+        best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
+            Defaults to True. Pass a dict to customize line properties.
+        stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
+            and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
+            E.g. stats=dict(loc="upper left", prefix="Title", font=dict(size=16)).
+        n_bins (int, optional): Number of bins for histogram. Defaults to 200.
+        **kwargs: Passed to px.scatter().
+
+    Returns:
+        go.Figure: The plot object.
+    """
+    if not isinstance(stats, (bool, dict)):
+        raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
+
+    bin_counts_col = "bin_counts"
+    df_bin = bin_df_cols(
+        df, bin_by_cols=[x, y], n_bins=n_bins, bin_counts_col=bin_counts_col
+    )
+
+    fig = px.scatter(
+        df_bin, x=x, y=y, color=bin_counts_col, hover_name=df.index.name, **kwargs
+    )
+
+    if identity_line:
+        add_identity_line(
+            fig, **(identity_line if isinstance(identity_line, dict) else {})
+        )
+
+    if best_fit_line:
+        add_best_fit_line(
+            fig, **(best_fit_line if isinstance(best_fit_line, dict) else {})
+        )
+
+    if stats:
+        stats_kwargs = stats if isinstance(stats, dict) else {}
+        annotate_metrics(df_bin[x], df_bin[y], fig=fig, **stats_kwargs)
+
+    cbar_title = f"{'Log ' if log_density else ''}Density"
+    fig.update_traces(
+        marker=dict(colorscale="Viridis", colorbar=dict(title=cbar_title))
+    )
+
+    return fig
 
 
 def scatter_with_err_bar(

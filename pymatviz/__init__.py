@@ -27,6 +27,7 @@ from pymatviz.parity import (
     density_hexbin,
     density_hexbin_with_hist,
     density_scatter,
+    density_scatter_plotly,
     density_scatter_with_hist,
     residual_vs_actual,
     scatter_with_err_bar,

@@ -5,12 +5,14 @@ from typing import TYPE_CHECKING, Any
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 
 from pymatviz import (
     density_hexbin,
     density_hexbin_with_hist,
     density_scatter,
+    density_scatter_plotly,
     density_scatter_with_hist,
     residual_vs_actual,
     scatter_with_err_bar,
@@ -23,17 +25,23 @@ if TYPE_CHECKING:
 
 @pytest.mark.parametrize("log_density", [True, False])
 @pytest.mark.parametrize("hist_density_kwargs", [None, {}, dict(bins=20, sort=True)])
-@pytest.mark.parametrize("cmap", [None, "Greens"])
 @pytest.mark.parametrize(
     "stats",
     [False, True, dict(prefix="test", loc="lower right", prop=dict(fontsize=10))],
 )
-def test_density_scatter(
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"cmap": None},
+        {"cmap": "Greens"},
+    ],
+)
+def test_density_scatter_mpl(
     df_or_arrays: DfOrArrays,
     log_density: bool,
     hist_density_kwargs: dict[str, int | bool | str] | None,
-    cmap: str | None,
     stats: bool | dict[str, Any],
+    kwargs: dict[str, Any],
 ) -> None:
     df, x, y = df_or_arrays
     ax = density_scatter(
@@ -42,12 +50,46 @@ def test_density_scatter(
         y=y,
         log_density=log_density,
         hist_density_kwargs=hist_density_kwargs,
-        cmap=cmap,
         stats=stats,
+        **kwargs,
     )
     assert isinstance(ax, plt.Axes)
     assert ax.get_xlabel() == x if isinstance(x, str) else "Actual"
     assert ax.get_ylabel() == y if isinstance(y, str) else "Predicted"
+
+
+@pytest.mark.parametrize("log_density", [True, False])
+@pytest.mark.parametrize(
+    "stats",
+    [False, True, dict(prefix="test", loc="lower right", font=dict(size=10))],
+)
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"color_continuous_scale": "Viridis"},
+        {"color_continuous_scale": None},
+    ],
+)
+def test_density_scatter_plotly(
+    df_or_arrays: DfOrArrays,
+    log_density: bool,
+    stats: bool | dict[str, Any],
+    kwargs: dict[str, Any],
+) -> None:
+    df, x, y = df_or_arrays
+    if df is None:
+        return
+    fig = density_scatter_plotly(
+        df=df,
+        x=x,
+        y=y,
+        log_density=log_density,
+        stats=stats,
+        **kwargs,
+    )
+    assert isinstance(fig, go.Figure)
+    assert fig.layout.xaxis.title.text == x if isinstance(x, str) else "Actual"
+    assert fig.layout.yaxis.title.text == y if isinstance(y, str) else "Predicted"
 
 
 @pytest.mark.parametrize("stats", [1, (1,), "foo"])
