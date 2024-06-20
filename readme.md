@@ -142,13 +142,20 @@ See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 
 See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
-|      [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py)       | [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py)  |
-| :--------------------------------------------------------------: | :--------------------------------------------------------------: |
-|                        ![density-scatter]                        |                   ![density-scatter-with-hist]                   |
-|       [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py)       |  [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py)  |
-|                        ![density-hexbin]                         |                   ![density-hexbin-with-hist]                    |
-| [`scatter_with_err_bar(xs, ys, yerr, ...)`](pymatviz/scatter.py) | [`residual_vs_actual(y_true, y_pred, ...)`](pymatviz/scatter.py) |
-|                     ![scatter-with-err-bar]                      |                      ![residual-vs-actual]                       |
+| [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py) | [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py) |
+| :------------------------------------------------------------------------: | :------------------------------------------------------------------------: |
+|                         ![density-scatter-plotly]                          |                      ![density-scatter-plotly-blobs]                       |
+|           [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py)            |      [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py)       |
+|                             ![density-scatter]                             |                        ![density-scatter-with-hist]                        |
+|            [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py)            |       [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py)       |
+|                             ![density-hexbin]                              |                        ![density-hexbin-with-hist]                         |
+
+[density-scatter-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-plotly.svg
+[density-scatter-plotly-blobs]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-plotly-blobs.svg
+[density-hexbin-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-hexbin-with-hist.svg
+[density-hexbin]: https://github.com/janosh/pymatviz/raw/main/assets/density-hexbin.svg
+[density-scatter-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-with-hist.svg
+[density-scatter]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter.svg
 
 ## Uncertainty
 
@@ -186,10 +193,6 @@ See [`pymatviz/correlation.py`](pymatviz/correlation.py).
 
 [cumulative-error]: https://github.com/janosh/pymatviz/raw/main/assets/cumulative-error.svg
 [cumulative-residual]: https://github.com/janosh/pymatviz/raw/main/assets/cumulative-residual.svg
-[density-hexbin-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-hexbin-with-hist.svg
-[density-hexbin]: https://github.com/janosh/pymatviz/raw/main/assets/density-hexbin.svg
-[density-scatter-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-with-hist.svg
-[density-scatter]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter.svg
 [error-decay-with-uncert-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/error-decay-with-uncert-multiple.svg
 [error-decay-with-uncert]: https://github.com/janosh/pymatviz/raw/main/assets/error-decay-with-uncert.svg
 [elements-hist]: https://github.com/janosh/pymatviz/raw/main/assets/elements-hist.svg

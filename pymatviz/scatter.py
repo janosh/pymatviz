@@ -160,6 +160,7 @@ def density_scatter_plotly(
     best_fit_line: bool | dict[str, Any] = True,
     stats: bool | dict[str, Any] = True,
     n_bins: int = 200,
+    bin_counts_col: str = "point<br>density",
     **kwargs: Any,
 ) -> go.Figure:
     """Scatter plot colored by density using plotly backend.
@@ -183,6 +184,8 @@ def density_scatter_plotly(
             and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
             E.g. stats=dict(loc="upper left", prefix="Title", font=dict(size=16)).
         n_bins (int, optional): Number of bins for histogram. Defaults to 200.
+        bin_counts_col (str, optional): Column name for bin counts. Defaults to
+            "point density". Will be used as color bar title.
         **kwargs: Passed to px.scatter().
 
     Returns:
@@ -191,7 +194,6 @@ def density_scatter_plotly(
     if not isinstance(stats, (bool, dict)):
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
 
-    bin_counts_col = "bin_counts"
     df_bin = bin_df_cols(
         df, bin_by_cols=[x, y], n_bins=n_bins, bin_counts_col=bin_counts_col
     )

@@ -266,7 +266,7 @@ def add_identity_line(
     Returns:
         Figure: Figure with added identity line.
     """
-    (x_min, x_max), (y_min, y_max) = get_fig_xy_range(fig, trace_idx=trace_idx)
+    (x_min, x_max), (y_min, y_max) = get_fig_xy_range(fig=fig, trace_idx=trace_idx)
 
     if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
@@ -276,8 +276,8 @@ def add_identity_line(
         return fig
 
     if isinstance(fig, go.Figure):
-        xy_min = min(x_min, y_min)
-        xy_max = max(x_max, y_max)
+        xy_min_min = min(x_min, y_min)
+        xy_max_min = min(x_max, y_max)
 
         if fig._grid_ref is not None:  # noqa: SLF001
             kwargs.setdefault("row", "all")
@@ -286,7 +286,7 @@ def add_identity_line(
         line_defaults = dict(color="gray", width=1, dash="dash")
         fig.add_shape(
             type="line",
-            **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
+            **dict(x0=xy_min_min, y0=xy_min_min, x1=xy_max_min, y1=xy_max_min),
             layer="below",
             line=line_defaults | (line_kwds or {}),
             **kwargs,
@@ -297,7 +297,7 @@ def add_identity_line(
 
         return fig
 
-    raise TypeError(f"{fig=} must be instance of {VALID_FIG_TYPES}")
+    raise TypeError(f"{fig=} must be instance of {VALID_FIG_NAMES}")
 
 
 def add_best_fit_line(
