@@ -1,7 +1,7 @@
 import numpy as np
 
 from pymatviz.io import save_and_compress_svg
-from pymatviz.parity import residual_vs_actual
+from pymatviz.scatter import residual_vs_actual
 
 
 rand_regression_size = 500

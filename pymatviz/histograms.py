@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Literal, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,6 +21,7 @@ from pymatviz.ptable import count_elements
 from pymatviz.utils import (
     MPL_BACKEND,
     PLOTLY_BACKEND,
+    VALID_BACKENDS,
     Backend,
     crystal_sys_from_spg_num,
     si_fmt_int,
@@ -414,6 +415,6 @@ def plot_histogram(
             fig.layout.xaxis.title = values.name
         fig.layout.yaxis.title = "Density" if density else "Count"
     else:
-        raise ValueError(f"Unsupported {backend=}. Must be one of {get_args(Backend)}")
+        raise ValueError(f"Unsupported {backend=}. Must be one of {VALID_BACKENDS}")
 
     return fig
