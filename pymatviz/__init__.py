@@ -23,14 +23,6 @@ from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histograms import elements_hist, plot_histogram, spacegroup_hist
-from pymatviz.parity import (
-    density_hexbin,
-    density_hexbin_with_hist,
-    density_scatter,
-    density_scatter_with_hist,
-    residual_vs_actual,
-    scatter_with_err_bar,
-)
 from pymatviz.phonons import (
     plot_phonon_bands,
     plot_phonon_bands_and_dos,
@@ -50,6 +42,15 @@ from pymatviz.ptable import (
 )
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
+from pymatviz.scatter import (
+    density_hexbin,
+    density_hexbin_with_hist,
+    density_scatter,
+    density_scatter_plotly,
+    density_scatter_with_hist,
+    residual_vs_actual,
+    scatter_with_err_bar,
+)
 from pymatviz.structure_viz import plot_structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.templates import (

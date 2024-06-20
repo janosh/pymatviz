@@ -367,7 +367,7 @@ def test_add_best_fit_line(
 
 def test_add_best_fit_line_invalid_fig() -> None:
     with pytest.raises(TypeError, match="must be instance of"):
-        add_best_fit_line("invalid")
+        add_best_fit_line("not a valid fig")
 
 
 def test_get_fig_xy_range(
