@@ -138,17 +138,17 @@ See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 [spg-symbol-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-matplotlib.svg
 [matbench-expt-gap-hist]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-expt-gap-hist.svg
 
-## Parity Plots
+## Scatter Plots
 
-See [`pymatviz/parity.py`](pymatviz/parity.py).
+See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
-|      [`density_scatter(xs, ys, ...)`](pymatviz/parity.py)       | [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/parity.py)  |
-| :-------------------------------------------------------------: | :-------------------------------------------------------------: |
-|                       ![density-scatter]                        |                  ![density-scatter-with-hist]                   |
-|       [`density_hexbin(xs, ys, ...)`](pymatviz/parity.py)       |  [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/parity.py)  |
-|                        ![density-hexbin]                        |                   ![density-hexbin-with-hist]                   |
-| [`scatter_with_err_bar(xs, ys, yerr, ...)`](pymatviz/parity.py) | [`residual_vs_actual(y_true, y_pred, ...)`](pymatviz/parity.py) |
-|                     ![scatter-with-err-bar]                     |                      ![residual-vs-actual]                      |
+|      [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py)       | [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py)  |
+| :--------------------------------------------------------------: | :--------------------------------------------------------------: |
+|                        ![density-scatter]                        |                   ![density-scatter-with-hist]                   |
+|       [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py)       |  [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py)  |
+|                        ![density-hexbin]                         |                   ![density-hexbin-with-hist]                    |
+| [`scatter_with_err_bar(xs, ys, yerr, ...)`](pymatviz/scatter.py) | [`residual_vs_actual(y_true, y_pred, ...)`](pymatviz/scatter.py) |
+|                     ![scatter-with-err-bar]                      |                      ![residual-vs-actual]                       |
 
 ## Uncertainty
 

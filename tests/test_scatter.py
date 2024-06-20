@@ -61,7 +61,7 @@ def test_density_scatter_mpl(
 @pytest.mark.parametrize("log_density", [True, False])
 @pytest.mark.parametrize(
     "stats",
-    [False, True, dict(prefix="test", loc="lower right", font=dict(size=10))],
+    [False, True, dict(prefix="test", x=1, y=1, font=dict(size=10))],
 )
 @pytest.mark.parametrize(
     "kwargs",

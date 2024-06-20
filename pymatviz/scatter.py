@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
 
-def hist_density(
+def _hist_density(
     x: ArrayLike | str,
     y: ArrayLike | str,
     *,
@@ -123,7 +123,7 @@ def density_scatter(
     xs, ys = df_to_arrays(df, x, y)
     ax = ax or plt.gca()
 
-    xs, ys, cs = hist_density(xs, ys, **(hist_density_kwargs or {}))
+    xs, ys, cs = _hist_density(xs, ys, **(hist_density_kwargs or {}))
 
     # decrease marker size
     defaults = dict(s=6, norm=mpl.colors.LogNorm() if log_density else None)

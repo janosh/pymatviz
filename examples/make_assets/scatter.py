@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.io as pio
 
 from pymatviz.io import save_and_compress_svg
-from pymatviz.parity import (
+from pymatviz.scatter import (
     density_hexbin,
     density_hexbin_with_hist,
     density_scatter,
