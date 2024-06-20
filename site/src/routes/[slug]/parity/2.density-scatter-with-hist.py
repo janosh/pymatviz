@@ -1,7 +1,7 @@
 import numpy as np
 
 from pymatviz.io import save_and_compress_svg
-from pymatviz.parity import density_scatter_with_hist
+from pymatviz.scatter import density_scatter_with_hist
 
 
 # random regression data
