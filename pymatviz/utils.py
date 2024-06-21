@@ -29,8 +29,14 @@ PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
 TEST_FILES = f"{ROOT}/tests/files"
 Backend = Literal["matplotlib", "plotly"]
-AxOrFig = Union[plt.Axes, plt.Figure, go.Figure]
 VALID_BACKENDS = MPL_BACKEND, PLOTLY_BACKEND = get_args(Backend)
+
+AxOrFig = Union[plt.Axes, plt.Figure, go.Figure]
+VALID_FIG_TYPES = get_args(AxOrFig)
+VALID_FIG_NAMES = " | ".join(
+    f"{t.__module__}.{t.__qualname__}" for t in VALID_FIG_TYPES
+)
+
 CrystalSystem = Literal[
     "triclinic",
     "monoclinic",
@@ -205,15 +211,17 @@ def bin_df_cols(
     if df_in.index.name not in df_in:
         df_in = df_in.reset_index()
 
-    group = df_in.groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
+    group = df_in.groupby(
+        [*[f"{c}_bins" for c in bin_by_cols], *group_by_cols], observed=True
+    )
 
     df_bin = group.first().dropna()
     df_bin[bin_counts_col] = group.size()
 
     if verbose:
         print(  # noqa: T201
-            f"{1 - len(df_bin) / len(df_in):.1%} row reduction from binning: from "
-            f"{len(df_bin):,} to {len(df_in):,}"
+            f"{1 - len(df_bin) / len(df_in):.1%} sample reduction from binning: from "
+            f"{len(df_in):,} to {len(df_bin):,}"
         )
 
     if kde_col:
@@ -365,16 +373,18 @@ def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
 
 
 def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
-    """Decorator to validate the type of fig keyword argument in a function."""
+    """Decorator to validate the type of fig keyword argument in a function. fig MUST be
+    a keyword argument, not a positional argument.
+    """
 
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         # TODO use typing.ParamSpec to type wrapper once py310 is oldest supported
         fig = kwargs.get("fig", None)
-        if not (fig is None or isinstance(fig, (plt.Axes, plt.Figure, go.Figure))):
+        if fig is not None and not isinstance(fig, (plt.Axes, plt.Figure, go.Figure)):
             raise TypeError(
                 f"Unexpected type for fig: {type(fig).__name__}, must be one of None, "
-                f"{', '.join(map(str, get_args(AxOrFig)))}"
+                f"{VALID_FIG_NAMES}"
             )
         return func(*args, **kwargs)
 
@@ -382,9 +392,7 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
 
 
 @validate_fig
-def annotate(
-    text: str, fig: AxOrFig | None = None, color: str = "black", **kwargs: Any
-) -> AxOrFig:
+def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
     """Annotate a matplotlib or plotly figure.
 
     Args:
@@ -400,6 +408,7 @@ def annotate(
         plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
     backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
+    color = kwargs.pop("color", "black")
 
     if backend == MPL_BACKEND:
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
@@ -441,6 +450,8 @@ def get_fig_xy_range(
         tuple[float, float, float, float]: The x and y range of the figure in the format
             (x_min, x_max, y_min, y_max).
     """
+    if fig is None:
+        fig = plt.gcf()
     if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 

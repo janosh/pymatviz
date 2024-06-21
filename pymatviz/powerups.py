@@ -17,6 +17,9 @@ from sklearn.metrics import r2_score
 from pymatviz.utils import (
     MPL_BACKEND,
     PLOTLY_BACKEND,
+    VALID_BACKENDS,
+    VALID_FIG_NAMES,
+    VALID_FIG_TYPES,
     AxOrFig,
     Backend,
     annotate,
@@ -33,6 +36,7 @@ if TYPE_CHECKING:
     from matplotlib.offsetbox import AnchoredText
     from matplotlib.text import Annotation
     from numpy.typing import ArrayLike
+    from plotly.basedatatypes import BaseTraceType
 
 
 def with_marginal_hist(
@@ -262,12 +266,7 @@ def add_identity_line(
     Returns:
         Figure: Figure with added identity line.
     """
-    valid_types = (go.Figure, plt.Figure, plt.Axes)
-    if not isinstance(fig, valid_types):
-        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
-        raise TypeError(f"{fig=} must be instance of {type_names}")
-
-    (x_min, x_max), (y_min, y_max) = get_fig_xy_range(fig, trace_idx=trace_idx)
+    (x_min, x_max), (y_min, y_max) = get_fig_xy_range(fig=fig, trace_idx=trace_idx)
 
     if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
@@ -276,26 +275,29 @@ def add_identity_line(
         ax.axline((x_min, x_min), (x_max, x_max), **line_defaults | (line_kwds or {}))
         return fig
 
-    xy_min = min(x_min, y_min)
-    xy_max = max(x_max, y_max)
+    if isinstance(fig, go.Figure):
+        xy_min_min = min(x_min, y_min)
+        xy_max_min = min(x_max, y_max)
 
-    if fig._grid_ref is not None:  # noqa: SLF001
-        kwargs.setdefault("row", "all")
-        kwargs.setdefault("col", "all")
+        if fig._grid_ref is not None:  # noqa: SLF001
+            kwargs.setdefault("row", "all")
+            kwargs.setdefault("col", "all")
 
-    line_defaults = dict(color="gray", width=1, dash="dash")
-    fig.add_shape(
-        type="line",
-        **dict(x0=xy_min, y0=xy_min, x1=xy_max, y1=xy_max),
-        layer="below",
-        line=line_defaults | (line_kwds or {}),
-        **kwargs,
-    )
-    if retain_xy_limits:
-        fig.update_xaxes(range=[x_min, x_max])
-        fig.update_yaxes(range=[y_min, y_max])
+        line_defaults = dict(color="gray", width=1, dash="dash")
+        fig.add_shape(
+            type="line",
+            **dict(x0=xy_min_min, y0=xy_min_min, x1=xy_max_min, y1=xy_max_min),
+            layer="below",
+            line=line_defaults | (line_kwds or {}),
+            **kwargs,
+        )
+        if retain_xy_limits:
+            fig.update_xaxes(range=[x_min, x_max])
+            fig.update_yaxes(range=[y_min, y_max])
 
-    return fig
+        return fig
+
+    raise TypeError(f"{fig=} must be instance of {VALID_FIG_NAMES}")
 
 
 def add_best_fit_line(
@@ -336,13 +338,17 @@ def add_best_fit_line(
     Returns:
         Figure: Figure with added best fit line.
     """
-    valid_types = (go.Figure, plt.Figure, plt.Axes)
-    if not isinstance(fig, valid_types):
-        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
-        raise TypeError(f"{fig=} must be instance of {type_names}")
+    if not isinstance(fig, VALID_FIG_TYPES):
+        raise TypeError(f"{fig=} must be instance of {VALID_FIG_NAMES}")
 
     backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
-    kwargs.setdefault("color", "blue")
+    # default to navy color but let annotate_params override
+    line_color = kwargs.setdefault(
+        "color",
+        annotate_params.get("color", "navy")
+        if isinstance(annotate_params, dict)
+        else "navy",
+    )
 
     if 0 in {len(xs), len(ys)}:
         if isinstance(fig, go.Figure):
@@ -360,22 +366,22 @@ def add_best_fit_line(
                     xs, ys = artist.get_offsets().T
     slope, intercept = np.polyfit(xs, ys, 1)
 
-    x_min = get_fig_xy_range(fig)[0][0]
+    (x_min, x_max), _ = get_fig_xy_range(fig, trace_idx=trace_idx)
 
-    x0, x1 = x_min, x_min + 1
+    x0, x1 = x_min, x_max
     y0, y1 = slope * x0 + intercept, slope * x1 + intercept
 
     if annotate_params:
         if backend == MPL_BACKEND:
-            defaults = dict(loc="lower right", color=kwargs["color"])
+            defaults = dict(loc="lower right", color=line_color)
         else:
             defaults = dict(
                 xref="paper",
                 yref="paper",
-                x=0.02,
-                y=0.96,
+                x=0.98,
+                y=0.02,
                 showarrow=False,
-                font_color=kwargs["color"],
+                font_color=line_color,
             )
         if isinstance(annotate_params, dict):
             defaults |= annotate_params
@@ -388,17 +394,19 @@ def add_best_fit_line(
         ax.axline((x0, y0), (x1, y1), **(defaults | (line_kwds or {})) | kwargs)
 
         return fig
+    if backend == PLOTLY_BACKEND:
+        if fig._grid_ref is not None:  # noqa: SLF001
+            for key in ("row", "col"):
+                kwargs.setdefault(key, "all")
 
-    if fig._grid_ref is not None:  # noqa: SLF001
-        for key in ("row", "col"):
-            kwargs.setdefault(key, "all")
+        line_kwds = dict(
+            color=kwargs.pop("color"), width=2, dash="dash", **(line_kwds or {})
+        )
+        fig.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=line_kwds, **kwargs)
 
-    line_kwds = dict(
-        color=kwargs.pop("color"), width=2, dash="dash", **(line_kwds or {})
-    )
-    fig.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=line_kwds, **kwargs)
+        return fig
 
-    return fig
+    raise ValueError(f"Unsupported {backend=}. Must be one of {VALID_BACKENDS}")
 
 
 def add_ecdf_line(
@@ -426,17 +434,37 @@ def add_ecdf_line(
     Returns:
         Figure: Figure with added ECDF line.
     """
-    valid_types = (go.Figure,)
-    if not isinstance(fig, valid_types):
-        type_names = " | ".join(f"{t.__module__}.{t.__qualname__}" for t in valid_types)
+    valid_fig_types = (go.Figure,)
+    if not isinstance(fig, valid_fig_types):
+        type_names = " | ".join(
+            f"{t.__module__}.{t.__qualname__}" for t in valid_fig_types
+        )
         raise TypeError(f"{fig=} must be instance of {type_names}")
 
-    ecdf = px.ecdf(values if len(values) else fig.data[trace_idx].x).data[0]
+    if values == ():
+        target_trace: BaseTraceType = fig.data[trace_idx]
+        if isinstance(target_trace, (go.Histogram, go.Scatter)):
+            values = target_trace.x
+        elif isinstance(target_trace, go.Bar):
+            xs, ys = target_trace.x, target_trace.y
+            values = np.repeat(xs[:-1], ys)
+
+        else:
+            cls = type(target_trace)
+            qual_name = cls.__module__ + "." + cls.__qualname__
+            raise ValueError(
+                f"Cannot auto-determine x-values for ECDF from {qual_name}, "
+                "pass values explicitly. Currently only Histogram, Scatter, Box, "
+                "and Violin traces are supported and may well need more testing. "
+                "Please report issues at https://github.com/janosh/pymatviz/issues."
+            )
+
+    ecdf_trace = px.ecdf(values).data[0]
 
     # if fig has facets, add ECDF to all subplots
     add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
 
-    fig.add_trace(ecdf, **add_trace_defaults | kwargs)
+    fig.add_trace(ecdf_trace, **add_trace_defaults | kwargs)
     # move ECDF line to secondary y-axis
     # set color to darkened version of primary y-axis color
     trace_defaults = dict(yaxis="y2", name="Cumulative", line=dict(color="gray"))
@@ -454,6 +482,7 @@ def add_ecdf_line(
         color=color,
         linecolor=color,
     )
+    # make secondary ECDF y-axis inherit primary y-axis styles
     fig.layout.yaxis2 = yaxis_defaults | getattr(fig.layout, "yaxis2", {})
 
     return fig
