@@ -98,7 +98,6 @@ ignore = [
     "FIX002",
     "ISC001",
     "N806",    # non-lowercase-variable-in-function
-    "NPY002",
     "PLR0911", # too-many-return-statements
     "PLR0912", # too-many-branches
     "PLR0913", # function-with-too-many-arguments
