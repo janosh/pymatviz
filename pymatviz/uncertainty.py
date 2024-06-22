@@ -152,12 +152,12 @@ def get_err_decay(
     decay_by_err = np.sort(abs_err).cumsum() / n_inc
 
     # error decay for random exclusion of samples
-    ae_tile = np.tile(abs_err, [n_rand, 1])
+    abs_err_tile = np.tile(abs_err, [n_rand, 1])
 
-    for row in ae_tile:
-        np.random.shuffle(row)  # shuffle rows of ae_tile in place
+    for row in abs_err_tile:
+        np.random.default_rng(seed=0).shuffle(row)  # shuffle rows of ae_tile in place
 
-    rand = ae_tile.cumsum(1) / n_inc
+    rand = abs_err_tile.cumsum(1) / n_inc
 
     return decay_by_err, rand.std(0)
 
