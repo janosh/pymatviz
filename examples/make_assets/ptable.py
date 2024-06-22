@@ -19,6 +19,7 @@ from pymatviz.utils import df_ptable
 
 
 # %%
+np_rng = np.random.default_rng(seed=0)
 df_expt_gap = load_dataset("matbench_expt_gap")
 df_steels = load_dataset("matbench_steels")
 
@@ -86,9 +87,7 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 # %% Histograms laid out in as a periodic table
 # Generate random parity data with y \approx x with some noise
-data_dict = {
-    elem.symbol: np.random.randn(100) + np.random.randn(100) for elem in Element
-}
+data_dict = {elem.symbol: np_rng.randn(100) + np_rng.randn(100) for elem in Element}
 fig = ptable_hists(
     data_dict,
     colormap="coolwarm",
@@ -104,9 +103,9 @@ save_and_compress_svg(fig, "ptable-hists")
 # %% Scatter plots laid out as a periodic table
 data_dict = {  # random parity data with y = x + noise
     elem.symbol: [
-        np.arange(10) + np.random.normal(0, 1, 10),
-        np.arange(10) + np.random.normal(0, 1, 10),
-        np.arange(10) + np.random.normal(0, 1, 10),
+        np.arange(10) + np_rng.normal(0, 1, 10),
+        np.arange(10) + np_rng.normal(0, 1, 10),
+        np.arange(10) + np_rng.normal(0, 1, 10),
     ]
     for elem in Element
 }
@@ -126,8 +125,8 @@ save_and_compress_svg(fig, "ptable-scatters-parity")
 data_dict = {  # random parabola data with y = x^2 + noise
     elem.symbol: [
         np.arange(10),
-        (np.arange(10) - 4) ** 2 + np.random.normal(0, 1, 10),
-        np.arange(10) + np.random.normal(0, 10, 10),
+        (np.arange(10) - 4) ** 2 + np_rng.normal(0, 1, 10),
+        np.arange(10) + np_rng.normal(0, 10, 10),
     ]
     for elem in Element
 }
@@ -148,7 +147,7 @@ save_and_compress_svg(fig, "ptable-scatters-parabola")
 data_dict = {
     elem.symbol: [
         np.linspace(0, 10, 10),
-        np.sin(2 * np.pi * np.linspace(0, 10, 10)) + np.random.normal(0, 0.2, 10),
+        np.sin(2 * np.pi * np.linspace(0, 10, 10)) + np_rng.normal(0, 0.2, 10),
     ]
     for elem in Element
 }
