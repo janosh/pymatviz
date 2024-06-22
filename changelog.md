@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.9.0](https://github.com/janosh/pymatviz/compare/v0.8.3...v0.9.0)
+
+> 21 June 2024
+
+- Fix `ruff` `NPY002` [`#162`](https://github.com/janosh/pymatviz/pull/162)
+- `density_scatter_plotly()` [`#161`](https://github.com/janosh/pymatviz/pull/161)
+- Add `pymatviz.histogram.plot_histogram` [`#159`](https://github.com/janosh/pymatviz/pull/159)
+- Fix `ptable_heatmap_ratio` legend [`#158`](https://github.com/janosh/pymatviz/pull/158)
+- `ptable_scatters` allow 3rd data dimension for colormap [`#155`](https://github.com/janosh/pymatviz/pull/155)
+- Support passing sequence of structures to `plot_structure_2d()` to be plotted in grid [`#156`](https://github.com/janosh/pymatviz/pull/156)
+- `density_scatter_plotly()` (#161) [`#160`](https://github.com/janosh/pymatviz/issues/160)
+- when passed a series, plot_histogram now use series name as x-axis title [`e9697fc`](https://github.com/janosh/pymatviz/commit/e9697fcbca24c6b10d11069ac6a969b5d9507fe1)
+- import std lib StrEnum from enum if sys.version_info &gt;= (3, 11) [`510452a`](https://github.com/janosh/pymatviz/commit/510452aeb9a57e33283a8bedd530ddf77a6fe4ce)
+- add plot_structure_2d() keyword subplot_title: Callable[[Structure, str | int], str] | None = None [`523101b`](https://github.com/janosh/pymatviz/commit/523101bc6af2e0b9168a1775cd9c95dd09c3ec4b)
+
 #### [v0.8.3](https://github.com/janosh/pymatviz/compare/v0.8.2...v0.8.3)
 
 > 30 May 2024
