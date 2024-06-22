@@ -34,9 +34,10 @@ plt.rcParams["figure.constrained_layout.use"] = True
 
 # Random regression data
 rand_regression_size = 500
-y_true = np.random.normal(5, 4, rand_regression_size)
-y_pred = 1.2 * y_true - 2 * np.random.normal(0, 1, rand_regression_size)
-y_std = (y_true - y_pred) * 10 * np.random.normal(0, 0.1, rand_regression_size)
+np_rng = np.random.default_rng(seed=0)
+y_true = np_rng.normal(5, 4, rand_regression_size)
+y_pred = 1.2 * y_true - 2 * np_rng.normal(0, 1, rand_regression_size)
+y_std = (y_true - y_pred) * 10 * np_rng.normal(0, 0.1, rand_regression_size)
 
 
 # %% density scatter plotly

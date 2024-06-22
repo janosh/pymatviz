@@ -10,7 +10,8 @@ from pymatviz.io import save_and_compress_svg
 # i.e. the correlation matrix contains no significant correlations
 # beyond the spurious correlation that occurs randomly
 n_rows, n_cols = 500, 1000
-rand_wide_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
+np_rng = np.random.default_rng(seed=0)
+rand_wide_mat = np_rng.normal(0, 1, size=(n_rows, n_cols))
 
 corr_mat = np.corrcoef(rand_wide_mat)
 
@@ -29,7 +30,7 @@ save_and_compress_svg(ax, "marchenko-pastur-significant-eval")
 
 # Plot eigenvalue distribution of a rank-deficient correlation matrix
 n_rows, n_cols = 600, 500
-rand_tall_mat = np.random.normal(0, 1, size=(n_rows, n_cols))
+rand_tall_mat = np_rng.normal(0, 1, size=(n_rows, n_cols))
 
 corr_mat_rank_deficient = np.corrcoef(rand_tall_mat)
 

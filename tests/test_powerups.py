@@ -67,7 +67,7 @@ def test_annotate_metrics(
     assert out_fig is fig
     backend: Backend = PLOTLY_BACKEND if isinstance(out_fig, go.Figure) else MPL_BACKEND
 
-    expected = dict(MAE=0.113, R2=0.765, RMSE=0.144, MAPE=0.5900, MSE=0.0206)
+    expected = dict(MAE=0.121, R2=0.784, RMSE=0.146, MAPE=0.52, MSE=0.021)
 
     expected_text = ""
     newline = "<br>" if isinstance(out_fig, go.Figure) else "\n"

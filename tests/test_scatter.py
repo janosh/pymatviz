@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
@@ -17,6 +16,7 @@ from pymatviz import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
+from tests.conftest import np_rng
 
 
 if TYPE_CHECKING:
@@ -31,10 +31,7 @@ if TYPE_CHECKING:
 )
 @pytest.mark.parametrize(
     "kwargs",
-    [
-        {"cmap": None},
-        {"cmap": "Greens"},
-    ],
+    [{"cmap": None}, {"cmap": "Greens"}],
 )
 def test_density_scatter_mpl(
     df_or_arrays: DfOrArrays,
@@ -102,8 +99,8 @@ def test_density_scatter_raises_on_bad_stats_type(stats: Any) -> None:
 
 
 def test_density_scatter_uses_series_name_as_label() -> None:
-    x = pd.Series(np.random.rand(5), name="x")
-    y = pd.Series(np.random.rand(5), name="y")
+    x = pd.Series(np_rng.random(5), name="x")
+    y = pd.Series(np_rng.random(5), name="y")
     ax = density_scatter(x=x, y=y, log_density=False)
 
     assert ax.get_xlabel() == "x"
