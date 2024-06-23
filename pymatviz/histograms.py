@@ -180,7 +180,7 @@ def spacegroup_hist(
                 )
             x0 += width
 
-        fig.update_layout(showlegend=False)
+        fig.layout.showlegend = False
         fig.layout.title = dict(text=fig_title, x=0.5)
         fig.layout.xaxis.update(showgrid=False, title=x_label, range=xlim)
         count_max = df_data[count_col].max()

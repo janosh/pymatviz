@@ -62,9 +62,8 @@ fig = ptable_heatmap_plotly(
     hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
     show_values=False,
 )
-fig.update_layout(
-    title=dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
-)
+fig.layout.title = dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
+
 fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-more-hover-data")
 
