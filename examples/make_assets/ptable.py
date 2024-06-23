@@ -87,7 +87,10 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 # %% Histograms laid out in as a periodic table
 # Generate random parity data with y \approx x with some noise
-data_dict = {elem.symbol: np_rng.randn(100) + np_rng.randn(100) for elem in Element}
+data_dict = {
+    elem.symbol: np_rng.standard_normal(100) + np_rng.standard_normal(100)
+    for elem in Element
+}
 fig = ptable_hists(
     data_dict,
     colormap="coolwarm",

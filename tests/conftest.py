@@ -27,7 +27,7 @@ if platform.system() == "Windows":
 
 # random regression data
 np_rng = np.random.default_rng(seed=0)
-xs = np_rng.uniform(0, 1, 100)
+xs = np_rng.random(100)
 y_pred = xs + 0.1 * np_rng.normal(size=100)
 y_true = xs + 0.1 * np_rng.normal(size=100)
 
