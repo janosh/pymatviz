@@ -28,7 +28,7 @@ save_and_compress_svg(ax, "normal-prob-plot-multiple")
 ax = error_decay_with_uncert(y_true, y_pred, y_std)
 save_and_compress_svg(ax, "error-decay-with-uncert")
 
-eps = 0.2 * np_rng.randn(*y_std.shape)
+eps = 0.2 * np_rng.standard_normal(*y_std.shape)
 
 ax = error_decay_with_uncert(y_true, y_pred, {"better": y_std, "worse": y_std + eps})
 save_and_compress_svg(ax, "error-decay-with-uncert-multiple")

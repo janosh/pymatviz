@@ -74,6 +74,6 @@ fig = px.scatter(
     hover_name=Key.composition,
     log_x=True,
 )
-fig.update_layout(title="Marker size = mean atomic mass")
+fig.layout.title = "Marker size = mean atomic mass"
 fig.write_image("expt-gap-scatter.pdf")
 fig.show()

@@ -140,7 +140,7 @@ plt.savefig("log_gvrh-spacegroup-hist.pdf")
 
 # %%
 fig = spacegroup_sunburst(df_grvh[Key.spacegroup], show_counts="percent")
-fig.update_layout(title="Spacegroup sunburst of the JARVIS DFT 2D dataset")
+fig.layout.title = "Spacegroup sunburst of the JARVIS DFT 2D dataset"
 fig.write_image("log_gvrh-spacegroup-sunburst.pdf")
 fig.show()
 
@@ -176,15 +176,12 @@ for cry_sys, df_group in sorted(
         f"mean = <span style='color:{clr}'><b>{n_wyckoff_top:.1f}</b></span>"
     )
 
-fig.update_layout(
-    title="Matbench dielectric: Number of Wyckoff positions by crystal system",
-    title_x=0.5,
-    margin=dict(b=10, l=10, r=10, t=50),
-    showlegend=False,
-    width=1000,
-    height=400,
-    xaxis=dict(tickvals=list(range(7)), ticktext=list(x_ticks.values())),
-)
+title = "Matbench dielectric: Number of Wyckoff positions by crystal system"
+fig.layout.title = dict(text=title, x=0.5)
+fig.layout.margin = dict(b=10, l=10, r=10, t=50)
+fig.layout.showlegend = False
+fig.layout.update(width=1000, height=400)
+fig.layout.xaxis = dict(tickvals=list(range(7)), ticktext=list(x_ticks.values()))
 
 # fig.write_image("log_grvh-violin-num-wyckoffs.pdf")
 fig.show()

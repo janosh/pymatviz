@@ -165,6 +165,13 @@ def density_scatter_plotly(
 ) -> go.Figure:
     """Scatter plot colored by density using plotly backend.
 
+    This function uses binning as implemented in bin_df_cols() to reduce the number of
+    points plotted which enables plotting millions of data points and reduced file size
+    for interactive plots. All outlier points will be plotted as is but overlapping
+    points (tolerance for overlap determined by n_bins) will be merged into a single
+    point with a new column bin_counts_col counting the number of points in that bin.
+    bin_counts_col is used as the color scale for the plot.
+
     Args:
         x (str): x-values dataframe column name.
         y (str): y-values dataframe column name.

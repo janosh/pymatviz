@@ -56,7 +56,8 @@ fig = go.Figure()
 fig.add_histogram(x=df_r2scan[Key.energy], name="r2scan", opacity=0.8)
 fig.add_histogram(x=df_pbe[Key.energy], name="pbe", opacity=0.8)
 
-fig.update_layout(xaxis_title=Key.energy.label, margin=dict(l=5, r=5, t=5, b=5))
+fig.layout.xaxis.title = Key.energy.label
+fig.layout.margin = dict(l=5, r=5, t=5, b=5)
 fig.layout.legend.update(x=0, y=1)
 fig.show()
 # save_fig(fig, "energy-hist.pdf")
@@ -190,7 +191,7 @@ for label, df in (
 
 # %% high-temperate MLMD frames are expected to have low symmetry (mostly triclinic)
 fig = spacegroup_sunburst(df_r2scan[Key.spacegroup], show_counts="percent")
-fig.layout.title.update(text=f"{n_r2scan:,} r2SCAN spacegroups", x=0.5, y=0.98)
+fig.layout.title = dict(text=f"{n_r2scan:,} r2SCAN spacegroups", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=30)
 fig.show()
 save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
