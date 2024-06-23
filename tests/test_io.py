@@ -72,7 +72,7 @@ def test_save_fig(
 
 def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
     # https://github.com/plotly/plotly.py/issues/3469
-    PyPDF2 = pytest.importorskip("PyPDF2")
+    PyPDF2 = pytest.importorskip("PyPDF2")  # noqa: N806
 
     fig = go.Figure()
     fig.add_scatter(x=[1, 2], y=[3, 4])
@@ -118,7 +118,7 @@ def test_df_to_pdf(
     try:
         import pdfCropMargins
     except ImportError:
-        pdfCropMargins = None
+        pdfCropMargins = None  # noqa: N806
 
     file_path = tmp_path / "test_df_to.pdf"
 

@@ -62,9 +62,8 @@ fig = ptable_heatmap_plotly(
     hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
     show_values=False,
 )
-fig.update_layout(
-    title=dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
-)
+fig.layout.title = dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
+
 fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-more-hover-data")
 
@@ -72,7 +71,7 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-more-hover-data")
 # %%
 fig = ptable_heatmap_plotly(df_expt_gap.composition, heat_mode="percent")
 title = "Elements in Matbench Experimental Bandgap"
-fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
+fig.layout.title = dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20)
 fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-percent-labels")
 
@@ -80,14 +79,17 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-percent-labels")
 # %%
 fig = ptable_heatmap_plotly(df_expt_gap.composition, log=True, colorscale="viridis")
 title = "Elements in Matbench Experimental Bandgap (log scale)"
-fig.update_layout(title=dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20))
+fig.layout.title = dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20)
 fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 
 # %% Histograms laid out in as a periodic table
 # Generate random parity data with y \approx x with some noise
-data_dict = {elem.symbol: np_rng.randn(100) + np_rng.randn(100) for elem in Element}
+data_dict = {
+    elem.symbol: np_rng.standard_normal(100) + np_rng.standard_normal(100)
+    for elem in Element
+}
 fig = ptable_hists(
     data_dict,
     colormap="coolwarm",
