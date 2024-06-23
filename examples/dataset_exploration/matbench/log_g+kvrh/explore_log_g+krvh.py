@@ -140,7 +140,7 @@ plt.savefig("log_gvrh-spacegroup-hist.pdf")
 
 # %%
 fig = spacegroup_sunburst(df_grvh[Key.spacegroup], show_counts="percent")
-fig.update_layout(title="Spacegroup sunburst of the JARVIS DFT 2D dataset")
+fig.layout.title = "Spacegroup sunburst of the JARVIS DFT 2D dataset"
 fig.write_image("log_gvrh-spacegroup-sunburst.pdf")
 fig.show()
 

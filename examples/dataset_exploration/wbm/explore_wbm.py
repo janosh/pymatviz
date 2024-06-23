@@ -29,7 +29,7 @@ df_wbm.hist(bins=100, figsize=(16, 10))
 # %%
 fig = ptable_heatmap_plotly(df_wbm.formula)
 title = "<b>Elements in WBM Dataset</b>"
-fig.update_layout(title=dict(text=title, x=0.4, y=0.94, font_size=20))
+fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
 # fig.write_image("wbm-ptable-heatmap-plotly.pdf")
 
 
@@ -37,7 +37,7 @@ fig.update_layout(title=dict(text=title, x=0.4, y=0.94, font_size=20))
 for idx, df in df_wbm.groupby("batch_idx"):
     fig = ptable_heatmap_plotly(df.formula)
     title = f"<b>Elements in WBM batch {idx} of size {len(df):,}</b>"
-    fig.update_layout(title=dict(text=title, x=0.4, y=0.94, font_size=20))
+    fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
     # fig.write_image(f"wbm-ptable-heatmap-plotly-batch-{idx}.pdf")
     fig.show()
 
@@ -81,7 +81,7 @@ fig.show()
 
 # %%
 fig = spacegroup_sunburst(df_wbm[Key.spacegroup], show_counts="percent")
-fig.update_layout(title="Matbench Perovskites spacegroup sunburst")
+fig.layout.title = "Matbench Perovskites spacegroup sunburst"
 
 fig.write_image("wbm-spacegroup-sunburst.pdf")
 fig.show()
@@ -90,10 +90,10 @@ fig.show()
 # %%
 fig = px.scatter(df_wbm, x=Key.spacegroup, y=Key.volume, color=Key.crystal_system)
 
-fig.update_layout(title="WBM volume by spacegroup number")
+fig.layout.title = "WBM volume by spacegroup number"
 
 
 # %%
 fig = px.scatter(df_wbm, x=Key.spacegroup, y=Key.energy, color=Key.crystal_system)
 
-fig.update_layout(title="WBM energy by spacegroup number")
+fig.layout.title = "WBM energy by spacegroup number"
