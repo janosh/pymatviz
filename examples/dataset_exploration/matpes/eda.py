@@ -56,7 +56,8 @@ fig = go.Figure()
 fig.add_histogram(x=df_r2scan[Key.energy], name="r2scan", opacity=0.8)
 fig.add_histogram(x=df_pbe[Key.energy], name="pbe", opacity=0.8)
 
-fig.update_layout(xaxis_title=Key.energy.label, margin=dict(l=5, r=5, t=5, b=5))
+fig.layout.xaxis.title = Key.energy.label
+fig.layout.margin = dict(l=5, r=5, t=5, b=5)
 fig.layout.legend.update(x=0, y=1)
 fig.show()
 # save_fig(fig, "energy-hist.pdf")

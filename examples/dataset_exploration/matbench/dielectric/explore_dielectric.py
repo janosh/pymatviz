@@ -163,10 +163,9 @@ fig = px.scatter(
     range_x=[0, 1500],
 )
 title = "<b>Matbench Dielectric: Refractive Index vs. Volume</b>"
-fig.update_layout(
-    title=dict(text=title, x=0.5, font_size=20),
-    legend=dict(x=1, y=1, xanchor="right"),
-)
+fig.layout.title = dict(text=title, x=0.5, font_size=20)
+fig.layout.legend = dict(x=1, y=1, xanchor="right")
+
 # slightly increase scatter point size (lower sizeref means larger)
 fig.update_traces(marker_sizeref=0.08, selector=dict(mode="markers"))
 
