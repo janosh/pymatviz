@@ -72,6 +72,6 @@ df_perov.plot.scatter(x=Key.volume, y="e_form", c=Key.spacegroup, colormap="viri
 
 # %%
 fig = spacegroup_sunburst(df_perov[Key.spacegroup], show_counts="percent")
-fig.update_layout(title="Matbench Perovskites spacegroup sunburst")
+fig.layout.title = "Matbench Perovskites spacegroup sunburst"
 fig.write_image("perovskite-spacegroup-sunburst.pdf")
 fig.show()

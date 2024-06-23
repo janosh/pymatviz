@@ -99,11 +99,11 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
         segment = segments[idx]
         dd = cell[idx] / (4 * segment - 2)
         unit_cell_lines[idx] = dd
-        P = np.arange(1, 4 * segment + 1, 4)[:, None] * dd
+        point_array = np.arange(1, 4 * segment + 1, 4)[:, None] * dd
         z_indices[n1:] = idx
-        for i, j in [(0, 0), (0, 1), (1, 0), (1, 1)]:
+        for ii, jj in [(0, 0), (0, 1), (1, 0), (1, 1)]:
             n2 = n1 + segment
-            lines[n1:n2] = P + i * cell[idx - 2] + j * cell[idx - 1]
+            lines[n1:n2] = point_array + ii * cell[idx - 2] + jj * cell[idx - 1]
             n1 = n2
 
     return lines, z_indices, unit_cell_lines

@@ -83,9 +83,7 @@ def spacegroup_sunburst(
     elif show_counts is not False:
         raise ValueError(f"Invalid {show_counts=}")
 
-    fig.update_layout(
-        margin=dict(l=10, r=10, b=10, pad=10),
-        paper_bgcolor="rgba(0, 0, 0, 0)",
-    )
+    fig.layout.margin = dict(l=10, r=10, b=10, pad=10)
+    fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"
 
     return fig
