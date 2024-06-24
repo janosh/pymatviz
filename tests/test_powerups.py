@@ -18,6 +18,7 @@ from pymatviz.powerups import (
     annotate_bars,
     annotate_metrics,
     get_fig_xy_range,
+    toggle_log_linear_y_axis,
     with_marginal_hist,
 )
 from pymatviz.utils import MPL_BACKEND, PLOTLY_BACKEND, Backend, pretty_label
@@ -279,7 +280,7 @@ def test_add_ecdf_line(
 
     ecdf_trace = fig.data[-1]  # retrieve ecdf line
     expected_name = trace_kwargs.get("name", "Cumulative")
-    expected_color = trace_kwargs.get("line_color", "gray")
+    expected_color = trace_kwargs.get("line_color", "#636efa")
     assert ecdf_trace.name == expected_name
     assert ecdf_trace.line.color == expected_color
     assert ecdf_trace.yaxis == "y2"
@@ -391,3 +392,23 @@ def test_get_fig_xy_range(
         TypeError, match="Unexpected type for fig: str, must be one of None"
     ):
         get_fig_xy_range(fig="invalid")
+
+
+def test_toggle_log_linear_y_axis(plotly_scatter: go.Figure) -> None:
+    fig = plotly_scatter
+    assert isinstance(toggle_log_linear_y_axis, dict)
+    assert fig.layout.updatemenus == ()
+    fig.layout.updatemenus = [toggle_log_linear_y_axis]
+
+    # check that figure now has "Log Y"/"Linear Y" toggle buttons
+    buttons = fig.layout.updatemenus[0].buttons
+    assert len(buttons) == 2
+    assert fig.layout.yaxis.type is None
+    assert buttons[0].args[0]["yaxis.type"] == "linear"
+    assert buttons[1].args[0]["yaxis.type"] == "log"
+
+    # simulate clicking "Log Y" button
+    fig.update_layout(buttons[0].args[0])
+    assert fig.layout.yaxis.type == "linear"
+    fig.update_layout(buttons[1].args[0])
+    assert fig.layout.yaxis.type == "log"
