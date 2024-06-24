@@ -478,7 +478,10 @@ def add_ecdf_line(
         name_suffix += 1
         uniq_name = f"{name} {name_suffix}"
 
-    # color of the probability density function which the ECDF is based on
+    if "marker" in target_trace and not target_trace.marker["color"]:
+        target_trace = fig.full_figure_for_development(warn=False).data[trace_idx]
+
+    # set line color to be the same as the target trace's marker color
     target_color = target_trace.marker.color if "marker" in target_trace else "gray"
     trace_defaults = dict(yaxis="y2", name=uniq_name, line_color=target_color)
     trace_kwargs = trace_defaults | (trace_kwargs or {})
