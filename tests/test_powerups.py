@@ -279,7 +279,7 @@ def test_add_ecdf_line(
 
     ecdf_trace = fig.data[-1]  # retrieve ecdf line
     expected_name = trace_kwargs.get("name", "Cumulative")
-    expected_color = trace_kwargs.get("line_color", "gray")
+    expected_color = trace_kwargs.get("line_color")
     assert ecdf_trace.name == expected_name
     assert ecdf_trace.line.color == expected_color
     assert ecdf_trace.yaxis == "y2"
