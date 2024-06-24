@@ -116,7 +116,7 @@ def test_plot_histogram(
         assert fig.axes[0].get_ylabel() == "Count"
     else:
         assert isinstance(fig, go.Figure)
-        dev_fig = fig.full_figure_for_development()
+        dev_fig = fig.full_figure_for_development(warn=False)
         y_min, y_max = dev_fig.layout.yaxis.range
         y_min_exp, y_max_exp = {
             (True, 20): (0.257799370, 1.12241187),
