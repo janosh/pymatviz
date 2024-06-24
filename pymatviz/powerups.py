@@ -507,3 +507,21 @@ def add_ecdf_line(
     fig.layout.yaxis2 = yaxis_defaults | yaxis2_layout
 
     return fig
+
+
+# buttons to toggle log/linear y-axis. apply to a plotly figure like this:
+# fig.layout.updatemenus = [toggle_log_linear_y_axis]
+# use toggle_log_linear_y_axis | dict(x=1, y=0, ...) to customize
+toggle_log_linear_y_axis = dict(
+    type="buttons",
+    direction="left",
+    buttons=[
+        dict(args=[{"yaxis.type": "linear"}], label="Linear Y", method="relayout"),
+        dict(args=[{"yaxis.type": "log"}], label="Log Y", method="relayout"),
+    ],
+    pad={"r": 10, "t": 10},
+    showactive=True,
+    x=0.1,
+    y=1,
+    yanchor="top",
+)
