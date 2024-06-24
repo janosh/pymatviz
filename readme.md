@@ -129,14 +129,14 @@ See [`pymatviz/histograms.py`](pymatviz/histograms.py).
 |                               ![spg-num-hist-matplotlib]                               |                                   ![spg-symbol-hist-matplotlib]                                    |
 |   [`spacegroup_hist([65, 134, 225, ...], backend="plotly")`](pymatviz/histograms.py)   |   [`spacegroup_hist(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histograms.py)   |
 |                                 ![spg-num-hist-plotly]                                 |                                     ![spg-symbol-hist-plotly]                                      |
-| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histograms.py)  |          [`plot_histogram(df_matbench["gap expt"], log_y=True)`](pymatviz/histograms.py)           |
-|                                    ![elements-hist]                                    |                                     ![matbench-expt-gap-hist]                                      |
+| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histograms.py)  |           [`plot_histogram({'key1': values1, 'key2': values2})`](pymatviz/histograms.py)           |
+|                                    ![elements-hist]                                    |                                       ![plot-histogram-ecdf]                                       |
 
 [spg-symbol-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-plotly.svg
 [spg-num-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-matplotlib.svg
 [spg-symbol-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-matplotlib.svg
-[matbench-expt-gap-hist]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-expt-gap-hist.svg
+[plot-histogram-ecdf]: https://github.com/janosh/pymatviz/raw/main/assets/plot-histogram-ecdf.svg
 
 ## Scatter Plots
 

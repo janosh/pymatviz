@@ -346,9 +346,9 @@ def elements_hist(
 
 
 def plot_histogram(
-    values: Sequence[float],
+    values: Sequence[float] | dict[str, Sequence[float]],
     *,
-    bins: int | Sequence[float] | str = 100,
+    bins: int | Sequence[float] | str = 200,
     x_range: tuple[float | None, float | None] | None = None,
     density: bool = False,
     bin_width: float = 1.2,
@@ -368,7 +368,8 @@ def plot_histogram(
         px.histogram(gaussian)  # ran for 3m45s before crashing the Jupyter kernel
 
     Args:
-        values (list or array-like): The values to plot as a histogram.
+        values (Sequence[float] or dict[str, Sequence[float]]): The values to plot as a
+            histogram. If a dict is provided, the keys are used as legend labels.
         bins (int or sequence, optional): The number of bins or the bin edges to use for
             the histogram. If not provided, a default value will be used.
         x_range (tuple, optional): The range of values to include in the histogram. If
@@ -389,31 +390,68 @@ def plot_histogram(
     """
     fig_kwargs = fig_kwargs or {}
 
-    # Use np.histogram to compute the histogram values and bin edges
-    hist_vals, bin_edges = np.histogram(
-        values, bins=bins, range=x_range, density=density
-    )
+    # if values was a Series, extract the name attribute to use as legend label
+    x_axis_title = getattr(values, "name", "Value")
+    data = values if isinstance(values, dict) else {x_axis_title: values}
+
+    # Calculate the maximum data range across all datasets
+    all_values = np.concatenate(list(data.values()))
+    global_min = np.min(all_values)
+    global_max = np.max(all_values)
+
+    if x_range is None:
+        x_range = (global_min, global_max)
+    else:
+        x_range = (x_range[0] or global_min, x_range[1] or global_max)
+
+    # Calculate bin edges
+    if isinstance(bins, int):
+        bin_edges = np.linspace(x_range[0], x_range[1], bins + 1)
+    elif isinstance(bins, str):
+        bin_edges = np.histogram_bin_edges(all_values, bins=bins, range=x_range)
+    else:
+        bin_edges = np.asarray(bins)
 
     if backend == MPL_BACKEND:
         fig = plt.figure(**fig_kwargs)
-        plt.bar(bin_edges[:-1], hist_vals, **kwargs)
-        plt.yscale("log" if log_y else "linear")
+        for label, vals in data.items():
+            hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
+            plt.bar(
+                bin_edges[:-1],
+                hist_vals,
+                label=label,
+                alpha=0.7,
+                width=bin_width * (bin_edges[1] - bin_edges[0]),
+                align="edge",
+                **kwargs,
+            )
 
-        if isinstance(values, pd.Series):
-            plt.xlabel(values.name)
+        plt.yscale("log" if log_y else "linear")
         plt.ylabel("Density" if density else "Count")
+        plt.xlabel(x_axis_title)
+
+        if len(data) > 1:
+            plt.legend()
 
     elif backend == PLOTLY_BACKEND:
         fig = go.Figure(**fig_kwargs)
-        kwargs = {"showlegend": False, **kwargs}
-        fig.add_bar(x=bin_edges, y=hist_vals, **kwargs)
-        _bin_width = (bin_edges[1] - bin_edges[0]) * bin_width
-        fig.update_traces(width=_bin_width, marker_line_width=0)
-        fig.update_yaxes(type="log" if log_y else "linear")
+        for label, vals in data.items():
+            hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
+            fig.add_trace(
+                go.Bar(
+                    x=bin_edges[:-1],
+                    y=hist_vals,
+                    name=label,
+                    opacity=0.7,
+                    width=bin_width * (bin_edges[1] - bin_edges[0]),
+                    marker_line_width=0,
+                )
+            )
 
-        if isinstance(values, pd.Series):
-            fig.layout.xaxis.title = values.name
-        fig.layout.yaxis.title = "Density" if density else "Count"
+        y_title = "Density" if density else "Count"
+        fig.update_yaxes(type="log" if log_y else "linear", title=y_title)
+        fig.update_xaxes(title=x_axis_title)
+
     else:
         raise ValueError(f"Unsupported {backend=}. Must be one of {VALID_BACKENDS}")
 
