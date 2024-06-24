@@ -6,6 +6,7 @@ from tqdm import tqdm
 from pymatviz.enums import Key
 from pymatviz.histograms import elements_hist, plot_histogram, spacegroup_hist
 from pymatviz.io import save_and_compress_svg
+from pymatviz.powerups import add_ecdf_line
 from pymatviz.templates import set_plotly_template
 from pymatviz.utils import VALID_BACKENDS
 
@@ -46,7 +47,15 @@ for backend in VALID_BACKENDS:
     save_and_compress_svg(fig, f"spg-symbol-hist-{backend}")
 
 
-# %% matbench experimental band gap distribution
-fig = plot_histogram(df_expt_gap["gap expt"], log_y=True)
+# %% plot 2 Gaussians and their cumulative distribution functions
+rand_regression_size = 500
+np_rng = np.random.default_rng(seed=0)
+gauss1 = np_rng.normal(5, 4, rand_regression_size)
+gauss2 = np_rng.normal(10, 2, rand_regression_size)
 
-save_and_compress_svg(fig, "matbench-expt-gap-hist")
+fig = plot_histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=100)
+for idx in range(len(fig.data)):
+    add_ecdf_line(fig, trace_idx=idx)
+fig.show()
+
+save_and_compress_svg(fig, "plot-histogram-ecdf")

@@ -500,7 +500,6 @@ def add_ecdf_line(
         range=(0, 1),
         showgrid=False,
         color=line_color,
-        linecolor=line_color,
     )
     # make secondary ECDF y-axis inherit primary y-axis styles
     yaxis2_layout = getattr(fig.layout, "yaxis2", {})
