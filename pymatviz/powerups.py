@@ -434,6 +434,7 @@ def add_ecdf_line(
     Returns:
         Figure: Figure with added ECDF line.
     """
+    trace_kwargs = trace_kwargs or {}
     valid_fig_types = (go.Figure,)
     if not isinstance(fig, valid_fig_types):
         type_names = " | ".join(
@@ -441,13 +442,16 @@ def add_ecdf_line(
         )
         raise TypeError(f"{fig=} must be instance of {type_names}")
 
+    target_trace: BaseTraceType = fig.data[trace_idx]
     if values == ():
-        target_trace: BaseTraceType = fig.data[trace_idx]
         if isinstance(target_trace, (go.Histogram, go.Scatter)):
             values = target_trace.x
         elif isinstance(target_trace, go.Bar):
             xs, ys = target_trace.x, target_trace.y
-            values = np.repeat(xs[:-1], ys)
+            # if xs are bin edges, drop last and interpret as bin centers
+            if len(xs) + 1 == len(ys):
+                xs = xs[:-1]
+            values = np.repeat(xs, ys)
 
         else:
             cls = type(target_trace)
@@ -463,26 +467,63 @@ def add_ecdf_line(
 
     # if fig has facets, add ECDF to all subplots
     add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
-
     fig.add_trace(ecdf_trace, **add_trace_defaults | kwargs)
+
     # move ECDF line to secondary y-axis
     # set color to darkened version of primary y-axis color
-    trace_defaults = dict(yaxis="y2", name="Cumulative", line=dict(color="gray"))
+    name = uniq_name = trace_kwargs.get("name", "Cumulative")
+    trace_names = [trace.name for trace in fig.data]
+    name_suffix = 1
+    while uniq_name in trace_names:
+        name_suffix += 1
+        uniq_name = f"{name} {name_suffix}"
+
+    if "marker" in target_trace and not target_trace.marker["color"]:
+        target_trace = fig.full_figure_for_development(warn=False).data[trace_idx]
+
+    # set line color to be the same as the target trace's marker color
+    target_color = target_trace.marker.color if "marker" in target_trace else "gray"
+    trace_defaults = dict(yaxis="y2", name=uniq_name, line_color=target_color)
     trace_kwargs = trace_defaults | (trace_kwargs or {})
     fig.data[-1].update(**trace_kwargs)
 
-    color = trace_kwargs.get("line_color", trace_kwargs.get("line", {}).get("color"))
+    # line_color becomes target_color via trace_defaults if a different color was not
+    # already set in trace_kwargs
+    line_color = trace_kwargs.get(
+        "line_color", trace_kwargs.get("line", {}).get("color")
+    )
 
     yaxis_defaults = dict(
-        title=trace_kwargs["name"],
+        title=uniq_name,
         side="right",
         overlaying="y",
         range=(0, 1),
         showgrid=False,
-        color=color,
-        linecolor=color,
+        color=line_color,
     )
     # make secondary ECDF y-axis inherit primary y-axis styles
-    fig.layout.yaxis2 = yaxis_defaults | getattr(fig.layout, "yaxis2", {})
+    yaxis2_layout = getattr(fig.layout, "yaxis2", {})
+    if yaxis2_layout:
+        # convert to dict
+        yaxis2_layout = yaxis2_layout._props  # type: ignore[union-attr] # noqa: SLF001
+    fig.layout.yaxis2 = yaxis_defaults | yaxis2_layout
 
     return fig
+
+
+# buttons to toggle log/linear y-axis. apply to a plotly figure like this:
+# fig.layout.updatemenus = [toggle_log_linear_y_axis]
+# use toggle_log_linear_y_axis | dict(x=1, y=0, ...) to customize
+toggle_log_linear_y_axis = dict(
+    type="buttons",
+    direction="left",
+    buttons=[
+        dict(args=[{"yaxis.type": "linear"}], label="Linear Y", method="relayout"),
+        dict(args=[{"yaxis.type": "log"}], label="Log Y", method="relayout"),
+    ],
+    pad={"r": 10, "t": 10},
+    showactive=True,
+    x=0.1,
+    y=1,
+    yanchor="top",
+)
