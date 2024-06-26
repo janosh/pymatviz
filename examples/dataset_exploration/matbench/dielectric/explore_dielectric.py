@@ -59,7 +59,7 @@ plt.savefig("dielectric-ptable-heatmap.pdf")
 # %%
 fig = ptable_heatmap_plotly(df_diel.formula, log=True, colorscale="viridis")
 title = "<b>Elements in Matbench Dielectric</b>"
-fig.update_layout(title=dict(text=title, x=0.4, y=0.94, font_size=20))
+fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
 # fig.write_image("dielectric-ptable-heatmap-plotly.pdf")
 
 
@@ -71,7 +71,7 @@ plt.savefig("dielectric-spacegroup-hist.pdf")
 
 # %%
 fig = spacegroup_sunburst(df_diel[Key.spacegroup], show_counts="percent")
-fig.update_layout(title="Space group sunburst")
+fig.layout.title = "Space group sunburst"
 # fig.write_image("dielectric-spacegroup-sunburst.pdf")
 fig.show()
 
@@ -96,16 +96,15 @@ for cry_sys, df_group in sorted(
         f"{len(df_group):,} = {len(df_group) / len(df_diel):.0%}<br>"
     )
 
-xaxis = dict(
+
+title = "<b>Refractive index distribution by crystal system</b>"
+fig.layout.title = dict(text=title, x=0.5)
+fig.layout.margin = dict(b=10, l=10, r=10, t=50)
+fig.layout.showlegend = False
+fig.layout.xaxis = reusable_x_axis = dict(
     tickvals=list(range(len(crystal_sys_order))), ticktext=list(x_ticks.values())
 )
-fig.update_layout(
-    title="<b>Refractive index distribution by crystal system</b>",
-    title_x=0.5,
-    margin=dict(b=10, l=10, r=10, t=50),
-    showlegend=False,
-    xaxis=xaxis,
-)
+
 
 # fig.write_image("dielectric-violin.pdf")
 fig.show()
@@ -142,15 +141,11 @@ for cry_sys, df_group in sorted(
         f"mean = <span style='color:{clr}'><b>{n_wyckoff:.1f}</b></span>"
     )
 
-fig.update_layout(
-    title="<b>Matbench dielectric: Number of Wyckoff positions by crystal system</b>",
-    title_x=0.5,
-    margin=dict(b=10, l=10, r=10, t=50),
-    showlegend=False,
-    width=1000,
-    height=400,
-    xaxis=xaxis,
-)
+title = "<b>Matbench dielectric: Number of Wyckoff positions by crystal system</b>"
+fig.layout.title = dict(text=title, x=0.5)
+fig.layout.margin = dict(b=10, l=10, r=10, t=50)
+fig.layout.showlegend = False
+fig.layout.update(width=1000, height=400, xaxis=reusable_x_axis)
 
 # fig.write_image("dielectric-violin-num-wyckoffs.pdf")
 fig.show()
@@ -168,10 +163,9 @@ fig = px.scatter(
     range_x=[0, 1500],
 )
 title = "<b>Matbench Dielectric: Refractive Index vs. Volume</b>"
-fig.update_layout(
-    title=dict(text=title, x=0.5, font_size=20),
-    legend=dict(x=1, y=1, xanchor="right"),
-)
+fig.layout.title = dict(text=title, x=0.5, font_size=20)
+fig.layout.legend = dict(x=1, y=1, xanchor="right")
+
 # slightly increase scatter point size (lower sizeref means larger)
 fig.update_traces(marker_sizeref=0.08, selector=dict(mode="markers"))
 

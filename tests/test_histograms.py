@@ -103,9 +103,9 @@ def test_plot_histogram(
         assert isinstance(fig, plt.Figure)
         y_min, y_max = fig.axes[0].get_ylim()
         y_min_exp, y_max_exp = {
-            (True, 20): (0.891250938, 11.2201845),
+            (True, 20): (1.82861565, 13.1246825),
             (True, 100): (0.93303299, 4.28709385),
-            (False, 20): (0, 10.5),
+            (False, 20): (0, 12.6),
             (False, 100): (0, 4.2),
         }[(log_y, bins)]
         assert y_min == pytest.approx(y_min_exp)
@@ -116,12 +116,12 @@ def test_plot_histogram(
         assert fig.axes[0].get_ylabel() == "Count"
     else:
         assert isinstance(fig, go.Figure)
-        dev_fig = fig.full_figure_for_development()
+        dev_fig = fig.full_figure_for_development(warn=False)
         y_min, y_max = dev_fig.layout.yaxis.range
         y_min_exp, y_max_exp = {
-            (True, 20): (-0.05555555, 01.05555555),
+            (True, 20): (0.257799370, 1.12241187),
             (True, 100): (-0.03344777, 0.63550776),
-            (False, 20): (0, 10.5263157),
+            (False, 20): (0, 12.6315789),
             (False, 100): (0, 4.21052631),
         }[(log_y, bins)]
         assert y_min == pytest.approx(y_min_exp)

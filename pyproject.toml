@@ -1,6 +1,6 @@
 [project]
 name = "pymatviz"
-version = "0.8.3"
+version = "0.9.0"
 description = "A toolkit for visualizations in materials informatics"
 authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
@@ -84,32 +84,30 @@ target-version = "py39"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN101",
-    "ANN102",
-    "ANN401",
+    "ANN101",  # missing-type-self
+    "ANN102",  # missing-type-cls
+    "ANN401",  # any-type
     "C408",    # unnecessary-collection-call
-    "C901",
+    "C901",    # complex-structure
     "COM812",  # trailing comma missing
     "D205",    # 1 blank line required between summary line and description
     "E731",    # do not assign a lambda expression, use a def
-    "EM101",
-    "EM102",
-    "ERA001",
+    "EM101",   # raw-string-in-exception
+    "EM102",   # f-string-in-exception
+    "ERA001",  # dead code
     "FIX002",
     "ISC001",
-    "N806",    # non-lowercase-variable-in-function
-    "NPY002",
     "PLR0911", # too-many-return-statements
     "PLR0912", # too-many-branches
     "PLR0913", # function-with-too-many-arguments
     "PLR0915", # too-many-statements
     "PLR2004", # magic-number-comparison
     "PT006",   # pytest-parametrize-names-wrong-type
-    "PTH",
+    "PTH",     # prefer pathlib over os.path
     "S311",
     "SIM105",  # Use contextlib.suppress() instead of try-except-pass
     "TD",
-    "TRY003",
+    "TRY003",  # raise-vanilla-args
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2

@@ -26,14 +26,14 @@ if platform.system() == "Windows":
 
 
 # random regression data
-np.random.seed(42)
-xs = np.random.rand(100)
-y_pred = xs + 0.1 * np.random.normal(size=100)
-y_true = xs + 0.1 * np.random.normal(size=100)
+np_rng = np.random.default_rng(seed=0)
+xs = np_rng.random(100)
+y_pred = xs + 0.1 * np_rng.normal(size=100)
+y_true = xs + 0.1 * np_rng.normal(size=100)
 
 # random classification data
-y_binary = np.random.choice([0, 1], 100)
-y_proba = np.clip(y_binary - 0.1 * np.random.normal(scale=5, size=100), 0.2, 0.9)
+y_binary = np_rng.choice([0, 1], 100)
+y_proba = np.clip(y_binary - 0.1 * np_rng.normal(scale=5, size=100), 0.2, 0.9)
 
 
 df_regr = pd.DataFrame(dict(y_true=y_true, y_pred=y_pred))  # regression
@@ -72,7 +72,7 @@ def spg_symbols() -> list[str]:
 def structures() -> list[Structure]:
     coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
     lattice = [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]]
-    Si2 = Structure(lattice, ["Si4+", "Si4+"], coords)
+    si2_struct = Structure(lattice, ["Si4+", "Si4+"], coords)
 
     coords = [
         [0.25, 0.25, 0.173],
@@ -83,8 +83,8 @@ def structures() -> list[Structure]:
         [0.75, 0.75, 0.324],
     ]
     lattice = Lattice.tetragonal(4.192, 6.88)
-    Si2_Ru2_Pr2 = Structure(lattice, "Si Si Ru Ru Pr Pr".split(), coords)
-    return [Si2, Si2_Ru2_Pr2]
+    si2_ru2_pr2_struct = Structure(lattice, "Si Si Ru Ru Pr Pr".split(), coords)
+    return [si2_struct, si2_ru2_pr2_struct]
 
 
 @pytest.fixture()
@@ -127,14 +127,12 @@ def glass_formulas() -> list[str]:
 
 @pytest.fixture()
 def df_float() -> pd.DataFrame:
-    rng = np.random.default_rng(0)
-    return pd.DataFrame(rng.random(size=(30, 5)), columns=[*"ABCDE"])
+    return pd.DataFrame(np_rng.random(size=(30, 5)), columns=[*"ABCDE"])
 
 
 @pytest.fixture()
 def df_mixed() -> pd.DataFrame:
-    rng = np.random.default_rng(0)
-    floats = rng.random(size=30)
-    bools = rng.choice([True, False], size=30)
-    strings = rng.choice([*"abcdef"], size=30)
+    floats = np_rng.random(size=30)
+    bools = np_rng.choice([True, False], size=30)
+    strings = np_rng.choice([*"abcdef"], size=30)
     return pd.DataFrame(dict(floats=floats, bools=bools, strings=strings))
