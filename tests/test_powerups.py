@@ -357,16 +357,21 @@ def test_add_best_fit_line(
     # test matplotlib
     fig_mpl = add_best_fit_line(matplotlib_scatter, annotate_params=annotate_params)
     assert isinstance(fig_mpl, plt.Figure)
+
     with pytest.raises(IndexError):
         fig_mpl.axes[1]
-    ax = fig_mpl.axes[0]
-    assert ax.lines[-1].get_linestyle() == "--"
-    assert ax.lines[-1].get_color() == expected_color
+    best_fit_line = (ax := fig_mpl.axes[0]).lines[-1]  # retrieve best fit line
+    assert best_fit_line.get_linestyle() == "--"
+    assert best_fit_line.get_color() == expected_color
 
-    anno: AnchoredText = next(  # TODO figure out why this always gives None
-        (child for child in ax.get_children() if isinstance(child, AnchoredText)),
-        None,
+    anno: AnchoredText = next(
+        (child for child in ax.get_children() if isinstance(child, AnchoredText)), None
     )
+
+    x0, y0 = best_fit_line._xy1  # noqa: SLF001
+    x1, y1 = best_fit_line._xy2  # noqa: SLF001
+    slope = (y1 - y0) / (x1 - x0)
+    intercept = y0 - slope * x0
 
     if annotate_params:
         assert anno.txt.get_text() == f"LS fit: y = {slope:.2g}x + {intercept:.2g}"
