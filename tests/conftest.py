@@ -97,7 +97,7 @@ def plotly_scatter_two_ys() -> go.Figure:
 
 @pytest.fixture()
 def plotly_scatter() -> go.Figure:
-    fig = go.Figure(go.Scatter(x=[1, 10, 100], y=[10, 100, 1000]))
+    fig = go.Figure(go.Scatter(x=[1, 10, 100], y=np.array([10, 100, 1000]) + 1))
     fig.add_scatter(x=[1, 10, 100], y=[1, 10, 100])
     return fig
 
@@ -105,7 +105,7 @@ def plotly_scatter() -> go.Figure:
 @pytest.fixture()
 def matplotlib_scatter() -> plt.Figure:
     fig, ax = plt.subplots()
-    ax.plot([1, 10, 100], [10, 100, 1000])
+    ax.plot([1, 10, 100], np.array([10, 100, 1000]) + 1)
     ax.plot([1, 10, 100], [1, 10, 100])
     return fig
 
