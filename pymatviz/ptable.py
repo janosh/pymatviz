@@ -221,12 +221,12 @@ class PTableProjector:
 
     @property
     def cmap(self) -> Colormap | None:
-        """The periodic table's matplotlib Colormap instance."""
+        """The periodic table's Colormap."""
         return self._cmap
 
     @cmap.setter
     def cmap(self, colormap: str | Colormap | None) -> None:
-        """Set the periodic table's matplotlib Colormap instance."""
+        """Set the periodic table's Colormap."""
         self._cmap = None if colormap is None else plt.get_cmap(colormap)
 
     @property
@@ -236,7 +236,7 @@ class PTableProjector:
 
     @data.setter
     def data(self, data: SupportedDataType) -> None:
-        """Set and preprocess the data. Also set normalizer."""
+        """Preprocess and set the data. Also set normalizer."""
         # Preprocess data
         self._data = preprocess_ptable_data(data)
 
@@ -553,6 +553,8 @@ class ChildPlotters:
     ) -> None:
         """Basic heatmap plotter.
 
+        TODO: reuse rectangle plot, somehow make set_clip_path show boarder.
+
         Args:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for the child plotter.
@@ -568,7 +570,7 @@ class ChildPlotters:
 
         # Add the pie chart
         ax.pie(
-            np.ones(len(colors)),
+            np.ones(1),
             colors=colors,
             wedgeprops={"clip_on": True},
         )
@@ -750,13 +752,12 @@ def ptable_heatmap(
     # TODO: to be removed
     count_mode: ElemCountMode = ElemCountMode.composition,  # separate data preprocess stage
     # Heatmap specific
-    # heat_mode: Literal["value", "fraction", "percent"] | None = "value",
-    # tile_size: float | tuple[float, float] = 0.9,  # control by child_kwargs
+    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
     # infty_color: str = "lightskyblue",
     # na_color: str = "white",
-    # zero_color: str = "#eff",  # light gray
+    # zero_color: str = "#eff",  # light gray  # TODO:covered by colormap?
     # zero_symbol: str | float = "-",
-    # show_values: bool = True,
+    show_values: bool = True,
     # log: bool | Normalize = False,
     # Figure-scope
     # f_block_voffset: float = 0.5,
@@ -764,15 +765,16 @@ def ptable_heatmap(
     on_empty: Literal["hide", "show"] = "hide",
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
+    # tile_size: float | tuple[float, float] = 0.9,  # TODO:control by child_kwargs
     ax_kwargs: dict[str, Any] | None = None,
     # Symbol
     # text_color: str | tuple[str, str] = "auto",
     # text_style: dict[str, Any] | None = None,
-    # label_font_size: int = 16,  # control by symbol_kwargs
-    # value_font_size: int = 12,  # control by symbol_kwargs
-    # fmt: str | Callable[..., str] | None = None,  # control by symbol_kwargs?
+    # label_font_size: int = 16,  # TODO:control by symbol_kwargs
+    # value_font_size: int = 12,  # TODO:control by symbol_kwargs
+    # fmt: str | Callable[..., str] | None = None,  # TODO:control by symbol_kwargs?
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
-    symbol_pos: tuple[float, float] = (0.5, 0.5),
+    symbol_pos: tuple[float, float] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,
@@ -792,8 +794,64 @@ def ptable_heatmap(
     Returns:
         plt.Axes: matplotlib Axes with the heatmap.
     """
+
+    class HMapPTableProjector(PTableProjector):
+        """Add more heatmap-specific functionalities."""
+
+        def add_elem_values(
+            self,
+            *,
+            pos: tuple[float, float] = (0.5, 0.25),
+            text_color: str = "black",
+            kwargs: dict | None = None,
+        ) -> None:
+            """Format and show element values.
+
+            Args:
+                pos (tuple[float, float]): Position of the value in the tile.
+                text_color (str): Value text color.
+                kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
+            """
+            # Update symbol kwargs
+            kwargs = kwargs or {}
+            kwargs.setdefault("fontsize", 12)
+
+            # Add value for each element
+            for element in Element:
+                # Hide f-block
+                if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                    continue
+
+                # Get axis index by element symbol
+                symbol: str = element.symbol
+                if symbol not in self.data.index:
+                    continue
+
+                row, column = df_ptable.loc[symbol, ["row", "column"]]
+                ax: plt.Axes = self.axes[row - 1][column - 1]
+
+                # Get value
+                content = self.data.loc[symbol, Key.heat_val][0]
+
+                # Format value  # TODO:
+                content = f"{content:.2f}"
+
+                elem_type_color = self.get_elem_type_color(symbol, default="black")
+
+                ax.text(
+                    *pos,
+                    content,
+                    color=elem_type_color
+                    if text_color == ElemColorMode.element_types
+                    else text_color,
+                    ha="center",
+                    va="center",
+                    transform=ax.transAxes,
+                    **kwargs,
+                )
+
     # Initialize periodic table plotter
-    projector = PTableProjector(
+    projector = HMapPTableProjector(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
@@ -813,12 +871,20 @@ def ptable_heatmap(
         on_empty=on_empty,
     )
 
+    # Set better default symbol position
+    if symbol_pos is None:
+        symbol_pos = (0.5, 0.65) if show_values else (0.5, 0.5)
+
     # Add element symbols
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
         kwargs=symbol_kwargs,
     )
+
+    # Show values upon request
+    if show_values:
+        projector.add_elem_values()
 
     # Add colorbar
     projector.add_colorbar(
