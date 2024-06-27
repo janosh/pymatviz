@@ -537,6 +537,43 @@ class ChildPlotters:
     """
 
     @staticmethod
+    def heatmap(
+        ax: plt.axes,
+        data: SupportedValueType,
+        norm: Normalize,
+        cmap: Colormap,
+        tick_kwargs: dict[str, Any],  # noqa: ARG004
+    ) -> None:
+        """Basic heatmap plotter.
+
+        Args:
+            ax (plt.axes): The axis to plot on.
+            data (SupportedValueType): The values for the child plotter.
+            norm (Normalize): Normalizer for data-color mapping.
+            cmap (Colormap): Colormap used for value mapping.
+            tick_kwargs: For compatibility with other plotters.
+        """
+        # Map values to colors
+        if isinstance(data, (Sequence, np.ndarray)):
+            colors = [cmap(norm(value)) for value in data]
+        else:
+            raise TypeError("Unsupported data type.")
+
+        # Add the pie chart
+        ax.pie(
+            np.ones(len(colors)),
+            colors=colors,
+            wedgeprops={"clip_on": True},
+        )
+
+        # Crop the central rectangle from the pie chart
+        rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="black", lw=2)
+        ax.add_patch(rect)
+
+        ax.set_xlim(-0.5, 0.5)
+        ax.set_ylim(-0.5, 0.5)
+
+    @staticmethod
     def rectangle(
         ax: plt.axes,
         data: SupportedValueType,
@@ -568,7 +605,7 @@ class ChildPlotters:
             np.ones(len(colors)),
             colors=colors,
             startangle=start_angle,
-            wedgeprops=dict(clip_on=True),
+            wedgeprops={"clip_on": True},
         )
 
         # Crop the central rectangle from the pie chart
@@ -758,13 +795,12 @@ def ptable_heatmap(
 
     # Call child plotter: rectangle
     child_kwargs = {
-        "start_angle": 0,
         "cmap": projector.cmap,
         "norm": projector.norm,
     }
 
     projector.add_child_plots(
-        ChildPlotters.rectangle,
+        ChildPlotters.heatmap,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
