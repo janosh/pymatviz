@@ -400,7 +400,7 @@ def add_best_fit_line(
             )
         if isinstance(annotate_params, dict):
             defaults |= annotate_params
-        annotate(f"LS fit: y = {slope:.2}x + {intercept:.2}", fig=fig, **defaults)
+        annotate(f"LS fit: y = {slope:.2g}x + {intercept:.2g}", fig=fig, **defaults)
 
     if backend == MPL_BACKEND:
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()

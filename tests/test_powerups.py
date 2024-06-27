@@ -340,8 +340,16 @@ def test_add_best_fit_line(
     )
     assert best_fit_line.line.color == expected_color
 
+    # reconstruct slope and intercept from best fit line endpoints
+    x0, x1 = best_fit_line.x0, best_fit_line.x1
+    y0, y1 = best_fit_line.y0, best_fit_line.y1
+    slope = (y1 - y0) / (x1 - x0)
+    intercept = y0 - slope * x0
+
     if annotate_params:
-        assert fig_plotly.layout.annotations[-1].text.startswith("LS fit: ")
+        assert fig_plotly.layout.annotations[-1].text == (
+            f"LS fit: y = {slope:.2g}x + {intercept:.2g}"
+        )
         assert fig_plotly.layout.annotations[-1].font.color == expected_color
     else:
         assert len(fig_plotly.layout.annotations) == 0
@@ -361,7 +369,7 @@ def test_add_best_fit_line(
     )
 
     if annotate_params:
-        assert anno.txt.get_text().startswith("LS fit: ")
+        assert anno.txt.get_text() == f"LS fit: y = {slope:.2g}x + {intercept:.2g}"
     else:
         assert anno is None
 
