@@ -493,7 +493,7 @@ def add_ecdf_line(
         name_suffix += 1
         uniq_name = f"{name} {name_suffix}"
 
-    if "marker" in target_trace and not target_trace.marker["color"]:
+    if "marker" in target_trace and target_trace.marker["color"] is None:
         target_trace = fig.full_figure_for_development(warn=False).data[trace_idx]
 
     # set line color to be the same as the target trace's marker color
