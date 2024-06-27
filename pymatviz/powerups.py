@@ -305,9 +305,10 @@ def add_best_fit_line(
     *,
     xs: ArrayLike = (),
     ys: ArrayLike = (),
-    trace_idx: int = 0,
+    trace_idx: int | None = None,
     line_kwds: dict[str, Any] | None = None,
     annotate_params: bool | dict[str, Any] = True,
+    warn: bool = True,
     **kwargs: Any,
 ) -> go.Figure:
     """Add line of best fit according to least squares to a plotly or matplotlib figure.
@@ -327,6 +328,8 @@ def add_best_fit_line(
         annotate_params (dict[str, Any], optional): Pass dict to customize
             the annotation of the best fit line. Set to False to disable annotation.
             Defaults to True.
+        warn (bool, optional): If True, print a warning if trace_idx is unspecified
+            and the figure has multiple traces. Defaults to True.
         **kwargs: Additional arguments are passed to fig.add_shape() for plotly or
             ax.plot() for matplotlib.
 
@@ -349,6 +352,18 @@ def add_best_fit_line(
         if isinstance(annotate_params, dict)
         else "navy",
     )
+
+    if trace_idx is None:
+        n_traces = (
+            len(fig.data) if isinstance(fig, go.Figure) else len(fig.get_children())
+        )
+        if n_traces > 1 and warn:
+            print(  # noqa: T201
+                f"Warning: {trace_idx=} but figure has {n_traces} traces, defaulting "
+                "to trace_idx=0. Check fig.data[0] to make sure this is the expected "
+                "trace."
+            )
+        trace_idx = 0
 
     if 0 in {len(xs), len(ys)}:
         if isinstance(fig, go.Figure):
