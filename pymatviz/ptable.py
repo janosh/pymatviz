@@ -704,295 +704,87 @@ def ptable_heatmap(
     data,
     *,
     # TODO: to be removed
-    ax: plt.Axes | None = None,
-    exclude_elements: Sequence[str] = (),  # control by elements in data
     count_mode: ElemCountMode = ElemCountMode.composition,  # separate data preprocess stage
     # Heatmap specific
-    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
-    tile_size: float | tuple[float, float] = 0.9,  # control by child_kwargs
-    infty_color: str = "lightskyblue",
-    na_color: str = "white",
-    zero_color: str = "#eff",  # light gray
-    zero_symbol: str | float = "-",
-    show_values: bool = True,
-    log: bool | Normalize = False,
+    # heat_mode: Literal["value", "fraction", "percent"] | None = "value",
+    # tile_size: float | tuple[float, float] = 0.9,  # control by child_kwargs
+    # infty_color: str = "lightskyblue",
+    # na_color: str = "white",
+    # zero_color: str = "#eff",  # light gray
+    # zero_symbol: str | float = "-",
+    # show_values: bool = True,
+    # log: bool | Normalize = False,
     # Figure-scope
-    f_block_voffset: float = 0.5,
+    # f_block_voffset: float = 0.5,
     hide_f_block: bool | None = None,
+    on_empty: Literal["hide", "show"] = "hide",
+    plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
+    ax_kwargs: dict[str, Any] | None = None,
     # Symbol
-    text_color: str | tuple[str, str] = "auto",
-    text_style: dict[str, Any] | None = None,
-    label_font_size: int = 16,  # control by symbol_kwargs
-    value_font_size: int = 12,  # control by symbol_kwargs
-    fmt: str | Callable[..., str] | None = None,  # control by symbol_kwargs?
+    # text_color: str | tuple[str, str] = "auto",
+    # text_style: dict[str, Any] | None = None,
+    # label_font_size: int = 16,  # control by symbol_kwargs
+    # value_font_size: int = 12,  # control by symbol_kwargs
+    # fmt: str | Callable[..., str] | None = None,  # control by symbol_kwargs?
+    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
+    symbol_pos: tuple[float, float] = (0.5, 0.5),
+    symbol_kwargs: dict[str, Any] | None = None,
     # Colorbar
-    show_scale: bool = True,  # rename to show_cbar?
+    show_cbar: bool = True,
     cbar_title: str = "Element Count",
-    cbar_range: tuple[float | None, float | None] | None = None,
+    # cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
-    cbar_fmt: str | Callable[..., str] | None = None,
+    # cbar_fmt: str | Callable[..., str] | None = None,
+    cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
-    colorscale: str = "viridis",  # rename to colormap?
+    colormap: str = "viridis",
 ) -> plt.Axes:
-    """Plot a heatmap across the periodic table of elements.
+    """Plot a heatmap across the periodic table.
 
     Args:
-        values (dict[str, int | float] | pd.Series | list[str]): Map from element
-            symbols to heatmap values or iterable of composition strings/objects.
-        log (bool | Normalize, optional): Whether colormap scale is log or linear. Can
-            also take any matplotlib.colors.Normalize subclass such as SymLogNorm as
-            custom color scale. Defaults to False.
-        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
-            Reduce or normalize compositions before counting. See count_elements() for
-            details. Only used when values is list of composition strings/objects.
-        cbar_title (str, optional): Color bar title. Defaults to "Element Count".
-        cbar_range (tuple[float | None, float | None], optional): Color bar range.
-            Can be used e.g. to create multiple plots with identical color bars for
-            visual comparison. Defaults to automatic based on data range.
-        cbar_coords (tuple[float, float, float, float], optional): Color bar position
-            and size: [x, y, width, height] anchored at lower left corner. Defaults to
-            (0.18, 0.8, 0.42, 0.05).
-        cbar_kwargs (dict[str, Any], optional): Additional keyword arguments passed to
-            fig.colorbar(). Defaults to None.
-        colorscale (str, optional): Matplotlib colormap name to use. Defaults to
-            "viridis". See https://matplotlib.org/stable/users/explain/colors/colormaps
-            for available options.
-        show_scale (bool, optional): Whether to show the color bar. Defaults to True.
-        show_values (bool, optional): Whether to show the heatmap values in each tile.
-            Defaults to True.
-        infty_color: Color to use for elements with value infinity. Defaults to
-            "lightskyblue".
-        na_color: Color to use for elements with value infinity. Defaults to "white".
-        heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
-            values as is, normalized as a fraction of the total, as percentages
-            or not at all (None). Defaults to "value".
-            "fraction" and "percent" can be used to make the colors in different
-            ptable_heatmap() (and ptable_heatmap_ratio()) plots comparable.
-        fmt (str): f-string format option for tile values. Defaults to ".1%"
-            (1 decimal place) if heat_mode="percent" else ".3g". Use e.g. ",.0f" to
-            format values with thousands separators and no decimal places.
-        cbar_fmt (str): f-string format option to set a different color bar tick
-            label format. Defaults to the above fmt.
-        text_color (str | tuple[str, str]): What color to use for element symbols and
-            heat labels. Must be a valid color name, or a 2-tuple of names, one to use
-            for the upper half of the color scale, one for the lower half. The special
-            value "auto" applies "black" on the lower and "white" on the upper half of
-            the color scale. "auto_reverse" does the opposite. Defaults to "auto".
-        exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
-            oxygen overpowers everything, you can try log=True or
-            exclude_elements=["O"]. Defaults to ().
-        zero_color (str): Hex color or recognized matplotlib color name to use for
-            elements with value zero. Defaults to "#eff" (light gray).
-        zero_symbol (str | float): Symbol to use for elements with value zero.
-            Defaults to "-".
-        text_style (dict[str, Any]): Additional keyword arguments passed to
-            plt.text(). Defaults to dict(
-                ha="center", fontsize=label_font_size, fontweight="semibold"
-            )
-        label_font_size (int): Font size for element symbols. Defaults to 16.
-        value_font_size (int): Font size for heat values. Defaults to 12.
-        tile_size (float | tuple[float, float]): Size of each tile in the periodic
-            table as a fraction of available space before touching neighboring tiles.
-            1 or (1, 1) means no gaps between tiles. Defaults to 0.9.
-        cbar_coords (tuple[float, float, float, float]): Color bar position and size:
-            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
-            (0.18, 0.8, 0.42, 0.05).
-        f_block_voffset (float): Vertical offset for lanthanides and actinides
-            (row 6 and 7) from the rest of the periodic table. Defaults to 0.5.
-        hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
-            None, meaning hide if no data is provided for f-block elements.
-        **kwargs: Additional keyword arguments passed to plt.figure().
+        TODO
 
     Returns:
         plt.Axes: matplotlib Axes with the heatmap.
     """
+    # Initialize periodic table plotter
+    projector = PTableProjector(
+        data=data,
+        colormap=colormap,
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        hide_f_block=hide_f_block,
+    )
 
-    # def tick_fmt(val: float, _pos: int) -> str:
-    #     # val: value at color axis tick (e.g. 10.0, 20.0, ...)
-    #     # pos: zero-based tick counter (e.g. 0, 1, 2, ...)
-    #     default_fmt = (
-    #         ".0%" if heat_mode == "percent" else (".0f" if val < 1e4 else ".2g")
-    #     )
-    #     return f"{val:{cbar_fmt or fmt or default_fmt}}"
+    # Call child plotter: rectangle
+    child_kwargs = {
+        "cmap": projector.cmap,
+        "norm": projector.norm,
+    }
 
-    # if fmt is None:
-    #     fmt = partial(si_fmt, fmt=".1%" if heat_mode == "percent" else ".0f")
-    # if cbar_fmt is None:
-    #     cbar_fmt = fmt
+    projector.add_child_plots(
+        ChildPlotters.rectangle,
+        child_kwargs=child_kwargs,
+        ax_kwargs=ax_kwargs,
+        on_empty=on_empty,
+    )
 
-    # valid_logs = (bool, Normalize)
-    # if not isinstance(log, valid_logs):
-    #     raise TypeError(f"Invalid {log=}, must be instance of {valid_logs}")
+    # Add element symbols
+    projector.add_elem_symbols(
+        text=symbol_text,
+        pos=symbol_pos,
+        kwargs=symbol_kwargs,
+    )
 
-    # if log and heat_mode in ("fraction", "percent"):
-    #     raise ValueError(
-    #         "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
-    #     )
-    # if "cmap" in kwargs:
-    #     colorscale = kwargs.pop("cmap")
-    #     warnings.warn(
-    #         "cmap argument is deprecated, use colorscale instead",
-    #         category=DeprecationWarning,
-    #         stacklevel=2,
-    #     )
+    # Add colorbar
+    projector.add_colorbar(
+        title=cbar_title,
+        coords=cbar_coords,
+        cbar_kwargs=cbar_kwargs,
+        title_kwargs=cbar_title_kwargs,
+    )
 
-    # values = count_elements(values, count_mode, exclude_elements)
-
-    # # replace positive and negative infinities with NaN values, then drop all NaNs
-    # clean_vals = values.replace([np.inf, -np.inf], np.nan).dropna()
-
-    # if heat_mode in ("fraction", "percent"):
-    #     # ignore inf values in sum() else all would be set to 0 by normalizing
-    #     values /= clean_vals.sum()
-    #     clean_vals /= clean_vals.sum()  # normalize as well for norm.autoscale() below
-
-    # color_map = plt.get_cmap(colorscale)
-
-    # n_rows = df_ptable.row.max()
-    # n_columns = df_ptable.column.max()
-
-    # # TODO can we pass as a kwarg and still ensure aspect ratio respected?
-    # fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows), **kwargs)
-
-    # ax = ax or plt.gca()
-
-    # if isinstance(tile_size, (float, int)):
-    #     tile_width = tile_height = tile_size
-    # else:
-    #     tile_width, tile_height = tile_size
-
-    # norm_map = {True: LogNorm(), False: Normalize()}
-    # norm = norm_map.get(log, log)
-
-    # norm.autoscale(clean_vals.to_numpy())
-    # if cbar_range is not None and len(cbar_range) == 2:
-    #     if cbar_range[0] is not None:
-    #         norm.vmin = cbar_range[0]
-    #     if cbar_range[1] is not None:
-    #         norm.vmax = cbar_range[1]
-
-    # text_style = dict(
-    #     horizontalalignment="center", fontsize=label_font_size, fontweight="semibold"
-    # ) | (text_style or {})
-
-    # for symbol, row, column, *_ in df_ptable.itertuples():
-    #     if hide_f_block and (row in (6, 7)):
-    #         continue
-
-    #     period = n_rows - row  # invert row count to make periodic table right side up
-    #     tile_value = values.get(symbol)
-
-    #     # inf (float/0) or NaN (0/0) are expected when passing in values from
-    #     # ptable_heatmap_ratio
-    #     if symbol in exclude_elements:
-    #         color = "white"
-    #         label = "excl."
-    #     elif tile_value == np.inf:
-    #         color = infty_color  # not in denominator
-    #         label = r"$\infty$"
-    #     elif pd.isna(tile_value):
-    #         color = na_color  # neither numerator nor denominator
-    #         label = r"$0\,/\,0$"
-    #     elif tile_value == 0:
-    #         color = zero_color
-    #         label = str(zero_symbol)
-    #     else:
-    #         color = color_map(norm(tile_value))
-
-    #         if callable(fmt):
-    #             label = fmt(tile_value)
-
-    #         elif heat_mode == "percent":
-    #             label = f"{tile_value:{fmt or '.1f'}}"
-    #         else:
-    #             fmt = fmt or (".0f" if tile_value > 100 else ".1f")
-    #             label = f"{tile_value:{fmt}}"
-    #         # replace shortens scientific notation 1e+01 to 1e1 so it fits inside cells
-    #         label = label.replace("e+0", "e")
-    #     if period < 3:  # vertical offset for lanthanides + actinides
-    #         period += f_block_voffset
-    #     rect = Rectangle(
-    #         (column, period), tile_width, tile_height, edgecolor="gray", facecolor=color
-    #     )
-
-    #     if heat_mode is None or not show_values:
-    #         # no value to display below in colored rectangle so center element symbol
-    #         text_style.setdefault("verticalalignment", "center")
-
-    #     if symbol in exclude_elements:
-    #         text_clr = "black"
-    #     elif text_color == "auto":
-    #         if isinstance(color, (tuple, list)) and len(color) >= 3:
-    #             # treat color as RGB tuple and choose black or white text for contrast
-    #             text_clr = pick_bw_for_contrast(color)
-    #         else:
-    #             text_clr = "black"
-    #     elif isinstance(text_color, (tuple, list)):
-    #         text_clr = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
-    #     else:
-    #         text_clr = text_color
-
-    #     text_style.setdefault("color", text_clr)
-
-    #     plt.text(
-    #         column + 0.5 * tile_width,
-    #         # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
-    #         period + (0.5 if show_values else 0.45) * tile_height,
-    #         symbol,
-    #         **text_style,
-    #     )
-
-    #     if heat_mode is not None and show_values:
-    #         plt.text(
-    #             column + 0.5 * tile_width,
-    #             period + 0.1 * tile_height,
-    #             label,
-    #             fontsize=value_font_size,
-    #             horizontalalignment="center",
-    #             color=text_clr,
-    #         )
-
-    #     ax.add_patch(rect)
-
-    # if heat_mode is not None and show_scale:
-    #     # colorbar position and size: [x, y, width, height]
-    #     # anchored at lower left corner
-    #     cbar_kwargs = cbar_kwargs or {}
-    #     cbar_ax = cbar_kwargs.pop("cax", None) or ax.inset_axes(
-    #         cbar_coords, transform=ax.transAxes
-    #     )
-    #     # format major and minor ticks
-    #     # TODO maybe give user direct control over labelsize, instead of hard-coding
-    #     # 8pt smaller than default
-    #     cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"])
-
-    #     mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
-
-    #     if callable(cbar_fmt):
-    #         # 2nd _pos arg is always passed by matplotlib but we don't need it
-    #         tick_fmt = lambda val, _pos: cbar_fmt(val)
-
-    #     cbar = fig.colorbar(
-    #         mappable,
-    #         cax=cbar_ax,
-    #         orientation=cbar_kwargs.pop("orientation", "horizontal"),
-    #         format=cbar_kwargs.pop("format", tick_fmt),
-    #         **cbar_kwargs,
-    #     )
-
-    #     cbar.outline.set_linewidth(1)
-    #     if text_style.get("color") == "white":
-    #         text_style.pop("color")  # don't want to apply possibly 'white' default
-    #         # text color (depending on colorscale) to color bar with white background
-    #     cbar_ax.set_title(cbar_title, pad=10, **text_style)
-
-    # plt.ylim(0.3, n_rows + 0.1)
-    # plt.xlim(0.9, n_columns + 1)
-
-    # plt.axis("off")
-    # return ax
+    return projector.fig
 
 
 def ptable_heatmap_splits(
@@ -1004,6 +796,7 @@ def ptable_heatmap_splits(
     colormap: str | Colormap = "viridis",
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
+    # TODO: I think we agreed to remove the "Callable" type of "plot_kwargs"?
     plot_kwargs: dict[str, Any]
     | Callable[[Sequence[float]], dict[str, Any]]
     | None = None,
