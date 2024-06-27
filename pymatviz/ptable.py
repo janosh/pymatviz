@@ -789,7 +789,7 @@ def ptable_heatmap(
     projector = PTableProjector(
         data=data,
         colormap=colormap,
-        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs,
         hide_f_block=hide_f_block,
     )
 
@@ -833,10 +833,7 @@ def ptable_heatmap_splits(
     colormap: str | Colormap = "viridis",
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
-    # TODO: I think we agreed to remove the "Callable" type of "plot_kwargs"?
-    plot_kwargs: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
+    plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
     # Symbol
@@ -900,7 +897,7 @@ def ptable_heatmap_splits(
     projector = PTableProjector(
         data=data,
         colormap=colormap,
-        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs,
         hide_f_block=hide_f_block,
     )
 
@@ -1421,9 +1418,7 @@ def ptable_scatters(
     colormap: str | Colormap | None = None,
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
-    plot_kwargs: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
+    plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
     child_kwargs: dict[str, Any] | None = None,
@@ -1495,7 +1490,7 @@ def ptable_scatters(
     projector = PTableProjector(
         data=data,
         colormap=colormap,
-        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs,
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
@@ -1549,9 +1544,7 @@ def ptable_lines(
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | None = None,
-    plot_kwargs: dict[str, Any]
-    | Callable[[Sequence[float]], dict[str, Any]]
-    | None = None,
+    plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
     child_kwargs: dict[str, Any] | None = None,
@@ -1612,7 +1605,7 @@ def ptable_lines(
     projector = PTableProjector(
         data=data,
         colormap=None,
-        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs,
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
