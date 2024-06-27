@@ -175,7 +175,7 @@ class PTableProjector:
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | None = None,
         elem_type_colors: dict[str, str] | None = None,
-        elem_colors: ElemColors | dict[str, ColorType] | None = None,
+        elem_colors: ElemColors | dict[str, ColorType] = ElemColors.vesta,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -190,7 +190,7 @@ class PTableProjector:
             hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults
                 to None, meaning hide if no data provided for f-block elements.
             elem_type_colors (dict | None): Element typed based colors.
-            elem_colors (dict | None): Element-specific colors.
+            elem_colors (dict | ElemColors): Element-specific colors.
         """
         # Set colors
         self.cmap: Colormap = colormap
@@ -300,8 +300,8 @@ class PTableProjector:
         elem_colors: ElemColors | dict[str, ColorType] = ElemColors.vesta,
     ) -> None:
         """Args:
-        elem_colors ("vesta" | "jmol" | dict[str, ColorType]): Use VESTA or Jmol color
-            mapping, or a custom {"element", Color} mapping. Defaults to "vesta".
+        elem_colors (Literal["vesta", "jmol"] | dict[str, ColorType]): Use VESTA or Jmol
+            color mapping, or a custom {"element", Color} mapping. Defaults to "vesta".
         """
         if elem_colors == "vesta":
             self._elem_colors = ELEM_COLORS_VESTA
