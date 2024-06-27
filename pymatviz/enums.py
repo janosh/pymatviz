@@ -106,28 +106,35 @@ angstrom_per_atom = styled_html_tag("(Å/atom)", style=small_font)
 
 @unique
 class Key(LabelEnum):
-    """Keys used to access dataframes columns."""
+    """Keys used to access dataframes columns, organized by semantic groups."""
 
-    arity = "arity", "N<sub>elements</sub>"  # unique elements in a chemical formula
-    bandgap = "bandgap", "Band Gap"
-    charge = "total_charge", "Total Charge"
+    # Structural
+    crystal_system = "crystal_system", "Crystal System"
+    spacegroup = "spacegroup", "Spacegroup Number"
+    spacegroup_symbol = "spacegroup_symbol", "Spacegroup Symbol"
+    wyckoff = "wyckoff", "Aflow-style Wyckoff Label"
+    n_sites = "n_sites", "Number of Sites"
+    init_struct = "initial_structure", "Initial Structure"
+    final_struct = "final_structure", "Final Structure"
+    init_volume = "initial_volume", f"Initial Volume {cubic_angstrom}"
+    final_volume = "final_volume", f"Final Volume {cubic_angstrom}"
+    volume = "volume", f"Volume {cubic_angstrom}"
+    vol_per_atom = "volume_per_atom", f"Volume per Atom {cubic_angstrom}"
+
+    # Composition and Chemical
+    arity = "arity", "N<sub>elements</sub>"
     chem_sys = "chemical_system", "Chemical System"
     composition = "composition", "Composition"
-    # str() also has a count method which is being shadowed by this attribute
-    count = "count", "Count"  # type: ignore[assignment]
-    crystal_system = "crystal_system", "Crystal System"
-    cse = "computed_structure_entry", "Computed Structure Entry"
-    e_form_per_atom = "e_form_per_atom", f"E<sub>form</sub> {eV_per_atom}"
-    e_form_pred = "e_form_per_atom_pred", f"Predicted E<sub>form</sub> {eV_per_atom}"
-    e_form_true = "e_form_per_atom_true", f"Actual E<sub>form</sub> {eV_per_atom}"
-    each = "energy_above_hull", f"E<sub>hull dist</sub> {eV_per_atom}"
-    each_pred = "e_above_hull_pred", f"Predicted E<sub>hull dist</sub> {eV_per_atom}"
-    each_true = "e_above_hull_true", f"Actual E<sub>MP hull dist</sub> {eV_per_atom}"
     element = "element", "Element"
+    formula = "formula", "Formula"
+    formula_pretty = "formula_pretty", "Pretty Formula"
+    charge = "total_charge", "Total Charge"
+    oxi_states = "oxidation_states", "Oxidation States"
+    oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
+
+    # Thermodynamic
     energy = "energy", f"Energy {eV}"
     energy_per_atom = "energy_per_atom", f"Energy {eV_per_atom}"
-    # PBE, PBEsol, PBE+U, r2SCAN, etc.
-    dft_functional = "dft_functional", "DFT Functional"
     uncorrected_energy_per_atom = (
         "uncorrected_energy_per_atom",
         f"Uncorrected Energy {eV_per_atom}",
@@ -136,34 +143,104 @@ class Key(LabelEnum):
         "cohesive_energy_per_atom",
         f"Cohesive Energy {eV_per_atom}",
     )
-    final_struct = "final_structure", "Final Structure"
-    forces = "forces", "Forces"
+    e_form_per_atom = "e_form_per_atom", f"E<sub>form</sub> {eV_per_atom}"
+    e_form_pred = "e_form_per_atom_pred", f"Predicted E<sub>form</sub> {eV_per_atom}"
+    e_form_true = "e_form_per_atom_true", f"Actual E<sub>form</sub> {eV_per_atom}"
+    each = "energy_above_hull", f"E<sub>hull dist</sub> {eV_per_atom}"
+    each_pred = "e_above_hull_pred", f"Predicted E<sub>hull dist</sub> {eV_per_atom}"
+    each_true = "e_above_hull_true", f"Actual E<sub>MP hull dist</sub> {eV_per_atom}"
     form_energy = "formation_energy_per_atom", f"Formation Energy {eV_per_atom}"
-    formula = "formula", "Formula"
-    formula_pretty = "formula_pretty", "Pretty Formula"
-    heat_val = "heat_val", "Heatmap Value"  # used by PTableProjector for ptable data
-    id = "id", "ID"
-    init_struct = "initial_structure", "Initial Structure"
-    magmoms = "magmoms", "Magnetic Moments"
-    mat_id = "material_id", "Material ID"
-    n_sites = "n_sites", "Number of Sites"
-    oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
-    run_time_sec = "run_time_sec", "Run Time (sec)"
-    run_time_hr = "run_time_hr", "Run Time (hr)"
-    spacegroup = "spacegroup", "Spacegroup Number"
-    spacegroup_symbol = "spacegroup_symbol", "Spacegroup Symbol"
-    step = "step", "Step"
+    cse = "computed_structure_entry", "Computed Structure Entry"
+
+    # Electronic
+    bandgap = "bandgap", "Band Gap"
+    fermi_energy = "fermi_energy", "Fermi Energy (eV)"
+    electron_affinity = "electron_affinity", "Electron Affinity (eV)"
+    work_function = "work_function", "Work Function (eV)"
+    dos = "density_of_states", "Density of States"
+    band_structure = "band_structure", "Band Structure"
+
+    # Mechanical
+    forces = "forces", "Forces"
     stress = "stress", "Stress"
     voigt_stress = "voigt_stress", "Voigt Stress"
-    structure = "structure", "Structure"
-    task = "task", "Task"
-    task_id = "task_id", "Task ID"  # unique identifier for a compute task
-    task_type = "task_type", "Task Type"
-    volume = "volume", "Volume (Å³)"
-    vol_per_atom = "volume_per_atom", f"Volume per Atom {cubic_angstrom}"
-    wyckoff = "wyckoff", "Aflow-style Wyckoff Label"  # crystallographic site symmetry
+    bulk_modulus = "bulk_modulus", "Bulk Modulus (GPa)"
+    shear_modulus = "shear_modulus", "Shear Modulus (GPa)"
+    young_modulus = "young_modulus", "Young's Modulus (GPa)"
+    poisson_ratio = "poisson_ratio", "Poisson's Ratio"
+
+    # Thermal
+    temperature = "temperature", "Temperature (K)"
+    thermal_conductivity = "thermal_conductivity", "Thermal Conductivity (W/mK)"
+    specific_heat_capacity = "specific_heat_capacity", "Specific Heat Capacity (J/kgK)"
+    thermal_expansion_coefficient = (
+        "thermal_expansion_coefficient",
+        "Thermal Expansion Coefficient (1/K)",
+    )
+
+    # Phonon
     phonon_bandstructure = "phonon_bandstructure", "Phonon Band Structure"
     phonon_dos = "phonon_dos", "Phonon Density of States"
+
+    # Optical
+    refractive_index = "refractive_index", "Refractive Index"
+    diel_constant = "dielectric_constant", "Dielectric Constant"
+
+    # Surface
+    surface_energy = "surface_energy", "Surface Energy (J/m²)"
+    wulff_shape = "wulff_shape", "Wulff Shape"
+
+    # Defect
+    vacancy_formation_energy = (
+        "vacancy_formation_energy",
+        "Vacancy Formation Energy (eV)",
+    )
+    interstitial_formation_energy = (
+        "interstitial_formation_energy",
+        "Interstitial Formation Energy (eV)",
+    )
+
+    # Magnetic
+    magmoms = "magmoms", "Magnetic Moments"
+    magnetic_moment = "magnetic_moment", "Magnetic Moment (μB)"
+    curie_temperature = "curie_temperature", "Curie Temperature (K)"
+
+    # Computational Details
+    xc_functional = "xc_functional", "Exchange-Correlation Functional"
+    convergence_electronic = "convergence_electronic", "Electronic Convergence"
+    convergence_ionic = "convergence_ionic", "Ionic Convergence"
+    kpoints = "kpoints", "K-points"
+    pseudopotentials = "pseudopotentials", "Pseudopotentials"
+    run_time_sec = "run_time_sec", "Run Time (sec)"
+    run_time_hr = "run_time_hr", "Run Time (hr)"
+
+    # Identifiers and Metadata
+    id = "id", "ID"
+    mat_id = "material_id", "Material ID"
+    task = "task", "Task"
+    task_id = "task_id", "Task ID"
+    task_type = "task_type", "Task Type"
+    step = "step", "Step"
+
+    # Synthesis-related
+    synthesis_temperature = "synthesis_temperature", "Synthesis Temperature (K)"
+    synthesis_pressure = "synthesis_pressure", "Synthesis Pressure (Pa)"
+
+    # Performance Indicators
+    fom = "figure_of_merit", "Figure of Merit"  # codespell:ignore
+    power_factor = "power_factor", "Power Factor"
+
+    # Environmental Indicators
+    toxicity = "toxicity", "Toxicity Index"
+    recyclability = "recyclability", "Recyclability Score"
+
+    # Economic Factors
+    raw_material_cost = "raw_material_cost", "Raw Material Cost ($/kg)"
+    abundance = "abundance", "Elemental Abundance (ppm)"
+
+    # Miscellaneous
+    count = "count", "Count"  # type: ignore[assignment]
+    heat_val = "heat_val", "Heatmap Value"
 
 
 @unique
