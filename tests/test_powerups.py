@@ -340,8 +340,16 @@ def test_add_best_fit_line(
     )
     assert best_fit_line.line.color == expected_color
 
+    # reconstruct slope and intercept from best fit line endpoints
+    x0, x1 = best_fit_line.x0, best_fit_line.x1
+    y0, y1 = best_fit_line.y0, best_fit_line.y1
+    slope = (y1 - y0) / (x1 - x0)
+    intercept = y0 - slope * x0
+
     if annotate_params:
-        assert fig_plotly.layout.annotations[-1].text.startswith("LS fit: ")
+        assert fig_plotly.layout.annotations[-1].text == (
+            f"LS fit: y = {slope:.2g}x + {intercept:.2g}"
+        )
         assert fig_plotly.layout.annotations[-1].font.color == expected_color
     else:
         assert len(fig_plotly.layout.annotations) == 0
@@ -349,19 +357,24 @@ def test_add_best_fit_line(
     # test matplotlib
     fig_mpl = add_best_fit_line(matplotlib_scatter, annotate_params=annotate_params)
     assert isinstance(fig_mpl, plt.Figure)
+
     with pytest.raises(IndexError):
         fig_mpl.axes[1]
-    ax = fig_mpl.axes[0]
-    assert ax.lines[-1].get_linestyle() == "--"
-    assert ax.lines[-1].get_color() == expected_color
+    best_fit_line = (ax := fig_mpl.axes[0]).lines[-1]  # retrieve best fit line
+    assert best_fit_line.get_linestyle() == "--"
+    assert best_fit_line.get_color() == expected_color
 
-    anno: AnchoredText = next(  # TODO figure out why this always gives None
-        (child for child in ax.get_children() if isinstance(child, AnchoredText)),
-        None,
+    anno: AnchoredText = next(
+        (child for child in ax.get_children() if isinstance(child, AnchoredText)), None
     )
 
+    x0, y0 = best_fit_line._xy1  # noqa: SLF001
+    x1, y1 = best_fit_line._xy2  # noqa: SLF001
+    slope = (y1 - y0) / (x1 - x0)
+    intercept = y0 - slope * x0
+
     if annotate_params:
-        assert anno.txt.get_text().startswith("LS fit: ")
+        assert anno.txt.get_text() == f"LS fit: y = {slope:.2g}x + {intercept:.2g}"
     else:
         assert anno is None
 

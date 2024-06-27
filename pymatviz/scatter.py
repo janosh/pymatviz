@@ -205,9 +205,7 @@ def density_scatter_plotly(
         df, bin_by_cols=[x, y], n_bins=n_bins, bin_counts_col=bin_counts_col
     )
 
-    fig = px.scatter(
-        df_bin, x=x, y=y, color=bin_counts_col, hover_name=df.index.name, **kwargs
-    )
+    fig = px.scatter(df_bin, x=x, y=y, color=bin_counts_col, **kwargs)
 
     if identity_line:
         add_identity_line(
@@ -221,7 +219,7 @@ def density_scatter_plotly(
 
     if stats:
         stats_kwargs = stats if isinstance(stats, dict) else {}
-        annotate_metrics(df_bin[x], df_bin[y], fig=fig, **stats_kwargs)
+        annotate_metrics(df[x], df[y], fig=fig, **stats_kwargs)
 
     cbar_title = f"{'Log ' if log_density else ''}Density"
     fig.update_traces(
