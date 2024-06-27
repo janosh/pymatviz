@@ -484,6 +484,11 @@ def add_ecdf_line(
     add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
     fig.add_trace(ecdf_trace, **add_trace_defaults | kwargs)
 
+    # get xlabel falling back on 'x' if not set
+    xlabel = fig.layout.xaxis.title.text or "x"
+    tooltip_template = f"{xlabel}: %{{x}}<br>Percent: %{{y:.2%}}<extra></extra>"
+    fig.data[-1].hovertemplate = tooltip_template
+
     # move ECDF line to secondary y-axis
     # set color to darkened version of primary y-axis color
     name = uniq_name = trace_kwargs.get("name", "Cumulative")
