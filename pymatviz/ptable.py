@@ -273,12 +273,12 @@ class PTableProjector:
 
     @property
     def elem_types(self) -> set[str]:
-        """Element types present in data."""
+        """Set of element types present in data."""
         return set(df_ptable.loc[self.data.index, "type"])
 
     @property
     def elem_type_colors(self) -> dict[str, str]:
-        """Element type based colors.
+        """Element type based colors mapping.
 
         Example:
             dict(Nonmetal="green", Halogen="teal", Metal="lightblue")
@@ -299,9 +299,11 @@ class PTableProjector:
         self,
         elem_colors: ElemColors | dict[str, ColorType] = ElemColors.vesta,
     ) -> None:
-        """Args:
-        elem_colors ("vesta" | "jmol" | dict[str, ColorType]): Use VESTA or Jmol
-            color mapping, or a custom {"element", Color} mapping. Defaults to "vesta".
+        """Set elem_colors.
+
+        Args:
+            elem_colors ("vesta" | "jmol" | dict[str, ColorType]): Use VESTA or Jmol
+                color mapping, or a custom {"element", Color} mapping. Defaults to "vesta".
         """
         if elem_colors == "vesta":
             self._elem_colors = ELEM_COLORS_VESTA
@@ -320,7 +322,12 @@ class PTableProjector:
         elem_symbol: str,
         default: str = "white",
     ) -> str:
-        """Get element type color by element symbol."""
+        """Get element type color by element symbol.
+
+        Args:
+            elem_symbol (str): The element symbol.
+            default (str): Default color if not found in mapping.
+        """
         elem_type = df_ptable.loc[elem_symbol].get("type", None)
         return self.elem_type_colors.get(elem_type, default)
 
@@ -336,11 +343,11 @@ class PTableProjector:
         """Add custom child plots to the periodic table grid.
 
         Args:
-            child_plotter: A callable for the child plotter.
-            child_kwargs: Arguments to pass to the child plotter call.
-            tick_kwargs: kwargs to pass to ax.tick_params().
-            ax_kwargs: Keyword arguments to pass to ax.set().
-            on_empty: Whether to "show" or "hide" tiles for elements without data.
+            child_plotter (Callable): The child plotter.
+            child_kwargs (dict): Arguments to pass to the child plotter call.
+            tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
+            ax_kwargs (dict): Keyword arguments to pass to ax.set().
+            on_empty ("hide" | "show"): Whether to show or hide tiles for elements without data.
         """
         # Update kwargs
         child_kwargs = child_kwargs or {}
@@ -514,7 +521,7 @@ class PTableProjector:
         """Set element tile background color by element type.
 
         Args:
-            alpha (float): transparency
+            alpha (float): Transparency.
         """
         for element in Element:
             # Hide f-block
