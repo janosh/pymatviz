@@ -114,6 +114,7 @@ class Key(LabelEnum):
     spacegroup_symbol = "spacegroup_symbol", "Spacegroup Symbol"
     wyckoff = "wyckoff", "Aflow-style Wyckoff Label"
     n_sites = "n_sites", "Number of Sites"
+    structure = "structure", "Structure"
     init_struct = "initial_structure", "Initial Structure"
     final_struct = "final_structure", "Final Structure"
     init_volume = "initial_volume", f"Initial Volume {cubic_angstrom}"
