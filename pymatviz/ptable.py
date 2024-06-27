@@ -758,6 +758,7 @@ def ptable_heatmap(
 
     # Call child plotter: rectangle
     child_kwargs = {
+        "start_angle": 0,
         "cmap": projector.cmap,
         "norm": projector.norm,
     }
