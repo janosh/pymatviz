@@ -145,6 +145,9 @@ def log_scale(
         data (pd.DataFrame): DataFrame to scale.
         col (str): Name of the column to scale.
         eps (float): A small epsilon to avoid log(0).
+
+    Returns:
+        pd.DataFrame: Log scaled DataFrame.
     """
 
     @overload
@@ -176,6 +179,30 @@ def log_scale(
     data[col] = data[col].apply(lambda x: log_transform(x, eps))
 
     return data
+
+
+def normalize_data(data: pd.DataFrame, *, percentage: bool = False) -> pd.DataFrame:
+    """Normalize data by the total sum.
+    TODO: might need a more descriptive name
+
+    Args:
+        data (pd.DataFrame): DataFrame to scale.
+        percentage (bool): Output data as percentage.
+
+    Returns:
+        pd.DataFrame: Normalized DataFrame.
+    """
+    # Calculate the total sum of all values
+    total_sum = data.applymap(np.sum).sum().sum()
+
+    # Normalize each value by dividing it by the total sum
+    normalized_data = data.applymap(lambda x: x / total_sum)
+
+    # Convert to percentage upon request
+    if percentage:
+        normalized_data = normalized_data.applymap(lambda x: x * 100)
+
+    return normalized_data
 
 
 def preprocess_ptable_data(

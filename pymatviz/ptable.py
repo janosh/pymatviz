@@ -22,6 +22,7 @@ from pymatviz._preprocess_data import (
     SupportedDataType,
     SupportedValueType,
     log_scale,
+    normalize_data,
     preprocess_ptable_data,
 )
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
@@ -755,7 +756,7 @@ def ptable_heatmap(
     *,
     # Heatmap specific
     colormap: str = "viridis",
-    # heat_mode: Literal["value", "fraction", "percent"] = "value",
+    heat_mode: Literal["value", "fraction", "percent"] = "value",
     log: bool = False,
     # Figure-scope
     # f_block_voffset: float = 0.5,
@@ -797,6 +798,12 @@ def ptable_heatmap(
 
         # Heatmap specific
         colormap (str): The colormap to use.
+        heat_mode ("value" | "fraction" | "percent"): The display mode:
+            - "value": Display values as is.
+            - "fraction": As a fraction of the total (0.10).
+            - "percent": As a percentage of the total (10%).
+            "fraction" and "percent" can be used to make the colors in
+                different plots comparable.
         log (bool): Whether to log scale data.
 
         # Figure-scope
@@ -847,6 +854,24 @@ def ptable_heatmap(
     class HMapPTableProjector(PTableProjector):
         """With more heatmap-specific functionalities."""
 
+        def __init__(
+            self,
+            heat_mode: Literal["value", "fraction", "percent"],
+            **kwargs,
+        ) -> None:
+            """Args:
+            heat_mode ("value" | "fraction" | "percent"): Heatmap display mode.
+            """
+            super().__init__(**kwargs)
+
+            self.heat_mode = heat_mode
+
+            # Normalize data upon request
+            if heat_mode == "fraction":
+                self.data = normalize_data(self.data, percentage=False)
+            elif heat_mode == "percent":
+                self.data = normalize_data(self.data, percentage=True)
+
         def add_elem_values(
             self,
             *,
@@ -882,8 +907,10 @@ def ptable_heatmap(
                 # Get value
                 content = self.data.loc[symbol, Key.heat_val][0]
 
-                # Format value  # TODO:
+                # Format value  # TODO: take format as argument
                 content = f"{content:.2f}"
+                if self.heat_mode == "percentage":
+                    content += "%"  # TODO: format depending on heat mode
 
                 elem_type_color = self.get_elem_type_color(symbol, default="black")
 
@@ -902,6 +929,7 @@ def ptable_heatmap(
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
+        heat_mode=heat_mode,
         log=log,
         colormap=colormap,
         plot_kwargs=plot_kwargs,

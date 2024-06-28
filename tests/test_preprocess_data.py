@@ -13,6 +13,7 @@ from pymatviz._preprocess_data import (
     check_for_missing_inf,
     get_df_nest_level,
     log_scale,
+    normalize_data,
     preprocess_ptable_data,
     replace_missing_and_infinity,
 )
@@ -325,3 +326,35 @@ class TestLogScale:
         with pytest.warns(UserWarning, match=r"Illegal log for \[6. 0.\]"):
             log_df_1 = log_scale(df_in_1, col=Key.heat_val, eps=epsilon)
         assert_allclose(log_df_1.loc["C", Key.heat_val], [np.log(6), np.log(1e-10)])
+
+
+class TestNormalizeData:
+    def test_normalize_single_value_data(self) -> None:
+        data_df = preprocess_ptable_data({"H": 1.0, "He": 4.0})
+
+        # Test fractional mode
+        data_out_fraction = normalize_data(data_df, percentage=False)
+
+        assert_allclose(data_out_fraction.loc["H", Key.heat_val], [0.2])
+        assert_allclose(data_out_fraction.loc["He", Key.heat_val], [0.8])
+
+        # Test percentage mode
+        data_out_percent = normalize_data(data_df, percentage=True)
+
+        assert_allclose(data_out_percent.loc["H", Key.heat_val], [20])
+        assert_allclose(data_out_percent.loc["He", Key.heat_val], [80])
+
+    def test_normalize_multi_value_data(self) -> None:
+        data_df = preprocess_ptable_data({"H": 1.0, "He": [2, 7]})
+
+        # Test fractional mode
+        data_out_fraction = normalize_data(data_df, percentage=False)
+
+        assert_allclose(data_out_fraction.loc["H", Key.heat_val], [0.1])
+        assert_allclose(data_out_fraction.loc["He", Key.heat_val], [0.2, 0.7])
+
+        # Test percentage mode
+        data_out_percent = normalize_data(data_df, percentage=True)
+
+        assert_allclose(data_out_percent.loc["H", Key.heat_val], [10])
+        assert_allclose(data_out_percent.loc["He", Key.heat_val], [20, 70])
