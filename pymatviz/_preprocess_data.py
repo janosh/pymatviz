@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Union, get_args
+from typing import TYPE_CHECKING, Union, get_args, overload
 
 import numpy as np
 import pandas as pd
@@ -15,6 +15,8 @@ from pymatviz.enums import Key
 
 if TYPE_CHECKING:
     from typing import Literal
+
+    from numpy.typing import NDArray
 
 
 # Data types that can be passed to PTableProjector and normalized by data_preprocessor
@@ -79,6 +81,7 @@ def get_df_nest_level(df_in: pd.DataFrame, *, col: str) -> int:
 
 def replace_missing_and_infinity(
     df_in: pd.DataFrame,
+    *,
     col: str,
     missing_strategy: Literal["zero", "mean"] = "mean",
 ) -> pd.DataFrame:
@@ -128,6 +131,49 @@ def replace_missing_and_infinity(
     )
 
     return df_in
+
+
+def log_scale(
+    data: pd.DataFrame,
+    *,
+    col: str,
+    eps: float = 1e-10,
+) -> pd.DataFrame:
+    """Log scale a pandas DataFrame, which might contain floats or sequences
+    of floats.
+
+    Args:
+        data (pd.DataFrame): DataFrame to scale.
+        col (str): Name of the column to scale.
+        eps (float): A small epsilon to avoid log(0).
+    """
+
+    @overload
+    def log_transform(val: float, eps: float) -> float:
+        pass
+
+    @overload
+    def log_transform(val: NDArray, eps: float) -> NDArray:
+        pass
+
+    def log_transform(val: float | NDArray, eps: float) -> float | NDArray:
+        """Apply logarithm on floats or sequences of floats.
+
+        Args:
+            val (float | NDArray): Value(s) to apply log.
+            eps (float): A small epsilon to avoid log(0).
+        """
+        # Float
+        if isinstance(val, float):
+            return np.log(max(val, eps))  # Avoid log(0)
+
+        # Sequences of floats (should be NDArray only after preprocessing)
+        return np.log(np.maximum(val, eps))  # Avoid log(0)
+
+    # Apply logarithm to each element in the column
+    data[col] = data[col].apply(lambda x: log_transform(x, eps))
+
+    return data
 
 
 def preprocess_ptable_data(

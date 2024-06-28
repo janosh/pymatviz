@@ -21,6 +21,7 @@ from pymatgen.core import Composition, Element
 from pymatviz._preprocess_data import (
     SupportedDataType,
     SupportedValueType,
+    log_scale,
     preprocess_ptable_data,
 )
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
@@ -171,6 +172,7 @@ class PTableProjector:
         self,
         *,
         data: SupportedDataType,
+        log: bool = False,
         colormap: str | Colormap = "viridis",
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | Literal["AUTO"] = "AUTO",
@@ -184,6 +186,7 @@ class PTableProjector:
 
         Args:
             data (SupportedDataType): The data to be visualized.
+            log (bool): Whether to log scale data.
             colormap (str | Colormap): The colormap to use. Defaults to "viridis".
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
@@ -198,7 +201,7 @@ class PTableProjector:
         self.elem_colors = elem_colors  # type: ignore[assignment]
 
         # Preprocess data
-        self.data: pd.DataFrame = data
+        self.data: pd.DataFrame = log_scale(data, col=Key.heat_val) if log else data
 
         self.hide_f_block = hide_f_block  # type: ignore[assignment]
 
@@ -756,7 +759,7 @@ def ptable_heatmap(
     # heat_mode: Literal["value", "fraction", "percent"] = "value",
     # infty_color: str = "lightskyblue",
     # na_color: str = "white",
-    # log: bool | Normalize = False,
+    log: bool = False,
     # Figure-scope
     # f_block_voffset: float = 0.5,
     on_empty: Literal["hide", "show"] = "hide",
@@ -797,6 +800,7 @@ def ptable_heatmap(
 
         # Heatmap specific
         colormap (str): The colormap to use.
+        log (bool): Whether to log scale data.
 
         # Figure-scope
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
@@ -901,6 +905,7 @@ def ptable_heatmap(
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
+        log=log,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
         hide_f_block=hide_f_block,

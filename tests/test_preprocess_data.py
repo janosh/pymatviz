@@ -12,6 +12,7 @@ from pymatviz._preprocess_data import (
     SupportedDataType,
     check_for_missing_inf,
     get_df_nest_level,
+    log_scale,
     preprocess_ptable_data,
     replace_missing_and_infinity,
 )
@@ -227,14 +228,14 @@ class TestReplaceMissingAndInfinity:
         # Test missing strategy: mean (default)
         with pytest.warns(match="NaN found in data"):
             processed_df_mean = replace_missing_and_infinity(
-                df_with_nan.copy(), Key.heat_val
+                df_with_nan.copy(), col=Key.heat_val
             )
         assert_allclose(processed_df_mean.loc["O", Key.heat_val], [4, 5, 3])
 
         # Test missing strategy: zero
         with pytest.warns(match="NaN found in data"):
             processed_df_zero = replace_missing_and_infinity(
-                df_with_nan.copy(), Key.heat_val, "zero"
+                df_with_nan.copy(), col=Key.heat_val, missing_strategy="zero"
             )
         assert_allclose(processed_df_zero.loc["O", Key.heat_val], [4, 5, 0])
 
@@ -245,7 +246,7 @@ class TestReplaceMissingAndInfinity:
         ).set_index(Key.element)
 
         with pytest.warns(match="Infinity found in data"):
-            processed_df = replace_missing_and_infinity(df_with_inf, Key.heat_val)
+            processed_df = replace_missing_and_infinity(df_with_inf, col=Key.heat_val)
         assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 6])
 
     def test_replace_both(self) -> None:
@@ -254,7 +255,9 @@ class TestReplaceMissingAndInfinity:
             columns=[Key.element, Key.heat_val],
         ).set_index(Key.element)
 
-        processed_df = replace_missing_and_infinity(df_with_both, Key.heat_val, "zero")
+        processed_df = replace_missing_and_infinity(
+            df_with_both, col=Key.heat_val, missing_strategy="zero"
+        )
         assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 5])
         assert_allclose(processed_df.loc["O", Key.heat_val], [4, 5, 0])
 
@@ -268,3 +271,48 @@ class TestReplaceMissingAndInfinity:
         err_msg = f"Unable to replace NaN and inf for nest_level>1, got {nest_level}"
         with pytest.raises(NotImplementedError, match=err_msg):
             replace_missing_and_infinity(df_level_2, col=Key.heat_val)
+
+
+class TestLogScale:
+    def test_log_scale_floats(self) -> None:
+        """Test log scale floats."""
+        df_in = preprocess_ptable_data(
+            {
+                "H": 1,  # int
+                "He": 2.0,  # float
+            }
+        )
+
+        log_df = log_scale(df_in, col=Key.heat_val)
+
+        assert_allclose(log_df.loc["H", Key.heat_val], [np.log(1)])
+        assert_allclose(log_df.loc["He", Key.heat_val], [np.log(2)])
+
+    def test_log_scale_array(self) -> None:
+        """Test log scale data of sequences of floats."""
+        df_in = preprocess_ptable_data(
+            {
+                "Li": 3.0,
+                "Be": [4.0, 5.0],
+            }
+        )
+
+        log_df = log_scale(df_in, col=Key.heat_val)
+
+        assert_allclose(log_df.loc["Li", Key.heat_val], [np.log(3)])
+        assert_allclose(log_df.loc["Be", Key.heat_val], [np.log(4), np.log(5)])
+
+    def test_log_scale_with_zero(self) -> None:
+        """Test scale data containing zero."""
+        df_in = preprocess_ptable_data(
+            {
+                "B": 0,
+                "C": [6.0, 0],
+            }
+        )
+
+        epsilon = 1e-10
+        log_df = log_scale(df_in, col=Key.heat_val, eps=epsilon)
+
+        assert_allclose(log_df.loc["B", Key.heat_val], [np.log(1e-10)])
+        assert_allclose(log_df.loc["C", Key.heat_val], [np.log(6), np.log(1e-10)])
