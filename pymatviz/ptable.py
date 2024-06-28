@@ -259,13 +259,14 @@ class PTableProjector:
     def hide_f_block(self, hide_f_block: bool | Literal["AUTO"]) -> None:
         """If hide_f_block is "AUTO", would detect if data is present."""
         if hide_f_block == "AUTO":
+            # Check if data is present for f-block elements
             f_block_elements_with_data = {
                 atom_num
                 for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
-                # Check if data is present for f-block elements
                 if (elem := Element.from_Z(atom_num).symbol) in self.data.index
                 and len(self.data.loc[elem, Key.heat_val]) > 0
             }
+
             self._hide_f_block = not bool(f_block_elements_with_data)
 
         else:
@@ -593,7 +594,7 @@ class ChildPlotters:
         start_angle: float,
         tick_kwargs: dict[str, Any],  # noqa: ARG004
     ) -> None:
-        """Rectangle heatmap plotter. Could be evenly split,
+        """Rectangle heatmap plotter. Could be evenly split
         depending on the length of the data (could mix and match).
 
         Args:
@@ -701,8 +702,7 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for the child plotter.
             cmap (Colormap): Colormap.
-            cbar_axis ("x" | "y"): The axis colormap
-                would be based on.
+            cbar_axis ("x" | "y"): The axis colormap would be based on.
             child_kwargs: kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
@@ -1438,11 +1438,13 @@ def ptable_hists(
             If pd.Series, index is element symbols and values lists. If pd.DataFrame,
             column names are element symbols histograms are plotted from each column.
 
+        # Histogram-specific
         bins (int): Number of bins for the histograms. Defaults to 20.
         x_range (tuple[float | None, float | None]): x-axis range for all histograms.
             Defaults to None.
         log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
 
+        # Figure-scope
         colormap (str): Matplotlib colormap name to use. Defaults to "viridis". See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
@@ -1452,6 +1454,7 @@ def ptable_hists(
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
+        # Axis-scope
         ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
@@ -1460,6 +1463,7 @@ def ptable_hists(
         child_kwargs (dict): Keywords passed to ax.hist() for each histogram.
             Defaults to None.
 
+        # Colorbar
         cbar_axis ("x" | "y"): The axis colormap would be based on.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
@@ -1469,6 +1473,7 @@ def ptable_hists(
             (0.25, 0.77, 0.35, 0.02).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
+        # Symbol
         symbol_pos (tuple[float, float]): Position of element symbols relative to the
             lower left corner of each tile. Defaults to (0.5, 0.8). (1, 1) is the upper
             right corner.
@@ -1477,6 +1482,7 @@ def ptable_hists(
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
             symbols. Defaults to None.
 
+        # Element types based colors and legend
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -1584,6 +1590,8 @@ def ptable_scatters(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
+
+        # Figure-scope
         colormap (str): Matplotlib colormap name to use. Defaults to None'. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
@@ -1591,13 +1599,17 @@ def ptable_scatters(
         hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
             Defaults to "AUTO", meaning hide if no data is provided.
         plot_kwargs (dict): Additional keyword arguments to
-                pass to the plt.subplots function call.
+            pass to the plt.subplots function call.
+
+        # Axis-scope
         ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options:
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
         child_kwargs: Arguments to pass to the child plotter call.
+
+        # Colorbar
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
@@ -1605,6 +1617,8 @@ def ptable_scatters(
             [x, y, width, height] anchored at lower left corner of the bar. Defaults to
             (0.25, 0.77, 0.35, 0.02).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
+
+        # Symbol
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
         symbol_pos (tuple[float, float]): Position of element symbols
@@ -1613,6 +1627,7 @@ def ptable_scatters(
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
 
+        # Element types based colors and legend
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -1706,13 +1721,15 @@ def ptable_lines(
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
 
+        # Figure-scope
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
             Defaults to "AUTO", meaning hide if no data is provided.
         plot_kwargs (dict): Additional keyword arguments to
-                pass to the plt.subplots function call.
+            pass to the plt.subplots function call.
 
+        # Axis-scope
         ax_kwargs (dict): Keyword arguments passed to ax.set() for each plot.
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
@@ -1720,6 +1737,7 @@ def ptable_lines(
             https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set.html#matplotlib-axes-axes-set
         child_kwargs: Arguments to pass to the child plotter call.
 
+        # Symbol
         symbol_text (str | Callable[[Element], str]): Text to display for
             each element symbol. Defaults to lambda elem: elem.symbol.
         symbol_pos (tuple[float, float]): Position of element symbols
@@ -1728,6 +1746,7 @@ def ptable_lines(
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
 
+        # Element types based colors and legend
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
