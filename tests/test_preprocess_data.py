@@ -303,16 +303,25 @@ class TestLogScale:
         assert_allclose(log_df.loc["Be", Key.heat_val], [np.log(4), np.log(5)])
 
     def test_log_scale_with_zero(self) -> None:
-        """Test scale data containing zero."""
-        df_in = preprocess_ptable_data(
+        """Test scale data containing zero/negative."""
+        epsilon = 1e-10
+
+        df_in_0 = preprocess_ptable_data(
             {
                 "B": 0,
-                "C": [6.0, 0],
             }
         )
 
-        epsilon = 1e-10
-        log_df = log_scale(df_in, col=Key.heat_val, eps=epsilon)
+        with pytest.warns(UserWarning, match=r"Illegal log for \[0\]"):
+            log_df_0 = log_scale(df_in_0, col=Key.heat_val, eps=epsilon)
 
-        assert_allclose(log_df.loc["B", Key.heat_val], [np.log(1e-10)])
-        assert_allclose(log_df.loc["C", Key.heat_val], [np.log(6), np.log(1e-10)])
+        assert_allclose(log_df_0.loc["B", Key.heat_val], [np.log(1e-10)])
+
+        df_in_1 = preprocess_ptable_data(
+            {
+                "C": [6.0, 0],
+            }
+        )
+        with pytest.warns(UserWarning, match=r"Illegal log for \[6. 0.\]"):
+            log_df_1 = log_scale(df_in_1, col=Key.heat_val, eps=epsilon)
+        assert_allclose(log_df_1.loc["C", Key.heat_val], [np.log(6), np.log(1e-10)])

@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-
 # Data types that can be passed to PTableProjector and normalized by data_preprocessor
 # to SupportedValueType
 SupportedDataType = Union[
@@ -139,8 +138,8 @@ def log_scale(
     col: str,
     eps: float = 1e-10,
 ) -> pd.DataFrame:
-    """Log scale a pandas DataFrame, which might contain floats or sequences
-    of floats.
+    """Log scale a pandas DataFrame, which might contain floats or
+    sequences of floats.
 
     Args:
         data (pd.DataFrame): DataFrame to scale.
@@ -163,14 +162,16 @@ def log_scale(
             val (float | NDArray): Value(s) to apply log.
             eps (float): A small epsilon to avoid log(0).
         """
-        # Float
-        if isinstance(val, float):
-            return np.log(max(val, eps))  # Avoid log(0)
-
         # Sequences of floats (should be NDArray only after preprocessing)
-        return np.log(np.maximum(val, eps))  # Avoid log(0)
+        try:
+            return np.log(val)
+
+        except FloatingPointError:
+            warnings.warn(f"Illegal log for {val}", stacklevel=2)
+            return np.log(np.maximum(val, eps))  # Avoid log(0)
 
     # Apply logarithm to each element in the column
+    np.seterr(all="raise")
     data[col] = data[col].apply(lambda x: log_transform(x, eps))
 
     return data
