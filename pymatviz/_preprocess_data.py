@@ -298,16 +298,19 @@ def preprocess_ptable_data(
             f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
         )
 
+    # Convert all data to NumPy array
     data_df[Key.heat_val] = data_df[Key.heat_val].apply(
         lambda val: np.array(list(val))
         if isinstance(val, Iterable) and not isinstance(val, str)
         else np.array([val])
     )
 
+    # Replace missing value (NaN) and infinity
     data_df = replace_missing_and_infinity(
         data_df, col=Key.heat_val, missing_strategy=missing_strategy
     )
 
+    # Parse meta data
     numeric_values = pd.to_numeric(
         data_df[Key.heat_val].explode().explode().explode(), errors="coerce"
     )
