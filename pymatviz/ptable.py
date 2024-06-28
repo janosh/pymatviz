@@ -262,15 +262,14 @@ class PTableProjector:
     def hide_f_block(self, hide_f_block: bool | Literal["AUTO"]) -> None:
         """If hide_f_block is "AUTO", would detect if data is present."""
         if hide_f_block == "AUTO":
-            # Check if data is present for f-block elements
-            f_block_elements_with_data = {
+            f_block_elements_has_data = {
                 atom_num
                 for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
                 if (elem := Element.from_Z(atom_num).symbol) in self.data.index
                 and len(self.data.loc[elem, Key.heat_val]) > 0
             }
 
-            self._hide_f_block = not bool(f_block_elements_with_data)
+            self._hide_f_block = not bool(f_block_elements_has_data)
 
         else:
             self._hide_f_block = hide_f_block
@@ -757,8 +756,6 @@ def ptable_heatmap(
     # Heatmap specific
     colormap: str = "viridis",
     # heat_mode: Literal["value", "fraction", "percent"] = "value",
-    # infty_color: str = "lightskyblue",
-    # na_color: str = "white",
     log: bool = False,
     # Figure-scope
     # f_block_voffset: float = 0.5,
@@ -946,7 +943,7 @@ def ptable_heatmap(
             kwargs=values_kwargs,
         )
 
-    # Add colorbar upon request
+    # Show colorbar upon request
     if show_cbar:
         projector.add_colorbar(
             title=cbar_title,

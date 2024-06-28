@@ -156,7 +156,7 @@ def log_scale(
         pass
 
     def log_transform(val: float | NDArray, eps: float) -> float | NDArray:
-        """Apply logarithm on floats or sequences of floats.
+        """Apply logarithm on sequences of floats.
 
         Args:
             val (float | NDArray): Value(s) to apply log.
@@ -166,12 +166,13 @@ def log_scale(
         try:
             return np.log(val)
 
+        # Catch illegal values for log
         except FloatingPointError:
             warnings.warn(f"Illegal log for {val}", stacklevel=2)
-            return np.log(np.maximum(val, eps))  # Avoid log(0)
+            return np.log(np.maximum(val, eps))
 
     # Apply logarithm to each element in the column
-    np.seterr(all="raise")
+    np.seterr(all="raise")  # raise FloatingPointError instead of warn
     data[col] = data[col].apply(lambda x: log_transform(x, eps))
 
     return data
