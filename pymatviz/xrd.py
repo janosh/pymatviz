@@ -6,37 +6,45 @@ from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
-from pymatgen.analysis.diffraction.xrd import DiffractionPattern
+from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
+from pymatgen.core import Structure
 
 
 def plot_xrd_pattern(
     patterns: DiffractionPattern
-    | dict[str, DiffractionPattern | tuple[DiffractionPattern, dict[str, Any]]],
+    | Structure
+    | dict[
+        str,
+        DiffractionPattern
+        | Structure
+        | tuple[DiffractionPattern | Structure, dict[str, Any]],
+    ],
     peak_width: float = 0.5,
     annotate_peaks: float = 5,
+    wavelength: float = 1.54184,  # Cu K-alpha wavelength
 ) -> go.Figure:
-    """Create a plotly figure of XRD patterns from a DiffractionPattern object or a
-    dictionary of DiffractionPattern objects.
+    """Create a plotly figure of XRD patterns from DiffractionPattern, Structure
+    objects, or a dictionary of them.
 
     Args:
-        patterns (DiffractionPattern | dict[str, DiffractionPattern | tuple[DiffractionPattern, dict]]):
-            Either a single DiffractionPattern object
-            or a dictionary where keys are legend labels and values are either
-            DiffractionPattern objects or tuples of (DiffractionPattern, kwargs) for
-            customizing individual patterns.
-        peak_width (float): Width of the diffraction peaks in degrees. Default is 0.5.
-        annotate_peaks (int | float): Controls peak annotation. If int, annotates that
-            many highest peaks. If float, should be in (0, 1) which will annotate peaks
-            higher than that fraction of the highest peak. Default is 5.
+        patterns: Either a single DiffractionPattern or Structure object, or a
+            dictionary where keys are legend labels
+            and values are either DiffractionPattern/Structure objects or tuples of
+            (DiffractionPattern/Structure, kwargs) for customizing individual patterns.
+        peak_width: Width of the diffraction peaks in degrees. Default is 0.5.
+        annotate_peaks: Controls peak annotation. If int, annotates that many highest
+            peaks. If float, should be in (0, 1) which will annotate peaks higher than
+            that fraction of the highest peak. Default is 5.
+        wavelength: X-ray wavelength for the XRD calculation (in Angstroms). Default is
+             1.54184 (Cu K-alpha). Only used if patterns contains Structure objects.
 
     Raises:
         ValueError: If annotate_peaks is not a positive int or a float in (0, 1).
-        TypeError: If patterns is not a DiffractionPattern or a dictionary of
-        DiffractionPatterns or tuples of (DiffractionPattern, kwargs).
+        TypeError: If patterns is not a DiffractionPattern, Structure or a dict of them.
 
     Returns:
         go.Figure: A plotly figure of the XRD pattern(s).
-    """  # noqa: E501
+    """
     if (
         not isinstance(annotate_peaks, (int, float))
         or annotate_peaks <= 0
@@ -55,23 +63,29 @@ def plot_xrd_pattern(
     fig = go.Figure(layout=layout)
     max_intensity = max_two_theta = 0
 
-    # Convert single DiffractionPattern to dict for uniform processing
-    if isinstance(patterns, DiffractionPattern):
+    # Convert single object to dict for uniform processing
+    if isinstance(patterns, (DiffractionPattern, Structure)):
         patterns = {"XRD Pattern": patterns}
     elif not isinstance(patterns, dict):
         raise TypeError(
-            f"{patterns=} should be a DiffractionPattern object or a dictionary of them"
+            f"{patterns=} should be a DiffractionPattern, Structure or a dict of them"
         )
 
     for label, pattern_data in patterns.items():
         if isinstance(pattern_data, tuple):
-            diffraction_pattern, trace_kwargs = pattern_data
+            pattern_or_struct, trace_kwargs = pattern_data
         else:
-            diffraction_pattern, trace_kwargs = pattern_data, {}
+            pattern_or_struct, trace_kwargs = pattern_data, {}
 
-        if not isinstance(diffraction_pattern, DiffractionPattern):
+        if isinstance(pattern_or_struct, Structure):
+            xrd_calculator = XRDCalculator(wavelength=wavelength)
+            diffraction_pattern = xrd_calculator.get_pattern(pattern_or_struct)
+        elif isinstance(pattern_or_struct, DiffractionPattern):
+            diffraction_pattern = pattern_or_struct
+        else:
+            value = pattern_or_struct
             raise TypeError(
-                f"{diffraction_pattern=} should be a pymatgen DiffractionPattern object"
+                f"{value=} should be a pymatgen Structure or DiffractionPattern"
             )
 
         two_theta = diffraction_pattern.x
@@ -96,7 +110,7 @@ def plot_xrd_pattern(
             name=label,
             hovertext=[
                 f"2θ: {x:.2f}°<br>Intensity: {y:.2f}<br>hkl: "
-                f"{', '.join(str(h['hkl']) for h in hkl)}<br>d: {d:.3f} Å"
+                f"{', '.join(''.join(map(str, h['hkl'])) for h in hkl)}<br>d: {d:.3f} Å"
                 for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls)
             ],
             **trace_kwargs,
