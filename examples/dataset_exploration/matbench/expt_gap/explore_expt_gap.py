@@ -1,13 +1,13 @@
 # %%
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
 import plotly.express as px
 from matminer.datasets import load_dataset
 from pymatgen.core import Composition
 
 from pymatviz import ptable_heatmap
 from pymatviz.enums import Key
+from pymatviz.io import save_fig
 
 
 """Stats for the matbench_expt_gap dataset.
@@ -55,13 +55,13 @@ df_gap["mean_radius"] = [mean_atomic_prop(x, "atomic_radius") for x in df_gap.pm
 
 
 # %%
-ptable_heatmap(
+ax = ptable_heatmap(
     df_gap.query("~composition.str.contains('Xe')").composition,
     log=True,
     text_color="black",
 )
-plt.title("Elements in Matbench experimental band gap dataset")
-plt.savefig("expt-gap-ptable-heatmap.pdf")
+ax.set(title="Elements in Matbench experimental band gap dataset")
+save_fig(ax, "expt-gap-ptable-heatmap.pdf")
 
 
 # %%

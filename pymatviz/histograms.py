@@ -334,7 +334,7 @@ def elements_hist(
         else:
             labels = non_zero.astype(int).to_list()
         annotate_bars(
-            ax,
+            ax=ax,
             labels=labels,
             h_offset=h_offset,
             v_offset=v_offset,

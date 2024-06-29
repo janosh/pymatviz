@@ -12,7 +12,6 @@ https://ml.materialsproject.org/projects/matbench_log_kvrh
 # %%
 from time import perf_counter
 
-import matplotlib.pyplot as plt
 import numpy as np
 import plotly.express as px
 from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
@@ -27,6 +26,7 @@ from pymatviz import (
     spacegroup_sunburst,
 )
 from pymatviz.enums import Key
+from pymatviz.io import save_fig
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
@@ -69,15 +69,15 @@ print(sum(df_kvrh["log10(K_VRH)"] == 0))  # sum is 14
 ax = df_kvrh.hist(column="log10(K_VRH)", bins=50, alpha=0.8)
 
 df_grvh.hist(column="log10(G_VRH)", bins=50, ax=ax, alpha=0.8)
-plt.savefig("log_g+kvrh-target-hist.pdf")
+save_fig(ax, "log_g+kvrh-target-hist.pdf")
 
 
 # %%
 df_grvh[Key.volume] = [x.volume for x in df_grvh[Key.structure]]
 df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
-df_grvh.hist(column=Key.volume, bins=50, log=True, alpha=0.8)
-plt.savefig("log_gvrh-volume-hist.pdf")
+ax = df_grvh.hist(column=Key.volume, bins=50, log=True, alpha=0.8)
+save_fig(ax, "log_gvrh-volume-hist.pdf")
 
 
 # %%
@@ -128,14 +128,14 @@ df_grvh.hist(column=Key.volume, bins=50, log=True)
 # %%
 df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
-ptable_heatmap(df_grvh.formula, log=True)
-plt.title("Elemental prevalence in the Matbench bulk/shear modulus datasets")
-plt.savefig("log_gvrh-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_grvh[Key.formula], log=True)
+ax.set(title="Elemental prevalence in the Matbench bulk/shear modulus datasets")
+save_fig(ax, "log_gvrh-ptable-heatmap.pdf")
 
 
 # %%
-spacegroup_hist(df_grvh[Key.spacegroup])
-plt.savefig("log_gvrh-spacegroup-hist.pdf")
+ax = spacegroup_hist(df_grvh[Key.spacegroup])
+save_fig(ax, "log_gvrh-spacegroup-hist.pdf")
 
 
 # %%

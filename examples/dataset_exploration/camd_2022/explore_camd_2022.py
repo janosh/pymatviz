@@ -16,13 +16,13 @@ campaigns by chemical system.
 # %%
 import os
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import requests
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz import count_elements, ptable_heatmap, spacegroup_sunburst
 from pymatviz.enums import Key
+from pymatviz.io import save_fig
 from pymatviz.powerups import annotate_bars
 
 
@@ -46,14 +46,14 @@ df_camd.hist(bins=50)
 
 # %%
 elem_counts = count_elements(df_camd.reduced_formula)
-ptable_heatmap(elem_counts, log=True)
-plt.title("Elements in CAMD 2022 dataset")
-plt.savefig("camd-2022-ptable-heatmap.pdf")
+ax = ptable_heatmap(elem_counts, log=True)
+ax.set_title("Elements in CAMD 2022 dataset")
+save_fig(ax, "camd-2022-ptable-heatmap.pdf")
 
 
 # %%
-df_camd.data_source.value_counts().plot.bar(fontsize=18, rot=0)
-annotate_bars(v_offset=3e3)
+ax = df_camd.data_source.value_counts().plot.bar(fontsize=18, rot=0)
+annotate_bars(ax, v_offset=3e3)
 
 
 # %%

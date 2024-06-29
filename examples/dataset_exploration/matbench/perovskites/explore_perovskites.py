@@ -1,10 +1,10 @@
 # %%
-import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import plot_structure_2d, ptable_heatmap, spacegroup_sunburst
 from pymatviz.enums import Key
+from pymatviz.io import save_fig
 from pymatviz.powerups import annotate_bars
 from pymatviz.utils import crystal_sys_from_spg_num
 
@@ -40,30 +40,27 @@ df_perov[Key.crystal_system] = [
 
 
 # %%
-plot_structure_2d(df_perov[Key.structure].iloc[:12])
-plt.savefig("perovskite-structures-2d.pdf")
+ax = plot_structure_2d(df_perov[Key.structure].iloc[:12])
+save_fig(ax, "perovskite-structures-2d.pdf")
 
 
 # %%
-df_perov.hist(column="e_form", bins=50)
-plt.savefig("perovskites-e_form-hist.pdf")
+ax = df_perov.hist(column="e_form", bins=50)
+save_fig(ax, "perovskites-e_form-hist.pdf")
 
 
 # %%
-ax = ptable_heatmap(df_perov.formula, log=True)
-plt.title("Elements in Matbench Perovskites dataset")
-plt.savefig("perovskites-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_perov[Key.formula], log=True)
+ax.set(title="Elements in Matbench Perovskites dataset")
+save_fig(ax, "perovskites-ptable-heatmap.pdf")
 
 
 # %%
-df_perov[Key.crystal_system].value_counts().plot.bar()
+ax = df_perov[Key.crystal_system].value_counts().plot.bar(rot="horizontal")
+ax.set(title="Crystal systems in Matbench Perovskites")
+annotate_bars(ax, v_offset=250)
 
-plt.title("Crystal systems in Matbench Perovskites")
-plt.xticks(rotation="horizontal")
-
-annotate_bars(v_offset=250)
-
-plt.savefig("perovskites-crystal-system-counts.pdf")
+save_fig(ax, "perovskites-crystal-system-counts.pdf")
 
 
 # %%

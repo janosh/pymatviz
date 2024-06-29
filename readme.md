@@ -166,7 +166,7 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 |                 ![xrd-pattern]                 |                      ![xrd-pattern-multiple]                      |
 
 [xrd-pattern]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern.svg
-[xrd-pattern-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern.svg
+[xrd-pattern-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-multiple.svg
 
 ## Uncertainty
 
