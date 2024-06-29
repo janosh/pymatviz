@@ -60,6 +60,7 @@ from pymatviz.templates import (
 )
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import PKG_DIR, ROOT, styled_html_tag
+from pymatviz.xrd import plot_xrd_pattern
 
 
 PKG_NAME = "pymatviz"
