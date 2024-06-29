@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal, get_args
 
 import numpy as np
 import plotly.graph_objects as go
 from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
 from pymatgen.core import Structure
+
+
+HklFormat = Literal["compact", "full", None]
+ValidHklFormats = HklCompact, HklFull, HklNone = get_args(HklFormat)
+
+
+def format_hkl(hkl: tuple[int, int, int], format_type: HklFormat) -> str:
+    """Format hkl indices as a string."""
+    if format_type == "compact":
+        return "".join(map(str, hkl))
+    if format_type == "full":
+        return f"({', '.join(map(str, hkl))})"
+    if format_type is None:
+        return ""
+    raise ValueError(f"{format_type=} must be one of {ValidHklFormats}")
 
 
 def plot_xrd_pattern(
@@ -19,8 +34,11 @@ def plot_xrd_pattern(
         | Structure
         | tuple[DiffractionPattern | Structure, dict[str, Any]],
     ],
+    *,
     peak_width: float = 0.5,
     annotate_peaks: float = 5,
+    hkl_format: HklFormat = HklCompact,
+    show_angles: bool = True,
     wavelength: float = 1.54184,  # Cu K-alpha wavelength
 ) -> go.Figure:
     """Create a plotly figure of XRD patterns from DiffractionPattern, Structure
@@ -35,8 +53,11 @@ def plot_xrd_pattern(
         annotate_peaks: Controls peak annotation. If int, annotates that many highest
             peaks. If float, should be in (0, 1) which will annotate peaks higher than
             that fraction of the highest peak. Default is 5.
+        hkl_format: Format for hkl indices. One of are 'compact' ('100'), 'full'
+            ('(1, 0, 0)'), or None for no hkl indices. Default is 'compact'.
+        show_angles: Whether to show angles in peak annotations. Default is True.
         wavelength: X-ray wavelength for the XRD calculation (in Angstroms). Default is
-             1.54184 (Cu K-alpha). Only used if patterns contains Structure objects.
+            1.54184 (Cu K-alpha). Only used if patterns contains Structure objects.
 
     Raises:
         ValueError: If annotate_peaks is not a positive int or a float in (0, 1).
@@ -71,6 +92,7 @@ def plot_xrd_pattern(
             f"{patterns=} should be a DiffractionPattern, Structure or a dict of them"
         )
 
+    plotted_patterns: list[DiffractionPattern] = []
     for label, pattern_data in patterns.items():
         if isinstance(pattern_data, tuple):
             pattern_or_struct, trace_kwargs = pattern_data
@@ -88,6 +110,7 @@ def plot_xrd_pattern(
                 f"{value=} should be a pymatgen Structure or DiffractionPattern"
             )
 
+        plotted_patterns += [diffraction_pattern]
         two_theta = diffraction_pattern.x
         intensities = diffraction_pattern.y
         hkls = diffraction_pattern.hkls
@@ -98,27 +121,26 @@ def plot_xrd_pattern(
                 f"No intensities found in the diffraction pattern for {label}"
             )
 
-        # Update max intensity and two_theta
+        # Update max intensity and two_theta across all patterns
         max_intensity = max(max_intensity, *intensities)
         max_two_theta = max(max_two_theta, *two_theta)
 
-        # Create the trace for this pattern
-        trace = go.Bar(
+        tooltips = [
+            f"2θ: {x:.2f}°<br>Intensity: {y:.2f}<br>hkl: "
+            f"{', '.join(format_hkl(h['hkl'], HklFull) for h in hkl)}<br>d: {d:.3f} Å"
+            for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls)
+        ]
+        fig.add_bar(
             x=two_theta,
             y=intensities,
             width=peak_width,
             name=label,
-            hovertext=[
-                f"2θ: {x:.2f}°<br>Intensity: {y:.2f}<br>hkl: "
-                f"{', '.join(''.join(map(str, h['hkl'])) for h in hkl)}<br>d: {d:.3f} Å"
-                for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls)
-            ],
+            hovertext=tooltips,
             **trace_kwargs,
         )
-        fig.add_trace(trace)
 
     # Normalize intensities to 100 and add annotations
-    for trace in fig.data:
+    for trace_idx, trace in enumerate(fig.data):
         trace.y = [y / max_intensity * 100 for y in trace.y]
 
         if isinstance(annotate_peaks, int) and annotate_peaks > 0:
@@ -135,11 +157,21 @@ def plot_xrd_pattern(
             )
 
         for idx in peak_indices:
-            hkl_str = trace.hovertext[idx].split("hkl: ")[1].split("<br>")[0]
             x_pos = trace.x[idx]
             y_pos = trace.y[idx]
 
-            annotation_text = f"{hkl_str}<br>{x_pos:.2f}°"
+            if hkl_format:
+                hkl_formatted = ", ".join(
+                    format_hkl(h["hkl"], hkl_format)
+                    for h in plotted_patterns[trace_idx].hkls[idx]
+                )
+                annotation_text = f"{hkl_formatted}"
+                if show_angles:
+                    annotation_text += f"<br>{x_pos:.2f}°"
+            elif show_angles:
+                annotation_text = f"{x_pos:.2f}°"
+            else:
+                continue  # Skip annotation if neither hkl nor angle is shown
 
             ax, ay = 20, -20
             xanchor, yanchor = "left", "bottom"
