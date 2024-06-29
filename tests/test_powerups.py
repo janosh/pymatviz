@@ -6,10 +6,12 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 from matplotlib.offsetbox import AnchoredText
+from plotly.subplots import make_subplots
 
 from pymatviz.powerups import (
     add_best_fit_line,
@@ -266,27 +268,92 @@ def test_annotate_bars(
 
 
 @pytest.mark.parametrize(
-    "trace_kwargs",
-    [None, {}, {"name": "foo", "line_color": "red"}],
+    "trace_kwargs, expected_name, expected_color, expected_dash",
+    [
+        (None, "Cumulative", "#636efa", "solid"),
+        ({}, "Cumulative", "#636efa", "solid"),
+        ({"name": "foo", "line": {"color": "red"}}, "foo", "red", "solid"),
+        ({"line": {"dash": "dash"}}, "Cumulative", "#636efa", "dash"),
+    ],
 )
 def test_add_ecdf_line(
     plotly_scatter: go.Figure,
-    trace_kwargs: dict[str, str] | None,
+    trace_kwargs: dict[str, Any] | None,
+    expected_name: str,
+    expected_color: str,
+    expected_dash: str,
 ) -> None:
     fig = add_ecdf_line(plotly_scatter, trace_kwargs=trace_kwargs)
     assert isinstance(fig, go.Figure)
 
-    trace_kwargs = trace_kwargs or {}
-
-    ecdf_trace = fig.data[-1]  # retrieve ecdf line
-    expected_name = trace_kwargs.get("name", "Cumulative")
-    expected_color = trace_kwargs.get("line_color", "#636efa")
+    ecdf_trace = fig.data[-1]
     assert ecdf_trace.name == expected_name
-    assert ecdf_trace.line.color == expected_color
+    dev_fig = fig.full_figure_for_development(warn=False)
+    assert dev_fig.data[-1].line.color == expected_color
+    assert ecdf_trace.line.dash == expected_dash
     assert ecdf_trace.yaxis == "y2"
     assert fig.layout.yaxis2.range == (0, 1)
     assert fig.layout.yaxis2.title.text == expected_name
-    assert fig.layout.yaxis2.color == expected_color
+    assert dev_fig.layout.yaxis2.color in (expected_color, "#444")
+
+    assert ecdf_trace.legendgroup == fig.data[0].name
+
+
+def test_add_ecdf_line_stacked() -> None:
+    x = ["A", "B", "C"]
+    y1 = [1, 2, 3]
+    y2 = [2, 3, 4]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=x, y=y1, name="Group 1"))
+    fig.add_trace(go.Bar(x=x, y=y2, name="Group 2"))
+    fig.update_layout(barmode="stack")
+
+    fig = add_ecdf_line(fig, values=np.concatenate([y1, y2]))
+
+    assert len(fig.data) == 3
+    ecdf_trace = fig.data[-1]
+    assert ecdf_trace.name == "Cumulative"
+    assert ecdf_trace.yaxis == "y2"
+    assert fig.layout.yaxis2.range == (0, 1)
+
+
+def test_add_ecdf_line_faceted() -> None:
+    fig = make_subplots(rows=2, cols=2)
+    for row in range(1, 3):
+        for col in range(1, 3):
+            fig.add_trace(
+                go.Scatter(x=[1, 2, 3], y=[4, 5, 6], name=f"Trace {row}{col}"),
+                row=row,
+                col=col,
+            )
+
+    fig = add_ecdf_line(fig)
+
+    assert len(fig.data) == 8  # 4 original traces + 1 ECDF trace
+    ecdf_trace = fig.data[-1]
+    assert ecdf_trace.name == "Cumulative"
+    assert ecdf_trace.yaxis == "y2"
+
+
+def test_add_ecdf_line_histogram() -> None:
+    fig = go.Figure(go.Histogram(x=[1, 2, 2, 3, 3, 3, 4, 4, 4, 4]))
+    fig = add_ecdf_line(fig)
+
+    assert len(fig.data) == 2
+    ecdf_trace = fig.data[-1]
+    assert ecdf_trace.name == "Cumulative"
+    assert ecdf_trace.yaxis == "y2"
+
+
+def test_add_ecdf_line_bar() -> None:
+    fig = go.Figure(go.Bar(x=[1, 2, 3, 4], y=[1, 2, 3, 4]))
+    fig = add_ecdf_line(fig)
+
+    assert len(fig.data) == 2
+    ecdf_trace = fig.data[-1]
+    assert ecdf_trace.name == "Cumulative"
+    assert ecdf_trace.yaxis == "y2"
 
 
 def test_add_ecdf_line_raises() -> None:

@@ -84,7 +84,7 @@ def qq_gaussian(
         ax.fill_between(
             exp_proportions, y1=obs_proportions, y2=exp_proportions, alpha=0.2
         )
-        miscal_area = np.trapz(
+        miscal_area = np.trapz(  # noqa: NPY201
             np.abs(obs_proportions - exp_proportions), dx=1 / resolution
         )
         lines.append([line, miscal_area])
