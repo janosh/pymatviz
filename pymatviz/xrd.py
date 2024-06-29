@@ -38,7 +38,7 @@ def plot_xrd_pattern(
     peak_width: float = 0.5,
     annotate_peaks: float = 5,
     hkl_format: HklFormat = HklCompact,
-    show_angles: bool = True,
+    show_angles: bool | None = None,
     wavelength: float = 1.54184,  # Cu K-alpha wavelength
 ) -> go.Figure:
     """Create a plotly figure of XRD patterns from DiffractionPattern, Structure
@@ -54,8 +54,10 @@ def plot_xrd_pattern(
             peaks. If float, should be in (0, 1) which will annotate peaks higher than
             that fraction of the highest peak. Default is 5.
         hkl_format: Format for hkl indices. One of 'compact' ('100'), 'full'
-            ('(1, 0, 0)'), or None for no hkl indices. Default is 'compact'.
-        show_angles: Whether to show angles in peak annotations. Default is True.
+            ('(1, 0, 0)'), or None for no hkl indices. Default is 'compact' for 3 or
+            fewer patterns, None for 4 or more patterns.
+        show_angles: Whether to show angles in peak annotations. If None, it will
+            default to True if plotting 1 or 2 patterns, False for 3 or more patterns.
         wavelength: X-ray wavelength for the XRD calculation (in Angstroms). Default is
             1.54184 (Cu K-alpha). Only used if patterns contains Structure objects.
 
@@ -92,6 +94,10 @@ def plot_xrd_pattern(
             f"{patterns=} should be a DiffractionPattern, Structure or a dict of them"
         )
 
+    # Determine show_angles based on number of patterns
+    if show_angles is None:
+        show_angles = len(patterns) <= 2
+
     plotted_patterns: list[DiffractionPattern] = []
     for label, pattern_data in patterns.items():
         if isinstance(pattern_data, tuple):
@@ -127,7 +133,7 @@ def plot_xrd_pattern(
 
         tooltips = [
             f"2θ: {x:.2f}°<br>Intensity: {y:.2f}<br>hkl: "
-            f"{', '.join(format_hkl(h['hkl'], HklFull) for h in hkl)}<br>d: {d:.3f} Å"
+            f"{'<br>'.join(format_hkl(h['hkl'], HklFull) for h in hkl)}<br>d: {d:.3f} Å"
             for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls)
         ]
         fig.add_bar(
@@ -161,7 +167,7 @@ def plot_xrd_pattern(
             y_pos = trace.y[idx]
 
             if hkl_format:
-                hkl_formatted = ", ".join(
+                hkl_formatted = "<br>".join(
                     format_hkl(h["hkl"], hkl_format)
                     for h in plotted_patterns[trace_idx].hkls[idx]
                 )
@@ -173,14 +179,14 @@ def plot_xrd_pattern(
             else:
                 continue  # Skip annotation if neither hkl nor angle is shown
 
-            ax, ay = 20, -20
-            xanchor, yanchor = "left", "bottom"
+            # Determine annotation direction
+            ax, ay = (20, -20) if trace_idx % 2 == 0 else (-20, -20)
+
+            # Adjust position for edges of the plot
             if x_pos > max_two_theta * 0.9:
-                ax, ay = -20, -20
-                xanchor, yanchor = "right", "bottom"
+                ax = -abs(ax)
             elif y_pos > 90:
-                ax, ay = 80, 20
-                xanchor, yanchor = "right", "bottom"
+                ay = abs(ay)
 
             fig.add_annotation(
                 x=x_pos,
@@ -191,8 +197,8 @@ def plot_xrd_pattern(
                 arrowwidth=1,
                 ax=ax,
                 ay=ay,
-                xanchor=xanchor,
-                yanchor=yanchor,
+                xanchor="left" if ax > 0 else "right",
+                yanchor="bottom" if ay < 0 else "top",
             )
 
     fig.layout.xaxis.range = [0, max_two_theta + 5]
