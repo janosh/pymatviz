@@ -8,10 +8,10 @@ https://ml.materialsproject.org/projects/matbench_steels
 """
 
 # %%
-import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
 from pymatviz import ptable_heatmap
+from pymatviz.io import save_fig
 
 
 # %%
@@ -19,11 +19,11 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %%
-df_steels.hist(column="yield strength", bins=50)
-plt.savefig("steels-yield-strength-hist.pdf")
+ax = df_steels.hist(column="yield strength", bins=50)
+save_fig(ax, "steels-yield-strength-hist.pdf")
 
 
 # %%
-ptable_heatmap(df_steels.composition, log=True)
-plt.title("Elemental prevalence in the Matbench steels dataset")
-plt.savefig("steels-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_steels.composition, log=True)
+ax.set(title="Elemental prevalence in the Matbench steels dataset")
+save_fig(ax, "steels-ptable-heatmap.pdf")

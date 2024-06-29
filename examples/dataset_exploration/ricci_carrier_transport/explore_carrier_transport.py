@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001
 """Stats for the Electronic Transport Properties dataset.
 
 Larger/complete version of BoltzTrap MP (data/boltztrap_mp.json.gz).
@@ -24,9 +25,7 @@ from tqdm import tqdm
 
 from pymatviz import ptable_heatmap, spacegroup_hist
 from pymatviz.enums import Key
-
-
-# ruff: noqa: RUF001
+from pymatviz.io import save_fig
 
 
 # %%
@@ -39,23 +38,23 @@ df_carrier[[Key.spacegroup_symbol, Key.spacegroup]] = [
 
 
 # %%
-ptable_heatmap(df_carrier.pretty_formula.dropna(), log=True)
-plt.title("Elemental prevalence in the Ricci Carrier Transport dataset")
-plt.savefig("carrier-transport-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_carrier.pretty_formula.dropna(), log=True)
+ax.set(title="Elemental prevalence in the Ricci Carrier Transport dataset")
+save_fig(ax, "carrier-transport-ptable-heatmap.pdf")
 
 
 # %%
-df_carrier.hist(bins=50, log=True, figsize=[30, 16])
+ax = df_carrier.hist(bins=50, log=True, figsize=[30, 16])
 plt.suptitle("Ricci Carrier Transport Dataset", y=1.05)
-plt.savefig("carrier-transport-hists.pdf")
+save_fig(ax, "carrier-transport-hists.pdf")
 
 
 # %%
-df_carrier[["S.p [µV/K]", "S.n [µV/K]"]].hist(bins=50, log=True, figsize=[18, 8])
+ax = df_carrier[["S.p [µV/K]", "S.n [µV/K]"]].hist(bins=50, log=True, figsize=[18, 8])
 plt.suptitle(
     "Ricci Carrier Transport dataset histograms for n- and p-type Seebeck coefficients"
 )
-plt.savefig("carrier-transport-seebeck-n+p.pdf")
+save_fig(ax, "carrier-transport-seebeck-n+p.pdf")
 
 
 # %%
@@ -78,12 +77,12 @@ dependent_vars = [
     "κₑᵉ.n.v [W/K/m/s]",
 ]
 
-df_carrier[dependent_vars].hist(bins=50, log=True, figsize=[30, 16])
+ax = df_carrier[dependent_vars].hist(bins=50, log=True, figsize=[30, 16])
 plt.suptitle("Ricci Carrier Transport Dataset dependent variables", y=1.05)
-plt.savefig("carrier-transport-hists-dependent-vars.pdf")
+save_fig(ax, "carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%
-spacegroup_hist(df_carrier[Key.spacegroup])
-plt.title("Spacegroup distribution in the Ricci carrier transport dataset")
-plt.savefig("carrier-transport-spacegroup-hist.pdf")
+ax = spacegroup_hist(df_carrier[Key.spacegroup])
+ax.set(title="Spacegroup distribution in the Ricci carrier transport dataset")
+save_fig(ax, "carrier-transport-spacegroup-hist.pdf")

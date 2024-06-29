@@ -1,5 +1,4 @@
 # %%
-import matplotlib.pyplot as plt
 import plotly.express as px
 from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
 from matminer.datasets import load_dataset
@@ -13,6 +12,7 @@ from pymatviz import (
     spacegroup_sunburst,
 )
 from pymatviz.enums import Key
+from pymatviz.io import save_fig
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
@@ -51,28 +51,28 @@ df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%
-ptable_heatmap(df_diel.formula, log=True)
-plt.title("Elemental prevalence in the Matbench dielectric dataset")
-plt.savefig("dielectric-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_diel[Key.formula], log=True)
+ax.set(title="Elemental prevalence in the Matbench dielectric dataset")
+save_fig(ax, "dielectric-ptable-heatmap.pdf")
 
 
 # %%
-fig = ptable_heatmap_plotly(df_diel.formula, log=True, colorscale="viridis")
+fig = ptable_heatmap_plotly(df_diel[Key.formula], log=True, colorscale="viridis")
 title = "<b>Elements in Matbench Dielectric</b>"
 fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
-# fig.write_image("dielectric-ptable-heatmap-plotly.pdf")
+# save_fig(fig, "dielectric-ptable-heatmap-plotly.pdf")
 
 
 # %%
 ax = spacegroup_hist(df_diel[Key.spacegroup])
 ax.set_title("Space group histogram", y=1.1)
-plt.savefig("dielectric-spacegroup-hist.pdf")
+save_fig(ax, "dielectric-spacegroup-hist.pdf")
 
 
 # %%
 fig = spacegroup_sunburst(df_diel[Key.spacegroup], show_counts="percent")
 fig.layout.title = "Space group sunburst"
-# fig.write_image("dielectric-spacegroup-sunburst.pdf")
+# save_fig(fig, "dielectric-spacegroup-sunburst.pdf")
 fig.show()
 
 
@@ -106,7 +106,7 @@ fig.layout.xaxis = reusable_x_axis = dict(
 )
 
 
-# fig.write_image("dielectric-violin.pdf")
+# save_fig(fig, "dielectric-violin.pdf")
 fig.show()
 
 
@@ -147,7 +147,7 @@ fig.layout.margin = dict(b=10, l=10, r=10, t=50)
 fig.layout.showlegend = False
 fig.layout.update(width=1000, height=400, xaxis=reusable_x_axis)
 
-# fig.write_image("dielectric-violin-num-wyckoffs.pdf")
+# save_fig(fig, "dielectric-violin-num-wyckoffs.pdf")
 fig.show()
 
 
@@ -169,5 +169,5 @@ fig.layout.legend = dict(x=1, y=1, xanchor="right")
 # slightly increase scatter point size (lower sizeref means larger)
 fig.update_traces(marker_sizeref=0.08, selector=dict(mode="markers"))
 
-# fig.write_image("dielectric-scatter.pdf")
+# save_fig(fig, "dielectric-scatter.pdf")
 fig.show()

@@ -1,10 +1,10 @@
 # %%
-import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import ptable_heatmap, spacegroup_hist, spacegroup_sunburst
 from pymatviz.enums import Key
+from pymatviz.io import save_fig
 
 
 """Stats for the matbench_jdft2d dataset.
@@ -31,22 +31,22 @@ df_2d.describe()
 
 
 # %%
-df_2d.hist(column="exfoliation_en", bins=50, log=True)
-plt.savefig("jdft2d-exfoliation-energy-hist.pdf")
+ax = df_2d.hist(column="exfoliation_en", bins=50, log=True)
+save_fig(ax, "jdft2d-exfoliation-energy-hist.pdf")
 
 
 # %%
 df_2d[Key.volume] = [x.volume for x in df_2d[Key.structure]]
 df_2d[Key.formula] = [x.formula for x in df_2d[Key.structure]]
 
-ptable_heatmap(df_2d.formula, log=True)
-plt.title("Elemental prevalence in the Matbench Jarvis DFT 2D dataset")
-plt.savefig("jdft2d-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_2d[Key.formula], log=True)
+ax.set(title="Elemental prevalence in the Matbench Jarvis DFT 2D dataset")
+save_fig(ax, "jdft2d-ptable-heatmap.pdf")
 
 
 # %%
-spacegroup_hist(df_2d[Key.spacegroup], log=True)
-plt.savefig("jdft2d-spacegroup-hist.pdf")
+ax = spacegroup_hist(df_2d[Key.spacegroup], log=True)
+save_fig(ax, "jdft2d-spacegroup-hist.pdf")
 
 
 # %%
