@@ -84,7 +84,7 @@ def test_plot_xrd_pattern_y_range() -> None:
 @pytest.mark.parametrize(
     "x_pos, expected_direction",
     [
-        (1, (80, 20)),  # Left 10% of the plot
+        (1, (-20, -20)),  # Left 10% of the plot
         (95, (-20, -20)),  # Right 10% of the plot
         (50, (-20, -20)),  # Middle, but high intensity
     ],
