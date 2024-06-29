@@ -222,7 +222,7 @@ def test_annotate_bars(
     bars = plt.bar(["A", "B", "C"], [1, 3, 2])
     ax = plt.gca()
     annotate_bars(
-        ax,
+        ax=ax,
         v_offset=v_offset,
         h_offset=h_offset,
         labels=labels,

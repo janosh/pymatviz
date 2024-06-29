@@ -1,9 +1,9 @@
 # %%
-import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
 from pymatviz import ptable_heatmap
 from pymatviz.enums import Key
+from pymatviz.io import save_fig
 
 
 """Stats for the matbench_mp_e_form dataset.
@@ -24,8 +24,8 @@ df_e_form = load_dataset("matbench_mp_e_form")
 
 
 # %%
-df_e_form.hist(column="e_form", bins=50, log=True)
-plt.savefig("mp_e_form_hist.pdf")
+ax = df_e_form.hist(column="e_form", bins=50, log=True)
+save_fig(ax, "mp_e_form_hist.pdf")
 
 
 # %%
@@ -33,6 +33,6 @@ df_e_form[Key.formula] = df_e_form[Key.structure].map(lambda struct: struct.form
 
 
 # %%
-ptable_heatmap(df_e_form.formula, log=True)
-plt.title("Elemental prevalence in the Matbench formation energy dataset")
-plt.savefig("mp_e_form-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_e_form[Key.formula], log=True)
+ax.set(title="Elemental prevalence in the Matbench formation energy dataset")
+save_fig(ax, "mp_e_form-ptable-heatmap.pdf")
