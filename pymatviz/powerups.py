@@ -458,7 +458,7 @@ def add_ecdf_line(
         raise TypeError(f"{fig=} must be instance of {type_names}")
 
     target_trace: BaseTraceType = fig.data[trace_idx]
-    if values == ():
+    if values is None or len(values) == 0:
         if isinstance(target_trace, (go.Histogram, go.Scatter, go.Scattergl)):
             values = target_trace.x
         elif isinstance(target_trace, go.Bar):
@@ -467,10 +467,9 @@ def add_ecdf_line(
             if len(xs) + 1 == len(ys):
                 xs = xs[:-1]
             values = np.repeat(xs, ys)
-
         else:
             cls = type(target_trace)
-            qual_name = cls.__module__ + "." + cls.__qualname__
+            qual_name = f"{cls.__module__}.{cls.__qualname__}"
             raise ValueError(
                 f"Cannot auto-determine x-values for ECDF from {qual_name}, "
                 "pass values explicitly. Currently only Histogram, Scatter, Box, "
@@ -481,8 +480,8 @@ def add_ecdf_line(
     ecdf_trace = px.ecdf(values).data[0]
 
     # if fig has facets, add ECDF to all subplots
-    add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
-    fig.add_trace(ecdf_trace, **add_trace_defaults | kwargs)
+    fig_add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
+    fig.add_trace(ecdf_trace, **fig_add_trace_defaults | kwargs)
 
     # get xlabel falling back on 'x' if not set
     xlabel = fig.layout.xaxis.title.text or "x"
@@ -499,12 +498,27 @@ def add_ecdf_line(
         uniq_name = f"{name} {name_suffix}"
 
     if "marker" in target_trace and target_trace.marker["color"] is None:
-        target_trace = fig.full_figure_for_development(warn=False).data[trace_idx]
+        dev_trace = fig.full_figure_for_development(warn=False).data[trace_idx]
+        # NOTE unsure if this has any downstream effects, should just be applying
+        # the color that plotly would have later assigned to the trace anyway
+        target_trace.marker = dev_trace.marker
+
+    # set default legendgroup of target trace if not already set
+    legendgroup = target_trace.legendgroup or target_trace.name
+    target_trace.legendgroup = legendgroup
 
     # set line color to be the same as the target trace's marker color
     target_color = target_trace.marker.color if "marker" in target_trace else "gray"
-    trace_defaults = dict(yaxis="y2", name=uniq_name, line_color=target_color)
-    trace_kwargs = trace_defaults | (trace_kwargs or {})
+    trace_defaults = dict(
+        yaxis="y2",
+        name=uniq_name,
+        line=dict(
+            color=target_color,
+            dash="solid",
+        ),
+        legendgroup=legendgroup,
+    )
+    trace_kwargs = trace_defaults | trace_kwargs
     fig.data[-1].update(**trace_kwargs)
 
     # line_color becomes target_color via trace_defaults if a different color was not

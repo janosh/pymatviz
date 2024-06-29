@@ -277,8 +277,8 @@ def normalize_and_crop_pdf(
         from pdfCropMargins import crop
 
         # Normalize the PDF with Ghostscript
-        subprocess.run(
-            [  # noqa: S603
+        subprocess.run(  # noqa: S603
+            [
                 *"gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4".split(),
                 *"-dPDFSETTINGS=/default -dNOPAUSE -dQUIET -dBATCH".split(),
                 f"-sOutputFile={normalized_file_path}",
