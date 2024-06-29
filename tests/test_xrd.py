@@ -22,7 +22,9 @@ mock_diffraction_pattern = DiffractionPattern(
     d_hkls=[2.5, 2.0, 1.8, 1.5, 1.3],
 )
 
-bi2_zr2_o7_struct = Structure.from_file(f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-sqs.cif")
+bi2_zr2_o7_struct = Structure.from_file(
+    f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif"
+)
 bi2_zr2_o7_xrd = XRDCalculator().get_pattern(bi2_zr2_o7_struct)
 
 
