@@ -53,7 +53,7 @@ def plot_xrd_pattern(
         annotate_peaks: Controls peak annotation. If int, annotates that many highest
             peaks. If float, should be in (0, 1) which will annotate peaks higher than
             that fraction of the highest peak. Default is 5.
-        hkl_format: Format for hkl indices. One of are 'compact' ('100'), 'full'
+        hkl_format: Format for hkl indices. One of 'compact' ('100'), 'full'
             ('(1, 0, 0)'), or None for no hkl indices. Default is 'compact'.
         show_angles: Whether to show angles in peak annotations. Default is True.
         wavelength: X-ray wavelength for the XRD calculation (in Angstroms). Default is
