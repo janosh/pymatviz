@@ -141,3 +141,37 @@ def test_plot_xrd_pattern_wavelength(wavelength: float) -> None:
         assert first_peak_position != reference_first_peak
     else:
         assert first_peak_position == reference_first_peak
+
+
+def test_plot_xrd_pattern_tooltip_content() -> None:
+    patterns = {
+        "Pattern 1": mock_diffraction_pattern,
+        "Pattern 2": mock_diffraction_pattern,
+    }
+    fig = plot_xrd_pattern(patterns, show_angles=False, hkl_format=None)
+
+    for trace in fig.data:
+        assert len(trace.hovertext) > 0
+        for hover_text in trace.hovertext:
+            assert all(key in hover_text for key in ["2θ", "Intensity", "hkl", "d"])
+            assert "°" in hover_text  # Angles should always be in tooltips
+
+
+def test_plot_xrd_pattern_tooltip_label() -> None:
+    patterns = {
+        "Pattern 1": mock_diffraction_pattern,
+        "Pattern 2": mock_diffraction_pattern,
+    }
+    fig = plot_xrd_pattern(patterns)
+
+    assert len(fig.data) == 2
+
+    for trace in fig.data:
+        assert all(
+            hover_text.startswith(f"<b>{trace.name}</b>")
+            for hover_text in trace.hovertext
+        )
+        assert all(
+            all(key in hover_text for key in ["2θ", "Intensity", "hkl", "d"])
+            for hover_text in trace.hovertext
+        )

@@ -132,6 +132,7 @@ def plot_xrd_pattern(
         max_two_theta = max(max_two_theta, *two_theta)
 
         tooltips = [
+            f"<b>{label}</b><br>"
             f"2θ: {x:.2f}°<br>Intensity: {y:.2f}<br>hkl: "
             f"{'<br>'.join(format_hkl(h['hkl'], HklFull) for h in hkl)}<br>d: {d:.3f} Å"
             for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls)
@@ -142,6 +143,7 @@ def plot_xrd_pattern(
             width=peak_width,
             name=label,
             hovertext=tooltips,
+            hoverinfo="text",
             **trace_kwargs,
         )
 
