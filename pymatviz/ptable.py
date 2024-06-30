@@ -772,7 +772,7 @@ def ptable_heatmap(
     symbol_color: str = "white",
     symbol_kwargs: dict[str, Any] | None = None,
     # Values
-    show_values_mode: Literal["value", "fraction", "percent", "off"] = "value",
+    values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     values_pos: tuple[float, float] | None = None,
     values_color: str = "black",  # TODO: auto switch black/white by bg color
     values_kwargs: dict[str, Any] | None = None,
@@ -824,14 +824,13 @@ def ptable_heatmap(
             element symbols. Defaults to None.
 
         # Values
-        show_values_mode (str): The values display mode:
+        values_show_mode (str): The values display mode:
             - "off": Don't show values.
             - "value": Display values as is.
             - "fraction": As a fraction of the total (0.10).
             - "percent": As a percentage of the total (10%).
             "fraction" and "percent" can be used to make the colors in
                 different plots comparable.
-        show_values (bool): Whether to show values for each tile.
         values_pos (tuple[float, float]): The position of values inside the tile.
         values_color (str): The font color of values.
         values_kwargs (dict): Keyword arguments passed to plt.text() for
@@ -856,24 +855,24 @@ def ptable_heatmap(
 
         def __init__(
             self,
-            show_values_mode: Literal["value", "fraction", "percent", "off"],
+            values_show_mode: Literal["value", "fraction", "percent", "off"],
             **kwargs: dict,
         ) -> None:
             """Init Heatmap plotter.
 
             Args:
-                show_values_mode ("value" | "fraction" | "percent" | "off"):
+                values_show_mode ("value" | "fraction" | "percent" | "off"):
                     Values display mode.
                 kwargs (dict): Kwargs to pass to super class.
             """
             super().__init__(**kwargs)
 
-            self.show_values_mode = show_values_mode
+            self.values_show_mode = values_show_mode
 
             # Normalize data upon request
-            if show_values_mode == "fraction":
+            if values_show_mode == "fraction":
                 self.data = normalize_data(self.data, percentage=False)
-            elif show_values_mode == "percent":
+            elif values_show_mode == "percent":
                 self.data = normalize_data(self.data, percentage=True)
 
         def add_elem_values(
@@ -913,7 +912,7 @@ def ptable_heatmap(
 
                 # Format value  # TODO: take format as argument
                 content = f"{content:.2f}"
-                if self.show_values_mode == "percent":
+                if self.values_show_mode == "percent":
                     content += "%"  # TODO: format depending on heat mode
 
                 elem_type_color = self.get_elem_type_color(symbol, default="black")
@@ -933,7 +932,7 @@ def ptable_heatmap(
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
-        show_values_mode=show_values_mode,
+        values_show_mode=values_show_mode,
         log=log,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
@@ -955,7 +954,7 @@ def ptable_heatmap(
 
     # Set better default symbol position
     if symbol_pos is None:
-        symbol_pos = (0.5, 0.65) if show_values_mode != "off" else (0.5, 0.5)
+        symbol_pos = (0.5, 0.65) if values_show_mode != "off" else (0.5, 0.5)
 
     # Add element symbols
     symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
@@ -968,7 +967,7 @@ def ptable_heatmap(
     )
 
     # Show values upon request
-    if show_values_mode != "off":
+    if values_show_mode != "off":
         projector.add_elem_values(
             pos=values_pos or (0.5, 0.25),
             text_color=values_color,
