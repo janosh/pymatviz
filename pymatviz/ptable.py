@@ -756,7 +756,6 @@ def ptable_heatmap(
     *,
     # Heatmap specific
     colormap: str = "viridis",
-
     log: bool = False,
     # Figure-scope
     # f_block_voffset: float = 0.5,
