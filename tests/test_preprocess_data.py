@@ -347,14 +347,7 @@ class TestNormalizeData:
     def test_normalize_multi_value_data(self) -> None:
         data_df = preprocess_ptable_data({"H": 1.0, "He": [2, 7]})
 
-        # Test fractional mode
-        data_out_fraction = normalize_data(data_df, percentage=False)
+        data_out_fraction = normalize_data(data_df)
 
         assert_allclose(data_out_fraction.loc["H", Key.heat_val], [0.1])
         assert_allclose(data_out_fraction.loc["He", Key.heat_val], [0.2, 0.7])
-
-        # Test percentage mode
-        data_out_percent = normalize_data(data_df, percentage=True)
-
-        assert_allclose(data_out_percent.loc["H", Key.heat_val], [10])
-        assert_allclose(data_out_percent.loc["He", Key.heat_val], [20, 70])
