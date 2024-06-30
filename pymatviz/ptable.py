@@ -449,17 +449,20 @@ class PTableProjector:
         title: str,
         *,
         coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.02),
+        cbar_range: tuple[float | None, float | None] = (None, None),
         cbar_kwargs: dict[str, Any] | None = None,
         title_kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """Add a global colorbar.
+        """Add colorbar.
 
         Args:
-            title: Title for the colorbar.
-            coords: Coordinates of the colorbar (left, bottom, width, height).
+            title (str): Title for the colorbar.
+            coords (tuple): Coordinates of the colorbar (left, bottom, width, height).
                 Defaults to (0.18, 0.8, 0.42, 0.02).
-            cbar_kwargs: Additional keyword arguments to pass to fig.colorbar().
-            title_kwargs: Additional keyword arguments for the colorbar title.
+            cbar_range (tuple): Colorbar values display range, use None for auto
+                detection for the corresponding boundary.
+            cbar_kwargs (dict): Additional keyword arguments to pass to fig.colorbar().
+            title_kwargs (dict): Additional keyword arguments for the colorbar title.
         """
         # Update colorbar kwargs
         cbar_kwargs = {"orientation": "horizontal"} | (cbar_kwargs or {})
@@ -474,8 +477,16 @@ class PTableProjector:
         # Add colorbar
         cbar_ax = self.fig.add_axes(coords)
 
+        # Set colorbar range
+        # TODO: need double-check overwrite norm would not lead to
+        # unexpected value mapping
+        self._norm = Normalize(
+            vmin=cbar_range[0] or self.data.attrs["vmin"],
+            vmax=cbar_range[1] or self.data.attrs["vmax"],
+        )
+
         self.fig.colorbar(
-            plt.cm.ScalarMappable(norm=self._norm, cmap=self.cmap),
+            plt.cm.ScalarMappable(norm=self.norm, cmap=self.cmap),
             cax=cbar_ax,
             **cbar_kwargs,
         )
@@ -759,9 +770,9 @@ def ptable_heatmap(
     colormap: str = "viridis",
     log: bool = False,
     # Figure-scope
-    # f_block_voffset: float = 0.5,
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | Literal["AUTO"] = "AUTO",
+    # f_block_voffset: float = 0.5,
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     # tile_size: float | tuple[float, float] = 0.9,
@@ -779,8 +790,8 @@ def ptable_heatmap(
     values_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,
-    # cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
+    cbar_range: tuple[float | None, float | None] = (None, None),
     cbar_title: str = "Element Count",
     # cbar_title_symbol_fmt: str = "AUTO",
     cbar_title_kwargs: dict[str, Any] | None = None,
@@ -847,6 +858,8 @@ def ptable_heatmap(
         cbar_coords (tuple[float, float, float, float]): Colorbar
             position and size: [x, y, width, height] anchored at lower left
             corner of the bar. Defaults to (0.18, 0.8, 0.42, 0.05).
+        cbar_range (tuple): Colorbar values display range, use None for auto
+            detection for the corresponding boundary.
         cbar_title (str): Colorbar title. Defaults to "Values".
         cbar_title_symbol_fmt (str): TODO: finish this.
         cbar_title_kwargs (dict): Keyword arguments passed to
@@ -864,7 +877,7 @@ def ptable_heatmap(
             self,
             values_show_mode: Literal["value", "fraction", "percent", "off"],
             tile_colors: dict[str, ColorType] | None = None,
-            # overwrite_colors: dict[str, ColorType] | None = None,  # TODO: use this
+            overwrite_colors: dict[str, ColorType] | None = None,
             **kwargs: dict[str, Any],
         ) -> None:
             """Init Heatmap plotter.
@@ -882,12 +895,13 @@ def ptable_heatmap(
 
             self.values_show_mode = values_show_mode
 
-            # Normalize data upon request
+            # Normalize data for "fraction/percent" modes
             if values_show_mode == "fraction":
                 self.data = normalize_data(self.data, percentage=False)
             elif values_show_mode == "percent":
                 self.data = normalize_data(self.data, percentage=True)
 
+            self.overwrite_colors = overwrite_colors or {}
             self.tile_colors = tile_colors
 
         @property
@@ -898,15 +912,12 @@ def ptable_heatmap(
         def tile_colors(
             self,
             tile_colors: dict[str, ColorType] | None = None,
-            overwrite_colors: dict[str, ColorType] | None = None,
         ) -> None:
             """An element symbol to color mapping.
 
             Args:
                 tile_colors (dict[str, ColorType] | None): Tile colors.
                     Defaults to None for auto generation.
-                overwrite_colors (dict[str, ColorType] | None): Optional
-                    overwrite colors. Defaults to None.
             """
             # Generate tile colors from values if not given
             self._tile_colors = tile_colors or {}
@@ -919,7 +930,7 @@ def ptable_heatmap(
                     self._tile_colors[symbol] = self.cmap(self.norm(value))
 
             # Overwrite colors if any
-            self._tile_colors |= overwrite_colors or {}
+            self._tile_colors |= self.overwrite_colors
 
         def add_elem_values(
             self,
@@ -1034,6 +1045,7 @@ def ptable_heatmap(
         projector.add_colorbar(
             title=cbar_title,
             coords=cbar_coords,
+            cbar_range=cbar_range,
             cbar_kwargs=cbar_kwargs,
             title_kwargs=cbar_title_kwargs,
         )
