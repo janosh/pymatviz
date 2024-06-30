@@ -899,10 +899,8 @@ def ptable_heatmap(
             self.values_show_mode = values_show_mode
 
             # Normalize data for "fraction/percent" modes
-            if values_show_mode == "fraction":
+            if values_show_mode in {"fraction", "percent"}:
                 self.data = normalize_data(self.data, percentage=False)
-            elif values_show_mode == "percent":
-                self.data = normalize_data(self.data, percentage=True)
 
             self.overwrite_colors = overwrite_colors or {}
             self.tile_colors = tile_colors
