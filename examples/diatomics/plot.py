@@ -42,9 +42,8 @@ def plot_on_ax(
 
     ax.plot(distances, energy, marker=".")
     ax.axhline(0, color="tab:gray")
-    # ax.set_title(f"{formula}, shift: {shift:.4f}")
     ax.set_title(f"{formula}", fontsize=28)
-    ax.set_ylim(-20, 20)
+    ax.set(ylim=(-20, 20))
 
 
 def plot_homo_nuclear(model_size: str) -> None:

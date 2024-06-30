@@ -262,8 +262,8 @@ def normalize_and_crop_pdf(
 
     Args:
         file_path (str | Path): Path to the PDF file.
-        on_gs_not_found ('ignore' | 'warn' | 'error', optional): What to do if
-            Ghostscript is not found in PATH. Defaults to 'warn'.
+        on_gs_not_found ("ignore" | "warn" | "error", optional): What to do if
+            Ghostscript is not found in PATH. Defaults to "warn".
     """
     if which("gs") is None:
         if on_gs_not_found == "ignore":
