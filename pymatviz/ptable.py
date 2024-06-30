@@ -856,20 +856,24 @@ def ptable_heatmap(
 
         def __init__(
             self,
-            heat_mode: Literal["value", "fraction", "percent", "off"],
-            **kwargs,
+            show_values_mode: Literal["value", "fraction", "percent", "off"],
+            **kwargs: dict,
         ) -> None:
-            """Args:
-            heat_mode ("value" | "fraction" | "percent" | "off"): Heatmap display mode.
+            """Init Heatmap plotter.
+
+            Args:
+                show_values_mode ("value" | "fraction" | "percent" | "off"):
+                    Values display mode.
+                kwargs (dict): Kwargs to pass to super class.
             """
             super().__init__(**kwargs)
 
-            self.heat_mode = heat_mode
+            self.show_values_mode = show_values_mode
 
             # Normalize data upon request
-            if heat_mode == "fraction":
+            if show_values_mode == "fraction":
                 self.data = normalize_data(self.data, percentage=False)
-            elif heat_mode == "percent":
+            elif show_values_mode == "percent":
                 self.data = normalize_data(self.data, percentage=True)
 
         def add_elem_values(
@@ -909,7 +913,7 @@ def ptable_heatmap(
 
                 # Format value  # TODO: take format as argument
                 content = f"{content:.2f}"
-                if self.heat_mode == "percentage":
+                if self.show_values_mode == "percent":
                     content += "%"  # TODO: format depending on heat mode
 
                 elem_type_color = self.get_elem_type_color(symbol, default="black")
@@ -929,7 +933,7 @@ def ptable_heatmap(
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
-        heat_mode=show_values_mode,
+        show_values_mode=show_values_mode,
         log=log,
         colormap=colormap,
         plot_kwargs=plot_kwargs,

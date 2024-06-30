@@ -183,7 +183,8 @@ def log_scale(
 
 def normalize_data(data: pd.DataFrame, *, percentage: bool = False) -> pd.DataFrame:
     """Normalize data by the total sum.
-    TODO: might need a more descriptive name
+
+    TODO: might need a more descriptive name.
 
     Args:
         data (pd.DataFrame): DataFrame to scale.
@@ -193,14 +194,14 @@ def normalize_data(data: pd.DataFrame, *, percentage: bool = False) -> pd.DataFr
         pd.DataFrame: Normalized DataFrame.
     """
     # Calculate the total sum of all values
-    total_sum = data.applymap(np.sum).sum().sum()
+    total_sum = data.map(np.sum).sum().sum()
 
     # Normalize each value by dividing it by the total sum
-    normalized_data = data.applymap(lambda x: x / total_sum)
+    normalized_data = data.map(lambda x: x / total_sum)
 
     # Convert to percentage upon request
     if percentage:
-        normalized_data = normalized_data.applymap(lambda x: x * 100)
+        normalized_data = normalized_data.map(lambda x: x * 100)
 
     return normalized_data
 
