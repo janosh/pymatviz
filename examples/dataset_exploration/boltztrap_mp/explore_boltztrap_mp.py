@@ -42,13 +42,13 @@ df_boltz.describe()
 
 # %%
 ax = ptable_heatmap(df_boltz[Key.formula], log=True)
-ax.set_title("Elements in BoltzTraP MP dataset")
+ax.set(title="Elements in BoltzTraP MP dataset")
 save_fig(ax, "boltztrap_mp-ptable-heatmap.pdf")
 
 
 # %%
 ax = ptable_heatmap(df_boltz.sort_values("pf_n").tail(100)[Key.formula])
-ax.set_title("Elements of top 100 n-type powerfactors in BoltzTraP MP dataset")
+ax.set(title="Elements of top 100 n-type powerfactors in BoltzTraP MP dataset")
 save_fig(ax, "boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")
 
 

@@ -96,6 +96,6 @@ def marchenko_pastur(
     n_rows = len(matrix)
 
     rank_str = f"rank deficiency: {rank}/{n_rows} {'(None)' if n_rows == rank else ''}"
-    plt.text(*[0.95, 0.9], rank_str, transform=ax.transAxes, ha="right")
+    ax.text(*[0.95, 0.9], rank_str, transform=ax.transAxes, ha="right")
 
     return ax
