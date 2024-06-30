@@ -437,15 +437,13 @@ def plot_histogram(
         fig = go.Figure(**fig_kwargs)
         for label, vals in data.items():
             hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
-            fig.add_trace(
-                go.Bar(
-                    x=bin_edges[:-1],
-                    y=hist_vals,
-                    name=label,
-                    opacity=0.7,
-                    width=bin_width * (bin_edges[1] - bin_edges[0]),
-                    marker_line_width=0,
-                )
+            fig.add_bar(
+                x=bin_edges[:-1],
+                y=hist_vals,
+                name=label,
+                opacity=0.7,
+                width=bin_width * (bin_edges[1] - bin_edges[0]),
+                marker_line_width=0,
             )
 
         y_title = "Density" if density else "Count"

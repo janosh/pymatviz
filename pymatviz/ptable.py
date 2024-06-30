@@ -785,7 +785,7 @@ def ptable_heatmap(
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
         text_style (dict[str, Any]): Additional keyword arguments passed to
-            plt.text(). Defaults to dict(
+            ax.text(). Defaults to dict(
                 ha="center", fontsize=label_font_size, fontweight="semibold"
             )
         label_font_size (int): Font size for element symbols. Defaults to 16.
@@ -931,7 +931,7 @@ def ptable_heatmap(
         else:
             _text_color = text_color
 
-        symbol_text = plt.text(
+        symbol_text = ax.text(
             column + 0.5 * tile_width,
             # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
             period + (0.5 if show_values else 0.45) * tile_height,
@@ -940,7 +940,7 @@ def ptable_heatmap(
         )
 
         if heat_mode is not None and show_values:
-            plt.text(
+            ax.text(
                 column + 0.5 * tile_width,
                 period + 0.1 * tile_height,
                 label,
@@ -1044,7 +1044,7 @@ def ptable_heatmap_splits(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         cbar_title (str): Colorbar title. Defaults to "Values".
@@ -1505,7 +1505,7 @@ def ptable_hists(
             right corner.
         symbol_text (str | Callable[[Element], str]): Text to display for each element
             symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for element
             symbols. Defaults to None.
 
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
@@ -1643,7 +1643,7 @@ def ptable_scatters(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
@@ -1760,7 +1760,7 @@ def ptable_lines(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
