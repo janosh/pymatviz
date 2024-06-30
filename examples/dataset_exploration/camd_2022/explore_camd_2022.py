@@ -47,7 +47,7 @@ df_camd.hist(bins=50)
 # %%
 elem_counts = count_elements(df_camd.reduced_formula)
 ax = ptable_heatmap(elem_counts, log=True)
-ax.set_title("Elements in CAMD 2022 dataset")
+ax.set(title="Elements in CAMD 2022 dataset")
 save_fig(ax, "camd-2022-ptable-heatmap.pdf")
 
 

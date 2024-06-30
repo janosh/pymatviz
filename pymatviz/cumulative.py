@@ -66,9 +66,7 @@ def cumulative_residual(
 def cumulative_error(
     abs_err: ArrayLike, ax: plt.Axes | None = None, **kwargs: Any
 ) -> plt.Axes:
-    """Plot the empirical cumulative distribution of the absolute errors.
-
-    abs(y_true - y_pred).
+    """Plot the empirical cumulative distribution of abs(y_true - y_pred).
 
     Args:
         abs_err (array): Absolute error between y_true and y_pred, i.e.

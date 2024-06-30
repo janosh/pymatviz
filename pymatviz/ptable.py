@@ -577,8 +577,7 @@ class ChildPlotters:
         rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
         ax.set_clip_path(rect)
 
-        ax.set_xlim(-0.5, 0.5)
-        ax.set_ylim(-0.5, 0.5)
+        ax.set(xlim=(-0.5, 0.5), ylim=(-0.5, 0.5))
 
     @staticmethod
     def scatter(
@@ -691,15 +690,13 @@ class ChildPlotters:
 
         # Set tick labels
         ax.tick_params(**tick_kwargs)
-        ax.set_yticklabels([])
-        ax.set_yticks([])
+        ax.set(yticklabels=(), yticks=())
+        # Set x-ticks to min/max only
+        ax.set(xticks=[math.floor(x_range[0]), math.ceil(x_range[1])])
 
         # Hide the right, left and top spines
         ax.axis("on")
         ax.spines[["right", "top", "left"]].set_visible(False)
-
-        # Set x-ticks to min/max only
-        ax.set_xticks([math.floor(x_range[0]), math.ceil(x_range[1])])
 
 
 def ptable_heatmap(
