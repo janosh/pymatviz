@@ -919,26 +919,24 @@ def ptable_heatmap(
             text_style.setdefault("verticalalignment", "center")
 
         if symbol in exclude_elements:
-            text_clr = "black"
+            _text_color = "black"
         elif text_color == "auto":
             if isinstance(color, (tuple, list)) and len(color) >= 3:
                 # treat color as RGB tuple and choose black or white text for contrast
-                text_clr = pick_bw_for_contrast(color)
+                _text_color = pick_bw_for_contrast(color)
             else:
-                text_clr = "black"
+                _text_color = "black"
         elif isinstance(text_color, (tuple, list)):
-            text_clr = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
+            _text_color = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
         else:
-            text_clr = text_color
+            _text_color = text_color
 
-        text_style.setdefault("color", text_clr)
-
-        plt.text(
+        symbol_text = plt.text(
             column + 0.5 * tile_width,
             # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
             period + (0.5 if show_values else 0.45) * tile_height,
             symbol,
-            **text_style,
+            **{"color": _text_color} | text_style,
         )
 
         if heat_mode is not None and show_values:
@@ -948,7 +946,7 @@ def ptable_heatmap(
                 label,
                 fontsize=value_font_size,
                 horizontalalignment="center",
-                color=text_clr,
+                color=symbol_text.get_color(),
             )
 
         ax.add_patch(rect)
