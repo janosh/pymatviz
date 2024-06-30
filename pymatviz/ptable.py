@@ -756,7 +756,6 @@ def ptable_heatmap(
     *,
     # Heatmap specific
     colormap: str = "viridis",
-
     log: bool = False,
     # Figure-scope
     # f_block_voffset: float = 0.5,
@@ -770,12 +769,12 @@ def ptable_heatmap(
     # fmt: str | Callable[..., str] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] | None = None,
-    symbol_color: str = "black",  # TODO: control this by kwargs?
+    symbol_color: str = "white",
     symbol_kwargs: dict[str, Any] | None = None,
     # Values
     show_values_mode: Literal["value", "fraction", "percent", "off"] = "value",
     values_pos: tuple[float, float] | None = None,
-    values_color: str = "black",  # TODO: control this by kwargs?
+    values_color: str = "black",  # TODO: auto switch black/white by bg color
     values_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,
@@ -955,7 +954,7 @@ def ptable_heatmap(
         symbol_pos = (0.5, 0.65) if show_values_mode != "off" else (0.5, 0.5)
 
     # Add element symbols
-    symbol_kwargs = symbol_kwargs or {"fontsize": 16}
+    symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
 
     projector.add_elem_symbols(
         text=symbol_text,
