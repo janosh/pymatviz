@@ -655,7 +655,7 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for the child plotter.
             cmap (Colormap): Colormap.
-            cbar_axis (Literal["x", "y"]): The axis colormap
+            cbar_axis ("x" | "y"): The axis colormap
                 would be based on.
             child_kwargs: kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
@@ -741,7 +741,7 @@ def ptable_heatmap(
             also take any matplotlib.colors.Normalize subclass such as SymLogNorm as
             custom color scale. Defaults to False.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
         cbar_title (str, optional): Color bar title. Defaults to "Element Count".
@@ -1028,7 +1028,7 @@ def ptable_heatmap_splits(
                 and the split proceeds counter-clockwise (0 refers to
                 the x-axis). Defaults to 135 degrees.
         colormap (str): Matplotlib colormap name to use.
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
@@ -1206,7 +1206,7 @@ def ptable_heatmap_plotly(
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
         colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
-            Defaults to 'viridis'. See plotly.com/python/builtin-colorscales for names
+            Defaults to "viridis". See plotly.com/python/builtin-colorscales for names
             of other builtin color scales. Note "YlGn" and px.colors.sequential.YlGn are
             equivalent. Custom scales are specified as ["blue", "red"] or
             [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
@@ -1257,14 +1257,14 @@ def ptable_heatmap_plotly(
         cscale_range (tuple[float | None, float | None]): Colorbar range. Defaults to
             (None, None) meaning the range is automatically determined from the data.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
-            oxygen overpowers everything, you can do exclude_elements=['O'].
+            oxygen overpowers everything, you can do exclude_elements=["O"].
             Defaults to ().
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
-            Piece of advice: colorscale='viridis' and log=True go well together.
+            Piece of advice: colorscale="viridis" and log=True go well together.
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
         label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
             string formatting) to target strings. Set to False to disable. Defaults to
-            dict.fromkeys((np.nan, None, "nan"), " ") so as not to display 'nan' for
+            dict.fromkeys((np.nan, None, "nan"), " ") so as not to display "nan" for
             missing values.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
@@ -1491,7 +1491,7 @@ def ptable_hists(
         child_kwargs (dict): Keywords passed to ax.hist() for each histogram.
             Defaults to None.
 
-        cbar_axis (Literal["x", "y"]): The axis colormap would be based on.
+        cbar_axis ("x" | "y"): The axis colormap would be based on.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
@@ -1617,9 +1617,9 @@ def ptable_scatters(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
-        colormap (str): Matplotlib colormap name to use. Defaults to None'. See
+        colormap (str): Matplotlib colormap name to use. Defaults to None. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
@@ -1741,7 +1741,7 @@ def ptable_lines(
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
 
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.

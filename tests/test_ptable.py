@@ -392,7 +392,7 @@ def test_ptable_heatmap_ratio(
     )
     assert isinstance(ax, plt.Axes)
 
-    # check presence of legend handles 'not in numerator' and 'not in denominator'
+    # check presence of legend handles "not in numerator" and "not in denominator"
     legend = ax.get_legend()
     assert legend is None
     # get text annotations
