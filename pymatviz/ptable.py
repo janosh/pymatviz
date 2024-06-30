@@ -577,8 +577,7 @@ class ChildPlotters:
         rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
         ax.set_clip_path(rect)
 
-        ax.set_xlim(-0.5, 0.5)
-        ax.set_ylim(-0.5, 0.5)
+        ax.set(xlim=(-0.5, 0.5), ylim=(-0.5, 0.5))
 
     @staticmethod
     def scatter(
@@ -655,7 +654,7 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for the child plotter.
             cmap (Colormap): Colormap.
-            cbar_axis (Literal["x", "y"]): The axis colormap
+            cbar_axis ("x" | "y"): The axis colormap
                 would be based on.
             child_kwargs: kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
@@ -691,15 +690,13 @@ class ChildPlotters:
 
         # Set tick labels
         ax.tick_params(**tick_kwargs)
-        ax.set_yticklabels([])
-        ax.set_yticks([])
+        ax.set(yticklabels=(), yticks=())
+        # Set x-ticks to min/max only
+        ax.set(xticks=[math.floor(x_range[0]), math.ceil(x_range[1])])
 
         # Hide the right, left and top spines
         ax.axis("on")
         ax.spines[["right", "top", "left"]].set_visible(False)
-
-        # Set x-ticks to min/max only
-        ax.set_xticks([math.floor(x_range[0]), math.ceil(x_range[1])])
 
 
 def ptable_heatmap(
@@ -741,7 +738,7 @@ def ptable_heatmap(
             also take any matplotlib.colors.Normalize subclass such as SymLogNorm as
             custom color scale. Defaults to False.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
         cbar_title (str, optional): Color bar title. Defaults to "Element Count".
@@ -785,7 +782,7 @@ def ptable_heatmap(
         zero_symbol (str | float): Symbol to use for elements with value zero.
             Defaults to "-".
         text_style (dict[str, Any]): Additional keyword arguments passed to
-            plt.text(). Defaults to dict(
+            ax.text(). Defaults to dict(
                 ha="center", fontsize=label_font_size, fontweight="semibold"
             )
         label_font_size (int): Font size for element symbols. Defaults to 16.
@@ -919,36 +916,34 @@ def ptable_heatmap(
             text_style.setdefault("verticalalignment", "center")
 
         if symbol in exclude_elements:
-            text_clr = "black"
+            _text_color = "black"
         elif text_color == "auto":
             if isinstance(color, (tuple, list)) and len(color) >= 3:
                 # treat color as RGB tuple and choose black or white text for contrast
-                text_clr = pick_bw_for_contrast(color)
+                _text_color = pick_bw_for_contrast(color)
             else:
-                text_clr = "black"
+                _text_color = "black"
         elif isinstance(text_color, (tuple, list)):
-            text_clr = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
+            _text_color = text_color[0] if norm(tile_value) > 0.5 else text_color[1]
         else:
-            text_clr = text_color
+            _text_color = text_color
 
-        text_style.setdefault("color", text_clr)
-
-        plt.text(
+        symbol_text = ax.text(
             column + 0.5 * tile_width,
             # 0.45 needed to achieve vertical centering, not sure why 0.5 is off
             period + (0.5 if show_values else 0.45) * tile_height,
             symbol,
-            **text_style,
+            **{"color": _text_color} | text_style,
         )
 
         if heat_mode is not None and show_values:
-            plt.text(
+            ax.text(
                 column + 0.5 * tile_width,
                 period + 0.1 * tile_height,
                 label,
                 fontsize=value_font_size,
                 horizontalalignment="center",
-                color=text_clr,
+                color=symbol_text.get_color(),
             )
 
         ax.add_patch(rect)
@@ -1030,7 +1025,7 @@ def ptable_heatmap_splits(
                 and the split proceeds counter-clockwise (0 refers to
                 the x-axis). Defaults to 135 degrees.
         colormap (str): Matplotlib colormap name to use.
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
@@ -1046,7 +1041,7 @@ def ptable_heatmap_splits(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         cbar_title (str): Colorbar title. Defaults to "Values".
@@ -1208,7 +1203,7 @@ def ptable_heatmap_plotly(
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
         colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
-            Defaults to 'viridis'. See plotly.com/python/builtin-colorscales for names
+            Defaults to "viridis". See plotly.com/python/builtin-colorscales for names
             of other builtin color scales. Note "YlGn" and px.colors.sequential.YlGn are
             equivalent. Custom scales are specified as ["blue", "red"] or
             [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
@@ -1259,14 +1254,14 @@ def ptable_heatmap_plotly(
         cscale_range (tuple[float | None, float | None]): Colorbar range. Defaults to
             (None, None) meaning the range is automatically determined from the data.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
-            oxygen overpowers everything, you can do exclude_elements=['O'].
+            oxygen overpowers everything, you can do exclude_elements=["O"].
             Defaults to ().
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
-            Piece of advice: colorscale='viridis' and log=True go well together.
+            Piece of advice: colorscale="viridis" and log=True go well together.
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
         label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
             string formatting) to target strings. Set to False to disable. Defaults to
-            dict.fromkeys((np.nan, None, "nan"), " ") so as not to display 'nan' for
+            dict.fromkeys((np.nan, None, "nan"), " ") so as not to display "nan" for
             missing values.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
@@ -1493,7 +1488,7 @@ def ptable_hists(
         child_kwargs (dict): Keywords passed to ax.hist() for each histogram.
             Defaults to None.
 
-        cbar_axis (Literal["x", "y"]): The axis colormap would be based on.
+        cbar_axis ("x" | "y"): The axis colormap would be based on.
         cbar_title (str): Color bar title. Defaults to "Histogram Value".
         cbar_title_kwargs (dict): Keyword arguments passed to cbar.ax.set_title().
             Defaults to dict(fontsize=12, pad=10).
@@ -1507,7 +1502,7 @@ def ptable_hists(
             right corner.
         symbol_text (str | Callable[[Element], str]): Text to display for each element
             symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for element
             symbols. Defaults to None.
 
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
@@ -1619,9 +1614,9 @@ def ptable_scatters(
             If pd.Series, index is element symbols and values lists.
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
-        colormap (str): Matplotlib colormap name to use. Defaults to None'. See
+        colormap (str): Matplotlib colormap name to use. Defaults to None. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
@@ -1645,7 +1640,7 @@ def ptable_scatters(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
@@ -1743,7 +1738,7 @@ def ptable_lines(
             If pd.DataFrame, column names are element symbols,
             plots are created from each column.
 
-        on_empty ('hide' | 'show'): Whether to show or hide tiles for elements without
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool): Hide f-block (Lanthanum and Actinium series). Defaults to
             None, meaning hide if no data is provided for f-block elements.
@@ -1762,7 +1757,7 @@ def ptable_lines(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to

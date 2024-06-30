@@ -305,8 +305,8 @@ def test_add_ecdf_line_stacked() -> None:
     y2 = [2, 3, 4]
 
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=x, y=y1, name="Group 1"))
-    fig.add_trace(go.Bar(x=x, y=y2, name="Group 2"))
+    fig.add_bar(x=x, y=y1, name="Group 1")
+    fig.add_bar(x=x, y=y2, name="Group 2")
     fig.update_layout(barmode="stack")
 
     fig = add_ecdf_line(fig, values=np.concatenate([y1, y2]))
@@ -322,10 +322,8 @@ def test_add_ecdf_line_faceted() -> None:
     fig = make_subplots(rows=2, cols=2)
     for row in range(1, 3):
         for col in range(1, 3):
-            fig.add_trace(
-                go.Scatter(x=[1, 2, 3], y=[4, 5, 6], name=f"Trace {row}{col}"),
-                row=row,
-                col=col,
+            fig.add_scatter(
+                x=[1, 2, 3], y=[4, 5, 6], name=f"Trace {row}{col}", row=row, col=col
             )
 
     fig = add_ecdf_line(fig)
