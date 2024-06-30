@@ -596,9 +596,7 @@ class ChildPlotters:
         )
 
         # Crop the central rectangle from the pie chart
-        rect = Rectangle(
-            xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2
-        )
+        rect = Rectangle(xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2)
         ax.add_patch(rect)
 
         ax.set_xlim(-0.5, 0.5)
