@@ -566,6 +566,7 @@ class ChildPlotters:
         data: SupportedValueType,
         norm: Normalize,
         cmap: Colormap,
+        # tile_size: tuple[float, float],  # TODO:
         tick_kwargs: dict[str, Any],  # noqa: ARG004
     ) -> None:
         """Basic heatmap plotter.
@@ -577,6 +578,7 @@ class ChildPlotters:
             data (SupportedValueType): The values for the child plotter.
             norm (Normalize): Normalizer for data-color mapping.
             cmap (Colormap): Colormap used for value mapping.
+            tile_size (tuple[float, float]): The relative width and height of each tile.
             tick_kwargs: For compatibility with other plotters.
         """
         # TODO: remove repeated color mapping and use tile_colors property
@@ -594,7 +596,9 @@ class ChildPlotters:
         )
 
         # Crop the central rectangle from the pie chart
-        rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="black", lw=2)
+        rect = Rectangle(
+            xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="black", lw=2
+        )
         ax.add_patch(rect)
 
         ax.set_xlim(-0.5, 0.5)
@@ -636,7 +640,7 @@ class ChildPlotters:
         )
 
         # Crop the central rectangle from the pie chart
-        rect = Rectangle((-0.5, -0.5), 1, 1, fc="none", ec="none")
+        rect = Rectangle(xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="none")
         ax.set_clip_path(rect)
 
         ax.set_xlim(-0.5, 0.5)
@@ -769,13 +773,13 @@ def ptable_heatmap(
     # Heatmap specific
     colormap: str = "viridis",
     log: bool = False,
+    # tile_size: tuple[float, float] = (1.0, 1.0),
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | Literal["AUTO"] = "AUTO",
     # f_block_voffset: float = 0.5,
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
-    # tile_size: float | tuple[float, float] = 0.9,
     ax_kwargs: dict[str, Any] | None = None,
     # Symbol
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
@@ -811,6 +815,7 @@ def ptable_heatmap(
         # Heatmap specific
         colormap (str): The colormap to use.
         log (bool): Whether to log scale data.
+        tile_size (tuple[float, float]): The relative width and height of each tile.
 
         # Figure-scope
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
