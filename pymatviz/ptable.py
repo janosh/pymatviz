@@ -756,7 +756,7 @@ def ptable_heatmap(
     *,
     # Heatmap specific
     colormap: str = "viridis",
-    heat_mode: Literal["value", "fraction", "percent"] = "value",
+
     log: bool = False,
     # Figure-scope
     # f_block_voffset: float = 0.5,
@@ -773,7 +773,7 @@ def ptable_heatmap(
     symbol_color: str = "black",  # TODO: control this by kwargs?
     symbol_kwargs: dict[str, Any] | None = None,
     # Values
-    show_values: bool = True,
+    show_values_mode: Literal["value", "fraction", "percent", "off"] = "value",
     values_pos: tuple[float, float] | None = None,
     values_color: str = "black",  # TODO: control this by kwargs?
     values_kwargs: dict[str, Any] | None = None,
@@ -798,12 +798,6 @@ def ptable_heatmap(
 
         # Heatmap specific
         colormap (str): The colormap to use.
-        heat_mode ("value" | "fraction" | "percent"): The display mode:
-            - "value": Display values as is.
-            - "fraction": As a fraction of the total (0.10).
-            - "percent": As a percentage of the total (10%).
-            "fraction" and "percent" can be used to make the colors in
-                different plots comparable.
         log (bool): Whether to log scale data.
 
         # Figure-scope
@@ -831,6 +825,13 @@ def ptable_heatmap(
             element symbols. Defaults to None.
 
         # Values
+        show_values_mode (str): The values display mode:
+            - "off": Don't show values.
+            - "value": Display values as is.
+            - "fraction": As a fraction of the total (0.10).
+            - "percent": As a percentage of the total (10%).
+            "fraction" and "percent" can be used to make the colors in
+                different plots comparable.
         show_values (bool): Whether to show values for each tile.
         values_pos (tuple[float, float]): The position of values inside the tile.
         values_color (str): The font color of values.
@@ -856,11 +857,11 @@ def ptable_heatmap(
 
         def __init__(
             self,
-            heat_mode: Literal["value", "fraction", "percent"],
+            heat_mode: Literal["value", "fraction", "percent", "off"],
             **kwargs,
         ) -> None:
             """Args:
-            heat_mode ("value" | "fraction" | "percent"): Heatmap display mode.
+            heat_mode ("value" | "fraction" | "percent" | "off"): Heatmap display mode.
             """
             super().__init__(**kwargs)
 
@@ -929,7 +930,7 @@ def ptable_heatmap(
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
-        heat_mode=heat_mode,
+        heat_mode=show_values_mode,
         log=log,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
@@ -951,7 +952,7 @@ def ptable_heatmap(
 
     # Set better default symbol position
     if symbol_pos is None:
-        symbol_pos = (0.5, 0.65) if show_values else (0.5, 0.5)
+        symbol_pos = (0.5, 0.65) if show_values_mode != "off" else (0.5, 0.5)
 
     # Add element symbols
     symbol_kwargs = symbol_kwargs or {"fontsize": 16}
@@ -964,7 +965,7 @@ def ptable_heatmap(
     )
 
     # Show values upon request
-    if show_values:
+    if show_values_mode != "off":
         projector.add_elem_values(
             pos=values_pos or (0.5, 0.25),
             text_color=values_color,
