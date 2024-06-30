@@ -973,6 +973,8 @@ def ptable_heatmap(
 
     # Show colorbar upon request
     if show_cbar:
+        cbar_title_kwargs = cbar_title_kwargs or {"fontsize": 16, "fontweight": "bold"}
+
         projector.add_colorbar(
             title=cbar_title,
             coords=cbar_coords,
