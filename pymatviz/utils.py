@@ -287,7 +287,7 @@ def luminance(color: tuple[float, float, float]) -> float:
 
 def pick_bw_for_contrast(
     color: tuple[float, float, float], text_color_threshold: float = 0.7
-) -> str:
+) -> Literal["black", "white"]:
     """Choose black or white text color for a given background color based on luminance.
 
     Args:
@@ -296,7 +296,7 @@ def pick_bw_for_contrast(
             black or white text color. Defaults to 0.7.
 
     Returns:
-        str: "black" or "white" depending on the luminance of the background color.
+        "black" or "white": Depending on the luminance of the background color.
     """
     light_bg = luminance(color) > text_color_threshold
     return "black" if light_bg else "white"

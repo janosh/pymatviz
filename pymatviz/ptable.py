@@ -27,7 +27,7 @@ from pymatviz._preprocess_data import (
 )
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
 from pymatviz.enums import ElemColorMode, ElemColors, ElemCountMode, Key
-from pymatviz.utils import df_ptable
+from pymatviz.utils import df_ptable, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
@@ -568,6 +568,7 @@ class ChildPlotters:
             cmap (Colormap): Colormap used for value mapping.
             tick_kwargs: For compatibility with other plotters.
         """
+        # TODO: remove repeated color mapping and use tile_colors property
         # Map values to colors
         if isinstance(data, (Sequence, np.ndarray)):
             colors = [cmap(norm(value)) for value in data]
@@ -774,7 +775,7 @@ def ptable_heatmap(
     # Values
     values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     values_pos: tuple[float, float] | None = None,
-    values_color: str = "black",  # TODO: auto switch black/white by bg color
+    values_color: str = "AUTO",
     values_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,
@@ -819,7 +820,8 @@ def ptable_heatmap(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_color (str): The font color of symbol.
+        symbol_color (str): The font color of symbol. "AUTO" for automatically
+            switch between black/white depending on the background color.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
 
@@ -856,13 +858,19 @@ def ptable_heatmap(
         def __init__(
             self,
             values_show_mode: Literal["value", "fraction", "percent", "off"],
-            **kwargs: dict,
+            tile_colors: dict[str, ColorType] | None = None,
+            overwrite_colors: dict[str, ColorType] | None = None,
+            **kwargs: dict[str, Any],
         ) -> None:
             """Init Heatmap plotter.
 
             Args:
                 values_show_mode ("value" | "fraction" | "percent" | "off"):
                     Values display mode.
+                tile_colors (dict[str, ColorType] | None): Tile colors.
+                    Defaults to None for auto generation.
+                overwrite_colors (dict[str, ColorType] | None): Optional
+                    overwrite colors. Defaults to None.
                 kwargs (dict): Kwargs to pass to super class.
             """
             super().__init__(**kwargs)
@@ -875,11 +883,44 @@ def ptable_heatmap(
             elif values_show_mode == "percent":
                 self.data = normalize_data(self.data, percentage=True)
 
+            self.tile_colors = (tile_colors, overwrite_colors)
+
+        @property
+        def tile_colors(self) -> dict[str, ColorType]:
+            return self._tile_colors
+
+        @tile_colors.setter
+        def tile_colors(
+            self,
+            tile_colors: dict[str, ColorType] | None = None,
+            overwrite_colors: dict[str, ColorType] | None = None,
+        ) -> None:
+            """An element symbol to color mapping.
+
+            Args:
+                tile_colors (dict[str, ColorType] | None): Tile colors.
+                    Defaults to None for auto generation.
+                overwrite_colors (dict[str, ColorType] | None): Optional
+                    overwrite colors. Defaults to None.
+            """
+            # Generate tile colors from values if not given
+            self._tile_colors = tile_colors or {}
+
+            if tile_colors is None:
+                for symbol in self.data.index:
+                    # Get value and map to color
+                    value = self.data.loc[symbol, Key.heat_val][0]
+
+                    self._tile_colors[symbol] = self.cmap(self.norm(value))
+
+            # Overwrite colors if any
+            self._tile_colors |= overwrite_colors or {}
+
         def add_elem_values(
             self,
             *,
             pos: tuple[float, float] = (0.5, 0.25),
-            text_color: str = "black",
+            text_color: str = "AUTO",
             kwargs: dict[str, Any] | None = None,
         ) -> None:
             """Format and show element values.
@@ -910,19 +951,23 @@ def ptable_heatmap(
                 # Get value
                 content = self.data.loc[symbol, Key.heat_val][0]
 
-                # Format value  # TODO: take format as argument
+                # Format value  # TODO: take f-string format as argument
                 content = f"{content:.2f}"
                 if self.values_show_mode == "percent":
-                    content += "%"  # TODO: format depending on heat mode
+                    content += "%"
 
-                elem_type_color = self.get_elem_type_color(symbol, default="black")
+                # Pick value text color
+                if text_color == ElemColorMode.element_types:
+                    color = self.get_elem_type_color(symbol, default="black")
+                elif text_color == "AUTO":
+                    color = pick_bw_for_contrast(self.tile_colors[symbol])
+                else:
+                    color = text_color
 
                 ax.text(
                     *pos,
                     content,
-                    color=elem_type_color
-                    if text_color == ElemColorMode.element_types
-                    else text_color,
+                    color=color,
                     ha="center",
                     va="center",
                     transform=ax.transAxes,
@@ -939,7 +984,7 @@ def ptable_heatmap(
         hide_f_block=hide_f_block,
     )
 
-    # Call child plotter: rectangle
+    # Call child plotter: heatmap
     child_kwargs = {
         "cmap": projector.cmap,
         "norm": projector.norm,
