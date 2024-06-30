@@ -767,7 +767,6 @@ def ptable_heatmap(
     # tile_size: float | tuple[float, float] = 0.9,
     ax_kwargs: dict[str, Any] | None = None,
     # Symbol
-    # fmt: str | Callable[..., str] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] | None = None,
     symbol_color: str = "white",
@@ -775,13 +774,15 @@ def ptable_heatmap(
     # Values
     values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     values_pos: tuple[float, float] | None = None,
+    values_fmt: str = "AUTO",
     values_color: str = "AUTO",
     values_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,
-    cbar_title: str = "Element Count",
     # cbar_range: tuple[float | None, float | None] | None = None,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
+    cbar_title: str = "Element Count",
+    # cbar_title_symbol_fmt: str = "AUTO",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
 ) -> plt.Axes:
@@ -827,25 +828,29 @@ def ptable_heatmap(
 
         # Values
         values_show_mode (str): The values display mode:
-            - "off": Don't show values.
+            - "off": Hide values.
             - "value": Display values as is.
             - "fraction": As a fraction of the total (0.10).
             - "percent": As a percentage of the total (10%).
             "fraction" and "percent" can be used to make the colors in
                 different plots comparable.
         values_pos (tuple[float, float]): The position of values inside the tile.
-        values_color (str): The font color of values.
+        values_fmt (str | "AUTO"): f-string format for values. Defaults to ".1%"
+            (1 decimal place) if values_show_mode is "percent", else ".3g".
+        values_color (str | "AUTO"): The font color of values. Use "AUTO" for
+            automatically switch between black/white depending on the background.
         values_kwargs (dict): Keyword arguments passed to plt.text() for
             values. Defaults to None.
 
         # Colorbar
         show_cbar (bool): Whether to show colorbar.
-        cbar_title (str): Colorbar title. Defaults to "Values".
-        cbar_title_kwargs (dict): Keyword arguments passed to
-            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_coords (tuple[float, float, float, float]): Colorbar
             position and size: [x, y, width, height] anchored at lower left
             corner of the bar. Defaults to (0.18, 0.8, 0.42, 0.05).
+        cbar_title (str): Colorbar title. Defaults to "Values".
+        cbar_title_symbol_fmt (str): TODO: finish this.
+        cbar_title_kwargs (dict): Keyword arguments passed to
+            cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
     Returns:
@@ -859,7 +864,7 @@ def ptable_heatmap(
             self,
             values_show_mode: Literal["value", "fraction", "percent", "off"],
             tile_colors: dict[str, ColorType] | None = None,
-            overwrite_colors: dict[str, ColorType] | None = None,
+            # overwrite_colors: dict[str, ColorType] | None = None,  # TODO: use this
             **kwargs: dict[str, Any],
         ) -> None:
             """Init Heatmap plotter.
@@ -883,7 +888,7 @@ def ptable_heatmap(
             elif values_show_mode == "percent":
                 self.data = normalize_data(self.data, percentage=True)
 
-            self.tile_colors = (tile_colors, overwrite_colors)
+            self.tile_colors = tile_colors
 
         @property
         def tile_colors(self) -> dict[str, ColorType]:
@@ -919,6 +924,7 @@ def ptable_heatmap(
         def add_elem_values(
             self,
             *,
+            text_fmt: str,
             pos: tuple[float, float] = (0.5, 0.25),
             text_color: str = "AUTO",
             kwargs: dict[str, Any] | None = None,
@@ -926,6 +932,7 @@ def ptable_heatmap(
             """Format and show element values.
 
             Args:
+                text_fmt (str): f-string format for the value text.
                 pos (tuple[float, float]): Position of the value in the tile.
                 text_color (str): Value text color.
                 kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
@@ -933,6 +940,10 @@ def ptable_heatmap(
             # Update symbol kwargs
             kwargs = kwargs or {}
             kwargs.setdefault("fontsize", 12)
+
+            # Generate values format depending on the display mode
+            if text_fmt == "AUTO":
+                text_fmt = ".1%" if values_show_mode == "percent" else ".3g"
 
             # Add value for each element
             for element in Element:
@@ -948,13 +959,9 @@ def ptable_heatmap(
                 row, column = df_ptable.loc[symbol, ["row", "column"]]
                 ax: plt.Axes = self.axes[row - 1][column - 1]
 
-                # Get value
+                # Get and format value
                 content = self.data.loc[symbol, Key.heat_val][0]
-
-                # Format value  # TODO: take f-string format as argument
-                content = f"{content:.2f}"
-                if self.values_show_mode == "percent":
-                    content += "%"
+                content = f"{content:{text_fmt}}"
 
                 # Pick value text color
                 if text_color == ElemColorMode.element_types:
@@ -1015,6 +1022,7 @@ def ptable_heatmap(
     if values_show_mode != "off":
         projector.add_elem_values(
             pos=values_pos or (0.5, 0.25),
+            text_fmt=values_fmt,
             text_color=values_color,
             kwargs=values_kwargs,
         )
