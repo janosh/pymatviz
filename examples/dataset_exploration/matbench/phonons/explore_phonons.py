@@ -28,7 +28,7 @@ from pymatviz.io import save_fig
 df_phonon = load_dataset(data_name := "matbench_phonons")
 last_dos_peak = "last phdos peak"
 
-df_phonon[["spg_symbol", Key.spacegroup]] = [
+df_phonon[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info() for struct in tqdm(df_phonon[Key.structure])
 ]
 
@@ -48,5 +48,5 @@ save_fig(ax, "phonons-ptable-heatmap.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_phonon[Key.spacegroup])
+ax = spacegroup_hist(df_phonon[Key.spg_num])
 save_fig(ax, "phonons-spacegroup-hist.pdf")
