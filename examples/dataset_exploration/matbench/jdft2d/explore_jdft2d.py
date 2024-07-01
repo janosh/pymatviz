@@ -23,7 +23,7 @@ https://ml.materialsproject.org/projects/matbench_jdft2d
 # %%
 df_2d = load_dataset("matbench_jdft2d")
 
-df_2d[[Key.spacegroup_symbol, Key.spacegroup]] = [
+df_2d[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info() for struct in tqdm(df_2d[Key.structure])
 ]
 
@@ -45,12 +45,12 @@ save_fig(ax, "jdft2d-ptable-heatmap.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_2d[Key.spacegroup], log=True)
+ax = spacegroup_hist(df_2d[Key.spg_num], log=True)
 save_fig(ax, "jdft2d-spacegroup-hist.pdf")
 
 
 # %%
-fig = spacegroup_sunburst(df_2d[Key.spacegroup], show_counts="percent")
+fig = spacegroup_sunburst(df_2d[Key.spg_num], show_counts="percent")
 fig.layout.title = "Spacegroup sunburst of the JARVIS DFT 2D dataset"
 fig.write_image("jdft2d-spacegroup-sunburst.pdf")
 fig.show()

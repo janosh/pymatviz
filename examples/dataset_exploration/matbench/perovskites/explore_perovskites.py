@@ -27,7 +27,7 @@ https://ml.materialsproject.org/projects/matbench_perovskites
 # %%
 df_perov = load_dataset("matbench_perovskites")
 
-df_perov[[Key.spacegroup_symbol, Key.spacegroup]] = [
+df_perov[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info() for struct in tqdm(df_perov[Key.structure])
 ]
 df_perov[Key.volume] = df_perov[Key.structure].map(lambda struct: struct.volume)
@@ -35,7 +35,7 @@ df_perov[Key.volume] = df_perov[Key.structure].map(lambda struct: struct.volume)
 df_perov[Key.formula] = df_perov[Key.structure].map(lambda cryst: cryst.formula)
 
 df_perov[Key.crystal_system] = [
-    crystal_sys_from_spg_num(x) for x in df_perov[Key.spacegroup]
+    crystal_sys_from_spg_num(x) for x in df_perov[Key.spg_num]
 ]
 
 
@@ -64,11 +64,11 @@ save_fig(ax, "perovskites-crystal-system-counts.pdf")
 
 
 # %%
-df_perov.plot.scatter(x=Key.volume, y="e_form", c=Key.spacegroup, colormap="viridis")
+df_perov.plot.scatter(x=Key.volume, y="e_form", c=Key.spg_num, colormap="viridis")
 
 
 # %%
-fig = spacegroup_sunburst(df_perov[Key.spacegroup], show_counts="percent")
+fig = spacegroup_sunburst(df_perov[Key.spg_num], show_counts="percent")
 fig.layout.title = "Matbench Perovskites spacegroup sunburst"
 fig.write_image("perovskite-spacegroup-sunburst.pdf")
 fig.show()

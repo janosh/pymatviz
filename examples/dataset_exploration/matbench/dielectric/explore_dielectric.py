@@ -33,7 +33,7 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 # %%
 df_diel = load_dataset("matbench_dielectric")
 
-df_diel[[Key.spacegroup_symbol, Key.spacegroup]] = [
+df_diel[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info()
     for struct in tqdm(df_diel[Key.structure], desc="Getting spacegroups")
 ]
@@ -44,7 +44,7 @@ df_diel["wyckoff"] = [
 ]
 df_diel["n_wyckoff"] = df_diel.wyckoff.map(count_wyckoff_positions)
 
-df_diel[Key.crystal_system] = df_diel[Key.spacegroup].map(crystal_sys_from_spg_num)
+df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(crystal_sys_from_spg_num)
 
 df_diel[Key.volume] = [x.volume for x in df_diel[Key.structure]]
 df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
@@ -64,13 +64,13 @@ fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
 
 
 # %%
-ax = spacegroup_hist(df_diel[Key.spacegroup])
+ax = spacegroup_hist(df_diel[Key.spg_num])
 ax.set_title("Space group histogram", y=1.1)
 save_fig(ax, "dielectric-spacegroup-hist.pdf")
 
 
 # %%
-fig = spacegroup_sunburst(df_diel[Key.spacegroup], show_counts="percent")
+fig = spacegroup_sunburst(df_diel[Key.spg_num], show_counts="percent")
 fig.layout.title = "Space group sunburst"
 # save_fig(fig, "dielectric-spacegroup-sunburst.pdf")
 fig.show()
@@ -83,7 +83,7 @@ fig = px.violin(
     x=Key.crystal_system,
     y="n",
     points="all",
-    hover_data=[Key.spacegroup],
+    hover_data=[Key.spg_num],
     hover_name=Key.formula,
 ).update_traces(jitter=1)
 
@@ -117,7 +117,7 @@ fig = px.violin(
     x=Key.crystal_system,
     y="n_wyckoff",
     points="all",
-    hover_data=[Key.spacegroup],
+    hover_data=[Key.spg_num],
     hover_name=Key.formula,
     category_orders={Key.crystal_system: crystal_sys_order},
     log_y=True,
@@ -158,7 +158,7 @@ fig = px.scatter(
     y="n",
     color=Key.crystal_system,
     size="n",
-    hover_data=[Key.spacegroup],
+    hover_data=[Key.spg_num],
     hover_name=Key.formula,
     range_x=[0, 1500],
 )

@@ -32,7 +32,7 @@ from pymatviz.io import save_fig
 df_carrier = load_dataset("ricci_boltztrap_mp_tabular")
 
 # getting space group symbols and numbers takes about 2 min
-df_carrier[[Key.spacegroup_symbol, Key.spacegroup]] = [
+df_carrier[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info() for struct in tqdm(df_carrier[Key.structure])
 ]
 
@@ -83,6 +83,6 @@ save_fig(ax, "carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_carrier[Key.spacegroup])
+ax = spacegroup_hist(df_carrier[Key.spg_num])
 ax.set(title="Spacegroup distribution in the Ricci carrier transport dataset")
 save_fig(ax, "carrier-transport-spacegroup-hist.pdf")
