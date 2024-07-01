@@ -478,8 +478,6 @@ class PTableProjector:
         cbar_ax = self.fig.add_axes(coords)
 
         # Set colorbar range
-        # TODO: need double-check overwrite norm would not lead to
-        # unexpected value mapping
         self._norm = Normalize(
             vmin=cbar_range[0] or self.data.attrs["vmin"],
             vmax=cbar_range[1] or self.data.attrs["vmax"],
