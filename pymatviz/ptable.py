@@ -958,7 +958,10 @@ def ptable_heatmap(
             """
             # Update symbol kwargs
             kwargs = kwargs or {}
-            kwargs.setdefault("fontsize", 12)
+            if self.sci_notation:
+                kwargs.setdefault("fontsize", 10)
+            else:
+                kwargs.setdefault("fontsize", 12)
 
             # Add value for each element
             for element in Element:
@@ -977,6 +980,10 @@ def ptable_heatmap(
                 # Get and format value
                 content = self.data.loc[symbol, Key.heat_val][0]
                 content = f"{content:{text_fmt}}"
+
+                # Simplify scientific notation, say 1e-01 to 1e-1
+                if self.sci_notation and "e-0" in content:
+                    content = content.replace("e-0", "e-")
 
                 # Pick value text color
                 if text_color == ElemColorMode.element_types:
