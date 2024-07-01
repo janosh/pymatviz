@@ -405,7 +405,7 @@ def get_cbar_label_formatter(
         return PercentFormatter(xmax=1, decimals=decimal_places)
 
     if sci_notation:
-        formatter = ScalarFormatter(useMathText=True)
+        formatter = ScalarFormatter(useMathText=False)
         formatter.set_powerlimits((0, 0))
         return formatter
 
