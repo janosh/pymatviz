@@ -35,14 +35,14 @@ df_grvh = load_dataset("matbench_log_gvrh")
 df_kvrh = load_dataset("matbench_log_kvrh")
 
 # getting space group symbols and numbers for 10,987 structures takes about 45 sec
-df_grvh[[Key.spacegroup_symbol, Key.spacegroup]] = [
+df_grvh[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info()
     for struct in tqdm(
         df_grvh[Key.structure], desc="Getting matbench_log_gvrh spacegroups"
     )
 ]
 df_grvh[Key.crystal_system] = [
-    crystal_sys_from_spg_num(x) for x in df_grvh[Key.spacegroup]
+    crystal_sys_from_spg_num(x) for x in df_grvh[Key.spg_num]
 ]
 
 df_grvh["wyckoff"] = [
@@ -134,12 +134,12 @@ save_fig(ax, "log_gvrh-ptable-heatmap.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_grvh[Key.spacegroup])
+ax = spacegroup_hist(df_grvh[Key.spg_num])
 save_fig(ax, "log_gvrh-spacegroup-hist.pdf")
 
 
 # %%
-fig = spacegroup_sunburst(df_grvh[Key.spacegroup], show_counts="percent")
+fig = spacegroup_sunburst(df_grvh[Key.spg_num], show_counts="percent")
 fig.layout.title = "Spacegroup sunburst of the JARVIS DFT 2D dataset"
 fig.write_image("log_gvrh-spacegroup-sunburst.pdf")
 fig.show()
@@ -152,7 +152,7 @@ fig = px.violin(
     x=Key.crystal_system,
     y="n_wyckoff",
     points="all",
-    hover_data=[Key.spacegroup],
+    hover_data=[Key.spg_num],
     hover_name=Key.formula,
     category_orders={Key.crystal_system: crystal_sys_order},
     log_y=True,

@@ -183,14 +183,14 @@ for label, df in (
     ("r2scan", df_r2scan),
     # ("pbe", df_pbe),
 ):
-    df[Key.spacegroup] = [
+    df[Key.spg_num] = [
         struct.get_space_group_info()[1]
         for struct in tqdm(df[Key.structure], desc=f"{label} spacegroups")
     ]
 
 
 # %% high-temperate MLMD frames are expected to have low symmetry (mostly triclinic)
-fig = spacegroup_sunburst(df_r2scan[Key.spacegroup], show_counts="percent")
+fig = spacegroup_sunburst(df_r2scan[Key.spg_num], show_counts="percent")
 fig.layout.title = dict(text=f"{n_r2scan:,} r2SCAN spacegroups", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=30)
 fig.show()
@@ -199,7 +199,7 @@ save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
 
 # %% spacegroup histogram
 fig = spacegroup_hist(
-    df_r2scan[Key.spacegroup], title="r2SCAN spacegroup histogram", log=True
+    df_r2scan[Key.spg_num], title="r2SCAN spacegroup histogram", log=True
 )
 fig.show()
 save_fig(fig, "r2scan-spacegroup-hist.pdf")
