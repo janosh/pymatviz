@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import re
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, Union
 
@@ -15,6 +16,7 @@ import plotly.express as px
 import plotly.figure_factory as ff
 from matplotlib.colors import Colormap, Normalize
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import FormatStrFormatter, PercentFormatter
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
@@ -789,8 +791,8 @@ def ptable_heatmap(
     show_cbar: bool = True,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
     cbar_range: tuple[float | None, float | None] = (None, None),
+    cbar_label_fmt: str = "AUTO",
     cbar_title: str = "Element Count",
-    # cbar_title_symbol_fmt: str = "AUTO",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
 ) -> plt.Axes:
@@ -858,8 +860,8 @@ def ptable_heatmap(
             corner of the bar. Defaults to (0.18, 0.8, 0.42, 0.05).
         cbar_range (tuple): Colorbar values display range, use None for auto
             detection for the corresponding boundary.
+        cbar_label_fmt (str): f-string format option for color tick labels.
         cbar_title (str): Colorbar title. Defaults to "Values".
-        cbar_title_symbol_fmt (str): TODO: finish this.
         cbar_title_kwargs (dict): Keyword arguments passed to
             cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
@@ -948,10 +950,6 @@ def ptable_heatmap(
             kwargs = kwargs or {}
             kwargs.setdefault("fontsize", 12)
 
-            # Generate values format depending on the display mode
-            if text_fmt == "AUTO":
-                text_fmt = ".1%" if values_show_mode == "percent" else ".3g"
-
             # Add value for each element
             for element in Element:
                 # Hide f-block
@@ -1027,6 +1025,10 @@ def ptable_heatmap(
 
     # Show values upon request
     if values_show_mode != "off":
+        # Generate values format depending on the display mode
+        if values_fmt == "AUTO":
+            values_fmt = ".1%" if values_show_mode == "percent" else ".3g"
+
         projector.add_elem_values(
             pos=values_pos or (0.5, 0.25),
             text_fmt=values_fmt,
@@ -1037,6 +1039,19 @@ def ptable_heatmap(
     # Show colorbar upon request
     if show_cbar:
         cbar_title_kwargs = cbar_title_kwargs or {"fontsize": 16, "fontweight": "bold"}
+        cbar_kwargs = cbar_kwargs or {}
+
+        # Generate colorbar tick label format
+        cbar_label_fmt = values_fmt if cbar_label_fmt == "AUTO" else cbar_label_fmt
+
+        if values_show_mode == "percent":
+            match = re.search(r"\.(\d+)%", cbar_label_fmt)
+            decimal_places = int(match[1]) if match else 1
+            formatter = PercentFormatter(xmax=1, decimals=decimal_places)
+        else:
+            formatter = FormatStrFormatter(f"%{cbar_label_fmt}")
+
+        cbar_kwargs.setdefault("format", formatter)
 
         projector.add_colorbar(
             title=cbar_title,
