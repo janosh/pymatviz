@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import itertools
 import math
-import re
-import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, Union
 
@@ -17,7 +15,6 @@ import plotly.express as px
 import plotly.figure_factory as ff
 from matplotlib.colors import Colormap, Normalize
 from matplotlib.patches import Rectangle
-from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
@@ -30,14 +27,13 @@ from pymatviz._preprocess_data import (
 )
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
 from pymatviz.enums import ElemColorMode, ElemColors, ElemCountMode, Key
-from pymatviz.utils import df_ptable, pick_bw_for_contrast
+from pymatviz.utils import df_ptable, get_cbar_label_formatter, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
     from typing import Any, Callable
 
     import plotly.graph_objects as go
-    from matplotlib.ticker import Formatter
     from matplotlib.typing import ColorType
 
 
@@ -1003,53 +999,6 @@ def ptable_heatmap(
                     **kwargs,
                 )
 
-        def get_cbar_label_formatter(
-            self,
-            cbar_label_fmt: str,
-            values_fmt: str,
-            default_decimal_places: int = 1,
-        ) -> Formatter:
-            """Generate colorbar tick label formatter.
-
-            Work differently for different values_show_mode:
-                - "value/fraction" mode: Use cbar_label_fmt (or values_fmt) as is.
-                - "percent" mode: Get number of decimal places to keep from fmt
-                    string, for example 1 from ".1%".
-
-            TODO: need unit test.
-
-            TODO: relocate to pymatviz.utils.
-
-            Args:
-                cbar_label_fmt (str): f-string option for colorbar tick labels.
-                values_fmt (str): f-string option for tile values, would be used if
-                    cbar_label_fmt is "AUTO".
-                default_decimal_places (int): Default number of decimal places
-                    to use if above fmt is invalid.
-
-            Returns:
-                PercentFormatter or FormatStrFormatter.
-            """
-            cbar_label_fmt = values_fmt if cbar_label_fmt == "AUTO" else cbar_label_fmt
-
-            if self.values_show_mode == "percent":
-                if match := re.search(r"\.(\d+)%", cbar_label_fmt):
-                    decimal_places = int(match[1])
-                else:
-                    warnings.warn(
-                        f"Invalid {cbar_label_fmt=}, use {default_decimal_places=}",
-                        stacklevel=2,
-                    )
-                    decimal_places = default_decimal_places
-                return PercentFormatter(xmax=1, decimals=decimal_places)
-
-            if self.sci_notation:
-                formatter = ScalarFormatter(useMathText=True)
-                formatter.set_powerlimits((0, 0))
-                return formatter
-
-            return FormatStrFormatter(f"%{cbar_label_fmt}")
-
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
@@ -1111,7 +1060,13 @@ def ptable_heatmap(
         # Generate colorbar tick label format
         cbar_kwargs = cbar_kwargs or {}
         cbar_kwargs.setdefault(
-            "format", projector.get_cbar_label_formatter(cbar_label_fmt, values_fmt)
+            "format",
+            get_cbar_label_formatter(
+                cbar_label_fmt=cbar_label_fmt,
+                values_fmt=values_fmt,
+                values_show_mode=values_show_mode,
+                sci_notation=sci_notation,
+            ),
         )
 
         cbar_title_kwargs = cbar_title_kwargs or {"fontsize": 16, "fontweight": "bold"}
