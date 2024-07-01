@@ -110,8 +110,8 @@ class Key(LabelEnum):
 
     # Structural
     crystal_system = "crystal_system", "Crystal System"
-    spacegroup = "spacegroup", "Spacegroup Number"
-    spacegroup_symbol = "spacegroup_symbol", "Spacegroup Symbol"
+    spg_num = "space_group_number", "Space Group Number"
+    spg_symbol = "space_group_symbol", "Space Group Symbol"
     wyckoff = "wyckoff", "Aflow-style Wyckoff Label"
     n_sites = "n_sites", "Number of Sites"
     structure = "structure", "Structure"

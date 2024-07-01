@@ -18,7 +18,7 @@ set_plotly_template("pymatviz_white")
 df_phonons = load_dataset("matbench_phonons")
 df_expt_gap = load_dataset("matbench_expt_gap")
 
-df_phonons[["spg_symbol", Key.spacegroup]] = [
+df_phonons[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info()
     for struct in tqdm(df_phonons[Key.structure], desc="Getting spacegroups")
 ]
@@ -40,10 +40,10 @@ save_and_compress_svg(ax, "elements-hist")
 
 # %% Spacegroup histograms
 for backend in VALID_BACKENDS:
-    fig = spacegroup_hist(df_phonons[Key.spacegroup], backend=backend)
+    fig = spacegroup_hist(df_phonons[Key.spg_num], backend=backend)
     save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 
-    fig = spacegroup_hist(df_phonons.spg_symbol, backend=backend)
+    fig = spacegroup_hist(df_phonons[Key.spg_symbol], backend=backend)
     save_and_compress_svg(fig, f"spg-symbol-hist-{backend}")
 
 

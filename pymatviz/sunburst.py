@@ -56,22 +56,22 @@ def spacegroup_sunburst(
         series = pd.Series(data)
 
     df_spg_counts = pd.DataFrame(series.value_counts().reset_index())
-    df_spg_counts.columns = [Key.spacegroup, "count"]
+    df_spg_counts.columns = [Key.spg_num, "count"]
 
     try:  # assume column contains integers as space group numbers
         df_spg_counts[Key.crystal_system] = [
-            crystal_sys_from_spg_num(x) for x in df_spg_counts[Key.spacegroup]
+            crystal_sys_from_spg_num(x) for x in df_spg_counts[Key.spg_num]
         ]
     except (ValueError, TypeError):  # column must be strings of space group symbols
         df_spg_counts[Key.crystal_system] = [
-            SpaceGroup(x).crystal_system for x in df_spg_counts[Key.spacegroup]
+            SpaceGroup(x).crystal_system for x in df_spg_counts[Key.spg_num]
         ]
 
     kwargs.setdefault("color_discrete_sequence", px.colors.qualitative.G10)
 
     fig = px.sunburst(
         df_spg_counts,
-        path=[Key.crystal_system, Key.spacegroup],
+        path=[Key.crystal_system, Key.spg_num],
         values="count",
         **kwargs,
     )

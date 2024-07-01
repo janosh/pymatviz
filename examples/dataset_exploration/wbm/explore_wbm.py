@@ -17,10 +17,8 @@ df_wbm = pd.read_csv("https://figshare.com/ndownloader/files/44225498").set_inde
 )
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
-df_wbm[Key.spacegroup] = (
-    df_wbm[f"{Key.wyckoff}_spglib"].str.split("_").str[2].astype(int)
-)
-df_wbm[Key.crystal_system] = df_wbm[Key.spacegroup].map(crystal_sys_from_spg_num)
+df_wbm[Key.spg_num] = df_wbm[f"{Key.wyckoff}_spglib"].str.split("_").str[2].astype(int)
+df_wbm[Key.crystal_system] = df_wbm[Key.spg_num].map(crystal_sys_from_spg_num)
 df_wbm[Key.energy_per_atom] = df_wbm[Key.energy] / df_wbm[Key.n_sites]
 
 
@@ -80,7 +78,7 @@ fig.show()
 
 
 # %%
-fig = spacegroup_sunburst(df_wbm[Key.spacegroup], show_counts="percent")
+fig = spacegroup_sunburst(df_wbm[Key.spg_num], show_counts="percent")
 fig.layout.title = "Matbench Perovskites spacegroup sunburst"
 
 fig.write_image("wbm-spacegroup-sunburst.pdf")
@@ -88,12 +86,12 @@ fig.show()
 
 
 # %%
-fig = px.scatter(df_wbm, x=Key.spacegroup, y=Key.volume, color=Key.crystal_system)
+fig = px.scatter(df_wbm, x=Key.spg_num, y=Key.volume, color=Key.crystal_system)
 
 fig.layout.title = "WBM volume by spacegroup number"
 
 
 # %%
-fig = px.scatter(df_wbm, x=Key.spacegroup, y=Key.energy, color=Key.crystal_system)
+fig = px.scatter(df_wbm, x=Key.spg_num, y=Key.energy, color=Key.crystal_system)
 
 fig.layout.title = "WBM energy by spacegroup number"

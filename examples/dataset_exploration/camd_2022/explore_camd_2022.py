@@ -57,8 +57,8 @@ annotate_bars(ax, v_offset=3e3)
 
 
 # %%
-df_camd[Key.spacegroup] = [SpaceGroup(spg).int_number for spg in df_camd.space_group]
+df_camd[Key.spg_num] = [SpaceGroup(spg).int_number for spg in df_camd.space_group]
 
-fig = spacegroup_sunburst(df_camd[Key.spacegroup], show_counts="percent")
+fig = spacegroup_sunburst(df_camd[Key.spg_num], show_counts="percent")
 fig.write_image("camd-2022-spacegroup-sunburst.pdf")
 fig.show()
