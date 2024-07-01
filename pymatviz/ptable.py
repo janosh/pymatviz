@@ -770,6 +770,7 @@ def ptable_heatmap(
     # Heatmap specific
     colormap: str = "viridis",
     log: bool = False,
+    sci_notation: bool = False,
     # tile_size: tuple[float, float] = (1.0, 1.0),
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
@@ -812,6 +813,8 @@ def ptable_heatmap(
         # Heatmap specific
         colormap (str): The colormap to use.
         log (bool): Whether to log scale data.
+        sci_notation (bool): Whether to use scientific notation for values and
+            colorbar tick labels.
         tile_size (tuple[float, float]): The relative width and height of each tile.
 
         # Figure-scope
@@ -877,7 +880,9 @@ def ptable_heatmap(
 
         def __init__(
             self,
+            *,
             values_show_mode: Literal["value", "fraction", "percent", "off"],
+            sci_notation: bool,
             tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
             overwrite_colors: dict[str, ColorType] | None = None,
             **kwargs: dict[str, Any],
@@ -887,6 +892,8 @@ def ptable_heatmap(
             Args:
                 values_show_mode ("value" | "fraction" | "percent" | "off"):
                     Values display mode.
+                sci_notation (bool): Whether to use scientific notation for
+                    values and colorbar tick labels.
                 tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
                     Defaults to "AUTO" for auto generation.
                 overwrite_colors (dict[str, ColorType] | None): Optional
@@ -895,6 +902,7 @@ def ptable_heatmap(
             """
             super().__init__(**kwargs)
 
+            self.sci_notation = sci_notation
             self.values_show_mode = values_show_mode
 
             # Normalize data for "fraction/percent" modes
@@ -1036,6 +1044,7 @@ def ptable_heatmap(
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
+        sci_notation=sci_notation,
         values_show_mode=values_show_mode,
         log=log,
         colormap=colormap,
