@@ -9,6 +9,7 @@ import pytest
 from plotly.exceptions import PlotlyError
 
 from pymatviz import ptable_heatmap_plotly
+from pymatviz.enums import Key
 from pymatviz.utils import df_ptable
 
 
@@ -35,13 +36,15 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
     )
     ptable_heatmap_plotly(
         glass_formulas,
-        hover_data="density = " + df_ptable.density.astype(str) + " g/cm^3",
+        hover_data="density = " + df_ptable[Key.density].astype(str) + " g/cm^3",
     )
     # test label_map as dict
-    fig = ptable_heatmap_plotly(df_ptable.density, fmt=".1f", label_map={"0": "zero"})
+    fig = ptable_heatmap_plotly(
+        df_ptable[Key.density], fmt=".1f", label_map={"0": "zero"}
+    )
     # test label_map as callable
     ptable_heatmap_plotly(
-        df_ptable.density,
+        df_ptable[Key.density],
         fmt=".1f",
         label_map=lambda x: "meaning of life" if x == 42 else x,
     )
@@ -140,14 +143,14 @@ def test_ptable_heatmap_plotly_color_bar(
 def test_ptable_heatmap_plotly_cscale_range(
     cscale_range: tuple[float | None, float | None],
 ) -> None:
-    fig = ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)
+    fig = ptable_heatmap_plotly(df_ptable[Key.density], cscale_range=cscale_range)
     trace = fig.data[0]
     assert "colorbar" in trace
     # check for correct color bar range
     if cscale_range == (None, None):
         # if both None, range is dynamic based on plotted data
-        assert trace["zmin"] == pytest.approx(df_ptable.density.min())
-        assert trace["zmax"] == pytest.approx(df_ptable.density.max())
+        assert trace["zmin"] == pytest.approx(df_ptable[Key.density].min())
+        assert trace["zmax"] == pytest.approx(df_ptable[Key.density].max())
     else:
         assert cscale_range == (trace["zmin"], trace["zmax"])
 
@@ -157,7 +160,7 @@ def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
     with pytest.raises(
         ValueError, match=re.escape(f"{cscale_range=} should have length 2")
     ):
-        ptable_heatmap_plotly(df_ptable.density, cscale_range=cscale_range)  # type: ignore[arg-type]
+        ptable_heatmap_plotly(df_ptable[Key.density], cscale_range=cscale_range)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
