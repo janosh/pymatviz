@@ -718,8 +718,7 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for the child plotter.
             cmap (Colormap): Colormap.
-            cbar_axis ("x" | "y"): The axis colormap
-                would be based on.
+            cbar_axis ("x" | "y"): The axis colormap would be based on.
             child_kwargs: kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
@@ -1693,7 +1692,6 @@ def ptable_scatters(
         # Figure-scope
         colormap (str): Matplotlib colormap name to use. Defaults to None'. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
-        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
