@@ -17,7 +17,7 @@ import plotly.express as px
 import plotly.figure_factory as ff
 from matplotlib.colors import Colormap, Normalize
 from matplotlib.patches import Rectangle
-from matplotlib.ticker import FormatStrFormatter, PercentFormatter
+from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
@@ -1005,12 +1005,13 @@ def ptable_heatmap(
             """Generate colorbar tick label formatter.
 
             Work differently for different values_show_mode:
-                - "value" mode: Use cbar_label_fmt (or values_fmt) as is.
+                - "value/fraction" mode: Use cbar_label_fmt (or values_fmt) as is.
                 - "percent" mode: Get number of decimal places to keep from fmt
                     string, for example 1 from ".1%".
-                - "fraction" mode: TODO: work in progress.
 
             TODO: need unit test.
+
+            TODO: relocate to pymatviz.utils.
 
             Args:
                 cbar_label_fmt (str): f-string option for colorbar tick labels.
@@ -1035,9 +1036,10 @@ def ptable_heatmap(
                     decimal_places = default_decimal_places
                 return PercentFormatter(xmax=1, decimals=decimal_places)
 
-            if self.values_show_mode == "fraction":
-                # TODO: maybe use the ScalarFormatter?
-                pass  # TODO: WIP
+            if self.sci_notation:
+                formatter = ScalarFormatter(useMathText=True)
+                formatter.set_powerlimits((0, 0))
+                return formatter
 
             return FormatStrFormatter(f"%{cbar_label_fmt}")
 
@@ -1083,7 +1085,12 @@ def ptable_heatmap(
     if values_show_mode != "off":
         # Generate values format depending on the display mode
         if values_fmt == "AUTO":
-            values_fmt = ".1%" if values_show_mode == "percent" else ".3g"
+            if values_show_mode == "percent":
+                values_fmt = ".1%"
+            elif projector.sci_notation:
+                values_fmt = ".2e"
+            else:
+                values_fmt = ".3g"
 
         projector.add_elem_values(
             pos=values_pos or (0.5, 0.25),
