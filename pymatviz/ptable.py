@@ -559,48 +559,6 @@ class ChildPlotters:
     """
 
     @staticmethod
-    def heatmap(
-        ax: plt.axes,
-        data: SupportedValueType,
-        norm: Normalize,
-        cmap: Colormap,
-        # tile_size: tuple[float, float],  # TODO:
-        tick_kwargs: dict[str, Any],  # noqa: ARG004
-    ) -> None:
-        """Basic heatmap plotter.
-
-        TODO: reuse rectangle plot, somehow make set_clip_path show boarder.
-
-        Args:
-            ax (plt.axes): The axis to plot on.
-            data (SupportedValueType): The values for the child plotter.
-            norm (Normalize): Normalizer for data-color mapping.
-            cmap (Colormap): Colormap used for value mapping.
-            tile_size (tuple[float, float]): The relative width and height of each tile.
-            tick_kwargs: For compatibility with other plotters.
-        """
-        # TODO: remove repeated color mapping and use tile_colors property
-        # Map values to colors
-        if isinstance(data, (Sequence, np.ndarray)):
-            colors = [cmap(norm(value)) for value in data]
-        else:
-            raise TypeError("Unsupported data type.")
-
-        # Add the pie chart
-        ax.pie(
-            np.ones(1),
-            colors=colors,
-            wedgeprops={"clip_on": True},
-        )
-
-        # Crop the central rectangle from the pie chart
-        rect = Rectangle(xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2)
-        ax.add_patch(rect)
-
-        ax.set_xlim(-0.5, 0.5)
-        ax.set_ylim(-0.5, 0.5)
-
-    @staticmethod
     def rectangle(
         ax: plt.axes,
         data: SupportedValueType,
@@ -936,6 +894,76 @@ def ptable_heatmap(
             # Overwrite colors if any
             self._tile_colors |= self.overwrite_colors
 
+        def add_child_plots(
+            self,
+            *,
+            tick_kwargs: dict[str, Any] | None = None,
+            ax_kwargs: dict[str, Any] | None = None,
+            on_empty: Literal["hide", "show"] = "hide",
+        ) -> None:
+            """Add custom child plots to the periodic table grid.
+
+            Args:
+                tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
+                ax_kwargs (dict): Keyword arguments to pass to ax.set().
+                on_empty ("hide" | "show"): Whether to show or hide tiles for
+                    elements without data.
+            """
+            # Update kwargs
+            ax_kwargs = ax_kwargs or {}
+            tick_kwargs = {"axis": "both", "which": "major", "labelsize": 8} | (
+                tick_kwargs or {}
+            )
+
+            for element in Element:
+                # Hide f-block
+                if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                    continue
+
+                # Get axis index by element symbol
+                symbol: str = element.symbol
+                row, column = df_ptable.loc[symbol, ["row", "column"]]
+                ax: plt.Axes = self.axes[row - 1][column - 1]
+
+                # Get and check tile data
+                try:
+                    plot_data: np.ndarray | Sequence[float] = self.data.loc[
+                        symbol, Key.heat_val
+                    ]
+                except KeyError:  # skip element without data
+                    plot_data = None
+
+                if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
+                    continue
+
+                # Add child heatmap plot
+                # TODO: remove repeated color mapping and use tile_colors property
+                # Map values to colors
+                if isinstance(plot_data, (Sequence, np.ndarray)):
+                    colors = [self.cmap(self.norm(value)) for value in plot_data]
+                else:
+                    raise TypeError("Unsupported data type.")
+
+                # Add the pie chart
+                ax.pie(
+                    np.ones(1),
+                    colors=colors,
+                    wedgeprops={"clip_on": True},
+                )
+
+                # Crop the central rectangle from the pie chart
+                rect = Rectangle(
+                    xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2
+                )
+                ax.add_patch(rect)
+
+                ax.set_xlim(-0.5, 0.5)
+                ax.set_ylim(-0.5, 0.5)
+
+                # Pass axis kwargs
+                if ax_kwargs:
+                    ax.set(**ax_kwargs)
+
         def add_elem_values(
             self,
             *,
@@ -1011,14 +1039,7 @@ def ptable_heatmap(
     )
 
     # Call child plotter: heatmap
-    child_kwargs = {
-        "cmap": projector.cmap,
-        "norm": projector.norm,
-    }
-
     projector.add_child_plots(
-        ChildPlotters.heatmap,
-        child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
     )
