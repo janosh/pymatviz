@@ -121,6 +121,10 @@ class Key(LabelEnum):
     final_volume = "final_volume", f"Final Volume {cubic_angstrom}"
     volume = "volume", f"Volume {cubic_angstrom}"
     vol_per_atom = "volume_per_atom", f"Volume per Atom {cubic_angstrom}"
+    density = "density", "Density (g/cm³)"
+    symmetry = "symmetry", "Symmetry"
+    point_group = "point_group", "Point Group"
+    lattice_params = "lattice_parameters", "Lattice Parameters"
 
     # Composition and Chemical
     arity = "arity", "N<sub>elements</sub>"
@@ -132,6 +136,11 @@ class Key(LabelEnum):
     charge = "total_charge", "Total Charge"
     oxi_states = "oxidation_states", "Oxidation States"
     oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
+    n_val_electrons = "n_valence_electrons", "Number of Valence Electrons"
+    n_electrons = "n_total_electrons", "Total Number of Electrons"
+    isotope_masses = "isotope_masses", "Isotope Masses"
+    natural_abundance = "natural_abundance", "Natural Abundance (%)"
+    half_life = "half_life", "Half-life"
 
     # Thermodynamic
     energy = "energy", f"Energy {eV}"
@@ -152,6 +161,18 @@ class Key(LabelEnum):
     each_true = "e_above_hull_true", f"Actual E<sub>MP hull dist</sub> {eV_per_atom}"
     form_energy = "formation_energy_per_atom", f"Formation Energy {eV_per_atom}"
     cse = "computed_structure_entry", "Computed Structure Entry"
+    melting_point = "melting_point", "Melting Point (K)"
+    boiling_point = "boiling_point", "Boiling Point (K)"
+    phase_transition_temp = (
+        "phase_transition_temperature",
+        "Phase Transition Temperature (K)",
+    )
+    critical_temp = "critical_temperature", "Critical Temperature (K)"
+    critical_pressure = "critical_pressure", "Critical Pressure (Pa)"
+    critical_vol = "critical_volume", "Critical Volume (m³/mol)"
+    gibbs_free_energy = "gibbs_free_energy", "Gibbs Free Energy (eV)"
+    enthalpy = "enthalpy", "Enthalpy (eV)"
+    entropy = "entropy", "Entropy (eV/K)"
 
     # Electronic
     bandgap = "bandgap", "Band Gap"
@@ -160,6 +181,13 @@ class Key(LabelEnum):
     work_function = "work_function", "Work Function (eV)"
     dos = "density_of_states", "Density of States"
     band_structure = "band_structure", "Band Structure"
+    conductivity = "conductivity", "Electrical Conductivity (S/m)"
+    seebeck_coeff = "seebeck_coefficient", "Seebeck Coefficient (μV/K)"
+    hall_coeff = "hall_coefficient", "Hall Coefficient (m³/C)"
+    supercon_crit_temp = (
+        "superconducting_critical_temperature",
+        "Superconducting Critical Temperature (K)",
+    )
 
     # Mechanical
     forces = "forces", "Forces"
@@ -169,6 +197,8 @@ class Key(LabelEnum):
     shear_modulus = "shear_modulus", "Shear Modulus (GPa)"
     young_modulus = "young_modulus", "Young's Modulus (GPa)"
     poisson_ratio = "poisson_ratio", "Poisson's Ratio"
+    hardness = "hardness", "Hardness (Mohs scale)"
+    elastic_tensor = "elastic_tensor", "Elastic Tensor"
 
     # Thermal
     temperature = "temperature", "Temperature (K)"
@@ -178,6 +208,7 @@ class Key(LabelEnum):
         "thermal_expansion_coefficient",
         "Thermal Expansion Coefficient (1/K)",
     )
+    debye_temp = "debye_temperature", "Debye Temperature (K)"
 
     # Phonon
     phonon_bandstructure = "phonon_bandstructure", "Phonon Band Structure"
@@ -186,6 +217,8 @@ class Key(LabelEnum):
     # Optical
     refractive_index = "refractive_index", "Refractive Index"
     diel_constant = "dielectric_constant", "Dielectric Constant"
+    absorption_spectrum = "absorption_spectrum", "Absorption Spectrum"
+    photoluminescence = "photoluminescence", "Photoluminescence"
 
     # Surface
     surface_energy = "surface_energy", "Surface Energy (J/m²)"
@@ -214,6 +247,15 @@ class Key(LabelEnum):
     pseudopotentials = "pseudopotentials", "Pseudopotentials"
     run_time_sec = "run_time_sec", "Run Time (sec)"
     run_time_hr = "run_time_hr", "Run Time (hr)"
+    cpu_hours = "cpu_hours", "CPU Hours"
+    gpu_hours = "gpu_hours", "GPU Hours"
+    start_time = "start_time", "Start Time"
+    start_date = "start_date", "Start Date"
+    end_time = "end_time", "End Time"
+    end_date = "end_date", "End Date"
+    step = "step", "Step"  # as in job/optimizer step
+    state = "state", "State"  # as in job state
+    job_type = "job_type", "Job Type"
 
     # Identifiers and Metadata
     id = "id", "ID"
@@ -221,7 +263,6 @@ class Key(LabelEnum):
     task = "task", "Task"
     task_id = "task_id", "Task ID"
     task_type = "task_type", "Task Type"
-    step = "step", "Step"
 
     # Synthesis-related
     synthesis_temperature = "synthesis_temperature", "Synthesis Temperature (K)"
@@ -239,9 +280,16 @@ class Key(LabelEnum):
     raw_material_cost = "raw_material_cost", "Raw Material Cost ($/kg)"
     abundance = "abundance", "Elemental Abundance (ppm)"
 
+    # Chemical Properties
+    corrosion_resistance = "corrosion_resistance", "Corrosion Resistance"
+    viscosity = "viscosity", "Viscosity (Pa·s)"
+    activation_energy = "activation_energy", "Activation Energy (eV)"
+
     # Miscellaneous
     count = "count", "Count"  # type: ignore[assignment]
     heat_val = "heat_val", "Heatmap Value"
+    piezoelectric_tensor = "piezoelectric_tensor", "Piezoelectric Tensor"
+    polarization = "polarization", "Polarization (C/m²)"
 
 
 @unique
