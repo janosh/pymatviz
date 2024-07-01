@@ -289,6 +289,58 @@ def test_ptable_heatmap(
     ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
 
 
+def test_ptable_heatmap_text_color_consistency(glass_formulas: list[str]) -> None:
+    ax = ptable_heatmap(glass_formulas)
+    check_text_color_consistency(ax)
+
+    ax = ptable_heatmap(glass_formulas, log=True)
+    check_text_color_consistency(ax)
+
+    ax = ptable_heatmap(glass_formulas, text_color=("red", "blue"))
+    check_text_color_consistency(ax)
+
+    ax = ptable_heatmap(glass_formulas, heat_mode="percent")
+    check_text_color_consistency(ax)
+
+    ax = ptable_heatmap(glass_formulas, show_values=False)
+    check_text_color_consistency(ax)
+
+
+def check_text_color_consistency(ax: plt.Axes) -> None:
+    """Check that in every element tile of a matplotlib ptable_heatmap, the element
+    symbol text color matches the heatmap value's text color."""
+    rectangles = [patch for patch in ax.patches if isinstance(patch, plt.Rectangle)]
+
+    assert len(ax.texts) > 0, "No text elements found in the plot"
+    assert len(rectangles) > 0, "No rectangle elements found in the plot"
+
+    for rect in rectangles:
+        x, y = rect.get_xy()
+        width, height = rect.get_width(), rect.get_height()
+
+        # Find texts within this rectangle
+        rect_texts = [
+            text
+            for text in ax.texts
+            if x <= text.get_position()[0] <= x + width
+            and y <= text.get_position()[1] <= y + height
+        ]
+        symbol = rect_texts[0].get_text()
+        n_rects = len(rect_texts)
+        assert n_rects in {1, 2}, (
+            f"Unexpected number of text elements={n_rects} in element tile at "
+            f"{(symbol, x, y)}, should be 1 or 2 (depending on show_values)"
+        )
+
+        if len(rect_texts) == 2:  # Element symbol and value
+            symbol_text, value_text = rect_texts
+            assert (
+                symbol_text.get_color() == value_text.get_color()
+            ), f"Text color mismatch for element at position {(x, y)}"
+        elif len(rect_texts) == 1:  # Only element symbol (when show_values=False)
+            pass
+
+
 @pytest.mark.parametrize("hide_f_block", [None, False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
@@ -342,7 +394,7 @@ def test_ptable_heatmap_ratio(
     )
     assert isinstance(ax, plt.Axes)
 
-    # check presence of legend handles 'not in numerator' and 'not in denominator'
+    # check presence of legend handles "not in numerator" and "not in denominator"
     legend = ax.get_legend()
     assert legend is None
     # get text annotations

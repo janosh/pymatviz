@@ -1,9 +1,9 @@
 # %%
-import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
 from pymatviz import ptable_heatmap
 from pymatviz.enums import Key
+from pymatviz.io import save_fig
 
 
 """Stats for the matbench_mp_gap dataset.
@@ -21,26 +21,24 @@ df_gap = load_dataset("matbench_mp_gap")
 
 
 # %%
-df_gap.hist(column="gap pbe", bins=50, log=True)
-plt.xlabel("eV")
-plt.savefig("pbe_gap_hist.pdf")
+ax = df_gap.hist(column="gap pbe", bins=50, log=True)
+ax.set(xlabel="eV")
+save_fig(ax, "pbe_gap_hist.pdf")
 
 
 # %%
-df_gap["volume/atom"] = df_gap[Key.structure].map(
-    lambda cryst: cryst.volume / cryst.num_sites
-)
-df_gap["num_sites"] = df_gap[Key.structure].map(lambda cryst: cryst.num_sites)
-
+df_gap[Key.n_sites] = df_gap[Key.structure].map(len)
+df_gap[Key.volume] = df_gap[Key.structure].map(lambda cryst: cryst.volume)
+df_gap[Key.vol_per_atom] = df_gap[Key.volume] / df_gap[Key.n_sites]
 df_gap[Key.formula] = df_gap[Key.structure].map(lambda cryst: cryst.formula)
 
 
 # %%
-ptable_heatmap(df_gap.formula, log=True)
-plt.title("Elemental prevalence in the Matbench MP band gap dataset")
-plt.savefig("mp_gap-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_gap[Key.formula], log=True)
+ax.set(title="Elemental prevalence in the Matbench MP band gap dataset")
+save_fig(ax, "mp_gap-ptable-heatmap.pdf")
 
 
 # %%
-df_gap.hist(column="volume/atom", bins=50, log=True)
-plt.savefig("volume_per_atom_hist.pdf")
+df_gap.hist(column=Key.vol_per_atom, bins=50, log=True)
+save_fig(ax, "volume_per_atom_hist.pdf")

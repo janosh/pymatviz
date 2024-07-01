@@ -51,9 +51,9 @@ def spacegroup_hist(
             (from 1 - 230) or pymatgen structures.
         show_counts (bool, optional): Whether to count the number of items
             in each crystal system. Defaults to True.
-        xticks ('all' | 'crys_sys_edges' | int, optional): Where to add x-ticks. An
+        xticks ("all" | "crys_sys_edges" | int, optional): Where to add x-ticks. An
             integer will add ticks below that number of tallest bars. Defaults to 20.
-            'all' will show below all bars, 'crys_sys_edges' only at the edge from one
+            "all" will show below all bars, "crys_sys_edges" only at the edge from one
             crystal system to another.
         show_empty_bins (bool, optional): Whether to include a 0-height bar for missing
             space groups missing from the data. Currently only implemented for numbers,
@@ -294,14 +294,14 @@ def elements_hist(
 
     Args:
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
-        count_mode ('composition' | 'fractional_composition' | 'reduced_composition'):
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when formulas is list of composition strings/objects.
         log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
         ax (Axes): matplotlib Axes on which to plot. Defaults to None.
-        bar_values ('percent'|'count'|None): 'percent' (default) annotates bars with the
-            percentage each element makes up in the total element count. 'count'
+        bar_values ("percent"|"count"|None): "percent" (default) annotates bars with the
+            percentage each element makes up in the total element count. "count"
             displays count itself. None removes bar labels.
         h_offset (int): Horizontal offset for bar height labels. Defaults to 0.
         v_offset (int): Vertical offset for bar height labels. Defaults to 10.
@@ -334,7 +334,7 @@ def elements_hist(
         else:
             labels = non_zero.astype(int).to_list()
         annotate_bars(
-            ax,
+            ax=ax,
             labels=labels,
             h_offset=h_offset,
             v_offset=v_offset,
@@ -437,15 +437,13 @@ def plot_histogram(
         fig = go.Figure(**fig_kwargs)
         for label, vals in data.items():
             hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
-            fig.add_trace(
-                go.Bar(
-                    x=bin_edges[:-1],
-                    y=hist_vals,
-                    name=label,
-                    opacity=0.7,
-                    width=bin_width * (bin_edges[1] - bin_edges[0]),
-                    marker_line_width=0,
-                )
+            fig.add_bar(
+                x=bin_edges[:-1],
+                y=hist_vals,
+                name=label,
+                opacity=0.7,
+                width=bin_width * (bin_edges[1] - bin_edges[0]),
+                marker_line_width=0,
             )
 
         y_title = "Density" if density else "Count"

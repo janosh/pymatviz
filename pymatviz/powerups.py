@@ -305,9 +305,10 @@ def add_best_fit_line(
     *,
     xs: ArrayLike = (),
     ys: ArrayLike = (),
-    trace_idx: int = 0,
+    trace_idx: int | None = None,
     line_kwds: dict[str, Any] | None = None,
     annotate_params: bool | dict[str, Any] = True,
+    warn: bool = True,
     **kwargs: Any,
 ) -> go.Figure:
     """Add line of best fit according to least squares to a plotly or matplotlib figure.
@@ -327,6 +328,8 @@ def add_best_fit_line(
         annotate_params (dict[str, Any], optional): Pass dict to customize
             the annotation of the best fit line. Set to False to disable annotation.
             Defaults to True.
+        warn (bool, optional): If True, print a warning if trace_idx is unspecified
+            and the figure has multiple traces. Defaults to True.
         **kwargs: Additional arguments are passed to fig.add_shape() for plotly or
             ax.plot() for matplotlib.
 
@@ -349,6 +352,18 @@ def add_best_fit_line(
         if isinstance(annotate_params, dict)
         else "navy",
     )
+
+    if trace_idx is None:
+        n_traces = (
+            len(fig.data) if isinstance(fig, go.Figure) else len(fig.get_children())
+        )
+        if n_traces > 1 and warn:
+            print(  # noqa: T201
+                f"Warning: {trace_idx=} but figure has {n_traces} traces, defaulting "
+                "to trace_idx=0. Check fig.data[0] to make sure this is the expected "
+                "trace."
+            )
+        trace_idx = 0
 
     if 0 in {len(xs), len(ys)}:
         if isinstance(fig, go.Figure):
@@ -385,7 +400,7 @@ def add_best_fit_line(
             )
         if isinstance(annotate_params, dict):
             defaults |= annotate_params
-        annotate(f"LS fit: y = {slope:.2}x + {intercept:.2}", fig=fig, **defaults)
+        annotate(f"LS fit: y = {slope:.2g}x + {intercept:.2g}", fig=fig, **defaults)
 
     if backend == MPL_BACKEND:
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
@@ -443,8 +458,8 @@ def add_ecdf_line(
         raise TypeError(f"{fig=} must be instance of {type_names}")
 
     target_trace: BaseTraceType = fig.data[trace_idx]
-    if values == ():
-        if isinstance(target_trace, (go.Histogram, go.Scatter)):
+    if values is None or len(values) == 0:
+        if isinstance(target_trace, (go.Histogram, go.Scatter, go.Scattergl)):
             values = target_trace.x
         elif isinstance(target_trace, go.Bar):
             xs, ys = target_trace.x, target_trace.y
@@ -452,10 +467,9 @@ def add_ecdf_line(
             if len(xs) + 1 == len(ys):
                 xs = xs[:-1]
             values = np.repeat(xs, ys)
-
         else:
             cls = type(target_trace)
-            qual_name = cls.__module__ + "." + cls.__qualname__
+            qual_name = f"{cls.__module__}.{cls.__qualname__}"
             raise ValueError(
                 f"Cannot auto-determine x-values for ECDF from {qual_name}, "
                 "pass values explicitly. Currently only Histogram, Scatter, Box, "
@@ -466,8 +480,13 @@ def add_ecdf_line(
     ecdf_trace = px.ecdf(values).data[0]
 
     # if fig has facets, add ECDF to all subplots
-    add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
-    fig.add_trace(ecdf_trace, **add_trace_defaults | kwargs)
+    fig_add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
+    fig.add_trace(ecdf_trace, **fig_add_trace_defaults | kwargs)
+
+    # get xlabel falling back on 'x' if not set
+    xlabel = fig.layout.xaxis.title.text or "x"
+    tooltip_template = f"{xlabel}: %{{x}}<br>Percent: %{{y:.2%}}<extra></extra>"
+    fig.data[-1].hovertemplate = tooltip_template
 
     # move ECDF line to secondary y-axis
     # set color to darkened version of primary y-axis color
@@ -478,13 +497,28 @@ def add_ecdf_line(
         name_suffix += 1
         uniq_name = f"{name} {name_suffix}"
 
-    if "marker" in target_trace and not target_trace.marker["color"]:
-        target_trace = fig.full_figure_for_development(warn=False).data[trace_idx]
+    if "marker" in target_trace and target_trace.marker["color"] is None:
+        dev_trace = fig.full_figure_for_development(warn=False).data[trace_idx]
+        # NOTE unsure if this has any downstream effects, should just be applying
+        # the color that plotly would have later assigned to the trace anyway
+        target_trace.marker = dev_trace.marker
+
+    # set default legendgroup of target trace if not already set
+    legendgroup = target_trace.legendgroup or target_trace.name
+    target_trace.legendgroup = legendgroup
 
     # set line color to be the same as the target trace's marker color
     target_color = target_trace.marker.color if "marker" in target_trace else "gray"
-    trace_defaults = dict(yaxis="y2", name=uniq_name, line_color=target_color)
-    trace_kwargs = trace_defaults | (trace_kwargs or {})
+    trace_defaults = dict(
+        yaxis="y2",
+        name=uniq_name,
+        line=dict(
+            color=target_color,
+            dash="solid",
+        ),
+        legendgroup=legendgroup,
+    )
+    trace_kwargs = trace_defaults | trace_kwargs
     fig.data[-1].update(**trace_kwargs)
 
     # line_color becomes target_color via trace_defaults if a different color was not

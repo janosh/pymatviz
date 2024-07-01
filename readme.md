@@ -157,6 +157,17 @@ See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 [density-scatter-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-with-hist.svg
 [density-scatter]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter.svg
 
+## X-Ray Diffraction
+
+See [`pymatviz/xrd.py`](pymatviz/xrd.py).
+
+| [`plot_xrd_pattern(pattern)`](pymatviz/xrd.py) | [`plot_xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py) |
+| :--------------------------------------------: | :---------------------------------------------------------------: |
+|                 ![xrd-pattern]                 |                      ![xrd-pattern-multiple]                      |
+
+[xrd-pattern]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern.svg
+[xrd-pattern-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-multiple.svg
+
 ## Uncertainty
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).

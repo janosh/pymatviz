@@ -641,8 +641,7 @@ class ChildPlotters:
         rect = Rectangle(xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="none")
         ax.set_clip_path(rect)
 
-        ax.set_xlim(-0.5, 0.5)
-        ax.set_ylim(-0.5, 0.5)
+        ax.set(xlim=(-0.5, 0.5), ylim=(-0.5, 0.5))
 
     @staticmethod
     def scatter(
@@ -719,7 +718,8 @@ class ChildPlotters:
             ax (plt.axes): The axis to plot on.
             data (SupportedValueType): The values for the child plotter.
             cmap (Colormap): Colormap.
-            cbar_axis ("x" | "y"): The axis colormap would be based on.
+            cbar_axis ("x" | "y"): The axis colormap
+                would be based on.
             child_kwargs: kwargs to pass to the child plotter call.
             tick_kwargs (dict): kwargs to pass to ax.tick_params().
         """
@@ -754,15 +754,13 @@ class ChildPlotters:
 
         # Set tick labels
         ax.tick_params(**tick_kwargs)
-        ax.set_yticklabels([])
-        ax.set_yticks([])
+        ax.set(yticklabels=(), yticks=())
+        # Set x-ticks to min/max only
+        ax.set(xticks=[math.floor(x_range[0]), math.ceil(x_range[1])])
 
         # Hide the right, left and top spines
         ax.axis("on")
         ax.spines[["right", "top", "left"]].set_visible(False)
-
-        # Set x-ticks to min/max only
-        ax.set_xticks([math.floor(x_range[0]), math.ceil(x_range[1])])
 
 
 def ptable_heatmap(
@@ -1113,7 +1111,7 @@ def ptable_heatmap_splits(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         # Colorbar
@@ -1580,7 +1578,7 @@ def ptable_hists(
             right corner.
         symbol_text (str | Callable[[Element], str]): Text to display for each element
             symbol. Defaults to lambda elem: elem.symbol.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for element
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for element
             symbols. Defaults to None.
 
         # Element types based colors and legend
@@ -1696,6 +1694,7 @@ def ptable_scatters(
         colormap (str): Matplotlib colormap name to use. Defaults to None'. See
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
+        on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
         hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
             Defaults to "AUTO", meaning hide if no data is provided.
@@ -1725,7 +1724,7 @@ def ptable_scatters(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         # Element types based colors and legend
@@ -1844,7 +1843,7 @@ def ptable_lines(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+        symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
         # Element types based colors and legend

@@ -31,6 +31,8 @@ import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
 from pymatviz import ptable_heatmap
+from pymatviz.enums import Key
+from pymatviz.io import save_fig
 
 
 # %%
@@ -39,21 +41,21 @@ df_boltz.describe()
 
 
 # %%
-ptable_heatmap(df_boltz.formula, log=True)
-plt.title("Elements in BoltzTraP MP dataset")
-plt.savefig("boltztrap_mp-ptable-heatmap.pdf")
+ax = ptable_heatmap(df_boltz[Key.formula], log=True)
+ax.set(title="Elements in BoltzTraP MP dataset")
+save_fig(ax, "boltztrap_mp-ptable-heatmap.pdf")
 
 
 # %%
-ptable_heatmap(df_boltz.sort_values("pf_n").tail(100).formula)
-plt.title("Elements of top 100 n-type powerfactors in BoltzTraP MP dataset")
-plt.savefig("boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")
+ax = ptable_heatmap(df_boltz.sort_values("pf_n").tail(100)[Key.formula])
+ax.set(title="Elements of top 100 n-type powerfactors in BoltzTraP MP dataset")
+save_fig(ax, "boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")
 
 
 # %%
-df_boltz.hist(bins=50, log=True, layout=[2, 3], figsize=[18, 8])
+ax = df_boltz.hist(bins=50, log=True, layout=[2, 3], figsize=[18, 8])
 plt.suptitle("BoltzTraP MP")
-plt.savefig("boltztrap_mp-hists.pdf")
+save_fig(ax, "boltztrap_mp-hists.pdf")
 
 
 # %%
