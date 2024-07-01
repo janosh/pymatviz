@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 import math
 import re
+import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, Union
 
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
     from typing import Any, Callable
 
     import plotly.graph_objects as go
+    from matplotlib.ticker import Formatter
     from matplotlib.typing import ColorType
 
 
@@ -876,7 +878,7 @@ def ptable_heatmap(
         def __init__(
             self,
             values_show_mode: Literal["value", "fraction", "percent", "off"],
-            tile_colors: dict[str, ColorType] | None = None,
+            tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
             overwrite_colors: dict[str, ColorType] | None = None,
             **kwargs: dict[str, Any],
         ) -> None:
@@ -885,8 +887,8 @@ def ptable_heatmap(
             Args:
                 values_show_mode ("value" | "fraction" | "percent" | "off"):
                     Values display mode.
-                tile_colors (dict[str, ColorType] | None): Tile colors.
-                    Defaults to None for auto generation.
+                tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
+                    Defaults to "AUTO" for auto generation.
                 overwrite_colors (dict[str, ColorType] | None): Optional
                     overwrite colors. Defaults to None.
                 kwargs (dict): Kwargs to pass to super class.
@@ -909,18 +911,18 @@ def ptable_heatmap(
         @tile_colors.setter
         def tile_colors(
             self,
-            tile_colors: dict[str, ColorType] | None = None,
+            tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
         ) -> None:
             """An element symbol to color mapping.
 
             Args:
-                tile_colors (dict[str, ColorType] | None): Tile colors.
-                    Defaults to None for auto generation.
+                tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
+                    Defaults to "AUTO" for auto generation.
             """
             # Generate tile colors from values if not given
-            self._tile_colors = tile_colors or {}
+            self._tile_colors = {} if tile_colors == "AUTO" else tile_colors
 
-            if tile_colors is None:
+            if tile_colors == "AUTO":
                 for symbol in self.data.index:
                     # Get value and map to color
                     value = self.data.loc[symbol, Key.heat_val][0]
@@ -986,6 +988,51 @@ def ptable_heatmap(
                     **kwargs,
                 )
 
+        def get_cbar_label_formatter(
+            self,
+            cbar_label_fmt: str,
+            values_fmt: str,
+            default_decimal_places: int = 1,
+        ) -> Formatter:
+            """Generate colorbar tick label formatter.
+
+            Work differently for different values_show_mode:
+                - "value" mode: Use cbar_label_fmt (or values_fmt) as is.
+                - "percent" mode: Get number of decimal places to keep from fmt
+                    string, for example 1 from ".1%".
+                - "fraction" mode: TODO: work in progress.
+
+            TODO: need unit test.
+
+            Args:
+                cbar_label_fmt (str): f-string option for colorbar tick labels.
+                values_fmt (str): f-string option for tile values, would be used if
+                    cbar_label_fmt is "AUTO".
+                default_decimal_places (int): Default number of decimal places
+                    to use if above fmt is invalid.
+
+            Returns:
+                PercentFormatter or FormatStrFormatter.
+            """
+            cbar_label_fmt = values_fmt if cbar_label_fmt == "AUTO" else cbar_label_fmt
+
+            if self.values_show_mode == "percent":
+                if match := re.search(r"\.(\d+)%", cbar_label_fmt):
+                    decimal_places = int(match[1])
+                else:
+                    warnings.warn(
+                        f"Invalid {cbar_label_fmt=}, use {default_decimal_places=}",
+                        stacklevel=2,
+                    )
+                    decimal_places = default_decimal_places
+                return PercentFormatter(xmax=1, decimals=decimal_places)
+
+            if self.values_show_mode == "fraction":
+                # TODO: maybe use the ScalarFormatter?
+                pass  # TODO: WIP
+
+            return FormatStrFormatter(f"%{cbar_label_fmt}")
+
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
@@ -1038,20 +1085,13 @@ def ptable_heatmap(
 
     # Show colorbar upon request
     if show_cbar:
-        cbar_title_kwargs = cbar_title_kwargs or {"fontsize": 16, "fontweight": "bold"}
-        cbar_kwargs = cbar_kwargs or {}
-
         # Generate colorbar tick label format
-        cbar_label_fmt = values_fmt if cbar_label_fmt == "AUTO" else cbar_label_fmt
+        cbar_kwargs = cbar_kwargs or {}
+        cbar_kwargs.setdefault(
+            "format", projector.get_cbar_label_formatter(cbar_label_fmt, values_fmt)
+        )
 
-        if values_show_mode == "percent":
-            match = re.search(r"\.(\d+)%", cbar_label_fmt)
-            decimal_places = int(match[1]) if match else 1
-            formatter = PercentFormatter(xmax=1, decimals=decimal_places)
-        else:
-            formatter = FormatStrFormatter(f"%{cbar_label_fmt}")
-
-        cbar_kwargs.setdefault("format", formatter)
+        cbar_title_kwargs = cbar_title_kwargs or {"fontsize": 16, "fontweight": "bold"}
 
         projector.add_colorbar(
             title=cbar_title,
