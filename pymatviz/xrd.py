@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, get_args
+from typing import Any, Literal, Union, get_args
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,6 +10,7 @@ from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
 from pymatgen.core import Structure
 
 
+PatternOrStruct = Union[DiffractionPattern, Structure]
 HklFormat = Literal["compact", "full", None]
 ValidHklFormats = HklCompact, HklFull, HklNone = get_args(HklFormat)
 
@@ -26,14 +27,8 @@ def format_hkl(hkl: tuple[int, int, int], format_type: HklFormat) -> str:
 
 
 def plot_xrd_pattern(
-    patterns: DiffractionPattern
-    | Structure
-    | dict[
-        str,
-        DiffractionPattern
-        | Structure
-        | tuple[DiffractionPattern | Structure, dict[str, Any]],
-    ],
+    patterns: PatternOrStruct
+    | dict[str, PatternOrStruct | tuple[PatternOrStruct, dict[str, Any]]],
     *,
     peak_width: float = 0.5,
     annotate_peaks: float = 5,
