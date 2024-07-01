@@ -937,17 +937,9 @@ def ptable_heatmap(
                     continue
 
                 # Add child heatmap plot
-                # TODO: remove repeated color mapping and use tile_colors property
-                # Map values to colors
-                if isinstance(plot_data, (Sequence, np.ndarray)):
-                    colors = [self.cmap(self.norm(value)) for value in plot_data]
-                else:
-                    raise TypeError("Unsupported data type.")
-
-                # Add the pie chart
                 ax.pie(
                     np.ones(1),
-                    colors=colors,
+                    colors=[self.tile_colors[symbol]],
                     wedgeprops={"clip_on": True},
                 )
 
