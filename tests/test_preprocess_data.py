@@ -149,7 +149,7 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(normal_df, col=Key.heat_val) == (False, False)
+    assert check_for_missing_inf(normal_df, col=Key.heat_val) == (False, False, {})
 
     # Test DataFrame with missing value (NaN)
     df_with_missing = pd.DataFrame(
@@ -157,7 +157,11 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_missing, col=Key.heat_val) == (True, False)
+    assert check_for_missing_inf(df_with_missing, col=Key.heat_val) == (
+        True,
+        False,
+        {"Fe": {"nan"}},
+    )
 
     # Test DataFrame with infinity
     df_with_inf = pd.DataFrame(
@@ -165,7 +169,11 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_inf, col=Key.heat_val) == (False, True)
+    assert check_for_missing_inf(df_with_inf, col=Key.heat_val) == (
+        False,
+        True,
+        {"Fe": {"inf"}},
+    )
 
     # Test DataFrame with missing value (NaN) and infinity
     df_with_nan_inf = pd.DataFrame(
@@ -173,7 +181,22 @@ def test_check_for_missing_inf() -> None:
         columns=[Key.element, Key.heat_val],
     ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_nan_inf, col=Key.heat_val) == (True, True)
+    assert check_for_missing_inf(df_with_nan_inf, col=Key.heat_val) == (
+        True,
+        True,
+        {"Fe": {"inf"}, "O": {"nan"}},
+    )
+
+    df_with_nan_inf_same_elem = pd.DataFrame(
+        {"Fe": [np.nan, 2, np.inf], "O": [4, 5, 6]}.items(),
+        columns=[Key.element, Key.heat_val],
+    ).set_index(Key.element)
+
+    assert check_for_missing_inf(df_with_nan_inf_same_elem, col=Key.heat_val) == (
+        True,
+        True,
+        {"Fe": {"inf", "nan"}},
+    )
 
 
 def test_get_df_nest_level() -> None:
@@ -228,14 +251,14 @@ class TestReplaceMissingAndInfinity:
 
         # Test missing strategy: mean (default)
         with pytest.warns(match="NaN found in data"):
-            processed_df_mean = replace_missing_and_infinity(
+            processed_df_mean, _anomalies = replace_missing_and_infinity(
                 df_with_nan.copy(), col=Key.heat_val
             )
         assert_allclose(processed_df_mean.loc["O", Key.heat_val], [4, 5, 3])
 
         # Test missing strategy: zero
         with pytest.warns(match="NaN found in data"):
-            processed_df_zero = replace_missing_and_infinity(
+            processed_df_zero, _anomalies = replace_missing_and_infinity(
                 df_with_nan.copy(), col=Key.heat_val, missing_strategy="zero"
             )
         assert_allclose(processed_df_zero.loc["O", Key.heat_val], [4, 5, 0])
@@ -247,7 +270,9 @@ class TestReplaceMissingAndInfinity:
         ).set_index(Key.element)
 
         with pytest.warns(match="Infinity found in data"):
-            processed_df = replace_missing_and_infinity(df_with_inf, col=Key.heat_val)
+            processed_df, _anomalies = replace_missing_and_infinity(
+                df_with_inf, col=Key.heat_val
+            )
         assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 6])
 
     def test_replace_both(self) -> None:
@@ -256,7 +281,7 @@ class TestReplaceMissingAndInfinity:
             columns=[Key.element, Key.heat_val],
         ).set_index(Key.element)
 
-        processed_df = replace_missing_and_infinity(
+        processed_df, _anomalies = replace_missing_and_infinity(
             df_with_both, col=Key.heat_val, missing_strategy="zero"
         )
         assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 5])
