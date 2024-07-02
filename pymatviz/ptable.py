@@ -839,8 +839,6 @@ class HMapPTableProjector(PTableProjector):
     ) -> None:
         """Add custom child plots to the periodic table grid.
 
-        TODO: make the element-loop part a decorator.
-
         Args:
             f_block_voffset (float): The vertical offset of f-block elements.
             tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
@@ -913,8 +911,6 @@ class HMapPTableProjector(PTableProjector):
         kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Format and show element values.
-
-        TODO: make the element-looping part a decorator (just like add_child_plots).
 
         Args:
             text_fmt (str): f-string format for the value text.
@@ -1093,7 +1089,7 @@ def ptable_heatmap(
         data=data,
         sci_notation=sci_notation,
         values_show_mode=values_show_mode,
-        tile_size=tile_size,  # type: ignore[arg-type]  # TODO: fix following types
+        tile_size=tile_size,  # type: ignore[arg-type]
         log=log,  # type: ignore[arg-type]
         colormap=colormap,  # type: ignore[arg-type]
         inf_color=inf_color,
