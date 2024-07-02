@@ -721,11 +721,220 @@ class ChildPlotters:
         ax.spines[["right", "top", "left"]].set_visible(False)
 
 
+class HMapPTableProjector(PTableProjector):
+    """With more heatmap-specific functionalities."""
+
+    def __init__(
+        self,
+        *,
+        values_show_mode: Literal["value", "fraction", "percent", "off"],
+        sci_notation: bool,
+        tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
+        overwrite_colors: dict[str, ColorType] | None = None,
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Init Heatmap plotter.
+
+        Args:
+            values_show_mode ("value" | "fraction" | "percent" | "off"):
+                Values display mode.
+            sci_notation (bool): Whether to use scientific notation for
+                values and colorbar tick labels.
+            tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
+                Defaults to "AUTO" for auto generation.
+            overwrite_colors (dict[str, ColorType] | None): Optional
+                overwrite colors. Defaults to None.
+            kwargs (dict): Kwargs to pass to super class.
+        """
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+
+        self.sci_notation = sci_notation
+        self.values_show_mode = values_show_mode
+
+        # Normalize data for "fraction/percent" modes
+        if values_show_mode in {"fraction", "percent"}:
+            self.data = normalize_data(self.data)
+
+        self.overwrite_colors = overwrite_colors or {}
+        self.tile_colors = tile_colors
+
+    @property  # type: ignore[no-redef]
+    def tile_colors(self) -> dict[str, ColorType]:
+        return self._tile_colors
+
+    @tile_colors.setter
+    def tile_colors(
+        self,
+        tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
+    ) -> None:
+        """An element symbol to color mapping.
+
+        Args:
+            tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
+                Defaults to "AUTO" for auto generation.
+        """
+        # Generate tile colors from values if not given
+        self._tile_colors = {} if tile_colors == "AUTO" else tile_colors
+
+        if tile_colors == "AUTO":
+            if self.cmap is None:
+                raise ValueError("Cannot generate tile colors without colormap.")
+
+            for symbol in self.data.index:
+                # Get value and map to color
+                value = self.data.loc[symbol, Key.heat_val][0]
+
+                self._tile_colors[symbol] = self.cmap(self.norm(value))
+
+        # Overwrite colors if any
+        self._tile_colors |= self.overwrite_colors
+
+    def add_child_plots(  # type: ignore[override]
+        self,
+        *,
+        f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
+        tick_kwargs: dict[str, Any] | None = None,
+        ax_kwargs: dict[str, Any] | None = None,
+        on_empty: Literal["hide", "show"] = "hide",
+    ) -> None:
+        """Add custom child plots to the periodic table grid.
+
+        TODO: make the element-loop part a decorator.
+
+        Args:
+            f_block_voffset (float): The vertical offset of f-block elements.
+            tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
+            ax_kwargs (dict): Keyword arguments to pass to ax.set().
+            on_empty ("hide" | "show"): Whether to show or hide tiles for
+                elements without data.
+        """
+        # Update kwargs
+        ax_kwargs = ax_kwargs or {}
+        tick_kwargs = {"axis": "both", "which": "major", "labelsize": 8} | (
+            tick_kwargs or {}
+        )
+
+        for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
+            # Get axis index by element symbol
+            symbol: str = element.symbol
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            # Get and check tile data
+            try:
+                plot_data: np.ndarray | Sequence[float] = self.data.loc[
+                    symbol, Key.heat_val
+                ]
+            except KeyError:  # skip element without data
+                plot_data = None
+
+            if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
+                continue
+
+            # TODO: offset is not working properly, even when offset is 0,
+            # the tile size still changes
+
+            # # Apply vertical offset for f-block
+            # if element.is_lanthanoid or element.is_actinoid:
+            #     pos = ax.get_position()
+            #     ax.set_position([pos.x0, pos.y0 + f_block_voffset,
+            # pos.width, pos.height])
+
+            # Add child heatmap plot
+            ax.pie(
+                np.ones(1),
+                colors=[self.tile_colors[symbol]],  # type: ignore[index]
+                wedgeprops={"clip_on": True},
+            )
+
+            # Crop the central rectangle from the pie chart
+            rect = Rectangle(
+                xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2
+            )
+            ax.add_patch(rect)
+
+            ax.set_xlim(-0.5, 0.5)
+            ax.set_ylim(-0.5, 0.5)
+
+            # Pass axis kwargs
+            if ax_kwargs:
+                ax.set(**ax_kwargs)
+
+    def add_elem_values(
+        self,
+        *,
+        text_fmt: str,
+        pos: tuple[float, float] = (0.5, 0.25),
+        text_color: str = "AUTO",
+        kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Format and show element values.
+
+        Args:
+            text_fmt (str): f-string format for the value text.
+            pos (tuple[float, float]): Position of the value in the tile.
+            text_color (str): Value text color.
+            kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
+        """
+        # Update symbol kwargs
+        kwargs = kwargs or {}
+        if self.sci_notation:
+            kwargs.setdefault("fontsize", 10)
+        else:
+            kwargs.setdefault("fontsize", 12)
+
+        # Add value for each element
+        for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
+            # Get axis index by element symbol
+            symbol: str = element.symbol
+            if symbol not in self.data.index:
+                continue
+
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            # Get and format value
+            content = self.data.loc[symbol, Key.heat_val][0]
+            content = f"{content:{text_fmt}}"
+
+            # Simplify scientific notation, say 1e-01 to 1e-1
+            if self.sci_notation and ("e-0" in content or "e+0" in content):
+                content = content.replace("e-0", "e-").replace("e+0", "e+")
+
+            # Pick value text color
+            if text_color == ElemColorMode.element_types:
+                color = self.get_elem_type_color(symbol, default="black")
+            elif text_color == "AUTO":
+                color = pick_bw_for_contrast(self.tile_colors[symbol])  # type: ignore[arg-type, index]
+            else:
+                color = text_color
+
+            ax.text(
+                *pos,
+                content,
+                color=color,
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                **kwargs,
+            )
+
+
 def ptable_heatmap(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
     *,
     # Heatmap specific
     colormap: str = "viridis",
+    inf_color: ColorType = "lightskyblue",
+    nan_color: ColorType = "white",
     log: bool = False,
     sci_notation: bool = False,
     tile_size: tuple[float, float] = (0.75, 0.75),
@@ -769,6 +978,8 @@ def ptable_heatmap(
 
         # Heatmap specific
         colormap (str): The colormap to use.
+        inf_color (ColorType): The color to use for infinity.
+        nan_color (ColorType): The color to use for missing value (NaN).
         log (bool): Whether to log scale data.
         sci_notation (bool): Whether to use scientific notation for values and
             colorbar tick labels.
@@ -832,213 +1043,6 @@ def ptable_heatmap(
     Returns:
         plt.Figure: matplotlib Figure with the heatmap.
     """
-
-    class HMapPTableProjector(PTableProjector):
-        """With more heatmap-specific functionalities."""
-
-        def __init__(
-            self,
-            *,
-            values_show_mode: Literal["value", "fraction", "percent", "off"],
-            sci_notation: bool,
-            tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
-            overwrite_colors: dict[str, ColorType] | None = None,
-            **kwargs: dict[str, Any],
-        ) -> None:
-            """Init Heatmap plotter.
-
-            Args:
-                values_show_mode ("value" | "fraction" | "percent" | "off"):
-                    Values display mode.
-                sci_notation (bool): Whether to use scientific notation for
-                    values and colorbar tick labels.
-                tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
-                    Defaults to "AUTO" for auto generation.
-                overwrite_colors (dict[str, ColorType] | None): Optional
-                    overwrite colors. Defaults to None.
-                kwargs (dict): Kwargs to pass to super class.
-            """
-            super().__init__(**kwargs)  # type: ignore[arg-type]
-
-            self.sci_notation = sci_notation
-            self.values_show_mode = values_show_mode
-
-            # Normalize data for "fraction/percent" modes
-            if values_show_mode in {"fraction", "percent"}:
-                self.data = normalize_data(self.data)
-
-            self.overwrite_colors = overwrite_colors or {}
-            self.tile_colors = tile_colors
-
-        @property  # type: ignore[no-redef]
-        def tile_colors(self) -> dict[str, ColorType]:
-            return self._tile_colors
-
-        @tile_colors.setter
-        def tile_colors(
-            self,
-            tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
-        ) -> None:
-            """An element symbol to color mapping.
-
-            Args:
-                tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
-                    Defaults to "AUTO" for auto generation.
-            """
-            # Generate tile colors from values if not given
-            self._tile_colors = {} if tile_colors == "AUTO" else tile_colors
-
-            if tile_colors == "AUTO":
-                if self.cmap is None:
-                    raise ValueError("Cannot generate tile colors without colormap.")
-
-                for symbol in self.data.index:
-                    # Get value and map to color
-                    value = self.data.loc[symbol, Key.heat_val][0]
-
-                    self._tile_colors[symbol] = self.cmap(self.norm(value))
-
-            # Overwrite colors if any
-            self._tile_colors |= self.overwrite_colors
-
-        def add_child_plots(  # type: ignore[override]
-            self,
-            *,
-            f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
-            tick_kwargs: dict[str, Any] | None = None,
-            ax_kwargs: dict[str, Any] | None = None,
-            on_empty: Literal["hide", "show"] = "hide",
-        ) -> None:
-            """Add custom child plots to the periodic table grid.
-
-            TODO: make the element-loop part a decorator.
-
-            Args:
-                f_block_voffset (float): The vertical offset of f-block elements.
-                tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
-                ax_kwargs (dict): Keyword arguments to pass to ax.set().
-                on_empty ("hide" | "show"): Whether to show or hide tiles for
-                    elements without data.
-            """
-            # Update kwargs
-            ax_kwargs = ax_kwargs or {}
-            tick_kwargs = {"axis": "both", "which": "major", "labelsize": 8} | (
-                tick_kwargs or {}
-            )
-
-            for element in Element:
-                # Hide f-block
-                if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
-                    continue
-
-                # Get axis index by element symbol
-                symbol: str = element.symbol
-                row, column = df_ptable.loc[symbol, ["row", "column"]]
-                ax: plt.Axes = self.axes[row - 1][column - 1]
-
-                # Get and check tile data
-                try:
-                    plot_data: np.ndarray | Sequence[float] = self.data.loc[
-                        symbol, Key.heat_val
-                    ]
-                except KeyError:  # skip element without data
-                    plot_data = None
-
-                if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
-                    continue
-
-                # TODO: offset is not working properly, even when offset is 0,
-                # the tile size still changes
-
-                # # Apply vertical offset for f-block
-                # if element.is_lanthanoid or element.is_actinoid:
-                #     pos = ax.get_position()
-                #     ax.set_position([pos.x0, pos.y0 + f_block_voffset,
-                # pos.width, pos.height])
-
-                # Add child heatmap plot
-                ax.pie(
-                    np.ones(1),
-                    colors=[self.tile_colors[symbol]],  # type: ignore[index]
-                    wedgeprops={"clip_on": True},
-                )
-
-                # Crop the central rectangle from the pie chart
-                rect = Rectangle(
-                    xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2
-                )
-                ax.add_patch(rect)
-
-                ax.set_xlim(-0.5, 0.5)
-                ax.set_ylim(-0.5, 0.5)
-
-                # Pass axis kwargs
-                if ax_kwargs:
-                    ax.set(**ax_kwargs)
-
-        def add_elem_values(
-            self,
-            *,
-            text_fmt: str,
-            pos: tuple[float, float] = (0.5, 0.25),
-            text_color: str = "AUTO",
-            kwargs: dict[str, Any] | None = None,
-        ) -> None:
-            """Format and show element values.
-
-            Args:
-                text_fmt (str): f-string format for the value text.
-                pos (tuple[float, float]): Position of the value in the tile.
-                text_color (str): Value text color.
-                kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
-            """
-            # Update symbol kwargs
-            kwargs = kwargs or {}
-            if self.sci_notation:
-                kwargs.setdefault("fontsize", 10)
-            else:
-                kwargs.setdefault("fontsize", 12)
-
-            # Add value for each element
-            for element in Element:
-                # Hide f-block
-                if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
-                    continue
-
-                # Get axis index by element symbol
-                symbol: str = element.symbol
-                if symbol not in self.data.index:
-                    continue
-
-                row, column = df_ptable.loc[symbol, ["row", "column"]]
-                ax: plt.Axes = self.axes[row - 1][column - 1]
-
-                # Get and format value
-                content = self.data.loc[symbol, Key.heat_val][0]
-                content = f"{content:{text_fmt}}"
-
-                # Simplify scientific notation, say 1e-01 to 1e-1
-                if self.sci_notation and ("e-0" in content or "e+0" in content):
-                    content = content.replace("e-0", "e-").replace("e+0", "e+")
-
-                # Pick value text color
-                if text_color == ElemColorMode.element_types:
-                    color = self.get_elem_type_color(symbol, default="black")
-                elif text_color == "AUTO":
-                    color = pick_bw_for_contrast(self.tile_colors[symbol])  # type: ignore[arg-type, index]
-                else:
-                    color = text_color
-
-                ax.text(
-                    *pos,
-                    content,
-                    color=color,
-                    ha="center",
-                    va="center",
-                    transform=ax.transAxes,
-                    **kwargs,
-                )
-
     # Initialize periodic table plotter
     # TODO: fix following types
     projector = HMapPTableProjector(
@@ -1048,6 +1052,7 @@ def ptable_heatmap(
         values_show_mode=values_show_mode,
         log=log,  # type: ignore[arg-type]
         colormap=colormap,  # type: ignore[arg-type]
+        overwrite_colors=overwrite_colors,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
