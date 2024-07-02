@@ -175,6 +175,7 @@ class PTableProjector:
         data: SupportedDataType,
         log: bool = False,
         colormap: str | Colormap = "viridis",
+        tile_size: tuple[float, float] = (0.75, 0.75),
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | Literal["AUTO"] = "AUTO",
         elem_type_colors: dict[str, str] | None = None,
@@ -189,6 +190,7 @@ class PTableProjector:
             data (SupportedDataType): The data to be visualized.
             log (bool): Whether to log scale data.
             colormap (str | Colormap): The colormap to use. Defaults to "viridis".
+            tile_size (tuple[float, float]): The relative tile height and width.
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
             hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
@@ -215,7 +217,8 @@ class PTableProjector:
 
         # Set figure size
         plot_kwargs = plot_kwargs or {}
-        plot_kwargs.setdefault("figsize", (0.75 * n_groups, 0.75 * n_periods))
+        height, width = tile_size
+        plot_kwargs.setdefault("figsize", (height * n_groups, width * n_periods))
 
         self.fig, self.axes = plt.subplots(n_periods, n_groups, **plot_kwargs)
 
@@ -725,7 +728,7 @@ def ptable_heatmap(
     colormap: str = "viridis",
     log: bool = False,
     sci_notation: bool = False,
-    # tile_size: tuple[float, float] = (1.0, 1.0),
+    tile_size: tuple[float, float] = (0.75, 0.75),
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | Literal["AUTO"] = "AUTO",
@@ -769,7 +772,7 @@ def ptable_heatmap(
         log (bool): Whether to log scale data.
         sci_notation (bool): Whether to use scientific notation for values and
             colorbar tick labels.
-        tile_size (tuple[float, float]): The relative width and height of each tile.
+        tile_size (tuple[float, float]): The relative height and width of the tile.
 
         # Figure-scope
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
@@ -854,7 +857,7 @@ def ptable_heatmap(
                     overwrite colors. Defaults to None.
                 kwargs (dict): Kwargs to pass to super class.
             """
-            super().__init__(**kwargs)
+            super().__init__(**kwargs)  # type: ignore[arg-type]
 
             self.sci_notation = sci_notation
             self.values_show_mode = values_show_mode
@@ -866,7 +869,7 @@ def ptable_heatmap(
             self.overwrite_colors = overwrite_colors or {}
             self.tile_colors = tile_colors
 
-        @property
+        @property  # type: ignore[no-redef]
         def tile_colors(self) -> dict[str, ColorType]:
             return self._tile_colors
 
@@ -885,6 +888,9 @@ def ptable_heatmap(
             self._tile_colors = {} if tile_colors == "AUTO" else tile_colors
 
             if tile_colors == "AUTO":
+                if self.cmap is None:
+                    raise ValueError("Cannot generate tile colors without colormap.")
+
                 for symbol in self.data.index:
                     # Get value and map to color
                     value = self.data.loc[symbol, Key.heat_val][0]
@@ -894,7 +900,7 @@ def ptable_heatmap(
             # Overwrite colors if any
             self._tile_colors |= self.overwrite_colors
 
-        def add_child_plots(
+        def add_child_plots(  # type: ignore[override]
             self,
             *,
             tick_kwargs: dict[str, Any] | None = None,
@@ -941,7 +947,7 @@ def ptable_heatmap(
                 # Add child heatmap plot
                 ax.pie(
                     np.ones(1),
-                    colors=[self.tile_colors[symbol]],
+                    colors=[self.tile_colors[symbol]],  # type: ignore[index]
                     wedgeprops={"clip_on": True},
                 )
 
@@ -1007,7 +1013,7 @@ def ptable_heatmap(
                 if text_color == ElemColorMode.element_types:
                     color = self.get_elem_type_color(symbol, default="black")
                 elif text_color == "AUTO":
-                    color = pick_bw_for_contrast(self.tile_colors[symbol])
+                    color = pick_bw_for_contrast(self.tile_colors[symbol])  # type: ignore[arg-type, index]
                 else:
                     color = text_color
 
@@ -1022,14 +1028,16 @@ def ptable_heatmap(
                 )
 
     # Initialize periodic table plotter
+    # TODO: fix following types
     projector = HMapPTableProjector(
+        tile_size=tile_size,  # type: ignore[arg-type]
         data=data,
         sci_notation=sci_notation,
         values_show_mode=values_show_mode,
-        log=log,
-        colormap=colormap,
-        plot_kwargs=plot_kwargs,
-        hide_f_block=hide_f_block,
+        log=log,  # type: ignore[arg-type]
+        colormap=colormap,  # type: ignore[arg-type]
+        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
 
     # Call child plotter: heatmap
