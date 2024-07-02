@@ -904,7 +904,7 @@ def ptable_heatmap(
         def add_child_plots(  # type: ignore[override]
             self,
             *,
-            # f_block_voffset: float = 0,
+            f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
             tick_kwargs: dict[str, Any] | None = None,
             ax_kwargs: dict[str, Any] | None = None,
             on_empty: Literal["hide", "show"] = "hide",
@@ -1050,13 +1050,13 @@ def ptable_heatmap(
         colormap=colormap,  # type: ignore[arg-type]
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
-        f_block_voffset=f_block_voffset,  # type: ignore[arg-type]
     )
 
     # Call child plotter: heatmap
     projector.add_child_plots(
         ax_kwargs=ax_kwargs,
         on_empty=on_empty,
+        f_block_voffset=f_block_voffset,
     )
 
     # Set better default symbol position
