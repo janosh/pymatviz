@@ -188,26 +188,35 @@ class TestPtableHeatmap:
                 df_ptable.atomic_mass, log=True, values_show_mode=values_show_mode
             )
 
-    def test_cbar_range(self) -> None:  # TODO:
-        pass
+    @pytest.mark.parametrize(
+        "cbar_range", [(0, 300), (None, 300), (0, None), (None, None)]
+    )
+    def test_cbar_range(self, cbar_range: tuple[float | None, float | None]) -> None:
+        fig = ptable_heatmap(df_ptable.atomic_mass, cbar_range=cbar_range)
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
 
     def test_cbar_label_fmt(self) -> None:  # TODO:
         pass
 
-    def test_cbar_kwargs(self) -> None:  # TODO:
-        #      # cbar_kwargs
-        # ax = ptable_heatmap(glass_formulas,
-        # cbar_kwargs=dict(orientation="horizontal"))
-        # cax = ax.inset_axes([0.1, 0.9, 0.8, 0.05])
-        # ptable_heatmap(glass_formulas, cbar_kwargs={"cax": cax, "format": "%.3f"})
-        pass
+    def test_cbar_kwargs(self) -> None:
+        cbar_kwargs = dict(orientation="horizontal")
+        fig = ptable_heatmap(df_ptable.atomic_mass, cbar_kwargs=cbar_kwargs)
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
 
-    def test_tile_size(self) -> None:  # TODO:
-        pass
+    def test_tile_size(self) -> None:
+        fig = ptable_heatmap(df_ptable.atomic_mass, tile_size=(1, 1))
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
 
-    def test_text_style(self) -> None:  # TODO:
-        # ptable_heatmap(glass_formulas, text_style=dict(color="red", fontsize=12))
-        pass
+    def test_symbol_style(self) -> None:
+        symbol_kwargs = dict(fontsize=12)
+        fig = ptable_heatmap(
+            df_ptable.atomic_mass, symbol_color="red", symbol_kwargs=symbol_kwargs
+        )
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
 
     def test_generate_overwrite_colors(self) -> None:
         data_with_anomaly = {"H": [np.nan], "He": [np.inf]}
