@@ -205,8 +205,6 @@ def log_scale(
 def normalize_data(data: pd.DataFrame) -> pd.DataFrame:
     """Normalize data by the total sum.
 
-    TODO: might need a more descriptive name.
-
     Args:
         data (pd.DataFrame): DataFrame to scale.
 
