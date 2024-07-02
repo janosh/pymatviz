@@ -245,7 +245,9 @@ class PTableProjector:
     def data(self, data: SupportedDataType) -> None:
         """Preprocess and set the data. Also set normalizer."""
         # Preprocess data
-        self._data = preprocess_ptable_data(data)
+        self._data, self._anomalies = preprocess_ptable_data(
+            data, return_anomalies=True
+        )
 
         # Normalize data for colorbar
         vmin = self._data.attrs["vmin"]
@@ -256,6 +258,11 @@ class PTableProjector:
     def norm(self) -> Normalize:
         """Data min-max normalizer."""
         return self._norm
+
+    @property
+    def anomalies(self) -> dict[str, set[Literal["nan", "inf"]]]:
+        """Element symbol to anomalies ("nan/inf") mapping."""
+        return self._anomalies
 
     @property
     def hide_f_block(self) -> bool:
@@ -727,8 +734,10 @@ class HMapPTableProjector(PTableProjector):
     def __init__(
         self,
         *,
-        values_show_mode: Literal["value", "fraction", "percent", "off"],
-        sci_notation: bool,
+        values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
+        inf_color: ColorType,
+        nan_color: ColorType,
+        sci_notation: bool = False,
         tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
         overwrite_colors: dict[str, ColorType] | None = None,
         **kwargs: dict[str, Any],
@@ -740,6 +749,8 @@ class HMapPTableProjector(PTableProjector):
                 Values display mode.
             sci_notation (bool): Whether to use scientific notation for
                 values and colorbar tick labels.
+            inf_color (ColorType): The color to use for infinity.
+            nan_color (ColorType): The color to use for missing value (NaN).
             tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
                 Defaults to "AUTO" for auto generation.
             overwrite_colors (dict[str, ColorType] | None): Optional
@@ -755,11 +766,16 @@ class HMapPTableProjector(PTableProjector):
         if values_show_mode in {"fraction", "percent"}:
             self.data = normalize_data(self.data)
 
-        self.overwrite_colors = overwrite_colors or {}
+        # Generate tile colors
+        self.inf_color = inf_color
+        self.nan_color = nan_color
+
+        self.overwrite_colors = overwrite_colors
         self.tile_colors = tile_colors
 
     @property  # type: ignore[no-redef]
     def tile_colors(self) -> dict[str, ColorType]:
+        """The final element symbol to color mapping."""
         return self._tile_colors
 
     @tile_colors.setter
@@ -767,7 +783,7 @@ class HMapPTableProjector(PTableProjector):
         self,
         tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
     ) -> None:
-        """An element symbol to color mapping.
+        """An element symbol to color mapping, and apply overwrite colors.
 
         Args:
             tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
@@ -788,6 +804,28 @@ class HMapPTableProjector(PTableProjector):
 
         # Overwrite colors if any
         self._tile_colors |= self.overwrite_colors
+
+    @property
+    def overwrite_colors(self) -> dict[str, ColorType]:
+        """Colors use to overwrite current tile colors."""
+        return self._overwrite_colors
+
+    @overwrite_colors.setter
+    def overwrite_colors(
+        self, overwrite_colors: dict[str, ColorType] | None = None
+    ) -> None:
+        """Generate overwrite color mapping from anomalies if not given.
+        When an element has both NaN and infinity, NaN would take higher priority.
+        """
+        if overwrite_colors is None:
+            overwrite_colors = {}
+            for elem, values in self.anomalies.items():
+                if "nan" in values:
+                    overwrite_colors[elem] = self.nan_color
+                elif "inf" in values:
+                    overwrite_colors[elem] = self.inf_color
+
+        self._overwrite_colors = overwrite_colors
 
     def add_child_plots(  # type: ignore[override]
         self,
@@ -1044,15 +1082,15 @@ def ptable_heatmap(
         plt.Figure: matplotlib Figure with the heatmap.
     """
     # Initialize periodic table plotter
-    # TODO: fix following types
     projector = HMapPTableProjector(
-        tile_size=tile_size,  # type: ignore[arg-type]
         data=data,
         sci_notation=sci_notation,
         values_show_mode=values_show_mode,
+        tile_size=tile_size,  # type: ignore[arg-type]  # TODO: fix following types
         log=log,  # type: ignore[arg-type]
         colormap=colormap,  # type: ignore[arg-type]
-        overwrite_colors=overwrite_colors,
+        inf_color=inf_color,
+        nan_color=nan_color,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )

@@ -20,7 +20,7 @@ from pymatviz import (
     ptable_scatters,
 )
 from pymatviz.enums import ElemColors
-from pymatviz.ptable import PTableProjector
+from pymatviz.ptable import HMapPTableProjector, PTableProjector
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
@@ -161,9 +161,19 @@ class TestPtableHeatmap:
     # - values_show_mode
     # - cbar_range
     # - cbar_label_fmt
-    # - tile_size
 
-    pass
+    def test_generate_overwrite_colors(self) -> None:
+        data_with_anomaly = {"H": [np.nan], "He": [np.inf]}
+
+        projector = HMapPTableProjector(
+            data=data_with_anomaly, inf_color="lightskyblue", nan_color="white"
+        )
+
+        assert projector.anomalies["H"] == {"nan"}
+        assert projector.overwrite_colors["H"] == "white"
+
+        assert projector.anomalies["He"] == {"inf"}
+        assert projector.overwrite_colors["He"] == "lightskyblue"
 
 
 @pytest.mark.skip(reason="refactoring")  # TODO: fix this
