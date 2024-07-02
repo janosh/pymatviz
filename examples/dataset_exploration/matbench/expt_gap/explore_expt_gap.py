@@ -36,7 +36,7 @@ https://ml.materialsproject.org/projects/matbench_expt_gap
 # %%
 df_gap = load_dataset("matbench_expt_gap")
 
-df_gap["pmg_comp"] = df_gap.composition.map(Composition)
+df_gap["pmg_comp"] = df_gap[Key.composition].map(Composition)
 df_gap["n_atoms"] = [x.num_atoms for x in df_gap.pmg_comp]
 df_gap["n_elems"] = df_gap.pmg_comp.map(len)
 
@@ -56,7 +56,7 @@ df_gap["mean_radius"] = [mean_atomic_prop(x, "atomic_radius") for x in df_gap.pm
 
 # %%
 ax = ptable_heatmap(
-    df_gap.query("~composition.str.contains('Xe')").composition,
+    df_gap.query("~composition.str.contains('Xe')")[Key.composition],
     log=True,
     text_color="black",
 )
