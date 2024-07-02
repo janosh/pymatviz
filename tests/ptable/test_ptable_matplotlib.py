@@ -164,7 +164,7 @@ class TestPtableHeatmap:
         assert len(fig.axes) == 127 if hide_f_block is True else 181, len(fig.axes)
 
     @pytest.mark.parametrize("log", [False, True])
-    def test_log_scale(self, log) -> None:
+    def test_log_scale(self, log: bool) -> None:
         fig = ptable_heatmap(df_ptable.atomic_mass, log=log)
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
@@ -172,25 +172,29 @@ class TestPtableHeatmap:
     @pytest.mark.parametrize(
         "values_show_mode", ["percent", "fraction", "value", "off"]
     )
-    def test_values_show_mode(self, values_show_mode) -> None:
+    def test_values_show_mode(
+        self, values_show_mode: Literal["percent", "fraction", "value", "off"]
+    ) -> None:
         fig = ptable_heatmap(df_ptable.atomic_mass, values_show_mode=values_show_mode)
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
     @pytest.mark.parametrize("values_show_mode", ["percent", "fraction"])
-    def test_log_in_percent_mode(self, values_show_mode) -> None:
+    def test_log_in_percent_mode(
+        self, values_show_mode: Literal["percent", "fraction", "value", "off"]
+    ) -> None:
         with pytest.raises(ValueError, match="Combining log scale and"):
             ptable_heatmap(
                 df_ptable.atomic_mass, log=True, values_show_mode=values_show_mode
             )
 
-    def test_cbar_range(self) -> None:
+    def test_cbar_range(self) -> None:  # TODO:
         pass
 
-    def test_cbar_label_fmt(self) -> None:
+    def test_cbar_label_fmt(self) -> None:  # TODO:
         pass
 
-    def test_cbar_kwargs(self) -> None:
+    def test_cbar_kwargs(self) -> None:  # TODO:
         #      # cbar_kwargs
         # ax = ptable_heatmap(glass_formulas,
         # cbar_kwargs=dict(orientation="horizontal"))
@@ -198,11 +202,10 @@ class TestPtableHeatmap:
         # ptable_heatmap(glass_formulas, cbar_kwargs={"cax": cax, "format": "%.3f"})
         pass
 
-    def test_tile_size(self) -> None:
+    def test_tile_size(self) -> None:  # TODO:
         pass
 
-    def test_text_style(self) -> None:
-        # test text_style
+    def test_text_style(self) -> None:  # TODO:
         # ptable_heatmap(glass_formulas, text_style=dict(color="red", fontsize=12))
         pass
 
