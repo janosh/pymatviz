@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Union, get_args
+from typing import TYPE_CHECKING, Union, get_args, overload
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,7 @@ from pymatviz.enums import Key
 if TYPE_CHECKING:
     from typing import Literal
 
+    from numpy.typing import NDArray
 
 # Data types that can be passed to PTableProjector and normalized by data_preprocessor
 # to SupportedValueType
@@ -27,7 +28,9 @@ SupportedDataType = Union[
 SupportedValueType = Union[Sequence[float], np.ndarray]
 
 
-def check_for_missing_inf(df_in: pd.DataFrame, *, col: str) -> tuple[bool, bool]:
+def check_for_missing_inf(
+    df_in: pd.DataFrame, *, col: str
+) -> tuple[bool, bool, dict[str, set[Literal["nan", "inf"]]]]:
     """Check if there is NaN or infinity in a DataFrame column.
 
     Args:
@@ -35,27 +38,40 @@ def check_for_missing_inf(df_in: pd.DataFrame, *, col: str) -> tuple[bool, bool]
         col (str): Name of the column to check.
 
     Returns:
-        tuple[bool, bool]: Has NaN, has infinity.
+        tuple[
+            bool: Has NaN.
+            bool: Has infinity.
+            dict: Element name to set["nan", "inf"] mapping.
+        ]
     """
-    # Check if there is missing value or infinity
-    all_values = df_in[col].explode().explode().explode()
-
     # Convert to numeric, forcing non-numeric types to NaN
+    all_values = df_in[col].explode().explode().explode()
     all_values = pd.to_numeric(all_values, errors="coerce")
 
-    # Check for NaN
+    # Check for NaN and infinity by row
     has_nan = False
-    if all_values.isna().to_numpy().any():
-        warnings.warn("NaN found in data", stacklevel=2)
-        has_nan = True
-
-    # Check for infinity
     has_inf = False
-    if np.isinf(all_values).to_numpy().any():
-        warnings.warn("Infinity found in data", stacklevel=2)
-        has_inf = True
+    anomalies: dict[str, set[Literal["nan", "inf"]]] = {}
 
-    return has_nan, has_inf
+    for idx, value in all_values.items():
+        if pd.isna(value):
+            if idx not in anomalies:
+                anomalies[idx] = set()
+            anomalies[idx].add("nan")
+            has_nan = True
+
+        elif np.isinf(value):
+            if idx not in anomalies:
+                anomalies[idx] = set()
+            anomalies[idx].add("inf")
+            has_inf = True
+
+    if has_nan:
+        warnings.warn("NaN found in data", stacklevel=2)
+    if has_inf:
+        warnings.warn("Infinity found in data", stacklevel=2)
+
+    return has_nan, has_inf, anomalies
 
 
 def get_df_nest_level(df_in: pd.DataFrame, *, col: str) -> int:
@@ -79,9 +95,10 @@ def get_df_nest_level(df_in: pd.DataFrame, *, col: str) -> int:
 
 def replace_missing_and_infinity(
     df_in: pd.DataFrame,
+    *,
     col: str,
     missing_strategy: Literal["zero", "mean"] = "mean",
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, dict[str, set[Literal["nan", "inf"]]]]:
     """Replace missing value (NaN) and infinity.
 
     Infinity would be replaced by vmax(∞) or vmin(-∞).
@@ -92,13 +109,19 @@ def replace_missing_and_infinity(
     Args:
         df_in (DataFrame): DataFrame to process.
         col (str): Name of the column to process.
-        missing_strategy: missing value replacement strategy.
+        missing_strategy ("zero" | "mean"): Missing value replacement strategy.
+
+    Returns:
+        tuple[
+            pd.DataFrame: Preprocessed DataFrame.
+            dict: Element name to set["nan", "inf"] mapping.
+        ]
     """
     # Check for NaN and infinity
-    has_nan, has_inf = check_for_missing_inf(df_in, col=Key.heat_val)
+    has_nan, has_inf, anomalies = check_for_missing_inf(df_in, col=Key.heat_val)
 
     if not has_nan and not has_inf:
-        return df_in
+        return df_in, {}
 
     nest_level = get_df_nest_level(df_in, col=col)
     if (has_nan or has_inf) and nest_level > 1:
@@ -127,13 +150,100 @@ def replace_missing_and_infinity(
         else np.array([replacements.get(v, v) for v in val])
     )
 
-    return df_in
+    return df_in, anomalies
+
+
+def log_scale(
+    data: pd.DataFrame,
+    *,
+    col: str,
+    eps: float = 1e-10,
+) -> pd.DataFrame:
+    """Log scale a pandas DataFrame, which might contain floats or
+    sequences of floats.
+
+    Args:
+        data (pd.DataFrame): DataFrame to scale.
+        col (str): Name of the column to scale.
+        eps (float): A small epsilon to avoid log(0).
+
+    Returns:
+        pd.DataFrame: Log scaled DataFrame.
+    """
+
+    @overload
+    def log_transform(val: float, eps: float) -> float:
+        pass
+
+    @overload
+    def log_transform(val: NDArray, eps: float) -> NDArray:
+        pass
+
+    def log_transform(val: float | NDArray, eps: float) -> float | NDArray:
+        """Apply logarithm on sequences of floats.
+
+        Args:
+            val (float | NDArray): Value(s) to apply log.
+            eps (float): A small epsilon to avoid zero or negative values.
+        """
+        # Sequences of floats (should be NDArray only after preprocessing)
+        try:
+            return np.log(val)
+
+        # Catch illegal values for log
+        except FloatingPointError:
+            warnings.warn(f"Illegal log for {val}", stacklevel=2)
+            return np.log(np.maximum(val, eps))
+
+    # Apply logarithm to each element in the column
+    np.seterr(all="raise")  # raise FloatingPointError instead of warn
+    data[col] = data[col].apply(lambda val: log_transform(val, eps))
+
+    return data
+
+
+def normalize_data(data: pd.DataFrame) -> pd.DataFrame:
+    """Normalize data by the total sum.
+
+    Args:
+        data (pd.DataFrame): DataFrame to scale.
+
+    Returns:
+        pd.DataFrame: Normalized DataFrame.
+    """
+    # Calculate the total sum
+    total_sum = data.map(np.sum).sum().sum()
+
+    # Normalize each value
+    return data.map(lambda x: x / total_sum)
+
+
+@overload
+def preprocess_ptable_data(
+    data: SupportedDataType,
+    *,
+    missing_strategy: Literal["zero", "mean"] = "mean",
+    return_anomalies: Literal[False] = False,
+) -> pd.DataFrame:
+    pass
+
+
+@overload
+def preprocess_ptable_data(
+    data: SupportedDataType,
+    *,
+    missing_strategy: Literal["zero", "mean"] = "mean",
+    return_anomalies: Literal[True] = True,
+) -> tuple[pd.DataFrame, dict[str, set[Literal["nan", "inf"]]]]:
+    pass
 
 
 def preprocess_ptable_data(
     data: SupportedDataType,
+    *,
     missing_strategy: Literal["zero", "mean"] = "mean",
-) -> pd.DataFrame:
+    return_anomalies: bool = False,
+) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, set[Literal["nan", "inf"]]]]:
     """Preprocess input data for ptable plotters, including:
         - Convert all data types to pd.DataFrame.
         - Replace missing values (NaN) by selected strategy.
@@ -144,10 +254,12 @@ def preprocess_ptable_data(
         data (dict[str, float | Sequence[float]] | pd.DataFrame | pd.Series):
             Input data to preprocess.
         missing_strategy: missing value replacement strategy.
+        return_anomalies (bool): Whether to return elements with NaN or infinity.
 
     Returns:
         pd.DataFrame: The preprocessed DataFrame with element names
             as index and values as columns.
+        (Optional) dict[str, set["nan", "inf"]]: An element to anomalies mapping.
 
     Example:
         >>> data_dict: dict = {
@@ -240,26 +352,31 @@ def preprocess_ptable_data(
     elif isinstance(data, pd.Series):
         data_df = data.to_frame(name=Key.heat_val)
         data_df.index.name = Key.element
+
     elif isinstance(data, dict):
         data_df = pd.DataFrame(
             data.items(), columns=[Key.element, Key.heat_val]
         ).set_index(Key.element)
+
     else:
         type_name = type(data).__name__
         raise TypeError(
             f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
         )
 
+    # Convert all data to NumPy array
     data_df[Key.heat_val] = data_df[Key.heat_val].apply(
         lambda val: np.array(list(val))
         if isinstance(val, Iterable) and not isinstance(val, str)
         else np.array([val])
     )
 
-    data_df = replace_missing_and_infinity(
+    # Replace missing value (NaN) and infinity
+    data_df, anomalies = replace_missing_and_infinity(
         data_df, col=Key.heat_val, missing_strategy=missing_strategy
     )
 
+    # Parse meta data
     numeric_values = pd.to_numeric(
         data_df[Key.heat_val].explode().explode().explode(), errors="coerce"
     )
@@ -267,4 +384,4 @@ def preprocess_ptable_data(
     data_df.attrs["mean"] = numeric_values.mean()
     data_df.attrs["vmax"] = numeric_values.max()
 
-    return data_df
+    return (data_df, anomalies) if return_anomalies else data_df
