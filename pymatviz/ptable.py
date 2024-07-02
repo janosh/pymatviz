@@ -826,7 +826,7 @@ def ptable_heatmap(
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
     Returns:
-        plt.Axes: matplotlib Axes with the heatmap.
+        plt.Figure: matplotlib Figure with the heatmap.
     """
 
     class HMapPTableProjector(PTableProjector):
@@ -902,6 +902,8 @@ def ptable_heatmap(
             on_empty: Literal["hide", "show"] = "hide",
         ) -> None:
             """Add custom child plots to the periodic table grid.
+
+            TODO: make the element-loop part a decorator.
 
             Args:
                 tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
