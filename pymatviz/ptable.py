@@ -204,7 +204,9 @@ class PTableProjector:
         self.elem_colors = elem_colors  # type: ignore[assignment]
 
         # Preprocess data
-        self.data: pd.DataFrame = log_scale(data, col=Key.heat_val) if log else data
+        self.data: pd.DataFrame = data
+        if log:
+            self.data = log_scale(self.data, col=Key.heat_val)
 
         self.hide_f_block = hide_f_block  # type: ignore[assignment]
 
@@ -770,10 +772,10 @@ class HMapPTableProjector(PTableProjector):
         self.inf_color = inf_color
         self.nan_color = nan_color
 
-        self.overwrite_colors = overwrite_colors
-        self.tile_colors = tile_colors
+        self.overwrite_colors = overwrite_colors  # type: ignore[assignment]
+        self.tile_colors = tile_colors  # type: ignore[assignment]
 
-    @property  # type: ignore[no-redef]
+    @property
     def tile_colors(self) -> dict[str, ColorType]:
         """The final element symbol to color mapping."""
         return self._tile_colors
@@ -885,7 +887,7 @@ class HMapPTableProjector(PTableProjector):
             # Add child heatmap plot
             ax.pie(
                 np.ones(1),
-                colors=[self.tile_colors[symbol]],  # type: ignore[index]
+                colors=[self.tile_colors[symbol]],
                 wedgeprops={"clip_on": True},
             )
 
@@ -911,6 +913,8 @@ class HMapPTableProjector(PTableProjector):
         kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Format and show element values.
+
+        TODO: make the element-looping part a decorator (just like add_child_plots).
 
         Args:
             text_fmt (str): f-string format for the value text.
@@ -951,7 +955,7 @@ class HMapPTableProjector(PTableProjector):
             if text_color == ElemColorMode.element_types:
                 color = self.get_elem_type_color(symbol, default="black")
             elif text_color == "AUTO":
-                color = pick_bw_for_contrast(self.tile_colors[symbol])  # type: ignore[arg-type, index]
+                color = pick_bw_for_contrast(self.tile_colors[symbol])
             else:
                 color = text_color
 
@@ -1002,7 +1006,7 @@ def ptable_heatmap(
     cbar_title: str = "Element Count",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
-) -> plt.Axes:
+) -> plt.Figure:
     """Plot a heatmap across the periodic table.
 
     Args:
@@ -1081,6 +1085,9 @@ def ptable_heatmap(
     Returns:
         plt.Figure: matplotlib Figure with the heatmap.
     """
+    if log and values_show_mode in {"percent", "fraction"}:
+        raise ValueError(f"Combining log scale and {values_show_mode=} is unsupported")
+
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,
