@@ -196,8 +196,11 @@ class TestPtableHeatmap:
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
-    def test_cbar_label_fmt(self) -> None:  # TODO:
-        pass
+    @pytest.mark.parametrize("values_fmt", ["AUTO", ".3g", ".2g"])
+    def test_values_fmt(self, values_fmt: str) -> None:
+        fig = ptable_heatmap(df_ptable.atomic_mass, values_fmt=values_fmt)
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
 
     def test_cbar_kwargs(self) -> None:
         cbar_kwargs = dict(orientation="horizontal")
