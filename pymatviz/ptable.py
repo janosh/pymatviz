@@ -1000,8 +1000,8 @@ def ptable_heatmap(
                 content = f"{content:{text_fmt}}"
 
                 # Simplify scientific notation, say 1e-01 to 1e-1
-                if self.sci_notation and "e-0" in content:
-                    content = content.replace("e-0", "e-")
+                if self.sci_notation and ("e-0" in content or "e+0" in content):
+                    content = content.replace("e-0", "e-").replace("e+0", "e+")
 
                 # Pick value text color
                 if text_color == ElemColorMode.element_types:
