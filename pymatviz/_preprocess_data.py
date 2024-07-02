@@ -184,7 +184,7 @@ def log_scale(
 
         Args:
             val (float | NDArray): Value(s) to apply log.
-            eps (float): A small epsilon to avoid log(0).
+            eps (float): A small epsilon to avoid zero or negative values.
         """
         # Sequences of floats (should be NDArray only after preprocessing)
         try:
@@ -197,7 +197,7 @@ def log_scale(
 
     # Apply logarithm to each element in the column
     np.seterr(all="raise")  # raise FloatingPointError instead of warn
-    data[col] = data[col].apply(lambda x: log_transform(x, eps))
+    data[col] = data[col].apply(lambda val: log_transform(val, eps))
 
     return data
 
