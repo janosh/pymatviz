@@ -732,7 +732,7 @@ def ptable_heatmap(
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | Literal["AUTO"] = "AUTO",
-    # f_block_voffset: float = 0.5,
+    f_block_voffset: float = 0,
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
@@ -779,6 +779,7 @@ def ptable_heatmap(
             data. Defaults to "hide".
         hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
             Defaults to "AUTO", meaning hide if no data is provided.
+        f_block_voffset (float): The vertical offset of f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -903,6 +904,7 @@ def ptable_heatmap(
         def add_child_plots(  # type: ignore[override]
             self,
             *,
+            # f_block_voffset: float = 0,
             tick_kwargs: dict[str, Any] | None = None,
             ax_kwargs: dict[str, Any] | None = None,
             on_empty: Literal["hide", "show"] = "hide",
@@ -912,6 +914,7 @@ def ptable_heatmap(
             TODO: make the element-loop part a decorator.
 
             Args:
+                f_block_voffset (float): The vertical offset of f-block elements.
                 tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
                 ax_kwargs (dict): Keyword arguments to pass to ax.set().
                 on_empty ("hide" | "show"): Whether to show or hide tiles for
@@ -943,6 +946,15 @@ def ptable_heatmap(
 
                 if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
                     continue
+
+                # TODO: offset is not working properly, even when offset is 0,
+                # the tile size still changes
+
+                # # Apply vertical offset for f-block
+                # if element.is_lanthanoid or element.is_actinoid:
+                #     pos = ax.get_position()
+                #     ax.set_position([pos.x0, pos.y0 + f_block_voffset,
+                # pos.width, pos.height])
 
                 # Add child heatmap plot
                 ax.pie(
@@ -1038,6 +1050,7 @@ def ptable_heatmap(
         colormap=colormap,  # type: ignore[arg-type]
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
+        f_block_voffset=f_block_voffset,  # type: ignore[arg-type]
     )
 
     # Call child plotter: heatmap
