@@ -218,7 +218,26 @@ def normalize_data(data: pd.DataFrame) -> pd.DataFrame:
     return data.map(lambda x: x / total_sum)
 
 
-# TODO: overload type
+@overload
+def preprocess_ptable_data(
+    data: SupportedDataType,
+    *,
+    missing_strategy: Literal["zero", "mean"] = "mean",
+    return_anomalies: Literal[False] = False,
+) -> pd.DataFrame:
+    pass
+
+
+@overload
+def preprocess_ptable_data(
+    data: SupportedDataType,
+    *,
+    missing_strategy: Literal["zero", "mean"] = "mean",
+    return_anomalies: Literal[True] = True,
+) -> tuple[pd.DataFrame, dict[str, set[Literal["nan", "inf"]]]]:
+    pass
+
+
 def preprocess_ptable_data(
     data: SupportedDataType,
     *,
