@@ -973,6 +973,7 @@ def ptable_heatmap(
     colormap: str = "viridis",
     inf_color: ColorType = "lightskyblue",
     nan_color: ColorType = "white",
+    overwrite_colors: dict[str, ColorType] | None = None,
     log: bool = False,
     sci_notation: bool = False,
     tile_size: tuple[float, float] = (0.75, 0.75),
@@ -1018,6 +1019,8 @@ def ptable_heatmap(
         colormap (str): The colormap to use.
         inf_color (ColorType): The color to use for infinity.
         nan_color (ColorType): The color to use for missing value (NaN).
+        overwrite_colors (dict[str, ColorType] | None): Optional
+            overwrite colors. Defaults to None.
         log (bool): Whether to log scale data.
         sci_notation (bool): Whether to use scientific notation for values and
             colorbar tick labels.
@@ -1094,6 +1097,7 @@ def ptable_heatmap(
         colormap=colormap,  # type: ignore[arg-type]
         inf_color=inf_color,
         nan_color=nan_color,
+        overwrite_colors=overwrite_colors,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
@@ -1281,7 +1285,7 @@ def ptable_heatmap_splits(
     return projector.fig
 
 
-def ptable_heatmap_ratio(
+def ptable_heatmap_ratio(  # TODO: refactor
     values_num: ElemValues,
     values_denom: ElemValues,
     *,
