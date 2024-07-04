@@ -10,8 +10,8 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pymatviz._preprocess_data import SupportedDataType
-from pymatviz.ptable import PTableData
 from pymatviz.enums import Key
+from pymatviz.ptable import PTableData
 
 
 if TYPE_CHECKING:
@@ -328,4 +328,3 @@ class TestPTableDataAdvanced:
         assert_allclose(
             ptable_data_1.data.loc["C", Key.heat_val], [6.0, np.log(epsilon)]
         )
-
