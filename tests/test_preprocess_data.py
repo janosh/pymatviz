@@ -151,6 +151,18 @@ class TestPTableDataProcessorBasicInit:
         assert isclose(output_df_1.attrs["mean"], 5)
         assert isclose(output_df_1.attrs["vmax"], 9)
 
+    def test_drop_elements(self) -> None:
+        test_dict = {"H": 1, "He": [2, 4], "Li": np.array([6, 8])}
+
+        ptable_data = PTableData(test_dict)
+        ptable_data.drop_elements(["H", "He"])
+
+        assert list(ptable_data.data.index) == ["Li"]
+
+        # Make sure metadata get updated too
+        assert isclose(ptable_data.data.attrs["vmin"], 6), ptable_data.data
+        assert isclose(ptable_data.data.attrs["vmax"], 8)
+
 
 class TestPTableDataProcessorAdvanced:
     """Test advanced data preprocessing functionality."""

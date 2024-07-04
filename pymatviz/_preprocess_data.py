@@ -32,10 +32,13 @@ SupportedValueType = Union[Sequence[float], np.ndarray]
 class PTableData:
     """Store input data for ptable plotters.
 
-    Attributes:  # TODO:
-        pd.DataFrame: The preprocessed DataFrame with element names
+    Attributes:
+        data (pd.DataFrame): The preprocessed DataFrame with element names
             as index and values as columns.
-        (Optional) dict[str, set["nan", "inf"]]: An element to anomalies mapping.
+        index_col (str): The index column header.
+        val_col (str): The value column header.
+        anomalies (dict[str, set["nan", "inf"]]): An element to anomalies mapping.
+        nest_level (int): The nest level of DataFrame.
 
     Example:
         >>> data_dict: dict = {
@@ -232,9 +235,14 @@ class PTableData:
     @classmethod
     def from_formulas(cls, formulas: Sequence[str] | dict[str, float]) -> Self:
         """Initialize PTableData from sequences of chemical formulas
-        or dict # TODO: finish docstring and method.
+        or dict.
+
+        # TODO: finish docstring and method.
+
+        # TODO: merge count_elements function
 
         """
+        # Convert sequences of chemical formulas to XXX TODO:
         if isinstance(formulas, dict):
             pass
         else:
@@ -255,6 +263,7 @@ class PTableData:
         original_data[self.val_col] = original_data[self.val_col].apply(func)
 
         # Ensure metadata is updated by using the setter method
+        # TODO: double check if this is necessary (update unit test as well)
         self.data = original_data
 
     def log_scale(
@@ -295,6 +304,17 @@ class PTableData:
         # Apply logarithm to each element in the column
         np.seterr(all="raise")  # raise FloatingPointError instead of warn
         self.apply(lambda x: log_transform(x, eps))
+
+    def drop_elements(self, elements: Sequence[str]) -> None:
+        """Drop selected elements from data.
+
+        Args:
+            elements (Sequence[str]): Elements to drop.
+        """
+        original_data = self.data
+        df_dropped = original_data.drop(elements, axis=0)
+
+        self.data = df_dropped
 
     def check_and_replace_missing(
         self,
