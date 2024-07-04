@@ -19,11 +19,16 @@ from pymatviz.powerups import (
     add_identity_line,
     annotate_bars,
     annotate_metrics,
-    get_fig_xy_range,
     toggle_log_linear_y_axis,
     with_marginal_hist,
 )
-from pymatviz.utils import MPL_BACKEND, PLOTLY_BACKEND, Backend, pretty_label
+from pymatviz.utils import (
+    MPL_BACKEND,
+    PLOTLY_BACKEND,
+    Backend,
+    get_fig_xy_range,
+    pretty_label,
+)
 from tests.conftest import y_pred, y_true
 
 
