@@ -484,7 +484,7 @@ class PTableData:
 
         has_nan = False
         for elem, value in all_values.items():
-            if pd.isna(value):
+            if np.isnan(value):
                 if elem not in self.anomalies:
                     self.anomalies[elem] = set()
                 self.anomalies[elem].add("nan")
@@ -513,7 +513,11 @@ class PTableData:
                 Args:
                     val (NDarray | float): Value to be processed.
                 """
-                replace_val = 0 if missing_strategy == "zero" else all_values.mean()
+                replace_val = (
+                    0
+                    if missing_strategy == "zero"
+                    else all_values[all_values != np.inf].mean()
+                )
 
                 if isinstance(val, np.ndarray):
                     return np.array([replace_val if np.isnan(v) else v for v in val])

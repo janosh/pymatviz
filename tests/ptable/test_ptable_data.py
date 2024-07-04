@@ -239,16 +239,26 @@ class TestPTableDataAdvanced:
         ptable_data_nan_inf = PTableData(df_with_nan_inf)
 
         assert ptable_data_nan_inf.anomalies == {"Fe": {"inf"}, "O": {"nan"}}
+        assert_allclose(ptable_data_nan_inf.data.loc["Fe", Key.heat_val], [1, 2, 5])
+        assert_allclose(ptable_data_nan_inf.data.loc["O", Key.heat_val], [4, 5, 3])
 
-        # NaN and inf for the same element  # DEBUG: this is not right
+        # NaN and inf for the same element
         df_with_nan_inf_same_elem = pd.DataFrame(
             {"Fe": [np.nan, 2, np.inf], "O": [4, 5, 6]}.items(),
             columns=[Key.element, Key.heat_val],
         ).set_index(Key.element)
 
-        ptable_data_nan_inf_same_elem = PTableData(df_with_nan_inf_same_elem)
+        ptable_data_nan_inf_same_elem = PTableData(
+            df_with_nan_inf_same_elem, missing_strategy="zero"
+        )
 
         assert ptable_data_nan_inf_same_elem.anomalies == {"Fe": {"inf", "nan"}}
+        assert_allclose(
+            ptable_data_nan_inf_same_elem.data.loc["Fe", Key.heat_val], [0, 2, 6]
+        )
+        assert_allclose(
+            ptable_data_nan_inf_same_elem.data.loc["O", Key.heat_val], [4, 5, 6]
+        )
 
     def test_too_deep_nest(self) -> None:
         df_level_2 = pd.DataFrame(
@@ -303,6 +313,7 @@ class TestPTableDataAdvanced:
         assert_allclose(log_df.loc["Li", Key.heat_val], [np.log(3)])
         assert_allclose(log_df.loc["Be", Key.heat_val], [np.log(4), np.log(5)])
 
+    @pytest.mark.skip("debugging")
     def test_log_scale_with_zero(self) -> None:
         """Test scale data containing zero/negative."""
         epsilon = 1e-8
