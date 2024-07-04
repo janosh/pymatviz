@@ -42,9 +42,9 @@ class TestPTableDataProcessorBasicInit:
         assert_allclose(output_df.loc["Na", Key.heat_val], [11.0])
         assert_allclose(output_df.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
-        assert output_df.attrs["vmin"] == -1.0
-        assert output_df.attrs["mean"] == 4.63
-        assert output_df.attrs["vmax"] == 14.0
+        assert isclose(output_df.attrs["vmin"], -1.0)
+        assert isclose(output_df.attrs["mean"], 4.63)
+        assert isclose(output_df.attrs["vmax"], 14.0)
 
     def test_from_pd_dataframe(self) -> None:
         input_df: pd.DataFrame = pd.DataFrame(
@@ -166,6 +166,18 @@ class TestPTableDataProcessorBasicInit:
 
 class TestPTableDataProcessorAdvanced:
     """Test advanced data preprocessing functionality."""
+
+    def test_apply(self) -> None:
+        data_index = {
+            "H": 1,
+            "He": [-2.0, 3],
+        }
+        ptable_data = PTableData(data_index)
+
+        # Test apply absolute function and meta data
+        ptable_data.apply(abs)
+        assert_allclose(ptable_data.data.loc["He", Key.heat_val], [2, 3])
+        assert isclose(ptable_data.data.attrs["vmin"], 1)
 
     def test_df_without_anomalies(self) -> None:
         normal_df = pd.DataFrame(

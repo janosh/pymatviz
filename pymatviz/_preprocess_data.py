@@ -148,7 +148,7 @@ class PTableData:
                 f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
             )
 
-        # Convert all values to NumPy array  # TODO: reuse apply
+        # Convert all values to NumPy array
         data[self.val_col] = data[self.val_col].apply(
             lambda val: np.array(list(val))
             if isinstance(val, Iterable) and not isinstance(val, str)
