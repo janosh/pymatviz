@@ -18,13 +18,7 @@ from matplotlib.patches import Rectangle
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
-from pymatviz._preprocess_data import (
-    SupportedDataType,
-    SupportedValueType,
-    log_scale,
-    normalize_data,
-    preprocess_ptable_data,
-)
+from pymatviz._preprocess_data import PTableData, SupportedDataType, SupportedValueType
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
 from pymatviz.enums import ElemColorMode, ElemColors, ElemCountMode, Key
 from pymatviz.utils import df_ptable, get_cbar_label_formatter, pick_bw_for_contrast
@@ -157,6 +151,7 @@ class PTableProjector:
     Attributes:
         cmap (Colormap | None): Colormap.
         data (pd.DataFrame): Data for plotting.
+        ptable_data (PTableData): Internal data container.
         norm (Normalize): Data min-max normalizer.
         hide_f_block (bool): Whether to hide f-block.
         elem_types (set[str]): Types of elements present.
@@ -172,7 +167,7 @@ class PTableProjector:
     def __init__(
         self,
         *,
-        data: SupportedDataType,
+        data: SupportedDataType | PTableData,
         log: bool = False,
         colormap: str | Colormap = "viridis",
         tile_size: tuple[float, float] = (0.75, 0.75),
@@ -187,7 +182,7 @@ class PTableProjector:
         and axes would be turned off by default.
 
         Args:
-            data (SupportedDataType): The data to be visualized.
+            data (SupportedDataType | PTableData): The data to be visualized.
             log (bool): Whether to log scale data.
             colormap (str | Colormap): The colormap to use. Defaults to "viridis".
             tile_size (tuple[float, float]): The relative tile height and width.
@@ -206,7 +201,7 @@ class PTableProjector:
         # Preprocess data
         self.data: pd.DataFrame = data
         if log:
-            self.data = log_scale(self.data, col=Key.heat_val)
+            self.ptable_data.log_scale()
 
         self.hide_f_block = hide_f_block  # type: ignore[assignment]
 
@@ -241,19 +236,20 @@ class PTableProjector:
     @property
     def data(self) -> pd.DataFrame:
         """The preprocessed data."""
-        return self._data
+        return self.ptable_data.data
 
     @data.setter
     def data(self, data: SupportedDataType) -> None:
         """Preprocess and set the data. Also set normalizer."""
         # Preprocess data
-        self._data, self._anomalies = preprocess_ptable_data(
-            data, return_anomalies=True
-        )
+        if not isinstance(data, PTableData):
+            self.ptable_data = PTableData(data)
+
+        self._anomalies = self.ptable_data.anomalies
 
         # Normalize data for colorbar
-        vmin = self._data.attrs["vmin"]
-        vmax = self._data.attrs["vmax"]
+        vmin = self.ptable_data.data.attrs["vmin"]
+        vmax = self.ptable_data.data.attrs["vmax"]
         self._norm = Normalize(vmin=vmin, vmax=vmax)
 
     @property

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from math import isclose
 from typing import TYPE_CHECKING, get_args
 
 import numpy as np
@@ -8,15 +9,7 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from pymatviz._preprocess_data import (
-    SupportedDataType,
-    check_for_missing_inf,
-    get_df_nest_level,
-    log_scale,
-    normalize_data,
-    preprocess_ptable_data,
-    replace_missing_and_infinity,
-)
+from pymatviz._preprocess_data import PTableData, SupportedDataType, get_df_nest_level
 from pymatviz.enums import Key
 
 
@@ -24,7 +17,9 @@ if TYPE_CHECKING:
     from typing import ClassVar
 
 
-class TestPreprocessPtableData:
+class TestPTableDataProcessorBasicInit:
+    """Test basic init functionality of PTableDataProcessor."""
+
     test_dict: ClassVar = {
         "H": 1,  # int
         "He": [2.0, 4.0],  # float list
@@ -56,7 +51,8 @@ class TestPreprocessPtableData:
             self.test_dict.items(), columns=[Key.element, Key.heat_val]
         ).set_index(Key.element)
 
-        output_df: pd.DataFrame = preprocess_ptable_data(input_df)
+        ptable_data = PTableData(input_df, check_missing=False, check_infinity=False)
+        output_df: pd.DataFrame = ptable_data.data
 
         self._validate_output_df(output_df)
 
@@ -68,18 +64,20 @@ class TestPreprocessPtableData:
             "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
         }
 
-        df_in = pd.DataFrame(test_dict)
-
         # Elements as a row, and no proper row/column names
-        df_out = preprocess_ptable_data(df_in)
+        df_out = PTableData(test_dict, check_missing=False, check_infinity=False).data
 
         assert_allclose(df_out.loc["He", Key.heat_val], [2.0, 4.0])
         assert_allclose(df_out.loc["Li", Key.heat_val], [6.0, 8.0])
         assert_allclose(df_out.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
         # Elements as a column, and no proper row/column names
-        df_in_transp = pd.DataFrame(test_dict).transpose()
-        df_out_transp = preprocess_ptable_data(df_in_transp)
+        ptable_data = PTableData(
+            pd.DataFrame(test_dict).transpose(),
+            check_missing=False,
+            check_infinity=False,
+        )
+        df_out_transp = ptable_data.data
 
         assert_allclose(df_out_transp.loc["He", Key.heat_val], [2.0, 4.0])
         assert_allclose(df_out_transp.loc["Li", Key.heat_val], [6.0, 8.0])
@@ -95,21 +93,25 @@ class TestPreprocessPtableData:
             }
         )
         with pytest.raises(KeyError, match="Cannot handle dataframe="):
-            preprocess_ptable_data(df_without_complete_elem)
+            _ptable_data = PTableData(
+                df_without_complete_elem, check_missing=False, check_infinity=False
+            )
 
     def test_from_pd_series(self) -> None:
         input_series: pd.Series = pd.Series(self.test_dict)
 
-        output_df = preprocess_ptable_data(input_series)
+        ptable_data = PTableData(
+            input_series, check_missing=False, check_infinity=False
+        )
 
-        self._validate_output_df(output_df)
+        self._validate_output_df(ptable_data.data)
 
     def test_from_dict(self) -> None:
         input_dict = self.test_dict
 
-        output_df = preprocess_ptable_data(input_dict)
+        ptable_data = PTableData(input_dict, check_missing=False, check_infinity=False)
 
-        self._validate_output_df(output_df)
+        self._validate_output_df(ptable_data.data)
 
     def test_unsupported_type(self) -> None:
         for invalid_data in ([0, 1, 2], range(5), "test", None):
@@ -118,16 +120,21 @@ class TestPreprocessPtableData:
                 f"choose from {get_args(SupportedDataType)}"
             )
             with pytest.raises(TypeError, match=re.escape(err_msg)):
-                preprocess_ptable_data(invalid_data)
+                _ptable_data = PTableData(
+                    invalid_data, check_missing=False, check_infinity=False
+                )
 
     def test_get_vmin_vmax(self) -> None:
         # Test without nested list/array
         test_dict_0 = {"H": 1, "He": [2, 4], "Li": np.array([6, 8])}
 
-        output_df_0 = preprocess_ptable_data(test_dict_0)
+        processor = PTableData(test_dict_0, check_missing=False, check_infinity=False)
 
-        assert output_df_0.attrs["vmin"] == 1
-        assert output_df_0.attrs["vmax"] == 8
+        output_df_0 = processor.data
+
+        assert isclose(output_df_0.attrs["vmin"], 1)
+        assert isclose(output_df_0.attrs["mean"], 4.2)
+        assert isclose(output_df_0.attrs["vmax"], 8)
 
         # Test with nested list/array
         test_dict_1 = {
@@ -136,67 +143,166 @@ class TestPreprocessPtableData:
             "Li": [np.array([6, 7]), np.array([8, 9])],
         }
 
-        output_df_1 = preprocess_ptable_data(test_dict_1)
+        output_df_1 = PTableData(
+            test_dict_1, check_missing=False, check_infinity=False
+        ).data
 
-        assert output_df_1.attrs["vmin"] == 1
-        assert output_df_1.attrs["vmax"] == 9
+        assert isclose(output_df_1.attrs["vmin"], 1)
+        assert isclose(output_df_1.attrs["mean"], 5)
+        assert isclose(output_df_1.attrs["vmax"], 9)
 
 
-def test_check_for_missing_inf() -> None:
-    # Test a normal DataFrame
-    normal_df = pd.DataFrame(
-        {"Fe": [1, 2, 3], "O": [4, 5, 6]}.items(),
-        columns=[Key.element, Key.heat_val],
-    ).set_index(Key.element)
+class TestPTableDataProcessorAdvanced:
+    """Test advanced data preprocessing functionality."""
 
-    assert check_for_missing_inf(normal_df, col=Key.heat_val) == (False, False, {})
+    def test_df_without_anomalies(self) -> None:
+        normal_df = pd.DataFrame(
+            {"Fe": [1, 2, 3], "O": [4, 5, 6]}.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
 
-    # Test DataFrame with missing value (NaN)
-    df_with_missing = pd.DataFrame(
-        {"Fe": [1, 2, np.nan], "O": [4, 5, 6]}.items(),
-        columns=[Key.element, Key.heat_val],
-    ).set_index(Key.element)
+        ptable_data = PTableData(normal_df)
 
-    assert check_for_missing_inf(df_with_missing, col=Key.heat_val) == (
-        True,
-        False,
-        {"Fe": {"nan"}},
-    )
+        assert ptable_data.anomalies == {}
 
-    # Test DataFrame with infinity
-    df_with_inf = pd.DataFrame(
-        {"Fe": [1, 2, np.inf], "O": [4, 5, 6]}.items(),
-        columns=[Key.element, Key.heat_val],
-    ).set_index(Key.element)
+    def test_check_and_replace_missing_zero(self) -> None:
+        df_with_missing = pd.DataFrame(
+            {"Fe": [1, 2, np.nan], "O": [4, 5, 6]}.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
 
-    assert check_for_missing_inf(df_with_inf, col=Key.heat_val) == (
-        False,
-        True,
-        {"Fe": {"inf"}},
-    )
+        with pytest.warns(match="NaN found in data"):
+            ptable_data = PTableData(df_with_missing, missing_strategy="zero")
 
-    # Test DataFrame with missing value (NaN) and infinity
-    df_with_nan_inf = pd.DataFrame(
-        {"Fe": [1, 2, np.inf], "O": [4, 5, np.nan]}.items(),
-        columns=[Key.element, Key.heat_val],
-    ).set_index(Key.element)
+        assert ptable_data.anomalies == {"Fe": {"nan"}}
+        assert_allclose(ptable_data.data.loc["Fe", Key.heat_val], [1, 2, 0])
+        assert_allclose(ptable_data.data.loc["O", Key.heat_val], [4, 5, 6])
 
-    assert check_for_missing_inf(df_with_nan_inf, col=Key.heat_val) == (
-        True,
-        True,
-        {"Fe": {"inf"}, "O": {"nan"}},
-    )
+    def test_check_and_replace_missing_mean(self) -> None:
+        df_with_missing = pd.DataFrame(
+            {"Fe": [1, 2, np.nan], "O": [4, 5, 6]}.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
 
-    df_with_nan_inf_same_elem = pd.DataFrame(
-        {"Fe": [np.nan, 2, np.inf], "O": [4, 5, 6]}.items(),
-        columns=[Key.element, Key.heat_val],
-    ).set_index(Key.element)
+        with pytest.warns(match="NaN found in data"):
+            ptable_data = PTableData(df_with_missing, missing_strategy="mean")
 
-    assert check_for_missing_inf(df_with_nan_inf_same_elem, col=Key.heat_val) == (
-        True,
-        True,
-        {"Fe": {"inf", "nan"}},
-    )
+        assert ptable_data.anomalies == {"Fe": {"nan"}}
+        assert_allclose(ptable_data.data.loc["Fe", Key.heat_val], [1, 2, 3.6])
+        assert_allclose(ptable_data.data.loc["O", Key.heat_val], [4, 5, 6])
+
+    def test_check_and_replace_infinity(self) -> None:
+        df_with_inf = pd.DataFrame(
+            {"Fe": [1, 2, np.inf], "O": [4, 5, -np.inf]}.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
+
+        with pytest.warns(match="Infinity found in data"):
+            ptable_data = PTableData(df_with_inf)
+
+        assert ptable_data.anomalies == {"Fe": {"inf"}, "O": {"inf"}}
+        assert_allclose(ptable_data.data.loc["Fe", Key.heat_val], [1, 2, 5])
+        assert_allclose(ptable_data.data.loc["O", Key.heat_val], [4, 5, 1])
+
+    def test_check_and_replace_both_nan_and_inf(self) -> None:
+        # Test DataFrame with missing value (NaN) and infinity
+        df_with_nan_inf = pd.DataFrame(
+            {"Fe": [1, 2, np.inf], "O": [4, 5, np.nan]}.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
+
+        ptable_data_nan_inf = PTableData(df_with_nan_inf)
+
+        assert ptable_data_nan_inf.anomalies == {"Fe": {"inf"}, "O": {"nan"}}
+
+        # NaN and inf for the same element  # DEBUG: this is not right
+        df_with_nan_inf_same_elem = pd.DataFrame(
+            {"Fe": [np.nan, 2, np.inf], "O": [4, 5, 6]}.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
+
+        ptable_data_nan_inf_same_elem = PTableData(df_with_nan_inf_same_elem)
+
+        assert ptable_data_nan_inf_same_elem.anomalies == {"Fe": {"inf", "nan"}}
+
+    def test_too_deep_nest(self) -> None:
+        df_level_2 = pd.DataFrame(
+            {"Fe": [1, 2, 3], "O": [[4, 5], [6, np.nan]]}.items(),
+            columns=[Key.element, Key.heat_val],
+        ).set_index(Key.element)
+
+        err_msg = "Unable to replace NaN and inf for nest_level>1"
+        with pytest.raises(NotImplementedError, match=err_msg):
+            PTableData(df_level_2)
+
+    def test_normalize_data(self) -> None:
+        # Test normalize single value data
+        data_out = PTableData({"H": 1.0, "He": 4.0}, normalize=True).data
+
+        assert_allclose(data_out.loc["H", Key.heat_val], [0.2])
+        assert_allclose(data_out.loc["He", Key.heat_val], [0.8])
+
+        # Test normalize multi value data
+        data_out = PTableData({"H": 1.0, "He": [2, 7]}, normalize=True).data
+
+        assert_allclose(data_out.loc["H", Key.heat_val], [0.1])
+        assert_allclose(data_out.loc["He", Key.heat_val], [0.2, 0.7])
+
+    def test_log_scale_floats(self) -> None:
+        """Test log scale floats."""
+        df_in = {
+            "H": 1,  # int
+            "He": 2.0,  # float
+        }
+
+        ptable_data = PTableData(df_in)
+        ptable_data.log_scale()
+
+        log_df = ptable_data.data
+
+        assert_allclose(log_df.loc["H", Key.heat_val], [np.log(1)])
+        assert_allclose(log_df.loc["He", Key.heat_val], [np.log(2)])
+
+    def test_log_scale_array(self) -> None:
+        """Test log scale data of sequences of floats."""
+        df_in = {
+            "Li": 3.0,
+            "Be": [4.0, 5.0],
+        }
+
+        ptable_data = PTableData(df_in)
+        ptable_data.log_scale()
+
+        log_df = ptable_data.data
+
+        assert_allclose(log_df.loc["Li", Key.heat_val], [np.log(3)])
+        assert_allclose(log_df.loc["Be", Key.heat_val], [np.log(4), np.log(5)])
+
+    def test_log_scale_with_zero(self) -> None:
+        """Test scale data containing zero/negative."""
+        epsilon = 1e-8
+
+        df_in_0 = {
+            "B": -1,
+        }
+        ptable_data_0 = PTableData(df_in_0)
+
+        with pytest.warns(UserWarning, match=r"Illegal log for \[-1\]"):
+            ptable_data_0.log_scale(eps=epsilon)
+
+        assert_allclose(ptable_data_0.data.loc["B", Key.heat_val], [np.log(epsilon)])
+
+        # DEBUG: for some reason the following eps in not working correctly
+        df_in_1 = {
+            "C": [6.0, 0],
+        }
+        ptable_data_1 = PTableData(df_in_1)
+        with pytest.warns(UserWarning, match=r"Illegal log for \[6. 0.\]"):
+            ptable_data_1.log_scale(eps=epsilon)
+
+        assert_allclose(
+            ptable_data_1.data.loc["C", Key.heat_val], [6.0, np.log(epsilon)]
+        )
 
 
 def test_get_df_nest_level() -> None:
@@ -240,133 +346,3 @@ def test_get_df_nest_level() -> None:
     ).set_index(Key.element)
 
     assert get_df_nest_level(df_level_2_arr, col=Key.heat_val) == 2
-
-
-class TestReplaceMissingAndInfinity:
-    def test_replace_missing(self) -> None:
-        df_with_nan = pd.DataFrame(
-            {"Fe": [1, 2, 3], "O": [4, 5, np.nan]}.items(),
-            columns=[Key.element, Key.heat_val],
-        ).set_index(Key.element)
-
-        # Test missing strategy: mean (default)
-        with pytest.warns(match="NaN found in data"):
-            processed_df_mean, _anomalies = replace_missing_and_infinity(
-                df_with_nan.copy(), col=Key.heat_val
-            )
-        assert_allclose(processed_df_mean.loc["O", Key.heat_val], [4, 5, 3])
-
-        # Test missing strategy: zero
-        with pytest.warns(match="NaN found in data"):
-            processed_df_zero, _anomalies = replace_missing_and_infinity(
-                df_with_nan.copy(), col=Key.heat_val, missing_strategy="zero"
-            )
-        assert_allclose(processed_df_zero.loc["O", Key.heat_val], [4, 5, 0])
-
-    def test_replace_infinity(self) -> None:
-        df_with_inf = pd.DataFrame(
-            {"Fe": [1, 2, np.inf], "O": [4, 5, 6]}.items(),
-            columns=[Key.element, Key.heat_val],
-        ).set_index(Key.element)
-
-        with pytest.warns(match="Infinity found in data"):
-            processed_df, _anomalies = replace_missing_and_infinity(
-                df_with_inf, col=Key.heat_val
-            )
-        assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 6])
-
-    def test_replace_both(self) -> None:
-        df_with_both = pd.DataFrame(
-            {"Fe": [1, 2, np.inf], "O": [4, 5, np.nan]}.items(),
-            columns=[Key.element, Key.heat_val],
-        ).set_index(Key.element)
-
-        processed_df, _anomalies = replace_missing_and_infinity(
-            df_with_both, col=Key.heat_val, missing_strategy="zero"
-        )
-        assert_allclose(processed_df.loc["Fe", Key.heat_val], [1, 2, 5])
-        assert_allclose(processed_df.loc["O", Key.heat_val], [4, 5, 0])
-
-    def test_too_deep_nest(self) -> None:
-        df_level_2 = pd.DataFrame(
-            {"Fe": [1, 2, 3], "O": [[4, 5], [6, np.nan]]}.items(),
-            columns=[Key.element, Key.heat_val],
-        ).set_index(Key.element)
-        nest_level = get_df_nest_level(df_level_2, col=Key.heat_val)
-
-        err_msg = f"Unable to replace NaN and inf for nest_level>1, got {nest_level}"
-        with pytest.raises(NotImplementedError, match=err_msg):
-            replace_missing_and_infinity(df_level_2, col=Key.heat_val)
-
-
-class TestLogScale:
-    def test_log_scale_floats(self) -> None:
-        """Test log scale floats."""
-        df_in = preprocess_ptable_data(
-            {
-                "H": 1,  # int
-                "He": 2.0,  # float
-            }
-        )
-
-        log_df = log_scale(df_in, col=Key.heat_val)
-
-        assert_allclose(log_df.loc["H", Key.heat_val], [np.log(1)])
-        assert_allclose(log_df.loc["He", Key.heat_val], [np.log(2)])
-
-    def test_log_scale_array(self) -> None:
-        """Test log scale data of sequences of floats."""
-        df_in = preprocess_ptable_data(
-            {
-                "Li": 3.0,
-                "Be": [4.0, 5.0],
-            }
-        )
-
-        log_df = log_scale(df_in, col=Key.heat_val)
-
-        assert_allclose(log_df.loc["Li", Key.heat_val], [np.log(3)])
-        assert_allclose(log_df.loc["Be", Key.heat_val], [np.log(4), np.log(5)])
-
-    def test_log_scale_with_zero(self) -> None:
-        """Test scale data containing zero/negative."""
-        epsilon = 1e-10
-
-        df_in_0 = preprocess_ptable_data(
-            {
-                "B": 0,
-            }
-        )
-
-        with pytest.warns(UserWarning, match=r"Illegal log for \[0\]"):
-            log_df_0 = log_scale(df_in_0, col=Key.heat_val, eps=epsilon)
-
-        assert_allclose(log_df_0.loc["B", Key.heat_val], [np.log(1e-10)])
-
-        df_in_1 = preprocess_ptable_data(
-            {
-                "C": [6.0, 0],
-            }
-        )
-        with pytest.warns(UserWarning, match=r"Illegal log for \[6. 0.\]"):
-            log_df_1 = log_scale(df_in_1, col=Key.heat_val, eps=epsilon)
-        assert_allclose(log_df_1.loc["C", Key.heat_val], [np.log(6), np.log(1e-10)])
-
-
-class TestNormalizeData:
-    def test_normalize_single_value_data(self) -> None:
-        data_df = preprocess_ptable_data({"H": 1.0, "He": 4.0})
-
-        # Test fractional mode
-        data_out_fraction = normalize_data(data_df)
-
-        assert_allclose(data_out_fraction.loc["H", Key.heat_val], [0.2])
-        assert_allclose(data_out_fraction.loc["He", Key.heat_val], [0.8])
-
-    def test_normalize_multi_value_data(self) -> None:
-        data_df = preprocess_ptable_data({"H": 1.0, "He": [2, 7]})
-
-        data_out_fraction = normalize_data(data_df)
-
-        assert_allclose(data_out_fraction.loc["H", Key.heat_val], [0.1])
-        assert_allclose(data_out_fraction.loc["He", Key.heat_val], [0.2, 0.7])
