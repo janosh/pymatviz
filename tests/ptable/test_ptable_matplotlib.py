@@ -228,10 +228,10 @@ class TestPtableHeatmap:
             data=data_with_anomaly, inf_color="lightskyblue", nan_color="white"
         )
 
-        assert projector.anomalies["H"] == {"nan"}
+        assert projector.anomalies["H"] == {"nan"}  # type: ignore[index]
         assert projector.overwrite_colors["H"] == "white"
 
-        assert projector.anomalies["He"] == {"inf"}
+        assert projector.anomalies["He"] == {"inf"}  # type: ignore[index]
         assert projector.overwrite_colors["He"] == "lightskyblue"
 
 

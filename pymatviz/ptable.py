@@ -6,7 +6,7 @@ import itertools
 import math
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Literal, Union, get_args, overload
+from typing import TYPE_CHECKING, Literal, Union, cast, get_args
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -230,7 +230,9 @@ class PTableData:
         self.nest_level = get_df_nest_level(self.data, col=self.val_col)
 
         # Replace missing values and infinities, and update anomalies
-        self.anomalies = {} if (check_missing or check_infinity) else "NA"
+        self.anomalies: dict[str, set[Literal["inf", "nan"]]] | Literal["NA"] = (
+            {} if (check_missing or check_infinity) else "NA"
+        )
         if check_missing:
             self.check_and_replace_missing(missing_strategy=missing_strategy)
         if check_infinity:
@@ -399,7 +401,7 @@ class PTableData:
         total_sum = self._data.map(np.sum).sum().sum()
         self.data = self._data.map(lambda x: x / total_sum)
 
-    def apply(self, func: Callable) -> None:
+    def apply(self, func: Callable[[Any], Any]) -> None:
         """Apply a function to all values in value column.
 
         Args:
@@ -423,15 +425,7 @@ class PTableData:
             eps (float): A small epsilon to avoid log(0).
         """
 
-        @overload
-        def log_transform(val: float, eps: float) -> float:
-            pass
-
-        @overload
-        def log_transform(val: NDArray, eps: float) -> NDArray:
-            pass
-
-        def log_transform(val: float | NDArray, eps: float) -> float | NDArray:
+        def log_transform(val: float | NDArray, eps: float) -> NDArray:
             """Apply logarithm on sequences of floats.
 
             Args:
@@ -439,12 +433,12 @@ class PTableData:
                 eps (float): A small epsilon to avoid zero or negative values.
             """
             try:
-                return np.array([math.log(v) for v in val])
+                return np.array([math.log(v) for v in val])  # type: ignore[union-attr]
 
             # Catch illegal values for log
             except ValueError:
                 warnings.warn(f"Illegal log for {val}", stacklevel=2)
-                return [v if v > 0 else math.log(max(v, eps)) for v in val]
+                return np.array([v if v > 0 else math.log(max(v, eps)) for v in val])  # type: ignore[union-attr]
 
         # Apply logarithm to each element in the column
         self.apply(lambda x: log_transform(x, eps))
@@ -482,6 +476,8 @@ class PTableData:
         all_values = pd.to_numeric(all_values, errors="coerce")
 
         has_nan = False
+        self.anomalies = cast(dict[str, set[Literal["inf", "nan"]]], self.anomalies)
+
         for elem, value in all_values.items():
             if np.isnan(value):
                 if elem not in self.anomalies:
@@ -498,15 +494,7 @@ class PTableData:
             warnings.warn("NaN found in data", stacklevel=2)
 
             # Generate and apply replacement
-            @overload
-            def replace_nan(val: NDArray) -> NDArray:
-                pass
-
-            @overload
-            def replace_nan(val: float) -> float:
-                pass
-
-            def replace_nan(val: NDArray | float) -> NDArray | float:
+            def replace_nan(val: NDArray | float) -> NDArray:
                 """Replace missing value based on selected strategy.
 
                 Args:
@@ -541,6 +529,7 @@ class PTableData:
         all_values = pd.to_numeric(all_values, errors="coerce")
 
         has_inf = False
+        self.anomalies = cast(dict[str, set[Literal["inf", "nan"]]], self.anomalies)
 
         for elem, value in all_values.items():
             if np.isinf(value):
@@ -558,15 +547,7 @@ class PTableData:
             warnings.warn("Infinity found in data", stacklevel=2)
 
             # Generate and apply replacement
-            @overload
-            def replace_inf(val: NDArray) -> NDArray:
-                pass
-
-            @overload
-            def replace_inf(val: float) -> float:
-                pass
-
-            def replace_inf(val: NDArray | float) -> NDArray | float:
+            def replace_inf(val: NDArray | float) -> NDArray:
                 """Replace infinities."""
                 replacements = {
                     np.inf: all_values[all_values != np.inf].max(),
@@ -685,8 +666,6 @@ class PTableProjector:
         if not isinstance(data, PTableData):
             self.ptable_data = PTableData(data)
 
-        self._anomalies = self.ptable_data.anomalies
-
         # Normalize data for colorbar
         vmin = self.ptable_data.data.attrs["vmin"]
         vmax = self.ptable_data.data.attrs["vmax"]
@@ -698,9 +677,9 @@ class PTableProjector:
         return self._norm
 
     @property
-    def anomalies(self) -> dict[str, set[Literal["nan", "inf"]]]:
+    def anomalies(self) -> dict[str, set[Literal["nan", "inf"]]] | Literal["NA"]:
         """Element symbol to anomalies ("nan/inf") mapping."""
-        return self._anomalies
+        return self.ptable_data.anomalies
 
     @property
     def hide_f_block(self) -> bool:
@@ -1257,7 +1236,7 @@ class HMapPTableProjector(PTableProjector):
         """
         if overwrite_colors is None:
             overwrite_colors = {}
-            for elem, values in self.anomalies.items():
+            for elem, values in self.anomalies.items():  # type: ignore[union-attr]
                 if "nan" in values:
                     overwrite_colors[elem] = self.nan_color
                 elif "inf" in values:
