@@ -500,9 +500,7 @@ class PTableData:
                     val (NDarray | float): Value to be processed.
                 """
                 replace_val = (
-                    0
-                    if strategy == "zero"
-                    else all_values[all_values != np.inf].mean()
+                    0 if strategy == "zero" else all_values[all_values != np.inf].mean()
                 )
 
                 if isinstance(val, np.ndarray):
