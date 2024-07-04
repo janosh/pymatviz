@@ -242,6 +242,7 @@ class PTableData:
 
     @property
     def data(self) -> pd.DataFrame:
+        """The internal data as pd.DataFrame."""
         return self._data
 
     @data.setter
@@ -370,18 +371,18 @@ class PTableData:
 
         Args:
             formulas (dict[str, float] | pd.Series | list[str]): Sequence of
-                composition strings/objects or map from element symbols to heatmap values.
-            count_mode: Only used when formulas is a sequence of composition strings/objects.
+                composition strings/objects or map from element symbols to values.
+            count_mode: Only for formulas as a sequence of composition strings/objects.
                 - "composition" (default): Count elements in each composition as is,
                     i.e. without reduction or normalization.
-                - "fractional_composition": Convert to normalized compositions in which the
-                    amounts of each species sum to before counting.
-                    Example: Fe2 O3 -> Fe0.4 O0.6
+                - "fractional_composition": Convert to normalized compositions in
+                    which the amounts of each species sum to before counting.
+                    Example: "Fe2 O3" -> {Fe: 0.4, O: 0.6}
                 - "reduced_composition": Convert to reduced compositions (i.e. amounts
                     normalized by greatest common denominator) before counting.
-                    Example: Fe4 P4 O16 -> Fe P O4.
+                    Example: "Fe4 P4 O16" -> {Fe: 1, P: 1 O: 4}.
                 - "occurrence": Count the number of times each element occurs
-                    irrespective of compositions. E.g. [Fe2 O3, Fe O, Fe4 P4 O16]
+                    irrespective of compositions. E.g. ["Fe2 O3", "Fe O", "Fe4 P4 O16"]
                     counts to {Fe: 3, O: 3, P: 1}.
             exclude_elements (Sequence[str]): Elements to exclude.
 
@@ -437,17 +438,15 @@ class PTableData:
                 val (float | NDArray): Value(s) to apply log.
                 eps (float): A small epsilon to avoid zero or negative values.
             """
-            # Sequences of floats (should be NDArray only after preprocessing)
             try:
-                return np.log(val)
+                return np.array([math.log(v) for v in val])
 
             # Catch illegal values for log
-            except FloatingPointError:
+            except ValueError:
                 warnings.warn(f"Illegal log for {val}", stacklevel=2)
-                return np.log(np.maximum(val, eps))
+                return [v if v > 0 else math.log(max(v, eps)) for v in val]
 
         # Apply logarithm to each element in the column
-        np.seterr(all="raise")  # raise FloatingPointError instead of warn
         self.apply(lambda x: log_transform(x, eps))
 
     def drop_elements(self, elements: Sequence[str]) -> None:

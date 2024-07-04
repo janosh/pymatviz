@@ -313,7 +313,6 @@ class TestPTableDataAdvanced:
         assert_allclose(log_df.loc["Li", Key.heat_val], [np.log(3)])
         assert_allclose(log_df.loc["Be", Key.heat_val], [np.log(4), np.log(5)])
 
-    @pytest.mark.skip("debugging")
     def test_log_scale_with_zero(self) -> None:
         """Test scale data containing zero/negative."""
         epsilon = 1e-8
@@ -328,7 +327,6 @@ class TestPTableDataAdvanced:
 
         assert_allclose(ptable_data_0.data.loc["B", Key.heat_val], [np.log(epsilon)])
 
-        # DEBUG: for some reason the following eps in not working correctly
         df_in_1 = {
             "C": [6.0, 0],
         }
