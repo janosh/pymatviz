@@ -234,7 +234,7 @@ class PTableData:
             {} if (check_missing or check_infinity) else "NA"
         )
         if check_missing:
-            self.check_and_replace_missing(missing_strategy=missing_strategy)
+            self.check_and_replace_missing(strategy=missing_strategy)
         if check_infinity:
             self.check_and_replace_infinity()
 
@@ -411,7 +411,6 @@ class PTableData:
         original_data[self.val_col] = original_data[self.val_col].apply(func)
 
         # Ensure metadata is updated by using the setter method
-        # TODO: double check if this is necessary
         self.data = original_data
 
     def log_scale(
@@ -456,7 +455,7 @@ class PTableData:
 
     def check_and_replace_missing(
         self,
-        missing_strategy: Literal["zero", "mean"],
+        strategy: Literal["zero", "mean"],
     ) -> bool:
         """Check if there is missing value (NaN) in the values column,
         and replace them according to selected strategy.
@@ -464,7 +463,7 @@ class PTableData:
         Would update the anomalies attribute.
 
         Args:
-            missing_strategy ("zero", "mean"): Missing value replacement strategy.
+            strategy ("zero", "mean"): Missing value replacement strategy.
                 - zero: Replace with zero.
                 - mean: Replace with mean value.
 
@@ -502,7 +501,7 @@ class PTableData:
                 """
                 replace_val = (
                     0
-                    if missing_strategy == "zero"
+                    if strategy == "zero"
                     else all_values[all_values != np.inf].mean()
                 )
 
