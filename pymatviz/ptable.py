@@ -152,7 +152,7 @@ def count_elements(
 
 
 class PTableData:
-    """Store input data for ptable plotters.
+    """Hold data for ptable plotters.
 
     Attributes:
         data (pd.DataFrame): The preprocessed DataFrame with element names
@@ -178,15 +178,15 @@ class PTableData:
         OR
         >>> data_series: pd.Series = pd.Series(data_dict)
 
-        >>> preprocess_data(data_dict / df / series)
+        >>> ptable_data = PTableData(data_dict / df / series)
 
-        >>> data_df
+        >>> ptable_data.data
             Element   Value
             H         [1.0, ]
             He        [2.0, 4.0]
             Li        [[6.0, 8.0], [10.0, 11.0]]
 
-        Metadata (data_df.attrs):
+        Metadata (ptable_data.data.attrs):
             vmin: 1.0
             mean: 6.0
             vmax: 11.0
@@ -355,20 +355,43 @@ class PTableData:
         )
 
     @classmethod
-    def from_formulas(cls, formulas: Sequence[str] | dict[str, float]) -> Self:
+    def from_formulas(
+        cls,
+        formulas: Sequence[str] | dict[str, float],
+        count_mode: ElemCountMode = ElemCountMode.composition,
+        exclude_elements: Sequence[str] = (),
+    ) -> Self:
         """Initialize PTableData from sequences of chemical formulas
         or dict.
 
-        # TODO: finish docstring and method.
+        TODO: migrate the code instead of wrapping.
 
-        # TODO: merge count_elements function
+        TODO: migrate unit test.
+
+        Args:
+            formulas (dict[str, float] | pd.Series | list[str]): Sequence of
+                composition strings/objects or map from element symbols to heatmap values.
+            count_mode: Only used when formulas is a sequence of composition strings/objects.
+                - "composition" (default): Count elements in each composition as is,
+                    i.e. without reduction or normalization.
+                - "fractional_composition": Convert to normalized compositions in which the
+                    amounts of each species sum to before counting.
+                    Example: Fe2 O3 -> Fe0.4 O0.6
+                - "reduced_composition": Convert to reduced compositions (i.e. amounts
+                    normalized by greatest common denominator) before counting.
+                    Example: Fe4 P4 O16 -> Fe P O4.
+                - "occurrence": Count the number of times each element occurs
+                    irrespective of compositions. E.g. [Fe2 O3, Fe O, Fe4 P4 O16]
+                    counts to {Fe: 3, O: 3, P: 1}.
+            exclude_elements (Sequence[str]): Elements to exclude.
 
         """
-        # Convert sequences of chemical formulas to XXX TODO:
-        if isinstance(formulas, dict):
-            pass
-        else:
-            pass
+        # Convert sequences of chemical formulas
+        data = count_elements(
+            values=formulas, count_mode=count_mode, exclude_elements=exclude_elements
+        )
+
+        return cls(data)
 
     def normalize(self) -> None:
         """Normalize data by the total sum."""
@@ -385,7 +408,7 @@ class PTableData:
         original_data[self.val_col] = original_data[self.val_col].apply(func)
 
         # Ensure metadata is updated by using the setter method
-        # TODO: double check if this is necessary (update unit test as well)
+        # TODO: double check if this is necessary
         self.data = original_data
 
     def log_scale(
