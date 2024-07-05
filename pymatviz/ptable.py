@@ -1388,11 +1388,11 @@ def ptable_heatmap(
     overwrite_colors: dict[str, ColorType] | None = None,
     log: bool = False,
     sci_notation: bool = False,
-    tile_size: tuple[float, float] = (0.75, 0.75),
+    tile_size: tuple[float, float] = (0.75, 0.75),  # TODO: WIP, don't use
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | Literal["AUTO"] = "AUTO",
-    f_block_voffset: float = 0,
+    f_block_voffset: float = 0,  # TODO: WIP, don't use
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
@@ -1496,6 +1496,14 @@ def ptable_heatmap(
     Returns:
         plt.Figure: matplotlib Figure with the heatmap.
     """
+    # TODO: mark tile_size and f_block_voffset as work in progress
+    # as there're issues that haven't been resolved in #157
+    if f_block_voffset != 0 or tile_size != (0.75, 0.75):
+        warnings.warn(
+            "f_block_voffset and tile_size is still being worked on.", stacklevel=2
+        )
+
+    # Prevent log scale and percent/fraction display mode being use together
     if log and values_show_mode in {"percent", "fraction"}:
         raise ValueError(f"Combining log scale and {values_show_mode=} is unsupported")
 
