@@ -1171,7 +1171,7 @@ class HMapPTableProjector(PTableProjector):
 
         self.tile_colors = tile_colors  # type: ignore[assignment]
         # Auto generate tile values
-        self.tile_values = None    # type: ignore[assignment]
+        self.tile_values = None  # type: ignore[assignment]
 
         # Generate element symbols colors
         self.text_colors = text_colors  # type: ignore[assignment]
