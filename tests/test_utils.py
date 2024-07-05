@@ -17,6 +17,7 @@ from pymatviz.utils import (
     bin_df_cols,
     crystal_sys_from_spg_num,
     df_to_arrays,
+    get_fig_xy_range,
     luminance,
     patch_dict,
     pick_bw_for_contrast,
@@ -379,3 +380,26 @@ def test_validate_fig_decorator_raises(capsys: pytest.CaptureFixture[str]) -> No
             TypeError, match=f"Unexpected type for fig: {type(invalid).__name__}"
         ):
             generic_func(fig=invalid)
+
+
+def test_get_fig_xy_range(
+    plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
+) -> None:
+    for fig in (plotly_scatter, matplotlib_scatter, matplotlib_scatter.axes[0]):
+        x_range, y_range = get_fig_xy_range(fig)
+        assert isinstance(x_range, tuple)
+        assert isinstance(y_range, tuple)
+        assert len(x_range) == 2
+        assert len(y_range) == 2
+        assert x_range[0] < x_range[1]
+        assert y_range[0] < y_range[1]
+        for val in (*x_range, *y_range):
+            assert isinstance(val, float)
+
+    # test invalid input
+    # currently suboptimal behavior: fig must be passed as kwarg to trigger helpful
+    # error message
+    with pytest.raises(
+        TypeError, match="Unexpected type for fig: str, must be one of None"
+    ):
+        get_fig_xy_range(fig="invalid")

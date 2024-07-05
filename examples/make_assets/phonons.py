@@ -29,10 +29,10 @@ for mp_id, formula in (
             docs[key] = json.loads(file.read(), cls=MontyDecoder)
 
     ph_bands: dict[str, PhononBands] = {
-        key: getattr(doc, Key.phonon_bandstructure) for key, doc in docs.items()
+        key: getattr(doc, Key.ph_band_structure) for key, doc in docs.items()
     }
     ph_doses: dict[str, PhononDos] = {
-        key: getattr(doc, Key.phonon_dos) for key, doc in docs.items()
+        key: getattr(doc, Key.ph_dos) for key, doc in docs.items()
     }
 
     fig = plot_phonon_bands(ph_bands)
