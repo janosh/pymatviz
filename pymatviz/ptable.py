@@ -1171,7 +1171,7 @@ class HMapPTableProjector(PTableProjector):
 
         self.tile_colors = tile_colors  # type: ignore[assignment]
         # Auto generate tile values
-        self.tile_values = None    # type: ignore[assignment]
+        self.tile_values = None  # type: ignore[assignment]
 
         # Generate element symbols colors
         self.text_colors = text_colors  # type: ignore[assignment]
@@ -1387,8 +1387,6 @@ class HMapPTableProjector(PTableProjector):
             elems (Sequence[str]): Sequences of elements to exclude.
             color (ColorType): The color for excluded element to use.
             value (str): The value for excluded element to display.
-
-        TODO: need unit test
         """
         for elem in elems:
             self._tile_colors[elem] = color

@@ -221,7 +221,18 @@ class TestPtableHeatmap:
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
-    def test_generate_overwrite_colors(self) -> None:
+    def test_exclude_elems(self) -> None:
+        projector = HMapPTableProjector(
+            data=df_ptable.atomic_mass, inf_color="lightskyblue", nan_color="white"
+        )
+
+        projector.exclude_elems(["H"])
+
+        assert projector.tile_values["H"] == "excl."
+        assert projector.tile_colors["H"] == "grey"
+
+    @pytest.mark.skip("TODO")
+    def test_handle_anomaly(self) -> None:
         data_with_anomaly = {"H": [np.nan], "He": [np.inf]}
 
         projector = HMapPTableProjector(
