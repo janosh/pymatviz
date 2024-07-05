@@ -19,9 +19,9 @@ from pymatviz.enums import ElemCountMode, Key
 from pymatviz.powerups import annotate_bars
 from pymatviz.ptable import count_elements
 from pymatviz.utils import (
-    MPL_BACKEND,
-    PLOTLY_BACKEND,
-    VALID_BACKENDS,
+    BACKENDS,
+    MATPLOTLIB,
+    PLOTLY,
     Backend,
     crystal_sys_from_spg_num,
     si_fmt_int,
@@ -39,7 +39,7 @@ def spacegroup_hist(
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     show_empty_bins: bool = False,
     ax: plt.Axes | None = None,
-    backend: Backend = PLOTLY_BACKEND,
+    backend: Backend = PLOTLY,
     text_kwargs: dict[str, Any] | None = None,
     log: bool = False,
     **kwargs: Any,
@@ -132,7 +132,7 @@ def spacegroup_hist(
     xlim = (0, len(df_data) - 1)
 
     fig_title = f"{count_col} per crystal system" if show_counts else None
-    if backend == PLOTLY_BACKEND:
+    if backend == PLOTLY:
         df_plot = df_data if show_empty_bins else df_data.reset_index()
 
         fig = px.bar(
@@ -353,7 +353,7 @@ def plot_histogram(
     density: bool = False,
     bin_width: float = 1.2,
     log_y: bool = False,
-    backend: Backend = PLOTLY_BACKEND,
+    backend: Backend = PLOTLY,
     fig_kwargs: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> plt.Figure | go.Figure:
@@ -412,7 +412,7 @@ def plot_histogram(
     else:
         bin_edges = np.asarray(bins)
 
-    if backend == MPL_BACKEND:
+    if backend == MATPLOTLIB:
         fig = plt.figure(**fig_kwargs)
         for label, vals in data.items():
             hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
@@ -433,7 +433,7 @@ def plot_histogram(
         if len(data) > 1:
             plt.legend()
 
-    elif backend == PLOTLY_BACKEND:
+    elif backend == PLOTLY:
         fig = go.Figure(**fig_kwargs)
         for label, vals in data.items():
             hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
@@ -451,6 +451,6 @@ def plot_histogram(
         fig.update_xaxes(title=x_axis_title)
 
     else:
-        raise ValueError(f"Unsupported {backend=}. Must be one of {VALID_BACKENDS}")
+        raise ValueError(f"Unsupported {backend=}. Must be one of {BACKENDS}")
 
     return fig

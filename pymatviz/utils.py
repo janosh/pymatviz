@@ -29,7 +29,7 @@ PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
 TEST_FILES = f"{ROOT}/tests/files"
 Backend = Literal["matplotlib", "plotly"]
-VALID_BACKENDS = MPL_BACKEND, PLOTLY_BACKEND = get_args(Backend)
+BACKENDS = MATPLOTLIB, PLOTLY = get_args(Backend)
 
 AxOrFig = Union[plt.Axes, plt.Figure, go.Figure]
 VALID_FIG_TYPES = get_args(AxOrFig)
@@ -72,14 +72,14 @@ warnings.simplefilter("once", ExperimentalWarning)
 
 def pretty_label(key: str, backend: Backend) -> str:
     """Map metric keys to their pretty labels."""
-    if backend not in VALID_BACKENDS:
-        raise ValueError(f"Unexpected {backend=}, must be one of {VALID_BACKENDS}")
+    if backend not in BACKENDS:
+        raise ValueError(f"Unexpected {backend=}, must be one of {BACKENDS}")
 
     symbol_mapping = {
-        "R2": {MPL_BACKEND: "$R^2$", PLOTLY_BACKEND: "R<sup>2</sup>"},
+        "R2": {MATPLOTLIB: "$R^2$", PLOTLY: "R<sup>2</sup>"},
         "R2_adj": {
-            MPL_BACKEND: "$R^2_{adj}$",
-            PLOTLY_BACKEND: "R<sup>2</sup><sub>adj</sub>",
+            MATPLOTLIB: "$R^2_{adj}$",
+            PLOTLY: "R<sup>2</sup><sub>adj</sub>",
         },
     }
 
@@ -198,6 +198,7 @@ def bin_df_cols(
         pd.DataFrame: Binned DataFrame.
     """
     if isinstance(n_bins, int):
+        # broadcast integer n_bins to all bin_by_cols
         n_bins = [n_bins] * len(bin_by_cols)
 
     if len(bin_by_cols) != len(n_bins):
@@ -407,10 +408,10 @@ def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
     Returns:
         plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
-    backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
+    backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
     color = kwargs.pop("color", "black")
 
-    if backend == MPL_BACKEND:
+    if backend == MATPLOTLIB:
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
 
         defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
@@ -463,12 +464,12 @@ def get_fig_xy_range(
     # close to but not the same as the axes limits.
     try:
         # https://stackoverflow.com/a/62042077
-        full_fig = fig.full_figure_for_development(warn=False)
-        xaxis_type = full_fig.layout.xaxis.type
-        yaxis_type = full_fig.layout.yaxis.type
+        dev_fig = fig.full_figure_for_development(warn=False)
+        xaxis_type = dev_fig.layout.xaxis.type
+        yaxis_type = dev_fig.layout.yaxis.type
 
-        x_range = full_fig.layout.xaxis.range
-        y_range = full_fig.layout.yaxis.range
+        x_range = dev_fig.layout.xaxis.range
+        y_range = dev_fig.layout.yaxis.range
 
         # Convert log range to linear if necessary
         if xaxis_type == "log":

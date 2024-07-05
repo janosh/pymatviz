@@ -8,7 +8,7 @@ from pymatviz.histograms import elements_hist, plot_histogram, spacegroup_hist
 from pymatviz.io import save_and_compress_svg
 from pymatviz.powerups import add_ecdf_line
 from pymatviz.templates import set_plotly_template
-from pymatviz.utils import VALID_BACKENDS
+from pymatviz.utils import BACKENDS
 
 
 set_plotly_template("pymatviz_white")
@@ -39,7 +39,7 @@ save_and_compress_svg(ax, "elements-hist")
 
 
 # %% Spacegroup histograms
-for backend in VALID_BACKENDS:
+for backend in BACKENDS:
     fig = spacegroup_hist(df_phonons[Key.spg_num], backend=backend)
     save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 
