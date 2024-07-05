@@ -242,15 +242,6 @@ class TestPtableHeatmap:
         assert projector.tile_colors["He"] == "red"
         assert projector.tile_values["He"] == "∞"
 
-    @pytest.mark.skip("TODO")
-    def test_handle_anomaly(self) -> None:
-        data_with_anomaly = {"H": [np.nan], "He": [np.inf]}
-
-        projector = HMapPTableProjector(data=data_with_anomaly)
-
-        assert projector.anomalies["H"] == {"nan"}  # type: ignore[index]
-        assert projector.anomalies["He"] == {"inf"}  # type: ignore[index]
-
 
 @pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
