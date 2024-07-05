@@ -125,6 +125,7 @@ class Key(LabelEnum):
     symmetry = "symmetry", "Symmetry"
     point_group = "point_group", "Point Group"
     lattice_params = "lattice_parameters", "Lattice Parameters"
+    supercell = "supercell", "Supercell"
 
     # Composition and Chemical
     arity = "arity", "N<sub>elements</sub>"
@@ -133,6 +134,7 @@ class Key(LabelEnum):
     element = "element", "Element"
     formula = "formula", "Formula"
     formula_pretty = "formula_pretty", "Pretty Formula"
+    reduced_formula = "reduced_formula", "Reduced chemical formula"
     charge = "total_charge", "Total Charge"
     oxi_states = "oxidation_states", "Oxidation States"
     oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
@@ -176,6 +178,12 @@ class Key(LabelEnum):
 
     # Electronic
     bandgap = "bandgap", "Band Gap"
+    bandgap_pbe = "bandgap_pbe", "PBE Band Gap"
+    bandgap_hse = "bandgap_hse", "HSE Band Gap"
+    bandgap_r2scan = "bandgap_r2scan", "r2SCAN Band Gap"
+    bandgap_ml = "bandgap_ml", "ML Band Gap"
+    bandgap_true = "bandgap_true", "Actual Band Gap"
+    bandgap_pred = "bandgap_pred", "Predicted Band Gap"
     fermi_energy = "fermi_energy", "Fermi Energy (eV)"
     electron_affinity = "electron_affinity", "Electron Affinity (eV)"
     work_function = "work_function", "Work Function (eV)"
@@ -211,8 +219,17 @@ class Key(LabelEnum):
     debye_temp = "debye_temperature", "Debye Temperature (K)"
 
     # Phonon
-    phonon_bandstructure = "phonon_bandstructure", "Phonon Band Structure"
-    phonon_dos = "phonon_dos", "Phonon Density of States"
+    ph_band_structure = "phonon_bandstructure", "Phonon Band Structure"
+    ph_dos = "phonon_dos", "Phonon Density of States"
+    ph_dos_mae = "ph_dos_mae", "Phonon DOS MAE"
+    has_imag_ph_gamma_modes = (
+        "has_imaginary_gamma_phonon_freq",
+        "Has imaginary Γ phonon modes",
+    )
+    has_imag_ph_modes = "has_imag_phonon_freq", "Has imaginary phonon modes"
+    last_ph_dos_peak = "last_ph_dos_peak_thz", "ω<sub>max</sub> (THz)"
+    max_ph_freq = "max_freq_thz", "Ω<sub>max</sub> (THz)"  # highest phonon frequency
+    min_ph_freq = "min_freq_thz", "Ω<sub>min</sub> (THz)"  # lowest phonon frequency
 
     # Optical
     refractive_index = "refractive_index", "Refractive Index"
@@ -240,6 +257,11 @@ class Key(LabelEnum):
     curie_temperature = "curie_temperature", "Curie Temperature (K)"
 
     # Computational Details
+    dft = "dft", "DFT"
+    pbe = "pbe", "PBE"
+    pbe_sol = "pbe_sol", "PBEsol"
+    r2scan = "r2scan", "r2SCAN"
+    hse = "hse", "HSE"
     xc_functional = "xc_functional", "Exchange-Correlation Functional"
     convergence_electronic = "convergence_electronic", "Electronic Convergence"
     convergence_ionic = "convergence_ionic", "Ionic Convergence"
@@ -256,6 +278,7 @@ class Key(LabelEnum):
     step = "step", "Step"  # as in job/optimizer step
     state = "state", "State"  # as in job state
     job_type = "job_type", "Job Type"
+    needs_u_correction = "needs_u_correction", "Needs Hubbard U correction"
 
     # Identifiers and Metadata
     id = "id", "ID"
@@ -263,6 +286,7 @@ class Key(LabelEnum):
     task = "task", "Task"
     task_id = "task_id", "Task ID"
     task_type = "task_type", "Task Type"
+    model = "model", "Model"
 
     # Synthesis-related
     synthesis_temperature = "synthesis_temperature", "Synthesis Temperature (K)"

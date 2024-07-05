@@ -791,7 +791,7 @@ def ptable_heatmap(
             table as a fraction of available space before touching neighboring tiles.
             1 or (1, 1) means no gaps between tiles. Defaults to 0.9.
         cbar_coords (tuple[float, float, float, float]): Color bar position and size:
-            [x, y, width, height] anchored at lower left corner of the bar. Defaults to
+            (x, y, width, height) anchored at lower left corner of the bar. Defaults to
             (0.18, 0.8, 0.42, 0.05).
         f_block_voffset (float): Vertical offset for lanthanides and actinides
             (row 6 and 7) from the rest of the periodic table. Defaults to 0.5.
