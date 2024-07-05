@@ -8,6 +8,7 @@ from pymatgen.core.periodic_table import Element
 from pymatviz.enums import Key
 from pymatviz.io import save_and_compress_svg
 from pymatviz.ptable import (
+    count_elements,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
@@ -26,30 +27,34 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %% Elemental Plots
-ax = ptable_heatmap(df_expt_gap[Key.composition], log=True)
+# DEBUG: the color mapping seems incorrect for log mode
+fig = ptable_heatmap(count_elements(df_expt_gap[Key.composition]), log=True)
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
-ax.set_title(title, y=0.96, fontsize=16, fontweight="bold")
-save_and_compress_svg(ax, "ptable-heatmap")
+fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
+save_and_compress_svg(fig, "ptable-heatmap")
 
 
 # %%
-ax = ptable_heatmap(df_ptable.atomic_mass)
-ax.set_title("Atomic Mass Heatmap", y=0.96, fontsize=16, fontweight="bold")
-save_and_compress_svg(ax, "ptable-heatmap-atomic-mass")
+# DEBUG: 0 is not shown in cbar for some reason
+fig = ptable_heatmap(df_ptable.atomic_mass, cbar_range=(0, 300))
+fig.suptitle("Atomic Mass Heatmap", y=0.96, fontsize=16, fontweight="bold")
+save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
-ax = ptable_heatmap(
-    df_expt_gap[Key.composition], heat_mode="percent", exclude_elements=["O"]
+# TODO: migrate this
+fig = ptable_heatmap(
+    df_expt_gap[Key.composition], values_show_mode="percent", exclude_elements=["O"]
 )
 title = "Elements in Matbench Experimental Band Gap (percent)"
-ax.set_title(title, y=0.96, fontsize=16, fontweight="bold")
+fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
 save_and_compress_svg(ax, "ptable-heatmap-percent")
 
 
 # %%
+# TODO: migrate this
 ax = ptable_heatmap_ratio(
     df_expt_gap[Key.composition], df_steels[Key.composition], log=True
 )
