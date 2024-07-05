@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.interpolate
+from matplotlib.colors import LogNorm
 
 from pymatviz.powerups import (
     add_best_fit_line,
@@ -126,7 +126,7 @@ def density_scatter(
     xs, ys, cs = _hist_density(xs, ys, **(hist_density_kwargs or {}))
 
     # decrease marker size
-    defaults = dict(s=6, norm=mpl.colors.LogNorm() if log_density else None)
+    defaults = dict(s=6, norm=LogNorm() if log_density else None)
     ax.scatter(xs, ys, c=cs, **defaults | kwargs)
 
     if identity_line:
@@ -134,9 +134,10 @@ def density_scatter(
             ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
     if best_fit_line:
-        add_best_fit_line(
-            ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
-        )
+        best_fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
+        # default trace_idx=0 to suppress add_best_fit_line ambiguous trace_idx warning
+        best_fit_kwargs.setdefault("trace_idx", 0)
+        add_best_fit_line(ax, **best_fit_kwargs)
 
     if stats:
         annotate_metrics(xs, ys, fig=ax, **(stats if isinstance(stats, dict) else {}))
@@ -160,7 +161,7 @@ def density_scatter_plotly(
     best_fit_line: bool | dict[str, Any] = True,
     stats: bool | dict[str, Any] = True,
     n_bins: int = 200,
-    bin_counts_col: str = "point<br>density",
+    bin_counts_col: str | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Scatter plot colored by density using plotly backend.
@@ -198,6 +199,8 @@ def density_scatter_plotly(
     Returns:
         go.Figure: The plot object.
     """
+    bin_counts_col = bin_counts_col or "point density"
+
     if not isinstance(stats, (bool, dict)):
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
 
@@ -205,7 +208,46 @@ def density_scatter_plotly(
         df, bin_by_cols=[x, y], n_bins=n_bins, bin_counts_col=bin_counts_col
     )
 
-    fig = px.scatter(df_bin, x=x, y=y, color=bin_counts_col, **kwargs)
+    color_vals = df_bin[bin_counts_col]
+    if log_density:
+        color_vals = np.log10(color_vals + 1)
+
+    kwargs = dict(color_continuous_scale="Viridis") | kwargs
+
+    fig = px.scatter(
+        df_bin, x=x, y=y, color=color_vals, custom_data=[bin_counts_col], **kwargs
+    )
+
+    if log_density:
+        min_count = df_bin[bin_counts_col].min()
+        max_count = df_bin[bin_counts_col].max()
+        log_min = np.floor(np.log10(max(min_count, 1)))
+        log_max = np.ceil(np.log10(max_count))
+        tick_values = np.logspace(
+            log_min, log_max, num=min(int(log_max - log_min) + 1, 5)
+        )
+
+        # Round tick values to nice numbers
+        tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
+        # Remove duplicates that might arise from rounding
+        tick_values = sorted(set(tick_values))
+
+        fig.layout.coloraxis.colorbar.update(
+            tickvals=np.log10(np.array(tick_values) + 1),
+            ticktext=[f"{v:.0f}" for v in tick_values],
+            title=bin_counts_col,
+        )
+
+        # show original non-logged counts in hover
+        orig_tooltip = fig.data[0].hovertemplate
+        new_tooltip = (  # TODO figure out a less hacky way to replace the logged color
+            # values with the original counts
+            orig_tooltip.split("<br>color")[0]
+            + f"<br>{bin_counts_col}: %{{customdata[0]}}"
+        )
+        fig.data[0].hovertemplate = new_tooltip
+
+    fig.layout.coloraxis.colorbar.title = bin_counts_col.replace(" ", "<br>")
 
     if identity_line:
         add_identity_line(
@@ -220,11 +262,6 @@ def density_scatter_plotly(
     if stats:
         stats_kwargs = stats if isinstance(stats, dict) else {}
         annotate_metrics(df[x], df[y], fig=fig, **stats_kwargs)
-
-    cbar_title = f"{'Log ' if log_density else ''}Density"
-    fig.update_traces(
-        marker=dict(colorscale="Viridis", colorbar=dict(title=cbar_title))
-    )
 
     return fig
 
