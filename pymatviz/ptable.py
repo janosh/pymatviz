@@ -1135,7 +1135,6 @@ class HMapPTableProjector(PTableProjector):
         nan_color: ColorType,
         sci_notation: bool = False,
         tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
-        overwrite_colors: dict[str, ColorType] | None = None,
         text_colors: dict[str, ColorType] | ColorType | Literal["AUTO"] = "AUTO",
         **kwargs: dict[str, Any],
     ) -> None:
@@ -1150,8 +1149,6 @@ class HMapPTableProjector(PTableProjector):
             nan_color (ColorType): The color to use for missing value (NaN).
             tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
                 Defaults to "AUTO" for auto generation.
-            overwrite_colors (dict[str, ColorType] | None): Optional
-                overwrite colors. Defaults to None.
             text_colors: Colors for element symbols and values.
                 - "AUTO": Auto pick "black" or "white" based on the contrast
                     of tile color for each element.
@@ -1172,8 +1169,8 @@ class HMapPTableProjector(PTableProjector):
         self.inf_color = inf_color
         self.nan_color = nan_color
 
-        self.overwrite_colors = overwrite_colors  # type: ignore[assignment]
         self.tile_colors = tile_colors  # type: ignore[assignment]
+        self.tile_values = None  # auto generate tile values
 
         # Generate element symbols colors
         self.text_colors = text_colors  # type: ignore[assignment]
@@ -1207,30 +1204,20 @@ class HMapPTableProjector(PTableProjector):
 
                 self._tile_colors[symbol] = self.cmap(self.norm(value))
 
-        # Overwrite colors if any
-        self._tile_colors |= self.overwrite_colors
-
     @property
-    def overwrite_colors(self) -> dict[str, ColorType]:
-        """Colors use to overwrite current tile colors."""
-        return self._overwrite_colors
+    def tile_values(self) -> dict[str, str]:
+        return self._tile_values
 
-    @overwrite_colors.setter
-    def overwrite_colors(
-        self, overwrite_colors: dict[str, ColorType] | None = None
-    ) -> None:
-        """Generate overwrite color mapping from anomalies if not given.
-        When an element has both NaN and infinity, NaN would take higher priority.
-        """
-        if overwrite_colors is None:
-            overwrite_colors = {}
-            for elem, values in self.anomalies.items():  # type: ignore[union-attr]
-                if "nan" in values:
-                    overwrite_colors[elem] = self.nan_color
-                elif "inf" in values:
-                    overwrite_colors[elem] = self.inf_color
+    @tile_values.setter
+    def tile_values(self, tile_values: dict[str, str] | None) -> None:
+        # TODO: WIP
+        # Generate tile values from PTableData if not provided
+        if tile_values is None:
+            tile_values = {
+                elem: self.data.loc[elem, Key.heat_val][0] for elem in self.data.index
+            }
 
-        self._overwrite_colors = overwrite_colors
+        self._tile_values = tile_values
 
     @property
     def text_colors(self) -> dict[str, ColorType]:
@@ -1308,25 +1295,18 @@ class HMapPTableProjector(PTableProjector):
                 plot_data: np.ndarray | Sequence[float] = self.data.loc[
                     symbol, Key.heat_val
                 ]
+                tile_color = [self.tile_colors[symbol]]
             except KeyError:  # skip element without data
                 plot_data = None
+                tile_color = "grep"
 
             if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
                 continue
 
-            # TODO: offset is not working properly, even when offset is 0,
-            # the tile size still changes
-
-            # # Apply vertical offset for f-block
-            # if element.is_lanthanoid or element.is_actinoid:
-            #     pos = ax.get_position()
-            #     ax.set_position([pos.x0, pos.y0 + f_block_voffset,
-            # pos.width, pos.height])
-
             # Add child heatmap plot
             ax.pie(
                 np.ones(1),
-                colors=[self.tile_colors[symbol]],
+                colors=tile_color,
                 wedgeprops={"clip_on": True},
             )
 
@@ -1379,16 +1359,19 @@ class HMapPTableProjector(PTableProjector):
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             # Get and format value
-            content = self.data.loc[symbol, Key.heat_val][0]
-            content = f"{content:{text_fmt}}"
+            value = self.tile_values.get(symbol, "grey")
+            try:
+                value = f"{float(value):{text_fmt}}"
+            except ValueError:
+                value = value
 
             # Simplify scientific notation, say 1e-01 to 1e-1
-            if self.sci_notation and ("e-0" in content or "e+0" in content):
-                content = content.replace("e-0", "e-").replace("e+0", "e+")
+            if self.sci_notation and ("e-0" in value or "e+0" in value):
+                value = value.replace("e-0", "e-").replace("e+0", "e+")
 
             ax.text(
                 *pos,
-                content,
+                value,
                 color=self.text_colors[symbol],
                 ha="center",
                 va="center",
@@ -1396,15 +1379,31 @@ class HMapPTableProjector(PTableProjector):
                 **kwargs,
             )
 
+    def exclude_elems(
+        self, elems: Sequence[str], color: ColorType = "grey", value: str = "excl."
+    ) -> None:
+        """Exclude elements from plotter and overwrite their colors and values.
+
+        Args:
+            elems (Sequence[str]): Sequences of elements to exclude.
+            color (ColorType): The color for excluded element to use.
+            value (str): The value for excluded element to display.
+
+        TODO: need unit test
+        """
+        for elem in elems:
+            self._tile_colors[elem] = color
+            self._tile_values[elem] = value
+
 
 def ptable_heatmap(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]] | PTableData,
     *,
     # Heatmap specific
     colormap: str = "viridis",
+    exclude_elements: Sequence[str] = (),
     inf_color: ColorType = "lightskyblue",
     nan_color: ColorType = "white",
-    overwrite_colors: dict[str, ColorType] | None = None,
     log: bool = False,
     sci_notation: bool = False,
     tile_size: tuple[float, float] = (0.75, 0.75),  # TODO: WIP, don't use
@@ -1447,10 +1446,9 @@ def ptable_heatmap(
 
         # Heatmap specific
         colormap (str): The colormap to use.
+        exclude_elements (Sequence[str]): Elements to exclude.
         inf_color (ColorType): The color to use for infinity.
         nan_color (ColorType): The color to use for missing value (NaN).
-        overwrite_colors (dict[str, ColorType] | None): Optional
-            overwrite colors. Defaults to None.
         log (bool): Whether to show colorbar in log scale.
         sci_notation (bool): Whether to use scientific notation for values and
             colorbar tick labels.
@@ -1539,11 +1537,13 @@ def ptable_heatmap(
         colormap=colormap,  # type: ignore[arg-type]
         inf_color=inf_color,
         nan_color=nan_color,
-        overwrite_colors=overwrite_colors,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         text_colors=text_colors,
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
+
+    if exclude_elements:
+        projector.exclude_elems(exclude_elements)
 
     # Call child plotter: heatmap
     projector.add_child_plots(

@@ -8,7 +8,6 @@ from pymatgen.core.periodic_table import Element
 from pymatviz.enums import Key
 from pymatviz.io import save_and_compress_svg
 from pymatviz.ptable import (
-    PTableData,
     count_elements,
     ptable_heatmap,
     ptable_heatmap_plotly,
@@ -47,10 +46,12 @@ save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
-data = PTableData(count_elements(df_expt_gap[Key.composition]))
-data.drop_elements(["O"])
-
-fig = ptable_heatmap(data, values_show_mode="percent")
+fig = ptable_heatmap(
+    count_elements(df_expt_gap[Key.composition]),
+    values_show_mode="percent",
+    on_empty="show",
+    exclude_elements=["O"],
+)
 title = "Elements in Matbench Experimental Band Gap (percent)"
 fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
 save_and_compress_svg(fig, "ptable-heatmap-percent")
