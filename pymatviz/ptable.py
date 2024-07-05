@@ -865,7 +865,7 @@ class PTableProjector:
             elif isinstance(text_color, dict):
                 symbol_color = text_color.get(symbol, "black")
             else:
-                symbol_color = ColorType
+                symbol_color = text_color
 
             ax.text(
                 *pos,
@@ -1451,7 +1451,6 @@ def ptable_heatmap(
     values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     values_pos: tuple[float, float] | None = None,
     values_fmt: str = "AUTO",
-    values_color: ColorType | Literal["AUTO"] = "AUTO",
     values_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,

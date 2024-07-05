@@ -7,13 +7,14 @@ import warnings
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Callable, Literal, Union, get_args
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union, cast, get_args
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import scipy.stats
+from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import AnchoredText
 from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 
@@ -289,7 +290,7 @@ def luminance(color: tuple[float, float, float]) -> float:
 
 
 def pick_bw_for_contrast(
-    color: tuple[float, float, float], text_color_threshold: float = 0.7
+    color: tuple[float, float, float] | str, text_color_threshold: float = 0.7
 ) -> Literal["black", "white"]:
     """Choose black or white text color for a given background color based on luminance.
 
@@ -301,7 +302,10 @@ def pick_bw_for_contrast(
     Returns:
         "black" or "white": Depending on the luminance of the background color.
     """
-    light_bg = luminance(color) > text_color_threshold
+    if isinstance(color, str):
+        color = to_rgb(color)
+
+    light_bg = luminance(cast(tuple[float, float, float], color)) > text_color_threshold
     return "black" if light_bg else "white"
 
 
