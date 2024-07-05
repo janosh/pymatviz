@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.9.1](https://github.com/janosh/pymatviz/compare/v0.9.0...v0.9.1)
+
+> 4 July 2024
+
+- Split `powerups` module by `backend`: `matplotlib`/`plotly`/`both` [`#171`](https://github.com/janosh/pymatviz/pull/171)
+- Fix `count_elements` for series of `Composition` [`#170`](https://github.com/janosh/pymatviz/pull/170)
+- Fix and test `ptable_heatmap` text color logic  [`#169`](https://github.com/janosh/pymatviz/pull/169)
+- `plot_xrd_pattern` accept `DiffractionPattern | Structure` as input [`#168`](https://github.com/janosh/pymatviz/pull/168)
+- Add `plot_xrd_pattern()` for creating interactive XRD patterns with plotly [`#167`](https://github.com/janosh/pymatviz/pull/167)
+- Fix `density_scatter_plotly` metric annotation [`#166`](https://github.com/janosh/pymatviz/pull/166)
+- Add `toggle_log_linear_y_axis` powerup [`#165`](https://github.com/janosh/pymatviz/pull/165)
+- Fix bad NPY002 migration [`#163`](https://github.com/janosh/pymatviz/pull/163)
+- refactor to explicit ax passing instead of relying on plt.gca() in example scripts [`7912ec0`](https://github.com/janosh/pymatviz/commit/7912ec004cf2201a372cec896998448beac594ba)
+- add_ecdf_line improve adapting trace_defaults from target_trace [`4b451a3`](https://github.com/janosh/pymatviz/commit/4b451a38d77c34565004487eccadf7cfb0cc9140)
+
 #### [v0.9.0](https://github.com/janosh/pymatviz/compare/v0.8.3...v0.9.0)
 
 > 21 June 2024

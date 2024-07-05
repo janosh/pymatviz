@@ -1,6 +1,6 @@
 [project]
 name = "pymatviz"
-version = "0.9.0"
+version = "0.9.1"
 description = "A toolkit for visualizations in materials informatics"
 authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
