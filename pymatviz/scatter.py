@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.interpolate
+from matplotlib.colors import LogNorm
 
 from pymatviz.powerups import (
     add_best_fit_line,
@@ -126,7 +126,7 @@ def density_scatter(
     xs, ys, cs = _hist_density(xs, ys, **(hist_density_kwargs or {}))
 
     # decrease marker size
-    defaults = dict(s=6, norm=mpl.colors.LogNorm() if log_density else None)
+    defaults = dict(s=6, norm=LogNorm() if log_density else None)
     ax.scatter(xs, ys, c=cs, **defaults | kwargs)
 
     if identity_line:
@@ -134,9 +134,10 @@ def density_scatter(
             ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
     if best_fit_line:
-        add_best_fit_line(
-            ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
-        )
+        best_fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
+        # default trace_idx=0 to suppress add_best_fit_line ambiguous trace_idx warning
+        best_fit_kwargs.setdefault("trace_idx", 0)
+        add_best_fit_line(ax, **best_fit_kwargs)
 
     if stats:
         annotate_metrics(xs, ys, fig=ax, **(stats if isinstance(stats, dict) else {}))

@@ -198,6 +198,7 @@ def bin_df_cols(
         pd.DataFrame: Binned DataFrame.
     """
     if isinstance(n_bins, int):
+        # broadcast integer n_bins to all bin_by_cols
         n_bins = [n_bins] * len(bin_by_cols)
 
     if len(bin_by_cols) != len(n_bins):
@@ -463,12 +464,12 @@ def get_fig_xy_range(
     # close to but not the same as the axes limits.
     try:
         # https://stackoverflow.com/a/62042077
-        full_fig = fig.full_figure_for_development(warn=False)
-        xaxis_type = full_fig.layout.xaxis.type
-        yaxis_type = full_fig.layout.yaxis.type
+        dev_fig = fig.full_figure_for_development(warn=False)
+        xaxis_type = dev_fig.layout.xaxis.type
+        yaxis_type = dev_fig.layout.yaxis.type
 
-        x_range = full_fig.layout.xaxis.range
-        y_range = full_fig.layout.yaxis.range
+        x_range = dev_fig.layout.xaxis.range
+        y_range = dev_fig.layout.yaxis.range
 
         # Convert log range to linear if necessary
         if xaxis_type == "log":

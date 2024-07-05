@@ -235,9 +235,9 @@ def add_best_fit_line(
         )
         if n_traces > 1 and warn:
             print(  # noqa: T201
-                f"Warning: {trace_idx=} but figure has {n_traces} traces, defaulting "
-                "to trace_idx=0. Check fig.data[0] to make sure this is the expected "
-                "trace."
+                f"add_best_fit_line Warning: {trace_idx=} but figure has {n_traces} "
+                "traces, defaulting to trace_idx=0. Check fig.data[0] to make sure "
+                "this is the expected trace."
             )
         trace_idx = 0
 
