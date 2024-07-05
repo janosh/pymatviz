@@ -661,7 +661,9 @@ class PTableProjector:
         """Preprocess and set the data. Also set normalizer."""
         # Preprocess data
         if not isinstance(data, PTableData):
-            self.ptable_data = PTableData(data)
+            data = PTableData(data)
+
+        self.ptable_data = data
 
         # Normalize data for colorbar
         vmin = self.ptable_data.data.attrs["vmin"]
@@ -1425,7 +1427,7 @@ class HMapPTableProjector(PTableProjector):
 
 
 def ptable_heatmap(
-    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]] | PTableData,
     *,
     # Heatmap specific
     colormap: str = "viridis",
