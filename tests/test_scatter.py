@@ -16,11 +16,14 @@ from pymatviz import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
-from tests.conftest import np_rng
+from tests.conftest import df_regr, np_rng
 
 
 if TYPE_CHECKING:
     from tests.conftest import DfOrArrays
+
+
+x_col, y_col, *_ = df_regr
 
 
 @pytest.mark.parametrize("log_density", [True, False])
@@ -53,40 +56,6 @@ def test_density_scatter_mpl(
     assert isinstance(ax, plt.Axes)
     assert ax.get_xlabel() == x if isinstance(x, str) else "Actual"
     assert ax.get_ylabel() == y if isinstance(y, str) else "Predicted"
-
-
-@pytest.mark.parametrize("log_density", [True, False])
-@pytest.mark.parametrize(
-    "stats",
-    [False, True, dict(prefix="test", x=1, y=1, font=dict(size=10))],
-)
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        {"color_continuous_scale": "Viridis"},
-        {"color_continuous_scale": None},
-    ],
-)
-def test_density_scatter_plotly(
-    df_or_arrays: DfOrArrays,
-    log_density: bool,
-    stats: bool | dict[str, Any],
-    kwargs: dict[str, Any],
-) -> None:
-    df, x, y = df_or_arrays
-    if df is None:
-        return
-    fig = density_scatter_plotly(
-        df=df,
-        x=x,
-        y=y,
-        log_density=log_density,
-        stats=stats,
-        **kwargs,
-    )
-    assert isinstance(fig, go.Figure)
-    assert fig.layout.xaxis.title.text == x if isinstance(x, str) else "Actual"
-    assert fig.layout.yaxis.title.text == y if isinstance(y, str) else "Predicted"
 
 
 @pytest.mark.parametrize("stats", [1, (1,), "foo"])
@@ -143,3 +112,74 @@ def test_scatter_with_err_bar(df_or_arrays: DfOrArrays) -> None:
 def test_residual_vs_actual(df_or_arrays: DfOrArrays) -> None:
     df, x, y = df_or_arrays
     residual_vs_actual(df=df, y_true=x, y_pred=y)
+
+
+@pytest.mark.parametrize(
+    "log_density, stats, bin_counts_col, n_bins, kwargs",
+    [
+        (True, True, "custom count col", 1, {"color_continuous_scale": "Viridis"}),
+        (
+            True,
+            dict(prefix="test", x=1, y=1, font=dict(size=10)),
+            None,
+            10,
+            {"color_continuous_scale": None},
+        ),
+        (False, False, None, 100, {"template": "plotly_dark"}),
+    ],
+)
+def test_density_scatter_plotly(
+    df_or_arrays: DfOrArrays,
+    log_density: bool,
+    stats: bool | dict[str, Any],
+    bin_counts_col: str | None,
+    n_bins: int,
+    kwargs: dict[str, Any],
+) -> None:
+    df, x, y = df_or_arrays
+    if df is None:
+        return
+    fig = density_scatter_plotly(
+        df=df,
+        x=x,
+        y=y,
+        log_density=log_density,
+        stats=stats,
+        bin_counts_col=bin_counts_col,
+        n_bins=n_bins,
+        **kwargs,
+    )
+    assert isinstance(fig, go.Figure)
+    assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
+    assert fig.layout.yaxis.title.text == (y if isinstance(y, str) else "Predicted")
+    bin_counts_col = bin_counts_col or "point density"
+    assert fig.layout.coloraxis.colorbar.title.text == bin_counts_col.replace(
+        " ", "<br>"
+    )
+
+    colorbar = fig.layout.coloraxis.colorbar
+    if log_density:
+        assert all(isinstance(val, float) for val in colorbar.tickvals)
+        assert all(isinstance(text, str) for text in colorbar.ticktext)
+    else:
+        assert colorbar.tickvals is None
+        assert colorbar.ticktext is None
+
+
+def test_density_scatter_plotly_hover_template() -> None:
+    fig = density_scatter_plotly(df=df_regr, x=x_col, y=y_col, log_density=True)
+    hover_template = fig.data[0].hovertemplate
+    assert "point density" in hover_template
+    assert "color" not in hover_template  # Ensure log-count values are not displayed
+
+
+@pytest.mark.parametrize("stats", [1, (1,), "foo"])
+def test_density_scatter_plotly_raises_on_bad_stats_type(stats: Any) -> None:
+    with pytest.raises(TypeError, match="stats must be bool or dict"):
+        density_scatter_plotly(df=df_regr, x=x_col, y=y_col, stats=stats)
+
+
+def test_density_scatter_plotly_empty_dataframe() -> None:
+    empty_df = pd.DataFrame({x_col: [], y_col: []})
+    with pytest.raises(ValueError, match="Cannot cut empty array"):
+        density_scatter_plotly(df=empty_df, x=x_col, y=y_col)

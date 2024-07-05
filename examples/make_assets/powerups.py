@@ -105,13 +105,12 @@ fig = px.scatter(
     size="pop",
     color="continent",
     hover_name="country",
-    log_x=True,
     size_max=60,
 )
 fig.layout.title = dict(text="Gapminder 2007: GDP per Capita vs Life Expectancy", x=0.5)
 fig.layout.updatemenus = [
-    toggle_log_linear_x_axis | dict(x=1, y=0.12, xanchor="right", yanchor="bottom"),
-    toggle_log_linear_y_axis | dict(x=1, y=0.02, xanchor="right", yanchor="bottom"),
-    toggle_grid | dict(x=0, y=1, xanchor="left", yanchor="top"),
+    toggle_log_linear_x_axis | dict(x=1.2, y=0.12, xanchor="right", yanchor="bottom"),
+    toggle_log_linear_y_axis | dict(x=1.2, y=0.02, xanchor="right", yanchor="bottom"),
+    toggle_grid | dict(x=0.02, y=1, xanchor="left", yanchor="top"),
 ]
 fig.show()

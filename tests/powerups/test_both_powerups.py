@@ -14,7 +14,7 @@ from pymatviz.powerups.both import (
     add_identity_line,
     annotate_metrics,
 )
-from pymatviz.utils import MPL_BACKEND, PLOTLY_BACKEND, Backend, pretty_label
+from pymatviz.utils import MATPLOTLIB, PLOTLY, Backend, pretty_label
 from tests.conftest import y_pred, y_true
 
 
@@ -215,7 +215,7 @@ def test_annotate_metrics(
     out_fig = annotate_metrics(y_pred, y_true, metrics=metrics, fmt=fmt, fig=fig)
 
     assert out_fig is fig
-    backend: Backend = PLOTLY_BACKEND if isinstance(out_fig, go.Figure) else MPL_BACKEND
+    backend: Backend = PLOTLY if isinstance(out_fig, go.Figure) else MATPLOTLIB
 
     expected = dict(MAE=0.121, R2=0.784, RMSE=0.146, MAPE=0.52, MSE=0.021)
 

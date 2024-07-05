@@ -10,8 +10,8 @@ import pytest
 from matplotlib.offsetbox import TextArea
 
 from pymatviz.utils import (
-    MPL_BACKEND,
-    PLOTLY_BACKEND,
+    MATPLOTLIB,
+    PLOTLY,
     CrystalSystem,
     annotate,
     bin_df_cols,
@@ -323,12 +323,12 @@ def test_styled_html_tag(text: str, tag: str, style: str) -> None:
 
 
 def test_pretty_label() -> None:
-    assert pretty_label("R2", MPL_BACKEND) == "$R^2$"
-    assert pretty_label("R2", PLOTLY_BACKEND) == "R<sup>2</sup>"
-    assert pretty_label("R2_adj", MPL_BACKEND) == "$R^2_{adj}$"
-    assert pretty_label("R2_adj", PLOTLY_BACKEND) == "R<sup>2</sup><sub>adj</sub>"
-    assert pretty_label("foo", MPL_BACKEND) == "foo"
-    assert pretty_label("foo", PLOTLY_BACKEND) == "foo"
+    assert pretty_label("R2", MATPLOTLIB) == "$R^2$"
+    assert pretty_label("R2", PLOTLY) == "R<sup>2</sup>"
+    assert pretty_label("R2_adj", MATPLOTLIB) == "$R^2_{adj}$"
+    assert pretty_label("R2_adj", PLOTLY) == "R<sup>2</sup><sub>adj</sub>"
+    assert pretty_label("foo", MATPLOTLIB) == "foo"
+    assert pretty_label("foo", PLOTLY) == "foo"
 
     with pytest.raises(ValueError, match="Unexpected backend='foo'"):
         pretty_label("R2", "foo")  # type: ignore[arg-type]

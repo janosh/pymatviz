@@ -12,9 +12,9 @@ from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
 from pymatviz.utils import (
-    MPL_BACKEND,
-    PLOTLY_BACKEND,
-    VALID_BACKENDS,
+    BACKENDS,
+    MATPLOTLIB,
+    PLOTLY,
     VALID_FIG_NAMES,
     VALID_FIG_TYPES,
     AxOrFig,
@@ -73,7 +73,7 @@ def annotate_metrics(
             f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
         )
 
-    backend: Backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
+    backend: Backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
 
     funcs = {
         "MAE": lambda x, y: np.abs(x - y).mean(),
@@ -93,7 +93,7 @@ def annotate_metrics(
     xs, ys = xs[~nan_mask], ys[~nan_mask]
 
     text = prefix
-    newline = "\n" if backend == MPL_BACKEND else "<br>"
+    newline = "\n" if backend == MATPLOTLIB else "<br>"
 
     if isinstance(metrics, dict):
         for key, val in metrics.items():
@@ -159,7 +159,9 @@ def add_identity_line(
             kwargs.setdefault("row", "all")
             kwargs.setdefault("col", "all")
 
-        line_defaults = dict(color="gray", width=1, dash="dash")
+        line_defaults = dict(color="gray", width=1, dash="dash") | kwargs.pop(
+            "line", {}
+        )
         fig.add_shape(
             type="line",
             **dict(x0=xy_min_min, y0=xy_min_min, x1=xy_max_min, y1=xy_max_min),
@@ -220,7 +222,7 @@ def add_best_fit_line(
     if not isinstance(fig, VALID_FIG_TYPES):
         raise TypeError(f"{fig=} must be instance of {VALID_FIG_NAMES}")
 
-    backend = PLOTLY_BACKEND if isinstance(fig, go.Figure) else MPL_BACKEND
+    backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
     # default to navy color but let annotate_params override
     line_color = kwargs.setdefault(
         "color",
@@ -235,9 +237,9 @@ def add_best_fit_line(
         )
         if n_traces > 1 and warn:
             print(  # noqa: T201
-                f"Warning: {trace_idx=} but figure has {n_traces} traces, defaulting "
-                "to trace_idx=0. Check fig.data[0] to make sure this is the expected "
-                "trace."
+                f"add_best_fit_line Warning: {trace_idx=} but figure has {n_traces} "
+                "traces, defaulting to trace_idx=0. Check fig.data[0] to make sure "
+                "this is the expected trace."
             )
         trace_idx = 0
 
@@ -263,7 +265,7 @@ def add_best_fit_line(
     y0, y1 = slope * x0 + intercept, slope * x1 + intercept
 
     if annotate_params:
-        if backend == MPL_BACKEND:
+        if backend == MATPLOTLIB:
             defaults = dict(loc="lower right", color=line_color)
         else:
             defaults = dict(
@@ -278,23 +280,23 @@ def add_best_fit_line(
             defaults |= annotate_params
         annotate(f"LS fit: y = {slope:.2g}x + {intercept:.2g}", fig=fig, **defaults)
 
-    if backend == MPL_BACKEND:
+    if backend == MATPLOTLIB:
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
         defaults = dict(alpha=0.7, linestyle="--", zorder=1)
         ax.axline((x0, y0), (x1, y1), **(defaults | (line_kwds or {})) | kwargs)
 
         return fig
-    if backend == PLOTLY_BACKEND:
+    if backend == PLOTLY:
         if fig._grid_ref is not None:  # noqa: SLF001
             for key in ("row", "col"):
                 kwargs.setdefault(key, "all")
 
         line_kwds = dict(
             color=kwargs.pop("color"), width=2, dash="dash", **(line_kwds or {})
-        )
+        ) | kwargs.pop("line", {})
         fig.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=line_kwds, **kwargs)
 
         return fig
 
-    raise ValueError(f"Unsupported {backend=}. Must be one of {VALID_BACKENDS}")
+    raise ValueError(f"Unsupported {backend=}. Must be one of {BACKENDS}")
