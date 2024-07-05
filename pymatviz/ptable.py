@@ -16,6 +16,7 @@ import plotly.express as px
 import plotly.figure_factory as ff
 from matplotlib.colors import Colormap, Normalize
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import LogFormatter
 from matplotlib.typing import ColorType
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
@@ -413,35 +414,6 @@ class PTableData:
         # Ensure metadata is updated by using the setter method
         self.data = original_data
 
-    def log_scale(
-        self,
-        *,
-        eps: float = 1e-10,
-    ) -> None:
-        """Log scale the data.
-
-        Args:
-            eps (float): A small epsilon to avoid log(0).
-        """
-
-        def log_transform(val: float | NDArray, eps: float) -> NDArray:
-            """Apply logarithm on sequences of floats.
-
-            Args:
-                val (float | NDArray): Value(s) to apply log.
-                eps (float): A small epsilon to avoid zero or negative values.
-            """
-            try:
-                return np.array([math.log(v) for v in val])  # type: ignore[union-attr]
-
-            # Catch illegal values for log
-            except ValueError:
-                warnings.warn(f"Illegal log for {val}", stacklevel=2)
-                return np.array([v if v > 0 else math.log(max(v, eps)) for v in val])  # type: ignore[union-attr]
-
-        # Apply logarithm to each element in the column
-        self.apply(lambda x: log_transform(x, eps))
-
     def drop_elements(self, elements: Sequence[str]) -> None:
         """Drop selected elements from data.
 
@@ -601,7 +573,7 @@ class PTableProjector:
 
         Args:
             data (SupportedDataType | PTableData): The data to be visualized.
-            log (bool): Whether to log scale data.
+            log (bool): Whether to show colorbar in log scale.
             colormap (str | Colormap): The colormap to use. Defaults to "viridis".
             tile_size (tuple[float, float]): The relative tile height and width.
             plot_kwargs (dict): Additional keyword arguments to
@@ -618,8 +590,7 @@ class PTableProjector:
 
         # Preprocess data
         self.data: pd.DataFrame = data
-        if log:
-            self.ptable_data.log_scale()
+        self.log = log
 
         self.hide_f_block = hide_f_block  # type: ignore[assignment]
 
@@ -900,6 +871,10 @@ class PTableProjector:
         title_kwargs = {"fontsize": 12, "pad": 10, "label": title} | (
             title_kwargs or {}
         )
+
+        # Format for log scale
+        if self.log:
+            cbar_kwargs |= {"norm": "log", "format": LogFormatter(10)}
 
         # Check colormap
         if self.cmap is None:
@@ -1476,7 +1451,7 @@ def ptable_heatmap(
         nan_color (ColorType): The color to use for missing value (NaN).
         overwrite_colors (dict[str, ColorType] | None): Optional
             overwrite colors. Defaults to None.
-        log (bool): Whether to log scale data.
+        log (bool): Whether to show colorbar in log scale.
         sci_notation (bool): Whether to use scientific notation for values and
             colorbar tick labels.
         tile_size (tuple[float, float]): The relative height and width of the tile.

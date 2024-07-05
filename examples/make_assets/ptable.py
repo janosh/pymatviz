@@ -28,8 +28,10 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %% Elemental Plots
-# DEBUG: Log scale should not modify the original data, but only scale the colormap
-fig = ptable_heatmap(count_elements(df_expt_gap[Key.composition]), log=True)
+# TODO: colorbar ticks are not displayed properly
+fig = ptable_heatmap(
+    count_elements(df_expt_gap[Key.composition]), log=True, values_fmt=".4g"
+)
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
