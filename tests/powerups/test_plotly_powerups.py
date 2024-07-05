@@ -6,9 +6,17 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import pytest
+from plotly.graph_objs.layout import Updatemenu
 from plotly.subplots import make_subplots
 
-from pymatviz.powerups.plotly import add_ecdf_line, toggle_log_linear_y_axis
+from pymatviz.powerups.plotly import (
+    add_ecdf_line,
+    select_colorscale,
+    select_marker_mode,
+    toggle_grid,
+    toggle_log_linear_x_axis,
+    toggle_log_linear_y_axis,
+)
 
 
 @pytest.mark.parametrize(
@@ -138,3 +146,120 @@ def test_toggle_log_linear_y_axis(plotly_scatter: go.Figure) -> None:
     assert fig.layout.yaxis.type == "linear"
     fig.update_layout(buttons[1].args[0])
     assert fig.layout.yaxis.type == "log"
+
+
+def test_toggle_log_linear_x_axis(plotly_scatter: go.Figure) -> None:
+    fig = plotly_scatter
+    assert isinstance(toggle_log_linear_x_axis, dict)
+    assert fig.layout.updatemenus == ()
+    fig.layout.updatemenus = [toggle_log_linear_x_axis]
+
+    # check that figure now has "Log X"/"Linear X" toggle buttons
+    buttons = fig.layout.updatemenus[0].buttons
+    assert len(buttons) == 2
+    assert fig.layout.xaxis.type is None
+    assert buttons[0].args[0]["xaxis.type"] == "linear"
+    assert buttons[1].args[0]["xaxis.type"] == "log"
+
+    # simulate clicking buttons
+    fig.update_layout(buttons[0].args[0])
+    assert fig.layout.xaxis.type == "linear"
+    fig.update_layout(buttons[1].args[0])
+    assert fig.layout.xaxis.type == "log"
+
+
+def test_toggle_grid(plotly_scatter: go.Figure) -> None:
+    fig = plotly_scatter
+    assert isinstance(toggle_grid, dict)
+    assert fig.layout.updatemenus == ()
+    fig.layout.updatemenus = [toggle_grid]
+
+    # check that figure now has "Show Grid"/"Hide Grid" toggle buttons
+    buttons = fig.layout.updatemenus[0].buttons
+    assert len(buttons) == 2
+    assert fig.layout.xaxis.showgrid is None
+    assert fig.layout.yaxis.showgrid is None
+    assert buttons[0].args[0]["xaxis.showgrid"] is True
+    assert buttons[0].args[0]["yaxis.showgrid"] is True
+    assert buttons[1].args[0]["xaxis.showgrid"] is False
+    assert buttons[1].args[0]["yaxis.showgrid"] is False
+
+    # simulate clicking buttons
+    fig.update_layout(buttons[0].args[0])
+    assert fig.layout.xaxis.showgrid is True
+    assert fig.layout.yaxis.showgrid is True
+    fig.update_layout(buttons[1].args[0])
+    assert fig.layout.xaxis.showgrid is False
+    assert fig.layout.yaxis.showgrid is False
+
+
+def test_select_colorscale() -> None:
+    # make a dummy heatmap
+    fig = go.Figure(go.Heatmap(z=[[1, 2], [3, 4]]))
+    assert isinstance(select_colorscale, dict)
+    assert fig.layout.updatemenus == ()
+    fig.layout.updatemenus = [select_colorscale]
+
+    # check that figure now has colorscale toggle buttons
+    buttons = fig.layout.updatemenus[0].buttons
+    assert len(buttons) == 4
+    colorscales = ["Viridis", "Plasma", "Inferno", "Magma"]
+    for button, colorscale in zip(buttons, colorscales):
+        assert button.args[0]["colorscale"] == colorscale
+
+
+def test_select_marker_mode(plotly_scatter: go.Figure) -> None:
+    fig = plotly_scatter
+    assert isinstance(select_marker_mode, dict)
+    assert fig.layout.updatemenus == ()
+    fig.layout.updatemenus = [select_marker_mode]
+
+    # check that figure now has plot type toggle buttons
+    buttons = fig.layout.updatemenus[0].buttons
+    assert len(buttons) == 3
+    plot_types = ["markers", "lines", "lines+markers"]
+    for button, plot_type in zip(buttons, plot_types):
+        assert button.args[0]["mode"] == plot_type
+
+    # simulate clicking each plot type button
+    for button in buttons:
+        fig.update_traces(button.args[0])
+        assert fig.data[0].mode == button.args[0]["mode"]
+
+
+@pytest.mark.parametrize(
+    "powerup, expected_buttons",
+    [
+        (toggle_log_linear_x_axis, 2),
+        (toggle_grid, 2),
+        (select_colorscale, 4),
+        (select_marker_mode, 3),
+    ],
+)
+def test_powerup_structure(powerup: dict[str, Any], expected_buttons: int) -> None:
+    assert isinstance(powerup, dict)
+    assert powerup["type"] == "buttons"
+    assert isinstance(powerup["buttons"], list)
+    assert len(powerup["buttons"]) == expected_buttons
+    for button in powerup["buttons"]:
+        assert isinstance(button, dict)
+        assert "args" in button
+        assert "label" in button
+        assert "method" in button
+
+
+def test_multiple_powerups(plotly_scatter: go.Figure) -> None:
+    fig = plotly_scatter
+    assert fig.layout.updatemenus == ()
+
+    powerups = [
+        toggle_log_linear_x_axis,
+        toggle_grid,
+        select_colorscale,
+        select_marker_mode,
+    ]
+    fig.layout.updatemenus = powerups
+
+    assert len(fig.layout.updatemenus) == len(powerups)
+    for idx, powerup in enumerate(powerups):
+        assert fig.layout.updatemenus[idx] == Updatemenu(powerup), f"{idx=}"

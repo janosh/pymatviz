@@ -135,6 +135,10 @@ def add_ecdf_line(
     return fig
 
 
+_common_update_menu = dict(
+    pad={"r": 10, "t": 10}, showactive=True, x=1, xanchor="right", y=1, yanchor="top"
+)
+
 # buttons to toggle log/linear y-axis. apply to a plotly figure like this:
 # fig.layout.updatemenus = [toggle_log_linear_y_axis]
 # use toggle_log_linear_y_axis | dict(x=1, y=0, ...) to customize
@@ -145,9 +149,70 @@ toggle_log_linear_y_axis = dict(
         dict(args=[{"yaxis.type": "linear"}], label="Linear Y", method="relayout"),
         dict(args=[{"yaxis.type": "log"}], label="Log Y", method="relayout"),
     ],
-    pad={"r": 10, "t": 10},
-    showactive=True,
-    x=0.1,
-    y=1,
-    yanchor="top",
+    **_common_update_menu,
+)
+
+
+toggle_log_linear_x_axis = dict(
+    type="buttons",
+    direction="left",
+    buttons=[
+        dict(args=[{"xaxis.type": "linear"}], label="Linear X", method="relayout"),
+        dict(args=[{"xaxis.type": "log"}], label="Log X", method="relayout"),
+    ],
+    **_common_update_menu,
+)
+
+# Toggle grid visibility
+toggle_grid = dict(
+    type="buttons",
+    direction="left",
+    buttons=[
+        dict(
+            args=[{"xaxis.showgrid": True, "yaxis.showgrid": True}],
+            label="Show Grid",
+            method="relayout",
+        ),
+        dict(
+            args=[{"xaxis.showgrid": False, "yaxis.showgrid": False}],
+            label="Hide Grid",
+            method="relayout",
+        ),
+    ],
+    **_common_update_menu,
+)
+
+# Toggle between different color scales
+select_colorscale = dict(
+    type="buttons",
+    direction="down",
+    buttons=[
+        dict(args=[{"colorscale": "Viridis"}], label="Viridis", method="restyle"),
+        dict(args=[{"colorscale": "Plasma"}], label="Plasma", method="restyle"),
+        dict(args=[{"colorscale": "Inferno"}], label="Inferno", method="restyle"),
+        dict(args=[{"colorscale": "Magma"}], label="Magma", method="restyle"),
+    ],
+    **_common_update_menu,
+)
+
+# Toggle between different plot types (e.g., scatter, line)
+select_marker_mode = dict(
+    type="buttons",
+    direction="down",
+    buttons=[
+        dict(
+            args=[{"type": "scatter", "mode": "markers"}],
+            label="Scatter",
+            method="restyle",
+        ),
+        dict(
+            args=[{"type": "scatter", "mode": "lines"}], label="Line", method="restyle"
+        ),
+        dict(
+            args=[{"type": "scatter", "mode": "lines+markers"}],
+            label="Line+Markers",
+            method="restyle",
+        ),
+    ],
+    **_common_update_menu,
 )

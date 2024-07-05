@@ -8,4 +8,11 @@ from pymatviz.powerups.both import (
     annotate_metrics,
 )
 from pymatviz.powerups.matplotlib import annotate_bars, with_marginal_hist
-from pymatviz.powerups.plotly import add_ecdf_line, toggle_log_linear_y_axis
+from pymatviz.powerups.plotly import (
+    add_ecdf_line,
+    select_colorscale,
+    select_marker_mode,
+    toggle_grid,
+    toggle_log_linear_x_axis,
+    toggle_log_linear_y_axis,
+)
