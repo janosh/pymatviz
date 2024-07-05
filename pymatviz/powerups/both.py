@@ -159,7 +159,9 @@ def add_identity_line(
             kwargs.setdefault("row", "all")
             kwargs.setdefault("col", "all")
 
-        line_defaults = dict(color="gray", width=1, dash="dash")
+        line_defaults = dict(color="gray", width=1, dash="dash") | kwargs.pop(
+            "line", {}
+        )
         fig.add_shape(
             type="line",
             **dict(x0=xy_min_min, y0=xy_min_min, x1=xy_max_min, y1=xy_max_min),
@@ -292,7 +294,7 @@ def add_best_fit_line(
 
         line_kwds = dict(
             color=kwargs.pop("color"), width=2, dash="dash", **(line_kwds or {})
-        )
+        ) | kwargs.pop("line", {})
         fig.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=line_kwds, **kwargs)
 
         return fig
