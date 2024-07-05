@@ -29,7 +29,10 @@ df_steels = load_dataset("matbench_steels")
 # %% Elemental Plots
 # TODO: colorbar ticks are not displayed properly
 fig = ptable_heatmap(
-    count_elements(df_expt_gap[Key.composition]), log=True, values_fmt=".4g"
+    count_elements(df_expt_gap[Key.composition]),
+    log=True,
+    values_fmt=".4g",
+    cbar_kwargs={"ticks": [1, 10, 100, 1000, 10000]},
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"

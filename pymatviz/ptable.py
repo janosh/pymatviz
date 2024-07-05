@@ -1131,8 +1131,6 @@ class HMapPTableProjector(PTableProjector):
         self,
         *,
         values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
-        inf_color: ColorType,
-        nan_color: ColorType,
         sci_notation: bool = False,
         tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
         text_colors: dict[str, ColorType] | ColorType | Literal["AUTO"] = "AUTO",
@@ -1145,8 +1143,6 @@ class HMapPTableProjector(PTableProjector):
                 Values display mode.
             sci_notation (bool): Whether to use scientific notation for
                 values and colorbar tick labels.
-            inf_color (ColorType): The color to use for infinity.
-            nan_color (ColorType): The color to use for missing value (NaN).
             tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
                 Defaults to "AUTO" for auto generation.
             text_colors: Colors for element symbols and values.
@@ -1166,9 +1162,6 @@ class HMapPTableProjector(PTableProjector):
             self.ptable_data.normalize()
 
         # Generate tile colors
-        self.inf_color = inf_color
-        self.nan_color = nan_color
-
         self.tile_colors = tile_colors  # type: ignore[assignment]
         # Auto generate tile values
         self.tile_values = None  # type: ignore[assignment]
@@ -1360,11 +1353,11 @@ class HMapPTableProjector(PTableProjector):
             # Get and format value
             value = self.tile_values.get(symbol, "grey")
             try:
-                value = f"{float(value):{text_fmt}}"
+                value = f"{value:{text_fmt}}"
             except ValueError:
-                value = value
+                pass
 
-            # Simplify scientific notation, say 1e-01 to 1e-1
+            # Simplify scientific notation, e.g. 1e-01 to 1e-1
             if self.sci_notation and ("e-0" in value or "e+0" in value):
                 value = value.replace("e-0", "e-").replace("e+0", "e+")
 
@@ -1379,9 +1372,12 @@ class HMapPTableProjector(PTableProjector):
             )
 
     def exclude_elems(
-        self, elems: Sequence[str], color: ColorType = "grey", value: str = "excl."
+        self,
+        elems: Sequence[str],
+        color: ColorType = "grey",
+        value: str = "excl.",
     ) -> None:
-        """Exclude elements from plotter and overwrite their colors and values.
+        """Exclude elements from plotter, and overwrite colors and values.
 
         Args:
             elems (Sequence[str]): Sequences of elements to exclude.
@@ -1391,6 +1387,32 @@ class HMapPTableProjector(PTableProjector):
         for elem in elems:
             self._tile_colors[elem] = color
             self._tile_values[elem] = value
+
+    def overwrite_anomalies(
+        self,
+        nan_color: ColorType,
+        inf_color: ColorType,
+        nan_value: str = "NaN",
+        inf_value: str = "∞",
+    ) -> None:
+        """Overwrite NaN/infinity colors and displayed values.
+
+        Args:
+            nan_color (ColorType): Color for missing value (NaN).
+            inf_color (ColorType): Color for infinity.
+            nan_value (str): Displayed value for missing value (NaN).
+            inf_value (str): Displayed value for infinity.
+        """
+        if self.anomalies == "NA":
+            return
+
+        for elem, anomalies in self.anomalies.items():
+            if "nan" in anomalies:
+                self._tile_colors[elem] = nan_color
+                self._tile_values[elem] = nan_value
+            elif "inf" in anomalies:
+                self._tile_colors[elem] = inf_color
+                self._tile_values[elem] = inf_value
 
 
 def ptable_heatmap(
@@ -1512,7 +1534,7 @@ def ptable_heatmap(
     Returns:
         plt.Figure: matplotlib Figure with the heatmap.
     """
-    # TODO: mark tile_size and f_block_voffset as work in progress
+    # TODO: tile_size and f_block_voffset are work in progress,
     # as there're issues that haven't been resolved in #157
     if f_block_voffset != 0 or tile_size != (0.75, 0.75):
         warnings.warn(
@@ -1532,15 +1554,16 @@ def ptable_heatmap(
         tile_size=tile_size,  # type: ignore[arg-type]
         log=log,  # type: ignore[arg-type]
         colormap=colormap,  # type: ignore[arg-type]
-        inf_color=inf_color,
-        nan_color=nan_color,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         text_colors=text_colors,
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
 
-    if exclude_elements:
-        projector.exclude_elems(exclude_elements)
+    # Exclude elements
+    projector.exclude_elems(exclude_elements)
+
+    # Overwrite NaN/infinity colors and values
+    projector.overwrite_anomalies(nan_color=nan_color, inf_color=inf_color)
 
     # Call child plotter: heatmap
     projector.add_child_plots(

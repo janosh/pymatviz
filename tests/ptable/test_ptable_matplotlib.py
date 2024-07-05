@@ -222,28 +222,34 @@ class TestPtableHeatmap:
         assert len(fig.axes) == 181
 
     def test_exclude_elems(self) -> None:
-        projector = HMapPTableProjector(
-            data=df_ptable.atomic_mass, inf_color="lightskyblue", nan_color="white"
-        )
+        projector = HMapPTableProjector(data=df_ptable.atomic_mass)
 
         projector.exclude_elems(["H"])
 
         assert projector.tile_values["H"] == "excl."
         assert projector.tile_colors["H"] == "grey"
 
+    def test_overwrite_anomalies(self) -> None:
+        data_with_anomaly = {"H": [np.nan], "He": [np.inf], "Li": [1]}
+
+        projector = HMapPTableProjector(data=data_with_anomaly)
+
+        projector.overwrite_anomalies(inf_color="red", nan_color="blue")
+
+        assert projector.tile_colors["H"] == "blue"
+        assert projector.tile_values["H"] == "NaN"
+
+        assert projector.tile_colors["He"] == "red"
+        assert projector.tile_values["He"] == "∞"
+
     @pytest.mark.skip("TODO")
     def test_handle_anomaly(self) -> None:
         data_with_anomaly = {"H": [np.nan], "He": [np.inf]}
 
-        projector = HMapPTableProjector(
-            data=data_with_anomaly, inf_color="lightskyblue", nan_color="white"
-        )
+        projector = HMapPTableProjector(data=data_with_anomaly)
 
         assert projector.anomalies["H"] == {"nan"}  # type: ignore[index]
-        assert projector.overwrite_colors["H"] == "white"
-
         assert projector.anomalies["He"] == {"inf"}  # type: ignore[index]
-        assert projector.overwrite_colors["He"] == "lightskyblue"
 
 
 @pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])
