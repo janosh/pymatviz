@@ -16,6 +16,7 @@ import plotly.express as px
 import plotly.figure_factory as ff
 from matplotlib.colors import Colormap, Normalize
 from matplotlib.patches import Rectangle
+from matplotlib.typing import ColorType
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
 
@@ -33,7 +34,6 @@ if TYPE_CHECKING:
     from typing import Any, Callable, Self
 
     import plotly.graph_objects as go
-    from matplotlib.typing import ColorType
     from numpy.typing import NDArray
 
 
@@ -749,8 +749,8 @@ class PTableProjector:
     def get_elem_type_color(
         self,
         elem_symbol: str,
-        default: str = "white",
-    ) -> str:
+        default: ColorType = "white",
+    ) -> ColorType:
         """Get element type color by element symbol.
 
         Args:
@@ -819,7 +819,9 @@ class PTableProjector:
         text: str | Callable[[Element], str] = lambda elem: elem.symbol,
         *,
         pos: tuple[float, float] = (0.5, 0.5),
-        text_color: str = "black",
+        text_color: ColorType
+        | dict[str, ColorType]
+        | Literal[ElemColorMode.element_types] = "black",
         kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add element symbols for each tile.
@@ -830,8 +832,11 @@ class PTableProjector:
                 string. If a string, it can contain a format
                 specifier for an `elem` variable which will be replaced by the element.
             pos (tuple): The position of the text relative to the axes.
-            text_color (bool): The color of the text. Defaults to "black".
-                Pass "element-types" to color symbol by self.elem_type_colors.
+            text_color (ColorType | dict[str, ColorType]): The color of the text.
+                Defaults to "black". Could take the following type:
+                    - ColorType: The same color for all elements.
+                    - dict[str, ColorType]: An element to color mapping.
+                    - "element-types": Use color from self.elem_type_colors.
             kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
         """
         # Update symbol kwargs
@@ -854,14 +859,18 @@ class PTableProjector:
 
             content = text(element) if callable(text) else text.format(elem=element)
 
-            elem_type_color = self.get_elem_type_color(symbol, default="black")
+            # Generate symbol text color
+            if text_color == ElemColorMode.element_types:
+                symbol_color = self.get_elem_type_color(symbol, "black")
+            elif isinstance(text_color, dict):
+                symbol_color = text_color.get(symbol, "black")
+            else:
+                symbol_color = ColorType
 
             ax.text(
                 *pos,
                 content,
-                color=elem_type_color
-                if text_color == ElemColorMode.element_types
-                else text_color,
+                color=symbol_color,
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
@@ -1154,6 +1163,7 @@ class HMapPTableProjector(PTableProjector):
         sci_notation: bool = False,
         tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
         overwrite_colors: dict[str, ColorType] | None = None,
+        text_colors: dict[str, ColorType] | ColorType | Literal["AUTO"] = "AUTO",
         **kwargs: dict[str, Any],
     ) -> None:
         """Init Heatmap plotter.
@@ -1169,6 +1179,11 @@ class HMapPTableProjector(PTableProjector):
                 Defaults to "AUTO" for auto generation.
             overwrite_colors (dict[str, ColorType] | None): Optional
                 overwrite colors. Defaults to None.
+            text_colors: Colors for element symbols and values.
+                - "AUTO": Auto pick "black" or "white" based on the contrast
+                    of tile color for each element.
+                - ColorType: Use the same ColorType for each element.
+                - dict[str, ColorType]: Element to color mapping.
             kwargs (dict): Kwargs to pass to super class.
         """
         super().__init__(**kwargs)  # type: ignore[arg-type]
@@ -1186,6 +1201,9 @@ class HMapPTableProjector(PTableProjector):
 
         self.overwrite_colors = overwrite_colors  # type: ignore[assignment]
         self.tile_colors = tile_colors  # type: ignore[assignment]
+
+        # Generate element symbols colors
+        self.text_colors = text_colors  # type: ignore[assignment]
 
     @property
     def tile_colors(self) -> dict[str, ColorType]:
@@ -1240,6 +1258,44 @@ class HMapPTableProjector(PTableProjector):
                     overwrite_colors[elem] = self.inf_color
 
         self._overwrite_colors = overwrite_colors
+
+    @property
+    def text_colors(self) -> dict[str, ColorType]:
+        """Element to text (symbol and value) color mapping."""
+        return self._text_colors
+
+    @text_colors.setter
+    def text_colors(
+        self,
+        text_colors: dict[str, ColorType]
+        | ColorType
+        | Literal["AUTO", ElemColorMode.element_types],
+    ) -> None:
+        """Generate and set symbol to text colors mapping.
+
+        Args:
+            text_colors:
+                - "AUTO": Auto pick "black" or "white" based on the contrast
+                    of tile color for each element.
+                - ColorType: Use the same ColorType for each element.
+                - dict[str, ColorType]: Element to color mapping.
+        """
+        if text_colors == "AUTO":
+            text_colors = {
+                symbol: pick_bw_for_contrast(self.tile_colors[symbol])
+                for symbol in self.data.index
+            }
+
+        elif text_colors == ElemColorMode.element_types:
+            text_colors = {
+                symbol: self.get_elem_type_color(symbol, default="black")
+                for symbol in self.data.index
+            }
+
+        elif not isinstance(text_colors, dict):
+            text_colors = {symbol: text_colors for symbol in self.data.index}
+
+        self._text_colors = cast(dict[str, ColorType], text_colors)
 
     def add_child_plots(  # type: ignore[override]
         self,
@@ -1319,7 +1375,6 @@ class HMapPTableProjector(PTableProjector):
         *,
         text_fmt: str,
         pos: tuple[float, float] = (0.5, 0.25),
-        text_color: str = "AUTO",
         kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Format and show element values.
@@ -1327,7 +1382,6 @@ class HMapPTableProjector(PTableProjector):
         Args:
             text_fmt (str): f-string format for the value text.
             pos (tuple[float, float]): Position of the value in the tile.
-            text_color (str): Value text color.
             kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
         """
         # Update symbol kwargs
@@ -1359,18 +1413,10 @@ class HMapPTableProjector(PTableProjector):
             if self.sci_notation and ("e-0" in content or "e+0" in content):
                 content = content.replace("e-0", "e-").replace("e+0", "e+")
 
-            # Pick value text color
-            if text_color == ElemColorMode.element_types:
-                color = self.get_elem_type_color(symbol, default="black")
-            elif text_color == "AUTO":
-                color = pick_bw_for_contrast(self.tile_colors[symbol])
-            else:
-                color = text_color
-
             ax.text(
                 *pos,
                 content,
-                color=color,
+                color=self.text_colors[symbol],
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
@@ -1396,16 +1442,16 @@ def ptable_heatmap(
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
+    text_color: ColorType = "AUTO",
     # Symbol
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] | None = None,
-    symbol_color: str = "white",
     symbol_kwargs: dict[str, Any] | None = None,
     # Values
     values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     values_pos: tuple[float, float] | None = None,
     values_fmt: str = "AUTO",
-    values_color: str = "AUTO",
+    values_color: ColorType | Literal["AUTO"] = "AUTO",
     values_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,
@@ -1452,6 +1498,10 @@ def ptable_heatmap(
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options.
+        text_color (ColorType): The font color of symbols and values.
+            "AUTO" for automatically
+            switch between black/white depending on the background color.
+        # TODO: clean up this
 
         # Symbol
         symbol_text (str | Callable[[Element], str]): Text to display for
@@ -1459,8 +1509,6 @@ def ptable_heatmap(
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-        symbol_color (str): The font color of symbol. "AUTO" for automatically
-            switch between black/white depending on the background color.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
 
@@ -1500,7 +1548,8 @@ def ptable_heatmap(
     # as there're issues that haven't been resolved in #157
     if f_block_voffset != 0 or tile_size != (0.75, 0.75):
         warnings.warn(
-            "f_block_voffset and tile_size is still being worked on.", stacklevel=2
+            "f_block_voffset and tile_size is still being worked on.",
+            stacklevel=2,
         )
 
     # Prevent log scale and percent/fraction display mode being use together
@@ -1519,6 +1568,7 @@ def ptable_heatmap(
         nan_color=nan_color,
         overwrite_colors=overwrite_colors,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
+        text_colors=text_color,
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
 
@@ -1539,7 +1589,7 @@ def ptable_heatmap(
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color=symbol_color,
+        text_color=projector.text_colors,
         kwargs=symbol_kwargs,
     )
 
@@ -1557,7 +1607,6 @@ def ptable_heatmap(
         projector.add_elem_values(
             pos=values_pos or (0.5, 0.25),
             text_fmt=values_fmt,
-            text_color=values_color,
             kwargs=values_kwargs,
         )
 
@@ -1705,12 +1754,16 @@ def ptable_heatmap_splits(
     return projector.fig
 
 
-def ptable_heatmap_ratio(  # TODO: refactor
+def ptable_heatmap_ratio(
     values_num: ElemValues,
     values_denom: ElemValues,
     *,
     count_mode: ElemCountMode = ElemCountMode.composition,
     normalize: bool = False,
+    # zero_color: ColorType = "#eff",  # light gray  # TODO:
+    # zero_symbol: str = "-",  # TODO:
+    # inf_color: ColorType = "lightskyblue",  # TODO:
+    # inf_symbol: str = "∞",  # TODO:
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] | None = ("#eff", "gray: not in 1st list"),
     not_in_denominator: tuple[str, str] | None = (
@@ -1746,7 +1799,7 @@ def ptable_heatmap_ratio(  # TODO: refactor
         **kwargs: Additional keyword arguments passed to ptable_heatmap().
 
     Returns:
-        plt.Axes: matplotlib Axes object
+        plt.Axes: matplotlib Axes object  # TODO: change to Figure
     """
     values_num = count_elements(values_num, count_mode)
 
