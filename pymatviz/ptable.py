@@ -1170,7 +1170,8 @@ class HMapPTableProjector(PTableProjector):
         self.nan_color = nan_color
 
         self.tile_colors = tile_colors  # type: ignore[assignment]
-        self.tile_values = None  # auto generate tile values
+        # Auto generate tile values
+        self.tile_values = None    # type: ignore[assignment]
 
         # Generate element symbols colors
         self.text_colors = text_colors  # type: ignore[assignment]
@@ -1210,7 +1211,6 @@ class HMapPTableProjector(PTableProjector):
 
     @tile_values.setter
     def tile_values(self, tile_values: dict[str, str] | None) -> None:
-        # TODO: WIP
         # Generate tile values from PTableData if not provided
         if tile_values is None:
             tile_values = {
@@ -1295,10 +1295,9 @@ class HMapPTableProjector(PTableProjector):
                 plot_data: np.ndarray | Sequence[float] = self.data.loc[
                     symbol, Key.heat_val
                 ]
-                tile_color = [self.tile_colors[symbol]]
+
             except KeyError:  # skip element without data
                 plot_data = None
-                tile_color = "grep"
 
             if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
                 continue
@@ -1306,7 +1305,7 @@ class HMapPTableProjector(PTableProjector):
             # Add child heatmap plot
             ax.pie(
                 np.ones(1),
-                colors=tile_color,
+                colors=[self.tile_colors[symbol]],
                 wedgeprops={"clip_on": True},
             )
 
