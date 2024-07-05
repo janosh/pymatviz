@@ -216,7 +216,7 @@ class TestPtableHeatmap:
     def test_text_style(self) -> None:
         symbol_kwargs = dict(fontsize=12)
         fig = ptable_heatmap(
-            df_ptable.atomic_mass, text_color="red", symbol_kwargs=symbol_kwargs
+            df_ptable.atomic_mass, text_colors="red", symbol_kwargs=symbol_kwargs
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181

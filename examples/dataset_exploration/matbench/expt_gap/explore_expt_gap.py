@@ -58,7 +58,7 @@ df_gap["mean_radius"] = [mean_atomic_prop(x, "atomic_radius") for x in df_gap.pm
 ax = ptable_heatmap(
     df_gap.query("~composition.str.contains('Xe')")[Key.composition],
     log=True,
-    text_color="black",
+    text_colors="black",
 )
 ax.set(title="Elements in Matbench experimental band gap dataset")
 save_fig(ax, "expt-gap-ptable-heatmap.pdf")

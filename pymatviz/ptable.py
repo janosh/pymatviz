@@ -1274,7 +1274,7 @@ class HMapPTableProjector(PTableProjector):
         """Generate and set symbol to text colors mapping.
 
         Args:
-            text_colors:
+            text_colors: Colors for element symbols and values.
                 - "AUTO": Auto pick "black" or "white" based on the contrast
                     of tile color for each element.
                 - ColorType: Use the same ColorType for each element.
@@ -1442,7 +1442,7 @@ def ptable_heatmap(
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
-    text_color: ColorType = "AUTO",
+    text_colors: ColorType = "AUTO",
     # Symbol
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] | None = None,
@@ -1497,10 +1497,11 @@ def ptable_heatmap(
             Use to set x/y labels, limits, etc. Defaults to None. Example:
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options.
-        text_color (ColorType): The font color of symbols and values.
-            "AUTO" for automatically
-            switch between black/white depending on the background color.
-        # TODO: clean up this
+        text_colors: Colors for element symbols and values.
+                - "AUTO": Auto pick "black" or "white" based on the contrast
+                    of tile color for each element.
+                - ColorType: Use the same ColorType for each element.
+                - dict[str, ColorType]: Element to color mapping.
 
         # Symbol
         symbol_text (str | Callable[[Element], str]): Text to display for
@@ -1567,7 +1568,7 @@ def ptable_heatmap(
         nan_color=nan_color,
         overwrite_colors=overwrite_colors,
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
-        text_colors=text_color,
+        text_colors=text_colors,
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
 
