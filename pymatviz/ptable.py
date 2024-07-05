@@ -399,7 +399,7 @@ class PTableData:
     def normalize(self) -> None:
         """Normalize data by the total sum."""
         total_sum = self._data.map(np.sum).sum().sum()
-        self.data = self._data.map(lambda x: x / total_sum)
+        self.apply(lambda x: x / total_sum)
 
     def apply(self, func: Callable[[Any], Any]) -> None:
         """Apply a function to all values in value column.
@@ -659,21 +659,17 @@ class PTableProjector:
     @data.setter
     def data(self, data: SupportedDataType) -> None:
         """Preprocess and set the data. Also set normalizer."""
-        # Preprocess data
         if not isinstance(data, PTableData):
             data = PTableData(data)
 
         self.ptable_data = data
 
-        # Normalize data for colorbar
-        vmin = self.ptable_data.data.attrs["vmin"]
-        vmax = self.ptable_data.data.attrs["vmax"]
-        self._norm = Normalize(vmin=vmin, vmax=vmax)
-
     @property
     def norm(self) -> Normalize:
         """Data min-max normalizer."""
-        return self._norm
+        vmin = self.ptable_data.data.attrs["vmin"]
+        vmax = self.ptable_data.data.attrs["vmax"]
+        return Normalize(vmin=vmin, vmax=vmax)
 
     @property
     def anomalies(self) -> dict[str, set[Literal["nan", "inf"]]] | Literal["NA"]:

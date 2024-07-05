@@ -28,7 +28,7 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %% Elemental Plots
-# DEBUG: the color mapping seems incorrect for log mode
+# DEBUG: Log scale should not modify the original data, but only scale the colormap
 fig = ptable_heatmap(count_elements(df_expt_gap[Key.composition]), log=True)
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
@@ -45,7 +45,6 @@ save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
-# DEBUG: color mapping is incorrect (similar to ptable-heatmap)
 data = PTableData(count_elements(df_expt_gap[Key.composition]))
 data.drop_elements(["O"])
 
