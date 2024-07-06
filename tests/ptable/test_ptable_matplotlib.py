@@ -175,8 +175,8 @@ def test_ptable_heatmap(
     ptable_heatmap(glass_formulas, heat_mode="percent")
 
     # without heatmap values
-    ptable_heatmap(glass_formulas, heat_mode=None)
-    ptable_heatmap(glass_formulas, log=True, heat_mode=None)
+    ptable_heatmap(glass_formulas, show_values=False)
+    ptable_heatmap(glass_formulas, log=True, show_values=False)
 
     # element properties as heatmap values
     ptable_heatmap(df_ptable.atomic_mass)
