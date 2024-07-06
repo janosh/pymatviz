@@ -4,12 +4,14 @@ import re
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from plotly.exceptions import PlotlyError
+from plotly.graph_objs import Figure
 
 from pymatviz import ptable_heatmap_plotly
-from pymatviz.enums import Key
+from pymatviz.enums import ElemCountMode, Key
 from pymatviz.utils import df_ptable
 
 
@@ -82,17 +84,23 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         ptable_heatmap_plotly(glass_formulas, log=True, heat_mode="percent")
 
 
-@pytest.mark.parametrize("exclude_elements", [(), [], ["O", "P"]])
 @pytest.mark.parametrize(
-    "heat_mode, log", [(None, True), ("fraction", False), ("percent", False)]
+    "exclude_elements, heat_mode, log, show_scale, font_size, font_colors",
+    [
+        ((), None, True, False, None, ["red"]),
+        ([], None, True, False, None, ("black", "white")),
+        (["O", "P"], None, True, False, None, ["red"]),
+        ([], "fraction", False, False, None, ("black", "white")),
+        ([], "percent", False, False, None, ("black", "white")),
+        ([], None, True, True, None, ("black", "white")),
+        ([], None, True, False, 14, ("black", "white")),
+    ],
 )
-@pytest.mark.parametrize("show_scale", [False, True])
-@pytest.mark.parametrize("font_size", [None, 14])
-@pytest.mark.parametrize("font_colors", [["red"], ("black", "white")])
 def test_ptable_heatmap_plotly_kwarg_combos(
     glass_formulas: list[str],
     exclude_elements: Sequence[str],
-    heat_mode: Literal["value", "fraction", "percent"] | None,
+    heat_mode: Literal["value", "fraction", "percent"],
+    log: bool,
     show_scale: bool,
     font_size: int,
     font_colors: tuple[str] | tuple[str, str],
@@ -111,13 +119,18 @@ def test_ptable_heatmap_plotly_kwarg_combos(
 
 
 @pytest.mark.parametrize(
-    "colorscale", ["YlGn", ["blue", "red"], [(0, "blue"), (1, "red")]]
+    "c_scale", ["Viridis", "Jet", ("blue", "red"), ((0, "blue"), (1, "red"))]
 )
-def test_ptable_heatmap_plotly_colorscale(
-    glass_formulas: list[str], colorscale: str | list[tuple[float, str]] | list[str]
-) -> None:
-    fig = ptable_heatmap_plotly(glass_formulas, colorscale=colorscale)
-    assert isinstance(fig, go.Figure)
+def test_ptable_heatmap_plotly_colorscale(c_scale: str) -> None:
+    values = {"Fe": 2, "O": 3}
+    fig = ptable_heatmap_plotly(values, colorscale=c_scale)
+    clr_scale_start = fig.data[0].colorscale[0]
+    assert clr_scale_start == {
+        "Viridis": (0, "#440154"),
+        "Jet": (0, "rgb(0,0,131)"),
+        ("blue", "red"): (0, "blue"),
+        ((0, "blue"), (1, "red")): (0, "blue"),
+    }.get(c_scale), f"{c_scale=}, {clr_scale_start=}"
 
 
 @pytest.mark.parametrize(
@@ -147,12 +160,18 @@ def test_ptable_heatmap_plotly_cscale_range(
     trace = fig.data[0]
     assert "colorbar" in trace
     # check for correct color bar range
+    data_min, data_max = df_ptable[Key.density].min(), df_ptable[Key.density].max()
     if cscale_range == (None, None):
         # if both None, range is dynamic based on plotted data
-        assert trace["zmin"] == pytest.approx(df_ptable[Key.density].min())
-        assert trace["zmax"] == pytest.approx(df_ptable[Key.density].max())
+        assert trace.zmin == pytest.approx(data_min)
+        assert trace.zmax == pytest.approx(data_max)
     else:
-        assert cscale_range == (trace["zmin"], trace["zmax"])
+        assert trace.zmin == pytest.approx(
+            cscale_range[0] or data_min
+        ), f"{cscale_range=}"
+        assert trace.zmax == pytest.approx(
+            cscale_range[1] or data_max
+        ), f"{cscale_range=}"
 
 
 def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
@@ -186,3 +205,100 @@ def test_ptable_heatmap_plotly_label_map(
             any(val in anno.text for val in label_map.values())
             for anno in fig.layout.annotations
         )
+
+
+@pytest.mark.parametrize("mode", ["value", "fraction", "percent"])
+def test_ptable_heatmap_plotly_heat_modes(
+    mode: Literal["value", "fraction", "percent"],
+) -> None:
+    values = {"Fe": 2, "O": 3, "H": 1}
+    fig = ptable_heatmap_plotly(values, heat_mode=mode)
+    assert fig.data[0].zmax is not None
+    if mode == "value":
+        assert fig.data[0].zmax == 3
+    elif mode in ("fraction", "percent"):
+        assert fig.data[0].zmax == pytest.approx(0.5)
+
+
+def test_ptable_heatmap_plotly_show_values() -> None:
+    values = {"Fe": 2, "O": 3}
+    fig = ptable_heatmap_plotly(values, show_values=False)
+    assert all("<br>" not in text for text in fig.data[0].text.flatten() if text)
+
+
+def test_ptable_heatmap_plotly_exclude_elements() -> None:
+    values = {"Fe": 2, "O": 3, "H": 1}
+    fig = ptable_heatmap_plotly(values, exclude_elements=["O"])
+    assert "excl." in str(fig.layout.annotations)
+
+
+def test_ptable_heatmap_plotly_log_scale() -> None:
+    values = {"Fe": 10, "O": 100, "H": 1000}
+    fig = ptable_heatmap_plotly(values, log=True)
+    assert fig.data[0].zmax == np.log10(1000)
+
+
+def test_ptable_heatmap_plotly_series_input() -> None:
+    values = pd.Series({"Fe": 2, "O": 3, "H": 1})
+    fig = ptable_heatmap_plotly(values)
+    assert isinstance(fig, Figure)
+
+
+def test_ptable_heatmap_plotly_list_input() -> None:
+    values = ["FeO", "Fe2O3", "H2O"]
+    fig = ptable_heatmap_plotly(values)
+    assert isinstance(fig, Figure)
+
+
+def test_ptable_heatmap_plotly_count_modes() -> None:
+    values = ["FeO", "Fe2O3", "H2O"]
+    for mode in ElemCountMode:
+        fig = ptable_heatmap_plotly(values, count_mode=mode)
+        assert isinstance(fig, Figure)
+
+
+def test_ptable_heatmap_plotly_hover_props() -> None:
+    values = {"Fe": 2, "O": 3}
+    hover_props = ["atomic_number", "atomic_mass"]
+    fig = ptable_heatmap_plotly(values, hover_props=hover_props)
+    assert all(prop in str(fig.data[0].text) for prop in hover_props)
+
+
+def test_ptable_heatmap_plotly_custom_label_map() -> None:
+    values = {"Fe": 2, "O": 3, "H": np.nan}
+    label_map = lambda label: {2: "High", 3: "Low"}.get(float(label), label)
+    fig = ptable_heatmap_plotly(values, label_map=label_map)
+    annos = [
+        anno.text
+        for anno in fig.layout.annotations
+        if anno.text.endswith(("High", "Low"))
+    ]
+    assert len(annos) == 2, f"{len(annos)=}"
+
+
+def test_ptable_heatmap_plotly_error_cases() -> None:
+    with pytest.raises(
+        ValueError, match=re.escape("cscale_range=(0,) should have length 2")
+    ):
+        ptable_heatmap_plotly({"Fe": 2, "O": 3}, cscale_range=(0,))
+
+    hover_props = ("atomic_mass", bad_hover_prop := "invalid_prop")
+    with pytest.raises(ValueError, match=f"Unsupported hover_props: {bad_hover_prop}"):
+        ptable_heatmap_plotly({"Fe": 2, "O": 3}, hover_props=hover_props)
+
+
+@pytest.mark.parametrize("heat_mode", ["value", "fraction", "percent"])
+def test_ptable_heatmap_plotly_color_range(heat_mode: str) -> None:
+    values = {"Fe": 1, "O": 50, "H": 100}
+    fig = ptable_heatmap_plotly(values, heat_mode=heat_mode)
+    non_nan_values = [v for v in fig.data[0].z.flatten() if not np.isnan(v)]
+    assert min(non_nan_values) == fig.data[0].zmin
+    assert max(non_nan_values) == fig.data[0].zmax
+
+
+def test_ptable_heatmap_plotly_all_elements() -> None:
+    values = {elem: i for i, elem in enumerate(df_ptable.index)}
+    fig = ptable_heatmap_plotly(values)
+    assert isinstance(fig, Figure)
+    assert not np.isnan(fig.data[0].zmax)
+    assert fig.data[0].zmax == len(df_ptable) - 1

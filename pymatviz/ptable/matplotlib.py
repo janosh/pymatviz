@@ -600,7 +600,7 @@ def ptable_heatmap(
     show_values: bool = True,
     infty_color: str = "lightskyblue",
     na_color: str = "white",
-    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
+    heat_mode: Literal["value", "fraction", "percent"] = "value",
     fmt: str | Callable[..., str] | None = None,
     cbar_fmt: str | Callable[..., str] | None = None,
     text_color: str | tuple[str, str] = "auto",

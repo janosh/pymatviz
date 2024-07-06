@@ -31,7 +31,7 @@ def ptable_heatmap_plotly(
     colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
     show_scale: bool = True,
     show_values: bool = True,
-    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
+    heat_mode: Literal["value", "fraction", "percent"] = "value",
     fmt: str | None = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
