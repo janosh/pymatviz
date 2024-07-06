@@ -23,7 +23,7 @@ fig, axs = plot_structure_2d(
     df_phonons[Key.structure].iloc[:n_structs],
     show_bonds=True,
     bond_kwargs=dict(facecolor="gray", linewidth=2, linestyle="dotted"),
-    colors=ElemColorScheme.jmol,
+    elem_colors=ElemColorScheme.jmol,
 )
 title = f"{n_structs} Matbench phonon structures"
 fig.suptitle(title, fontweight="bold", fontsize=20)

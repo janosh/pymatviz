@@ -115,7 +115,7 @@ def plot_structure_2d(
     ax: plt.Axes | None = None,
     rotation: str = "10x,10y,0z",
     atomic_radii: float | dict[str, float] | None = None,
-    colors: ElemColorScheme | dict[str, str | ColorType] = ElemColorScheme.jmol,
+    elem_colors: ElemColorScheme | dict[str, str | ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
     show_unit_cell: bool = True,
     show_bonds: bool | NearNeighbors = False,
@@ -130,6 +130,7 @@ def plot_structure_2d(
     n_cols: int = 4,
     subplot_kwargs: dict[str, Any] | None = None,
     subplot_title: Callable[[Structure, str | int], str] | None = None,
+    **kwargs: Any,
 ) -> plt.Axes | tuple[plt.Figure, np.ndarray[plt.Axes]]:
     """Plot pymatgen structures in 2D with matplotlib.
 
@@ -178,8 +179,8 @@ def plot_structure_2d(
         atomic_radii (float | dict[str, float], optional): Either a scaling factor for
             default radii or map from element symbol to atomic radii. Defaults to
             covalent radii.
-        colors (dict[str, str | list[float]], optional): Map from element symbols to
-            colors, either a named color (str) or rgb(a) values like (0.2, 0.3, 0.6).
+        elem_colors (dict[str, str | list[float]], optional): Map from element symbols
+            to colors, either a named color (str) or rgb(a) values like (0.2, 0.3, 0.6).
             Defaults to JMol colors (https://jmol.sourceforge.net/jscolors).
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool, optional): Whether to plot unit cell. Defaults to True.
@@ -218,6 +219,7 @@ def plot_structure_2d(
             subplot titles. Receives the structure and its key or index when passed as
             a dict or pandas.Series. Defaults to None in which case the title is the
             structure's material id if available, otherwise its formula and space group.
+        **kwargs: Unused.
 
     Raises:
         ValueError: On invalid site_labels.
@@ -225,6 +227,14 @@ def plot_structure_2d(
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
     """
+    if "colors" in kwargs:
+        warnings.warn(
+            "plot_structure_2d's colors keyword was deprecated on 2024-07-06 and will "
+            "be removed soon. Use 'elem_colors' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        elem_colors = kwargs.pop("colors")
     if isinstance(struct, Structure):
         ax = ax or plt.gca()
 
@@ -257,11 +267,11 @@ def plot_structure_2d(
             struct = SpacegroupAnalyzer(struct).get_conventional_standard_structure()
 
         # Get default colors
-        if str(colors) == str(ElemColorScheme.jmol):
-            colors = ELEM_COLORS_JMOL
-        elif str(colors) == str(ElemColorScheme.vesta):
-            colors = ELEM_COLORS_VESTA
-        elif not isinstance(colors, dict):
+        if str(elem_colors) == str(ElemColorScheme.jmol):
+            elem_colors = ELEM_COLORS_JMOL
+        elif str(elem_colors) == str(ElemColorScheme.vesta):
+            elem_colors = ELEM_COLORS_VESTA
+        elif not isinstance(elem_colors, dict):
             raise ValueError(
                 f"colors must be a dict or one of ('{'\', \''.join(ElemColorScheme)}')"
             )
@@ -360,8 +370,8 @@ def plot_structure_2d(
 
                     radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
                     fallback_color = "gray"
-                    face_color = colors.get(elem_symbol, fallback_color)
-                    if elem_symbol not in colors:
+                    face_color = elem_colors.get(elem_symbol, fallback_color)
+                    if elem_symbol not in elem_colors:
                         warnings.warn(
                             f"{elem_symbol=} not in colors, using {fallback_color}",
                             UserWarning,
@@ -522,7 +532,7 @@ def plot_structure_2d(
                 ax=ax,
                 rotation=rotation,
                 atomic_radii=atomic_radii,
-                colors=colors,
+                elem_colors=elem_colors,
                 scale=scale,
                 show_unit_cell=show_unit_cell,
                 show_bonds=show_bonds,

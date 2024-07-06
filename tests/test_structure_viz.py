@@ -172,14 +172,14 @@ def test_plot_structure_2d_color_warning() -> None:
         with pytest.warns(
             UserWarning, match=f"{copernicium!r} not in colors, using gray"
         ):
-            plot_structure_2d(struct, colors=colors)
+            plot_structure_2d(struct, elem_colors=colors)
 
     # create custom color scheme missing an element
     custom_colors = {"Fe": "red"}
     struct = Structure(np.eye(3) * 5, ["Fe", "O"], coords=coords)
 
     with pytest.warns(UserWarning, match="'O' not in colors, using gray"):
-        plot_structure_2d(struct, colors=custom_colors)
+        plot_structure_2d(struct, elem_colors=custom_colors)
 
 
 def test_plot_structure_2d_color_schemes() -> None:
@@ -188,7 +188,7 @@ def test_plot_structure_2d_color_schemes() -> None:
     struct = Structure(lattice, ["Al", "Ar", "As", "Cl"], coords)
 
     # Plot with Jmol colors
-    ax_jmol: plt.Axes = plot_structure_2d(struct, colors=ElemColorScheme.jmol)
+    ax_jmol: plt.Axes = plot_structure_2d(struct, elem_colors=ElemColorScheme.jmol)
     jmol_colors = {
         patch.elem_symbol: patch.get_facecolor()
         for patch in ax_jmol.patches
@@ -196,7 +196,7 @@ def test_plot_structure_2d_color_schemes() -> None:
     }
 
     # Plot with VESTA colors
-    ax_vesta: plt.Axes = plot_structure_2d(struct, colors=ElemColorScheme.vesta)
+    ax_vesta: plt.Axes = plot_structure_2d(struct, elem_colors=ElemColorScheme.vesta)
     vesta_colors = {
         patch.elem_symbol: patch.get_facecolor()
         for patch in ax_vesta.patches
