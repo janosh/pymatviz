@@ -52,19 +52,19 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 ## Periodic Table
 
-See [`pymatviz/ptable.py`](pymatviz/ptable.py). Heatmaps of the periodic table can be plotted both with `matplotlib` and `plotly`. `plotly` supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
+See [`pymatviz/ptable/matplotlib.py`](pymatviz/ptable/matplotlib.py) and [`pymatviz/ptable/plotly.py`](pymatviz/ptable/plotly.py). `matplotlib` supports heatmaps, heatmap ratios, heatmap splits (multiple values per element), histograms, scatter plots and line plots. `plotly` currently only supports heatmaps (PRs to port over other `matplotlib` `ptable` variants to `plotly` are very welcome!). The `plotly` heatmap supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
 
-|                    [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable.py)                    |                   [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable.py)                    |
-| :--------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------: |
-|                                          ![ptable-heatmap]                                           |                                       ![ptable-heatmap-ratio]                                       |
-|                     [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable.py)                     |                [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable.py)                |
-|                               ![ptable-heatmap-plotly-more-hover-data]                               |                                    ![ptable-heatmap-plotly-log]                                     |
-|                   [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable.py)                    |                             [`ptable_lines(data)`](pymatviz/ptable.py)                              |
-|                                           ![ptable-hists]                                            |                                           ![ptable-lines]                                           |
-|                  [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable.py)                  |                 [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable.py)                  |
-|                                      ![ptable-scatters-parity]                                       |                                     ![ptable-scatters-parabola]                                     |
-| [`ptable_heatmap_splits(2_vals_per_elem, colormap="coolwarm", start_angle=135)`](pymatviz/ptable.py) | [`ptable_heatmap_splits(3_vals_per_elem, colormap="coolwarm", start_angle=90)`](pymatviz/ptable.py) |
-|                                      ![ptable-heatmap-splits-2]                                      |                                     ![ptable-heatmap-splits-3]                                      |
+|                    [`ptable_heatmap(compositions, log=True)`](pymatviz/ptable/matplotlib.py)                    |                   [`ptable_heatmap_ratio(comps_a, comps_b)`](pymatviz/ptable/matplotlib.py)                    |
+| :-------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------: |
+|                                                ![ptable-heatmap]                                                |                                            ![ptable-heatmap-ratio]                                             |
+|                       [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/plotly.py)                       |                [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/matplotlib.py)                |
+|                                    ![ptable-heatmap-plotly-more-hover-data]                                     |                                          ![ptable-heatmap-plotly-log]                                          |
+|                   [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable/matplotlib.py)                    |                             [`ptable_lines(data)`](pymatviz/ptable/matplotlib.py)                              |
+|                                                 ![ptable-hists]                                                 |                                                ![ptable-lines]                                                 |
+|                  [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable/matplotlib.py)                  |                 [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable/matplotlib.py)                  |
+|                                            ![ptable-scatters-parity]                                            |                                          ![ptable-scatters-parabola]                                           |
+| [`ptable_heatmap_splits(2_vals_per_elem, colormap="coolwarm", start_angle=135)`](pymatviz/ptable/matplotlib.py) | [`ptable_heatmap_splits(3_vals_per_elem, colormap="coolwarm", start_angle=90)`](pymatviz/ptable/matplotlib.py) |
+|                                           ![ptable-heatmap-splits-2]                                            |                                           ![ptable-heatmap-splits-3]                                           |
 
 [ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
 [ptable-lines]: https://github.com/janosh/pymatviz/raw/main/examples/diatomics/homo-nuclear-mace-medium.svg

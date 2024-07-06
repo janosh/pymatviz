@@ -1,154 +1,38 @@
-"""Various periodic table heatmaps with matplotlib and plotly."""
+"""Periodic table plots powered by matplotlib."""
 
 from __future__ import annotations
 
-import itertools
 import math
 import warnings
 from collections.abc import Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Literal, Union
+from typing import TYPE_CHECKING, Literal
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.figure_factory as ff
 from matplotlib.colors import Colormap, LogNorm, Normalize
 from matplotlib.patches import Rectangle
-from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition, Element
+from pymatgen.core import Element
 
-from pymatviz._preprocess_data import (
+from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
+from pymatviz.enums import ElemColorMode, ElemColorScheme, ElemCountMode, Key
+from pymatviz.process_data import count_elements
+from pymatviz.ptable._process_data import (
     SupportedDataType,
     SupportedValueType,
     preprocess_ptable_data,
 )
-from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
-from pymatviz.enums import ElemColorMode, ElemColors, ElemCountMode, Key
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
 
 if TYPE_CHECKING:
     from typing import Any, Callable
 
-    import plotly.graph_objects as go
     from matplotlib.typing import ColorType
 
-
-ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
-
-
-def count_elements(
-    values: ElemValues,
-    count_mode: ElemCountMode = ElemCountMode.composition,
-    exclude_elements: Sequence[str] = (),
-    fill_value: float | None = 0,
-) -> pd.Series:
-    """Count element occurrence in list of formula strings or dict-like compositions.
-    If passed values are already a map from element symbol to counts, ensure the
-    data is a pd.Series filled with zero values for missing element symbols.
-
-    Provided as standalone function for external use or to cache long computations.
-    Caching long element counts is done by refactoring
-        ptable_heatmap(long_list_of_formulas) # slow
-    to
-        elem_counts = count_elements(long_list_of_formulas) # slow
-        ptable_heatmap(elem_counts) # fast, only rerun this line to update the plot
-
-    Args:
-        values (dict[str, int | float] | pd.Series | list[str]): Iterable of
-            composition strings/objects or map from element symbols to heatmap values.
-        count_mode ('(element|fractional|reduced)_composition'):
-            Only used when values is a list of composition strings/objects.
-            - composition (default): Count elements in each composition as is,
-                i.e. without reduction or normalization.
-            - fractional_composition: Convert to normalized compositions in which the
-                amounts of each species sum to before counting.
-                Example: Fe2 O3 -> Fe0.4 O0.6
-            - reduced_composition: Convert to reduced compositions (i.e. amounts
-                normalized by greatest common denominator) before counting.
-                Example: Fe4 P4 O16 -> Fe P O4.
-            - occurrence: Count the number of times each element occurs in a list of
-                formulas irrespective of compositions. E.g. [Fe2 O3, Fe O, Fe4 P4 O16]
-                counts to {Fe: 3, O: 3, P: 1}.
-        exclude_elements (Sequence[str]): Elements to exclude from the count. Defaults
-            to ().
-        fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
-
-    Returns:
-        pd.Series: Map element symbols to heatmap values.
-    """
-    valid_count_modes = list(ElemCountMode.key_val_dict())
-    if count_mode not in valid_count_modes:
-        raise ValueError(f"Invalid {count_mode=} must be one of {valid_count_modes}")
-    # Ensure values is Series if we got dict/list/tuple
-    srs = pd.Series(values)
-
-    if is_numeric_dtype(srs):
-        pass
-    elif is_string_dtype(srs) or {*map(type, srs)} <= {str, Composition}:
-        # all items are formula strings or Composition objects
-        if count_mode == "occurrence":
-            srs = pd.Series(
-                itertools.chain.from_iterable(
-                    map(str, Composition(comp, allow_negative=True)) for comp in srs
-                )
-            ).value_counts()
-        else:
-            attr = (
-                "element_composition" if count_mode == Key.composition else count_mode
-            )
-            srs = pd.DataFrame(
-                getattr(Composition(formula, allow_negative=True), attr).as_dict()
-                for formula in srs
-            ).sum()  # sum up element occurrences
-    else:
-        raise ValueError(
-            "Expected values to be map from element symbols to heatmap values or "
-            f"list of compositions (strings or Pymatgen objects), got {values}"
-        )
-
-    try:
-        # If index consists entirely of strings representing integers, convert to ints
-        srs.index = srs.index.astype(int)
-    except (ValueError, TypeError):
-        pass
-
-    if pd.api.types.is_integer_dtype(srs.index):
-        # If index is all integers, assume they represent atomic
-        # numbers and map them to element symbols (H: 1, He: 2, ...)
-        idx_min, idx_max = srs.index.min(), srs.index.max()
-        if idx_max > 118 or idx_min < 1:
-            raise ValueError(
-                "element value keys were found to be integers and assumed to represent "
-                f"atomic numbers, but values range from {idx_min} to {idx_max}, "
-                "expected range [1, 118]."
-            )
-        map_atomic_num_to_elem_symbol = (
-            df_ptable.reset_index().set_index("atomic_number").symbol
-        )
-        srs.index = srs.index.map(map_atomic_num_to_elem_symbol)
-
-    # Ensure all elements are present in returned Series (with value zero if they
-    # weren't in values before)
-    srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
-
-    if len(exclude_elements) > 0:
-        if isinstance(exclude_elements, str):
-            exclude_elements = [exclude_elements]
-        if isinstance(exclude_elements, tuple):
-            exclude_elements = list(exclude_elements)
-        try:
-            srs = srs.drop(exclude_elements)
-        except KeyError as exc:
-            bad_symbols = ", ".join(x for x in exclude_elements if x not in srs)
-            raise ValueError(
-                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}"
-            ) from exc
-
-    return srs
+    from pymatviz.utils import ElemValues
 
 
 class PTableProjector:
@@ -177,7 +61,7 @@ class PTableProjector:
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | None = None,
         elem_type_colors: dict[str, str] | None = None,
-        elem_colors: ElemColors | dict[str, ColorType] | None = None,
+        elem_colors: ElemColorScheme | dict[str, ColorType] | None = None,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -299,7 +183,9 @@ class PTableProjector:
     @elem_colors.setter
     def elem_colors(
         self,
-        elem_colors: ElemColors | dict[str, ColorType] | None = ElemColors.vesta,
+        elem_colors: ElemColorScheme
+        | dict[str, ColorType]
+        | None = ElemColorScheme.vesta,
     ) -> None:
         """Args:
         elem_colors ("vesta" | "jmol" | dict[str, ColorType]): Use VESTA or Jmol color
@@ -714,7 +600,7 @@ def ptable_heatmap(
     show_values: bool = True,
     infty_color: str = "lightskyblue",
     na_color: str = "white",
-    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
+    heat_mode: Literal["value", "fraction", "percent"] = "value",
     fmt: str | Callable[..., str] | None = None,
     cbar_fmt: str | Callable[..., str] | None = None,
     text_color: str | tuple[str, str] = "auto",
@@ -1166,265 +1052,6 @@ def ptable_heatmap_ratio(
         ax.text(0.005, y_pos, txt, fontsize=10, bbox=bbox, transform=ax.transAxes)
 
     return ax
-
-
-def ptable_heatmap_plotly(
-    values: ElemValues,
-    *,
-    count_mode: ElemCountMode = ElemCountMode.composition,
-    colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
-    show_scale: bool = True,
-    show_values: bool = True,
-    heat_mode: Literal["value", "fraction", "percent"] | None = "value",
-    fmt: str | None = None,
-    hover_props: Sequence[str] | dict[str, str] | None = None,
-    hover_data: dict[str, str | int | float] | pd.Series | None = None,
-    font_colors: Sequence[str] = (),
-    gap: float = 5,
-    font_size: int | None = None,
-    bg_color: str | None = None,
-    color_bar: dict[str, Any] | None = None,
-    cscale_range: tuple[float | None, float | None] = (None, None),
-    exclude_elements: Sequence[str] = (),
-    log: bool = False,
-    fill_value: float | None = None,
-    label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
-    **kwargs: Any,
-) -> go.Figure:
-    """Create a Plotly figure with an interactive heatmap of the periodic table.
-    Supports hover tooltips with custom data or atomic reference data like
-    electronegativity, atomic_radius, etc. See kwargs hover_data and hover_props, resp.
-
-    Args:
-        values (dict[str, int | float] | pd.Series | list[str]): Map from element
-            symbols to heatmap values e.g. dict(Fe=2, O=3) or iterable of composition
-            strings or Pymatgen composition objects.
-        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See count_elements() for
-            details. Only used when values is list of composition strings/objects.
-        colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
-            Defaults to "viridis". See plotly.com/python/builtin-colorscales for names
-            of other builtin color scales. Note "YlGn" and px.colors.sequential.YlGn are
-            equivalent. Custom scales are specified as ["blue", "red"] or
-            [[0, "rgb(0,0,255)"], [0.5, "rgb(0,255,0)"], [1, "rgb(255,0,0)"]].
-        show_scale (bool): Whether to show a bar for the color scale. Defaults to True.
-        show_values (bool): Whether to show numbers on heatmap tiles. Defaults to True.
-        heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
-            values as is (value), normalized as a fraction of the total, as percentages
-            or not at all (None). Defaults to "value".
-            "fraction" and "percent" can be used to make the colors in different
-            periodic table heatmap plots comparable.
-        fmt (str): f-string format option for heat labels. Defaults to ".1%"
-            (1 decimal place) if heat_mode="percent" else ".3g".
-        hover_props (list[str] | dict[str, str]): Elemental properties to display in the
-            hover tooltip. Can be a list of property names to display only the values
-            themselves or a dict mapping names to what they should display as. E.g.
-            dict(atomic_mass="atomic weight") will display as `"atomic weight = {x}"`.
-            Defaults to None.
-            Available properties are: symbol, row, column, name,
-            atomic_number, atomic_mass, n_neutrons, n_protons, n_electrons, period,
-            group, phase, radioactive, natural, metal, nonmetal, metalloid, type,
-            atomic_radius, electronegativity, first_ionization, density, melting_point,
-            boiling_point, number_of_isotopes, discoverer, year, specific_heat,
-            n_shells, n_valence.
-        hover_data (dict[str, str | int | float] | pd.Series): Map from element symbols
-            to additional data to display in the hover tooltip. dict(Fe="this appears in
-            the hover tooltip on a new line below the element name"). Defaults to None.
-        font_colors (list[str]): One color name or two for [min_color, max_color].
-            min_color is applied to annotations with heatmap values less than
-            (max_val - min_val) / 2. Defaults to None, meaning auto-set to maximize
-            contrast with color scale: white text for dark background and vice versa.
-            swapped depending on the colorscale.
-        gap (float): Gap in pixels between tiles of the periodic table. Defaults to 5.
-        font_size (int): Element symbol and heat label text size. Any valid CSS size
-            allowed. Defaults to automatic font size based on plot size. Element symbols
-            will be bold and 1.5x this size.
-        bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
-        color_bar (dict[str, Any]): Plotly colorbar properties documented at
-            https://plotly.com/python/reference#heatmap-colorbar. Defaults to
-            dict(orientation="h"). Commonly used keys are:
-            - title: colorbar title
-            - titleside: "top" | "bottom" | "right" | "left"
-            - tickmode: "array" | "auto" | "linear" | "log" | "date" | "category"
-            - tickvals: list of tick values
-            - ticktext: list of tick labels
-            - tickformat: f-string format option for tick labels
-            - len: fraction of plot height or width depending on orientation
-            - thickness: fraction of plot height or width depending on orientation
-        cscale_range (tuple[float | None, float | None]): Colorbar range. Defaults to
-            (None, None) meaning the range is automatically determined from the data.
-        exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
-            oxygen overpowers everything, you can do exclude_elements=["O"].
-            Defaults to ().
-        log (bool): Whether to use a logarithmic color scale. Defaults to False.
-            Piece of advice: colorscale="viridis" and log=True go well together.
-        fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
-        label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
-            string formatting) to target strings. Set to False to disable. Defaults to
-            dict.fromkeys((np.nan, None, "nan"), " ") so as not to display "nan" for
-            missing values.
-        **kwargs: Additional keyword arguments passed to
-            plotly.figure_factory.create_annotated_heatmap().
-
-    Returns:
-        Figure: Plotly Figure object.
-    """
-    if log and heat_mode in ("fraction", "percent"):
-        raise ValueError(
-            "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
-        )
-    if len(cscale_range) != 2:
-        raise ValueError(f"{cscale_range=} should have length 2")
-
-    if isinstance(colorscale, (str, type(None))):
-        colorscale = px.colors.get_colorscale(colorscale or "viridis")
-    elif not isinstance(colorscale, Sequence) or not isinstance(
-        colorscale[0], (str, list, tuple)
-    ):
-        raise TypeError(
-            f"{colorscale=} should be string, list of strings or list of "
-            "tuples(float, str)"
-        )
-
-    color_bar = color_bar or {}
-    color_bar.setdefault("orientation", "h")
-    # if values is a series with a name, use it as the colorbar title
-    if isinstance(values, pd.Series) and values.name:
-        color_bar.setdefault("title", values.name)
-
-    values = count_elements(values, count_mode, exclude_elements, fill_value)
-
-    if heat_mode in ("fraction", "percent"):
-        # normalize heat values
-        clean_vals = values.replace([np.inf, -np.inf], np.nan).dropna()
-        # ignore inf values in sum() else all would be set to 0 by normalizing
-        heat_value_element_map = values / clean_vals.sum()
-    else:
-        heat_value_element_map = values
-
-    n_rows, n_columns = 10, 18
-    # initialize tile text and hover tooltips to empty strings
-    tile_texts, hover_texts = np.full([2, n_rows, n_columns], "", dtype=object)
-    heatmap_values = np.full([n_rows, n_columns], np.nan)
-
-    if label_map is None:
-        # default to space string for None, np.nan and "nan". space is needed
-        # for <br> in tile_text to work so all element symbols are vertically aligned
-        label_map = dict.fromkeys([np.nan, None, "nan"], " ")  # type: ignore[list-item]
-
-    for symbol, period, group, name, *_ in df_ptable.itertuples():
-        # build table from bottom up so that period 1 becomes top row
-        row = n_rows - period
-        col = group - 1
-
-        label = ""  # label (if not None) is placed below the element symbol
-        if show_values:
-            if symbol in exclude_elements:
-                label = "excl."
-            elif heat_value := heat_value_element_map.get(symbol):
-                if heat_mode == "percent":
-                    label = f"{heat_value:{fmt or '.1%'}}"
-                else:
-                    default_prec = ".1f" if heat_value < 100 else ",.0f"
-                    if heat_value > 1e5:
-                        default_prec = ".2g"
-                    label = f"{heat_value:{fmt or default_prec}}".replace("e+0", "e")
-
-            if callable(label_map):
-                label = label_map(label)
-            elif isinstance(label_map, dict):
-                label = label_map.get(label, label)
-        style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
-        tile_text = (
-            f"<span {style=}>{symbol}</span>{f'<br>{label}' if show_values else ''}"
-        )
-
-        tile_texts[row][col] = tile_text
-
-        hover_text = name
-
-        if hover_data is not None and symbol in hover_data:
-            hover_text += f"<br>{hover_data[symbol]}"
-
-        if hover_props is not None:
-            if unsupported_keys := set(hover_props) - set(df_ptable):
-                raise ValueError(
-                    f"Unsupported hover_props: {', '.join(unsupported_keys)}. Available"
-                    f" keys are: {', '.join(df_ptable)}.\nNote that some keys have "
-                    "missing values."
-                )
-            df_row = df_ptable.loc[symbol]
-            if isinstance(hover_props, dict):
-                for col_name, col_label in hover_props.items():
-                    hover_text += f"<br>{col_label} = {df_row[col_name]}"
-            elif isinstance(hover_props, (list, tuple)):
-                hover_text += "<br>" + "<br>".join(
-                    f"{col_name} = {df_row[col_name]}" for col_name in hover_props
-                )
-            else:
-                raise ValueError(
-                    f"hover_props must be dict or sequence of str, got {hover_props}"
-                )
-
-        hover_texts[row][col] = hover_text
-
-        # TODO maybe there's a more elegant way to handle excluded elements?
-        if symbol in exclude_elements:
-            continue
-
-        color_val = heat_value_element_map[symbol]
-        if log and color_val > 0:
-            color_val = np.log10(color_val)
-        # until https://github.com/plotly/plotly.js/issues/975 is resolved, we need to
-        # insert transparency (rgba0) at low end of colorscale (+1e-6) to not show any
-        # colors on empty tiles of the periodic table
-        heatmap_values[row][col] = color_val
-
-    if isinstance(font_colors, str):
-        font_colors = [font_colors]
-    if cscale_range == (None, None):
-        cscale_range = (values.min(), values.max())
-
-    fig = ff.create_annotated_heatmap(
-        heatmap_values,
-        annotation_text=tile_texts,
-        text=hover_texts,
-        showscale=show_scale,
-        colorscale=colorscale,
-        font_colors=font_colors or None,
-        hoverinfo="text",
-        xgap=gap,
-        ygap=gap,
-        zmin=None if log else cscale_range[0],
-        zmax=None if log else cscale_range[1],
-        # zauto=False if cscale_range is set, needed for zmin, zmax to work
-        # see https://github.com/plotly/plotly.py/issues/193
-        zauto=cscale_range == (None, None),
-        **kwargs,
-    )
-    fig.update_layout(
-        margin=dict(l=10, r=10, t=10, b=10, pad=10),
-        paper_bgcolor=bg_color,
-        plot_bgcolor="rgba(0, 0, 0, 0)",
-        xaxis=dict(zeroline=False, showgrid=False),
-        yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
-        font_size=font_size,
-        width=1000,
-        height=500,
-    )
-
-    if color_bar.get("orientation") == "h":
-        dct = dict(x=0.4, y=0.75, titleside="top", len=0.4)
-        color_bar = {**dct, **color_bar}
-    else:  # make title vertical
-        dct = dict(titleside="right", len=0.87)
-        color_bar = {**dct, **color_bar}
-        if title := color_bar.get("title"):
-            # <br><br> to increase title offset
-            color_bar["title"] = f"<br><br>{title}"
-
-    fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
-    return fig
 
 
 def ptable_hists(

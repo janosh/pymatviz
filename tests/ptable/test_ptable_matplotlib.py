@@ -19,8 +19,8 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.enums import ElemColors
-from pymatviz.ptable import PTableProjector
+from pymatviz.enums import ElemColorScheme
+from pymatviz.ptable.matplotlib import PTableProjector
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
@@ -60,11 +60,11 @@ class TestPTableProjector:
         assert projector.elem_colors.items() > color_subset.items()
 
         vesta_colors = PTableProjector(
-            data=data, elem_colors=ElemColors.vesta
+            data=data, elem_colors=ElemColorScheme.vesta
         ).elem_colors
         assert vesta_colors == projector.elem_colors
         jmol_colors = PTableProjector(
-            data=data, elem_colors=ElemColors.jmol
+            data=data, elem_colors=ElemColorScheme.jmol
         ).elem_colors
         assert jmol_colors != projector.elem_colors
 
@@ -175,8 +175,8 @@ def test_ptable_heatmap(
     ptable_heatmap(glass_formulas, heat_mode="percent")
 
     # without heatmap values
-    ptable_heatmap(glass_formulas, heat_mode=None)
-    ptable_heatmap(glass_formulas, log=True, heat_mode=None)
+    ptable_heatmap(glass_formulas, show_values=False)
+    ptable_heatmap(glass_formulas, log=True, show_values=False)
 
     # element properties as heatmap values
     ptable_heatmap(df_ptable.atomic_mass)

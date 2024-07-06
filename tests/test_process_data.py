@@ -4,8 +4,8 @@ import pandas as pd
 import pytest
 from pymatgen.core import Composition
 
-from pymatviz import count_elements
 from pymatviz.enums import ElemCountMode
+from pymatviz.process_data import count_elements
 from pymatviz.utils import df_ptable
 
 
