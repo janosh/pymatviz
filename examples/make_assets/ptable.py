@@ -42,14 +42,14 @@ fig = ptable_heatmap(
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
-fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
+fig.suptitle(title, y=0.96, fontsize=20, fontweight="bold")
 save_and_compress_svg(fig, "ptable-heatmap")
 
 
 # %%
 # DEBUG: 0 is not shown in cbar for some reason
 fig = ptable_heatmap(df_ptable.atomic_mass, cbar_range=(0, 300))
-fig.suptitle("Atomic Mass Heatmap", y=0.96, fontsize=16, fontweight="bold")
+fig.suptitle("Atomic Mass Heatmap", y=0.96, fontsize=20, fontweight="bold")
 save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
@@ -65,7 +65,7 @@ fig = ptable_heatmap(
     exclude_elements=["O"],
 )
 title = "Elements in Matbench Experimental Band Gap (percent)"
-fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
+fig.suptitle(title, y=0.96, fontsize=20, fontweight="bold")
 save_and_compress_svg(fig, "ptable-heatmap-percent")
 
 
