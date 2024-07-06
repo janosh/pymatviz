@@ -353,7 +353,14 @@ def plot_structure_2d(
                     elem_symbol = species.symbol
 
                     radius = atomic_radii[elem_symbol] * scale  # type: ignore[index]
-                    face_color = colors[elem_symbol]
+                    fallback_color = "gray"
+                    face_color = colors.get(elem_symbol, fallback_color)
+                    if elem_symbol not in colors:
+                        warnings.warn(
+                            f"{elem_symbol=} not in colors, using {fallback_color}",
+                            UserWarning,
+                            stacklevel=2,
+                        )
                     wedge = Wedge(
                         xy,
                         radius,
