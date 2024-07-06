@@ -420,10 +420,11 @@ class PTableData:
         Args:
             elements (Sequence[str]): Elements to drop.
         """
-        original_data = self.data
-        df_dropped = original_data.drop(elements, axis=0)
+        if elements:
+            original_data = self.data
+            df_dropped = original_data.drop(elements, axis=0)
 
-        self.data = df_dropped
+            self.data = df_dropped
 
     def check_and_replace_missing(
         self,
@@ -646,7 +647,7 @@ class PTableProjector:
 
     @norm.setter
     def norm(self, value_range: tuple[float | None, float | None]) -> None:
-        """Set normalizer.
+        """Set normalizer by value range.
 
         Args:
             value_range (tuple[float | None, float | None]): The upper and
@@ -1303,9 +1304,10 @@ class HMapPTableProjector(PTableProjector):
                     symbol, Key.heat_val
                 ]
 
-            except KeyError:  # skip element without data
+            except KeyError:
                 plot_data = None
 
+            # Skip element without data if "hide"
             if (plot_data is None or len(plot_data) == 0) and self.on_empty == "hide":
                 continue
 
@@ -1531,10 +1533,8 @@ def ptable_heatmap(
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
 
-    # Exclude elements
-    for elem in exclude_elements:
-        projector.tile_colors[elem] = "white"
-        projector.tile_values[elem] = "excl."
+    # Remove excluded element from internal data
+    projector.ptable_data.drop_elements(exclude_elements)
 
     # Set NaN/infinity colors and values
     if projector.anomalies != "NA" and projector.anomalies:
@@ -1545,6 +1545,12 @@ def ptable_heatmap(
             elif "inf" in anomalies:
                 projector.tile_colors[elem] = inf_color
                 projector.tile_values[elem] = "∞"
+
+    # Exclude elements
+    for elem in exclude_elements:
+        projector.tile_colors[elem] = "white"
+        projector.tile_values[elem] = "excl."
+        projector.text_colors[elem] = "black"
 
     # Call child plotter: heatmap
     projector.add_child_plots(
