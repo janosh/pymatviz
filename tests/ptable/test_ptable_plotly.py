@@ -87,13 +87,13 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 @pytest.mark.parametrize(
     "exclude_elements, heat_mode, log, show_scale, font_size, font_colors",
     [
-        ((), None, True, False, None, ["red"]),
-        ([], None, True, False, None, ("black", "white")),
-        (["O", "P"], None, True, False, None, ["red"]),
-        ([], "fraction", False, False, None, ("black", "white")),
-        ([], "percent", False, False, None, ("black", "white")),
-        ([], None, True, True, None, ("black", "white")),
-        ([], None, True, False, 14, ("black", "white")),
+        ((), "value", True, False, None, ["red"]),
+        (["O"], "fraction", False, True, 12, ("black", "white")),
+        (["P", "S"], "percent", False, False, 14, ["blue"]),
+        ([], "value", True, True, 10, ("green", "yellow")),
+        (["H", "He", "Li"], "value", False, True, 16, ["purple"]),
+        (["Fe"], "fraction", True, False, 8, ("orange", "pink")),
+        (["Xe"], "percent", True, True, None, ["brown", "cyan"]),
     ],
 )
 def test_ptable_heatmap_plotly_kwarg_combos(
@@ -102,20 +102,37 @@ def test_ptable_heatmap_plotly_kwarg_combos(
     heat_mode: Literal["value", "fraction", "percent"],
     log: bool,
     show_scale: bool,
-    font_size: int,
-    font_colors: tuple[str] | tuple[str, str],
-    log: bool,
+    font_size: int | None,
+    font_colors: Sequence[str],
 ) -> None:
+    if log and heat_mode != "value":
+        pytest.skip("log scale only supported for heat_mode='value'")
     fig = ptable_heatmap_plotly(
         glass_formulas,
         exclude_elements=exclude_elements,
         heat_mode=heat_mode,
+        log=log,
         show_scale=show_scale,
         font_size=font_size,
         font_colors=font_colors,
-        log=log,
     )
     assert isinstance(fig, go.Figure)
+
+    # Additional assertions to check if the parameters are correctly applied
+    if exclude_elements:
+        assert all(elem not in fig.data[0].z for elem in exclude_elements)
+
+    if font_size:
+        assert fig.layout.font.size == font_size
+
+    if len(font_colors) == 2:
+        assert all(
+            anno.font.color in font_colors for anno in fig.layout.annotations
+        ), f"{font_colors=}"
+    elif len(font_colors) == 1:
+        assert all(
+            anno.font.color == font_colors[0] for anno in fig.layout.annotations
+        ), f"{font_colors=}"
 
 
 @pytest.mark.parametrize(
@@ -266,7 +283,7 @@ def test_ptable_heatmap_plotly_hover_props() -> None:
 
 def test_ptable_heatmap_plotly_custom_label_map() -> None:
     values = {"Fe": 2, "O": 3, "H": np.nan}
-    label_map = lambda label: {2: "High", 3: "Low"}.get(float(label), label)
+    label_map = lambda label: {2: "High", 3: "Low"}.get(float(label), label)  # type: ignore[call-overload]
     fig = ptable_heatmap_plotly(values, label_map=label_map)
     annos = [
         anno.text
@@ -280,7 +297,7 @@ def test_ptable_heatmap_plotly_error_cases() -> None:
     with pytest.raises(
         ValueError, match=re.escape("cscale_range=(0,) should have length 2")
     ):
-        ptable_heatmap_plotly({"Fe": 2, "O": 3}, cscale_range=(0,))
+        ptable_heatmap_plotly({"Fe": 2, "O": 3}, cscale_range=(0,))  # type: ignore[arg-type]
 
     hover_props = ("atomic_mass", bad_hover_prop := "invalid_prop")
     with pytest.raises(ValueError, match=f"Unsupported hover_props: {bad_hover_prop}"):
@@ -288,7 +305,9 @@ def test_ptable_heatmap_plotly_error_cases() -> None:
 
 
 @pytest.mark.parametrize("heat_mode", ["value", "fraction", "percent"])
-def test_ptable_heatmap_plotly_color_range(heat_mode: str) -> None:
+def test_ptable_heatmap_plotly_color_range(
+    heat_mode: Literal["value", "fraction", "percent"],
+) -> None:
     values = {"Fe": 1, "O": 50, "H": 100}
     fig = ptable_heatmap_plotly(values, heat_mode=heat_mode)
     non_nan_values = [v for v in fig.data[0].z.flatten() if not np.isnan(v)]
