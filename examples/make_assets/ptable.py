@@ -47,8 +47,7 @@ save_and_compress_svg(fig, "ptable-heatmap")
 
 
 # %%
-# DEBUG: 0 is not shown in cbar for some reason
-fig = ptable_heatmap(df_ptable.atomic_mass, cbar_range=(0, 300))
+fig = ptable_heatmap(df_ptable.atomic_mass)
 fig.suptitle("Atomic Mass Heatmap", y=0.96, fontsize=20, fontweight="bold")
 save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
