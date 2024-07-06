@@ -8,14 +8,14 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from pymatviz._preprocess_data import (
+from pymatviz.enums import Key
+from pymatviz.ptable._process_data import (
     SupportedDataType,
     check_for_missing_inf,
     get_df_nest_level,
     preprocess_ptable_data,
     replace_missing_and_infinity,
 )
-from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
