@@ -14,9 +14,9 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
-from matplotlib.colors import Colormap, Normalize
+from matplotlib.colors import Colormap, LogNorm, Normalize
 from matplotlib.patches import Rectangle
-from matplotlib.ticker import LogFormatter
+from matplotlib.ticker import LogFormatter, LogLocator
 from matplotlib.typing import ColorType
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition, Element
@@ -643,6 +643,8 @@ class PTableProjector:
         """Data min-max normalizer."""
         vmin = self.ptable_data.data.attrs["vmin"]
         vmax = self.ptable_data.data.attrs["vmax"]
+        if self.log:
+            return LogNorm(vmin=vmin, vmax=vmax)
         return Normalize(vmin=vmin, vmax=vmax)
 
     @property
@@ -874,7 +876,11 @@ class PTableProjector:
 
         # Format for log scale
         if self.log:
-            cbar_kwargs |= {"norm": "log", "format": LogFormatter(10)}
+            cbar_kwargs |= {
+                "norm": "log",
+                "format": LogFormatter(10),
+                "ticks": LogLocator(base=10),
+            }
 
         # Check colormap
         if self.cmap is None:
@@ -883,11 +889,15 @@ class PTableProjector:
         # Add colorbar
         cbar_ax = self.fig.add_axes(coords)
 
-        # Set colorbar range
-        self._norm = Normalize(
-            vmin=cbar_range[0] or self.data.attrs["vmin"],
-            vmax=cbar_range[1] or self.data.attrs["vmax"],
+        # Update colorbar range
+        value_range = (
+            cbar_range[0] or self.data.attrs["vmin"],
+            cbar_range[1] or self.data.attrs["vmax"],
         )
+        if self.log:
+            self._norm = LogNorm(*value_range)
+        else:
+            self._norm = Normalize(*value_range)
 
         self.fig.colorbar(
             plt.cm.ScalarMappable(norm=self.norm, cmap=self.cmap),
