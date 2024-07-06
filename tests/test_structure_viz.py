@@ -7,18 +7,19 @@ import numpy as np
 import pandas as pd
 import pytest
 from pymatgen.analysis.local_env import NearNeighbors, VoronoiNN
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Structure
 
-from pymatviz.enums import Key
+from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.structure_viz import plot_structure_2d
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-lattice = Lattice.cubic(5)
 coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-disordered_struct = Structure(lattice, [{"Fe": 0.75, "C": 0.25}, "O"], coords=coords)
+disordered_struct = Structure(
+    lattice := np.eye(3) * 5, species=[{"Fe": 0.75, "C": 0.25}, "O"], coords=coords
+)
 
 
 @pytest.mark.parametrize("radii", [None, 0.5])
@@ -160,3 +161,48 @@ def test_plot_structure_2d_multiple() -> None:
         for idx, (key, struct) in enumerate(struct_dict.items(), start=1)
     ]
     assert [ax.get_title() for ax in axs.flat] == sub_titles
+
+
+def test_plot_structure_2d_color_warning() -> None:
+    # Copernicium is not in the default color scheme
+    copernicium = "Cn"
+    struct = Structure(np.eye(3) * 5, [copernicium] * 2, coords=coords)
+
+    for colors in ElemColorScheme:
+        with pytest.warns(
+            UserWarning, match=f"{copernicium!r} not in colors, using gray"
+        ):
+            plot_structure_2d(struct, elem_colors=colors)
+
+    # create custom color scheme missing an element
+    custom_colors = {"Fe": "red"}
+    struct = Structure(np.eye(3) * 5, ["Fe", "O"], coords=coords)
+
+    with pytest.warns(UserWarning, match="'O' not in colors, using gray"):
+        plot_structure_2d(struct, elem_colors=custom_colors)
+
+
+def test_plot_structure_2d_color_schemes() -> None:
+    lattice = np.eye(3) * 5
+    coords = (np.ones((3, 4)) * (0, 0.25, 0.5, 0.75)).T
+    struct = Structure(lattice, ["Al", "Ar", "As", "Cl"], coords)
+
+    # Plot with Jmol colors
+    ax_jmol: plt.Axes = plot_structure_2d(struct, elem_colors=ElemColorScheme.jmol)
+    jmol_colors = {
+        patch.elem_symbol: patch.get_facecolor()
+        for patch in ax_jmol.patches
+        if isinstance(patch, plt.matplotlib.patches.Wedge)
+    }
+
+    # Plot with VESTA colors
+    ax_vesta: plt.Axes = plot_structure_2d(struct, elem_colors=ElemColorScheme.vesta)
+    vesta_colors = {
+        patch.elem_symbol: patch.get_facecolor()
+        for patch in ax_vesta.patches
+        if isinstance(patch, plt.matplotlib.patches.Wedge)
+    }
+
+    assert (
+        jmol_colors != vesta_colors
+    ), f"{jmol_colors=}\n\nshould not equal\n\n{vesta_colors=}"
