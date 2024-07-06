@@ -1371,32 +1371,6 @@ class HMapPTableProjector(PTableProjector):
                 **kwargs,
             )
 
-    def overwrite_anomalies(
-        self,
-        nan_color: ColorType,
-        inf_color: ColorType,
-        nan_value: str = "NaN",
-        inf_value: str = "∞",
-    ) -> None:
-        """Overwrite NaN/infinity colors and displayed values.
-
-        Args:
-            nan_color (ColorType): Color for missing value (NaN).
-            inf_color (ColorType): Color for infinity.
-            nan_value (str): Displayed value for missing value (NaN).
-            inf_value (str): Displayed value for infinity.
-        """
-        if self.anomalies == "NA" or not self.anomalies:
-            return
-
-        for elem, anomalies in self.anomalies.items():
-            if "nan" in anomalies:
-                self._tile_colors[elem] = nan_color
-                self._tile_values[elem] = nan_value
-            elif "inf" in anomalies:
-                self._tile_colors[elem] = inf_color
-                self._tile_values[elem] = inf_value
-
 
 def ptable_heatmap(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]] | PTableData,
@@ -1548,8 +1522,15 @@ def ptable_heatmap(
         projector.tile_colors[elem] = "white"
         projector.tile_values[elem] = "excl."
 
-    # Overwrite NaN/infinity colors and values
-    projector.overwrite_anomalies(nan_color=nan_color, inf_color=inf_color)
+    # Set NaN/infinity colors and values
+    if projector.anomalies != "NA" and projector.anomalies:
+        for elem, anomalies in projector.anomalies.items():
+            if "nan" in anomalies:
+                projector.tile_colors[elem] = nan_color
+                projector.tile_values[elem] = "NaN"
+            elif "inf" in anomalies:
+                projector.tile_colors[elem] = inf_color
+                projector.tile_values[elem] = "∞"
 
     # Call child plotter: heatmap
     projector.add_child_plots(

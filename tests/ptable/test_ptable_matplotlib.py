@@ -20,7 +20,7 @@ from pymatviz import (
     ptable_scatters,
 )
 from pymatviz.enums import ElemColors
-from pymatviz.ptable import HMapPTableProjector, PTableProjector
+from pymatviz.ptable import PTableProjector
 from pymatviz.utils import df_ptable
 
 
@@ -220,19 +220,6 @@ class TestPtableHeatmap:
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
-
-    def test_overwrite_anomalies(self) -> None:
-        data_with_anomaly = {"H": [np.nan], "He": [np.inf], "Li": [1]}
-
-        projector = HMapPTableProjector(data=data_with_anomaly)
-
-        projector.overwrite_anomalies(inf_color="red", nan_color="blue")
-
-        assert projector.tile_colors["H"] == "blue"
-        assert projector.tile_values["H"] == "NaN"
-
-        assert projector.tile_colors["He"] == "red"
-        assert projector.tile_values["He"] == "∞"
 
 
 @pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])
