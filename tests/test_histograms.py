@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import pytest
 
 from pymatviz import elements_hist, plot_histogram, spacegroup_hist
-from pymatviz.utils import MPL_BACKEND, PLOTLY_BACKEND, VALID_BACKENDS
+from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY
 from tests.conftest import df_regr, y_pred, y_true
 
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 y_std_mock = y_true - y_pred
 
 
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
+@pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize(
     ("xticks", "show_counts", "show_empty_bins", "log"),
     [
@@ -50,11 +50,11 @@ def test_spacegroup_hist(
         backend=backend,
         log=log,
     )
-    assert isinstance(fig, plt.Axes if backend == MPL_BACKEND else go.Figure)
-    y_min, y_max = fig.get_ylim() if backend == MPL_BACKEND else fig.layout.yaxis.range
+    assert isinstance(fig, plt.Axes if backend == MATPLOTLIB else go.Figure)
+    y_min, y_max = fig.get_ylim() if backend == MATPLOTLIB else fig.layout.yaxis.range
     assert y_min == 0
     assert y_max == pytest.approx(
-        0.02118929 if log and backend == PLOTLY_BACKEND else 1.05
+        0.02118929 if log and backend == PLOTLY else 1.05
     ), f"{y_max=} {log=} {backend=}"
 
     # test spacegroups as symbols
@@ -92,14 +92,14 @@ def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
 
 
 @pytest.mark.parametrize("log_y", [True, False])
-@pytest.mark.parametrize("backend", VALID_BACKENDS)
+@pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("bins", [20, 100])
 @pytest.mark.parametrize("values", [y_true, df_regr.y_true])
 def test_plot_histogram(
     values: np.ndarray | pd.Series, log_y: bool, backend: Backend, bins: int
 ) -> None:
     fig = plot_histogram(values, backend=backend, log_y=log_y, bins=bins)
-    if backend == MPL_BACKEND:
+    if backend == MATPLOTLIB:
         assert isinstance(fig, plt.Figure)
         y_min, y_max = fig.axes[0].get_ylim()
         y_min_exp, y_max_exp = {
