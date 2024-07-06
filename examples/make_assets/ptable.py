@@ -36,7 +36,6 @@ fig = ptable_heatmap(
     log=True,
     on_empty="show",
     values_fmt=".4g",
-    # cbar_kwargs={"ticks": [1, 10, 100, 1000]},
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"

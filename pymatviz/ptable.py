@@ -593,6 +593,7 @@ class PTableProjector:
         # Preprocess data
         self.data: pd.DataFrame = data
         self.log = log
+        self.norm = (None, None)  # trigger internal initialize
 
         self.on_empty = on_empty
         self.hide_f_block = hide_f_block  # type: ignore[assignment]
@@ -639,13 +640,23 @@ class PTableProjector:
         self.ptable_data = data
 
     @property
-    def norm(self) -> Normalize:
-        """Data min-max normalizer."""
-        vmin = self.ptable_data.data.attrs["vmin"]
-        vmax = self.ptable_data.data.attrs["vmax"]
-        if self.log:
-            return LogNorm(vmin=vmin, vmax=vmax)
-        return Normalize(vmin=vmin, vmax=vmax)
+    def norm(self) -> Normalize | LogNorm:
+        """Data normalizer."""
+        return self._norm
+
+    @norm.setter
+    def norm(self, value_range: tuple[float | None, float | None]) -> None:
+        """Set normalizer.
+
+        Args:
+            value_range (tuple[float | None, float | None]): The upper and
+                lower bound of values, use None for auto detect from metadata.
+        """
+        value_range = (
+            value_range[0] or self.ptable_data.data.attrs["vmin"],
+            value_range[1] or self.ptable_data.data.attrs["vmax"],
+        )
+        self._norm = LogNorm(*value_range) if self.log else Normalize(*value_range)
 
     @property
     def anomalies(self) -> dict[str, set[Literal["nan", "inf"]]] | Literal["NA"]:
@@ -882,22 +893,15 @@ class PTableProjector:
                 "ticks": LogLocator(base=10),
             }
 
+        # Update colorbar range
+        self.norm = cbar_range
+
         # Check colormap
         if self.cmap is None:
             raise ValueError("Cannot add colorbar without a colormap.")
 
         # Add colorbar
         cbar_ax = self.fig.add_axes(coords)
-
-        # Update colorbar range
-        value_range = (
-            cbar_range[0] or self.data.attrs["vmin"],
-            cbar_range[1] or self.data.attrs["vmax"],
-        )
-        if self.log:
-            self._norm = LogNorm(*value_range)
-        else:
-            self._norm = Normalize(*value_range)
 
         self.fig.colorbar(
             plt.cm.ScalarMappable(norm=self.norm, cmap=self.cmap),
