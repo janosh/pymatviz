@@ -28,9 +28,14 @@ df_steels = load_dataset("matbench_steels")
 
 # %% Elemental Plots
 # TODO: colorbar ticks are not displayed properly
+# Filter out near-zero entries
+ptable_data = count_elements(df_expt_gap[Key.composition])
+ptable_data = ptable_data[ptable_data > 0.1]
+
 fig = ptable_heatmap(
-    count_elements(df_expt_gap[Key.composition]),
+    ptable_data,
     log=True,
+    on_empty="show",
     values_fmt=".4g",
     cbar_kwargs={"ticks": [1, 10, 100, 1000, 10000]},
 )
@@ -49,8 +54,12 @@ save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
+# Filter out near-zero entries
+ptable_data = count_elements(df_expt_gap[Key.composition])
+ptable_data = ptable_data[ptable_data > 0.1]
+
 fig = ptable_heatmap(
-    count_elements(df_expt_gap[Key.composition]),
+    ptable_data,
     values_show_mode="percent",
     on_empty="show",
     exclude_elements=["O"],

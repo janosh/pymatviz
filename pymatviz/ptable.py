@@ -562,6 +562,7 @@ class PTableProjector:
         colormap: str | Colormap = "viridis",
         tile_size: tuple[float, float] = (0.75, 0.75),
         plot_kwargs: dict[str, Any] | None = None,
+        on_empty: Literal["hide", "show"] = "hide",
         hide_f_block: bool | Literal["AUTO"] = "AUTO",
         elem_type_colors: dict[str, str] | None = None,
         elem_colors: ElemColors | dict[str, ColorType] = ElemColors.vesta,
@@ -578,6 +579,7 @@ class PTableProjector:
             tile_size (tuple[float, float]): The relative tile height and width.
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
+            on_empty ("hide" | "show"): Hide or show tile if no data provided.
             hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
                 Defaults to "AUTO", meaning hide if no data present.
             elem_type_colors (dict | None): Element typed based colors.
@@ -592,6 +594,7 @@ class PTableProjector:
         self.data: pd.DataFrame = data
         self.log = log
 
+        self.on_empty = on_empty
         self.hide_f_block = hide_f_block  # type: ignore[assignment]
 
         # Initialize periodic table canvas
@@ -736,7 +739,6 @@ class PTableProjector:
         child_kwargs: dict[str, Any] | None = None,
         tick_kwargs: dict[str, Any] | None = None,
         ax_kwargs: dict[str, Any] | None = None,
-        on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
         """Add custom child plots to the periodic table grid.
 
@@ -745,8 +747,6 @@ class PTableProjector:
             child_kwargs (dict): Arguments to pass to the child plotter call.
             tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
             ax_kwargs (dict): Keyword arguments to pass to ax.set().
-            on_empty ("hide" | "show"): Whether to show or hide tiles for
-                elements without data.
         """
         # Update kwargs
         child_kwargs = child_kwargs or {}
@@ -773,7 +773,7 @@ class PTableProjector:
             except KeyError:  # skip element without data
                 plot_data = None
 
-            if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
+            if (plot_data is None or len(plot_data) == 0) and self.on_empty == "hide":
                 continue
 
             # Call child plotter
@@ -820,7 +820,7 @@ class PTableProjector:
 
             # Get axis index by element symbol
             symbol: str = element.symbol
-            if symbol not in self.data.index:
+            if symbol not in self.data.index and self.on_empty == "hide":
                 continue
 
             row, column = df_ptable.loc[symbol, ["row", "column"]]
@@ -1200,6 +1200,7 @@ class HMapPTableProjector(PTableProjector):
 
     @property
     def tile_values(self) -> dict[str, str]:
+        """Displayed values for each tile."""
         return self._tile_values
 
     @tile_values.setter
@@ -1256,7 +1257,6 @@ class HMapPTableProjector(PTableProjector):
         f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
         tick_kwargs: dict[str, Any] | None = None,
         ax_kwargs: dict[str, Any] | None = None,
-        on_empty: Literal["hide", "show"] = "hide",
     ) -> None:
         """Add custom child plots to the periodic table grid.
 
@@ -1292,13 +1292,13 @@ class HMapPTableProjector(PTableProjector):
             except KeyError:  # skip element without data
                 plot_data = None
 
-            if (plot_data is None or len(plot_data) == 0) and on_empty == "hide":
+            if (plot_data is None or len(plot_data) == 0) and self.on_empty == "hide":
                 continue
 
             # Add child heatmap plot
             ax.pie(
                 np.ones(1),
-                colors=[self.tile_colors[symbol]],
+                colors=[self.tile_colors.get(symbol, "lightgray")],
                 wedgeprops={"clip_on": True},
             )
 
@@ -1344,14 +1344,14 @@ class HMapPTableProjector(PTableProjector):
 
             # Get axis index by element symbol
             symbol: str = element.symbol
-            if symbol not in self.data.index:
+            if symbol not in self.data.index and self.on_empty == "hide":
                 continue
 
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             # Get and format value
-            value = self.tile_values.get(symbol, "grey")
+            value = self.tile_values.get(symbol, "-")
             try:
                 value = f"{value:{text_fmt}}"
             except ValueError:
@@ -1364,7 +1364,7 @@ class HMapPTableProjector(PTableProjector):
             ax.text(
                 *pos,
                 value,
-                color=self.text_colors[symbol],
+                color=self.text_colors.get(symbol, "black"),
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
@@ -1386,7 +1386,7 @@ class HMapPTableProjector(PTableProjector):
             nan_value (str): Displayed value for missing value (NaN).
             inf_value (str): Displayed value for infinity.
         """
-        if self.anomalies == "NA":
+        if self.anomalies == "NA" or not self.anomalies:
             return
 
         for elem, anomalies in self.anomalies.items():
@@ -1539,13 +1539,14 @@ def ptable_heatmap(
         colormap=colormap,  # type: ignore[arg-type]
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
         text_colors=text_colors,
+        on_empty=on_empty,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
 
     # Exclude elements
     for elem in exclude_elements:
-        projector._tile_colors[elem] = "grey"
-        projector._tile_values[elem] = "excl."
+        projector.tile_colors[elem] = "white"
+        projector.tile_values[elem] = "excl."
 
     # Overwrite NaN/infinity colors and values
     projector.overwrite_anomalies(nan_color=nan_color, inf_color=inf_color)
@@ -1553,7 +1554,6 @@ def ptable_heatmap(
     # Call child plotter: heatmap
     projector.add_child_plots(
         ax_kwargs=ax_kwargs,
-        on_empty=on_empty,
         f_block_voffset=f_block_voffset,
     )
 
@@ -1697,6 +1697,7 @@ def ptable_heatmap_splits(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
+        on_empty=on_empty,
         hide_f_block=hide_f_block,
     )
 
@@ -1711,7 +1712,6 @@ def ptable_heatmap_splits(
         ChildPlotters.rectangle,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
-        on_empty=on_empty,
     )
 
     # Add element symbols
@@ -2167,6 +2167,7 @@ def ptable_hists(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
+        on_empty=on_empty,
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
@@ -2185,7 +2186,6 @@ def ptable_hists(
         ChildPlotters.histogram,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
-        on_empty=on_empty,
     )
 
     # Add element symbols
@@ -2309,6 +2309,7 @@ def ptable_scatters(
         data=data,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
+        on_empty=on_empty,
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
@@ -2321,7 +2322,6 @@ def ptable_scatters(
         ChildPlotters.scatter,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
-        on_empty=on_empty,
     )
 
     # Add element symbols
@@ -2428,6 +2428,7 @@ def ptable_lines(
         data=data,
         colormap=None,
         plot_kwargs=plot_kwargs,
+        on_empty=on_empty,
         hide_f_block=hide_f_block,
         elem_type_colors=elem_type_colors,
     )
@@ -2437,7 +2438,6 @@ def ptable_lines(
         ChildPlotters.line,
         child_kwargs=child_kwargs,
         ax_kwargs=ax_kwargs,
-        on_empty=on_empty,
     )
 
     # Add element symbols
