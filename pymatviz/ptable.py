@@ -1738,10 +1738,10 @@ def ptable_heatmap_ratio(
     *,
     count_mode: ElemCountMode = ElemCountMode.composition,
     normalize: bool = False,
-    # zero_color: ColorType = "#eff",  # light gray  # TODO:
-    # zero_symbol: str = "-",  # TODO:
-    # inf_color: ColorType = "lightskyblue",  # TODO:
-    # inf_symbol: str = "∞",  # TODO:
+    zero_color: ColorType = "#lightgrey",
+    inf_color: ColorType = "lightskyblue",
+    # zero_symbol: str = "-",  # TODO
+    # inf_symbol: str = "∞",
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] | None = ("#eff", "gray: not in 1st list"),
     not_in_denominator: tuple[str, str] | None = (
@@ -1750,7 +1750,7 @@ def ptable_heatmap_ratio(
     ),
     not_in_either: tuple[str, str] | None = ("white", "white: not in either"),
     **kwargs: Any,
-) -> plt.Axes:
+) -> plt.Figure:
     """Display the ratio of two maps from element symbols to heat values or of two sets
     of compositions.
 
@@ -1763,6 +1763,8 @@ def ptable_heatmap_ratio(
             in the denominator.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
+        zero_color: ColorType = "#lightgrey",  # TODO:
+        inf_color: ColorType = "lightskyblue",
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
             details. Only used when values is list of composition strings/objects.
@@ -1777,10 +1779,9 @@ def ptable_heatmap_ratio(
         **kwargs: Additional keyword arguments passed to ptable_heatmap().
 
     Returns:
-        plt.Axes: matplotlib Axes object  # TODO: change to Figure
+        plt.Figure: matplotlib Figures object.
     """
     values_num = count_elements(values_num, count_mode)
-
     values_denom = count_elements(values_denom, count_mode)
 
     values = values_num / values_denom
@@ -1788,22 +1789,29 @@ def ptable_heatmap_ratio(
     if normalize:
         values /= values.sum()
 
-    ax = ptable_heatmap(values, cbar_title=cbar_title, **kwargs)
+    # TODO: need to assign zero color and displayed value
+    fig = ptable_heatmap(
+        values,
+        cbar_title=cbar_title,
+        inf_color=inf_color,
+        on_empty="show",
+        **kwargs,
+    )
 
-    # add legend handles
-    for tup in (
-        (0.18, "zero", *(not_in_numerator or ())),
-        (0.12, "infty", *(not_in_denominator or ())),
-        (0.06, "na", *(not_in_either or ())),
-    ):
-        if len(tup) < 3:
-            continue
-        y_pos, key, color, txt = tup
-        kwargs[f"{key}_color"] = color
-        bbox = dict(facecolor=color, edgecolor="gray")
-        ax.text(0.005, y_pos, txt, fontsize=10, bbox=bbox, transform=ax.transAxes)
+    # # Add legend handles
+    # for tup in (
+    #     (0.18, "zero", *(not_in_numerator or ())),
+    #     (0.12, "infty", *(not_in_denominator or ())),
+    #     (0.06, "na", *(not_in_either or ())),
+    # ):
+    #     if len(tup) < 3:
+    #         continue
+    #     y_pos, key, color, txt = tup
+    #     kwargs[f"{key}_color"] = color
+    #     bbox = dict(facecolor=color, edgecolor="gray")
+    #     fig.text(0.005, y_pos, txt, fontsize=10, bbox=bbox, transform=fig.transAxes)
 
-    return ax
+    return fig
 
 
 def ptable_heatmap_plotly(
