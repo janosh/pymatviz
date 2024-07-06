@@ -20,8 +20,8 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pymatviz.colors import ELEM_COLORS_JMOL
-from pymatviz.enums import Key
+from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
+from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.utils import ExperimentalWarning, covalent_radii
 
 
@@ -115,7 +115,7 @@ def plot_structure_2d(
     ax: plt.Axes | None = None,
     rotation: str = "10x,10y,0z",
     atomic_radii: float | dict[str, float] | None = None,
-    colors: dict[str, str | ColorType] | None = None,
+    colors: ElemColorScheme | dict[str, str | ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
     show_unit_cell: bool = True,
     show_bonds: bool | NearNeighbors = False,
@@ -130,7 +130,7 @@ def plot_structure_2d(
     n_cols: int = 4,
     subplot_kwargs: dict[str, Any] | None = None,
     subplot_title: Callable[[Structure, str | int], str] | None = None,
-) -> plt.Axes | tuple[plt.Figure, plt.Axes]:
+) -> plt.Axes | tuple[plt.Figure, np.ndarray[plt.Axes]]:
     """Plot pymatgen structures in 2D with matplotlib.
 
     Inspired by ASE's ase.visualize.plot.plot_atoms()
@@ -257,8 +257,14 @@ def plot_structure_2d(
             struct = SpacegroupAnalyzer(struct).get_conventional_standard_structure()
 
         # Get default colors
-        if colors is None:
+        if str(colors) == str(ElemColorScheme.jmol):
             colors = ELEM_COLORS_JMOL
+        elif str(colors) == str(ElemColorScheme.vesta):
+            colors = ELEM_COLORS_VESTA
+        elif not isinstance(colors, dict):
+            raise ValueError(
+                f"colors must be a dict or one of ('{'\', \''.join(ElemColorScheme)}')"
+            )
 
         # Get any element at each site, only used for occlusion calculation which won't
         # be perfect for disordered sites. Plotting wedges of different radii for
@@ -370,6 +376,10 @@ def plot_structure_2d(
                         edgecolor="black",
                         zorder=zorder,
                     )
+                    # mostly here for testing purposes but has no none issues and might
+                    # be useful to backtrace which wedge corresponds to which site
+                    # see test_plot_structure_2d_color_schemes
+                    wedge.elem_symbol, wedge.idx = elem_symbol, idx
                     ax.add_patch(wedge)
 
                     # Generate labels

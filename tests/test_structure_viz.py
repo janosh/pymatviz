@@ -9,7 +9,7 @@ import pytest
 from pymatgen.analysis.local_env import NearNeighbors, VoronoiNN
 from pymatgen.core import Structure
 
-from pymatviz.enums import Key
+from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.structure_viz import plot_structure_2d
 
 
@@ -168,8 +168,11 @@ def test_plot_structure_2d_color_warning() -> None:
     copernicium = "Cn"
     struct = Structure(np.eye(3) * 5, [copernicium] * 2, coords=coords)
 
-    with pytest.warns(UserWarning, match=f"{copernicium!r} not in colors, using gray"):
-        plot_structure_2d(struct)
+    for colors in ElemColorScheme:
+        with pytest.warns(
+            UserWarning, match=f"{copernicium!r} not in colors, using gray"
+        ):
+            plot_structure_2d(struct, colors=colors)
 
     # create custom color scheme missing an element
     custom_colors = {"Fe": "red"}
@@ -177,3 +180,29 @@ def test_plot_structure_2d_color_warning() -> None:
 
     with pytest.warns(UserWarning, match="'O' not in colors, using gray"):
         plot_structure_2d(struct, colors=custom_colors)
+
+
+def test_plot_structure_2d_color_schemes() -> None:
+    lattice = np.eye(3) * 5
+    coords = (np.ones((3, 4)) * (0, 0.25, 0.5, 0.75)).T
+    struct = Structure(lattice, ["Al", "Ar", "As", "Cl"], coords)
+
+    # Plot with Jmol colors
+    ax_jmol: plt.Axes = plot_structure_2d(struct, colors=ElemColorScheme.jmol)
+    jmol_colors = {
+        patch.elem_symbol: patch.get_facecolor()
+        for patch in ax_jmol.patches
+        if isinstance(patch, plt.matplotlib.patches.Wedge)
+    }
+
+    # Plot with VESTA colors
+    ax_vesta: plt.Axes = plot_structure_2d(struct, colors=ElemColorScheme.vesta)
+    vesta_colors = {
+        patch.elem_symbol: patch.get_facecolor()
+        for patch in ax_vesta.patches
+        if isinstance(patch, plt.matplotlib.patches.Wedge)
+    }
+
+    assert (
+        jmol_colors != vesta_colors
+    ), f"{jmol_colors=}\n\nshould not equal\n\n{vesta_colors=}"

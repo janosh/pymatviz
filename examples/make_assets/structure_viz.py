@@ -6,7 +6,7 @@ from matminer.datasets import load_dataset
 from mp_api.client import MPRester
 from pymatgen.core import Structure
 
-from pymatviz.enums import Key
+from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.io import save_and_compress_svg
 from pymatviz.structure_viz import plot_structure_2d
 
@@ -23,11 +23,12 @@ fig, axs = plot_structure_2d(
     df_phonons[Key.structure].iloc[:n_structs],
     show_bonds=True,
     bond_kwargs=dict(facecolor="gray", linewidth=2, linestyle="dotted"),
+    colors=ElemColorScheme.jmol,
 )
 title = f"{n_structs} Matbench phonon structures"
 fig.suptitle(title, fontweight="bold", fontsize=20)
+# save_and_compress_svg(fig, "matbench-phonons-structures-2d")
 fig.show()
-save_and_compress_svg(fig, "matbench-phonons-structures-2d")
 
 
 # %% Plot some disordered structures in 2D

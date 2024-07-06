@@ -26,7 +26,7 @@ from pymatviz._preprocess_data import (
     preprocess_ptable_data,
 )
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA, ELEM_TYPE_COLORS
-from pymatviz.enums import ElemColorMode, ElemColors, ElemCountMode, Key
+from pymatviz.enums import ElemColorMode, ElemColorScheme, ElemCountMode, Key
 from pymatviz.utils import df_ptable, pick_bw_for_contrast, si_fmt
 
 
@@ -177,7 +177,7 @@ class PTableProjector:
         plot_kwargs: dict[str, Any] | None = None,
         hide_f_block: bool | None = None,
         elem_type_colors: dict[str, str] | None = None,
-        elem_colors: ElemColors | dict[str, ColorType] | None = None,
+        elem_colors: ElemColorScheme | dict[str, ColorType] | None = None,
     ) -> None:
         """Initialize a ptable projector.
 
@@ -299,7 +299,9 @@ class PTableProjector:
     @elem_colors.setter
     def elem_colors(
         self,
-        elem_colors: ElemColors | dict[str, ColorType] | None = ElemColors.vesta,
+        elem_colors: ElemColorScheme
+        | dict[str, ColorType]
+        | None = ElemColorScheme.vesta,
     ) -> None:
         """Args:
         elem_colors ("vesta" | "jmol" | dict[str, ColorType]): Use VESTA or Jmol color

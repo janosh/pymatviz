@@ -430,9 +430,10 @@ class ElemColorMode(LabelEnum):
 
 
 @unique
-class ElemColors(LabelEnum):
-    """Mode of coloring elements in structure visualizations or periodic table
-    plots.
+class ElemColorScheme(LabelEnum):
+    """Names of element color palettes.
+
+    Used e.g. in structure visualizations and periodic table plots.
     """
 
     # key, label, color

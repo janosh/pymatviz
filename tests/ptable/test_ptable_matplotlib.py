@@ -19,7 +19,7 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.enums import ElemColors
+from pymatviz.enums import ElemColorScheme
 from pymatviz.ptable import PTableProjector
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -60,11 +60,11 @@ class TestPTableProjector:
         assert projector.elem_colors.items() > color_subset.items()
 
         vesta_colors = PTableProjector(
-            data=data, elem_colors=ElemColors.vesta
+            data=data, elem_colors=ElemColorScheme.vesta
         ).elem_colors
         assert vesta_colors == projector.elem_colors
         jmol_colors = PTableProjector(
-            data=data, elem_colors=ElemColors.jmol
+            data=data, elem_colors=ElemColorScheme.jmol
         ).elem_colors
         assert jmol_colors != projector.elem_colors
 
