@@ -1371,23 +1371,6 @@ class HMapPTableProjector(PTableProjector):
                 **kwargs,
             )
 
-    def exclude_elems(
-        self,
-        elems: Sequence[str],
-        color: ColorType = "grey",
-        value: str = "excl.",
-    ) -> None:
-        """Exclude elements from plotter, and overwrite colors and values.
-
-        Args:
-            elems (Sequence[str]): Sequences of elements to exclude.
-            color (ColorType): The color for excluded element to use.
-            value (str): The value for excluded element to display.
-        """
-        for elem in elems:
-            self._tile_colors[elem] = color
-            self._tile_values[elem] = value
-
     def overwrite_anomalies(
         self,
         nan_color: ColorType,
@@ -1560,7 +1543,9 @@ def ptable_heatmap(
     )
 
     # Exclude elements
-    projector.exclude_elems(exclude_elements)
+    for elem in exclude_elements:
+        projector._tile_colors[elem] = "grey"
+        projector._tile_values[elem] = "excl."
 
     # Overwrite NaN/infinity colors and values
     projector.overwrite_anomalies(nan_color=nan_color, inf_color=inf_color)
