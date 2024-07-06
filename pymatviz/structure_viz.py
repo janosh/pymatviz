@@ -272,8 +272,9 @@ def plot_structure_2d(
         elif str(elem_colors) == str(ElemColorScheme.vesta):
             elem_colors = ELEM_COLORS_VESTA
         elif not isinstance(elem_colors, dict):
+            valid_color_schemes = "', '".join(ElemColorScheme)
             raise ValueError(
-                f"colors must be a dict or one of ('{'\', \''.join(ElemColorScheme)}')"
+                f"colors must be a dict or one of ('{valid_color_schemes}')"
             )
 
         # Get any element at each site, only used for occlusion calculation which won't
