@@ -1531,7 +1531,7 @@ def ptable_heatmap(
 
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
-        data=data,
+        data=data,  # type: ignore[arg-type]
         sci_notation=sci_notation,
         values_show_mode=values_show_mode,
         tile_size=tile_size,  # type: ignore[arg-type]
