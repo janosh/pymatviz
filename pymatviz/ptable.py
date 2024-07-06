@@ -563,6 +563,7 @@ class PTableProjector:
         colormap: str | Colormap = "viridis",
         tile_size: tuple[float, float] = (0.75, 0.75),
         plot_kwargs: dict[str, Any] | None = None,
+        exclude_elements: Sequence[str] = (),
         on_empty: Literal["hide", "show"] = "hide",
         hide_f_block: bool | Literal["AUTO"] = "AUTO",
         elem_type_colors: dict[str, str] | None = None,
@@ -580,6 +581,7 @@ class PTableProjector:
             tile_size (tuple[float, float]): The relative tile height and width.
             plot_kwargs (dict): Additional keyword arguments to
                 pass to the plt.subplots function call.
+            exclude_elements (Sequence[str]): Elements to exclude.
             on_empty ("hide" | "show"): Hide or show tile if no data provided.
             hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
                 Defaults to "AUTO", meaning hide if no data present.
@@ -592,9 +594,11 @@ class PTableProjector:
         self.elem_colors = elem_colors  # type: ignore[assignment]
 
         # Preprocess data
-        self.data: pd.DataFrame = data
         self.log = log
-        self.norm = (None, None)  # trigger internal initialize
+        self.data: pd.DataFrame = data
+
+        # Remove excluded element from internal data to avoid metadata pollution
+        self.ptable_data.drop_elements(exclude_elements)
 
         self.on_empty = on_empty
         self.hide_f_block = hide_f_block  # type: ignore[assignment]
@@ -639,6 +643,9 @@ class PTableProjector:
             data = PTableData(data)
 
         self.ptable_data = data
+
+        # Update norm when data is updated
+        self.norm = (None, None)
 
     @property
     def norm(self) -> Normalize | LogNorm:
@@ -1174,7 +1181,9 @@ class HMapPTableProjector(PTableProjector):
 
         # Normalize data for "fraction/percent" modes
         if values_show_mode in {"fraction", "percent"}:
-            self.ptable_data.normalize()
+            normalized_data = self.ptable_data
+            normalized_data.normalize()
+            self.data = normalized_data.data  # call setter to update metadata
 
         # Generate tile colors
         self.tile_colors = tile_colors  # type: ignore[assignment]
@@ -1210,7 +1219,6 @@ class HMapPTableProjector(PTableProjector):
             for symbol in self.data.index:
                 # Get value and map to color
                 value = self.data.loc[symbol, Key.heat_val][0]
-
                 self._tile_colors[symbol] = self.cmap(self.norm(value))
 
     @property
@@ -1522,6 +1530,7 @@ def ptable_heatmap(
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
         data=data,  # type: ignore[arg-type]
+        exclude_elements=exclude_elements,  # type: ignore[arg-type]
         sci_notation=sci_notation,
         values_show_mode=values_show_mode,
         tile_size=tile_size,  # type: ignore[arg-type]
@@ -1532,9 +1541,6 @@ def ptable_heatmap(
         on_empty=on_empty,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
-
-    # Remove excluded element from internal data
-    projector.ptable_data.drop_elements(exclude_elements)
 
     # Set NaN/infinity colors and values
     if projector.anomalies != "NA" and projector.anomalies:
