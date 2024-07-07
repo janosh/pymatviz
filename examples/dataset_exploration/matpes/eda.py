@@ -11,12 +11,12 @@ import plotly.io as pio
 from pymatgen.core import Composition, Structure
 from tqdm import tqdm
 
-from pymatviz import pmv_dark_template
+from pymatviz import count_elements, pmv_dark_template
 from pymatviz.enums import Key
 from pymatviz.histograms import spacegroup_hist
 from pymatviz.io import save_fig
 from pymatviz.powerups import add_identity_line
-from pymatviz.ptable import count_elements, ptable_heatmap, ptable_heatmap_splits
+from pymatviz.ptable import ptable_heatmap, ptable_heatmap_splits
 from pymatviz.sunburst import spacegroup_sunburst
 
 

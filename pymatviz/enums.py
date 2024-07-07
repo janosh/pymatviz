@@ -126,6 +126,17 @@ class Key(LabelEnum):
     point_group = "point_group", "Point Group"
     lattice_params = "lattice_parameters", "Lattice Parameters"
     supercell = "supercell", "Supercell"
+    atom_nums = "atom_nums", "Atomic Numbers", "Atomic numbers for each crystal site"
+    struct_proto = "structure_prototype", "Structure Prototype"
+    iso_struct_proto = (
+        "isopointal_structure_prototype",
+        "Isopointal Structure Prototype",
+    )
+    uniq_proto = "unique_prototype", "Unique Prototype"
+    coord_num = "coordination_number", "Coordination Number"
+    bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
+    bond_angles = "bond_angles", "Bond Angles (°)"
+    packing_fraction = "packing_fraction", "Packing Fraction"
 
     # Composition and Chemical
     arity = "arity", "N<sub>elements</sub>"
@@ -143,6 +154,11 @@ class Key(LabelEnum):
     isotope_masses = "isotope_masses", "Isotope Masses"
     natural_abundance = "natural_abundance", "Natural Abundance (%)"
     half_life = "half_life", "Half-life"
+    electronegativity = "electronegativity", "Electronegativity (Pauling scale)"
+    atomic_radius = "atomic_radius", f"Atomic Radius {angstrom}"
+    ionic_radius = "ionic_radius", f"Ionic Radius {angstrom}"
+    covalent_radius = "covalent_radius", f"Covalent Radius {angstrom}"
+    ionization_energy = "ionization_energy", f"Ionization Energy {eV}"
 
     # Thermodynamic
     energy = "energy", f"Energy {eV}"
@@ -172,21 +188,23 @@ class Key(LabelEnum):
     critical_temp = "critical_temperature", "Critical Temperature (K)"
     critical_pressure = "critical_pressure", "Critical Pressure (Pa)"
     critical_vol = "critical_volume", "Critical Volume (m³/mol)"
-    gibbs_free_energy = "gibbs_free_energy", "Gibbs Free Energy (eV)"
-    enthalpy = "enthalpy", "Enthalpy (eV)"
+    gibbs_free_energy = "gibbs_free_energy", f"Gibbs Free Energy {eV}"
+    enthalpy = "enthalpy", f"Enthalpy {eV}"
     entropy = "entropy", "Entropy (eV/K)"
+    lattice_energy = "lattice_energy", f"Lattice Energy {eV}"
+    interface_energy = "interface_energy", "Interface Energy (J/m²)"
 
     # Electronic
-    bandgap = "bandgap", "Band Gap"
-    bandgap_pbe = "bandgap_pbe", "PBE Band Gap"
-    bandgap_hse = "bandgap_hse", "HSE Band Gap"
-    bandgap_r2scan = "bandgap_r2scan", "r2SCAN Band Gap"
-    bandgap_ml = "bandgap_ml", "ML Band Gap"
-    bandgap_true = "bandgap_true", "Actual Band Gap"
-    bandgap_pred = "bandgap_pred", "Predicted Band Gap"
-    fermi_energy = "fermi_energy", "Fermi Energy (eV)"
-    electron_affinity = "electron_affinity", "Electron Affinity (eV)"
-    work_function = "work_function", "Work Function (eV)"
+    bandgap = "bandgap", f"Band Gap {eV}"
+    bandgap_pbe = "bandgap_pbe", f"PBE Band Gap {eV}"
+    bandgap_hse = "bandgap_hse", f"HSE Band Gap {eV}"
+    bandgap_r2scan = "bandgap_r2scan", f"r2SCAN Band Gap {eV}"
+    bandgap_ml = "bandgap_ml", f"ML Band Gap {eV}"
+    bandgap_true = "bandgap_true", f"Actual Band Gap {eV}"
+    bandgap_pred = "bandgap_pred", f"Predicted Band Gap {eV}"
+    fermi_energy = "fermi_energy", f"Fermi Energy {eV}"
+    electron_affinity = "electron_affinity", f"Electron Affinity {eV}"
+    work_function = "work_function", f"Work Function {eV}"
     dos = "density_of_states", "Density of States"
     band_structure = "band_structure", "Band Structure"
     conductivity = "conductivity", "Electrical Conductivity (S/m)"
@@ -196,10 +214,18 @@ class Key(LabelEnum):
         "superconducting_critical_temperature",
         "Superconducting Critical Temperature (K)",
     )
+    carrier_concentration = "carrier_concentration", "Carrier Concentration (cm⁻³)"
+    mobility = "mobility", "Carrier Mobility (cm²/V·s)"
+    effective_mass = "effective_mass", "Effective Mass (m<sub>e</sub>)"
+    # how easy it is to move an atom's cloud of electrons
+    polarizability = "polarizability", "Polarizability (Å³)"
+    # displacement of positive charges relative to negative charges
+    polarization = "polarization", "Polarization (C/m²)"
 
     # Mechanical
     forces = "forces", "Forces"
     stress = "stress", "Stress"
+    stress_trace = "stress_trace", "Stress Trace"
     voigt_stress = "voigt_stress", "Voigt Stress"
     bulk_modulus = "bulk_modulus", "Bulk Modulus (GPa)"
     shear_modulus = "shear_modulus", "Shear Modulus (GPa)"
@@ -207,16 +233,32 @@ class Key(LabelEnum):
     poisson_ratio = "poisson_ratio", "Poisson's Ratio"
     hardness = "hardness", "Hardness (Mohs scale)"
     elastic_tensor = "elastic_tensor", "Elastic Tensor"
+    yield_strength = "yield_strength", "Yield Strength (MPa)"
+    tensile_strength = "tensile_strength", "Tensile Strength (MPa)"
+    ductility = "ductility", "Ductility (%)"
+    fracture_toughness = "fracture_toughness", "Fracture Toughness (MPa·m½)"
+    bulk_sound_velocity = "bulk_sound_velocity", "Bulk Sound Velocity (m/s)"
 
     # Thermal
     temperature = "temperature", "Temperature (K)"
-    thermal_conductivity = "thermal_conductivity", "Thermal Conductivity (W/mK)"
-    specific_heat_capacity = "specific_heat_capacity", "Specific Heat Capacity (J/kgK)"
+    thermal_conductivity = "thermal_conductivity", "Thermal Conductivity (W/m·K)"
+    lattice_thermal_conductivity = (
+        "lattice_thermal_conductivity",
+        "Lattice Thermal Conductivity (W/m·K)",
+    )
+    electronic_thermal_conductivity = (
+        "electronic_thermal_conductivity",
+        "Electronic Thermal Conductivity (W/m·K)",
+    )
+    heat_capacity = "heat_capacity", "Heat Capacity (J/mol·K)"
+    specific_heat_capacity = "specific_heat_capacity", "Specific Heat Capacity (J/kg·K)"
     thermal_expansion_coefficient = (
         "thermal_expansion_coefficient",
         "Thermal Expansion Coefficient (1/K)",
     )
     debye_temp = "debye_temperature", "Debye Temperature (K)"
+    gruneisen_parameter = "gruneisen_parameter", "Grüneisen Parameter"
+    thermal_diffusivity = "thermal_diffusivity", "Thermal Diffusivity (m²/s)"
 
     # Phonon
     ph_band_structure = "phonon_bandstructure", "Phonon Band Structure"
@@ -233,30 +275,49 @@ class Key(LabelEnum):
 
     # Optical
     refractive_index = "refractive_index", "Refractive Index"
-    diel_constant = "dielectric_constant", "Dielectric Constant"
+    diel_const = "dielectric_constant", "Dielectric Constant"
     absorption_spectrum = "absorption_spectrum", "Absorption Spectrum"
     photoluminescence = "photoluminescence", "Photoluminescence"
+    optical_conductivity = "optical_conductivity", "Optical Conductivity (S/m)"
+    reflectivity = "reflectivity", "Reflectivity"
+    transmittance = "transmittance", "Transmittance"
+    absorption_coefficient = "absorption_coefficient", "Absorption Coefficient (cm⁻¹)"
+    extinction_coefficient = "extinction_coefficient", "Extinction Coefficient"
 
     # Surface
     surface_energy = "surface_energy", "Surface Energy (J/m²)"
     wulff_shape = "wulff_shape", "Wulff Shape"
+    surface_area = "surface_area", "Surface Area (m²)"
+    surface_reconstruction = "surface_reconstruction", "Surface Reconstruction"
+    adsorption_energy = "adsorption_energy", f"Adsorption Energy {eV}"
+    work_of_adhesion = "work_of_adhesion", "Work of Adhesion (J/m²)"
 
     # Defect
     vacancy_formation_energy = (
         "vacancy_formation_energy",
-        "Vacancy Formation Energy (eV)",
+        f"Vacancy Formation Energy {eV}",
     )
     interstitial_formation_energy = (
         "interstitial_formation_energy",
-        "Interstitial Formation Energy (eV)",
+        f"Interstitial Formation Energy {eV}",
     )
+    defect_concentration = "defect_concentration", "Defect Concentration (cm⁻³)"
+    migration_energy = "migration_energy", f"Migration Energy {eV}"
+    dislocation_energy = "dislocation_energy", "Dislocation Energy (eV/Å)"
+    stacking_fault_energy = "stacking_fault_energy", "Stacking Fault Energy (mJ/m²)"
 
     # Magnetic
     magmoms = "magmoms", "Magnetic Moments"
     magnetic_moment = "magnetic_moment", "Magnetic Moment (μB)"
     curie_temperature = "curie_temperature", "Curie Temperature (K)"
+    neel_temp = "neel_temperature", "Néel Temperature (K)"
+    magnetocrystalline_anisotropy = (
+        "magnetocrystalline_anisotropy",
+        "Magnetocrystalline Anisotropy (meV)",
+    )
+    coercivity = "coercivity", "Coercivity (Oe)"
 
-    # Computational Details
+    # DFT
     dft = "dft", "DFT"
     pbe = "pbe", "PBE"
     pbe_sol = "pbe_sol", "PBEsol"
@@ -267,6 +328,24 @@ class Key(LabelEnum):
     convergence_ionic = "convergence_ionic", "Ionic Convergence"
     kpoints = "kpoints", "K-points"
     pseudopotentials = "pseudopotentials", "Pseudopotentials"
+    u_correction = "u_correction", "Hubbard U Correction"
+    needs_u_correction = "needs_u_correction", "Needs Hubbard U correction"
+    soc = "spin_orbit_coupling", "Spin-Orbit Coupling"
+
+    # ML
+    train_task = "train_task", "Training Task"
+    test_task = "test_task", "Test Task"
+    train_set = "training_set", "Training Set"
+    targets = "targets", "Targets"
+    model_name = "model_name", "Model Name"
+    model_version = "model_version", "Model Version"
+    model_type = "model_type", "Model Type"
+    model_params = "model_parameters", "Model Parameters"
+    hyperparams = "hyperparameters", "Hyperparameters"
+    feature_importance = "feature_importance", "Feature Importance"
+    daf = "DAF", "Discovery Acceleration Factor"
+
+    # Computational Details
     run_time_sec = "run_time_sec", "Run Time (sec)"
     run_time_hr = "run_time_hr", "Run Time (hr)"
     cpu_hours = "cpu_hours", "CPU Hours"
@@ -278,7 +357,6 @@ class Key(LabelEnum):
     step = "step", "Step"  # as in job/optimizer step
     state = "state", "State"  # as in job state
     job_type = "job_type", "Job Type"
-    needs_u_correction = "needs_u_correction", "Needs Hubbard U correction"
 
     # Identifiers and Metadata
     id = "id", "ID"
@@ -307,13 +385,12 @@ class Key(LabelEnum):
     # Chemical Properties
     corrosion_resistance = "corrosion_resistance", "Corrosion Resistance"
     viscosity = "viscosity", "Viscosity (Pa·s)"
-    activation_energy = "activation_energy", "Activation Energy (eV)"
+    activation_energy = "activation_energy", f"Activation Energy {eV}"
 
     # Miscellaneous
     count = "count", "Count"  # type: ignore[assignment]
     heat_val = "heat_val", "Heatmap Value"
     piezoelectric_tensor = "piezoelectric_tensor", "Piezoelectric Tensor"
-    polarization = "polarization", "Polarization (C/m²)"
 
 
 @unique
@@ -353,9 +430,10 @@ class ElemColorMode(LabelEnum):
 
 
 @unique
-class ElemColors(LabelEnum):
-    """Mode of coloring elements in structure visualizations or periodic table
-    plots.
+class ElemColorScheme(LabelEnum):
+    """Names of element color palettes.
+
+    Used e.g. in structure visualizations and periodic table plots.
     """
 
     # key, label, color

@@ -9,9 +9,8 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from pymatviz._preprocess_data import SupportedDataType
 from pymatviz.enums import Key
-from pymatviz.ptable import PTableData
+from pymatviz.ptable._process_data import PTableData, SupportedDataType
 
 
 if TYPE_CHECKING:
