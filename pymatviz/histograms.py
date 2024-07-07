@@ -17,7 +17,7 @@ from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import ElemCountMode, Key
 from pymatviz.powerups import annotate_bars
-from pymatviz.process_data import count_elements
+from pymatviz.ptable import count_elements
 from pymatviz.utils import (
     BACKENDS,
     MATPLOTLIB,
@@ -29,7 +29,7 @@ from pymatviz.utils import (
 
 
 if TYPE_CHECKING:
-    from pymatviz.utils import ElemValues
+    from pymatviz.ptable import ElemValues
 
 
 def spacegroup_hist(

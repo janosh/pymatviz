@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose
 
 from pymatviz._preprocess_data import SupportedDataType
 from pymatviz.enums import Key
-from pymatviz.ptable._process_data import PTableData
+from pymatviz.ptable import PTableData
 
 
 if TYPE_CHECKING:

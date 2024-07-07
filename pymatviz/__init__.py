@@ -28,8 +28,10 @@ from pymatviz.phonons import (
     plot_phonon_bands_and_dos,
     plot_phonon_dos,
 )
-from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
+    ChildPlotters,
+    PTableProjector,
+    count_elements,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,

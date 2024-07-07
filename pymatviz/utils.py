@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 import warnings
-from collections.abc import Sequence
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
@@ -21,7 +20,7 @@ from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormat
 
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
     from typing import ParamSpec, TypeVar
 
     from matplotlib.ticker import Formatter
@@ -54,7 +53,6 @@ CrystalSystem = Literal[
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
-ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
 
 # fallback value (in nanometers) for covalent radius of an element
 # see https://wikipedia.org/wiki/Atomic_radii_of_the_elements
