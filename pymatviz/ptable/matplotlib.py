@@ -629,12 +629,11 @@ def ptable_heatmap_ratio(
     *,
     count_mode: ElemCountMode = ElemCountMode.composition,
     normalize: bool = False,
-    zero_color: ColorType = "#lightgrey",
+    zero_color: ColorType = "lightgrey",
     inf_color: ColorType = "lightskyblue",
-    # zero_symbol: str = "-",  # TODO
-    # inf_symbol: str = "∞",
+    zero_symbol: str = "-",  # TODO: need docstring
     cbar_title: str = "Element Ratio",
-    not_in_numerator: tuple[str, str] | None = ("#eff", "gray: not in 1st list"),
+    not_in_numerator: tuple[str, str] | None = ("lightgray", "gray: not in 1st list"),
     not_in_denominator: tuple[str, str] | None = (
         "lightskyblue",
         "blue: not in 2nd list",
@@ -654,7 +653,7 @@ def ptable_heatmap_ratio(
             in the denominator.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
-        zero_color: ColorType = "#lightgrey",  # TODO:
+        zero_color: ColorType = "lightgrey",  # TODO: finish docstring
         inf_color: ColorType = "lightskyblue",
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
             Reduce or normalize compositions before counting. See count_elements() for
@@ -689,18 +688,18 @@ def ptable_heatmap_ratio(
         **kwargs,
     )
 
-    # # Add legend handles
-    # for tup in (
-    #     (0.18, "zero", *(not_in_numerator or ())),
-    #     (0.12, "infty", *(not_in_denominator or ())),
-    #     (0.06, "na", *(not_in_either or ())),
-    # ):
-    #     if len(tup) < 3:
-    #         continue
-    #     y_pos, key, color, txt = tup
-    #     kwargs[f"{key}_color"] = color
-    #     bbox = dict(facecolor=color, edgecolor="gray")
-    #     fig.text(0.005, y_pos, txt, fontsize=10, bbox=bbox, transform=fig.transAxes)
+    # Add legend handles
+    for tup in (
+        (0.18, "zero", *(not_in_numerator or ())),
+        (0.12, "infty", *(not_in_denominator or ())),
+        (0.06, "na", *(not_in_either or ())),
+    ):
+        if len(tup) < 3:
+            continue
+        y_pos, key, color, txt = tup
+        kwargs[f"{key}_color"] = color
+        bbox = dict(facecolor=color, edgecolor="gray")
+        fig.text(0, y_pos, txt, fontsize=10, bbox=bbox, transform=fig.transFigure)
 
     return fig
 
