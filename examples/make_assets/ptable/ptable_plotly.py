@@ -37,7 +37,7 @@ fig = ptable_heatmap_plotly(
     df_expt_gap[Key.composition], log=True, colorscale="viridis"
 )
 title = "Elements in Matbench Experimental Bandgap (log scale)"
-fig.layout.title = dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20)
+fig.layout.title = dict(text=f"<b>{title}</b>", x=0.45, y=0.94, font_size=20)
 fig.show()
 save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
