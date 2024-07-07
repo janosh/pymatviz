@@ -7,8 +7,8 @@ from pymatgen.core.periodic_table import Element
 
 from pymatviz.enums import Key
 from pymatviz.io import save_and_compress_svg
+from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
-    count_elements,
     ptable_heatmap,
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
