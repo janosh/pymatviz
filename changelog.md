@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.9.2](https://github.com/janosh/pymatviz/compare/v0.9.1...v0.9.2)
+
+> 7 July 2024
+
+- Fix `ptable_heatmap_plotly` for `log=True` [`#174`](https://github.com/janosh/pymatviz/pull/174)
+- Fix missing keys `Te` + `Nd` in `ELEM_COLORS_VESTA` and support it in `plot_structure_2d` [`#173`](https://github.com/janosh/pymatviz/pull/173)
+- Fix `log_density` in `density_scatter_plotly` [`#172`](https://github.com/janosh/pymatviz/pull/172)
+
 #### [v0.9.1](https://github.com/janosh/pymatviz/compare/v0.9.0...v0.9.1)
 
 > 4 July 2024
