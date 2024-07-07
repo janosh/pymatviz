@@ -25,11 +25,11 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-more-hover-data")
 
 
 # %%
-fig = ptable_heatmap_plotly(df_expt_gap[Key.composition], heat_mode="percent", log=True)
+fig = ptable_heatmap_plotly(df_expt_gap[Key.composition], heat_mode="percent")
 title = "Elements in Matbench Experimental Bandgap"
 fig.layout.title = dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20)
 fig.show()
-# save_and_compress_svg(fig, "ptable-heatmap-plotly-percent-labels")
+save_and_compress_svg(fig, "ptable-heatmap-plotly-percent-labels")
 
 
 # %%
