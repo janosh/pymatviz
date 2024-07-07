@@ -599,7 +599,7 @@ def ptable_heatmap(
     show_scale: bool = True,
     show_values: bool = True,
     infty_color: str = "lightskyblue",
-    na_color: str = "white",
+    nan_color: str = "white",
     heat_mode: Literal["value", "fraction", "percent"] = "value",
     fmt: str | Callable[..., str] | None = None,
     cbar_fmt: str | Callable[..., str] | None = None,
@@ -644,7 +644,7 @@ def ptable_heatmap(
             Defaults to True.
         infty_color: Color to use for elements with value infinity. Defaults to
             "lightskyblue".
-        na_color: Color to use for elements with value NaN. Defaults to "white".
+        nan_color: Color to use for elements with value NaN. Defaults to "white".
         heat_mode ("value" | "fraction" | "percent" | None): Whether to display heat
             values as is, normalized as a fraction of the total, as percentages
             or not at all (None). Defaults to "value".
@@ -773,7 +773,7 @@ def ptable_heatmap(
             color = infty_color  # not in denominator
             label = r"$\infty$"
         elif pd.isna(tile_value):
-            color = na_color  # neither numerator nor denominator
+            color = nan_color  # neither numerator nor denominator
             label = r"$0\,/\,0$"
         elif tile_value == 0:
             color = zero_color
