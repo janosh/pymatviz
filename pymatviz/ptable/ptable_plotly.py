@@ -245,8 +245,8 @@ def ptable_heatmap_plotly(
 
     if isinstance(font_colors, str):
         font_colors = [font_colors]
-    if cscale_range == (None, None):
-        cscale_range = (values.min(), values.max())
+
+    non_nan_values = [val for val in heatmap_values.flat if not np.isnan(val)]
 
     fig = ff.create_annotated_heatmap(
         heatmap_values,
@@ -258,11 +258,10 @@ def ptable_heatmap_plotly(
         hoverinfo="text",
         xgap=gap,
         ygap=gap,
-        zmin=None if log else cscale_range[0],
-        zmax=None if log else cscale_range[1],
-        # zauto=False if cscale_range is set, needed for zmin, zmax to work
-        # see https://github.com/plotly/plotly.py/issues/193
-        zauto=cscale_range == (None, None),
+        zauto=False,  # Disable auto-scaling
+        # get actual min and max values for color scaling (zauto doesn't work for log)
+        zmin=min(non_nan_values) if cscale_range[0] is None else cscale_range[0],
+        zmax=max(non_nan_values) if cscale_range[1] is None else cscale_range[1],
         **kwargs,
     )
 
@@ -315,5 +314,16 @@ def ptable_heatmap_plotly(
             # <br><br> to increase title offset
             color_bar["title"] = f"<br><br>{title}"
 
+    if log:
+        orig_min = np.floor(min(non_nan_values))
+        orig_max = np.ceil(max(non_nan_values))
+        tick_values = np.logspace(orig_min, orig_max, num=10, endpoint=True)
+
+        tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
+
+        color_bar = dict(
+            tickvals=np.log10(tick_values), ticktext=tick_values, **color_bar
+        )
     fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
+
     return fig
