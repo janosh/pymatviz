@@ -20,7 +20,7 @@ from pymatviz import (
     ptable_scatters,
 )
 from pymatviz.enums import ElemColorScheme
-from pymatviz.ptable.matplotlib import PTableProjector
+from pymatviz.ptable.ptable_matplotlib import PTableProjector
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
 
