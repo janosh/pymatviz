@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
+import plotly.graph_objects as go
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
@@ -17,8 +18,6 @@ from pymatviz.utils import df_ptable
 
 if TYPE_CHECKING:
     from typing import Any, Callable
-
-    import plotly.graph_objects as go
 
 
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
@@ -39,12 +38,14 @@ def ptable_heatmap_plotly(
     gap: float = 5,
     font_size: int | None = None,
     bg_color: str | None = None,
+    nan_color: str = "#eff",
     color_bar: dict[str, Any] | None = None,
     cscale_range: tuple[float | None, float | None] = (None, None),
     exclude_elements: Sequence[str] = (),
     log: bool = False,
     fill_value: float | None = None,
     label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
+    border: dict[str, Any] | None | Literal[False] = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Create a Plotly figure with an interactive heatmap of the periodic table.
@@ -107,6 +108,8 @@ def ptable_heatmap_plotly(
             - tickformat: f-string format option for tick labels
             - len: fraction of plot height or width depending on orientation
             - thickness: fraction of plot height or width depending on orientation
+        nan_color (str): Fill color for element tiles with NaN values. Defaults to
+            "#eff".
         cscale_range (tuple[float | None, float | None]): Colorbar range. Defaults to
             (None, None) meaning the range is automatically determined from the data.
         exclude_elements (list[str]): Elements to exclude from the heatmap. E.g. if
@@ -117,8 +120,12 @@ def ptable_heatmap_plotly(
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
         label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
             string formatting) to target strings. Set to False to disable. Defaults to
-            dict.fromkeys((np.nan, None, "nan"), " ") so as not to display "nan" for
+            dict.fromkeys((np.nan, None, "nan"), "-") so as not to display "nan" for
             missing values.
+        border (dict[str, Any]): Border properties for element tiles. Defaults to
+            dict(width=1, color="gray"). Other allowed keys are arguments of go.Heatmap
+            which is (mis-)used to draw the borders as a 2nd heatmap below the main one.
+            Pass False to disable borders.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
 
@@ -166,7 +173,7 @@ def ptable_heatmap_plotly(
     if label_map is None:
         # default to space string for None, np.nan and "nan". space is needed
         # for <br> in tile_text to work so all element symbols are vertically aligned
-        label_map = dict.fromkeys([np.nan, None, "nan"], " ")  # type: ignore[list-item]
+        label_map = dict.fromkeys([np.nan, None, "nan"], "-")  # type: ignore[list-item]
 
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
@@ -258,6 +265,35 @@ def ptable_heatmap_plotly(
         zauto=cscale_range == (None, None),
         **kwargs,
     )
+
+    # Add border heatmap
+    if border is not False:
+        border = border or {}
+        border_color = border.pop("color", "darkgray")
+        border_width = border.pop("width", 2)
+
+        common_kwargs = dict(
+            z=np.where(tile_texts, 1, np.nan), showscale=False, hoverinfo="none"
+        )
+        # misuse heatmap to add borders around all element tiles
+        # 1st one adds the fill color for NaN element tiles, 2nd one adds the border
+        fig.add_heatmap(
+            **common_kwargs,
+            colorscale=[nan_color, nan_color],
+            xgap=gap,
+            ygap=gap,
+        )
+        fig.add_heatmap(
+            **common_kwargs,
+            colorscale=[border_color, border_color],
+            xgap=gap - border_width,
+            ygap=gap - border_width,
+            **border,
+        )
+
+        # reverse fig.data to place the border heatmap below the main heatmap
+        fig.data = fig.data[::-1]
+
     fig.update_layout(
         margin=dict(l=10, r=10, t=10, b=10, pad=10),
         paper_bgcolor=bg_color,
