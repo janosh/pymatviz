@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pymatviz.ptable.matplotlib import (
+from pymatviz.ptable.ptable_matplotlib import (
     ptable_heatmap,
     ptable_heatmap_ratio,
     ptable_heatmap_splits,
@@ -10,4 +10,4 @@ from pymatviz.ptable.matplotlib import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.ptable.plotly import ptable_heatmap_plotly
+from pymatviz.ptable.ptable_plotly import ptable_heatmap_plotly

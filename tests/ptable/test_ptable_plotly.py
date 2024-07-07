@@ -62,13 +62,9 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         df_ptable["tmp"] = val
         fig = ptable_heatmap_plotly(df_ptable["tmp"], log=True)
         assert isinstance(fig, go.Figure)
-        heatmap = next(
-            trace
-            for trace in fig.data
-            if isinstance(trace, go.Heatmap) and "colorbar" in trace
-        )
-        assert heatmap.colorbar.title.text == "tmp"
-        c_scale = heatmap.colorscale
+        heatmap_trace = fig.data[-1]
+        assert heatmap_trace.colorbar.title.text == "tmp"
+        c_scale = heatmap_trace.colorscale
         assert isinstance(c_scale, tuple)
         assert isinstance(c_scale[0], tuple)
         assert isinstance(c_scale[0][0], float)
@@ -123,7 +119,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
 
     # Additional assertions to check if the parameters are correctly applied
     if exclude_elements:
-        assert all(elem not in fig.data[0].z for elem in exclude_elements)
+        assert all(elem not in fig.data[-1].z for elem in exclude_elements)
 
     if font_size:
         assert fig.layout.font.size == font_size
@@ -144,7 +140,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
 def test_ptable_heatmap_plotly_colorscale(c_scale: str) -> None:
     values = {"Fe": 2, "O": 3}
     fig = ptable_heatmap_plotly(values, colorscale=c_scale)
-    clr_scale_start = fig.data[0].colorscale[0]
+    clr_scale_start = fig.data[-1].colorscale[0]
     assert clr_scale_start == {
         "Viridis": (0, "#440154"),
         "Jet": (0, "rgb(0,0,131)"),
@@ -161,12 +157,10 @@ def test_ptable_heatmap_plotly_color_bar(
 ) -> None:
     fig = ptable_heatmap_plotly(glass_formulas, color_bar=color_bar)
     # check color bar has expected length
-    assert fig.data[0].colorbar.len == color_bar.get("len", 0.4)
+    assert fig.data[-1].colorbar.len == color_bar.get("len", 0.4)
     # check color bar has expected title side
-    assert (
-        fig.data[0].colorbar.title.side == "right"
-        if color_bar.get("orientation") == "v"
-        else "top"
+    assert fig.data[-1].colorbar.title.side == (
+        "right" if color_bar.get("orientation") == "v" else "top"
     )
 
 
@@ -178,7 +172,7 @@ def test_ptable_heatmap_plotly_cscale_range(
     cscale_range: tuple[float | None, float | None],
 ) -> None:
     fig = ptable_heatmap_plotly(df_ptable[Key.density], cscale_range=cscale_range)
-    trace = fig.data[0]
+    trace = fig.data[-1]
     assert "colorbar" in trace
     # check for correct color bar range
     data_min, data_max = df_ptable[Key.density].min(), df_ptable[Key.density].max()
@@ -235,17 +229,17 @@ def test_ptable_heatmap_plotly_heat_modes(
 ) -> None:
     values = {"Fe": 2, "O": 3, "H": 1}
     fig = ptable_heatmap_plotly(values, heat_mode=mode)
-    assert fig.data[0].zmax is not None
+    assert fig.data[-1].zmax is not None
     if mode == "value":
-        assert fig.data[0].zmax == 3
+        assert fig.data[-1].zmax == 3
     elif mode in ("fraction", "percent"):
-        assert fig.data[0].zmax == pytest.approx(0.5)
+        assert fig.data[-1].zmax == pytest.approx(0.5)
 
 
 def test_ptable_heatmap_plotly_show_values() -> None:
     values = {"Fe": 2, "O": 3}
     fig = ptable_heatmap_plotly(values, show_values=False)
-    assert all("<br>" not in text for text in fig.data[0].text.flatten() if text)
+    assert all("<br>" not in text for text in fig.data[-1].text.flatten() if text)
 
 
 def test_ptable_heatmap_plotly_exclude_elements() -> None:
@@ -277,7 +271,7 @@ def test_ptable_heatmap_plotly_hover_props() -> None:
     values = {"Fe": 2, "O": 3}
     hover_props = ["atomic_number", "atomic_mass"]
     fig = ptable_heatmap_plotly(values, hover_props=hover_props)
-    assert all(prop in str(fig.data[0].text) for prop in hover_props)
+    assert all(prop in str(fig.data[-1].text) for prop in hover_props)
 
 
 def test_ptable_heatmap_plotly_custom_label_map() -> None:
@@ -310,14 +304,15 @@ def test_ptable_heatmap_plotly_color_range(
 ) -> None:
     values = {"Fe": 1, "O": 50, "H": 100}
     fig = ptable_heatmap_plotly(values, heat_mode=heat_mode)
-    non_nan_values = [v for v in fig.data[0].z.flatten() if not np.isnan(v)]
-    assert min(non_nan_values) == fig.data[0].zmin
-    assert max(non_nan_values) == fig.data[0].zmax
+    heatmap_trace = fig.data[-1]
+    non_nan_values = [v for v in heatmap_trace.z.flatten() if not np.isnan(v)]
+    assert min(non_nan_values) == heatmap_trace.zmin
+    assert max(non_nan_values) == heatmap_trace.zmax
 
 
 def test_ptable_heatmap_plotly_all_elements() -> None:
-    values = {elem: i for i, elem in enumerate(df_ptable.index)}
+    values = {elem: idx for idx, elem in enumerate(df_ptable.index)}
     fig = ptable_heatmap_plotly(values)
-    assert isinstance(fig, Figure)
-    assert not np.isnan(fig.data[0].zmax)
-    assert fig.data[0].zmax == len(df_ptable) - 1
+    heatmap_trace = fig.data[-1]
+    assert not np.isnan(heatmap_trace.zmax)
+    assert heatmap_trace.zmax == len(df_ptable) - 1

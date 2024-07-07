@@ -23,5 +23,6 @@ def test_model_enum() -> None:
 
 
 def test_key_enum() -> None:
+    # access any attributes to trigger @unique decorator check
     assert Key.energy_per_atom == "energy_per_atom"
     assert Key.volume == "volume"
