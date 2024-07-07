@@ -155,7 +155,6 @@ def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     assert cbar_ax.get_title() == cbar_title
 
 
-@pytest.mark.skip(reason="refactoring")  # TODO: fix this
 def test_ptable_heatmap_ratio(
     steel_formulas: list[str],
     glass_formulas: list[str],
@@ -163,34 +162,44 @@ def test_ptable_heatmap_ratio(
     glass_elem_counts: pd.Series[int],
 ) -> None:
     # composition strings
-    not_in_numerator = ("#eff", "gray: not in 1st list")
+    not_in_numerator = ("lightgray", "gray: not in 1st list")
     not_in_denominator = ("lightskyblue", "blue: not in 2nd list")
     not_in_either = ("white", "white: not in either")
-    ax = ptable_heatmap_ratio(
+
+    # Call the function and get the Figure
+    fig = ptable_heatmap_ratio(
         glass_formulas,
         steel_formulas,
         not_in_numerator=not_in_numerator,
         not_in_denominator=not_in_denominator,
         not_in_either=not_in_either,
     )
-    assert isinstance(ax, plt.Axes)
 
-    # check presence of legend handles "not in numerator" and "not in denominator"
+    # Ensure the returned object is a Figure
+    assert isinstance(fig, plt.Figure)
+
+    # Extract the Axes from the Figure
+    ax = fig.gca()
+
+    # Check presence of legend handles "not in numerator" and "not in denominator"
     legend = ax.get_legend()
     assert legend is None
-    # get text annotations
-    texts = ax.texts
-    assert len(texts) == 239
+
+    # Get text annotations
+    texts = fig.texts
+    assert len(texts) == 3
     all_texts = [txt.get_text() for txt in texts]
     for not_in in (not_in_numerator, not_in_denominator, not_in_either):
         assert not_in[1] in all_texts
 
-    # element counts
-    ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
+    # Element counts
+    fig = ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
 
-    # mixed element counts and composition
-    ptable_heatmap_ratio(glass_formulas, steel_elem_counts, exclude_elements=("O", "P"))
-    ptable_heatmap_ratio(glass_elem_counts, steel_formulas, not_in_numerator=None)
+    # Mixed element counts and composition
+    fig = ptable_heatmap_ratio(
+        glass_formulas, steel_elem_counts, exclude_elements=("O", "P")
+    )
+    fig = ptable_heatmap_ratio(glass_elem_counts, steel_formulas, not_in_numerator=None)
 
 
 @pytest.mark.parametrize(

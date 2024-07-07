@@ -300,9 +300,11 @@ class PTableData:
         """
         if elements:
             original_data = self.data
-            df_dropped = original_data.drop(elements, axis=0)
-
-            self.data = df_dropped
+            try:
+                df_dropped = original_data.drop(elements, axis=0)
+                self.data = df_dropped
+            except KeyError:
+                warnings.warn("Drop elements failed, some elements are not present")
 
     def check_and_replace_missing(
         self,
