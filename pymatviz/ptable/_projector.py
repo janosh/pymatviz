@@ -159,7 +159,9 @@ class PTableProjector:
             value_range[0] or self.ptable_data.data.attrs["vmin"],
             value_range[1] or self.ptable_data.data.attrs["vmax"],
         )
-        self._norm = LogNorm(*value_range) if self.log else Normalize(*value_range)
+        self._norm: Normalize | LogNorm = (
+            LogNorm(*value_range) if self.log else Normalize(*value_range)
+        )
 
     @property
     def anomalies(self) -> dict[str, set[Literal["nan", "inf"]]] | Literal["NA"]:

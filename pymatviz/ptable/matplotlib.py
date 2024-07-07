@@ -671,6 +671,7 @@ def ptable_heatmap_ratio(
     Returns:
         plt.Figure: matplotlib Figures object.
     """
+    # Generate ratio data
     values_num = count_elements(values_num, count_mode)
     values_denom = count_elements(values_denom, count_mode)
 
@@ -679,7 +680,10 @@ def ptable_heatmap_ratio(
     if normalize:
         values /= values.sum()
 
-    # TODO: need to assign zero color and displayed value
+    # Drop entries that is not is either (as NaN)
+    values = values.dropna(inplace=False)
+
+    # TODO: need to assign zero color?
     fig = ptable_heatmap(
         values,
         cbar_title=cbar_title,
