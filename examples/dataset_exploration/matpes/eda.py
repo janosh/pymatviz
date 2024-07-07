@@ -16,7 +16,8 @@ from pymatviz.enums import Key
 from pymatviz.histograms import spacegroup_hist
 from pymatviz.io import save_fig
 from pymatviz.powerups import add_identity_line
-from pymatviz.ptable import count_elements, ptable_heatmap, ptable_heatmap_splits
+from pymatviz.process_data import count_elements
+from pymatviz.ptable import ptable_heatmap, ptable_heatmap_splits
 from pymatviz.sunburst import spacegroup_sunburst
 
 
