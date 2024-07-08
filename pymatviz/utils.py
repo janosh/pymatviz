@@ -9,6 +9,7 @@ from functools import partial, wraps
 from os.path import dirname
 from typing import TYPE_CHECKING, Any, Callable, Literal, Union, get_args
 
+import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -284,13 +285,14 @@ def luminance(color: tuple[float, float, float]) -> float:
     Returns:
         float: Luminance of the color.
     """
-    red, green, blue, *_ = color  # alpha = 1 - transparency
+    # raises ValueError if color invalid
+    red, green, blue = matplotlib.colors.to_rgb(color)
     return 0.299 * red + 0.587 * green + 0.114 * blue
 
 
 def pick_bw_for_contrast(
     color: tuple[float, float, float], text_color_threshold: float = 0.7
-) -> str:
+) -> Literal["black", "white"]:
     """Choose black or white text color for a given background color based on luminance.
 
     Args:
@@ -299,7 +301,7 @@ def pick_bw_for_contrast(
             black or white text color. Defaults to 0.7.
 
     Returns:
-        str: "black" or "white" depending on the luminance of the background color.
+        "black" | "white": depending on the luminance of the background color.
     """
     light_bg = luminance(color) > text_color_threshold
     return "black" if light_bg else "white"

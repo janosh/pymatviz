@@ -251,6 +251,12 @@ assert ref_sample_dict == sample_dict, "sample_dict should not be modified"
         ((1, 0, 0), 0.299),  # Red
         ((0, 1, 0), 0.587),  # Green
         ((0, 0, 1, 0.3), 0.114),  # Blue with alpha (should be ignored)
+        ("#FF0000", 0.299),  # Red
+        ("#00FF00", 0.587),  # Green
+        ("#0000FF", 0.114),  # Blue
+        ("red", 0.299),
+        ("green", 0.587),
+        ("blue", 0.114),
     ],
 )
 def test_luminance(color: tuple[float, float, float], expected: float) -> None:
