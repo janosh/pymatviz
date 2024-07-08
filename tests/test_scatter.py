@@ -152,7 +152,7 @@ def test_density_scatter_plotly(
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
     assert fig.layout.yaxis.title.text == (y if isinstance(y, str) else "Predicted")
-    bin_counts_col = bin_counts_col or "point density"
+    bin_counts_col = bin_counts_col or "Point Density"
     assert fig.layout.coloraxis.colorbar.title.text == bin_counts_col.replace(
         " ", "<br>"
     )
@@ -169,7 +169,7 @@ def test_density_scatter_plotly(
 def test_density_scatter_plotly_hover_template() -> None:
     fig = density_scatter_plotly(df=df_regr, x=x_col, y=y_col, log_density=True)
     hover_template = fig.data[0].hovertemplate
-    assert "point density" in hover_template
+    assert "Point Density" in hover_template
     assert "color" not in hover_template  # Ensure log-count values are not displayed
 
 

@@ -199,14 +199,14 @@ def density_scatter_plotly(
     Returns:
         go.Figure: The plot object.
     """
-    bin_counts_col = bin_counts_col or "point density"
+    bin_counts_col = bin_counts_col or "Point Density"
 
     if not isinstance(stats, (bool, dict)):
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
 
     df_bin = bin_df_cols(
         df, bin_by_cols=[x, y], n_bins=n_bins, bin_counts_col=bin_counts_col
-    )
+    ).sort_values(bin_counts_col)  # sort by counts so densest points are plotted last
 
     color_vals = df_bin[bin_counts_col]
     if log_density:
