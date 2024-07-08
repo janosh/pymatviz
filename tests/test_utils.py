@@ -16,14 +16,14 @@ from pymatviz.utils import (
     PLOTLY,
     VALID_FIG_NAMES,
     CrystalSystem,
+    _get_matplotlib_font_color,
+    _get_plotly_font_color,
     annotate,
     bin_df_cols,
     crystal_sys_from_spg_num,
     df_to_arrays,
     get_fig_xy_range,
     get_font_color,
-    get_matplotlib_font_color,
-    get_plotly_font_color,
     luminance,
     patch_dict,
     pick_bw_for_contrast,
@@ -438,7 +438,7 @@ def test_get_font_color_invalid_input() -> None:
 @pytest.mark.parametrize("color", ["red", "#00FF00", "rgb(0, 0, 255)"])
 def test_get_plotly_font_color(color: str) -> None:
     fig = go.Figure().update_layout(font_color=color)
-    assert get_plotly_font_color(fig) == color
+    assert _get_plotly_font_color(fig) == color
 
 
 def test_get_plotly_font_color_from_template() -> None:
@@ -447,27 +447,27 @@ def test_get_plotly_font_color_from_template() -> None:
     template.layout.font.color = "blue"
     pio.templates.default = "plotly_white"
     try:
-        assert get_plotly_font_color(fig) == "blue"
+        assert _get_plotly_font_color(fig) == "blue"
     finally:
         pio.templates.default = "plotly"  # Reset to default template
 
 
 def test_get_plotly_font_color_default() -> None:
     fig = go.Figure()
-    assert get_plotly_font_color(fig) == "#2a3f5f"  # Default Plotly color
+    assert _get_plotly_font_color(fig) == "#2a3f5f"  # Default Plotly color
 
 
 @pytest.mark.parametrize("color", ["red", "#00FF00", "blue"])
 def test_get_matplotlib_font_color(color: str) -> None:
-    color = get_matplotlib_font_color(plt.figure())
+    color = _get_matplotlib_font_color(plt.figure())
     assert color == "black"  # Default color
 
     fig, ax = plt.subplots()
-    assert get_matplotlib_font_color(fig) == get_matplotlib_font_color(ax) == "black"
+    assert _get_matplotlib_font_color(fig) == _get_matplotlib_font_color(ax) == "black"
 
     mpl_ax = plt.figure().add_subplot(111)
     mpl_ax.xaxis.label.set_color(color)
-    assert get_matplotlib_font_color(mpl_ax) == color
+    assert _get_matplotlib_font_color(mpl_ax) == color
 
 
 def test_get_matplotlib_font_color_from_rcparams() -> None:
@@ -481,7 +481,7 @@ def test_get_matplotlib_font_color_from_rcparams() -> None:
         ax.tick_params(colors="green")
         plt.close(fig)  # Close the figure to ensure changes are applied
 
-        color = get_matplotlib_font_color(ax)
+        color = _get_matplotlib_font_color(ax)
         assert color == "green", f"Expected 'green', but got '{color}'"
     finally:
         plt.rcParams["text.color"] = original_color  # Reset to original value

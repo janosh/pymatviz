@@ -508,13 +508,13 @@ def get_font_color(fig: AxOrFig) -> str:
         str: The font color as a string (e.g., 'black', '#000000').
     """
     if isinstance(fig, go.Figure):
-        return get_plotly_font_color(fig)
+        return _get_plotly_font_color(fig)
     if isinstance(fig, (plt.Figure, plt.Axes)):
-        return get_matplotlib_font_color(fig)
+        return _get_matplotlib_font_color(fig)
     raise TypeError(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
 
 
-def get_plotly_font_color(fig: go.Figure) -> str:
+def _get_plotly_font_color(fig: go.Figure) -> str:
     """Get the font color used in a Plotly figure.
 
     Args:
@@ -534,7 +534,7 @@ def get_plotly_font_color(fig: go.Figure) -> str:
     return "black"
 
 
-def get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
+def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
     """Get the font color used in a Matplotlib figure/axes.
 
     Args:

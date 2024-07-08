@@ -281,7 +281,10 @@ def add_best_fit_line(
             )
         if isinstance(annotate_params, dict):
             defaults |= annotate_params
-        annotate(f"LS fit: y = {slope:.2g}x + {intercept:.2g}", fig=fig, **defaults)
+        sign = "+" if intercept >= 0 else "-"
+        annotate(
+            f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}", fig=fig, **defaults
+        )
 
     if backend == MATPLOTLIB:
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
