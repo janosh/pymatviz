@@ -277,7 +277,7 @@ def patch_dict(
     yield patched
 
 
-def luminance(color: tuple[float, float, float]) -> float:
+def luminance(color: str | tuple[float, float, float]) -> float:
     """Compute the luminance of a color as in https://stackoverflow.com/a/596243.
 
     Args:
@@ -397,7 +397,6 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
-@validate_fig
 def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
     """Annotate a matplotlib or plotly figure.
 
@@ -414,7 +413,7 @@ def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
         plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
     backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
-    color = kwargs.pop("color", "black")
+    color = kwargs.pop("color", get_font_color(fig))
 
     if backend == MATPLOTLIB:
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
@@ -440,7 +439,6 @@ def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
     return fig
 
 
-@validate_fig
 def get_fig_xy_range(
     fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
 ) -> tuple[tuple[float, float], tuple[float, float]]:

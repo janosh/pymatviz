@@ -261,12 +261,12 @@ assert ref_sample_dict == sample_dict, "sample_dict should not be modified"
         ("#00FF00", 0.587),  # Green
         ("#0000FF", 0.114),  # Blue
         ("red", 0.299),
-        ("green", 0.587),
+        ("green", 0.294650),
         ("blue", 0.114),
     ],
 )
 def test_luminance(color: tuple[float, float, float], expected: float) -> None:
-    assert luminance(color) == pytest.approx(expected, 0.001)
+    assert luminance(color) == pytest.approx(expected, 0.001), f"{color=}"
 
 
 @pytest.mark.parametrize(
@@ -370,7 +370,7 @@ def test_annotate(
 
 
 def test_annotate_invalid_fig() -> None:
-    with pytest.raises(TypeError, match="Unexpected type for fig: str, must be one of"):
+    with pytest.raises(TypeError, match="Input must be .+ got type"):
         annotate("test", fig="invalid")
 
 
@@ -411,9 +411,7 @@ def test_get_fig_xy_range(
     # test invalid input
     # currently suboptimal behavior: fig must be passed as kwarg to trigger helpful
     # error message
-    with pytest.raises(
-        TypeError, match="Unexpected type for fig: str, must be one of None"
-    ):
+    with pytest.raises(AttributeError, match="'str' object has no attribute"):
         get_fig_xy_range(fig="invalid")
 
 

@@ -21,6 +21,8 @@ from pymatviz.utils import (
     Backend,
     annotate,
     get_fig_xy_range,
+    get_font_color,
+    luminance,
     pretty_label,
     validate_fig,
 )
@@ -223,12 +225,13 @@ def add_best_fit_line(
         raise TypeError(f"{fig=} must be instance of {VALID_FIG_NAMES}")
 
     backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
-    # default to navy color but let annotate_params override
+    default_color = "navy" if luminance(get_font_color(fig)) < 0.7 else "lightskyblue"
+    # let annotate_params override line_color (also used for annotation)
     line_color = kwargs.setdefault(
         "color",
-        annotate_params.get("color", "navy")
+        annotate_params.get("color", default_color)
         if isinstance(annotate_params, dict)
-        else "navy",
+        else default_color,
     )
 
     if trace_idx is None:
