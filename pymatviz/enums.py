@@ -99,9 +99,18 @@ class LabelEnum(StrEnum):
 small_font = "font-size: 0.9em; font-weight: lighter;"
 eV_per_atom = styled_html_tag("(eV/atom)", style=small_font)  # noqa: N816
 eV = styled_html_tag("(eV)", style=small_font)  # noqa: N816
-cubic_angstrom = styled_html_tag("(Å<sup>3</sup>)", style=small_font)
+eV_per_angstrom = styled_html_tag("(eV/Å)", style=small_font)  # noqa: N816
+eV_per_kelvin = styled_html_tag("(eV/K)", style=small_font)  # noqa: N816
 angstrom = styled_html_tag("(Å)", style=small_font)
 angstrom_per_atom = styled_html_tag("(Å/atom)", style=small_font)
+cubic_angstrom = styled_html_tag("(Å<sup>3</sup>)", style=small_font)
+gram_per_cm3 = styled_html_tag("(g/cm³)", style=small_font)
+kelvin = styled_html_tag("(K)", style=small_font)
+pascal = styled_html_tag("(Pa)", style=small_font)
+giga_pascal = styled_html_tag("(GPa)", style=small_font)
+joule = styled_html_tag("(J)", style=small_font)
+joule_per_mol = styled_html_tag("(J/mol)", style=small_font)
+joule_per_m2 = styled_html_tag("(J/m²)", style=small_font)
 
 
 @unique
@@ -121,17 +130,13 @@ class Key(LabelEnum):
     final_volume = "final_volume", f"Final Volume {cubic_angstrom}"
     volume = "volume", f"Volume {cubic_angstrom}"
     vol_per_atom = "volume_per_atom", f"Volume per Atom {cubic_angstrom}"
-    density = "density", "Density (g/cm³)"
+    density = "density", f"Density {gram_per_cm3}"
     symmetry = "symmetry", "Symmetry"
     point_group = "point_group", "Point Group"
     lattice_params = "lattice_parameters", "Lattice Parameters"
     supercell = "supercell", "Supercell"
     atom_nums = "atom_nums", "Atomic Numbers", "Atomic numbers for each crystal site"
     struct_proto = "structure_prototype", "Structure Prototype"
-    iso_struct_proto = (
-        "isopointal_structure_prototype",
-        "Isopointal Structure Prototype",
-    )
     uniq_proto = "unique_prototype", "Unique Prototype"
     coord_num = "coordination_number", "Coordination Number"
     bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
@@ -190,20 +195,20 @@ class Key(LabelEnum):
     each_true = "e_above_hull_true", f"Actual E<sub>MP hull dist</sub> {eV_per_atom}"
     form_energy = "formation_energy_per_atom", f"Formation Energy {eV_per_atom}"
     cse = "computed_structure_entry", "Computed Structure Entry"
-    melting_point = "melting_point", "Melting Point (K)"
-    boiling_point = "boiling_point", "Boiling Point (K)"
+    melting_point = "melting_point", f"Melting Point {kelvin}"
+    boiling_point = "boiling_point", f"Boiling Point {kelvin}"
     phase_transition_temp = (
         "phase_transition_temperature",
-        "Phase Transition Temperature (K)",
+        f"Phase Transition Temperature {kelvin}",
     )
-    critical_temp = "critical_temperature", "Critical Temperature (K)"
-    critical_pressure = "critical_pressure", "Critical Pressure (Pa)"
+    critical_temp = "critical_temperature", f"Critical Temperature {kelvin}"
+    critical_pressure = "critical_pressure", f"Critical Pressure {pascal}"
     critical_vol = "critical_volume", "Critical Volume (m³/mol)"
     gibbs_free_energy = "gibbs_free_energy", f"Gibbs Free Energy {eV}"
     enthalpy = "enthalpy", f"Enthalpy {eV}"
-    entropy = "entropy", "Entropy (eV/K)"
+    entropy = "entropy", f"Entropy {eV_per_kelvin}"
     lattice_energy = "lattice_energy", f"Lattice Energy {eV}"
-    interface_energy = "interface_energy", "Interface Energy (J/m²)"
+    interface_energy = "interface_energy", f"Interface Energy {joule_per_m2}"
 
     # Electronic
     bandgap = "bandgap", f"Band Gap {eV}"
@@ -223,7 +228,7 @@ class Key(LabelEnum):
     hall_coeff = "hall_coefficient", "Hall Coefficient (m³/C)"
     supercon_crit_temp = (
         "superconducting_critical_temperature",
-        "Superconducting Critical Temperature (K)",
+        f"Superconducting Critical Temperature {kelvin}",
     )
     carrier_concentration = "carrier_concentration", "Carrier Concentration (cm⁻³)"
     mobility = "mobility", "Carrier Mobility (cm²/V·s)"
@@ -238,9 +243,9 @@ class Key(LabelEnum):
     stress = "stress", "Stress"
     stress_trace = "stress_trace", "Stress Trace"
     voigt_stress = "voigt_stress", "Voigt Stress"
-    bulk_modulus = "bulk_modulus", "Bulk Modulus (GPa)"
-    shear_modulus = "shear_modulus", "Shear Modulus (GPa)"
-    young_modulus = "young_modulus", "Young's Modulus (GPa)"
+    bulk_modulus = "bulk_modulus", f"Bulk Modulus {giga_pascal}"
+    shear_modulus = "shear_modulus", f"Shear Modulus {giga_pascal}"
+    young_modulus = "young_modulus", f"Young's Modulus {giga_pascal}"
     poisson_ratio = "poisson_ratio", "Poisson's Ratio"
     hardness = "hardness", "Hardness (Mohs scale)"
     elastic_tensor = "elastic_tensor", "Elastic Tensor"
@@ -251,7 +256,7 @@ class Key(LabelEnum):
     bulk_sound_velocity = "bulk_sound_velocity", "Bulk Sound Velocity (m/s)"
 
     # Thermal
-    temperature = "temperature", "Temperature (K)"
+    temperature = "temperature", f"Temperature {kelvin}"
     thermal_conductivity = "thermal_conductivity", "Thermal Conductivity (W/m·K)"
     lattice_thermal_conductivity = (
         "lattice_thermal_conductivity",
@@ -267,7 +272,7 @@ class Key(LabelEnum):
         "thermal_expansion_coefficient",
         "Thermal Expansion Coefficient (1/K)",
     )
-    debye_temp = "debye_temperature", "Debye Temperature (K)"
+    debye_temp = "debye_temperature", f"Debye Temperature {kelvin}"
     gruneisen_parameter = "gruneisen_parameter", "Grüneisen Parameter"
     thermal_diffusivity = "thermal_diffusivity", "Thermal Diffusivity (m²/s)"
 
@@ -296,12 +301,12 @@ class Key(LabelEnum):
     extinction_coefficient = "extinction_coefficient", "Extinction Coefficient"
 
     # Surface
-    surface_energy = "surface_energy", "Surface Energy (J/m²)"
+    surface_energy = "surface_energy", f"Surface Energy {joule_per_m2}"
     wulff_shape = "wulff_shape", "Wulff Shape"
     surface_area = "surface_area", "Surface Area (m²)"
     surface_reconstruction = "surface_reconstruction", "Surface Reconstruction"
     adsorption_energy = "adsorption_energy", f"Adsorption Energy {eV}"
-    work_of_adhesion = "work_of_adhesion", "Work of Adhesion (J/m²)"
+    work_of_adhesion = "work_of_adhesion", f"Work of Adhesion {joule_per_m2}"
 
     # Defect
     vacancy_formation_energy = (
@@ -314,14 +319,14 @@ class Key(LabelEnum):
     )
     defect_concentration = "defect_concentration", "Defect Concentration (cm⁻³)"
     migration_energy = "migration_energy", f"Migration Energy {eV}"
-    dislocation_energy = "dislocation_energy", "Dislocation Energy (eV/Å)"
+    dislocation_energy = "dislocation_energy", f"Dislocation Energy {eV_per_angstrom}"
     stacking_fault_energy = "stacking_fault_energy", "Stacking Fault Energy (mJ/m²)"
 
     # Magnetic
     magmoms = "magmoms", "Magnetic Moments"
     magnetic_moment = "magnetic_moment", "Magnetic Moment (μB)"
-    curie_temperature = "curie_temperature", "Curie Temperature (K)"
-    neel_temp = "neel_temperature", "Néel Temperature (K)"
+    curie_temperature = "curie_temperature", f"Curie Temperature {kelvin}"
+    neel_temp = "neel_temperature", f"Néel Temperature {kelvin}"
     magnetocrystalline_anisotropy = (
         "magnetocrystalline_anisotropy",
         "Magnetocrystalline Anisotropy (meV)",
@@ -378,8 +383,8 @@ class Key(LabelEnum):
     model = "model", "Model"
 
     # Synthesis-related
-    synthesis_temperature = "synthesis_temperature", "Synthesis Temperature (K)"
-    synthesis_pressure = "synthesis_pressure", "Synthesis Pressure (Pa)"
+    synthesis_temperature = "synthesis_temperature", f"Synthesis Temperature {kelvin}"
+    synthesis_pressure = "synthesis_pressure", f"Synthesis Pressure {pascal}"
 
     # Performance Indicators
     fom = "figure_of_merit", "Figure of Merit"  # codespell:ignore
