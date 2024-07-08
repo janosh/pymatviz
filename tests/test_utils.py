@@ -1,23 +1,29 @@
 from __future__ import annotations
 
+import re
 from copy import deepcopy
 from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 import pytest
 from matplotlib.offsetbox import TextArea
 
 from pymatviz.utils import (
     MATPLOTLIB,
     PLOTLY,
+    VALID_FIG_NAMES,
     CrystalSystem,
     annotate,
     bin_df_cols,
     crystal_sys_from_spg_num,
     df_to_arrays,
     get_fig_xy_range,
+    get_font_color,
+    get_matplotlib_font_color,
+    get_plotly_font_color,
     luminance,
     patch_dict,
     pick_bw_for_contrast,
@@ -409,3 +415,75 @@ def test_get_fig_xy_range(
         TypeError, match="Unexpected type for fig: str, must be one of None"
     ):
         get_fig_xy_range(fig="invalid")
+
+
+def test_get_font_color() -> None:
+    mpl_fig = plt.figure()
+    mpl_ax = mpl_fig.add_subplot(111)
+    for fig, expected_color in (
+        (go.Figure(), "#2a3f5f"),
+        (mpl_fig, "black"),
+        (mpl_ax, "black"),
+    ):
+        color = get_font_color(fig)
+        assert color == expected_color, f"{fig=}, {color=}, {expected_color=}"
+
+
+def test_get_font_color_invalid_input() -> None:
+    fig = "invalid input"
+    with pytest.raises(
+        TypeError, match=re.escape(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
+    ):
+        get_font_color(fig)
+
+
+@pytest.mark.parametrize("color", ["red", "#00FF00", "rgb(0, 0, 255)"])
+def test_get_plotly_font_color(color: str) -> None:
+    fig = go.Figure().update_layout(font_color=color)
+    assert get_plotly_font_color(fig) == color
+
+
+def test_get_plotly_font_color_from_template() -> None:
+    fig = go.Figure()
+    template = pio.templates["plotly_white"]
+    template.layout.font.color = "blue"
+    pio.templates.default = "plotly_white"
+    try:
+        assert get_plotly_font_color(fig) == "blue"
+    finally:
+        pio.templates.default = "plotly"  # Reset to default template
+
+
+def test_get_plotly_font_color_default() -> None:
+    fig = go.Figure()
+    assert get_plotly_font_color(fig) == "#2a3f5f"  # Default Plotly color
+
+
+@pytest.mark.parametrize("color", ["red", "#00FF00", "blue"])
+def test_get_matplotlib_font_color(color: str) -> None:
+    color = get_matplotlib_font_color(plt.figure())
+    assert color == "black"  # Default color
+
+    fig, ax = plt.subplots()
+    assert get_matplotlib_font_color(fig) == get_matplotlib_font_color(ax) == "black"
+
+    mpl_ax = plt.figure().add_subplot(111)
+    mpl_ax.xaxis.label.set_color(color)
+    assert get_matplotlib_font_color(mpl_ax) == color
+
+
+def test_get_matplotlib_font_color_from_rcparams() -> None:
+    original_color = plt.rcParams["text.color"]
+    try:
+        plt.rcParams["text.color"] = "green"
+        fig, ax = plt.subplots()
+        ax.set_xlabel("X Label", color="green")
+        ax.set_ylabel("Y Label", color="green")
+        ax.set_title("Title", color="green")
+        ax.tick_params(colors="green")
+        plt.close(fig)  # Close the figure to ensure changes are applied
+
+        color = get_matplotlib_font_color(ax)
+        assert color == "green", f"Expected 'green', but got '{color}'"
+    finally:
+        plt.rcParams["text.color"] = original_color  # Reset to original value

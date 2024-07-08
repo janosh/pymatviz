@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 import scipy.stats
 from matplotlib.offsetbox import AnchoredText
 
@@ -497,3 +498,67 @@ def get_fig_xy_range(
             y_range = [min(df_xy.y), max(df_xy.y)]
 
     return x_range, y_range
+
+
+def get_font_color(fig: AxOrFig) -> str:
+    """Get the font color used in a Matplotlib figure/axes or a Plotly figure.
+
+    Args:
+        fig (plt.Figure | plt.Axes | go.Figure): A Matplotlib or Plotly figure object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+    """
+    if isinstance(fig, go.Figure):
+        return get_plotly_font_color(fig)
+    if isinstance(fig, (plt.Figure, plt.Axes)):
+        return get_matplotlib_font_color(fig)
+    raise TypeError(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
+
+
+def get_plotly_font_color(fig: go.Figure) -> str:
+    """Get the font color used in a Plotly figure.
+
+    Args:
+        fig (go.Figure): A Plotly figure object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+    """
+    if fig.layout.font and fig.layout.font.color:
+        return fig.layout.font.color
+
+    # Check current template
+    curr_temp = pio.templates[pio.templates.default]
+    if curr_temp.layout and curr_temp.layout.font and curr_temp.layout.font.color:
+        return curr_temp.layout.font.color
+
+    return "black"
+
+
+def get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
+    """Get the font color used in a Matplotlib figure/axes.
+
+    Args:
+        fig (plt.Figure | plt.Axes): A Matplotlib figure or axes object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+    """
+    ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+
+    # Check axes text color
+    for text_element in (ax.xaxis.label, ax.yaxis.label, ax.title):
+        text_color = text_element.get_color()
+        if text_color != "auto":
+            return text_color
+
+    # Check tick label color
+    tick_color = (
+        ax.xaxis.get_ticklabels()[0].get_color() if ax.xaxis.get_ticklabels() else None
+    )
+    if tick_color != "auto":
+        return tick_color
+
+    # Check rcParams
+    return plt.rcParams.get("text.color", "black")
