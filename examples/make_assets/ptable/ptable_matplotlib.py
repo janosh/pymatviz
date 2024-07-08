@@ -10,7 +10,6 @@ from pymatviz.io import save_and_compress_svg
 from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
     ptable_heatmap,
-    ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_heatmap_splits,
     ptable_hists,
@@ -73,37 +72,6 @@ fig = ptable_heatmap_ratio(
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
 save_and_compress_svg(fig, "ptable-heatmap-ratio")
-
-
-# %% Plotly interactive periodic table heatmap
-fig = ptable_heatmap_plotly(
-    df_ptable.atomic_mass,
-    hover_props=["atomic_mass", "atomic_number"],
-    hover_data="density = " + df_ptable[Key.density].astype(str) + " g/cm^3",
-    show_values=False,
-)
-fig.layout.title = dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
-
-fig.show()
-save_and_compress_svg(fig, "ptable-heatmap-plotly-more-hover-data")
-
-
-# %%
-fig = ptable_heatmap_plotly(df_expt_gap[Key.composition], heat_mode="percent")
-title = "Elements in Matbench Experimental Bandgap"
-fig.layout.title = dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20)
-fig.show()
-save_and_compress_svg(fig, "ptable-heatmap-plotly-percent-labels")
-
-
-# %%
-fig = ptable_heatmap_plotly(
-    df_expt_gap[Key.composition], log=True, colorscale="viridis"
-)
-title = "Elements in Matbench Experimental Bandgap (log scale)"
-fig.layout.title = dict(text=f"<b>{title}</b>", x=0.4, y=0.94, font_size=20)
-fig.show()
-save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 
 # %% Histograms laid out in as a periodic table
