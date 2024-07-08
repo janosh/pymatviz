@@ -102,7 +102,7 @@ def spacegroup_hist(
         x_label = "International Spacegroup Number"
 
     else:  # assume index is space group symbols
-        # TODO: figure how to implement show_empty_bins for space group symbols
+        # TODO: figure out how to implement show_empty_bins for space group symbols
         # if show_empty_bins:
         #     idx = [SpaceGroup.from_int_number(x).symbol for x in range(1, 231)]
         #     df = df.reindex(idx, fill_value=0)

@@ -279,7 +279,7 @@ def normalize_and_crop_pdf(
         # Normalize the PDF with Ghostscript
         subprocess.run(  # noqa: S603
             [
-                *"gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4".split(),
+                *"gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.7".split(),
                 *"-dPDFSETTINGS=/default -dNOPAUSE -dQUIET -dBATCH".split(),
                 f"-sOutputFile={normalized_file_path}",
                 str(file_path),

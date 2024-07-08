@@ -231,7 +231,6 @@ def ptable_heatmap_plotly(
 
         hover_texts[row][col] = hover_text
 
-        # TODO maybe there's a more elegant way to handle excluded elements?
         if symbol in exclude_elements:
             continue
 

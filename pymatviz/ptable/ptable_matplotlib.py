@@ -733,7 +733,7 @@ def ptable_heatmap(
     n_rows = df_ptable.row.max()
     n_columns = df_ptable.column.max()
 
-    # TODO can we pass as a kwarg and still ensure aspect ratio respected?
+    # TODO can we pass figsize as a kwarg and still ensure aspect ratio of 0.75/0.7?
     fig = plt.figure(figsize=(0.75 * n_columns, 0.7 * n_rows), **kwargs)
 
     ax = ax or plt.gca()
@@ -842,8 +842,6 @@ def ptable_heatmap(
             cbar_coords, transform=ax.transAxes
         )
         # format major and minor ticks
-        # TODO maybe give user direct control over labelsize, instead of hard-coding
-        # 8pt smaller than default
         cbar_ax.tick_params(which="both", labelsize=text_style["fontsize"])
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap=colorscale)
