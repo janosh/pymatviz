@@ -10,10 +10,12 @@ from functools import partial, wraps
 from os.path import dirname
 from typing import TYPE_CHECKING, Any, Callable, Literal, Union, cast, get_args
 
+import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 import scipy.stats
 from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import AnchoredText
@@ -279,7 +281,7 @@ def patch_dict(
     yield patched
 
 
-def luminance(color: tuple[float, float, float]) -> float:
+def luminance(color: str | tuple[float, float, float]) -> float:
     """Compute the luminance of a color as in https://stackoverflow.com/a/596243.
 
     Args:
@@ -288,7 +290,8 @@ def luminance(color: tuple[float, float, float]) -> float:
     Returns:
         float: Luminance of the color.
     """
-    red, green, blue, *_ = color  # alpha = 1 - transparency
+    # raises ValueError if color invalid
+    red, green, blue = matplotlib.colors.to_rgb(color)
     return 0.299 * red + 0.587 * green + 0.114 * blue
 
 
@@ -304,7 +307,7 @@ def pick_bw_for_contrast(
             black or white text color. Defaults to 0.7.
 
     Returns:
-        "black" or "white": Depending on the luminance of the background color.
+        "black" | "white": depending on the luminance of the background color.
     """
     if isinstance(color, str):
         color = to_rgb(color)
@@ -455,7 +458,6 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
-@validate_fig
 def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
     """Annotate a matplotlib or plotly figure.
 
@@ -472,7 +474,7 @@ def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
         plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
     backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
-    color = kwargs.pop("color", "black")
+    color = kwargs.pop("color", get_font_color(fig))
 
     if backend == MATPLOTLIB:
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
@@ -556,3 +558,76 @@ def get_fig_xy_range(
             y_range = [min(df_xy.y), max(df_xy.y)]
 
     return x_range, y_range
+
+
+def get_font_color(fig: AxOrFig) -> str:
+    """Get the font color used in a Matplotlib figure/axes or a Plotly figure.
+
+    Args:
+        fig (plt.Figure | plt.Axes | go.Figure): A Matplotlib or Plotly figure object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+    """
+    if isinstance(fig, go.Figure):
+        return _get_plotly_font_color(fig)
+    if isinstance(fig, (plt.Figure, plt.Axes)):
+        return _get_matplotlib_font_color(fig)
+    raise TypeError(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
+
+
+def _get_plotly_font_color(fig: go.Figure) -> str:
+    """Get the font color used in a Plotly figure.
+
+    Args:
+        fig (go.Figure): A Plotly figure object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+    """
+    if fig.layout.font and fig.layout.font.color:
+        return fig.layout.font.color
+
+    if (
+        fig.layout.template
+        and fig.layout.template.layout
+        and fig.layout.template.layout.font
+        and fig.layout.template.layout.font.color
+    ):
+        return fig.layout.template.layout.font.color
+
+    template = pio.templates.default
+    if isinstance(template, str):
+        template = pio.templates[template]
+    if template.layout and template.layout.font and template.layout.font.color:
+        return template.layout.font.color
+
+    return "black"
+
+
+def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
+    """Get the font color used in a Matplotlib figure/axes.
+
+    Args:
+        fig (plt.Figure | plt.Axes): A Matplotlib figure or axes object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+    """
+    ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+
+    # Check axes text color
+    for text_element in (ax.xaxis.label, ax.yaxis.label, ax.title):
+        text_color = text_element.get_color()
+        if text_color != "auto":
+            return text_color
+
+    # Check tick label color
+    tick_color = (
+        ax.xaxis.get_ticklabels()[0].get_color() if ax.xaxis.get_ticklabels() else None
+    )
+    if tick_color != "auto":
+        return tick_color
+
+    # Check rcParams
+    return plt.rcParams.get("text.color", "black")
