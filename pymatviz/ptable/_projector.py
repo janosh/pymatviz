@@ -676,8 +676,8 @@ class HMapPTableProjector(PTableProjector):
         self,
         *,
         text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
-        overwrite_tiles: dict[ElemStr, TileValueColor],
-        inf_color: ColorType,
+        overwrite_tiles: dict[ElemStr, TileValueColor] | None = None,
+        inf_color: ColorType = "lightskyblue",
         nan_color: ColorType = "lightgrey",
         excluded_tile_color: ColorType = "white",
     ) -> dict[ElemStr, TileValueColor]:
@@ -758,6 +758,7 @@ class HMapPTableProjector(PTableProjector):
                 tile_entries[symbol] = nan_tile
 
         # Apply overwrite colors
+        overwrite_tiles = overwrite_tiles or {}
         for symbol, ow_tile_entry in overwrite_tiles.items():
             tile_entries[symbol] = TileValueColor(
                 ow_tile_entry.value or tile_entries[symbol].value,

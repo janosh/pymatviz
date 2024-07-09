@@ -7,13 +7,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
+from numpy.testing import assert_allclose
 
 from pymatviz.enums import ElemColorScheme
-from pymatviz.ptable._projector import PTableProjector
+from pymatviz.ptable._projector import (
+    HMapPTableProjector,
+    OverwriteTileValueColor,
+    PTableProjector,
+    TileValueColor,
+)
 
 
 if TYPE_CHECKING:
     from typing import ClassVar
+
+    from matplotlib.typing import ColorType
 
 
 class TestPTableProjector:
@@ -114,11 +122,119 @@ class TestPTableProjector:
 
 
 class TestPtableHeatmapGenTileValueColors:
-    def test_text_colors(self) -> None:
-        pass
+    test_dict: ClassVar = {
+        "H": 1,  # int
+        "He": [2.0],  # float list
+    }
 
-    def test_apply_overwrite_tiles(self) -> None:
-        pass
+    def test_invalid_data_length(self) -> None:
+        test_dict = {"H": [1, 2]}
+        projector = HMapPTableProjector(data=test_dict, colormap="viridis")
 
-    def test_inf_nan_excluded_colors(self) -> None:
-        pass
+        with pytest.raises(ValueError, match="Data for H should be length 1"):
+            projector.generate_tile_value_colors()
+
+    @pytest.mark.parametrize(
+        "text_color, expected",
+        [
+            ("red", "red"),
+            ("AUTO", "white"),
+            ({"H": "green"}, "green"),
+        ],
+    )
+    def test_text_colors_single_text_color(
+        self, text_color: ColorType, expected: ColorType
+    ) -> None:
+        projector = HMapPTableProjector(data=self.test_dict, colormap="viridis")
+        tile_entries = projector.generate_tile_value_colors(text_colors=text_color)
+
+        tile_entry = tile_entries["H"]
+
+        assert_allclose(tile_entry.value, 1.0)
+        assert_allclose(
+            mpl.colors.to_rgb(tile_entry.text_color), mpl.colors.to_rgb(expected)
+        )
+        assert_allclose(
+            mpl.colors.to_rgb(tile_entry.tile_color), (0.267004, 0.004874, 0.329415)
+        )
+
+    @pytest.mark.parametrize(
+        "overwrite_tile, expected_tile",
+        [
+            (  # overwrite value alone
+                {"He": OverwriteTileValueColor("hi", None, None)},
+                TileValueColor("hi", "black", ([0.993248, 0.906157, 0.143936])),
+            ),
+            (  # overwrite text_color alone
+                {"He": OverwriteTileValueColor(None, "yellow", None)},
+                TileValueColor(
+                    2.0, mpl.colors.to_rgb("yellow"), ([0.993248, 0.906157, 0.143936])
+                ),
+            ),
+            (  # overwrite tile_color alone
+                {"He": OverwriteTileValueColor(None, None, "grey")},
+                TileValueColor(2.0, "black", mpl.colors.to_rgb("grey")),
+            ),
+            (  # overwrite all three
+                {"He": OverwriteTileValueColor("hi", "yellow", "grey")},
+                TileValueColor(
+                    "hi", mpl.colors.to_rgb("yellow"), mpl.colors.to_rgb("grey")
+                ),
+            ),
+        ],
+    )
+    def test_apply_overwrite_tiles(
+        self, overwrite_tile: OverwriteTileValueColor, expected_tile: TileValueColor
+    ) -> None:
+        projector = HMapPTableProjector(data=self.test_dict, colormap="viridis")
+        tile_entries = projector.generate_tile_value_colors(
+            text_colors="AUTO", overwrite_tiles=overwrite_tile
+        )
+
+        tile_entry = tile_entries["He"]
+
+        try:
+            assert_allclose(tile_entry.value, expected_tile.value)
+        except np.exceptions.DTypePromotionError:
+            assert tile_entry.value == expected_tile.value
+
+        assert_allclose(
+            mpl.colors.to_rgb(tile_entry.text_color),
+            mpl.colors.to_rgb(expected_tile.text_color),
+        )
+        assert_allclose(
+            mpl.colors.to_rgb(tile_entry.tile_color), expected_tile.tile_color
+        )
+
+    def test_inf_nan_excluded_color(self) -> None:
+        inf_color = "yellow"
+        nan_color = "red"
+        excluded_color = "lightgrey"
+
+        test_dict = {
+            "Li": np.inf,
+            "Be": np.nan,
+            "B": 1.0,
+            "C": 2.0,
+        }
+        projector = HMapPTableProjector(data=test_dict, exclude_elements=["B"])
+
+        assert projector.anomalies["Li"] == {"inf"}
+        assert projector.anomalies["Be"] == {"nan"}
+
+        tile_entries = projector.generate_tile_value_colors(
+            inf_color=inf_color, nan_color=nan_color, excluded_tile_color=excluded_color
+        )
+
+        assert_allclose(
+            mpl.colors.to_rgb(tile_entries["Li"].tile_color),
+            mpl.colors.to_rgb(inf_color),
+        )
+        assert_allclose(
+            mpl.colors.to_rgb(tile_entries["Be"].tile_color),
+            mpl.colors.to_rgb(nan_color),
+        )
+        assert_allclose(
+            mpl.colors.to_rgb(tile_entries["B"].tile_color),
+            mpl.colors.to_rgb(excluded_color),
+        )
