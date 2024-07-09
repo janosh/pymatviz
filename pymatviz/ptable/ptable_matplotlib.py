@@ -57,33 +57,6 @@ class OverwriteTileValueColor(TileValueColor):
 class HMapPTableProjector(PTableProjector):
     """With more heatmap-specific functionalities."""
 
-    def __init__(  # TODO: remove __init__ altogether
-        self,
-        *,
-        values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
-        sci_notation: bool = False,
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Init Heatmap plotter.
-
-        Args:
-            values_show_mode ("value" | "fraction" | "percent" | "off"):
-                Values display mode.
-            sci_notation (bool): Whether to use scientific notation for
-                values and colorbar tick labels.
-            kwargs (dict): Kwargs to pass to super class.
-        """
-        super().__init__(**kwargs)  # type: ignore[arg-type]
-
-        self.sci_notation = sci_notation
-        self.values_show_mode = values_show_mode
-
-        # Normalize data for "fraction/percent" modes
-        if values_show_mode in {"fraction", "percent"}:
-            normalized_data = self.ptable_data
-            normalized_data.normalize()
-            self.data = normalized_data.data  # call setter to update metadata
-
     def generate_tile_value_colors(  # TODO: need unit test
         self,
         *,
@@ -96,9 +69,16 @@ class HMapPTableProjector(PTableProjector):
         """Generate value and colors for element tiles.
 
         Args:
+            text_colors: Colors for element symbols and values.
+                - "AUTO": Auto pick "black" or "white" based on the contrast
+                    of tile color for each element.
+                - ColorType: Use the same ColorType for each element.
+                - dict[ElemStr, ColorType]: Element to color mapping.
             overwrite_tiles (dict[ElemStr, TileValueColor]): Final
                 entried to overwrite tile value and colors. Note this
                 would overwrite everything, include exclusion and anomalies.
+            nan_color (ColorType): Color for missing value (NaN).
+            inf_color (ColorType): Color for infinities.
 
         Returns:
             dict[ElemStr, TileValueColor]: Element to value-color mapping.
@@ -106,7 +86,7 @@ class HMapPTableProjector(PTableProjector):
         tile_entries: dict[ElemStr, TileValueColor] = {}
 
         for elem in Element:
-            # Handle excluded elements
+            # Skip excluded elements
             if elem in self.exclude_elements:
                 tile_entries[elem] = TileValueColor(
                     "excl.",
@@ -117,14 +97,15 @@ class HMapPTableProjector(PTableProjector):
 
             # Handle NaN/infinity colors and values
             if self.anomalies != "NA" and elem in self.anomalies:
-                if "nan" in self.anomalies[elem]:
-                    tile_entries[elem] = TileValueColor(
-                        "NaN", pick_bw_for_contrast(nan_color), nan_color
-                    )
-                elif "inf" in self.anomalies[elem]:
+                if "inf" in self.anomalies[elem]:
                     tile_entries[elem] = TileValueColor(
                         "∞", pick_bw_for_contrast(inf_color), inf_color
                     )
+                # TODO: can there be NaN at all?
+                # elif "nan" in self.anomalies[elem]:
+                #     tile_entries[elem] = TileValueColor(
+                #         "NaN", pick_bw_for_contrast(nan_color), nan_color
+                #     )
 
                 continue
 
@@ -144,6 +125,7 @@ class HMapPTableProjector(PTableProjector):
 
                 tile_entries[elem] = TileValueColor(value, text_color, tile_color)
 
+            # For element absent from data, use "-"
             except KeyError:
                 tile_entries[elem] = TileValueColor("-", "black", "lightgrey")
 
@@ -157,28 +139,33 @@ class HMapPTableProjector(PTableProjector):
 
         return tile_entries
 
-    def add_child_plots(  # type: ignore[override]
+    def add_heatmap_tiles(
         self,
-        values: dict[str, TileValueColor],
+        tile_entries: dict[str, TileValueColor],
         *,
         f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
-        tick_kwargs: dict[str, Any] | None = None,
+        symbol_pos: tuple[float, float],
+        symbol_kwargs: dict[str, Any],
+        values_show_mode: str,
+        sci_notation: bool,
+        values_fmt: str,
+        values_pos: tuple[float, float],
+        values_kwargs: dict[str, Any],
         ax_kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """Add custom child plots to the periodic table grid.
+        """Add heatmap tiles (element symbol, tile color and optional value)
+        to the periodic table grid.
+
+        TODO: miss a lot of docstring
 
         Args:
             f_block_voffset (float): The vertical offset of f-block elements.
-            tick_kwargs (dict): Keyword arguments to pass to ax.tick_params().
             ax_kwargs (dict): Keyword arguments to pass to ax.set().
             on_empty ("hide" | "show"): Whether to show or hide tiles for
                 elements without data.
         """
         # Update kwargs
         ax_kwargs = ax_kwargs or {}
-        tick_kwargs = {"axis": "both", "which": "major", "labelsize": 8} | (
-            tick_kwargs or {}
-        )
 
         for element in Element:
             # Hide f-block
@@ -190,51 +177,65 @@ class HMapPTableProjector(PTableProjector):
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
-            # Get and check tile data
-            try:
-                plot_data: np.ndarray | Sequence[float] = self.data.loc[
-                    symbol, Key.heat_val
-                ]
-
-            except KeyError:
-                plot_data = None
+            # Unpack tile entry
+            value, text_color, tile_color = tile_entries[element]
 
             # Skip element without data if "hide"
-            if (plot_data is None or len(plot_data) == 0) and self.on_empty == "hide":
+            if value == "-" and self.on_empty == "hide":
                 continue
 
-            # Add child heatmap plot
-            ax.pie(
-                np.ones(1),
-                colors=[self.tile_colors.get(symbol, "lightgray")],
-                wedgeprops={"clip_on": True},
+            # Add element symbol
+            ax.text(
+                *symbol_pos,
+                value,
+                color=text_color,
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                **symbol_kwargs,
             )
 
-            # Crop the central rectangle from the pie chart
+            # Add tile background color
+            ax.pie(
+                np.ones(1),
+                colors=[tile_color],
+                wedgeprops={"clip_on": True},
+            )
             rect = Rectangle(
                 xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2
             )
             ax.add_patch(rect)
 
-            # Get and format value
-            value = self.tile_values.get(symbol, "-")
+            # (Upon request) Show value
+            if values_show_mode == "off":
+                continue
+
+            # Format value
+            if values_fmt == "AUTO":
+                if values_show_mode == "percent":
+                    values_fmt = ".1%"
+                elif sci_notation:
+                    values_fmt = ".2e"
+                else:
+                    values_fmt = ".3g"
+
             try:
-                value = f"{value:{text_fmt}}"
+                value = f"{value:{values_fmt}}"
             except ValueError:
                 pass
 
             # Simplify scientific notation, e.g. 1e-01 to 1e-1
-            if self.sci_notation and ("e-0" in value or "e+0" in value):
+            if sci_notation and ("e-0" in value or "e+0" in value):
                 value = value.replace("e-0", "e-").replace("e+0", "e+")
 
             ax.text(
-                *pos,
+                *values_pos,
                 value,
-                color=self.text_colors.get(symbol, "black"),
+                color=text_color,
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
-                **kwargs,
+                **values_kwargs,
             )
 
             ax.set_xlim(-0.5, 0.5)
@@ -255,7 +256,7 @@ def ptable_heatmap(
     inf_color: ColorType = "lightskyblue",
     nan_color: ColorType = "white",
     log: bool = False,
-    sci_notation: bool = False,
+    sci_notation: bool = False,  # TODO: how to use this efficiently?
     tile_size: tuple[float, float] = (0.75, 0.75),  # TODO: WIP, don't use
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
@@ -266,10 +267,9 @@ def ptable_heatmap(
     ax_kwargs: dict[str, Any] | None = None,
     text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
     # Symbol
-    symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
-    # Values
+    # Values  # TODO: rename args to singular form
     values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     values_pos: tuple[float, float] | None = None,
     values_fmt: str = "AUTO",
@@ -325,8 +325,6 @@ def ptable_heatmap(
             - dict[ElemStr, ColorType]: Element to color mapping.
 
         # Symbol
-        symbol_text (str | Callable[[Element], str]): Text to display for
-            each element symbol. Defaults to lambda elem: elem.symbol.
         symbol_pos (tuple[float, float]): Position of element symbols
             relative to the lower left corner of each tile.
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
@@ -373,60 +371,53 @@ def ptable_heatmap(
             stacklevel=2,
         )
 
-    # Prevent log scale and percent/fraction display mode being use together
+    # Prevent log scale and percent/fraction display mode being used together
     if log and values_show_mode in {"percent", "fraction"}:
         raise ValueError(f"Combining log scale and {values_show_mode=} is unsupported")
 
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
-        data=data,  # type: ignore[arg-type]
-        exclude_elements=exclude_elements,  # type: ignore[arg-type]
-        sci_notation=sci_notation,
-        values_show_mode=values_show_mode,
-        tile_size=tile_size,  # type: ignore[arg-type]
-        log=log,  # type: ignore[arg-type]
-        colormap=colormap,  # type: ignore[arg-type]
-        plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
-        on_empty=on_empty,  # type: ignore[arg-type]
-        hide_f_block=hide_f_block,  # type: ignore[arg-type]
+        data=data,
+        exclude_elements=exclude_elements,
+        # tile_size=tile_size,
+        log=log,
+        colormap=colormap,
+        plot_kwargs=plot_kwargs,
+        on_empty=on_empty,
+        hide_f_block=hide_f_block,
     )
 
+    # Normalize data for "fraction/percent" modes
+    if values_show_mode in {"fraction", "percent"}:
+        normalized_data = projector.ptable_data
+        normalized_data.normalize()
+        projector.data = normalized_data.data  # use setter to update metadata
+
     # Generate value and colors (TileValueColor) for each tile
-    tile_value_colors = projector.generate_tile_value_colors(
+    tile_entries = projector.generate_tile_value_colors(
         text_colors=text_colors,
         overwrite_tiles=overwrite_tiles or {},
         inf_color=inf_color,
         nan_color=nan_color,
     )
 
-    # # Set better default symbol position  # TODO: one-shot in add_child_plots
-    # if symbol_pos is None:
-    #     symbol_pos = (0.5, 0.65) if values_show_mode != "off" else (0.5, 0.5)
-
-    # # Add element symbols
-    # symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
-
-    #  # Show values upon request  # TODO:
-    # if values_show_mode != "off":
-    #     # Generate values format depending on the display mode
-    #     if values_fmt == "AUTO":
-    #         if values_show_mode == "percent":
-    #             values_fmt = ".1%"
-    #         elif projector.sci_notation:
-    #             values_fmt = ".2e"
-    #         else:
-    #             values_fmt = ".3g"
-
-    #     projector.add_elem_values(
-    #         pos=values_pos or (0.5, 0.25),
-    #         text_fmt=values_fmt,
-    #     )
+    # Generate symbol and value positions
+    values_pos = values_pos or (0.5, 0.25)
+    if symbol_pos is None:
+        symbol_pos = (0.5, 0.65) if values_show_mode != "off" else (0.5, 0.5)
 
     # Add element symbol, value and color for each tile
-    projector.add_child_plots(
-        values=tile_value_colors,
-        ax_kwargs=ax_kwargs,
+    projector.add_heatmap_tiles(
+        tile_entries=tile_entries,
         f_block_voffset=f_block_voffset,
+        symbol_pos=symbol_pos,
+        symbol_kwargs=symbol_kwargs,
+        sci_notation=sci_notation,
+        values_show_mode=values_show_mode,
+        values_fmt=values_fmt,
+        values_pos=values_pos,
+        values_kwargs=values_kwargs,
+        ax_kwargs=ax_kwargs,
     )
 
     # Show colorbar upon request
