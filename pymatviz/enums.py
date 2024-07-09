@@ -95,8 +95,11 @@ class LabelEnum(StrEnum):
         """Map of labels to descriptions."""
         return {str(val.label): val.description for val in cls.__members__.values()}
 
-    def __reduce_ex__(self, proto: int) -> str:
-        """Return as a string when pickling."""
+    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
+        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
+        the tuple self.__class__, (self._value_,). self.__class can cause pickle
+        failures if the corresponding Enum was moved or renamed in the meantime.
+        """
         return str, (self.value,)
 
 
