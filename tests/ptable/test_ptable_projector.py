@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
     from matplotlib.typing import ColorType
 
+    from pymatviz.ptable.ptable_matplotlib import ElemStr
+
 
 class TestPTableProjector:
     test_dict: ClassVar = {
@@ -67,7 +69,7 @@ class TestPTableProjector:
             match="elem_colors must be 'vesta', 'jmol', or a custom dict, "
             "got elem_colors='foobar'",
         ):
-            PTableProjector(data=data, elem_colors="foobar")
+            PTableProjector(data=data, elem_colors="foobar")  # type: ignore[arg-type]
 
     def test_hide_f_block(self) -> None:
         # check default is True if no f-block elements in data
@@ -184,7 +186,9 @@ class TestPtableHeatmapGenTileValueColors:
         ],
     )
     def test_apply_overwrite_tiles(
-        self, overwrite_tile: OverwriteTileValueColor, expected_tile: TileValueColor
+        self,
+        overwrite_tile: dict[ElemStr, OverwriteTileValueColor],
+        expected_tile: TileValueColor,
     ) -> None:
         projector = HMapPTableProjector(data=self.test_dict, colormap="viridis")
         tile_entries = projector.generate_tile_value_colors(
@@ -219,8 +223,8 @@ class TestPtableHeatmapGenTileValueColors:
         }
         projector = HMapPTableProjector(data=test_dict, exclude_elements=["B"])
 
-        assert projector.anomalies["Li"] == {"inf"}
-        assert projector.anomalies["Be"] == {"nan"}
+        assert projector.anomalies["Li"] == {"inf"}  # type: ignore[index]
+        assert projector.anomalies["Be"] == {"nan"}  # type: ignore[index]
 
         tile_entries = projector.generate_tile_value_colors(
             inf_color=inf_color, nan_color=nan_color, excluded_tile_color=excluded_color

@@ -47,12 +47,12 @@ class TileValueColor(NamedTuple):
     tile_color: ColorType
 
 
-class OverwriteTileValueColor(TileValueColor):
+class OverwriteTileValueColor(NamedTuple):
     """Overwrite Value and colors for heatmap tiles,
     where None is used for not overwriting.
     """
 
-    value: str | float | None  # type: ignore[assignment]
+    value: str | float | None
     text_color: ColorType | None
     tile_color: ColorType | None
 
@@ -676,7 +676,7 @@ class HMapPTableProjector(PTableProjector):
         self,
         *,
         text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
-        overwrite_tiles: dict[ElemStr, TileValueColor] | None = None,
+        overwrite_tiles: dict[ElemStr, OverwriteTileValueColor] | None = None,
         inf_color: ColorType = "lightskyblue",
         nan_color: ColorType = "lightgrey",
         excluded_tile_color: ColorType = "white",
