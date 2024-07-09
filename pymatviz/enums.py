@@ -95,6 +95,10 @@ class LabelEnum(StrEnum):
         """Map of labels to descriptions."""
         return {str(val.label): val.description for val in cls.__members__.values()}
 
+    def __reduce_ex__(self, proto: int) -> str:
+        """Return as a string when pickling."""
+        return str, (self.value,)
+
 
 small_font = "font-size: 0.9em; font-weight: lighter;"
 eV_per_atom = styled_html_tag("(eV/atom)", style=small_font)  # noqa: N816

@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 
 from pymatviz.enums import Key, Model, StrEnum
-
+import pickle
 
 def test_str_enum() -> None:
     assert issubclass(StrEnum, str)
@@ -26,3 +26,14 @@ def test_key_enum() -> None:
     # access any attributes to trigger @unique decorator check
     assert Key.energy_per_atom == "energy_per_atom"
     assert Key.volume == "volume"
+
+
+def test_pickle_enum() -> None:
+    key = Key.energy_per_atom
+    pickled_key = pickle.dumps(key)
+    unpickled_key = pickle.loads(pickled_key)
+
+    assert type(unpickled_key) == str
+    assert unpickled_key == "energy_per_atom"
+    assert unpickled_key == Key.energy_per_atom
+    assert type(key) == Key
