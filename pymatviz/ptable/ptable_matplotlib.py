@@ -5,16 +5,19 @@ from __future__ import annotations
 import warnings
 from collections.abc import Sequence
 from math import isclose
-from typing import TYPE_CHECKING, Literal, NamedTuple, Union
+from typing import TYPE_CHECKING, Literal, Union
 
 import pandas as pd
-from matplotlib.patches import Rectangle
-from pymatgen.core import Element
 
-from pymatviz.enums import ElemColorMode, ElemCountMode, Key
+from pymatviz.enums import ElemColorMode, ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.ptable._projector import ChildPlotters, PTableProjector
-from pymatviz.utils import df_ptable, get_cbar_label_formatter, pick_bw_for_contrast
+from pymatviz.ptable._projector import (
+    ChildPlotters,
+    HMapPTableProjector,
+    OverwriteTileValueColor,
+    PTableProjector,
+)
+from pymatviz.utils import get_cbar_label_formatter, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
@@ -23,255 +26,13 @@ if TYPE_CHECKING:
     import matplotlib.pyplot as plt
     from matplotlib.colors import Colormap
     from matplotlib.typing import ColorType
-    from numpy.typing import NDArray
+    from pymatgen.core import Element
 
     from pymatviz.ptable._process_data import PTableData
 
 # Custom types
 ElemStr = str  # element as a str
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
-
-
-class TileValueColor(NamedTuple):
-    """Value and colors for heatmap tiles.
-
-    value (str): The value to display.
-    text_color (ColorType): Color for both symbol and value.
-    tile_color (ColorType): Color for the tile.
-    """
-
-    value: str | float
-    text_color: ColorType
-    tile_color: ColorType
-
-
-class OverwriteTileValueColor(TileValueColor):
-    """Overwrite Value and colors for heatmap tiles,
-    where None is used for not overwriting.
-    """
-
-    value: str | float | None  # type: ignore[assignment]
-    text_color: ColorType | None
-    tile_color: ColorType | None
-
-
-class HMapPTableProjector(PTableProjector):
-    """With more heatmap-specific functionalities."""
-
-    def generate_tile_value_colors(  # TODO: need unit test
-        self,
-        *,
-        text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
-        overwrite_tiles: dict[ElemStr, TileValueColor],
-        inf_color: ColorType,
-        nan_color: ColorType = "lightgrey",
-        excluded_tile_color: ColorType = "white",
-    ) -> dict[ElemStr, TileValueColor]:
-        """Generate value and colors for element tiles.
-
-        Args:
-            text_colors: Colors for element symbols and values.
-                - "AUTO": Auto pick "black" or "white" based on the contrast
-                    of tile color for each element.
-                - ColorType: Use the same ColorType for each element.
-                - dict[ElemStr, ColorType]: Element to color mapping.
-            overwrite_tiles (dict[ElemStr, TileValueColor]): Final
-                entried to overwrite tile value and colors. Note this
-                would overwrite everything, include exclusion and anomalies.
-            inf_color (ColorType): Color for infinities.
-            nan_color (ColorType): Color for missing value (NaN).
-            excluded_tile_color (ColorType): Color for excluded element tile.
-
-        Returns:
-            dict[ElemStr, TileValueColor]: Element to value-color mapping.
-        """
-        # Build TileValueColor for NaN (or absent elements) and infinity
-        inf_tile = TileValueColor("∞", pick_bw_for_contrast(inf_color), inf_color)
-        nan_tile = TileValueColor("-", pick_bw_for_contrast(nan_color), nan_color)
-
-        tile_entries: dict[ElemStr, TileValueColor] = {}
-
-        for element in Element:
-            symbol = element.symbol
-
-            # Skip excluded elements
-            if symbol in self.exclude_elements:
-                tile_entries[symbol] = TileValueColor(
-                    "excl.",
-                    pick_bw_for_contrast(excluded_tile_color),
-                    excluded_tile_color,
-                )
-                continue
-
-            # Handle NaN/infinity colors and values
-            if self.anomalies != "NA" and symbol in self.anomalies:
-                if "inf" in self.anomalies[symbol]:
-                    tile_entries[symbol] = inf_tile
-
-                # Note: For heatmap plotter, ideally there should not
-                # be NaN in the value, but this might happen if
-                # NaNs are not dropped
-                else:
-                    tile_entries[symbol] = nan_tile
-
-                continue
-
-            # Try to get data from DataFrame
-            try:
-                values: NDArray = self.data.loc[symbol, Key.heat_val]
-
-                if len(values) != 1:
-                    raise ValueError(f"Data for {symbol} should be length 1.")
-
-                value = float(values[0])
-
-                # Generate tile color and text color
-                if self.cmap is None:
-                    raise ValueError("Cannot generate tile color without colormap.")
-                tile_color = self.cmap(self.norm(value))
-
-                if text_colors == "AUTO":
-                    text_color: str = pick_bw_for_contrast(tile_color)
-                elif isinstance(text_colors, dict):
-                    text_color = text_colors.get(symbol, "black")
-                else:
-                    text_color = text_colors
-
-                tile_entries[symbol] = TileValueColor(value, text_color, tile_color)
-
-            # For element absent from data, use "-"
-            except KeyError:
-                tile_entries[symbol] = nan_tile
-
-        # Apply overwrite colors
-        for symbol, ow_tile_entry in overwrite_tiles.items():
-            tile_entries[symbol] = TileValueColor(
-                ow_tile_entry.value or tile_entries[symbol].value,
-                ow_tile_entry.text_color or tile_entries[symbol].text_color,
-                ow_tile_entry.tile_color or tile_entries[symbol].tile_color,
-            )
-
-        return tile_entries
-
-    def add_heatmap_tiles(
-        self,
-        tile_entries: dict[str, TileValueColor],
-        *,
-        f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
-        symbol_pos: tuple[float, float],
-        symbol_kwargs: dict[str, Any] | None = None,
-        sci_notation: bool,
-        value_show_mode: Literal["value", "fraction", "percent", "off"],
-        value_fmt: str,
-        value_pos: tuple[float, float],
-        value_kwargs: dict[str, Any] | None = None,
-        ax_kwargs: dict[str, Any] | None = None,
-    ) -> None:
-        """Add heatmap tiles (element symbol, tile color and optional value)
-        to the periodic table grid.
-
-        Args:
-            tile_entries (dict[str, TileValueColor]): Entries for each tile.
-            f_block_voffset (float): The vertical offset of f-block elements.
-            symbol_pos (tuple[float, float]): Position of element symbols
-                relative to the lower left corner of each tile.
-                Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
-            symbol_kwargs (dict): Keyword arguments passed to plt.text() for
-                element symbols. Defaults to None.
-            sci_notation (bool): Whether to use scientific notation for values and
-                colorbar tick labels.
-            value_show_mode (str): The values display mode:
-                - "off": Hide values.
-                - "value": Display values as is.
-                - "fraction": As a fraction of the total (0.10).
-                - "percent": As a percentage of the total (10%).
-                "fraction" and "percent" can be used to make the colors in
-                    different plots comparable.
-            value_pos (tuple[float, float]): The position of values inside the tile.
-            value_fmt (str | "AUTO"): f-string format for values. Defaults to ".1%"
-                (1 decimal place) if values_show_mode is "percent", else ".3g".
-            value_kwargs (dict): Keyword arguments passed to plt.text() for
-                values. Defaults to None.
-            ax_kwargs (dict): Keyword arguments to pass to ax.set().
-        """
-        # Update kwargs
-        ax_kwargs = ax_kwargs or {}
-        symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
-        value_kwargs = value_kwargs or {}
-        if sci_notation:
-            value_kwargs.setdefault("fontsize", 10)
-        else:
-            value_kwargs.setdefault("fontsize", 12)
-
-        for element in Element:
-            # Hide f-block
-            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
-                continue
-
-            # Get axis index by element symbol
-            symbol: str = element.symbol
-            row, column = df_ptable.loc[symbol, ["row", "column"]]
-            ax: plt.Axes = self.axes[row - 1][column - 1]
-
-            # Unpack tile entry
-            value, text_color, tile_color = tile_entries[symbol]
-
-            # Skip element without data if "hide"
-            if value == "-" and self.on_empty == "hide":
-                continue
-
-            # Add tile background color
-            ax.pie(
-                [1.0],  # a single pie plot for cropping
-                colors=[tile_color],
-                wedgeprops={"clip_on": True},
-            )
-            rect = Rectangle(
-                xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2
-            )
-            ax.add_patch(rect)
-
-            ax.set_xlim(-0.5, 0.5)
-            ax.set_ylim(-0.5, 0.5)
-
-            # Add element symbol
-            ax.text(
-                *symbol_pos,
-                symbol,
-                color=text_color,
-                ha="center",
-                va="center",
-                transform=ax.transAxes,
-                **symbol_kwargs,
-            )
-
-            # (Upon request) Show value
-            if value_show_mode == "off":
-                continue
-
-            # Format value
-            try:
-                value = f"{value:{value_fmt}}"
-            except ValueError:
-                pass
-
-            # Simplify scientific notation, e.g. 1e-01 to 1e-1
-            if sci_notation and ("e-0" in value or "e+0" in value):
-                value = value.replace("e-0", "e-").replace("e+0", "e+")
-
-            ax.text(
-                *value_pos,
-                value,
-                color=text_color,
-                ha="center",
-                va="center",
-                transform=ax.transAxes,
-                **value_kwargs,
-            )
-
-            # Pass axis kwargs
-            if ax_kwargs:
-                ax.set(**ax_kwargs)
 
 
 def ptable_heatmap(

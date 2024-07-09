@@ -111,3 +111,14 @@ class TestPTableProjector:
 
         assert legend.get_title().get_text() == legend_title
         assert legend.get_texts()[0].get_fontsize() == 12
+
+
+class TestPtableHeatmapGenTileValueColors:
+    def test_text_colors(self) -> None:
+        pass
+
+    def test_apply_overwrite_tiles(self) -> None:
+        pass
+
+    def test_inf_nan_excluded_colors(self) -> None:
+        pass

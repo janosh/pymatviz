@@ -121,10 +121,6 @@ class TestPtableHeatmap:
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
-    @pytest.mark.skip("WIP")  # TODO: add this very important unit test
-    def test_generate_tile_value_colors(self) -> None:
-        pass
-
 
 @pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
