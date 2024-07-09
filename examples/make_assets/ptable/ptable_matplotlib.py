@@ -34,7 +34,7 @@ fig = ptable_heatmap(
     ptable_data,
     log=True,
     on_empty="show",
-    values_fmt=".4g",
+    value_fmt=".4g",
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
@@ -56,7 +56,7 @@ ptable_data = ptable_data[ptable_data > 0.1]
 
 fig = ptable_heatmap(
     ptable_data,
-    values_show_mode="percent",
+    value_show_mode="percent",
     on_empty="show",
     exclude_elements=["O"],
 )

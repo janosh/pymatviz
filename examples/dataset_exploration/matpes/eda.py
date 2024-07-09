@@ -158,7 +158,7 @@ fig = ptable_heatmap_splits(
 # %% which elements have a higher share of missing r2scan data
 ax = ptable_heatmap(
     (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
-    values_fmt=".1%",
+    value_fmt=".1%",
     cbar_label_fmt=".0%",
     cbar_title="Fraction of missing PBE calcs missing r2SCAN",
 )
@@ -173,7 +173,7 @@ df_per_elem_magmoms = pd.DataFrame(
 ).mean()
 
 ax = ptable_heatmap(
-    df_per_elem_magmoms, cbar_title=r"Mean |magmom| ($\mu_B$)", values_fmt=".1f"
+    df_per_elem_magmoms, cbar_title=r"Mean |magmom| ($\mu_B$)", value_fmt=".1f"
 )
 save_fig(ax, "magmoms-ptable.pdf")
 

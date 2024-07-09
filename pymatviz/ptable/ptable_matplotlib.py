@@ -83,7 +83,7 @@ class HMapPTableProjector(PTableProjector):
         Returns:
             dict[ElemStr, TileValueColor]: Element to value-color mapping.
         """
-        # Build tile entry for NaN (or absent elements) and infinity
+        # Build TileValueColor for NaN (or absent elements) and infinity
         inf_tile = TileValueColor("∞", pick_bw_for_contrast(inf_color), inf_color)
         nan_tile = TileValueColor("-", pick_bw_for_contrast(nan_color), nan_color)
 
@@ -109,7 +109,7 @@ class HMapPTableProjector(PTableProjector):
                 # Note: For heatmap plotter, ideally there should not
                 # be NaN in the value, but this might happen if
                 # NaNs are not dropped
-                elif "nan" in self.anomalies[elem]:
+                else:
                     tile_entries[elem] = nan_tile
 
                 continue
@@ -149,24 +149,22 @@ class HMapPTableProjector(PTableProjector):
 
         return tile_entries
 
-    def add_heatmap_tiles(
+    def add_heatmap_tiles(  # TODO: miss a lot of args docstring
         self,
         tile_entries: dict[str, TileValueColor],
         *,
         f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
         symbol_pos: tuple[float, float],
         symbol_kwargs: dict[str, Any],
-        values_show_mode: str,
         sci_notation: bool,
-        values_fmt: str,
-        values_pos: tuple[float, float],
-        values_kwargs: dict[str, Any],
+        value_show_mode: str,
+        value_fmt: Literal["value", "fraction", "percent", "off"],
+        value_pos: tuple[float, float],
+        value_kwargs: dict[str, Any],
         ax_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add heatmap tiles (element symbol, tile color and optional value)
         to the periodic table grid.
-
-        TODO: miss a lot of docstring
 
         Args:
             f_block_voffset (float): The vertical offset of f-block elements.
@@ -177,11 +175,11 @@ class HMapPTableProjector(PTableProjector):
         # Update kwargs
         ax_kwargs = ax_kwargs or {}
         symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
-        values_kwargs = values_kwargs or {}
+        value_kwargs = value_kwargs or {}
         if sci_notation:
-            values_kwargs.setdefault("fontsize", 10)
+            value_kwargs.setdefault("fontsize", 10)
         else:
-            values_kwargs.setdefault("fontsize", 12)
+            value_kwargs.setdefault("fontsize", 12)
 
         for element in Element:
             # Hide f-block
@@ -226,12 +224,12 @@ class HMapPTableProjector(PTableProjector):
             )
 
             # (Upon request) Show value
-            if values_show_mode == "off":
+            if value_show_mode == "off":
                 continue
 
             # Format value
             try:
-                value = f"{value:{values_fmt}}"
+                value = f"{value:{value_fmt}}"
             except ValueError:
                 pass
 
@@ -240,13 +238,13 @@ class HMapPTableProjector(PTableProjector):
                 value = value.replace("e-0", "e-").replace("e+0", "e+")
 
             ax.text(
-                *values_pos,
+                *value_pos,
                 value,
                 color=text_color,
                 ha="center",
                 va="center",
                 transform=ax.transAxes,
-                **values_kwargs,
+                **value_kwargs,
             )
 
             # Pass axis kwargs
@@ -277,11 +275,11 @@ def ptable_heatmap(
     # Symbol
     symbol_pos: tuple[float, float] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
-    # Values  # TODO: rename args to singular form
-    values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
-    values_pos: tuple[float, float] | None = None,
-    values_fmt: str = "AUTO",
-    values_kwargs: dict[str, Any] | None = None,
+    # Value
+    value_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
+    value_pos: tuple[float, float] | None = None,
+    value_fmt: str = "AUTO",
+    value_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
@@ -339,20 +337,20 @@ def ptable_heatmap(
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
 
-        # Values
-        values_show_mode (str): The values display mode:
+        # Value
+        value_show_mode (str): The values display mode:
             - "off": Hide values.
             - "value": Display values as is.
             - "fraction": As a fraction of the total (0.10).
             - "percent": As a percentage of the total (10%).
             "fraction" and "percent" can be used to make the colors in
                 different plots comparable.
-        values_pos (tuple[float, float]): The position of values inside the tile.
-        values_fmt (str | "AUTO"): f-string format for values. Defaults to ".1%"
+        value_pos (tuple[float, float]): The position of values inside the tile.
+        value_fmt (str | "AUTO"): f-string format for values. Defaults to ".1%"
             (1 decimal place) if values_show_mode is "percent", else ".3g".
-        values_color (str | "AUTO"): The font color of values. Use "AUTO" for
+        value_color (str | "AUTO"): The font color of values. Use "AUTO" for
             automatically switch between black/white depending on the background.
-        values_kwargs (dict): Keyword arguments passed to plt.text() for
+        value_kwargs (dict): Keyword arguments passed to plt.text() for
             values. Defaults to None.
 
         # Colorbar
@@ -380,8 +378,8 @@ def ptable_heatmap(
         )
 
     # Prevent log scale and percent/fraction display mode being used together
-    if log and values_show_mode in {"percent", "fraction"}:
-        raise ValueError(f"Combining log scale and {values_show_mode=} is unsupported")
+    if log and value_show_mode in {"percent", "fraction"}:
+        raise ValueError(f"Combining log scale and {value_show_mode=} is unsupported")
 
     # Initialize periodic table plotter
     projector = HMapPTableProjector(
@@ -396,19 +394,19 @@ def ptable_heatmap(
     )
 
     # Normalize data for "fraction/percent" modes
-    if values_show_mode in {"fraction", "percent"}:
+    if value_show_mode in {"fraction", "percent"}:
         normalized_data = projector.ptable_data
         normalized_data.normalize()
         projector.data = normalized_data.data  # use setter to update metadata
 
     # Generate value f-string formatter
-    if values_fmt == "AUTO":
-        if values_show_mode == "percent":
-            values_fmt = ".1%"
+    if value_fmt == "AUTO":
+        if value_show_mode == "percent":
+            value_fmt = ".1%"
         elif sci_notation:
-            values_fmt = ".2e"
+            value_fmt = ".2e"
         else:
-            values_fmt = ".3g"
+            value_fmt = ".3g"
 
     # Generate value and colors (TileValueColor) for each tile
     tile_entries = projector.generate_tile_value_colors(
@@ -419,9 +417,9 @@ def ptable_heatmap(
     )
 
     # Generate symbol and value positions
-    values_pos = values_pos or (0.5, 0.25)
+    value_pos = value_pos or (0.5, 0.25)
     if symbol_pos is None:
-        symbol_pos = (0.5, 0.5) if values_show_mode == "off" else (0.5, 0.65)
+        symbol_pos = (0.5, 0.5) if value_show_mode == "off" else (0.5, 0.65)
 
     # Add element symbol, value and color for each tile
     projector.add_heatmap_tiles(
@@ -430,10 +428,10 @@ def ptable_heatmap(
         symbol_pos=symbol_pos,
         symbol_kwargs=symbol_kwargs,
         sci_notation=sci_notation,
-        values_show_mode=values_show_mode,
-        values_fmt=values_fmt,
-        values_pos=values_pos,
-        values_kwargs=values_kwargs,
+        value_show_mode=value_show_mode,
+        value_fmt=value_fmt,
+        value_pos=value_pos,
+        value_kwargs=value_kwargs,
         ax_kwargs=ax_kwargs,
     )
 
@@ -445,8 +443,8 @@ def ptable_heatmap(
             "format",
             get_cbar_label_formatter(
                 cbar_label_fmt=cbar_label_fmt,
-                values_fmt=values_fmt,
-                values_show_mode=values_show_mode,
+                values_fmt=value_fmt,
+                values_show_mode=value_show_mode,
                 sci_notation=sci_notation,
             ),
         )
