@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from pymatviz.enums import ElemColorScheme
-from pymatviz.ptable.matplotlib import PTableProjector
+from pymatviz.ptable._projector import PTableProjector
 
 
 if TYPE_CHECKING:
