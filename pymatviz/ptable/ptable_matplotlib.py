@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, Union, cast
+from typing import TYPE_CHECKING, Literal, NamedTuple, Union
 
 import numpy as np
 import pandas as pd
@@ -26,20 +26,42 @@ if TYPE_CHECKING:
 
     from pymatviz.ptable._process_data import PTableData
 
-
+# Custom types
+ElemStr = str  # element as a str
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
+
+
+class TileValueColor(NamedTuple):
+    """Value and colors for heatmap tiles.
+
+    value (str): The value to display.
+    text_color (ColorType): Color for both symbol and value.
+    tile_color (ColorType): Color for the tile.
+    """
+
+    value: str | float
+    text_color: ColorType
+    tile_color: ColorType
+
+
+class OverwriteTileValueColor(TileValueColor):
+    """Overwrite Value and colors for heatmap tiles,
+    where None is used for not overwriting.
+    """
+
+    value: str | float | None
+    text_color: ColorType | None
+    tile_color: ColorType | None
 
 
 class HMapPTableProjector(PTableProjector):
     """With more heatmap-specific functionalities."""
 
-    def __init__(
+    def __init__(  # TODO: remove __init__ altogether
         self,
         *,
         values_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
         sci_notation: bool = False,
-        tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
-        text_colors: dict[str, ColorType] | ColorType | Literal["AUTO"] = "AUTO",
         **kwargs: dict[str, Any],
     ) -> None:
         """Init Heatmap plotter.
@@ -49,13 +71,6 @@ class HMapPTableProjector(PTableProjector):
                 Values display mode.
             sci_notation (bool): Whether to use scientific notation for
                 values and colorbar tick labels.
-            tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
-                Defaults to "AUTO" for auto generation.
-            text_colors: Colors for element symbols and values.
-                - "AUTO": Auto pick "black" or "white" based on the contrast
-                    of tile color for each element.
-                - ColorType: Use the same ColorType for each element.
-                - dict[str, ColorType]: Element to color mapping.
             kwargs (dict): Kwargs to pass to super class.
         """
         super().__init__(**kwargs)  # type: ignore[arg-type]
@@ -69,97 +84,82 @@ class HMapPTableProjector(PTableProjector):
             normalized_data.normalize()
             self.data = normalized_data.data  # call setter to update metadata
 
-        # Generate tile colors
-        self.tile_colors = tile_colors  # type: ignore[assignment]
-        # Auto generate tile values
-        self.tile_values = None  # type: ignore[assignment]
-
-        # Generate element symbols colors
-        self.text_colors = text_colors  # type: ignore[assignment]
-
-    @property
-    def tile_colors(self) -> dict[str, ColorType]:
-        """The final element symbol to color mapping."""
-        return self._tile_colors
-
-    @tile_colors.setter
-    def tile_colors(
+    def generate_tile_value_colors(  # TODO: need unit test
         self,
-        tile_colors: dict[str, ColorType] | Literal["AUTO"] = "AUTO",
-    ) -> None:
-        """An element symbol to color mapping, and apply overwrite colors.
+        *,
+        text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
+        overwrite_tiles: dict[ElemStr, TileValueColor],
+        nan_color: ColorType,
+        inf_color: ColorType,
+        excluded_tile_color: ColorType = "white",
+    ) -> dict[ElemStr, TileValueColor]:
+        """Generate value and colors for element tiles.
 
         Args:
-            tile_colors (dict[str, ColorType] | "AUTO"): Tile colors.
-                Defaults to "AUTO" for auto generation.
+            overwrite_tiles (dict[ElemStr, TileValueColor]): Final
+                entried to overwrite tile value and colors. Note this
+                would overwrite everything, include exclusion and anomalies.
+
+        Returns:
+            dict[ElemStr, TileValueColor]: Element to value-color mapping.
         """
-        # Generate tile colors from values if not given
-        self._tile_colors = {} if tile_colors == "AUTO" else tile_colors
+        tile_entries: dict[ElemStr, TileValueColor] = {}
 
-        if tile_colors == "AUTO":
-            if self.cmap is None:
-                raise ValueError("Cannot generate tile colors without colormap.")
+        for elem in Element:
+            # Handle excluded elements
+            if elem in self.exclude_elements:
+                tile_entries[elem] = TileValueColor(
+                    "excl.",
+                    pick_bw_for_contrast(excluded_tile_color),
+                    excluded_tile_color,
+                )
+                continue
 
-            for symbol in self.data.index:
-                # Get value and map to color
-                value = self.data.loc[symbol, Key.heat_val][0]
-                self._tile_colors[symbol] = self.cmap(self.norm(value))
+            # Handle NaN/infinity colors and values
+            if self.anomalies != "NA" and elem in self.anomalies:
+                if "nan" in self.anomalies[elem]:
+                    tile_entries[elem] = TileValueColor(
+                        "NaN", pick_bw_for_contrast(nan_color), nan_color
+                    )
+                elif "inf" in self.anomalies[elem]:
+                    tile_entries[elem] = TileValueColor(
+                        "∞", pick_bw_for_contrast(inf_color), inf_color
+                    )
 
-    @property
-    def tile_values(self) -> dict[str, str]:
-        """Displayed values for each tile."""
-        return self._tile_values
+                continue
 
-    @tile_values.setter
-    def tile_values(self, tile_values: dict[str, str] | None) -> None:
-        # Generate tile values from PTableData if not provided
-        if tile_values is None:
-            tile_values = {
-                elem: self.data.loc[elem, Key.heat_val][0] for elem in self.data.index
-            }
+            # Try to get data from DataFrame
+            try:
+                value: np.ndarray | Sequence[float] = self.data.loc[elem, Key.heat_val]
 
-        self._tile_values = tile_values
+                # Generate tile color and text color
+                tile_color = self.cmap(self.norm(value))
 
-    @property
-    def text_colors(self) -> dict[str, ColorType]:
-        """Element to text (symbol and value) color mapping."""
-        return self._text_colors
+                if text_colors == "AUTO":
+                    text_color = pick_bw_for_contrast(tile_color)
+                elif isinstance(text_colors, dict):
+                    text_color = text_colors.get(elem, "black")
+                else:
+                    text_color = text_colors
 
-    @text_colors.setter
-    def text_colors(
-        self,
-        text_colors: dict[str, ColorType]
-        | ColorType
-        | Literal["AUTO", ElemColorMode.element_types],
-    ) -> None:
-        """Generate and set symbol to text colors mapping.
+                tile_entries[elem] = TileValueColor(value, text_color, tile_color)
 
-        Args:
-            text_colors: Colors for element symbols and values.
-                - "AUTO": Auto pick "black" or "white" based on the contrast
-                    of tile color for each element.
-                - ColorType: Use the same ColorType for each element.
-                - dict[str, ColorType]: Element to color mapping.
-        """
-        if text_colors == "AUTO":
-            text_colors = {
-                symbol: pick_bw_for_contrast(self.tile_colors[symbol])
-                for symbol in self.data.index
-            }
+            except KeyError:
+                tile_entries[elem] = TileValueColor("-", "black", "lightgrey")
 
-        elif text_colors == ElemColorMode.element_types:
-            text_colors = {
-                symbol: self.get_elem_type_color(symbol, default="black")
-                for symbol in self.data.index
-            }
+        # Apply overwrite colors
+        for elem, ow_tile_entry in overwrite_tiles.items():
+            tile_entries[elem] = TileValueColor(
+                ow_tile_entry.value or tile_entries[elem].value,
+                ow_tile_entry.text_color or tile_entries[elem].text_color,
+                ow_tile_entry.tile_color or tile_entries[elem].tile_color,
+            )
 
-        elif not isinstance(text_colors, dict):
-            text_colors = {symbol: text_colors for symbol in self.data.index}
-
-        self._text_colors = cast(dict[str, ColorType], text_colors)
+        return tile_entries
 
     def add_child_plots(  # type: ignore[override]
         self,
+        values: dict[str, TileValueColor],
         *,
         f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
         tick_kwargs: dict[str, Any] | None = None,
@@ -216,48 +216,6 @@ class HMapPTableProjector(PTableProjector):
             )
             ax.add_patch(rect)
 
-            ax.set_xlim(-0.5, 0.5)
-            ax.set_ylim(-0.5, 0.5)
-
-            # Pass axis kwargs
-            if ax_kwargs:
-                ax.set(**ax_kwargs)
-
-    def add_elem_values(
-        self,
-        *,
-        text_fmt: str,
-        pos: tuple[float, float] = (0.5, 0.25),
-        kwargs: dict[str, Any] | None = None,
-    ) -> None:
-        """Format and show element values.
-
-        Args:
-            text_fmt (str): f-string format for the value text.
-            pos (tuple[float, float]): Position of the value in the tile.
-            kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
-        """
-        # Update symbol kwargs
-        kwargs = kwargs or {}
-        if self.sci_notation:
-            kwargs.setdefault("fontsize", 10)
-        else:
-            kwargs.setdefault("fontsize", 12)
-
-        # Add value for each element
-        for element in Element:
-            # Hide f-block
-            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
-                continue
-
-            # Get axis index by element symbol
-            symbol: str = element.symbol
-            if symbol not in self.data.index and self.on_empty == "hide":
-                continue
-
-            row, column = df_ptable.loc[symbol, ["row", "column"]]
-            ax: plt.Axes = self.axes[row - 1][column - 1]
-
             # Get and format value
             value = self.tile_values.get(symbol, "-")
             try:
@@ -279,6 +237,13 @@ class HMapPTableProjector(PTableProjector):
                 **kwargs,
             )
 
+            ax.set_xlim(-0.5, 0.5)
+            ax.set_ylim(-0.5, 0.5)
+
+            # Pass axis kwargs
+            if ax_kwargs:
+                ax.set(**ax_kwargs)
+
 
 def ptable_heatmap(
     data: pd.DataFrame | pd.Series | dict[str, list[list[float]]] | PTableData,
@@ -286,6 +251,7 @@ def ptable_heatmap(
     # Heatmap specific
     colormap: str = "viridis",
     exclude_elements: Sequence[str] = (),
+    overwrite_tiles: dict[ElemStr, OverwriteTileValueColor] | None = None,
     inf_color: ColorType = "lightskyblue",
     nan_color: ColorType = "white",
     log: bool = False,
@@ -298,7 +264,7 @@ def ptable_heatmap(
     plot_kwargs: dict[str, Any] | None = None,
     # Axis-scope
     ax_kwargs: dict[str, Any] | None = None,
-    text_colors: ColorType = "AUTO",
+    text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
     # Symbol
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] | None = None,
@@ -353,10 +319,10 @@ def ptable_heatmap(
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options.
         text_colors: Colors for element symbols and values.
-                - "AUTO": Auto pick "black" or "white" based on the contrast
-                    of tile color for each element.
-                - ColorType: Use the same ColorType for each element.
-                - dict[str, ColorType]: Element to color mapping.
+            - "AUTO": Auto pick "black" or "white" based on the contrast
+                of tile color for each element.
+            - ColorType: Use the same ColorType for each element.
+            - dict[ElemStr, ColorType]: Element to color mapping.
 
         # Symbol
         symbol_text (str | Callable[[Element], str]): Text to display for
@@ -421,63 +387,47 @@ def ptable_heatmap(
         log=log,  # type: ignore[arg-type]
         colormap=colormap,  # type: ignore[arg-type]
         plot_kwargs=plot_kwargs,  # type: ignore[arg-type]
-        text_colors=text_colors,
         on_empty=on_empty,  # type: ignore[arg-type]
         hide_f_block=hide_f_block,  # type: ignore[arg-type]
     )
 
-    # Set NaN/infinity colors and values
-    if projector.anomalies != "NA" and projector.anomalies:
-        for elem, anomalies in projector.anomalies.items():
-            if "nan" in anomalies:
-                projector.tile_colors[elem] = nan_color
-                projector.tile_values[elem] = "NaN"
-            elif "inf" in anomalies:
-                projector.tile_colors[elem] = inf_color
-                projector.tile_values[elem] = "∞"
+    # Generate value and colors (TileValueColor) for each tile
+    tile_value_colors = projector.generate_tile_value_colors(
+        text_colors=text_colors,
+        overwrite_tiles=overwrite_tiles or {},
+        inf_color=inf_color,
+        nan_color=nan_color,
+    )
 
-    # Exclude elements
-    for elem in exclude_elements:
-        projector.tile_colors[elem] = "white"
-        projector.tile_values[elem] = "excl."
-        projector.text_colors[elem] = "black"
+    # # Set better default symbol position  # TODO: one-shot in add_child_plots
+    # if symbol_pos is None:
+    #     symbol_pos = (0.5, 0.65) if values_show_mode != "off" else (0.5, 0.5)
 
-    # Call child plotter: heatmap
+    # # Add element symbols
+    # symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
+
+    #  # Show values upon request  # TODO:
+    # if values_show_mode != "off":
+    #     # Generate values format depending on the display mode
+    #     if values_fmt == "AUTO":
+    #         if values_show_mode == "percent":
+    #             values_fmt = ".1%"
+    #         elif projector.sci_notation:
+    #             values_fmt = ".2e"
+    #         else:
+    #             values_fmt = ".3g"
+
+    #     projector.add_elem_values(
+    #         pos=values_pos or (0.5, 0.25),
+    #         text_fmt=values_fmt,
+    #     )
+
+    # Add element symbol, value and color for each tile
     projector.add_child_plots(
+        values=tile_value_colors,
         ax_kwargs=ax_kwargs,
         f_block_voffset=f_block_voffset,
     )
-
-    # Set better default symbol position
-    if symbol_pos is None:
-        symbol_pos = (0.5, 0.65) if values_show_mode != "off" else (0.5, 0.5)
-
-    # Add element symbols
-    symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
-
-    projector.add_elem_symbols(
-        text=symbol_text,
-        pos=symbol_pos,
-        text_color=projector.text_colors,
-        kwargs=symbol_kwargs,
-    )
-
-    # Show values upon request
-    if values_show_mode != "off":
-        # Generate values format depending on the display mode
-        if values_fmt == "AUTO":
-            if values_show_mode == "percent":
-                values_fmt = ".1%"
-            elif projector.sci_notation:
-                values_fmt = ".2e"
-            else:
-                values_fmt = ".3g"
-
-        projector.add_elem_values(
-            pos=values_pos or (0.5, 0.25),
-            text_fmt=values_fmt,
-            kwargs=values_kwargs,
-        )
 
     # Show colorbar upon request
     if show_cbar:
@@ -507,7 +457,7 @@ def ptable_heatmap(
 
 
 def ptable_heatmap_splits(
-    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    data: pd.DataFrame | pd.Series | dict[ElemStr, list[list[float]]],
     *,
     # Heatmap-split specific
     start_angle: float = 135,
@@ -531,7 +481,7 @@ def ptable_heatmap_splits(
     """Plot evenly-split heatmaps, nested inside a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+        data (pd.DataFrame | pd.Series | dict[ElemStr, list[list[float]]]):
             Map from element symbols to plot data. E.g. if dict,
             {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
             be plotted on the lower-left corner and the 2nd on the upper-right.
@@ -645,10 +595,10 @@ def ptable_heatmap_ratio(
     of compositions.
 
     Args:
-        values_num (dict[str, int | float] | pd.Series | list[str]): Map from
+        values_num (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
             element symbols to heatmap values or iterable of composition strings/objects
             in the numerator.
-        values_denom (dict[str, int | float] | pd.Series | list[str]): Map from
+        values_denom (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
             element symbols to heatmap values or iterable of composition strings/objects
             in the denominator.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
@@ -709,7 +659,7 @@ def ptable_heatmap_ratio(
 
 
 def ptable_hists(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    data: pd.DataFrame | pd.Series | dict[ElemStr, list[float]],
     *,
     # Histogram-specific
     bins: int = 20,
@@ -742,7 +692,7 @@ def ptable_hists(
     """Plot histograms for each element laid out in a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
+        data (pd.DataFrame | pd.Series | dict[ElemStr, list[float]]): Map from element
             symbols to histogram values. E.g. if dict, {"Fe": [1, 2, 3], "O": [4, 5]}.
             If pd.Series, index is element symbols and values lists. If pd.DataFrame,
             column names are element symbols histograms are plotted from each column.
@@ -864,7 +814,7 @@ def ptable_hists(
 
 
 def ptable_scatters(
-    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    data: pd.DataFrame | pd.Series | dict[ElemStr, list[list[float]]],
     *,
     # Figure-scope
     colormap: str | Colormap | None = None,
@@ -892,7 +842,7 @@ def ptable_scatters(
     """Make scatter plots for each element, nested inside a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+        data (pd.DataFrame | pd.Series | dict[ElemStr, list[list[float]]]):
             Map from element symbols to plot data. E.g. if dict,
             {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
             be plotted on the lower-left corner and the 2nd on the upper-right.
@@ -1000,7 +950,7 @@ def ptable_scatters(
 
 
 def ptable_lines(
-    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    data: pd.DataFrame | pd.Series | dict[ElemStr, list[list[float]]],
     *,
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
@@ -1022,7 +972,7 @@ def ptable_lines(
     """Line plots for each element, nested inside a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]):
+        data (pd.DataFrame | pd.Series | dict[ElemStr, list[list[float]]]):
             Map from element symbols to plot data. E.g. if dict,
             {"Fe": [1, 2], "Co": [3, 4]}, where the 1st value would
             be plotted on the lower-left corner and the 2nd on the upper-right.
