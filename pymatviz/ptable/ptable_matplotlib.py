@@ -43,7 +43,7 @@ def ptable_heatmap(
     exclude_elements: Sequence[str] = (),
     overwrite_tiles: dict[ElemStr, OverwriteTileValueColor] | None = None,
     inf_color: ColorType = "lightskyblue",
-    nan_color: ColorType = "white",
+    nan_color: ColorType = "lightgrey",
     log: bool = False,
     sci_notation: bool = False,
     tile_size: tuple[float, float] = (0.75, 0.75),  # TODO: WIP, don't use

@@ -742,6 +742,7 @@ class HMapPTableProjector(PTableProjector):
                 # Generate tile color and text color
                 if self.cmap is None:
                     raise ValueError("Cannot generate tile color without colormap.")
+
                 tile_color = self.cmap(self.norm(value))
 
                 if text_colors == "AUTO":
