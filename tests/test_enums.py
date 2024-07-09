@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import pickle
 import sys
 
 from pymatviz.enums import Key, Model, StrEnum
-import pickle
+
 
 def test_str_enum() -> None:
     assert issubclass(StrEnum, str)
