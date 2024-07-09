@@ -6,7 +6,6 @@ import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, NamedTuple, Union
 
-import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
 from matplotlib.typing import ColorType
@@ -23,6 +22,7 @@ if TYPE_CHECKING:
 
     import matplotlib.pyplot as plt
     from matplotlib.colors import Colormap
+    from numpy.typing import NDArray
 
     from pymatviz.ptable._process_data import PTableData
 
@@ -62,8 +62,8 @@ class HMapPTableProjector(PTableProjector):
         *,
         text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
         overwrite_tiles: dict[ElemStr, TileValueColor],
-        nan_color: ColorType,
         inf_color: ColorType,
+        nan_color: ColorType = "lightgrey",
         excluded_tile_color: ColorType = "white",
     ) -> dict[ElemStr, TileValueColor]:
         """Generate value and colors for element tiles.
@@ -83,9 +83,15 @@ class HMapPTableProjector(PTableProjector):
         Returns:
             dict[ElemStr, TileValueColor]: Element to value-color mapping.
         """
+        # Build tile entry for NaN (or absent elements) and infinity
+        inf_tile = TileValueColor("∞", pick_bw_for_contrast(inf_color), inf_color)
+        nan_tile = TileValueColor("-", pick_bw_for_contrast(nan_color), nan_color)
+
         tile_entries: dict[ElemStr, TileValueColor] = {}
 
         for elem in Element:
+            elem = elem.symbol
+
             # Skip excluded elements
             if elem in self.exclude_elements:
                 tile_entries[elem] = TileValueColor(
@@ -98,20 +104,24 @@ class HMapPTableProjector(PTableProjector):
             # Handle NaN/infinity colors and values
             if self.anomalies != "NA" and elem in self.anomalies:
                 if "inf" in self.anomalies[elem]:
-                    tile_entries[elem] = TileValueColor(
-                        "∞", pick_bw_for_contrast(inf_color), inf_color
-                    )
-                # TODO: can there be NaN at all?
-                # elif "nan" in self.anomalies[elem]:
-                #     tile_entries[elem] = TileValueColor(
-                #         "NaN", pick_bw_for_contrast(nan_color), nan_color
-                #     )
+                    tile_entries[elem] = inf_tile
+
+                # Note: For heatmap plotter, ideally there should not
+                # be NaN in the value, but this might happen if
+                # NaNs are not dropped
+                elif "nan" in self.anomalies[elem]:
+                    tile_entries[elem] = nan_tile
 
                 continue
 
             # Try to get data from DataFrame
             try:
-                value: np.ndarray | Sequence[float] = self.data.loc[elem, Key.heat_val]
+                value: NDArray = self.data.loc[elem, Key.heat_val]
+
+                if len(value) != 1:
+                    raise ValueError(f"Data for {elem} should be length 1.")
+                else:
+                    value = float(value[0])
 
                 # Generate tile color and text color
                 tile_color = self.cmap(self.norm(value))
@@ -127,7 +137,7 @@ class HMapPTableProjector(PTableProjector):
 
             # For element absent from data, use "-"
             except KeyError:
-                tile_entries[elem] = TileValueColor("-", "black", "lightgrey")
+                tile_entries[elem] = nan_tile
 
         # Apply overwrite colors
         for elem, ow_tile_entry in overwrite_tiles.items():
@@ -166,6 +176,12 @@ class HMapPTableProjector(PTableProjector):
         """
         # Update kwargs
         ax_kwargs = ax_kwargs or {}
+        symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
+        values_kwargs = values_kwargs or {}
+        if sci_notation:
+            values_kwargs.setdefault("fontsize", 10)
+        else:
+            values_kwargs.setdefault("fontsize", 12)
 
         for element in Element:
             # Hide f-block
@@ -178,26 +194,15 @@ class HMapPTableProjector(PTableProjector):
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
             # Unpack tile entry
-            value, text_color, tile_color = tile_entries[element]
+            value, text_color, tile_color = tile_entries[symbol]
 
             # Skip element without data if "hide"
             if value == "-" and self.on_empty == "hide":
                 continue
 
-            # Add element symbol
-            ax.text(
-                *symbol_pos,
-                value,
-                color=text_color,
-                ha="center",
-                va="center",
-                transform=ax.transAxes,
-                **symbol_kwargs,
-            )
-
             # Add tile background color
             ax.pie(
-                np.ones(1),
+                [1.0],  # a single pie plot for cropping
                 colors=[tile_color],
                 wedgeprops={"clip_on": True},
             )
@@ -205,6 +210,20 @@ class HMapPTableProjector(PTableProjector):
                 xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2
             )
             ax.add_patch(rect)
+
+            ax.set_xlim(-0.5, 0.5)
+            ax.set_ylim(-0.5, 0.5)
+
+            # Add element symbol
+            ax.text(
+                *symbol_pos,
+                symbol,
+                color=text_color,
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                **symbol_kwargs,
+            )
 
             # (Upon request) Show value
             if values_show_mode == "off":
@@ -237,9 +256,6 @@ class HMapPTableProjector(PTableProjector):
                 transform=ax.transAxes,
                 **values_kwargs,
             )
-
-            ax.set_xlim(-0.5, 0.5)
-            ax.set_ylim(-0.5, 0.5)
 
             # Pass axis kwargs
             if ax_kwargs:
@@ -404,7 +420,7 @@ def ptable_heatmap(
     # Generate symbol and value positions
     values_pos = values_pos or (0.5, 0.25)
     if symbol_pos is None:
-        symbol_pos = (0.5, 0.65) if values_show_mode != "off" else (0.5, 0.5)
+        symbol_pos = (0.5, 0.5) if values_show_mode == "off" else (0.5, 0.65)
 
     # Add element symbol, value and color for each tile
     projector.add_heatmap_tiles(

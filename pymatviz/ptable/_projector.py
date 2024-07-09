@@ -93,6 +93,7 @@ class PTableProjector:
         self.data: pd.DataFrame = data
 
         # Remove excluded element from internal data to avoid metadata pollution
+        self.exclude_elements = exclude_elements
         self.ptable_data.drop_elements(exclude_elements)
 
         self.on_empty = on_empty
