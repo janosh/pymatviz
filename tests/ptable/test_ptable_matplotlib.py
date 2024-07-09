@@ -75,7 +75,7 @@ class TestPtableHeatmap:
     def test_values_show_mode(
         self, values_show_mode: Literal["percent", "fraction", "value", "off"]
     ) -> None:
-        fig = ptable_heatmap(df_ptable.atomic_mass, values_show_mode=values_show_mode)
+        fig = ptable_heatmap(df_ptable.atomic_mass, value_show_mode=values_show_mode)
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
@@ -85,7 +85,7 @@ class TestPtableHeatmap:
     ) -> None:
         with pytest.raises(ValueError, match="Combining log scale and"):
             ptable_heatmap(
-                df_ptable.atomic_mass, log=True, values_show_mode=values_show_mode
+                df_ptable.atomic_mass, log=True, value_show_mode=values_show_mode
             )
 
     @pytest.mark.parametrize(
@@ -98,7 +98,7 @@ class TestPtableHeatmap:
 
     @pytest.mark.parametrize("values_fmt", ["AUTO", ".3g", ".2g"])
     def test_values_fmt(self, values_fmt: str) -> None:
-        fig = ptable_heatmap(df_ptable.atomic_mass, values_fmt=values_fmt)
+        fig = ptable_heatmap(df_ptable.atomic_mass, value_fmt=values_fmt)
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
@@ -120,6 +120,10 @@ class TestPtableHeatmap:
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
+
+    @pytest.mark.skip("WIP")  # TODO: add this very important unit test
+    def test_generate_tile_value_colors(self) -> None:
+        pass
 
 
 @pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])

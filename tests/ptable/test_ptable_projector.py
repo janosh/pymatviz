@@ -59,7 +59,7 @@ class TestPTableProjector:
             match="elem_colors must be 'vesta', 'jmol', or a custom dict, "
             "got elem_colors='foobar'",
         ):
-            PTableProjector(data=data, elem_colors="foobar")  # type: ignore[arg-type]
+            PTableProjector(data=data, elem_colors="foobar")
 
     def test_hide_f_block(self) -> None:
         # check default is True if no f-block elements in data

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Sequence
+from math import isclose
 from typing import TYPE_CHECKING, Literal, NamedTuple, Union
 
 import pandas as pd
@@ -49,7 +50,7 @@ class OverwriteTileValueColor(TileValueColor):
     where None is used for not overwriting.
     """
 
-    value: str | float | None
+    value: str | float | None  # type: ignore[assignment]
     text_color: ColorType | None
     tile_color: ColorType | None
 
@@ -125,10 +126,12 @@ class HMapPTableProjector(PTableProjector):
                 value = float(values[0])
 
                 # Generate tile color and text color
+                if self.cmap is None:
+                    raise ValueError("Cannot generate tile color without colormap.")
                 tile_color = self.cmap(self.norm(value))
 
                 if text_colors == "AUTO":
-                    text_color = pick_bw_for_contrast(tile_color)
+                    text_color: str = pick_bw_for_contrast(tile_color)
                 elif isinstance(text_colors, dict):
                     text_color = text_colors.get(symbol, "black")
                 else:
@@ -156,12 +159,12 @@ class HMapPTableProjector(PTableProjector):
         *,
         f_block_voffset: float = 0,  # noqa: ARG002 TODO: fix this
         symbol_pos: tuple[float, float],
-        symbol_kwargs: dict[str, Any],
+        symbol_kwargs: dict[str, Any] | None = None,
         sci_notation: bool,
-        value_show_mode: str,
-        value_fmt: Literal["value", "fraction", "percent", "off"],
+        value_show_mode: Literal["value", "fraction", "percent", "off"],
+        value_fmt: str,
         value_pos: tuple[float, float],
-        value_kwargs: dict[str, Any],
+        value_kwargs: dict[str, Any] | None = None,
         ax_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Add heatmap tiles (element symbol, tile color and optional value)
@@ -483,6 +486,103 @@ def ptable_heatmap(
     return projector.fig
 
 
+def ptable_heatmap_ratio(
+    values_num: ElemValues,
+    values_denom: ElemValues,
+    *,
+    count_mode: ElemCountMode = ElemCountMode.composition,
+    normalize: bool = False,
+    inf_color: ColorType = "lightskyblue",
+    zero_color: ColorType = "lightgrey",
+    zero_tol: float = 0.01,
+    zero_symbol: str = "ZERO",
+    cbar_title: str = "Element Ratio",
+    not_in_numerator: tuple[str, str] | None = ("lightgray", "gray: not in 1st list"),
+    not_in_denominator: tuple[str, str] | None = (
+        "lightskyblue",
+        "blue: not in 2nd list",
+    ),
+    not_in_either: tuple[str, str] | None = ("white", "white: not in either"),
+    **kwargs: Any,
+) -> plt.Figure:
+    """Display the ratio of two maps from element symbols to heat values or of two sets
+    of compositions.
+
+    Args:
+        values_num (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
+            element symbols to heatmap values or iterable of composition strings/objects
+            in the numerator.
+        values_denom (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
+            element symbols to heatmap values or iterable of composition strings/objects
+            in the denominator.
+        normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
+            different ptable_heatmap_ratio plots comparable. Defaults to False.
+        inf_color (ColorType): Color for infinity.
+        zero_color (ColorType): Color for (near) zero element tiles.
+        zero_tol (float): Absolute tolerance to consider a value zero.
+        zero_symbol (str): Value to display for (near) zero element tiles.
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
+            Reduce or normalize compositions before counting. See count_elements() for
+            details. Only used when values is list of composition strings/objects.
+        cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
+        not_in_numerator (tuple[str, str]): Color and legend description used for
+            elements missing from numerator. Defaults to
+            ("#eff", "gray: not in 1st list").
+        not_in_denominator (tuple[str, str]): See not_in_numerator. Defaults to
+            ("lightskyblue", "blue: not in 2nd list").
+        not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
+            ("white", "white: not in either").
+        **kwargs: Additional keyword arguments passed to ptable_heatmap().
+
+    Returns:
+        plt.Figure: matplotlib Figures object.
+    """
+    # Generate ratio data
+    values_num = count_elements(values_num, count_mode)
+    values_denom = count_elements(values_denom, count_mode)
+
+    values = values_num / values_denom
+
+    if normalize:
+        values /= values.sum()
+
+    # Drop entries that is not is either (as NaN)
+    values = values.dropna(inplace=False)
+
+    # Generate overwrite tile entries for near zero values
+    overwrite_tiles = {}
+    for elem, value in values.items():
+        if isclose(value, 0, abs_tol=zero_tol):
+            overwrite_tiles[elem] = OverwriteTileValueColor(
+                zero_symbol, pick_bw_for_contrast(zero_color), zero_color
+            )
+
+    # Generate heatmap
+    fig = ptable_heatmap(
+        values,
+        cbar_title=cbar_title,
+        inf_color=inf_color,
+        on_empty="show",
+        overwrite_tiles=overwrite_tiles,
+        **kwargs,
+    )
+
+    # Add legend handles
+    for tup in (
+        (0.18, "zero", *(not_in_numerator or ())),
+        (0.12, "infty", *(not_in_denominator or ())),
+        (0.06, "na", *(not_in_either or ())),
+    ):
+        if len(tup) < 3:
+            continue
+        y_pos, key, color, txt = tup
+        kwargs[f"{key}_color"] = color
+        bbox = dict(facecolor=color, edgecolor="gray")
+        fig.text(0, y_pos, txt, fontsize=10, bbox=bbox, transform=fig.transFigure)
+
+    return fig
+
+
 def ptable_heatmap_splits(
     data: pd.DataFrame | pd.Series | dict[ElemStr, list[list[float]]],
     *,
@@ -598,91 +698,6 @@ def ptable_heatmap_splits(
     )
 
     return projector.fig
-
-
-def ptable_heatmap_ratio(
-    values_num: ElemValues,
-    values_denom: ElemValues,
-    *,
-    count_mode: ElemCountMode = ElemCountMode.composition,
-    normalize: bool = False,
-    zero_color: ColorType = "lightgrey",
-    inf_color: ColorType = "lightskyblue",
-    zero_symbol: str = "-",  # TODO: need docstring
-    cbar_title: str = "Element Ratio",
-    not_in_numerator: tuple[str, str] | None = ("lightgray", "gray: not in 1st list"),
-    not_in_denominator: tuple[str, str] | None = (
-        "lightskyblue",
-        "blue: not in 2nd list",
-    ),
-    not_in_either: tuple[str, str] | None = ("white", "white: not in either"),
-    **kwargs: Any,
-) -> plt.Figure:
-    """Display the ratio of two maps from element symbols to heat values or of two sets
-    of compositions.
-
-    Args:
-        values_num (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
-            element symbols to heatmap values or iterable of composition strings/objects
-            in the numerator.
-        values_denom (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
-            element symbols to heatmap values or iterable of composition strings/objects
-            in the denominator.
-        normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
-            different ptable_heatmap_ratio plots comparable. Defaults to False.
-        zero_color: ColorType = "lightgrey",  # TODO: finish docstring
-        inf_color: ColorType = "lightskyblue",
-        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See count_elements() for
-            details. Only used when values is list of composition strings/objects.
-        cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
-        not_in_numerator (tuple[str, str]): Color and legend description used for
-            elements missing from numerator. Defaults to
-            ("#eff", "gray: not in 1st list").
-        not_in_denominator (tuple[str, str]): See not_in_numerator. Defaults to
-            ("lightskyblue", "blue: not in 2nd list").
-        not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
-            ("white", "white: not in either").
-        **kwargs: Additional keyword arguments passed to ptable_heatmap().
-
-    Returns:
-        plt.Figure: matplotlib Figures object.
-    """
-    # Generate ratio data
-    values_num = count_elements(values_num, count_mode)
-    values_denom = count_elements(values_denom, count_mode)
-
-    values = values_num / values_denom
-
-    if normalize:
-        values /= values.sum()
-
-    # Drop entries that is not is either (as NaN)
-    values = values.dropna(inplace=False)
-
-    # TODO: need to assign zero color?
-    fig = ptable_heatmap(
-        values,
-        cbar_title=cbar_title,
-        inf_color=inf_color,
-        on_empty="show",
-        **kwargs,
-    )
-
-    # Add legend handles
-    for tup in (
-        (0.18, "zero", *(not_in_numerator or ())),
-        (0.12, "infty", *(not_in_denominator or ())),
-        (0.06, "na", *(not_in_either or ())),
-    ):
-        if len(tup) < 3:
-            continue
-        y_pos, key, color, txt = tup
-        kwargs[f"{key}_color"] = color
-        bbox = dict(facecolor=color, edgecolor="gray")
-        fig.text(0, y_pos, txt, fontsize=10, bbox=bbox, transform=fig.transFigure)
-
-    return fig
 
 
 def ptable_hists(
