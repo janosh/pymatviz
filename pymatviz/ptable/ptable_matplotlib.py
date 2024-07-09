@@ -230,14 +230,6 @@ class HMapPTableProjector(PTableProjector):
                 continue
 
             # Format value
-            if values_fmt == "AUTO":
-                if values_show_mode == "percent":
-                    values_fmt = ".1%"
-                elif sci_notation:
-                    values_fmt = ".2e"
-                else:
-                    values_fmt = ".3g"
-
             try:
                 value = f"{value:{values_fmt}}"
             except ValueError:
@@ -408,6 +400,15 @@ def ptable_heatmap(
         normalized_data = projector.ptable_data
         normalized_data.normalize()
         projector.data = normalized_data.data  # use setter to update metadata
+
+    # Generate value f-string formatter
+    if values_fmt == "AUTO":
+        if values_show_mode == "percent":
+            values_fmt = ".1%"
+        elif sci_notation:
+            values_fmt = ".2e"
+        else:
+            values_fmt = ".3g"
 
     # Generate value and colors (TileValueColor) for each tile
     tile_entries = projector.generate_tile_value_colors(

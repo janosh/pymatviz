@@ -408,7 +408,6 @@ class PTableProjector:
 
         # Add colorbar
         cbar_ax = self.fig.add_axes(coords)
-
         self.fig.colorbar(
             plt.cm.ScalarMappable(norm=self.norm, cmap=self.cmap),
             cax=cbar_ax,
