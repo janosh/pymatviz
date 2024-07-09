@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Literal, NamedTuple, Union
 
 import pandas as pd
 from matplotlib.patches import Rectangle
-from matplotlib.typing import ColorType
 from pymatgen.core import Element
 
 from pymatviz.enums import ElemColorMode, ElemCountMode, Key
@@ -22,6 +21,7 @@ if TYPE_CHECKING:
 
     import matplotlib.pyplot as plt
     from matplotlib.colors import Colormap
+    from matplotlib.typing import ColorType
     from numpy.typing import NDArray
 
     from pymatviz.ptable._process_data import PTableData
@@ -77,8 +77,9 @@ class HMapPTableProjector(PTableProjector):
             overwrite_tiles (dict[ElemStr, TileValueColor]): Final
                 entried to overwrite tile value and colors. Note this
                 would overwrite everything, include exclusion and anomalies.
-            nan_color (ColorType): Color for missing value (NaN).
             inf_color (ColorType): Color for infinities.
+            nan_color (ColorType): Color for missing value (NaN).
+            excluded_tile_color (ColorType): Color for excluded element tile.
 
         Returns:
             dict[ElemStr, TileValueColor]: Element to value-color mapping.
@@ -89,12 +90,12 @@ class HMapPTableProjector(PTableProjector):
 
         tile_entries: dict[ElemStr, TileValueColor] = {}
 
-        for elem in Element:
-            elem = elem.symbol
+        for element in Element:
+            symbol = element.symbol
 
             # Skip excluded elements
-            if elem in self.exclude_elements:
-                tile_entries[elem] = TileValueColor(
+            if symbol in self.exclude_elements:
+                tile_entries[symbol] = TileValueColor(
                     "excl.",
                     pick_bw_for_contrast(excluded_tile_color),
                     excluded_tile_color,
@@ -102,26 +103,26 @@ class HMapPTableProjector(PTableProjector):
                 continue
 
             # Handle NaN/infinity colors and values
-            if self.anomalies != "NA" and elem in self.anomalies:
-                if "inf" in self.anomalies[elem]:
-                    tile_entries[elem] = inf_tile
+            if self.anomalies != "NA" and symbol in self.anomalies:
+                if "inf" in self.anomalies[symbol]:
+                    tile_entries[symbol] = inf_tile
 
                 # Note: For heatmap plotter, ideally there should not
                 # be NaN in the value, but this might happen if
                 # NaNs are not dropped
                 else:
-                    tile_entries[elem] = nan_tile
+                    tile_entries[symbol] = nan_tile
 
                 continue
 
             # Try to get data from DataFrame
             try:
-                value: NDArray = self.data.loc[elem, Key.heat_val]
+                values: NDArray = self.data.loc[symbol, Key.heat_val]
 
-                if len(value) != 1:
-                    raise ValueError(f"Data for {elem} should be length 1.")
-                else:
-                    value = float(value[0])
+                if len(values) != 1:
+                    raise ValueError(f"Data for {symbol} should be length 1.")
+
+                value = float(values[0])
 
                 # Generate tile color and text color
                 tile_color = self.cmap(self.norm(value))
@@ -129,27 +130,27 @@ class HMapPTableProjector(PTableProjector):
                 if text_colors == "AUTO":
                     text_color = pick_bw_for_contrast(tile_color)
                 elif isinstance(text_colors, dict):
-                    text_color = text_colors.get(elem, "black")
+                    text_color = text_colors.get(symbol, "black")
                 else:
                     text_color = text_colors
 
-                tile_entries[elem] = TileValueColor(value, text_color, tile_color)
+                tile_entries[symbol] = TileValueColor(value, text_color, tile_color)
 
             # For element absent from data, use "-"
             except KeyError:
-                tile_entries[elem] = nan_tile
+                tile_entries[symbol] = nan_tile
 
         # Apply overwrite colors
-        for elem, ow_tile_entry in overwrite_tiles.items():
-            tile_entries[elem] = TileValueColor(
-                ow_tile_entry.value or tile_entries[elem].value,
-                ow_tile_entry.text_color or tile_entries[elem].text_color,
-                ow_tile_entry.tile_color or tile_entries[elem].tile_color,
+        for symbol, ow_tile_entry in overwrite_tiles.items():
+            tile_entries[symbol] = TileValueColor(
+                ow_tile_entry.value or tile_entries[symbol].value,
+                ow_tile_entry.text_color or tile_entries[symbol].text_color,
+                ow_tile_entry.tile_color or tile_entries[symbol].tile_color,
             )
 
         return tile_entries
 
-    def add_heatmap_tiles(  # TODO: miss a lot of args docstring
+    def add_heatmap_tiles(
         self,
         tile_entries: dict[str, TileValueColor],
         *,
@@ -167,10 +168,28 @@ class HMapPTableProjector(PTableProjector):
         to the periodic table grid.
 
         Args:
+            tile_entries (dict[str, TileValueColor]): Entries for each tile.
             f_block_voffset (float): The vertical offset of f-block elements.
+            symbol_pos (tuple[float, float]): Position of element symbols
+                relative to the lower left corner of each tile.
+                Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
+            symbol_kwargs (dict): Keyword arguments passed to plt.text() for
+                element symbols. Defaults to None.
+            sci_notation (bool): Whether to use scientific notation for values and
+                colorbar tick labels.
+            value_show_mode (str): The values display mode:
+                - "off": Hide values.
+                - "value": Display values as is.
+                - "fraction": As a fraction of the total (0.10).
+                - "percent": As a percentage of the total (10%).
+                "fraction" and "percent" can be used to make the colors in
+                    different plots comparable.
+            value_pos (tuple[float, float]): The position of values inside the tile.
+            value_fmt (str | "AUTO"): f-string format for values. Defaults to ".1%"
+                (1 decimal place) if values_show_mode is "percent", else ".3g".
+            value_kwargs (dict): Keyword arguments passed to plt.text() for
+                values. Defaults to None.
             ax_kwargs (dict): Keyword arguments to pass to ax.set().
-            on_empty ("hide" | "show"): Whether to show or hide tiles for
-                elements without data.
         """
         # Update kwargs
         ax_kwargs = ax_kwargs or {}
@@ -262,7 +281,7 @@ def ptable_heatmap(
     inf_color: ColorType = "lightskyblue",
     nan_color: ColorType = "white",
     log: bool = False,
-    sci_notation: bool = False,  # TODO: how to use this efficiently?
+    sci_notation: bool = False,
     tile_size: tuple[float, float] = (0.75, 0.75),  # TODO: WIP, don't use
     # Figure-scope
     on_empty: Literal["hide", "show"] = "hide",
@@ -303,6 +322,8 @@ def ptable_heatmap(
         # Heatmap specific
         colormap (str): The colormap to use.
         exclude_elements (Sequence[str]): Elements to exclude.
+        overwrite_tiles (dict[ElemStr, OverwriteTileValueColor]): Force
+            overwrite value or color for element tiles.
         inf_color (ColorType): The color to use for infinity.
         nan_color (ColorType): The color to use for missing value (NaN).
         log (bool): Whether to show colorbar in log scale.

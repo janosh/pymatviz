@@ -304,7 +304,9 @@ class PTableData:
                 df_dropped = original_data.drop(elements, axis=0)
                 self.data = df_dropped
             except KeyError:
-                warnings.warn("Drop elements failed, some elements are not present")
+                warnings.warn(
+                    "Drop elements failed, some elements are not present", stacklevel=2
+                )
 
     def check_and_replace_missing(
         self,
