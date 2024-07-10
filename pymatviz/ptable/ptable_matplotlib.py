@@ -74,6 +74,8 @@ def ptable_heatmap(
     # Deprecated args, don't use
     colorscale: str | None = None,
     heat_mode: Literal["value", "fraction", "percent"] | None = None,
+    show_values: bool | None = None,
+    fmt: str | None = None,
     cbar_fmt: str | None = None,
     show_scale: bool | None = None,
 ) -> plt.Figure:
@@ -159,6 +161,8 @@ def ptable_heatmap(
         # Deprecated args, don't use
         colorscale: Use "colormap" instead.
         heat_mode: Use "value_show_mode" instead.
+        show_values: Use "value_show_mode" instead.
+        fmt: Use "value_fmt" instead.
         cbar_fmt: Use "cbar_label_fmt" instead.
         show_scale: Use "show_cbar" instead.
 
@@ -182,6 +186,15 @@ def ptable_heatmap(
             "heat_mode is deprecated in favor of value_show_mode.", stacklevel=2
         )
         value_show_mode = heat_mode
+    if show_values is not None:
+        warnings.warn(
+            "show_values is deprecated in favor of value_show_mode.", stacklevel=2
+        )
+        if not show_values:
+            value_show_mode = "off"
+    if fmt is not None:
+        warnings.warn("fmt is deprecated in favor of value_fmt.", stacklevel=2)
+        value_fmt = fmt
     if cbar_fmt is not None:
         warnings.warn(
             "cbar_fmt is deprecated in favor of cbar_label_fmt.", stacklevel=2
