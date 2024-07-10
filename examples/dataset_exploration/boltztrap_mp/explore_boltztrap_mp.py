@@ -30,10 +30,9 @@ https://hackingmaterials.lbl.gov/matminer/dataset_summary.html
 import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
-from pymatviz import ptable_heatmap
+from pymatviz import count_elements, ptable_heatmap
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
-from pymatviz.process_data import count_elements
 
 
 # %%

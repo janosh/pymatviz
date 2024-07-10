@@ -5,6 +5,7 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import (
+    count_elements,
     crystal_sys_order,
     ptable_heatmap,
     ptable_heatmap_plotly,
@@ -13,7 +14,6 @@ from pymatviz import (
 )
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
-from pymatviz.process_data import count_elements
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
