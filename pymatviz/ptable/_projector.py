@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, NamedTuple
 
@@ -672,6 +673,28 @@ class ChildPlotters:
 
 class HMapPTableProjector(PTableProjector):
     """With more heatmap-specific functionalities."""
+
+    def filter_near_zero(self, tol: float = 1e-4) -> None:
+        """Filter near zero value in data for log mode.
+
+        Args:
+            tol (float): Tolerance to consider a value as zero.
+        """
+
+        def to_scalar(x: float | list[float] | NDArray) -> float:
+            """Convert a single value np array to scalar."""
+            if isinstance(x, (list, np.ndarray)):
+                return x[0] if len(x) > 0 else np.nan
+            return x
+
+        self.data[Key.heat_val] = self.data[Key.heat_val].apply(to_scalar)
+
+        mask = np.isclose(self.data[Key.heat_val], 0, atol=tol)
+        df_filtered = self.data[~mask]
+
+        if len(df_filtered) < len(self.data):
+            warnings.warn("Elements dropped due to close to zero value.", stacklevel=2)
+            self.data = df_filtered
 
     def generate_tile_value_colors(
         self,

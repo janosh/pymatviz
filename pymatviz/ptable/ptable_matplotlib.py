@@ -220,6 +220,10 @@ def ptable_heatmap(
         hide_f_block=hide_f_block,
     )
 
+    # Filter near zero values in log mode
+    if log:
+        projector.filter_near_zero()
+
     # Normalize data for "fraction/percent" modes
     if value_show_mode in {"fraction", "percent"}:
         normalized_data = projector.ptable_data

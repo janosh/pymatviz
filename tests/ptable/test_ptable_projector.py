@@ -165,17 +165,17 @@ class TestPtableHeatmapGenTileValueColors:
         [
             (  # overwrite value alone
                 {"He": OverwriteTileValueColor("hi", None, None)},
-                TileValueColor("hi", "black", ([0.993248, 0.906157, 0.143936])),
+                TileValueColor("hi", "white", ([0.267004, 0.004874, 0.329415])),
             ),
             (  # overwrite text_color alone
                 {"He": OverwriteTileValueColor(None, "yellow", None)},
                 TileValueColor(
-                    2.0, mpl.colors.to_rgb("yellow"), ([0.993248, 0.906157, 0.143936])
+                    2.0, mpl.colors.to_rgb("yellow"), ([0.267004, 0.004874, 0.329415])
                 ),
             ),
             (  # overwrite tile_color alone
                 {"He": OverwriteTileValueColor(None, None, "grey")},
-                TileValueColor(2.0, "black", mpl.colors.to_rgb("grey")),
+                TileValueColor(2.0, "white", mpl.colors.to_rgb("grey")),
             ),
             (  # overwrite all three
                 {"He": OverwriteTileValueColor("hi", "yellow", "grey")},
@@ -244,3 +244,16 @@ class TestPtableHeatmapGenTileValueColors:
             mpl.colors.to_rgb(tile_entries["B"].tile_color),
             mpl.colors.to_rgb(excluded_color),
         )
+
+    def test_filter_near_zero(self) -> None:
+        test_dict = {
+            "H": 0,  # int
+            "He": [0.0],  # float list
+            "Li": 3,
+        }
+        projector = HMapPTableProjector(data=test_dict, colormap="viridis")
+
+        with pytest.warns(match="Elements dropped due to close to zero value"):
+            projector.filter_near_zero()
+
+        assert set(projector.data.index) == {"Li"}
