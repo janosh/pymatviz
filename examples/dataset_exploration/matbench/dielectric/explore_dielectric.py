@@ -13,6 +13,7 @@ from pymatviz import (
 )
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
+from pymatviz.process_data import count_elements
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
@@ -51,9 +52,9 @@ df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%
-ax = ptable_heatmap(df_diel[Key.formula], log=True)
-ax.set(title="Elemental prevalence in the Matbench dielectric dataset")
-save_fig(ax, "dielectric-ptable-heatmap.pdf")
+fig = ptable_heatmap(count_elements(df_diel[Key.formula]), log=True)
+fig.suptitle("Elemental prevalence in the Matbench dielectric dataset")
+save_fig(fig, "dielectric-ptable-heatmap.pdf")
 
 
 # %%
