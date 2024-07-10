@@ -71,6 +71,12 @@ def ptable_heatmap(
     cbar_title: str = "Element Count",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
+    # Deprecated args, don't use
+    colorscale: str | None = None,
+    infty_color: str | None = None,
+    heat_mode: Literal["value", "fraction", "percent"] | None = None,
+    cbar_fmt: str | None = None,
+    show_scale: bool | None = None,
 ) -> plt.Figure:
     """Plot a heatmap across the periodic table.
 
@@ -151,6 +157,13 @@ def ptable_heatmap(
             cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
+        # Deprecated args, don't use
+        colorscale: Use "colormap" instead.
+        infty_color: Use "inf_color" instead.
+        heat_mode: Use "value_show_mode" instead.
+        cbar_fmt: Use "cbar_label_fmt" instead.
+        show_scale: Use "show_cbar" instead.
+
     Returns:
         plt.Figure: matplotlib Figure with the heatmap.
     """
@@ -161,6 +174,27 @@ def ptable_heatmap(
             "f_block_voffset and tile_size is still being worked on.",
             stacklevel=2,
         )
+
+    # Handle deprecated args  # TODO: remove after 2025-01-01
+    if colorscale is not None:
+        warnings.warn("colorscale is deprecated in favor of colormap.", stacklevel=2)
+        colormap = colorscale
+    if infty_color is not None:
+        warnings.warn("infty_color is deprecated in favor of inf_color.", stacklevel=2)
+        inf_color = infty_color
+    if heat_mode is not None:
+        warnings.warn(
+            "heat_mode is deprecated in favor of value_show_mode.", stacklevel=2
+        )
+        value_show_mode = heat_mode
+    if cbar_fmt is not None:
+        warnings.warn(
+            "cbar_fmt is deprecated in favor of cbar_label_fmt.", stacklevel=2
+        )
+        cbar_label_fmt = cbar_fmt
+    if show_scale is not None:
+        warnings.warn("show_scale is deprecated in favor of show_cbar.", stacklevel=2)
+        show_cbar = show_scale
 
     # Prevent log scale and percent/fraction display mode being used together
     if log and value_show_mode in {"percent", "fraction"}:
