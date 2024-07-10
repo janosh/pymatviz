@@ -26,6 +26,7 @@ module_dir = os.path.dirname(__file__)
 
 
 # %%
+# DEBUG: following data doesn't exist
 with gzip.open(f"{module_dir}/20240214-MatPES-178070-r2SCAN.json.gz", "rt") as file:
     r2scan_data = json.load(file)
 # examples/dataset_exploration/matpes/20240214-MatPES-187023-PBE.json.gz
@@ -106,16 +107,16 @@ fig.show()
 r2scan_elem_counts = locals().get("r2scan_elem_counts")
 if r2scan_elem_counts is None:
     r2scan_elem_counts = count_elements(df_r2scan[Key.formula])
-ax = ptable_heatmap(r2scan_elem_counts)
+fig = ptable_heatmap(r2scan_elem_counts)
 
-save_fig(ax, "r2scan-element-counts-ptable.pdf")
+save_fig(fig, "r2scan-element-counts-ptable.pdf")
 
 
 # %%
 pbe_elem_counts = locals().get("pbe_elem_counts")
 if pbe_elem_counts is None:
     pbe_elem_counts = count_elements(df_pbe[Key.formula])
-ax = ptable_heatmap(pbe_elem_counts)
+fig = ptable_heatmap(pbe_elem_counts)
 
 
 # %% calculate per element energies
@@ -156,14 +157,14 @@ fig = ptable_heatmap_splits(
 
 
 # %% which elements have a higher share of missing r2scan data
-ax = ptable_heatmap(
+fig = ptable_heatmap(
     (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
     value_fmt=".1%",
     cbar_label_fmt=".0%",
     cbar_title="Fraction of missing PBE calcs missing r2SCAN",
 )
 
-save_fig(ax, "ptable-has-pbe-but-no-r2scan.pdf")
+save_fig(fig, "ptable-has-pbe-but-no-r2scan.pdf")
 
 
 # %% per-elem mean abs magmoms
@@ -172,10 +173,10 @@ df_per_elem_magmoms = pd.DataFrame(
     for struct in df_r2scan[Key.structure]
 ).mean()
 
-ax = ptable_heatmap(
+fig = ptable_heatmap(
     df_per_elem_magmoms, cbar_title=r"Mean |magmom| ($\mu_B$)", value_fmt=".1f"
 )
-save_fig(ax, "magmoms-ptable.pdf")
+save_fig(fig, "magmoms-ptable.pdf")
 
 
 # %% spacegroup distribution
