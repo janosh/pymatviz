@@ -236,6 +236,8 @@ def ptable_heatmap(
             value_fmt = ".1%"
         elif sci_notation:
             value_fmt = ".2e"
+        elif log:
+            value_fmt = ".0f"
         else:
             value_fmt = ".3g"
 

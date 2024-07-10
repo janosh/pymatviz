@@ -42,7 +42,7 @@ df_boltz.describe()
 
 
 # %%
-fig = ptable_heatmap(count_elements(df_boltz[Key.formula]), log=True, value_fmt=".0f")
+fig = ptable_heatmap(count_elements(df_boltz[Key.formula]), log=True)
 fig.suptitle("Elements in BoltzTraP MP dataset")
 save_fig(fig, "boltztrap_mp-ptable-heatmap.pdf")
 
