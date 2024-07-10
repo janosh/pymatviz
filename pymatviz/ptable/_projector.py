@@ -677,6 +677,8 @@ class HMapPTableProjector(PTableProjector):
     def filter_near_zero(self, tol: float = 1e-4) -> None:
         """Filter near zero value in data for log mode.
 
+        TODO: need a more efficient way to detect zero from value
+
         Args:
             tol (float): Tolerance to consider a value as zero.
         """
@@ -687,9 +689,9 @@ class HMapPTableProjector(PTableProjector):
                 return x[0] if len(x) > 0 else np.nan
             return x
 
-        self.data[Key.heat_val] = self.data[Key.heat_val].apply(to_scalar)
+        val_col = self.data[Key.heat_val].copy().apply(to_scalar)
 
-        mask = np.isclose(self.data[Key.heat_val], 0, atol=tol)
+        mask = np.isclose(val_col, 0, atol=tol)
         df_filtered = self.data[~mask]
 
         if len(df_filtered) < len(self.data):
