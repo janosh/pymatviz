@@ -740,7 +740,11 @@ class HMapPTableProjector(PTableProjector):
                     )
                 except (KeyError, ValueError):
                     pass
-        self.norm = (min(values_in_ptable), max(values_in_ptable))
+
+        if values_in_ptable:
+            self.norm = (min(values_in_ptable), max(values_in_ptable))
+        else:
+            warnings.warn("No proper values to display in ptable.", stacklevel=2)
 
         # Build TileValueColor for NaN (or absent elements) and infinity
         inf_tile = TileValueColor("∞", pick_bw_for_contrast(infty_color), infty_color)
@@ -786,7 +790,7 @@ class HMapPTableProjector(PTableProjector):
                 if self.cmap is None:
                     raise ValueError("Cannot generate tile color without colormap.")
 
-                tile_color = self.cmap(self.norm(value))  # type: ignore[operator]
+                tile_color = self.cmap(self.norm(value))
 
                 if text_colors == "AUTO":
                     text_color: str = pick_bw_for_contrast(tile_color)
