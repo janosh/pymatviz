@@ -85,7 +85,7 @@ class PTableProjector:
         tile_size: tuple[float, float] = (0.75, 0.75),
         plot_kwargs: dict[str, Any] | None = None,
         exclude_elements: Sequence[str] = (),
-        on_empty: Literal["hide", "show"] = "hide",
+        on_empty: Literal["hide", "show"] = "show",
         hide_f_block: bool | Literal["AUTO"] = "AUTO",
         elem_type_colors: dict[str, str] | None = None,
         elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.vesta,
@@ -183,9 +183,10 @@ class PTableProjector:
                 lower bound of values, use None for auto detect from metadata.
         """
         value_range = (
-            value_range[0] or self.ptable_data.data.attrs["vmin"],
-            value_range[1] or self.ptable_data.data.attrs["vmax"],
+            value_range[0] or float(self.ptable_data.data.attrs["vmin"]),
+            value_range[1] or float(self.ptable_data.data.attrs["vmax"]),
         )
+
         self._norm: Normalize | LogNorm = (
             LogNorm(*value_range) if self.log else Normalize(*value_range)
         )
@@ -699,6 +700,23 @@ class HMapPTableProjector(PTableProjector):
         Returns:
             dict[ElemStr, TileValueColor]: Element to value-color mapping.
         """
+        # Reset cmap normalizer, and exclude all excluded/NaN/inf/overwritten elements
+        values_in_ptable = []
+        for element in Element:
+            symbol = element.symbol
+            if (
+                symbol not in (overwrite_tiles or {})
+                and symbol not in self.exclude_elements
+                and symbol not in self.anomalies
+            ):
+                try:
+                    values_in_ptable.append(
+                        float(self.data.loc[symbol, Key.heat_val][0])
+                    )
+                except (KeyError, ValueError):
+                    pass
+        self.norm = (min(values_in_ptable), max(values_in_ptable))
+
         # Build TileValueColor for NaN (or absent elements) and infinity
         inf_tile = TileValueColor("∞", pick_bw_for_contrast(infty_color), infty_color)
         nan_tile = TileValueColor("-", pick_bw_for_contrast(nan_color), nan_color)
@@ -743,7 +761,7 @@ class HMapPTableProjector(PTableProjector):
                 if self.cmap is None:
                     raise ValueError("Cannot generate tile color without colormap.")
 
-                tile_color = self.cmap(self.norm(value))
+                tile_color = self.cmap(self.norm(value))  # type: ignore[operator]
 
                 if text_colors == "AUTO":
                     text_color: str = pick_bw_for_contrast(tile_color)
