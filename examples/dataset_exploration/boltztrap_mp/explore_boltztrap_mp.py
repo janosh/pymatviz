@@ -33,6 +33,7 @@ from matminer.datasets import load_dataset
 from pymatviz import ptable_heatmap
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
+from pymatviz.process_data import count_elements
 
 
 # %%
@@ -41,15 +42,17 @@ df_boltz.describe()
 
 
 # %%
-ax = ptable_heatmap(df_boltz[Key.formula], log=True)
-ax.set(title="Elements in BoltzTraP MP dataset")
-save_fig(ax, "boltztrap_mp-ptable-heatmap.pdf")
+fig = ptable_heatmap(count_elements(df_boltz[Key.formula]), log=True, value_fmt=".0f")
+fig.suptitle("Elements in BoltzTraP MP dataset")
+save_fig(fig, "boltztrap_mp-ptable-heatmap.pdf")
 
 
 # %%
-ax = ptable_heatmap(df_boltz.sort_values("pf_n").tail(100)[Key.formula])
-ax.set(title="Elements of top 100 n-type powerfactors in BoltzTraP MP dataset")
-save_fig(ax, "boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")
+fig = ptable_heatmap(
+    count_elements(df_boltz.sort_values("pf_n").tail(100)[Key.formula])
+)
+fig.suptitle("Elements of top 100 n-type powerfactors in BoltzTraP MP dataset")
+save_fig(fig, "boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")
 
 
 # %%
