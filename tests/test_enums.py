@@ -35,7 +35,9 @@ def test_pickle_enum() -> None:
     pickled_key = pickle.dumps(key)
     unpickled_key = pickle.loads(pickled_key)  # noqa: S301
 
-    assert isinstance(unpickled_key, str)
+    # ensure key unpickles to str, not Key (don't use isinstance check as
+    # isinstance(StrEnum, str) is True)
+    assert type(unpickled_key) is str
     assert unpickled_key == "energy_per_atom"
     assert unpickled_key == Key.energy_per_atom
     assert type(key) == Key
