@@ -10,7 +10,7 @@ https://ml.materialsproject.org/projects/matbench_steels
 # %%
 from matminer.datasets import load_dataset
 
-from pymatviz import ptable_heatmap
+from pymatviz import count_elements, ptable_heatmap
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
 
@@ -25,6 +25,6 @@ save_fig(ax, "steels-yield-strength-hist.pdf")
 
 
 # %%
-ax = ptable_heatmap(df_steels[Key.composition], log=True)
-ax.set(title="Elemental prevalence in the Matbench steels dataset")
-save_fig(ax, "steels-ptable-heatmap.pdf")
+fig = ptable_heatmap(count_elements(df_steels[Key.composition]), log=True)
+fig.suptitle("Elemental prevalence in the Matbench steels dataset")
+save_fig(fig, "steels-ptable-heatmap.pdf")

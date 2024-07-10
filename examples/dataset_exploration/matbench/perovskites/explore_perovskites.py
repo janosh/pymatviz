@@ -2,7 +2,12 @@
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from pymatviz import plot_structure_2d, ptable_heatmap, spacegroup_sunburst
+from pymatviz import (
+    count_elements,
+    plot_structure_2d,
+    ptable_heatmap,
+    spacegroup_sunburst,
+)
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
 from pymatviz.powerups import annotate_bars
@@ -50,9 +55,9 @@ save_fig(ax, "perovskites-e_form-hist.pdf")
 
 
 # %%
-ax = ptable_heatmap(df_perov[Key.formula], log=True)
-ax.set(title="Elements in Matbench Perovskites dataset")
-save_fig(ax, "perovskites-ptable-heatmap.pdf")
+fig = ptable_heatmap(count_elements(df_perov[Key.formula]), log=True)
+fig.suptitle("Elements in Matbench Perovskites dataset")
+save_fig(fig, "perovskites-ptable-heatmap.pdf")
 
 
 # %%
