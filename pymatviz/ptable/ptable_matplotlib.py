@@ -42,7 +42,7 @@ def ptable_heatmap(
     colormap: str = "viridis",
     exclude_elements: Sequence[str] = (),
     overwrite_tiles: dict[ElemStr, OverwriteTileValueColor] | None = None,
-    inf_color: ColorType = "lightskyblue",
+    infty_color: ColorType = "lightskyblue",
     nan_color: ColorType = "lightgrey",
     log: bool = False,
     sci_notation: bool = False,
@@ -73,7 +73,6 @@ def ptable_heatmap(
     cbar_kwargs: dict[str, Any] | None = None,
     # Deprecated args, don't use
     colorscale: str | None = None,
-    infty_color: str | None = None,
     heat_mode: Literal["value", "fraction", "percent"] | None = None,
     cbar_fmt: str | None = None,
     show_scale: bool | None = None,
@@ -94,7 +93,7 @@ def ptable_heatmap(
         exclude_elements (Sequence[str]): Elements to exclude.
         overwrite_tiles (dict[ElemStr, OverwriteTileValueColor]): Force
             overwrite value or color for element tiles.
-        inf_color (ColorType): The color to use for infinity.
+        infty_color (ColorType): The color to use for infinity.
         nan_color (ColorType): The color to use for missing value (NaN).
         log (bool): Whether to show colorbar in log scale.
         sci_notation (bool): Whether to use scientific notation for values and
@@ -159,7 +158,6 @@ def ptable_heatmap(
 
         # Deprecated args, don't use
         colorscale: Use "colormap" instead.
-        infty_color: Use "inf_color" instead.
         heat_mode: Use "value_show_mode" instead.
         cbar_fmt: Use "cbar_label_fmt" instead.
         show_scale: Use "show_cbar" instead.
@@ -179,9 +177,6 @@ def ptable_heatmap(
     if colorscale is not None:
         warnings.warn("colorscale is deprecated in favor of colormap.", stacklevel=2)
         colormap = colorscale
-    if infty_color is not None:
-        warnings.warn("infty_color is deprecated in favor of inf_color.", stacklevel=2)
-        inf_color = infty_color
     if heat_mode is not None:
         warnings.warn(
             "heat_mode is deprecated in favor of value_show_mode.", stacklevel=2
@@ -231,7 +226,7 @@ def ptable_heatmap(
     tile_entries = projector.generate_tile_value_colors(
         text_colors=text_colors,
         overwrite_tiles=overwrite_tiles or {},
-        inf_color=inf_color,
+        infty_color=infty_color,
         nan_color=nan_color,
     )
 
@@ -287,7 +282,7 @@ def ptable_heatmap_ratio(
     *,
     count_mode: ElemCountMode = ElemCountMode.composition,
     normalize: bool = False,
-    inf_color: ColorType = "lightskyblue",
+    infty_color: ColorType = "lightskyblue",
     zero_color: ColorType = "lightgrey",
     zero_tol: float = 0.01,
     zero_symbol: str = "ZERO",
@@ -312,7 +307,7 @@ def ptable_heatmap_ratio(
             in the denominator.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
-        inf_color (ColorType): Color for infinity.
+        infty_color (ColorType): Color for infinity.
         zero_color (ColorType): Color for (near) zero element tiles.
         zero_tol (float): Absolute tolerance to consider a value zero.
         zero_symbol (str): Value to display for (near) zero element tiles.
@@ -356,7 +351,7 @@ def ptable_heatmap_ratio(
     fig = ptable_heatmap(
         values,
         cbar_title=cbar_title,
-        inf_color=inf_color,
+        infty_color=infty_color,
         on_empty="show",
         overwrite_tiles=overwrite_tiles,
         **kwargs,

@@ -211,7 +211,7 @@ class TestPtableHeatmapGenTileValueColors:
         )
 
     def test_inf_nan_excluded_color(self) -> None:
-        inf_color = "yellow"
+        infty_color = "yellow"
         nan_color = "red"
         excluded_color = "lightgrey"
 
@@ -227,12 +227,14 @@ class TestPtableHeatmapGenTileValueColors:
         assert projector.anomalies["Be"] == {"nan"}  # type: ignore[index]
 
         tile_entries = projector.generate_tile_value_colors(
-            inf_color=inf_color, nan_color=nan_color, excluded_tile_color=excluded_color
+            infty_color=infty_color,
+            nan_color=nan_color,
+            excluded_tile_color=excluded_color,
         )
 
         assert_allclose(
             mpl.colors.to_rgb(tile_entries["Li"].tile_color),
-            mpl.colors.to_rgb(inf_color),
+            mpl.colors.to_rgb(infty_color),
         )
         assert_allclose(
             mpl.colors.to_rgb(tile_entries["Be"].tile_color),

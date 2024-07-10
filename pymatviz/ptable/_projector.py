@@ -677,7 +677,7 @@ class HMapPTableProjector(PTableProjector):
         *,
         text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
         overwrite_tiles: dict[ElemStr, OverwriteTileValueColor] | None = None,
-        inf_color: ColorType = "lightskyblue",
+        infty_color: ColorType = "lightskyblue",
         nan_color: ColorType = "lightgrey",
         excluded_tile_color: ColorType = "white",
     ) -> dict[ElemStr, TileValueColor]:
@@ -692,7 +692,7 @@ class HMapPTableProjector(PTableProjector):
             overwrite_tiles (dict[ElemStr, TileValueColor]): Final
                 entried to overwrite tile value and colors. Note this
                 would overwrite everything, include exclusion and anomalies.
-            inf_color (ColorType): Color for infinities.
+            infty_color (ColorType): Color for infinities.
             nan_color (ColorType): Color for missing value (NaN).
             excluded_tile_color (ColorType): Color for excluded element tile.
 
@@ -700,7 +700,7 @@ class HMapPTableProjector(PTableProjector):
             dict[ElemStr, TileValueColor]: Element to value-color mapping.
         """
         # Build TileValueColor for NaN (or absent elements) and infinity
-        inf_tile = TileValueColor("∞", pick_bw_for_contrast(inf_color), inf_color)
+        inf_tile = TileValueColor("∞", pick_bw_for_contrast(infty_color), infty_color)
         nan_tile = TileValueColor("-", pick_bw_for_contrast(nan_color), nan_color)
 
         tile_entries: dict[ElemStr, TileValueColor] = {}
