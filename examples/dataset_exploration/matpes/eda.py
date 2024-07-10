@@ -25,7 +25,9 @@ pio.templates.default = pmv_dark_template
 module_dir = os.path.dirname(__file__)
 
 
-# %%
+# %% 20240214-MatPES-178070-r2SCAN generated in collaboration with Shyue Ping Ong's
+# group and Aaron Kaplan is unpublished data as of 2024-07-10, to be shared
+# MIT-licensed in late 2024 at the earliest
 with gzip.open(f"{module_dir}/20240214-MatPES-178070-r2SCAN.json.gz", "rt") as file:
     r2scan_data = json.load(file)
 # examples/dataset_exploration/matpes/20240214-MatPES-187023-PBE.json.gz
