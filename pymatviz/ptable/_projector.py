@@ -677,14 +677,12 @@ class HMapPTableProjector(PTableProjector):
     def filter_near_zero(self, tol: float = 1e-4) -> None:
         """Filter near zero value in data for log mode.
 
-        TODO: need a more efficient way to detect zero from value
-
         Args:
             tol (float): Tolerance to consider a value as zero.
         """
 
         def to_scalar(x: float | list[float] | NDArray) -> float:
-            """Convert a single value np array to scalar."""
+            """Convert single value array/list to scalar."""
             if isinstance(x, (list, np.ndarray)):
                 return x[0] if len(x) > 0 else np.nan
             return x
