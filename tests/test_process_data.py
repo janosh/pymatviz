@@ -104,7 +104,7 @@ def test_count_elements_exclude_elements() -> None:
 
 def test_count_elements_exclude_invalid_elements() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    exclude_elements = ["Fe", "P", "Zz"]
+    exclude_elements = ("Fe", "P", "Zz")
     with pytest.raises(
         ValueError,
         match=re.escape(f"Unexpected symbol(s) Zz in {exclude_elements=}"),

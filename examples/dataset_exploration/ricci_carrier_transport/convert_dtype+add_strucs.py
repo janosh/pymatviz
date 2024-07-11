@@ -22,22 +22,23 @@ df_carrier = pd.concat(
 ).drop(columns=["data", "is_public", "project"])
 
 df_carrier = df_carrier.set_index("identifier")
+task_ids_key = "task_ids"
 df_carrier.index.name = "mp_id"
 
 
 # %%
 with MPRester() as mpr:
-    strucs = mpr.query(
-        {"task_ids": {"$in": df_carrier.index.to_list()}},
-        ["task_ids", Key.structure],
+    structs = mpr.query(
+        {task_ids_key: {"$in": df_carrier.index.to_list()}},
+        [task_ids_key, Key.structure],
     )
 
 
 # %%
 # get a map from task ID to its structure
-struc_df = pd.DataFrame(strucs).explode("task_ids").set_index("task_ids")
+struct_df = pd.DataFrame(structs).explode(task_ids_key).set_index(task_ids_key)
 
-df_carrier[struc_df.columns] = struc_df
+df_carrier[struct_df.columns] = struct_df
 
 df_carrier[Key.formula] = [struct.formula for struct in df_carrier[Key.structure]]
 

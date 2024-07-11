@@ -89,8 +89,8 @@ class PTableProjector:
         self.hide_f_block = hide_f_block  # type: ignore[assignment]
 
         # Initialize periodic table canvas
-        n_periods = df_ptable.row.max()
-        n_groups = df_ptable.column.max()
+        n_periods = df_ptable[Key.row].max()
+        n_groups = df_ptable[Key.column].max()
 
         if self.hide_f_block:
             n_periods -= 3
