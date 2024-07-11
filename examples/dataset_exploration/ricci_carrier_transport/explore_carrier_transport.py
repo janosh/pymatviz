@@ -30,11 +30,7 @@ from pymatviz.io import save_fig
 
 # %%
 df_carrier = load_dataset("ricci_boltztrap_mp_tabular")
-
-# TODO: Many structure is a float for some reason?
-df_carrier = df_carrier[
-    df_carrier[Key.structure].apply(lambda x: not isinstance(x, float))
-]
+df_carrier = df_carrier.dropna(subset=Key.structure)
 
 # Getting space group symbols and numbers (take about 2 min)
 df_carrier[[Key.spg_symbol, Key.spg_num]] = [
