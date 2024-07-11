@@ -34,7 +34,7 @@ save_and_compress_svg(ax, "ptable-heatmap")
 
 
 # %%
-ax = ptable_heatmap(df_ptable.atomic_mass)
+ax = ptable_heatmap(df_ptable[Key.atomic_mass])
 ax.set_title("Atomic Mass Heatmap", y=0.96, fontsize=16, fontweight="bold")
 save_and_compress_svg(ax, "ptable-heatmap-atomic-mass")
 

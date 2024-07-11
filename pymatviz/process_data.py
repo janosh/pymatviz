@@ -104,7 +104,7 @@ def count_elements(
                 "expected range [1, 118]."
             )
         map_atomic_num_to_elem_symbol = (
-            df_ptable.reset_index().set_index("atomic_number").symbol
+            df_ptable.reset_index().set_index(Key.atomic_number).symbol
         )
         srs.index = srs.index.map(map_atomic_num_to_elem_symbol)
 

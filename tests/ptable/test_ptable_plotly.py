@@ -208,7 +208,7 @@ def test_ptable_heatmap_plotly_label_map(
     if label_map is not False:
         if label_map is None:
             # use default map
-            label_map = dict.fromkeys([np.nan, None, "nan"], " ")  # type: ignore[list-item]
+            label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], " ")  # type: ignore[list-item]
         # check for non-empty intersection between label_map values and annotations
         # we use `val in anno.text` cause the labels are wrapped in non-matching
         # HTML <span> tags
@@ -227,14 +227,39 @@ def test_ptable_heatmap_plotly_heat_modes(
     assert fig.data[-1].zmax is not None
     if mode == "value":
         assert fig.data[-1].zmax == 3
-    elif mode in ("fraction", "percent"):
+    elif mode == "fraction":
         assert fig.data[-1].zmax == pytest.approx(0.5)
+    elif mode == "percent":
+        assert fig.data[-1].zmax == pytest.approx(50)
+
+
+def test_ptable_heatmap_plotly_color_bar_range_percent_mode() -> None:
+    values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
+    fig = ptable_heatmap_plotly(
+        values, heat_mode="percent", color_bar=dict(title="Test")
+    )
+
+    heatmap_trace = fig.full_figure_for_development(warn=False).data[-1]
+
+    # Check if the color bar range is 100x the input values
+    assert heatmap_trace.zmin == pytest.approx(20)
+    assert heatmap_trace.zmax == pytest.approx(50)
+
+    # Check if the color bar title includes '%'
+    cbar_title = heatmap_trace.colorbar.title.text
+    assert cbar_title == "Test (%)", f"{cbar_title=}"
+
+    assert heatmap_trace.colorbar.tickmode == "auto"
 
 
 def test_ptable_heatmap_plotly_show_values() -> None:
     values = {"Fe": 2, "O": 3}
     fig = ptable_heatmap_plotly(values, show_values=False)
-    assert all("<br>" not in text for text in fig.data[-1].text.flatten() if text)
+    for text in (
+        "<span style='font-weight: bold; font-size: 18.0;'>O</span>",
+        "<span style='font-weight: bold; font-size: 18.0;'>Fe</span>",
+    ):
+        assert text in [anno.text for anno in fig.layout.annotations if anno.text]
 
 
 def test_ptable_heatmap_plotly_exclude_elements() -> None:
@@ -299,7 +324,7 @@ def test_ptable_heatmap_plotly_color_range(
     values = {"Fe": 1, "O": 50, "H": 100}
     fig = ptable_heatmap_plotly(values, heat_mode=heat_mode)
     heatmap_trace = fig.data[-1]
-    non_nan_values = [v for v in heatmap_trace.z.flatten() if not np.isnan(v)]
+    non_nan_values = [v for v in heatmap_trace.z.flat if not np.isnan(v)]
     assert min(non_nan_values) == heatmap_trace.zmin
     assert max(non_nan_values) == heatmap_trace.zmax
 
@@ -310,3 +335,74 @@ def test_ptable_heatmap_plotly_all_elements() -> None:
     heatmap_trace = fig.data[-1]
     assert not np.isnan(heatmap_trace.zmax)
     assert heatmap_trace.zmax == len(df_ptable) - 1
+
+
+def test_ptable_heatmap_plotly_hover_tooltips() -> None:
+    # Test with non-integer values
+    float_values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
+
+    # Test value mode
+    fig = ptable_heatmap_plotly(float_values, heat_mode="value")
+    hover_texts = fig.data[-1].text.flat
+
+    for elem_symb, value in float_values.items():
+        elem_name = df_ptable.loc[elem_symb, "name"]
+        hover_text = next(text for text in hover_texts if text.startswith(elem_name))
+        assert hover_text == f"{elem_name}<br>Value: {value:.3g}"
+
+    # Test fraction and percent modes
+    for heat_mode in ["fraction", "percent"]:
+        fig = ptable_heatmap_plotly(float_values, heat_mode=heat_mode)  # type: ignore[arg-type]
+        hover_texts = fig.data[-1].text.flat
+
+        for elem_symb, value in float_values.items():
+            elem_name = df_ptable.loc[elem_symb, "name"]
+            hover_text = next(
+                text for text in hover_texts if text.startswith(elem_name)
+            )
+            assert hover_text == f"{elem_name}<br>Percentage: {value:.2%} ({value})"
+
+    # Test with integer values
+    int_values = {"Fe": 2, "O": 3, "H": 1}
+
+    for heat_mode in ("value", "fraction", "percent"):
+        fig = ptable_heatmap_plotly(int_values, heat_mode=heat_mode)  # type: ignore[arg-type]
+        hover_texts = fig.data[-1].text.flat
+
+        for elem_symb, value in int_values.items():
+            elem_name = df_ptable.loc[elem_symb, "name"]
+            hover_text = next(
+                text for text in hover_texts if text.startswith(elem_name)
+            )
+
+            if heat_mode == "value":
+                assert hover_text == f"{elem_name}<br>Value: {value}"
+            else:
+                assert (
+                    hover_text == f"{elem_name}<br>Percentage: "
+                    f"{value/sum(int_values.values()):.2%} ({value})"
+                )
+
+    # Test with excluded elements
+    fig = ptable_heatmap_plotly(int_values, exclude_elements=["O"])
+    hover_texts = fig.data[-1].text.flat
+    o_hover_text = next(text for text in hover_texts if text.startswith("Oxygen"))
+    assert "Value:" not in o_hover_text
+
+    # Test with hover_props
+    fig = ptable_heatmap_plotly(
+        int_values, hover_props=["atomic_number", "atomic_mass"]
+    )
+    hover_texts = fig.data[-1].text.flat
+    for hover_text in hover_texts:
+        if not hover_text:
+            continue
+        assert "atomic_number" in hover_text
+        assert "atomic_mass" in hover_text
+
+    # Test with hover_data
+    hover_data = {"Fe": "Custom Fe data", "O": "Custom O data"}
+    fig = ptable_heatmap_plotly(int_values, hover_data=hover_data)
+    hover_texts = fig.data[-1].text.flat
+    fe_hover_text = next(text for text in hover_texts if text.startswith("Iron"))
+    assert "Custom Fe data" in fe_hover_text

@@ -120,8 +120,8 @@ def ptable_heatmap_plotly(
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
         label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
             string formatting) to target strings. Set to False to disable. Defaults to
-            dict.fromkeys((np.nan, None, "nan"), "-") so as not to display "nan" for
-            missing values.
+            dict.fromkeys((np.nan, None, "nan", "nan%"), "-") so as not to display "nan"
+            for missing values.
         border (dict[str, Any]): Border properties for element tiles. Defaults to
             dict(width=1, color="gray"). Other allowed keys are arguments of go.Heatmap
             which is (mis-)used to draw the borders as a 2nd heatmap below the main one.
@@ -173,8 +173,10 @@ def ptable_heatmap_plotly(
     if label_map is None:
         # default to space string for None, np.nan and "nan". space is needed
         # for <br> in tile_text to work so all element symbols are vertically aligned
-        label_map = dict.fromkeys([np.nan, None, "nan"], "-")  # type: ignore[list-item]
+        label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], "-")  # type: ignore[list-item]
 
+    all_ints = all(isinstance(val, int) for val in values)
+    counts_total = values.sum()
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
         row = n_rows - period
@@ -184,27 +186,38 @@ def ptable_heatmap_plotly(
         if show_values:
             if symbol in exclude_elements:
                 label = "excl."
-            elif heat_value := heat_value_element_map.get(symbol):
+            elif heat_val := heat_value_element_map.get(symbol):
                 if heat_mode == "percent":
-                    label = f"{heat_value:{fmt or '.1%'}}"
+                    label = f"{heat_val:{fmt or '.1%'}}"
                 else:
-                    default_prec = ".1f" if heat_value < 100 else ",.0f"
-                    if heat_value > 1e5:
+                    default_prec = ".1f" if heat_val < 100 else ",.0f"
+                    if heat_val > 1e5:
                         default_prec = ".2g"
-                    label = f"{heat_value:{fmt or default_prec}}".replace("e+0", "e")
+                    label = f"{heat_val:{fmt or default_prec}}".replace("e+0", "e")
 
             if callable(label_map):
                 label = label_map(label)
             elif isinstance(label_map, dict):
                 label = label_map.get(label, label)
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
-        tile_text = (
-            f"<span {style=}>{symbol}</span>{f'<br>{label}' if show_values else ''}"
-        )
+        tile_text = f"<span {style=}>{symbol}</span>"
+        if show_values and label:
+            tile_text += f"<br>{label}"
 
         tile_texts[row][col] = tile_text
 
         hover_text = name
+
+        if heat_val := heat_value_element_map.get(symbol):
+            if all_ints:
+                # if all values are integers, values are likely element
+                # counts, so makes sense to show count and percentage
+                percentage = heat_val / counts_total
+                hover_text += f"<br>Value: {heat_val} ({percentage:.2%})"
+            elif heat_mode == "value":
+                hover_text += f"<br>Value: {heat_val:.3g}"
+            elif heat_mode in ("fraction", "percent") and (orig_val := values[symbol]):
+                hover_text += f"<br>Percentage: {heat_val:.2%} ({orig_val:.3g})"
 
         if hover_data is not None and symbol in hover_data:
             hover_text += f"<br>{hover_data[symbol]}"
@@ -247,8 +260,12 @@ def ptable_heatmap_plotly(
 
     non_nan_values = [val for val in heatmap_values.flat if not np.isnan(val)]
 
+    zmin = min(non_nan_values) if cscale_range[0] is None else cscale_range[0]
+    zmax = max(non_nan_values) if cscale_range[1] is None else cscale_range[1]
+    car_multiplier = 100 if heat_mode == "percent" else 1
+
     fig = ff.create_annotated_heatmap(
-        heatmap_values,
+        car_multiplier * heatmap_values,
         annotation_text=tile_texts,
         text=hover_texts,
         showscale=show_scale,
@@ -258,9 +275,8 @@ def ptable_heatmap_plotly(
         xgap=gap,
         ygap=gap,
         zauto=False,  # Disable auto-scaling
-        # get actual min and max values for color scaling (zauto doesn't work for log)
-        zmin=min(non_nan_values) if cscale_range[0] is None else cscale_range[0],
-        zmax=max(non_nan_values) if cscale_range[1] is None else cscale_range[1],
+        zmin=zmin * car_multiplier,
+        zmax=zmax * car_multiplier,
         **kwargs,
     )
 
@@ -321,8 +337,15 @@ def ptable_heatmap_plotly(
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
 
         color_bar = dict(
-            tickvals=np.log10(tick_values), ticktext=tick_values, **color_bar
+            tickvals=np.log10(tick_values),
+            ticktext=[f"{v * car_multiplier:.2g}" for v in tick_values],
+            **color_bar,
         )
+
+    # suffix % to colorbar title if heat_mode is "percent"
+    if heat_mode == "percent" and (cbar_title := color_bar.get("title")):
+        color_bar["title"] = f"{cbar_title} (%)"
+
     fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
 
     return fig

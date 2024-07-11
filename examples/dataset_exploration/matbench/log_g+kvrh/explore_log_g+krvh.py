@@ -45,13 +45,13 @@ df_grvh[Key.crystal_system] = [
     crystal_sys_from_spg_num(x) for x in df_grvh[Key.spg_num]
 ]
 
-df_grvh["wyckoff"] = [
+df_grvh[Key.wyckoff] = [
     get_aflow_label_from_spglib(struct)
     for struct in tqdm(
         df_grvh[Key.structure], desc="Getting matbench_log_gvrh Wyckoff strings"
     )
 ]
-df_grvh["n_wyckoff"] = df_grvh.wyckoff.map(count_wyckoff_positions)
+df_grvh[Key.n_wyckoff] = df_grvh.wyckoff.map(count_wyckoff_positions)
 df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
 
@@ -150,7 +150,7 @@ fig = px.violin(
     df_grvh,
     color=Key.crystal_system,
     x=Key.crystal_system,
-    y="n_wyckoff",
+    y=Key.n_wyckoff,
     points="all",
     hover_data=[Key.spg_num],
     hover_name=Key.formula,
@@ -168,7 +168,7 @@ x_ticks = {}
 for cry_sys, df_group in sorted(
     df_grvh.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
 ):
-    n_wyckoff_top = df_group.n_wyckoff.mean()
+    n_wyckoff_top = df_group[Key.n_wyckoff].mean()
     clr = rgb_color(n_wyckoff_top, 14)
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"

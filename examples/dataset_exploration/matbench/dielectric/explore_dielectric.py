@@ -38,11 +38,11 @@ df_diel[[Key.spg_symbol, Key.spg_num]] = [
     for struct in tqdm(df_diel[Key.structure], desc="Getting spacegroups")
 ]
 
-df_diel["wyckoff"] = [
+df_diel[Key.wyckoff] = [
     get_aflow_label_from_spglib(struct)
     for struct in tqdm(df_diel[Key.structure], desc="Getting Wyckoff strings")
 ]
-df_diel["n_wyckoff"] = df_diel.wyckoff.map(count_wyckoff_positions)
+df_diel[Key.n_wyckoff] = df_diel.wyckoff.map(count_wyckoff_positions)
 
 df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(crystal_sys_from_spg_num)
 
@@ -115,7 +115,7 @@ fig = px.violin(
     df_diel,
     color=Key.crystal_system,
     x=Key.crystal_system,
-    y="n_wyckoff",
+    y=Key.n_wyckoff,
     points="all",
     hover_data=[Key.spg_num],
     hover_name=Key.formula,
@@ -133,7 +133,7 @@ x_ticks = {}
 for cry_sys, df_group in sorted(
     df_diel.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
 ):
-    n_wyckoff = df_group.n_wyckoff.mean()
+    n_wyckoff = df_group[Key.n_wyckoff].mean()
     clr = rgb_color(n_wyckoff, 14)
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"

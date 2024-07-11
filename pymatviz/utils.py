@@ -54,11 +54,6 @@ elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
 ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
 
-# fallback value (in nanometers) for covalent radius of an element
-# see https://wikipedia.org/wiki/Atomic_radii_of_the_elements
-missing_covalent_radius = 0.2
-covalent_radii: pd.Series = df_ptable.covalent_radius.fillna(missing_covalent_radius)
-
 atomic_numbers: dict[str, int] = {}
 element_symbols: dict[int, str] = {}
 

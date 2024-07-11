@@ -44,11 +44,11 @@ save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 # %% ex 1: Electronegativity Heatmap with Custom Hover Data
 fig = ptable_heatmap_plotly(
-    df_ptable.electronegativity,
+    df_ptable[Key.electronegativity],
     colorscale="Viridis",
     hover_props=["atomic_mass", "melting_point"],
     hover_data={
-        el: f"Fun fact about {el}!" for el in df_ptable.electronegativity.index
+        el: f"Fun fact about {el}!" for el in df_ptable[Key.electronegativity].index
     },
     font_colors=["white", "black"],
     color_bar=dict(title="Electronegativity", orientation="v"),
@@ -58,9 +58,8 @@ fig.show()
 
 
 # %% ex 2: Log-scale Abundance with Excluded Elements
-specific_heat = df_ptable.specific_heat.dropna()
 fig = ptable_heatmap_plotly(
-    specific_heat,
+    df_ptable[Key.specific_heat_capacity].dropna(),
     # colorscale="YlOrRd",
     log=True,
     font_colors=["black"],
