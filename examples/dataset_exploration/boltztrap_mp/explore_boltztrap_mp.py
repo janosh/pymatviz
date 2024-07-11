@@ -41,14 +41,17 @@ df_boltz.describe()
 
 
 # %%
-fig = ptable_heatmap(count_elements(df_boltz[Key.formula]), log=True)
+fig = ptable_heatmap(
+    count_elements(df_boltz[Key.formula]), log=True, return_type="figure"
+)
 fig.suptitle("Elements in BoltzTraP MP dataset")
 save_fig(fig, "boltztrap_mp-ptable-heatmap.pdf")
 
 
 # %%
 fig = ptable_heatmap(
-    count_elements(df_boltz.sort_values("pf_n").tail(100)[Key.formula])
+    count_elements(df_boltz.sort_values("pf_n").tail(100)[Key.formula]),
+    return_type="figure",
 )
 fig.suptitle("Elements of top 100 n-type powerfactors in BoltzTraP MP dataset")
 save_fig(fig, "boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")

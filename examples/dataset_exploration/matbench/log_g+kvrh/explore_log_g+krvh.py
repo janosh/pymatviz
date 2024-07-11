@@ -129,7 +129,9 @@ df_grvh.hist(column=Key.volume, bins=50, log=True)
 # %%
 df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
-fig = ptable_heatmap(count_elements(df_grvh[Key.formula]), log=True)
+fig = ptable_heatmap(
+    count_elements(df_grvh[Key.formula]), log=True, return_type="figure"
+)
 fig.suptitle("Elemental prevalence in the Matbench bulk/shear modulus datasets")
 save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
 

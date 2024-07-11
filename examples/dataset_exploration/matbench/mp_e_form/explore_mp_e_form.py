@@ -32,7 +32,10 @@ save_fig(ax, "mp_e_form_hist.pdf")
 df_e_form[Key.formula] = df_e_form[Key.structure].map(lambda struct: struct.formula)
 
 fig = ptable_heatmap(
-    count_elements(df_e_form[Key.formula]), log=True, value_kwargs={"fontsize": 10}
+    count_elements(df_e_form[Key.formula]),
+    log=True,
+    value_kwargs={"fontsize": 10},
+    return_type="figure",
 )
 fig.suptitle("Elemental prevalence in the Matbench formation energy dataset")
 save_fig(fig, "mp_e_form-ptable-heatmap.pdf")

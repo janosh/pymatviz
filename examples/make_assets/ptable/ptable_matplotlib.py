@@ -26,15 +26,10 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %% Elemental Plots
-# Filter out near-zero entries
-ptable_data = count_elements(df_expt_gap[Key.composition])
-ptable_data = ptable_data[ptable_data > 0.1]
-
 fig = ptable_heatmap(
-    ptable_data,
+    count_elements(df_expt_gap[Key.composition]),
     log=True,
-    on_empty="show",
-    value_fmt=".4g",
+    return_type="figure",
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
@@ -44,21 +39,17 @@ save_and_compress_svg(fig, "ptable-heatmap")
 
 
 # %%
-fig = ptable_heatmap(df_ptable.atomic_mass)
+fig = ptable_heatmap(df_ptable.atomic_mass, return_type="figure")
 fig.suptitle("Atomic Mass Heatmap", y=0.96, fontsize=20, fontweight="bold")
 save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
-# Filter out near-zero entries
-ptable_data = count_elements(df_expt_gap[Key.composition])
-ptable_data = ptable_data[ptable_data > 0.1]
-
 fig = ptable_heatmap(
-    ptable_data,
+    count_elements(df_expt_gap[Key.composition]),
     value_show_mode="percent",
-    on_empty="show",
     exclude_elements=["O"],
+    return_type="figure",
 )
 title = "Elements in Matbench Experimental Band Gap (percent)"
 fig.suptitle(title, y=0.96, fontsize=20, fontweight="bold")

@@ -55,7 +55,9 @@ save_fig(ax, "perovskites-e_form-hist.pdf")
 
 
 # %%
-fig = ptable_heatmap(count_elements(df_perov[Key.formula]), log=True)
+fig = ptable_heatmap(
+    count_elements(df_perov[Key.formula]), log=True, return_type="figure"
+)
 fig.suptitle("Elements in Matbench Perovskites dataset")
 save_fig(fig, "perovskites-ptable-heatmap.pdf")
 

@@ -33,7 +33,10 @@ df_gap[Key.vol_per_atom] = df_gap[Key.volume] / df_gap[Key.n_sites]
 df_gap[Key.formula] = df_gap[Key.structure].map(lambda cryst: cryst.formula)
 
 fig = ptable_heatmap(
-    count_elements(df_gap[Key.formula]), log=True, value_kwargs={"fontsize": 10}
+    count_elements(df_gap[Key.formula]),
+    log=True,
+    value_kwargs={"fontsize": 10},
+    return_type="figure",
 )
 fig.suptitle("Elemental prevalence in the Matbench MP band gap dataset")
 save_fig(fig, "mp_gap-ptable-heatmap.pdf")

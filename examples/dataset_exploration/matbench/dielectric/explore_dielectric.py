@@ -52,7 +52,9 @@ df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%
-fig = ptable_heatmap(count_elements(df_diel[Key.formula]), log=True)
+fig = ptable_heatmap(
+    count_elements(df_diel[Key.formula]), log=True, return_type="figure"
+)
 fig.suptitle("Elemental prevalence in the Matbench dielectric dataset")
 save_fig(fig, "dielectric-ptable-heatmap.pdf")
 

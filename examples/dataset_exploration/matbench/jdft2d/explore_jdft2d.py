@@ -44,7 +44,7 @@ save_fig(ax, "jdft2d-exfoliation-energy-hist.pdf")
 df_2d[Key.volume] = [x.volume for x in df_2d[Key.structure]]
 df_2d[Key.formula] = [x.formula for x in df_2d[Key.structure]]
 
-fig = ptable_heatmap(count_elements(df_2d[Key.formula]), log=True)
+fig = ptable_heatmap(count_elements(df_2d[Key.formula]), log=True, return_type="figure")
 fig.suptitle("Elemental prevalence in the Matbench Jarvis DFT 2D dataset")
 save_fig(fig, "jdft2d-ptable-heatmap.pdf")
 

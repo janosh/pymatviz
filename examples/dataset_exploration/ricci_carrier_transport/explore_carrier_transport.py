@@ -39,7 +39,9 @@ df_carrier[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %%
-fig = ptable_heatmap(count_elements(df_carrier.pretty_formula.dropna()), log=True)
+fig = ptable_heatmap(
+    count_elements(df_carrier.pretty_formula.dropna()), log=True, return_type="figure"
+)
 fig.suptitle("Elemental prevalence in the Ricci Carrier Transport dataset")
 save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
 

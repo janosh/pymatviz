@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from math import isclose
 from typing import TYPE_CHECKING, Literal, Union
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from pymatviz.enums import ElemColorMode, ElemCountMode
@@ -23,7 +24,6 @@ from pymatviz.utils import get_cbar_label_formatter, pick_bw_for_contrast
 if TYPE_CHECKING:
     from typing import Any, Callable
 
-    import matplotlib.pyplot as plt
     from matplotlib.colors import Colormap
     from matplotlib.typing import ColorType
     from pymatgen.core import Element
@@ -71,6 +71,8 @@ def ptable_heatmap(
     cbar_title: str = "Element Count",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
+    # Migration
+    return_type: Literal["figure", "axes"] = "axes",
     # Deprecated args, don't use
     colorscale: str | None = None,
     heat_mode: Literal["value", "fraction", "percent"] | None = None,
@@ -78,7 +80,7 @@ def ptable_heatmap(
     fmt: str | None = None,
     cbar_fmt: str | None = None,
     show_scale: bool | None = None,
-) -> plt.Figure:
+) -> plt.axes:
     """Plot a heatmap across the periodic table.
 
     Args:
@@ -158,6 +160,10 @@ def ptable_heatmap(
             cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
+        # Migration  # TODO: remove after 2025-07-01
+        return_type ("figure" | "axes"): Whether to return plt.Figure or plt.axes.
+            We encourage you to migrate to "figure".
+
         # Deprecated args, don't use
         colorscale: Use "colormap" instead.
         heat_mode: Use "value_show_mode" instead.
@@ -167,7 +173,9 @@ def ptable_heatmap(
         show_scale: Use "show_cbar" instead.
 
     Returns:
-        plt.Figure: matplotlib Figure with the heatmap.
+        plt.Axes: matplotlib axes with the heatmap.
+        or
+        plt.Figure: matplotlib figure with the heatmap.
     """
     # TODO: tile_size and f_block_voffset are work in progress,
     # as there're issues that haven't been resolved in #157
@@ -292,7 +300,13 @@ def ptable_heatmap(
             title_kwargs=cbar_title_kwargs,
         )
 
-    return projector.fig
+    if return_type == "figure":
+        return projector.fig
+    warnings.warn(
+        "We encourage you to return plt.figure for more consistent results.",
+        stacklevel=2,
+    )
+    return plt.gca()
 
 
 def ptable_heatmap_ratio(
@@ -313,7 +327,7 @@ def ptable_heatmap_ratio(
     ),
     not_in_either: tuple[str, str] | None = ("white", "white: not in either"),
     **kwargs: Any,
-) -> plt.Figure:
+) -> plt.figure:
     """Display the ratio of two maps from element symbols to heat values or of two sets
     of compositions.
 
@@ -373,6 +387,7 @@ def ptable_heatmap_ratio(
         infty_color=infty_color,
         on_empty="show",
         overwrite_tiles=overwrite_tiles,
+        return_type="figure",
         **kwargs,
     )
 

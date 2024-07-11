@@ -42,7 +42,9 @@ save_fig(ax, "phonons-last-dos-peak-hist.pdf")
 df_phonon[Key.formula] = df_phonon[Key.structure].map(lambda cryst: cryst.formula)
 df_phonon[Key.volume] = df_phonon[Key.structure].map(lambda cryst: cryst.volume)
 
-fig = ptable_heatmap(count_elements(df_phonon[Key.formula]), log=True)
+fig = ptable_heatmap(
+    count_elements(df_phonon[Key.formula]), log=True, return_type="figure"
+)
 fig.suptitle("Elemental prevalence in the Matbench phonons dataset")
 save_fig(fig, "phonons-ptable-heatmap.pdf")
 
