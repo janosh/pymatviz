@@ -247,8 +247,12 @@ def ptable_heatmap_plotly(
 
     non_nan_values = [val for val in heatmap_values.flat if not np.isnan(val)]
 
+    zmin = min(non_nan_values) if cscale_range[0] is None else cscale_range[0]
+    zmax = max(non_nan_values) if cscale_range[1] is None else cscale_range[1]
+    car_multiplier = 100 if heat_mode == "percent" else 1
+
     fig = ff.create_annotated_heatmap(
-        heatmap_values,
+        car_multiplier * heatmap_values,
         annotation_text=tile_texts,
         text=hover_texts,
         showscale=show_scale,
@@ -258,9 +262,8 @@ def ptable_heatmap_plotly(
         xgap=gap,
         ygap=gap,
         zauto=False,  # Disable auto-scaling
-        # get actual min and max values for color scaling (zauto doesn't work for log)
-        zmin=min(non_nan_values) if cscale_range[0] is None else cscale_range[0],
-        zmax=max(non_nan_values) if cscale_range[1] is None else cscale_range[1],
+        zmin=zmin * car_multiplier,
+        zmax=zmax * car_multiplier,
         **kwargs,
     )
 
@@ -321,8 +324,15 @@ def ptable_heatmap_plotly(
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
 
         color_bar = dict(
-            tickvals=np.log10(tick_values), ticktext=tick_values, **color_bar
+            tickvals=np.log10(tick_values),
+            ticktext=[f"{v * car_multiplier:.2g}" for v in tick_values],
+            **color_bar,
         )
+
+    # suffix % to colorbar title if heat_mode is "percent"
+    if heat_mode == "percent" and (cbar_title := color_bar.get("title")):
+        color_bar["title"] = f"{cbar_title} (%)"
+
     fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
 
     return fig

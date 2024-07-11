@@ -232,8 +232,29 @@ def test_ptable_heatmap_plotly_heat_modes(
     assert fig.data[-1].zmax is not None
     if mode == "value":
         assert fig.data[-1].zmax == 3
-    elif mode in ("fraction", "percent"):
+    elif mode == "fraction":
         assert fig.data[-1].zmax == pytest.approx(0.5)
+    elif mode == "percent":
+        assert fig.data[-1].zmax == pytest.approx(50)
+
+
+def test_ptable_heatmap_plotly_color_bar_range_percent_mode() -> None:
+    values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
+    fig = ptable_heatmap_plotly(
+        values, heat_mode="percent", color_bar=dict(title="Test")
+    )
+
+    heatmap_trace = fig.full_figure_for_development(warn=False).data[-1]
+
+    # Check if the color bar range is 100x the input values
+    assert heatmap_trace.zmin == pytest.approx(20)
+    assert heatmap_trace.zmax == pytest.approx(50)
+
+    # Check if the color bar title includes '%'
+    cbar_title = heatmap_trace.colorbar.title.text
+    assert cbar_title == "Test (%)", f"{cbar_title=}"
+
+    assert heatmap_trace.colorbar.tickmode == "auto"
 
 
 def test_ptable_heatmap_plotly_show_values() -> None:
