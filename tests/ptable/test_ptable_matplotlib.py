@@ -19,7 +19,7 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.enums import ElemColorScheme
+from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.ptable.ptable_matplotlib import PTableProjector
 from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
 
@@ -231,8 +231,8 @@ def test_ptable_heatmap(
     assert cbar_title.get_color() == "black"
 
     # tile_size
-    ptable_heatmap(df_ptable.atomic_mass, tile_size=1)
-    ptable_heatmap(df_ptable.atomic_mass, tile_size=(0.9, 1))
+    ptable_heatmap(df_ptable[Key.atomic_mass], tile_size=1)
+    ptable_heatmap(df_ptable[Key.atomic_mass], tile_size=(0.9, 1))
 
     # bad colorscale should raise ValueError
     bad_name = "bad color scale"
