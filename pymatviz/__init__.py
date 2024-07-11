@@ -80,11 +80,7 @@ spg_num_to_symbol = dict(sorted(spg_num_to_symbol.items()))  # sort
 
 
 px.defaults.labels |= {
-    "n_atoms": "Atom Count",
-    "n_elems": "Element Count",
     "gap expt": "Experimental band gap (eV)",
-    "n": "Refractive index n",
-    "n_wyckoff": "Number of Wyckoff positions",
 } | Key.val_label_dict()
 
 # to hide math loading MathJax message in bottom left corner of plotly PDFs

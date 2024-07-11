@@ -22,7 +22,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key
-from pymatviz.utils import ExperimentalWarning, covalent_radii
+from pymatviz.utils import ExperimentalWarning, df_ptable
 
 
 if TYPE_CHECKING:
@@ -31,6 +31,14 @@ if TYPE_CHECKING:
 
     from matplotlib.typing import ColorType
     from numpy.typing import ArrayLike
+
+
+# fallback value (in nanometers) for covalent radius of an element
+# see https://wikipedia.org/wiki/Atomic_radii_of_the_elements
+missing_covalent_radius = 0.2
+covalent_radii: pd.Series = df_ptable[Key.covalent_radius].fillna(
+    missing_covalent_radius
+)
 
 
 def _angles_to_rotation_matrix(
