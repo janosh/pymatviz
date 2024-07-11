@@ -175,6 +175,8 @@ def ptable_heatmap_plotly(
         # for <br> in tile_text to work so all element symbols are vertically aligned
         label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], "-")  # type: ignore[list-item]
 
+    all_ints = all(isinstance(val, int) for val in values)
+    counts_total = values.sum()
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
         row = n_rows - period
@@ -184,27 +186,38 @@ def ptable_heatmap_plotly(
         if show_values:
             if symbol in exclude_elements:
                 label = "excl."
-            elif heat_value := heat_value_element_map.get(symbol):
+            elif heat_val := heat_value_element_map.get(symbol):
                 if heat_mode == "percent":
-                    label = f"{heat_value:{fmt or '.1%'}}"
+                    label = f"{heat_val:{fmt or '.1%'}}"
                 else:
-                    default_prec = ".1f" if heat_value < 100 else ",.0f"
-                    if heat_value > 1e5:
+                    default_prec = ".1f" if heat_val < 100 else ",.0f"
+                    if heat_val > 1e5:
                         default_prec = ".2g"
-                    label = f"{heat_value:{fmt or default_prec}}".replace("e+0", "e")
+                    label = f"{heat_val:{fmt or default_prec}}".replace("e+0", "e")
 
             if callable(label_map):
                 label = label_map(label)
             elif isinstance(label_map, dict):
                 label = label_map.get(label, label)
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
-        tile_text = (
-            f"<span {style=}>{symbol}</span>{f'<br>{label}' if show_values else ''}"
-        )
+        tile_text = f"<span {style=}>{symbol}</span>"
+        if show_values and label:
+            tile_text += f"<br>{label}"
 
         tile_texts[row][col] = tile_text
 
         hover_text = name
+
+        if heat_val := heat_value_element_map.get(symbol):
+            if all_ints:
+                # if all values are integers, values are likely element
+                # counts, so makes sense to show count and percentage
+                percentage = heat_val / counts_total
+                hover_text += f"<br>Value: {heat_val} ({percentage:.2%})"
+            elif heat_mode == "value":
+                hover_text += f"<br>Value: {heat_val:.3g}"
+            elif heat_mode in ("fraction", "percent") and (orig_val := values[symbol]):
+                hover_text += f"<br>Percentage: {heat_val:.2%} ({orig_val:.3g})"
 
         if hover_data is not None and symbol in hover_data:
             hover_text += f"<br>{hover_data[symbol]}"
