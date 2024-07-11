@@ -212,7 +212,7 @@ def test_ptable_heatmap_plotly_label_map(
     if label_map is not False:
         if label_map is None:
             # use default map
-            label_map = dict.fromkeys([np.nan, None, "nan"], " ")  # type: ignore[list-item]
+            label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], " ")  # type: ignore[list-item]
         # check for non-empty intersection between label_map values and annotations
         # we use `val in anno.text` cause the labels are wrapped in non-matching
         # HTML <span> tags

@@ -120,8 +120,8 @@ def ptable_heatmap_plotly(
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
         label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
             string formatting) to target strings. Set to False to disable. Defaults to
-            dict.fromkeys((np.nan, None, "nan"), "-") so as not to display "nan" for
-            missing values.
+            dict.fromkeys((np.nan, None, "nan", "nan%"), "-") so as not to display "nan"
+            for missing values.
         border (dict[str, Any]): Border properties for element tiles. Defaults to
             dict(width=1, color="gray"). Other allowed keys are arguments of go.Heatmap
             which is (mis-)used to draw the borders as a 2nd heatmap below the main one.
@@ -173,7 +173,7 @@ def ptable_heatmap_plotly(
     if label_map is None:
         # default to space string for None, np.nan and "nan". space is needed
         # for <br> in tile_text to work so all element symbols are vertically aligned
-        label_map = dict.fromkeys([np.nan, None, "nan"], "-")  # type: ignore[list-item]
+        label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], "-")  # type: ignore[list-item]
 
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         # build table from bottom up so that period 1 becomes top row
