@@ -45,8 +45,12 @@ save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
+# Filter out near-zero entries
+ptable_data = count_elements(df_expt_gap[Key.composition])
+ptable_data = ptable_data[ptable_data > 0.01]
+
 fig = ptable_heatmap(
-    count_elements(df_expt_gap[Key.composition]),
+    ptable_data,
     value_show_mode="percent",
     exclude_elements=["O"],
     return_type="figure",
