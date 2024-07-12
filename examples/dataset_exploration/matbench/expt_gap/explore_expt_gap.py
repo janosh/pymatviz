@@ -35,10 +35,11 @@ https://ml.materialsproject.org/projects/matbench_expt_gap
 
 # %%
 df_gap = load_dataset("matbench_expt_gap")
+gap_expt_key = "gap expt"
 
 df_gap["pmg_comp"] = df_gap[Key.composition].map(Composition)
-df_gap["n_atoms"] = [x.num_atoms for x in df_gap.pmg_comp]
-df_gap["n_elems"] = df_gap.pmg_comp.map(len)
+df_gap[Key.n_atoms] = [x.num_atoms for x in df_gap.pmg_comp]
+df_gap[Key.n_elements] = df_gap.pmg_comp.map(len)
 
 
 def mean_atomic_prop(comp: Composition, prop: str) -> float | None:
@@ -67,9 +68,9 @@ save_fig(fig, "expt-gap-ptable-heatmap.pdf")
 # %%
 fig = px.scatter(
     df_gap,
-    x="n_atoms",
-    y="gap expt",
-    color="n_elems",
+    x=Key.n_atoms,
+    y=gap_expt_key,
+    color=Key.n_elements,
     size="mean_mass",
     hover_name=Key.composition,
     log_x=True,
