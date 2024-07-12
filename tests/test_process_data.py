@@ -24,6 +24,7 @@ def test_count_elements(count_mode: ElemCountMode, counts: dict[str, float]) -> 
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
+# DEBUG: this test is failing in CI (not locally)
 def test_count_elements_by_atomic_nums() -> None:
     series_in = pd.Series(1, index=range(1, 119))
     el_cts = count_elements(series_in)
