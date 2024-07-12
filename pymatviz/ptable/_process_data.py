@@ -10,12 +10,11 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Element
 
-from pymatviz.enums import ElemCountMode, Key
-from pymatviz.process_data import count_elements
+from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Self
+    from typing import Any, Callable
 
     from numpy.typing import NDArray
 
@@ -235,45 +234,6 @@ class PTableData:
             f"Cannot handle dataframe={df}, needs row/column named "
             f"{Key.element} and {Key.heat_val}"
         )
-
-    @classmethod
-    def from_formulas(
-        cls,
-        formulas: Sequence[str] | dict[str, float],
-        count_mode: ElemCountMode = ElemCountMode.composition,
-        exclude_elements: Sequence[str] = (),
-    ) -> Self:
-        """Initialize PTableData from sequences of chemical formulas
-        or dict.
-
-        TODO: migrate the code instead of wrapping.
-
-        TODO: migrate unit test.
-
-        Args:
-            formulas (dict[str, float] | pd.Series | list[str]): Sequence of
-                composition strings/objects or map from element symbols to values.
-            count_mode: Only for formulas as a sequence of composition strings/objects.
-                - "composition" (default): Count elements in each composition as is,
-                    i.e. without reduction or normalization.
-                - "fractional_composition": Convert to normalized compositions in
-                    which the amounts of each species sum to before counting.
-                    Example: "Fe2 O3" -> {Fe: 0.4, O: 0.6}
-                - "reduced_composition": Convert to reduced compositions (i.e. amounts
-                    normalized by greatest common denominator) before counting.
-                    Example: "Fe4 P4 O16" -> {Fe: 1, P: 1 O: 4}.
-                - "occurrence": Count the number of times each element occurs
-                    irrespective of compositions. E.g. ["Fe2 O3", "Fe O", "Fe4 P4 O16"]
-                    counts to {Fe: 3, O: 3, P: 1}.
-            exclude_elements (Sequence[str]): Elements to exclude.
-
-        """
-        # Convert sequences of chemical formulas
-        data = count_elements(
-            values=formulas, count_mode=count_mode, exclude_elements=exclude_elements
-        )
-
-        return cls(data)
 
     def normalize(self) -> None:
         """Normalize data by the total sum."""
