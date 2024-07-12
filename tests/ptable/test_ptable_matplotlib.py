@@ -58,14 +58,17 @@ class TestPtableHeatmap:
     @pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])
     def test_basic_heatmap_plotter(self, hide_f_block: bool | Literal["AUTO"]) -> None:
         fig = ptable_heatmap(
-            df_ptable.atomic_mass, hide_f_block=hide_f_block, cbar_title="Element Count"
+            df_ptable.atomic_mass,
+            hide_f_block=hide_f_block,
+            cbar_title="Element Count",
+            return_type="figure",
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 127 if hide_f_block is True else 181, len(fig.axes)
 
     @pytest.mark.parametrize("log", [False, True])
     def test_log_scale(self, log: bool) -> None:
-        fig = ptable_heatmap(df_ptable.atomic_mass, log=log)
+        fig = ptable_heatmap(df_ptable.atomic_mass, log=log, return_type="figure")
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
@@ -75,7 +78,11 @@ class TestPtableHeatmap:
     def test_values_show_mode(
         self, values_show_mode: Literal["percent", "fraction", "value", "off"]
     ) -> None:
-        fig = ptable_heatmap(df_ptable.atomic_mass, value_show_mode=values_show_mode)
+        fig = ptable_heatmap(
+            df_ptable.atomic_mass,
+            value_show_mode=values_show_mode,
+            return_type="figure",
+        )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
@@ -92,34 +99,56 @@ class TestPtableHeatmap:
         "cbar_range", [(0, 300), (None, 300), (0, None), (None, None)]
     )
     def test_cbar_range(self, cbar_range: tuple[float | None, float | None]) -> None:
-        fig = ptable_heatmap(df_ptable.atomic_mass, cbar_range=cbar_range)
+        fig = ptable_heatmap(
+            df_ptable.atomic_mass, cbar_range=cbar_range, return_type="figure"
+        )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
     @pytest.mark.parametrize("values_fmt", ["AUTO", ".3g", ".2g"])
     def test_values_fmt(self, values_fmt: str) -> None:
-        fig = ptable_heatmap(df_ptable.atomic_mass, value_fmt=values_fmt)
+        fig = ptable_heatmap(
+            df_ptable.atomic_mass, value_fmt=values_fmt, return_type="figure"
+        )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
     def test_cbar_kwargs(self) -> None:
         cbar_kwargs = dict(orientation="horizontal")
-        fig = ptable_heatmap(df_ptable.atomic_mass, cbar_kwargs=cbar_kwargs)
+        fig = ptable_heatmap(
+            df_ptable.atomic_mass, cbar_kwargs=cbar_kwargs, return_type="figure"
+        )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
     def test_tile_size(self) -> None:
-        fig = ptable_heatmap(df_ptable.atomic_mass, tile_size=(1, 1))
+        fig = ptable_heatmap(
+            df_ptable.atomic_mass, tile_size=(1, 1), return_type="figure"
+        )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
     def test_text_style(self) -> None:
         symbol_kwargs = dict(fontsize=12)
         fig = ptable_heatmap(
-            df_ptable.atomic_mass, text_colors="red", symbol_kwargs=symbol_kwargs
+            df_ptable.atomic_mass,
+            text_colors="red",
+            symbol_kwargs=symbol_kwargs,
+            return_type="figure",
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
+
+    def test_return_type(self) -> None:
+        fig = ptable_heatmap(
+            df_ptable.atomic_mass,
+            return_type="figure",
+        )
+        assert isinstance(fig, plt.Figure)
+
+        with pytest.warns(match="We encourage you to return plt.figure"):
+            ax = ptable_heatmap(df_ptable.atomic_mass)
+        assert isinstance(ax, plt.Axes)
 
 
 @pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])
