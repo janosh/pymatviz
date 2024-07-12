@@ -26,16 +26,15 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %% Elemental Plots
-fig = ptable_heatmap(
+ax = ptable_heatmap(
     count_elements(df_expt_gap[Key.composition]),
     log=True,
-    return_type="figure",
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
-fig.suptitle(title, y=0.96, fontsize=20, fontweight="bold")
-save_and_compress_svg(fig, "ptable-heatmap")
+ax.set_title(title, x=0.75, y=2.5, fontsize=18, fontweight="bold")
+save_and_compress_svg(ax, "ptable-heatmap")
 
 
 # %%
