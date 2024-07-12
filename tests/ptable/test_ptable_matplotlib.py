@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 
     from pymatgen.core import Composition
 
+df_ptable = df_ptable.copy()  # avoid changing the df in place
+
 
 @pytest.fixture()
 def glass_elem_counts(glass_formulas: pd.Series[Composition]) -> pd.Series[int]:
