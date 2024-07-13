@@ -4,6 +4,7 @@ import os
 import sys
 import urllib.request
 from pathlib import Path
+from shutil import which
 from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
 from xml.etree import ElementTree
@@ -348,7 +349,9 @@ def test_df_to_svg(
     file_size_after = file_path.stat().st_size
 
     # check at least 10% file size reduction from compress=True
-    if compress:
-        assert file_size_after < file_size_before * 0.9
+    if compress and which("svgo"):
+        assert (
+            file_size_after < file_size_before * 0.9
+        ), f"{file_size_before=} {file_size_after=}"
     else:
         assert file_size_before == pytest.approx(file_size_after)
