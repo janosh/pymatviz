@@ -369,7 +369,7 @@ class Key(LabelEnum):
     model_id = "model_id", "Model ID"
     model_version = "model_version", "Model Version"
     model_type = "model_type", "Model Type"
-    model_params = "model_parameters", "Model Parameters"
+    model_params = "model_params", "Model Parameters"
     model_framework = "model_framework", "Model Framework"  # e.g. PyTorch, TensorFlow
     hyperparams = "hyperparameters", "Hyperparameters"
     feature_importance = "feature_importance", "Feature Importance"

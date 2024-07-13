@@ -3,9 +3,13 @@ from __future__ import annotations
 import os
 import sys
 import urllib.request
+from pathlib import Path
+from shutil import which
 from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
+from xml.etree import ElementTree
 
+import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
@@ -14,6 +18,7 @@ from pymatviz.io import (
     TqdmDownload,
     df_to_html_table,
     df_to_pdf,
+    df_to_svg,
     normalize_and_crop_pdf,
     save_fig,
 )
@@ -278,3 +283,75 @@ def test_tqdm_download(
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
     assert f"{test_url}: 0.00B [00:00, ?B/s]" in stderr
+
+
+@pytest.mark.parametrize(
+    "compress, font_size, use_styler, width, height",
+    [
+        # Default font size, no compression, DataFrame
+        (False, 14, False, 457, 875),
+        # Larger font, with compression, Styler
+        (True, 18, True, 559, 1121),
+        # Smaller font, no compression, Styler
+        (False, 10, True, 357, 629),
+    ],
+)
+def test_df_to_svg(
+    compress: bool,
+    font_size: int,
+    use_styler: bool,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    df_float: pd.DataFrame,
+    width: str,
+    height: str,
+) -> None:
+    file_path = tmp_path / "test_df_to.svg"
+
+    obj = df_float.style if use_styler else df_float
+
+    with patch("pymatviz.io.which") as mock_which:
+        mock_which.return_value = "/path/to/svgo" if compress else None
+
+        with patch("subprocess.run") as mock_run:
+            df_to_svg(obj, file_path, font_size=font_size, compress=compress)
+
+            if compress:
+                mock_run.assert_called_once()
+            else:
+                mock_run.assert_not_called()
+
+    # Check if the file is created
+    assert file_path.is_file()
+
+    # Ensure the function doesn't print to stdout or stderr
+    stdout, stderr = capsys.readouterr()
+    assert stderr == ""
+    assert stdout == "" or (not compress and "svgo not found in PATH" in stdout)
+
+    # Parse the SVG and perform some basic checks
+    tree = ElementTree.parse(file_path)  # noqa: S314
+    root = tree.getroot()
+
+    # Check that it's a valid SVG
+    assert root.tag == "{http://www.w3.org/2000/svg}svg"
+    # assert "xmlns" in root.attrib
+    assert int(float(root.attrib["width"].rstrip("pt"))) == width
+    assert int(float(root.attrib["height"].rstrip("pt"))) == height
+
+    # Check for some content from the DataFrame
+    svg_content = ElementTree.tostring(root, encoding="unicode")
+    assert svg_content.startswith("<ns0:svg xmlns")
+
+    # Test file overwrite behavior
+    file_size_before = file_path.stat().st_size
+    df_to_svg(obj, file_path, font_size=font_size, compress=compress)
+    file_size_after = file_path.stat().st_size
+
+    # check at least 10% file size reduction from compress=True
+    if compress and which("svgo"):
+        assert (
+            file_size_after < file_size_before * 0.9
+        ), f"{file_size_before=} {file_size_after=}"
+    else:
+        assert file_size_before == pytest.approx(file_size_after)
