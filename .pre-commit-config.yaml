@@ -73,7 +73,7 @@ repos:
         exclude: ^(site/src/figs/.+\.svelte|data/wbm/20.+\..+|site/src/(routes|figs).+\.(yaml|json)|changelog.md)$
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.6.0
+    rev: v9.7.0
     hooks:
       - id: eslint
         types: [file]
@@ -87,6 +87,6 @@ repos:
           - typescript-eslint
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.370
+    rev: v1.1.371
     hooks:
       - id: pyright
