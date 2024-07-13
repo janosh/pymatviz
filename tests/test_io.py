@@ -6,11 +6,11 @@ import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
+from xml.etree import ElementTree
 
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
-from defusedxml import ElementTree
 from matplotlib import pyplot as plt
 
 from pymatviz.io import (
@@ -329,7 +329,7 @@ def test_df_to_svg(
     assert stdout == "" or (not compress and "svgo not found in PATH" in stdout)
 
     # Parse the SVG and perform some basic checks
-    tree = ElementTree.parse(file_path)
+    tree = ElementTree.parse(file_path)  # noqa: S314
     root = tree.getroot()
 
     # Check that it's a valid SVG
