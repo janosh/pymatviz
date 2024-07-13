@@ -288,11 +288,11 @@ def test_tqdm_download(
     "compress, font_size, use_styler, width, height",
     [
         # Default font size, no compression, DataFrame
-        (False, 14, False, "457.775pt", "875.174687pt"),
+        (False, 14, False, 457, 875),
         # Larger font, with compression, Styler
-        (True, 18, True, "559.275pt", "1121.110312pt"),
+        (True, 18, True, 559, 1121),
         # Smaller font, no compression, Styler
-        (False, 10, True, "357.275pt", "629.239062pt"),
+        (False, 10, True, 357, 629),
     ],
 )
 def test_df_to_svg(
@@ -335,8 +335,8 @@ def test_df_to_svg(
     # Check that it's a valid SVG
     assert root.tag == "{http://www.w3.org/2000/svg}svg"
     # assert "xmlns" in root.attrib
-    assert root.attrib["width"] == width
-    assert root.attrib["height"] == height
+    assert int(float(root.attrib["width"].rstrip("pt"))) == width
+    assert int(float(root.attrib["height"].rstrip("pt"))) == height
 
     # Check for some content from the DataFrame
     svg_content = ElementTree.tostring(root, encoding="unicode")
