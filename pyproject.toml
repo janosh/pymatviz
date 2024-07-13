@@ -37,21 +37,22 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "adjustText",
+    "bs4",
     "cssutils",
     "jinja2",
     "kaleido",
+    "lxml",
     "pdfCropMargins",
     "pytest",
     "pytest-cov",
     "weasyprint",
-    'bs4',
 ]
 data-src = ["matminer", "mp_api"]
 export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
 # needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
 df-pdf-export = ["jinja2", "pdfCropMargins", "weasyprint"]
-df-svg-export = ["cssutils", 'bs4']
+df-svg-export = ["bs4", "cssutils", "lxml"]
 auto-text-pos = ["adjustText"]
 
 [tool.setuptools.packages]
