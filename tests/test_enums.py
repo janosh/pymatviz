@@ -40,6 +40,6 @@ def test_pickle_enum() -> None:
     assert type(unpickled_key) is str
     assert unpickled_key == "energy_per_atom"
     assert unpickled_key == Key.energy_per_atom
-    assert type(key) == Key
+    assert type(key) is Key
 
     assert Key.energy.__reduce_ex__(1) == (str, ("energy",))
