@@ -24,7 +24,7 @@ jobs:
 
       - name: Compress SVG assets and commit to current PR
         run: |
-          svgo --multipass assets --exclude ptable-scatters-*.svg
+          svgo --multipass --final-newline assets --exclude ptable-scatters-*.svg
           if git diff --quiet assets; then
             echo "No changes to commit"
             exit 0

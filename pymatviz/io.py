@@ -188,7 +188,7 @@ def save_and_compress_svg(
 
     # Compress SVG if svgo is available
     if (svgo := which("svgo")) is not None:
-        subprocess.run([svgo, "--multipass", filepath], check=True)  # noqa: S603
+        subprocess.run([svgo, "--multipass", "--final-newline", filepath], check=True)  # noqa: S603
 
 
 DEFAULT_DF_STYLES: Final = {
@@ -642,7 +642,9 @@ def df_to_svg(
     # Compress SVG if requested and svgo is available
     if compress:
         if (svgo := which("svgo")) is not None:
-            subprocess.run([svgo, "--multipass", str(file_path)], check=True)  # noqa: S603
+            subprocess.run(  # noqa: S603
+                [svgo, "--multipass", "--final-newline", str(file_path)], check=True
+            )
         else:
             print("svgo not found in PATH. SVG compression skipped.")  # noqa: T201
 
