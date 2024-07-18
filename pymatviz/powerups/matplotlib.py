@@ -49,16 +49,16 @@ def with_marginal_hist(
     )
 
     ax_main = fig.add_subplot(gs[1, 0])
-    ax_histx = fig.add_subplot(gs[0, 0], sharex=ax_main)
-    ax_histy = fig.add_subplot(gs[1, 1], sharey=ax_main)
+    ax_hist_x = fig.add_subplot(gs[0, 0], sharex=ax_main)
+    ax_hist_y = fig.add_subplot(gs[1, 1], sharey=ax_main)
 
     # x_hist
-    ax_histx.hist(xs, bins=bins, rwidth=0.8)
-    ax_histx.axis("off")
+    ax_hist_x.hist(xs, bins=bins, rwidth=0.8)
+    ax_hist_x.axis("off")
 
     # y_hist
-    ax_histy.hist(ys, bins=bins, rwidth=0.8, orientation="horizontal")
-    ax_histy.axis("off")
+    ax_hist_y.hist(ys, bins=bins, rwidth=0.8, orientation="horizontal")
+    ax_hist_y.axis("off")
 
     return ax_main
 

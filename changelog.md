@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.9.3](https://github.com/janosh/pymatviz/compare/v0.9.2...v0.9.3)
+
+> 18 July 2024
+
+- Fix ptable scatter examples in homepage [`#180`](https://github.com/janosh/pymatviz/pull/180)
+- Add `pymatviz.io.df_to_svg` [`#179`](https://github.com/janosh/pymatviz/pull/179)
+- Better default `ptable_heatmap_plotly` tooltips [`#178`](https://github.com/janosh/pymatviz/pull/178)
+- remove skip tag for tests [`#177`](https://github.com/janosh/pymatviz/pull/177)
+- Moving enums may have broken end users pickle's, reduce to str when pickling to be more backwards compatible going forward. [`#176`](https://github.com/janosh/pymatviz/pull/176)
+- Better `density_scatter_plotly` [`#175`](https://github.com/janosh/pymatviz/pull/175)
+- new ML model, metrics and computational details related enum keys [`b6cdca3`](https://github.com/janosh/pymatviz/commit/b6cdca34a3643aa9dc04070bb92470bb20e7ad3e)
+
 #### [v0.9.2](https://github.com/janosh/pymatviz/compare/v0.9.1...v0.9.2)
 
 > 7 July 2024
