@@ -357,7 +357,7 @@ def si_fmt(
 si_fmt_int = partial(si_fmt, fmt=".0f")
 
 
-def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
+def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:
     """Wrap text in a span with custom style.
 
     Style defaults to decreased font size and weight e.g. to display units
@@ -366,11 +366,27 @@ def styled_html_tag(text: str, tag: str = "span", style: str = "") -> str:
     Args:
         text (str): Text to wrap in span.
         tag (str, optional): HTML tag name. Defaults to "span".
-        style (str, optional): CSS style string. Defaults to
-            "font-size: 0.8em; font-weight: lighter;".
+        style (str, optional): CSS style string. Defaults to "". Special keys:
+            "small": font-size: 0.8em; font-weight: lighter;
+            "bold": font-weight: bold;
+            "italic": font-style: italic;
+            "underline": text-decoration: underline;
+        title (str | None, optional): Title attribute which displays additional
+            information in a tooltip. Defaults to "".
+
+    Returns:
+        str: HTML string with tag-wrapped text.
     """
-    style = style or "font-size: 0.8em; font-weight: lighter;"
-    return f"<{tag} {style=}>{text}</{tag}>"
+    style = {
+        "small": "font-size: 0.8em; font-weight: lighter;",
+        "bold": "font-weight: bold;",
+        "italic": "font-style: italic;",
+        "underline": "text-decoration: underline;",
+    }.get(style, style)
+    attr_str = f" {title=}" if title else ""
+    if style:
+        attr_str += f" {style=}"
+    return f"<{tag}{attr_str}>{text}</{tag}>"
 
 
 def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
