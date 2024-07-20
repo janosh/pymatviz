@@ -14,7 +14,10 @@ from time import perf_counter
 
 import numpy as np
 import plotly.express as px
-from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
+from aviary.wren.utils import (
+    count_wyckoff_positions,
+    get_protostructure_label_from_spglib,
+)
 from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from tqdm import tqdm
@@ -46,7 +49,7 @@ df_grvh[Key.crystal_system] = [
 ]
 
 df_grvh[Key.wyckoff] = [
-    get_aflow_label_from_spglib(struct)
+    get_protostructure_label_from_spglib(struct)
     for struct in tqdm(
         df_grvh[Key.structure], desc="Getting matbench_log_gvrh Wyckoff strings"
     )
