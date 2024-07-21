@@ -383,7 +383,7 @@ def get_cbar_label_formatter(
     Args:
         cbar_label_fmt (str): f-string option for colorbar tick labels.
         values_fmt (str): f-string option for tile values, would be used if
-            cbar_label_fmt is "AUTO".
+            cbar_label_fmt is "auto".
         values_show_mode (str): The values display mode:
             - "off": Hide values.
             - "value": Display values as is.
@@ -397,7 +397,7 @@ def get_cbar_label_formatter(
     Returns:
         PercentFormatter or FormatStrFormatter.
     """
-    cbar_label_fmt = values_fmt if cbar_label_fmt == "AUTO" else cbar_label_fmt
+    cbar_label_fmt = values_fmt if cbar_label_fmt == "auto" else cbar_label_fmt
 
     if values_show_mode == "percent":
         if match := re.search(r"\.(\d+)%", cbar_label_fmt):

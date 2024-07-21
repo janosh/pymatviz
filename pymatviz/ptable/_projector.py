@@ -87,7 +87,7 @@ class PTableProjector:
         plot_kwargs: dict[str, Any] | None = None,
         exclude_elements: Sequence[str] = (),
         on_empty: Literal["hide", "show"] = "show",
-        hide_f_block: bool | Literal["AUTO"] = "AUTO",
+        hide_f_block: bool | Literal["auto"] = "auto",
         elem_type_colors: dict[str, str] | None = None,
         elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.vesta,
     ) -> None:
@@ -105,8 +105,8 @@ class PTableProjector:
                 pass to the plt.subplots function call.
             exclude_elements (Sequence[str]): Elements to exclude.
             on_empty ("hide" | "show"): Hide or show tile if no data provided.
-            hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
-                Defaults to "AUTO", meaning hide if no data present.
+            hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
+                Defaults to "auto", meaning hide if no data present.
             elem_type_colors (dict | None): Element typed based colors.
             elem_colors (dict | ElemColors): Element-specific colors.
         """
@@ -203,9 +203,9 @@ class PTableProjector:
         return self._hide_f_block
 
     @hide_f_block.setter
-    def hide_f_block(self, hide_f_block: bool | Literal["AUTO"]) -> None:
-        """If hide_f_block is "AUTO", would detect if data is present."""
-        if hide_f_block == "AUTO":
+    def hide_f_block(self, hide_f_block: bool | Literal["auto"]) -> None:
+        """If hide_f_block is "auto", would detect if data is present."""
+        if hide_f_block == "auto":
             f_block_elements_has_data = {
                 atom_num
                 for atom_num in [*range(57, 72), *range(89, 104)]  # rare earths
@@ -699,7 +699,7 @@ class HMapPTableProjector(PTableProjector):
     def generate_tile_value_colors(
         self,
         *,
-        text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
+        text_colors: Literal["auto"] | ColorType | dict[ElemStr, ColorType] = "auto",
         overwrite_tiles: dict[ElemStr, OverwriteTileValueColor] | None = None,
         infty_color: ColorType = "lightskyblue",
         nan_color: ColorType = "lightgrey",
@@ -709,7 +709,7 @@ class HMapPTableProjector(PTableProjector):
 
         Args:
             text_colors: Colors for element symbols and values.
-                - "AUTO": Auto pick "black" or "white" based on the contrast
+                - "auto": Auto pick "black" or "white" based on the contrast
                     of tile color for each element.
                 - ColorType: Use the same ColorType for each element.
                 - dict[ElemStr, ColorType]: Element to color mapping.
@@ -790,7 +790,7 @@ class HMapPTableProjector(PTableProjector):
 
                 tile_color = self.cmap(self.norm(value))
 
-                if text_colors == "AUTO":
+                if text_colors == "auto":
                     text_color: str = pick_bw_for_contrast(tile_color)
                 elif isinstance(text_colors, dict):
                     text_color = text_colors.get(symbol, "black")
@@ -849,7 +849,7 @@ class HMapPTableProjector(PTableProjector):
                 "fraction" and "percent" can be used to make the colors in
                     different plots comparable.
             value_pos (tuple[float, float]): The position of values inside the tile.
-            value_fmt (str | "AUTO"): f-string format for values. Defaults to ".1%"
+            value_fmt (str | "auto"): f-string format for values. Defaults to ".1%"
                 (1 decimal place) if values_show_mode is "percent", else ".3g".
             value_kwargs (dict): Keyword arguments passed to plt.text() for
                 values. Defaults to None.

@@ -57,8 +57,8 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
 
 
 class TestPtableHeatmap:
-    @pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])
-    def test_basic_heatmap_plotter(self, hide_f_block: bool | Literal["AUTO"]) -> None:
+    @pytest.mark.parametrize("hide_f_block", ["auto", False, True])
+    def test_basic_heatmap_plotter(self, hide_f_block: bool | Literal["auto"]) -> None:
         fig = ptable_heatmap(
             df_ptable.atomic_mass,
             hide_f_block=hide_f_block,
@@ -107,7 +107,7 @@ class TestPtableHeatmap:
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
-    @pytest.mark.parametrize("values_fmt", ["AUTO", ".3g", ".2g"])
+    @pytest.mark.parametrize("values_fmt", ["auto", ".3g", ".2g"])
     def test_values_fmt(self, values_fmt: str) -> None:
         fig = ptable_heatmap(
             df_ptable.atomic_mass, value_fmt=values_fmt, return_type="figure"
@@ -153,7 +153,7 @@ class TestPtableHeatmap:
         assert isinstance(ax, plt.Axes)
 
 
-@pytest.mark.parametrize("hide_f_block", ["AUTO", False, True])
+@pytest.mark.parametrize("hide_f_block", ["auto", False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
     data_dict: dict[str, Any] = {

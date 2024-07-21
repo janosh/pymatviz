@@ -140,7 +140,7 @@ class TestPtableHeatmapGenTileValueColors:
         "text_color, expected",
         [
             ("red", "red"),
-            ("AUTO", "white"),
+            ("auto", "white"),
             ({"H": "green"}, "green"),
         ],
     )
@@ -192,7 +192,7 @@ class TestPtableHeatmapGenTileValueColors:
     ) -> None:
         projector = HMapPTableProjector(data=self.test_dict, colormap="viridis")
         tile_entries = projector.generate_tile_value_colors(
-            text_colors="AUTO", overwrite_tiles=overwrite_tile
+            text_colors="auto", overwrite_tiles=overwrite_tile
         )
 
         tile_entry = tile_entries["He"]

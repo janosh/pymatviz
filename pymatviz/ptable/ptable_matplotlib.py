@@ -49,25 +49,25 @@ def ptable_heatmap(
     tile_size: tuple[float, float] = (0.75, 0.75),  # TODO: WIP, don't use
     # Figure
     on_empty: Literal["hide", "show"] = "show",
-    hide_f_block: bool | Literal["AUTO"] = "AUTO",
+    hide_f_block: bool | Literal["auto"] = "auto",
     f_block_voffset: float = 0,  # TODO: WIP, don't use
     plot_kwargs: dict[str, Any] | None = None,
     # Axis
     ax_kwargs: dict[str, Any] | None = None,
-    text_colors: Literal["AUTO"] | ColorType | dict[ElemStr, ColorType] = "AUTO",
+    text_colors: Literal["auto"] | ColorType | dict[ElemStr, ColorType] = "auto",
     # Symbol
     symbol_pos: tuple[float, float] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     # Value
     value_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     value_pos: tuple[float, float] | None = None,
-    value_fmt: str = "AUTO",
+    value_fmt: str = "auto",
     value_kwargs: dict[str, Any] | None = None,
     # Colorbar
     show_cbar: bool = True,
     cbar_coords: tuple[float, float, float, float] = (0.18, 0.8, 0.42, 0.05),
     cbar_range: tuple[float | None, float | None] = (None, None),
-    cbar_label_fmt: str = "AUTO",
+    cbar_label_fmt: str = "auto",
     cbar_title: str = "Element Count",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
@@ -107,8 +107,8 @@ def ptable_heatmap(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "AUTO", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
+            Defaults to "auto", meaning hide if no data is provided.
         f_block_voffset (float): The vertical offset of f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
@@ -119,7 +119,7 @@ def ptable_heatmap(
             dict(title="Periodic Table", xlabel="x-axis", ylabel="y-axis", xlim=(0, 10),
             ylim=(0, 10), xscale="linear", yscale="log"). See ax.set() docs for options.
         text_colors: Colors for element symbols and values.
-            - "AUTO": Auto pick "black" or "white" based on the contrast
+            - "auto": Auto pick "black" or "white" based on the contrast
                 of tile color for each element.
             - ColorType: Use the same ColorType for each element.
             - dict[ElemStr, ColorType]: Element to color mapping.
@@ -140,9 +140,9 @@ def ptable_heatmap(
             "fraction" and "percent" can be used to make the colors in
                 different plots comparable.
         value_pos (tuple[float, float]): The position of values inside the tile.
-        value_fmt (str | "AUTO"): f-string format for values. Defaults to ".1%"
+        value_fmt (str | "auto"): f-string format for values. Defaults to ".1%"
             (1 decimal place) if values_show_mode is "percent", else ".3g".
-        value_color (str | "AUTO"): The font color of values. Use "AUTO" for
+        value_color (str | "auto"): The font color of values. Use "auto" for
             automatically switch between black/white depending on the background.
         value_kwargs (dict): Keyword arguments passed to plt.text() for
             values. Defaults to None.
@@ -239,7 +239,7 @@ def ptable_heatmap(
         projector.data = normalized_data.data  # use setter to update metadata
 
     # Generate value f-string formatter
-    if value_fmt == "AUTO":
+    if value_fmt == "auto":
         if value_show_mode == "percent":
             value_fmt = ".1%"
         elif sci_notation:
@@ -415,7 +415,7 @@ def ptable_heatmap_splits(
     # Figure
     colormap: str | Colormap = "viridis",
     on_empty: Literal["hide", "show"] = "hide",
-    hide_f_block: bool | Literal["AUTO"] = "AUTO",
+    hide_f_block: bool | Literal["auto"] = "auto",
     plot_kwargs: dict[str, Any] | None = None,
     # Axis
     ax_kwargs: dict[str, Any] | None = None,
@@ -449,8 +449,8 @@ def ptable_heatmap_splits(
         colormap (str): Matplotlib colormap name to use.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "AUTO", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
+            Defaults to "auto", meaning hide if no data is provided.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -534,7 +534,7 @@ def ptable_hists(
     # Figure
     colormap: str | Colormap | None = "viridis",
     on_empty: Literal["show", "hide"] = "hide",
-    hide_f_block: bool | Literal["AUTO"] = "AUTO",
+    hide_f_block: bool | Literal["auto"] = "auto",
     plot_kwargs: dict[str, Any] | None = None,
     # Axis
     ax_kwargs: dict[str, Any] | None = None,
@@ -574,8 +574,8 @@ def ptable_hists(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "AUTO", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
+            Defaults to "auto", meaning hide if no data is provided.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -685,7 +685,7 @@ def ptable_scatters(
     # Figure
     colormap: str | Colormap | None = None,
     on_empty: Literal["hide", "show"] = "hide",
-    hide_f_block: bool | Literal["AUTO"] = "AUTO",
+    hide_f_block: bool | Literal["auto"] = "auto",
     plot_kwargs: dict[str, Any] | None = None,
     # Axis
     ax_kwargs: dict[str, Any] | None = None,
@@ -721,8 +721,8 @@ def ptable_scatters(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "AUTO", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
+            Defaults to "auto", meaning hide if no data is provided.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -820,7 +820,7 @@ def ptable_lines(
     *,
     # Figure
     on_empty: Literal["hide", "show"] = "hide",
-    hide_f_block: bool | Literal["AUTO"] = "AUTO",
+    hide_f_block: bool | Literal["auto"] = "auto",
     plot_kwargs: dict[str, Any] | None = None,
     # Axis
     ax_kwargs: dict[str, Any] | None = None,
@@ -849,8 +849,8 @@ def ptable_lines(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "AUTO"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "AUTO", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
+            Defaults to "auto", meaning hide if no data is provided.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
