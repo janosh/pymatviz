@@ -674,7 +674,7 @@ class ChildPlotters:
 class HeatMapPTableProjector(PTableProjector):
     """With more heatmap-specific functionalities."""
 
-    def filter_near_zero(self, tol: float = 1e-4) -> None:
+    def filter_near_zero(self, tol: float = 1e-6) -> None:
         """Filter near zero value in data for log mode.
 
         Args:
@@ -687,7 +687,7 @@ class HeatMapPTableProjector(PTableProjector):
                 return x[0] if len(x) > 0 else np.nan
             return x
 
-        val_col = self.data[Key.heat_val].copy().apply(to_scalar)
+        val_col = self.data[Key.heat_val].map(to_scalar)
 
         mask = np.isclose(a=val_col, b=0, atol=tol)
         df_filtered = self.data[~mask]

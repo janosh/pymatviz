@@ -317,7 +317,7 @@ def ptable_heatmap_ratio(
     normalize: bool = False,
     infty_color: ColorType = "lightskyblue",
     zero_color: ColorType = "lightgrey",
-    zero_tol: float = 0.01,
+    zero_tol: float = 1e-6,
     zero_symbol: str = "ZERO",
     cbar_title: str = "Element Ratio",
     not_in_numerator: tuple[str, str] | None = ("lightgray", "gray: not in 1st list"),
