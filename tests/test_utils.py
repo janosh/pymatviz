@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Any, Literal
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -22,6 +23,7 @@ from pymatviz.utils import (
     bin_df_cols,
     crystal_sys_from_spg_num,
     df_to_arrays,
+    get_cbar_label_formatter,
     get_fig_xy_range,
     get_font_color,
     luminance,
@@ -316,6 +318,80 @@ def test_si_fmt_int() -> None:
     assert si_fmt_int(12345678, fmt=">6.2f", sep=" ") == " 12.35 M"
     assert si_fmt_int(-1) == "-1"
     assert si_fmt_int(1.23456789e-10, sep="\t") == "123\tp"
+
+
+class TestGetCbarLabelFormatter:
+    data = np.random.default_rng().random((10, 10))
+    fig, ax = plt.subplots()
+    cax = ax.imshow(data, cmap="viridis")
+    cbar = fig.colorbar(cax)
+    cbar.set_ticks([0.0123456789])
+
+    @pytest.mark.parametrize(
+        "default_decimal_places, expected",
+        [
+            (3, "1.235%"),
+            (4, "1.2346%"),
+        ],
+    )
+    def test_default_decimal_places(
+        self, default_decimal_places: int, expected: str
+    ) -> None:
+        with pytest.warns(match="Invalid cbar_label_fmt="):
+            formatter = get_cbar_label_formatter(
+                cbar_label_fmt=".2f",  # bad f-string format for percent mode
+                values_fmt=".2f",  # bad f-string format for percent mode
+                values_show_mode="percent",
+                sci_notation=False,
+                default_decimal_places=default_decimal_places,
+            )
+
+        self.cbar.ax.yaxis.set_major_formatter(formatter)
+        labels = [label.get_text() for label in self.cbar.ax.get_yticklabels()]
+
+        assert labels[0] == expected, labels
+
+    @pytest.mark.parametrize(
+        "sci_notation, expected", [(True, "1.23"), (False, "0.01")]
+    )
+    def test_sci_notation(self, sci_notation: bool, expected: str) -> None:
+        formatter = get_cbar_label_formatter(
+            cbar_label_fmt=".2f",
+            values_fmt=".2f",
+            values_show_mode="value",
+            sci_notation=sci_notation,
+        )
+
+        self.cbar.ax.yaxis.set_major_formatter(formatter)
+        labels = [label.get_text() for label in self.cbar.ax.get_yticklabels()]
+
+        assert labels[0] == expected, labels
+
+    @pytest.mark.parametrize(
+        "values_show_mode, expected",
+        [
+            ("value", "0.0123"),
+            ("fraction", "0.0123"),
+            ("percent", "1.2%"),  # default decimal place being 1
+            ("off", "0.0123"),
+        ],
+    )
+    def test_values_show_mode(
+        self,
+        values_show_mode: Literal["value", "fraction", "percent", "off"],
+        expected: str,
+    ) -> None:
+        formatter = get_cbar_label_formatter(
+            cbar_label_fmt=".4f",
+            values_fmt=".4f",
+            values_show_mode=values_show_mode,
+            sci_notation=False,
+        )
+
+        self.cbar.ax.yaxis.set_major_formatter(formatter)
+        labels = [label.get_text() for label in self.cbar.ax.get_yticklabels()]
+
+        assert labels[0] == expected, labels
 
 
 @pytest.mark.parametrize(
