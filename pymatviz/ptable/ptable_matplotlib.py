@@ -14,7 +14,7 @@ from pymatviz.enums import ElemColorMode, ElemCountMode
 from pymatviz.process_data import count_elements
 from pymatviz.ptable._projector import (
     ChildPlotters,
-    HMapPTableProjector,
+    HeatMapPTableProjector,
     OverwriteTileValueColor,
     PTableProjector,
 )
@@ -217,7 +217,7 @@ def ptable_heatmap(
         raise ValueError(f"Combining log scale and {value_show_mode=} is unsupported")
 
     # Initialize periodic table plotter
-    projector = HMapPTableProjector(
+    projector = HeatMapPTableProjector(
         data=data,
         exclude_elements=exclude_elements,
         # tile_size=tile_size,

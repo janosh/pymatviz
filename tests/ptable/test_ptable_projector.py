@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose
 
 from pymatviz.enums import ElemColorScheme
 from pymatviz.ptable._projector import (
-    HMapPTableProjector,
+    HeatMapPTableProjector,
     OverwriteTileValueColor,
     PTableProjector,
     TileValueColor,
@@ -131,7 +131,7 @@ class TestPtableHeatmapGenTileValueColors:
 
     def test_invalid_data_length(self) -> None:
         test_dict = {"H": [1, 2]}
-        projector = HMapPTableProjector(data=test_dict, colormap="viridis")
+        projector = HeatMapPTableProjector(data=test_dict, colormap="viridis")
 
         with pytest.raises(ValueError, match="Data for H should be length 1"):
             projector.generate_tile_value_colors()
@@ -147,7 +147,7 @@ class TestPtableHeatmapGenTileValueColors:
     def test_text_colors_single_text_color(
         self, text_color: ColorType, expected: ColorType
     ) -> None:
-        projector = HMapPTableProjector(data=self.test_dict, colormap="viridis")
+        projector = HeatMapPTableProjector(data=self.test_dict, colormap="viridis")
         tile_entries = projector.generate_tile_value_colors(text_colors=text_color)
 
         tile_entry = tile_entries["H"]
@@ -190,7 +190,7 @@ class TestPtableHeatmapGenTileValueColors:
         overwrite_tile: dict[ElemStr, OverwriteTileValueColor],
         expected_tile: TileValueColor,
     ) -> None:
-        projector = HMapPTableProjector(data=self.test_dict, colormap="viridis")
+        projector = HeatMapPTableProjector(data=self.test_dict, colormap="viridis")
         tile_entries = projector.generate_tile_value_colors(
             text_colors="auto", overwrite_tiles=overwrite_tile
         )
@@ -221,7 +221,7 @@ class TestPtableHeatmapGenTileValueColors:
             "B": 1.0,
             "C": 2.0,
         }
-        projector = HMapPTableProjector(data=test_dict, exclude_elements=["B"])
+        projector = HeatMapPTableProjector(data=test_dict, exclude_elements=["B"])
 
         assert projector.anomalies["Li"] == {"inf"}  # type: ignore[index]
         assert projector.anomalies["Be"] == {"nan"}  # type: ignore[index]
@@ -251,7 +251,7 @@ class TestPtableHeatmapGenTileValueColors:
             "He": [0.0],  # float list
             "Li": 3,
         }
-        projector = HMapPTableProjector(data=test_dict, colormap="viridis")
+        projector = HeatMapPTableProjector(data=test_dict, colormap="viridis")
 
         with pytest.warns(match="Elements dropped due to close to zero value"):
             projector.filter_near_zero()

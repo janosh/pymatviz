@@ -671,7 +671,7 @@ class ChildPlotters:
         ax.spines[["right", "top", "left"]].set_visible(False)
 
 
-class HMapPTableProjector(PTableProjector):
+class HeatMapPTableProjector(PTableProjector):
     """With more heatmap-specific functionalities."""
 
     def filter_near_zero(self, tol: float = 1e-4) -> None:
