@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Literal, Union, cast, get_args
+from typing import TYPE_CHECKING, Literal, Union, get_args
 
 import numpy as np
 import pandas as pd
@@ -30,7 +30,7 @@ SupportedValueType = Union[Sequence[float], np.ndarray]
 
 
 class PTableData:
-    """Hold data for ptable plotters.
+    """Hold data for periodic table plotters.
 
     Attributes:
         data (pd.DataFrame): The preprocessed DataFrame with element names
@@ -290,10 +290,9 @@ class PTableData:
         all_values = pd.to_numeric(all_values, errors="coerce")
 
         has_nan = False
-        self.anomalies = cast(dict[str, set[Literal["inf", "nan"]]], self.anomalies)
 
         for elem, value in all_values.items():
-            if np.isnan(value):
+            if isinstance(self.anomalies, dict) and np.isnan(value):
                 if elem not in self.anomalies:
                     self.anomalies[elem] = set()
                 self.anomalies[elem].add("nan")
@@ -341,10 +340,9 @@ class PTableData:
         all_values = pd.to_numeric(all_values, errors="coerce")
 
         has_inf = False
-        self.anomalies = cast(dict[str, set[Literal["inf", "nan"]]], self.anomalies)
 
         for elem, value in all_values.items():
-            if np.isinf(value):
+            if isinstance(self.anomalies, dict) and np.isinf(value):
                 if elem not in self.anomalies:
                     self.anomalies[elem] = set()
                 self.anomalies[elem].add("inf")
