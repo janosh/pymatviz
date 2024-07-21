@@ -23,24 +23,27 @@ import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from pymatviz import ptable_heatmap, spacegroup_hist
+from pymatviz import count_elements, ptable_heatmap, spacegroup_hist
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
 
 
 # %%
 df_carrier = load_dataset("ricci_boltztrap_mp_tabular")
+df_carrier = df_carrier.dropna(subset=Key.structure)
 
-# getting space group symbols and numbers takes about 2 min
+# Getting space group symbols and numbers (take about 2 min)
 df_carrier[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info() for struct in tqdm(df_carrier[Key.structure])
 ]
 
 
 # %%
-ax = ptable_heatmap(df_carrier.pretty_formula.dropna(), log=True)
-ax.set(title="Elemental prevalence in the Ricci Carrier Transport dataset")
-save_fig(ax, "carrier-transport-ptable-heatmap.pdf")
+fig = ptable_heatmap(
+    count_elements(df_carrier.pretty_formula.dropna()), log=True, return_type="figure"
+)
+fig.suptitle("Elemental prevalence in the Ricci Carrier Transport dataset")
+save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
 
 
 # %%

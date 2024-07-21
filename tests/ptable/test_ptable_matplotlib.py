@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Any
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -19,112 +18,16 @@ from pymatviz import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.enums import ElemColorScheme, Key
-from pymatviz.ptable.ptable_matplotlib import PTableProjector
-from pymatviz.utils import df_ptable, si_fmt, si_fmt_int
+from pymatviz.enums import Key
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
-    from typing import Any, ClassVar
+    from typing import Any, Literal
 
     from pymatgen.core import Composition
 
-
-class TestPTableProjector:
-    test_dict: ClassVar = {
-        "H": 1,  # int
-        "He": [2.0, 4.0],  # float list
-        "Li": np.array([6.0, 8.0]),  # float array
-        "Na": 11.0,  # float
-        "Mg": {"a": -1, "b": 14.0}.values(),  # dict_values
-        "Al": {-1, 2.3},  # mixed int/float set
-    }
-
-    def test_elem_types(self) -> None:
-        projector = PTableProjector(data=self.test_dict)
-        assert projector.elem_types == {
-            "Noble Gas",
-            "Metal",
-            "Alkaline Earth Metal",
-            "Nonmetal",
-            "Alkali Metal",
-        }
-
-    def test_elem_colors(self) -> None:
-        data = self.test_dict
-        projector = PTableProjector(data=data)
-        color_subset = {
-            "Ac": (0.4392156862745098, 0.6705882352941176, 0.9803921568627451),
-            "Zr": (0, 1, 0),
-        }
-        assert projector.elem_colors.items() > color_subset.items()
-
-        vesta_colors = PTableProjector(
-            data=data, elem_colors=ElemColorScheme.vesta
-        ).elem_colors
-        assert vesta_colors == projector.elem_colors
-        jmol_colors = PTableProjector(
-            data=data, elem_colors=ElemColorScheme.jmol
-        ).elem_colors
-        assert jmol_colors != projector.elem_colors
-
-        with pytest.raises(
-            ValueError,
-            match="elem_colors must be 'vesta', 'jmol', or a custom dict, "
-            "got elem_colors='foobar'",
-        ):
-            PTableProjector(data=data, elem_colors="foobar")  # type: ignore[arg-type]
-
-    def test_hide_f_block(self) -> None:
-        # check default is True if no f-block elements in data
-        assert PTableProjector(data=self.test_dict).hide_f_block is True
-        assert PTableProjector(data={"H": 1}).hide_f_block is True
-        # check default is False if f-block elements in data
-        assert PTableProjector(data=self.test_dict | {"La": 1}).hide_f_block is False
-        assert PTableProjector(data={"La": 1}).hide_f_block is False
-        # check override
-        assert PTableProjector(data={"La": 1}, hide_f_block=True).hide_f_block is True
-
-    def test_get_elem_type_color(self) -> None:
-        projector = PTableProjector(data=self.test_dict)
-
-        assert projector.get_elem_type_color("H") == "green"
-        assert projector.get_elem_type_color("Fe") == "blue"
-
-    @pytest.mark.parametrize(
-        "data, elem_type_colors",
-        [
-            # data=dict, elem colors=empty dict
-            ({"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]}, {}),
-            # data=series, elem colors=dict
-            (
-                pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
-                {"Transition Metal": "red", "Nonmetal": "blue"},
-            ),
-            # data=dataframe, elem colors=None
-            (pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6], "P": [7, 8, 9]}), None),
-        ],
-    )
-    def test_add_element_type_legend_data_types(
-        self,
-        data: pd.DataFrame | pd.Series | dict[str, list[float]],
-        elem_type_colors: dict[str, str] | None,
-    ) -> None:
-        projector = PTableProjector(data=data, elem_type_colors=elem_type_colors)
-
-        legend_title = "Element Types"
-        legend_kwargs = dict(loc="upper right", ncol=5, fontsize=12, title=legend_title)
-        projector.add_elem_type_legend(kwargs=legend_kwargs)
-
-        legend = plt.gca().get_legend()
-        assert isinstance(legend, mpl.legend.Legend)
-        assert len(legend.get_texts()) in {1, 2}
-        legend_labels = {text.get_text() for text in legend.get_texts()}
-        assert legend_labels <= {"Transition Metal", "Alkali Metal", "Nonmetal"}
-        assert legend._ncols == 5  # noqa: SLF001
-
-        assert legend.get_title().get_text() == legend_title
-        assert legend.get_texts()[0].get_fontsize() == 12
+df_ptable = df_ptable.copy()  # avoid changing the df in place
 
 
 @pytest.fixture()
@@ -154,155 +57,104 @@ def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
     return count_elements(steel_formulas)
 
 
-def test_ptable_heatmap(
-    glass_formulas: list[str], glass_elem_counts: pd.Series[int]
-) -> None:
-    ax = ptable_heatmap(glass_formulas)
-    assert isinstance(ax, plt.Axes)
-    assert len(ax.texts) == 236
-    # ensure only 118 elements are labeled
-    labels = {txt.get_text() for txt in ax.texts}
-    allowed_labels = {*df_ptable.index} | {*map(str, range(182))} | {"-"}
-    assert labels <= allowed_labels, f"{labels - allowed_labels=}"
-
-    ptable_heatmap(glass_formulas, log=True)
-
-    # custom colormap
-    ptable_heatmap(glass_formulas, log=True, colorscale="summer")
-
-    # heat_mode normalized to total count
-    ptable_heatmap(glass_formulas, heat_mode="fraction")
-    ptable_heatmap(glass_formulas, heat_mode="percent")
-
-    # without heatmap values
-    ptable_heatmap(glass_formulas, show_values=False)
-    ptable_heatmap(glass_formulas, log=True, show_values=False)
-
-    # element properties as heatmap values
-    ptable_heatmap(df_ptable.atomic_mass)
-
-    # element properties as heatmap values
-    ptable_heatmap(df_ptable.atomic_mass, text_color=("red", "blue"))
-
-    # custom cbar_range
-    ptable_heatmap(glass_formulas, cbar_range=(0, 100))
-    ptable_heatmap(glass_formulas, log=True, cbar_range=(None, 100))
-    ptable_heatmap(glass_formulas, log=True, cbar_range=(1, None))
-
-    with pytest.raises(ValueError, match="Invalid vmin or vmax"):
-        # can't use cbar_min=0 with log=True
-        ptable_heatmap(glass_formulas, log=True, cbar_range=(0, None))
-
-    # cbar_kwargs
-    ax = ptable_heatmap(glass_formulas, cbar_kwargs=dict(orientation="horizontal"))
-    cax = ax.inset_axes([0.1, 0.9, 0.8, 0.05])
-    ptable_heatmap(glass_formulas, cbar_kwargs={"cax": cax, "format": "%.3f"})
-
-    # element counts
-    ptable_heatmap(glass_elem_counts)
-
-    with pytest.raises(ValueError, match="Combining log color scale and"):
-        ptable_heatmap(glass_formulas, log=True, heat_mode="percent")
-
-    ptable_heatmap(glass_elem_counts, exclude_elements=["O", "P"])
-
-    with pytest.raises(ValueError, match=r"Unexpected symbol\(s\) foobar"):
-        ptable_heatmap(glass_elem_counts, exclude_elements=["foobar"])
-
-    # cbar_fmt as string
-    ax = ptable_heatmap(glass_elem_counts, cbar_fmt=".3f")
-    cbar_labels = [label.get_text() for label in ax.child_axes[0].get_xticklabels()]
-    assert cbar_labels[:2] == ["0.000", "50.000"]
-
-    # cbar_fmt as function
-    ax = ptable_heatmap(glass_elem_counts, fmt=si_fmt)
-    ax = ptable_heatmap(
-        glass_elem_counts, fmt=lambda x: f"{x:.0f}", cbar_fmt=si_fmt_int
-    )
-    ax = ptable_heatmap(glass_elem_counts, cbar_fmt=lambda x, _: f"{x:.3f} kg")
-
-    ax = ptable_heatmap(glass_elem_counts, heat_mode="percent", cbar_fmt=".3%")
-    cbar_ax = ax.child_axes[0]
-    cbar_1st_label = cbar_ax.get_xticklabels()[0].get_text()
-    assert cbar_1st_label == "0.000%"
-    cbar_title = cbar_ax.title
-    assert str(cbar_title) == "Text(0.5, 1.0, 'Element Count')"
-    # check colorbar title font color is black and hence visible on white background
-    assert cbar_title.get_color() == "black"
-
-    # tile_size
-    ptable_heatmap(df_ptable[Key.atomic_mass], tile_size=1)
-    ptable_heatmap(df_ptable[Key.atomic_mass], tile_size=(0.9, 1))
-
-    # bad colorscale should raise ValueError
-    bad_name = "bad color scale"
-    with pytest.raises(
-        ValueError,
-        match=f"{bad_name!r} is not a valid value for name; supported values are "
-        "'Accent', 'Accent_r'",
-    ):
-        ptable_heatmap(glass_formulas, colorscale=bad_name)
-
-    # test text_style
-    ptable_heatmap(glass_formulas, text_style=dict(color="red", fontsize=12))
-
-    # test show_scale (with heat_mode)
-    ptable_heatmap(glass_formulas, heat_mode="percent", show_scale=False)
-
-
-def test_ptable_heatmap_text_color_consistency(glass_formulas: list[str]) -> None:
-    ax = ptable_heatmap(glass_formulas)
-    check_text_color_consistency(ax)
-
-    ax = ptable_heatmap(glass_formulas, log=True)
-    check_text_color_consistency(ax)
-
-    ax = ptable_heatmap(glass_formulas, text_color=("red", "blue"))
-    check_text_color_consistency(ax)
-
-    ax = ptable_heatmap(glass_formulas, heat_mode="percent")
-    check_text_color_consistency(ax)
-
-    ax = ptable_heatmap(glass_formulas, show_values=False)
-    check_text_color_consistency(ax)
-
-
-def check_text_color_consistency(ax: plt.Axes) -> None:
-    """Check that in every element tile of a matplotlib ptable_heatmap, the element
-    symbol text color matches the heatmap value's text color."""
-    rectangles = [patch for patch in ax.patches if isinstance(patch, plt.Rectangle)]
-
-    assert len(ax.texts) > 0, "No text elements found in the plot"
-    assert len(rectangles) > 0, "No rectangle elements found in the plot"
-
-    for rect in rectangles:
-        x, y = rect.get_xy()
-        width, height = rect.get_width(), rect.get_height()
-
-        # Find texts within this rectangle
-        rect_texts = [
-            text
-            for text in ax.texts
-            if x <= text.get_position()[0] <= x + width
-            and y <= text.get_position()[1] <= y + height
-        ]
-        symbol = rect_texts[0].get_text()
-        n_rects = len(rect_texts)
-        assert n_rects in {1, 2}, (
-            f"Unexpected number of text elements={n_rects} in element tile at "
-            f"{(symbol, x, y)}, should be 1 or 2 (depending on show_values)"
+class TestPtableHeatmap:
+    @pytest.mark.parametrize("hide_f_block", ["auto", False, True])
+    def test_basic_heatmap_plotter(self, hide_f_block: bool | Literal["auto"]) -> None:
+        fig = ptable_heatmap(
+            df_ptable[Key.atomic_mass],
+            hide_f_block=hide_f_block,
+            cbar_title="Element Count",
+            return_type="figure",
         )
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 127 if hide_f_block is True else 181, len(fig.axes)
 
-        if len(rect_texts) == 2:  # Element symbol and value
-            symbol_text, value_text = rect_texts
-            assert (
-                symbol_text.get_color() == value_text.get_color()
-            ), f"Text color mismatch for element at position {(x, y)}"
-        elif len(rect_texts) == 1:  # Only element symbol (when show_values=False)
-            pass
+    @pytest.mark.parametrize("log", [False, True])
+    def test_log_scale(self, log: bool) -> None:
+        fig = ptable_heatmap(df_ptable[Key.atomic_mass], log=log, return_type="figure")
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
+
+    @pytest.mark.parametrize(
+        "values_show_mode", ["percent", "fraction", "value", "off"]
+    )
+    def test_values_show_mode(
+        self, values_show_mode: Literal["percent", "fraction", "value", "off"]
+    ) -> None:
+        fig = ptable_heatmap(
+            df_ptable[Key.atomic_mass],
+            value_show_mode=values_show_mode,
+            return_type="figure",
+        )
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
+
+    @pytest.mark.parametrize("values_show_mode", ["percent", "fraction"])
+    def test_log_in_percent_mode(
+        self, values_show_mode: Literal["percent", "fraction", "value", "off"]
+    ) -> None:
+        with pytest.raises(ValueError, match="Combining log scale and"):
+            ptable_heatmap(
+                df_ptable[Key.atomic_mass], log=True, value_show_mode=values_show_mode
+            )
+
+    @pytest.mark.parametrize(
+        "cbar_range", [(0, 300), (None, 300), (0, None), (None, None)]
+    )
+    def test_cbar_range(self, cbar_range: tuple[float | None, float | None]) -> None:
+        fig = ptable_heatmap(
+            df_ptable[Key.atomic_mass], cbar_range=cbar_range, return_type="figure"
+        )
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
+
+    @pytest.mark.parametrize("values_fmt", ["auto", ".3g", ".2g"])
+    def test_values_fmt(self, values_fmt: str) -> None:
+        fig = ptable_heatmap(
+            df_ptable[Key.atomic_mass], value_fmt=values_fmt, return_type="figure"
+        )
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
+
+    def test_cbar_kwargs(self) -> None:
+        cbar_kwargs = dict(orientation="horizontal")
+        fig = ptable_heatmap(
+            df_ptable[Key.atomic_mass], cbar_kwargs=cbar_kwargs, return_type="figure"
+        )
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
+
+    def test_tile_size(self) -> None:
+        fig = ptable_heatmap(
+            df_ptable[Key.atomic_mass], tile_size=(1, 1), return_type="figure"
+        )
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
+
+    def test_text_style(self) -> None:
+        symbol_kwargs = dict(fontsize=12)
+        fig = ptable_heatmap(
+            df_ptable[Key.atomic_mass],
+            text_colors="red",
+            symbol_kwargs=symbol_kwargs,
+            return_type="figure",
+        )
+        assert isinstance(fig, plt.Figure)
+        assert len(fig.axes) == 181
+
+    def test_return_type(self) -> None:
+        fig = ptable_heatmap(
+            df_ptable[Key.atomic_mass],
+            return_type="figure",
+        )
+        assert isinstance(fig, plt.Figure)
+
+        with pytest.warns(match="We encourage you to return plt.figure"):
+            ax = ptable_heatmap(df_ptable[Key.atomic_mass])
+        assert isinstance(ax, plt.Axes)
 
 
-@pytest.mark.parametrize("hide_f_block", [None, False, True])
+@pytest.mark.parametrize("hide_f_block", ["auto", False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test ptable_heatmap_splits with arbitrary data length."""
     data_dict: dict[str, Any] = {
@@ -330,7 +182,7 @@ def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
         hide_f_block=hide_f_block,
     )
     assert isinstance(fig, plt.Figure)
-    assert len(fig.axes) == 127 if hide_f_block else 181
+    assert len(fig.axes) == 127 if hide_f_block is True else 181
     cbar_ax = fig.axes[-1]
     assert cbar_ax.get_title() == cbar_title
 
@@ -342,34 +194,44 @@ def test_ptable_heatmap_ratio(
     glass_elem_counts: pd.Series[int],
 ) -> None:
     # composition strings
-    not_in_numerator = ("#eff", "gray: not in 1st list")
+    not_in_numerator = ("lightgray", "gray: not in 1st list")
     not_in_denominator = ("lightskyblue", "blue: not in 2nd list")
     not_in_either = ("white", "white: not in either")
-    ax = ptable_heatmap_ratio(
+
+    # Call the function and get the Figure
+    fig = ptable_heatmap_ratio(
         glass_formulas,
         steel_formulas,
         not_in_numerator=not_in_numerator,
         not_in_denominator=not_in_denominator,
         not_in_either=not_in_either,
     )
-    assert isinstance(ax, plt.Axes)
 
-    # check presence of legend handles "not in numerator" and "not in denominator"
+    # Ensure the returned object is a Figure
+    assert isinstance(fig, plt.Figure)
+
+    # Extract the Axes from the Figure
+    ax = fig.gca()
+
+    # Check presence of legend handles "not in numerator" and "not in denominator"
     legend = ax.get_legend()
     assert legend is None
-    # get text annotations
-    texts = ax.texts
-    assert len(texts) == 239
+
+    # Get text annotations
+    texts = fig.texts
+    assert len(texts) == 3
     all_texts = [txt.get_text() for txt in texts]
     for not_in in (not_in_numerator, not_in_denominator, not_in_either):
         assert not_in[1] in all_texts
 
-    # element counts
-    ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
+    # Element counts
+    fig = ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
 
-    # mixed element counts and composition
-    ptable_heatmap_ratio(glass_formulas, steel_elem_counts, exclude_elements=("O", "P"))
-    ptable_heatmap_ratio(glass_elem_counts, steel_formulas, not_in_numerator=None)
+    # Mixed element counts and composition
+    fig = ptable_heatmap_ratio(
+        glass_formulas, steel_elem_counts, exclude_elements=("O", "P")
+    )
+    fig = ptable_heatmap_ratio(glass_elem_counts, steel_formulas, not_in_numerator=None)
 
 
 @pytest.mark.parametrize(

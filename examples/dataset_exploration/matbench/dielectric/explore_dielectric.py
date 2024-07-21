@@ -5,6 +5,7 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz import (
+    count_elements,
     crystal_sys_order,
     ptable_heatmap,
     ptable_heatmap_plotly,
@@ -51,9 +52,11 @@ df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%
-ax = ptable_heatmap(df_diel[Key.formula], log=True)
-ax.set(title="Elemental prevalence in the Matbench dielectric dataset")
-save_fig(ax, "dielectric-ptable-heatmap.pdf")
+fig = ptable_heatmap(
+    count_elements(df_diel[Key.formula]), log=True, return_type="figure"
+)
+fig.suptitle("Elemental prevalence in the Matbench dielectric dataset")
+save_fig(fig, "dielectric-ptable-heatmap.pdf")
 
 
 # %%
