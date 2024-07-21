@@ -6,12 +6,21 @@ import copy
 import os
 import subprocess
 from os.path import dirname
+from pathlib import Path
 from shutil import which
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Final, Literal
 
+import cssutils
 import matplotlib.pyplot as plt
+import numpy as np
 import plotly.graph_objects as go
+from bs4 import BeautifulSoup
+from matplotlib import lines as mlines
+from matplotlib import patches as mpatches
+from matplotlib.backends.backend_agg import RendererAgg
+from matplotlib.figure import Figure
+from pandas.io.formats.style import Styler
 from tqdm import tqdm
 
 
@@ -19,7 +28,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from pandas.io.formats.style import Styler
+    import pandas as pd
+
 
 ROOT = dirname(dirname(__file__))
 
@@ -178,7 +188,7 @@ def save_and_compress_svg(
 
     # Compress SVG if svgo is available
     if (svgo := which("svgo")) is not None:
-        subprocess.run([svgo, "--multipass", filepath], check=True)  # noqa: S603
+        subprocess.run([svgo, "--multipass", "--final-newline", filepath], check=True)  # noqa: S603
 
 
 DEFAULT_DF_STYLES: Final = {
@@ -428,3 +438,214 @@ class TqdmDownload(tqdm):
             self.total = total_size
         # update sets self.n = n_blocks * block_size
         return self.update(n_blocks * block_size - self.n)
+
+
+def df_to_svg(
+    obj: pd.DataFrame | Styler,
+    file_path: str | Path,
+    *,
+    font_size: int = 14,
+    compress: bool = True,
+    **kwargs: Any,
+) -> Figure:
+    """Export a pandas DataFrame or Styler to an SVG file and optionally compress it.
+
+    TODO The SVG output has annoying margins that proved hard to remove. The goal is for
+    this function to auto-crop the SVG viewBox to the content in the future.
+
+    Args:
+        obj (DataFrame | Styler): DataFrame or Styler object to save as SVG.
+        file_path (str | Path): Where to save the SVG file.
+        font_size (int): Font size in points. Defaults to 14.
+        compress (bool): Whether to compress the SVG file using svgo. Defaults to True.
+            svgo must be available in PATH.
+        **kwargs: Passed to matplotlib.figure.Figure.savefig().
+
+    Returns:
+        Figure: Matplotlib Figure conversion of the DataFrame or Styler.
+
+    Raises:
+        subprocess.CalledProcessError: If SVG compression fails.
+    """
+    # TODO find a way to not have to hardcode these values
+    fig_width, fig_height, dpi = 20, 4, 72  # Using dpi=72 as a standard value
+
+    def parse_html(html: str) -> tuple[list[list[list[str | bool | int]]], int]:
+        html = html.replace("<br>", "\n")
+        soup = BeautifulSoup(html, features="lxml")
+        style = soup.find("style")
+        sheet = cssutils.parseString(style.text) if style else []
+
+        def get_style_prop(element: BeautifulSoup, prop_name: str) -> str | None:
+            style = element.get("style", "").lower()
+            if prop_name in style:
+                return style.split(f"{prop_name}:")[1].split(";")[0].strip()
+            if "id" in element.attrs:
+                for rule in sheet:
+                    if f"#{element['id']}" in rule.selectorText:
+                        for prop in rule.style:
+                            if prop.name == prop_name:
+                                return prop.value
+            return None
+
+        rows = []
+        for row in soup.find_all("tr"):
+            cells = []
+            for cell in row.find_all(["td", "th"]):
+                text = cell.get_text()
+                bold = cell.name == "th"
+                align = (
+                    get_style_prop(cell, "text-align")
+                    or get_style_prop(row, "text-align")
+                    or "left"
+                )
+                bg_color = get_style_prop(cell, "background-color") or "#ffffff"
+                color = get_style_prop(cell, "color") or "#000000"
+                col_span = int(cell.get("colspan", 1))
+                row_span = int(cell.get("rowspan", 1))
+                cells.append([text, bold, align, bg_color, color, row_span, col_span])
+            rows.append(cells)
+
+        num_header_rows = (
+            len(soup.find("thead").find_all("tr")) if soup.find("thead") else 0
+        )
+        return rows, num_header_rows
+
+    def calculate_dimensions(
+        text_fig: Figure,
+        renderer: RendererAgg,
+        rows: list[list[list[str | bool | int]]],
+    ) -> tuple[list[float], list[float]]:
+        def get_text_width(text: str, weight: str | None) -> float:
+            t = text_fig.text(0, 0, text, size=font_size, weight=weight)
+            return t.get_window_extent(renderer=renderer).width
+
+        all_text_widths = [
+            [
+                max(
+                    get_text_width(text, "bold" if vals[1] else None)
+                    for text in vals[0].split("\n")
+                )
+                for vals in row
+                if isinstance(vals[0], str)
+            ]
+            for row in rows
+        ]
+        all_text_widths = np.array(all_text_widths) + 15  # Add padding
+
+        max_col_widths = np.max(all_text_widths, axis=0)
+        total_width = fig_width * dpi
+
+        if sum(max_col_widths) >= total_width:
+            max_col_widths *= total_width / sum(max_col_widths)
+
+        col_widths = [width / total_width for width in max_col_widths]
+        row_heights = [
+            (
+                max([val[0].count("\n") + 1 for val in row if isinstance(val[0], str)])
+                + 1
+            )
+            * font_size
+            / dpi
+            for row in rows
+        ]
+
+        return col_widths, row_heights
+
+    def print_table(
+        fig: Figure,
+        rows: list[list[list[str | bool | int]]],
+        num_header_rows: int,
+        col_widths: list[float],
+        row_heights: list[float],
+    ) -> Figure:
+        row_colors = ["#f5f5f5", "#ffffff"]
+        padding = font_size / (fig_width * dpi) * 0.5
+        total_width = sum(col_widths)
+        fig_height = fig.get_figheight()
+        row_locs = [height / fig_height for height in row_heights]
+
+        x0 = (1 - total_width) / 2
+        y_i = 1
+
+        for idx, (yd, row) in enumerate(zip(row_locs, rows)):
+            x_i = x0
+            y_i -= yd
+            # table zebra stripes
+            if idx >= num_header_rows and idx % 2 == 0:
+                rect = mpatches.Rectangle(
+                    (x0, y_i),
+                    width=total_width,
+                    height=yd,
+                    fill=True,
+                    color=row_colors[0],
+                    transform=fig.transFigure,
+                )
+                fig.add_artist(rect)
+
+            for xd, val in zip(col_widths, row):
+                text, weight, ha, bg_color, fg_color = val[:5]
+
+                if bg_color != "#ffffff":
+                    rect_bg = mpatches.Rectangle(
+                        (x_i, y_i),
+                        width=xd,
+                        height=yd,
+                        fill=True,
+                        color=bg_color,
+                        transform=fig.transFigure,
+                    )
+                    fig.add_artist(rect_bg)
+
+                if ha == "right":
+                    x_pos = x_i + xd - padding
+                elif ha == "center":
+                    x_pos = x_i + xd / 2
+                else:  # left align
+                    x_pos = x_i + padding
+
+                fig.text(
+                    x_pos,
+                    y_i + yd / 2,
+                    text,
+                    size=font_size,
+                    ha=ha,
+                    va="center",
+                    weight="bold" if weight else None,
+                    color=fg_color,
+                )
+                x_i += xd
+
+            if idx == num_header_rows - 1:
+                line = mlines.Line2D(
+                    [x0, x0 + total_width],
+                    [y_i, y_i],
+                    color="black",
+                    transform=fig.transFigure,
+                )
+                fig.add_artist(line)
+
+        return fig
+
+    # Main logic
+    html = obj.to_html() if isinstance(obj, Styler) else obj.to_html(notebook=True)
+    text_fig = Figure()
+    renderer = RendererAgg(fig_width, fig_height, dpi)
+
+    rows, num_header_rows = parse_html(html)
+    col_widths, row_heights = calculate_dimensions(text_fig, renderer, rows)
+    fig = Figure(figsize=(fig_width, sum(row_heights)))
+
+    fig = print_table(fig, rows, num_header_rows, col_widths, row_heights)
+    fig.savefig(file_path, format="svg", transparent=True, **kwargs)
+
+    # Compress SVG if requested and svgo is available
+    if compress:
+        if (svgo := which("svgo")) is not None:
+            subprocess.run(  # noqa: S603
+                [svgo, "--multipass", "--final-newline", str(file_path)], check=True
+            )
+        else:
+            print("svgo not found in PATH. SVG compression skipped.")  # noqa: T201
+
+    return fig
