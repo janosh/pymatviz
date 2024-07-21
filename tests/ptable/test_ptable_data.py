@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from math import isclose
 from typing import TYPE_CHECKING, get_args
 
 import numpy as np
@@ -42,9 +41,9 @@ class TestPTableDataBasicInit:
         assert_allclose(output_df.loc["Na", Key.heat_val], [11.0])
         assert_allclose(output_df.loc["Mg", Key.heat_val], [-1.0, 14.0])
 
-        assert isclose(output_df.attrs["vmin"], -1.0)
-        assert isclose(output_df.attrs["mean"], 4.63)
-        assert isclose(output_df.attrs["vmax"], 14.0)
+        assert output_df.attrs["vmin"] == -1.0
+        assert output_df.attrs["mean"] == 4.63
+        assert output_df.attrs["vmax"] == 14.0
 
     def test_from_pd_dataframe(self) -> None:
         input_df: pd.DataFrame = pd.DataFrame(
@@ -93,7 +92,7 @@ class TestPTableDataBasicInit:
             }
         )
         with pytest.raises(KeyError, match="Cannot handle dataframe="):
-            _ptable_data = PTableData(
+            PTableData(
                 df_without_complete_elem, check_missing=False, check_infinity=False
             )
 
@@ -120,9 +119,7 @@ class TestPTableDataBasicInit:
                 f"choose from {get_args(SupportedDataType)}"
             )
             with pytest.raises(TypeError, match=re.escape(err_msg)):
-                _ptable_data = PTableData(
-                    invalid_data, check_missing=False, check_infinity=False
-                )
+                PTableData(invalid_data, check_missing=False, check_infinity=False)
 
     def test_get_vmin_vmax(self) -> None:
         # Test without nested list/array
@@ -132,9 +129,9 @@ class TestPTableDataBasicInit:
 
         output_df_0 = processor.data
 
-        assert isclose(output_df_0.attrs["vmin"], 1)
-        assert isclose(output_df_0.attrs["mean"], 4.2)
-        assert isclose(output_df_0.attrs["vmax"], 8)
+        assert output_df_0.attrs["vmin"] == 1
+        assert output_df_0.attrs["mean"] == 4.2
+        assert output_df_0.attrs["vmax"] == 8
 
         # Test with nested list/array
         test_dict_1 = {
@@ -147,9 +144,9 @@ class TestPTableDataBasicInit:
             test_dict_1, check_missing=False, check_infinity=False
         ).data
 
-        assert isclose(output_df_1.attrs["vmin"], 1)
-        assert isclose(output_df_1.attrs["mean"], 5)
-        assert isclose(output_df_1.attrs["vmax"], 9)
+        assert output_df_1.attrs["vmin"] == 1
+        assert output_df_1.attrs["mean"] == 5
+        assert output_df_1.attrs["vmax"] == 9
 
     def test_drop_elements(self) -> None:
         test_dict = {"H": 1, "He": [2, 4], "Li": np.array([6, 8])}
@@ -160,24 +157,21 @@ class TestPTableDataBasicInit:
         assert list(ptable_data.data.index) == ["Li"]
 
         # Make sure metadata get updated too
-        assert isclose(ptable_data.data.attrs["vmin"], 6), ptable_data.data
-        assert isclose(ptable_data.data.attrs["vmax"], 8)
+        assert ptable_data.data.attrs["vmin"] == 6, ptable_data.data
+        assert ptable_data.data.attrs["vmax"] == 8
 
 
 class TestPTableDataAdvanced:
     """Test advanced data preprocessing functionality."""
 
     def test_apply(self) -> None:
-        data_index = {
-            "H": 1,
-            "He": [-2.0, 3],
-        }
+        data_index = {"H": 1, "He": [-2.0, 3]}
         ptable_data = PTableData(data_index)
 
         # Test apply absolute function and meta data
         ptable_data.apply(abs)
         assert_allclose(ptable_data.data.loc["He", Key.heat_val], [2, 3])
-        assert isclose(ptable_data.data.attrs["vmin"], 1)
+        assert ptable_data.data.attrs["vmin"] == 1
 
     def test_df_without_anomalies(self) -> None:
         normal_df = pd.DataFrame(

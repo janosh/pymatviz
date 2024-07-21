@@ -689,7 +689,7 @@ class HeatMapPTableProjector(PTableProjector):
 
         val_col = self.data[Key.heat_val].copy().apply(to_scalar)
 
-        mask = np.isclose(val_col, 0, atol=tol)
+        mask = np.isclose(a=val_col, b=0, atol=tol)
         df_filtered = self.data[~mask]
 
         if len(df_filtered) < len(self.data):

@@ -375,7 +375,7 @@ def ptable_heatmap_ratio(
     # Generate overwrite tile entries for near zero values
     overwrite_tiles = {}
     for elem, value in values.items():
-        if isclose(value, 0, abs_tol=zero_tol):
+        if isclose(a=value, b=0, abs_tol=zero_tol):
             overwrite_tiles[elem] = OverwriteTileValueColor(
                 zero_symbol, pick_bw_for_contrast(zero_color), zero_color
             )
