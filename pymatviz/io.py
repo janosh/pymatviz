@@ -11,11 +11,9 @@ from shutil import which
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Final, Literal
 
-import cssutils
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
-from bs4 import BeautifulSoup
 from matplotlib import lines as mlines
 from matplotlib import patches as mpatches
 from matplotlib.backends.backend_agg import RendererAgg
@@ -467,16 +465,19 @@ def df_to_svg(
     Raises:
         subprocess.CalledProcessError: If SVG compression fails.
     """
+    import bs4
+    import cssutils
+
     # TODO find a way to not have to hardcode these values
     fig_width, fig_height, dpi = 20, 4, 72  # Using dpi=72 as a standard value
 
     def parse_html(html: str) -> tuple[list[list[list[str | bool | int]]], int]:
         html = html.replace("<br>", "\n")
-        soup = BeautifulSoup(html, features="lxml")
+        soup = bs4.BeautifulSoup(html, features="lxml")
         style = soup.find("style")
         sheet = cssutils.parseString(style.text) if style else []
 
-        def get_style_prop(element: BeautifulSoup, prop_name: str) -> str | None:
+        def get_style_prop(element: bs4.element.Tag, prop_name: str) -> str | None:
             style = element.get("style", "").lower()
             if prop_name in style:
                 return style.split(f"{prop_name}:")[1].split(";")[0].strip()
@@ -559,7 +560,7 @@ def df_to_svg(
         col_widths: list[float],
         row_heights: list[float],
     ) -> Figure:
-        row_colors = ["#f5f5f5", "#ffffff"]
+        row_colors = ("#f5f5f5", "#ffffff")
         padding = font_size / (fig_width * dpi) * 0.5
         total_width = sum(col_widths)
         fig_height = fig.get_figheight()
@@ -586,7 +587,7 @@ def df_to_svg(
             for xd, val in zip(col_widths, row):
                 text, weight, ha, bg_color, fg_color = val[:5]
 
-                if bg_color != "#ffffff":
+                if bg_color != row_colors[1]:
                     rect_bg = mpatches.Rectangle(
                         (x_i, y_i),
                         width=xd,
@@ -627,7 +628,6 @@ def df_to_svg(
 
         return fig
 
-    # Main logic
     html = obj.to_html() if isinstance(obj, Styler) else obj.to_html(notebook=True)
     text_fig = Figure()
     renderer = RendererAgg(fig_width, fig_height, dpi)

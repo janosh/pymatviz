@@ -1,6 +1,9 @@
 # %%
 import plotly.express as px
-from aviary.wren.utils import count_wyckoff_positions, get_aflow_label_from_spglib
+from aviary.wren.utils import (
+    count_wyckoff_positions,
+    get_protostructure_label_from_spglib,
+)
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
@@ -40,7 +43,7 @@ df_diel[[Key.spg_symbol, Key.spg_num]] = [
 ]
 
 df_diel[Key.wyckoff] = [
-    get_aflow_label_from_spglib(struct)
+    get_protostructure_label_from_spglib(struct)
     for struct in tqdm(df_diel[Key.structure], desc="Getting Wyckoff strings")
 ]
 df_diel[Key.n_wyckoff] = df_diel.wyckoff.map(count_wyckoff_positions)

@@ -6,7 +6,7 @@ import sys
 from enum import Enum, unique
 from typing import TYPE_CHECKING
 
-from pymatviz.utils import styled_html_tag
+from pymatviz.utils import html_tag
 
 
 if TYPE_CHECKING:
@@ -103,21 +103,20 @@ class LabelEnum(StrEnum):
         return str, (self.value,)
 
 
-small_font = "font-size: 0.9em; font-weight: lighter;"
-eV_per_atom = styled_html_tag("(eV/atom)", style=small_font)  # noqa: N816
-eV = styled_html_tag("(eV)", style=small_font)  # noqa: N816
-eV_per_angstrom = styled_html_tag("(eV/Å)", style=small_font)  # noqa: N816
-eV_per_kelvin = styled_html_tag("(eV/K)", style=small_font)  # noqa: N816
-angstrom = styled_html_tag("(Å)", style=small_font)
-angstrom_per_atom = styled_html_tag("(Å/atom)", style=small_font)
-cubic_angstrom = styled_html_tag("(Å<sup>3</sup>)", style=small_font)
-gram_per_cm3 = styled_html_tag("(g/cm³)", style=small_font)
-kelvin = styled_html_tag("(K)", style=small_font)
-pascal = styled_html_tag("(Pa)", style=small_font)
-giga_pascal = styled_html_tag("(GPa)", style=small_font)
-joule = styled_html_tag("(J)", style=small_font)
-joule_per_mol = styled_html_tag("(J/mol)", style=small_font)
-joule_per_m2 = styled_html_tag("(J/m²)", style=small_font)
+eV_per_atom = html_tag("(eV/atom)", style="small")  # noqa: N816
+eV = html_tag("(eV)", style="small")  # noqa: N816
+eV_per_angstrom = html_tag("(eV/Å)", style="small")  # noqa: N816
+eV_per_kelvin = html_tag("(eV/K)", style="small")  # noqa: N816
+angstrom = html_tag("(Å)", style="small")
+angstrom_per_atom = html_tag("(Å/atom)", style="small")
+cubic_angstrom = html_tag("(Å<sup>3</sup>)", style="small")
+gram_per_cm3 = html_tag("(g/cm³)", style="small")
+kelvin = html_tag("(K)", style="small")
+pascal = html_tag("(Pa)", style="small")
+giga_pascal = html_tag("(GPa)", style="small")
+joule = html_tag("(J)", style="small")
+joule_per_mol = html_tag("(J/mol)", style="small")
+joule_per_m2 = html_tag("(J/m²)", style="small")
 
 
 @unique
