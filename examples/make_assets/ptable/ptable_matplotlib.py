@@ -7,6 +7,7 @@ from pymatgen.core.periodic_table import Element
 
 from pymatviz.enums import Key
 from pymatviz.io import save_and_compress_svg
+from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
     ptable_heatmap,
     ptable_heatmap_ratio,
@@ -25,36 +26,46 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %% Elemental Plots
-ax = ptable_heatmap(df_expt_gap[Key.composition], log=True)
+ax = ptable_heatmap(
+    count_elements(df_expt_gap[Key.composition]),
+    log=True,
+)
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
-ax.set_title(title, y=0.96, fontsize=16, fontweight="bold")
+ax.set_title(title, x=0.75, y=2.5, fontsize=18, fontweight="bold")
 save_and_compress_svg(ax, "ptable-heatmap")
 
 
 # %%
-ax = ptable_heatmap(df_ptable[Key.atomic_mass])
-ax.set_title("Atomic Mass Heatmap", y=0.96, fontsize=16, fontweight="bold")
-save_and_compress_svg(ax, "ptable-heatmap-atomic-mass")
+fig = ptable_heatmap(df_ptable[Key.atomic_mass], return_type="figure")
+fig.suptitle("Atomic Mass Heatmap", y=0.96, fontsize=20, fontweight="bold")
+save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
-ax = ptable_heatmap(
-    df_expt_gap[Key.composition], heat_mode="percent", exclude_elements=["O"]
+# Filter out near-zero entries
+ptable_data = count_elements(df_expt_gap[Key.composition])
+ptable_data = ptable_data[ptable_data > 0.01]
+
+fig = ptable_heatmap(
+    ptable_data,
+    value_show_mode="percent",
+    exclude_elements=["O"],
+    return_type="figure",
 )
 title = "Elements in Matbench Experimental Band Gap (percent)"
-ax.set_title(title, y=0.96, fontsize=16, fontweight="bold")
-save_and_compress_svg(ax, "ptable-heatmap-percent")
+fig.suptitle(title, y=0.96, fontsize=20, fontweight="bold")
+save_and_compress_svg(fig, "ptable-heatmap-percent")
 
 
 # %%
-ax = ptable_heatmap_ratio(
-    df_expt_gap[Key.composition], df_steels[Key.composition], log=True
+fig = ptable_heatmap_ratio(
+    df_expt_gap[Key.composition], df_steels[Key.composition], log=True, value_fmt=".4g"
 )
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
-ax.set_title(title, y=0.96, fontsize=16, fontweight="bold")
-save_and_compress_svg(ax, "ptable-heatmap-ratio")
+fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
+save_and_compress_svg(fig, "ptable-heatmap-ratio")
 
 
 # %% Histograms laid out in as a periodic table

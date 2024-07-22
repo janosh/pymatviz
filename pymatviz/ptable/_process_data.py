@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Union, get_args
+from typing import TYPE_CHECKING, Literal, Union, get_args
 
 import numpy as np
 import pandas as pd
@@ -14,7 +14,9 @@ from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from typing import Any, Callable
+
+    from numpy.typing import NDArray
 
 
 # Data types that can be passed to PTableProjector and normalized by data_preprocessor
@@ -27,127 +29,16 @@ SupportedDataType = Union[
 SupportedValueType = Union[Sequence[float], np.ndarray]
 
 
-def check_for_missing_inf(df_in: pd.DataFrame, *, col: str) -> tuple[bool, bool]:
-    """Check if there is NaN or infinity in a DataFrame column.
+class PTableData:
+    """Hold data for periodic table plotters.
 
-    Args:
-        df_in (pd.DataFrame): DataFrame to check.
-        col (str): Name of the column to check.
-
-    Returns:
-        tuple[bool, bool]: Has NaN, has infinity.
-    """
-    # Check if there is missing value or infinity
-    all_values = df_in[col].explode().explode().explode()
-
-    # Convert to numeric, forcing non-numeric types to NaN
-    all_values = pd.to_numeric(all_values, errors="coerce")
-
-    # Check for NaN
-    has_nan = False
-    if all_values.isna().to_numpy().any():
-        warnings.warn("NaN found in data", stacklevel=2)
-        has_nan = True
-
-    # Check for infinity
-    has_inf = False
-    if np.isinf(all_values).to_numpy().any():
-        warnings.warn("Infinity found in data", stacklevel=2)
-        has_inf = True
-
-    return has_nan, has_inf
-
-
-def get_df_nest_level(df_in: pd.DataFrame, *, col: str) -> int:
-    """Check for maximum nest level in a DataFrame column.
-
-    Definition of nest level:
-        Level 0 (no list):       "Fe": 1
-        Level 1 (flat list):     "Co": [1, 2]
-        Level 2 (nested lists):  "Ni": [[1, 2], [3, 4], ]
-        ...
-
-    Args:
-        df_in (pd.DataFrame): The DataFrame to check.
-        col (str): Name of the column to check.
-
-    Returns:
-        int: The maximum nest level.
-    """
-    return df_in[col].map(lambda val: np.asarray(val).ndim).max()
-
-
-def replace_missing_and_infinity(
-    df_in: pd.DataFrame,
-    col: str,
-    missing_strategy: Literal["zero", "mean"] = "mean",
-) -> pd.DataFrame:
-    """Replace missing value (NaN) and infinity.
-
-    Infinity would be replaced by vmax(∞) or vmin(-∞).
-    Missing value would be replaced by selected strategy:
-        - zero: replace with zero
-        - mean: replace with mean value
-
-    Args:
-        df_in (DataFrame): DataFrame to process.
-        col (str): Name of the column to process.
-        missing_strategy: missing value replacement strategy.
-    """
-    # Check for NaN and infinity
-    has_nan, has_inf = check_for_missing_inf(df_in, col=Key.heat_val)
-
-    if not has_nan and not has_inf:
-        return df_in
-
-    nest_level = get_df_nest_level(df_in, col=col)
-    if (has_nan or has_inf) and nest_level > 1:
-        # Can only handle nest level 1 at this moment
-        raise NotImplementedError(
-            f"Unable to replace NaN and inf for nest_level>1, got {nest_level}"
-        )
-
-    # Get replacement value for missing and infinity
-    values = df_in[col].explode()
-    numeric_values = pd.to_numeric(values, errors="coerce")
-
-    replacement_nan = 0 if missing_strategy == "zero" else numeric_values.mean()
-    replacement_inf_pos = numeric_values[numeric_values != np.inf].max()
-    replacement_inf_neg = numeric_values[numeric_values != -np.inf].min()
-
-    replacements = {
-        np.nan: replacement_nan,
-        np.inf: replacement_inf_pos,
-        -np.inf: replacement_inf_neg,
-    }
-
-    df_in[col] = df_in[col].apply(
-        lambda val: replacements.get(val, val)
-        if isinstance(val, float)
-        else np.array([replacements.get(v, v) for v in val])
-    )
-
-    return df_in
-
-
-def preprocess_ptable_data(
-    data: SupportedDataType,
-    missing_strategy: Literal["zero", "mean"] = "mean",
-) -> pd.DataFrame:
-    """Preprocess input data for ptable plotters, including:
-        - Convert all data types to pd.DataFrame.
-        - Replace missing values (NaN) by selected strategy.
-        - Replace infinities with vmax(∞) or vmin(-∞).
-        - Write vmin/mean/vmax as metadata into the DataFrame.
-
-    Args:
-        data (dict[str, float | Sequence[float]] | pd.DataFrame | pd.Series):
-            Input data to preprocess.
-        missing_strategy: missing value replacement strategy.
-
-    Returns:
-        pd.DataFrame: The preprocessed DataFrame with element names
+    Attributes:
+        data (pd.DataFrame): The preprocessed DataFrame with element names
             as index and values as columns.
+        index_col (str): The index column header.
+        val_col (str): The value column header.
+        anomalies (dict[str, set["nan", "inf"]]): An element to anomalies mapping.
+        nest_level (int): The nest level of DataFrame.
 
     Example:
         >>> data_dict: dict = {
@@ -165,21 +56,132 @@ def preprocess_ptable_data(
         OR
         >>> data_series: pd.Series = pd.Series(data_dict)
 
-        >>> preprocess_data(data_dict / df / series)
+        >>> ptable_data = PTableData(data_dict / df / series)
 
-        >>> data_df
+        >>> ptable_data.data
             Element   Value
             H         [1.0, ]
             He        [2.0, 4.0]
             Li        [[6.0, 8.0], [10.0, 11.0]]
 
-        Metadata (data_df.attrs):
+        Metadata (ptable_data.data.attrs):
             vmin: 1.0
             mean: 6.0
             vmax: 11.0
     """
 
-    def format_pd_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    def __init__(
+        self,
+        data: SupportedDataType,
+        *,
+        index_col: str = Key.element,
+        val_col: str = Key.heat_val,
+        check_missing: bool = True,
+        missing_strategy: Literal["zero", "mean"] = "mean",
+        check_infinity: bool = True,
+        normalize: bool = False,
+    ) -> None:
+        """Preprocess data, including:
+            - Convert all data types to pd.DataFrame.
+            - Replace missing values (NaN) by selected strategy.
+            - Replace infinities with vmax(∞) or vmin(-∞).
+            - Write vmin/mean/vmax as metadata into the DataFrame.
+
+        Args:
+            data (dict[str, float | Sequence[float]] | pd.DataFrame | pd.Series):
+                Input data to preprocess.
+            index_col (str, optional): The index column header. Defaults to Key.index.
+            val_col (str, optional): The value column header. Defaults to Key.heat_val.
+            check_missing (bool): Whether to check and replace missing values.
+            missing_strategy ("zero", "mean"): Missing value replacement strategy.
+                - zero: Replace with zero.
+                - mean: Replace with mean value.
+            check_infinity (bool): Whether to check and replace infinities.
+            normalize (bool): Whether to normalize data.
+        """
+        # Convert and set data, and write metadata
+        self.index_col = index_col
+        self.val_col = val_col
+        self.data = data
+
+        # Get nest level
+        self.nest_level = get_df_nest_level(self.data, col=self.val_col)
+
+        # Replace missing values and infinities, and update anomalies
+        self.anomalies: dict[str, set[Literal["inf", "nan"]]] | Literal["NA"] = (
+            {} if (check_missing or check_infinity) else "NA"
+        )
+        if check_missing:
+            self.check_and_replace_missing(strategy=missing_strategy)
+        if check_infinity:
+            self.check_and_replace_infinity()
+
+        # Normalize data by the total sum
+        if normalize:
+            self.normalize()
+
+    @property
+    def data(self) -> pd.DataFrame:
+        """The internal data as pd.DataFrame."""
+        return self._data
+
+    @data.setter
+    def data(self, data: SupportedDataType) -> None:
+        """Preprocess and set data, including:
+        - Convert supported data types to DataFrame.
+        - Convert all values to NumPy array.
+        - Write vmin/mean/vmax as metadata into the DataFrame.
+        """
+        # Convert supported data types to DataFrame
+        if isinstance(data, pd.DataFrame):
+            data = self._format_pd_dataframe(data)
+
+        elif isinstance(data, pd.Series):
+            data = data.to_frame(name=self.val_col)
+            data.index.name = self.index_col
+
+        elif isinstance(data, dict):
+            data = pd.DataFrame(
+                data.items(), columns=[self.index_col, self.val_col]
+            ).set_index(self.index_col)
+
+        else:
+            type_name = type(data).__name__
+            raise TypeError(
+                f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
+            )
+
+        # Convert all values to NumPy array
+        data[self.val_col] = data[self.val_col].apply(
+            lambda val: np.array(list(val))
+            if isinstance(val, Iterable) and not isinstance(val, str)
+            else np.array([val])
+        )
+
+        self._data = data
+
+        # Write vmin/mean/vmax as metadata into the DataFrame
+        # Note: this is nested inside the setter so that metadata
+        # would be updated whenever data gets updated
+        self._write_meta_data()
+
+    def _write_meta_data(self) -> None:
+        """Parse meta data and write into data.attrs.
+
+        Currently would handle the following:
+            vmin: The min value.
+            mean: The mean value.
+            vmax: The max value.
+        """
+        numeric_values = pd.to_numeric(
+            self._data[self.val_col].explode().explode().explode(), errors="coerce"
+        )
+        self._data.attrs["vmin"] = numeric_values.min()
+        self._data.attrs["mean"] = numeric_values.mean()
+        self._data.attrs["vmax"] = numeric_values.max()
+
+    @staticmethod
+    def _format_pd_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         """Format pd.DataFrame that may not meet expected format."""
 
         def fix_df_elem_as_col(df: pd.DataFrame) -> pd.DataFrame:
@@ -233,38 +235,161 @@ def preprocess_ptable_data(
             f"{Key.element} and {Key.heat_val}"
         )
 
-    # Convert supported data types to DataFrame
-    if isinstance(data, pd.DataFrame):
-        data_df = format_pd_dataframe(data)
+    def normalize(self) -> None:
+        """Normalize data by the total sum."""
+        total_sum = self._data.map(np.sum).sum().sum()
+        self.apply(lambda x: x / total_sum)
 
-    elif isinstance(data, pd.Series):
-        data_df = data.to_frame(name=Key.heat_val)
-        data_df.index.name = Key.element
-    elif isinstance(data, dict):
-        data_df = pd.DataFrame(
-            data.items(), columns=[Key.element, Key.heat_val]
-        ).set_index(Key.element)
-    else:
-        type_name = type(data).__name__
-        raise TypeError(
-            f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
-        )
+    def apply(self, func: Callable[[Any], Any]) -> None:
+        """Apply a function to all values in value column.
 
-    data_df[Key.heat_val] = data_df[Key.heat_val].apply(
-        lambda val: np.array(list(val))
-        if isinstance(val, Iterable) and not isinstance(val, str)
-        else np.array([val])
-    )
+        Args:
+            func (Callable): The function to be applied.
+        """
+        original_data = self.data
+        original_data[self.val_col] = original_data[self.val_col].apply(func)
 
-    data_df = replace_missing_and_infinity(
-        data_df, col=Key.heat_val, missing_strategy=missing_strategy
-    )
+        # Ensure metadata is updated by using the setter method
+        self.data = original_data
 
-    numeric_values = pd.to_numeric(
-        data_df[Key.heat_val].explode().explode().explode(), errors="coerce"
-    )
-    data_df.attrs["vmin"] = numeric_values.min()
-    data_df.attrs["mean"] = numeric_values.mean()
-    data_df.attrs["vmax"] = numeric_values.max()
+    def drop_elements(self, elements: Sequence[str]) -> None:
+        """Drop selected elements from data.
 
-    return data_df
+        Args:
+            elements (Sequence[str]): Elements to drop.
+        """
+        if elements:
+            original_data = self.data
+            try:
+                df_dropped = original_data.drop(elements, axis=0)
+                self.data = df_dropped
+            except KeyError:
+                warnings.warn(
+                    "Drop elements failed, some elements are not present", stacklevel=2
+                )
+
+    def check_and_replace_missing(
+        self,
+        strategy: Literal["zero", "mean"],
+    ) -> bool:
+        """Check if there is missing value (NaN) in the values column,
+        and replace them according to selected strategy.
+
+        Would update the anomalies attribute.
+
+        Args:
+            strategy ("zero", "mean"): Missing value replacement strategy.
+                - zero: Replace with zero.
+                - mean: Replace with mean value.
+
+        Returns:
+            bool: Whether the column contains NaN.
+        """
+        # Convert to numeric, forcing non-numeric types to NaN
+        all_values = self.data[self.val_col].explode().explode().explode()
+        all_values = pd.to_numeric(all_values, errors="coerce")
+
+        has_nan = False
+
+        for elem, value in all_values.items():
+            if isinstance(self.anomalies, dict) and np.isnan(value):
+                if elem not in self.anomalies:
+                    self.anomalies[elem] = set()
+                self.anomalies[elem].add("nan")
+                has_nan = True
+
+        if has_nan:
+            if self.nest_level > 1:
+                raise NotImplementedError(
+                    "Unable to replace NaN and inf for nest_level>1"
+                )
+
+            warnings.warn("NaN found in data", stacklevel=2)
+
+            # Generate and apply replacement
+            def replace_nan(val: NDArray | float) -> NDArray:
+                """Replace missing value based on selected strategy.
+
+                Args:
+                    val (NDarray | float): Value to be processed.
+                """
+                replace_val = (
+                    0 if strategy == "zero" else all_values[all_values != np.inf].mean()
+                )
+
+                if isinstance(val, np.ndarray):
+                    return np.array([replace_val if np.isnan(v) else v for v in val])
+
+                return replace_val if np.isnan(val) else val
+
+            self.apply(replace_nan)
+
+        return has_nan
+
+    def check_and_replace_infinity(self) -> bool:
+        """Check if there is infinity in the data column, and
+        replace them with vmax(∞) or vmin(-∞) if any.
+
+        Would update the anomalies attribute.
+
+        Returns:
+            bool: Whether the column contains NaN.
+        """
+        # Convert to numeric, forcing non-numeric types to NaN
+        all_values = self.data[self.val_col].explode().explode().explode()
+        all_values = pd.to_numeric(all_values, errors="coerce")
+
+        has_inf = False
+
+        for elem, value in all_values.items():
+            if isinstance(self.anomalies, dict) and np.isinf(value):
+                if elem not in self.anomalies:
+                    self.anomalies[elem] = set()
+                self.anomalies[elem].add("inf")
+                has_inf = True
+
+        if has_inf:
+            if self.nest_level > 1:
+                raise NotImplementedError(
+                    "Unable to replace NaN and inf for nest_level>1."
+                )
+
+            warnings.warn("Infinity found in data", stacklevel=2)
+
+            # Generate and apply replacement
+            def replace_inf(val: NDArray | float) -> NDArray:
+                """Replace infinities."""
+                replacements = {
+                    np.inf: all_values[all_values != np.inf].max(),
+                    -np.inf: all_values[all_values != -np.inf].min(),
+                }
+
+                if isinstance(val, np.ndarray):
+                    return np.array(
+                        [replacements.get(v, v) if np.isinf(v) else v for v in val]
+                    )
+
+                return replacements[val] if np.isinf(val) else val
+
+            self.apply(replace_inf)
+
+        return has_inf
+
+
+def get_df_nest_level(df_in: pd.DataFrame, *, col: str) -> int:
+    """Check for maximum nest level in a DataFrame column.
+
+    Definition of nest level:
+        Level 0 (no list):       "Fe": 1
+        Level 1 (flat list):     "Co": [1, 2]
+        Level 2 (nested lists):  "Ni": [[1, 2], [3, 4], ]
+        ...
+
+    Args:
+        df_in (pd.DataFrame): The DataFrame to check.
+        col (str): Name of the column to check.
+
+    Returns:
+        int: The maximum nest level.
+    """
+    return df_in[col].map(lambda val: np.asarray(val).ndim).max()

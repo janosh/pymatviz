@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
 import warnings
 from collections.abc import Sequence
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Callable, Literal, Union, get_args
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union, cast, get_args
 
 import matplotlib.colors
 import matplotlib.pyplot as plt
@@ -16,13 +17,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 import scipy.stats
+from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import AnchoredText
+from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from typing import ParamSpec, TypeVar
 
+    from matplotlib.ticker import Formatter
     from numpy.typing import ArrayLike
 
     P = ParamSpec("P")
@@ -287,19 +291,23 @@ def luminance(color: str | tuple[float, float, float]) -> float:
 
 
 def pick_bw_for_contrast(
-    color: tuple[float, float, float], text_color_threshold: float = 0.7
+    color: tuple[float, float, float] | str,
+    text_color_threshold: float = 0.7,
 ) -> Literal["black", "white"]:
     """Choose black or white text color for a given background color based on luminance.
 
     Args:
-        color (tuple[float, float, float]): RGB color tuple with values in [0, 1].
+        color (tuple[float, float, float] | str): RGB color tuple with values in [0, 1].
         text_color_threshold (float, optional): Luminance threshold for choosing
             black or white text color. Defaults to 0.7.
 
     Returns:
         "black" | "white": depending on the luminance of the background color.
     """
-    light_bg = luminance(color) > text_color_threshold
+    if isinstance(color, str):
+        color = to_rgb(color)
+
+    light_bg = luminance(cast(tuple[float, float, float], color)) > text_color_threshold
     return "black" if light_bg else "white"
 
 
@@ -355,6 +363,59 @@ def si_fmt(
 
 
 si_fmt_int = partial(si_fmt, fmt=".0f")
+
+
+def get_cbar_label_formatter(
+    *,
+    cbar_label_fmt: str,
+    values_fmt: str,
+    values_show_mode: Literal["value", "fraction", "percent", "off"],
+    sci_notation: bool,
+    default_decimal_places: int = 1,
+) -> Formatter:
+    """Generate colorbar tick label formatter.
+
+    Work differently for different values_show_mode:
+        - "value/fraction" mode: Use cbar_label_fmt (or values_fmt) as is.
+        - "percent" mode: Get number of decimal places to keep from fmt
+            string, for example 1 from ".1%".
+
+    Args:
+        cbar_label_fmt (str): f-string option for colorbar tick labels.
+        values_fmt (str): f-string option for tile values, would be used if
+            cbar_label_fmt is "auto".
+        values_show_mode (str): The values display mode:
+            - "off": Hide values.
+            - "value": Display values as is.
+            - "fraction": As a fraction of the total (0.10).
+            - "percent": As a percentage of the total (10%).
+        sci_notation (bool): Whether to use scientific notation for values and
+            colorbar tick labels.
+        default_decimal_places (int): Default number of decimal places
+            to use if above fmt is invalid.
+
+    Returns:
+        PercentFormatter or FormatStrFormatter.
+    """
+    cbar_label_fmt = values_fmt if cbar_label_fmt == "auto" else cbar_label_fmt
+
+    if values_show_mode == "percent":
+        if match := re.search(r"\.(\d+)%", cbar_label_fmt):
+            decimal_places = int(match[1])
+        else:
+            warnings.warn(
+                f"Invalid {cbar_label_fmt=}, use {default_decimal_places=}",
+                stacklevel=2,
+            )
+            decimal_places = default_decimal_places
+        return PercentFormatter(xmax=1, decimals=decimal_places)
+
+    if sci_notation:
+        formatter = ScalarFormatter(useMathText=False)
+        formatter.set_powerlimits((0, 0))
+        return formatter
+
+    return FormatStrFormatter(f"%{cbar_label_fmt}")
 
 
 def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:

@@ -23,6 +23,7 @@ from pymatgen.core import Structure
 from tqdm import tqdm
 
 from pymatviz import (
+    count_elements,
     crystal_sys_order,
     ptable_heatmap,
     spacegroup_hist,
@@ -131,9 +132,11 @@ df_grvh.hist(column=Key.volume, bins=50, log=True)
 # %%
 df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
-ax = ptable_heatmap(df_grvh[Key.formula], log=True)
-ax.set(title="Elemental prevalence in the Matbench bulk/shear modulus datasets")
-save_fig(ax, "log_gvrh-ptable-heatmap.pdf")
+fig = ptable_heatmap(
+    count_elements(df_grvh[Key.formula]), log=True, return_type="figure"
+)
+fig.suptitle("Elemental prevalence in the Matbench bulk/shear modulus datasets")
+save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
 
 
 # %%
