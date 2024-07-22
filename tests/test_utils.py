@@ -26,13 +26,13 @@ from pymatviz.utils import (
     get_cbar_label_formatter,
     get_fig_xy_range,
     get_font_color,
+    html_tag,
     luminance,
     patch_dict,
     pick_bw_for_contrast,
     pretty_label,
     si_fmt,
     si_fmt_int,
-    styled_html_tag,
     validate_fig,
 )
 from tests.conftest import y_pred, y_true
@@ -395,18 +395,23 @@ class TestGetCbarLabelFormatter:
 
 
 @pytest.mark.parametrize(
-    "text, tag, style",
+    "text, tag, title, style",
     [
-        ("foo", "span", ""),
-        ("bar", "small", "color: red;"),
-        ("baz", "div", "font-size: 0.8em;"),
-        ("", "strong", "font-size: 0.8em; font-weight: lighter;"),
+        ("foo", "span", "", ""),
+        ("bar", "small", "some title", "color: red;"),
+        ("baz", "div", "long title " * 10, "font-size: 0.8em;"),
+        ("", "strong", " ", "font-size: 0.8em; font-weight: lighter;"),
+        ("", "strong", " ", "small"),
     ],
 )
-def test_styled_html_tag(text: str, tag: str, style: str) -> None:
-    style = style or "font-size: 0.8em; font-weight: lighter;"
+def test_html_tag(text: str, tag: str, title: str, style: str) -> None:
+    orig_style = style
+    style = {"small": "font-size: 0.8em; font-weight: lighter;"}.get(style, style)
+    attrs = f" {title=} " if title else ""
+    attrs += f"{style=}" if style else ""
     assert (
-        styled_html_tag(text, tag=tag, style=style) == f"<{tag} {style=}>{text}</{tag}>"
+        html_tag(text, tag=tag, title=title, style=orig_style)
+        == f"<{tag}{attrs}>{text}</{tag}>"
     )
 
 
