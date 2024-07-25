@@ -148,7 +148,7 @@ def test_plot_structure_2d_multiple() -> None:
     assert axs.flat[0].get_title() == f"1. {struct1.properties['id']}"
     assert axs.flat[1].get_title() == f"2. {struct2.properties[Key.mat_id]}"
     assert axs.flat[2].get_title() == f"3. {struct3.properties['ID']}"
-    struct4_title = f"4. {struct4.formula} ({struct4.get_space_group_info()[1]})"
+    struct4_title = f"4. {struct4.formula} (spg={struct4.get_space_group_info()[1]})"
     assert axs.flat[3].get_title() == struct4_title
 
     # Test subplot_title
