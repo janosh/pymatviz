@@ -40,6 +40,16 @@ else:
             member._value_ = value
             return member
 
+        def __str__(self) -> str:
+            """Return the lower-cased version of the member name."""
+            """
+            use enum_name instead of class.enum_name
+            """
+            if self._name_ is None:
+                cls_name = type(self).__name__
+                return f"{cls_name}({self._value_!r})"
+            return self._name_.lower()
+
         def _generate_next_value_(  # type: ignore[override]
             self,
             start: int,  # noqa: ARG002
@@ -59,21 +69,34 @@ class LabelEnum(StrEnum):
     def __new__(
         cls, val: str, label: str | None = None, desc: str | None = None
     ) -> Self:
-        """Create a new class."""
+        """Create a new class from a value, label, and description. Label and
+        description are optional.
+        """
         member = str.__new__(cls, val)
         member._value_ = val
         member.__dict__ |= dict(label=label, desc=desc)
         return member
 
-    @property
-    def label(self) -> str:
-        """Make label read-only."""
-        return self.__dict__["label"]
+    def __repr__(self) -> str:
+        """Return label if available, else type name and value."""
+        return self.label or f"{type(self).__name__}.{self.name}"
+
+    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
+        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
+        the tuple self.__class__, (self._value_,). self.__class can cause pickle
+        failures if the corresponding Enum was moved or renamed in the meantime.
+        """
+        return str, (self.value,)
 
     @property
-    def description(self) -> str:
+    def label(self) -> str | None:
+        """Make label read-only."""
+        return self.__dict__.get("label")
+
+    @property
+    def description(self) -> str | None:
         """Make description read-only."""
-        return self.__dict__["desc"]
+        return self.__dict__.get("desc")
 
     @classmethod
     def key_val_dict(cls) -> dict[str, str]:
@@ -91,16 +114,13 @@ class LabelEnum(StrEnum):
         return {str(val): val.description for val in cls.__members__.values()}
 
     @classmethod
-    def label_desc_dict(cls) -> dict[str | None, str | None]:
-        """Map of labels to descriptions."""
-        return {str(val.label): val.description for val in cls.__members__.values()}
-
-    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
-        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
-        the tuple self.__class__, (self._value_,). self.__class can cause pickle
-        failures if the corresponding Enum was moved or renamed in the meantime.
-        """
-        return str, (self.value,)
+    def label_desc_dict(cls) -> dict[str, str | None]:
+        """Map of labels to descriptions. None-valued labels are omitted."""
+        return {
+            str(val.label): val.description
+            for val in cls.__members__.values()
+            if val.label
+        }
 
 
 eV_per_atom = html_tag("(eV/atom)", style="small")  # noqa: N816
@@ -127,7 +147,6 @@ class Key(LabelEnum):
     crystal_system = "crystal_system", "Crystal System"
     spg_num = "space_group_number", "Space Group Number"
     spg_symbol = "space_group_symbol", "Space Group Symbol"
-    wyckoff = "wyckoff", "Aflow-style Wyckoff Label"
     n_sites = "n_sites", "Number of Sites"
     n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
     structure = "structure", "Structure"
@@ -143,12 +162,22 @@ class Key(LabelEnum):
     lattice_params = "lattice_parameters", "Lattice Parameters"
     supercell = "supercell", "Supercell"
     atom_nums = "atom_nums", "Atomic Numbers", "Atomic numbers for each crystal site"
-    struct_proto = "structure_prototype", "Structure Prototype"
-    uniq_proto = "unique_prototype", "Unique Prototype"
     coord_num = "coordination_number", "Coordination Number"
     bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
     bond_angles = "bond_angles", "Bond Angles (°)"
     packing_fraction = "packing_fraction", "Packing Fraction"
+
+    # Structure Prototyping
+    # AFLOW-style prototype label with appended chemical system
+    protostructure = "protostructure", "Protostructure Label"
+    # Deprecated name for the protostructure
+    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
+    # AFLOW-style prototype label
+    prototype = "prototype", "AFLOW-style Prototype Label"
+    # AFLOW-style prototype label that has been canonicalized
+    canonical_proto = "canonical_prototype", "Canonical AFLOW-style Prototype"
+    # Deprecated name for the canonical_proto
+    uniq_proto = "unique_prototype", "Unique AFLOW-style Prototype"
 
     # Composition and Chemical
     arity = "arity", "N<sub>elements</sub>"
