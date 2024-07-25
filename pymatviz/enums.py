@@ -48,7 +48,7 @@ else:
             if self._name_ is None:
                 cls_name = type(self).__name__
                 return f"{cls_name}({self._value_!r})"
-            return self._name_
+            return self._name_.lower()
 
         def _generate_next_value_(  # type: ignore[override]
             self,
