@@ -127,7 +127,6 @@ class Key(LabelEnum):
     crystal_system = "crystal_system", "Crystal System"
     spg_num = "space_group_number", "Space Group Number"
     spg_symbol = "space_group_symbol", "Space Group Symbol"
-    wyckoff = "wyckoff", "Aflow-style Wyckoff Label"
     n_sites = "n_sites", "Number of Sites"
     n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
     structure = "structure", "Structure"
@@ -143,12 +142,22 @@ class Key(LabelEnum):
     lattice_params = "lattice_parameters", "Lattice Parameters"
     supercell = "supercell", "Supercell"
     atom_nums = "atom_nums", "Atomic Numbers", "Atomic numbers for each crystal site"
-    struct_proto = "structure_prototype", "Structure Prototype"
-    uniq_proto = "unique_prototype", "Unique Prototype"
     coord_num = "coordination_number", "Coordination Number"
     bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
     bond_angles = "bond_angles", "Bond Angles (°)"
     packing_fraction = "packing_fraction", "Packing Fraction"
+
+    # Prototyping
+    # AFLOW-style prototype label with appended chemical system
+    protostructure = "protostructure", "Protostructure Label"
+    # Deprecated name for the protostructure
+    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
+    # AFLOW-style prototype label
+    prototype = "prototype", "AFLOW-style Prototype Label"
+    # AFLOW-style prototype label that has been canonicalized
+    canonical_proto = "canonical_prototype", "Canonical AFLOW-style Prototype"
+    # Deprecated name for the canonical_proto
+    uniq_proto = "unique_prototype", "Unique AFLOW-style Prototype"
 
     # Composition and Chemical
     arity = "arity", "N<sub>elements</sub>"
