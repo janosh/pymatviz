@@ -222,7 +222,8 @@ def plot_structure_2d(
             details.
         n_cols (int, optional): Number of columns for subplots. Defaults to 4.
         subplot_kwargs (dict, optional): Unused if only a single structure is passed.
-            Keyword arguments for plt.subplots(). Defaults to None.
+            Keyword arguments for plt.subplots(). Defaults to None. Use this to specify
+            figsize and other figure customization.
         subplot_title (Callable[[Structure, str | int], str], optional): Should return
             subplot titles. Receives the structure and its key or index when passed as
             a dict or pandas.Series. Defaults to None in which case the title is the
@@ -512,7 +513,7 @@ def plot_structure_2d(
         n_cols = min(n_cols, n_structs)
         n_rows = math.ceil(n_structs / n_cols)
 
-        subplot_kwargs = dict(figsize=(3 * n_cols, 3 * n_rows), **subplot_kwargs or {})
+        subplot_kwargs = dict(figsize=(3 * n_cols, 3 * n_rows)) | (subplot_kwargs or {})
         fig, axs = plt.subplots(n_rows, n_cols, **subplot_kwargs)
 
         for idx, (struct_or_key, ax) in enumerate(zip(structures, axs.flat), start=1):
@@ -530,7 +531,7 @@ def plot_structure_2d(
                 sub_title = props[id_key]
             elif isinstance(key, int):
                 spg_num = struct_i.get_space_group_info()[1]
-                sub_title = f"{struct_i.formula} ({spg_num})"
+                sub_title = f"{struct_i.formula} (spg={spg_num})"
             else:
                 sub_title = key
             if callable(subplot_title):
