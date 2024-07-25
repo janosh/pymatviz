@@ -66,9 +66,13 @@ class LabelEnum(StrEnum):
         return member
 
     @property
-    def label(self) -> str:
+    def label(self) -> str | None:
         """Make label read-only."""
-        return self.__dict__["label"]
+        return self.__dict__.get("label")
+
+    def __repr__(self) -> str:
+        """Return label if available, else type name and value."""
+        return self.label or f"{type(self).__name__}.{self.name}"
 
     @property
     def description(self) -> str:
@@ -93,7 +97,11 @@ class LabelEnum(StrEnum):
     @classmethod
     def label_desc_dict(cls) -> dict[str | None, str | None]:
         """Map of labels to descriptions."""
-        return {str(val.label): val.description for val in cls.__members__.values()}
+        return {
+            str(val.label): val.description
+            for val in cls.__members__.values()
+            if val.label
+        }
 
     def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
         """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
