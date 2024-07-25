@@ -167,7 +167,7 @@ class Key(LabelEnum):
     bond_angles = "bond_angles", "Bond Angles (°)"
     packing_fraction = "packing_fraction", "Packing Fraction"
 
-    # Prototyping
+    # Structure Prototyping
     # AFLOW-style prototype label with appended chemical system
     protostructure = "protostructure", "Protostructure Label"
     # Deprecated name for the protostructure
