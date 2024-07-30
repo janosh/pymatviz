@@ -193,7 +193,7 @@ def bin_df_cols(
         n_bins (int): Number of bins to use. Defaults to 100.
         bin_counts_col (str): Column name for bin counts.
             Defaults to "bin_counts".
-        kde_col (str): Column name for KDE bin counts e.g. 'kde_bin_counts'. Defaults to
+        kde_col (str): Column name for KDE bin counts e.g. "kde_bin_counts". Defaults to
             "" which means no KDE to speed things up.
         verbose (bool): If True, report df length reduction. Defaults to True.
 
@@ -235,7 +235,7 @@ def bin_df_cols(
 
         xy_binned = df_bin[bin_by_cols].T
         density = model_kde(xy_binned)
-        df_bin["cnt_col"] = density / density.sum() * len(values)
+        df_bin[kde_col] = density / density.sum() * len(values)
 
     if index_name is None:
         return df_bin

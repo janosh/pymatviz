@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -156,11 +156,11 @@ def density_scatter_plotly(
     *,
     x: str,
     y: str,
-    log_density: bool = True,
+    density: Literal["kde", "log-kde", "empirical", "log-empirical"] = "kde",
     identity_line: bool | dict[str, Any] = True,
     best_fit_line: bool | dict[str, Any] = True,
     stats: bool | dict[str, Any] = True,
-    n_bins: int = 200,
+    n_bins: int | None | Literal[False] = None,
     bin_counts_col: str | None = None,
     **kwargs: Any,
 ) -> go.Figure:
@@ -171,29 +171,29 @@ def density_scatter_plotly(
     for interactive plots. All outlier points will be plotted as is but overlapping
     points (tolerance for overlap determined by n_bins) will be merged into a single
     point with a new column bin_counts_col counting the number of points in that bin.
-    bin_counts_col is used as the color scale for the plot.
 
     Args:
         x (str): x-values dataframe column name.
         y (str): y-values dataframe column name.
         df (pd.DataFrame): DataFrame with x and y columns.
-        log_density (bool, optional): Whether to log the density color scale.
-            Defaults to True.
-        color_bar (bool | dict, optional): Whether to add a color bar. Defaults to True.
-            If dict, unpacked into fig.update_traces(marker=dict(colorbar=...)).
-            E.g. dict(title="Density").
-        xlabel (str, optional): x-axis label. Defaults to x.
-        ylabel (str, optional): y-axis label. Defaults to y.
-        identity_line (bool | dict[str, Any], optional): Whether to add an parity line
+        density ('kde' | 'log-kde' | 'empirical' | 'log-empirical'): Determines the
+            method for calculating and displaying density. 'kde' and 'log-kde' use
+            kernel density estimation, 'empirical' and 'log-empirical' use raw bin
+            counts. 'log-' prefixed options apply logarithmic scaling.
+        identity_line (bool | dict[str, Any], optional): Whether to add a parity line
             (y = x). Defaults to True. Pass a dict to customize line properties.
         best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
             Defaults to True. Pass a dict to customize line properties.
         stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
             and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
             E.g. stats=dict(loc="upper left", prefix="Title", font=dict(size=16)).
-        n_bins (int, optional): Number of bins for histogram. Defaults to 200.
+        n_bins (int | None | False, optional): Number of bins for histogram.
+            If None, automatically enables binning mode if the number of datapoints
+            exceeds 1000, else defaults to False (no binning).
+            If int, uses that number of bins.
+            If False, performs no binning. Defaults to None.
         bin_counts_col (str, optional): Column name for bin counts. Defaults to
-            "point density". Will be used as color bar title.
+            "Point Density". Will be used as color bar title.
         **kwargs: Passed to px.scatter().
 
     Returns:
@@ -204,27 +204,53 @@ def density_scatter_plotly(
     if not isinstance(stats, (bool, dict)):
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
 
-    df_bin = bin_df_cols(
-        df, bin_by_cols=[x, y], n_bins=n_bins, bin_counts_col=bin_counts_col
-    ).sort_values(bin_counts_col)  # sort by counts so densest points are plotted last
+    if n_bins is None:  # auto-enable binning depending on data size
+        n_bins = 200 if len(df) > 1000 else False
 
-    color_vals = df_bin[bin_counts_col]
-    if log_density:
+    if n_bins:
+        kde_col = "kde_density" if "kde" in density else ""
+        df_plot = bin_df_cols(
+            df,
+            bin_by_cols=[x, y],
+            n_bins=n_bins,
+            bin_counts_col=bin_counts_col,
+            kde_col=kde_col,
+        ).sort_values(bin_counts_col)
+        # sort by counts so densest points are plotted last
+
+        if "kde" in density:
+            color_vals = df_plot[kde_col]
+        elif "empirical" in density:
+            color_vals = df_plot[bin_counts_col]
+        else:
+            raise ValueError(f"Unknown {density=}")
+    else:
+        df_plot = df
+        values = df[[x, y]].dropna().T
+        model_kde = scipy.stats.gaussian_kde(values)
+        color_vals = model_kde(df_plot[[x, y]].T)
+
+    if "log" in density:
         color_vals = np.log10(color_vals + 1)
 
     kwargs = dict(color_continuous_scale="Viridis") | kwargs
 
     fig = px.scatter(
-        df_bin, x=x, y=y, color=color_vals, custom_data=[bin_counts_col], **kwargs
+        df_plot,
+        x=x,
+        y=y,
+        color=color_vals,
+        custom_data=[bin_counts_col] if n_bins else None,
+        **kwargs,
     )
 
-    if log_density:
-        min_count = df_bin[bin_counts_col].min()
-        max_count = df_bin[bin_counts_col].max()
+    if "log" in density:
+        min_count = color_vals.min()
+        max_count = color_vals.max()
         log_min = np.floor(np.log10(max(min_count, 1)))
         log_max = np.ceil(np.log10(max_count))
         tick_values = np.logspace(
-            log_min, log_max, num=min(int(log_max - log_min) + 1, 5)
+            log_min, log_max, num=max(int(log_max - log_min) + 1, 5)
         )
 
         # Round tick values to nice numbers
@@ -235,7 +261,6 @@ def density_scatter_plotly(
         fig.layout.coloraxis.colorbar.update(
             tickvals=np.log10(np.array(tick_values) + 1),
             ticktext=[f"{v:.0f}" for v in tick_values],
-            title=bin_counts_col,
         )
 
         # show original non-logged counts in hover
