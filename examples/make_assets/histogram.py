@@ -4,7 +4,7 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz.enums import Key
-from pymatviz.histograms import elements_hist, histogram, spacegroup_hist
+from pymatviz.histograms import elements_hist, histogram, spacegroup_bar
 from pymatviz.io import save_and_compress_svg
 from pymatviz.powerups import add_ecdf_line
 from pymatviz.templates import set_plotly_template
@@ -40,10 +40,10 @@ save_and_compress_svg(ax, "elements-hist")
 
 # %% Spacegroup histograms
 for backend in BACKENDS:
-    fig = spacegroup_hist(df_phonons[Key.spg_num], backend=backend)
+    fig = spacegroup_bar(df_phonons[Key.spg_num], backend=backend)
     save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 
-    fig = spacegroup_hist(df_phonons[Key.spg_symbol], backend=backend)
+    fig = spacegroup_bar(df_phonons[Key.spg_symbol], backend=backend)
     save_and_compress_svg(fig, f"spg-symbol-hist-{backend}")
 
 

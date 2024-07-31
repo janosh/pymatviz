@@ -22,7 +22,7 @@ from pymatgen.symmetry.groups import SYMM_DATA
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
-from pymatviz.histograms import elements_hist, histogram, spacegroup_hist
+from pymatviz.histograms import elements_hist, histogram, spacegroup_bar
 from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
