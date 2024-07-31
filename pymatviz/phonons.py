@@ -150,7 +150,7 @@ def _shaded_range(
 BranchMode = Literal["union", "intersection"]
 
 
-def plot_phonon_bands(
+def phonon_bands(
     band_structs: PhononBands | dict[str, PhononBands],
     line_kwargs: dict[str, Any] | None = None,
     branches: Sequence[str] = (),
@@ -319,7 +319,7 @@ def plot_phonon_bands(
     return fig
 
 
-def plot_phonon_dos(
+def phonon_dos(
     doses: PhononDos | dict[str, PhononDos],
     *,
     stack: bool = False,
@@ -456,7 +456,7 @@ def convert_frequencies(
     return frequencies * factor
 
 
-def plot_phonon_bands_and_dos(
+def phonon_bands_and_dos(
     band_structs: PhononBands | dict[str, PhononBands],
     doses: PhononDos | dict[str, PhononDos],
     bands_kwargs: dict[str, Any] | None = None,
@@ -504,14 +504,14 @@ def plot_phonon_bands_and_dos(
     shaded_ys = bands_kwargs.pop("shaded_ys", None)
     # disable shaded_ys for bands, would cause double shading due to _shaded_range below
     bands_kwargs["shaded_ys"] = False
-    bands_fig = plot_phonon_bands(band_structs, **kwargs | bands_kwargs)
+    bands_fig = phonon_bands(band_structs, **kwargs | bands_kwargs)
     # import band structure layout to main figure
     fig.update_layout(bands_fig.layout)
 
     fig.add_traces(bands_fig.data, rows=1, cols=1)
 
     # plot density of states
-    dos_fig = plot_phonon_dos(doses, **kwargs | (dos_kwargs or {}))
+    dos_fig = phonon_dos(doses, **kwargs | (dos_kwargs or {}))
     # swap DOS x and y axes (for 90 degrees rotation)
     for trace in dos_fig.data:
         trace.x, trace.y = trace.y, trace.x
