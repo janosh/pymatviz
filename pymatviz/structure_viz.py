@@ -117,7 +117,7 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
     return lines, z_indices, unit_cell_lines
 
 
-def plot_structure_2d(
+def structure_2d(
     struct: Structure | Sequence[Structure],
     *,
     ax: plt.Axes | None = None,
@@ -398,7 +398,7 @@ def plot_structure_2d(
                     )
                     # mostly here for testing purposes but has no none issues and might
                     # be useful to backtrace which wedge corresponds to which site
-                    # see test_plot_structure_2d_color_schemes
+                    # see test_structure_2d_color_schemes
                     wedge.elem_symbol, wedge.idx = elem_symbol, idx
                     ax.add_patch(wedge)
 
@@ -537,7 +537,7 @@ def plot_structure_2d(
             if callable(subplot_title):
                 sub_title = subplot_title(struct_i, key)
 
-            plot_structure_2d(
+            structure_2d(
                 struct_i,
                 ax=ax,
                 rotation=rotation,

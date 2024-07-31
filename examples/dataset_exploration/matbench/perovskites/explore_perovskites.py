@@ -2,12 +2,7 @@
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from pymatviz import (
-    count_elements,
-    plot_structure_2d,
-    ptable_heatmap,
-    spacegroup_sunburst,
-)
+from pymatviz import count_elements, ptable_heatmap, spacegroup_sunburst, structure_2d
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
 from pymatviz.powerups import annotate_bars
@@ -45,7 +40,7 @@ df_perov[Key.crystal_system] = [
 
 
 # %%
-ax = plot_structure_2d(df_perov[Key.structure].iloc[:12])
+ax = structure_2d(df_perov[Key.structure].iloc[:12])
 save_fig(ax, "perovskite-structures-2d.pdf")
 
 

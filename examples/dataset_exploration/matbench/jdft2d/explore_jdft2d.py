@@ -2,12 +2,7 @@
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from pymatviz import (
-    count_elements,
-    ptable_heatmap,
-    spacegroup_hist,
-    spacegroup_sunburst,
-)
+from pymatviz import count_elements, ptable_heatmap, spacegroup_bar, spacegroup_sunburst
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
 
@@ -50,7 +45,7 @@ save_fig(fig, "jdft2d-ptable-heatmap.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_2d[Key.spg_num], log=True)
+ax = spacegroup_bar(df_2d[Key.spg_num], log=True)
 save_fig(ax, "jdft2d-spacegroup-hist.pdf")
 
 

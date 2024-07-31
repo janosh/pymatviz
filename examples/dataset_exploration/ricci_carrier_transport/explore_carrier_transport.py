@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from pymatviz import count_elements, ptable_heatmap, spacegroup_hist
+from pymatviz import count_elements, ptable_heatmap, spacegroup_bar
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
 
@@ -86,6 +86,6 @@ save_fig(ax, "carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_carrier[Key.spg_num])
+ax = spacegroup_bar(df_carrier[Key.spg_num])
 ax.set(title="Spacegroup distribution in the Ricci carrier transport dataset")
 save_fig(ax, "carrier-transport-spacegroup-hist.pdf")

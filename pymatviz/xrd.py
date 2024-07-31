@@ -26,7 +26,7 @@ def format_hkl(hkl: tuple[int, int, int], format_type: HklFormat) -> str:
     raise ValueError(f"{format_type=} must be one of {ValidHklFormats}")
 
 
-def plot_xrd_pattern(
+def xrd_pattern(
     patterns: PatternOrStruct
     | dict[str, PatternOrStruct | tuple[PatternOrStruct, dict[str, Any]]],
     *,

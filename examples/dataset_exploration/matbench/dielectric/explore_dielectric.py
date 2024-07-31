@@ -12,7 +12,7 @@ from pymatviz import (
     crystal_sys_order,
     ptable_heatmap,
     ptable_heatmap_plotly,
-    spacegroup_hist,
+    spacegroup_bar,
     spacegroup_sunburst,
 )
 from pymatviz.enums import Key
@@ -70,7 +70,7 @@ fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
 
 
 # %%
-ax = spacegroup_hist(df_diel[Key.spg_num])
+ax = spacegroup_bar(df_diel[Key.spg_num])
 ax.set_title("Space group histogram", y=1.1)
 save_fig(ax, "dielectric-spacegroup-hist.pdf")
 
