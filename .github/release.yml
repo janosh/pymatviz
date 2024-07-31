@@ -6,10 +6,10 @@ changelog:
       labels: [breaking]
     - title: 🎉 New Features
       labels: [feature]
-    - title: 🐛 Bug Fixes
-      labels: [fix]
     - title: 🛠 Enhancements
       labels: [enhancement, DX, UX]
+    - title: 🐛 Bug Fixes
+      labels: [fix]
     - title: 📖 Documentation
       labels: [docs]
     - title: 🧹 House-Keeping
