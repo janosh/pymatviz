@@ -181,5 +181,5 @@ def test_density_scatter_plotly_raises_on_bad_stats_type(stats: Any) -> None:
 
 def test_density_scatter_plotly_empty_dataframe() -> None:
     empty_df = pd.DataFrame({x_col: [], y_col: []})
-    with pytest.raises(ValueError, match="Cannot cut empty array"):
+    with pytest.raises(ValueError, match="input should have multiple elements"):
         density_scatter_plotly(df=empty_df, x=x_col, y=y_col)

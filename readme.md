@@ -122,15 +122,15 @@ See [`pymatviz/structure_viz.py`](pymatviz/structure_viz.py). Currently structur
 
 ## Histograms
 
-See [`pymatviz/histograms.py`](pymatviz/histograms.py).
+See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
-| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](pymatviz/histograms.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](pymatviz/histograms.py) |
-| :-----------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
-|                              ![spg-num-hist-matplotlib]                               |                                   ![spg-symbol-hist-matplotlib]                                   |
-|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](pymatviz/histograms.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histograms.py)   |
-|                                ![spg-num-hist-plotly]                                 |                                     ![spg-symbol-hist-plotly]                                     |
-| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histograms.py) |          [`plot_histogram({'key1': values1, 'key2': values2})`](pymatviz/histograms.py)           |
-|                                   ![elements-hist]                                    |                                      ![plot-histogram-ecdf]                                       |
+| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](pymatviz/histogram.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](pymatviz/histogram.py) |
+| :----------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------: |
+|                              ![spg-num-hist-matplotlib]                              |                                  ![spg-symbol-hist-matplotlib]                                   |
+|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](pymatviz/histogram.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histogram.py)   |
+|                                ![spg-num-hist-plotly]                                |                                    ![spg-symbol-hist-plotly]                                     |
+| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histogram.py) |          [`plot_histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py)           |
+|                                   ![elements-hist]                                   |                                      ![plot-histogram-ecdf]                                      |
 
 [spg-symbol-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-plotly.svg
