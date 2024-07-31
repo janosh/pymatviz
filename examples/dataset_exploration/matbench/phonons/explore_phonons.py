@@ -19,7 +19,7 @@ https://ml.materialsproject.org/projects/matbench_phonons
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
-from pymatviz import count_elements, ptable_heatmap, spacegroup_hist
+from pymatviz import count_elements, ptable_heatmap, spacegroup_bar
 from pymatviz.enums import Key
 from pymatviz.io import save_fig
 
@@ -50,5 +50,5 @@ save_fig(fig, "phonons-ptable-heatmap.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_phonon[Key.spg_num])
+ax = spacegroup_bar(df_phonon[Key.spg_num])
 save_fig(ax, "phonons-spacegroup-hist.pdf")

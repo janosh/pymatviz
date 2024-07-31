@@ -26,7 +26,7 @@ from pymatviz import (
     count_elements,
     crystal_sys_order,
     ptable_heatmap,
-    spacegroup_hist,
+    spacegroup_bar,
     spacegroup_sunburst,
 )
 from pymatviz.enums import Key
@@ -140,7 +140,7 @@ save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
 
 
 # %%
-ax = spacegroup_hist(df_grvh[Key.spg_num])
+ax = spacegroup_bar(df_grvh[Key.spg_num])
 save_fig(ax, "log_gvrh-spacegroup-hist.pdf")
 
 
