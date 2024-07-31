@@ -116,7 +116,7 @@ def test_df_to_arrays_strict() -> None:
 
 @pytest.mark.parametrize(
     "bin_by_cols, group_by_cols, n_bins, expected_n_bins, "
-    "verbose, kde_col, expected_n_rows",
+    "verbose, density_col, expected_n_rows",
     [
         (["A"], [], 2, [2], True, "", 2),
         (["A", "B"], [], 2, [2, 2], True, "kde", 4),
@@ -130,7 +130,7 @@ def test_bin_df_cols(
     n_bins: int | list[int],
     expected_n_bins: list[int],
     verbose: bool,
-    kde_col: str,
+    density_col: str,
     expected_n_rows: int,
     df_float: pd.DataFrame,
 ) -> None:
@@ -144,7 +144,7 @@ def test_bin_df_cols(
         n_bins=n_bins,
         verbose=verbose,
         bin_counts_col=bin_counts_col,
-        kde_col=kde_col,
+        density_col=density_col,
     )
 
     # ensure binned DataFrame has a minimum set of expected columns
