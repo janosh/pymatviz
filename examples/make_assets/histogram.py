@@ -4,7 +4,7 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 from pymatviz.enums import Key
-from pymatviz.histograms import elements_hist, histogram, spacegroup_bar
+from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
 from pymatviz.io import save_and_compress_svg
 from pymatviz.powerups import add_ecdf_line
 from pymatviz.templates import set_plotly_template

@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from pymatviz import count_elements, pmv_dark_template
 from pymatviz.enums import Key
-from pymatviz.histograms import spacegroup_bar
+from pymatviz.histogram import spacegroup_bar
 from pymatviz.io import save_fig
 from pymatviz.powerups import add_identity_line
 from pymatviz.ptable import ptable_heatmap, ptable_heatmap_splits

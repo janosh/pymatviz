@@ -5,7 +5,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
-from pymatviz.histograms import histogram
+from pymatviz.histogram import histogram
 from pymatviz.powerups.plotly import (
     add_ecdf_line,
     select_colorscale,
