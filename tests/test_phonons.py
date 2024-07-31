@@ -12,7 +12,7 @@ from monty.json import MontyDecoder, MSONable
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 
-from pymatviz import plot_phonon_bands, plot_phonon_bands_and_dos, plot_phonon_dos
+from pymatviz import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.phonons import BranchMode, pretty_sym_point
 from pymatviz.utils import TEST_FILES
 
@@ -64,13 +64,13 @@ def phonon_doses() -> dict[str, PhononDos]:
 @pytest.mark.parametrize(
     "branches, branch_mode", [(["GAMMA-X", "X-U"], "union"), ((), "intersection")]
 )
-def test_plot_phonon_bands(
+def test_phonon_bands(
     phonon_bands_doses_mp_2758: BandsDoses,
     branches: tuple[str, str],
     branch_mode: BranchMode,
 ) -> None:
     # test single band structure
-    fig = plot_phonon_bands(
+    fig = phonon_bands(
         phonon_bands_doses_mp_2758["bands"]["DFT"],
         branch_mode=branch_mode,
         branches=branches,
@@ -89,24 +89,22 @@ def test_plot_phonon_bands(
     assert fig.layout.yaxis.range == pytest.approx((0, 5.36385427095))
 
     # test dict of band structures
-    fig = plot_phonon_bands(
+    fig = phonon_bands(
         phonon_bands_doses_mp_2758["bands"], branch_mode=branch_mode, branches=branches
     )
     assert isinstance(fig, go.Figure)
 
 
-def test_plot_phonon_bands_raises(
+def test_phonon_bands_raises(
     phonon_bands_doses_mp_2758: BandsDoses, capsys: pytest.CaptureFixture
 ) -> None:
     with pytest.raises(
         TypeError, match=f"Only {PhononBands.__name__} or dict supported, got str"
     ):
-        plot_phonon_bands("invalid input")
+        phonon_bands("invalid input")
 
     with pytest.raises(ValueError) as exc:  # noqa: PT011
-        plot_phonon_bands(
-            phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",)
-        )
+        phonon_bands(phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",))
 
     assert (
         "No common branches with branch_mode='union'.\n"
@@ -115,7 +113,7 @@ def test_plot_phonon_bands_raises(
     )
 
     # issues warning when requesting some available and some unavailable branches
-    plot_phonon_bands(
+    phonon_bands(
         phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("X-U", "foo-bar")
     )
     stdout, stderr = capsys.readouterr()
@@ -123,13 +121,13 @@ def test_plot_phonon_bands_raises(
     assert "Warning: missing_branches={'foo-bar'}, available branches:" in stderr
 
     with pytest.raises(ValueError, match="Invalid branch_mode='invalid'"):
-        plot_phonon_bands(
+        phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
             branch_mode="invalid",  # type: ignore[arg-type]
         )
 
     with pytest.raises(ValueError, match="Empty band structure dict"):
-        plot_phonon_bands({})
+        phonon_bands({})
 
 
 @pytest.mark.parametrize(
@@ -149,7 +147,7 @@ def test_pretty_sym_point(sym_point: str, expected: str) -> None:
         ("THz", True, 0.1, None, ""),
     ],
 )
-def test_plot_phonon_dos(
+def test_phonon_dos(
     phonon_bands_doses_mp_2758: BandsDoses,
     units: Literal["eV", "meV", "cm-1", "THz"],
     stack: bool,
@@ -157,7 +155,7 @@ def test_plot_phonon_dos(
     normalize: Literal["max", "sum", "integral"] | None,
     last_peak_anno: str | None,
 ) -> None:
-    fig = plot_phonon_dos(
+    fig = phonon_dos(
         phonon_bands_doses_mp_2758["doses"],  # test dict
         stack=stack,
         sigma=sigma,
@@ -171,7 +169,7 @@ def test_plot_phonon_dos(
     assert fig.layout.yaxis.title.text == "Density of States"
     assert fig.layout.font.size == 16
 
-    fig = plot_phonon_dos(
+    fig = phonon_dos(
         phonon_bands_doses_mp_2758["doses"]["DFT"],  # test single
         stack=stack,
         sigma=sigma,
@@ -182,20 +180,20 @@ def test_plot_phonon_dos(
     assert isinstance(fig, go.Figure)
 
 
-def test_plot_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
+def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
     with pytest.raises(
         TypeError, match=f"Only {PhononDos.__name__} or dict supported, got str"
     ):
-        plot_phonon_dos("invalid input")
+        phonon_dos("invalid input")
 
     with pytest.raises(ValueError, match="Empty DOS dict"):
-        plot_phonon_dos({})
+        phonon_dos({})
 
     expected_msg = (
         "Invalid unit='invalid', must be one of ['THz', 'eV', 'meV', 'Ha', 'cm-1']"
     )
     with pytest.raises(ValueError, match=re.escape(expected_msg)):
-        plot_phonon_dos(phonon_bands_doses_mp_2758["doses"], units="invalid")  # type: ignore[arg-type]
+        phonon_dos(phonon_bands_doses_mp_2758["doses"], units="invalid")  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -207,7 +205,7 @@ def test_plot_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
         ("THz", True, 0.1, None, ""),
     ],
 )
-def test_plot_phonon_bands_and_dos(
+def test_phonon_bands_and_dos(
     phonon_bands_doses_mp_2758: BandsDoses,
     phonon_doses: dict[str, PhononDos],  # different keys
     units: Literal["eV", "meV", "cm-1", "THz"],
@@ -228,7 +226,7 @@ def test_plot_phonon_bands_and_dos(
         last_peak_anno=last_peak_anno,
     )
     # test dicts
-    fig = plot_phonon_bands_and_dos(bands, doses, dos_kwargs=dos_kwargs)
+    fig = phonon_bands_and_dos(bands, doses, dos_kwargs=dos_kwargs)
 
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Wave Vector"
@@ -238,11 +236,11 @@ def test_plot_phonon_bands_and_dos(
     # check legend labels
     assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
 
-    fig = plot_phonon_bands_and_dos(bands["DFT"], doses["DFT"])
+    fig = phonon_bands_and_dos(bands["DFT"], doses["DFT"])
     assert isinstance(fig, go.Figure)
 
     band_keys, dos_keys = set(bands), set(phonon_doses)
     with pytest.raises(
         ValueError, match=f"{band_keys=} and {dos_keys=} must be identical"
     ):
-        plot_phonon_bands_and_dos(bands, phonon_doses)
+        phonon_bands_and_dos(bands, phonon_doses)

@@ -22,12 +22,8 @@ from pymatgen.symmetry.groups import SYMM_DATA
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
-from pymatviz.histograms import elements_hist, plot_histogram, spacegroup_hist
-from pymatviz.phonons import (
-    plot_phonon_bands,
-    plot_phonon_bands_and_dos,
-    plot_phonon_dos,
-)
+from pymatviz.histograms import elements_hist, histogram, spacegroup_hist
+from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
     ptable_heatmap,
@@ -49,7 +45,7 @@ from pymatviz.scatter import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
-from pymatviz.structure_viz import plot_structure_2d
+from pymatviz.structure_viz import structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.templates import (
     pmv_dark_template,
@@ -58,7 +54,7 @@ from pymatviz.templates import (
 )
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import PKG_DIR, ROOT, html_tag
-from pymatviz.xrd import plot_xrd_pattern
+from pymatviz.xrd import xrd_pattern
 
 
 PKG_NAME = "pymatviz"

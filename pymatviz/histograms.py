@@ -345,7 +345,7 @@ def elements_hist(
     return ax
 
 
-def plot_histogram(
+def histogram(
     values: Sequence[float] | dict[str, Sequence[float]],
     *,
     bins: int | Sequence[float] | str = 200,
