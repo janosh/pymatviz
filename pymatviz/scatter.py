@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.interpolate
 from matplotlib.colors import LogNorm
+from sklearn.metrics import r2_score
 
 from pymatviz.powerups import (
     add_best_fit_line,
@@ -158,7 +159,7 @@ def density_scatter_plotly(
     y: str,
     density: Literal["kde", "log-kde", "empirical", "log-empirical"] = "kde",
     identity_line: bool | dict[str, Any] = True,
-    best_fit_line: bool | dict[str, Any] = True,
+    best_fit_line: bool | dict[str, Any] | None = None,
     stats: bool | dict[str, Any] = True,
     n_bins: int | None | Literal[False] = None,
     bin_counts_col: str | None = None,
@@ -279,6 +280,10 @@ def density_scatter_plotly(
             fig, **(identity_line if isinstance(identity_line, dict) else {})
         )
 
+    # if None, set best_fit_line if predictive power seems to warrant it
+    if best_fit_line is None:
+        r2 = r2_score(*df[[x, y]].dropna().T.to_numpy())
+        best_fit_line = r2 > 0.3
     if best_fit_line:
         add_best_fit_line(
             fig, **(best_fit_line if isinstance(best_fit_line, dict) else {})
