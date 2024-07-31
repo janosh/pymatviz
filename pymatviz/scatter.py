@@ -158,7 +158,7 @@ def density_scatter_plotly(
     *,
     x: str,
     y: str,
-    density: Literal["kde", "empirical"] = "kde",
+    density: Literal["kde", "empirical"] | None = None,
     log_density: bool | None = None,
     identity_line: bool | dict[str, Any] = True,
     best_fit_line: bool | dict[str, Any] | None = None,
@@ -211,6 +211,8 @@ def density_scatter_plotly(
         n_bins = 200 if len(df) > 1000 else False
 
     if n_bins:
+        density = density or "empirical"  # default to empirical if binning
+
         density_col = "bin_counts_kde" if density == "kde" else ""
         df_plot = bin_df_cols(
             df,
@@ -231,6 +233,7 @@ def density_scatter_plotly(
         else:
             raise ValueError(f"Unknown {density=}")
     else:
+        density = density or "kde"  # default to kde if no binning
         df_plot = df
         values = df[[x, y]].dropna().T
         if density == "kde":

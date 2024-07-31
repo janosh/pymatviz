@@ -207,15 +207,14 @@ def bin_df_cols(
 
     index_name = df_in.index.name
 
-    for col, bins in zip(bin_by_cols, n_bins):
-        df_in[f"{col}_bins"] = pd.cut(df_in[col].values, bins=bins)
+    cut_cols = [f"{col}_bins" for col in bin_by_cols]
+    for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols):
+        df_in[cut_col] = pd.cut(df_in[col].values, bins=bins)
 
     if df_in.index.name not in df_in:
         df_in = df_in.reset_index()
 
-    group = df_in.groupby(
-        [*[f"{c}_bins" for c in bin_by_cols], *group_by_cols], observed=True
-    )
+    group = df_in.groupby([*cut_cols, *group_by_cols], observed=True)
 
     df_bin = group.first().dropna()
     df_bin[bin_counts_col] = group.size()
@@ -229,10 +228,10 @@ def bin_df_cols(
     if density_col:
         # compute kernel density estimate for each bin
         values = df_in[bin_by_cols].dropna().T
-        model_kde = scipy.stats.gaussian_kde(values)
+        gaussian_kde = scipy.stats.gaussian_kde(values.astype(float))
 
         xy_binned = df_bin[bin_by_cols].T
-        density = model_kde(xy_binned)
+        density = gaussian_kde(xy_binned.astype(float))
         df_bin[density_col] = density / density.sum() * len(values)
 
     if index_name is None:
