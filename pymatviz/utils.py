@@ -181,7 +181,7 @@ def bin_df_cols(
     group_by_cols: Sequence[str] = (),
     n_bins: int | Sequence[int] = 100,
     bin_counts_col: str = "bin_counts",
-    kde_col: str = "",
+    density_col: str = "",
     verbose: bool = True,
 ) -> pd.DataFrame:
     """Bin columns of a DataFrame.
@@ -191,10 +191,8 @@ def bin_df_cols(
         bin_by_cols (Sequence[str]): Columns to bin.
         group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
         n_bins (int): Number of bins to use. Defaults to 100.
-        bin_counts_col (str): Column name for bin counts.
-            Defaults to "bin_counts".
-        kde_col (str): Column name for KDE bin counts e.g. "kde_bin_counts". Defaults to
-            "" which means no KDE to speed things up.
+        bin_counts_col (str): Column name for bin counts. Defaults to "bin_counts".
+        density_col (str): Column name for density values. Defaults to "".
         verbose (bool): If True, report df length reduction. Defaults to True.
 
     Returns:
@@ -228,14 +226,14 @@ def bin_df_cols(
             f"{len(df_in):,} to {len(df_bin):,}"
         )
 
-    if kde_col:
+    if density_col:
         # compute kernel density estimate for each bin
         values = df_in[bin_by_cols].dropna().T
         model_kde = scipy.stats.gaussian_kde(values)
 
         xy_binned = df_bin[bin_by_cols].T
         density = model_kde(xy_binned)
-        df_bin[kde_col] = density / density.sum() * len(values)
+        df_bin[density_col] = density / density.sum() * len(values)
 
     if index_name is None:
         return df_bin

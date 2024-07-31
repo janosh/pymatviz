@@ -9,6 +9,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.interpolate
+import scipy.stats
 from matplotlib.colors import LogNorm
 from sklearn.metrics import r2_score
 
@@ -157,7 +158,8 @@ def density_scatter_plotly(
     *,
     x: str,
     y: str,
-    density: Literal["kde", "log-kde", "empirical", "log-empirical"] = "kde",
+    density: Literal["kde", "empirical"] = "kde",
+    log_density: bool | None = None,
     identity_line: bool | dict[str, Any] = True,
     best_fit_line: bool | dict[str, Any] | None = None,
     stats: bool | dict[str, Any] = True,
@@ -177,10 +179,10 @@ def density_scatter_plotly(
         x (str): x-values dataframe column name.
         y (str): y-values dataframe column name.
         df (pd.DataFrame): DataFrame with x and y columns.
-        density ('kde' | 'log-kde' | 'empirical' | 'log-empirical'): Determines the
-            method for calculating and displaying density. 'kde' and 'log-kde' use
-            kernel density estimation, 'empirical' and 'log-empirical' use raw bin
-            counts. 'log-' prefixed options apply logarithmic scaling.
+        density ('kde' | 'interpolate' | 'empirical'): Determines the method for
+            calculating and displaying density.
+        log_density (bool | None): Whether to apply logarithmic scaling to density.
+            If None, automatically set based on density range.
         identity_line (bool | dict[str, Any], optional): Whether to add a parity line
             (y = x). Defaults to True. Pass a dict to customize line properties.
         best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
@@ -209,29 +211,41 @@ def density_scatter_plotly(
         n_bins = 200 if len(df) > 1000 else False
 
     if n_bins:
-        kde_col = "kde_density" if "kde" in density else ""
+        density_col = "bin_counts_kde" if density == "kde" else ""
         df_plot = bin_df_cols(
             df,
             bin_by_cols=[x, y],
             n_bins=n_bins,
             bin_counts_col=bin_counts_col,
-            kde_col=kde_col,
+            density_col=density_col,
         ).sort_values(bin_counts_col)
         # sort by counts so densest points are plotted last
 
-        if "kde" in density:
-            color_vals = df_plot[kde_col]
-        elif "empirical" in density:
+        if density_col in df_plot:
+            color_vals = df_plot[density_col]
+        elif density_col and density_col not in df_plot:
+            # this should never happen
+            raise ValueError(f"Missing {density_col=} in {df_plot.columns=}")
+        elif density == "empirical":
             color_vals = df_plot[bin_counts_col]
         else:
             raise ValueError(f"Unknown {density=}")
     else:
         df_plot = df
         values = df[[x, y]].dropna().T
-        model_kde = scipy.stats.gaussian_kde(values)
-        color_vals = model_kde(df_plot[[x, y]].T)
+        if density == "kde":
+            model_kde = scipy.stats.gaussian_kde(values)
+            color_vals = model_kde(df_plot[[x, y]].T)
+        else:
+            print(  # noqa: T201
+                f"no need to use density scatter if binning is disabled and {density=}"
+            )
+            color_vals = np.ones(len(df_plot))
 
-    if "log" in density:
+    if log_density is None:
+        log_density = np.log10(color_vals.max()) - np.log10(color_vals.min()) > 2
+
+    if log_density:
         color_vals = np.log10(color_vals + 1)
 
     kwargs = dict(color_continuous_scale="Viridis") | kwargs
@@ -245,7 +259,7 @@ def density_scatter_plotly(
         **kwargs,
     )
 
-    if "log" in density:
+    if log_density:
         min_count = color_vals.min()
         max_count = color_vals.max()
         log_min = np.floor(np.log10(max(min_count, 1)))
