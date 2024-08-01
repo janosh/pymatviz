@@ -36,10 +36,10 @@ def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
     lambda_p = (sigma * (1 + np.sqrt(1 / gamma))) ** 2  # Smallest eigenvalue
 
     pre_fac = gamma / (2 * np.pi * sigma**2 * x)
-    root = np.sqrt((lambda_p - x) * (x - lambda_m))
+    sqrt = np.sqrt((lambda_p - x) * (x - lambda_m))
     unit_step = x > lambda_p or x < lambda_m
 
-    return pre_fac * root * (0 if unit_step else 1)
+    return pre_fac * sqrt * (0 if unit_step else 1)
 
 
 def marchenko_pastur(

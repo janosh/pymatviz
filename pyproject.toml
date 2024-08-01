@@ -25,13 +25,14 @@ classifiers = [
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.9"
 dependencies = [
-    "matplotlib>=3.6.2",
+    "matplotlib>=3.6.2,!=3.9.1",
     "numpy>=1.21.0,<2",
-    "pandas>=2.0.0",
-    "plotly",
-    "pymatgen",
-    "scikit-learn",
-    "scipy",
+    # output-formatting needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
+    "pandas[output-formatting]>=2.0.0",
+    "plotly>=5.23",
+    "pymatgen>=2024.7.18",
+    "scikit-learn>=1.5",
+    "scipy>=1.14",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +40,6 @@ test = [
     "adjustText",
     "bs4",
     "cssutils",
-    "jinja2",
     "kaleido",
     "lxml",
     "pdfCropMargins",
@@ -50,8 +50,7 @@ test = [
 data-src = ["matminer", "mp_api"]
 export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
-# needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
-df-pdf-export = ["jinja2", "pdfCropMargins", "weasyprint"]
+df-pdf-export = ["pdfCropMargins", "weasyprint"]
 df-svg-export = ["bs4", "cssutils", "lxml"]
 auto-text-pos = ["adjustText"]
 
@@ -65,7 +64,7 @@ pymatviz = ["*.csv"]
 universal = true
 
 [build-system]
-requires = ["setuptools>=61.2"]
+requires = ["setuptools>=71"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
@@ -84,12 +83,11 @@ no_implicit_optional = false
 
 [tool.ruff]
 target-version = "py39"
+output-format = "concise"
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN101",  # missing-type-self
-    "ANN102",  # missing-type-cls
     "ANN401",  # any-type
     "C408",    # unnecessary-collection-call
     "C901",    # complex-structure

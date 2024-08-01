@@ -44,6 +44,7 @@ from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
+from pymatviz.io import df_to_html_table, df_to_pdf, df_to_svg, save_fig
 from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
@@ -74,7 +75,7 @@ from pymatviz.templates import (
     set_plotly_template,
 )
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import PKG_DIR, ROOT, html_tag
+from pymatviz.utils import PKG_DIR, ROOT, html_tag, si_fmt, si_fmt_int
 from pymatviz.xrd import xrd_pattern
 
 
