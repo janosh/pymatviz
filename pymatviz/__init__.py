@@ -19,6 +19,27 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from pymatgen.symmetry.groups import SYMM_DATA
 
+from pymatviz import (
+    bar,
+    colors,
+    correlation,
+    cumulative,
+    enums,
+    io,
+    phonons,
+    powerups,
+    process_data,
+    ptable,
+    relevance,
+    sankey,
+    scatter,
+    structure_viz,
+    sunburst,
+    templates,
+    uncertainty,
+    utils,
+    xrd,
+)
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
