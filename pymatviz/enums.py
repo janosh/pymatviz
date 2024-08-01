@@ -223,6 +223,12 @@ class Key(LabelEnum):
 
     # Thermodynamic
     energy = "energy", f"Energy {eV}"
+    enthalpy = "enthalpy", f"Enthalpy {eV}"
+    entropy = "entropy", f"Entropy {eV_per_kelvin}"
+    free_energy = "free_energy", f"Free Energy {eV}"
+    gibbs_free_energy = "gibbs_free_energy", f"Gibbs Free Energy {eV}"
+    helmholtz_free_energy = "helmholtz_free_energy", f"Helmholtz Free Energy {eV}"
+    internal_energy = "internal_energy", f"Internal Energy {eV}"
     energy_per_atom = "energy_per_atom", f"Energy {eV_per_atom}"
     uncorrected_energy_per_atom = (
         "uncorrected_energy_per_atom",
@@ -232,6 +238,8 @@ class Key(LabelEnum):
         "cohesive_energy_per_atom",
         f"Cohesive Energy {eV_per_atom}",
     )
+    heat_of_formation = "heat_of_formation", f"Heat of Formation {eV}"
+    heat_of_reaction = "heat_of_reaction", f"Heat of Reaction {eV}"
     e_form_per_atom = "e_form_per_atom", f"E<sub>form</sub> {eV_per_atom}"
     e_form_pred = "e_form_per_atom_pred", f"Predicted E<sub>form</sub> {eV_per_atom}"
     e_form_true = "e_form_per_atom_true", f"Actual E<sub>form</sub> {eV_per_atom}"
@@ -249,9 +257,6 @@ class Key(LabelEnum):
     critical_temp = "critical_temperature", f"Critical Temperature {kelvin}"
     critical_pressure = "critical_pressure", f"Critical Pressure {pascal}"
     critical_vol = "critical_volume", "Critical Volume (m³/mol)"
-    gibbs_free_energy = "gibbs_free_energy", f"Gibbs Free Energy {eV}"
-    enthalpy = "enthalpy", f"Enthalpy {eV}"
-    entropy = "entropy", f"Entropy {eV_per_kelvin}"
     lattice_energy = "lattice_energy", f"Lattice Energy {eV}"
     interface_energy = "interface_energy", f"Interface Energy {joule_per_m2}"
 
@@ -490,6 +495,8 @@ class Key(LabelEnum):
     db_id = "db_id", "Database ID"
     uuid = "uuid", "UUID"
     mat_id = "material_id", "Material ID"
+    # as in molecular dynamics or geometry optimization frame
+    frame_id = "frame_id", "Frame ID"
     task = "task", "Task"
     job_id = "job_id", "Job ID"
     task_id = "task_id", "Task ID"
