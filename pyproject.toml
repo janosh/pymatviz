@@ -32,7 +32,7 @@ dependencies = [
     "plotly>=5.23",
     "pymatgen>=2024.7.18",
     "scikit-learn>=1.5",
-    "scipy>=1.14",
+    "scipy>=1.13,<1.14",
 ]
 
 [project.optional-dependencies]

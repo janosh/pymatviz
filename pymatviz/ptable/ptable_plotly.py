@@ -317,6 +317,7 @@ def ptable_heatmap_plotly(
         font_size=font_size,
         width=1000,
         height=500,
+        title=dict(x=0.4, y=0.95),
     )
 
     if color_bar.get("orientation") == "h":

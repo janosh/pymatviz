@@ -20,7 +20,7 @@ from pymatviz.utils import df_ptable
 )
 def test_count_elements(count_mode: ElemCountMode, counts: dict[str, float]) -> None:
     series = count_elements(["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, count_mode=count_mode)
-    expected = pd.Series(counts, index=df_ptable.index, name="count").fillna(0)
+    expected = pd.Series(counts, index=df_ptable.index, name="count")
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
@@ -47,7 +47,7 @@ def test_count_elements_composition_objects() -> None:
     series = count_elements(compositions, count_mode=ElemCountMode.composition)
     expected = pd.Series(
         {"Fe": 22, "O": 63, "P": 12}, index=df_ptable.index, name="count"
-    ).fillna(0)
+    )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
@@ -58,7 +58,7 @@ def test_count_elements_composition_objects_fractional() -> None:
     )
     expected = pd.Series(
         {"Fe": 2.5, "O": 5, "P": 0.5}, index=df_ptable.index, name="count"
-    ).fillna(0)
+    )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
@@ -67,16 +67,14 @@ def test_count_elements_composition_objects_reduced() -> None:
     series = count_elements(compositions, count_mode=ElemCountMode.reduced_composition)
     expected = pd.Series(
         {"Fe": 13, "O": 27, "P": 3}, index=df_ptable.index, name="count"
-    ).fillna(0)
+    )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
 def test_count_elements_composition_objects_occurrence() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
     series = count_elements(compositions, count_mode=ElemCountMode.occurrence)
-    expected = pd.Series(
-        {"Fe": 8, "O": 8, "P": 3}, index=df_ptable.index, name="count"
-    ).fillna(0)
+    expected = pd.Series({"Fe": 8, "O": 8, "P": 3}, index=df_ptable.index, name="count")
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
@@ -87,7 +85,7 @@ def test_count_elements_mixed_input() -> None:
         {"Fe": 6, "O": 21, "P": 4, "Li": 1, "Co": 1, "Na": 1, "Cl": 1},
         index=df_ptable.index,
         name="count",
-    ).fillna(0)
+    )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
@@ -98,7 +96,7 @@ def test_count_elements_exclude_elements() -> None:
     )
     expected = pd.Series(
         {"O": 63}, index=df_ptable.index.drop(["Fe", "P"]), name="count"
-    ).fillna(0)
+    )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
