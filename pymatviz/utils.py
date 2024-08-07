@@ -196,8 +196,11 @@ def bin_df_cols(
         verbose (bool): If True, report df length reduction. Defaults to True.
 
     Returns:
-        pd.DataFrame: Binned DataFrame.
+        pd.DataFrame: Binned DataFrame with original index name and values.
     """
+    # Create a copy of the input DataFrame to avoid modifying the original
+    df_in = df_in.copy()
+
     if isinstance(n_bins, int):
         # broadcast integer n_bins to all bin_by_cols
         n_bins = [n_bins] * len(bin_by_cols)
@@ -205,19 +208,22 @@ def bin_df_cols(
     if len(bin_by_cols) != len(n_bins):
         raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
 
-    index_name = df_in.index.name
-
     cut_cols = [f"{col}_bins" for col in bin_by_cols]
     for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols):
         df_in[cut_col] = pd.cut(df_in[col].values, bins=bins)
 
-    if df_in.index.name not in df_in:
+    # Preserve the original index
+    orig_index_name = df_in.index.name or "index"
+    # Reset index so it participates in groupby. If the index name is already in the
+    # columns, we it'll participate already and be set back to the index at the end.
+    if orig_index_name not in df_in:
         df_in = df_in.reset_index()
 
-    group = df_in.groupby([*cut_cols, *group_by_cols], observed=True)
+    group = df_in.groupby(by=[*cut_cols, *group_by_cols], observed=True)
 
     df_bin = group.first().dropna()
     df_bin[bin_counts_col] = group.size()
+    df_bin = df_bin.reset_index()
 
     if verbose:
         print(  # noqa: T201
@@ -234,9 +240,8 @@ def bin_df_cols(
         density = gaussian_kde(xy_binned.astype(float))
         df_bin[density_col] = density / density.sum() * len(values)
 
-    if index_name is None:
-        return df_bin
-    return df_bin.reset_index().set_index(index_name)
+    # Set the index back to the original index name
+    return df_bin.set_index(orig_index_name)
 
 
 @contextmanager
