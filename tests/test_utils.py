@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import re
 from copy import deepcopy
 from typing import Any, Literal
@@ -119,8 +120,8 @@ def test_df_to_arrays_strict() -> None:
     "verbose, density_col, expected_n_rows",
     [
         (["A"], [], 2, [2], True, "", 2),
-        (["A", "B"], [], 2, [2, 2], True, "kde", 4),
-        (["A", "B"], [], [2, 3], [2, 3], False, "kde", 6),
+        (["A", "B"], [], 2, [2, 2], True, "kde_bin_counts", 4),
+        (["A", "B"], [], [2, 3], [2, 3], False, "kde_bin_counts", 6),
         (["A"], ["B"], 2, [2], False, "", 30),
     ],
 )
@@ -135,7 +136,14 @@ def test_bin_df_cols(
     df_float: pd.DataFrame,
 ) -> None:
     idx_col = "index"
+    # don't move this below df_float.copy() line
     df_float.index.name = idx_col
+
+    # keep copy of original DataFrame to assert it is not modified
+    # not using df.copy(deep=True) here for extra sensitivity, doc str says
+    # not as deep as deepcopy
+    df_float_orig = copy.deepcopy(df_float)
+
     bin_counts_col = "bin_counts"
     df_binned = bin_df_cols(
         df_float,
@@ -147,24 +155,35 @@ def test_bin_df_cols(
         density_col=density_col,
     )
 
+    assert len(df_binned) == expected_n_rows
+    assert len(df_binned) <= len(df_float)
+    assert df_binned.index.name == idx_col
+
     # ensure binned DataFrame has a minimum set of expected columns
     expected_cols = {bin_counts_col, *df_float, *(f"{col}_bins" for col in bin_by_cols)}
-    assert {*df_binned} >= expected_cols
-    assert len(df_binned) == expected_n_rows
+    assert (
+        {*df_binned} >= expected_cols
+    ), f"{set(df_binned)=}\n{expected_cols=},\n{bin_by_cols=}\n{group_by_cols=}"
 
     # validate the number of unique bins for each binned column
-    df_grouped = (
-        df_float.reset_index(names=idx_col)
-        .groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
-        .first()
-        .dropna()
-    )
-    for col, expected in zip(bin_by_cols, expected_n_bins):
-        binned_col = f"{col}_bins"
-        assert binned_col in df_grouped.index.names
+    for col, n_bins_expec in zip(bin_by_cols, expected_n_bins):
+        assert df_binned[f"{col}_bins"].nunique() == n_bins_expec
 
-        uniq_bins = df_grouped.index.get_level_values(binned_col).nunique()
-        assert uniq_bins == expected
+    # ensure original DataFrame is not modified
+    pd.testing.assert_frame_equal(df_float, df_float_orig)
+
+    # Check that the index values of df_binned are a subset of df_float
+    assert set(df_binned.index).issubset(set(df_float.index))
+
+    # Check that bin_counts column exists and contains only integers
+    assert bin_counts_col in df_binned
+    assert df_binned[bin_counts_col].dtype in [int, "int64"]
+
+    # If density column is specified, check if it exists
+    if density_col:
+        assert density_col in df_binned
+    else:
+        assert density_col not in df_binned
 
 
 def test_bin_df_cols_raises() -> None:

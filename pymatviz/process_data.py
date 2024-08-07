@@ -21,7 +21,7 @@ def count_elements(
     values: ElemValues,
     count_mode: ElemCountMode = ElemCountMode.composition,
     exclude_elements: Sequence[str] = (),
-    fill_value: float | None = 0,
+    fill_value: float | None = None,
 ) -> pd.Series:
     """Count element occurrence in list of formula strings or dict-like compositions.
     If passed values are already a map from element symbol to counts, ensure the
