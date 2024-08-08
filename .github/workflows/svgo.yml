@@ -20,7 +20,10 @@ jobs:
         uses: actions/setup-node@v4
 
       - name: Install SVGO
-        run: npm install --global svgo
+        run: |
+          npm install --global svgo
+          # Show SVGO version (DEBUG #187)
+          svgo --version
 
       - name: Compress SVG assets and commit to current PR
         run: |
