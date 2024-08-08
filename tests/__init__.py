@@ -1,1 +1,1 @@
-"""pymatviz tests."""
+"""pymatviz test suite."""
