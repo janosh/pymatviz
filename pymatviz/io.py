@@ -541,10 +541,7 @@ def df_to_svg(
 
         col_widths = [width / total_width for width in max_col_widths]
         row_heights = [
-            (
-                max([val[0].count("\n") + 1 for val in row if isinstance(val[0], str)])
-                + 1
-            )
+            (max(val[0].count("\n") + 1 for val in row if isinstance(val[0], str)) + 1)
             * font_size
             / dpi
             for row in rows

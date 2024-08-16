@@ -50,8 +50,8 @@ def test_all_modules_reexported() -> None:
         for full_module_name in first_level_modules:
             module_name = full_module_name.split(".")[-1]
 
-            # Skip 'histogram' which name clashes with the histogram function
-            if module_name in ("histogram",):
+            # Skip histogram module which name-clashes with its own histogram function
+            if module_name == "histogram":
                 continue
 
             # Check if the module or subpackage is in the main package namespace
