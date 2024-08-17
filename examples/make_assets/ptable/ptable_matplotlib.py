@@ -5,8 +5,8 @@ import numpy as np
 from matminer.datasets import load_dataset
 from pymatgen.core.periodic_table import Element
 
+import pymatviz as pmv
 from pymatviz.enums import Key
-from pymatviz.io import save_and_compress_svg
 from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
     ptable_heatmap,
@@ -34,13 +34,13 @@ title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
 ax.set_title(title, x=0.75, y=2.5, fontsize=18, fontweight="bold")
-save_and_compress_svg(ax, "ptable-heatmap")
+pmv.io.save_and_compress_svg(ax, "ptable-heatmap")
 
 
 # %%
 fig = ptable_heatmap(df_ptable[Key.atomic_mass], return_type="figure")
 fig.suptitle("Atomic Mass Heatmap", y=0.96, fontsize=20, fontweight="bold")
-save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
@@ -56,7 +56,7 @@ fig = ptable_heatmap(
 )
 title = "Elements in Matbench Experimental Band Gap (percent)"
 fig.suptitle(title, y=0.96, fontsize=20, fontweight="bold")
-save_and_compress_svg(fig, "ptable-heatmap-percent")
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-percent")
 
 
 # %%
@@ -65,7 +65,7 @@ fig = ptable_heatmap_ratio(
 )
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
-save_and_compress_svg(fig, "ptable-heatmap-ratio")
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-ratio")
 
 
 # %% Histograms laid out in as a periodic table
@@ -83,7 +83,7 @@ fig = ptable_hists(
     add_elem_type_legend=True,
     # x_range=(0, None),
 )
-save_and_compress_svg(fig, "ptable-hists")
+pmv.io.save_and_compress_svg(fig, "ptable-hists")
 
 
 # %% Scatter plots laid out as a periodic table
@@ -104,7 +104,7 @@ fig = ptable_scatters(
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
 )
-save_and_compress_svg(fig, "ptable-scatters-parity")
+pmv.io.save_and_compress_svg(fig, "ptable-scatters-parity")
 
 
 # %% 2nd ptable_scatters example
@@ -126,7 +126,7 @@ fig = ptable_scatters(
     symbol_kwargs=dict(fontsize=14),
     color_elem_strategy="off",
 )
-save_and_compress_svg(fig, "ptable-scatters-parabola")
+pmv.io.save_and_compress_svg(fig, "ptable-scatters-parabola")
 
 
 # %% Line plots laid out as a periodic table
@@ -143,7 +143,7 @@ fig = ptable_lines(
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
 )
-save_and_compress_svg(fig, "ptable-lines")
+pmv.io.save_and_compress_svg(fig, "ptable-lines")
 
 
 # %% Evenly-split tile plots laid out as a periodic table
@@ -163,4 +163,4 @@ for n_splits in (2, 3, 4):
         hide_f_block=True,
     )
     fig.show()
-    save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")
+    pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")

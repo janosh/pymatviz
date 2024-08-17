@@ -6,7 +6,7 @@ from unittest.mock import patch
 import matplotlib.pyplot as plt
 import pytest
 
-from pymatviz.powerups.matplotlib import annotate_bars, with_marginal_hist
+import pymatviz as pmv
 
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ def test_annotate_bars(
 ) -> None:
     bars = plt.bar(["A", "B", "C"], [1, 3, 2])
     ax = plt.gca()
-    annotate_bars(
+    pmv.powerups.annotate_bars(
         ax=ax,
         v_offset=v_offset,
         h_offset=h_offset,
@@ -61,7 +61,7 @@ def test_annotate_bars(
         ValueError,
         match=f"Got {len(bad_labels)} labels but {len(bars)} bars to annotate",
     ):
-        annotate_bars(ax, labels=bad_labels)
+        pmv.powerups.annotate_bars(ax, labels=bad_labels)
 
     # test error message if adjustText not installed
     err_msg = (
@@ -72,17 +72,17 @@ def test_annotate_bars(
         patch.dict("sys.modules", {"adjustText": None}),
         pytest.raises(ImportError, match=err_msg),
     ):
-        annotate_bars(ax, adjust_test_pos=True)
+        pmv.powerups.annotate_bars(ax, adjust_test_pos=True)
 
 
 def test_with_marginal_hist() -> None:
     fig, ax = plt.subplots()
     ax.scatter([1, 2, 3], [4, 5, 6])
-    ax_main = with_marginal_hist([1, 2, 3], [4, 5, 6], fig=fig)
+    ax_main = pmv.powerups.with_marginal_hist([1, 2, 3], [4, 5, 6], fig=fig)
     assert isinstance(ax_main, plt.Axes)
     assert len(fig.axes) == 4
 
     gs = fig.add_gridspec(2, 2)
-    ax_main = with_marginal_hist([1, 2, 3], [4, 5, 6], cell=gs[1, 0])
+    ax_main = pmv.powerups.with_marginal_hist([1, 2, 3], [4, 5, 6], cell=gs[1, 0])
     assert isinstance(ax_main, plt.Axes)
     assert len(fig.axes) == 7

@@ -3,9 +3,9 @@ import numpy as np
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
+import pymatviz as pmv
 from pymatviz.enums import Key
 from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
-from pymatviz.io import save_and_compress_svg
 from pymatviz.powerups import add_ecdf_line
 from pymatviz.templates import set_plotly_template
 from pymatviz.utils import BACKENDS
@@ -35,16 +35,16 @@ y_std = (y_true - y_pred) * 10 * np_rng.normal(0, 0.1, rand_regression_size)
 ax = elements_hist(
     df_expt_gap[Key.composition], keep_top=15, v_offset=200, rotation=0, fontsize=12
 )
-save_and_compress_svg(ax, "elements-hist")
+pmv.io.save_and_compress_svg(ax, "elements-hist")
 
 
 # %% Spacegroup histograms
 for backend in BACKENDS:
     fig = spacegroup_bar(df_phonons[Key.spg_num], backend=backend)
-    save_and_compress_svg(fig, f"spg-num-hist-{backend}")
+    pmv.io.save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 
     fig = spacegroup_bar(df_phonons[Key.spg_symbol], backend=backend)
-    save_and_compress_svg(fig, f"spg-symbol-hist-{backend}")
+    pmv.io.save_and_compress_svg(fig, f"spg-symbol-hist-{backend}")
 
 
 # %% plot 2 Gaussians and their cumulative distribution functions
@@ -58,4 +58,4 @@ for idx in range(len(fig.data)):
     add_ecdf_line(fig, trace_idx=idx)
 fig.show()
 
-save_and_compress_svg(fig, "plot-histogram-ecdf")
+pmv.io.save_and_compress_svg(fig, "plot-histogram-ecdf")
