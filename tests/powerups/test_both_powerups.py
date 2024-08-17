@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
+import numpy as np
 import plotly.graph_objects as go
 import pytest
 from matplotlib.offsetbox import AnchoredText
@@ -80,6 +81,67 @@ def test_add_best_fit_line(
 def test_add_best_fit_line_invalid_fig() -> None:
     with pytest.raises(TypeError, match="must be instance of"):
         add_best_fit_line("not a valid fig")
+
+
+def test_add_best_fit_line_custom_line_kwargs(plotly_scatter: go.Figure) -> None:
+    line_kwds = {"width": 3, "dash": "dot"}
+    result = add_best_fit_line(plotly_scatter, line_kwds=line_kwds)
+
+    best_fit_line = result.layout.shapes[-1]
+    assert best_fit_line.line.width == 2
+    assert best_fit_line.line.dash == "dash"
+
+
+@pytest.mark.parametrize("trace_idx", [0, 1])
+def test_add_best_fit_line_trace_idx(trace_idx: int) -> None:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=[1, 2, 3], y=[1, 2, 3]))
+    fig.add_trace(go.Scatter(x=[1, 2, 3], y=[3, 2, 1]))
+
+    result = add_best_fit_line(fig, trace_idx=trace_idx)
+
+    best_fit_line = result.layout.shapes[-1]
+    expected_slope = 1 if trace_idx == 0 else -1
+    actual_slope = (best_fit_line.y1 - best_fit_line.y0) / (
+        best_fit_line.x1 - best_fit_line.x0
+    )
+    assert np.isclose(actual_slope, expected_slope, atol=1e-6)
+
+
+def test_add_best_fit_line_faceted_plot(plotly_faceted_scatter: go.Figure) -> None:
+    result = add_best_fit_line(plotly_faceted_scatter)
+
+    assert len(result.layout.shapes) == 2
+    assert len(result.layout.annotations) == 2
+    assert (  # check that both annotations are for best fit lines
+        sum(anno.text.startswith("LS fit: y =") for anno in result.layout.annotations)
+        == 2
+    )
+
+
+@pytest.mark.parametrize("backend", ["plotly", "matplotlib"])
+def test_add_best_fit_line_custom_xs_ys(
+    backend: str, plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
+) -> None:
+    fig = plotly_scatter if backend == "plotly" else matplotlib_scatter
+    custom_x = np.array([1, 2, 3, 4, 5])
+    custom_y = np.array([2, 3, 4, 5, 6])
+
+    fig_with_fit = add_best_fit_line(fig, xs=custom_x, ys=custom_y)
+
+    if backend == "plotly":
+        best_fit_line = fig_with_fit.layout.shapes[-1]
+        slope = (best_fit_line.y1 - best_fit_line.y0) / (
+            best_fit_line.x1 - best_fit_line.x0
+        )
+    else:
+        ax = fig_with_fit.axes[0]
+        best_fit_line = next(line for line in ax.lines if line.get_linestyle() == "--")
+        x_data, y_data = best_fit_line.get_data()
+        slope = (y_data[1] - y_data[0]) / (x_data[1] - x_data[0])
+
+    expected_slope = 1.0
+    assert slope == pytest.approx(expected_slope)
 
 
 @pytest.mark.parametrize(
