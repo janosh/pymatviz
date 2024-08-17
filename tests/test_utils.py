@@ -474,6 +474,68 @@ def test_annotate_invalid_fig() -> None:
         annotate("test", fig="invalid")
 
 
+def test_annotate_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:
+    texts = ["Annotation 1", "Annotation 2"]
+    fig = annotate(texts, plotly_faceted_scatter)
+
+    assert len(fig.layout.annotations) == 2
+    assert fig.layout.annotations[0].text == texts[0]
+    assert fig.layout.annotations[1].text == texts[1]
+    assert fig.layout.annotations[0].xref == "x domain"
+    assert fig.layout.annotations[1].xref == "x2 domain"
+
+
+def test_annotate_faceted_plotly_with_empty_string(
+    plotly_faceted_scatter: go.Figure,
+) -> None:
+    texts = ["Annotation 1", ""]
+    fig = annotate(texts, plotly_faceted_scatter)
+
+    assert len(fig.layout.annotations) == 1
+    assert fig.layout.annotations[0].text == texts[0]
+
+
+def test_annotate_faceted_plotly_with_single_string(
+    plotly_faceted_scatter: go.Figure,
+) -> None:
+    text = "Single Annotation"
+    fig = annotate(text, plotly_faceted_scatter)
+
+    assert len(fig.layout.annotations) == 2
+    for annotation in fig.layout.annotations:
+        assert annotation.text == text
+
+
+def test_annotate_non_faceted_plotly_with_list_raises(
+    plotly_scatter: go.Figure,
+) -> None:
+    text = ["Annotation 1", "Annotation 2"]
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"Unexpected {text=} type for non-faceted plot, must be str"),
+    ):
+        annotate(text, plotly_scatter)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"x": 0.5, "y": 0.5},
+        {"font": dict(size=20, color="green")},
+        {"showarrow": True, "arrowhead": 2},
+    ],
+)
+def test_annotate_kwargs(plotly_scatter: go.Figure, kwargs: dict[str, Any]) -> None:
+    fig = annotate("Test", plotly_scatter, **kwargs)
+
+    for key, val in kwargs.items():
+        if isinstance(val, dict):
+            for sub_key, sub_val in val.items():
+                assert getattr(fig.layout.annotations[-1][key], sub_key) == sub_val
+        else:
+            assert getattr(fig.layout.annotations[-1], key) == val
+
+
 def test_validate_fig_decorator_raises(capsys: pytest.CaptureFixture[str]) -> None:
     @validate_fig
     def generic_func(fig: Any = None, **kwargs: Any) -> Any:

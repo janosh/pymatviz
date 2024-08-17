@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import pytest
+from plotly.subplots import make_subplots
 from pymatgen.core import Lattice, Structure
 
 
@@ -99,6 +100,14 @@ def plotly_scatter_two_ys() -> go.Figure:
 def plotly_scatter() -> go.Figure:
     fig = go.Figure(go.Scatter(x=[1, 10, 100], y=np.array([10, 100, 1000]) + 1))
     fig.add_scatter(x=[1, 10, 100], y=[1, 10, 100])
+    return fig
+
+
+@pytest.fixture()
+def plotly_faceted_scatter() -> go.Figure:
+    fig = make_subplots(rows=1, cols=2)
+    fig.add_scatter(x=[1, 2, 3], y=[4, 5, 6], row=1, col=1)
+    fig.add_scatter(x=[1, 2, 3], y=[4, 5, 6], row=1, col=2)
     return fig
 
 
