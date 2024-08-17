@@ -523,8 +523,9 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
                 )
         else:  # Non-faceted plot
             if not isinstance(text, str):
+                text_type = type(text).__name__
                 raise ValueError(
-                    f"Unexpected {text=} type for non-faceted plot, must be str"
+                    f"Unexpected {text_type=} for non-faceted plot, must be str"
                 )
             fig.add_annotation(
                 text=text, **(dict(xref="paper", yref="paper") | defaults | kwargs)
