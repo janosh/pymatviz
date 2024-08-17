@@ -380,7 +380,7 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
             else:
                 assert (
                     hover_text == f"{elem_name}<br>Percentage: "
-                    f"{value/sum(int_values.values()):.2%} ({value})"
+                    f"{value / sum(int_values.values()):.2%} ({value})"
                 )
 
     # Test with excluded elements

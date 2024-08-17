@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.interpolate
@@ -23,7 +24,6 @@ from pymatviz.utils import bin_df_cols, df_to_arrays
 
 
 if TYPE_CHECKING:
-    import pandas as pd
     from matplotlib.gridspec import GridSpec
     from numpy.typing import ArrayLike
 
@@ -165,6 +165,7 @@ def density_scatter_plotly(
     stats: bool | dict[str, Any] = True,
     n_bins: int | None | Literal[False] = None,
     bin_counts_col: str | None = None,
+    facet_col: str | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Scatter plot colored by density using plotly backend.
@@ -197,6 +198,9 @@ def density_scatter_plotly(
             If False, performs no binning. Defaults to None.
         bin_counts_col (str, optional): Column name for bin counts. Defaults to
             "Point Density". Will be used as color bar title.
+        facet_col (str | None, optional): Column name to use for creating faceted
+            subplots. If provided, the plot will be split into multiple subplots based
+            on unique values in this column. Defaults to None.
         **kwargs: Passed to px.scatter().
 
     Returns:
@@ -210,40 +214,26 @@ def density_scatter_plotly(
     if n_bins is None:  # auto-enable binning depending on data size
         n_bins = 200 if len(df) > 1000 else False
 
-    if n_bins:
-        density = density or "empirical"  # default to empirical if binning
+    density = density or ("empirical" if n_bins else "kde")
 
-        density_col = "bin_counts_kde" if density == "kde" else ""
-        df_plot = bin_df_cols(
-            df,
-            bin_by_cols=[x, y],
-            n_bins=n_bins,
-            bin_counts_col=bin_counts_col,
-            density_col=density_col,
-        ).sort_values(bin_counts_col)
-        # sort by counts so densest points are plotted last
+    if facet_col:
+        # Group the dataframe based on the facet column
+        grouped = df.groupby(facet_col)
+        binned_dfs = []
 
-        if density_col in df_plot:
-            color_vals = df_plot[density_col]
-        elif density_col and density_col not in df_plot:
-            # this should never happen
-            raise ValueError(f"Missing {density_col=} in {df_plot.columns=}")
-        elif density == "empirical":
-            color_vals = df_plot[bin_counts_col]
-        else:
-            raise ValueError(f"Unknown {density=}")
-    else:
-        density = density or "kde"  # default to kde if no binning
-        df_plot = df
-        values = df[[x, y]].dropna().T
-        if density == "kde":
-            model_kde = scipy.stats.gaussian_kde(values)
-            color_vals = model_kde(df_plot[[x, y]].T)
-        else:
-            print(  # noqa: T201
-                f"no need to use density scatter if binning is disabled and {density=}"
+        for group_name, group_df in grouped:
+            binned_df = _bin_and_calculate_density(
+                group_df, x, y, density, n_bins, bin_counts_col
             )
-            color_vals = np.ones(len(df_plot))
+            binned_df[facet_col] = group_name  # Add the facet column back
+            binned_dfs.append(binned_df)
+
+        # Merge all binned dataframes
+        df_plot = pd.concat(binned_dfs, ignore_index=True)
+    else:
+        df_plot = _bin_and_calculate_density(df, x, y, density, n_bins, bin_counts_col)
+
+    color_vals = df_plot[bin_counts_col]
 
     if log_density is None:
         log_density = np.log10(color_vals.max()) - np.log10(color_vals.min()) > 2
@@ -258,39 +248,13 @@ def density_scatter_plotly(
         x=x,
         y=y,
         color=color_vals,
-        custom_data=[bin_counts_col] if n_bins else None,
+        facet_col=facet_col,
+        custom_data=[bin_counts_col],
         **kwargs,
     )
 
     if log_density:
-        min_count = color_vals.min()
-        max_count = color_vals.max()
-        log_min = np.floor(np.log10(max(min_count, 1)))
-        log_max = np.ceil(np.log10(max_count))
-        tick_values = np.logspace(
-            log_min, log_max, num=max(int(log_max - log_min) + 1, 5)
-        )
-
-        # Round tick values to nice numbers
-        tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
-        # Remove duplicates that might arise from rounding
-        tick_values = sorted(set(tick_values))
-
-        fig.layout.coloraxis.colorbar.update(
-            tickvals=np.log10(np.array(tick_values) + 1),
-            ticktext=[f"{v:.0f}" for v in tick_values],
-        )
-
-        # show original non-logged counts in hover
-        orig_tooltip = fig.data[0].hovertemplate
-        new_tooltip = (  # TODO figure out a less hacky way to replace the logged color
-            # values with the original counts
-            orig_tooltip.split("<br>color")[0]
-            + f"<br>{bin_counts_col}: %{{customdata[0]}}"
-        )
-        fig.data[0].hovertemplate = new_tooltip
-
-    fig.layout.coloraxis.colorbar.title = bin_counts_col.replace(" ", "<br>")
+        _update_colorbar_for_log_density(fig, color_vals, bin_counts_col)
 
     if identity_line:
         add_identity_line(
@@ -311,6 +275,78 @@ def density_scatter_plotly(
         annotate_metrics(df[x], df[y], fig=fig, **stats_kwargs)
 
     return fig
+
+
+def _bin_and_calculate_density(
+    df: pd.DataFrame,
+    x: str,
+    y: str,
+    density: str,
+    n_bins: int | None | Literal[False],
+    bin_counts_col: str,
+) -> pd.DataFrame:
+    """Helper function to bin data and calculate density."""
+    if n_bins:
+        density_col = "bin_counts_kde" if density == "kde" else ""
+        df_plot = bin_df_cols(
+            df,
+            bin_by_cols=[x, y],
+            n_bins=n_bins,
+            bin_counts_col=bin_counts_col,
+            density_col=density_col,
+        ).sort_values(bin_counts_col)
+        # sort by counts so densest points are plotted last
+
+        if density_col in df_plot:
+            df_plot[bin_counts_col] = df_plot[density_col]
+        elif density != "empirical":
+            raise ValueError(f"Unknown {density=}")
+    else:
+        df_plot = df
+        values = df[[x, y]].dropna().T
+        if density == "kde":
+            model_kde = scipy.stats.gaussian_kde(values)
+            df_plot[bin_counts_col] = model_kde(df_plot[[x, y]].T)
+        else:
+            print(  # noqa: T201
+                f"no need to use density scatter if binning is disabled and {density=}"
+            )
+            df_plot[bin_counts_col] = np.ones(len(df_plot))
+
+    return df_plot
+
+
+def _update_colorbar_for_log_density(
+    fig: go.Figure, color_vals: np.ndarray, bin_counts_col: str
+) -> None:
+    """Helper function to update colorbar for log density."""
+    min_count = color_vals.min()
+    max_count = color_vals.max()
+    log_min = np.floor(np.log10(max(min_count, 1)))
+    log_max = np.ceil(np.log10(max_count))
+    tick_values = np.logspace(log_min, log_max, num=max(int(log_max - log_min) + 1, 5))
+
+    # Round tick values to nice numbers
+    tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
+    # Remove duplicates that might arise from rounding
+    tick_values = sorted(set(tick_values))
+
+    colorbar = fig.layout.coloraxis.colorbar
+    colorbar.update(
+        tickvals=np.log10(np.array(tick_values) + 1),
+        ticktext=[f"{v:.0f}" for v in tick_values],
+    )
+
+    # show original non-logged counts in hover
+    for trace in fig.data:
+        orig_tooltip = trace.hovertemplate
+        new_tooltip = (
+            orig_tooltip.split("<br>color")[0]
+            + f"<br>{bin_counts_col}: %{{customdata[0]}}"
+        )
+        trace.hovertemplate = new_tooltip
+
+    colorbar.title = bin_counts_col.replace(" ", "<br>")
 
 
 def scatter_with_err_bar(

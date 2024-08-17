@@ -252,7 +252,7 @@ def df_to_pdf(
             is the default) if you set crop=False.
         size (str): Page size. Defaults to "4cm * n_cols x 2cm * n_rows"
             (width x height). See https://developer.mozilla.org/@page for 'landscape'
-            and other options.
+            and other special values.
         style (str): CSS style string to be inserted into the HTML file.
             Defaults to "".
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
@@ -541,10 +541,7 @@ def df_to_svg(
 
         col_widths = [width / total_width for width in max_col_widths]
         row_heights = [
-            (
-                max([val[0].count("\n") + 1 for val in row if isinstance(val[0], str)])
-                + 1
-            )
+            (max(val[0].count("\n") + 1 for val in row if isinstance(val[0], str)) + 1)
             * font_size
             / dpi
             for row in rows

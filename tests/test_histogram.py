@@ -49,7 +49,7 @@ def test_histogram(
             (True, 100): (0.93303299, 4.28709385),
             (False, 20): (0, 12.6),
             (False, 100): (0, 4.2),
-        }[(log_y, bins)]
+        }[log_y, bins]
         assert y_min == pytest.approx(y_min_exp)
         assert y_max == pytest.approx(y_max_exp)
 
@@ -65,7 +65,7 @@ def test_histogram(
             (True, 100): (-0.03344777, 0.63550776),
             (False, 20): (0, 12.6315789),
             (False, 100): (0, 4.21052631),
-        }[(log_y, bins)]
+        }[log_y, bins]
         assert y_min == pytest.approx(y_min_exp)
         assert y_max == pytest.approx(y_max_exp)
 

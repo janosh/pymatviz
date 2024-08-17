@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import pytest
+from plotly.subplots import make_subplots
 from pymatgen.core import Lattice, Structure
 
 
@@ -53,6 +54,8 @@ df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]
 
 @pytest.fixture(autouse=True)
 def _run_around_tests() -> Generator[None, None, None]:
+    """Ensure matplotlib plots are closed after each test so as not to leak state
+    between tests."""
     # runs before each test
 
     yield
@@ -103,6 +106,14 @@ def plotly_scatter() -> go.Figure:
 
 
 @pytest.fixture()
+def plotly_faceted_scatter() -> go.Figure:
+    fig = make_subplots(rows=1, cols=2)
+    fig.add_scatter(x=[1, 2, 3], y=[4, 5, 6], row=1, col=1)
+    fig.add_scatter(x=[1, 2, 3], y=[4, 5, 6], row=1, col=2)
+    return fig
+
+
+@pytest.fixture()
 def matplotlib_scatter() -> plt.Figure:
     fig, ax = plt.subplots()
     ax.plot([1, 10, 100], np.array([10, 100, 1000]) + 1)
@@ -136,3 +147,9 @@ def df_mixed() -> pd.DataFrame:
     bools = np_rng.choice([True, False], size=30)
     strings = np_rng.choice([*"abcdef"], size=30)
     return pd.DataFrame(dict(floats=floats, bools=bools, strings=strings))
+
+
+def _extract_anno_from_fig(fig: go.Figure | plt.Figure) -> str:
+    if isinstance(fig, go.Figure):
+        return fig.layout.annotations[-1].text
+    return fig.axes[0].artists[-1].txt.get_text()

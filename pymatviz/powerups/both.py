@@ -90,24 +90,44 @@ def annotate_metrics(
             funcs[key] = func
     if bad_keys := set(metrics) - set(funcs):
         raise ValueError(f"Unrecognized metrics: {bad_keys}")
-
-    nan_mask = np.isnan(xs) | np.isnan(ys)
-    xs, ys = xs[~nan_mask], ys[~nan_mask]
-
-    text = prefix
     newline = "\n" if backend == MATPLOTLIB else "<br>"
 
-    if isinstance(metrics, dict):
-        for key, val in metrics.items():
-            label = pretty_label(key, backend)
-            text += f"{label} = {val:{fmt}}{newline}"
-    else:
-        for key in metrics:
-            value = funcs[key](xs, ys)
-            label = pretty_label(key, backend)
-            text += f"{label} = {value:{fmt}}{newline}"
-    text += suffix
+    def calculate_metrics(xs: ArrayLike, ys: ArrayLike) -> str:
+        xs = np.asarray(xs)
+        ys = np.asarray(ys)
+        if xs.shape != ys.shape:
+            raise ValueError(
+                f"xs and ys must have the same shape. Got {xs.shape} and {ys.shape}"
+            )
+        nan_mask = np.isnan(xs) | np.isnan(ys)
+        xs, ys = xs[~nan_mask], ys[~nan_mask]
+        text = prefix
+        if isinstance(metrics, dict):
+            for key, val in metrics.items():
+                label = pretty_label(key, backend)
+                text += f"{label} = {val:{fmt}}{newline}"
+        else:
+            for key in metrics:
+                value = funcs[key](xs, ys)
+                label = pretty_label(key, backend)
+                text += f"{label} = {value:{fmt}}{newline}"
+        text += suffix
+        return text
 
+    if (
+        backend == PLOTLY
+        and isinstance(fig, go.Figure)
+        and any(getattr(trace, "xaxis", None) not in ("x", None) for trace in fig.data)
+    ):
+        # Handle faceted Plotly figure
+        texts = []
+        for trace in fig.data:
+            trace_xs, trace_ys = trace.x, trace.y
+            texts.append(calculate_metrics(trace_xs, trace_ys))
+        return annotate(texts, fig, **kwargs)
+
+    # Handle non-faceted figures or matplotlib
+    text = calculate_metrics(xs, ys)
     return annotate(text, fig, **kwargs)
 
 
@@ -234,74 +254,118 @@ def add_best_fit_line(
         else default_color,
     )
 
+    is_faceted = backend == PLOTLY and any(
+        getattr(trace, "xaxis", None) not in ("x", None) for trace in fig.data
+    )
     if trace_idx is None:
         n_traces = (
             len(fig.data) if isinstance(fig, go.Figure) else len(fig.get_children())
         )
-        if n_traces > 1 and warn:
+        if n_traces > 1 and warn and not is_faceted:
+            # for a faceted plot, multiple traces are expected so doesn't make sense to
+            # warn even if user may have wanted to specify trace_idx. we can't know
             print(  # noqa: T201
-                f"add_best_fit_line Warning: {trace_idx=} but figure has {n_traces} "
-                "traces, defaulting to trace_idx=0. Check fig.data[0] to make sure "
-                "this is the expected trace."
+                f"add_best_fit_line Warning: {trace_idx=} but figure has {n_traces}"
+                " traces, defaulting to trace_idx=0. Check fig.data[0] to make sure"
+                " this is the expected trace."
             )
         trace_idx = 0
 
-    if 0 in {len(xs), len(ys)}:
-        if isinstance(fig, go.Figure):
-            if not len(xs) or not len(ys):
-                trace = fig.data[trace_idx]
-                xs, ys = trace.x, trace.y
-        else:
-            ax = fig if isinstance(fig, plt.Axes) else fig.gca()
-            if not len(xs) or not len(ys):
-                # get scatter data
-                artist = ax.get_children()[trace_idx]
-                if isinstance(artist, plt.Line2D):
-                    xs, ys = artist.get_xdata(), artist.get_ydata()
-                else:
-                    xs, ys = artist.get_offsets().T
-    slope, intercept = np.polyfit(xs, ys, 1)
-
-    (x_min, x_max), _ = get_fig_xy_range(fig, trace_idx=trace_idx)
-
-    x0, x1 = x_min, x_max
-    y0, y1 = slope * x0 + intercept, slope * x1 + intercept
-
-    if annotate_params:
-        if backend == MATPLOTLIB:
-            defaults = dict(loc="lower right", color=line_color)
-        else:
-            defaults = dict(
-                xref="paper",
-                yref="paper",
-                x=0.98,
-                y=0.02,
-                showarrow=False,
-                font_color=line_color,
-            )
-        if isinstance(annotate_params, dict):
-            defaults |= annotate_params
-        sign = "+" if intercept >= 0 else "-"
-        annotate(
-            f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}", fig=fig, **defaults
-        )
+    use_custom_data = len(xs) > 0 and len(ys) > 0
 
     if backend == MATPLOTLIB:
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+
+        if not use_custom_data:
+            artist = ax.get_children()[trace_idx]
+            if isinstance(artist, plt.Line2D):
+                xs, ys = artist.get_xdata(), artist.get_ydata()
+            else:
+                xs, ys = artist.get_offsets().T
+
+        slope, intercept = np.polyfit(xs, ys, 1)
+        (x_min, x_max), _ = get_fig_xy_range(fig, trace_idx=trace_idx)
+        x0, x1 = x_min, x_max
+        y0, y1 = slope * x0 + intercept, slope * x1 + intercept
+
+        if annotate_params:
+            defaults = dict(loc="lower right", color=line_color)
+            if isinstance(annotate_params, dict):
+                defaults |= annotate_params
+            sign = "+" if intercept >= 0 else "-"
+            annotate(
+                f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}",
+                fig=fig,
+                **defaults,
+            )
 
         defaults = dict(alpha=0.7, linestyle="--", zorder=1)
         ax.axline((x0, y0), (x1, y1), **(defaults | (line_kwds or {})) | kwargs)
 
         return fig
-    if backend == PLOTLY:
-        if fig._grid_ref is not None:  # noqa: SLF001
-            for key in ("row", "col"):
-                kwargs.setdefault(key, "all")
 
-        line_kwds = dict(
-            color=kwargs.pop("color"), width=2, dash="dash", **(line_kwds or {})
-        ) | kwargs.pop("line", {})
-        fig.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=line_kwds, **kwargs)
+    if backend == PLOTLY:
+        # if is_faceted, add line to all subplots
+        traces = fig.data if is_faceted else [fig.data[trace_idx]]
+        annotation_texts = []
+
+        for trace in traces:
+            subplot = trace.xaxis[1:] if trace.xaxis else ""  # 'x2' -> '2', 'x' -> ''
+            xref = f"x{subplot}" if subplot else "x"
+            yref = f"y{subplot}" if subplot else "y"
+
+            _xs, _ys = (xs, ys) if use_custom_data else (trace.x, trace.y)
+
+            slope, intercept = np.polyfit(_xs, _ys, 1)
+
+            x_min, x_max = min(_xs), max(_xs)
+            x0, x1 = x_min, x_max
+            y0, y1 = slope * x0 + intercept, slope * x1 + intercept
+
+            line_kwds = (
+                (line_kwds or {})
+                | dict(color=line_color, width=2, dash="dash")
+                | kwargs.pop("line", {})
+            )
+            invalid_kwargs = ("color",)  # for fig.add_shape
+
+            fig.add_shape(
+                type="line",
+                x0=x0,
+                y0=y0,
+                x1=x1,
+                y1=y1,
+                xref=xref,
+                yref=yref,
+                line=line_kwds,
+                **{k: v for k, v in kwargs.items() if k not in invalid_kwargs},
+            )
+
+            if annotate_params:
+                sign = "+" if intercept >= 0 else "-"
+                annotation_texts.append(
+                    f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}"
+                )
+
+        if annotate_params:
+            defaults = dict(
+                xref="x domain",
+                yref="y domain",
+                x=0.98,
+                y=0.02,
+                xanchor="right",
+                yanchor="bottom",
+                showarrow=False,
+                font=dict(color=line_color),
+            )
+            if isinstance(annotate_params, dict):
+                defaults |= annotate_params
+
+            # Use a single string for non-faceted plots, list for faceted plots
+            annotation_text = (
+                annotation_texts[0] if len(annotation_texts) == 1 else annotation_texts
+            )
+            annotate(annotation_text, fig=fig, **defaults)
 
         return fig
 

@@ -206,6 +206,7 @@ class Key(LabelEnum):
     formula = "formula", "Formula"
     formula_pretty = "formula_pretty", "Pretty Formula"
     reduced_formula = "reduced_formula", "Reduced chemical formula"
+    anonymous_formula = "anonymous_formula", "Anonymous Formula"
     charge = "total_charge", "Total Charge"
     oxi_states = "oxidation_states", "Oxidation States"
     oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
@@ -228,8 +229,14 @@ class Key(LabelEnum):
     free_energy = "free_energy", f"Free Energy {eV}"
     gibbs_free_energy = "gibbs_free_energy", f"Gibbs Free Energy {eV}"
     helmholtz_free_energy = "helmholtz_free_energy", f"Helmholtz Free Energy {eV}"
+    corrected_energy = "corrected_energy", f"Corrected Energy {eV}"
+    uncorrected_energy = "uncorrected_energy", f"Uncorrected Energy {eV}"
     internal_energy = "internal_energy", f"Internal Energy {eV}"
     energy_per_atom = "energy_per_atom", f"Energy {eV_per_atom}"
+    corrected_energy_per_atom = (
+        "corrected_energy_per_atom",
+        f"Corrected Energy {eV_per_atom}",
+    )
     uncorrected_energy_per_atom = (
         "uncorrected_energy_per_atom",
         f"Uncorrected Energy {eV_per_atom}",
@@ -385,8 +392,15 @@ class Key(LabelEnum):
 
     # DFT
     dft = "dft", "DFT"
+    xc = "exchange_correlation", "Exchange-Correlation"
+    lda = "lda", "LDA"
+    gga = "gga", "GGA"
+    meta_gga = "meta_gga", "Meta-GGA"
+    hybrid = "hybrid", "Hybrid"
+    hartree_fock = "hartree_fock", "Hartree-Fock"
     pbe = "pbe", "PBE"
     pbe_sol = "pbe_sol", "PBEsol"
+    scan = "scan", "SCAN"
     r2scan = "r2scan", "r2SCAN"
     hse = "hse", "HSE"
     xc_functional = "xc_functional", "Exchange-Correlation Functional"
