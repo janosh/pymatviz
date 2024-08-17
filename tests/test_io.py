@@ -7,7 +7,7 @@ from pathlib import Path
 from shutil import which
 from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
-from xml.etree import ElementTree
+from xml.etree import ElementTree  # noqa: ICN001
 
 import pandas as pd
 import plotly.graph_objects as go
