@@ -495,9 +495,10 @@ def test_annotate_non_faceted_plotly_with_list_raises(
     plotly_scatter: go.Figure,
 ) -> None:
     text = ["Annotation 1", "Annotation 2"]
+    text_type = type(text).__name__
     with pytest.raises(
         ValueError,
-        match=re.escape(f"Unexpected {text=} type for non-faceted plot, must be str"),
+        match=re.escape(f"Unexpected {text_type=} for non-faceted plot, must be str"),
     ):
         annotate(text, plotly_scatter)
 
