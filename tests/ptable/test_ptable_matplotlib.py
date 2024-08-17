@@ -30,12 +30,12 @@ if TYPE_CHECKING:
 df_ptable = df_ptable.copy()  # avoid changing the df in place
 
 
-@pytest.fixture()
+@pytest.fixture
 def glass_elem_counts(glass_formulas: pd.Series[Composition]) -> pd.Series[int]:
     return count_elements(glass_formulas)
 
 
-@pytest.fixture()
+@pytest.fixture
 def steel_formulas() -> list[str]:
     """Unusually fractional compositions, good for testing edge cases.
 
@@ -52,7 +52,7 @@ def steel_formulas() -> list[str]:
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
     return count_elements(steel_formulas)
 

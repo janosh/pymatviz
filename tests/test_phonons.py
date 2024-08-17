@@ -29,7 +29,7 @@ MSONable.REDIRECT["atomate2.common.schemas.phonons"] = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def phonon_bands_doses_mp_2758() -> BandsDoses:
     with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.lzma") as file:
         dft_doc = json.loads(file.read(), cls=MontyDecoder)
@@ -42,14 +42,14 @@ def phonon_bands_doses_mp_2758() -> BandsDoses:
     return {"bands": bands, "doses": doses}
 
 
-@pytest.fixture()
+@pytest.fixture
 def phonon_bands_doses_mp_2667() -> BandsDoses:
     # with zopen(f"{TEST_FILES}/phonons/mp-2691-Cd4Se4-pbe.json.lzma") as file:
     with zopen(f"{TEST_FILES}/phonons/mp-2667-Cs1Au1-pbe.json.lzma") as file:
         return json.loads(file.read(), cls=MontyDecoder)
 
 
-@pytest.fixture()
+@pytest.fixture
 def phonon_doses() -> dict[str, PhononDos]:
     paths = glob(f"{TEST_FILES}/phonons/mp-*-pbe.json.lzma")
     assert len(paths) >= 2
