@@ -471,34 +471,30 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
-def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
-    """Annotate a matplotlib or plotly figure.
+def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
+    """Annotate a matplotlib or plotly figure. Supports faceted plots plotly figure with
+    trace with empty strings skipped.
 
     Args:
-        text (str): The text to use for annotation.
+        text (str): The text to use for annotation. If fig is plotly faceted, text can
+            be a list of strings to annotate each subplot.
         fig (plt.Axes | plt.Figure | go.Figure | None, optional): The matplotlib Axes,
-            Figure or plotly Figure to annotate. If None, the current matplotlib Axes
-            will be used. Defaults to None.
-        color (str, optional): The color of the text. Defaults to "black".
+            Figure or plotly Figure to annotate.
         **kwargs: Additional arguments to pass to matplotlib's AnchoredText or plotly's
             fig.add_annotation().
 
     Returns:
         plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
-    backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
     color = kwargs.pop("color", get_font_color(fig))
 
-    if backend == MATPLOTLIB:
+    if isinstance(fig, (plt.Figure, plt.Axes)):
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
-
         defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
         text_box = AnchoredText(text, **(defaults | kwargs))
         ax.add_artist(text_box)
     elif isinstance(fig, go.Figure):
         defaults = dict(
-            xref="paper",
-            yref="paper",
             x=0.02,
             y=0.96,
             showarrow=False,
@@ -506,9 +502,35 @@ def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
             align="left",
         )
 
-        fig.add_annotation(text=text, **(defaults | kwargs))
+        # Annotate all subplots or main plot if not faceted
+        if any(
+            getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data
+        ):  # Faceted plot
+            for idx, trace in enumerate(fig.data):
+                # if text is str, use it for all subplots though we might want to
+                # warn since this will likely rarely be intended
+                sub_text = text if isinstance(text, str) else text[idx]
+                # skip traces for which no annotations were provided
+                if not sub_text:
+                    continue
+
+                subplot_idx = trace.xaxis[1:] or ""  # e.g., 'x2' -> '2', 'x' -> ''
+                xref = f"x{subplot_idx} domain" if subplot_idx else "x domain"
+                yref = f"y{subplot_idx} domain" if subplot_idx else "y domain"
+                fig.add_annotation(
+                    text=sub_text,
+                    **(dict(xref=xref, yref=yref) | defaults | kwargs),
+                )
+        else:  # Non-faceted plot
+            if not isinstance(text, str):
+                raise ValueError(
+                    f"Unexpected {text=} type for non-faceted plot, must be str"
+                )
+            fig.add_annotation(
+                text=text, **(dict(xref="paper", yref="paper") | defaults | kwargs)
+            )
     else:
-        raise ValueError(f"Unexpected {fig=}")
+        raise TypeError(f"Unexpected {fig=}")
 
     return fig
 
