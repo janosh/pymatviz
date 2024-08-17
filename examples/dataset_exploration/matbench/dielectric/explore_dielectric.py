@@ -7,6 +7,7 @@ from aviary.wren.utils import (
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
+import pymatviz as pmv
 from pymatviz import (
     count_elements,
     crystal_sys_order,
@@ -16,7 +17,6 @@ from pymatviz import (
     spacegroup_sunburst,
 )
 from pymatviz.enums import Key
-from pymatviz.io import save_fig
 from pymatviz.utils import crystal_sys_from_spg_num
 
 
@@ -59,26 +59,26 @@ fig = ptable_heatmap(
     count_elements(df_diel[Key.formula]), log=True, return_type="figure"
 )
 fig.suptitle("Elemental prevalence in the Matbench dielectric dataset")
-save_fig(fig, "dielectric-ptable-heatmap.pdf")
+pmv.save_fig(fig, "dielectric-ptable-heatmap.pdf")
 
 
 # %%
 fig = ptable_heatmap_plotly(df_diel[Key.formula], log=True, colorscale="viridis")
 title = "<b>Elements in Matbench Dielectric</b>"
 fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
-# save_fig(fig, "dielectric-ptable-heatmap-plotly.pdf")
+# pmv.save_fig(fig, "dielectric-ptable-heatmap-plotly.pdf")
 
 
 # %%
 ax = spacegroup_bar(df_diel[Key.spg_num])
 ax.set_title("Space group histogram", y=1.1)
-save_fig(ax, "dielectric-spacegroup-hist.pdf")
+pmv.save_fig(ax, "dielectric-spacegroup-hist.pdf")
 
 
 # %%
 fig = spacegroup_sunburst(df_diel[Key.spg_num], show_counts="percent")
 fig.layout.title = "Space group sunburst"
-# save_fig(fig, "dielectric-spacegroup-sunburst.pdf")
+# pmv.save_fig(fig, "dielectric-spacegroup-sunburst.pdf")
 fig.show()
 
 
@@ -112,7 +112,7 @@ fig.layout.xaxis = reusable_x_axis = dict(
 )
 
 
-# save_fig(fig, "dielectric-violin.pdf")
+# pmv.save_fig(fig, "dielectric-violin.pdf")
 fig.show()
 
 
@@ -153,7 +153,7 @@ fig.layout.margin = dict(b=10, l=10, r=10, t=50)
 fig.layout.showlegend = False
 fig.layout.update(width=1000, height=400, xaxis=reusable_x_axis)
 
-# save_fig(fig, "dielectric-violin-num-wyckoffs.pdf")
+# pmv.save_fig(fig, "dielectric-violin-num-wyckoffs.pdf")
 fig.show()
 
 
@@ -175,5 +175,5 @@ fig.layout.legend = dict(x=1, y=1, xanchor="right")
 # slightly increase scatter point size (lower sizeref means larger)
 fig.update_traces(marker_sizeref=0.08, selector=dict(mode="markers"))
 
-# save_fig(fig, "dielectric-scatter.pdf")
+# pmv.save_fig(fig, "dielectric-scatter.pdf")
 fig.show()

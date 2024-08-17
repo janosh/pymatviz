@@ -11,10 +11,10 @@ import plotly.io as pio
 from pymatgen.core import Composition, Structure
 from tqdm import tqdm
 
+import pymatviz as pmv
 from pymatviz import count_elements, pmv_dark_template
 from pymatviz.enums import Key
 from pymatviz.histogram import spacegroup_bar
-from pymatviz.io import save_fig
 from pymatviz.powerups import add_identity_line
 from pymatviz.ptable import ptable_heatmap, ptable_heatmap_splits
 from pymatviz.sunburst import spacegroup_sunburst
@@ -62,7 +62,7 @@ fig.layout.xaxis.title = Key.energy.label
 fig.layout.margin = dict(l=5, r=5, t=5, b=5)
 fig.layout.legend.update(x=0, y=1)
 fig.show()
-# save_fig(fig, "energy-hist.pdf")
+# pmv.save_fig(fig, "energy-hist.pdf")
 
 # @janosh 2024-05-15: initially surprised by the difference in r2scan/pbe energy distros
 # how could energy differences between two similar chemistries always be similar across
@@ -101,7 +101,7 @@ fig.update_layout(xaxis_title=total_force_col, margin=dict(l=5, r=5, t=5, b=5))
 fig.layout.legend.update(x=0, y=1)
 fig.update_yaxes(type="log")
 fig.show()
-# save_fig(fig, "forces-hist.pdf")
+# pmv.save_fig(fig, "forces-hist.pdf")
 
 
 # %% plot element counts
@@ -110,7 +110,7 @@ if r2scan_elem_counts is None:
     r2scan_elem_counts = count_elements(df_r2scan[Key.formula])
 fig = ptable_heatmap(r2scan_elem_counts, return_type="figure")
 
-save_fig(fig, "r2scan-element-counts-ptable.pdf")
+pmv.save_fig(fig, "r2scan-element-counts-ptable.pdf")
 
 
 # %%
@@ -166,7 +166,7 @@ fig = ptable_heatmap(
     return_type="figure",
 )
 
-save_fig(fig, "ptable-has-pbe-but-no-r2scan.pdf")
+pmv.save_fig(fig, "ptable-has-pbe-but-no-r2scan.pdf")
 
 
 # %% per-elem mean abs magmoms
@@ -181,7 +181,7 @@ fig = ptable_heatmap(
     value_fmt=".1f",
     return_type="figure",
 )
-save_fig(fig, "magmoms-ptable.pdf")
+pmv.save_fig(fig, "magmoms-ptable.pdf")
 
 
 # %% spacegroup distribution
@@ -200,7 +200,7 @@ fig = spacegroup_sunburst(df_r2scan[Key.spg_num], show_counts="percent")
 fig.layout.title = dict(text=f"{n_r2scan:,} r2SCAN spacegroups", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=30)
 fig.show()
-save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
+pmv.save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
 
 
 # %% spacegroup histogram
@@ -208,7 +208,7 @@ fig = spacegroup_bar(
     df_r2scan[Key.spg_num], title="r2SCAN spacegroup histogram", log=True
 )
 fig.show()
-save_fig(fig, "r2scan-spacegroup-hist.pdf")
+pmv.save_fig(fig, "r2scan-spacegroup-hist.pdf")
 
 
 # %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2scan calcs

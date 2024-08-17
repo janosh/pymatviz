@@ -14,13 +14,13 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
 
+import pymatviz as pmv
 from pymatviz.io import (
     TqdmDownload,
     df_to_html_table,
     df_to_pdf,
     df_to_svg,
     normalize_and_crop_pdf,
-    save_fig,
 )
 
 
@@ -48,7 +48,7 @@ def test_save_fig(
         pytest.skip("saving to Svelte file not supported for matplotlib figures")
 
     path = f"{tmp_path}/fig.{ext}"
-    save_fig(fig, path, plotly_config=plotly_config, env_disable=env_disable)
+    pmv.save_fig(fig, path, plotly_config=plotly_config, env_disable=env_disable)
 
     if any(var in os.environ for var in env_disable):
         # if CI env var is set, we should not save the figure
@@ -82,7 +82,7 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
     fig = go.Figure()
     fig.add_scatter(x=[1, 2], y=[3, 4])
     path = f"{tmp_path}/test.pdf"
-    save_fig(fig, path)
+    pmv.save_fig(fig, path)
 
     # check PDF doesn't contain "Loading [MathJax]/extensions/MathMenu.js"
     with open(path, "rb") as f:

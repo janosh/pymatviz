@@ -5,9 +5,9 @@ import plotly.express as px
 from matminer.datasets import load_dataset
 from pymatgen.core import Composition
 
+import pymatviz as pmv
 from pymatviz import count_elements, ptable_heatmap
 from pymatviz.enums import Key
-from pymatviz.io import save_fig
 
 
 """Stats for the matbench_expt_gap dataset.
@@ -62,7 +62,7 @@ fig = ptable_heatmap(
     return_type="figure",
 )
 fig.suptitle("Elements in Matbench experimental band gap dataset")
-save_fig(fig, "expt-gap-ptable-heatmap.pdf")
+pmv.save_fig(fig, "expt-gap-ptable-heatmap.pdf")
 
 
 # %%
