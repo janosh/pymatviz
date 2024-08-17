@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
-from random import random
 from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
@@ -15,26 +15,11 @@ from pymatviz.powerups.both import (
     annotate_metrics,
 )
 from pymatviz.utils import MATPLOTLIB, PLOTLY, Backend, pretty_label
-from tests.conftest import y_pred, y_true
+from tests.conftest import _extract_anno_from_fig, y_pred, y_true
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-
-def _extract_anno_from_fig(fig: go.Figure | plt.Figure, idx: int = -1) -> str:
-    # get plotly or matplotlib annotation text. idx=-1 gets the most recently added
-    # annotation
-    if not isinstance(fig, (go.Figure, plt.Figure)):
-        raise TypeError(f"Unexpected {type(fig)=}")
-
-    if isinstance(fig, go.Figure):
-        anno_text = fig.layout.annotations[idx].text
-    else:
-        text_box = fig.axes[0].artists[idx]
-        anno_text = text_box.txt.get_text()
-
-    return anno_text
 
 
 @pytest.mark.parametrize("annotate_params", [True, False, {"color": "green"}])
@@ -203,19 +188,19 @@ def test_add_identity_raises() -> None:
         ({"MAE": 1.4, "R2": 0.2, "RMSE": 1.9}, ".0"),
     ],
 )
+@pytest.mark.parametrize("backend", [PLOTLY, MATPLOTLIB])
 def test_annotate_metrics(
     metrics: dict[str, float] | Sequence[str],
     fmt: str,
     plotly_scatter: go.Figure,
     matplotlib_scatter: plt.Figure,
+    backend: Backend,
 ) -> None:
     # randomly switch between plotly and matplotlib
-    fig = plotly_scatter if random() > 0.5 else matplotlib_scatter
+    fig = plotly_scatter if backend == PLOTLY else matplotlib_scatter
 
     out_fig = annotate_metrics(y_pred, y_true, metrics=metrics, fmt=fmt, fig=fig)
-
     assert out_fig is fig
-    backend: Backend = PLOTLY if isinstance(out_fig, go.Figure) else MATPLOTLIB
 
     expected = dict(MAE=0.121, R2=0.784, RMSE=0.146, MAPE=0.52, MSE=0.021)
 
@@ -243,14 +228,42 @@ def test_annotate_metrics(
     ), f"{anno_text_with_fixes=}"
 
 
+def test_annotate_metrics_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:
+    out_fig = annotate_metrics(y_true, y_pred, fig=plotly_faceted_scatter)
+
+    assert len(out_fig.layout.annotations) == 2
+    for anno in out_fig.layout.annotations:
+        assert "MAE" in anno.text
+        assert "R<sup>2</sup>" in anno.text
+
+
+def test_annotate_metrics_prefix_suffix(plotly_scatter: go.Figure) -> None:
+    prefix, suffix = "Metrics:", "End"
+    out_fig = annotate_metrics(
+        y_true, y_pred, fig=plotly_scatter, prefix=prefix, suffix=suffix
+    )
+
+    anno_text = _extract_anno_from_fig(out_fig)
+    assert anno_text.startswith(prefix)
+    assert anno_text.endswith(suffix)
+
+
 @pytest.mark.parametrize("metrics", [42, datetime.now(tz=timezone.utc)])
-def test_annotate_metrics_bad_metrics(metrics: int | datetime) -> None:
-    err_msg = f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
-    with pytest.raises(TypeError, match=err_msg):
-        annotate_metrics(y_pred, y_true, metrics=metrics)  # type: ignore[arg-type]
+def test_annotate_metrics_bad_metrics(metrics: Any) -> None:
+    with pytest.raises(TypeError, match="metrics must be dict|list|tuple|set"):
+        annotate_metrics(y_true, y_pred, metrics=metrics)
 
 
-def test_annote_metrics_bad_fig() -> None:
-    err_msg = "Unexpected type for fig: str, must be one of"
-    with pytest.raises(TypeError, match=err_msg):
-        annotate_metrics(y_pred, y_true, fig="invalid")
+def test_annotate_metrics_bad_fig() -> None:
+    with pytest.raises(TypeError, match="Unexpected type for fig: str"):
+        annotate_metrics(y_true, y_pred, fig="not a figure")
+
+
+@pytest.mark.parametrize("backend", [PLOTLY, MATPLOTLIB])
+def test_annotate_metrics_different_lengths(backend: Backend) -> None:
+    fig = go.Figure() if backend == PLOTLY else plt.figure()
+    xs, ys = y_true, y_pred[:-1]
+
+    err_msg = f"xs and ys must have the same shape. Got {xs.shape} and {ys.shape}"
+    with pytest.raises(ValueError, match=re.escape(err_msg)):
+        annotate_metrics(xs, ys, fig=fig)

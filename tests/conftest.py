@@ -54,6 +54,8 @@ df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]
 
 @pytest.fixture(autouse=True)
 def _run_around_tests() -> Generator[None, None, None]:
+    """Ensure matplotlib plots are closed after each test so as not to leak state
+    between tests."""
     # runs before each test
 
     yield
@@ -145,3 +147,9 @@ def df_mixed() -> pd.DataFrame:
     bools = np_rng.choice([True, False], size=30)
     strings = np_rng.choice([*"abcdef"], size=30)
     return pd.DataFrame(dict(floats=floats, bools=bools, strings=strings))
+
+
+def _extract_anno_from_fig(fig: go.Figure | plt.Figure) -> str:
+    if isinstance(fig, go.Figure):
+        return fig.layout.annotations[-1].text
+    return fig.axes[0].artists[-1].txt.get_text()

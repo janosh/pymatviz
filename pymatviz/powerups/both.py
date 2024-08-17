@@ -90,24 +90,44 @@ def annotate_metrics(
             funcs[key] = func
     if bad_keys := set(metrics) - set(funcs):
         raise ValueError(f"Unrecognized metrics: {bad_keys}")
-
-    nan_mask = np.isnan(xs) | np.isnan(ys)
-    xs, ys = xs[~nan_mask], ys[~nan_mask]
-
-    text = prefix
     newline = "\n" if backend == MATPLOTLIB else "<br>"
 
-    if isinstance(metrics, dict):
-        for key, val in metrics.items():
-            label = pretty_label(key, backend)
-            text += f"{label} = {val:{fmt}}{newline}"
-    else:
-        for key in metrics:
-            value = funcs[key](xs, ys)
-            label = pretty_label(key, backend)
-            text += f"{label} = {value:{fmt}}{newline}"
-    text += suffix
+    def calculate_metrics(xs: ArrayLike, ys: ArrayLike) -> str:
+        xs = np.asarray(xs)
+        ys = np.asarray(ys)
+        if xs.shape != ys.shape:
+            raise ValueError(
+                f"xs and ys must have the same shape. Got {xs.shape} and {ys.shape}"
+            )
+        nan_mask = np.isnan(xs) | np.isnan(ys)
+        xs, ys = xs[~nan_mask], ys[~nan_mask]
+        text = prefix
+        if isinstance(metrics, dict):
+            for key, val in metrics.items():
+                label = pretty_label(key, backend)
+                text += f"{label} = {val:{fmt}}{newline}"
+        else:
+            for key in metrics:
+                value = funcs[key](xs, ys)
+                label = pretty_label(key, backend)
+                text += f"{label} = {value:{fmt}}{newline}"
+        text += suffix
+        return text
 
+    if (
+        backend == PLOTLY
+        and isinstance(fig, go.Figure)
+        and any(getattr(trace, "xaxis", None) not in ("x", None) for trace in fig.data)
+    ):
+        # Handle faceted Plotly figure
+        texts = []
+        for trace in fig.data:
+            trace_xs, trace_ys = trace.x, trace.y
+            texts.append(calculate_metrics(trace_xs, trace_ys))
+        return annotate(texts, fig, **kwargs)
+
+    # Handle non-faceted figures or matplotlib
+    text = calculate_metrics(xs, ys)
     return annotate(text, fig, **kwargs)
 
 
