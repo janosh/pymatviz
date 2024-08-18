@@ -19,9 +19,9 @@ https://ml.materialsproject.org/projects/matbench_phonons
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
+import pymatviz as pmv
 from pymatviz import count_elements, ptable_heatmap, spacegroup_bar
 from pymatviz.enums import Key
-from pymatviz.io import save_fig
 
 
 # %%
@@ -35,7 +35,7 @@ df_phonon[[Key.spg_symbol, Key.spg_num]] = [
 
 # %%
 ax = df_phonon.hist(column=last_dos_peak, bins=50)
-save_fig(ax, "phonons-last-dos-peak-hist.pdf")
+pmv.save_fig(ax, "phonons-last-dos-peak-hist.pdf")
 
 
 # %%
@@ -46,9 +46,9 @@ fig = ptable_heatmap(
     count_elements(df_phonon[Key.formula]), log=True, return_type="figure"
 )
 fig.suptitle("Elemental prevalence in the Matbench phonons dataset")
-save_fig(fig, "phonons-ptable-heatmap.pdf")
+pmv.save_fig(fig, "phonons-ptable-heatmap.pdf")
 
 
 # %%
 ax = spacegroup_bar(df_phonon[Key.spg_num])
-save_fig(ax, "phonons-spacegroup-hist.pdf")
+pmv.save_fig(ax, "phonons-spacegroup-hist.pdf")

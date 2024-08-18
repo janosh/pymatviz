@@ -5,18 +5,8 @@ import numpy as np
 from matminer.datasets import load_dataset
 from pymatgen.core.periodic_table import Element
 
+import pymatviz as pmv
 from pymatviz.enums import Key
-from pymatviz.io import save_and_compress_svg
-from pymatviz.process_data import count_elements
-from pymatviz.ptable import (
-    ptable_heatmap,
-    ptable_heatmap_ratio,
-    ptable_heatmap_splits,
-    ptable_hists,
-    ptable_lines,
-    ptable_scatters,
-)
-from pymatviz.utils import df_ptable
 
 
 # %%
@@ -26,29 +16,29 @@ df_steels = load_dataset("matbench_steels")
 
 
 # %% Elemental Plots
-ax = ptable_heatmap(
-    count_elements(df_expt_gap[Key.composition]),
+ax = pmv.ptable_heatmap(
+    pmv.count_elements(df_expt_gap[Key.composition]),
     log=True,
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
 )
 ax.set_title(title, x=0.75, y=2.5, fontsize=18, fontweight="bold")
-save_and_compress_svg(ax, "ptable-heatmap")
+pmv.io.save_and_compress_svg(ax, "ptable-heatmap")
 
 
 # %%
-fig = ptable_heatmap(df_ptable[Key.atomic_mass], return_type="figure")
+fig = pmv.ptable_heatmap(pmv.df_ptable[Key.atomic_mass], return_type="figure")
 fig.suptitle("Atomic Mass Heatmap", y=0.96, fontsize=20, fontweight="bold")
-save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-atomic-mass")
 
 
 # %%
 # Filter out near-zero entries
-ptable_data = count_elements(df_expt_gap[Key.composition])
+ptable_data = pmv.count_elements(df_expt_gap[Key.composition])
 ptable_data = ptable_data[ptable_data > 0.01]
 
-fig = ptable_heatmap(
+fig = pmv.ptable_heatmap(
     ptable_data,
     value_show_mode="percent",
     exclude_elements=["O"],
@@ -56,16 +46,16 @@ fig = ptable_heatmap(
 )
 title = "Elements in Matbench Experimental Band Gap (percent)"
 fig.suptitle(title, y=0.96, fontsize=20, fontweight="bold")
-save_and_compress_svg(fig, "ptable-heatmap-percent")
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-percent")
 
 
 # %%
-fig = ptable_heatmap_ratio(
+fig = pmv.ptable_heatmap_ratio(
     df_expt_gap[Key.composition], df_steels[Key.composition], log=True, value_fmt=".4g"
 )
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
-save_and_compress_svg(fig, "ptable-heatmap-ratio")
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-ratio")
 
 
 # %% Histograms laid out in as a periodic table
@@ -74,7 +64,7 @@ data_dict = {
     elem.symbol: np_rng.standard_normal(100) + np_rng.standard_normal(100)
     for elem in Element
 }
-fig = ptable_hists(
+fig = pmv.ptable_hists(
     data_dict,
     colormap="coolwarm",
     cbar_title="Periodic Table Histograms",
@@ -83,7 +73,7 @@ fig = ptable_hists(
     add_elem_type_legend=True,
     # x_range=(0, None),
 )
-save_and_compress_svg(fig, "ptable-hists")
+pmv.io.save_and_compress_svg(fig, "ptable-hists")
 
 
 # %% Scatter plots laid out as a periodic table
@@ -96,7 +86,7 @@ data_dict = {  # random parity data with y = x + noise
     for elem in Element
 }
 
-fig = ptable_scatters(
+fig = pmv.ptable_scatters(
     data_dict,
     colormap="coolwarm",
     cbar_title="Periodic Table Scatter Plots",
@@ -104,10 +94,10 @@ fig = ptable_scatters(
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
 )
-save_and_compress_svg(fig, "ptable-scatters-parity")
+pmv.io.save_and_compress_svg(fig, "ptable-scatters-parity")
 
 
-# %% 2nd ptable_scatters example
+# %% 2nd pmv.ptable_scatters example
 data_dict = {  # random parabola data with y = x^2 + noise
     elem.symbol: [
         np.arange(10),
@@ -117,7 +107,7 @@ data_dict = {  # random parabola data with y = x^2 + noise
     for elem in Element
 }
 
-fig = ptable_scatters(
+fig = pmv.ptable_scatters(
     data_dict,
     colormap="inferno",
     cbar_title="Periodic Table Scatter Plots",
@@ -126,7 +116,7 @@ fig = ptable_scatters(
     symbol_kwargs=dict(fontsize=14),
     color_elem_strategy="off",
 )
-save_and_compress_svg(fig, "ptable-scatters-parabola")
+pmv.io.save_and_compress_svg(fig, "ptable-scatters-parabola")
 
 
 # %% Line plots laid out as a periodic table
@@ -138,12 +128,12 @@ data_dict = {
     for elem in Element
 }
 
-fig = ptable_lines(
+fig = pmv.ptable_lines(
     data_dict,
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
 )
-save_and_compress_svg(fig, "ptable-lines")
+pmv.io.save_and_compress_svg(fig, "ptable-lines")
 
 
 # %% Evenly-split tile plots laid out as a periodic table
@@ -155,7 +145,7 @@ for n_splits in (2, 3, 4):
         for elem in Element
     }
 
-    fig = ptable_heatmap_splits(
+    fig = pmv.ptable_heatmap_splits(
         data=data_dict,
         colormap="coolwarm",
         start_angle=135 if n_splits % 2 == 0 else 90,
@@ -163,4 +153,4 @@ for n_splits in (2, 3, 4):
         hide_f_block=True,
     )
     fig.show()
-    save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")
+    pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")

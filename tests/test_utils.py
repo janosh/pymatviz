@@ -1,3 +1,4 @@
+# ruff: noqa: SLF001
 from __future__ import annotations
 
 import copy
@@ -13,29 +14,8 @@ import plotly.io as pio
 import pytest
 from matplotlib.offsetbox import TextArea
 
-from pymatviz.utils import (
-    MATPLOTLIB,
-    PLOTLY,
-    VALID_FIG_NAMES,
-    CrystalSystem,
-    _get_matplotlib_font_color,
-    _get_plotly_font_color,
-    annotate,
-    bin_df_cols,
-    crystal_sys_from_spg_num,
-    df_to_arrays,
-    get_cbar_label_formatter,
-    get_fig_xy_range,
-    get_font_color,
-    html_tag,
-    luminance,
-    patch_dict,
-    pick_bw_for_contrast,
-    pretty_label,
-    si_fmt,
-    si_fmt_int,
-    validate_fig,
-)
+import pymatviz as pmv
+from pymatviz.utils import MATPLOTLIB, PLOTLY, VALID_FIG_NAMES, CrystalSystem
 from tests.conftest import y_pred, y_true
 
 
@@ -52,7 +32,7 @@ from tests.conftest import y_pred, y_true
     ],
 )
 def test_crystal_sys_from_spg_num(spg_num: int, crystal_sys: CrystalSystem) -> None:
-    assert crystal_sys == crystal_sys_from_spg_num(spg_num)
+    assert crystal_sys == pmv.utils.crystal_sys_from_spg_num(spg_num)
 
 
 @pytest.mark.parametrize("spg", [-1, 0, 231])
@@ -61,7 +41,7 @@ def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
         ValueError,
         match=f"Invalid space group number {spg}, must be 1 <= num <= 230",
     ):
-        crystal_sys_from_spg_num(spg)
+        pmv.utils.crystal_sys_from_spg_num(spg)
 
 
 @pytest.mark.parametrize("spg", [1.2, "3"])
@@ -69,35 +49,35 @@ def test_crystal_sys_from_spg_num_typeerror(spg: int) -> None:
     with pytest.raises(
         TypeError, match=f"Expect integer space group number, got {spg=}"
     ):
-        crystal_sys_from_spg_num(spg)
+        pmv.utils.crystal_sys_from_spg_num(spg)
 
 
 def test_df_to_arrays() -> None:
     df_regr = pd.DataFrame([y_true, y_pred]).T
-    x1, y1 = df_to_arrays(None, y_true, y_pred)
+    x1, y1 = pmv.utils.df_to_arrays(None, y_true, y_pred)
     x_col, y_col = df_regr.columns[:2]
-    x2, y2 = df_to_arrays(df_regr, x_col, y_col)
+    x2, y2 = pmv.utils.df_to_arrays(df_regr, x_col, y_col)
     assert x1 == pytest.approx(x2)
     assert y1 == pytest.approx(y2)
     assert x1 == pytest.approx(y_true)
     assert y1 == pytest.approx(y_pred)
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        df_to_arrays("foo", y_true, y_pred)
+        pmv.utils.df_to_arrays("foo", y_true, y_pred)
 
     bad_col_name = "not-real-col-name"
     with pytest.raises(KeyError) as exc:
-        df_to_arrays(df_regr, bad_col_name, df_regr.columns[0])
+        pmv.utils.df_to_arrays(df_regr, bad_col_name, df_regr.columns[0])
 
     assert "not-real-col-name" in str(exc.value)
 
 
 def test_df_to_arrays_strict() -> None:
-    args = df_to_arrays(42, "foo", "bar", strict=False)
+    args = pmv.utils.df_to_arrays(42, "foo", "bar", strict=False)
     assert args == ("foo", "bar")
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        df_to_arrays(42, "foo", "bar", strict=True)
+        pmv.utils.df_to_arrays(42, "foo", "bar", strict=True)
 
 
 @pytest.mark.parametrize(
@@ -130,7 +110,7 @@ def test_bin_df_cols(
     df_float_orig = copy.deepcopy(df_float)
 
     bin_counts_col = "bin_counts"
-    df_binned = bin_df_cols(
+    df_binned = pmv.utils.bin_df_cols(
         df_float,
         bin_by_cols,
         group_by_cols=group_by_cols,
@@ -177,7 +157,7 @@ def test_bin_df_cols_raises() -> None:
 
     # test error when passing n_bins as list but list has wrong length
     with pytest.raises(ValueError) as exc:  # noqa: PT011
-        bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])
+        pmv.utils.bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])
 
     assert "len(bin_by_cols)=2 != len(n_bins)=1" in str(exc.value)
 
@@ -187,31 +167,31 @@ ref_sample_dict = deepcopy(sample_dict)
 
 
 def test_patch_dict_with_kwargs() -> None:
-    with patch_dict(sample_dict, a=2, b=3, d=4) as patched_dict:
+    with pmv.utils.patch_dict(sample_dict, a=2, b=3, d=4) as patched_dict:
         assert patched_dict == {"a": 2, "b": 3, "c": [3, 4], "d": 4}
     assert sample_dict == ref_sample_dict
 
 
 def test_patch_dict_with_args() -> None:
-    with patch_dict(sample_dict, {"a": 5, "b": 6}) as patched_dict:
+    with pmv.utils.patch_dict(sample_dict, {"a": 5, "b": 6}) as patched_dict:
         assert patched_dict == {"a": 5, "b": 6, "c": [3, 4]}
     assert sample_dict == ref_sample_dict
 
 
 def test_patch_dict_with_none_value() -> None:
-    with patch_dict(sample_dict, b=5, c=None) as patched_dict:
+    with pmv.utils.patch_dict(sample_dict, b=5, c=None) as patched_dict:
         assert patched_dict == {"a": 1, "b": 5, "c": None}
     assert sample_dict == ref_sample_dict
 
 
 def test_patch_dict_with_new_key() -> None:
-    with patch_dict(sample_dict, d=7, e=None) as patched_dict:
+    with pmv.utils.patch_dict(sample_dict, d=7, e=None) as patched_dict:
         assert patched_dict == {"a": 1, "b": None, "c": [3, 4], "d": 7, "e": None}
     assert sample_dict == ref_sample_dict
 
 
 def test_patch_dict_with_mutable_value() -> None:
-    with patch_dict(sample_dict, c=[5, 6]) as patched_dict:
+    with pmv.utils.patch_dict(sample_dict, c=[5, 6]) as patched_dict:
         assert patched_dict["c"] == [5, 6]
         patched_dict["c"].append(7)
         patched_dict["c"][0] = 99
@@ -223,13 +203,13 @@ def test_patch_dict_with_mutable_value() -> None:
 
 def test_patch_dict_empty() -> None:
     empty_dict: dict[str, int] = {}
-    with patch_dict(empty_dict, a=2) as patched_dict:
+    with pmv.utils.patch_dict(empty_dict, a=2) as patched_dict:
         assert patched_dict == {"a": 2}
     assert empty_dict == {}
 
 
 def test_patch_dict_nested_dict() -> None:
-    with patch_dict(sample_dict, c={"x": 10, "y": 20}) as patched_dict:
+    with pmv.utils.patch_dict(sample_dict, c={"x": 10, "y": 20}) as patched_dict:
         assert patched_dict == {"a": 1, "b": None, "c": {"x": 10, "y": 20}}
     assert sample_dict == ref_sample_dict
 
@@ -237,14 +217,14 @@ def test_patch_dict_nested_dict() -> None:
 def test_patch_dict_overlapping_args_kwargs() -> None:
     # kwargs should take precedence over args
     a_val = 8
-    with patch_dict(sample_dict, {"a": 7}, a=a_val) as patched_dict:
+    with pmv.utils.patch_dict(sample_dict, {"a": 7}, a=a_val) as patched_dict:
         assert patched_dict["a"] == a_val
     assert sample_dict == ref_sample_dict
 
 
 def test_patch_dict_remove_key_inside_context() -> None:
     d_val = 7
-    with patch_dict(sample_dict, d=d_val) as patched_dict:
+    with pmv.utils.patch_dict(sample_dict, d=d_val) as patched_dict:
         assert patched_dict["d"] == d_val
         del patched_dict["d"]
         assert "d" not in patched_dict
@@ -272,7 +252,7 @@ assert ref_sample_dict == sample_dict, "sample_dict should not be modified"
     ],
 )
 def test_luminance(color: tuple[float, float, float], expected: float) -> None:
-    assert luminance(color) == pytest.approx(expected, 0.001), f"{color=}"
+    assert pmv.utils.luminance(color) == pytest.approx(expected, 0.001), f"{color=}"
 
 
 @pytest.mark.parametrize(
@@ -292,36 +272,38 @@ def test_pick_bw_for_contrast(
     text_color_threshold: float,
     expected: Literal["black", "white"],
 ) -> None:
-    assert pick_bw_for_contrast(color, text_color_threshold) == expected
+    assert pmv.utils.pick_bw_for_contrast(color, text_color_threshold) == expected
 
 
 def test_si_fmt() -> None:
-    assert si_fmt(0) == "0.0"
-    assert si_fmt(123) == "123.0"
-    assert si_fmt(1234) == "1.2K"
-    assert si_fmt(123456) == "123.5K"
-    assert si_fmt(12345678, fmt=">6.2f", sep=" ") == " 12.35 M"
-    assert si_fmt(-0.00123, fmt=".3g", binary=False) == "-1.23m"
-    assert si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=True) == "  1.3\tμ"
-    assert si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=False) == "  1.2\tμ"
-    assert si_fmt(0.321, fmt=".2f") == "0.32"
-    assert si_fmt(-0.93) == "-0.9"
-    assert si_fmt(-0.93, fmt=".2f") == "-0.93"
-    assert si_fmt(-0.1) == "-0.1"
-    assert si_fmt(-0.001) == "-1.0m"
-    assert si_fmt(-0.001, decimal_threshold=0.001, fmt=".3f") == "-0.001"
-    assert si_fmt(-1) == "-1.0"
-    assert si_fmt(1.23456789e-10, fmt="5.1f", sep="\t") == "123.5\tp"
+    assert pmv.utils.si_fmt(0) == "0.0"
+    assert pmv.utils.si_fmt(123) == "123.0"
+    assert pmv.utils.si_fmt(1234) == "1.2K"
+    assert pmv.utils.si_fmt(123456) == "123.5K"
+    assert pmv.utils.si_fmt(12345678, fmt=">6.2f", sep=" ") == " 12.35 M"
+    assert pmv.utils.si_fmt(-0.00123, fmt=".3g", binary=False) == "-1.23m"
+    assert pmv.utils.si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=True) == "  1.3\tμ"
+    assert (
+        pmv.utils.si_fmt(0.00000123, fmt="5.1f", sep="\t", binary=False) == "  1.2\tμ"
+    )
+    assert pmv.utils.si_fmt(0.321, fmt=".2f") == "0.32"
+    assert pmv.utils.si_fmt(-0.93) == "-0.9"
+    assert pmv.utils.si_fmt(-0.93, fmt=".2f") == "-0.93"
+    assert pmv.utils.si_fmt(-0.1) == "-0.1"
+    assert pmv.utils.si_fmt(-0.001) == "-1.0m"
+    assert pmv.utils.si_fmt(-0.001, decimal_threshold=0.001, fmt=".3f") == "-0.001"
+    assert pmv.utils.si_fmt(-1) == "-1.0"
+    assert pmv.utils.si_fmt(1.23456789e-10, fmt="5.1f", sep="\t") == "123.5\tp"
 
 
 def test_si_fmt_int() -> None:
-    assert si_fmt_int(0) == "0"
-    assert si_fmt_int(123) == "123"
-    assert si_fmt_int(1234) == "1K"
-    assert si_fmt_int(123456) == "123K"
-    assert si_fmt_int(12345678, fmt=">6.2f", sep=" ") == " 12.35 M"
-    assert si_fmt_int(-1) == "-1"
-    assert si_fmt_int(1.23456789e-10, sep="\t") == "123\tp"
+    assert pmv.utils.si_fmt_int(0) == "0"
+    assert pmv.utils.si_fmt_int(123) == "123"
+    assert pmv.utils.si_fmt_int(1234) == "1K"
+    assert pmv.utils.si_fmt_int(123456) == "123K"
+    assert pmv.utils.si_fmt_int(12345678, fmt=">6.2f", sep=" ") == " 12.35 M"
+    assert pmv.utils.si_fmt_int(-1) == "-1"
+    assert pmv.utils.si_fmt_int(1.23456789e-10, sep="\t") == "123\tp"
 
 
 class TestGetCbarLabelFormatter:
@@ -342,7 +324,7 @@ class TestGetCbarLabelFormatter:
         self, default_decimal_places: int, expected: str
     ) -> None:
         with pytest.warns(match="Invalid cbar_label_fmt="):
-            formatter = get_cbar_label_formatter(
+            formatter = pmv.utils.get_cbar_label_formatter(
                 cbar_label_fmt=".2f",  # bad f-string format for percent mode
                 values_fmt=".2f",  # bad f-string format for percent mode
                 values_show_mode="percent",
@@ -359,7 +341,7 @@ class TestGetCbarLabelFormatter:
         "sci_notation, expected", [(True, "1.23"), (False, "0.01")]
     )
     def test_sci_notation(self, sci_notation: bool, expected: str) -> None:
-        formatter = get_cbar_label_formatter(
+        formatter = pmv.utils.get_cbar_label_formatter(
             cbar_label_fmt=".2f",
             values_fmt=".2f",
             values_show_mode="value",
@@ -385,7 +367,7 @@ class TestGetCbarLabelFormatter:
         values_show_mode: Literal["value", "fraction", "percent", "off"],
         expected: str,
     ) -> None:
-        formatter = get_cbar_label_formatter(
+        formatter = pmv.utils.get_cbar_label_formatter(
             cbar_label_fmt=".4f",
             values_fmt=".4f",
             values_show_mode=values_show_mode,
@@ -414,21 +396,21 @@ def test_html_tag(text: str, tag: str, title: str, style: str) -> None:
     attrs = f" {title=} " if title else ""
     attrs += f"{style=}" if style else ""
     assert (
-        html_tag(text, tag=tag, title=title, style=orig_style)
+        pmv.utils.html_tag(text, tag=tag, title=title, style=orig_style)
         == f"<{tag}{attrs}>{text}</{tag}>"
     )
 
 
 def test_pretty_label() -> None:
-    assert pretty_label("R2", MATPLOTLIB) == "$R^2$"
-    assert pretty_label("R2", PLOTLY) == "R<sup>2</sup>"
-    assert pretty_label("R2_adj", MATPLOTLIB) == "$R^2_{adj}$"
-    assert pretty_label("R2_adj", PLOTLY) == "R<sup>2</sup><sub>adj</sub>"
-    assert pretty_label("foo", MATPLOTLIB) == "foo"
-    assert pretty_label("foo", PLOTLY) == "foo"
+    assert pmv.utils.pretty_label("R2", MATPLOTLIB) == "$R^2$"
+    assert pmv.utils.pretty_label("R2", PLOTLY) == "R<sup>2</sup>"
+    assert pmv.utils.pretty_label("R2_adj", MATPLOTLIB) == "$R^2_{adj}$"
+    assert pmv.utils.pretty_label("R2_adj", PLOTLY) == "R<sup>2</sup><sub>adj</sub>"
+    assert pmv.utils.pretty_label("foo", MATPLOTLIB) == "foo"
+    assert pmv.utils.pretty_label("foo", PLOTLY) == "foo"
 
     with pytest.raises(ValueError, match="Unexpected backend='foo'"):
-        pretty_label("R2", "foo")  # type: ignore[arg-type]
+        pmv.utils.pretty_label("R2", "foo")  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("color", ["red", "blue", "#FF0000"])
@@ -437,31 +419,31 @@ def test_annotate(
 ) -> None:
     text = "Test annotation"
 
-    fig_plotly = annotate(text, plotly_scatter, color=color)
+    fig_plotly = pmv.utils.annotate(text, plotly_scatter, color=color)
     assert isinstance(fig_plotly, go.Figure)
     assert fig_plotly.layout.annotations[-1].text == text
     assert fig_plotly.layout.annotations[-1].font.color == color
 
-    fig_mpl = annotate(text, matplotlib_scatter, color=color)
+    fig_mpl = pmv.utils.annotate(text, matplotlib_scatter, color=color)
     assert isinstance(fig_mpl, plt.Figure)
     assert isinstance(fig_mpl.axes[0].artists[-1].txt, TextArea)
     assert fig_mpl.axes[0].artists[-1].txt.get_text() == text
-    assert fig_mpl.axes[0].artists[-1].txt._text.get_color() == color  # noqa: SLF001
+    assert fig_mpl.axes[0].artists[-1].txt._text.get_color() == color
 
-    ax_mpl = annotate(text, matplotlib_scatter.axes[0], color=color)
+    ax_mpl = pmv.utils.annotate(text, matplotlib_scatter.axes[0], color=color)
     assert isinstance(ax_mpl, plt.Axes)
     assert ax_mpl.artists[-1].txt.get_text() == text
-    assert ax_mpl.artists[-1].txt._text.get_color() == color  # noqa: SLF001
+    assert ax_mpl.artists[-1].txt._text.get_color() == color
 
 
 def test_annotate_invalid_fig() -> None:
     with pytest.raises(TypeError, match="Input must be .+ got type"):
-        annotate("test", fig="invalid")
+        pmv.utils.annotate("test", fig="invalid")
 
 
 def test_annotate_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:
     texts = ["Annotation 1", "Annotation 2"]
-    fig = annotate(texts, plotly_faceted_scatter)
+    fig = pmv.utils.annotate(texts, plotly_faceted_scatter)
 
     assert len(fig.layout.annotations) == 2
     assert fig.layout.annotations[0].text == texts[0]
@@ -474,7 +456,7 @@ def test_annotate_faceted_plotly_with_empty_string(
     plotly_faceted_scatter: go.Figure,
 ) -> None:
     texts = ["Annotation 1", ""]
-    fig = annotate(texts, plotly_faceted_scatter)
+    fig = pmv.utils.annotate(texts, plotly_faceted_scatter)
 
     assert len(fig.layout.annotations) == 1
     assert fig.layout.annotations[0].text == texts[0]
@@ -484,7 +466,7 @@ def test_annotate_faceted_plotly_with_single_string(
     plotly_faceted_scatter: go.Figure,
 ) -> None:
     text = "Single Annotation"
-    fig = annotate(text, plotly_faceted_scatter)
+    fig = pmv.utils.annotate(text, plotly_faceted_scatter)
 
     assert len(fig.layout.annotations) == 2
     for annotation in fig.layout.annotations:
@@ -500,7 +482,7 @@ def test_annotate_non_faceted_plotly_with_list_raises(
         ValueError,
         match=re.escape(f"Unexpected {text_type=} for non-faceted plot, must be str"),
     ):
-        annotate(text, plotly_scatter)
+        pmv.utils.annotate(text, plotly_scatter)
 
 
 @pytest.mark.parametrize(
@@ -512,7 +494,7 @@ def test_annotate_non_faceted_plotly_with_list_raises(
     ],
 )
 def test_annotate_kwargs(plotly_scatter: go.Figure, kwargs: dict[str, Any]) -> None:
-    fig = annotate("Test", plotly_scatter, **kwargs)
+    fig = pmv.utils.annotate("Test", plotly_scatter, **kwargs)
 
     for key, val in kwargs.items():
         if isinstance(val, dict):
@@ -523,7 +505,7 @@ def test_annotate_kwargs(plotly_scatter: go.Figure, kwargs: dict[str, Any]) -> N
 
 
 def test_validate_fig_decorator_raises(capsys: pytest.CaptureFixture[str]) -> None:
-    @validate_fig
+    @pmv.utils.validate_fig
     def generic_func(fig: Any = None, **kwargs: Any) -> Any:
         return fig, kwargs
 
@@ -546,7 +528,7 @@ def test_get_fig_xy_range(
     plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
 ) -> None:
     for fig in (plotly_scatter, matplotlib_scatter, matplotlib_scatter.axes[0]):
-        x_range, y_range = get_fig_xy_range(fig)
+        x_range, y_range = pmv.utils.get_fig_xy_range(fig)
         assert isinstance(x_range, tuple)
         assert isinstance(y_range, tuple)
         assert len(x_range) == 2
@@ -560,7 +542,7 @@ def test_get_fig_xy_range(
     # currently suboptimal behavior: fig must be passed as kwarg to trigger helpful
     # error message
     with pytest.raises(TypeError, match="Unexpected type for fig: str, must be one of"):
-        get_fig_xy_range(fig="invalid")
+        pmv.utils.get_fig_xy_range(fig="invalid")
 
 
 def test_get_font_color() -> None:
@@ -574,7 +556,7 @@ def test_get_font_color() -> None:
             (mpl_fig, "black"),
             (mpl_ax, "black"),
         ):
-            color = get_font_color(fig)
+            color = pmv.utils.get_font_color(fig)
             assert color == expected_color, f"{fig=}, {color=}, {expected_color=}"
     finally:
         pio.templates.default = orig_template
@@ -585,13 +567,13 @@ def test_get_font_color_invalid_input() -> None:
     with pytest.raises(
         TypeError, match=re.escape(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
     ):
-        get_font_color(fig)
+        pmv.utils.get_font_color(fig)
 
 
 @pytest.mark.parametrize("color", ["red", "#00FF00", "rgb(0, 0, 255)"])
 def test_get_plotly_font_color(color: str) -> None:
     fig = go.Figure().update_layout(font_color=color)
-    assert _get_plotly_font_color(fig) == color
+    assert pmv.utils._get_plotly_font_color(fig) == color
 
 
 def test_get_plotly_font_color_from_template() -> None:
@@ -600,27 +582,31 @@ def test_get_plotly_font_color_from_template() -> None:
     pio.templates.default = "plotly_white"
     fig = go.Figure()
     try:
-        assert _get_plotly_font_color(fig) == "blue"
+        assert pmv.utils._get_plotly_font_color(fig) == "blue"
     finally:
         pio.templates.default = "plotly"  # Reset to default template
 
 
 def test_get_plotly_font_color_default() -> None:
     fig = go.Figure()
-    assert _get_plotly_font_color(fig) == "#2a3f5f"  # Default Plotly color
+    assert pmv.utils._get_plotly_font_color(fig) == "#2a3f5f"  # Default Plotly color
 
 
 @pytest.mark.parametrize("color", ["red", "#00FF00", "blue"])
 def test_get_matplotlib_font_color(color: str) -> None:
-    color = _get_matplotlib_font_color(plt.figure())
+    color = pmv.utils._get_matplotlib_font_color(plt.figure())
     assert color == "black"  # Default color
 
     fig, ax = plt.subplots()
-    assert _get_matplotlib_font_color(fig) == _get_matplotlib_font_color(ax) == "black"
+    assert (
+        pmv.utils._get_matplotlib_font_color(fig)
+        == pmv.utils._get_matplotlib_font_color(ax)
+        == "black"
+    )
 
     mpl_ax = plt.figure().add_subplot(111)
     mpl_ax.xaxis.label.set_color(color)
-    assert _get_matplotlib_font_color(mpl_ax) == color
+    assert pmv.utils._get_matplotlib_font_color(mpl_ax) == color
 
 
 def test_get_matplotlib_font_color_from_rcparams() -> None:
@@ -634,7 +620,7 @@ def test_get_matplotlib_font_color_from_rcparams() -> None:
         ax.tick_params(colors="green")
         plt.close(fig)  # Close the figure to ensure changes are applied
 
-        color = _get_matplotlib_font_color(ax)
+        color = pmv.utils._get_matplotlib_font_color(ax)
         assert color == "green", f"Expected 'green', but got '{color}'"
     finally:
         plt.rcParams["text.color"] = original_color  # Reset to original value

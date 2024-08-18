@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from pymatviz.powerups import add_identity_line
+import pymatviz as pmv
 from pymatviz.utils import df_to_arrays
 
 
@@ -90,7 +90,7 @@ def qq_gaussian(
         lines.append([line, miscal_area])
 
     if identity_line:  # guiding line for perfect calibration
-        add_identity_line(
+        pmv.powerups.add_identity_line(
             ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
 

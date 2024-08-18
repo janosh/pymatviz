@@ -7,21 +7,14 @@ from pathlib import Path
 from shutil import which
 from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
-from xml.etree import ElementTree
+from xml.etree import ElementTree  # noqa: ICN001
 
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt
 
-from pymatviz.io import (
-    TqdmDownload,
-    df_to_html_table,
-    df_to_pdf,
-    df_to_svg,
-    normalize_and_crop_pdf,
-    save_fig,
-)
+import pymatviz as pmv
 
 
 if TYPE_CHECKING:
@@ -48,7 +41,7 @@ def test_save_fig(
         pytest.skip("saving to Svelte file not supported for matplotlib figures")
 
     path = f"{tmp_path}/fig.{ext}"
-    save_fig(fig, path, plotly_config=plotly_config, env_disable=env_disable)
+    pmv.save_fig(fig, path, plotly_config=plotly_config, env_disable=env_disable)
 
     if any(var in os.environ for var in env_disable):
         # if CI env var is set, we should not save the figure
@@ -82,7 +75,7 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
     fig = go.Figure()
     fig.add_scatter(x=[1, 2], y=[3, 4])
     path = f"{tmp_path}/test.pdf"
-    save_fig(fig, path)
+    pmv.save_fig(fig, path)
 
     # check PDF doesn't contain "Loading [MathJax]/extensions/MathMenu.js"
     with open(path, "rb") as f:
@@ -136,7 +129,7 @@ def test_df_to_pdf(
         styler_css=styler_css,
     )
     try:
-        df_to_pdf(**kwds)
+        pmv.io.df_to_pdf(**kwds)
     except ImportError as exc:
         # check we're raising helpful error messages on missing deps
         if weasyprint is None:
@@ -161,7 +154,7 @@ def test_df_to_pdf(
 
     # Test file overwrite behavior
     file_size_before = file_path.stat().st_size  # ~7000 bytes
-    df_to_pdf(**kwds)
+    pmv.io.df_to_pdf(**kwds)
     file_size_after = file_path.stat().st_size  # ~7000 bytes
 
     # file size should be the same since content is unchanged
@@ -175,17 +168,17 @@ def test_normalize_and_crop_pdf(
     # patch which('gs') to return None
     monkeypatch.setattr("pymatviz.io.which", lambda _: None)
 
-    normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="ignore")
+    pmv.io.normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="ignore")
     stdout, stderr = capsys.readouterr()
     assert stdout == "" == stderr
 
-    normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="warn")
+    pmv.io.normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="warn")
     stdout, stderr = capsys.readouterr()
     assert stdout == "Ghostscript not found, skipping PDF normalization and cropping\n"
     assert stderr == ""
 
     with pytest.raises(RuntimeError, match="Ghostscript not found in PATH"):
-        normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="error")
+        pmv.io.normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="error")
 
     # patch which('gs') to return a path
 
@@ -214,7 +207,7 @@ def test_df_to_html_table(
 ) -> None:
     file_path = tmp_path / "test_df.svelte"
 
-    html1 = df_to_html_table(
+    html1 = pmv.io.df_to_html_table(
         df_mixed.style,
         script=script,
         styles=styles,
@@ -222,7 +215,7 @@ def test_df_to_html_table(
         styler_css=styler_css,
     )
     assert not file_path.is_file()
-    html2 = df_to_html_table(
+    html2 = pmv.io.df_to_html_table(
         df_mixed.style,
         file_path=file_path,
         script=script,
@@ -270,7 +263,7 @@ def test_tqdm_download(
     # apply mock urlretrieve
     monkeypatch.setattr(urllib.request, "urlretrieve", mock_urlretrieve)
 
-    with TqdmDownload(desc=test_url) as pbar:
+    with pmv.io.TqdmDownload(desc=test_url) as pbar:
         urllib.request.urlretrieve(test_url, test_file_path, reporthook=pbar.update_to)  # noqa: S310
 
     assert pbar.n == total_size
@@ -314,7 +307,7 @@ def test_df_to_svg(
         mock_which.return_value = "/path/to/svgo" if compress else None
 
         with patch("subprocess.run") as mock_run:
-            df_to_svg(obj, file_path, font_size=font_size, compress=compress)
+            pmv.io.df_to_svg(obj, file_path, font_size=font_size, compress=compress)
 
             if compress:
                 mock_run.assert_called_once()
@@ -345,7 +338,7 @@ def test_df_to_svg(
 
     # Test file overwrite behavior
     file_size_before = file_path.stat().st_size
-    df_to_svg(obj, file_path, font_size=font_size, compress=compress)
+    pmv.io.df_to_svg(obj, file_path, font_size=font_size, compress=compress)
     file_size_after = file_path.stat().st_size
 
     # check at least 10% file size reduction from compress=True

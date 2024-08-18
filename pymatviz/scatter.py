@@ -14,12 +14,7 @@ import scipy.stats
 from matplotlib.colors import LogNorm
 from sklearn.metrics import r2_score
 
-from pymatviz.powerups import (
-    add_best_fit_line,
-    add_identity_line,
-    annotate_metrics,
-    with_marginal_hist,
-)
+import pymatviz as pmv
 from pymatviz.utils import bin_df_cols, df_to_arrays
 
 
@@ -132,17 +127,19 @@ def density_scatter(
     ax.scatter(xs, ys, c=cs, **defaults | kwargs)
 
     if identity_line:
-        add_identity_line(
+        pmv.powerups.add_identity_line(
             ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
     if best_fit_line:
         best_fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
         # default trace_idx=0 to suppress add_best_fit_line ambiguous trace_idx warning
         best_fit_kwargs.setdefault("trace_idx", 0)
-        add_best_fit_line(ax, **best_fit_kwargs)
+        pmv.powerups.add_best_fit_line(ax, **best_fit_kwargs)
 
     if stats:
-        annotate_metrics(xs, ys, fig=ax, **(stats if isinstance(stats, dict) else {}))
+        pmv.powerups.annotate_metrics(
+            xs, ys, fig=ax, **(stats if isinstance(stats, dict) else {})
+        )
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
@@ -257,7 +254,7 @@ def density_scatter_plotly(
         _update_colorbar_for_log_density(fig, color_vals, bin_counts_col)
 
     if identity_line:
-        add_identity_line(
+        pmv.powerups.add_identity_line(
             fig, **(identity_line if isinstance(identity_line, dict) else {})
         )
 
@@ -266,13 +263,13 @@ def density_scatter_plotly(
         r2 = r2_score(*df[[x, y]].dropna().T.to_numpy())
         best_fit_line = r2 > 0.3
     if best_fit_line:
-        add_best_fit_line(
+        pmv.powerups.add_best_fit_line(
             fig, **(best_fit_line if isinstance(best_fit_line, dict) else {})
         )
 
     if stats:
         stats_kwargs = stats if isinstance(stats, dict) else {}
-        annotate_metrics(df[x], df[y], fig=fig, **stats_kwargs)
+        pmv.powerups.annotate_metrics(df[x], df[y], fig=fig, **stats_kwargs)
 
     return fig
 
@@ -394,15 +391,15 @@ def scatter_with_err_bar(
     ax.errorbar(xs, ys, xerr=xerr, yerr=yerr, **kwargs, **styles)
 
     if identity_line:
-        add_identity_line(
+        pmv.powerups.add_identity_line(
             ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
     if best_fit_line:
-        add_best_fit_line(
+        pmv.powerups.add_best_fit_line(
             ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
         )
 
-    annotate_metrics(xs, ys, fig=ax)
+    pmv.powerups.annotate_metrics(xs, ys, fig=ax)
 
     ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
 
@@ -465,15 +462,15 @@ def density_hexbin(
         cb_ax.set_title(cbar_label, rotation=90, pad=10)
 
     if identity_line:
-        add_identity_line(
+        pmv.powerups.add_identity_line(
             ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
     if best_fit_line:
-        add_best_fit_line(
+        pmv.powerups.add_best_fit_line(
             ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
         )
 
-    annotate_metrics(xs, ys, fig=ax, loc="upper left")
+    pmv.powerups.annotate_metrics(xs, ys, fig=ax, loc="upper left")
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
@@ -493,7 +490,7 @@ def density_scatter_with_hist(
     each dimension.
     """
     xs, ys = df_to_arrays(df, x, y)
-    ax_scatter = with_marginal_hist(xs, ys, cell, bins, fig=ax)
+    ax_scatter = pmv.powerups.with_marginal_hist(xs, ys, cell, bins, fig=ax)
     return density_scatter(xs, ys, ax=ax_scatter, **kwargs)
 
 
@@ -509,7 +506,7 @@ def density_hexbin_with_hist(
     color_by with histograms along each dimension.
     """
     xs, ys = df_to_arrays(df, x, y)
-    ax_scatter = with_marginal_hist(xs, ys, cell, bins)
+    ax_scatter = pmv.powerups.with_marginal_hist(xs, ys, cell, bins)
     return density_hexbin(xs, ys, ax=ax_scatter, **kwargs)
 
 

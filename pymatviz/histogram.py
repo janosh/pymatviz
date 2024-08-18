@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
 
+import pymatviz as pmv
 from pymatviz.bar import spacegroup_bar
 from pymatviz.enums import ElemCountMode
-from pymatviz.powerups import annotate_bars
 from pymatviz.process_data import count_elements
 from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY, Backend
 
@@ -89,7 +89,7 @@ def elements_hist(
             labels = [f"{el / sum_elements:.0%}" for el in non_zero.to_numpy()]
         else:
             labels = non_zero.astype(int).to_list()
-        annotate_bars(
+        pmv.powerups.annotate_bars(
             ax=ax,
             labels=labels,
             h_offset=h_offset,

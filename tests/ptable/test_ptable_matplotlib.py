@@ -9,17 +9,8 @@ import pandas as pd
 import pytest
 from pymatgen.core.periodic_table import Element
 
-from pymatviz import (
-    count_elements,
-    ptable_heatmap,
-    ptable_heatmap_ratio,
-    ptable_heatmap_splits,
-    ptable_hists,
-    ptable_lines,
-    ptable_scatters,
-)
+import pymatviz as pmv
 from pymatviz.enums import Key
-from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
@@ -27,15 +18,15 @@ if TYPE_CHECKING:
 
     from pymatgen.core import Composition
 
-df_ptable = df_ptable.copy()  # avoid changing the df in place
+df_ptable = pmv.df_ptable.copy()  # avoid changing the df in place
 
 
-@pytest.fixture()
+@pytest.fixture
 def glass_elem_counts(glass_formulas: pd.Series[Composition]) -> pd.Series[int]:
-    return count_elements(glass_formulas)
+    return pmv.count_elements(glass_formulas)
 
 
-@pytest.fixture()
+@pytest.fixture
 def steel_formulas() -> list[str]:
     """Unusually fractional compositions, good for testing edge cases.
 
@@ -52,15 +43,15 @@ def steel_formulas() -> list[str]:
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def steel_elem_counts(steel_formulas: pd.Series[Composition]) -> pd.Series[int]:
-    return count_elements(steel_formulas)
+    return pmv.count_elements(steel_formulas)
 
 
 class TestPtableHeatmap:
     @pytest.mark.parametrize("hide_f_block", ["auto", False, True])
     def test_basic_heatmap_plotter(self, hide_f_block: bool | Literal["auto"]) -> None:
-        fig = ptable_heatmap(
+        fig = pmv.ptable_heatmap(
             df_ptable[Key.atomic_mass],
             hide_f_block=hide_f_block,
             cbar_title="Element Count",
@@ -71,7 +62,9 @@ class TestPtableHeatmap:
 
     @pytest.mark.parametrize("log", [False, True])
     def test_log_scale(self, log: bool) -> None:
-        fig = ptable_heatmap(df_ptable[Key.atomic_mass], log=log, return_type="figure")
+        fig = pmv.ptable_heatmap(
+            df_ptable[Key.atomic_mass], log=log, return_type="figure"
+        )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
@@ -81,7 +74,7 @@ class TestPtableHeatmap:
     def test_values_show_mode(
         self, values_show_mode: Literal["percent", "fraction", "value", "off"]
     ) -> None:
-        fig = ptable_heatmap(
+        fig = pmv.ptable_heatmap(
             df_ptable[Key.atomic_mass],
             value_show_mode=values_show_mode,
             return_type="figure",
@@ -94,15 +87,17 @@ class TestPtableHeatmap:
         self, values_show_mode: Literal["percent", "fraction", "value", "off"]
     ) -> None:
         with pytest.raises(ValueError, match="Combining log scale and"):
-            ptable_heatmap(
-                df_ptable[Key.atomic_mass], log=True, value_show_mode=values_show_mode
+            pmv.ptable_heatmap(
+                df_ptable[Key.atomic_mass],
+                log=True,
+                value_show_mode=values_show_mode,
             )
 
     @pytest.mark.parametrize(
         "cbar_range", [(0, 300), (None, 300), (0, None), (None, None)]
     )
     def test_cbar_range(self, cbar_range: tuple[float | None, float | None]) -> None:
-        fig = ptable_heatmap(
+        fig = pmv.ptable_heatmap(
             df_ptable[Key.atomic_mass], cbar_range=cbar_range, return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
@@ -110,7 +105,7 @@ class TestPtableHeatmap:
 
     @pytest.mark.parametrize("values_fmt", ["auto", ".3g", ".2g"])
     def test_values_fmt(self, values_fmt: str) -> None:
-        fig = ptable_heatmap(
+        fig = pmv.ptable_heatmap(
             df_ptable[Key.atomic_mass], value_fmt=values_fmt, return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
@@ -118,14 +113,16 @@ class TestPtableHeatmap:
 
     def test_cbar_kwargs(self) -> None:
         cbar_kwargs = dict(orientation="horizontal")
-        fig = ptable_heatmap(
-            df_ptable[Key.atomic_mass], cbar_kwargs=cbar_kwargs, return_type="figure"
+        fig = pmv.ptable_heatmap(
+            df_ptable[Key.atomic_mass],
+            cbar_kwargs=cbar_kwargs,
+            return_type="figure",
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
     def test_tile_size(self) -> None:
-        fig = ptable_heatmap(
+        fig = pmv.ptable_heatmap(
             df_ptable[Key.atomic_mass], tile_size=(1, 1), return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
@@ -133,7 +130,7 @@ class TestPtableHeatmap:
 
     def test_text_style(self) -> None:
         symbol_kwargs = dict(fontsize=12)
-        fig = ptable_heatmap(
+        fig = pmv.ptable_heatmap(
             df_ptable[Key.atomic_mass],
             text_colors="red",
             symbol_kwargs=symbol_kwargs,
@@ -143,20 +140,20 @@ class TestPtableHeatmap:
         assert len(fig.axes) == 181
 
     def test_return_type(self) -> None:
-        fig = ptable_heatmap(
+        fig = pmv.ptable_heatmap(
             df_ptable[Key.atomic_mass],
             return_type="figure",
         )
         assert isinstance(fig, plt.Figure)
 
         with pytest.warns(match="We encourage you to return plt.figure"):
-            ax = ptable_heatmap(df_ptable[Key.atomic_mass])
+            ax = pmv.ptable_heatmap(df_ptable[Key.atomic_mass])
         assert isinstance(ax, plt.Axes)
 
 
 @pytest.mark.parametrize("hide_f_block", ["auto", False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
-    """Test ptable_heatmap_splits with arbitrary data length."""
+    """Test pmv.ptable_heatmap_splits with arbitrary data length."""
     data_dict: dict[str, Any] = {
         elem.symbol: [
             random.randint(0, 10)  # random value for each split
@@ -174,7 +171,7 @@ def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     data_dict["B"] = 2.0
 
     cbar_title = "Periodic Table Evenly-Split Tiles Plots"
-    fig = ptable_heatmap_splits(
+    fig = pmv.ptable_heatmap_splits(
         data_dict,
         colormap="coolwarm",
         start_angle=135,
@@ -199,7 +196,7 @@ def test_ptable_heatmap_ratio(
     not_in_either = ("white", "white: not in either")
 
     # Call the function and get the Figure
-    fig = ptable_heatmap_ratio(
+    fig = pmv.ptable_heatmap_ratio(
         glass_formulas,
         steel_formulas,
         not_in_numerator=not_in_numerator,
@@ -225,13 +222,15 @@ def test_ptable_heatmap_ratio(
         assert not_in[1] in all_texts
 
     # Element counts
-    fig = ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
+    fig = pmv.ptable_heatmap_ratio(glass_elem_counts, steel_elem_counts, normalize=True)
 
     # Mixed element counts and composition
-    fig = ptable_heatmap_ratio(
+    fig = pmv.ptable_heatmap_ratio(
         glass_formulas, steel_elem_counts, exclude_elements=("O", "P")
     )
-    fig = ptable_heatmap_ratio(glass_elem_counts, steel_formulas, not_in_numerator=None)
+    fig = pmv.ptable_heatmap_ratio(
+        glass_elem_counts, steel_formulas, not_in_numerator=None
+    )
 
 
 @pytest.mark.parametrize(
@@ -261,7 +260,7 @@ def test_ptable_hists(
     symbol_pos: tuple[int, int],
     hist_kwargs: dict[str, Any],
 ) -> None:
-    fig_0 = ptable_hists(
+    fig_0 = pmv.ptable_hists(
         data,
         symbol_pos=symbol_pos,
         child_kwargs=hist_kwargs,
@@ -269,7 +268,7 @@ def test_ptable_hists(
     assert isinstance(fig_0, plt.Figure)
 
     # Test partial x_range
-    fig_1 = ptable_hists(
+    fig_1 = pmv.ptable_hists(
         data,
         x_range=(2, None),
         symbol_pos=symbol_pos,
@@ -280,8 +279,8 @@ def test_ptable_hists(
 
 @pytest.mark.parametrize("hide_f_block", [False, True])
 def test_ptable_lines(hide_f_block: bool) -> None:
-    """Test ptable_lines."""
-    fig = ptable_lines(
+    """Test pmv.ptable_lines."""
+    fig = pmv.ptable_lines(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
@@ -295,8 +294,8 @@ def test_ptable_lines(hide_f_block: bool) -> None:
 
 @pytest.mark.parametrize("hide_f_block", [False, True])
 def test_ptable_scatters(hide_f_block: bool) -> None:
-    """Test ptable_scatters."""
-    fig = ptable_scatters(
+    """Test pmv.ptable_scatters."""
+    fig = pmv.ptable_scatters(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6]],
             "O": [[10, 11], [12, 13]],
@@ -308,14 +307,14 @@ def test_ptable_scatters(hide_f_block: bool) -> None:
 
 
 def test_ptable_scatters_colored() -> None:
-    """Test ptable_scatters with 3rd color dimension."""
-    fig = ptable_scatters(
+    """Test pmv.ptable_scatters with 3rd color dimension."""
+    fig = pmv.ptable_scatters(
         data={
             "Fe": [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
             "O": [[10, 11], [12, 13], [14, 15]],
         },
         colormap="coolwarm",
-        cbar_title="Test ptable_scatters",
+        cbar_title="Test pmv.ptable_scatters",
     )
     assert isinstance(fig, plt.Figure)
     assert len(fig.axes) == 127

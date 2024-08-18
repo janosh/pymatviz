@@ -5,7 +5,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
-from pymatviz.histogram import histogram
+import pymatviz as pmv
 from pymatviz.powerups.plotly import (
     add_ecdf_line,
     select_colorscale,
@@ -14,10 +14,9 @@ from pymatviz.powerups.plotly import (
     toggle_log_linear_x_axis,
     toggle_log_linear_y_axis,
 )
-from pymatviz.templates import set_plotly_template
 
 
-set_plotly_template("pymatviz_white")
+pmv.set_plotly_template("pymatviz_white")
 
 
 # %% Configure matplotlib and load test data
@@ -29,7 +28,7 @@ gauss2 = np_rng.normal(10, 2, rand_regression_size)
 
 
 # %%
-fig = histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=200)
+fig = pmv.histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=200)
 for idx in range(len(fig.data)):
     add_ecdf_line(fig, trace_idx=idx)
 fig.show()
@@ -44,7 +43,7 @@ gauss2 = np_rng.normal(10, 2, rand_regression_size)
 
 
 # %% ECDF line
-fig = histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=200)
+fig = pmv.histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=200)
 for idx in range(len(fig.data)):
     add_ecdf_line(fig, trace_idx=idx)
 fig.layout.title = "Histogram with ECDF Lines"

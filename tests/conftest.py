@@ -64,14 +64,14 @@ def _run_around_tests() -> Generator[None, None, None]:
     plt.close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def spg_symbols() -> list[str]:
     symbols = "C2/m C2/m Fm-3m C2/m Cmc2_1 P4/nmm P-43m P-43m P6_3mc".split()
     symbols += "P-43m P6_3mc Cmcm P2_1/m I2_13 P-6m2".split()
     return symbols
 
 
-@pytest.fixture()
+@pytest.fixture
 def structures() -> list[Structure]:
     coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
     lattice = [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]]
@@ -90,7 +90,7 @@ def structures() -> list[Structure]:
     return [si2_struct, si2_ru2_pr2_struct]
 
 
-@pytest.fixture()
+@pytest.fixture
 def plotly_scatter_two_ys() -> go.Figure:
     xs = np.arange(7)
     y1 = xs**2
@@ -98,14 +98,14 @@ def plotly_scatter_two_ys() -> go.Figure:
     return px.scatter(x=xs, y=[y1, y2])
 
 
-@pytest.fixture()
+@pytest.fixture
 def plotly_scatter() -> go.Figure:
     fig = go.Figure(go.Scatter(x=[1, 10, 100], y=np.array([10, 100, 1000]) + 1))
     fig.add_scatter(x=[1, 10, 100], y=[1, 10, 100])
     return fig
 
 
-@pytest.fixture()
+@pytest.fixture
 def plotly_faceted_scatter() -> go.Figure:
     fig = make_subplots(rows=1, cols=2)
     fig.add_scatter(x=[1, 2, 3], y=[4, 5, 6], row=1, col=1)
@@ -113,7 +113,7 @@ def plotly_faceted_scatter() -> go.Figure:
     return fig
 
 
-@pytest.fixture()
+@pytest.fixture
 def matplotlib_scatter() -> plt.Figure:
     fig, ax = plt.subplots()
     ax.plot([1, 10, 100], np.array([10, 100, 1000]) + 1)
@@ -121,7 +121,7 @@ def matplotlib_scatter() -> plt.Figure:
     return fig
 
 
-@pytest.fixture()
+@pytest.fixture
 def glass_formulas() -> list[str]:
     """First 20 materials in the Matbench glass dataset.
 
@@ -136,12 +136,12 @@ def glass_formulas() -> list[str]:
     ).split()
 
 
-@pytest.fixture()
+@pytest.fixture
 def df_float() -> pd.DataFrame:
     return pd.DataFrame(np_rng.random(size=(30, 5)), columns=[*"ABCDE"])
 
 
-@pytest.fixture()
+@pytest.fixture
 def df_mixed() -> pd.DataFrame:
     floats = np_rng.random(size=30)
     bools = np_rng.choice([True, False], size=30)

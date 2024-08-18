@@ -23,9 +23,9 @@ import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
+import pymatviz as pmv
 from pymatviz import count_elements, ptable_heatmap, spacegroup_bar
 from pymatviz.enums import Key
-from pymatviz.io import save_fig
 
 
 # %%
@@ -43,13 +43,13 @@ fig = ptable_heatmap(
     count_elements(df_carrier.pretty_formula.dropna()), log=True, return_type="figure"
 )
 fig.suptitle("Elemental prevalence in the Ricci Carrier Transport dataset")
-save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
+pmv.save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
 
 
 # %%
 ax = df_carrier.hist(bins=50, log=True, figsize=[30, 16])
 plt.suptitle("Ricci Carrier Transport Dataset", y=1.05)
-save_fig(ax, "carrier-transport-hists.pdf")
+pmv.save_fig(ax, "carrier-transport-hists.pdf")
 
 
 # %%
@@ -57,7 +57,7 @@ ax = df_carrier[["S.p [µV/K]", "S.n [µV/K]"]].hist(bins=50, log=True, figsize=
 plt.suptitle(
     "Ricci Carrier Transport dataset histograms for n- and p-type Seebeck coefficients"
 )
-save_fig(ax, "carrier-transport-seebeck-n+p.pdf")
+pmv.save_fig(ax, "carrier-transport-seebeck-n+p.pdf")
 
 
 # %%
@@ -82,10 +82,10 @@ dependent_vars = [
 
 ax = df_carrier[dependent_vars].hist(bins=50, log=True, figsize=[30, 16])
 plt.suptitle("Ricci Carrier Transport Dataset dependent variables", y=1.05)
-save_fig(ax, "carrier-transport-hists-dependent-vars.pdf")
+pmv.save_fig(ax, "carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%
 ax = spacegroup_bar(df_carrier[Key.spg_num])
 ax.set(title="Spacegroup distribution in the Ricci carrier transport dataset")
-save_fig(ax, "carrier-transport-spacegroup-hist.pdf")
+pmv.save_fig(ax, "carrier-transport-spacegroup-hist.pdf")

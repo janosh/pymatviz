@@ -30,9 +30,9 @@ https://hackingmaterials.lbl.gov/matminer/dataset_summary.html
 import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
 
+import pymatviz as pmv
 from pymatviz import count_elements, ptable_heatmap
 from pymatviz.enums import Key
-from pymatviz.io import save_fig
 
 
 # %%
@@ -45,7 +45,7 @@ fig = ptable_heatmap(
     count_elements(df_boltz[Key.formula]), log=True, return_type="figure"
 )
 fig.suptitle("Elements in BoltzTraP MP dataset")
-save_fig(fig, "boltztrap_mp-ptable-heatmap.pdf")
+pmv.save_fig(fig, "boltztrap_mp-ptable-heatmap.pdf")
 
 
 # %%
@@ -54,13 +54,13 @@ fig = ptable_heatmap(
     return_type="figure",
 )
 fig.suptitle("Elements of top 100 n-type powerfactors in BoltzTraP MP dataset")
-save_fig(fig, "boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")
+pmv.save_fig(fig, "boltztrap_mp-ptable-heatmap-top-100-nPF.pdf")
 
 
 # %%
 ax = df_boltz.hist(bins=50, log=True, layout=[2, 3], figsize=[18, 8])
 plt.suptitle("BoltzTraP MP")
-save_fig(ax, "boltztrap_mp-hists.pdf")
+pmv.save_fig(ax, "boltztrap_mp-hists.pdf")
 
 
 # %%

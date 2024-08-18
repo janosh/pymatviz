@@ -1,11 +1,3 @@
-# %%
-from matminer.datasets import load_dataset
-
-from pymatviz import count_elements, ptable_heatmap
-from pymatviz.enums import Key
-from pymatviz.io import save_fig
-
-
 """Stats for the matbench_mp_gap dataset.
 
 Input: Pymatgen Structure of the material.
@@ -17,13 +9,21 @@ https://ml.materialsproject.org/projects/matbench_mp_gap
 """
 
 # %%
+from matminer.datasets import load_dataset
+
+import pymatviz as pmv
+from pymatviz import count_elements, ptable_heatmap
+from pymatviz.enums import Key
+
+
+# %%
 df_gap = load_dataset("matbench_mp_gap")
 
 
 # %%
 ax = df_gap.hist(column="gap pbe", bins=50, log=True)
 ax.set(xlabel="eV")
-save_fig(ax, "pbe_gap_hist.pdf")
+pmv.save_fig(ax, "pbe_gap_hist.pdf")
 
 
 # %%
@@ -39,9 +39,9 @@ fig = ptable_heatmap(
     return_type="figure",
 )
 fig.suptitle("Elemental prevalence in the Matbench MP band gap dataset")
-save_fig(fig, "mp_gap-ptable-heatmap.pdf")
+pmv.save_fig(fig, "mp_gap-ptable-heatmap.pdf")
 
 
 # %%
 df_gap.hist(column=Key.vol_per_atom, bins=50, log=True)
-save_fig(ax, "volume_per_atom_hist.pdf")
+pmv.save_fig(ax, "volume_per_atom_hist.pdf")

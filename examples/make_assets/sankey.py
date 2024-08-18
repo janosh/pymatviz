@@ -2,15 +2,14 @@
 import numpy as np
 import pandas as pd
 
-from pymatviz.io import save_and_compress_svg
-from pymatviz.sankey import sankey_from_2_df_cols
+import pymatviz as pmv
 
 
 # %% Sankey diagram of random integers
 cols = ["col_a", "col_b"]
 np_rng = np.random.default_rng(seed=0)
 df_rand_ints = pd.DataFrame(np_rng.integers(1, 6, size=(100, 2)), columns=cols)
-fig = sankey_from_2_df_cols(df_rand_ints, cols, labels_with_counts="percent")
+fig = pmv.sankey_from_2_df_cols(df_rand_ints, cols, labels_with_counts="percent")
 rand_int_title = "Two sets of 100 random integers from 1 to 5"
 fig.layout.title = dict(text=rand_int_title, x=0.5, y=0.87)
 code_anno = dict(
@@ -23,4 +22,4 @@ code_anno = dict(
     showarrow=False,
 )
 fig.add_annotation(code_anno)
-save_and_compress_svg(fig, "sankey-from-2-df-cols-randints")
+pmv.io.save_and_compress_svg(fig, "sankey-from-2-df-cols-randints")

@@ -349,8 +349,6 @@ def add_best_fit_line(
 
         if annotate_params:
             defaults = dict(
-                xref="x domain",
-                yref="y domain",
                 x=0.98,
                 y=0.02,
                 xanchor="right",
