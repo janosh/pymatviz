@@ -11,6 +11,7 @@ from pymatgen.core.periodic_table import Element
 
 from pymatviz import (
     count_elements,
+    df_ptable,
     ptable_heatmap,
     ptable_heatmap_ratio,
     ptable_heatmap_splits,
@@ -19,7 +20,6 @@ from pymatviz import (
     ptable_scatters,
 )
 from pymatviz.enums import Key
-from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:

@@ -23,7 +23,6 @@ from pymatgen.symmetry.groups import SpaceGroup
 import pymatviz as pmv
 from pymatviz import count_elements, ptable_heatmap, spacegroup_sunburst
 from pymatviz.enums import Key
-from pymatviz.powerups import annotate_bars
 
 
 # %% Download data (if needed)
@@ -53,7 +52,7 @@ pmv.save_fig(fig, "camd-2022-ptable-heatmap.pdf")
 
 # %%
 ax = df_camd.data_source.value_counts().plot.bar(fontsize=18, rot=0)
-annotate_bars(ax, v_offset=3e3)
+pmv.powerups.annotate_bars(ax, v_offset=3e3)
 
 
 # %%

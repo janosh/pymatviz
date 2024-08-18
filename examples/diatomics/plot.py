@@ -17,8 +17,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pymatgen.core import Element
 
 import pymatviz as pmv
-from pymatviz import ptable_lines
-from pymatviz.utils import df_ptable
+from pymatviz import df_ptable, ptable_lines
 
 
 module_dir = os.path.dirname(__file__)

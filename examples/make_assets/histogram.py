@@ -5,10 +5,7 @@ from tqdm import tqdm
 
 import pymatviz as pmv
 from pymatviz.enums import Key
-from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
-from pymatviz.powerups import add_ecdf_line
 from pymatviz.templates import set_plotly_template
-from pymatviz.utils import BACKENDS
 
 
 set_plotly_template("pymatviz_white")
@@ -32,18 +29,18 @@ y_std = (y_true - y_pred) * 10 * np_rng.normal(0, 0.1, rand_regression_size)
 
 
 # %% Histogram Plots
-ax = elements_hist(
+ax = pmv.elements_hist(
     df_expt_gap[Key.composition], keep_top=15, v_offset=200, rotation=0, fontsize=12
 )
 pmv.io.save_and_compress_svg(ax, "elements-hist")
 
 
 # %% Spacegroup histograms
-for backend in BACKENDS:
-    fig = spacegroup_bar(df_phonons[Key.spg_num], backend=backend)
+for backend in pmv.BACKENDS:
+    fig = pmv.spacegroup_bar(df_phonons[Key.spg_num], backend=backend)
     pmv.io.save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 
-    fig = spacegroup_bar(df_phonons[Key.spg_symbol], backend=backend)
+    fig = pmv.spacegroup_bar(df_phonons[Key.spg_symbol], backend=backend)
     pmv.io.save_and_compress_svg(fig, f"spg-symbol-hist-{backend}")
 
 
@@ -53,9 +50,9 @@ np_rng = np.random.default_rng(seed=0)
 gauss1 = np_rng.normal(5, 4, rand_regression_size)
 gauss2 = np_rng.normal(10, 2, rand_regression_size)
 
-fig = histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=100)
+fig = pmv.histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=100)
 for idx in range(len(fig.data)):
-    add_ecdf_line(fig, trace_idx=idx)
+    pmv.powerups.add_ecdf_line(fig, trace_idx=idx)
 fig.show()
 
 pmv.io.save_and_compress_svg(fig, "plot-histogram-ecdf")

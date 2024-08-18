@@ -8,16 +8,7 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz import (
-    count_elements,
-    crystal_sys_order,
-    ptable_heatmap,
-    ptable_heatmap_plotly,
-    spacegroup_bar,
-    spacegroup_sunburst,
-)
 from pymatviz.enums import Key
-from pymatviz.utils import crystal_sys_from_spg_num
 
 
 """matbench_dielectric dataset
@@ -48,35 +39,37 @@ df_diel[Key.wyckoff] = [
 ]
 df_diel[Key.n_wyckoff] = df_diel.wyckoff.map(count_wyckoff_positions)
 
-df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(crystal_sys_from_spg_num)
+df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(
+    pmv.utils.crystal_sys_from_spg_num
+)
 
 df_diel[Key.volume] = [x.volume for x in df_diel[Key.structure]]
 df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%
-fig = ptable_heatmap(
-    count_elements(df_diel[Key.formula]), log=True, return_type="figure"
+fig = pmv.ptable_heatmap(
+    pmv.count_elements(df_diel[Key.formula]), log=True, return_type="figure"
 )
 fig.suptitle("Elemental prevalence in the Matbench dielectric dataset")
 pmv.save_fig(fig, "dielectric-ptable-heatmap.pdf")
 
 
 # %%
-fig = ptable_heatmap_plotly(df_diel[Key.formula], log=True, colorscale="viridis")
+fig = pmv.ptable_heatmap_plotly(df_diel[Key.formula], log=True, colorscale="viridis")
 title = "<b>Elements in Matbench Dielectric</b>"
 fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
 # pmv.save_fig(fig, "dielectric-ptable-heatmap-plotly.pdf")
 
 
 # %%
-ax = spacegroup_bar(df_diel[Key.spg_num])
+ax = pmv.spacegroup_bar(df_diel[Key.spg_num])
 ax.set_title("Space group histogram", y=1.1)
 pmv.save_fig(ax, "dielectric-spacegroup-hist.pdf")
 
 
 # %%
-fig = spacegroup_sunburst(df_diel[Key.spg_num], show_counts="percent")
+fig = pmv.spacegroup_sunburst(df_diel[Key.spg_num], show_counts="percent")
 fig.layout.title = "Space group sunburst"
 # pmv.save_fig(fig, "dielectric-spacegroup-sunburst.pdf")
 fig.show()
@@ -95,7 +88,7 @@ fig = px.violin(
 
 x_ticks = {}  # custom x axis tick labels
 for cry_sys, df_group in sorted(
-    df_diel.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
+    df_diel.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
 ):
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
@@ -108,7 +101,7 @@ fig.layout.title = dict(text=title, x=0.5)
 fig.layout.margin = dict(b=10, l=10, r=10, t=50)
 fig.layout.showlegend = False
 fig.layout.xaxis = reusable_x_axis = dict(
-    tickvals=list(range(len(crystal_sys_order))), ticktext=list(x_ticks.values())
+    tickvals=list(range(len(pmv.crystal_sys_order))), ticktext=list(x_ticks.values())
 )
 
 
@@ -125,7 +118,7 @@ fig = px.violin(
     points="all",
     hover_data=[Key.spg_num],
     hover_name=Key.formula,
-    category_orders={Key.crystal_system: crystal_sys_order},
+    category_orders={Key.crystal_system: pmv.crystal_sys_order},
     log_y=True,
 ).update_traces(jitter=1)
 
@@ -137,7 +130,7 @@ def rgb_color(val: float, max_val: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_diel.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
+    df_diel.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
 ):
     n_wyckoff = df_group[Key.n_wyckoff].mean()
     clr = rgb_color(n_wyckoff, 14)

@@ -11,9 +11,9 @@ import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 
+from pymatviz import df_ptable
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:

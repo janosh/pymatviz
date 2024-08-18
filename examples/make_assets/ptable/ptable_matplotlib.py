@@ -6,6 +6,7 @@ from matminer.datasets import load_dataset
 from pymatgen.core.periodic_table import Element
 
 import pymatviz as pmv
+from pymatviz import df_ptable
 from pymatviz.enums import Key
 from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
@@ -16,7 +17,6 @@ from pymatviz.ptable import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.utils import df_ptable
 
 
 # %%

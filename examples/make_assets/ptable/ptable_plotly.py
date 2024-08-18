@@ -2,10 +2,9 @@
 import numpy as np
 from matminer.datasets import load_dataset
 
-from pymatviz import ptable_heatmap_plotly
+from pymatviz import df_ptable, ptable_heatmap_plotly
 from pymatviz.enums import ElemCountMode, Key
 from pymatviz.io import save_and_compress_svg
-from pymatviz.utils import df_ptable
 
 
 df_expt_gap = load_dataset("matbench_expt_gap")

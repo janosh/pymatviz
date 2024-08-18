@@ -2,9 +2,9 @@
 import pandas as pd
 import plotly.express as px
 
+import pymatviz as pmv
 from pymatviz import crystal_sys_order, ptable_heatmap_plotly, spacegroup_sunburst
 from pymatviz.enums import Key
-from pymatviz.utils import crystal_sys_from_spg_num
 
 
 __author__ = "Janosh Riebesell"
@@ -18,7 +18,7 @@ df_wbm = pd.read_csv("https://figshare.com/ndownloader/files/44225498").set_inde
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
 df_wbm[Key.spg_num] = df_wbm[f"{Key.wyckoff}_spglib"].str.split("_").str[2].astype(int)
-df_wbm[Key.crystal_system] = df_wbm[Key.spg_num].map(crystal_sys_from_spg_num)
+df_wbm[Key.crystal_system] = df_wbm[Key.spg_num].map(pmv.utils.crystal_sys_from_spg_num)
 df_wbm[Key.energy_per_atom] = df_wbm[Key.energy] / df_wbm[Key.n_sites]
 
 

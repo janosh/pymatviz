@@ -14,10 +14,6 @@ from tqdm import tqdm
 import pymatviz as pmv
 from pymatviz import count_elements, pmv_dark_template
 from pymatviz.enums import Key
-from pymatviz.histogram import spacegroup_bar
-from pymatviz.powerups import add_identity_line
-from pymatviz.ptable import ptable_heatmap, ptable_heatmap_splits
-from pymatviz.sunburst import spacegroup_sunburst
 
 
 px.defaults.template = pmv_dark_template
@@ -81,7 +77,7 @@ fig.add_scatter(
 )
 fig.layout.xaxis.title = f"r2SCAN {Key.energy.label}"
 fig.layout.yaxis.title = f"PBE {Key.energy.label}"
-add_identity_line(fig, retain_xy_limits=True)
+pmv.powerups.add_identity_line(fig, retain_xy_limits=True)
 fig.show()
 
 
@@ -108,7 +104,7 @@ fig.show()
 r2scan_elem_counts = locals().get("r2scan_elem_counts")
 if r2scan_elem_counts is None:
     r2scan_elem_counts = count_elements(df_r2scan[Key.formula])
-fig = ptable_heatmap(r2scan_elem_counts, return_type="figure")
+fig = pmv.ptable_heatmap(r2scan_elem_counts, return_type="figure")
 
 pmv.save_fig(fig, "r2scan-element-counts-ptable.pdf")
 
@@ -117,7 +113,7 @@ pmv.save_fig(fig, "r2scan-element-counts-ptable.pdf")
 pbe_elem_counts = locals().get("pbe_elem_counts")
 if pbe_elem_counts is None:
     pbe_elem_counts = count_elements(df_pbe[Key.formula])
-fig = ptable_heatmap(pbe_elem_counts, return_type="figure")
+fig = pmv.ptable_heatmap(pbe_elem_counts, return_type="figure")
 
 
 # %% calculate per element energies
@@ -152,13 +148,13 @@ per_elem_cohesive_energy = {
     key: list(dct.values()) for key, dct in df_per_elem.to_dict(orient="index").items()
 }
 
-fig = ptable_heatmap_splits(
+fig = pmv.ptable_heatmap_splits(
     per_elem_cohesive_energy, cbar_title=f"{col_name.label} (eV)"
 )
 
 
 # %% which elements have a higher share of missing r2scan data
-fig = ptable_heatmap(
+fig = pmv.ptable_heatmap(
     (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
     value_fmt=".1%",
     cbar_label_fmt=".0%",
@@ -175,7 +171,7 @@ df_per_elem_magmoms = pd.DataFrame(
     for struct in df_r2scan[Key.structure]
 ).mean()
 
-fig = ptable_heatmap(
+fig = pmv.ptable_heatmap(
     df_per_elem_magmoms,
     cbar_title=r"Mean |magmom| ($\mu_B$)",
     value_fmt=".1f",
@@ -196,7 +192,7 @@ for label, df in (
 
 
 # %% high-temperate MLMD frames are expected to have low symmetry (mostly triclinic)
-fig = spacegroup_sunburst(df_r2scan[Key.spg_num], show_counts="percent")
+fig = pmv.spacegroup_sunburst(df_r2scan[Key.spg_num], show_counts="percent")
 fig.layout.title = dict(text=f"{n_r2scan:,} r2SCAN spacegroups", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=30)
 fig.show()
@@ -204,7 +200,7 @@ pmv.save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
 
 
 # %% spacegroup histogram
-fig = spacegroup_bar(
+fig = pmv.spacegroup_bar(
     df_r2scan[Key.spg_num], title="r2SCAN spacegroup histogram", log=True
 )
 fig.show()
@@ -240,7 +236,7 @@ df_pbe_elem_forces = pd.DataFrame(
 
 
 # %%
-fig = ptable_heatmap_splits(
+fig = pmv.ptable_heatmap_splits(
     {
         elem: [df_r2scan_elem_forces[elem], df_pbe_elem_forces[elem]]
         for elem in df_r2scan_elem_forces.index

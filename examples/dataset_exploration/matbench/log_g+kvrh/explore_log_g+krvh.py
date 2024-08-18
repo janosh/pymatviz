@@ -31,7 +31,6 @@ from pymatviz import (
     spacegroup_sunburst,
 )
 from pymatviz.enums import Key
-from pymatviz.utils import crystal_sys_from_spg_num
 
 
 # %%
@@ -45,9 +44,10 @@ df_grvh[[Key.spg_symbol, Key.spg_num]] = [
         df_grvh[Key.structure], desc="Getting matbench_log_gvrh spacegroups"
     )
 ]
-df_grvh[Key.crystal_system] = [
-    crystal_sys_from_spg_num(x) for x in df_grvh[Key.spg_num]
-]
+df_grvh[Key.crystal_system] = df_grvh[Key.spg_num].map(
+    pmv.utils.crystal_sys_from_spg_num
+)
+
 
 df_grvh[Key.wyckoff] = [
     get_protostructure_label_from_spglib(struct)

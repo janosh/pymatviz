@@ -5,8 +5,6 @@ from tqdm import tqdm
 import pymatviz as pmv
 from pymatviz import count_elements, ptable_heatmap, spacegroup_sunburst, structure_2d
 from pymatviz.enums import Key
-from pymatviz.powerups import annotate_bars
-from pymatviz.utils import crystal_sys_from_spg_num
 
 
 """Stats for the matbench_perovskites dataset.
@@ -34,9 +32,9 @@ df_perov[Key.volume] = df_perov[Key.structure].map(lambda struct: struct.volume)
 
 df_perov[Key.formula] = df_perov[Key.structure].map(lambda cryst: cryst.formula)
 
-df_perov[Key.crystal_system] = [
-    crystal_sys_from_spg_num(x) for x in df_perov[Key.spg_num]
-]
+df_perov[Key.crystal_system] = df_perov[Key.spg_num].map(
+    pmv.utils.crystal_sys_from_spg_num
+)
 
 
 # %%
@@ -60,7 +58,7 @@ pmv.save_fig(fig, "perovskites-ptable-heatmap.pdf")
 # %%
 ax = df_perov[Key.crystal_system].value_counts().plot.bar(rot="horizontal")
 ax.set(title="Crystal systems in Matbench Perovskites")
-annotate_bars(ax, v_offset=250)
+pmv.powerups.annotate_bars(ax, v_offset=250)
 
 pmv.save_fig(ax, "perovskites-crystal-system-counts.pdf")
 
