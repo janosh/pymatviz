@@ -25,14 +25,16 @@ jobs:
           npm install --global svgo
 
           # Show SVGO version (DEBUG #187)
-          # TODO: remove after 2025-01-01 if nothing is going wrong
+          # TODO: remove after 2025-01-01 if nothing goes wrong
           svgo --version
 
           svgo --multipass --final-newline assets
+
           if git diff --quiet assets; then
             echo "No changes to commit"
             exit 0
           fi
+
           git config user.name "Janosh Riebesell"
           git config user.email janosh.riebesell@gmail.com
           git add assets
