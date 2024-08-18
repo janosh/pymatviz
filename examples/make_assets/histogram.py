@@ -5,10 +5,9 @@ from tqdm import tqdm
 
 import pymatviz as pmv
 from pymatviz.enums import Key
-from pymatviz.templates import set_plotly_template
 
 
-set_plotly_template("pymatviz_white")
+pmv.set_plotly_template("pymatviz_white")
 
 
 # %%
