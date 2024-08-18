@@ -19,15 +19,15 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v4
 
-      - name: Install SVGO
+      - name: Compress SVG assets and commit to current PR
         run: |
+          # Install SVGO
           npm install --global svgo
+
           # Show SVGO version (DEBUG #187)
           # TODO: remove after 2025-01-01 if nothing is going wrong
           svgo --version
 
-      - name: Compress SVG assets and commit to current PR
-        run: |
           svgo --multipass --final-newline assets
           if git diff --quiet assets; then
             echo "No changes to commit"
@@ -36,5 +36,5 @@ jobs:
           git config user.name "Janosh Riebesell"
           git config user.email janosh.riebesell@gmail.com
           git add assets
-          git commit -m "compress new SVG assets"
+          git commit -m "[workflow] Compress new SVG assets"
           git push
