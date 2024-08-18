@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
 
 x_col, y_col, *_ = df_regr
+df_tips = px.data.tips()
 
 
 @pytest.mark.parametrize("log_density", [True, False])
@@ -83,10 +85,7 @@ def test_density_scatter_with_hist(df_or_arrays: DfOrArrays) -> None:
 
 @pytest.mark.parametrize(
     "cbar_label, cbar_coords",
-    [
-        ("foo", (0.95, 0.03, 0.03, 0.7)),
-        (None, (1, 1, 1, 1)),
-    ],
+    [("foo", (0.95, 0.03, 0.03, 0.7)), (None, (1, 1, 1, 1))],
 )
 def test_density_hexbin(
     df_or_arrays: DfOrArrays,
@@ -153,11 +152,9 @@ def test_density_scatter_plotly(
     assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
     assert fig.layout.yaxis.title.text == (y if isinstance(y, str) else "Predicted")
     bin_counts_col = bin_counts_col or "Point Density"
-    assert fig.layout.coloraxis.colorbar.title.text == bin_counts_col.replace(
-        " ", "<br>"
-    )
-
     colorbar = fig.layout.coloraxis.colorbar
+    assert colorbar.title.text.replace("<br>", " ") == bin_counts_col
+
     if log_density:
         assert all(isinstance(val, float) for val in colorbar.tickvals)
         assert all(isinstance(text, str) for text in colorbar.ticktext)
@@ -181,5 +178,121 @@ def test_density_scatter_plotly_raises_on_bad_stats_type(stats: Any) -> None:
 
 def test_density_scatter_plotly_empty_dataframe() -> None:
     empty_df = pd.DataFrame({x_col: [], y_col: []})
-    with pytest.raises(ValueError, match="Cannot cut empty array"):
+    with pytest.raises(ValueError, match="input should have multiple elements"):
         density_scatter_plotly(df=empty_df, x=x_col, y=y_col)
+
+
+def test_density_scatter_plotly_facet() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", facet_col="smoker"
+    )
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 2  # Two traces for smoker/non-smoker
+    assert fig.layout.xaxis2 is not None  # Check second x-axis exists for faceting
+
+
+def test_density_scatter_plotly_facet_log_density() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", facet_col="smoker", log_density=True
+    )
+
+    assert fig.layout.coloraxis.colorbar.ticktext is not None
+    assert fig.layout.coloraxis.colorbar.tickvals is not None
+
+
+def test_density_scatter_plotly_facet_stats() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", facet_col="smoker", stats=True
+    )
+
+    # Check there are at least 2 annotations (could be more due to facet labels)
+    assert len(fig.layout.annotations) >= 2
+    # Check the stat annotations are present
+    stat_annotations = [ann for ann in fig.layout.annotations if "MAE" in ann.text]
+    assert len(stat_annotations) == 2  # One for each facet
+
+
+def test_density_scatter_plotly_facet_best_fit_line() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", facet_col="smoker", best_fit_line=True
+    )
+
+    # Check there are at least 4 shapes (2 identity lines, 2 best fit lines)
+    assert len(fig.layout.shapes) == 4
+    # Check the best fit lines are present with color navy
+    best_fit_lines = [
+        shape for shape in fig.layout.shapes if shape.line.color == "navy"
+    ]
+    assert len(best_fit_lines) == 2  # One for each facet
+
+
+def test_density_scatter_plotly_facet_custom_bins() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", facet_col="smoker", n_bins=10
+    )
+
+    # Check that binning has been applied (number of points should be reduced)
+    smoker_count = df_tips["smoker"].value_counts()
+    assert len(fig.data[0].x) < smoker_count["No"]
+    assert len(fig.data[1].x) < smoker_count["Yes"]
+
+
+def test_density_scatter_plotly_facet_custom_color() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
+        color_continuous_scale="Viridis",
+    )
+
+    # Check the colorscale is Viridis
+    assert [
+        color for _val, color in fig.layout.coloraxis.colorscale
+    ] == px.colors.sequential.Viridis
+
+
+@pytest.mark.parametrize("density", ["kde", "empirical"])
+def test_density_scatter_plotly_facet_density_methods(
+    density: Literal["kde", "empirical"],
+) -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", facet_col="smoker", density=density
+    )
+
+    assert isinstance(fig, go.Figure)
+    # TODO maybe add asserts to check specific aspects of KDE vs empirical density
+
+
+def test_density_scatter_plotly_facet_size() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", size="size", facet_col="smoker"
+    )
+
+    assert "marker.size" in fig.data[0]
+    assert "marker.size" in fig.data[1]
+
+
+def test_density_scatter_plotly_facet_multiple_categories() -> None:
+    fig = density_scatter_plotly(df=df_tips, x="total_bill", y="tip", facet_col="day")
+
+    assert len(fig.data) == df_tips["day"].nunique()
+
+
+def test_density_scatter_plotly_facet_identity_line() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", facet_col="smoker", identity_line=True
+    )
+
+    assert len(fig.layout.shapes) == 2  # Two identity lines, one for each facet
+
+
+def test_density_scatter_plotly_facet_hover_template() -> None:
+    fig = density_scatter_plotly(
+        df=df_tips, x="total_bill", y="tip", facet_col="smoker"
+    )
+
+    for trace in fig.data:
+        assert "total_bill" in trace.hovertemplate
+        assert "tip" in trace.hovertemplate

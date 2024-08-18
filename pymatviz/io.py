@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import os
 import subprocess
-from os.path import dirname
 from pathlib import Path
 from shutil import which
 from time import sleep
@@ -18,8 +17,9 @@ from matplotlib import lines as mlines
 from matplotlib import patches as mpatches
 from matplotlib.backends.backend_agg import RendererAgg
 from matplotlib.figure import Figure
-from pandas.io.formats.style import Styler
 from tqdm import tqdm
+
+from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
@@ -27,9 +27,44 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import pandas as pd
+    from pandas.io.formats.style import Styler
 
 
-ROOT = dirname(dirname(__file__))
+class TqdmDownload(tqdm):
+    """Progress bar for urllib.request.urlretrieve file download.
+
+    Adapted from official TqdmUpTo example.
+    See https://github.com/tqdm/tqdm/blob/4c956c20b83be4312460fc0c4812eeb3fef5e7df/README.rst#hooks-and-callbacks
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Sets default values appropriate for file downloads for unit, unit_scale,
+        unit_divisor, miniters, desc.
+        """
+        for key, val in dict(
+            unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc="Downloading"
+        ).items():
+            kwargs.setdefault(key, val)
+        super().__init__(*args, **kwargs)
+
+    def update_to(
+        self, n_blocks: int = 1, block_size: int = 1, total_size: int | None = None
+    ) -> bool | None:
+        """Update hook for urlretrieve.
+
+        Args:
+            n_blocks (int, optional): Number of blocks transferred so far. Default = 1.
+            block_size (int, optional): Size of each block (in tqdm units). Default = 1.
+            total_size (int, optional): Total size (in tqdm units). If None, remains
+                unchanged. Defaults to None.
+
+        Returns:
+            bool | None: True if tqdm.display() was triggered.
+        """
+        if total_size is not None:
+            self.total = total_size
+        # update sets self.n = n_blocks * block_size
+        return self.update(n_blocks * block_size - self.n)
 
 
 def save_fig(
@@ -217,7 +252,7 @@ def df_to_pdf(
             is the default) if you set crop=False.
         size (str): Page size. Defaults to "4cm * n_cols x 2cm * n_rows"
             (width x height). See https://developer.mozilla.org/@page for 'landscape'
-            and other options.
+            and other special values.
         style (str): CSS style string to be inserted into the HTML file.
             Defaults to "".
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
@@ -401,43 +436,6 @@ def df_to_html_table(
     return html
 
 
-class TqdmDownload(tqdm):
-    """Progress bar for urllib.request.urlretrieve file download.
-
-    Adapted from official TqdmUpTo example.
-    See https://github.com/tqdm/tqdm/blob/4c956c20b83be4312460fc0c4812eeb3fef5e7df/README.rst#hooks-and-callbacks
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Sets default values appropriate for file downloads for unit, unit_scale,
-        unit_divisor, miniters, desc.
-        """
-        for key, val in dict(
-            unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc="Downloading"
-        ).items():
-            kwargs.setdefault(key, val)
-        super().__init__(*args, **kwargs)
-
-    def update_to(
-        self, n_blocks: int = 1, block_size: int = 1, total_size: int | None = None
-    ) -> bool | None:
-        """Update hook for urlretrieve.
-
-        Args:
-            n_blocks (int, optional): Number of blocks transferred so far. Default = 1.
-            block_size (int, optional): Size of each block (in tqdm units). Default = 1.
-            total_size (int, optional): Total size (in tqdm units). If None, remains
-                unchanged. Defaults to None.
-
-        Returns:
-            bool | None: True if tqdm.display() was triggered.
-        """
-        if total_size is not None:
-            self.total = total_size
-        # update sets self.n = n_blocks * block_size
-        return self.update(n_blocks * block_size - self.n)
-
-
 def df_to_svg(
     obj: pd.DataFrame | Styler,
     file_path: str | Path,
@@ -467,6 +465,7 @@ def df_to_svg(
     """
     import bs4
     import cssutils
+    from pandas.io.formats.style import Styler
 
     # TODO find a way to not have to hardcode these values
     fig_width, fig_height, dpi = 20, 4, 72  # Using dpi=72 as a standard value
@@ -542,10 +541,7 @@ def df_to_svg(
 
         col_widths = [width / total_width for width in max_col_widths]
         row_heights = [
-            (
-                max([val[0].count("\n") + 1 for val in row if isinstance(val[0], str)])
-                + 1
-            )
+            (max(val[0].count("\n") + 1 for val in row if isinstance(val[0], str)) + 1)
             * font_size
             / dpi
             for row in rows

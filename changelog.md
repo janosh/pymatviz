@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.10.0](https://github.com/janosh/pymatviz/compare/v0.9.3...v0.10.0)
+
+> 31 July 2024
+
+- `density_scatter_plotly` QoL tweaks [`#190`](https://github.com/janosh/pymatviz/pull/190)
+- Breaking: drop `plot_` prefix from multiple functions [`#189`](https://github.com/janosh/pymatviz/pull/189)
+- Add protostructure terminology to enum [`#185`](https://github.com/janosh/pymatviz/pull/185)
+- Update the function names for wren utils given breaking changes in Aviary [`#182`](https://github.com/janosh/pymatviz/pull/182)
+- [Breaking] Refactor ptable heatmap plotter [`#157`](https://github.com/janosh/pymatviz/pull/157)
+
 #### [v0.9.3](https://github.com/janosh/pymatviz/compare/v0.9.2...v0.9.3)
 
 > 18 July 2024

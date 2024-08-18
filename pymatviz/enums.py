@@ -152,6 +152,11 @@ class Key(LabelEnum):
     structure = "structure", "Structure"
     init_struct = "initial_structure", "Initial Structure"
     final_struct = "final_structure", "Final Structure"
+    cell = "cell", "Cell"
+    lattice = "lattice", "Lattice"
+    lattice_vectors = "lattice_vectors", "Lattice Vectors"
+    lattice_angles = "lattice_angles", "Lattice Angles (°)"
+    lattice_lens = "lattice_lengths", f"Lattice Lengths {angstrom}"
     init_volume = "initial_volume", f"Initial Volume {cubic_angstrom}"
     final_volume = "final_volume", f"Final Volume {cubic_angstrom}"
     volume = "volume", f"Volume {cubic_angstrom}"
@@ -201,6 +206,7 @@ class Key(LabelEnum):
     formula = "formula", "Formula"
     formula_pretty = "formula_pretty", "Pretty Formula"
     reduced_formula = "reduced_formula", "Reduced chemical formula"
+    anonymous_formula = "anonymous_formula", "Anonymous Formula"
     charge = "total_charge", "Total Charge"
     oxi_states = "oxidation_states", "Oxidation States"
     oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
@@ -218,7 +224,19 @@ class Key(LabelEnum):
 
     # Thermodynamic
     energy = "energy", f"Energy {eV}"
+    enthalpy = "enthalpy", f"Enthalpy {eV}"
+    entropy = "entropy", f"Entropy {eV_per_kelvin}"
+    free_energy = "free_energy", f"Free Energy {eV}"
+    gibbs_free_energy = "gibbs_free_energy", f"Gibbs Free Energy {eV}"
+    helmholtz_free_energy = "helmholtz_free_energy", f"Helmholtz Free Energy {eV}"
+    corrected_energy = "corrected_energy", f"Corrected Energy {eV}"
+    uncorrected_energy = "uncorrected_energy", f"Uncorrected Energy {eV}"
+    internal_energy = "internal_energy", f"Internal Energy {eV}"
     energy_per_atom = "energy_per_atom", f"Energy {eV_per_atom}"
+    corrected_energy_per_atom = (
+        "corrected_energy_per_atom",
+        f"Corrected Energy {eV_per_atom}",
+    )
     uncorrected_energy_per_atom = (
         "uncorrected_energy_per_atom",
         f"Uncorrected Energy {eV_per_atom}",
@@ -227,6 +245,8 @@ class Key(LabelEnum):
         "cohesive_energy_per_atom",
         f"Cohesive Energy {eV_per_atom}",
     )
+    heat_of_formation = "heat_of_formation", f"Heat of Formation {eV}"
+    heat_of_reaction = "heat_of_reaction", f"Heat of Reaction {eV}"
     e_form_per_atom = "e_form_per_atom", f"E<sub>form</sub> {eV_per_atom}"
     e_form_pred = "e_form_per_atom_pred", f"Predicted E<sub>form</sub> {eV_per_atom}"
     e_form_true = "e_form_per_atom_true", f"Actual E<sub>form</sub> {eV_per_atom}"
@@ -244,9 +264,6 @@ class Key(LabelEnum):
     critical_temp = "critical_temperature", f"Critical Temperature {kelvin}"
     critical_pressure = "critical_pressure", f"Critical Pressure {pascal}"
     critical_vol = "critical_volume", "Critical Volume (m³/mol)"
-    gibbs_free_energy = "gibbs_free_energy", f"Gibbs Free Energy {eV}"
-    enthalpy = "enthalpy", f"Enthalpy {eV}"
-    entropy = "entropy", f"Entropy {eV_per_kelvin}"
     lattice_energy = "lattice_energy", f"Lattice Energy {eV}"
     interface_energy = "interface_energy", f"Interface Energy {joule_per_m2}"
 
@@ -375,8 +392,15 @@ class Key(LabelEnum):
 
     # DFT
     dft = "dft", "DFT"
+    xc = "exchange_correlation", "Exchange-Correlation"
+    lda = "lda", "LDA"
+    gga = "gga", "GGA"
+    meta_gga = "meta_gga", "Meta-GGA"
+    hybrid = "hybrid", "Hybrid"
+    hartree_fock = "hartree_fock", "Hartree-Fock"
     pbe = "pbe", "PBE"
     pbe_sol = "pbe_sol", "PBEsol"
+    scan = "scan", "SCAN"
     r2scan = "r2scan", "r2SCAN"
     hse = "hse", "HSE"
     xc_functional = "xc_functional", "Exchange-Correlation Functional"
@@ -485,6 +509,8 @@ class Key(LabelEnum):
     db_id = "db_id", "Database ID"
     uuid = "uuid", "UUID"
     mat_id = "material_id", "Material ID"
+    # as in molecular dynamics or geometry optimization frame
+    frame_id = "frame_id", "Frame ID"
     task = "task", "Task"
     job_id = "job_id", "Job ID"
     task_id = "task_id", "Task ID"

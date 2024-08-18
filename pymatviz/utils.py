@@ -181,7 +181,7 @@ def bin_df_cols(
     group_by_cols: Sequence[str] = (),
     n_bins: int | Sequence[int] = 100,
     bin_counts_col: str = "bin_counts",
-    kde_col: str = "",
+    density_col: str = "",
     verbose: bool = True,
 ) -> pd.DataFrame:
     """Bin columns of a DataFrame.
@@ -191,15 +191,16 @@ def bin_df_cols(
         bin_by_cols (Sequence[str]): Columns to bin.
         group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
         n_bins (int): Number of bins to use. Defaults to 100.
-        bin_counts_col (str): Column name for bin counts.
-            Defaults to "bin_counts".
-        kde_col (str): Column name for KDE bin counts e.g. 'kde_bin_counts'. Defaults to
-            "" which means no KDE to speed things up.
+        bin_counts_col (str): Column name for bin counts. Defaults to "bin_counts".
+        density_col (str): Column name for density values. Defaults to "".
         verbose (bool): If True, report df length reduction. Defaults to True.
 
     Returns:
-        pd.DataFrame: Binned DataFrame.
+        pd.DataFrame: Binned DataFrame with original index name and values.
     """
+    # Create a copy of the input DataFrame to avoid modifying the original
+    df_in = df_in.copy()
+
     if isinstance(n_bins, int):
         # broadcast integer n_bins to all bin_by_cols
         n_bins = [n_bins] * len(bin_by_cols)
@@ -207,20 +208,22 @@ def bin_df_cols(
     if len(bin_by_cols) != len(n_bins):
         raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
 
-    index_name = df_in.index.name
+    cut_cols = [f"{col}_bins" for col in bin_by_cols]
+    for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols):
+        df_in[cut_col] = pd.cut(df_in[col].values, bins=bins)
 
-    for col, bins in zip(bin_by_cols, n_bins):
-        df_in[f"{col}_bins"] = pd.cut(df_in[col].values, bins=bins)
-
-    if df_in.index.name not in df_in:
+    # Preserve the original index
+    orig_index_name = df_in.index.name or "index"
+    # Reset index so it participates in groupby. If the index name is already in the
+    # columns, we it'll participate already and be set back to the index at the end.
+    if orig_index_name not in df_in:
         df_in = df_in.reset_index()
 
-    group = df_in.groupby(
-        [*[f"{c}_bins" for c in bin_by_cols], *group_by_cols], observed=True
-    )
+    group = df_in.groupby(by=[*cut_cols, *group_by_cols], observed=True)
 
     df_bin = group.first().dropna()
     df_bin[bin_counts_col] = group.size()
+    df_bin = df_bin.reset_index()
 
     if verbose:
         print(  # noqa: T201
@@ -228,18 +231,17 @@ def bin_df_cols(
             f"{len(df_in):,} to {len(df_bin):,}"
         )
 
-    if kde_col:
+    if density_col:
         # compute kernel density estimate for each bin
         values = df_in[bin_by_cols].dropna().T
-        model_kde = scipy.stats.gaussian_kde(values)
+        gaussian_kde = scipy.stats.gaussian_kde(values.astype(float))
 
         xy_binned = df_bin[bin_by_cols].T
-        density = model_kde(xy_binned)
-        df_bin["cnt_col"] = density / density.sum() * len(values)
+        density = gaussian_kde(xy_binned.astype(float))
+        df_bin[density_col] = density / density.sum() * len(values)
 
-    if index_name is None:
-        return df_bin
-    return df_bin.reset_index().set_index(index_name)
+    # Set the index back to the original index name
+    return df_bin.set_index(orig_index_name)
 
 
 @contextmanager
@@ -469,34 +471,30 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
-def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
-    """Annotate a matplotlib or plotly figure.
+def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
+    """Annotate a matplotlib or plotly figure. Supports faceted plots plotly figure with
+    trace with empty strings skipped.
 
     Args:
-        text (str): The text to use for annotation.
+        text (str): The text to use for annotation. If fig is plotly faceted, text can
+            be a list of strings to annotate each subplot.
         fig (plt.Axes | plt.Figure | go.Figure | None, optional): The matplotlib Axes,
-            Figure or plotly Figure to annotate. If None, the current matplotlib Axes
-            will be used. Defaults to None.
-        color (str, optional): The color of the text. Defaults to "black".
+            Figure or plotly Figure to annotate.
         **kwargs: Additional arguments to pass to matplotlib's AnchoredText or plotly's
             fig.add_annotation().
 
     Returns:
         plt.Axes | plt.Figure | go.Figure: The annotated figure.
     """
-    backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
     color = kwargs.pop("color", get_font_color(fig))
 
-    if backend == MATPLOTLIB:
+    if isinstance(fig, (plt.Figure, plt.Axes)):
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
-
         defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
         text_box = AnchoredText(text, **(defaults | kwargs))
         ax.add_artist(text_box)
     elif isinstance(fig, go.Figure):
         defaults = dict(
-            xref="paper",
-            yref="paper",
             x=0.02,
             y=0.96,
             showarrow=False,
@@ -504,9 +502,36 @@ def annotate(text: str, fig: AxOrFig | None = None, **kwargs: Any) -> AxOrFig:
             align="left",
         )
 
-        fig.add_annotation(text=text, **(defaults | kwargs))
+        # Annotate all subplots or main plot if not faceted
+        if any(
+            getattr(trace, "xaxis", None) not in (None, "x") for trace in fig.data
+        ):  # Faceted plot
+            for idx, trace in enumerate(fig.data):
+                # if text is str, use it for all subplots though we might want to
+                # warn since this will likely rarely be intended
+                sub_text = text if isinstance(text, str) else text[idx]
+                # skip traces for which no annotations were provided
+                if not sub_text:
+                    continue
+
+                subplot_idx = trace.xaxis[1:] or ""  # e.g., 'x2' -> '2', 'x' -> ''
+                xref = f"x{subplot_idx} domain" if subplot_idx else "x domain"
+                yref = f"y{subplot_idx} domain" if subplot_idx else "y domain"
+                fig.add_annotation(
+                    text=sub_text,
+                    **(dict(xref=xref, yref=yref) | defaults | kwargs),
+                )
+        else:  # Non-faceted plot
+            if not isinstance(text, str):
+                text_type = type(text).__name__
+                raise ValueError(
+                    f"Unexpected {text_type=} for non-faceted plot, must be str"
+                )
+            fig.add_annotation(
+                text=text, **(dict(xref="paper", yref="paper") | defaults | kwargs)
+            )
     else:
-        raise ValueError(f"Unexpected {fig=}")
+        raise TypeError(f"Unexpected {fig=}")
 
     return fig
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import re
 from copy import deepcopy
 from typing import Any, Literal
@@ -36,21 +37,6 @@ from pymatviz.utils import (
     validate_fig,
 )
 from tests.conftest import y_pred, y_true
-
-
-def _extract_anno_from_fig(fig: go.Figure | plt.Figure, idx: int = -1) -> str:
-    # get plotly or matplotlib annotation text. idx=-1 gets the most recently added
-    # annotation
-    if not isinstance(fig, (go.Figure, plt.Figure)):
-        raise TypeError(f"Unexpected {type(fig)=}")
-
-    if isinstance(fig, go.Figure):
-        anno_text = fig.layout.annotations[idx].text
-    else:
-        text_box = fig.axes[0].artists[idx]
-        anno_text = text_box.txt.get_text()
-
-    return anno_text
 
 
 @pytest.mark.parametrize(
@@ -116,11 +102,11 @@ def test_df_to_arrays_strict() -> None:
 
 @pytest.mark.parametrize(
     "bin_by_cols, group_by_cols, n_bins, expected_n_bins, "
-    "verbose, kde_col, expected_n_rows",
+    "verbose, density_col, expected_n_rows",
     [
         (["A"], [], 2, [2], True, "", 2),
-        (["A", "B"], [], 2, [2, 2], True, "kde", 4),
-        (["A", "B"], [], [2, 3], [2, 3], False, "kde", 6),
+        (["A", "B"], [], 2, [2, 2], True, "kde_bin_counts", 4),
+        (["A", "B"], [], [2, 3], [2, 3], False, "kde_bin_counts", 6),
         (["A"], ["B"], 2, [2], False, "", 30),
     ],
 )
@@ -130,12 +116,19 @@ def test_bin_df_cols(
     n_bins: int | list[int],
     expected_n_bins: list[int],
     verbose: bool,
-    kde_col: str,
+    density_col: str,
     expected_n_rows: int,
     df_float: pd.DataFrame,
 ) -> None:
     idx_col = "index"
+    # don't move this below df_float.copy() line
     df_float.index.name = idx_col
+
+    # keep copy of original DataFrame to assert it is not modified
+    # not using df.copy(deep=True) here for extra sensitivity, doc str says
+    # not as deep as deepcopy
+    df_float_orig = copy.deepcopy(df_float)
+
     bin_counts_col = "bin_counts"
     df_binned = bin_df_cols(
         df_float,
@@ -144,27 +137,38 @@ def test_bin_df_cols(
         n_bins=n_bins,
         verbose=verbose,
         bin_counts_col=bin_counts_col,
-        kde_col=kde_col,
+        density_col=density_col,
     )
+
+    assert len(df_binned) == expected_n_rows
+    assert len(df_binned) <= len(df_float)
+    assert df_binned.index.name == idx_col
 
     # ensure binned DataFrame has a minimum set of expected columns
     expected_cols = {bin_counts_col, *df_float, *(f"{col}_bins" for col in bin_by_cols)}
-    assert {*df_binned} >= expected_cols
-    assert len(df_binned) == expected_n_rows
+    assert (
+        {*df_binned} >= expected_cols
+    ), f"{set(df_binned)=}\n{expected_cols=},\n{bin_by_cols=}\n{group_by_cols=}"
 
     # validate the number of unique bins for each binned column
-    df_grouped = (
-        df_float.reset_index(names=idx_col)
-        .groupby([*[f"{c}_bins" for c in bin_by_cols], *group_by_cols])
-        .first()
-        .dropna()
-    )
-    for col, expected in zip(bin_by_cols, expected_n_bins):
-        binned_col = f"{col}_bins"
-        assert binned_col in df_grouped.index.names
+    for col, n_bins_expec in zip(bin_by_cols, expected_n_bins):
+        assert df_binned[f"{col}_bins"].nunique() == n_bins_expec
 
-        uniq_bins = df_grouped.index.get_level_values(binned_col).nunique()
-        assert uniq_bins == expected
+    # ensure original DataFrame is not modified
+    pd.testing.assert_frame_equal(df_float, df_float_orig)
+
+    # Check that the index values of df_binned are a subset of df_float
+    assert set(df_binned.index).issubset(set(df_float.index))
+
+    # Check that bin_counts column exists and contains only integers
+    assert bin_counts_col in df_binned
+    assert df_binned[bin_counts_col].dtype in [int, "int64"]
+
+    # If density column is specified, check if it exists
+    if density_col:
+        assert density_col in df_binned
+    else:
+        assert density_col not in df_binned
 
 
 def test_bin_df_cols_raises() -> None:
@@ -453,6 +457,69 @@ def test_annotate(
 def test_annotate_invalid_fig() -> None:
     with pytest.raises(TypeError, match="Input must be .+ got type"):
         annotate("test", fig="invalid")
+
+
+def test_annotate_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:
+    texts = ["Annotation 1", "Annotation 2"]
+    fig = annotate(texts, plotly_faceted_scatter)
+
+    assert len(fig.layout.annotations) == 2
+    assert fig.layout.annotations[0].text == texts[0]
+    assert fig.layout.annotations[1].text == texts[1]
+    assert fig.layout.annotations[0].xref == "x domain"
+    assert fig.layout.annotations[1].xref == "x2 domain"
+
+
+def test_annotate_faceted_plotly_with_empty_string(
+    plotly_faceted_scatter: go.Figure,
+) -> None:
+    texts = ["Annotation 1", ""]
+    fig = annotate(texts, plotly_faceted_scatter)
+
+    assert len(fig.layout.annotations) == 1
+    assert fig.layout.annotations[0].text == texts[0]
+
+
+def test_annotate_faceted_plotly_with_single_string(
+    plotly_faceted_scatter: go.Figure,
+) -> None:
+    text = "Single Annotation"
+    fig = annotate(text, plotly_faceted_scatter)
+
+    assert len(fig.layout.annotations) == 2
+    for annotation in fig.layout.annotations:
+        assert annotation.text == text
+
+
+def test_annotate_non_faceted_plotly_with_list_raises(
+    plotly_scatter: go.Figure,
+) -> None:
+    text = ["Annotation 1", "Annotation 2"]
+    text_type = type(text).__name__
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"Unexpected {text_type=} for non-faceted plot, must be str"),
+    ):
+        annotate(text, plotly_scatter)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"x": 0.5, "y": 0.5},
+        {"font": dict(size=20, color="green")},
+        {"showarrow": True, "arrowhead": 2},
+    ],
+)
+def test_annotate_kwargs(plotly_scatter: go.Figure, kwargs: dict[str, Any]) -> None:
+    fig = annotate("Test", plotly_scatter, **kwargs)
+
+    for key, val in kwargs.items():
+        if isinstance(val, dict):
+            for sub_key, sub_val in val.items():
+                assert getattr(fig.layout.annotations[-1][key], sub_key) == sub_val
+        else:
+            assert getattr(fig.layout.annotations[-1], key) == val
 
 
 def test_validate_fig_decorator_raises(capsys: pytest.CaptureFixture[str]) -> None:

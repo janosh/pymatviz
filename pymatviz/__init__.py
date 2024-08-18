@@ -19,15 +19,33 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from pymatgen.symmetry.groups import SYMM_DATA
 
+from pymatviz import (
+    bar,
+    colors,
+    correlation,
+    cumulative,
+    enums,
+    io,
+    phonons,
+    powerups,
+    process_data,
+    ptable,
+    relevance,
+    sankey,
+    scatter,
+    structure_viz,
+    sunburst,
+    templates,
+    uncertainty,
+    utils,
+    xrd,
+)
 from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
-from pymatviz.histograms import elements_hist, plot_histogram, spacegroup_hist
-from pymatviz.phonons import (
-    plot_phonon_bands,
-    plot_phonon_bands_and_dos,
-    plot_phonon_dos,
-)
+from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
+from pymatviz.io import df_to_html_table, df_to_pdf, df_to_svg, save_fig
+from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
     ptable_heatmap,
@@ -49,7 +67,7 @@ from pymatviz.scatter import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
-from pymatviz.structure_viz import plot_structure_2d
+from pymatviz.structure_viz import structure_2d
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.templates import (
     pmv_dark_template,
@@ -57,8 +75,8 @@ from pymatviz.templates import (
     set_plotly_template,
 )
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import PKG_DIR, ROOT, html_tag
-from pymatviz.xrd import plot_xrd_pattern
+from pymatviz.utils import PKG_DIR, ROOT, html_tag, si_fmt, si_fmt_int
+from pymatviz.xrd import xrd_pattern
 
 
 PKG_NAME = "pymatviz"
