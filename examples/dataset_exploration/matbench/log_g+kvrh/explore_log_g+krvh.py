@@ -22,6 +22,7 @@ from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from tqdm import tqdm
 
+import pymatviz as pmv
 from pymatviz import (
     count_elements,
     crystal_sys_order,
@@ -30,8 +31,6 @@ from pymatviz import (
     spacegroup_sunburst,
 )
 from pymatviz.enums import Key
-from pymatviz.io import save_fig
-from pymatviz.utils import crystal_sys_from_spg_num
 
 
 # %%
@@ -45,9 +44,10 @@ df_grvh[[Key.spg_symbol, Key.spg_num]] = [
         df_grvh[Key.structure], desc="Getting matbench_log_gvrh spacegroups"
     )
 ]
-df_grvh[Key.crystal_system] = [
-    crystal_sys_from_spg_num(x) for x in df_grvh[Key.spg_num]
-]
+df_grvh[Key.crystal_system] = df_grvh[Key.spg_num].map(
+    pmv.utils.crystal_sys_from_spg_num
+)
+
 
 df_grvh[Key.wyckoff] = [
     get_protostructure_label_from_spglib(struct)
@@ -73,7 +73,7 @@ print(sum(df_kvrh["log10(K_VRH)"] == 0))  # sum is 14
 ax = df_kvrh.hist(column="log10(K_VRH)", bins=50, alpha=0.8)
 
 df_grvh.hist(column="log10(G_VRH)", bins=50, ax=ax, alpha=0.8)
-save_fig(ax, "log_g+kvrh-target-hist.pdf")
+pmv.save_fig(ax, "log_g+kvrh-target-hist.pdf")
 
 
 # %%
@@ -81,7 +81,7 @@ df_grvh[Key.volume] = [x.volume for x in df_grvh[Key.structure]]
 df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
 ax = df_grvh.hist(column=Key.volume, bins=50, log=True, alpha=0.8)
-save_fig(ax, "log_gvrh-volume-hist.pdf")
+pmv.save_fig(ax, "log_gvrh-volume-hist.pdf")
 
 
 # %%
@@ -136,12 +136,12 @@ fig = ptable_heatmap(
     count_elements(df_grvh[Key.formula]), log=True, return_type="figure"
 )
 fig.suptitle("Elemental prevalence in the Matbench bulk/shear modulus datasets")
-save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
+pmv.save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
 
 
 # %%
 ax = spacegroup_bar(df_grvh[Key.spg_num])
-save_fig(ax, "log_gvrh-spacegroup-hist.pdf")
+pmv.save_fig(ax, "log_gvrh-spacegroup-hist.pdf")
 
 
 # %%

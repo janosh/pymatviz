@@ -20,10 +20,9 @@ import pandas as pd
 import requests
 from pymatgen.symmetry.groups import SpaceGroup
 
+import pymatviz as pmv
 from pymatviz import count_elements, ptable_heatmap, spacegroup_sunburst
 from pymatviz.enums import Key
-from pymatviz.io import save_fig
-from pymatviz.powerups import annotate_bars
 
 
 # %% Download data (if needed)
@@ -48,12 +47,12 @@ df_camd.hist(bins=50)
 elem_counts = count_elements(df_camd.reduced_formula)
 fig = ptable_heatmap(elem_counts, log=True, return_type="figure")
 fig.suptitle("Elements in CAMD 2022 dataset")
-save_fig(fig, "camd-2022-ptable-heatmap.pdf")
+pmv.save_fig(fig, "camd-2022-ptable-heatmap.pdf")
 
 
 # %%
 ax = df_camd.data_source.value_counts().plot.bar(fontsize=18, rot=0)
-annotate_bars(ax, v_offset=3e3)
+pmv.powerups.annotate_bars(ax, v_offset=3e3)
 
 
 # %%

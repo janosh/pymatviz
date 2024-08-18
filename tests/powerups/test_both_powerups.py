@@ -10,11 +10,7 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib.offsetbox import AnchoredText
 
-from pymatviz.powerups.both import (
-    add_best_fit_line,
-    add_identity_line,
-    annotate_metrics,
-)
+import pymatviz as pmv
 from pymatviz.utils import MATPLOTLIB, PLOTLY, Backend, pretty_label
 from tests.conftest import _extract_anno_from_fig, y_pred, y_true
 
@@ -30,7 +26,9 @@ def test_add_best_fit_line(
     annotate_params: bool | dict[str, Any],
 ) -> None:
     # test plotly
-    fig_plotly = add_best_fit_line(plotly_scatter, annotate_params=annotate_params)
+    fig_plotly = pmv.powerups.add_best_fit_line(
+        plotly_scatter, annotate_params=annotate_params
+    )
     assert isinstance(fig_plotly, go.Figure)
     best_fit_line = fig_plotly.layout.shapes[-1]  # retrieve best fit line
     assert best_fit_line.type == "line"
@@ -54,7 +52,9 @@ def test_add_best_fit_line(
         assert len(fig_plotly.layout.annotations) == 0
 
     # test matplotlib
-    fig_mpl = add_best_fit_line(matplotlib_scatter, annotate_params=annotate_params)
+    fig_mpl = pmv.powerups.add_best_fit_line(
+        matplotlib_scatter, annotate_params=annotate_params
+    )
     assert isinstance(fig_mpl, plt.Figure)
 
     with pytest.raises(IndexError):
@@ -80,12 +80,12 @@ def test_add_best_fit_line(
 
 def test_add_best_fit_line_invalid_fig() -> None:
     with pytest.raises(TypeError, match="must be instance of"):
-        add_best_fit_line("not a valid fig")
+        pmv.powerups.add_best_fit_line("not a valid fig")
 
 
 def test_add_best_fit_line_custom_line_kwargs(plotly_scatter: go.Figure) -> None:
     line_kwds = {"width": 3, "dash": "dot"}
-    result = add_best_fit_line(plotly_scatter, line_kwds=line_kwds)
+    result = pmv.powerups.add_best_fit_line(plotly_scatter, line_kwds=line_kwds)
 
     best_fit_line = result.layout.shapes[-1]
     assert best_fit_line.line.width == 2
@@ -98,7 +98,7 @@ def test_add_best_fit_line_trace_idx(trace_idx: int) -> None:
     fig.add_trace(go.Scatter(x=[1, 2, 3], y=[1, 2, 3]))
     fig.add_trace(go.Scatter(x=[1, 2, 3], y=[3, 2, 1]))
 
-    result = add_best_fit_line(fig, trace_idx=trace_idx)
+    result = pmv.powerups.add_best_fit_line(fig, trace_idx=trace_idx)
 
     best_fit_line = result.layout.shapes[-1]
     expected_slope = 1 if trace_idx == 0 else -1
@@ -109,7 +109,7 @@ def test_add_best_fit_line_trace_idx(trace_idx: int) -> None:
 
 
 def test_add_best_fit_line_faceted_plot(plotly_faceted_scatter: go.Figure) -> None:
-    result = add_best_fit_line(plotly_faceted_scatter)
+    result = pmv.powerups.add_best_fit_line(plotly_faceted_scatter)
 
     assert len(result.layout.shapes) == 2
     assert len(result.layout.annotations) == 2
@@ -127,7 +127,7 @@ def test_add_best_fit_line_custom_xs_ys(
     custom_x = np.array([1, 2, 3, 4, 5])
     custom_y = np.array([2, 3, 4, 5, 6])
 
-    fig_with_fit = add_best_fit_line(fig, xs=custom_x, ys=custom_y)
+    fig_with_fit = pmv.powerups.add_best_fit_line(fig, xs=custom_x, ys=custom_y)
 
     if backend == "plotly":
         best_fit_line = fig_with_fit.layout.shapes[-1]
@@ -170,7 +170,7 @@ def test_add_identity_line(
     x_range_pre = dev_fig_pre.layout.xaxis.range
     y_range_pre = dev_fig_pre.layout.yaxis.range
 
-    fig = add_identity_line(
+    fig = pmv.powerups.add_identity_line(
         plotly_scatter,
         line_kwds=line_kwds,
         trace_idx=trace_idx,
@@ -210,11 +210,11 @@ def test_add_identity_matplotlib(
 ) -> None:
     expected_line_color = (line_kwds or {}).get("color", "black")
     # test Figure
-    fig = add_identity_line(matplotlib_scatter, line_kwds=line_kwds)
+    fig = pmv.powerups.add_identity_line(matplotlib_scatter, line_kwds=line_kwds)
     assert isinstance(fig, plt.Figure)
 
     # test Axes
-    ax = add_identity_line(matplotlib_scatter.axes[0], line_kwds=line_kwds)
+    ax = pmv.powerups.add_identity_line(matplotlib_scatter.axes[0], line_kwds=line_kwds)
     assert isinstance(ax, plt.Axes)
 
     line = fig.axes[0].lines[-1]  # retrieve identity line
@@ -224,7 +224,7 @@ def test_add_identity_matplotlib(
     _fig_log, ax_log = plt.subplots()
     ax_log.plot([1, 10, 100], [10, 100, 1000])
     ax_log.set(xscale="log", yscale="log")
-    ax_log = add_identity_line(ax, line_kwds=line_kwds)
+    ax_log = pmv.powerups.add_identity_line(ax, line_kwds=line_kwds)
 
     line = fig.axes[0].lines[-1]
     assert line.get_color() == expected_line_color
@@ -237,7 +237,7 @@ def test_add_identity_raises() -> None:
             match=f"{fig=} must be instance of plotly.graph_objs._figure.Figure | "
             f"matplotlib.figure.Figure | matplotlib.axes._axes.Axes",
         ):
-            add_identity_line(fig)
+            pmv.powerups.add_identity_line(fig)
 
 
 @pytest.mark.parametrize(
@@ -261,7 +261,9 @@ def test_annotate_metrics(
     # randomly switch between plotly and matplotlib
     fig = plotly_scatter if backend == PLOTLY else matplotlib_scatter
 
-    out_fig = annotate_metrics(y_pred, y_true, metrics=metrics, fmt=fmt, fig=fig)
+    out_fig = pmv.powerups.annotate_metrics(
+        y_pred, y_true, metrics=metrics, fmt=fmt, fig=fig
+    )
     assert out_fig is fig
 
     expected = dict(MAE=0.121, R2=0.784, RMSE=0.146, MAPE=0.52, MSE=0.021)
@@ -281,7 +283,7 @@ def test_annotate_metrics(
     assert anno_text == expected_text, f"{anno_text=}"
 
     prefix, suffix = f"Metrics:{newline}", f"{newline}the end"
-    out_fig = annotate_metrics(
+    out_fig = pmv.powerups.annotate_metrics(
         y_pred, y_true, metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix, fig=fig
     )
     anno_text_with_fixes = _extract_anno_from_fig(out_fig)
@@ -291,7 +293,7 @@ def test_annotate_metrics(
 
 
 def test_annotate_metrics_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:
-    out_fig = annotate_metrics(y_true, y_pred, fig=plotly_faceted_scatter)
+    out_fig = pmv.powerups.annotate_metrics(y_true, y_pred, fig=plotly_faceted_scatter)
 
     assert len(out_fig.layout.annotations) == 2
     for anno in out_fig.layout.annotations:
@@ -301,7 +303,7 @@ def test_annotate_metrics_faceted_plotly(plotly_faceted_scatter: go.Figure) -> N
 
 def test_annotate_metrics_prefix_suffix(plotly_scatter: go.Figure) -> None:
     prefix, suffix = "Metrics:", "End"
-    out_fig = annotate_metrics(
+    out_fig = pmv.powerups.annotate_metrics(
         y_true, y_pred, fig=plotly_scatter, prefix=prefix, suffix=suffix
     )
 
@@ -313,12 +315,12 @@ def test_annotate_metrics_prefix_suffix(plotly_scatter: go.Figure) -> None:
 @pytest.mark.parametrize("metrics", [42, datetime.now(tz=timezone.utc)])
 def test_annotate_metrics_bad_metrics(metrics: Any) -> None:
     with pytest.raises(TypeError, match="metrics must be dict|list|tuple|set"):
-        annotate_metrics(y_true, y_pred, metrics=metrics)
+        pmv.powerups.annotate_metrics(y_true, y_pred, metrics=metrics)
 
 
 def test_annotate_metrics_bad_fig() -> None:
     with pytest.raises(TypeError, match="Unexpected type for fig: str"):
-        annotate_metrics(y_true, y_pred, fig="not a figure")
+        pmv.powerups.annotate_metrics(y_true, y_pred, fig="not a figure")
 
 
 @pytest.mark.parametrize("backend", [PLOTLY, MATPLOTLIB])
@@ -328,4 +330,4 @@ def test_annotate_metrics_different_lengths(backend: Backend) -> None:
 
     err_msg = f"xs and ys must have the same shape. Got {xs.shape} and {ys.shape}"
     with pytest.raises(ValueError, match=re.escape(err_msg)):
-        annotate_metrics(xs, ys, fig=fig)
+        pmv.powerups.annotate_metrics(xs, ys, fig=fig)

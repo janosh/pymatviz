@@ -75,7 +75,15 @@ from pymatviz.templates import (
     set_plotly_template,
 )
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import PKG_DIR, ROOT, html_tag, si_fmt, si_fmt_int
+from pymatviz.utils import (
+    BACKENDS,
+    PKG_DIR,
+    ROOT,
+    df_ptable,
+    html_tag,
+    si_fmt,
+    si_fmt_int,
+)
 from pymatviz.xrd import xrd_pattern
 
 
