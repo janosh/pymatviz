@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.10.1](https://github.com/janosh/pymatviz/compare/v0.10.0...v0.10.1)
+
+> 18 August 2024
+
+- Self-import refactor [`#194`](https://github.com/janosh/pymatviz/pull/194)
+- Fix `svgo` workflow for ptable scatter plots [`#187`](https://github.com/janosh/pymatviz/pull/187)
+- `density_scatter_plotly` add kwarg `facet_col: str | None = None` [`#193`](https://github.com/janosh/pymatviz/pull/193)
+- `bin_df_cols` leave input df unchanged [`#192`](https://github.com/janosh/pymatviz/pull/192)
+- Re-export all submodules/subpackages from `pymatviz.__init__.py` [`#191`](https://github.com/janosh/pymatviz/pull/191)
+- fix missing jinja2 dep at import time [`fb6c9df`](https://github.com/janosh/pymatviz/commit/fb6c9df42e4d40cccca305ca406f8a9975a27a78)
+
 #### [v0.10.0](https://github.com/janosh/pymatviz/compare/v0.9.3...v0.10.0)
 
 > 31 July 2024
