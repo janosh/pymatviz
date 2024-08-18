@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from pymatgen.core import Composition
 
-pmv.df_ptable = pmv.df_ptable.copy()  # avoid changing the df in place
+df_ptable = pmv.df_ptable.copy()  # avoid changing the df in place
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ class TestPtableHeatmap:
     @pytest.mark.parametrize("hide_f_block", ["auto", False, True])
     def test_basic_heatmap_plotter(self, hide_f_block: bool | Literal["auto"]) -> None:
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass],
+            df_ptable[Key.atomic_mass],
             hide_f_block=hide_f_block,
             cbar_title="Element Count",
             return_type="figure",
@@ -63,7 +63,7 @@ class TestPtableHeatmap:
     @pytest.mark.parametrize("log", [False, True])
     def test_log_scale(self, log: bool) -> None:
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass], log=log, return_type="figure"
+            df_ptable[Key.atomic_mass], log=log, return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
@@ -75,7 +75,7 @@ class TestPtableHeatmap:
         self, values_show_mode: Literal["percent", "fraction", "value", "off"]
     ) -> None:
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass],
+            df_ptable[Key.atomic_mass],
             value_show_mode=values_show_mode,
             return_type="figure",
         )
@@ -88,7 +88,7 @@ class TestPtableHeatmap:
     ) -> None:
         with pytest.raises(ValueError, match="Combining log scale and"):
             pmv.ptable_heatmap(
-                pmv.df_ptable[Key.atomic_mass],
+                df_ptable[Key.atomic_mass],
                 log=True,
                 value_show_mode=values_show_mode,
             )
@@ -98,7 +98,7 @@ class TestPtableHeatmap:
     )
     def test_cbar_range(self, cbar_range: tuple[float | None, float | None]) -> None:
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass], cbar_range=cbar_range, return_type="figure"
+            df_ptable[Key.atomic_mass], cbar_range=cbar_range, return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
@@ -106,7 +106,7 @@ class TestPtableHeatmap:
     @pytest.mark.parametrize("values_fmt", ["auto", ".3g", ".2g"])
     def test_values_fmt(self, values_fmt: str) -> None:
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass], value_fmt=values_fmt, return_type="figure"
+            df_ptable[Key.atomic_mass], value_fmt=values_fmt, return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
@@ -114,7 +114,7 @@ class TestPtableHeatmap:
     def test_cbar_kwargs(self) -> None:
         cbar_kwargs = dict(orientation="horizontal")
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass],
+            df_ptable[Key.atomic_mass],
             cbar_kwargs=cbar_kwargs,
             return_type="figure",
         )
@@ -123,7 +123,7 @@ class TestPtableHeatmap:
 
     def test_tile_size(self) -> None:
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass], tile_size=(1, 1), return_type="figure"
+            df_ptable[Key.atomic_mass], tile_size=(1, 1), return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
@@ -131,7 +131,7 @@ class TestPtableHeatmap:
     def test_text_style(self) -> None:
         symbol_kwargs = dict(fontsize=12)
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass],
+            df_ptable[Key.atomic_mass],
             text_colors="red",
             symbol_kwargs=symbol_kwargs,
             return_type="figure",
@@ -141,13 +141,13 @@ class TestPtableHeatmap:
 
     def test_return_type(self) -> None:
         fig = pmv.ptable_heatmap(
-            pmv.df_ptable[Key.atomic_mass],
+            df_ptable[Key.atomic_mass],
             return_type="figure",
         )
         assert isinstance(fig, plt.Figure)
 
         with pytest.warns(match="We encourage you to return plt.figure"):
-            ax = pmv.ptable_heatmap(pmv.df_ptable[Key.atomic_mass])
+            ax = pmv.ptable_heatmap(df_ptable[Key.atomic_mass])
         assert isinstance(ax, plt.Axes)
 
 
