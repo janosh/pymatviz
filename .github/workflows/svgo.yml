@@ -38,5 +38,5 @@ jobs:
           git config user.name "Janosh Riebesell"
           git config user.email janosh.riebesell@gmail.com
           git add assets
-          git commit -m "[workflow] Compress new SVG assets"
+          git commit -m "[ci] Compress new SVG assets"
           git push
