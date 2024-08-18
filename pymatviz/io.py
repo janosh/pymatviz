@@ -19,6 +19,7 @@ from matplotlib.backends.backend_agg import RendererAgg
 from matplotlib.figure import Figure
 from tqdm import tqdm
 
+import pymatviz as pmv
 from pymatviz.utils import ROOT
 
 
@@ -216,7 +217,7 @@ def save_and_compress_svg(
         filename = filename.rstrip(".svg")
 
     filepath = f"{ROOT}/assets/{filename}.svg"
-    save_fig(fig, filepath)
+    pmv.save_fig(fig, filepath)
     plt.close()
 
     # Compress SVG if svgo is available

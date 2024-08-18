@@ -16,9 +16,8 @@ from ase.data import chemical_symbols
 from matplotlib.backends.backend_pdf import PdfPages
 from pymatgen.core import Element
 
-from pymatviz import ptable_lines
-from pymatviz.io import save_fig
-from pymatviz.utils import df_ptable
+import pymatviz as pmv
+from pymatviz import df_ptable, ptable_lines
 
 
 module_dir = os.path.dirname(__file__)
@@ -178,7 +177,7 @@ ax = ptable_lines(
     color_elem_strategy="symbol",
     add_elem_type_legend=False,
 )
-save_fig(ax, f"{module_dir}/homo-nuclear-mace-{model_size}.svg")
+pmv.save_fig(ax, f"{module_dir}/homo-nuclear-mace-{model_size}.svg")
 
 
 # %% count number of elements with energies below E_TOO_LOW

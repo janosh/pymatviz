@@ -6,9 +6,8 @@ from matminer.datasets import load_dataset
 from mp_api.client import MPRester
 from pymatgen.core import Structure
 
+import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key
-from pymatviz.io import save_and_compress_svg
-from pymatviz.structure_viz import structure_2d
 
 
 struct: Structure  # for type hinting
@@ -19,7 +18,7 @@ df_phonons = load_dataset("matbench_phonons")
 
 # %% Plot Matbench phonon structures
 n_structs = 12
-fig, axs = structure_2d(
+fig, axs = pmv.structure_2d(
     df_phonons[Key.structure].iloc[:n_structs],
     show_bonds=True,
     bond_kwargs=dict(facecolor="gray", linewidth=2, linestyle="dotted"),
@@ -27,7 +26,7 @@ fig, axs = structure_2d(
 )
 title = f"{n_structs} Matbench phonon structures"
 fig.suptitle(title, fontweight="bold", fontsize=20)
-# save_and_compress_svg(fig, "matbench-phonons-structures-2d")
+# pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d")
 fig.show()
 
 
@@ -44,7 +43,7 @@ for mp_id, struct in disordered_structs.items():
         elif "Zr" in site.species:
             site.species = {"Zr": 0.5, "Hf": 0.5}
 
-    ax = cast(plt.Axes, structure_2d(struct))
+    ax = cast(plt.Axes, pmv.structure_2d(struct))
     _, spacegroup = struct.get_space_group_info()
 
     formula = struct.formula.replace(" ", "")
@@ -56,5 +55,5 @@ for mp_id, struct in disordered_structs.items():
 
     ax.figure.set_size_inches(8, 8)
 
-    save_and_compress_svg(ax, f"struct-2d-{mp_id}-{formula}-disordered")
+    pmv.io.save_and_compress_svg(ax, f"struct-2d-{mp_id}-{formula}-disordered")
     plt.show()
