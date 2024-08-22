@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, Union
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union
 
 import numpy as np
 import pandas as pd
+import plotly
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
@@ -348,5 +349,173 @@ def ptable_heatmap_plotly(
         color_bar["title"] = f"{cbar_title} (%)"
 
     fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
+
+    return fig
+
+
+def ptable_heatmap_splits_plotly(
+    data: pd.DataFrame | pd.Series | dict[str, list[list[float]]],
+    *,
+    # Heatmap-split specific
+    start_angle: float = 135,
+    # Figure
+    colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
+    on_empty: Literal["hide", "show"] = "hide",
+    hide_f_block: bool | Literal["auto"] = "auto",
+    # Symbol
+    symbol_text: str | Callable[[str], str] = lambda elem: elem,
+    symbol_pos: tuple[float, float] = (0.5, 0.5),
+    symbol_kwargs: dict[str, Any] | None = None,
+    # Colorbar
+    show_colorbar: bool = True,
+    colorbar_title: str = "Values",
+    colorbar_title_kwargs: dict[str, Any] | None = None,
+    colorbar_kwargs: dict[str, Any] | None = None,
+    # Additional options
+    nan_color: str = "#eff",
+    hover_data: dict[str, str | int | float] | pd.Series | None = None,
+    **kwargs: Any,
+) -> go.Figure:
+    """Create a Plotly figure with an interactive heatmap of the periodic table,
+    where each element tile is split into sections representing different values.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]): Map from element
+            symbols to plot data. E.g. if dict, {"Fe": [1, 2], "Co": [3, 4]}, where the
+            1st value would be plotted in lower-left corner, 2nd in the upper-right.
+        start_angle (float): The starting angle for the splits in degrees,
+            and the split proceeds counter-clockwise (0 refers to the x-axis).
+        colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
+        on_empty ("hide" | "show"): If True, hide tiles for elements without data.
+        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
+        symbol_text (str | Callable[[str], str]): Text to display for each element
+            symbol.
+        symbol_pos (tuple[float, float]): Position of element symbols relative to the
+            lower left corner of each tile.
+        symbol_kwargs (dict): Additional keyword arguments for element symbol text.
+        show_colorbar (bool): Whether to show the colorbar.
+        colorbar_title (str): Title for the colorbar.
+        colorbar_title_kwargs (dict): Additional keyword arguments for colorbar title.
+        colorbar_kwargs (dict): Additional keyword arguments for colorbar.
+        nan_color (str): Color for NaN values.
+        hover_data (dict[str, str | int | float] | pd.Series): Additional data for
+            hover tooltip.
+        **kwargs: Additional keyword arguments passed to go.Figure().
+
+    Returns:
+        go.Figure: Plotly Figure object with the periodic table heatmap splits.
+    """
+    # Process input data
+    if isinstance(data, pd.Series):
+        data = data.to_dict()
+    elif isinstance(data, pd.DataFrame):
+        data = data.to_dict(orient="index")
+
+    # Initialize figure
+    fig = go.Figure()
+
+    # Prepare colorscale
+    if isinstance(colorscale, str):
+        colorscale = getattr(plotly.colors.sequential, colorscale, colorscale)
+
+    # Process data and create shapes for each element
+    n_rows, n_columns = 10, 18
+    for symbol, period, group, name in df_ptable.reset_index()[
+        ["symbol", "period", "group", "name"]
+    ].itertuples(index=False):
+        row = n_rows - period
+        col = group - 1
+
+        if symbol not in data and on_empty == "hide":
+            continue
+
+        if (
+            hide_f_block == "auto"
+            and period in (6, 7)
+            and 3 <= group <= 17
+            or hide_f_block
+            and period in (6, 7)
+            and 3 <= group <= 17
+        ):
+            continue
+
+        # Create pie chart for each element
+        values = data.get(symbol, [])
+        if not values:
+            values = [1]  # For empty elements, create a single-color pie
+
+        # Calculate positions
+        x = col / n_columns
+        y = row / n_rows
+        size = min(1 / n_columns, 1 / n_rows) * 0.9  # Adjust size to leave some gap
+
+        # Create pie chart
+        fig.add_pie(
+            values=values,
+            labels=[f"Value {i+1}" for i in range(len(values))],
+            domain=dict(x=[x, x + size], y=[y, y + size]),
+            hole=0.3,
+            sort=False,
+            direction="clockwise",
+            rotation=start_angle,
+            showlegend=False,
+            hoverinfo="label+value",
+            textinfo="none",
+            marker=dict(colors=[nan_color if np.isnan(v) else v for v in values]),
+            colorscale=colorscale,
+        )
+
+        # Add element symbol
+        symbol_text_value = (
+            symbol_text(symbol) if callable(symbol_text) else symbol_text
+        )
+        fig.add_annotation(
+            x=x + size * symbol_pos[0],
+            y=y + size * symbol_pos[1],
+            text=symbol_text_value,
+            showarrow=False,
+            # font=dict(size=10, color="black"),
+            **symbol_kwargs or {},
+        )
+
+        # Add hover data
+        hover_text = f"{name} ({symbol})"
+        if hover_data and symbol in hover_data:
+            hover_text += f"<br>{hover_data[symbol]}"
+        fig.add_annotation(
+            x=x + size / 2,
+            y=y + size / 2,
+            text=hover_text,
+            showarrow=False,
+            opacity=0,
+            hovertext=hover_text,
+        )
+
+    # Update layout
+    fig.update_layout(
+        showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        width=1000,
+        height=500,
+        **kwargs,
+    )
+
+    # Add colorbar
+    if show_colorbar:
+        colorbar_kwargs = colorbar_kwargs or {}
+        colorbar = dict(
+            title=colorbar_title,
+            titleside="right",
+            len=0.75,
+            thickness=20,
+            x=1.05,
+            **colorbar_kwargs,
+        )
+        if colorbar_title_kwargs:
+            colorbar["title"] = dict(text=colorbar_title, **colorbar_title_kwargs)
+        fig.update_traces(marker=dict(colorbar=colorbar))
 
     return fig

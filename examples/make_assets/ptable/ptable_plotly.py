@@ -1,6 +1,9 @@
 # %%
+import random
+
 import numpy as np
 from matminer.datasets import load_dataset
+from pymatgen.core import Element
 
 import pymatviz as pmv
 from pymatviz.enums import ElemCountMode, Key
@@ -119,3 +122,21 @@ fig = pmv.ptable_heatmap_plotly(
     color_bar=dict(title="Atomic Radius (pm)"),
 )
 fig.show()
+
+
+# %% Example 1: Random data with 2 splits
+data_dict = {
+    elem.symbol: [random.randint(20, 60) for _ in range(2)] for elem in Element
+}
+
+fig = pmv.ptable_heatmap_splits_plotly(
+    data=data_dict,
+    colorscale="Viridis",
+    start_angle=135,
+    colorbar_title="Random Values (2 splits)",
+    hide_f_block=True,
+    symbol_kwargs=dict(font=dict(size=12, color="white")),
+)
+fig.update_layout(title=dict(text="Periodic Table with 2-Split Heatmap", x=0.5, y=0.95))
+fig.show()
+pmv.io.save_and_compress_svg(fig, "ptable_heatmap_splits_example_1")
