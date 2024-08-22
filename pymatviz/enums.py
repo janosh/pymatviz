@@ -177,8 +177,9 @@ class Key(LabelEnum):
     protostructure = "protostructure", "Protostructure Label"
     # Deprecated name for the protostructure
     wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
-    # AFLOW-style prototype label
-    prototype = "prototype", "AFLOW-style Prototype Label"
+    wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
+    prototype = "prototype", "Prototype Label"
+    aflow_prototype = "aflow_prototype", "AFLOW-style Prototype Label"
     # AFLOW-style prototype label that has been canonicalized
     canonical_proto = "canonical_prototype", "Canonical AFLOW-style Prototype"
     # Deprecated name for the canonical_proto
@@ -306,6 +307,10 @@ class Key(LabelEnum):
     poisson_ratio = "poisson_ratio", "Poisson's Ratio"
     hardness = "hardness", "Hardness (Mohs scale)"
     elastic_tensor = "elastic_tensor", "Elastic Tensor"
+    elastic_tensor_voigt = "elastic_tensor_voigt", "Voigt Elastic Tensor"
+    elastic_tensor_reuss = "elastic_tensor_reuss", "Reuss Elastic Tensor"
+    elastic_tensor_vrh = "elastic_tensor_vrh", "Voigt-Reuss-Hill Elastic Tensor"
+    toughness = "toughness", "Toughness (MPa)"
     yield_strength = "yield_strength", "Yield Strength (MPa)"
     tensile_strength = "tensile_strength", "Tensile Strength (MPa)"
     ductility = "ductility", "Ductility (%)"
@@ -455,10 +460,21 @@ class Key(LabelEnum):
     tn = "TN", "True Negatives"
     tpr = "TPR", "True Positive Rate"
     fpr = "FPR", "False Positive Rate"
+    tnr = "TNR", "True Negative Rate"
+    fnr = "FNR", "False Negative Rate"
     mae = "MAE", "Mean Absolute Error"
     r2 = "R²", "R² Score"
+    pearson = "Pearson", "Pearson Correlation"
+    spearman = "Spearman", "Spearman Correlation"
+    kendall = "Kendall", "Kendall Correlation"
     rmse = "RMSE", "Root Mean Squared Error"
     mape = "MAPE", "Mean Absolute Percentage Error"
+    variance = "variance", "Variance"
+    std_dev = "std_dev", "Standard Deviation"
+    iqr = "IQR", "Interquartile Range"
+    outlier = "outlier", "Outlier"
+    error = "error", "Error"
+    residuals = "residuals", "Residuals"
     prc = "PRC", "Precision-Recall Curve"
     prc_curve = "prc_curve", "PRC Curve"
     precision = "precision", "Precision"
@@ -524,10 +540,29 @@ class Key(LabelEnum):
     # Performance Indicators
     fom = "figure_of_merit", "Figure of Merit"  # codespell:ignore
     power_factor = "power_factor", "Power Factor"
+    zt = "ZT", "ZT"
+    efficiency = "efficiency", "Efficiency"
+    capacity = "capacity", "Capacity"
+    rate = "rate", "Rate"
+    lifetime = "lifetime", "Lifetime"
+    stability = "stability", "Stability"
+    selectivity = "selectivity", "Selectivity"
+    yield_ = "yield", "Yield"  # underscore because reserved keyword
+    activity = "activity", "Activity"
+    performance = "performance", "Performance"
+    gain = "gain", "Gain"
+    power = "power", "Power"
+    current = "current", "Current"
+    voltage = "voltage", "Voltage"
+    resistance = "resistance", "Resistance"
+    impedance = "impedance", "Impedance"
+    capacitance = "capacitance", "Capacitance"
 
     # Environmental Indicators
     toxicity = "toxicity", "Toxicity Index"
     recyclability = "recyclability", "Recyclability Score"
+    biodegradability = "biodegradability", "Biodegradability Score"
+    sustainability = "sustainability", "Sustainability Index"
 
     # Economic Factors
     raw_material_cost = "raw_material_cost", "Raw Material Cost ($/kg)"
@@ -542,6 +577,7 @@ class Key(LabelEnum):
     count = "count", "Count"  # type: ignore[assignment]
     heat_val = "heat_val", "Heatmap Value"
     piezoelectric_tensor = "piezoelectric_tensor", "Piezoelectric Tensor"
+    dielectric_tensor = "dielectric_tensor", "Dielectric Tensor"
 
 
 class Task(LabelEnum):

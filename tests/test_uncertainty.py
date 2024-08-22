@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
-from pymatviz import error_decay_with_uncert, qq_gaussian
+from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from tests.conftest import DfOrArrays, df_regr, xs, y_pred, y_true
 
 

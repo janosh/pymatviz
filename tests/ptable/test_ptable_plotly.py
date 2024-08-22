@@ -10,8 +10,9 @@ import pytest
 from plotly.exceptions import PlotlyError
 from plotly.graph_objs import Figure
 
-from pymatviz import df_ptable, ptable_heatmap_plotly
 from pymatviz.enums import ElemCountMode, Key
+from pymatviz.ptable import ptable_heatmap_plotly
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:

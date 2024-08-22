@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz import elements_hist, histogram
+from pymatviz.histogram import elements_hist, histogram
 from pymatviz.utils import BACKENDS, MATPLOTLIB
 from tests.conftest import df_regr, y_true
 
