@@ -8,7 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz import (
+from pymatviz.scatter import (
     density_hexbin,
     density_hexbin_with_hist,
     density_scatter,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pymatviz import marchenko_pastur
+from pymatviz.correlation import marchenko_pastur
 from tests.conftest import np_rng
 
 

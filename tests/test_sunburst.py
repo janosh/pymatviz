@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Literal
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz import spacegroup_sunburst
+from pymatviz.sunburst import spacegroup_sunburst
 
 
 if TYPE_CHECKING:

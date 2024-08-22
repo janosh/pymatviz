@@ -80,7 +80,7 @@ def ptable_heatmap(
     fmt: str | None = None,
     cbar_fmt: str | None = None,
     show_scale: bool | None = None,
-) -> plt.axes:
+) -> plt.Axes:
     """Plot a heatmap across the periodic table.
 
     Args:
