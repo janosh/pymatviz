@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import pytest
 
-from pymatviz import precision_recall_curve, roc_curve
+from pymatviz.relevance import precision_recall_curve, roc_curve
 from tests.conftest import df_x_y_clf
 
 

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz import spacegroup_bar
+from pymatviz.bar import spacegroup_bar
 from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY
 from tests.conftest import y_pred, y_true
 

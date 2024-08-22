@@ -3,7 +3,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import pytest
 
-from pymatviz import cumulative_error, cumulative_residual
+from pymatviz.cumulative import cumulative_error, cumulative_residual
 from tests.conftest import y_pred, y_true
 
 
