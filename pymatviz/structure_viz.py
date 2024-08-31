@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 import warnings
 from itertools import product
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +26,7 @@ from pymatviz.utils import ExperimentalWarning, df_ptable
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from typing import Any, Literal
 
     from matplotlib.typing import ColorType
@@ -254,7 +254,7 @@ def structure_2d(
                 stacklevel=2,
             )
 
-        if isinstance(site_labels, (list, tuple)) and len(site_labels) != len(struct):
+        if isinstance(site_labels, list | tuple) and len(site_labels) != len(struct):
             raise ValueError(
                 f"If a list, site_labels ({len(site_labels)=}) must have same length as"
                 f" the number of sites in the crystal ({len(struct)=})"
@@ -417,7 +417,7 @@ def structure_2d(
                         )
                         if txt in special_site_labels:
                             txt = species if txt == "species" else elem_symbol
-                    elif isinstance(site_labels, (list, tuple)):
+                    elif isinstance(site_labels, list | tuple):
                         txt = site_labels[idx]  # idx runs from 0 to n_atoms
                     else:
                         raise ValueError(
@@ -516,7 +516,9 @@ def structure_2d(
         subplot_kwargs = dict(figsize=(3 * n_cols, 3 * n_rows)) | (subplot_kwargs or {})
         fig, axs = plt.subplots(n_rows, n_cols, **subplot_kwargs)
 
-        for idx, (struct_or_key, ax) in enumerate(zip(structures, axs.flat), start=1):
+        for idx, (struct_or_key, ax) in enumerate(
+            zip(structures, axs.flat, strict=False), start=1
+        ):
             if isinstance(structures, dict):
                 key = struct_or_key
                 struct_i = structures[key]

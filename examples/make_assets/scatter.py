@@ -42,7 +42,7 @@ pmv.io.save_and_compress_svg(fig, "density-scatter-plotly")
 xs, ys = make_blobs(n_samples=100_000, centers=3, n_features=2, random_state=42)
 
 x_col, y_col, target_col = "feature1", "feature2", "target"
-df_blobs = pd.DataFrame(dict(zip([x_col, y_col], xs.T)) | {target_col: ys})
+df_blobs = pd.DataFrame(dict(zip([x_col, y_col], xs.T, strict=True)) | {target_col: ys})
 
 fig = pmv.density_scatter_plotly(df=df_blobs, x=x_col, y=y_col)
 fig.show()

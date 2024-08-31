@@ -204,7 +204,7 @@ def test_select_colorscale() -> None:
     buttons = fig.layout.updatemenus[0].buttons
     assert len(buttons) == 4
     colorscales = ["Viridis", "Plasma", "Inferno", "Magma"]
-    for button, colorscale in zip(buttons, colorscales):
+    for button, colorscale in zip(buttons, colorscales, strict=True):
         assert button.args[0]["colorscale"] == colorscale
 
 
@@ -218,7 +218,7 @@ def test_select_marker_mode(plotly_scatter: go.Figure) -> None:
     buttons = fig.layout.updatemenus[0].buttons
     assert len(buttons) == 3
     plot_types = ["markers", "lines", "lines+markers"]
-    for button, plot_type in zip(buttons, plot_types):
+    for button, plot_type in zip(buttons, plot_types, strict=True):
         assert button.args[0]["mode"] == plot_type
 
     # simulate clicking each plot type button

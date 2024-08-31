@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Literal, Union, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 import pandas as pd
@@ -14,19 +14,21 @@ from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
+    from collections.abc import Callable
+    from typing import Any
 
     from numpy.typing import NDArray
 
 
 # Data types that can be passed to PTableProjector and normalized by data_preprocessor
 # to SupportedValueType
-SupportedDataType = Union[
-    dict[str, Union[float, Sequence[float], np.ndarray]], pd.DataFrame, pd.Series
-]
+SupportedDataType = (
+    dict[str, float | Sequence[float] | np.ndarray] | pd.DataFrame | pd.Series
+)
+
 
 # Data types used internally by ptable plotters (returned by preprocess_ptable_data)
-SupportedValueType = Union[Sequence[float], np.ndarray]
+SupportedValueType = Sequence[float] | np.ndarray
 
 
 class PTableData:
@@ -173,7 +175,7 @@ class PTableData:
             mean: The mean value.
             vmax: The max value.
         """
-        numeric_values = pd.to_numeric(
+        numeric_values: pd.Series = pd.to_numeric(
             self._data[self.val_col].explode().explode().explode(), errors="coerce"
         )
         self._data.attrs["vmin"] = numeric_values.min()
