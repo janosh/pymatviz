@@ -20,10 +20,10 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.12",
 ]
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.9",
     "numpy>=2",
@@ -82,7 +82,7 @@ show_error_codes = true
 no_implicit_optional = false
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 output-format = "concise"
 
 [tool.ruff.lint]
