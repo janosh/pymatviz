@@ -28,7 +28,7 @@ rand_regression_size = 500
 np_rng = np.random.default_rng(seed=0)
 y_true = np_rng.normal(5, 4, rand_regression_size)
 y_pred = 1.2 * y_true - 2 * np_rng.normal(0, 1, rand_regression_size)
-y_std = (y_true - y_pred) * 10 * np_rng.normal(0, 0.1, rand_regression_size)
+y_std = abs((y_true - y_pred) * 10 * np_rng.normal(0, 0.1, rand_regression_size))
 
 
 # %% density scatter plotly
@@ -42,7 +42,7 @@ pmv.io.save_and_compress_svg(fig, "density-scatter-plotly")
 xs, ys = make_blobs(n_samples=100_000, centers=3, n_features=2, random_state=42)
 
 x_col, y_col, target_col = "feature1", "feature2", "target"
-df_blobs = pd.DataFrame(dict(zip([x_col, y_col], xs.T)) | {target_col: ys})
+df_blobs = pd.DataFrame(dict(zip([x_col, y_col], xs.T, strict=True)) | {target_col: ys})
 
 fig = pmv.density_scatter_plotly(df=df_blobs, x=x_col, y=y_col)
 fig.show()

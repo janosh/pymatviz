@@ -100,7 +100,9 @@ def spacegroup_bar(
 
         # sort df by crystal system going from smallest to largest spacegroup numbers
         # e.g. triclinic (1-2) comes first, cubic (195-230) last
-        sys_order = dict(zip(crystal_sys_colors, range(len(crystal_sys_colors))))
+        sys_order = dict(
+            zip(crystal_sys_colors, range(len(crystal_sys_colors)), strict=True)
+        )
         df_data = df_data.loc[
             df_data[Key.crystal_system].map(sys_order).sort_values().index
         ]

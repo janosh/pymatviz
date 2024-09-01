@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Union, get_args
+from typing import Any, Literal, TypeAlias, get_args
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,7 +10,7 @@ from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
 from pymatgen.core import Structure
 
 
-PatternOrStruct = Union[DiffractionPattern, Structure]
+PatternOrStruct: TypeAlias = DiffractionPattern | Structure
 HklFormat = Literal["compact", "full", None]
 ValidHklFormats = HklCompact, HklFull, HklNone = get_args(HklFormat)
 
@@ -64,7 +64,7 @@ def xrd_pattern(
         go.Figure: A plotly figure of the XRD pattern(s).
     """
     if (
-        not isinstance(annotate_peaks, (int, float))
+        not isinstance(annotate_peaks, int | float)
         or annotate_peaks <= 0
         or (isinstance(annotate_peaks, float) and annotate_peaks >= 1)
     ):
@@ -82,7 +82,7 @@ def xrd_pattern(
     max_intensity = max_two_theta = 0
 
     # Convert single object to dict for uniform processing
-    if isinstance(patterns, (DiffractionPattern, Structure)):
+    if isinstance(patterns, DiffractionPattern | Structure):
         patterns = {"XRD Pattern": patterns}
     elif not isinstance(patterns, dict):
         raise TypeError(
@@ -130,7 +130,7 @@ def xrd_pattern(
             f"<b>{label}</b><br>"
             f"2θ: {x:.2f}°<br>Intensity: {y:.2f}<br>hkl: "
             f"{'<br>'.join(format_hkl(h['hkl'], HklFull) for h in hkl)}<br>d: {d:.3f} Å"
-            for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls)
+            for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls, strict=True)
         ]
         fig.add_bar(
             x=two_theta,

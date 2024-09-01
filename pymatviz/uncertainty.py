@@ -56,7 +56,7 @@ def qq_gaussian(
     Returns:
         plt.Axes: matplotlib Axes object
     """
-    if isinstance(y_std, (str, pd.Index)):
+    if isinstance(y_std, str | pd.Index):
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
@@ -102,7 +102,7 @@ def qq_gaussian(
     # https://matplotlib.org/3.3.3/tutorials/intermediate/legend_guide.html#multiple-legends-on-the-same-axes
     ax.add_artist(legend1)
 
-    lines, areas = zip(*lines)  # type: ignore[assignment]
+    lines, areas = zip(*lines, strict=True)  # type: ignore[assignment]
 
     if len(lines) > 1:
         legend2 = ax.legend(
@@ -234,7 +234,7 @@ def error_decay_with_uncert(
         plt.Axes: matplotlib Axes object with plotted model error drop curve based on
             excluding data points by order of large to small model uncertainties.
     """
-    if isinstance(y_std, (str, pd.Index)):
+    if isinstance(y_std, str | pd.Index):
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)

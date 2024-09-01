@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, Union, get_args, no_type_check
+from typing import TYPE_CHECKING, Any, Literal, get_args, no_type_check
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from pymatgen.core import Structure
     from typing_extensions import Self
 
-AnyBandStructure = Union[BandStructureSymmLine, PhononBands]
+AnyBandStructure = BandStructureSymmLine | PhononBands
 
 
 @dataclass
@@ -121,8 +121,8 @@ def get_band_xaxis_ticks(
     return ticks_x_pos, tick_labels
 
 
-YMin = Union[float, Literal["y_min"]]
-YMax = Union[float, Literal["y_max"]]
+YMin = float | Literal["y_min"]
+YMax = float | Literal["y_max"]
 
 
 @no_type_check
@@ -133,7 +133,7 @@ def _shaded_range(
         return fig
 
     shade_defaults = dict(layer="below", row="all", col="all")
-    y_lim = dict(zip(("y_min", "y_max"), fig.layout.yaxis.range))
+    y_lim = dict(zip(("y_min", "y_max"), fig.layout.yaxis.range, strict=True))
 
     shaded_ys = shaded_ys or {(0, "y_min"): dict(fillcolor="gray", opacity=0.07)}
     for (y0, y1), kwds in shaded_ys.items():

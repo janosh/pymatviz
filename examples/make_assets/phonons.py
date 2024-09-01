@@ -11,6 +11,12 @@ import pymatviz as pmv
 from pymatviz.enums import Key
 
 
+try:
+    import ffonons  # noqa: F401
+except ImportError:
+    raise SystemExit(0) from None  # install ffonons to run this script
+
+
 # %% Plot phonon bands and DOS
 for mp_id, formula in (
     ("mp-2758", "Sr4Se4"),

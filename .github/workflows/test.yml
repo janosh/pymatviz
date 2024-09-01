@@ -17,5 +17,43 @@ jobs:
     uses: janosh/workflows/.github/workflows/pytest-release.yml@main
     with:
       os: ${{ matrix.os }}
-      python-version: 3.9
+      python-version: "3.10"
     secrets: inherit
+
+  find-scripts:
+    runs-on: ubuntu-latest
+    outputs:
+      script_list: ${{ steps.set-matrix.outputs.script_list }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Find Python scripts
+        id: set-matrix
+        run: |
+          SCRIPTS=$(find examples/make_assets -name "*.py" | jq -R -s -c 'split("\n")[:-1]')
+          echo "script_list=$SCRIPTS" >> $GITHUB_OUTPUT
+
+  test-scripts:
+    needs: find-scripts
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        script: ${{fromJson(needs.find-scripts.outputs.script_list)}}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install package and dependencies
+        run: pip install -e .[make-assets]
+
+      - name: Run script
+        run: python ${{ matrix.script }}
+        env:
+          MP_API_KEY: ${{ secrets.MP_API_KEY }}

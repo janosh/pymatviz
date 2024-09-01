@@ -5,7 +5,7 @@ import sys
 import urllib.request
 from pathlib import Path
 from shutil import which
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 from xml.etree import ElementTree  # noqa: ICN001
 
@@ -18,6 +18,7 @@ import pymatviz as pmv
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     import pandas as pd

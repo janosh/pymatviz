@@ -38,7 +38,7 @@ def test_error_decay_with_uncert(
 ) -> None:
     df, x, y = df_or_arrays
     # override y_std if col name but no df provided, would be nonsensical input
-    if df is None and isinstance(y_std, (str, pd.Index)):
+    if df is None and isinstance(y_std, str | pd.Index):
         y_std = y_std_mock
     ax = error_decay_with_uncert(
         x, y, y_std, df=df, n_rand=n_rand, percentiles=percentiles
@@ -70,7 +70,7 @@ def test_qq_gaussian(
 ) -> None:
     df, x, y = df_or_arrays
     # override y_std if col name but no df provided, would be nonsensical input
-    if df is None and isinstance(y_std, (str, pd.Index)):
+    if df is None and isinstance(y_std, str | pd.Index):
         y_std = xs
     ax = qq_gaussian(x, y, y_std, df=df, ax=ax)
 

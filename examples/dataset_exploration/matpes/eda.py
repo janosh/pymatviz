@@ -225,13 +225,21 @@ df_r2scan[Key.forces] = df_r2scan[Key.forces].map(np.abs)
 df_pbe[Key.forces] = df_pbe[Key.forces].map(np.abs)
 
 df_r2scan_elem_forces = pd.DataFrame(
-    {site.specie.symbol: np.linalg.norm(force) for site, force in zip(struct, forces)}
-    for struct, forces in zip(df_r2scan[Key.structure], df_r2scan[Key.forces])
+    {
+        site.specie.symbol: np.linalg.norm(force)
+        for site, force in zip(struct, forces, strict=True)
+    }
+    for struct, forces in zip(
+        df_r2scan[Key.structure], df_r2scan[Key.forces], strict=True
+    )
 ).mean()
 
 df_pbe_elem_forces = pd.DataFrame(
-    {site.specie.symbol: np.linalg.norm(force) for site, force in zip(struct, forces)}
-    for struct, forces in zip(df_pbe[Key.structure], df_pbe[Key.forces])
+    {
+        site.specie.symbol: np.linalg.norm(force)
+        for site, force in zip(struct, forces, strict=True)
+    }
+    for struct, forces in zip(df_pbe[Key.structure], df_pbe[Key.forces], strict=True)
 ).mean()
 
 

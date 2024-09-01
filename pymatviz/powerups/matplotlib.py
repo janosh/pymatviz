@@ -102,7 +102,7 @@ def annotate_bars(
 
     y_max: float = 0
     texts: list[Annotation] = []
-    for rect, label in zip(ax.patches, labels):
+    for rect, label in zip(ax.patches, labels, strict=True):
         y_pos = rect.get_height()
         x_pos = rect.get_x() + rect.get_width() / 2 + h_offset
 
@@ -113,7 +113,7 @@ def annotate_bars(
 
         y_max = max(y_max, y_pos)
 
-        txt = f"{label:,}" if isinstance(label, (int, float)) else label
+        txt = f"{label:,}" if isinstance(label, int | float) else label
         # place label at end of the bar and center horizontally
         anno = ax.annotate(
             txt, (x_pos, y_pos), ha="center", fontsize=fontsize, **kwargs

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import re
 import warnings
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Callable, Literal, Union, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast, get_args
 
 import matplotlib.colors
 import matplotlib.pyplot as plt
@@ -38,7 +38,7 @@ TEST_FILES = f"{ROOT}/tests/files"
 Backend = Literal["matplotlib", "plotly"]
 BACKENDS = MATPLOTLIB, PLOTLY = get_args(Backend)
 
-AxOrFig = Union[plt.Axes, plt.Figure, go.Figure]
+AxOrFig: TypeAlias = plt.Axes | plt.Figure | go.Figure
 VALID_FIG_TYPES = get_args(AxOrFig)
 VALID_FIG_NAMES = " | ".join(
     f"{t.__module__}.{t.__qualname__}" for t in VALID_FIG_TYPES
@@ -56,12 +56,12 @@ CrystalSystem = Literal[
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
-ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
+ElemValues = dict[str | int, float] | pd.Series | Sequence[str]
 
 atomic_numbers: dict[str, int] = {}
 element_symbols: dict[int, str] = {}
 
-for Z, symbol in enumerate(df_ptable.index, 1):
+for Z, symbol in enumerate(df_ptable.index, start=1):
     atomic_numbers[symbol] = Z
     element_symbols[Z] = symbol
 
@@ -92,7 +92,7 @@ def pretty_label(key: str, backend: Backend) -> str:
 def crystal_sys_from_spg_num(spg: float) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
     # Ensure integer or float with no decimal part
-    if not isinstance(spg, (int, float)) or spg != int(spg):
+    if not isinstance(spg, int | float) or spg != int(spg):
         raise TypeError(f"Expect integer space group number, got {spg=}")
 
     if not (1 <= spg <= 230):
@@ -158,18 +158,18 @@ def df_to_arrays(
     args = list(args)  # type: ignore[assignment]
 
     for col_name in args:
-        if isinstance(col_name, (str, int)):
+        if isinstance(col_name, str | int):
             flat_args.append(col_name)
         else:
             flat_args.extend(col_name)
 
     df_no_nan = df.dropna(subset=flat_args)
     for idx, col_name in enumerate(args):
-        if isinstance(col_name, (str, int)):
+        if isinstance(col_name, str | int):
             args[idx] = df_no_nan[col_name].to_numpy()  # type: ignore[index]
         else:
             col_data = df_no_nan[[*col_name]].to_numpy().T
-            args[idx] = dict(zip(col_name, col_data))  # type: ignore[index]
+            args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index]
 
     return args  # type: ignore[return-value]
 
@@ -209,7 +209,7 @@ def bin_df_cols(
         raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
 
     cut_cols = [f"{col}_bins" for col in bin_by_cols]
-    for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols):
+    for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols, strict=True):
         df_in[cut_col] = pd.cut(df_in[col].values, bins=bins)
 
     # Preserve the original index
@@ -461,7 +461,7 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         # TODO use typing.ParamSpec to type wrapper once py310 is oldest supported
         fig = kwargs.get("fig", None)
-        if fig is not None and not isinstance(fig, (plt.Axes, plt.Figure, go.Figure)):
+        if fig is not None and not isinstance(fig, plt.Axes | plt.Figure | go.Figure):
             raise TypeError(
                 f"Unexpected type for fig: {type(fig).__name__}, must be one of None, "
                 f"{VALID_FIG_NAMES}"
@@ -488,7 +488,7 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
     """
     color = kwargs.pop("color", get_font_color(fig))
 
-    if isinstance(fig, (plt.Figure, plt.Axes)):
+    if isinstance(fig, plt.Figure | plt.Axes):
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
         defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
         text_box = AnchoredText(text, **(defaults | kwargs))
@@ -554,7 +554,7 @@ def get_fig_xy_range(
     """
     if fig is None:
         fig = plt.gcf()
-    if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
+    if isinstance(fig, plt.Figure | plt.Axes):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
         return ax.get_xlim(), ax.get_ylim()
@@ -607,7 +607,7 @@ def get_font_color(fig: AxOrFig) -> str:
     """
     if isinstance(fig, go.Figure):
         return _get_plotly_font_color(fig)
-    if isinstance(fig, (plt.Figure, plt.Axes)):
+    if isinstance(fig, plt.Figure | plt.Axes):
         return _get_matplotlib_font_color(fig)
     raise TypeError(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
 

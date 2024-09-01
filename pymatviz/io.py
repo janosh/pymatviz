@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +24,7 @@ from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     import pandas as pd
@@ -130,7 +130,7 @@ def save_fig(
     if any(var in os.environ for var in env_disable):
         return
     # handle matplotlib figures
-    if isinstance(fig, (plt.Figure, plt.Axes)):
+    if isinstance(fig, plt.Figure | plt.Axes):
         if hasattr(fig, "figure"):
             fig = fig.figure  # unwrap Axes
         fig.savefig(path, **kwargs, transparent=True)
@@ -566,7 +566,7 @@ def df_to_svg(
         x0 = (1 - total_width) / 2
         y_i = 1
 
-        for idx, (yd, row) in enumerate(zip(row_locs, rows)):
+        for idx, (yd, row) in enumerate(zip(row_locs, rows, strict=True)):
             x_i = x0
             y_i -= yd
             # table zebra stripes
@@ -581,7 +581,7 @@ def df_to_svg(
                 )
                 fig.add_artist(rect)
 
-            for xd, val in zip(col_widths, row):
+            for xd, val in zip(col_widths, row, strict=True):
                 text, weight, ha, bg_color, fg_color = val[:5]
 
                 if bg_color != row_colors[1]:

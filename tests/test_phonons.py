@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from glob import glob
-from typing import Literal, Union
+from typing import Literal
 
 import plotly.graph_objects as go
 import pytest
@@ -16,7 +16,7 @@ import pymatviz as pmv
 from pymatviz.utils import TEST_FILES
 
 
-BandsDoses = dict[str, dict[str, Union[PhononBands, PhononDos]]]
+BandsDoses = dict[str, dict[str, PhononBands | PhononDos]]
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 # enable loading PhononDBDocParsed with @module set to uninstalled ffonons.dbs.phonondb
 # by changing to identical dataclass in pymatviz.phonons module
