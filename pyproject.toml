@@ -26,7 +26,7 @@ urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.9",
-    "numpy>=2",
+    "numpy>=1.26",
     # output-formatting needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "pandas[output-formatting]>=2.2",
     "plotly>=5.23",
@@ -37,22 +37,22 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "adjustText",
-    "bs4",
-    "cssutils",
-    "kaleido",
-    "lxml",
-    "pdfCropMargins",
-    "pytest",
-    "pytest-cov",
-    "weasyprint",
+    "adjustText>=0.8",
+    "bs4>=0.0.2",
+    "cssutils>=2.9",
+    "kaleido>=0.2",
+    "lxml>=4.9",
+    "pdfCropMargins>=2",
+    "pytest-cov>=5",
+    "pytest>=8",
+    "weasyprint>=60",
 ]
-make-assets = ["kaleido", "matminer", "mp_api"]
-export-figs = ["kaleido"]
-gh-pages = ["jupyter", "lazydocs", "nbconvert"]
-df-pdf-export = ["pdfCropMargins", "weasyprint"]
-df-svg-export = ["bs4", "cssutils", "lxml"]
-auto-text-pos = ["adjustText"]
+make-assets = ["kaleido>=0.2", "matminer>=0.9", "mp_api>=0.42"]
+export-figs = ["kaleido>=0.2"]
+gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
+df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
+df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
+auto-text-pos = ["adjustText>=0.8"]
 
 [tool.setuptools.packages]
 find = { include = ["pymatviz*"], exclude = ["tests*"] }
