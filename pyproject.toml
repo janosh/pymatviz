@@ -98,7 +98,6 @@ ignore = [
     "EM102",   # f-string-in-exception
     "ERA001",  # dead code
     "FIX002",  # line-contains-todo
-    "ISC001",  # single-line-implicit-string-concatenation
     "PLR0911", # too-many-return-statements
     "PLR0912", # too-many-branches
     "PLR0913", # function-with-too-many-arguments
