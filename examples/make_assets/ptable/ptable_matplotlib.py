@@ -140,8 +140,7 @@ pmv.io.save_and_compress_svg(fig, "ptable-lines")
 for n_splits in (2, 3, 4):
     data_dict = {
         elem.symbol: [
-            random.randint(10 * n_splits, 20 * (n_splits + 1))
-            for _ in range(n_splits)  # noqa: S311
+            random.randint(10 * n_splits, 20 * (n_splits + 1)) for _ in range(n_splits)
         ]
         for elem in Element
     }
