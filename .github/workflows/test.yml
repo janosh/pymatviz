@@ -55,3 +55,5 @@ jobs:
 
       - name: Run script
         run: python ${{ matrix.script }}
+        env:
+          MP_API_KEY: ${{ secrets.MP_API_KEY }}
