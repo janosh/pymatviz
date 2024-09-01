@@ -117,7 +117,7 @@ class TestPTableProjector:
         assert len(legend.get_texts()) in {1, 2}
         legend_labels = {text.get_text() for text in legend.get_texts()}
         assert legend_labels <= {"Transition Metal", "Alkali Metal", "Nonmetal"}
-        assert legend._ncols == 5  # noqa: SLF001
+        assert legend._ncols == 5
 
         assert legend.get_title().get_text() == legend_title
         assert legend.get_texts()[0].get_fontsize() == 12
