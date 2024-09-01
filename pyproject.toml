@@ -47,7 +47,7 @@ test = [
     "pytest-cov",
     "weasyprint",
 ]
-data-src = ["matminer", "mp_api"]
+make-assets = ["kaleido", "matminer", "mp_api"]
 export-figs = ["kaleido"]
 gh-pages = ["jupyter", "lazydocs", "nbconvert"]
 df-pdf-export = ["pdfCropMargins", "weasyprint"]
