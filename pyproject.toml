@@ -88,7 +88,7 @@ output-format = "concise"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN401",  # any-type
+    "ANN401",  # Any-type
     "C408",    # unnecessary-collection-call
     "C901",    # complex-structure
     "COM812",  # trailing comma missing
@@ -103,10 +103,10 @@ ignore = [
     "PLR0913", # function-with-too-many-arguments
     "PLR0915", # too-many-statements
     "PLR2004", # magic-number-comparison
-    "PT006",   # pytest-parametrize-names-wrong-type
+    "PT006",   # pytest-parametrize-names-wrong-type  TODO: fix this
     "PTH",     # prefer pathlib over os.path
     "S311",    # suspicious-non-cryptographic-random-usage
-    "SIM105",  # Use contextlib.suppress() instead of try-except-pass
+    "SIM105",  # Use contextlib.suppress instead of try-except-pass
     "SLF001",  # Access private class members
     "TD",      # TODO related
     "TRY003",  # raise-vanilla-args
