@@ -10,7 +10,9 @@ from pymatviz.utils import html_tag
 
 
 if TYPE_CHECKING:
-    from typing import Any, Self
+    from typing import Any
+
+    from typing_extensions import Self
 
 # TODO: remove following definition of StrEnum once Python 3.11+
 if sys.version_info >= (3, 11):
