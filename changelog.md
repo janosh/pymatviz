@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.11.0](https://github.com/janosh/pymatviz/compare/v0.10.1...v0.11.0)
+
+> 1 September 2024
+
+- Bump min supported Python to 3.10 [`#195`](https://github.com/janosh/pymatviz/pull/195)
+- fix ptable_heatmap return type plt.axes-&gt;plt.Axes [`1de350a`](https://github.com/janosh/pymatviz/commit/1de350a146b53ae03f343ff9a78454ba7c976186)
+
 #### [v0.10.1](https://github.com/janosh/pymatviz/compare/v0.10.0...v0.10.1)
 
 > 18 August 2024
