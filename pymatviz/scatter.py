@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +20,8 @@ from pymatviz.utils import bin_df_cols, df_to_arrays
 
 
 if TYPE_CHECKING:
+    from typing import Any, Literal
+
     from matplotlib.gridspec import GridSpec
     from numpy.typing import ArrayLike
 

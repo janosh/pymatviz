@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, TypeAlias, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,8 +10,12 @@ from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
 from pymatgen.core import Structure
 
 
+if TYPE_CHECKING:
+    from typing import Any, TypeAlias
+
+
 PatternOrStruct: TypeAlias = DiffractionPattern | Structure
-HklFormat = Literal["compact", "full", None]
+HklFormat: TypeAlias = Literal["compact", "full", None]
 ValidHklFormats = HklCompact, HklFull, HklNone = get_args(HklFormat)
 
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +18,7 @@ from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY, Backend
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any, Literal
 
     from pymatviz.utils import ElemValues
 

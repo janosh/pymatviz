@@ -9,7 +9,7 @@ import warnings
 from pathlib import Path
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,6 +27,7 @@ from pymatviz.utils import ROOT
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from pathlib import Path
+    from typing import Any, Final, Literal
 
     import pandas as pd
     from pandas.io.formats.style import Styler
