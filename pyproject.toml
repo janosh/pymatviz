@@ -120,12 +120,26 @@ isort.split-on-trailing-comma = false
 docstring-code-format = true
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
-"tests/*" = ["D", "FBT001", "FBT002", "INP001", "PLR2004", "S101"]
-# T201: print found
-# D100: Missing docstring in public module
-"examples/*" = ["D100", "INP001", "T201"]
-"site/*" = ["D", "INP001", "S602"]
+"__init__.py" = ["F401"]  # unused-import
+"tests/*" = [
+    "D",        # pydocstyle
+    "FBT001",   # boolean-type-hint-positional-argument
+    "FBT002",   # boolean-default-value-positional-argument
+    "INP001",   # implicit-namespace-package
+    "PLR2004",  # magic-value-comparison
+    "S101",     # use of assert
+    ]
+
+"examples/*" = [
+    "D100",     # missing docstring in public module
+    "INP001",   # implicit-namespace-package
+    "T201",     # print found
+    ]
+"site/*" = [
+    "D",        # pydocstyle
+    "INP001",   # implicit-namespace-package
+    "S602",     # subprocess-popen-with-shell-equals-true
+    ]
 
 [tool.pyright]
 typeCheckingMode = "off"
