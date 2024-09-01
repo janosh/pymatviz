@@ -12,6 +12,7 @@ from pymatviz.utils import html_tag
 if TYPE_CHECKING:
     from typing import Any, Self
 
+# TODO: remove following definition of StrEnum once Python 3.11+
 if sys.version_info >= (3, 11):
     from enum import StrEnum
 else:
