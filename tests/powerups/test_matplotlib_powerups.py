@@ -47,7 +47,7 @@ def test_annotate_bars(
         labels = [str(bar.get_height()) for bar in bars]
 
     # test that labels have expected text and fontsize
-    for text, label in zip(ax.texts, labels):
+    for text, label in zip(ax.texts, labels, strict=True):
         assert text.get_text() == str(label)
         assert text.get_fontsize() == fontsize
 

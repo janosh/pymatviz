@@ -131,7 +131,7 @@ def test_bin_df_cols(
     ), f"{set(df_binned)=}\n{expected_cols=},\n{bin_by_cols=}\n{group_by_cols=}"
 
     # validate the number of unique bins for each binned column
-    for col, n_bins_expec in zip(bin_by_cols, expected_n_bins):
+    for col, n_bins_expec in zip(bin_by_cols, expected_n_bins, strict=True):
         assert df_binned[f"{col}_bins"].nunique() == n_bins_expec
 
     # ensure original DataFrame is not modified
@@ -443,7 +443,7 @@ def test_annotate_invalid_fig() -> None:
 
 def test_annotate_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:
     texts = ["Annotation 1", "Annotation 2"]
-    fig = pmv.utils.annotate(texts, plotly_faceted_scatter)
+    fig: go.Figure = pmv.utils.annotate(texts, plotly_faceted_scatter)
 
     assert len(fig.layout.annotations) == 2
     assert fig.layout.annotations[0].text == texts[0]
@@ -456,7 +456,7 @@ def test_annotate_faceted_plotly_with_empty_string(
     plotly_faceted_scatter: go.Figure,
 ) -> None:
     texts = ["Annotation 1", ""]
-    fig = pmv.utils.annotate(texts, plotly_faceted_scatter)
+    fig: go.Figure = pmv.utils.annotate(texts, plotly_faceted_scatter)
 
     assert len(fig.layout.annotations) == 1
     assert fig.layout.annotations[0].text == texts[0]
@@ -466,7 +466,7 @@ def test_annotate_faceted_plotly_with_single_string(
     plotly_faceted_scatter: go.Figure,
 ) -> None:
     text = "Single Annotation"
-    fig = pmv.utils.annotate(text, plotly_faceted_scatter)
+    fig: go.Figure = pmv.utils.annotate(text, plotly_faceted_scatter)
 
     assert len(fig.layout.annotations) == 2
     for annotation in fig.layout.annotations:
@@ -494,7 +494,7 @@ def test_annotate_non_faceted_plotly_with_list_raises(
     ],
 )
 def test_annotate_kwargs(plotly_scatter: go.Figure, kwargs: dict[str, Any]) -> None:
-    fig = pmv.utils.annotate("Test", plotly_scatter, **kwargs)
+    fig: go.Figure = pmv.utils.annotate("Test", plotly_scatter, **kwargs)
 
     for key, val in kwargs.items():
         if isinstance(val, dict):
