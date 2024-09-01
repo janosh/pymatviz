@@ -7,10 +7,15 @@ from typing import TYPE_CHECKING, Any
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from packaging import version
 from scipy.stats import norm
 
 import pymatviz as pmv
 from pymatviz.utils import df_to_arrays
+
+
+if version.parse(np.__version__) < version.parse("2.0.0"):
+    np.trapezoid = np.trapz  # noqa: NPY201
 
 
 if TYPE_CHECKING:
@@ -86,7 +91,7 @@ def qq_gaussian(
         ax.fill_between(
             exp_proportions, y1=obs_proportions, y2=exp_proportions, alpha=0.2
         )
-        miscal_area = np.trapz(  # noqa: NPY201
+        miscal_area = np.trapezoid(
             np.abs(obs_proportions - exp_proportions), dx=1 / resolution
         )
         lines.append([line, miscal_area])
