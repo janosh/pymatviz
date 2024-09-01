@@ -129,16 +129,15 @@ def test_df_to_pdf(
         style=style,
         styler_css=styler_css,
     )
-    try:
-        pmv.io.df_to_pdf(**kwds)
-    except ImportError as exc:
-        # check we're raising helpful error messages on missing deps
-        if weasyprint is None:
-            assert "weasyprint not installed\n" in str(exc)  # noqa: PT017
-            return
-        if pdfCropMargins is None:
-            assert "cropPdfMargins not installed\n" in str(exc)  # noqa: PT017
-            return
+
+    # check we're raising helpful error messages on missing deps
+    if weasyprint is None:
+        with pytest.raises(ImportError, match="weasyprint not installed\n"):
+            pmv.io.df_to_pdf(**kwds)
+
+    if pdfCropMargins is None:
+        with pytest.raises(ImportError, match="cropPdfMargins not installed\n"):
+            pmv.io.df_to_pdf(**kwds)
 
     # Check if the file is created
     assert file_path.is_file()
