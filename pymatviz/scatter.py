@@ -110,7 +110,7 @@ def density_scatter(
     Returns:
         plt.Axes: The plot object.
     """
-    if not isinstance(stats, (bool, dict)):
+    if not isinstance(stats, bool | dict):
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
     if xlabel is None:
         xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
@@ -205,7 +205,7 @@ def density_scatter_plotly(
     """
     bin_counts_col = bin_counts_col or "Point Density"
 
-    if not isinstance(stats, (bool, dict)):
+    if not isinstance(stats, bool | dict):
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
 
     if n_bins is None:  # auto-enable binning depending on data size
