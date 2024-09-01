@@ -14,7 +14,7 @@ from pymatviz.enums import Key
 try:
     import ffonons  # noqa: F401
 except ImportError:
-    raise SystemExit("Please install ffonons to run this script.") from None
+    raise SystemExit(0) from None  # install ffonons to run this script
 
 
 # %% Plot phonon bands and DOS
