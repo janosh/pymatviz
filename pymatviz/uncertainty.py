@@ -60,8 +60,10 @@ def qq_gaussian(
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    assert isinstance(y_true, np.ndarray)  # noqa: S101
-    assert isinstance(y_pred, np.ndarray)  # noqa: S101
+    if not isinstance(y_true, np.ndarray):
+        raise TypeError(f"Expect y_true as np.ndarray, got {type(y_true).__name__}")
+    if not isinstance(y_pred, np.ndarray):
+        raise TypeError(f"Expect y_pred as np.ndarray, got {type(y_pred).__name__}")
     ax = ax or plt.gca()
 
     if not isinstance(y_std, dict):
@@ -238,8 +240,10 @@ def error_decay_with_uncert(
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    assert isinstance(y_true, np.ndarray)  # for mypy  # noqa: S101
-    assert isinstance(y_pred, np.ndarray)  # noqa: S101
+    if not isinstance(y_true, np.ndarray):
+        raise TypeError(f"Expect y_true as np.ndarray, got {type(y_true).__name__}")
+    if not isinstance(y_pred, np.ndarray):
+        raise TypeError(f"Expect y_pred as np.ndarray, got {type(y_pred).__name__}")
 
     ax = ax or plt.gca()
 
