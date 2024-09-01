@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Literal, TypeAlias, get_args
 
 import numpy as np
 import pandas as pd
@@ -22,13 +22,13 @@ if TYPE_CHECKING:
 
 # Data types that can be passed to PTableProjector and normalized by data_preprocessor
 # to SupportedValueType
-SupportedDataType = (
+SupportedDataType: TypeAlias = (
     dict[str, float | Sequence[float] | np.ndarray] | pd.DataFrame | pd.Series
 )
 
 
 # Data types used internally by ptable plotters (returned by preprocess_ptable_data)
-SupportedValueType = Sequence[float] | np.ndarray
+SupportedValueType: TypeAlias = Sequence[float] | np.ndarray
 
 
 class PTableData:

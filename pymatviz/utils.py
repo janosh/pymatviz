@@ -8,7 +8,7 @@ from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Literal, cast, get_args
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast, get_args
 
 import matplotlib.colors
 import matplotlib.pyplot as plt
@@ -38,7 +38,7 @@ TEST_FILES = f"{ROOT}/tests/files"
 Backend = Literal["matplotlib", "plotly"]
 BACKENDS = MATPLOTLIB, PLOTLY = get_args(Backend)
 
-AxOrFig = plt.Axes | plt.Figure | go.Figure
+AxOrFig: TypeAlias = plt.Axes | plt.Figure | go.Figure
 VALID_FIG_TYPES = get_args(AxOrFig)
 VALID_FIG_NAMES = " | ".join(
     f"{t.__module__}.{t.__qualname__}" for t in VALID_FIG_TYPES
