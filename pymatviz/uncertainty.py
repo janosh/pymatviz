@@ -116,7 +116,7 @@ def qq_gaussian(
             frameon=False,
         )
         # https://stackoverflow.com/a/44620643
-        legend2._legend_box.align = "left"  # noqa: SLF001
+        legend2._legend_box.align = "left"
     else:
         ax.legend(
             lines,

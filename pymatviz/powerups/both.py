@@ -177,7 +177,7 @@ def add_identity_line(
         xy_min_min = min(x_min, y_min)
         xy_max_min = min(x_max, y_max)
 
-        if fig._grid_ref is not None:  # noqa: SLF001
+        if fig._grid_ref is not None:
             kwargs.setdefault("row", "all")
             kwargs.setdefault("col", "all")
 

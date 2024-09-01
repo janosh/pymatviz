@@ -67,8 +67,8 @@ def test_add_best_fit_line(
         (child for child in ax.get_children() if isinstance(child, AnchoredText)), None
     )
 
-    x0, y0 = best_fit_line._xy1  # noqa: SLF001
-    x1, y1 = best_fit_line._xy2  # noqa: SLF001
+    x0, y0 = best_fit_line._xy1
+    x1, y1 = best_fit_line._xy2
     slope = (y1 - y0) / (x1 - x0)
     intercept = y0 - slope * x0
 
