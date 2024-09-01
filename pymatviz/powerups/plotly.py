@@ -49,7 +49,7 @@ def add_ecdf_line(
 
     target_trace: BaseTraceType = fig.data[trace_idx]
     if values is None or len(values) == 0:
-        if isinstance(target_trace, (go.Histogram, go.Scatter, go.Scattergl)):
+        if isinstance(target_trace, go.Histogram | go.Scatter | go.Scattergl):
             values = target_trace.x
         elif isinstance(target_trace, go.Bar):
             xs, ys = target_trace.x, target_trace.y

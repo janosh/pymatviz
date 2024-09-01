@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Sequence
 from math import isclose
-from typing import TYPE_CHECKING, Literal, Union
+from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
-import pandas as pd
 
 from pymatviz.enums import ElemColorMode, ElemCountMode
 from pymatviz.process_data import count_elements
@@ -18,12 +16,14 @@ from pymatviz.ptable._projector import (
     OverwriteTileValueColor,
     PTableProjector,
 )
-from pymatviz.utils import get_cbar_label_formatter, pick_bw_for_contrast
+from pymatviz.utils import ElemValues, get_cbar_label_formatter, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
+    from collections.abc import Callable, Sequence
+    from typing import Any
 
+    import pandas as pd
     from matplotlib.colors import Colormap
     from matplotlib.typing import ColorType
     from pymatgen.core import Element
@@ -32,7 +32,6 @@ if TYPE_CHECKING:
 
 # Custom types
 ElemStr = str  # element as a str
-ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
 
 
 def ptable_heatmap(

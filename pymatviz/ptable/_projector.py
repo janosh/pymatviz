@@ -26,7 +26,8 @@ from pymatviz.utils import df_ptable, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
+    from collections.abc import Callable
+    from typing import Any
 
     import pandas as pd
     from matplotlib.typing import ColorType
@@ -533,7 +534,7 @@ class ChildPlotters:
             tick_kwargs: For compatibility with other plotters.
         """
         # Map values to colors
-        if isinstance(data, (Sequence, np.ndarray)):
+        if isinstance(data, Sequence | np.ndarray):
             colors = [cmap(norm(value)) for value in data]
         else:
             raise TypeError("Unsupported data type.")
@@ -657,7 +658,7 @@ class ChildPlotters:
             cols = (n - n.min()) / (n.max() - n.min())
 
         # Apply colors
-        for col, patch in zip(cols, patches):
+        for col, patch in zip(cols, patches, strict=True):
             plt.setp(patch, "facecolor", cmap(col))
 
         # Set tick labels
@@ -683,7 +684,7 @@ class HeatMapPTableProjector(PTableProjector):
 
         def to_scalar(x: float | list[float] | NDArray) -> float:
             """Convert single value array/list to scalar."""
-            if isinstance(x, (list, np.ndarray)):
+            if isinstance(x, list | np.ndarray):
                 return x[0] if len(x) > 0 else np.nan
             return x
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, Union
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pandas as pd
@@ -13,14 +13,12 @@ import plotly.graph_objects as go
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.utils import df_ptable
+from pymatviz.utils import ElemValues, df_ptable
 
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
-
-
-ElemValues = Union[dict[Union[str, int], float], pd.Series, Sequence[str]]
+    from collections.abc import Callable
+    from typing import Any
 
 
 def ptable_heatmap_plotly(
@@ -139,10 +137,10 @@ def ptable_heatmap_plotly(
     if len(cscale_range) != 2:
         raise ValueError(f"{cscale_range=} should have length 2")
 
-    if isinstance(colorscale, (str, type(None))):
+    if isinstance(colorscale, str | type(None)):
         colorscale = px.colors.get_colorscale(colorscale or "viridis")
     elif not isinstance(colorscale, Sequence) or not isinstance(
-        colorscale[0], (str, list, tuple)
+        colorscale[0], str | list | tuple
     ):
         raise TypeError(
             f"{colorscale=} should be string, list of strings or list of "
@@ -233,7 +231,7 @@ def ptable_heatmap_plotly(
             if isinstance(hover_props, dict):
                 for col_name, col_label in hover_props.items():
                     hover_text += f"<br>{col_label} = {df_row[col_name]}"
-            elif isinstance(hover_props, (list, tuple)):
+            elif isinstance(hover_props, list | tuple):
                 hover_text += "<br>" + "<br>".join(
                     f"{col_name} = {df_row[col_name]}" for col_name in hover_props
                 )

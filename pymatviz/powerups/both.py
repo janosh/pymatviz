@@ -70,7 +70,7 @@ def annotate_metrics(
     """
     if isinstance(metrics, str):
         metrics = [metrics]
-    if not isinstance(metrics, (dict, list, tuple, set)):
+    if not isinstance(metrics, dict | list | tuple | set):
         raise TypeError(
             f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
         )
@@ -166,7 +166,7 @@ def add_identity_line(
     """
     (x_min, x_max), (y_min, y_max) = get_fig_xy_range(fig=fig, trace_idx=trace_idx)
 
-    if isinstance(fig, (plt.Figure, plt.Axes)):  # handle matplotlib
+    if isinstance(fig, plt.Figure | plt.Axes):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
         line_defaults = dict(alpha=0.5, zorder=0, linestyle="dashed", color="black")
