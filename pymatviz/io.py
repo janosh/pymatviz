@@ -341,7 +341,7 @@ def normalize_and_crop_pdf(
         )
 
         if stderr:
-            print(f"pdfCropMargins {stderr=}")  # noqa: T201
+            warnings.warn(f"pdfCropMargins {stderr=}", stacklevel=2)
             # something went wrong, remove the cropped PDF
             os.remove(cropped_file_path)
         else:

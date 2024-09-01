@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
@@ -264,10 +265,11 @@ def add_best_fit_line(
         if n_traces > 1 and warn and not is_faceted:
             # for a faceted plot, multiple traces are expected so doesn't make sense to
             # warn even if user may have wanted to specify trace_idx. we can't know
-            print(  # noqa: T201
+            warnings.warn(
                 f"add_best_fit_line Warning: {trace_idx=} but figure has {n_traces}"
                 " traces, defaulting to trace_idx=0. Check fig.data[0] to make sure"
-                " this is the expected trace."
+                " this is the expected trace.",
+                stacklevel=2,
             )
         trace_idx = 0
 
