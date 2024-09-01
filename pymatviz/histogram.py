@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
@@ -23,9 +24,11 @@ if TYPE_CHECKING:
 
 def spacegroup_hist(*args: Any, **kwargs: Any) -> plt.Axes | go.Figure:
     """Alias for spacegroup_bar."""
-    print(  # noqa: T201
+    warnings.warn(
         "spacegroup_hist() is deprecated and will be removed in a future version. "
-        "use pymatviz.bar.spacegroup_bar() instead."
+        "use pymatviz.bar.spacegroup_bar() instead.",
+        category=DeprecationWarning,
+        stacklevel=2,
     )
     return spacegroup_bar(*args, **kwargs)
 

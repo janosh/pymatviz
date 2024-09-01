@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import os
 import subprocess
+import warnings
 from pathlib import Path
 from shutil import which
 from time import sleep
@@ -313,7 +314,10 @@ def normalize_and_crop_pdf(
         if on_gs_not_found == "ignore":
             return
         if on_gs_not_found == "warn":
-            print("Ghostscript not found, skipping PDF normalization and cropping")  # noqa: T201
+            warnings.warn(
+                "Ghostscript not found, skipping PDF normalization and cropping",
+                stacklevel=2,
+            )
             return
         raise RuntimeError("Ghostscript not found in PATH")
     try:
@@ -643,6 +647,8 @@ def df_to_svg(
                 [svgo, "--multipass", "--final-newline", str(file_path)], check=True
             )
         else:
-            print("svgo not found in PATH. SVG compression skipped.")  # noqa: T201
+            warnings.warn(
+                "svgo not found in PATH. SVG compression skipped.", stacklevel=2
+            )
 
     return fig

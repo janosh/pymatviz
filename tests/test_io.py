@@ -7,7 +7,7 @@ from pathlib import Path
 from shutil import which
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
-from xml.etree import ElementTree  # noqa: ICN001
+from xml.etree import ElementTree as ET
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -324,7 +324,7 @@ def test_df_to_svg(
     assert stdout == "" or (not compress and "svgo not found in PATH" in stdout)
 
     # Parse the SVG and perform some basic checks
-    tree = ElementTree.parse(file_path)  # noqa: S314
+    tree = ET.parse(file_path)  # noqa: S314
     root = tree.getroot()
 
     # Check that it's a valid SVG
@@ -334,7 +334,7 @@ def test_df_to_svg(
     assert int(float(root.attrib["height"].rstrip("pt"))) == height
 
     # Check for some content from the DataFrame
-    svg_content = ElementTree.tostring(root, encoding="unicode")
+    svg_content = ET.tostring(root, encoding="unicode")
     assert svg_content.startswith("<ns0:svg xmlns")
 
     # Test file overwrite behavior
