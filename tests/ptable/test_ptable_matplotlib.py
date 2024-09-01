@@ -155,12 +155,12 @@ class TestPtableHeatmap:
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test pmv.ptable_heatmap_splits with arbitrary data length."""
     data_dict: dict[str, Any] = {
-        elem.symbol: [
-            random.randint(0, 10)  # random value for each split
+        element.symbol: [
+            random.randint(0, 10)  # random value for each split  # noqa: S311
             # random number of 1-4 splits per element
-            for _ in range(random.randint(1, 4))
+            for _ in range(random.randint(1, 4))  # noqa: S311
         ]
-        for elem in Element
+        for element in Element
     }
 
     # Also test different data types

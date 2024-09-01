@@ -105,7 +105,6 @@ ignore = [
     "PLR2004", # magic-number-comparison
     "PT006",   # pytest-parametrize-names-wrong-type  TODO: fix this
     "PTH",     # prefer pathlib over os.path
-    "S311",    # suspicious-non-cryptographic-random-usage
     "SIM105",  # Use contextlib.suppress instead of try-except-pass
     "SLF001",  # Access private class members
     "TD",      # TODO related
