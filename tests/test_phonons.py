@@ -102,16 +102,17 @@ def test_phonon_bands_raises(
     ):
         pmv.phonon_bands("invalid input")
 
-    with pytest.raises(ValueError) as exc:  # noqa: PT011
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "No common branches with branch_mode='union'.\n"
+            "- : GAMMA-X, X-U, K-GAMMA, GAMMA-L, L-W, W-X\n"
+            "- Only branches ('foo-bar',) were requested."
+        ),
+    ):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",)
         )
-
-    assert (
-        "No common branches with branch_mode='union'.\n"
-        "- : GAMMA-X, X-U, K-GAMMA, GAMMA-L, L-W, W-X\n"
-        "- Only branches ('foo-bar',) were requested." in str(exc.value)
-    )
 
     # issues warning when requesting some available and some unavailable branches
     pmv.phonon_bands(
