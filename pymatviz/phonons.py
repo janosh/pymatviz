@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, get_args, no_type_check
+from typing import TYPE_CHECKING, Literal, get_args
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -126,7 +126,6 @@ def get_band_xaxis_ticks(
     return ticks_x_pos, tick_labels
 
 
-@no_type_check  # TODO: fix this
 def _shaded_range(
     fig: go.Figure,
     shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None,
@@ -135,9 +134,15 @@ def _shaded_range(
         return fig
 
     shade_defaults = dict(layer="below", row="all", col="all")
-    y_lim = dict(zip(("y_min", "y_max"), fig.layout.yaxis.range, strict=True))
+    y_lim: dict[float | Literal["y_min", "y_max"], Any] = dict(
+        zip(("y_min", "y_max"), fig.layout.yaxis.range, strict=True),
+    )
 
+    # DEBUG: why (0, "y_min")
     shaded_ys = shaded_ys or {(0, "y_min"): dict(fillcolor="gray", opacity=0.07)}
+    if not isinstance(shaded_ys, dict):
+        raise TypeError(f"expect shaded_ys as dict, got {type(shaded_ys).__name__}")
+
     for (y0, y1), kwds in shaded_ys.items():
         for y_val in (y0, y1):
             if isinstance(y_val, str) and y_val not in y_lim:
