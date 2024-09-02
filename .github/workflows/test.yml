@@ -18,7 +18,6 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: "3.10"
-      test-cmd: pytest --durations 20 --cov .
     secrets: inherit
 
   find-scripts:
