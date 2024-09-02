@@ -58,11 +58,7 @@ def _hist_density(
     # get bin centers
     points = 0.5 * (x_bins[1:] + x_bins[:-1]), 0.5 * (y_bins[1:] + y_bins[:-1])
     zs = scipy.interpolate.interpn(
-        points,
-        counts,
-        np.vstack([xs, ys]).T,
-        method=method,
-        bounds_error=False,
+        points, counts, np.vstack([xs, ys]).T, method=method, bounds_error=False
     )
 
     # sort points by density, so that the densest points are plotted last
@@ -135,8 +131,7 @@ def density_scatter(
 
     if identity_line:
         pmv.powerups.add_identity_line(
-            ax,
-            **(identity_line if isinstance(identity_line, dict) else {}),
+            ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
     if best_fit_line:
         best_fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
@@ -146,10 +141,7 @@ def density_scatter(
 
     if stats:
         pmv.powerups.annotate_metrics(
-            xs,
-            ys,
-            fig=ax,
-            **(stats if isinstance(stats, dict) else {}),
+            xs, ys, fig=ax, **(stats if isinstance(stats, dict) else {})
         )
 
     ax.set(xlabel=xlabel, ylabel=ylabel)
@@ -231,12 +223,7 @@ def density_scatter_plotly(
 
         for group_name, group_df in grouped:
             binned_df = _bin_and_calculate_density(
-                group_df,
-                x,
-                y,
-                density,
-                n_bins,
-                bin_counts_col,
+                group_df, x, y, density, n_bins, bin_counts_col
             )
             binned_df[facet_col] = group_name  # Add the facet column back
             binned_dfs.append(binned_df)
@@ -271,8 +258,7 @@ def density_scatter_plotly(
 
     if identity_line:
         pmv.powerups.add_identity_line(
-            fig,
-            **(identity_line if isinstance(identity_line, dict) else {}),
+            fig, **(identity_line if isinstance(identity_line, dict) else {})
         )
 
     # if None, set best_fit_line if predictive power seems to warrant it
@@ -281,8 +267,7 @@ def density_scatter_plotly(
         best_fit_line = r2 > 0.3
     if best_fit_line:
         pmv.powerups.add_best_fit_line(
-            fig,
-            **(best_fit_line if isinstance(best_fit_line, dict) else {}),
+            fig, **(best_fit_line if isinstance(best_fit_line, dict) else {})
         )
 
     if stats:
@@ -333,9 +318,7 @@ def _bin_and_calculate_density(
 
 
 def _update_colorbar_for_log_density(
-    fig: go.Figure,
-    color_vals: np.ndarray,
-    bin_counts_col: str,
+    fig: go.Figure, color_vals: np.ndarray, bin_counts_col: str
 ) -> None:
     """Helper function to update colorbar for log density."""
     min_count = color_vals.min()
@@ -413,13 +396,11 @@ def scatter_with_err_bar(
 
     if identity_line:
         pmv.powerups.add_identity_line(
-            ax,
-            **(identity_line if isinstance(identity_line, dict) else {}),
+            ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
     if best_fit_line:
         pmv.powerups.add_best_fit_line(
-            ax,
-            **(best_fit_line if isinstance(best_fit_line, dict) else {}),
+            ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
         )
 
     pmv.powerups.annotate_metrics(xs, ys, fig=ax)
@@ -486,13 +467,11 @@ def density_hexbin(
 
     if identity_line:
         pmv.powerups.add_identity_line(
-            ax,
-            **(identity_line if isinstance(identity_line, dict) else {}),
+            ax, **(identity_line if isinstance(identity_line, dict) else {})
         )
     if best_fit_line:
         pmv.powerups.add_best_fit_line(
-            ax,
-            **(best_fit_line if isinstance(best_fit_line, dict) else {}),
+            ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
         )
 
     pmv.powerups.annotate_metrics(xs, ys, fig=ax, loc="upper left")
@@ -571,12 +550,7 @@ def residual_vs_actual(
 
     ax.plot(y_true, y_err, "o", alpha=0.5, label=None, mew=1.2, ms=5.2, **kwargs)
     ax.axline(
-        [1, 0],
-        [2, 0],
-        linestyle="dashed",
-        color="black",
-        alpha=0.5,
-        label="ideal",
+        [1, 0], [2, 0], linestyle="dashed", color="black", alpha=0.5, label="ideal"
     )
 
     ax.set(xlabel=xlabel, ylabel=ylabel)

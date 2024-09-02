@@ -37,9 +37,7 @@ def timer(label: str = "") -> Generator[None, None, None]:
 
 
 def generate_diatomics(
-    symbol0: str,
-    symbol1: str,
-    distances: list[float] | np.ndarray,
+    symbol0: str, symbol1: str, distances: list[float] | np.ndarray
 ) -> list[Atoms]:
     """Build diatomic molecules in vacuum for given distances.
 
@@ -58,10 +56,7 @@ def generate_diatomics(
 
 
 def calc_one_pair(
-    z0: int,
-    z1: int,
-    calc: MACECalculator,
-    distances: list[float] | np.ndarray,
+    z0: int, z1: int, calc: MACECalculator, distances: list[float] | np.ndarray
 ) -> list[float]:
     """Calculate potential energy for a pair of elements at given distances.
 
@@ -77,9 +72,7 @@ def calc_one_pair(
     return [
         calc.get_potential_energy(at)
         for at in generate_diatomics(
-            chemical_symbols[z0],
-            chemical_symbols[z1],
-            distances,
+            chemical_symbols[z0], chemical_symbols[z1], distances
         )
     ]
 

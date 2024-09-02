@@ -33,7 +33,7 @@ df_perov[Key.volume] = df_perov[Key.structure].map(lambda struct: struct.volume)
 df_perov[Key.formula] = df_perov[Key.structure].map(lambda cryst: cryst.formula)
 
 df_perov[Key.crystal_system] = df_perov[Key.spg_num].map(
-    pmv.utils.crystal_sys_from_spg_num,
+    pmv.utils.crystal_sys_from_spg_num
 )
 
 
@@ -49,9 +49,7 @@ pmv.save_fig(ax, "perovskites-e_form-hist.pdf")
 
 # %%
 fig = ptable_heatmap(
-    count_elements(df_perov[Key.formula]),
-    log=True,
-    return_type="figure",
+    count_elements(df_perov[Key.formula]), log=True, return_type="figure"
 )
 fig.suptitle("Elements in Matbench Perovskites dataset")
 pmv.save_fig(fig, "perovskites-ptable-heatmap.pdf")

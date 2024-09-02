@@ -28,8 +28,7 @@ def test_add_best_fit_line(
 ) -> None:
     # test plotly
     fig_plotly = pmv.powerups.add_best_fit_line(
-        plotly_scatter,
-        annotate_params=annotate_params,
+        plotly_scatter, annotate_params=annotate_params
     )
     assert isinstance(fig_plotly, go.Figure)
     best_fit_line = fig_plotly.layout.shapes[-1]  # retrieve best fit line
@@ -55,8 +54,7 @@ def test_add_best_fit_line(
 
     # test matplotlib
     fig_mpl = pmv.powerups.add_best_fit_line(
-        matplotlib_scatter,
-        annotate_params=annotate_params,
+        matplotlib_scatter, annotate_params=annotate_params
     )
     assert isinstance(fig_mpl, plt.Figure)
 
@@ -67,8 +65,7 @@ def test_add_best_fit_line(
     assert best_fit_line.get_color() == expected_color
 
     anno: AnchoredText = next(
-        (child for child in ax.get_children() if isinstance(child, AnchoredText)),
-        None,
+        (child for child in ax.get_children() if isinstance(child, AnchoredText)), None
     )
 
     x0, y0 = best_fit_line._xy1
@@ -125,9 +122,7 @@ def test_add_best_fit_line_faceted_plot(plotly_faceted_scatter: go.Figure) -> No
 
 @pytest.mark.parametrize("backend", ["plotly", "matplotlib"])
 def test_add_best_fit_line_custom_xs_ys(
-    backend: str,
-    plotly_scatter: go.Figure,
-    matplotlib_scatter: plt.Figure,
+    backend: str, plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
 ) -> None:
     fig = plotly_scatter if backend == "plotly" else matplotlib_scatter
     custom_x = np.array([1, 2, 3, 4, 5])
@@ -212,8 +207,7 @@ def test_add_identity_line(
 
 @pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
 def test_add_identity_matplotlib(
-    matplotlib_scatter: plt.Figure,
-    line_kwds: dict[str, str] | None,
+    matplotlib_scatter: plt.Figure, line_kwds: dict[str, str] | None
 ) -> None:
     expected_line_color = (line_kwds or {}).get("color", "black")
     # test Figure
@@ -269,11 +263,7 @@ def test_annotate_metrics(
     fig = plotly_scatter if backend == PLOTLY else matplotlib_scatter
 
     out_fig = pmv.powerups.annotate_metrics(
-        y_pred,
-        y_true,
-        metrics=metrics,
-        fmt=fmt,
-        fig=fig,
+        y_pred, y_true, metrics=metrics, fmt=fmt, fig=fig
     )
     assert out_fig is fig
 
@@ -295,13 +285,7 @@ def test_annotate_metrics(
 
     prefix, suffix = f"Metrics:{newline}", f"{newline}the end"
     out_fig = pmv.powerups.annotate_metrics(
-        y_pred,
-        y_true,
-        metrics=metrics,
-        fmt=fmt,
-        prefix=prefix,
-        suffix=suffix,
-        fig=fig,
+        y_pred, y_true, metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix, fig=fig
     )
     anno_text_with_fixes = _extract_anno_from_fig(out_fig)
     assert (
@@ -321,11 +305,7 @@ def test_annotate_metrics_faceted_plotly(plotly_faceted_scatter: go.Figure) -> N
 def test_annotate_metrics_prefix_suffix(plotly_scatter: go.Figure) -> None:
     prefix, suffix = "Metrics:", "End"
     out_fig = pmv.powerups.annotate_metrics(
-        y_true,
-        y_pred,
-        fig=plotly_scatter,
-        prefix=prefix,
-        suffix=suffix,
+        y_true, y_pred, fig=plotly_scatter, prefix=prefix, suffix=suffix
     )
 
     anno_text = _extract_anno_from_fig(out_fig)

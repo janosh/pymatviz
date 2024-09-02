@@ -26,9 +26,7 @@ pmv.save_fig(ax, "steels-yield-strength-hist.pdf")
 
 # %%
 fig = ptable_heatmap(
-    count_elements(df_steels[Key.composition]),
-    log=True,
-    return_type="figure",
+    count_elements(df_steels[Key.composition]), log=True, return_type="figure"
 )
 fig.suptitle("Elemental prevalence in the Matbench steels dataset")
 pmv.save_fig(fig, "steels-ptable-heatmap.pdf")

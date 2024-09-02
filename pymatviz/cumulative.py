@@ -15,9 +15,7 @@ if TYPE_CHECKING:
 
 
 def cumulative_residual(
-    res: ArrayLike,
-    ax: plt.Axes | None = None,
-    **kwargs: Any,
+    res: ArrayLike, ax: plt.Axes | None = None, **kwargs: Any
 ) -> plt.Axes:
     """Plot the empirical cumulative distribution for the residuals (y - mu).
 
@@ -68,9 +66,7 @@ def cumulative_residual(
 
 
 def cumulative_error(
-    abs_err: ArrayLike,
-    ax: plt.Axes | None = None,
-    **kwargs: Any,
+    abs_err: ArrayLike, ax: plt.Axes | None = None, **kwargs: Any
 ) -> plt.Axes:
     """Plot the empirical cumulative distribution of abs(y_true - y_pred).
 

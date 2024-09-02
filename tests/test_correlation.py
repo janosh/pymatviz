@@ -14,7 +14,5 @@ def test_marchenko_pastur(filter_high_evals: bool) -> None:
     corr_mat = np.corrcoef(rand_mat)
 
     marchenko_pastur(
-        corr_mat,
-        gamma=n_cols / n_rows,
-        filter_high_evals=filter_high_evals,
+        corr_mat, gamma=n_cols / n_rows, filter_high_evals=filter_high_evals
     )

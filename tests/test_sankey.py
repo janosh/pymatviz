@@ -20,8 +20,6 @@ def test_sankey_from_2_df_cols(labels_with_counts: bool | Literal["percent"]) ->
 
     df_rand = pd.DataFrame(np_rng.integers(0, 10, size=(100, 2)), columns=col_names)
     fig = pmv.sankey_from_2_df_cols(
-        df_rand,
-        col_names,
-        labels_with_counts=labels_with_counts,
+        df_rand, col_names, labels_with_counts=labels_with_counts
     )
     assert isinstance(fig, go.Figure)

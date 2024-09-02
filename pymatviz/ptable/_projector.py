@@ -263,7 +263,7 @@ class PTableProjector:
         else:
             raise ValueError(
                 f"elem_colors must be 'vesta', 'jmol', or a custom dict, "
-                f"got {elem_colors=}",
+                f"got {elem_colors=}"
             )
 
     def get_elem_type_color(
@@ -316,8 +316,7 @@ class PTableProjector:
             # Get and check tile data
             try:
                 plot_data: np.ndarray | Sequence[float] = self.data.loc[
-                    symbol,
-                    Key.heat_val,
+                    symbol, Key.heat_val
                 ]
             except KeyError:  # skip element without data
                 plot_data = None
@@ -736,7 +735,7 @@ class HeatMapPTableProjector(PTableProjector):
             ):
                 try:
                     values_in_ptable.append(
-                        float(self.data.loc[symbol, Key.heat_val][0]),
+                        float(self.data.loc[symbol, Key.heat_val][0])
                     )
                 except (KeyError, ValueError):
                     pass
@@ -890,12 +889,7 @@ class HeatMapPTableProjector(PTableProjector):
                 wedgeprops={"clip_on": True},
             )
             rect = Rectangle(
-                xy=(-0.5, -0.5),
-                width=1,
-                height=1,
-                fc="none",
-                ec="grey",
-                lw=2,
+                xy=(-0.5, -0.5), width=1, height=1, fc="none", ec="grey", lw=2
             )
             ax.add_patch(rect)
 

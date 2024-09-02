@@ -38,10 +38,7 @@ def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
 @pytest.mark.parametrize("bins", [20, 100])
 @pytest.mark.parametrize("values", [y_true, df_regr.y_true])
 def test_histogram(
-    values: np.ndarray | pd.Series,
-    log_y: bool,
-    backend: Backend,
-    bins: int,
+    values: np.ndarray | pd.Series, log_y: bool, backend: Backend, bins: int
 ) -> None:
     fig = histogram(values, backend=backend, log_y=log_y, bins=bins)
     if backend == MATPLOTLIB:

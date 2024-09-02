@@ -46,7 +46,7 @@ pio.templates[f"{PKG_NAME}_white"] = pmv_white_template.update(
         yaxis=white_axis_template,
         font=dict(color="black"),
         **common_layout,
-    ),
+    )
 )
 dark_axis_template = axis_template | dict(linecolor="white", gridcolor="darkgray")
 # inherit from plotly_dark template
@@ -58,7 +58,7 @@ pio.templates[f"{PKG_NAME}_dark"] = pmv_dark_template.update(
         yaxis=dark_axis_template,
         font=dict(color="white"),
         **common_layout,
-    ),
+    )
 )
 
 
@@ -78,5 +78,5 @@ def set_plotly_template(template: str | go.layout.Template) -> None:
     except ValueError as exc:
         valid_templates = list(pio.templates)
         raise ValueError(
-            f"Unrecognized {template=}. Must be one of {valid_templates}.",
+            f"Unrecognized {template=}. Must be one of {valid_templates}."
         ) from exc

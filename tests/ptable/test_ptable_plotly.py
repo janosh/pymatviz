@@ -42,9 +42,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
     )
     # test label_map as dict
     fig = ptable_heatmap_plotly(
-        df_ptable[Key.density],
-        fmt=".1f",
-        label_map={"0": "zero"},
+        df_ptable[Key.density], fmt=".1f", label_map={"0": "zero"}
     )
     # test label_map as callable
     ptable_heatmap_plotly(
@@ -134,8 +132,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
 
 
 @pytest.mark.parametrize(
-    "c_scale",
-    ["Viridis", "Jet", ("blue", "red"), ((0, "blue"), (1, "red"))],
+    "c_scale", ["Viridis", "Jet", ("blue", "red"), ((0, "blue"), (1, "red"))]
 )
 def test_ptable_heatmap_plotly_colorscale(c_scale: str) -> None:
     values = {"Fe": 2, "O": 3}
@@ -150,12 +147,10 @@ def test_ptable_heatmap_plotly_colorscale(c_scale: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "color_bar",
-    [{}, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)],
+    "color_bar", [{}, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)]
 )
 def test_ptable_heatmap_plotly_color_bar(
-    glass_formulas: list[str],
-    color_bar: dict[str, Any],
+    glass_formulas: list[str], color_bar: dict[str, Any]
 ) -> None:
     fig = ptable_heatmap_plotly(glass_formulas, color_bar=color_bar)
     # check color bar has expected length
@@ -167,8 +162,7 @@ def test_ptable_heatmap_plotly_color_bar(
 
 
 @pytest.mark.parametrize(
-    "cscale_range",
-    [(None, None), (None, 10), (2, None), (2, 87123)],
+    "cscale_range", [(None, None), (None, 10), (2, None), (2, 87123)]
 )
 def test_ptable_heatmap_plotly_cscale_range(
     cscale_range: tuple[float | None, float | None],
@@ -184,18 +178,17 @@ def test_ptable_heatmap_plotly_cscale_range(
         assert trace.zmax == pytest.approx(data_max)
     else:
         assert trace.zmin == pytest.approx(
-            cscale_range[0] or data_min,
+            cscale_range[0] or data_min
         ), f"{cscale_range=}"
         assert trace.zmax == pytest.approx(
-            cscale_range[1] or data_max,
+            cscale_range[1] or data_max
         ), f"{cscale_range=}"
 
 
 def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
     cscale_range = (0, 10, 20)
     with pytest.raises(
-        ValueError,
-        match=re.escape(f"{cscale_range=} should have length 2"),
+        ValueError, match=re.escape(f"{cscale_range=} should have length 2")
     ):
         ptable_heatmap_plotly(df_ptable[Key.density], cscale_range=cscale_range)  # type: ignore[arg-type]
 
@@ -243,9 +236,7 @@ def test_ptable_heatmap_plotly_heat_modes(
 def test_ptable_heatmap_plotly_color_bar_range_percent_mode() -> None:
     values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
     fig = ptable_heatmap_plotly(
-        values,
-        heat_mode="percent",
-        color_bar=dict(title="Test"),
+        values, heat_mode="percent", color_bar=dict(title="Test")
     )
 
     heatmap_trace = fig.full_figure_for_development(warn=False).data[-1]
@@ -317,8 +308,7 @@ def test_ptable_heatmap_plotly_custom_label_map() -> None:
 
 def test_ptable_heatmap_plotly_error_cases() -> None:
     with pytest.raises(
-        ValueError,
-        match=re.escape("cscale_range=(0,) should have length 2"),
+        ValueError, match=re.escape("cscale_range=(0,) should have length 2")
     ):
         ptable_heatmap_plotly({"Fe": 2, "O": 3}, cscale_range=(0,))  # type: ignore[arg-type]
 
@@ -401,8 +391,7 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
 
     # Test with hover_props
     fig = ptable_heatmap_plotly(
-        int_values,
-        hover_props=["atomic_number", "atomic_mass"],
+        int_values, hover_props=["atomic_number", "atomic_mass"]
     )
     hover_texts = fig.data[-1].text.flat
     for hover_text in hover_texts:

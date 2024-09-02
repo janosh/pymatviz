@@ -62,20 +62,16 @@ class TestPtableHeatmap:
     @pytest.mark.parametrize("log", [False, True])
     def test_log_scale(self, log: bool) -> None:
         fig = pmv.ptable_heatmap(
-            df_ptable[Key.atomic_mass],
-            log=log,
-            return_type="figure",
+            df_ptable[Key.atomic_mass], log=log, return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
 
     @pytest.mark.parametrize(
-        "values_show_mode",
-        ["percent", "fraction", "value", "off"],
+        "values_show_mode", ["percent", "fraction", "value", "off"]
     )
     def test_values_show_mode(
-        self,
-        values_show_mode: Literal["percent", "fraction", "value", "off"],
+        self, values_show_mode: Literal["percent", "fraction", "value", "off"]
     ) -> None:
         fig = pmv.ptable_heatmap(
             df_ptable[Key.atomic_mass],
@@ -87,8 +83,7 @@ class TestPtableHeatmap:
 
     @pytest.mark.parametrize("values_show_mode", ["percent", "fraction"])
     def test_log_in_percent_mode(
-        self,
-        values_show_mode: Literal["percent", "fraction", "value", "off"],
+        self, values_show_mode: Literal["percent", "fraction", "value", "off"]
     ) -> None:
         with pytest.raises(ValueError, match="Combining log scale and"):
             pmv.ptable_heatmap(
@@ -98,14 +93,11 @@ class TestPtableHeatmap:
             )
 
     @pytest.mark.parametrize(
-        "cbar_range",
-        [(0, 300), (None, 300), (0, None), (None, None)],
+        "cbar_range", [(0, 300), (None, 300), (0, None), (None, None)]
     )
     def test_cbar_range(self, cbar_range: tuple[float | None, float | None]) -> None:
         fig = pmv.ptable_heatmap(
-            df_ptable[Key.atomic_mass],
-            cbar_range=cbar_range,
-            return_type="figure",
+            df_ptable[Key.atomic_mass], cbar_range=cbar_range, return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
@@ -113,9 +105,7 @@ class TestPtableHeatmap:
     @pytest.mark.parametrize("values_fmt", ["auto", ".3g", ".2g"])
     def test_values_fmt(self, values_fmt: str) -> None:
         fig = pmv.ptable_heatmap(
-            df_ptable[Key.atomic_mass],
-            value_fmt=values_fmt,
-            return_type="figure",
+            df_ptable[Key.atomic_mass], value_fmt=values_fmt, return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
@@ -132,9 +122,7 @@ class TestPtableHeatmap:
 
     def test_tile_size(self) -> None:
         fig = pmv.ptable_heatmap(
-            df_ptable[Key.atomic_mass],
-            tile_size=(1, 1),
-            return_type="figure",
+            df_ptable[Key.atomic_mass], tile_size=(1, 1), return_type="figure"
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 181
@@ -238,14 +226,10 @@ def test_ptable_heatmap_ratio(
 
     # Mixed element counts and composition
     fig = pmv.ptable_heatmap_ratio(
-        glass_formulas,
-        steel_elem_counts,
-        exclude_elements=("O", "P"),
+        glass_formulas, steel_elem_counts, exclude_elements=("O", "P")
     )
     fig = pmv.ptable_heatmap_ratio(
-        glass_elem_counts,
-        steel_formulas,
-        not_in_numerator=None,
+        glass_elem_counts, steel_formulas, not_in_numerator=None
     )
 
 

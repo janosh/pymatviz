@@ -24,10 +24,10 @@ bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 # enable loading PhononDBDocParsed with @module set to uninstalled ffonons.dbs.phonondb
 # by changing to identical dataclass in pymatviz.phonons module
 MSONable.REDIRECT["ffonons.dbs.phonondb"] = {
-    "PhononDBDocParsed": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"},
+    "PhononDBDocParsed": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"}
 }
 MSONable.REDIRECT["atomate2.common.schemas.phonons"] = {
-    "PhononBSDOSDoc": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"},
+    "PhononBSDOSDoc": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons"}
 }
 
 
@@ -57,16 +57,14 @@ def phonon_doses() -> dict[str, PhononDos]:
     assert len(paths) >= 2
     return {
         path.split("/")[-1].split("-pbe")[0]: getattr(
-            json.loads(zopen(path).read(), cls=MontyDecoder),
-            dos_key,
+            json.loads(zopen(path).read(), cls=MontyDecoder), dos_key
         )
         for path in paths
     }
 
 
 @pytest.mark.parametrize(
-    ("branches", "branch_mode"),
-    [(["GAMMA-X", "X-U"], "union"), ((), "intersection")],
+    ("branches", "branch_mode"), [(["GAMMA-X", "X-U"], "union"), ((), "intersection")]
 )
 def test_phonon_bands(
     phonon_bands_doses_mp_2758: BandsDoses,
@@ -94,20 +92,16 @@ def test_phonon_bands(
 
     # test dict of band structures
     fig = pmv.phonon_bands(
-        phonon_bands_doses_mp_2758["bands"],
-        branch_mode=branch_mode,
-        branches=branches,
+        phonon_bands_doses_mp_2758["bands"], branch_mode=branch_mode, branches=branches
     )
     assert isinstance(fig, go.Figure)
 
 
 def test_phonon_bands_raises(
-    phonon_bands_doses_mp_2758: BandsDoses,
-    capsys: pytest.CaptureFixture,
+    phonon_bands_doses_mp_2758: BandsDoses, capsys: pytest.CaptureFixture
 ) -> None:
     with pytest.raises(
-        TypeError,
-        match=f"Only {PhononBands.__name__} or dict supported, got str",
+        TypeError, match=f"Only {PhononBands.__name__} or dict supported, got str"
     ):
         pmv.phonon_bands("invalid input")
 
@@ -116,18 +110,16 @@ def test_phonon_bands_raises(
         match=re.escape(
             "No common branches with branch_mode='union'.\n"
             "- : GAMMA-X, X-U, K-GAMMA, GAMMA-L, L-W, W-X\n"
-            "- Only branches ('foo-bar',) were requested.",
+            "- Only branches ('foo-bar',) were requested."
         ),
     ):
         pmv.phonon_bands(
-            phonon_bands_doses_mp_2758["bands"]["DFT"],
-            branches=("foo-bar",),
+            phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",)
         )
 
     # issues warning when requesting some available and some unavailable branches
     pmv.phonon_bands(
-        phonon_bands_doses_mp_2758["bands"]["DFT"],
-        branches=("X-U", "foo-bar"),
+        phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("X-U", "foo-bar")
     )
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
@@ -195,8 +187,7 @@ def test_phonon_dos(
 
 def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
     with pytest.raises(
-        TypeError,
-        match=f"Only {PhononDos.__name__} or dict supported, got str",
+        TypeError, match=f"Only {PhononDos.__name__} or dict supported, got str"
     ):
         pmv.phonon_dos("invalid input")
 
@@ -255,7 +246,6 @@ def test_phonon_bands_and_dos(
 
     band_keys, dos_keys = set(bands), set(phonon_doses)
     with pytest.raises(
-        ValueError,
-        match=f"{band_keys=} and {dos_keys=} must be identical",
+        ValueError, match=f"{band_keys=} and {dos_keys=} must be identical"
     ):
         pmv.phonon_bands_and_dos(bands, phonon_doses)

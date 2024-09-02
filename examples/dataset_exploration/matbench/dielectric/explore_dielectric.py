@@ -40,7 +40,7 @@ df_diel[Key.wyckoff] = [
 df_diel[Key.n_wyckoff] = df_diel.wyckoff.map(count_wyckoff_positions)
 
 df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(
-    pmv.utils.crystal_sys_from_spg_num,
+    pmv.utils.crystal_sys_from_spg_num
 )
 
 df_diel[Key.volume] = [x.volume for x in df_diel[Key.structure]]
@@ -49,9 +49,7 @@ df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 # %%
 fig = pmv.ptable_heatmap(
-    pmv.count_elements(df_diel[Key.formula]),
-    log=True,
-    return_type="figure",
+    pmv.count_elements(df_diel[Key.formula]), log=True, return_type="figure"
 )
 fig.suptitle("Elemental prevalence in the Matbench dielectric dataset")
 pmv.save_fig(fig, "dielectric-ptable-heatmap.pdf")
@@ -90,8 +88,7 @@ fig = px.violin(
 
 x_ticks = {}  # custom x axis tick labels
 for cry_sys, df_group in sorted(
-    df_diel.groupby(Key.crystal_system),
-    key=lambda x: pmv.crystal_sys_order.index(x[0]),
+    df_diel.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
 ):
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
@@ -104,8 +101,7 @@ fig.layout.title = dict(text=title, x=0.5)
 fig.layout.margin = dict(b=10, l=10, r=10, t=50)
 fig.layout.showlegend = False
 fig.layout.xaxis = reusable_x_axis = dict(
-    tickvals=list(range(len(pmv.crystal_sys_order))),
-    ticktext=list(x_ticks.values()),
+    tickvals=list(range(len(pmv.crystal_sys_order))), ticktext=list(x_ticks.values())
 )
 
 
@@ -134,8 +130,7 @@ def rgb_color(val: float, max_val: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_diel.groupby(Key.crystal_system),
-    key=lambda x: pmv.crystal_sys_order.index(x[0]),
+    df_diel.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
 ):
     n_wyckoff = df_group[Key.n_wyckoff].mean()
     clr = rgb_color(n_wyckoff, 14)

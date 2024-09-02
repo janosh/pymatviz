@@ -79,11 +79,7 @@ def test_add_ecdf_line_faceted() -> None:
     for row in range(1, 3):
         for col in range(1, 3):
             fig.add_scatter(
-                x=[1, 2, 3],
-                y=[4, 5, 6],
-                name=f"Trace {row}{col}",
-                row=row,
-                col=col,
+                x=[1, 2, 3], y=[4, 5, 6], name=f"Trace {row}{col}", row=row, col=col
             )
 
     fig = add_ecdf_line(fig)
@@ -128,8 +124,7 @@ def test_add_ecdf_line_raises() -> None:
     violin_trace = type(fig_violin.data[0])
     qual_name = f"{violin_trace.__module__}.{violin_trace.__qualname__}"
     with pytest.raises(
-        ValueError,
-        match=f"Cannot auto-determine x-values for ECDF from {qual_name}",
+        ValueError, match=f"Cannot auto-determine x-values for ECDF from {qual_name}"
     ):
         add_ecdf_line(fig_violin)
 

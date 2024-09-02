@@ -83,8 +83,7 @@ def pretty_sym_point(symbol: str) -> str:
 
 
 def get_band_xaxis_ticks(
-    band_struct: PhononBands,
-    branches: Sequence[str] | set[str] = (),
+    band_struct: PhononBands, branches: Sequence[str] | set[str] = ()
 ) -> tuple[list[float], list[str]]:
     """Get all ticks and labels for a band structure plot.
 
@@ -127,8 +126,7 @@ def get_band_xaxis_ticks(
 
 
 def _shaded_range(
-    fig: go.Figure,
-    shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None,
+    fig: go.Figure, shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None
 ) -> go.Figure:
     if shaded_ys is False:
         return fig
@@ -148,9 +146,7 @@ def _shaded_range(
             if isinstance(y_val, str) and y_val not in y_lim:
                 raise ValueError(f"Invalid {y_val=}, must be one of {[*y_lim]}")
         fig.add_hrect(
-            y0=y_lim.get(y0, y0),
-            y1=y_lim.get(y1, y1),
-            **shade_defaults | kwds,
+            y0=y_lim.get(y0, y0), y1=y_lim.get(y1, y1), **shade_defaults | kwds
         )
 
     return fig
@@ -200,13 +196,13 @@ def phonon_bands(
 
     if branch_mode not in get_args(BranchMode):
         raise ValueError(
-            f"Invalid {branch_mode=}, must be one of {get_args(BranchMode)}",
+            f"Invalid {branch_mode=}, must be one of {get_args(BranchMode)}"
         )
 
     if type(band_structs) not in {PhononBands, dict}:
         cls_name = PhononBands.__name__
         raise TypeError(
-            f"Only {cls_name} or dict supported, got {type(band_structs).__name__}",
+            f"Only {cls_name} or dict supported, got {type(band_structs).__name__}"
         )
     if isinstance(band_structs, dict) and len(band_structs) == 0:
         raise ValueError("Empty band structure dict")
@@ -360,7 +356,7 @@ def phonon_dos(
 
     if type(doses) not in {PhononDos, dict}:
         raise TypeError(
-            f"Only {PhononDos.__name__} or dict supported, got {type(doses).__name__}",
+            f"Only {PhononDos.__name__} or dict supported, got {type(doses).__name__}"
         )
     if isinstance(doses, dict) and len(doses) == 0:
         raise ValueError("Empty DOS dict")
@@ -374,7 +370,7 @@ def phonon_dos(
     for key, dos in doses.items():
         if not isinstance(dos, PhononDos):
             raise TypeError(
-                f"Only PhononDos objects supported, got {type(dos).__name__}",
+                f"Only PhononDos objects supported, got {type(dos).__name__}"
             )
         frequencies = dos.frequencies
         densities = dos.get_smeared_densities(sigma)
@@ -501,9 +497,7 @@ def phonon_bands_and_dos(
         raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
 
     subplot_defaults = dict(
-        shared_yaxes=True,
-        column_widths=(0.8, 0.2),
-        horizontal_spacing=0.03,
+        shared_yaxes=True, column_widths=(0.8, 0.2), horizontal_spacing=0.03
     )
     fig = make_subplots(rows=1, cols=2, **subplot_defaults | (subplot_kwargs or {}))
 

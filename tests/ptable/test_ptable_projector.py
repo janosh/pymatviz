@@ -56,13 +56,11 @@ class TestPTableProjector:
         assert projector.elem_colors.items() > color_subset.items()
 
         vesta_colors = PTableProjector(
-            data=data,
-            elem_colors=ElemColorScheme.vesta,
+            data=data, elem_colors=ElemColorScheme.vesta
         ).elem_colors
         assert vesta_colors == projector.elem_colors
         jmol_colors = PTableProjector(
-            data=data,
-            elem_colors=ElemColorScheme.jmol,
+            data=data, elem_colors=ElemColorScheme.jmol
         ).elem_colors
         assert jmol_colors != projector.elem_colors
 
@@ -147,9 +145,7 @@ class TestPtableHeatmapGenTileValueColors:
         ],
     )
     def test_text_colors_single_text_color(
-        self,
-        text_color: ColorType,
-        expected: ColorType,
+        self, text_color: ColorType, expected: ColorType
     ) -> None:
         projector = HeatMapPTableProjector(data=self.test_dict, colormap="viridis")
         tile_entries = projector.generate_tile_value_colors(text_colors=text_color)
@@ -158,12 +154,10 @@ class TestPtableHeatmapGenTileValueColors:
 
         assert_allclose(tile_entry.value, 1.0)
         assert_allclose(
-            mpl.colors.to_rgb(tile_entry.text_color),
-            mpl.colors.to_rgb(expected),
+            mpl.colors.to_rgb(tile_entry.text_color), mpl.colors.to_rgb(expected)
         )
         assert_allclose(
-            mpl.colors.to_rgb(tile_entry.tile_color),
-            (0.267004, 0.004874, 0.329415),
+            mpl.colors.to_rgb(tile_entry.tile_color), (0.267004, 0.004874, 0.329415)
         )
 
     @pytest.mark.parametrize(
@@ -176,9 +170,7 @@ class TestPtableHeatmapGenTileValueColors:
             (  # overwrite text_color alone
                 {"He": OverwriteTileValueColor(None, "yellow", None)},
                 TileValueColor(
-                    2.0,
-                    mpl.colors.to_rgb("yellow"),
-                    ([0.267004, 0.004874, 0.329415]),
+                    2.0, mpl.colors.to_rgb("yellow"), ([0.267004, 0.004874, 0.329415])
                 ),
             ),
             (  # overwrite tile_color alone
@@ -188,9 +180,7 @@ class TestPtableHeatmapGenTileValueColors:
             (  # overwrite all three
                 {"He": OverwriteTileValueColor("hi", "yellow", "grey")},
                 TileValueColor(
-                    "hi",
-                    mpl.colors.to_rgb("yellow"),
-                    mpl.colors.to_rgb("grey"),
+                    "hi", mpl.colors.to_rgb("yellow"), mpl.colors.to_rgb("grey")
                 ),
             ),
         ],
@@ -202,8 +192,7 @@ class TestPtableHeatmapGenTileValueColors:
     ) -> None:
         projector = HeatMapPTableProjector(data=self.test_dict, colormap="viridis")
         tile_entries = projector.generate_tile_value_colors(
-            text_colors="auto",
-            overwrite_tiles=overwrite_tile,
+            text_colors="auto", overwrite_tiles=overwrite_tile
         )
 
         tile_entry = tile_entries["He"]
@@ -218,8 +207,7 @@ class TestPtableHeatmapGenTileValueColors:
             mpl.colors.to_rgb(expected_tile.text_color),
         )
         assert_allclose(
-            mpl.colors.to_rgb(tile_entry.tile_color),
-            expected_tile.tile_color,
+            mpl.colors.to_rgb(tile_entry.tile_color), expected_tile.tile_color
         )
 
     def test_inf_nan_excluded_color(self) -> None:

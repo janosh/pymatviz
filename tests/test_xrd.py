@@ -29,7 +29,7 @@ mock_diffraction_pattern = DiffractionPattern(
 )
 
 bi2_zr2_o7_struct = Structure.from_file(
-    f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif",
+    f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif"
 )
 bi2_zr2_o7_xrd = XRDCalculator().get_pattern(bi2_zr2_o7_struct)
 
@@ -96,14 +96,10 @@ def test_xrd_pattern_layout_and_range() -> None:
     ],
 )
 def test_xrd_pattern_annotation_format(
-    hkl_format: pmv.xrd.HklFormat,
-    expected_format: str | None,
-    show_angles: bool,
+    hkl_format: pmv.xrd.HklFormat, expected_format: str | None, show_angles: bool
 ) -> None:
     fig = pmv.xrd_pattern(
-        mock_diffraction_pattern,
-        hkl_format=hkl_format,
-        show_angles=show_angles,
+        mock_diffraction_pattern, hkl_format=hkl_format, show_angles=show_angles
     )
     if hkl_format is pmv.xrd.HklNone and not show_angles:
         assert len(fig.layout.annotations) == 0
@@ -111,23 +107,20 @@ def test_xrd_pattern_annotation_format(
         for annotation in fig.layout.annotations:
             if expected_format:
                 assert re.search(
-                    expected_format,
-                    annotation.text,
+                    expected_format, annotation.text
                 ), f"{annotation.text=}"
             if show_angles:
                 assert re.search(r"\d+\.\d+°", annotation.text), f"{annotation.text=}"
             else:
                 assert not re.search(
-                    r"\d+\.\d+°",
-                    annotation.text,
+                    r"\d+\.\d+°", annotation.text
                 ), f"{annotation.text=}"
 
 
 def test_xrd_pattern_empty_input() -> None:
     empty_pattern = DiffractionPattern([], [], [], [])
     with pytest.raises(
-        ValueError,
-        match="No intensities found in the diffraction pattern",
+        ValueError, match="No intensities found in the diffraction pattern"
     ):
         pmv.xrd_pattern(empty_pattern)
 

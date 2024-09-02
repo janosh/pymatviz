@@ -41,20 +41,18 @@ df_kvrh = load_dataset("matbench_log_kvrh")
 df_grvh[[Key.spg_symbol, Key.spg_num]] = [
     struct.get_space_group_info()
     for struct in tqdm(
-        df_grvh[Key.structure],
-        desc="Getting matbench_log_gvrh spacegroups",
+        df_grvh[Key.structure], desc="Getting matbench_log_gvrh spacegroups"
     )
 ]
 df_grvh[Key.crystal_system] = df_grvh[Key.spg_num].map(
-    pmv.utils.crystal_sys_from_spg_num,
+    pmv.utils.crystal_sys_from_spg_num
 )
 
 
 df_grvh[Key.wyckoff] = [
     get_protostructure_label_from_spglib(struct)
     for struct in tqdm(
-        df_grvh[Key.structure],
-        desc="Getting matbench_log_gvrh Wyckoff strings",
+        df_grvh[Key.structure], desc="Getting matbench_log_gvrh Wyckoff strings"
     )
 ]
 df_grvh[Key.n_wyckoff] = df_grvh.wyckoff.map(count_wyckoff_positions)
@@ -135,9 +133,7 @@ df_grvh.hist(column=Key.volume, bins=50, log=True)
 df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
 fig = ptable_heatmap(
-    count_elements(df_grvh[Key.formula]),
-    log=True,
-    return_type="figure",
+    count_elements(df_grvh[Key.formula]), log=True, return_type="figure"
 )
 fig.suptitle("Elemental prevalence in the Matbench bulk/shear modulus datasets")
 pmv.save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
@@ -176,8 +172,7 @@ def rgb_color(val: float, max_val: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_grvh.groupby(Key.crystal_system),
-    key=lambda x: crystal_sys_order.index(x[0]),
+    df_grvh.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
 ):
     n_wyckoff_top = df_group[Key.n_wyckoff].mean()
     clr = rgb_color(n_wyckoff_top, 14)

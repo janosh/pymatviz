@@ -29,11 +29,7 @@ y_std = (y_true - y_pred) * 10 * np_rng.normal(0, 0.1, rand_regression_size)
 
 # %% Histogram Plots
 ax = pmv.elements_hist(
-    df_expt_gap[Key.composition],
-    keep_top=15,
-    v_offset=200,
-    rotation=0,
-    fontsize=12,
+    df_expt_gap[Key.composition], keep_top=15, v_offset=200, rotation=0, fontsize=12
 )
 pmv.io.save_and_compress_svg(ax, "elements-hist")
 

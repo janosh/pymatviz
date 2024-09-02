@@ -144,21 +144,20 @@ class PTableData:
 
         elif isinstance(data, dict):
             data = pd.DataFrame(
-                data.items(),
-                columns=[self.index_col, self.val_col],
+                data.items(), columns=[self.index_col, self.val_col]
             ).set_index(self.index_col)
 
         else:
             type_name = type(data).__name__
             raise TypeError(
-                f"{type_name} unsupported, choose from {get_args(SupportedDataType)}",
+                f"{type_name} unsupported, choose from {get_args(SupportedDataType)}"
             )
 
         # Convert all values to NumPy array
         data[self.val_col] = data[self.val_col].apply(
             lambda val: np.array(list(val))
             if isinstance(val, Iterable) and not isinstance(val, str)
-            else np.array([val]),
+            else np.array([val])
         )
 
         self._data = data
@@ -177,8 +176,7 @@ class PTableData:
             vmax: The max value.
         """
         numeric_values: pd.Series = pd.to_numeric(
-            self._data[self.val_col].explode().explode().explode(),
-            errors="coerce",
+            self._data[self.val_col].explode().explode().explode(), errors="coerce"
         )
         self._data.attrs["vmin"] = numeric_values.min()
         self._data.attrs["mean"] = numeric_values.mean()
@@ -236,7 +234,7 @@ class PTableData:
 
         raise KeyError(
             f"Cannot handle dataframe={df}, needs row/column named "
-            f"{Key.element} and {Key.heat_val}",
+            f"{Key.element} and {Key.heat_val}"
         )
 
     def normalize(self) -> None:
@@ -269,8 +267,7 @@ class PTableData:
                 self.data = df_dropped
             except KeyError:
                 warnings.warn(
-                    "Drop elements failed, some elements are not present",
-                    stacklevel=2,
+                    "Drop elements failed, some elements are not present", stacklevel=2
                 )
 
     def check_and_replace_missing(
@@ -306,7 +303,7 @@ class PTableData:
         if has_nan:
             if self.nest_level > 1:
                 raise NotImplementedError(
-                    "Unable to replace NaN and inf for nest_level>1",
+                    "Unable to replace NaN and inf for nest_level>1"
                 )
 
             warnings.warn("NaN found in data", stacklevel=2)
@@ -356,7 +353,7 @@ class PTableData:
         if has_inf:
             if self.nest_level > 1:
                 raise NotImplementedError(
-                    "Unable to replace NaN and inf for nest_level>1.",
+                    "Unable to replace NaN and inf for nest_level>1."
                 )
 
             warnings.warn("Infinity found in data", stacklevel=2)
@@ -371,7 +368,7 @@ class PTableData:
 
                 if isinstance(val, np.ndarray):
                     return np.array(
-                        [replacements.get(v, v) if np.isinf(v) else v for v in val],
+                        [replacements.get(v, v) if np.isinf(v) else v for v in val]
                     )
 
                 return replacements[val] if np.isinf(val) else val

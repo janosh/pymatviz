@@ -47,8 +47,7 @@ class TestPTableDataBasicInit:
 
     def test_from_pd_dataframe(self) -> None:
         input_df: pd.DataFrame = pd.DataFrame(
-            self.test_dict.items(),
-            columns=[Key.element, Key.heat_val],
+            self.test_dict.items(), columns=[Key.element, Key.heat_val]
         ).set_index(Key.element)
 
         ptable_data = PTableData(input_df, check_missing=False, check_infinity=False)
@@ -90,22 +89,18 @@ class TestPTableDataBasicInit:
                 "Hello": [2.0, 4.0],  # Not an element
                 "Li": np.array([6.0, 8.0]),
                 "Mg": {"a": -1, "b": 14.0}.values(),
-            },
+            }
         )
         with pytest.raises(KeyError, match="Cannot handle dataframe="):
             PTableData(
-                df_without_complete_elem,
-                check_missing=False,
-                check_infinity=False,
+                df_without_complete_elem, check_missing=False, check_infinity=False
             )
 
     def test_from_pd_series(self) -> None:
         input_series: pd.Series = pd.Series(self.test_dict)
 
         ptable_data = PTableData(
-            input_series,
-            check_missing=False,
-            check_infinity=False,
+            input_series, check_missing=False, check_infinity=False
         )
 
         self._validate_output_df(ptable_data.data)
@@ -146,9 +141,7 @@ class TestPTableDataBasicInit:
         }
 
         output_df_1 = PTableData(
-            test_dict_1,
-            check_missing=False,
-            check_infinity=False,
+            test_dict_1, check_missing=False, check_infinity=False
         ).data
 
         assert output_df_1.attrs["vmin"] == 1
@@ -249,18 +242,15 @@ class TestPTableDataAdvanced:
         ).set_index(Key.element)
 
         ptable_data_nan_inf_same_elem = PTableData(
-            df_with_nan_inf_same_elem,
-            missing_strategy="zero",
+            df_with_nan_inf_same_elem, missing_strategy="zero"
         )
 
         assert ptable_data_nan_inf_same_elem.anomalies == {"Fe": {"inf", "nan"}}
         assert_allclose(
-            ptable_data_nan_inf_same_elem.data.loc["Fe", Key.heat_val],
-            [0, 2, 6],
+            ptable_data_nan_inf_same_elem.data.loc["Fe", Key.heat_val], [0, 2, 6]
         )
         assert_allclose(
-            ptable_data_nan_inf_same_elem.data.loc["O", Key.heat_val],
-            [4, 5, 6],
+            ptable_data_nan_inf_same_elem.data.loc["O", Key.heat_val], [4, 5, 6]
         )
 
     def test_too_deep_nest(self) -> None:

@@ -33,7 +33,7 @@ def test_set_template() -> None:
     with pytest.raises(
         ValueError,
         match=re.escape(
-            f"Unrecognized template='bad_template'. Must be one of {valid_templates}.",
+            f"Unrecognized template='bad_template'. Must be one of {valid_templates}."
         ),
     ):
         pmv.set_plotly_template("bad_template")

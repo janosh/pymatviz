@@ -41,12 +41,7 @@ def test_error_decay_with_uncert(
     if df is None and isinstance(y_std, str | pd.Index):
         y_std = y_std_mock
     ax = error_decay_with_uncert(
-        x,
-        y,
-        y_std,
-        df=df,
-        n_rand=n_rand,
-        percentiles=percentiles,
+        x, y, y_std, df=df, n_rand=n_rand, percentiles=percentiles
     )
 
     assert isinstance(ax, plt.Axes)
@@ -67,14 +62,11 @@ def test_error_decay_with_uncert(
 
 
 @pytest.mark.parametrize(
-    "y_std",
-    [xs, {"foo": xs, "bar": 0.1 * xs}, df_regr.columns[0], df_regr.columns[:2]],
+    "y_std", [xs, {"foo": xs, "bar": 0.1 * xs}, df_regr.columns[0], df_regr.columns[:2]]
 )
 @pytest.mark.parametrize("ax", [None, plt.gca()])
 def test_qq_gaussian(
-    df_or_arrays: DfOrArrays,
-    y_std: ArrayLike | dict[str, ArrayLike],
-    ax: plt.Axes,
+    df_or_arrays: DfOrArrays, y_std: ArrayLike | dict[str, ArrayLike], ax: plt.Axes
 ) -> None:
     df, x, y = df_or_arrays
     # override y_std if col name but no df provided, would be nonsensical input

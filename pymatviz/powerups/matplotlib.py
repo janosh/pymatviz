@@ -45,12 +45,7 @@ def with_marginal_hist(
         fig = ax_main.figure
 
     gs = (cell.subgridspec if cell else fig.add_gridspec)(
-        2,
-        2,
-        width_ratios=(6, 1),
-        height_ratios=(1, 5),
-        wspace=0,
-        hspace=0,
+        2, 2, width_ratios=(6, 1), height_ratios=(1, 5), wspace=0, hspace=0
     )
 
     ax_main = fig.add_subplot(gs[1, 0])
@@ -102,7 +97,7 @@ def annotate_bars(
         labels = [int(patch.get_height()) for patch in ax.patches]
     elif len(labels) != len(ax.patches):
         raise ValueError(
-            f"Got {len(labels)} labels but {len(ax.patches)} bars to annotate",
+            f"Got {len(labels)} labels but {len(ax.patches)} bars to annotate"
         )
 
     y_max: float = 0
@@ -121,11 +116,7 @@ def annotate_bars(
         txt = f"{label:,}" if isinstance(label, int | float) else label
         # place label at end of the bar and center horizontally
         anno = ax.annotate(
-            txt,
-            (x_pos, y_pos),
-            ha="center",
-            fontsize=fontsize,
-            **kwargs,
+            txt, (x_pos, y_pos), ha="center", fontsize=fontsize, **kwargs
         )
         texts.append(anno)
 
@@ -139,5 +130,5 @@ def annotate_bars(
         except ImportError as exc:
             raise ImportError(
                 "adjustText not installed, falling back to default matplotlib "
-                "label placement. Use pip install adjustText.",
+                "label placement. Use pip install adjustText."
             ) from exc

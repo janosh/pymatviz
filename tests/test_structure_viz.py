@@ -18,9 +18,7 @@ if TYPE_CHECKING:
 
 coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
 disordered_struct = Structure(
-    lattice := np.eye(3) * 5,
-    species=[{"Fe": 0.75, "C": 0.25}, "O"],
-    coords=coords,
+    lattice := np.eye(3) * 5, species=[{"Fe": 0.75, "C": 0.25}, "O"], coords=coords
 )
 
 
@@ -56,7 +54,7 @@ def test_structure_2d(
     assert y_max > 5
 
     patch_counts = pd.Series(
-        [type(patch).__name__ for patch in ax.patches],
+        [type(patch).__name__ for patch in ax.patches]
     ).value_counts()
     assert patch_counts["Wedge"] == len(disordered_struct.composition)
 
@@ -106,8 +104,7 @@ def test_structure_2d_warns() -> None:
 
     # warns when passing subplot_kwargs for a single structure
     with pytest.warns(
-        UserWarning,
-        match="subplot_kwargs are ignored when plotting a single structure",
+        UserWarning, match="subplot_kwargs are ignored when plotting a single structure"
     ):
         pmv.structure_2d(disordered_struct, subplot_kwargs={"facecolor": "red"})
 
@@ -173,8 +170,7 @@ def test_structure_2d_color_warning() -> None:
 
     for colors in ElemColorScheme:
         with pytest.warns(
-            UserWarning,
-            match=f"{copernicium!r} not in colors, using gray",
+            UserWarning, match=f"{copernicium!r} not in colors, using gray"
         ):
             pmv.structure_2d(struct, elem_colors=colors)
 

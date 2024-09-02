@@ -73,7 +73,7 @@ def annotate_metrics(
         metrics = [metrics]
     if not isinstance(metrics, dict | list | tuple | set):
         raise TypeError(
-            f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}",
+            f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
         )
 
     backend: Backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
@@ -98,7 +98,7 @@ def annotate_metrics(
         ys = np.asarray(ys)
         if xs.shape != ys.shape:
             raise ValueError(
-                f"xs and ys must have the same shape. Got {xs.shape} and {ys.shape}",
+                f"xs and ys must have the same shape. Got {xs.shape} and {ys.shape}"
             )
         nan_mask = np.isnan(xs) | np.isnan(ys)
         xs, ys = xs[~nan_mask], ys[~nan_mask]
@@ -183,8 +183,7 @@ def add_identity_line(
             kwargs.setdefault("col", "all")
 
         line_defaults = dict(color="gray", width=1, dash="dash") | kwargs.pop(
-            "line",
-            {},
+            "line", {}
         )
         fig.add_shape(
             type="line",
@@ -347,7 +346,7 @@ def add_best_fit_line(
             if annotate_params:
                 sign = "+" if intercept >= 0 else "-"
                 annotation_texts.append(
-                    f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}",
+                    f"LS fit: y = {slope:.2g}x {sign} {abs(intercept):.2g}"
                 )
 
         if annotate_params:

@@ -56,8 +56,7 @@ def test_all_modules_reexported() -> None:
 
             # Check if the module or subpackage is in the main package namespace
             assert hasattr(
-                pymatviz,
-                module_name,
+                pymatviz, module_name
             ), f"{module_name} not exported in {PKG_NAME}/__init__.py"
 
             reexported_submod = getattr(pymatviz, module_name)
@@ -65,8 +64,7 @@ def test_all_modules_reexported() -> None:
             # For subpackages, check if it's a module (subpackages are also modules)
             if "." in full_module_name.split(".", maxsplit=1)[1]:
                 assert isinstance(
-                    reexported_submod,
-                    ModuleType,
+                    reexported_submod, ModuleType
                 ), f"{module_name} in {PKG_NAME}/__init__.py is not a module/subpackage"
             else:
                 assert (  # For regular modules, check more strictly

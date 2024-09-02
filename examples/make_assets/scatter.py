@@ -61,18 +61,14 @@ pmv.io.save_and_compress_svg(ax, "density-scatter-with-hist")
 
 # %% density hexbin
 ax = pmv.density_hexbin(
-    y_pred,
-    y_true,
-    best_fit_line={"annotate_params": {"loc": "lower center"}},
+    y_pred, y_true, best_fit_line={"annotate_params": {"loc": "lower center"}}
 )
 pmv.io.save_and_compress_svg(ax, "density-scatter-hex")
 
 
 # %% density hexbin with hist
 ax = pmv.density_hexbin_with_hist(
-    y_pred,
-    y_true,
-    best_fit_line={"annotate_params": {"loc": "lower center"}},
+    y_pred, y_true, best_fit_line={"annotate_params": {"loc": "lower center"}}
 )
 pmv.io.save_and_compress_svg(ax, "density-scatter-hex-with-hist")
 
