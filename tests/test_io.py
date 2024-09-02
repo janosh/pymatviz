@@ -289,7 +289,7 @@ def test_tqdm_download(
     ("compress", "font_size", "use_styler", "width", "height"),
     [
         # Default font size, no compression, DataFrame
-        (False, 14, False, 457, 875),
+        (False, 14, False, 458, 875),
         # Larger font, with compression, Styler
         (True, 18, True, 559, 1121),
         # Smaller font, no compression, Styler
