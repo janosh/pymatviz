@@ -50,7 +50,8 @@ def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
 @pytest.mark.parametrize("spg", [1.2, "3"])
 def test_crystal_sys_from_spg_num_typeerror(spg: int) -> None:
     with pytest.raises(
-        TypeError, match=f"Expect integer space group number, got {spg=}"
+        TypeError,
+        match=f"Expect integer space group number, got {spg=}",
     ):
         pmv.utils.crystal_sys_from_spg_num(spg)
 
@@ -167,7 +168,8 @@ def test_bin_df_cols_raises() -> None:
 
     # test error when passing n_bins as list but list has wrong length
     with pytest.raises(
-        ValueError, match=re.escape("len(bin_by_cols)=2 != len(n_bins)=1")
+        ValueError,
+        match=re.escape("len(bin_by_cols)=2 != len(n_bins)=1"),
     ):
         pmv.utils.bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])
 
@@ -331,7 +333,9 @@ class TestGetCbarLabelFormatter:
         ],
     )
     def test_default_decimal_places(
-        self, default_decimal_places: int, expected: str
+        self,
+        default_decimal_places: int,
+        expected: str,
     ) -> None:
         with pytest.warns(match="Invalid cbar_label_fmt="):
             formatter = pmv.utils.get_cbar_label_formatter(
@@ -348,7 +352,8 @@ class TestGetCbarLabelFormatter:
         assert labels[0] == expected, labels
 
     @pytest.mark.parametrize(
-        ("sci_notation", "expected"), [(True, "1.23"), (False, "0.01")]
+        ("sci_notation", "expected"),
+        [(True, "1.23"), (False, "0.01")],
     )
     def test_sci_notation(self, sci_notation: bool, expected: str) -> None:
         formatter = pmv.utils.get_cbar_label_formatter(
@@ -425,7 +430,9 @@ def test_pretty_label() -> None:
 
 @pytest.mark.parametrize("color", ["red", "blue", "#FF0000"])
 def test_annotate(
-    color: str, plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
+    color: str,
+    plotly_scatter: go.Figure,
+    matplotlib_scatter: plt.Figure,
 ) -> None:
     text = "Test annotation"
 
@@ -529,13 +536,15 @@ def test_validate_fig_decorator_raises(capsys: pytest.CaptureFixture[str]) -> No
     # check TypeError on invalid fig types
     for invalid in (42, "invalid"):
         with pytest.raises(
-            TypeError, match=f"Unexpected type for fig: {type(invalid).__name__}"
+            TypeError,
+            match=f"Unexpected type for fig: {type(invalid).__name__}",
         ):
             generic_func(fig=invalid)
 
 
 def test_get_fig_xy_range(
-    plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
+    plotly_scatter: go.Figure,
+    matplotlib_scatter: plt.Figure,
 ) -> None:
     for fig in (plotly_scatter, matplotlib_scatter, matplotlib_scatter.axes[0]):
         x_range, y_range = pmv.utils.get_fig_xy_range(fig)
@@ -575,7 +584,8 @@ def test_get_font_color() -> None:
 def test_get_font_color_invalid_input() -> None:
     fig = "invalid input"
     with pytest.raises(
-        TypeError, match=re.escape(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
+        TypeError,
+        match=re.escape(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}"),
     ):
         pmv.utils.get_font_color(fig)
 

@@ -26,7 +26,10 @@ __date__ = "2024-03-31"
 
 # %%
 def plot_on_ax(
-    ax: plt.Axes, distances: np.ndarray, energy: np.ndarray, formula: str
+    ax: plt.Axes,
+    distances: np.ndarray,
+    energy: np.ndarray,
+    formula: str,
 ) -> None:
     """Plot pair repulsion curve on a given axes.
 
@@ -54,7 +57,7 @@ def plot_homo_nuclear(model_size: str) -> None:
     n_rows, n_columns, size_factor = 10, 18, 3
 
     fig = plt.figure(
-        figsize=(0.75 * n_columns * size_factor, 0.7 * n_rows * size_factor)
+        figsize=(0.75 * n_columns * size_factor, 0.7 * n_rows * size_factor),
     )
     gs = plt.GridSpec(figure=fig, nrows=n_rows, ncols=n_columns)
 
@@ -93,12 +96,12 @@ def plot_hetero_nuclear(model_size: str) -> None:
         [
             int(fn.name.split("-")[2])
             for fn in Path("simulations/").glob(f"results-{model_size}-*-X.json")
-        ]
+        ],
     )
     with PdfPages(f"{model_size}-hetero-nuclear.pdf") as pdf:
         for z_main in z_calculated:
             fig = plt.figure(
-                figsize=(0.75 * n_columns * size_factor, 0.7 * n_rows * size_factor)
+                figsize=(0.75 * n_columns * size_factor, 0.7 * n_rows * size_factor),
             )
             gs = plt.GridSpec(figure=fig, nrows=n_rows, ncols=n_columns)
             plot_element_heteronuclear(fig, gs, model_size, z_main)
@@ -113,7 +116,10 @@ def plot_hetero_nuclear(model_size: str) -> None:
 
 
 def plot_element_heteronuclear(
-    fig: plt.Figure, gs: plt.GridSpec, model_size: str, atomic_number: int
+    fig: plt.Figure,
+    gs: plt.GridSpec,
+    model_size: str,
+    atomic_number: int,
 ) -> None:
     """Plot heteronuclear pair repulsion curves for a specific element.
 

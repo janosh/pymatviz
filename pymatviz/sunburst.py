@@ -61,7 +61,7 @@ def spacegroup_sunburst(
 
     try:  # assume column contains integers as space group numbers
         df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
-            pmv.utils.crystal_sys_from_spg_num
+            pmv.utils.crystal_sys_from_spg_num,
         )
 
     except (ValueError, TypeError):  # column must be strings of space group symbols

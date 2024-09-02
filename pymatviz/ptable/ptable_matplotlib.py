@@ -190,12 +190,14 @@ def ptable_heatmap(
         colormap = colorscale
     if heat_mode is not None:
         warnings.warn(
-            "heat_mode is deprecated in favor of value_show_mode.", stacklevel=2
+            "heat_mode is deprecated in favor of value_show_mode.",
+            stacklevel=2,
         )
         value_show_mode = heat_mode
     if show_values is not None:
         warnings.warn(
-            "show_values is deprecated in favor of value_show_mode.", stacklevel=2
+            "show_values is deprecated in favor of value_show_mode.",
+            stacklevel=2,
         )
         if not show_values:
             value_show_mode = "off"
@@ -204,7 +206,8 @@ def ptable_heatmap(
         value_fmt = fmt
     if cbar_fmt is not None:
         warnings.warn(
-            "cbar_fmt is deprecated in favor of cbar_label_fmt.", stacklevel=2
+            "cbar_fmt is deprecated in favor of cbar_label_fmt.",
+            stacklevel=2,
         )
         cbar_label_fmt = cbar_fmt
     if show_scale is not None:
@@ -376,7 +379,9 @@ def ptable_heatmap_ratio(
     for elem, value in values.items():
         if isclose(a=value, b=0, abs_tol=zero_tol):
             overwrite_tiles[elem] = OverwriteTileValueColor(
-                zero_symbol, pick_bw_for_contrast(zero_color), zero_color
+                zero_symbol,
+                pick_bw_for_contrast(zero_color),
+                zero_color,
             )
 
     # Generate heatmap

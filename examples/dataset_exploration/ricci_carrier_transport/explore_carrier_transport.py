@@ -40,7 +40,9 @@ df_carrier[[Key.spg_symbol, Key.spg_num]] = [
 
 # %%
 fig = ptable_heatmap(
-    count_elements(df_carrier.pretty_formula.dropna()), log=True, return_type="figure"
+    count_elements(df_carrier.pretty_formula.dropna()),
+    log=True,
+    return_type="figure",
 )
 fig.suptitle("Elemental prevalence in the Ricci Carrier Transport dataset")
 pmv.save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
@@ -55,7 +57,7 @@ pmv.save_fig(ax, "carrier-transport-hists.pdf")
 # %%
 ax = df_carrier[["S.p [µV/K]", "S.n [µV/K]"]].hist(bins=50, log=True, figsize=[18, 8])
 plt.suptitle(
-    "Ricci Carrier Transport dataset histograms for n- and p-type Seebeck coefficients"
+    "Ricci Carrier Transport dataset histograms for n- and p-type Seebeck coefficients",
 )
 pmv.save_fig(ax, "carrier-transport-seebeck-n+p.pdf")
 

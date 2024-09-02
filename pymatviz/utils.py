@@ -150,7 +150,7 @@ def df_to_arrays(
     if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
         raise ValueError(
             "don't pass dataframe and arrays to df_to_arrays(), should be either or, "
-            f"got {arrays}"
+            f"got {arrays}",
         )
 
     flat_args = []
@@ -228,7 +228,7 @@ def bin_df_cols(
     if verbose:
         print(  # noqa: T201
             f"{1 - len(df_bin) / len(df_in):.1%} sample reduction from binning: from "
-            f"{len(df_in):,} to {len(df_bin):,}"
+            f"{len(df_in):,} to {len(df_bin):,}",
         )
 
     if density_col:
@@ -246,7 +246,9 @@ def bin_df_cols(
 
 @contextmanager
 def patch_dict(
-    dct: dict[Any, Any], *args: Any, **kwargs: Any
+    dct: dict[Any, Any],
+    *args: Any,
+    **kwargs: Any,
 ) -> Generator[dict[Any, Any], None, None]:
     """Context manager to temporarily patch the specified keys in a dictionary and
     restore it to its original state on context exit.
@@ -464,7 +466,7 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
         if fig is not None and not isinstance(fig, plt.Axes | plt.Figure | go.Figure):
             raise TypeError(
                 f"Unexpected type for fig: {type(fig).__name__}, must be one of None, "
-                f"{VALID_FIG_NAMES}"
+                f"{VALID_FIG_NAMES}",
             )
         return func(*args, **kwargs)
 
@@ -525,10 +527,11 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
             if not isinstance(text, str):
                 text_type = type(text).__name__
                 raise ValueError(
-                    f"Unexpected {text_type=} for non-faceted plot, must be str"
+                    f"Unexpected {text_type=} for non-faceted plot, must be str",
                 )
             fig.add_annotation(
-                text=text, **(dict(xref="paper", yref="paper") | defaults | kwargs)
+                text=text,
+                **(dict(xref="paper", yref="paper") | defaults | kwargs),
             )
     else:
         raise TypeError(f"Unexpected {fig=}")
@@ -538,7 +541,8 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
 
 @validate_fig
 def get_fig_xy_range(
-    fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
+    fig: go.Figure | plt.Figure | plt.Axes,
+    trace_idx: int = 0,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
     """Get the x and y range of a plotly or matplotlib figure.
 

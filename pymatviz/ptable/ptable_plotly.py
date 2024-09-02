@@ -132,7 +132,7 @@ def ptable_heatmap_plotly(
     """
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
-            "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
+            "Combining log color scale and heat_mode='fraction'/'percent' unsupported",
         )
     if len(cscale_range) != 2:
         raise ValueError(f"{cscale_range=} should have length 2")
@@ -140,11 +140,12 @@ def ptable_heatmap_plotly(
     if isinstance(colorscale, str | type(None)):
         colorscale = px.colors.get_colorscale(colorscale or "viridis")
     elif not isinstance(colorscale, Sequence) or not isinstance(
-        colorscale[0], str | list | tuple
+        colorscale[0],
+        str | list | tuple,
     ):
         raise TypeError(
             f"{colorscale=} should be string, list of strings or list of "
-            "tuples(float, str)"
+            "tuples(float, str)",
         )
 
     color_bar = color_bar or {}
@@ -225,7 +226,7 @@ def ptable_heatmap_plotly(
                 raise ValueError(
                     f"Unsupported hover_props: {', '.join(unsupported_keys)}. Available"
                     f" keys are: {', '.join(df_ptable)}.\nNote that some keys have "
-                    "missing values."
+                    "missing values.",
                 )
             df_row = df_ptable.loc[symbol]
             if isinstance(hover_props, dict):
@@ -237,7 +238,7 @@ def ptable_heatmap_plotly(
                 )
             else:
                 raise ValueError(
-                    f"hover_props must be dict or sequence of str, got {hover_props}"
+                    f"hover_props must be dict or sequence of str, got {hover_props}",
                 )
 
         hover_texts[row][col] = hover_text
@@ -285,7 +286,9 @@ def ptable_heatmap_plotly(
         border_width = border.pop("width", 2)
 
         common_kwargs = dict(
-            z=np.where(tile_texts, 1, np.nan), showscale=False, hoverinfo="none"
+            z=np.where(tile_texts, 1, np.nan),
+            showscale=False,
+            hoverinfo="none",
         )
         # misuse heatmap to add borders around all element tiles
         # 1st one adds the fill color for NaN element tiles, 2nd one adds the border

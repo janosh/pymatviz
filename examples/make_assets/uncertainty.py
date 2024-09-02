@@ -14,13 +14,18 @@ y_std = (y_true - y_pred) * 10 * np_rng.normal(0, 0.1, rand_regression_size)
 
 # %% Uncertainty Plots
 ax = pmv.qq_gaussian(
-    y_pred, y_true, y_std, identity_line={"line_kwds": {"color": "red"}}
+    y_pred,
+    y_true,
+    y_std,
+    identity_line={"line_kwds": {"color": "red"}},
 )
 pmv.io.save_and_compress_svg(ax, "normal-prob-plot")
 
 
 ax = pmv.qq_gaussian(
-    y_pred, y_true, {"over-confident": y_std, "under-confident": 1.5 * y_std}
+    y_pred,
+    y_true,
+    {"over-confident": y_std, "under-confident": 1.5 * y_std},
 )
 pmv.io.save_and_compress_svg(ax, "normal-prob-plot-multiple")
 
@@ -31,7 +36,9 @@ pmv.io.save_and_compress_svg(ax, "error-decay-with-uncert")
 eps = 0.2 * np_rng.standard_normal(*y_std.shape)
 
 ax = pmv.error_decay_with_uncert(
-    y_true, y_pred, {"better": y_std, "worse": y_std + eps}
+    y_true,
+    y_pred,
+    {"better": y_std, "worse": y_std + eps},
 )
 pmv.io.save_and_compress_svg(ax, "error-decay-with-uncert-multiple")
 

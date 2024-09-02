@@ -91,7 +91,6 @@ ignore = [
     "ANN401",  # Any-type
     "C408",    # unnecessary-collection-call
     "C901",    # complex-structure
-    "COM812",  # trailing comma missing
     "D205",    # 1 blank line required between summary line and description
     "E731",    # do not assign a lambda expression, use a def
     "EM101",   # raw-string-in-exception

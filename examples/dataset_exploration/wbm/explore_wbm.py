@@ -13,7 +13,8 @@ __date__ = "2022-08-18"
 
 # %% download wbm-summary.csv (12 MB)
 df_wbm = pd.read_csv("https://figshare.com/ndownloader/files/44225498").set_index(
-    Key.mat_id, drop=False
+    Key.mat_id,
+    drop=False,
 )
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
@@ -69,7 +70,8 @@ fig.layout.title = dict(text="<b>Energy distribution by crystal system</b>", x=0
 fig.layout.margin = dict(b=10, l=10, r=10, t=50)
 fig.layout.showlegend = False
 fig.layout.xaxis = dict(
-    tickvals=list(range(len(crystal_sys_order))), ticktext=list(x_ticks.values())
+    tickvals=list(range(len(crystal_sys_order))),
+    ticktext=list(x_ticks.values()),
 )
 fig.update_traces(hoverinfo="skip", hovertemplate=None)
 

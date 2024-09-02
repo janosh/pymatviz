@@ -38,7 +38,7 @@ def sankey_from_2_df_cols(
     """
     if len(cols) != 2:
         raise ValueError(
-            f"{cols=} should specify exactly two columns: (source_col, target_col)"
+            f"{cols=} should specify exactly two columns: (source_col, target_col)",
         )
 
     source, target, value = (

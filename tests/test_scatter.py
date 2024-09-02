@@ -186,7 +186,10 @@ def test_density_scatter_plotly_empty_dataframe() -> None:
 
 def test_density_scatter_plotly_facet() -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", facet_col="smoker"
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
     )
 
     assert isinstance(fig, go.Figure)
@@ -196,7 +199,11 @@ def test_density_scatter_plotly_facet() -> None:
 
 def test_density_scatter_plotly_facet_log_density() -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", facet_col="smoker", log_density=True
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
+        log_density=True,
     )
 
     assert fig.layout.coloraxis.colorbar.ticktext is not None
@@ -205,7 +212,11 @@ def test_density_scatter_plotly_facet_log_density() -> None:
 
 def test_density_scatter_plotly_facet_stats() -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", facet_col="smoker", stats=True
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
+        stats=True,
     )
 
     # Check there are at least 2 annotations (could be more due to facet labels)
@@ -217,7 +228,11 @@ def test_density_scatter_plotly_facet_stats() -> None:
 
 def test_density_scatter_plotly_facet_best_fit_line() -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", facet_col="smoker", best_fit_line=True
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
+        best_fit_line=True,
     )
 
     # Check there are at least 4 shapes (2 identity lines, 2 best fit lines)
@@ -231,7 +246,11 @@ def test_density_scatter_plotly_facet_best_fit_line() -> None:
 
 def test_density_scatter_plotly_facet_custom_bins() -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", facet_col="smoker", n_bins=10
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
+        n_bins=10,
     )
 
     # Check that binning has been applied (number of points should be reduced)
@@ -260,7 +279,11 @@ def test_density_scatter_plotly_facet_density_methods(
     density: Literal["kde", "empirical"],
 ) -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", facet_col="smoker", density=density
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
+        density=density,
     )
 
     assert isinstance(fig, go.Figure)
@@ -269,7 +292,11 @@ def test_density_scatter_plotly_facet_density_methods(
 
 def test_density_scatter_plotly_facet_size() -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", size="size", facet_col="smoker"
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        size="size",
+        facet_col="smoker",
     )
 
     assert "marker.size" in fig.data[0]
@@ -284,7 +311,11 @@ def test_density_scatter_plotly_facet_multiple_categories() -> None:
 
 def test_density_scatter_plotly_facet_identity_line() -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", facet_col="smoker", identity_line=True
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
+        identity_line=True,
     )
 
     assert len(fig.layout.shapes) == 2  # Two identity lines, one for each facet
@@ -292,7 +323,10 @@ def test_density_scatter_plotly_facet_identity_line() -> None:
 
 def test_density_scatter_plotly_facet_hover_template() -> None:
     fig = density_scatter_plotly(
-        df=df_tips, x="total_bill", y="tip", facet_col="smoker"
+        df=df_tips,
+        x="total_bill",
+        y="tip",
+        facet_col="smoker",
     )
 
     for trace in fig.data:

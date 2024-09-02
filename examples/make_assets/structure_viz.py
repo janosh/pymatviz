@@ -50,7 +50,13 @@ for mp_id, struct in disordered_structs.items():
     text = f"{formula}\ndisordered {mp_id}, {spacegroup = }"
     href = f"https://materialsproject.org/materials/{mp_id}"
     ax.text(
-        0.5, 1, text, url=href, ha="center", transform=ax.transAxes, fontweight="bold"
+        0.5,
+        1,
+        text,
+        url=href,
+        ha="center",
+        transform=ax.transAxes,
+        fontweight="bold",
     )
 
     ax.figure.set_size_inches(8, 8)

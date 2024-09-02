@@ -64,7 +64,7 @@ def add_ecdf_line(
                 f"Cannot auto-determine x-values for ECDF from {qual_name}, "
                 "pass values explicitly. Currently only Histogram, Scatter, Box, "
                 "and Violin traces are supported and may well need more testing. "
-                "Please report issues at https://github.com/janosh/pymatviz/issues."
+                "Please report issues at https://github.com/janosh/pymatviz/issues.",
             )
 
     ecdf_trace = px.ecdf(values).data[0]
@@ -114,7 +114,8 @@ def add_ecdf_line(
     # line_color becomes target_color via trace_defaults if a different color was not
     # already set in trace_kwargs
     line_color = trace_kwargs.get(
-        "line_color", trace_kwargs.get("line", {}).get("color")
+        "line_color",
+        trace_kwargs.get("line", {}).get("color"),
     )
 
     yaxis_defaults = dict(
@@ -136,7 +137,12 @@ def add_ecdf_line(
 
 
 _common_update_menu = dict(
-    pad={"r": 10, "t": 10}, showactive=True, x=1, xanchor="right", y=1, yanchor="top"
+    pad={"r": 10, "t": 10},
+    showactive=True,
+    x=1,
+    xanchor="right",
+    y=1,
+    yanchor="top",
 )
 
 # buttons to toggle log/linear y-axis. apply to a plotly figure like this:
@@ -206,7 +212,9 @@ select_marker_mode = dict(
             method="restyle",
         ),
         dict(
-            args=[{"type": "scatter", "mode": "lines"}], label="Line", method="restyle"
+            args=[{"type": "scatter", "mode": "lines"}],
+            label="Line",
+            method="restyle",
         ),
         dict(
             args=[{"type": "scatter", "mode": "lines+markers"}],

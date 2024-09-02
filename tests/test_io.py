@@ -28,7 +28,8 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize("fig", [go.Figure(), plt.figure()])
 @pytest.mark.parametrize("ext", ["html", "svelte", "png", "svg", "pdf"])
 @pytest.mark.parametrize(
-    "plotly_config", [None, {"showTips": True}, {"scrollZoom": True}]
+    "plotly_config",
+    [None, {"showTips": True}, {"scrollZoom": True}],
 )
 @pytest.mark.parametrize("env_disable", [[], ["CI"]])
 @patch.dict(os.environ, {"CI": "1"})
@@ -164,7 +165,8 @@ def test_df_to_pdf(
 
 
 def test_normalize_and_crop_pdf(
-    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # patch which('gs') to return None
     monkeypatch.setattr("pymatviz.io.which", lambda _: None)
@@ -242,7 +244,9 @@ def test_df_to_html_table(
 
 
 def test_tqdm_download(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     test_url = "https://example.com/testfile"
     test_file_path = tmp_path / "testfile"

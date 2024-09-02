@@ -15,7 +15,8 @@ df_carrier = load_dataset("ricci_boltztrap_mp_tabular")
 
 # %%
 df_carrier = pd.concat(
-    [df_carrier, pd.json_normalize(df_carrier.data)], axis="columns"
+    [df_carrier, pd.json_normalize(df_carrier.data)],
+    axis="columns",
 ).drop(columns=["data", "is_public", "project"])
 
 df_carrier = df_carrier.set_index("identifier")
@@ -99,5 +100,6 @@ for col, vals in df_carrier[col_map.values()].items():
 
 # %%
 df_carrier.to_json(
-    "cleaned_ricci_boltztrap_mp_tabular.json.gz", default_handler=lambda x: x.as_dict()
+    "cleaned_ricci_boltztrap_mp_tabular.json.gz",
+    default_handler=lambda x: x.as_dict(),
 )

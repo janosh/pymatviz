@@ -57,7 +57,7 @@ def test_spacegroup_bar(
     # next line randomly started failing in CI on 2024-07-06
     if "CI" not in os.environ:
         assert y_max == pytest.approx(
-            0.02118929 if log and backend == PLOTLY else 1.05
+            0.02118929 if log and backend == PLOTLY else 1.05,
         ), f"{y_max=} {log=} {backend=}"
 
     # test spacegroups as symbols

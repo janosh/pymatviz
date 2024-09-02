@@ -71,7 +71,7 @@ def count_elements(
             srs = pd.Series(
                 itertools.chain.from_iterable(
                     map(str, Composition(comp, allow_negative=True)) for comp in srs
-                )
+                ),
             ).value_counts()
         else:
             attr = (
@@ -84,7 +84,7 @@ def count_elements(
     else:
         raise ValueError(
             "Expected values to be map from element symbols to heatmap values or "
-            f"list of compositions (strings or Pymatgen objects), got {values}"
+            f"list of compositions (strings or Pymatgen objects), got {values}",
         )
 
     try:
@@ -101,7 +101,7 @@ def count_elements(
             raise ValueError(
                 "element value keys were found to be integers and assumed to represent "
                 f"atomic numbers, but values range from {idx_min} to {idx_max}, "
-                "expected range [1, 118]."
+                "expected range [1, 118].",
             )
         map_atomic_num_to_elem_symbol = (
             df_ptable.reset_index().set_index(Key.atomic_number).symbol
@@ -122,7 +122,7 @@ def count_elements(
         except KeyError as exc:
             bad_symbols = ", ".join(x for x in exclude_elements if x not in srs)
             raise ValueError(
-                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}"
+                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}",
             ) from exc
 
     return srs

@@ -45,13 +45,20 @@ class TqdmDownload(tqdm):
         unit_divisor, miniters, desc.
         """
         for key, val in dict(
-            unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc="Downloading"
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+            miniters=1,
+            desc="Downloading",
         ).items():
             kwargs.setdefault(key, val)
         super().__init__(*args, **kwargs)
 
     def update_to(
-        self, n_blocks: int = 1, block_size: int = 1, total_size: int | None = None
+        self,
+        n_blocks: int = 1,
+        block_size: int = 1,
+        total_size: int | None = None,
     ) -> bool | None:
         """Update hook for urlretrieve.
 
@@ -140,7 +147,7 @@ def save_fig(
     if not isinstance(fig, go.Figure):
         raise TypeError(
             f"Unsupported figure type {type(fig)}, expected plotly or matplotlib Figure"
-            " or plt.Axes"
+            " or plt.Axes",
         )
     if path.lower().endswith((".svelte", ".html")):
         config = dict(
@@ -301,7 +308,8 @@ def df_to_pdf(
 
 
 def normalize_and_crop_pdf(
-    file_path: str | Path, on_gs_not_found: Literal["ignore", "warn", "error"] = "warn"
+    file_path: str | Path,
+    on_gs_not_found: Literal["ignore", "warn", "error"] = "warn",
 ) -> None:
     """Normalize a PDF using Ghostscript and then crop it.
     Without gs normalization, pdfCropMargins sometimes corrupts the PDF.
@@ -338,7 +346,7 @@ def normalize_and_crop_pdf(
 
         # Crop the normalized PDF
         cropped_file_path, _exit_code, _stdout, stderr = crop(
-            ["--percentRetain", "0", normalized_file_path]
+            ["--percentRetain", "0", normalized_file_path],
         )
 
         if stderr:
@@ -416,7 +424,7 @@ def df_to_html_table(
     if styler_css:
         styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()],
         )
     html = styler.to_html(**kwargs)
     if script:
@@ -427,7 +435,7 @@ def df_to_html_table(
         if "<table " not in html:
             raise ValueError(
                 f"Got {inline_props=} but no '<table ...' tag found in HTML string to "
-                "attach to"
+                "attach to",
             )
         html = html.replace("<table", f"<table {inline_props}")
     if styles is not None:
@@ -645,11 +653,13 @@ def df_to_svg(
     if compress:
         if (svgo := which("svgo")) is not None:
             subprocess.run(  # noqa: S603
-                [svgo, "--multipass", "--final-newline", str(file_path)], check=True
+                [svgo, "--multipass", "--final-newline", str(file_path)],
+                check=True,
             )
         else:
             warnings.warn(
-                "svgo not found in PATH. SVG compression skipped.", stacklevel=2
+                "svgo not found in PATH. SVG compression skipped.",
+                stacklevel=2,
             )
 
     return fig

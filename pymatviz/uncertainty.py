@@ -87,19 +87,28 @@ def qq_gaussian(
         obs_proportions = np.mean(z_scored <= gaussian_upper_bound, axis=0)
 
         [line] = ax.plot(
-            exp_proportions, obs_proportions, linewidth=2, alpha=0.8, label=key
+            exp_proportions,
+            obs_proportions,
+            linewidth=2,
+            alpha=0.8,
+            label=key,
         )
         ax.fill_between(
-            exp_proportions, y1=obs_proportions, y2=exp_proportions, alpha=0.2
+            exp_proportions,
+            y1=obs_proportions,
+            y2=exp_proportions,
+            alpha=0.2,
         )
         miscal_area = np.trapezoid(
-            np.abs(obs_proportions - exp_proportions), dx=1 / resolution
+            np.abs(obs_proportions - exp_proportions),
+            dx=1 / resolution,
         )
         lines.append([line, miscal_area])
 
     if identity_line:  # guiding line for perfect calibration
         pmv.powerups.add_identity_line(
-            ax, **(identity_line if isinstance(identity_line, dict) else {})
+            ax,
+            **(identity_line if isinstance(identity_line, dict) else {}),
         )
 
     ax.set(xlim=(0, 1), ylim=(0, 1))
@@ -135,7 +144,9 @@ def qq_gaussian(
 
 
 def get_err_decay(
-    y_true: ArrayLike, y_pred: ArrayLike, n_rand: int = 100
+    y_true: ArrayLike,
+    y_pred: ArrayLike,
+    n_rand: int = 100,
 ) -> tuple[ArrayLike, ArrayLike]:
     """Calculate the model's error curve as samples are excluded from the calculation
     based on their absolute error.
@@ -279,7 +290,11 @@ def error_decay_with_uncert(
     ax.plot(xs, decay_by_err, label="error")
     ax.plot([1, 100] if percentiles else [len(xs), 0], [rand_mean, rand_mean])
     ax.fill_between(
-        xs[::-1] if percentiles else xs, rand_hi, rand_lo, alpha=0.2, label="random"
+        xs[::-1] if percentiles else xs,
+        rand_hi,
+        rand_lo,
+        alpha=0.2,
+        label="random",
     )
     ax.set(ylim=[0, rand_mean.mean() * 1.3], ylabel="MAE")
 

@@ -85,7 +85,7 @@ fig.show()
 total_force_col = "Σ|force<sub>i</sub>| (eV/Å)"
 df_pbe[total_force_col] = df_pbe[Key.forces].map(lambda arr: np.abs(arr).sum(axis=1))
 df_r2scan[total_force_col] = df_r2scan[Key.forces].map(
-    lambda arr: np.abs(arr).sum(axis=1)
+    lambda arr: np.abs(arr).sum(axis=1),
 )
 
 fig = go.Figure()
@@ -149,7 +149,8 @@ per_elem_cohesive_energy = {
 }
 
 fig = pmv.ptable_heatmap_splits(
-    per_elem_cohesive_energy, cbar_title=f"{col_name.label} (eV)"
+    per_elem_cohesive_energy,
+    cbar_title=f"{col_name.label} (eV)",
 )
 
 
@@ -201,7 +202,9 @@ pmv.save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
 
 # %% spacegroup histogram
 fig = pmv.spacegroup_bar(
-    df_r2scan[Key.spg_num], title="r2SCAN spacegroup histogram", log=True
+    df_r2scan[Key.spg_num],
+    title="r2SCAN spacegroup histogram",
+    log=True,
 )
 fig.show()
 pmv.save_fig(fig, "r2scan-spacegroup-hist.pdf")
@@ -230,7 +233,9 @@ df_r2scan_elem_forces = pd.DataFrame(
         for site, force in zip(struct, forces, strict=True)
     }
     for struct, forces in zip(
-        df_r2scan[Key.structure], df_r2scan[Key.forces], strict=True
+        df_r2scan[Key.structure],
+        df_r2scan[Key.forces],
+        strict=True,
     )
 ).mean()
 

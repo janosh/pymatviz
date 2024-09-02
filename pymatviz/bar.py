@@ -105,7 +105,7 @@ def spacegroup_bar(
         # sort df by crystal system going from smallest to largest spacegroup numbers
         # e.g. triclinic (1-2) comes first, cubic (195-230) last
         sys_order = dict(
-            zip(crystal_sys_colors, range(len(crystal_sys_colors)), strict=True)
+            zip(crystal_sys_colors, range(len(crystal_sys_colors)), strict=True),
         )
         df_data = df_data.loc[
             df_data[Key.crystal_system].map(sys_order).sort_values().index
@@ -139,7 +139,7 @@ def spacegroup_bar(
         # add vertical lines between crystal systems and fill area with color
         x0 = x1 = 0
         for idx, (crys_sys, count, width, color) in enumerate(
-            crys_sys_counts.itertuples()
+            crys_sys_counts.itertuples(),
         ):
             prev_width = x1 - x0 if idx > 0 else 0
             x1 = x0 + width
@@ -194,7 +194,7 @@ def spacegroup_bar(
             tick_text = df_data.index
         else:
             raise ValueError(
-                f"Invalid {xticks=}, must be int, 'all' or 'crys_sys_edges'"
+                f"Invalid {xticks=}, must be int, 'all' or 'crys_sys_edges'",
             )
 
         fig.update_xaxes(tickvals=x_indices, ticktext=tick_text, tickangle=90)
@@ -226,7 +226,10 @@ def spacegroup_bar(
             text_kwargs or {}
         )
         crys_sys_anno_kwds = dict(
-            rotation=90, va="top", ha="right", fontdict={"fontsize": 14}
+            rotation=90,
+            va="top",
+            ha="right",
+            fontdict={"fontsize": 14},
         )
         ax.text(*[(x0 + x1) / 2, 0.95], crys_sys, **crys_sys_anno_kwds | text_kwds)
         if show_counts:

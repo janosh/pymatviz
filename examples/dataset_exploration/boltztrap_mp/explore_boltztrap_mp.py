@@ -42,7 +42,9 @@ df_boltz.describe()
 
 # %%
 fig = ptable_heatmap(
-    count_elements(df_boltz[Key.formula]), log=True, return_type="figure"
+    count_elements(df_boltz[Key.formula]),
+    log=True,
+    return_type="figure",
 )
 fig.suptitle("Elements in BoltzTraP MP dataset")
 pmv.save_fig(fig, "boltztrap_mp-ptable-heatmap.pdf")
@@ -65,6 +67,9 @@ pmv.save_fig(ax, "boltztrap_mp-hists.pdf")
 
 # %%
 df_boltz.sort_values("pf_n", ascending=False).head(1000).hist(
-    bins=50, log=True, layout=[2, 3], figsize=[18, 8]
+    bins=50,
+    log=True,
+    layout=[2, 3],
+    figsize=[18, 8],
 )
 plt.suptitle("BoltzTraP MP")

@@ -19,7 +19,8 @@ from pymatviz.enums import ElemCountMode
 )
 def test_count_elements(count_mode: ElemCountMode, counts: dict[str, float]) -> None:
     series = pmv.count_elements(
-        ["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, count_mode=count_mode
+        ["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3,
+        count_mode=count_mode,
     )
     expected = pd.Series(counts, index=pmv.df_ptable.index, name="count")
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
@@ -47,7 +48,9 @@ def test_count_elements_composition_objects() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
     series = pmv.count_elements(compositions, count_mode=ElemCountMode.composition)
     expected = pd.Series(
-        {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
+        {"Fe": 22, "O": 63, "P": 12},
+        index=pmv.df_ptable.index,
+        name="count",
     )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
@@ -55,10 +58,13 @@ def test_count_elements_composition_objects() -> None:
 def test_count_elements_composition_objects_fractional() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
     series = pmv.count_elements(
-        compositions, count_mode=ElemCountMode.fractional_composition
+        compositions,
+        count_mode=ElemCountMode.fractional_composition,
     )
     expected = pd.Series(
-        {"Fe": 2.5, "O": 5, "P": 0.5}, index=pmv.df_ptable.index, name="count"
+        {"Fe": 2.5, "O": 5, "P": 0.5},
+        index=pmv.df_ptable.index,
+        name="count",
     )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
@@ -66,10 +72,13 @@ def test_count_elements_composition_objects_fractional() -> None:
 def test_count_elements_composition_objects_reduced() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
     series = pmv.count_elements(
-        compositions, count_mode=ElemCountMode.reduced_composition
+        compositions,
+        count_mode=ElemCountMode.reduced_composition,
     )
     expected = pd.Series(
-        {"Fe": 13, "O": 27, "P": 3}, index=pmv.df_ptable.index, name="count"
+        {"Fe": 13, "O": 27, "P": 3},
+        index=pmv.df_ptable.index,
+        name="count",
     )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
@@ -78,7 +87,9 @@ def test_count_elements_composition_objects_occurrence() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
     series = pmv.count_elements(compositions, count_mode=ElemCountMode.occurrence)
     expected = pd.Series(
-        {"Fe": 8, "O": 8, "P": 3}, index=pmv.df_ptable.index, name="count"
+        {"Fe": 8, "O": 8, "P": 3},
+        index=pmv.df_ptable.index,
+        name="count",
     )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
@@ -97,10 +108,14 @@ def test_count_elements_mixed_input() -> None:
 def test_count_elements_exclude_elements() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
     series = pmv.count_elements(
-        compositions, count_mode=ElemCountMode.composition, exclude_elements=["Fe", "P"]
+        compositions,
+        count_mode=ElemCountMode.composition,
+        exclude_elements=["Fe", "P"],
     )
     expected = pd.Series(
-        {"O": 63}, index=pmv.df_ptable.index.drop(["Fe", "P"]), name="count"
+        {"O": 63},
+        index=pmv.df_ptable.index.drop(["Fe", "P"]),
+        name="count",
     )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
@@ -122,9 +137,13 @@ def test_count_elements_exclude_invalid_elements() -> None:
 def test_count_elements_fill_value() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
     series = pmv.count_elements(
-        compositions, count_mode=ElemCountMode.composition, fill_value=None
+        compositions,
+        count_mode=ElemCountMode.composition,
+        fill_value=None,
     )
     expected = pd.Series(
-        {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
+        {"Fe": 22, "O": 63, "P": 12},
+        index=pmv.df_ptable.index,
+        name="count",
     )
     pd.testing.assert_series_equal(series, expected, check_dtype=False)

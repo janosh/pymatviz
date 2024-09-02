@@ -37,12 +37,13 @@ if TYPE_CHECKING:
 # see https://wikipedia.org/wiki/Atomic_radii_of_the_elements
 missing_covalent_radius = 0.2
 covalent_radii: pd.Series = df_ptable[Key.covalent_radius].fillna(
-    missing_covalent_radius
+    missing_covalent_radius,
 )
 
 
 def _angles_to_rotation_matrix(
-    angles: str, rotation: ArrayLike | None = None
+    angles: str,
+    rotation: ArrayLike | None = None,
 ) -> ArrayLike:
     """Convert Euler angles to a rotation matrix.
 
@@ -257,7 +258,7 @@ def structure_2d(
         if isinstance(site_labels, list | tuple) and len(site_labels) != len(struct):
             raise ValueError(
                 f"If a list, site_labels ({len(site_labels)=}) must have same length as"
-                f" the number of sites in the crystal ({len(struct)=})"
+                f" the number of sites in the crystal ({len(struct)=})",
             )
 
         # Default behavior in case of no user input: standardize if any fractional
@@ -283,7 +284,7 @@ def structure_2d(
         elif not isinstance(elem_colors, dict):
             valid_color_schemes = "', '".join(ElemColorScheme)
             raise ValueError(
-                f"colors must be a dict or one of ('{valid_color_schemes}')"
+                f"colors must be a dict or one of ('{valid_color_schemes}')",
             )
 
         # Get any element at each site, only used for occlusion calculation which won't
@@ -300,7 +301,7 @@ def structure_2d(
             raise ValueError(f"atomic_radii is missing keys: {missing}")
 
         radii_at_sites = np.array(
-            [atomic_radii[el] for el in elements_at_sites]  # type: ignore[index]
+            [atomic_radii[el] for el in elements_at_sites],  # type: ignore[index]
         )
 
         # Generate lines for unit cell
@@ -332,11 +333,11 @@ def structure_2d(
             this_layer = unit_cell_lines[z_indices[idx]]
 
             occluded_top = ((site_coords - lines[idx] + this_layer) ** 2).sum(
-                1
+                1,
             ) < radii_at_sites**2
 
             occluded_bottom = ((site_coords - lines[idx] - this_layer) ** 2).sum(
-                1
+                1,
             ) < radii_at_sites**2
 
             if any(occluded_top & occluded_bottom):
@@ -413,7 +414,8 @@ def structure_2d(
                         # Try element incl. oxidation state as dict key first (e.g.
                         # Na+), then just element as fallback
                         txt = site_labels.get(
-                            repr(species), site_labels.get(elem_symbol, "")
+                            repr(species),
+                            site_labels.get(elem_symbol, ""),
                         )
                         if txt in special_site_labels:
                             txt = species if txt == "species" else elem_symbol
@@ -422,7 +424,7 @@ def structure_2d(
                     else:
                         raise ValueError(
                             f"Invalid {site_labels=}. Must be one of (bool, "
-                            f"{', '.join(special_site_labels)}, dict, list)"
+                            f"{', '.join(special_site_labels)}, dict, list)",
                         )
 
                     # Add labels
@@ -467,7 +469,7 @@ def structure_2d(
                 neighbor_strategy_cls = show_bonds
             else:
                 raise ValueError(
-                    f"Expected boolean or a NearNeighbors subclass for {show_bonds=}"
+                    f"Expected boolean or a NearNeighbors subclass for {show_bonds=}",
                 )
 
             # If structure doesn't have any oxidation states yet, guess them from
@@ -517,7 +519,8 @@ def structure_2d(
         fig, axs = plt.subplots(n_rows, n_cols, **subplot_kwargs)
 
         for idx, (struct_or_key, ax) in enumerate(
-            zip(structures, axs.flat, strict=False), start=1
+            zip(structures, axs.flat, strict=False),
+            start=1,
         ):
             if isinstance(structures, dict):
                 key = struct_or_key

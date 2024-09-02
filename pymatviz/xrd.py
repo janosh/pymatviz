@@ -73,7 +73,7 @@ def xrd_pattern(
         or (isinstance(annotate_peaks, float) and annotate_peaks >= 1)
     ):
         raise ValueError(
-            f"{annotate_peaks=} should be a positive int or a float in (0, 1)"
+            f"{annotate_peaks=} should be a positive int or a float in (0, 1)",
         )
 
     layout = dict(
@@ -90,7 +90,7 @@ def xrd_pattern(
         patterns = {"XRD Pattern": patterns}
     elif not isinstance(patterns, dict):
         raise TypeError(
-            f"{patterns=} should be a DiffractionPattern, Structure or a dict of them"
+            f"{patterns=} should be a DiffractionPattern, Structure or a dict of them",
         )
 
     # Determine show_angles based on number of patterns
@@ -112,7 +112,7 @@ def xrd_pattern(
         else:
             value = pattern_or_struct
             raise TypeError(
-                f"{value=} should be a pymatgen Structure or DiffractionPattern"
+                f"{value=} should be a pymatgen Structure or DiffractionPattern",
             )
 
         plotted_patterns += [diffraction_pattern]
@@ -123,7 +123,7 @@ def xrd_pattern(
 
         if intensities is None or len(intensities) == 0:
             raise ValueError(
-                f"No intensities found in the diffraction pattern for {label}"
+                f"No intensities found in the diffraction pattern for {label}",
             )
 
         # Update max intensity and two_theta across all patterns
@@ -160,7 +160,7 @@ def xrd_pattern(
             ]
         else:
             raise ValueError(
-                f"{annotate_peaks=} should be a positive int or a float in (0, 1)"
+                f"{annotate_peaks=} should be a positive int or a float in (0, 1)",
             )
 
         for idx in peak_indices:

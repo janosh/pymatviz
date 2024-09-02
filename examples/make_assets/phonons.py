@@ -48,7 +48,9 @@ for mp_id, formula in (
 
     fig = pmv.phonon_bands_and_dos(ph_bands, ph_doses)
     fig.layout.title = dict(
-        text=f"Phonon Bands and DOS of {formula} ({mp_id})", x=0.5, y=0.98
+        text=f"Phonon Bands and DOS of {formula} ({mp_id})",
+        x=0.5,
+        y=0.98,
     )
     fig.layout.margin = dict(l=0, r=0, b=0, t=40)
     pmv.io.save_and_compress_svg(fig, f"phonon-bands-and-dos-{mp_id}")

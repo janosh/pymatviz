@@ -70,7 +70,10 @@ class LabelEnum(StrEnum):
     """
 
     def __new__(
-        cls, val: str, label: str | None = None, desc: str | None = None
+        cls,
+        val: str,
+        label: str | None = None,
+        desc: str | None = None,
     ) -> Self:
         """Create a new class from a value, label, and description. Label and
         description are optional.

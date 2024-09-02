@@ -56,7 +56,7 @@ subprocess.run(cmd, shell=True, check=True)
 html_paths = glob("examples/*.html")
 if len(html_paths) != len(notebooks):
     raise ValueError(
-        f"expected {len(notebooks)} HTML files but found {len(html_paths)}"
+        f"expected {len(notebooks)} HTML files but found {len(html_paths)}",
     )
 
 
