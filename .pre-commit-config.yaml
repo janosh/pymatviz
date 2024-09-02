@@ -1,6 +1,6 @@
 ci:
   autoupdate_schedule: quarterly
-  skip: [pyright, eslint]
+  skip: [pyright]
 
 default_stages: [commit]
 
