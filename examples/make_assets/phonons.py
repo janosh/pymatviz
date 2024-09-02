@@ -11,6 +11,7 @@ import pymatviz as pmv
 from pymatviz.enums import Key
 
 
+# TODO: ffonons not working properly (see #195)
 try:
     import ffonons  # noqa: F401
 except ImportError:

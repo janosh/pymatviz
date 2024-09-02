@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,6 +8,10 @@ import pytest
 
 import pymatviz as pmv
 from tests.conftest import np_rng
+
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 
 @pytest.mark.parametrize("labels_with_counts", [True, False, "percent"])

@@ -70,7 +70,7 @@ def add_ecdf_line(
     ecdf_trace = px.ecdf(values).data[0]
 
     # if fig has facets, add ECDF to all subplots
-    fig_add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")  # noqa: SLF001
+    fig_add_trace_defaults = {} if fig._grid_ref is None else dict(row="all", col="all")
     fig.add_trace(ecdf_trace, **fig_add_trace_defaults | kwargs)
 
     # get xlabel falling back on 'x' if not set
@@ -129,7 +129,7 @@ def add_ecdf_line(
     yaxis2_layout = getattr(fig.layout, "yaxis2", {})
     if yaxis2_layout:
         # convert to dict
-        yaxis2_layout = yaxis2_layout._props  # type: ignore[union-attr] # noqa: SLF001
+        yaxis2_layout = yaxis2_layout._props  # type: ignore[union-attr]
     fig.layout.yaxis2 = yaxis_defaults | yaxis2_layout
 
     return fig

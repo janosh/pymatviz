@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Literal, TypeAlias, get_args
+from typing import TYPE_CHECKING, get_args
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,7 @@ from pymatviz.enums import Key
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any
+    from typing import Any, Literal, TypeAlias
 
     from numpy.typing import NDArray
 

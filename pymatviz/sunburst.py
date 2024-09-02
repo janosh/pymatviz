@@ -5,7 +5,7 @@ E.g. for crystal symmetry distributions.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import plotly.express as px
@@ -18,6 +18,7 @@ from pymatviz.enums import Key
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any, Literal
 
     import plotly.graph_objects as go
 

@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from packaging import version
 from scipy.stats import norm
 
 import pymatviz as pmv
 from pymatviz.utils import df_to_arrays
 
 
+if version.parse(np.__version__) < version.parse("2.0.0"):
+    np.trapezoid = np.trapz  # noqa: NPY201
+
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
 
     from numpy.typing import ArrayLike
 
@@ -60,8 +66,10 @@ def qq_gaussian(
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    assert isinstance(y_true, np.ndarray)  # noqa: S101
-    assert isinstance(y_pred, np.ndarray)  # noqa: S101
+    if not isinstance(y_true, np.ndarray):
+        raise TypeError(f"Expect y_true as np.ndarray, got {type(y_true).__name__}")
+    if not isinstance(y_pred, np.ndarray):
+        raise TypeError(f"Expect y_pred as np.ndarray, got {type(y_pred).__name__}")
     ax = ax or plt.gca()
 
     if not isinstance(y_std, dict):
@@ -84,7 +92,7 @@ def qq_gaussian(
         ax.fill_between(
             exp_proportions, y1=obs_proportions, y2=exp_proportions, alpha=0.2
         )
-        miscal_area = np.trapz(  # noqa: NPY201
+        miscal_area = np.trapezoid(
             np.abs(obs_proportions - exp_proportions), dx=1 / resolution
         )
         lines.append([line, miscal_area])
@@ -114,7 +122,7 @@ def qq_gaussian(
             frameon=False,
         )
         # https://stackoverflow.com/a/44620643
-        legend2._legend_box.align = "left"  # noqa: SLF001
+        legend2._legend_box.align = "left"
     else:
         ax.legend(
             lines,
@@ -238,8 +246,10 @@ def error_decay_with_uncert(
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    assert isinstance(y_true, np.ndarray)  # for mypy  # noqa: S101
-    assert isinstance(y_pred, np.ndarray)  # noqa: S101
+    if not isinstance(y_true, np.ndarray):
+        raise TypeError(f"Expect y_true as np.ndarray, got {type(y_true).__name__}")
+    if not isinstance(y_pred, np.ndarray):
+        raise TypeError(f"Expect y_pred as np.ndarray, got {type(y_pred).__name__}")
 
     ax = ax or plt.gca()
 

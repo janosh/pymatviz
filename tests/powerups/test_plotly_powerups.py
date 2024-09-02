@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.express as px
@@ -19,8 +19,12 @@ from pymatviz.powerups.plotly import (
 )
 
 
+if TYPE_CHECKING:
+    from typing import Any
+
+
 @pytest.mark.parametrize(
-    "trace_kwargs, expected_name, expected_color, expected_dash",
+    ("trace_kwargs", "expected_name", "expected_color", "expected_dash"),
     [
         (None, "Cumulative", "#636efa", "solid"),
         ({}, "Cumulative", "#636efa", "solid"),
@@ -228,7 +232,7 @@ def test_select_marker_mode(plotly_scatter: go.Figure) -> None:
 
 
 @pytest.mark.parametrize(
-    "powerup, expected_buttons",
+    ("powerup", "expected_buttons"),
     [
         (toggle_log_linear_x_axis, 2),
         (toggle_grid, 2),

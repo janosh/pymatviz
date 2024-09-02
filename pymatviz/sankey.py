@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
 
 
 if TYPE_CHECKING:
+    from typing import Any, Literal
+
     import pandas as pd
 
 

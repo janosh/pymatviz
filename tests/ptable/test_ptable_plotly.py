@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ from pymatviz.utils import df_ptable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Any
+    from typing import Any, Literal
 
 
 def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
@@ -81,7 +81,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 
 
 @pytest.mark.parametrize(
-    "exclude_elements, heat_mode, log, show_scale, font_size, font_colors",
+    ("exclude_elements", "heat_mode", "log", "show_scale", "font_size", "font_colors"),
     [
         ((), "value", True, False, None, ["red"]),
         (["O"], "fraction", False, True, 12, ("black", "white")),

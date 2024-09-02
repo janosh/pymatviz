@@ -1,10 +1,9 @@
-# ruff: noqa: SLF001
 from __future__ import annotations
 
 import copy
 import re
 from copy import deepcopy
-from typing import Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,8 +18,12 @@ from pymatviz.utils import MATPLOTLIB, PLOTLY, VALID_FIG_NAMES, CrystalSystem
 from tests.conftest import y_pred, y_true
 
 
+if TYPE_CHECKING:
+    from typing import Any, Literal
+
+
 @pytest.mark.parametrize(
-    "spg_num, crystal_sys",
+    ("spg_num", "crystal_sys"),
     [
         (1, "triclinic"),
         (15, "monoclinic"),
@@ -81,8 +84,15 @@ def test_df_to_arrays_strict() -> None:
 
 
 @pytest.mark.parametrize(
-    "bin_by_cols, group_by_cols, n_bins, expected_n_bins, "
-    "verbose, density_col, expected_n_rows",
+    (
+        "bin_by_cols",
+        "group_by_cols",
+        "n_bins",
+        "expected_n_bins",
+        "verbose",
+        "density_col",
+        "expected_n_rows",
+    ),
     [
         (["A"], [], 2, [2], True, "", 2),
         (["A", "B"], [], 2, [2, 2], True, "kde_bin_counts", 4),
@@ -156,10 +166,10 @@ def test_bin_df_cols_raises() -> None:
     bin_by_cols = ["col1", "col2"]
 
     # test error when passing n_bins as list but list has wrong length
-    with pytest.raises(ValueError) as exc:  # noqa: PT011
+    with pytest.raises(
+        ValueError, match=re.escape("len(bin_by_cols)=2 != len(n_bins)=1")
+    ):
         pmv.utils.bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])
-
-    assert "len(bin_by_cols)=2 != len(n_bins)=1" in str(exc.value)
 
 
 sample_dict = {"a": 1, "b": None, "c": [3, 4]}
@@ -235,7 +245,7 @@ assert ref_sample_dict == sample_dict, "sample_dict should not be modified"
 
 
 @pytest.mark.parametrize(
-    "color,expected",
+    ("color", "expected"),
     [
         ((0, 0, 0), 0),  # Black
         ((1, 1, 1), 1),  # White
@@ -256,7 +266,7 @@ def test_luminance(color: tuple[float, float, float], expected: float) -> None:
 
 
 @pytest.mark.parametrize(
-    "color,text_color_threshold,expected",
+    ("color", "text_color_threshold", "expected"),
     [
         ((1.0, 1.0, 1.0), 0.7, "black"),  # White
         ((0, 0, 0), 0.7, "white"),  # Black
@@ -314,7 +324,7 @@ class TestGetCbarLabelFormatter:
     cbar.set_ticks([0.0123456789])
 
     @pytest.mark.parametrize(
-        "default_decimal_places, expected",
+        ("default_decimal_places", "expected"),
         [
             (3, "1.235%"),
             (4, "1.2346%"),
@@ -338,7 +348,7 @@ class TestGetCbarLabelFormatter:
         assert labels[0] == expected, labels
 
     @pytest.mark.parametrize(
-        "sci_notation, expected", [(True, "1.23"), (False, "0.01")]
+        ("sci_notation", "expected"), [(True, "1.23"), (False, "0.01")]
     )
     def test_sci_notation(self, sci_notation: bool, expected: str) -> None:
         formatter = pmv.utils.get_cbar_label_formatter(
@@ -354,7 +364,7 @@ class TestGetCbarLabelFormatter:
         assert labels[0] == expected, labels
 
     @pytest.mark.parametrize(
-        "values_show_mode, expected",
+        ("values_show_mode", "expected"),
         [
             ("value", "0.0123"),
             ("fraction", "0.0123"),
@@ -381,7 +391,7 @@ class TestGetCbarLabelFormatter:
 
 
 @pytest.mark.parametrize(
-    "text, tag, title, style",
+    ("text", "tag", "title", "style"),
     [
         ("foo", "span", "", ""),
         ("bar", "small", "some title", "color: red;"),

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -13,6 +13,8 @@ from tests.conftest import y_pred, y_true
 
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     from pymatgen.core import Structure
 
     from pymatviz.utils import Backend

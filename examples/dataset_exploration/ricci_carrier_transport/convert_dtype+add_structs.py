@@ -1,15 +1,12 @@
+# ruff: noqa: RUF001
+"""Unprocessed data in data/carrier_transport.json.gz obtained from https://git.io/JOMwY."""
+
 # %%
 import pandas as pd
 from matminer.datasets import load_dataset
 from pymatgen.ext.matproj import MPRester
 
 from pymatviz.enums import Key
-
-
-"""
-Unprocessed data in data/carrier_transport.json.gz obtained from https://git.io/JOMwY.
-"""
-# ruff: noqa: RUF001
 
 
 # %%
