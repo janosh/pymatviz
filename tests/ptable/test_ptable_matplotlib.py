@@ -155,10 +155,10 @@ def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test pmv.ptable_heatmap_splits with arbitrary data length."""
     rng = np.random.default_rng()
     data_dict: dict[str, Any] = {
-        element.symbol: [
+        elem.symbol: [
             rng.integers(0, 10, size=rng.integers(1, 4))  # random value for each split
         ]
-        for element in Element
+        for elem in Element
     }
 
     # Also test different data types
