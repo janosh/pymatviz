@@ -125,18 +125,18 @@ docstring-code-format = true
     "INP001",   # implicit-namespace-package
     "PLR2004",  # magic-value-comparison
     "S101",     # use of assert
-    ]
+]
 
 "examples/*" = [
     "D100",     # missing docstring in public module
     "INP001",   # implicit-namespace-package
     "T201",     # print found
-    ]
+]
 "site/*" = [
     "D",        # pydocstyle
     "INP001",   # implicit-namespace-package
     "S602",     # subprocess-popen-with-shell-equals-true
-    ]
+]
 
 [tool.pyright]
 typeCheckingMode = "off"
