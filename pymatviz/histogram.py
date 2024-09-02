@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+import warnings
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,15 +18,18 @@ from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY, Backend
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any, Literal
 
     from pymatviz.utils import ElemValues
 
 
 def spacegroup_hist(*args: Any, **kwargs: Any) -> plt.Axes | go.Figure:
     """Alias for spacegroup_bar."""
-    print(  # noqa: T201
+    warnings.warn(
         "spacegroup_hist() is deprecated and will be removed in a future version. "
-        "use pymatviz.bar.spacegroup_bar() instead."
+        "use pymatviz.bar.spacegroup_bar() instead.",
+        category=DeprecationWarning,
+        stacklevel=2,
     )
     return spacegroup_bar(*args, **kwargs)
 

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize("ax", [None, plt.gca()])
-@pytest.mark.parametrize("df, y_binary, y_proba", df_x_y_clf)
+@pytest.mark.parametrize(("df", "y_binary", "y_proba"), df_x_y_clf)
 def test_roc_curve(
     df: pd.DataFrame | None,
     y_binary: str | ArrayLike,
@@ -31,7 +31,7 @@ def test_roc_curve(
 
 
 @pytest.mark.parametrize("ax", [None, plt.gca()])
-@pytest.mark.parametrize("df, y_binary, y_proba", df_x_y_clf)
+@pytest.mark.parametrize(("df", "y_binary", "y_proba"), df_x_y_clf)
 def test_precision_recall_curve(
     df: pd.DataFrame | None,
     y_binary: str | ArrayLike,

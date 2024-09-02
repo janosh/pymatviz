@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
 import pytest
@@ -11,6 +11,9 @@ from pymatgen.core import Structure
 import pymatviz as pmv
 from pymatviz.utils import TEST_FILES
 
+
+if TYPE_CHECKING:
+    from typing import Any
 
 mock_diffraction_pattern = DiffractionPattern(
     x=[10, 20, 30, 40, 50],
@@ -32,7 +35,7 @@ bi2_zr2_o7_xrd = XRDCalculator().get_pattern(bi2_zr2_o7_struct)
 
 
 @pytest.mark.parametrize(
-    "input_data, expected_traces",
+    ("input_data", "expected_traces"),
     [
         (mock_diffraction_pattern, 1),
         (bi2_zr2_o7_xrd, 1),
@@ -83,7 +86,7 @@ def test_xrd_pattern_layout_and_range() -> None:
 
 
 @pytest.mark.parametrize(
-    "hkl_format, expected_format, show_angles",
+    ("hkl_format", "expected_format", "show_angles"),
     [
         (pmv.xrd.HklCompact, r"\d{3}", True),
         (pmv.xrd.HklFull, r"\(\d, \d, \d\)", True),

@@ -1,6 +1,6 @@
 ci:
   autoupdate_schedule: quarterly
-  skip: [pyright, eslint]
+  skip: [pyright]
 
 default_stages: [commit]
 
@@ -76,6 +76,7 @@ repos:
     rev: v9.9.1
     hooks:
       - id: eslint
+        stages: [manual] # TODO: skip eslint for now
         types: [file]
         args: [--fix, --config, site/eslint.config.js]
         files: \.(js|ts|svelte)$

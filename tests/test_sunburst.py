@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
 import pytest
@@ -9,6 +9,8 @@ from pymatviz.sunburst import spacegroup_sunburst
 
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     from pymatgen.core import Structure
 
 

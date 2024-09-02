@@ -8,7 +8,7 @@ from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast, get_args
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import matplotlib.colors
 import matplotlib.pyplot as plt
@@ -24,7 +24,7 @@ from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormat
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from typing import ParamSpec, TypeVar
+    from typing import Any, ParamSpec, TypeAlias, TypeVar
 
     from matplotlib.ticker import Formatter
     from numpy.typing import ArrayLike
@@ -34,17 +34,17 @@ if TYPE_CHECKING:
 
 PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
-TEST_FILES = f"{ROOT}/tests/files"
-Backend = Literal["matplotlib", "plotly"]
+TEST_FILES: str = f"{ROOT}/tests/files"
+Backend: TypeAlias = Literal["matplotlib", "plotly"]
 BACKENDS = MATPLOTLIB, PLOTLY = get_args(Backend)
 
 AxOrFig: TypeAlias = plt.Axes | plt.Figure | go.Figure
 VALID_FIG_TYPES = get_args(AxOrFig)
-VALID_FIG_NAMES = " | ".join(
+VALID_FIG_NAMES: str = " | ".join(
     f"{t.__module__}.{t.__qualname__}" for t in VALID_FIG_TYPES
 )
 
-CrystalSystem = Literal[
+CrystalSystem: TypeAlias = Literal[
     "triclinic",
     "monoclinic",
     "orthorhombic",
@@ -55,8 +55,8 @@ CrystalSystem = Literal[
 ]
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
-df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
-ElemValues = dict[str | int, float] | pd.Series | Sequence[str]
+df_ptable: pd.DataFrame = pd.read_csv(elements_csv, comment="#").set_index("symbol")
+ElemValues: TypeAlias = dict[str | int, float] | pd.Series | Sequence[str]
 
 atomic_numbers: dict[str, int] = {}
 element_symbols: dict[int, str] = {}

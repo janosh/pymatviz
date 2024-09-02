@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -21,6 +21,8 @@ from tests.conftest import df_regr, np_rng
 
 
 if TYPE_CHECKING:
+    from typing import Any, Literal
+
     from tests.conftest import DfOrArrays
 
 
@@ -84,7 +86,7 @@ def test_density_scatter_with_hist(df_or_arrays: DfOrArrays) -> None:
 
 
 @pytest.mark.parametrize(
-    "cbar_label, cbar_coords",
+    ("cbar_label", "cbar_coords"),
     [("foo", (0.95, 0.03, 0.03, 0.7)), (None, (1, 1, 1, 1))],
 )
 def test_density_hexbin(
@@ -114,7 +116,7 @@ def test_residual_vs_actual(df_or_arrays: DfOrArrays) -> None:
 
 
 @pytest.mark.parametrize(
-    "log_density, stats, bin_counts_col, n_bins, kwargs",
+    ("log_density", "stats", "bin_counts_col", "n_bins", "kwargs"),
     [
         (True, True, "custom count col", 1, {"color_continuous_scale": "Viridis"}),
         (

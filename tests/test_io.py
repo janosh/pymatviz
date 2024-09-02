@@ -5,9 +5,9 @@ import sys
 import urllib.request
 from pathlib import Path
 from shutil import which
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from unittest.mock import patch
-from xml.etree import ElementTree  # noqa: ICN001
+from xml.etree import ElementTree as ET
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -20,6 +20,7 @@ import pymatviz as pmv
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
+    from typing import Any
 
     import pandas as pd
 
@@ -90,7 +91,7 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
 # https://stackoverflow.com/a/69816601
 @pytest.mark.skipif(sys.platform == "win32", reason="fails on Windows")
 @pytest.mark.parametrize(
-    "crop, size, style, styler_css",
+    ("crop", "size", "style", "styler_css"),
     [
         # test with cropping, default size, and no extra style
         # TODO test crop=True in CI, kept failing with FileNotFoundError: No such file
@@ -129,16 +130,19 @@ def test_df_to_pdf(
         style=style,
         styler_css=styler_css,
     )
-    try:
-        pmv.io.df_to_pdf(**kwds)
-    except ImportError as exc:
-        # check we're raising helpful error messages on missing deps
-        if weasyprint is None:
-            assert "weasyprint not installed\n" in str(exc)  # noqa: PT017
-            return
-        if pdfCropMargins is None:
-            assert "cropPdfMargins not installed\n" in str(exc)  # noqa: PT017
-            return
+
+    # check we're raising helpful error messages on missing deps
+    if weasyprint is None:
+        with pytest.raises(ImportError, match="weasyprint not installed\n"):
+            pmv.io.df_to_pdf(**kwds)
+        return
+
+    if pdfCropMargins is None:
+        with pytest.raises(ImportError, match="cropPdfMargins not installed\n"):
+            pmv.io.df_to_pdf(**kwds)
+        return
+
+    pmv.io.df_to_pdf(**kwds)
 
     # Check if the file is created
     assert file_path.is_file()
@@ -173,9 +177,12 @@ def test_normalize_and_crop_pdf(
     stdout, stderr = capsys.readouterr()
     assert stdout == "" == stderr
 
-    pmv.io.normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="warn")
+    with pytest.warns(
+        UserWarning,
+        match="Ghostscript not found, skipping PDF normalization and cropping",
+    ):
+        pmv.io.normalize_and_crop_pdf("tests/test_io.py", on_gs_not_found="warn")
     stdout, stderr = capsys.readouterr()
-    assert stdout == "Ghostscript not found, skipping PDF normalization and cropping\n"
     assert stderr == ""
 
     with pytest.raises(RuntimeError, match="Ghostscript not found in PATH"):
@@ -185,7 +192,7 @@ def test_normalize_and_crop_pdf(
 
 
 @pytest.mark.parametrize(
-    "script, styles, inline_props, styler_css",
+    ("script", "styles", "inline_props", "styler_css"),
     [
         (None, None, "", False),
         (None, "", None, False),
@@ -280,7 +287,7 @@ def test_tqdm_download(
 
 
 @pytest.mark.parametrize(
-    "compress, font_size, use_styler, width, height",
+    ("compress", "font_size", "use_styler", "width", "height"),
     [
         # Default font size, no compression, DataFrame
         (False, 14, False, 457, 875),
@@ -324,7 +331,7 @@ def test_df_to_svg(
     assert stdout == "" or (not compress and "svgo not found in PATH" in stdout)
 
     # Parse the SVG and perform some basic checks
-    tree = ElementTree.parse(file_path)  # noqa: S314
+    tree = ET.parse(file_path)  # noqa: S314
     root = tree.getroot()
 
     # Check that it's a valid SVG
@@ -334,7 +341,7 @@ def test_df_to_svg(
     assert int(float(root.attrib["height"].rstrip("pt"))) == height
 
     # Check for some content from the DataFrame
-    svg_content = ElementTree.tostring(root, encoding="unicode")
+    svg_content = ET.tostring(root, encoding="unicode")
     assert svg_content.startswith("<ns0:svg xmlns")
 
     # Test file overwrite behavior

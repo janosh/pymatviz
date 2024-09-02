@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from glob import glob
-from typing import Literal
+from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
 import pytest
@@ -15,6 +15,9 @@ from pymatgen.phonon.dos import PhononDos
 import pymatviz as pmv
 from pymatviz.utils import TEST_FILES
 
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 BandsDoses = dict[str, dict[str, PhononBands | PhononDos]]
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
@@ -61,7 +64,7 @@ def phonon_doses() -> dict[str, PhononDos]:
 
 
 @pytest.mark.parametrize(
-    "branches, branch_mode", [(["GAMMA-X", "X-U"], "union"), ((), "intersection")]
+    ("branches", "branch_mode"), [(["GAMMA-X", "X-U"], "union"), ((), "intersection")]
 )
 def test_phonon_bands(
     phonon_bands_doses_mp_2758: BandsDoses,
@@ -102,16 +105,17 @@ def test_phonon_bands_raises(
     ):
         pmv.phonon_bands("invalid input")
 
-    with pytest.raises(ValueError) as exc:  # noqa: PT011
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "No common branches with branch_mode='union'.\n"
+            "- : GAMMA-X, X-U, K-GAMMA, GAMMA-L, L-W, W-X\n"
+            "- Only branches ('foo-bar',) were requested."
+        ),
+    ):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",)
         )
-
-    assert (
-        "No common branches with branch_mode='union'.\n"
-        "- : GAMMA-X, X-U, K-GAMMA, GAMMA-L, L-W, W-X\n"
-        "- Only branches ('foo-bar',) were requested." in str(exc.value)
-    )
 
     # issues warning when requesting some available and some unavailable branches
     pmv.phonon_bands(
@@ -132,7 +136,7 @@ def test_phonon_bands_raises(
 
 
 @pytest.mark.parametrize(
-    "sym_point, expected",
+    ("sym_point", "expected"),
     [("Γ", "Γ"), ("Γ|DELTA", "Γ|Δ"), ("GAMMA", "Γ"), ("S_0|SIGMA", "S<sub>0</sub>|Σ")],
 )
 def test_pretty_sym_point(sym_point: str, expected: str) -> None:
@@ -140,7 +144,7 @@ def test_pretty_sym_point(sym_point: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "units, stack, sigma, normalize, last_peak_anno",
+    ("units", "stack", "sigma", "normalize", "last_peak_anno"),
     [
         ("eV", False, 0.01, "max", "{key}={last_peak:.1f}"),
         ("meV", False, 0.05, "sum", "{key}={last_peak:.4} ({units})"),
@@ -198,7 +202,7 @@ def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
 
 
 @pytest.mark.parametrize(
-    "units, stack, sigma, normalize, last_peak_anno",
+    ("units", "stack", "sigma", "normalize", "last_peak_anno"),
     [
         ("eV", False, 0.01, "max", "{key}={last_peak:.1f}"),
         ("meV", False, 0.05, "sum", "{key}={last_peak:.4} ({units})"),
