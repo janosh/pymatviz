@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
 import pytest
@@ -11,6 +11,9 @@ from pymatgen.core import Structure
 import pymatviz as pmv
 from pymatviz.utils import TEST_FILES
 
+
+if TYPE_CHECKING:
+    from typing import Any
 
 mock_diffraction_pattern = DiffractionPattern(
     x=[10, 20, 30, 40, 50],

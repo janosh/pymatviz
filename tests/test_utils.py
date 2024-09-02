@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import re
 from copy import deepcopy
-from typing import Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,6 +16,10 @@ from matplotlib.offsetbox import TextArea
 import pymatviz as pmv
 from pymatviz.utils import MATPLOTLIB, PLOTLY, VALID_FIG_NAMES, CrystalSystem
 from tests.conftest import y_pred, y_true
+
+
+if TYPE_CHECKING:
+    from typing import Any, Literal
 
 
 @pytest.mark.parametrize(

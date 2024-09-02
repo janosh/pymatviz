@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -21,6 +21,8 @@ from tests.conftest import df_regr, np_rng
 
 
 if TYPE_CHECKING:
+    from typing import Any, Literal
+
     from tests.conftest import DfOrArrays
 
 
