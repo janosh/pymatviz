@@ -156,9 +156,7 @@ def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     rng = np.random.default_rng()
     data_dict: dict[str, Any] = {
         element.symbol: [
-            rng.integers(0, 10)  # random value for each split
-            # random number of 1-4 splits per element
-            for _ in range(rng.integers(1, 4))
+            rng.integers(0, 10, size=rng.integers(1, 4))  # random value for each split
         ]
         for element in Element
     }
