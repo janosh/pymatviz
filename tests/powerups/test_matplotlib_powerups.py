@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize(
-    "v_offset,h_offset,labels,fontsize,y_max_headroom,adjust_test_pos",
+    ("v_offset", "h_offset", "labels", "fontsize", "y_max_headroom", "adjust_test_pos"),
     [
         (10, 0, None, 14, 1.2, False),
         (20, 0, ["label1", "label2", "label3"], 10, 1.5, True),

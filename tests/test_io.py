@@ -5,7 +5,7 @@ import sys
 import urllib.request
 from pathlib import Path
 from shutil import which
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 from xml.etree import ElementTree as ET
 
@@ -20,6 +20,7 @@ import pymatviz as pmv
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
+    from typing import Any
 
     import pandas as pd
 
@@ -90,7 +91,7 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
 # https://stackoverflow.com/a/69816601
 @pytest.mark.skipif(sys.platform == "win32", reason="fails on Windows")
 @pytest.mark.parametrize(
-    "crop, size, style, styler_css",
+    ("crop", "size", "style", "styler_css"),
     [
         # test with cropping, default size, and no extra style
         # TODO test crop=True in CI, kept failing with FileNotFoundError: No such file
@@ -184,7 +185,7 @@ def test_normalize_and_crop_pdf(
 
 
 @pytest.mark.parametrize(
-    "script, styles, inline_props, styler_css",
+    ("script", "styles", "inline_props", "styler_css"),
     [
         (None, None, "", False),
         (None, "", None, False),
@@ -279,7 +280,7 @@ def test_tqdm_download(
 
 
 @pytest.mark.parametrize(
-    "compress, font_size, use_styler, width, height",
+    ("compress", "font_size", "use_styler", "width", "height"),
     [
         # Default font size, no compression, DataFrame
         (False, 14, False, 457, 875),

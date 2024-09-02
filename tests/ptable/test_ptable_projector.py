@@ -88,7 +88,7 @@ class TestPTableProjector:
         assert projector.get_elem_type_color("Fe") == "blue"
 
     @pytest.mark.parametrize(
-        "data, elem_type_colors",
+        ("data", "elem_type_colors"),
         [
             # data=dict, elem colors=empty dict
             ({"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]}, {}),
@@ -137,7 +137,7 @@ class TestPtableHeatmapGenTileValueColors:
             projector.generate_tile_value_colors()
 
     @pytest.mark.parametrize(
-        "text_color, expected",
+        ("text_color", "expected"),
         [
             ("red", "red"),
             ("auto", "white"),
@@ -161,7 +161,7 @@ class TestPtableHeatmapGenTileValueColors:
         )
 
     @pytest.mark.parametrize(
-        "overwrite_tile, expected_tile",
+        ("overwrite_tile", "expected_tile"),
         [
             (  # overwrite value alone
                 {"He": OverwriteTileValueColor("hi", None, None)},

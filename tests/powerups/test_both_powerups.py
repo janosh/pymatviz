@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,6 +17,7 @@ from tests.conftest import _extract_anno_from_fig, y_pred, y_true
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
 
 
 @pytest.mark.parametrize("annotate_params", [True, False, {"color": "green"}])
@@ -241,7 +242,7 @@ def test_add_identity_raises() -> None:
 
 
 @pytest.mark.parametrize(
-    "metrics, fmt",
+    ("metrics", "fmt"),
     [
         ("MSE", ".1"),
         (["RMSE"], ".1"),

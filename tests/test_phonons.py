@@ -61,7 +61,7 @@ def phonon_doses() -> dict[str, PhononDos]:
 
 
 @pytest.mark.parametrize(
-    "branches, branch_mode", [(["GAMMA-X", "X-U"], "union"), ((), "intersection")]
+    ("branches", "branch_mode"), [(["GAMMA-X", "X-U"], "union"), ((), "intersection")]
 )
 def test_phonon_bands(
     phonon_bands_doses_mp_2758: BandsDoses,
@@ -133,7 +133,7 @@ def test_phonon_bands_raises(
 
 
 @pytest.mark.parametrize(
-    "sym_point, expected",
+    ("sym_point", "expected"),
     [("Γ", "Γ"), ("Γ|DELTA", "Γ|Δ"), ("GAMMA", "Γ"), ("S_0|SIGMA", "S<sub>0</sub>|Σ")],
 )
 def test_pretty_sym_point(sym_point: str, expected: str) -> None:
@@ -141,7 +141,7 @@ def test_pretty_sym_point(sym_point: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "units, stack, sigma, normalize, last_peak_anno",
+    ("units", "stack", "sigma", "normalize", "last_peak_anno"),
     [
         ("eV", False, 0.01, "max", "{key}={last_peak:.1f}"),
         ("meV", False, 0.05, "sum", "{key}={last_peak:.4} ({units})"),
@@ -199,7 +199,7 @@ def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
 
 
 @pytest.mark.parametrize(
-    "units, stack, sigma, normalize, last_peak_anno",
+    ("units", "stack", "sigma", "normalize", "last_peak_anno"),
     [
         ("eV", False, 0.01, "max", "{key}={last_peak:.1f}"),
         ("meV", False, 0.05, "sum", "{key}={last_peak:.4} ({units})"),

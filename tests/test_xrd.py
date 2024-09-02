@@ -32,7 +32,7 @@ bi2_zr2_o7_xrd = XRDCalculator().get_pattern(bi2_zr2_o7_struct)
 
 
 @pytest.mark.parametrize(
-    "input_data, expected_traces",
+    ("input_data", "expected_traces"),
     [
         (mock_diffraction_pattern, 1),
         (bi2_zr2_o7_xrd, 1),
@@ -83,7 +83,7 @@ def test_xrd_pattern_layout_and_range() -> None:
 
 
 @pytest.mark.parametrize(
-    "hkl_format, expected_format, show_angles",
+    ("hkl_format", "expected_format", "show_angles"),
     [
         (pmv.xrd.HklCompact, r"\d{3}", True),
         (pmv.xrd.HklFull, r"\(\d, \d, \d\)", True),

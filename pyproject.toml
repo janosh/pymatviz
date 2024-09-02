@@ -103,7 +103,6 @@ ignore = [
     "PLR0913", # function-with-too-many-arguments
     "PLR0915", # too-many-statements
     "PLR2004", # magic-number-comparison
-    "PT006",   # pytest-parametrize-names-wrong-type  TODO: fix this
     "PTH",     # prefer pathlib over os.path
     "SIM105",  # Use contextlib.suppress instead of try-except-pass
     "SLF001",  # Access private class members
