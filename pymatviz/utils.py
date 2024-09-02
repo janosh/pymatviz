@@ -55,7 +55,7 @@ CrystalSystem: TypeAlias = Literal[
 ]
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
-df_ptable = pd.read_csv(elements_csv, comment="#").set_index("symbol")
+df_ptable: pd.DataFrame = pd.read_csv(elements_csv, comment="#").set_index("symbol")
 ElemValues: TypeAlias = dict[str | int, float] | pd.Series | Sequence[str]
 
 atomic_numbers: dict[str, int] = {}
