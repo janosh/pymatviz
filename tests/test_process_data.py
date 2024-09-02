@@ -9,7 +9,7 @@ from pymatviz.enums import ElemCountMode
 
 
 @pytest.mark.parametrize(
-    "count_mode, counts",
+    ("count_mode", "counts"),
     [
         (ElemCountMode.composition, {"Fe": 22, "O": 63, "P": 12}),
         (ElemCountMode.fractional_composition, {"Fe": 2.5, "O": 5, "P": 0.5}),

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, get_args, no_type_check
+from typing import TYPE_CHECKING, Literal, get_args
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -18,12 +18,16 @@ from pymatgen.util.string import htmlify
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any, TypeAlias
 
     import numpy as np
     from pymatgen.core import Structure
     from typing_extensions import Self
 
-AnyBandStructure = BandStructureSymmLine | PhononBands
+AnyBandStructure: TypeAlias = BandStructureSymmLine | PhononBands
+YMin: TypeAlias = float | Literal["y_min"]
+YMax: TypeAlias = float | Literal["y_max"]
+BranchMode: TypeAlias = Literal["union", "intersection"]
 
 
 @dataclass
@@ -121,21 +125,22 @@ def get_band_xaxis_ticks(
     return ticks_x_pos, tick_labels
 
 
-YMin = float | Literal["y_min"]
-YMax = float | Literal["y_max"]
-
-
-@no_type_check
 def _shaded_range(
-    fig: go.Figure, shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None
+    fig: go.Figure,
+    shaded_ys: dict[tuple[YMin | YMax, YMin | YMax], dict[str, Any]] | bool | None,
 ) -> go.Figure:
     if shaded_ys is False:
         return fig
 
     shade_defaults = dict(layer="below", row="all", col="all")
-    y_lim = dict(zip(("y_min", "y_max"), fig.layout.yaxis.range, strict=True))
+    y_lim: dict[float | Literal["y_min", "y_max"], Any] = dict(
+        zip(("y_min", "y_max"), fig.layout.yaxis.range, strict=True),
+    )
 
     shaded_ys = shaded_ys or {(0, "y_min"): dict(fillcolor="gray", opacity=0.07)}
+    if not isinstance(shaded_ys, dict):
+        raise TypeError(f"expect shaded_ys as dict, got {type(shaded_ys).__name__}")
+
     for (y0, y1), kwds in shaded_ys.items():
         for y_val in (y0, y1):
             if isinstance(y_val, str) and y_val not in y_lim:
@@ -147,15 +152,14 @@ def _shaded_range(
     return fig
 
 
-BranchMode = Literal["union", "intersection"]
-
-
 def phonon_bands(
     band_structs: PhononBands | dict[str, PhononBands],
     line_kwargs: dict[str, Any] | None = None,
     branches: Sequence[str] = (),
     branch_mode: BranchMode = "union",
-    shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None = None,
+    shaded_ys: dict[tuple[YMin | YMax, YMin | YMax], dict[str, Any]]
+    | bool
+    | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot single or multiple pymatgen band structures using Plotly, focusing on the

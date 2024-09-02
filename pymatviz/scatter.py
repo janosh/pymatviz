@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+import warnings
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,6 +20,8 @@ from pymatviz.utils import bin_df_cols, df_to_arrays
 
 
 if TYPE_CHECKING:
+    from typing import Any, Literal
+
     from matplotlib.gridspec import GridSpec
     from numpy.typing import ArrayLike
 
@@ -305,8 +308,9 @@ def _bin_and_calculate_density(
             model_kde = scipy.stats.gaussian_kde(values)
             df_plot[bin_counts_col] = model_kde(df_plot[[x, y]].T)
         else:
-            print(  # noqa: T201
-                f"no need to use density scatter if binning is disabled and {density=}"
+            warnings.warn(
+                f"no need to use density scatter if binning is disabled and {density=}",
+                stacklevel=2,
             )
             df_plot[bin_counts_col] = np.ones(len(df_plot))
 
@@ -536,8 +540,10 @@ def residual_vs_actual(
         plt.Axes: matplotlib Axes object
     """
     y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    assert isinstance(y_true, np.ndarray)  # noqa: S101
-    assert isinstance(y_pred, np.ndarray)  # noqa: S101
+    if not isinstance(y_true, np.ndarray):
+        raise TypeError(f"Expect y_true as np.ndarray, got {type(y_true).__name__}")
+    if not isinstance(y_pred, np.ndarray):
+        raise TypeError(f"Expect y_pred as np.ndarray, got {type(y_pred).__name__}")
     ax = ax or plt.gca()
 
     y_err = y_true - y_pred

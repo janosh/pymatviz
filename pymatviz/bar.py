@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,6 +17,10 @@ from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import Key
 from pymatviz.utils import PLOTLY, Backend, crystal_sys_from_spg_num, si_fmt_int
+
+
+if TYPE_CHECKING:
+    from typing import Any, Literal
 
 
 def spacegroup_bar(
