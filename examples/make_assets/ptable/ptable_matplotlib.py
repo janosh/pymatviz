@@ -1,6 +1,4 @@
 # %%
-import random
-
 import numpy as np
 from matminer.datasets import load_dataset
 from pymatgen.core.periodic_table import Element
@@ -137,10 +135,11 @@ pmv.io.save_and_compress_svg(fig, "ptable-lines")
 
 
 # %% Evenly-split tile plots laid out as a periodic table
+rng = np.random.default_rng()
 for n_splits in (2, 3, 4):
     data_dict = {
         elem.symbol: [
-            random.randint(10 * n_splits, 20 * (n_splits + 1)) for _ in range(n_splits)
+            rng.integers(10 * n_splits, 20 * (n_splits + 1)) for _ in range(n_splits)
         ]
         for elem in Element
     }

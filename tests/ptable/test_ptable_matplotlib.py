@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
@@ -154,11 +153,12 @@ class TestPtableHeatmap:
 @pytest.mark.parametrize("hide_f_block", ["auto", False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test pmv.ptable_heatmap_splits with arbitrary data length."""
+    rng = np.random.default_rng()
     data_dict: dict[str, Any] = {
         element.symbol: [
-            random.randint(0, 10)  # random value for each split  # noqa: S311
+            rng.integers(0, 10)  # random value for each split
             # random number of 1-4 splits per element
-            for _ in range(random.randint(1, 4))  # noqa: S311
+            for _ in range(rng.integers(1, 4))
         ]
         for element in Element
     }
