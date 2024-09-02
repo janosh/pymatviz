@@ -126,7 +126,8 @@ def get_band_xaxis_ticks(
 
 
 def _shaded_range(
-    fig: go.Figure, shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None
+    fig: go.Figure,
+    shaded_ys: dict[tuple[YMin | YMax, YMin | YMax], dict[str, Any]] | bool | None,
 ) -> go.Figure:
     if shaded_ys is False:
         return fig
@@ -136,7 +137,6 @@ def _shaded_range(
         zip(("y_min", "y_max"), fig.layout.yaxis.range, strict=True),
     )
 
-    # DEBUG: why (0, "y_min")
     shaded_ys = shaded_ys or {(0, "y_min"): dict(fillcolor="gray", opacity=0.07)}
     if not isinstance(shaded_ys, dict):
         raise TypeError(f"expect shaded_ys as dict, got {type(shaded_ys).__name__}")
@@ -157,7 +157,9 @@ def phonon_bands(
     line_kwargs: dict[str, Any] | None = None,
     branches: Sequence[str] = (),
     branch_mode: BranchMode = "union",
-    shaded_ys: dict[tuple[YMin, YMax], dict[str, Any]] | bool | None = None,
+    shaded_ys: dict[tuple[YMin | YMax, YMin | YMax], dict[str, Any]]
+    | bool
+    | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot single or multiple pymatgen band structures using Plotly, focusing on the
