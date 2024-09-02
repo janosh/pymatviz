@@ -135,15 +135,14 @@ def test_df_to_pdf(
     if weasyprint is None:
         with pytest.raises(ImportError, match="weasyprint not installed\n"):
             pmv.io.df_to_pdf(**kwds)
-        return None
+        return
 
-    elif pdfCropMargins is None:
+    if pdfCropMargins is None:
         with pytest.raises(ImportError, match="cropPdfMargins not installed\n"):
             pmv.io.df_to_pdf(**kwds)
-        return None
+        return
 
-    else:
-        pmv.io.df_to_pdf(**kwds)
+    pmv.io.df_to_pdf(**kwds)
 
     # Check if the file is created
     assert file_path.is_file()
