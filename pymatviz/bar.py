@@ -222,18 +222,18 @@ def spacegroup_bar(
         for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
             patch.set_facecolor(color)
 
-        text_kwds = dict(transform=transform, horizontalalignment="center") | (
+        text_kwargs = dict(transform=transform, horizontalalignment="center") | (
             text_kwargs or {}
         )
-        crys_sys_anno_kwds = dict(
+        crys_sys_anno_kwargs = dict(
             rotation=90, va="top", ha="right", fontdict={"fontsize": 14}
         )
-        ax.text(*[(x0 + x1) / 2, 0.95], crys_sys, **crys_sys_anno_kwds | text_kwds)
+        ax.text(*[(x0 + x1) / 2, 0.95], crys_sys, **crys_sys_anno_kwargs | text_kwargs)
         if show_counts:
             ax.text(
                 *[(x0 + x1) / 2, 1.02],
                 f"{si_fmt_int(count)} ({count / len(data):.0%})",
-                **dict(fontdict={"fontsize": 12}) | text_kwds,
+                **dict(fontdict={"fontsize": 12}) | text_kwargs,
             )
 
         ax.fill_between(
