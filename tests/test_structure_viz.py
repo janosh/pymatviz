@@ -10,6 +10,7 @@ from pymatgen.analysis.local_env import NearNeighbors, VoronoiNN
 from pymatgen.core import Structure
 
 import pymatviz as pmv
+from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key
 
 
@@ -165,20 +166,35 @@ def test_structure_2d_multiple() -> None:
 
 def test_structure_2d_color_warning() -> None:
     # Copernicium is not in the default color scheme
-    copernicium = "Cn"
-    struct = Structure(np.eye(3) * 5, [copernicium] * 2, coords=coords)
+    elem_symbol = "Cn"
+    struct = Structure(np.eye(3) * 5, [elem_symbol] * 2, coords=coords)
+    fallback_color = "gray"
 
-    for colors in ElemColorScheme:
+    for elem_colors in ElemColorScheme:
+        if elem_colors == ElemColorScheme.jmol:
+            elem_color_symbols = ", ".join(ELEM_COLORS_JMOL)
+        elif elem_colors == ElemColorScheme.vesta:
+            elem_color_symbols = ", ".join(ELEM_COLORS_VESTA)
+        else:
+            raise ValueError(f"Unexpected {elem_colors=}")
+
         with pytest.warns(
-            UserWarning, match=f"{copernicium!r} not in colors, using gray"
+            UserWarning,
+            match=f"{elem_symbol=} not in elem_colors, using "
+            f"{fallback_color=}\nelement color palette specifies the "
+            f"following elements: {elem_color_symbols}",
         ):
-            pmv.structure_2d(struct, elem_colors=colors)
+            pmv.structure_2d(struct, elem_colors=elem_colors)
 
     # create custom color scheme missing an element
     custom_colors = {"Fe": "red"}
     struct = Structure(np.eye(3) * 5, ["Fe", "O"], coords=coords)
 
-    with pytest.warns(UserWarning, match="'O' not in colors, using gray"):
+    with pytest.warns(
+        UserWarning,
+        match="elem_symbol='O' not in elem_colors, using fallback_color='gray'\nelement"
+        " color palette specifies the following elements: Fe",
+    ):
         pmv.structure_2d(struct, elem_colors=custom_colors)
 
 

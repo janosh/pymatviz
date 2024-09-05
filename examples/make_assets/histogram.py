@@ -54,4 +54,4 @@ for idx in range(len(fig.data)):
     pmv.powerups.add_ecdf_line(fig, trace_idx=idx)
 fig.show()
 
-pmv.io.save_and_compress_svg(fig, "plot-histogram-ecdf")
+pmv.io.save_and_compress_svg(fig, "histogram-ecdf")

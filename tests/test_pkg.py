@@ -7,7 +7,7 @@ from glob import glob
 from importlib.metadata import version
 from types import ModuleType
 
-from pymatviz import PKG_DIR, PKG_NAME, __version__
+from pymatviz import IS_IPYTHON, PKG_DIR, PKG_NAME, __version__
 
 
 def test_pkg_metadata() -> None:
@@ -73,3 +73,7 @@ def test_all_modules_reexported() -> None:
 
     finally:
         sys.modules[PKG_NAME] = pymatviz
+
+
+def test_is_ipython() -> None:
+    assert not IS_IPYTHON

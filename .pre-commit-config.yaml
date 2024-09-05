@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.3
+    rev: v0.6.4
     hooks:
       - id: ruff
         args: [--fix]
@@ -88,6 +88,6 @@ repos:
           - typescript-eslint
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.378
+    rev: v1.1.379
     hooks:
       - id: pyright
