@@ -135,7 +135,7 @@ def annotate_metrics(
 def add_identity_line(
     fig: go.Figure | plt.Figure | plt.Axes,
     *,
-    line_kwds: dict[str, Any] | None = None,
+    line_kwargs: dict[str, Any] | None = None,
     trace_idx: int = 0,
     retain_xy_limits: bool = False,
     **kwargs: Any,
@@ -146,8 +146,8 @@ def add_identity_line(
     Args:
         fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes to
             add the identity line to.
-        line_kwds (dict[str, Any], optional): Keyword arguments for customizing the line
-            shape will be passed to fig.add_shape(line=line_kwds). Defaults to
+        line_kwargs (dict[str, Any], optional): Keyword arguments for customizing the
+            line shape will be passed to fig.add_shape(line=line_kwargs). Defaults to
             dict(color="gray", width=1, dash="dash").
         trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
             Defaults to 0. Unused if kaleido package is installed and the figure's
@@ -171,7 +171,7 @@ def add_identity_line(
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
         line_defaults = dict(alpha=0.5, zorder=0, linestyle="dashed", color="black")
-        ax.axline((x_min, x_min), (x_max, x_max), **line_defaults | (line_kwds or {}))
+        ax.axline((x_min, x_min), (x_max, x_max), **line_defaults | (line_kwargs or {}))
         return fig
 
     if isinstance(fig, go.Figure):
@@ -189,7 +189,7 @@ def add_identity_line(
             type="line",
             **dict(x0=xy_min_min, y0=xy_min_min, x1=xy_max_min, y1=xy_max_min),
             layer="below",
-            line=line_defaults | (line_kwds or {}),
+            line=line_defaults | (line_kwargs or {}),
             **kwargs,
         )
         if retain_xy_limits:
@@ -207,7 +207,7 @@ def add_best_fit_line(
     xs: ArrayLike = (),
     ys: ArrayLike = (),
     trace_idx: int | None = None,
-    line_kwds: dict[str, Any] | None = None,
+    line_kwargs: dict[str, Any] | None = None,
     annotate_params: bool | dict[str, Any] = True,
     warn: bool = True,
     **kwargs: Any,
@@ -223,8 +223,8 @@ def add_best_fit_line(
             means use the y-values of trace at trace_idx in fig.
         trace_idx (int, optional): Index of the trace to use for measuring x/y values
             for fitting if xs and ys are not provided. Defaults to 0.
-        line_kwds (dict[str, Any], optional): Keyword arguments for customizing the line
-            shape. For plotly, will be passed to fig.add_shape(line=line_kwds).
+        line_kwargs (dict[str, Any], optional): Keyword arguments for customizing the
+            line shape. For plotly, will be passed to fig.add_shape(line=line_kwargs).
             For matplotlib, will be passed to ax.plot(). Defaults to None.
         annotate_params (dict[str, Any], optional): Pass dict to customize
             the annotation of the best fit line. Set to False to disable annotation.
@@ -302,7 +302,7 @@ def add_best_fit_line(
             )
 
         defaults = dict(alpha=0.7, linestyle="--", zorder=1)
-        ax.axline((x0, y0), (x1, y1), **(defaults | (line_kwds or {})) | kwargs)
+        ax.axline((x0, y0), (x1, y1), **(defaults | (line_kwargs or {})) | kwargs)
 
         return fig
 
@@ -324,8 +324,8 @@ def add_best_fit_line(
             x0, x1 = x_min, x_max
             y0, y1 = slope * x0 + intercept, slope * x1 + intercept
 
-            line_kwds = (
-                (line_kwds or {})
+            line_kwargs = (
+                (line_kwargs or {})
                 | dict(color=line_color, width=2, dash="dash")
                 | kwargs.pop("line", {})
             )
@@ -339,7 +339,7 @@ def add_best_fit_line(
                 y1=y1,
                 xref=xref,
                 yref=yref,
-                line=line_kwds,
+                line=line_kwargs,
                 **{k: v for k, v in kwargs.items() if k not in invalid_kwargs},
             )
 

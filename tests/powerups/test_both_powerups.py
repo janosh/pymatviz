@@ -85,8 +85,8 @@ def test_add_best_fit_line_invalid_fig() -> None:
 
 
 def test_add_best_fit_line_custom_line_kwargs(plotly_scatter: go.Figure) -> None:
-    line_kwds = {"width": 3, "dash": "dot"}
-    result = pmv.powerups.add_best_fit_line(plotly_scatter, line_kwds=line_kwds)
+    line_kwargs = {"width": 3, "dash": "dot"}
+    result = pmv.powerups.add_best_fit_line(plotly_scatter, line_kwargs=line_kwargs)
 
     best_fit_line = result.layout.shapes[-1]
     assert best_fit_line.line.width == 2
@@ -146,7 +146,7 @@ def test_add_best_fit_line_custom_xs_ys(
 
 
 @pytest.mark.parametrize(
-    ("xaxis_type", "yaxis_type", "trace_idx", "line_kwds", "retain_xy_limits"),
+    ("xaxis_type", "yaxis_type", "trace_idx", "line_kwargs", "retain_xy_limits"),
     [
         ("linear", "log", 0, None, True),
         ("log", "linear", 1, {"color": "red"}, False),
@@ -159,7 +159,7 @@ def test_add_identity_line(
     xaxis_type: str,
     yaxis_type: str,
     trace_idx: int,
-    line_kwds: dict[str, str] | None,
+    line_kwargs: dict[str, str] | None,
     retain_xy_limits: bool,
 ) -> None:
     # Set axis types
@@ -173,7 +173,7 @@ def test_add_identity_line(
 
     fig = pmv.powerups.add_identity_line(
         plotly_scatter,
-        line_kwds=line_kwds,
+        line_kwargs=line_kwargs,
         trace_idx=trace_idx,
         retain_xy_limits=retain_xy_limits,
     )
@@ -184,7 +184,7 @@ def test_add_identity_line(
     assert line is not None
 
     assert line.layer == "below"
-    assert line.line.color == (line_kwds["color"] if line_kwds else "gray")
+    assert line.line.color == (line_kwargs["color"] if line_kwargs else "gray")
     # check line coordinates
     assert line.x0 == line.y0
     assert line.x1 == line.y1
@@ -205,17 +205,19 @@ def test_add_identity_line(
         assert y_range_post != y_range_pre
 
 
-@pytest.mark.parametrize("line_kwds", [None, {"color": "blue"}])
+@pytest.mark.parametrize("line_kwargs", [None, {"color": "blue"}])
 def test_add_identity_matplotlib(
-    matplotlib_scatter: plt.Figure, line_kwds: dict[str, str] | None
+    matplotlib_scatter: plt.Figure, line_kwargs: dict[str, str] | None
 ) -> None:
-    expected_line_color = (line_kwds or {}).get("color", "black")
+    expected_line_color = (line_kwargs or {}).get("color", "black")
     # test Figure
-    fig = pmv.powerups.add_identity_line(matplotlib_scatter, line_kwds=line_kwds)
+    fig = pmv.powerups.add_identity_line(matplotlib_scatter, line_kwargs=line_kwargs)
     assert isinstance(fig, plt.Figure)
 
     # test Axes
-    ax = pmv.powerups.add_identity_line(matplotlib_scatter.axes[0], line_kwds=line_kwds)
+    ax = pmv.powerups.add_identity_line(
+        matplotlib_scatter.axes[0], line_kwargs=line_kwargs
+    )
     assert isinstance(ax, plt.Axes)
 
     line = fig.axes[0].lines[-1]  # retrieve identity line
@@ -225,7 +227,7 @@ def test_add_identity_matplotlib(
     _fig_log, ax_log = plt.subplots()
     ax_log.plot([1, 10, 100], [10, 100, 1000])
     ax_log.set(xscale="log", yscale="log")
-    ax_log = pmv.powerups.add_identity_line(ax, line_kwds=line_kwds)
+    ax_log = pmv.powerups.add_identity_line(ax, line_kwargs=line_kwargs)
 
     line = fig.axes[0].lines[-1]
     assert line.get_color() == expected_line_color

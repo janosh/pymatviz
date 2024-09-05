@@ -427,13 +427,13 @@ def structure_2d(
                             (0.5 * radius) * direction if occupancy < 1 else (0, 0)
                         )
 
-                        txt_kwds = dict(
+                        text_kwargs = dict(
                             ha="center",
                             va="center",
                             zorder=zorder,
                             **(label_kwargs or {}),
                         )
-                        ax.text(*(xy + text_offset), txt, **txt_kwds)
+                        ax.text(*(xy + text_offset), txt, **text_kwargs)
 
                     start += occupancy
 
