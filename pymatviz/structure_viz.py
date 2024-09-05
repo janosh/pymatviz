@@ -1,6 +1,6 @@
 """2D plots of pymatgen structures with matplotlib.
 
-plot_structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
+structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
 inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib.
 """
 
@@ -161,22 +161,22 @@ def structure_2d(
     plot_atoms(AseAtomsAdaptor().get_atoms(mp_19017), rotation="10x,10y,0z", radii=0.5)
 
     # pymatviz
-    from pymatviz import plot_structure_2d
+    from pymatviz import structure_2d
 
-    plot_structure_2d(mp_19017)
+    structure_2d(mp_19017)
     ```
 
     Multiple structures in single figure example:
 
     ```py
     from pymatgen.ext.matproj import MPRester
-    from pymatviz import plot_structure_2d
+    from pymatviz import structure_2d
 
     structures = {
         (mp_id := f"mp-{idx}"): MPRester().get_structure_by_material_id(mp_id)
         for idx in range(1, 5)
     }
-    plot_structure_2d(structures)
+    structure_2d(structures)
     ```
 
     Args:
@@ -456,7 +456,7 @@ def structure_2d(
 
         if show_bonds:
             warnings.warn(
-                "Warning: the show_bonds feature of plot_structure_2d() is "
+                "Warning: the show_bonds feature of structure_2d() is "
                 "experimental. Issues and PRs with improvements welcome.",
                 category=ExperimentalWarning,
                 stacklevel=2,
