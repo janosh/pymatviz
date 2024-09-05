@@ -374,8 +374,9 @@ def structure_2d(
                     if elem_symbol not in elem_colors:
                         elem_color_symbols = ", ".join(elem_colors)
                         warn_msg = (
-                            f"{elem_symbol=} not in {elem_color_symbols}, using "
-                            f"{fallback_color=}"
+                            f"{elem_symbol=} not in elem_colors, using "
+                            f"{fallback_color=}\nelement color palette specifies the "
+                            f"following elements: {elem_color_symbols}"
                         )
                         warnings.warn(warn_msg, UserWarning, stacklevel=2)
                     wedge = Wedge(
