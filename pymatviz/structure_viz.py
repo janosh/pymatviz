@@ -138,7 +138,6 @@ def structure_2d(
     n_cols: int = 4,
     subplot_kwargs: dict[str, Any] | None = None,
     subplot_title: Callable[[Structure, str | int], str] | None = None,
-    **kwargs: Any,
 ) -> plt.Axes | tuple[plt.Figure, np.ndarray[plt.Axes]]:
     """Plot pymatgen structures in 2D with matplotlib.
 
@@ -228,7 +227,6 @@ def structure_2d(
             subplot titles. Receives the structure and its key or index when passed as
             a dict or pandas.Series. Defaults to None in which case the title is the
             structure's material id if available, otherwise its formula and space group.
-        **kwargs: Unused.
 
     Raises:
         ValueError: On invalid site_labels.
@@ -236,14 +234,6 @@ def structure_2d(
     Returns:
         plt.Axes: matplotlib Axes instance with plotted structure.
     """
-    if "colors" in kwargs:
-        warnings.warn(
-            "plot_structure_2d's colors keyword was deprecated on 2024-07-06 and will "
-            "be removed soon. Use 'elem_colors' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        elem_colors = kwargs.pop("colors")
     if isinstance(struct, Structure):
         ax = ax or plt.gca()
 
@@ -382,11 +372,12 @@ def structure_2d(
                     fallback_color = "gray"
                     face_color = elem_colors.get(elem_symbol, fallback_color)
                     if elem_symbol not in elem_colors:
-                        warnings.warn(
-                            f"{elem_symbol=} not in colors, using {fallback_color}",
-                            UserWarning,
-                            stacklevel=2,
+                        elem_color_symbols = ", ".join(elem_colors)
+                        warn_msg = (
+                            f"{elem_symbol=} not in {elem_color_symbols}, using "
+                            f"{fallback_color=}"
                         )
+                        warnings.warn(warn_msg, UserWarning, stacklevel=2)
                     wedge = Wedge(
                         xy,
                         radius,
@@ -472,8 +463,8 @@ def structure_2d(
 
             # If structure doesn't have any oxidation states yet, guess them from
             # chemical composition. Use CrystalNN and other strategies to better
-            # estimate bond connectivity. Use getattr on site.specie since it's often a
-            # pymatgen Element which has no oxi_state
+            # estimate bond connectivity. Use hasattr("oxi_state") on site.specie since
+            # it's often a pymatgen Element which has no oxi_state
             if not any(
                 hasattr(getattr(site, "specie", None), "oxi_state") for site in struct
             ):
