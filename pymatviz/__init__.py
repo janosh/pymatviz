@@ -94,6 +94,8 @@ except PackageNotFoundError:
     pass  # package not installed
 
 
+IS_IPYTHON = hasattr(__builtins__, "__IPYTHON__")
+
 # define a sensible order for crystal systems across plots
 crystal_sys_order = (
     "cubic hexagonal trigonal tetragonal orthorhombic monoclinic triclinic".split()
@@ -103,7 +105,6 @@ spg_num_to_symbol = {
     v["int_number"]: k for k, v in SYMM_DATA["space_group_encoding"].items()
 }
 spg_num_to_symbol = dict(sorted(spg_num_to_symbol.items()))  # sort
-
 
 px.defaults.labels |= {
     "gap expt": "Experimental band gap (eV)",

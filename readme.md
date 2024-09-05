@@ -77,11 +77,11 @@ See [`pymatviz/ptable/ptable_matplotlib.py`](pymatviz/ptable/ptable_matplotlib.p
 
 See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main/examples/mlff_phonons.ipynb) for usage example.
 
-|           [`plot_phonon_bands(bands_dict)`](pymatviz/phonons.py)           |             [`plot_phonon_dos(doses_dict)`](pymatviz/phonons.py)             |
-| :------------------------------------------------------------------------: | :--------------------------------------------------------------------------: |
-|                              ![phonon-bands]                               |                                ![phonon-dos]                                 |
-| [`plot_phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons.py) | [`plot_phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons.py) |
-|                      ![phonon-bands-and-dos-mp-2758]                       |                       ![phonon-bands-and-dos-mp-23907]                       |
+|           [`phonon_bands(bands_dict)`](pymatviz/phonons.py)           |             [`phonon_dos(doses_dict)`](pymatviz/phonons.py)             |
+| :-------------------------------------------------------------------: | :---------------------------------------------------------------------: |
+|                            ![phonon-bands]                            |                              ![phonon-dos]                              |
+| [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons.py) | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons.py) |
+|                    ![phonon-bands-and-dos-mp-2758]                    |                    ![phonon-bands-and-dos-mp-23907]                     |
 
 [phonon-bands]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-mp-2758.svg
 [phonon-dos]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-dos-mp-2758.svg
@@ -114,9 +114,9 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 See [`pymatviz/structure_viz.py`](pymatviz/structure_viz.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
 
-| [`plot_structure_2d(mp_19017)`](pymatviz/structure_viz.py) | [`plot_structure_2d(mp_12712)`](pymatviz/structure_viz.py) |
-| :--------------------------------------------------------: | :--------------------------------------------------------: |
-|  ![struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]   |        ![struct-2d-mp-12712-Hf9Zr9Pd24-disordered]         |
+|  [`structure_2d(mp_19017)`](pymatviz/structure_viz.py)  | [`structure_2d(mp_12712)`](pymatviz/structure_viz.py) |
+| :-----------------------------------------------------: | :---------------------------------------------------: |
+| ![struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered] |      ![struct-2d-mp-12712-Hf9Zr9Pd24-disordered]      |
 
 ![matbench-phonons-structures-2d]
 
@@ -129,14 +129,14 @@ See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 |                              ![spg-num-hist-matplotlib]                              |                                  ![spg-symbol-hist-matplotlib]                                   |
 |   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](pymatviz/histogram.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histogram.py)   |
 |                                ![spg-num-hist-plotly]                                |                                    ![spg-symbol-hist-plotly]                                     |
-| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histogram.py) |          [`plot_histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py)           |
-|                                   ![elements-hist]                                   |                                      ![plot-histogram-ecdf]                                      |
+| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histogram.py) |             [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py)             |
+|                                   ![elements-hist]                                   |                                        ![histogram-ecdf]                                         |
 
 [spg-symbol-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-plotly.svg
 [spg-num-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-matplotlib.svg
 [spg-symbol-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-matplotlib.svg
-[plot-histogram-ecdf]: https://github.com/janosh/pymatviz/raw/main/assets/plot-histogram-ecdf.svg
+[histogram-ecdf]: https://github.com/janosh/pymatviz/raw/main/assets/histogram-ecdf.svg
 
 ## Scatter Plots
 
@@ -161,9 +161,9 @@ See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-| [`plot_xrd_pattern(pattern)`](pymatviz/xrd.py) | [`plot_xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py) |
-| :--------------------------------------------: | :---------------------------------------------------------------: |
-|                 ![xrd-pattern]                 |                      ![xrd-pattern-multiple]                      |
+| [`xrd_pattern(pattern)`](pymatviz/xrd.py) | [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py) |
+| :---------------------------------------: | :----------------------------------------------------------: |
+|              ![xrd-pattern]               |                   ![xrd-pattern-multiple]                    |
 
 [xrd-pattern]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern.svg
 [xrd-pattern-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-multiple.svg
