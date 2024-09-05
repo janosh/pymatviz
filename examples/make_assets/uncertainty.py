@@ -14,7 +14,7 @@ y_std = (y_true - y_pred) * 10 * np_rng.normal(0, 0.1, rand_regression_size)
 
 # %% Uncertainty Plots
 ax = pmv.qq_gaussian(
-    y_pred, y_true, y_std, identity_line={"line_kwds": {"color": "red"}}
+    y_pred, y_true, y_std, identity_line={"line_kwargs": {"color": "red"}}
 )
 pmv.io.save_and_compress_svg(ax, "normal-prob-plot")
 
