@@ -354,7 +354,7 @@ class PTableProjector:
                     - ColorType: The same color for all elements.
                     - dict[str, ColorType]: An element to color mapping.
                     - "element-types": Use color from self.elem_type_colors.
-            kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
+            kwargs (dict): Additional keyword arguments to pass to `ax.text`.
         """
         # Update symbol kwargs
         kwargs = kwargs or {}
@@ -505,6 +505,28 @@ class PTableProjector:
             # Set background color by element type
             rgb = mpl.colors.to_rgb(self.get_elem_type_color(symbol))
             ax.set_facecolor((*rgb, alpha))
+
+    def add_annotation(
+        self,
+        text: dict[str, str | None],
+        *,
+        pos: tuple[float, float] = (0.5, 0.5),
+        kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Add optional annotation to each element tile.
+
+        Args:
+            text (dict[str, str]): Element names to text mapping.
+            pos (tuple): The position of the text relative to the axes.
+            kwargs (dict): Additional keyword arguments to pass to `ax.annotate`.
+        """
+        # Update annotate kwargs
+        kwargs = kwargs or {}
+        kwargs.setdefault("fontsize", 12)
+
+        # Make sure unused args wouldn't be removed by linter
+        assert text
+        assert pos
 
 
 class ChildPlotters:
