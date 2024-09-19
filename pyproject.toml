@@ -60,9 +60,6 @@ include = ["pymatviz", "pymatviz.*"]
 [tool.setuptools.package-data]
 pymatviz = ["*.csv"]
 
-[tool.distutils.bdist_wheel]
-universal = true
-
 [build-system]
 requires = ["setuptools>=71"]
 build-backend = "setuptools.build_meta"
