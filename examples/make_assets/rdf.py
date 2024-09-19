@@ -20,4 +20,4 @@ for struct in df_phonons.nlargest(2, Key.n_sites)[Key.structure]:
     fig.layout.margin = dict(l=40, r=0, t=50, b=0)
 
     fig.show()
-    pmv.save_fig(fig, f"element-pair-rdfs-{formula.replace(' ', '')}.svg")
+    pmv.io.save_and_compress_svg(fig, f"element-pair-rdfs-{formula.replace(' ', '')}")
