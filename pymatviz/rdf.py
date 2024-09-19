@@ -181,21 +181,6 @@ def element_pair_rdfs(
 
     # set subplot height/width and x/y axis labels
     fig.update_layout(height=200 * n_rows, width=350 * n_cols)
-    fig.update_yaxes(title=dict(text="g(r)", standoff=0), col=1)
+    fig.update_yaxes(title=dict(text="g(r)", standoff=0.1), col=1)
 
     return fig
-
-
-# Example usage:
-if __name__ == "__main__":
-    import pymatviz as pmv
-
-    pmv.set_plotly_template("pymatviz_white")
-    # Create a sample structure (e.g., a simple cubic lattice of Fe and O)
-    lattice = [[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]]
-    species = ["Fe", "O", "Fe", "O"]
-    coords = [[0, 0, 0], [0.5, 0.5, 0.5], [0, 0.5, 0.5], [0.5, 0, 0]]
-    structure = Structure(lattice, species, coords)
-
-    fig = element_pair_rdfs(structure, n_bins=75)
-    fig.show()
