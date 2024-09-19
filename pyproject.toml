@@ -54,8 +54,8 @@ df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
 auto-text-pos = ["adjustText>=0.8"]
 
-[tool.setuptools.packages]
-find = { include = ["pymatviz*"], exclude = ["tests*"] }
+[tool.setuptools.packages.find]
+include = ["pymatviz", "pymatviz.*"]
 
 [tool.setuptools.package-data]
 pymatviz = ["*.csv"]
