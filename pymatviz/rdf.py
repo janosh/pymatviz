@@ -15,7 +15,6 @@ from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
-from ase import Atoms
 from plotly.subplots import make_subplots
 from pymatgen.core import Structure
 from scipy.signal import find_peaks
@@ -82,7 +81,7 @@ def find_last_significant_peak(
 
 
 def element_pair_rdfs(
-    structure: Structure | Atoms,
+    structure: Structure,
     cutoff: float = 15,
     n_bins: int = 75,
     bin_size: float | None = None,
@@ -96,7 +95,7 @@ def element_pair_rdfs(
     atom. Basically a histogram of pair-wise particle distances.
 
     Args:
-        structure (Structure | Atoms): pymatgen Structure or ASE Atoms object.
+        structure (Structure): pymatgen Structure.
         cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
         n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
         bin_size (float, optional): Size of bins for RDF calculation. If specified, it
@@ -113,11 +112,6 @@ def element_pair_rdfs(
         ValueError: If the structure contains no sites, if invalid element pairs are
             provided, or if both n_bins and bin_size are specified.
     """
-    if isinstance(structure, Atoms):
-        from pymatgen.io.ase import AseAtomsAdaptor
-
-        structure = AseAtomsAdaptor.get_structure(structure)
-
     if not structure.sites:
         raise ValueError("input structure contains no sites")
 
