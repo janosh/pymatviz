@@ -11,6 +11,7 @@ import pymatviz
 
 from __future__ import annotations
 
+import builtins
 from importlib.metadata import PackageNotFoundError, version
 
 import matplotlib.pyplot as plt
@@ -30,6 +31,7 @@ from pymatviz import (
     powerups,
     process_data,
     ptable,
+    rdf,
     relevance,
     sankey,
     scatter,
@@ -56,6 +58,7 @@ from pymatviz.ptable import (
     ptable_lines,
     ptable_scatters,
 )
+from pymatviz.rdf import element_pair_rdfs
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.scatter import (
@@ -94,7 +97,7 @@ except PackageNotFoundError:
     pass  # package not installed
 
 
-IS_IPYTHON = hasattr(__builtins__, "__IPYTHON__")
+IS_IPYTHON = hasattr(builtins, "__IPYTHON__")
 
 # define a sensible order for crystal systems across plots
 crystal_sys_order = (

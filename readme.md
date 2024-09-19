@@ -168,6 +168,17 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 [xrd-pattern]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern.svg
 [xrd-pattern-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-multiple.svg
 
+## Radial Distribution Functions
+
+See [`pymatviz/rdf.py`](pymatviz/rdf.py).
+
+| [`rdf_plot(rdf)`](pymatviz/rdf.py) | [`rdf_plot(rdf, rdf2)`](pymatviz/rdf.py) |
+| :--------------------------------: | :--------------------------------------: |
+|    ![element-pair-rdfs-Si16O32]    |      ![element-pair-rdfs-Na8Nb8O24]      |
+
+[element-pair-rdfs-Si16O32]: examples/make_assets/element-pair-rdfs-Si16O32.svg
+[element-pair-rdfs-Na8Nb8O24]: examples/make_assets/element-pair-rdfs-Na8Nb8O24.svg
+
 ## Uncertainty
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
