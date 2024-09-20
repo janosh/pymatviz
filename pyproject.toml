@@ -55,7 +55,7 @@ df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
 auto-text-pos = ["adjustText>=0.8"]
 
 [tool.setuptools.packages.find]
-include = ["pymatviz", "pymatviz.*"]
+include = ["pymatviz*"]
 
 [tool.setuptools.package-data]
 pymatviz = ["*.csv"]
