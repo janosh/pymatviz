@@ -176,8 +176,8 @@ See [`pymatviz/rdf.py`](pymatviz/rdf.py).
 | :--------------------------------: | :--------------------------------------: |
 |    ![element-pair-rdfs-Si16O32]    |      ![element-pair-rdfs-Na8Nb8O24]      |
 
-[element-pair-rdfs-Si16O32]: examples/make_assets/element-pair-rdfs-Si16O32.svg
-[element-pair-rdfs-Na8Nb8O24]: examples/make_assets/element-pair-rdfs-Na8Nb8O24.svg
+[element-pair-rdfs-Si16O32]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-Si16O32.svg
+[element-pair-rdfs-Na8Nb8O24]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-Na8Nb8O24.svg
 
 ## Uncertainty
 
