@@ -381,7 +381,7 @@ def df_to_html(
     pre_table: str | None = "",
     styles: str | None = ALLOW_TABLE_SCROLL + HIDE_SCROLL_BAR,
     styler_css: bool | dict[str, str] = True,
-    sortable: bool = True,
+    use_sortable: bool = True,
     post_process: Callable[[str], str] | None = None,
     **kwargs: Any,
 ) -> str:
@@ -401,7 +401,7 @@ def df_to_html(
             to the pandas Styler. Defaults to True. If dict, keys are CSS selectors and
             values CSS strings. Example:
             dict("td, th": "border: none; padding: 4px 6px;")
-        sortable (bool): Whether to enable sorting the table by clicking on column
+        use_sortable (bool): Whether to enable sorting the table by clicking on column
             headers. Defaults to True. Requires npm install svelte-zoo.
         post_process (Callable[[str], str]): Function to post-process the HTML string
             before writing it to file. Defaults to None.
@@ -410,13 +410,6 @@ def df_to_html(
     Returns:
         str: pandas Styler as HTML.
     """
-    sortable_script = """<script lang="ts">
-      import { sortable } from 'svelte-zoo/actions'
-    </script>
-
-    <table use:sortable {...$$props}
-    """
-
     styler.set_uuid("")
     if styler_css:
         styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
@@ -426,8 +419,19 @@ def df_to_html(
     html = styler.to_html(**kwargs)
     if pre_table:
         html = html.replace("<table", pre_table)
-    if sortable:
-        html = html.replace("<table", sortable_script)
+    if use_sortable:
+        if "</script>" in html:
+            html = html.replace(
+                "</script>",
+                "\n\timport { sortable } from 'svelte-zoo/actions'\n</script>",
+            )
+            html = html.replace("<table", "<table use:sortable {...$$props}")
+        else:
+            sortable_svelte_action = (
+                "<script>\n\timport { sortable } from 'svelte-zoo/actions'\n"
+                "</script>\n<table use:sortable {...$$props}"
+            )
+            html = html.replace("<table", sortable_svelte_action)
     if inline_props:
         if "<table " not in html:
             raise ValueError(
