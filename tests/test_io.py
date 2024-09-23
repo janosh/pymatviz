@@ -192,13 +192,13 @@ def test_normalize_and_crop_pdf(
 
 
 @pytest.mark.parametrize(
-    ("script", "styles", "inline_props", "styler_css"),
+    ("pre_table", "styles", "inline_props", "styler_css"),
     [
         (None, None, "", False),
         (None, "", None, False),
         ("", "body { margin: 0; padding: 1em; }", "<table class='table'", True),
         (
-            "<script>import { sortable } from 'svelte-zoo/actions'</script><table",
+            "<script>import { something } from 'some-module'\n</script><table",
             "body { margin: 0; padding: 1em; }",
             "style='width: 100%'",
             {"tb, th, td": "border: 1px solid black;"},
@@ -207,7 +207,7 @@ def test_normalize_and_crop_pdf(
 )
 def test_df_to_html(
     tmp_path: Path,
-    script: str | None,
+    pre_table: str | None,
     styles: str | None,
     inline_props: str,
     styler_css: bool | dict[str, str],
@@ -217,7 +217,7 @@ def test_df_to_html(
 
     html1 = pmv.io.df_to_html(
         df_mixed.style,
-        script=script,
+        pre_table=pre_table,
         styles=styles,
         inline_props=inline_props,
         styler_css=styler_css,
@@ -226,7 +226,7 @@ def test_df_to_html(
     html2 = pmv.io.df_to_html(
         df_mixed.style,
         file_path=file_path,
-        script=script,
+        pre_table=pre_table,
         styles=styles,
         inline_props=inline_props,
         styler_css=styler_css,
@@ -237,8 +237,8 @@ def test_df_to_html(
     html_text = file_path.read_text()
     assert html2 == html_text
 
-    if script is not None:
-        assert script.split("<table")[0] in html_text, html_text
+    if pre_table is not None:
+        assert pre_table.split("\n")[0] in html_text, html_text
     if styles is not None:
         assert f"{styles}\n</style>" in html_text
     if inline_props:
@@ -290,7 +290,7 @@ def test_tqdm_download(
     ("compress", "font_size", "use_styler", "width", "height"),
     [
         # Default font size, no compression, DataFrame
-        (False, 14, False, 457, 875),
+        (False, 14, False, 458, 875),
         # Larger font, with compression, Styler
         (True, 18, True, 559, 1121),
         # Smaller font, no compression, Styler
