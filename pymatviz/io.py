@@ -395,7 +395,7 @@ def df_to_html(
             "class='table' style='width: 100%'". Defaults to "".
         pre_table (str): HTML string to insert above the table. Will replace the
             opening '<table' tag to allow passing props to it. Example:
-            "<div class='table-container'" (note no closing >). Defaults to "".
+            `<div class='table-container'` (note no closing `>`). Defaults to "".
         styles (str): CSS rules to insert at the bottom of the style tag. Defaults to
             TABLE_SCROLL_CSS.
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
