@@ -205,7 +205,7 @@ def test_normalize_and_crop_pdf(
         ),
     ],
 )
-def test_df_to_html_table(
+def test_df_to_html(
     tmp_path: Path,
     script: str | None,
     styles: str | None,
@@ -215,7 +215,7 @@ def test_df_to_html_table(
 ) -> None:
     file_path = tmp_path / "test_df.svelte"
 
-    html1 = pmv.io.df_to_html_table(
+    html1 = pmv.io.df_to_html(
         df_mixed.style,
         script=script,
         styles=styles,
@@ -223,7 +223,7 @@ def test_df_to_html_table(
         styler_css=styler_css,
     )
     assert not file_path.is_file()
-    html2 = pmv.io.df_to_html_table(
+    html2 = pmv.io.df_to_html(
         df_mixed.style,
         file_path=file_path,
         script=script,

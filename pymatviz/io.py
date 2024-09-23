@@ -367,7 +367,13 @@ table::-webkit-scrollbar {
 }"""
 
 
-def df_to_html_table(
+def df_to_html_table(*args: Any, **kwargs: Any) -> str:  # noqa: D103
+    msg = "df_to_html_table is deprecated. Use df_to_html instead."
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
+    return df_to_html(*args, **kwargs)
+
+
+def df_to_html(
     styler: Styler,
     *,
     file_path: str | Path | None = None,
