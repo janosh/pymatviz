@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -27,7 +27,7 @@ from pymatviz.utils import df_ptable, pick_bw_for_contrast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any
+    from typing import Any, Literal
 
     import pandas as pd
     from matplotlib.typing import ColorType

@@ -11,13 +11,20 @@ Example usage:
     fig.show()
 """
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pymatgen.core import Structure
 from scipy.signal import find_peaks
+
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    import plotly.graph_objects as go
+    from pymatgen.core import Structure
 
 
 def calculate_rdf(

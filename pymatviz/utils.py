@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
@@ -23,7 +23,7 @@ from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormat
 
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
     from typing import Any, ParamSpec, TypeAlias, TypeVar
 
     from matplotlib.ticker import Formatter

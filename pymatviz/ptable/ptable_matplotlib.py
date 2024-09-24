@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import math
 import warnings
-from math import isclose
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
@@ -374,7 +374,7 @@ def ptable_heatmap_ratio(
     # Generate overwrite tile entries for near zero values
     overwrite_tiles = {}
     for elem, value in values.items():
-        if isclose(a=value, b=0, abs_tol=zero_tol):
+        if math.isclose(a=value, b=0, abs_tol=zero_tol):
             overwrite_tiles[elem] = OverwriteTileValueColor(
                 zero_symbol, pick_bw_for_contrast(zero_color), zero_color
             )
