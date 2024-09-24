@@ -24,19 +24,35 @@ def test_element_pair_rdfs_basic(structures: list[Structure], n_cols: int) -> No
 
 
 def test_element_pair_rdfs_empty_structure() -> None:
-    empty_structure = Structure(Lattice.cubic(1), [], [])
-    with pytest.raises(ValueError, match="input structure contains no sites"):
-        element_pair_rdfs(empty_structure)
+    empty_struct = Structure(Lattice.cubic(1), [], [])
+    for struct in (empty_struct, {"blank": empty_struct}):
+        key = " blank" if isinstance(struct, dict) else ""
+        with pytest.raises(ValueError, match=f"input structure{key} contains no sites"):
+            element_pair_rdfs(struct)
 
 
-def test_element_pair_rdfs_invalid_element_pairs(structures: list[Structure]) -> None:
+def test_element_pair_rdfs_invalid_elements(structures: list[Structure]) -> None:
     with pytest.raises(
         ValueError,
-        match="Elements .* in element_pairs are not present in the structure",
+        match="Elements .* in element_pairs not present in any structure",
     ):
         element_pair_rdfs(
             structures[0], element_pairs=[("Zn", "Zn")]
         )  # Assuming Zn is not in the structure
+
+
+def test_element_pair_rdfs_invalid_structure() -> None:
+    with pytest.raises(TypeError, match="Invalid input format for structures"):
+        element_pair_rdfs("not a structure")
+
+
+def test_element_pair_rdfs_conflicting_bins_and_bin_size(
+    structures: list[Structure],
+) -> None:
+    with pytest.raises(
+        ValueError, match="Cannot specify both n_bins=.* and bin_size=.*"
+    ):
+        element_pair_rdfs(structures, n_bins=100, bin_size=0.1)
 
 
 @pytest.mark.parametrize(
@@ -76,13 +92,6 @@ def test_element_pair_rdfs_cutoff_and_bin_size(
                 ), f"Expected around {expected_bins} bins, got {len(trace.x)}"
 
 
-def test_element_pair_rdfs_element_pairs(structures: list[Structure]) -> None:
-    element_pairs = [("Si", "Si")]
-    fig = element_pair_rdfs(structures[0], element_pairs=element_pairs)
-    assert len(fig.data) == len(element_pairs)
-    assert fig.data[0].name == "Si-Si"
-
-
 def test_element_pair_rdfs_subplot_layout(structures: list[Structure]) -> None:
     for structure in structures:
         fig = element_pair_rdfs(structure)
@@ -95,9 +104,9 @@ def test_element_pair_rdfs_subplot_layout(structures: list[Structure]) -> None:
 def test_calculate_rdf(structures: list[Structure]) -> None:
     for structure in structures:
         elements = list({site.specie.symbol for site in structure})
-        for e1 in elements:
-            for e2 in elements:
-                radii, rdf = calculate_rdf(structure, e1, e2, 10.0, 100)
+        for el1 in elements:
+            for el2 in elements:
+                radii, rdf = calculate_rdf(structure, el1, el2, 10.0, 100)
                 assert isinstance(radii, np.ndarray)
                 assert isinstance(rdf, np.ndarray)
                 assert len(radii) == len(rdf)
@@ -152,15 +161,17 @@ def test_element_pair_rdfs_custom_element_pairs(
         element_pairs
         if element_pairs
         else [
-            (e1, e2)
-            for e1 in structure.symbol_set
-            for e2 in structure.symbol_set
-            if e1 <= e2
+            (el1, el2)
+            for el1 in structure.symbol_set
+            for el2 in structure.symbol_set
+            if el1 <= el2
         ]
     )
     assert len(fig.data) == len(expected_pairs)
-    for trace, pair in zip(fig.data, expected_pairs, strict=True):
-        assert trace.name == f"{pair[0]}-{pair[1]}"
+    # test subplot titles (in fig.layout.annotations) match element pairs
+    assert [anno.text for anno in fig.layout.annotations] == [
+        f"{pair[0]}-{pair[1]}" for pair in expected_pairs
+    ]
 
 
 def test_element_pair_rdfs_consistency(structures: list[Structure]) -> None:
@@ -170,3 +181,62 @@ def test_element_pair_rdfs_consistency(structures: list[Structure]) -> None:
         for trace1, trace2 in zip(fig1.data, fig2.data, strict=True):
             assert np.allclose(trace1.x, trace2.x)
             assert np.allclose(trace1.y, trace2.y)
+
+
+@pytest.mark.parametrize("structs_type", ["dict", "list"])
+def test_element_pair_rdfs_list_dict_of_structures(
+    structures: list[Structure], structs_type: str
+) -> None:
+    structs = (
+        {f"{struct} {idx}": struct for idx, struct in enumerate(structures)}
+        if structs_type == "dict"
+        else structures
+    )
+    fig = element_pair_rdfs(structs)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 12
+    labels = {trace.name for trace in fig.data}
+    assert len(labels) == len(structs)
+    assert labels == (
+        set(structs)
+        if isinstance(structs, dict)
+        else {structs.formula for structs in structs}
+    )
+
+
+def test_element_pair_rdfs_custom_colors_and_styles(
+    structures: list[Structure],
+) -> None:
+    colors = ["red", "blue"]
+    line_styles = ["solid", "dash"]
+    fig = element_pair_rdfs(structures, colors=colors, line_styles=line_styles)
+    assert fig.data[0].line.color == colors[0]
+    assert fig.data[1].line.color == colors[1]
+    assert fig.data[0].line.dash == line_styles[0]
+    assert fig.data[1].line.dash == line_styles[1]
+
+
+def test_element_pair_rdfs_reference_line(structures: list[Structure]) -> None:
+    ref_line_kwargs = {"line_color": "red", "line_width": 2}
+    fig = element_pair_rdfs(structures, reference_line=ref_line_kwargs)
+    n_subplots = len(fig._grid_ref) * len(fig._grid_ref[0])
+    assert (
+        sum(
+            shape.type == "line" and shape.line.color == "red"
+            for shape in fig.layout.shapes
+        )
+        == n_subplots
+    )
+
+
+def test_element_pair_rdfs_cutoff_and_bins(structures: list[Structure]) -> None:
+    cutoff, n_bins = 8.5, 88
+    fig = element_pair_rdfs(structures, cutoff=cutoff, n_bins=n_bins)
+    assert max(fig.data[0].x) == pytest.approx(cutoff)
+    assert len(fig.data[0].x) == n_bins
+
+
+def test_element_pair_rdfs_bin_size(structures: list[Structure]) -> None:
+    fig = element_pair_rdfs(structures, cutoff=10, bin_size=0.1)
+    assert max(fig.data[0].x) == pytest.approx(10)
+    assert len(fig.data[0].x) == 100  # 10 / 0.1 = 100 bins
