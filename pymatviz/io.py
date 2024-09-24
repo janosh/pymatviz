@@ -111,8 +111,8 @@ def save_fig(
             saving. Will be reset to the original after. Defaults to "pymatviz_white" if
             path ends with .pdf or .pdfa, else None. Set to None to disable. Only used
             if fig is a plotly figure.
-        transparent_bg (bool): Whether to save matplotlib figures with background
-            transparent. To show colors as background, this has to be turned off.
+        transparent_bg (bool): Whether to save matplotlib figures with transparent
+            background. Use False to show background colors.
         **kwargs: Keyword arguments passed to fig.write_html().
     """
     is_pdf = path.lower().endswith((".pdf", ".pdfa"))
