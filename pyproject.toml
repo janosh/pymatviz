@@ -107,7 +107,6 @@ ignore = [
     "TRY003",  # raise-vanilla-args
 ]
 pydocstyle.convention = "google"
-isort.required-imports = ["from __future__ import annotations"]
 isort.lines-after-imports = 2
 isort.split-on-trailing-comma = false
 
