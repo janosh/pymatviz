@@ -69,7 +69,9 @@ fig = pmv.ptable_hists(
     cbar_axis="x",
     color_elem_strategy="background",
     add_elem_type_legend=True,
-    # x_range=(0, None),
+    symbol_pos=(0.25, 0.8),
+    anno_text={elem.symbol: "H" for elem in Element},
+    anno_pos=(0.75, 0.8),
 )
 pmv.io.save_and_compress_svg(fig, "ptable-hists")
 

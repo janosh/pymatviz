@@ -508,7 +508,7 @@ class PTableProjector:
 
     def add_annotation(
         self,
-        text: dict[str, str | None],
+        text: dict[str, str],
         *,
         pos: tuple[float, float] = (0.75, 0.75),
         text_color: ColorType
@@ -527,9 +527,6 @@ class PTableProjector:
                     - dict[str, ColorType]: An element to color mapping.
                     - "element-types": Use color from self.elem_type_colors.
             kwargs (dict): Additional keyword arguments to pass to `ax.text`.
-
-        Todo:
-            - Handle elements with data but without annotation text.
         """
         # Update annotate kwargs
         kwargs = kwargs or {}
@@ -549,10 +546,6 @@ class PTableProjector:
             row, column = df_ptable.loc[symbol, ["row", "column"]]
             ax: plt.Axes = self.axes[row - 1][column - 1]
 
-            # TODO: how to format the text content
-            # TODO: handle element without text
-            # content = text(element) if callable(text) else text.format(elem=element)
-
             # Generate symbol text color
             if text_color == ElemColorMode.element_types:
                 symbol_color = self.get_elem_type_color(symbol, "black")
@@ -563,7 +556,7 @@ class PTableProjector:
 
             ax.text(
                 *pos,
-                text[element],
+                text.get(element, ""),
                 color=symbol_color,
                 ha="center",
                 va="center",
