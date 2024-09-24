@@ -12,6 +12,8 @@ https://ml.materialsproject.org/projects/matbench_jdft2d
 """
 
 # %%
+from __future__ import annotations
+
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 

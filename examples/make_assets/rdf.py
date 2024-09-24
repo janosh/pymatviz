@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv

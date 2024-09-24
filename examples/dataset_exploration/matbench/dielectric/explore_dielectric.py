@@ -1,4 +1,6 @@
 # %%
+from __future__ import annotations
+
 import plotly.express as px
 from aviary.wren.utils import (
     count_wyckoff_positions,

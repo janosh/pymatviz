@@ -1,4 +1,6 @@
 # %%
+from __future__ import annotations
+
 from glob import glob
 
 from pymatgen.analysis.diffraction.xrd import XRDCalculator

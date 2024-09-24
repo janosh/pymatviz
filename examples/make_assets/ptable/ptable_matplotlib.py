@@ -1,4 +1,6 @@
 # %%
+from __future__ import annotations
+
 import numpy as np
 from matminer.datasets import load_dataset
 from pymatgen.core.periodic_table import Element
