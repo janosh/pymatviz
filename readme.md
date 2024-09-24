@@ -172,12 +172,12 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 See [`pymatviz/rdf.py`](pymatviz/rdf.py).
 
-| [`rdf_plot(rdf)`](pymatviz/rdf.py) | [`rdf_plot(rdf, rdf2)`](pymatviz/rdf.py) |
-| :--------------------------------: | :--------------------------------------: |
-|    ![element-pair-rdfs-Si16O32]    |      ![element-pair-rdfs-Na8Nb8O24]      |
+| [`rdf_plot(rdf)`](pymatviz/rdf.py) | [`rdf_plot(rdf, rdf2)`](pymatviz/rdf.py)  |
+| :--------------------------------: | :---------------------------------------: |
+|   ![element-pair-rdfs-Na8Nb8O24]   | ![element-pair-rdfs-crystal-vs-amorphous] |
 
-[element-pair-rdfs-Si16O32]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-Si16O32.svg
 [element-pair-rdfs-Na8Nb8O24]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-Na8Nb8O24.svg
+[element-pair-rdfs-crystal-vs-amorphous]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-crystal-vs-amorphous.svg
 
 ## Uncertainty
 
