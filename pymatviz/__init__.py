@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
-from pymatgen.symmetry.groups import SYMM_DATA
 
 from pymatviz import (
     bar,
@@ -46,7 +45,7 @@ from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
-from pymatviz.io import df_to_html_table, df_to_pdf, df_to_svg, save_fig
+from pymatviz.io import df_to_html, df_to_pdf, df_to_svg, save_fig
 from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import count_elements
 from pymatviz.ptable import (
@@ -103,11 +102,6 @@ IS_IPYTHON = hasattr(builtins, "__IPYTHON__")
 crystal_sys_order = (
     "cubic hexagonal trigonal tetragonal orthorhombic monoclinic triclinic".split()
 )
-# map of space group numbers to symbols
-spg_num_to_symbol = {
-    v["int_number"]: k for k, v in SYMM_DATA["space_group_encoding"].items()
-}
-spg_num_to_symbol = dict(sorted(spg_num_to_symbol.items()))  # sort
 
 px.defaults.labels |= {
     "gap expt": "Experimental band gap (eV)",

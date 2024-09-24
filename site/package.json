@@ -33,7 +33,7 @@
     "svelte-multiselect": "^10.3.0",
     "svelte-preprocess": "^5.1.4",
     "svelte-toc": "^0.5.8",
-    "svelte-zoo": "^0.4.10",
+    "svelte-zoo": "0.4.11",
     "svelte2tsx": "^0.7.8",
     "tslib": "^2.6.2",
     "typescript": "^5.4.5",
