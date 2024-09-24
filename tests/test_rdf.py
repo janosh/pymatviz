@@ -7,13 +7,20 @@ from pymatgen.core import Lattice, Structure
 from pymatviz.rdf import calculate_rdf, element_pair_rdfs
 
 
-def test_element_pair_rdfs_basic(structures: list[Structure]) -> None:
+@pytest.mark.parametrize("n_cols", [1, 3])
+def test_element_pair_rdfs_basic(structures: list[Structure], n_cols: int) -> None:
     for structure in structures:
-        fig = element_pair_rdfs(structure)
+        fig = element_pair_rdfs(structure, n_cols=n_cols)
         assert isinstance(fig, go.Figure)
         assert fig.layout.title.text is None
         assert fig.layout.showlegend is None
         assert fig.layout.yaxis.title.text == "g(r)"
+        # check grid ref matches n_cols
+        actual_rows = len(fig._grid_ref)
+        actual_cols = len(fig._grid_ref[0])
+        n_elem_pairs = len(structure.chemical_system_set) ** 2
+        assert actual_cols == min(n_cols, n_elem_pairs)
+        assert actual_rows == (len(fig.data) + n_cols - 1) // n_cols
 
 
 def test_element_pair_rdfs_empty_structure() -> None:
