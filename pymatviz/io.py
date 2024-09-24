@@ -73,12 +73,14 @@ class TqdmDownload(tqdm):
 def save_fig(
     fig: go.Figure | plt.Figure | plt.Axes,
     path: str,
+    *,
     plotly_config: dict[str, Any] | None = None,
     env_disable: Sequence[str] = ("CI",),
     pdf_sleep: float = 0.6,
     style: str = "",
     prec: int | None = None,  # Added round keyword argument
     template: str | None = None,
+    transparent_bg: bool = True,
     **kwargs: Any,
 ) -> None:
     """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
@@ -109,6 +111,8 @@ def save_fig(
             saving. Will be reset to the original after. Defaults to "pymatviz_white" if
             path ends with .pdf or .pdfa, else None. Set to None to disable. Only used
             if fig is a plotly figure.
+        transparent_bg (bool): Whether to save matplotlib figures with background
+            transparent. To show colors as background, this has to be turned off.
         **kwargs: Keyword arguments passed to fig.write_html().
     """
     is_pdf = path.lower().endswith((".pdf", ".pdfa"))
@@ -135,7 +139,7 @@ def save_fig(
     if isinstance(fig, plt.Figure | plt.Axes):
         if hasattr(fig, "figure"):
             fig = fig.figure  # unwrap Axes
-        fig.savefig(path, **kwargs, transparent=True)
+        fig.savefig(path, **kwargs, transparent=transparent_bg)
         return
     if not isinstance(fig, go.Figure):
         raise TypeError(
