@@ -1,6 +1,4 @@
 # %%
-from __future__ import annotations
-
 from matminer.datasets import get_available_datasets
 
 

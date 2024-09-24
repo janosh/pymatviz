@@ -1,6 +1,4 @@
 # %%
-from __future__ import annotations
-
 import numpy as np
 from matminer.datasets import load_dataset
 from tqdm import tqdm

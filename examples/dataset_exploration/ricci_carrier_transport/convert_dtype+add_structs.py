@@ -2,8 +2,6 @@
 """Unprocessed data in data/carrier_transport.json.gz obtained from https://git.io/JOMwY."""
 
 # %%
-from __future__ import annotations
-
 import pandas as pd
 from matminer.datasets import load_dataset
 from pymatgen.ext.matproj import MPRester

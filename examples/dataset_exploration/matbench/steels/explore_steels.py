@@ -8,8 +8,6 @@ https://ml.materialsproject.org/projects/matbench_steels
 """
 
 # %%
-from __future__ import annotations
-
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv

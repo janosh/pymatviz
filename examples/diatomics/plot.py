@@ -5,8 +5,6 @@ for MACE-MP paper https://arxiv.org/abs/2401.00096
 """
 
 # %%
-from __future__ import annotations
-
 import json
 import lzma
 import os
