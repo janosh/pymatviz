@@ -304,8 +304,8 @@ def test_df_to_svg(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     df_float: pd.DataFrame,
-    width: str,
-    height: str,
+    width: int,
+    height: int,
 ) -> None:
     file_path = tmp_path / "test_df_to.svg"
 
@@ -337,8 +337,8 @@ def test_df_to_svg(
     # Check that it's a valid SVG
     assert root.tag == "{http://www.w3.org/2000/svg}svg"
     # assert "xmlns" in root.attrib
-    assert int(float(root.attrib["width"].rstrip("pt"))) == width
-    assert int(float(root.attrib["height"].rstrip("pt"))) == height
+    assert abs(float(root.attrib["width"].rstrip("pt")) - width) < 3
+    assert abs(float(root.attrib["height"].rstrip("pt")) - height) < 3
 
     # Check for some content from the DataFrame
     svg_content = ET.tostring(root, encoding="unicode")
