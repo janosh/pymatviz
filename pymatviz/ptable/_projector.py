@@ -356,7 +356,7 @@ class PTableProjector:
                     - "element-types": Use color from self.elem_type_colors.
             kwargs (dict): Additional keyword arguments to pass to `ax.text`.
         """
-        # Update symbol kwargs
+        # Update element symbol kwargs
         kwargs = kwargs or {}
         kwargs.setdefault("fontsize", 12)
 
@@ -510,23 +510,66 @@ class PTableProjector:
         self,
         text: dict[str, str | None],
         *,
-        pos: tuple[float, float] = (0.5, 0.5),
+        pos: tuple[float, float] = (0.75, 0.75),
+        text_color: ColorType
+        | dict[str, ColorType]
+        | Literal[ElemColorMode.element_types] = "black",
         kwargs: dict[str, Any] | None = None,
     ) -> None:
-        """Add optional annotation to each element tile.
+        """Add annotation for each element tile.
 
         Args:
             text (dict[str, str]): Element names to text mapping.
             pos (tuple): The position of the text relative to the axes.
-            kwargs (dict): Additional keyword arguments to pass to `ax.annotate`.
+            text_color (ColorType | dict[str, ColorType]): The color of the annotation.
+                Defaults to "black". Could take the following type:
+                    - ColorType: The same color for all elements.
+                    - dict[str, ColorType]: An element to color mapping.
+                    - "element-types": Use color from self.elem_type_colors.
+            kwargs (dict): Additional keyword arguments to pass to `ax.text`.
+
+        Todo:
+            - Handle elements with data but without annotation text.
         """
         # Update annotate kwargs
         kwargs = kwargs or {}
         kwargs.setdefault("fontsize", 12)
 
-        # Make sure unused args wouldn't be removed by linter
-        assert text
-        assert pos
+        # Add annotation for each element tile
+        for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
+            # Get axis index by element symbol
+            symbol: str = element.symbol
+            if symbol not in self.data.index and self.on_empty == "hide":
+                continue
+
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            # TODO: how to format the text content
+            # TODO: handle element without text
+            # content = text(element) if callable(text) else text.format(elem=element)
+
+            # Generate symbol text color
+            if text_color == ElemColorMode.element_types:
+                symbol_color = self.get_elem_type_color(symbol, "black")
+            elif isinstance(text_color, dict):
+                symbol_color = text_color.get(symbol, "black")
+            else:
+                symbol_color = text_color
+
+            ax.text(
+                *pos,
+                text[element],
+                color=symbol_color,
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                **kwargs,
+            )
 
 
 class ChildPlotters:
