@@ -556,7 +556,7 @@ class PTableProjector:
 
             ax.text(
                 *pos,
-                text.get(element, ""),
+                text.get(symbol, ""),
                 color=symbol_color,
                 ha="center",
                 va="center",
