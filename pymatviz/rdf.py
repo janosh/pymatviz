@@ -1,5 +1,4 @@
-"""This module calculates and plots pairwise radial distribution functions (RDFs) for
-pymatgen structures using plotly.
+"""Radial distribution functions (RDFs) of pymatgen structures using plotly.
 
 The main function, pairwise_rdfs, generates a plotly figure with facets for each
 pair of elements in the given structure. It supports customization of cutoff distance,

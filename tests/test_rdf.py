@@ -1,6 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 import pytest
+from numpy.testing import assert_allclose
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.rdf import calculate_rdf, element_pair_rdfs
@@ -94,6 +95,42 @@ def test_calculate_rdf(structures: list[Structure]) -> None:
                 assert isinstance(rdf, np.ndarray)
                 assert len(radii) == len(rdf)
                 assert np.all(rdf >= 0)
+
+
+def test_calculate_rdf_normalization() -> None:
+    # Create large Silicon structure with random coordinates
+    lattice = Lattice.cubic(30)
+    n_atoms = 100
+    coords = np.random.default_rng(seed=0).uniform(size=(n_atoms, 3))
+    amorphous_si = Structure(lattice, ["Si"] * n_atoms, coords)
+
+    # Calculate RDF with a large cutoff to see behavior at large separations
+    cutoff, n_bins = 12, 500
+    radii, rdf = calculate_rdf(amorphous_si, "Si", "Si", cutoff, n_bins)
+
+    # Check if RDF approaches 1 for large separations
+    # We'll check the average of the last 10% of the RDF
+    last_10_percent = int(0.9 * len(rdf))
+    avg_last_10_percent = float(np.mean(rdf[last_10_percent:]))
+    assert (
+        0.95 <= avg_last_10_percent <= 1.05
+    ), f"RDF does not approach 1 for large separations, {avg_last_10_percent=}"
+
+    # Check if RDF starts from 0 at r=0
+    assert rdf[0] == 0, f"RDF does not start from 0 at r=0. First value: {rdf[0]}"
+
+    # Check there are no negative values in the RDF
+    assert np.all(rdf >= 0), "RDF contains negative values"
+
+    # Check if the radii array is correct
+    assert_allclose(
+        radii,
+        np.linspace(cutoff / n_bins, cutoff, n_bins),
+        err_msg="Radii array is incorrect",
+    )
+
+    # Check if the RDF has the correct number of bins
+    assert len(rdf) == n_bins, f"RDF should have {n_bins=}, got {len(rdf)}"
 
 
 @pytest.mark.parametrize(
