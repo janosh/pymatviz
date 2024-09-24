@@ -2,6 +2,8 @@
 matplotlib and plotly figures.
 """
 
+from __future__ import annotations
+
 from pymatviz.powerups.both import (
     add_best_fit_line,
     add_identity_line,
