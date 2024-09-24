@@ -1,5 +1,4 @@
-"""This module calculates and plots pairwise radial distribution functions (RDFs) for
-pymatgen structures using plotly.
+"""Radial distribution functions (RDFs) of pymatgen structures using plotly.
 
 The main function, pairwise_rdfs, generates a plotly figure with facets for each
 pair of elements in the given structure. It supports customization of cutoff distance,
@@ -87,6 +86,7 @@ def element_pair_rdfs(
     bin_size: float | None = None,
     element_pairs: list[tuple[str, str]] | None = None,
     reference_line: dict[str, Any] | None = None,
+    n_cols: int = 3,
 ) -> go.Figure:
     """Generate a plotly figure of pairwise radial distribution functions (RDFs) for
     all (or a subset of) element pairs in a structure.
@@ -104,6 +104,7 @@ def element_pair_rdfs(
             If None, all pairs are plotted.
         reference_line (dict, optional): Keywords for reference line at g(r)=1 drawn
             with Figure.add_hline(). If None (default), no reference line is drawn.
+        n_cols (int, optional): Number of columns for subplot layout. Defaults to 3.
 
     Returns:
         go.Figure: A plotly figure with facets for each pairwise RDF.
@@ -140,21 +141,21 @@ def element_pair_rdfs(
 
     # Determine subplot layout
     n_pairs = len(element_pairs)
-    n_cols = min(3, n_pairs)
-    n_rows = (n_pairs + n_cols - 1) // n_cols
+    actual_cols = min(n_cols, n_pairs)
+    n_rows = (n_pairs + actual_cols - 1) // actual_cols
 
     # Create the plotly figure with facets
     fig = make_subplots(
         rows=n_rows,
-        cols=n_cols,
+        cols=actual_cols,
         subplot_titles=[f"{e1}-{e2}" for e1, e2 in element_pairs],
         vertical_spacing=0.25 / n_rows,
-        horizontal_spacing=0.15 / n_cols,
+        horizontal_spacing=0.15 / actual_cols,
     )
 
     # Add RDF traces to the figure
     for idx, (pair, (radii, rdf)) in enumerate(elem_pair_rdfs.items()):
-        row, col = divmod(idx, n_cols)
+        row, col = divmod(idx, actual_cols)
         row += 1
         col += 1
 
@@ -171,7 +172,7 @@ def element_pair_rdfs(
         )
 
         # if one of the last n_col subplots, add x-axis label
-        if idx >= n_pairs - n_cols:
+        if idx >= n_pairs - actual_cols:
             fig.update_xaxes(title_text="r (Å)", row=row, col=col)
 
         # Add reference line if specified
@@ -180,7 +181,7 @@ def element_pair_rdfs(
             fig.add_hline(y=1, row=row, col=col, **defaults | reference_line)
 
     # set subplot height/width and x/y axis labels
-    fig.update_layout(height=200 * n_rows, width=350 * n_cols)
+    fig.update_layout(height=200 * n_rows, width=350 * actual_cols)
     fig.update_yaxes(title=dict(text="g(r)", standoff=0.1), col=1)
 
     return fig

@@ -367,15 +367,22 @@ table::-webkit-scrollbar {
 }"""
 
 
-def df_to_html_table(
+def df_to_html_table(*args: Any, **kwargs: Any) -> str:  # noqa: D103
+    msg = "df_to_html_table is deprecated. Use df_to_html instead."
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
+    return df_to_html(*args, **kwargs)
+
+
+def df_to_html(
     styler: Styler,
     *,
     file_path: str | Path | None = None,
-    inline_props: str | None = "",
-    script: str | None = "",
+    inline_props: str | None = "{{...$$props}} ",
+    pre_table: str | None = "",
     styles: str | None = ALLOW_TABLE_SCROLL + HIDE_SCROLL_BAR,
     styler_css: bool | dict[str, str] = True,
-    sortable: bool = True,
+    use_sortable: bool = True,
+    use_tooltips: bool = True,
     post_process: Callable[[str], str] | None = None,
     **kwargs: Any,
 ) -> str:
@@ -386,18 +393,18 @@ def df_to_html_table(
         file_path (str): Path to the file to write the svelte table to.
         inline_props (str): Inline props to pass to the table element. Example:
             "class='table' style='width: 100%'". Defaults to "".
-        script (str): JavaScript string to insert above the table. Will replace the
-            opening HTML opening table tag to allow passing props to it. The default
-            script uses ...props to enable Svelte props forwarding to the table element.
-            See source code to inspect default script.
+        pre_table (str): HTML string to insert above the table. Defaults to "". Will
+            replace the opening table tag to allow passing props to it.
         styles (str): CSS rules to insert at the bottom of the style tag. Defaults to
             TABLE_SCROLL_CSS.
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS
             to the pandas Styler. Defaults to True. If dict, keys are CSS selectors and
             values CSS strings. Example:
             dict("td, th": "border: none; padding: 4px 6px;")
-        sortable (bool): Whether to enable sorting the table by clicking on column
+        use_sortable (bool): Whether to enable sorting the table by clicking on column
             headers. Defaults to True. Requires npm install svelte-zoo.
+        use_tooltips (bool): Whether to enable tooltips on table headers. Defaults to
+            True. Requires npm install svelte-zoo.
         post_process (Callable[[str], str]): Function to post-process the HTML string
             before writing it to file. Defaults to None.
         **kwargs: Keyword arguments passed to Styler.to_html().
@@ -405,13 +412,6 @@ def df_to_html_table(
     Returns:
         str: pandas Styler as HTML.
     """
-    sortable_script = """<script lang="ts">
-      import { sortable } from 'svelte-zoo/actions'
-    </script>
-
-    <table use:sortable {...$$props}
-    """
-
     styler.set_uuid("")
     if styler_css:
         styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
@@ -419,10 +419,28 @@ def df_to_html_table(
             [dict(selector=sel, props=val) for sel, val in styler_css.items()]
         )
     html = styler.to_html(**kwargs)
-    if script:
-        html = html.replace("<table", script)
-    if sortable:
-        html = html.replace("<table", sortable_script)
+    if pre_table:
+        html = html.replace("<table", pre_table)
+
+    for cond, action_name in (
+        (use_tooltips, "titles_as_tooltips"),
+        (use_sortable, "sortable"),
+    ):
+        if not cond:
+            continue
+        if "</script>" in html:
+            html = html.replace(
+                "</script>",
+                f"\n\timport {{ {action_name} }} from 'svelte-zoo/actions'\n</script>",
+            )
+            html = html.replace("<table", f"<table use:{action_name} ")
+        else:
+            svelte_action = (
+                f"<script>\n\timport {{ {action_name} }} from 'svelte-zoo/actions'\n"
+                f"</script>\n<table use:{action_name} "
+            )
+            html = html.replace("<table", svelte_action)
+
     if inline_props:
         if "<table " not in html:
             raise ValueError(
