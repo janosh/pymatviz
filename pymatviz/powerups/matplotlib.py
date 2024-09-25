@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +10,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
 
     from matplotlib.gridspec import GridSpec
     from matplotlib.text import Annotation
