@@ -202,6 +202,8 @@ def save_fig(
 def save_and_compress_svg(
     fig: go.Figure | plt.Figure | plt.Axes,
     filename: str,
+    *,
+    transparent_bg: bool = True,
 ) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder.
     Compresses SVG file with svgo CLI if available in PATH.
@@ -209,6 +211,9 @@ def save_and_compress_svg(
     Args:
         fig (Figure): Plotly or matplotlib Figure/Axes instance.
         filename (str): Name of SVG file (w/o extension).
+        transparent_bg (bool): Whether to save matplotlib figures
+            with transparent background. Use False to show
+            background colors.
 
     Raises:
         ValueError: If fig is None and plt.gcf() is empty.
@@ -223,7 +228,7 @@ def save_and_compress_svg(
         filename = filename.rstrip(".svg")
 
     filepath = f"{ROOT}/assets/{filename}.svg"
-    pmv.save_fig(fig, filepath)
+    pmv.save_fig(fig, filepath, transparent_bg=transparent_bg)
     plt.close()
 
     # Compress SVG if svgo is available

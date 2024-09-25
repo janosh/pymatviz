@@ -73,7 +73,7 @@ fig = pmv.ptable_hists(
     anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
     anno_pos=(0.75, 0.8),
 )
-pmv.io.save_and_compress_svg(fig, "ptable-hists")
+pmv.io.save_and_compress_svg(fig, "ptable-hists", transparent_bg=False)
 
 
 # %% Scatter plots laid out as a periodic table
