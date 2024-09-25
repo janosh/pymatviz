@@ -57,6 +57,10 @@ def ptable_heatmap(
     # Symbol
     symbol_pos: tuple[float, float] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
+    # Annotate
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_kwargs: dict[str, Any] | None = None,
     # Value
     value_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     value_pos: tuple[float, float] | None = None,
@@ -70,7 +74,7 @@ def ptable_heatmap(
     cbar_title: str = "Element Count",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
-    # Migration
+    # Migration (would be removed in the future)
     return_type: Literal["figure", "axes"] = "axes",
     # Deprecated args, don't use
     colorscale: str | None = None,
@@ -309,44 +313,56 @@ def ptable_heatmap(
 
 
 def ptable_heatmap_ratio(
+    # Ratio heatmap specific
     values_num: ElemValues,
     values_denom: ElemValues,
     *,
+    # Data preprocessing
     count_mode: ElemCountMode = ElemCountMode.composition,
     normalize: bool = False,
+    # Infinity and zero handling
     infty_color: ColorType = "lightskyblue",
     zero_color: ColorType = "lightgrey",
     zero_tol: float = 1e-6,
     zero_symbol: str = "ZERO",
-    cbar_title: str = "Element Ratio",
+    # Colors and legends for special cases
     not_in_numerator: tuple[str, str] | None = ("lightgray", "gray: not in 1st list"),
     not_in_denominator: tuple[str, str] | None = (
         "lightskyblue",
         "blue: not in 2nd list",
     ),
     not_in_either: tuple[str, str] | None = ("white", "white: not in either"),
+    # Colorbar
+    cbar_title: str = "Element Ratio",
+    # Others
     **kwargs: Any,
 ) -> plt.figure:
-    """Display the ratio of two maps from element symbols to heat values or of two sets
-    of compositions.
+    """Display the ratio of two maps from element symbols to
+        heat values or of two sets of compositions.
 
     Args:
+        --- Ratio heatmap specific ---
         values_num (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
             element symbols to heatmap values or iterable of composition strings/objects
             in the numerator.
         values_denom (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
             element symbols to heatmap values or iterable of composition strings/objects
             in the denominator.
+
+        --- Data preprocessing ---
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
+            Reduce or normalize compositions before counting. See count_elements() for
+            details. Only used when values is list of composition strings/objects.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
+
+        --- Infinity and zero handling ---
         infty_color (ColorType): Color for infinity.
         zero_color (ColorType): Color for (near) zero element tiles.
         zero_tol (float): Absolute tolerance to consider a value zero.
         zero_symbol (str): Value to display for (near) zero element tiles.
-        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See count_elements() for
-            details. Only used when values is list of composition strings/objects.
-        cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
+
+        --- Colors and legends for special cases ---
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator. Defaults to
             ("#eff", "gray: not in 1st list").
@@ -354,10 +370,15 @@ def ptable_heatmap_ratio(
             ("lightskyblue", "blue: not in 2nd list").
         not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
             ("white", "white: not in either").
+
+        --- Colorbar ---
+        cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
+
+        --- Others ---
         **kwargs: Additional keyword arguments passed to ptable_heatmap().
 
     Returns:
-        plt.Figure: matplotlib Figures object.
+        plt.Figure: matplotlib Figure object.
     """
     # Generate ratio data
     values_num = count_elements(values_num, count_mode)
@@ -422,6 +443,10 @@ def ptable_heatmap_splits(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
     symbol_kwargs: dict[str, Any] | None = None,
+    # Annotate
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_kwargs: dict[str, Any] | None = None,
     # Colorbar
     cbar_title: str = "Values",
     cbar_title_kwargs: dict[str, Any] | None = None,
