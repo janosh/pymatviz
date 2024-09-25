@@ -687,7 +687,7 @@ def ptable_hists(
     if color_elem_strategy in {"both", "background"}:
         projector.set_elem_background_color()
 
-    # Add colorbar
+    # [Optional] Add colorbar
     if colormap is not None:
         projector.add_colorbar(
             title=cbar_title,
@@ -696,7 +696,7 @@ def ptable_hists(
             title_kwargs=cbar_title_kwargs,
         )
 
-    # Add element type legend
+    # [Optional] Add element type legend
     if add_elem_type_legend:
         projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
@@ -725,6 +725,10 @@ def ptable_scatters(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     symbol_kwargs: dict[str, Any] | None = None,
+    # Annotate
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_kwargs: dict[str, Any] | None = None,
     # Element types based colors and legend
     color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
     elem_type_colors: dict[str, str] | None = None,
@@ -778,6 +782,15 @@ def ptable_scatters(
         symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
+
         --- Element types based colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
@@ -809,15 +822,29 @@ def ptable_scatters(
         ax_kwargs=ax_kwargs,
     )
 
+    # Generate text color for both element symbols
+    # and annotation
+    if color_elem_strategy in {"both", "symbol"}:
+        text_color: str = ElemColorMode.element_types
+    else:
+        text_color = "black"
+
     # Add element symbols
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color=ElemColorMode.element_types
-        if color_elem_strategy in {"both", "symbol"}
-        else "black",
+        text_color=text_color,
         kwargs=symbol_kwargs,
     )
+
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text or {},
+            pos=anno_pos,
+            text_color=text_color,
+            kwargs=anno_kwargs,
+        )
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
@@ -832,7 +859,7 @@ def ptable_scatters(
             title_kwargs=cbar_title_kwargs,
         )
 
-    # Add element type legend
+    # [Optional] Add element type legend
     if add_elem_type_legend:
         projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
@@ -855,6 +882,10 @@ def ptable_lines(
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
+    # Annotate
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_kwargs: dict[str, Any] | None = None,
     # Element types based colors and legend
     color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
     elem_type_colors: dict[str, str] | None = None,
@@ -897,6 +928,15 @@ def ptable_lines(
         symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
+
         --- Element types based colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
@@ -925,21 +965,35 @@ def ptable_lines(
         ax_kwargs=ax_kwargs,
     )
 
+    # Generate text color for both element symbols
+    # and annotation
+    if color_elem_strategy in {"both", "symbol"}:
+        text_color: str = ElemColorMode.element_types
+    else:
+        text_color = "black"
+
     # Add element symbols
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color=ElemColorMode.element_types
-        if color_elem_strategy in {"both", "symbol"}
-        else "black",
+        text_color=text_color,
         kwargs=symbol_kwargs,
     )
+
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text or {},
+            pos=anno_pos,
+            text_color=text_color,
+            kwargs=anno_kwargs,
+        )
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
         projector.set_elem_background_color()
 
-    # Add element type legend
+    # [Optional] Add element type legend
     if add_elem_type_legend:
         projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
