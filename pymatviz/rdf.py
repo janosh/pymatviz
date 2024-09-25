@@ -1,5 +1,4 @@
-"""This module calculates and plots pairwise radial distribution functions (RDFs) for
-pymatgen structures using plotly.
+"""Radial distribution functions (RDFs) of pymatgen structures using plotly.
 
 The main function, pairwise_rdfs, generates a plotly figure with facets for each
 pair of elements in the given structure. It supports customization of cutoff distance,
@@ -16,15 +15,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import plotly
 from plotly.subplots import make_subplots
+from pymatgen.core import Structure
 from scipy.signal import find_peaks
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Any
 
     import plotly.graph_objects as go
-    from pymatgen.core import Structure
 
 
 def calculate_rdf(
@@ -88,106 +89,166 @@ def find_last_significant_peak(
 
 
 def element_pair_rdfs(
-    structure: Structure,
+    structures: Structure | Sequence[Structure] | dict[str, Structure],
     cutoff: float = 15,
     n_bins: int = 75,
     bin_size: float | None = None,
     element_pairs: list[tuple[str, str]] | None = None,
     reference_line: dict[str, Any] | None = None,
+    n_cols: int = 3,
+    colors: Sequence[str] | None = None,
+    line_styles: Sequence[str] | None = None,
 ) -> go.Figure:
     """Generate a plotly figure of pairwise radial distribution functions (RDFs) for
-    all (or a subset of) element pairs in a structure.
-
-    The RDF is the probability of finding a neighbor at a distance r from a central
-    atom. Basically a histogram of pair-wise particle distances.
+    all (or a subset of) element pairs in one or multiple structures.
 
     Args:
-        structure (Structure): pymatgen Structure.
+        structures: Can be one of the following:
+            - single pymatgen Structure
+            - list of pymatgen Structures
+            - dictionary mapping labels to Structures
         cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
         n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
         bin_size (float, optional): Size of bins for RDF calculation. If specified, it
             overrides n_bins. Default is None.
         element_pairs (list[tuple[str, str]], optional): Element pairs to plot.
-            If None, all pairs are plotted.
+            If None, all pairs present in any structure are plotted.
         reference_line (dict, optional): Keywords for reference line at g(r)=1 drawn
             with Figure.add_hline(). If None (default), no reference line is drawn.
+        n_cols (int, optional): Number of columns for subplot layout. Defaults to 3.
+        colors (Sequence[str], optional): colors for each structure's RDF line. Defaults
+            to plotly.colors.qualitative.Plotly.
+        line_styles (Sequence[str], optional): line styles for each structure's RDF
+            line. Will be used for all element pairs present in that structure.
+            Defaults to ["solid", "dot", "dash", "longdash", "dashdot", "longdashdot"].
 
     Returns:
-        go.Figure: A plotly figure with facets for each pairwise RDF.
+        go.Figure: A plotly figure with facets for each pairwise RDF, comparing one or
+            multiple structures.
 
     Raises:
-        ValueError: If the structure contains no sites, if invalid element pairs are
-            provided, or if both n_bins and bin_size are specified.
+        ValueError: If no structures are provided, if structures have no sites,
+            if invalid element pairs are provided, or if both n_bins and bin_size are
+            specified.
     """
-    if not structure.sites:
-        raise ValueError("input structure contains no sites")
+    # Normalize input to a dictionary of structures
+    if isinstance(structures, Structure):
+        structures = {"": structures}
+    elif isinstance(structures, list | tuple) and all(
+        isinstance(struct, Structure) for struct in structures
+    ):
+        structures = {struct.formula: struct for struct in structures}
+    elif not isinstance(structures, dict):
+        raise TypeError(f"Invalid input format for {structures=}")
+
+    if not structures:
+        raise ValueError("No structures provided")
+
+    for key, struct in structures.items():
+        if not struct.sites:
+            raise ValueError(
+                f"input structure{f' {key}' if key else ''} contains no sites"
+            )
 
     if n_bins != 75 and bin_size is not None:
         raise ValueError(
             f"Cannot specify both {n_bins=} and {bin_size=}. Pick one or the other."
         )
 
-    uniq_elements = sorted({site.specie.symbol for site in structure})
-    element_pairs = element_pairs or [
-        (e1, e2) for e1 in uniq_elements for e2 in uniq_elements if e1 <= e2
-    ]
+    # Determine all unique elements across all structures
+    all_elements = set.union(
+        *(struct.chemical_system_set for struct in structures.values())
+    )
+
+    # Determine element pairs to plot
+    if element_pairs is None:
+        element_pairs = [
+            (el1, el2) for el1 in all_elements for el2 in all_elements if el1 <= el2
+        ]
+    else:
+        # Check if all elements in element_pairs are present in at least one structure
+        pair_elements = {elem for pair in element_pairs for elem in pair}
+        if extra_elems := pair_elements - set(all_elements):
+            raise ValueError(
+                f"Elements {extra_elems} in element_pairs not present in any structure"
+            )
+
     element_pairs = sorted(element_pairs)
 
-    if extra_elems := {e1 for e1, _e2 in element_pairs} - set(uniq_elements):
-        raise ValueError(
-            f"Elements {extra_elems} in element_pairs are not present in the structure"
-        )
-
-    # Calculate pairwise RDFs
+    # Calculate pairwise RDFs for all structures
     if bin_size is not None:
         n_bins = int(cutoff / bin_size)
-    elem_pair_rdfs = {
-        pair: calculate_rdf(structure, *pair, cutoff, n_bins) for pair in element_pairs
+
+    elem_pair_rdfs: dict[tuple[str, str], list[tuple[np.ndarray, np.ndarray]]] = {
+        pair: [
+            calculate_rdf(struct, *pair, cutoff, n_bins)
+            for struct in structures.values()
+        ]
+        for pair in element_pairs
     }
 
     # Determine subplot layout
     n_pairs = len(element_pairs)
-    n_cols = min(3, n_pairs)
-    n_rows = (n_pairs + n_cols - 1) // n_cols
+    actual_cols = min(n_cols, n_pairs)
+    n_rows = (n_pairs + actual_cols - 1) // actual_cols
 
     # Create the plotly figure with facets
     fig = make_subplots(
         rows=n_rows,
-        cols=n_cols,
-        subplot_titles=[f"{e1}-{e2}" for e1, e2 in element_pairs],
-        vertical_spacing=0.25 / n_rows,
-        horizontal_spacing=0.15 / n_cols,
+        cols=actual_cols,
+        subplot_titles=[f"{el1}-{el2}" for el1, el2 in element_pairs],
+        vertical_spacing=0.12,
+        horizontal_spacing=0.1,
     )
 
+    # Set default colors and line styles if not provided
+    line_styles = line_styles or "solid dot dash longdash dashdot longdashdot".split()
+    colors = colors or plotly.colors.qualitative.Plotly
+    labels = list(structures)
+
     # Add RDF traces to the figure
-    for idx, (pair, (radii, rdf)) in enumerate(elem_pair_rdfs.items()):
-        row, col = divmod(idx, n_cols)
-        row += 1
-        col += 1
+    for subplot_idx, (_elem_pair, rdfs) in enumerate(elem_pair_rdfs.items()):
+        row, col = divmod(subplot_idx, actual_cols)
 
-        fig.add_scatter(
-            x=radii,
-            y=rdf,
-            mode="lines",
-            name=f"{pair[0]}-{pair[1]}",
-            line=dict(color="royalblue"),
-            showlegend=False,
-            row=row,
-            col=col,
-            hovertemplate="r = %{x:.2f} Å<br>g(r) = %{y:.2f}<extra></extra>",
+        for trace_idx, (radii, rdf) in enumerate(rdfs):
+            color = colors[trace_idx % len(colors)]
+            line_style = line_styles[trace_idx % len(line_styles)]
+            label = labels[trace_idx]
+            fig.add_scatter(
+                x=radii,
+                y=rdf,
+                mode="lines",
+                name=label,
+                line=dict(color=color, dash=line_style),
+                legendgroup=label,
+                showlegend=subplot_idx == 0,  # Show legend only for the first subplot
+                row=row + 1,
+                col=col + 1,
+                hovertemplate=f"{label}<br>r = %{{x:.2f}} Å<br>g(r) = %{{y:.2f}}"
+                "<extra></extra>",
+            )
+
+        # Add x-axis label
+        fig.update_xaxes(title_text="r (Å)", row=row, col=col)
+
+    # Add reference line if specified
+    if reference_line is not None:
+        defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
+        fig.add_hline(y=1, **defaults | reference_line)
+
+    # Set subplot height/width and y-axis labels
+    fig.update_layout(height=300 * n_rows, width=450 * actual_cols)
+    fig.update_yaxes(title_text="g(r)", col=1)
+
+    # show legend centered above subplots only if multiple structures were passed
+    if len(structures) > 1:
+        fig.layout.legend = dict(
+            orientation="h",
+            xanchor="center",
+            x=0.5,
+            y=1.02,
+            yanchor="bottom",
+            font_size=14,
         )
-
-        # if one of the last n_col subplots, add x-axis label
-        if idx >= n_pairs - n_cols:
-            fig.update_xaxes(title_text="r (Å)", row=row, col=col)
-
-        # Add reference line if specified
-        if reference_line is not None:
-            defaults = dict(line_dash="dash", line_color="red")
-            fig.add_hline(y=1, row=row, col=col, **defaults | reference_line)
-
-    # set subplot height/width and x/y axis labels
-    fig.update_layout(height=200 * n_rows, width=350 * n_cols)
-    fig.update_yaxes(title=dict(text="g(r)", standoff=0.1), col=1)
 
     return fig
