@@ -57,9 +57,10 @@ def ptable_heatmap(
     # Symbol
     symbol_pos: tuple[float, float] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
-    # Annotate
+    # Annotation
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
+    anno_text_color: ColorType | dict[ElemStr, ColorType] = "black",
     anno_kwargs: dict[str, Any] | None = None,
     # Value
     value_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
@@ -133,6 +134,17 @@ def ptable_heatmap(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
+
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_text_color (ColorType | dict[ElemStr, ColorType]): Texts colors
+            for annotations.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
 
         --- Value ---
         value_show_mode (str): The values display mode:
@@ -279,7 +291,16 @@ def ptable_heatmap(
         ax_kwargs=ax_kwargs,
     )
 
-    # Show colorbar upon request
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text or {},
+            pos=anno_pos,
+            text_color=anno_text_color,
+            kwargs=anno_kwargs,
+        )
+
+    # [Optional] Show colorbar
     if show_cbar:
         # Generate colorbar tick label format
         cbar_kwargs = cbar_kwargs or {}
@@ -443,9 +464,10 @@ def ptable_heatmap_splits(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
     symbol_kwargs: dict[str, Any] | None = None,
-    # Annotate
+    # Annotation
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
+    anno_text_color: ColorType | dict[ElemStr, ColorType] = "black",
     anno_kwargs: dict[str, Any] | None = None,
     # Colorbar
     cbar_title: str = "Values",
@@ -493,6 +515,17 @@ def ptable_heatmap_splits(
         symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_text_color (ColorType | dict[ElemStr, ColorType]): Texts colors
+            for annotations.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
+
         --- Colorbar ---
         cbar_title (str): Colorbar title. Defaults to "Values".
         cbar_title_kwargs (dict): Keyword arguments passed to
@@ -537,6 +570,15 @@ def ptable_heatmap_splits(
         kwargs=symbol_kwargs,
     )
 
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text or {},
+            pos=anno_pos,
+            text_color=anno_text_color,
+            kwargs=anno_kwargs,
+        )
+
     # Add colorbar
     projector.add_colorbar(
         title=cbar_title,
@@ -573,7 +615,7 @@ def ptable_hists(
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_kwargs: dict[str, Any] | None = None,
-    # Annotate
+    # Annotation
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
@@ -750,7 +792,7 @@ def ptable_scatters(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     symbol_kwargs: dict[str, Any] | None = None,
-    # Annotate
+    # Annotation
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
@@ -907,7 +949,7 @@ def ptable_lines(
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
-    # Annotate
+    # Annotation
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
