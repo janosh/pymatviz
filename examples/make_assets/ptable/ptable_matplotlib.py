@@ -93,6 +93,9 @@ fig = pmv.ptable_scatters(
     child_kwargs=dict(marker="o", linestyle="", s=10),
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
+    anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+    anno_pos=(0.75, 0.2),
+    anno_kwargs={"fontsize": 10},
 )
 pmv.io.save_and_compress_svg(fig, "ptable-scatters-parity")
 
