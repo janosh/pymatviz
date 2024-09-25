@@ -15,7 +15,7 @@ from pymatviz.utils import TEST_FILES
 if TYPE_CHECKING:
     from typing import Any
 
-mock_diffraction_pattern = DiffractionPattern(
+MOCK_DIFFRACTION_PATTERN = DiffractionPattern(
     x=[10, 20, 30, 40, 50],
     y=[100, 50, 75, 25, 60],
     hkls=[
@@ -28,19 +28,19 @@ mock_diffraction_pattern = DiffractionPattern(
     d_hkls=[2.5, 2.0, 1.8, 1.5, 1.3],
 )
 
-bi2_zr2_o7_struct = Structure.from_file(
+BI2_ZR2_O7_STRUCT = Structure.from_file(
     f"{TEST_FILES}/xrd/Bi2Zr2O7-Fm3m-experimental-sqs.cif"
 )
-bi2_zr2_o7_xrd = XRDCalculator().get_pattern(bi2_zr2_o7_struct)
+BI2_ZR2_O7_XRD = XRDCalculator().get_pattern(BI2_ZR2_O7_STRUCT)
 
 
 @pytest.mark.parametrize(
     ("input_data", "expected_traces"),
     [
-        (mock_diffraction_pattern, 1),
-        (bi2_zr2_o7_xrd, 1),
-        (bi2_zr2_o7_struct, 1),
-        ({"Structure": bi2_zr2_o7_struct, "Pattern": mock_diffraction_pattern}, 2),
+        (MOCK_DIFFRACTION_PATTERN, 1),
+        (BI2_ZR2_O7_XRD, 1),
+        (BI2_ZR2_O7_STRUCT, 1),
+        ({"Structure": BI2_ZR2_O7_STRUCT, "Pattern": MOCK_DIFFRACTION_PATTERN}, 2),
     ],
 )
 def test_xrd_pattern_input_types(input_data: Any, expected_traces: int) -> None:
@@ -52,23 +52,23 @@ def test_xrd_pattern_input_types(input_data: Any, expected_traces: int) -> None:
 
 @pytest.mark.parametrize("peak_width", [0.3, 0.5, 0.8])
 def test_xrd_pattern_peak_width(peak_width: float) -> None:
-    fig = pmv.xrd_pattern(mock_diffraction_pattern, peak_width=peak_width)
+    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, peak_width=peak_width)
     assert fig.data[0].width == peak_width
 
 
 @pytest.mark.parametrize("annotate_peaks", [3, 5, 0.5, 0.8])
 def test_xrd_pattern_annotate_peaks(annotate_peaks: float) -> None:
-    fig = pmv.xrd_pattern(mock_diffraction_pattern, annotate_peaks=annotate_peaks)
+    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, annotate_peaks=annotate_peaks)
     annotations = fig.layout.annotations
     if isinstance(annotate_peaks, int):
-        assert len(annotations) == min(annotate_peaks, len(mock_diffraction_pattern.x))
+        assert len(annotations) == min(annotate_peaks, len(MOCK_DIFFRACTION_PATTERN.x))
     else:
         assert len(annotations) > 0  # At least some peaks should be annotated
 
 
 def test_xrd_pattern_hover_data() -> None:
-    fig = pmv.xrd_pattern(mock_diffraction_pattern)
-    assert len(fig.data[0].hovertext) == len(mock_diffraction_pattern.x)
+    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN)
+    assert len(fig.data[0].hovertext) == len(MOCK_DIFFRACTION_PATTERN.x)
     assert all(
         all(key in text for key in ["2θ", "Intensity", "hkl", "d"])
         for text in fig.data[0].hovertext
@@ -76,12 +76,12 @@ def test_xrd_pattern_hover_data() -> None:
 
 
 def test_xrd_pattern_layout_and_range() -> None:
-    fig = pmv.xrd_pattern(mock_diffraction_pattern)
+    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN)
     assert fig.layout.xaxis.title.text == "2θ (degrees)"
     assert fig.layout.yaxis.title.text == "Intensity (a.u.)"
     assert fig.layout.hovermode == "x"
     assert fig.layout.xaxis.range[0] == 0
-    assert fig.layout.xaxis.range[1] == max(mock_diffraction_pattern.x) + 5
+    assert fig.layout.xaxis.range[1] == max(MOCK_DIFFRACTION_PATTERN.x) + 5
     assert fig.layout.yaxis.range == (0, 105)
 
 
@@ -99,7 +99,7 @@ def test_xrd_pattern_annotation_format(
     hkl_format: pmv.xrd.HklFormat, expected_format: str | None, show_angles: bool
 ) -> None:
     fig = pmv.xrd_pattern(
-        mock_diffraction_pattern, hkl_format=hkl_format, show_angles=show_angles
+        MOCK_DIFFRACTION_PATTERN, hkl_format=hkl_format, show_angles=show_angles
     )
     if hkl_format is pmv.xrd.HklNone and not show_angles:
         assert len(fig.layout.annotations) == 0
@@ -126,8 +126,8 @@ def test_xrd_pattern_empty_input() -> None:
 
 
 def test_xrd_pattern_intensity_normalization() -> None:
-    original_max = max(mock_diffraction_pattern.y)
-    fig = pmv.xrd_pattern(mock_diffraction_pattern)
+    original_max = max(MOCK_DIFFRACTION_PATTERN.y)
+    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN)
     normalized_max = max(fig.data[0].y)
     assert normalized_max == 100
     assert normalized_max / original_max == pytest.approx(100 / original_max)
@@ -135,9 +135,9 @@ def test_xrd_pattern_intensity_normalization() -> None:
 
 @pytest.mark.parametrize("wavelength", [1.54184, 0.7093])
 def test_xrd_pattern_wavelength(wavelength: float) -> None:
-    fig = pmv.xrd_pattern(bi2_zr2_o7_struct, wavelength=wavelength)
+    fig = pmv.xrd_pattern(BI2_ZR2_O7_STRUCT, wavelength=wavelength)
     first_peak_position = fig.data[0].x[0]
-    reference_fig = pmv.xrd_pattern(bi2_zr2_o7_struct, wavelength=1.54184)
+    reference_fig = pmv.xrd_pattern(BI2_ZR2_O7_STRUCT, wavelength=1.54184)
     reference_first_peak = reference_fig.data[0].x[0]
     if wavelength != 1.54184:
         assert first_peak_position != reference_first_peak
@@ -147,8 +147,8 @@ def test_xrd_pattern_wavelength(wavelength: float) -> None:
 
 def test_xrd_pattern_tooltip_content() -> None:
     patterns = {
-        "Pattern 1": mock_diffraction_pattern,
-        "Pattern 2": mock_diffraction_pattern,
+        "Pattern 1": MOCK_DIFFRACTION_PATTERN,
+        "Pattern 2": MOCK_DIFFRACTION_PATTERN,
     }
     fig = pmv.xrd_pattern(patterns, show_angles=False, hkl_format=None)
 
@@ -161,8 +161,8 @@ def test_xrd_pattern_tooltip_content() -> None:
 
 def test_xrd_pattern_tooltip_label() -> None:
     patterns = {
-        "Pattern 1": mock_diffraction_pattern,
-        "Pattern 2": mock_diffraction_pattern,
+        "Pattern 1": MOCK_DIFFRACTION_PATTERN,
+        "Pattern 2": MOCK_DIFFRACTION_PATTERN,
     }
     fig = pmv.xrd_pattern(patterns)
 
