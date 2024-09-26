@@ -316,9 +316,9 @@ def ptable_heatmap_plotly(
         plot_bgcolor="rgba(0, 0, 0, 0)",
         xaxis=dict(zeroline=False, showgrid=False),
         yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
-        font_size=font_size*scaling_factor if font_size else 12*scaling_factor,
-        width=1000*scaling_factor,
-        height=500*scaling_factor,
+        font_size=font_size * scaling_factor if font_size else 12 * scaling_factor,
+        width=1000 * scaling_factor,
+        height=500 * scaling_factor,
         title=dict(x=0.4, y=0.95),
     )
 
