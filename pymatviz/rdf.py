@@ -18,6 +18,8 @@ import plotly
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.core import Structure
+from pymatgen.optimization.neighbors import find_points_in_spheres
+from pymatgen.util.typing import PbcLike
 from scipy.signal import find_peaks
 
 
@@ -27,6 +29,7 @@ def calculate_rdf(
     neighbor_species: str,
     cutoff: float,
     n_bins: int,
+    pbc: PbcLike = (True, True, True),
 ) -> tuple[np.ndarray, np.ndarray]:
     """Calculate the radial distribution function (RDF) for a given pair of species.
 
@@ -39,14 +42,17 @@ def calculate_rdf(
         neighbor_species (str): Symbol of the neighbor species.
         cutoff (float): Maximum distance for RDF calculation.
         n_bins (int): Number of bins for RDF calculation.
+        pbc (tuple[int, int, int], optional): Periodic boundary conditions as any
+            3-tuple of 0s/1s. Defaults to (1, 1, 1).
 
     Returns:
         tuple[np.ndarray, np.ndarray]: Arrays of (radii, g(r)) values.
     """
     bin_size = cutoff / n_bins
     radii = np.linspace(0, cutoff, n_bins + 1)[1:]
-    rdf = np.zeros(n_bins)
+    rdf = np.zeros_like(radii)
 
+    # Get indices of center and neighbor species
     center_indices = [
         i for i, site in enumerate(structure) if site.specie.symbol == center_species
     ]
@@ -54,15 +60,39 @@ def calculate_rdf(
         i for i, site in enumerate(structure) if site.specie.symbol == neighbor_species
     ]
 
-    for center_idx in center_indices:
-        for neighbor_idx in neighbor_indices:
-            if center_idx != neighbor_idx:
-                distance = structure.get_distance(center_idx, neighbor_idx)
-                if distance < cutoff:
-                    rdf[int(distance / bin_size)] += 1
+    # If there are no center atoms or neighbor atoms, return an empty RDF
+    if not center_indices or not neighbor_indices:
+        return radii, rdf  # Return zeros if no centers or neighbors
+
+    center_neighbors = find_points_in_spheres(
+        all_coords=structure.cart_coords,
+        center_coords=structure.cart_coords[center_indices],
+        r=cutoff,
+        # Convert bools to ints (needed for cython code)
+        pbc=np.array([*map(int, pbc)]),
+        lattice=structure.lattice.matrix,
+    )
+
+    # Filter distances for the specific neighbor species and bin them
+    neighbor_set = set(neighbor_indices)
+    for idx1, idx2, _, dist in zip(*center_neighbors, strict=True):
+        if idx2 in neighbor_set and center_indices[idx1] != idx2 and 0 < dist < cutoff:
+            bin_index = min(int(dist / bin_size), n_bins - 1)
+            rdf[bin_index] += 1
 
     # Normalize RDF by the number of center-neighbor pairs and shell volumes
-    rdf = rdf / (len(center_indices) * len(neighbor_indices))
+    n_center = len(center_indices)
+    n_neighbor = len(neighbor_indices)
+    if center_species == neighbor_species:
+        normalization = n_center * (n_neighbor - 1)  # Exclude self-interactions
+    else:
+        normalization = n_center * n_neighbor
+
+    if normalization == 0:  # Avoid division by zero
+        return radii, np.zeros_like(radii)
+
+    # Spherical shell volume = surface area (4πr²) times thickness (bin_size)
+    rdf = rdf / normalization
     shell_volumes = 4 * np.pi * radii**2 * bin_size
     rdf = rdf / (shell_volumes / structure.volume)
 
@@ -190,8 +220,8 @@ def element_pair_rdfs(
         rows=n_rows,
         cols=actual_cols,
         subplot_titles=[f"{el1}-{el2}" for el1, el2 in element_pairs],
-        vertical_spacing=0.12,
-        horizontal_spacing=0.1,
+        vertical_spacing=0.15 / n_rows,
+        horizontal_spacing=0.15 / actual_cols,
     )
 
     # Set default colors and line styles if not provided
