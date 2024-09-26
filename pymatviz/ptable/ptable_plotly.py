@@ -199,7 +199,9 @@ def ptable_heatmap_plotly(
                 label = label_map(label)
             elif isinstance(label_map, dict):
                 label = label_map.get(label, label)
-        style = f"font-weight: bold; font-size: {1.5 * (font_size or 12*scaling_factor)};"
+        style = (
+            f"font-weight: bold; font-size: {1.5 * (font_size or 12*scaling_factor)};"
+        )
         tile_text = f"<span {style=}>{symbol}</span>"
         if show_values and label:
             tile_text += f"<br>{label}"
@@ -314,9 +316,9 @@ def ptable_heatmap_plotly(
         plot_bgcolor="rgba(0, 0, 0, 0)",
         xaxis=dict(zeroline=False, showgrid=False),
         yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
-        font_size=12*scaling_factor,
-        width=1000*scaling_factor,
-        height=500*scaling_factor,
+        font_size=12 * scaling_factor,
+        width=1000 * scaling_factor,
+        height=500 * scaling_factor,
         title=dict(x=0.4, y=0.95),
     )
 
