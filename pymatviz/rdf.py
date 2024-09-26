@@ -76,8 +76,9 @@ def calculate_rdf(
     # Filter distances for the specific neighbor species and bin them
     neighbor_set = set(neighbor_indices)
     for idx1, idx2, _, dist in zip(*center_neighbors, strict=True):
-        if idx2 in neighbor_set and center_indices[idx1] != idx2 and dist > 0:
-            rdf[int(dist / bin_size)] += 1
+        if idx2 in neighbor_set and center_indices[idx1] != idx2 and 0 < dist < cutoff:
+            bin_index = min(int(dist / bin_size), n_bins - 1)
+            rdf[bin_index] += 1
 
     # Normalize RDF by the number of center-neighbor pairs and shell volumes
     n_center = len(center_indices)
