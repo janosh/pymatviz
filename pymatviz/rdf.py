@@ -92,9 +92,9 @@ def calculate_rdf(
         return radii, np.zeros_like(radii)
 
     # Spherical shell volume = surface area (4πr²) times thickness (bin_size)
-    rdf = rdf / normalization
+    rdf /= normalization
     shell_volumes = 4 * np.pi * radii**2 * bin_size
-    rdf = rdf / (shell_volumes / structure.volume)
+    rdf /= shell_volumes / structure.volume
 
     return radii, rdf
 

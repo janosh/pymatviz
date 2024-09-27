@@ -130,8 +130,7 @@ def test_element_pair_rdfs_custom_element_pairs(
     fig = element_pair_rdfs(structure, element_pairs=element_pairs)
     expected_pairs = sorted(
         element_pairs
-        if element_pairs
-        else [
+        or [
             (el1, el2)
             for el1 in structure.symbol_set
             for el2 in structure.symbol_set
@@ -226,7 +225,7 @@ def test_calculate_rdf(structures: list[Structure]) -> None:
 def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> None:
     # Create large structure with random coordinates
     lattice = Lattice.cubic(30)
-    elements = sum([[el] * n_atoms for el in composition], [])  # noqa: RUF017
+    elements = sum(([el] * n_atoms for el in composition), [])  # noqa: RUF017
     coords = np.random.default_rng(seed=0).uniform(size=(len(elements), 3))
     structure = Structure(lattice, elements, coords)
 
@@ -304,7 +303,7 @@ def test_calculate_rdf_pbc_consistency() -> None:
 
     cutoff, n_bins = 15, 150
 
-    radii_full, rdf_full = calculate_rdf(
+    _radii_full, rdf_full = calculate_rdf(
         structure,
         center_species="Si",
         neighbor_species="Si",
@@ -313,7 +312,7 @@ def test_calculate_rdf_pbc_consistency() -> None:
         pbc=(True, True, True),
     )
 
-    radii_none, rdf_none = calculate_rdf(
+    _radii_none, _rdf_none = calculate_rdf(
         structure,
         center_species="Si",
         neighbor_species="Si",
@@ -332,21 +331,21 @@ def test_calculate_rdf_different_species() -> None:
 
     cutoff, n_bins = 10, 100
 
-    radii_si_si, rdf_si_si = calculate_rdf(
+    _radii_si_si, rdf_si_si = calculate_rdf(
         structure,
         center_species="Si",
         neighbor_species="Si",
         cutoff=cutoff,
         n_bins=n_bins,
     )
-    radii_si_ge, rdf_si_ge = calculate_rdf(
+    _radii_si_ge, rdf_si_ge = calculate_rdf(
         structure,
         center_species="Si",
         neighbor_species="Ge",
         cutoff=cutoff,
         n_bins=n_bins,
     )
-    radii_ge_ge, rdf_ge_ge = calculate_rdf(
+    _radii_ge_ge, rdf_ge_ge = calculate_rdf(
         structure,
         center_species="Ge",
         neighbor_species="Ge",
@@ -373,7 +372,7 @@ def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> No
 
     # Test with a single atom
     single_atom = Structure(lattice, ["Si"], [[0, 0, 0]])
-    radii, rdf = calculate_rdf(
+    _radii, rdf = calculate_rdf(
         single_atom,
         center_species="Si",
         neighbor_species="Si",
@@ -384,7 +383,7 @@ def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> No
 
     # Check RDF=0 everywhere for distant atoms (beyond cutoff)
     distant_atoms = Structure(lattice, ["Si", "Si"], [[0, 0, 0], frac_coords])
-    radii, rdf = calculate_rdf(
+    _radii, rdf = calculate_rdf(
         distant_atoms,
         center_species="Si",
         neighbor_species="Si",
