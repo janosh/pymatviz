@@ -7,10 +7,23 @@ from pymatgen.core import Lattice, Structure
 from pymatviz.rdf import calculate_rdf, element_pair_rdfs
 
 
-@pytest.mark.parametrize("n_cols", [1, 3])
-def test_element_pair_rdfs_basic(structures: list[Structure], n_cols: int) -> None:
+@pytest.mark.parametrize(
+    ("n_cols", "subplot_titles", "vertical_spacing"),
+    [(1, None, 0), (3, ["title1", "title2", "title3"], 0.1)],
+)
+def test_element_pair_rdfs_basic(
+    structures: list[Structure],
+    n_cols: int,
+    subplot_titles: list[str] | None,
+    vertical_spacing: float,
+) -> None:
     for structure in structures:
-        fig = element_pair_rdfs(structure, n_cols=n_cols)
+        subplot_kwargs = dict(
+            cols=n_cols,
+            subplot_titles=subplot_titles,
+            vertical_spacing=vertical_spacing,
+        )
+        fig = element_pair_rdfs(structure, subplot_kwargs=subplot_kwargs)
         assert isinstance(fig, go.Figure)
         assert fig.layout.title.text is None
         assert fig.layout.showlegend is None
@@ -21,6 +34,12 @@ def test_element_pair_rdfs_basic(structures: list[Structure], n_cols: int) -> No
         n_elem_pairs = len(structure.chemical_system_set) ** 2
         assert actual_cols == min(n_cols, n_elem_pairs)
         assert actual_rows == (len(fig.data) + n_cols - 1) // n_cols
+        annotation_texts = [anno.text for anno in fig.layout.annotations]
+        assert (
+            annotation_texts == subplot_titles[: len(fig.data)]
+            if subplot_titles
+            else [""] * len(fig.data)
+        )
 
 
 def test_element_pair_rdfs_empty_structure() -> None:

@@ -118,9 +118,9 @@ def element_pair_rdfs(
     bin_size: float | None = None,
     element_pairs: list[tuple[str, str]] | None = None,
     reference_line: dict[str, Any] | None = None,
-    n_cols: int = 3,
     colors: Sequence[str] | None = None,
     line_styles: Sequence[str] | None = None,
+    subplot_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Generate a plotly figure of pairwise radial distribution functions (RDFs) for
     all (or a subset of) element pairs in one or multiple structures.
@@ -144,6 +144,9 @@ def element_pair_rdfs(
         line_styles (Sequence[str], optional): line styles for each structure's RDF
             line. Will be used for all element pairs present in that structure.
             Defaults to ["solid", "dot", "dash", "longdash", "dashdot", "longdashdot"].
+        subplot_kwargs (dict, optional): Passed to plotly.make_subplots. Use this to
+            e.g. set subplot_titles, rows/cols or row/column spacing to customize the
+            subplot layout.
 
     Returns:
         go.Figure: A plotly figure with facets for each pairwise RDF, comparing one or
@@ -212,16 +215,20 @@ def element_pair_rdfs(
 
     # Determine subplot layout
     n_pairs = len(element_pairs)
-    actual_cols = min(n_cols, n_pairs)
+    subplot_kwargs = subplot_kwargs or {}
+    actual_cols = min(subplot_kwargs.pop("cols", 3), n_pairs)
     n_rows = (n_pairs + actual_cols - 1) // actual_cols
 
     # Create the plotly figure with facets
     fig = make_subplots(
-        rows=n_rows,
-        cols=actual_cols,
-        subplot_titles=[f"{el1}-{el2}" for el1, el2 in element_pairs],
-        vertical_spacing=0.15 / n_rows,
-        horizontal_spacing=0.15 / actual_cols,
+        **dict(
+            rows=n_rows,
+            cols=actual_cols,
+            subplot_titles=[f"{el1}-{el2}" for el1, el2 in element_pairs],
+            vertical_spacing=0.15 / n_rows,
+            horizontal_spacing=0.15 / actual_cols,
+        )
+        | subplot_kwargs
     )
 
     # Set default colors and line styles if not provided
