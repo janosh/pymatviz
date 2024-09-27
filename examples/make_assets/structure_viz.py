@@ -1,4 +1,6 @@
 # %%
+# DEBUG: MP_API_KEY
+import os
 from typing import cast
 
 import matplotlib.pyplot as plt
@@ -9,6 +11,8 @@ from pymatgen.core import Structure
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key
 
+
+assert os.environ.get("MP_API_KEY") is not None  # noqa: S101
 
 struct: Structure  # for type hinting
 

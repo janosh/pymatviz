@@ -54,6 +54,7 @@ jobs:
         run: pip install -e .[make-assets]
 
       - name: Run script
-        run: python ${{ matrix.script }}
+        run: |
+          python ${{ matrix.script }}
         env:
           MP_API_KEY: ${{ secrets.MP_API_KEY }}
