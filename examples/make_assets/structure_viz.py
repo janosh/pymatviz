@@ -30,6 +30,9 @@ fig.show()
 
 
 # %% Plot some disordered structures in 2D
+if os.environ.get("MP_API_KEY") is None:
+    raise RuntimeError("no mp api key, debugging")
+
 disordered_structs = {
     mp_id: MPRester(api_key=os.environ.get("MP_API_KEY")).get_structure_by_material_id(
         mp_id, conventional_unit_cell=True
