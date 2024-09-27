@@ -30,6 +30,7 @@ fig.show()
 
 
 # %% Plot some disordered structures in 2D
+# DEBUG
 mp_api_key = os.environ.get("MP_API_KEY")
 if mp_api_key is None:
     raise RuntimeError("api key is None")
