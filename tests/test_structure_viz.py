@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +25,6 @@ disordered_struct = Structure(
 
 @pytest.mark.parametrize("radii", [None, 0.5])
 @pytest.mark.parametrize("rotation", ["0x,0y,0z", "10x,-10y,0z"])
-@pytest.mark.parametrize("labels", [True, False, {"P": "Phosphor"}])
 # show_bonds=True|VoronoiNN used to raise AttributeError on
 # disordered structures https://github.com/materialsproject/pymatgen/issues/2070
 # which we work around by only considering majority species on each site
@@ -34,7 +33,6 @@ disordered_struct = Structure(
 def test_structure_2d(
     radii: float | None,
     rotation: str,
-    labels: bool | dict[str, str | float],
     show_bonds: bool | NearNeighbors,
     standardize_struct: bool | None,
 ) -> None:
@@ -42,7 +40,6 @@ def test_structure_2d(
         disordered_struct,
         atomic_radii=radii,
         rotation=rotation,
-        site_labels=labels,
         show_bonds=show_bonds,
         standardize_struct=standardize_struct,
     )
@@ -72,10 +69,10 @@ def test_structure_2d_axis(axis: str | bool) -> None:
 
 @pytest.mark.parametrize(
     "site_labels",
-    [True, False, "symbol", "species", {"Fe": "Iron"}, {"Fe": 1.0}, ["Fe", "O"]],
+    [False, "symbol", "species", {"Fe": "Iron"}, {"Fe": 1.0}, ["Fe", "O"]],
 )
 def test_structure_2d_site_labels(
-    site_labels: bool | str | dict[str, str | float] | Sequence[str],
+    site_labels: Literal[False, "symbol", "species"] | dict[str, str] | Sequence[str],
 ) -> None:
     ax = pmv.structure_2d(disordered_struct, site_labels=site_labels)
     assert isinstance(ax, plt.Axes)
