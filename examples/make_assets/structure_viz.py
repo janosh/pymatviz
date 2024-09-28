@@ -57,3 +57,19 @@ for mp_id, struct in disordered_structs.items():
 
     pmv.io.save_and_compress_svg(ax, f"struct-2d-{mp_id}-{formula}-disordered")
     plt.show()
+
+
+# %% Plot Matbench phonon structures with plotly
+fig = pmv.structure_2d_plotly(
+    df_phonons[Key.structure].head(6).to_dict(),
+    # show_unit_cell=dict(color="white", width=1.5),
+    # show_sites=dict(line=None),
+    elem_colors=ElemColorScheme.jmol,
+    n_cols=3,
+)
+
+for anno in fig.layout.annotations:
+    anno.update(font=dict(color="white"))
+
+fig.show()
+pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")
