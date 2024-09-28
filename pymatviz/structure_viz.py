@@ -581,7 +581,7 @@ def structure_2d_plotly(
     | dict[str, str]
     | Sequence[str] = "species",
     standardize_struct: bool | None = None,
-    n_cols: int = 4,
+    n_cols: int = 3,
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
 ) -> go.Figure:
     """Plot pymatgen structures in 2D with Plotly.
