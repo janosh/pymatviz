@@ -69,7 +69,7 @@ def xrd_pattern(
     """
     if (
         not isinstance(annotate_peaks, int | float)
-        or annotate_peaks <= 0
+        or annotate_peaks < 0
         or (isinstance(annotate_peaks, float) and annotate_peaks >= 1)
     ):
         raise ValueError(
@@ -159,9 +159,7 @@ def xrd_pattern(
                 if intensity > annotate_peaks * 100
             ]
         else:
-            raise ValueError(
-                f"{annotate_peaks=} should be a positive int or a float in (0, 1)"
-            )
+            peak_indices = []
 
         for idx in peak_indices:
             x_pos = trace.x[idx]

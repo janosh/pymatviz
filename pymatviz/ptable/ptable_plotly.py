@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
-import plotly.graph_objects as go
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
@@ -19,6 +18,8 @@ from pymatviz.utils import ElemValues, df_ptable
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any, Literal
+
+    import plotly.graph_objects as go
 
 
 def ptable_heatmap_plotly(
