@@ -202,6 +202,9 @@ def save_and_compress_svg(
     """Save Plotly figure as SVG and HTML to assets/ folder.
     Compresses SVG file with svgo CLI if available in PATH.
 
+    If filename does not include .svg extension and is not absolute, will be treated as
+    relative to assets/ folder. This function is mostly meant for pymatviz internal use.
+
     Args:
         fig (Figure): Plotly or matplotlib Figure/Axes instance.
         filename (str): Name of SVG file (w/o extension).
@@ -215,10 +218,11 @@ def save_and_compress_svg(
     if isinstance(fig, plt.Figure) and not fig.axes:
         raise ValueError("Passed fig contains no axes. Nothing to plot!")
 
-    if filename.endswith(".svg"):
-        filename = filename.rstrip(".svg")
+    if not filename.endswith(".svg") and not os.path.isabs(filename):
+        filepath = f"{ROOT}/assets/{filename}.svg"
+    else:
+        filepath = filename
 
-    filepath = f"{ROOT}/assets/{filename}.svg"
     pmv.save_fig(fig, filepath)
     plt.close()
 

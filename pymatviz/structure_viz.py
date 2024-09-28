@@ -18,7 +18,7 @@ from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedError
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key
@@ -263,7 +263,14 @@ def structure_2d(
         elif standardize_struct is None:
             standardize_struct = has_sites_outside_unit_cell
         if standardize_struct:
-            struct = SpacegroupAnalyzer(struct).get_conventional_standard_structure()
+            try:
+                spg_analyzer = SpacegroupAnalyzer(struct)
+                struct = spg_analyzer.get_conventional_standard_structure()
+            except SymmetryUndeterminedError:
+                no_sym_msg = (
+                    "Symmetry could not be determined, skipping standardization"
+                )
+                warnings.warn(no_sym_msg, UserWarning, stacklevel=2)
 
         # Get default colors
         if str(elem_colors) == str(ElemColorScheme.jmol):
@@ -523,7 +530,8 @@ def structure_2d(
             props = struct_i.properties
             if id_key := next(iter(set(props) & {Key.mat_id, "id", "ID"}), None):
                 sub_title = props[id_key]
-            elif isinstance(key, int):
+            elif isinstance(key, int):  # key=int means it's an index, i.e. not to be
+                # used as title. instead make title from formula and space group number
                 spg_num = struct_i.get_space_group_info()[1]
                 sub_title = f"{struct_i.formula} (spg={spg_num})"
             else:

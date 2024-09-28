@@ -56,14 +56,25 @@ def test_xrd_pattern_peak_width(peak_width: float) -> None:
     assert fig.data[0].width == peak_width
 
 
-@pytest.mark.parametrize("annotate_peaks", [3, 5, 0.5, 0.8])
+@pytest.mark.parametrize("annotate_peaks", [0, 3, 5, 0.5, 0.8, -0.1, 1.5])
 def test_xrd_pattern_annotate_peaks(annotate_peaks: float) -> None:
-    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, annotate_peaks=annotate_peaks)
-    annotations = fig.layout.annotations
-    if isinstance(annotate_peaks, int):
-        assert len(annotations) == min(annotate_peaks, len(MOCK_DIFFRACTION_PATTERN.x))
+    if annotate_peaks < 0 or (
+        isinstance(annotate_peaks, float) and annotate_peaks >= 1
+    ):
+        err_msg = re.escape(
+            f"{annotate_peaks=} should be a positive int or a float in (0, 1)"
+        )
+        with pytest.raises(ValueError, match=err_msg):
+            pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, annotate_peaks=annotate_peaks)
     else:
-        assert len(annotations) > 0  # At least some peaks should be annotated
+        fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, annotate_peaks=annotate_peaks)
+        annotations = fig.layout.annotations
+        if isinstance(annotate_peaks, int):
+            assert len(annotations) == min(
+                annotate_peaks, len(MOCK_DIFFRACTION_PATTERN.x)
+            )
+        else:
+            assert len(annotations) > 0  # At least some peaks should be annotated
 
 
 def test_xrd_pattern_hover_data() -> None:
