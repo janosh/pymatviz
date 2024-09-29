@@ -10,6 +10,7 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key
+from pymatviz.structure_viz.helpers import get_image_atoms
 
 
 COORDS = [[0, 0, 0], [0.5, 0.5, 0.5]]
@@ -195,3 +196,184 @@ def test_structure_2d_plotly_invalid_input() -> None:
         TypeError, match="Expected pymatgen Structure or Sequence of them"
     ):
         pmv.structure_2d_plotly("invalid input")
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "atomic_radii": None,
+            "atom_size": 20,
+            "elem_colors": ElemColorScheme.jmol,
+            "scale": 1,
+            "show_unit_cell": True,
+            "show_sites": True,
+            "show_image_sites": True,
+            "site_labels": "species",
+            "standardize_struct": None,
+            "n_cols": 3,
+        },
+        {
+            "atomic_radii": 0.5,
+            "atom_size": 30,
+            "elem_colors": ElemColorScheme.vesta,
+            "scale": 1.5,
+            "show_unit_cell": False,
+            "show_sites": False,
+            "show_image_sites": False,
+            "site_labels": "symbol",
+            "standardize_struct": True,
+            "n_cols": 2,
+        },
+        {
+            "atomic_radii": {"Fe": 0.8, "O": 0.6},
+            "atom_size": 25,
+            "elem_colors": {"Fe": "red", "O": "blue"},
+            "scale": 0.9,
+            "show_unit_cell": {"color": "red", "width": 3},
+            "show_sites": {"line": {"width": 1, "color": "black"}},
+            "show_image_sites": {"opacity": 0.3},
+            "site_labels": {"Fe": "Iron", "O": "Oxygen"},
+            "standardize_struct": False,
+            "n_cols": 4,
+        },
+        {
+            "atomic_radii": 1.2,
+            "atom_size": 35,
+            "elem_colors": ElemColorScheme.jmol,
+            "scale": 1.1,
+            "show_unit_cell": True,
+            "show_sites": True,
+            "show_image_sites": True,
+            "site_labels": False,
+            "standardize_struct": None,
+            "n_cols": 1,
+        },
+    ],
+)
+def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
+    fig = pmv.structure_3d_plotly(DISORDERED_STRUCT, **kwargs)
+    assert isinstance(fig, go.Figure)
+
+    # Check if the figure has the correct number of traces
+    expected_traces = 0
+    if kwargs.get("show_sites"):
+        expected_traces += len(DISORDERED_STRUCT)
+    if kwargs.get("show_unit_cell"):
+        expected_traces += 12  # 12 edges in a cube
+    if kwargs.get("show_image_sites"):
+        # Instead of assuming 8 image sites per atom, let's count the actual number
+        image_sites = sum(
+            len(get_image_atoms(site, DISORDERED_STRUCT.lattice))
+            for site in DISORDERED_STRUCT
+        )
+        expected_traces += image_sites
+
+    assert len(fig.data) == expected_traces
+
+    # Check if the layout properties are set correctly
+    assert fig.layout.showlegend is False
+    assert fig.layout.paper_bgcolor == "rgba(0,0,0,0)"
+    assert fig.layout.plot_bgcolor == "rgba(0,0,0,0)"
+
+    # Check if the 3D scene properties are set correctly
+    for scene in fig.layout:
+        if scene.startswith("scene"):
+            assert fig.layout[scene].xaxis.visible is False
+            assert fig.layout[scene].yaxis.visible is False
+            assert fig.layout[scene].zaxis.visible is False
+            assert fig.layout[scene].aspectmode == "data"
+
+    # Additional checks based on specific kwargs
+    if isinstance(kwargs.get("show_unit_cell"), dict):
+        unit_cell_trace = next(
+            (trace for trace in fig.data if trace.mode == "lines"), None
+        )
+        assert unit_cell_trace is not None
+        for key, value in kwargs["show_unit_cell"].items():
+            assert unit_cell_trace.line[key] == value
+
+    if kwargs.get("show_sites"):
+        site_traces = [
+            trace for trace in fig.data if trace.mode in ("markers", "markers+text")
+        ]
+        assert len(site_traces) > 0, "No site traces found when show_sites is True"
+        site_trace = site_traces[0]
+
+        if kwargs.get("site_labels"):
+            if isinstance(kwargs["site_labels"], dict):
+                assert any(
+                    text in site_trace.text for text in kwargs["site_labels"].values()
+                ), "Expected site labels not found in trace text"
+            elif kwargs["site_labels"] in ("symbol", "species"):
+                assert len(site_trace.text) == len(
+                    DISORDERED_STRUCT
+                ), "Mismatch in number of site labels"
+        else:
+            # If site_labels is False, ensure that the trace has no text
+            assert (
+                site_trace.text is None or len(site_trace.text) == 0
+            ), "Unexpected site labels found"
+
+
+def test_structure_3d_plotly_multiple() -> None:
+    struct1 = Structure(lattice, ["Fe", "O"], COORDS)
+    struct1.properties = {"id": "struct1"}
+    struct2 = Structure(lattice, ["Co", "O"], COORDS)
+    struct2.properties = {Key.mat_id: "struct2"}
+    struct3 = Structure(lattice, ["Ni", "O"], COORDS)
+    struct3.properties = {"ID": "struct3", "name": "nickel oxide"}
+    struct4 = Structure(lattice, ["Cu", "O"], COORDS)
+
+    # Test dict[str, Structure]
+    struct_dict = {
+        "struct1": struct1,
+        "struct2": struct2,
+        "struct3": struct3,
+        "struct4": struct4,
+    }
+    fig = pmv.structure_3d_plotly(struct_dict, n_cols=2)
+    assert isinstance(fig, go.Figure)
+
+    expected_traces = 0
+    for struct in struct_dict.values():
+        expected_traces += len(struct)  # sites
+        expected_traces += 12  # unit cell edges
+        expected_traces += sum(
+            len(get_image_atoms(site, struct.lattice)) for site in struct
+        )  # image sites
+
+    assert len(fig.data) == expected_traces
+
+    assert len(fig.layout.annotations) == 4
+
+    # Test pandas.Series[Structure]
+    struct_series = pd.Series(struct_dict)
+    fig = pmv.structure_3d_plotly(struct_series)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == expected_traces
+    assert len(fig.layout.annotations) == 4
+
+    # Test list[Structure]
+    fig = pmv.structure_3d_plotly(list(struct_dict.values()), n_cols=3)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == expected_traces
+    assert len(fig.layout.annotations) == 4
+
+    # Test subplot_title
+    def subplot_title(struct: Structure, key: str | int) -> str:
+        return f"{key} - {struct.formula}"
+
+    fig = pmv.structure_3d_plotly(struct_series, subplot_title=subplot_title)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == expected_traces
+    assert len(fig.layout.annotations) == 4
+    for idx, (key, struct) in enumerate(struct_dict.items(), start=1):
+        assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
+
+
+def test_structure_3d_plotly_invalid_input() -> None:
+    with pytest.raises(
+        TypeError, match="Expected pymatgen Structure or Sequence of them"
+    ):
+        pmv.structure_3d_plotly("invalid input")
