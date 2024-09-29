@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 from xml.etree import ElementTree as ET
 
-import pandas as pd
 import plotly.graph_objects as go
 import pytest
 from matplotlib import pyplot as plt

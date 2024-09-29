@@ -16,14 +16,14 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
 
-y_std_mock = y_true - y_pred
+Y_STD_MOCK = y_true - y_pred
 
 
 @pytest.mark.parametrize(
     "y_std",
     [
-        y_std_mock,
-        {"y_std_mock": y_std_mock},
+        Y_STD_MOCK,
+        {"y_std_mock": Y_STD_MOCK},
         df_regr.columns[0],  # single std col
         df_regr.columns[:2],  # multiple std cols
     ],
@@ -39,7 +39,7 @@ def test_error_decay_with_uncert(
     df, x, y = df_or_arrays
     # override y_std if col name but no df provided, would be nonsensical input
     if df is None and isinstance(y_std, str | pd.Index):
-        y_std = y_std_mock
+        y_std = Y_STD_MOCK
     ax = error_decay_with_uncert(
         x, y, y_std, df=df, n_rand=n_rand, percentiles=percentiles
     )
