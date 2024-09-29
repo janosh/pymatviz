@@ -300,13 +300,13 @@ def test_structure_2d_color_schemes() -> None:
     ],
 )
 def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
-    fig = pmv.structure_2d_plotly(disordered_struct, **kwargs)
+    fig = pmv.structure_2d_plotly(DISORDERED_STRUCT, **kwargs)
     assert isinstance(fig, go.Figure)
 
     # Check if the figure has the correct number of traces
     expected_traces = 0
     if show_sites := kwargs.get("show_sites"):
-        expected_traces += len(disordered_struct)
+        expected_traces += len(DISORDERED_STRUCT)
     if show_unit_cell := kwargs.get("show_unit_cell"):
         expected_traces += 12  # 12 edges in a cube
     assert len(fig.data) == expected_traces
@@ -343,17 +343,17 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
         # elif isinstance(kwargs["site_labels"], list):
         #     assert all(label in site_trace.text for label in kwargs["site_labels"])
         elif site_labels in ("symbol", "species"):
-            assert len(site_trace.text) == len(disordered_struct)
+            assert len(site_trace.text) == len(DISORDERED_STRUCT)
 
 
 def test_structure_2d_plotly_multiple() -> None:
-    struct1 = Structure(lattice, ["Fe", "O"], coords=coords)
+    struct1 = Structure(lattice, ["Fe", "O"], coords=COORDS)
     struct1.properties = {"id": "struct1"}
-    struct2 = Structure(lattice, ["Co", "O"], coords=coords)
+    struct2 = Structure(lattice, ["Co", "O"], coords=COORDS)
     struct2.properties = {Key.mat_id: "struct2"}
-    struct3 = Structure(lattice, ["Ni", "O"], coords=coords)
+    struct3 = Structure(lattice, ["Ni", "O"], coords=COORDS)
     struct3.properties = {"ID": "struct3", "name": "nickel oxide"}
-    struct4 = Structure(lattice, ["Cu", "O"], coords=coords)
+    struct4 = Structure(lattice, ["Cu", "O"], coords=COORDS)
 
     # Test dict[str, Structure]
     struct_dict = {
@@ -365,7 +365,7 @@ def test_structure_2d_plotly_multiple() -> None:
     fig = pmv.structure_2d_plotly(struct_dict, n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (
-        len(coords) + 12
+        len(COORDS) + 12
     )  # 4 structures, 2 sites each, 12 unit cell edges
     assert len(fig.layout.annotations) == 4
 
@@ -373,13 +373,13 @@ def test_structure_2d_plotly_multiple() -> None:
     struct_series = pd.Series(struct_dict)
     fig = pmv.structure_2d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(coords) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12)
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
     fig = pmv.structure_2d_plotly(list(struct_dict.values()), n_cols=2)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(coords) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12)
     assert len(fig.layout.annotations) == 4
 
     # Test subplot_title
@@ -388,7 +388,7 @@ def test_structure_2d_plotly_multiple() -> None:
 
     fig = pmv.structure_2d_plotly(struct_series, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(coords) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12)
     assert len(fig.layout.annotations) == 4
     for idx, (_key, struct) in enumerate(struct_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{idx} - {struct.formula}"
