@@ -112,15 +112,16 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 ## Structure
 
-See [`pymatviz/structure_viz.py`](pymatviz/structure_viz.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
+See [`pymatviz/structure_viz/(mpl|plotly).py`](pymatviz/structure_viz/plotly.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
 
-|               [`structure_2d(mp_19017)`](pymatviz/structure_viz.py)               | [`structure_2d(mp_12712)`](pymatviz/structure_viz.py) |
-| :-------------------------------------------------------------------------------: | :---------------------------------------------------: |
-|              ![struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]              |      ![struct-2d-mp-12712-Hf9Zr9Pd24-disordered]      |
-|                     ![matbench-phonons-structures-2d-plotly]                      |                                                       |
-| [`structure_2d_plotly(six_structs, backend="plotly")`](pymatviz/structure_viz.py) |                                                       |
+|       [`structure_2d(mp_19017)`](pymatviz/structure_viz/mpl.py)        |       [`structure_2d(mp_12712)`](pymatviz/structure_viz/mpl.py)        |
+| :--------------------------------------------------------------------: | :--------------------------------------------------------------------: |
+|        ![struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]         |              ![struct-2d-mp-12712-Hf9Zr9Pd24-disordered]               |
+| [`structure_2d_plotly(six_structs)`](pymatviz/structure_viz/plotly.py) | [`structure_3d_plotly(six_structs)`](pymatviz/structure_viz/plotly.py) |
+|                ![matbench-phonons-structures-2d-plotly]                |                ![matbench-phonons-structures-3d-plotly]                |
 
 [matbench-phonons-structures-2d-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-phonons-structures-2d-plotly.svg
+[matbench-phonons-structures-3d-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-phonons-structures-3d-plotly.svg
 
 ## Histograms
 
