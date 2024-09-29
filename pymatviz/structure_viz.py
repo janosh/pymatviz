@@ -6,6 +6,7 @@ inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matpl
 
 from __future__ import annotations
 
+import itertools
 import math
 import warnings
 from collections.abc import Callable, Sequence
@@ -44,6 +45,20 @@ covalent_radii: pd.Series = df_ptable[Key.covalent_radius].fillna(
     missing_covalent_radius
 )
 NO_SYM_MSG = "Symmetry could not be determined, skipping standardization"
+UNIT_CELL_EDGES = (
+    (0, 1),
+    (0, 2),
+    (0, 4),
+    (1, 3),
+    (1, 5),
+    (2, 3),
+    (2, 6),
+    (3, 7),
+    (4, 5),
+    (4, 6),
+    (5, 7),
+    (6, 7),
+)
 
 
 def _angles_to_rotation_matrix(
@@ -102,16 +117,7 @@ def get_image_atoms(
     image_atoms = []
 
     # Generate all possible combinations of lattice vector offsets
-    offsets = [
-        (0, 0, 0),
-        (1, 0, 0),
-        (0, 1, 0),
-        (0, 0, 1),
-        (1, 1, 0),
-        (1, 0, 1),
-        (0, 1, 1),
-        (1, 1, 1),
-    ]
+    offsets = list(itertools.product([0, 1], repeat=3))  # [0,0,0], [1,0,0], etc.
 
     for offset in offsets:
         if offset == (0, 0, 0):
@@ -170,6 +176,159 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
             n1 = n2
 
     return lines, z_indices, unit_cell_lines
+
+
+def get_elem_colors(elem_colors: ElemColorScheme | dict[str, str]) -> dict[str, str]:
+    """Get element colors based on the provided scheme or custom dictionary."""
+    if str(elem_colors) == str(ElemColorScheme.jmol):
+        return ELEM_COLORS_JMOL
+    if str(elem_colors) == str(ElemColorScheme.vesta):
+        return ELEM_COLORS_VESTA
+    if isinstance(elem_colors, dict):
+        return elem_colors
+    raise ValueError(
+        f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
+    )
+
+
+def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str, float]:
+    """Get atomic radii based on the provided input."""
+    if atomic_radii is None or isinstance(atomic_radii, float):
+        return 0.7 * df_ptable[Key.covalent_radius].fillna(0.2) * (atomic_radii or 1)
+    return atomic_radii
+
+
+def generate_site_label(
+    site_labels: Literal["symbol", "species", False] | dict[str, str] | Sequence[str],
+    site_idx: int,
+    major_elem_symbol: str,
+    majority_species: str,
+) -> str:
+    """Generate a label for a site based on the provided labeling scheme."""
+    if site_labels == "symbol":
+        return str(major_elem_symbol)
+    if site_labels == "species":
+        return str(majority_species)
+    if site_labels is False:
+        return ""
+    if isinstance(site_labels, dict):
+        return site_labels.get(
+            repr(major_elem_symbol), site_labels.get(major_elem_symbol, "")
+        )
+    if isinstance(site_labels, list | tuple):
+        return site_labels[site_idx]
+    raise ValueError(
+        f"Invalid {site_labels=}. Must be one of "
+        f"('symbol', 'species', False, dict, list)"
+    )
+
+
+def generate_subplot_title(
+    struct_i: Structure,
+    struct_key: Any,
+    idx: int,
+    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
+) -> dict[str, Any]:
+    """Generate a subplot title based on the provided function or default logic."""
+    if callable(subplot_title):
+        sub_title = subplot_title(struct_i, idx)
+        return dict(text=sub_title) if isinstance(sub_title, str) else sub_title
+    if isinstance(struct_key, int):
+        spg_num = struct_i.get_space_group_info()[1]
+        sub_title = f"{struct_i.formula} (spg={spg_num})"
+        return dict(text=f"{idx}. {sub_title}")
+    return dict(text=struct_key)
+
+
+def add_site_to_plot(
+    fig: go.Figure,
+    site: PeriodicSite,
+    coords: np.ndarray,
+    site_idx: int,
+    site_labels: Any,
+    _elem_colors: dict[str, str],
+    _atomic_radii: dict[str, float],
+    atom_size: float,
+    scale: float,
+    site_kwargs: dict[str, Any],
+    *,
+    is_image: bool = False,
+    is_3d: bool = False,
+    row: int | None = None,
+    col: int | None = None,
+    scene: str | None = None,
+) -> None:
+    """Add a site (regular or image) to the plot."""
+    species = getattr(site, "specie", site.species)
+    majority_species = (
+        max(species, key=species.get) if isinstance(species, Composition) else species
+    )
+    major_elem_symbol = majority_species.symbol
+    site_radius = _atomic_radii[major_elem_symbol] * scale
+    color = _elem_colors.get(major_elem_symbol, "gray")
+
+    hover_text = (
+        f"<b>Site: {majority_species}</b><br>"
+        f"Coordinates ({', '.join(f'{c:.3g}' for c in site.coords)})<br>"
+        f"[{', '.join(f'{c:.3g}' for c in site.frac_coords)}]"
+    )
+
+    if site.properties:
+        hover_text += "<br>Properties: " + ", ".join(
+            f"{k}: {v}" for k, v in site.properties.items()
+        )
+
+    txt = generate_site_label(
+        site_labels, site_idx, major_elem_symbol, majority_species
+    )
+
+    marker = (
+        dict(
+            size=site_radius * atom_size * (0.8 if is_image else 1),
+            color=color,
+            opacity=0.5 if is_image else 1,
+        )
+        | site_kwargs
+    )
+
+    scatter_kwargs = dict(
+        x=[coords[0]],
+        y=[coords[1]],
+        mode="markers+text" if txt else "markers",
+        marker=marker,
+        text=txt,
+        textposition="middle center",
+        textfont=dict(
+            color=pick_bw_for_contrast(color, text_color_threshold=0.5),
+            size=np.clip(atom_size * site_radius * (0.8 if is_image else 1), 10, 18),
+        ),
+        hovertext=f"Image of {hover_text}" if is_image else hover_text,
+        hoverinfo="text",
+        hoverlabel=dict(namelength=-1),
+        name=f"Image of {majority_species!s}" if is_image else str(majority_species),
+        showlegend=False,
+    )
+
+    if is_3d:
+        scatter_kwargs["z"] = [coords[2]]
+        fig.add_scatter3d(**scatter_kwargs, scene=scene)
+    else:
+        fig.add_scatter(**scatter_kwargs, row=row, col=col)
+
+
+def get_structures(
+    struct: Structure | Sequence[Structure] | pd.Series | dict[Any, Structure],
+) -> dict[Any, Structure]:
+    """Convert various input types to a dictionary of structures."""
+    if isinstance(struct, Structure):
+        return {0: struct}
+    if isinstance(struct, pd.Series):
+        return struct.to_dict()
+    if isinstance(next(iter(struct), None), Structure):
+        return dict(enumerate(struct))
+    if isinstance(struct, dict) and {*map(type, struct.values())} == {Structure}:
+        return struct
+    raise TypeError(f"Expected pymatgen Structure or Sequence of them, got {struct=}")
 
 
 def structure_2d(
@@ -628,6 +787,7 @@ def structure_2d_plotly(
     scale: float = 1,
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
+    show_image_sites: bool | dict[str, Any] = True,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
     | Sequence[str] = "species",
@@ -651,6 +811,9 @@ def structure_2d_plotly(
             a dict, will be used to customize unit cell appearance. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
             a dict, will be used to customize site marker appearance. Defaults to True.
+        show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
+            on unit cell edges and surfaces. If a dict, will be used to customize how
+            image sites are rendered. Defaults to True.
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
         standardize_struct (bool, optional): Whether to standardize the structure.
@@ -662,18 +825,7 @@ def structure_2d_plotly(
     Returns:
         go.Figure: Plotly figure with the plotted structure(s).
     """
-    if isinstance(struct, Structure):
-        structures = {0: struct}
-    elif isinstance(struct, pd.Series):
-        structures = struct.to_dict()
-    elif isinstance(next(iter(struct), None), Structure):
-        structures = dict(enumerate(struct))
-    elif isinstance(struct, dict) and {*map(type, struct.values())} == {Structure}:
-        structures = struct
-    else:
-        raise TypeError(
-            f"Expected pymatgen Structure or Sequence of them, got {struct=}"
-        )
+    structures = get_structures(struct)
 
     n_structs = len(structures)
     n_cols = min(n_cols, n_structs)
@@ -686,6 +838,9 @@ def structure_2d_plotly(
         vertical_spacing=0,
         horizontal_spacing=0,
     )
+
+    _elem_colors = get_elem_colors(elem_colors)
+    _atomic_radii = get_atomic_radii(atomic_radii)
 
     for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
         row = (idx - 1) // n_cols + 1
@@ -701,26 +856,6 @@ def structure_2d_plotly(
             except SymmetryUndeterminedError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
-        # Get colors
-        if str(elem_colors) == str(ElemColorScheme.jmol):
-            _elem_colors = ELEM_COLORS_JMOL
-        elif str(elem_colors) == str(ElemColorScheme.vesta):
-            _elem_colors = ELEM_COLORS_VESTA
-        elif isinstance(elem_colors, dict):
-            _elem_colors = elem_colors
-        else:
-            raise ValueError(
-                f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
-            )
-
-        # Get atomic radii
-        if atomic_radii is None or isinstance(atomic_radii, float):
-            _atomic_radii = (
-                0.7 * df_ptable[Key.covalent_radius].fillna(0.2) * (atomic_radii or 1)
-            )
-        else:
-            _atomic_radii = atomic_radii
-
         # Apply rotation
         rotation_matrix = _angles_to_rotation_matrix(rotation)
         rotated_coords = np.dot(struct_i.cart_coords, rotation_matrix)
@@ -731,76 +866,59 @@ def structure_2d_plotly(
             if isinstance(show_sites, dict):
                 site_kwargs |= show_sites
 
-            special_site_labels = ("symbol", "species", False)
             for site_idx, (site, coords) in enumerate(
                 zip(struct_i, rotated_coords, strict=False)
             ):
-                # if site is disordered, site.species will be Composition. use majority
-                # species for now to determine site radius. TODO: display disordered
-                # sites as circle wedges with multiple radii and species labels
-                species = getattr(site, "specie", site.species)
-                majority_species = (
-                    max(species, key=species.get)
-                    if isinstance(species, Composition)
-                    else species
-                )
-                major_elem_symbol = majority_species.symbol
-                site_radius = _atomic_radii[major_elem_symbol] * scale
-                color = _elem_colors.get(major_elem_symbol, "gray")
-
-                hover_text = (
-                    f"<b>Site: {majority_species}</b><br>"
-                    f"Coordinates ({', '.join(f'{c:.3g}' for c in site.coords)})<br>"
-                    f"[{', '.join(f'{c:.3g}' for c in site.frac_coords)}]"
-                )
-
-                if site.properties:
-                    hover_text += "<br>Properties: " + ", ".join(
-                        f"{k}: {v}" for k, v in site.properties.items()
-                    )
-
-                # Generate labels
-                if site_labels == "symbol":
-                    txt = str(major_elem_symbol)
-                elif site_labels == "species":
-                    txt = str(majority_species)
-                elif site_labels is False:
-                    txt = ""
-                elif isinstance(site_labels, dict):
-                    # Try element incl. oxidation state as dict key first (e.g.
-                    # Na+), then just element as fallback
-                    txt = site_labels.get(
-                        repr(major_elem_symbol), site_labels.get(major_elem_symbol, "")
-                    )
-                elif isinstance(site_labels, list | tuple):
-                    txt = site_labels[site_idx]
-                else:
-                    raise ValueError(
-                        f"Invalid {site_labels=}. Must be one of "
-                        f"({', '.join(map(str, special_site_labels))}, dict, list)"
-                    )
-
-                fig.add_scatter(
-                    x=[coords[0]],
-                    y=[coords[1]],
-                    mode="markers+text" if txt else "markers",
-                    marker=(
-                        dict(size=site_radius * atom_size, color=color) | site_kwargs
-                    ),
-                    text=txt,
-                    textposition="middle center",
-                    textfont=dict(  # Determine text color based on marker color
-                        color=pick_bw_for_contrast(color, text_color_threshold=0.5),
-                        size=np.clip(atom_size * site_radius, 12, 18),
-                    ),
-                    hovertext=hover_text,
-                    hoverinfo="text",
-                    hoverlabel=dict(namelength=-1),
-                    name=str(majority_species),
-                    showlegend=False,
+                add_site_to_plot(
+                    fig,
+                    site,
+                    coords,
+                    site_idx,
+                    site_labels,
+                    _elem_colors,
+                    _atomic_radii,
+                    atom_size,
+                    scale,
+                    site_kwargs,
+                    is_3d=False,  # Explicitly set to False for 2D plot
                     row=row,
                     col=col,
                 )
+
+                # Add image sites
+                if show_image_sites:
+                    image_site_kwargs = dict(
+                        size=_atomic_radii[site.specie.symbol]
+                        * scale
+                        * atom_size
+                        * 0.8,
+                        color=_elem_colors.get(site.specie.symbol, "gray"),
+                        opacity=0.5,
+                    )
+                    if isinstance(show_image_sites, dict):
+                        image_site_kwargs |= show_image_sites
+
+                    image_atoms = get_image_atoms(site, struct_i.lattice)
+                    if image_atoms:  # Only proceed if there are image atoms
+                        rotated_image_atoms = np.dot(image_atoms, rotation_matrix)
+
+                        for image_coords in rotated_image_atoms:
+                            add_site_to_plot(
+                                fig,
+                                site,
+                                image_coords,
+                                site_idx,
+                                site_labels,
+                                _elem_colors,
+                                _atomic_radii,
+                                atom_size,
+                                scale,
+                                image_site_kwargs,
+                                is_image=True,
+                                is_3d=False,  # Explicitly set to False for 2D plot
+                                row=row,
+                                col=col,
+                            )
 
         # Plot unit cell
         if show_unit_cell:
@@ -812,20 +930,7 @@ def structure_2d_plotly(
             if isinstance(show_unit_cell, dict):
                 unit_cell_kwargs |= show_unit_cell
 
-            for start, end in [
-                (0, 1),
-                (0, 2),
-                (0, 4),
-                (1, 3),
-                (1, 5),
-                (2, 3),
-                (2, 6),
-                (3, 7),
-                (4, 5),
-                (4, 6),
-                (5, 7),
-                (6, 7),
-            ]:
+            for start, end in UNIT_CELL_EDGES:
                 hover_text = (
                     f"Start: ({', '.join(f'{c:.3g}' for c in cell_vertices[start])}) "
                     f"[{', '.join(f'{c:.3g}' for c in corners[start])}]<br>"
@@ -845,23 +950,9 @@ def structure_2d_plotly(
                 )
 
         # Set subplot titles
-        if callable(subplot_title):
-            sub_title = subplot_title(struct_i, idx)
-            anno = dict(text=sub_title) if isinstance(sub_title, str) else sub_title
-        elif isinstance(struct_key, int):  # key=int means it's an index, i.e. not to be
-            # used as title. instead make title from formula and space group number
-            spg_num = struct_i.get_space_group_info()[1]
-            sub_title = f"{struct_i.formula} (spg={spg_num})"
-            anno = dict(text=f"{idx}. {sub_title}")
-        else:
-            anno = dict(text=struct_key)
-
-        # Calculate title's y-position based on row number
-        row = (idx - 1) // n_cols + 1
-        # 0.02 = small offset from top
+        anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
         subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
         anno |= dict(y=subtitle_y_pos, yanchor="top")
-
         fig.layout.annotations[idx - 1].update(**anno)
 
     # Update layout
@@ -929,18 +1020,7 @@ def structure_3d_plotly(
     Returns:
         go.Figure: Plotly figure with the plotted 3D structure(s).
     """
-    if isinstance(struct, Structure):
-        structures = {0: struct}
-    elif isinstance(struct, pd.Series):
-        structures = struct.to_dict()
-    elif isinstance(next(iter(struct), None), Structure):
-        structures = dict(enumerate(struct))
-    elif isinstance(struct, dict) and {*map(type, struct.values())} == {Structure}:
-        structures = struct
-    else:
-        raise TypeError(
-            f"Expected pymatgen Structure or Sequence of them, got {struct=}"
-        )
+    structures = get_structures(struct)
 
     n_structs = len(structures)
     n_cols = min(n_cols, n_structs)
@@ -953,30 +1033,10 @@ def structure_3d_plotly(
         subplot_titles=[" " for _ in range(n_structs)],
     )
 
-    # Get colors
-    if str(elem_colors) == str(ElemColorScheme.jmol):
-        _elem_colors = ELEM_COLORS_JMOL
-    elif str(elem_colors) == str(ElemColorScheme.vesta):
-        _elem_colors = ELEM_COLORS_VESTA
-    elif isinstance(elem_colors, dict):
-        _elem_colors = elem_colors
-    else:
-        raise ValueError(
-            f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
-        )
-
-    # Get atomic radii
-    if atomic_radii is None or isinstance(atomic_radii, float):
-        _atomic_radii = (
-            0.7 * df_ptable[Key.covalent_radius].fillna(0.2) * (atomic_radii or 1)
-        )
-    else:
-        _atomic_radii = atomic_radii
+    _elem_colors = get_elem_colors(elem_colors)
+    _atomic_radii = get_atomic_radii(atomic_radii)
 
     for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
-        row = (idx - 1) // n_cols + 1
-        col = (idx - 1) % n_cols + 1
-
         # Standardize structure if needed
         if standardize_struct is None:
             standardize_struct = any(any(site.frac_coords < 0) for site in struct_i)
@@ -985,11 +1045,7 @@ def structure_3d_plotly(
                 spg_analyzer = SpacegroupAnalyzer(struct_i)
                 struct_i = spg_analyzer.get_conventional_standard_structure()  # noqa: PLW2901
             except SymmetryUndeterminedError:
-                warnings.warn(
-                    "Symmetry could not be determined, skipping standardization",
-                    UserWarning,
-                    stacklevel=2,
-                )
+                warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
         # Plot atoms
         if show_sites:
@@ -997,97 +1053,53 @@ def structure_3d_plotly(
             if isinstance(show_sites, dict):
                 site_kwargs |= show_sites
 
-            special_site_labels = ("symbol", "species", False)
             for site_idx, site in enumerate(struct_i):
-                species = getattr(site, "specie", site.species)
-                majority_species = (
-                    max(species, key=species.get)
-                    if isinstance(species, Composition)
-                    else species
-                )
-                major_elem_symbol = majority_species.symbol
-                site_radius = _atomic_radii[major_elem_symbol] * scale
-                color = _elem_colors.get(major_elem_symbol, "gray")
-
-                hover_text = (
-                    f"<b>Site: {majority_species}</b><br>"
-                    f"Coordinates ({', '.join(f'{c:.3g}' for c in site.coords)})<br>"
-                    f"[{', '.join(f'{c:.3g}' for c in site.frac_coords)}]"
-                )
-
-                if site.properties:
-                    hover_text += "<br>Properties: " + ", ".join(
-                        f"{k}: {v}" for k, v in site.properties.items()
-                    )
-
-                # Generate labels
-                if site_labels == "symbol":
-                    txt = str(major_elem_symbol)
-                elif site_labels == "species":
-                    txt = str(majority_species)
-                elif site_labels is False:
-                    txt = ""
-                elif isinstance(site_labels, dict):
-                    txt = site_labels.get(
-                        repr(major_elem_symbol), site_labels.get(major_elem_symbol, "")
-                    )
-                elif isinstance(site_labels, list | tuple):
-                    txt = site_labels[site_idx]
-                else:
-                    raise ValueError(
-                        f"Invalid {site_labels=}. Must be one of "
-                        f"({', '.join(map(str, special_site_labels))}, dict, list)"
-                    )
-
-                fig.add_scatter3d(
-                    x=[site.coords[0]],
-                    y=[site.coords[1]],
-                    z=[site.coords[2]],
-                    mode="markers+text" if txt else "markers",
-                    marker=(
-                        dict(size=site_radius * atom_size, color=color) | site_kwargs
-                    ),
-                    text=txt,
-                    textposition="middle center",
-                    textfont=dict(
-                        color=pick_bw_for_contrast(color, text_color_threshold=0.5),
-                        size=np.clip(atom_size * site_radius, 12, 18),
-                    ),
-                    hovertext=hover_text,
-                    hoverinfo="text",
-                    hoverlabel=dict(namelength=-1),
-                    name=str(majority_species),
-                    showlegend=False,
+                add_site_to_plot(
+                    fig,
+                    site,
+                    site.coords,
+                    site_idx,
+                    site_labels,
+                    _elem_colors,
+                    _atomic_radii,
+                    atom_size,
+                    scale,
+                    site_kwargs,
+                    is_3d=True,
                     scene=f"scene{idx}",
                 )
 
                 # Add image sites
                 if show_image_sites:
                     image_site_kwargs = dict(
-                        size=site_radius * atom_size * 0.8,
-                        color=color,
+                        size=_atomic_radii[site.specie.symbol]
+                        * scale
+                        * atom_size
+                        * 0.8,
+                        color=_elem_colors.get(site.specie.symbol, "gray"),
                         opacity=0.5,
                     )
                     if isinstance(show_image_sites, dict):
                         image_site_kwargs |= show_image_sites
 
                     image_atoms = get_image_atoms(site, struct_i.lattice)
-                    rotated_image_atoms = np.dot(image_atoms, np.eye(3))
-
-                    for image_coords in rotated_image_atoms:
-                        fig.add_scatter3d(
-                            x=[image_coords[0]],
-                            y=[image_coords[1]],
-                            z=[image_coords[2]],
-                            mode="markers",
-                            marker=image_site_kwargs,
-                            hovertext=f"Image of {hover_text}",
-                            hoverinfo="text",
-                            hoverlabel=dict(namelength=-1),
-                            name=f"Image of {majority_species!s}",
-                            showlegend=False,
-                            scene=f"scene{idx}",
-                        )
+                    if image_atoms:  # Only proceed if there are image atoms
+                        for image_coords in image_atoms:
+                            add_site_to_plot(
+                                fig,
+                                site,
+                                image_coords,
+                                site_idx,
+                                site_labels,
+                                _elem_colors,
+                                _atomic_radii,
+                                atom_size,
+                                scale,
+                                image_site_kwargs,
+                                is_image=True,
+                                is_3d=True,
+                                scene=f"scene{idx}",
+                            )
 
         # Plot unit cell
         if show_unit_cell:
@@ -1097,20 +1109,7 @@ def structure_3d_plotly(
             if isinstance(show_unit_cell, dict):
                 unit_cell_kwargs |= show_unit_cell
 
-            for start, end in [
-                (0, 1),
-                (0, 2),
-                (0, 4),
-                (1, 3),
-                (1, 5),
-                (2, 3),
-                (2, 6),
-                (3, 7),
-                (4, 5),
-                (4, 6),
-                (5, 7),
-                (6, 7),
-            ]:
+            for start, end in UNIT_CELL_EDGES:
                 hover_text = (
                     f"Start: ({', '.join(f'{c:.3g}' for c in cell_vertices[start])}) "
                     f"[{', '.join(f'{c:.3g}' for c in corners[start])}]<br>"
@@ -1130,22 +1129,10 @@ def structure_3d_plotly(
                 )
 
         # Set subplot titles
-        if callable(subplot_title):
-            sub_title = subplot_title(struct_i, idx)
-            anno = dict(text=sub_title) if isinstance(sub_title, str) else sub_title
-        elif isinstance(struct_key, int):
-            spg_num = struct_i.get_space_group_info()[1]
-            sub_title = f"{struct_i.formula} (spg={spg_num})"
-            anno = dict(text=f"{idx}. {sub_title}")
-        else:
-            anno = dict(text=struct_key)
-
-        # Calculate title's y-position based on row number
+        anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
         row = (idx - 1) // n_cols + 1
-        # 0.02 = small offset from top
         subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
         anno |= dict(y=subtitle_y_pos, yanchor="top")
-
         fig.layout.annotations[idx - 1].update(**anno)
 
         # Update 3D scene properties
@@ -1182,7 +1169,7 @@ def structure_3d_plotly(
         showlegend=False,
         paper_bgcolor="rgba(0,0,0,0)",  # Transparent background
         plot_bgcolor="rgba(0,0,0,0)",  # Transparent background
-        margin=dict(l=0, r=0, t=40, b=0),  # Minimize margins
+        margin=dict(l=0, r=0, t=0, b=0),  # Minimize margins
     )
 
     return fig
