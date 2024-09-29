@@ -9,6 +9,7 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key
+from pymatviz.utils import TEST_FILES
 
 
 df_steels = load_dataset("matbench_steels")
@@ -30,22 +31,19 @@ fig.show()
 
 
 # %% Plot some disordered structures in 2D
-# DEBUG
-mp_api_key = os.environ.get("MP_API_KEY")
-if mp_api_key is None:
-    raise RuntimeError("api key is None")
+struct_mp_ids = ("mp-19017", "mp-12712")
+structure_dir = f"{TEST_FILES}/structure"
 
-elif mp_api_key is not None and len(mp_api_key.strip()) == 0:
-    raise RuntimeError("mp api key is empty")
+if not os.environ.get("GITHUB_ACTIONS"):
+    os.makedirs(structure_dir, exist_ok=True)
+    for mp_id in struct_mp_ids:
+        struct: Structure = MPRester().get_structure_by_material_id(
+            mp_id, conventional_unit_cell=True
+        )
+        struct.to_file(f"{structure_dir}/{mp_id}.json")
 
-disordered_structs = {
-    mp_id: MPRester().get_structure_by_material_id(mp_id, conventional_unit_cell=True)
-    for mp_id in ["mp-19017", "mp-12712"]
-}
-
-struct: Structure  # for type hinting
-
-for mp_id, struct in disordered_structs.items():
+for mp_id in struct_mp_ids:
+    struct = Structure.from_file(f"{structure_dir}/{mp_id}.json")
     for site in struct:  # disorder structures in-place
         if "Fe" in site.species:
             site.species = {"Fe": 0.4, "C": 0.4, "Mn": 0.2}
