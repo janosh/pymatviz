@@ -161,7 +161,7 @@ def structure_2d_plotly(
                         image_site_kwargs |= show_image_sites
 
                     image_atoms = get_image_atoms(site, struct_i.lattice)
-                    if image_atoms:  # Only proceed if there are image atoms
+                    if len(image_atoms) > 0:  # Only proceed if there are image atoms
                         rotated_image_atoms = np.dot(image_atoms, rotation_matrix)
 
                         for image_coords in rotated_image_atoms:
@@ -345,7 +345,7 @@ def structure_3d_plotly(
                         image_site_kwargs |= show_image_sites
 
                     image_atoms = get_image_atoms(site, struct_i.lattice)
-                    if image_atoms:  # Only proceed if there are image atoms
+                    if len(image_atoms) > 0:  # Only proceed if there are image atoms
                         for image_coords in image_atoms:
                             add_site_to_plot(
                                 fig,
