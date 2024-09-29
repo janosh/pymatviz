@@ -150,11 +150,11 @@ def structure_2d_plotly(
                 # Add image sites
                 if show_image_sites:
                     image_site_kwargs = dict(
-                        size=_atomic_radii[site.specie.symbol]
+                        size=_atomic_radii[site.species.elements[0].symbol]
                         * scale
                         * atom_size
                         * 0.8,
-                        color=_elem_colors.get(site.specie.symbol, "gray"),
+                        color=_elem_colors.get(site.species.elements[0].symbol, "gray"),
                         opacity=0.5,
                     )
                     if isinstance(show_image_sites, dict):
@@ -334,11 +334,11 @@ def structure_3d_plotly(
                 # Add image sites
                 if show_image_sites:
                     image_site_kwargs = dict(
-                        size=_atomic_radii[site.specie.symbol]
+                        size=_atomic_radii[site.species.elements[0].symbol]
                         * scale
                         * atom_size
                         * 0.8,
-                        color=_elem_colors.get(site.specie.symbol, "gray"),
+                        color=_elem_colors.get(site.species.elements[0].symbol, "gray"),
                         opacity=0.5,
                     )
                     if isinstance(show_image_sites, dict):

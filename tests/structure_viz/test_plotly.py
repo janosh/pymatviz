@@ -186,8 +186,8 @@ def test_structure_2d_plotly_multiple() -> None:
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (len(COORDS) + 12)
     assert len(fig.layout.annotations) == 4
-    for idx, (_key, struct) in enumerate(struct_dict.items(), start=1):
-        assert fig.layout.annotations[idx - 1].text == f"{idx} - {struct.formula}"
+    for idx, (key, struct) in enumerate(struct_dict.items(), start=1):
+        assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
 
 
 def test_structure_2d_plotly_invalid_input() -> None:
