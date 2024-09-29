@@ -43,7 +43,13 @@ if not os.environ.get("GITHUB_ACTIONS"):
         struct.to_file(f"{structure_dir}/{mp_id}.json")
 
 for mp_id in struct_mp_ids:
-    struct = Structure.from_file(f"{structure_dir}/{mp_id}.json")
+    try:
+        struct = Structure.from_file(f"{structure_dir}/{mp_id}.json")
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            f"structure for {mp_id} not found, run this script locally to fetch it."
+        ) from exc
+
     for site in struct:  # disorder structures in-place
         if "Fe" in site.species:
             site.species = {"Fe": 0.4, "C": 0.4, "Mn": 0.2}
