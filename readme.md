@@ -114,11 +114,13 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 See [`pymatviz/structure_viz.py`](pymatviz/structure_viz.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
 
-|  [`structure_2d(mp_19017)`](pymatviz/structure_viz.py)  | [`structure_2d(mp_12712)`](pymatviz/structure_viz.py) |
-| :-----------------------------------------------------: | :---------------------------------------------------: |
-| ![struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered] |      ![struct-2d-mp-12712-Hf9Zr9Pd24-disordered]      |
+|               [`structure_2d(mp_19017)`](pymatviz/structure_viz.py)               | [`structure_2d(mp_12712)`](pymatviz/structure_viz.py) |
+| :-------------------------------------------------------------------------------: | :---------------------------------------------------: |
+|              ![struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]              |      ![struct-2d-mp-12712-Hf9Zr9Pd24-disordered]      |
+|                     ![matbench-phonons-structures-2d-plotly]                      |                                                       |
+| [`structure_2d_plotly(six_structs, backend="plotly")`](pymatviz/structure_viz.py) |                                                       |
 
-![matbench-phonons-structures-2d]
+[matbench-phonons-structures-2d-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-phonons-structures-2d-plotly.svg
 
 ## Histograms
 
