@@ -18,9 +18,9 @@ from pymatviz.enums import ElemColorScheme, Key
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-disordered_struct = Structure(
-    lattice := np.eye(3) * 5, species=[{"Fe": 0.75, "C": 0.25}, "O"], coords=coords
+COORDS = [[0, 0, 0], [0.5, 0.5, 0.5]]
+DISORDERED_STRUCT = Structure(
+    lattice := np.eye(3) * 5, species=[{"Fe": 0.75, "C": 0.25}, "O"], coords=COORDS
 )
 
 
@@ -38,7 +38,7 @@ def test_structure_2d(
     standardize_struct: bool | None,
 ) -> None:
     ax = pmv.structure_2d(
-        disordered_struct,
+        DISORDERED_STRUCT,
         atomic_radii=radii,
         rotation=rotation,
         show_bonds=show_bonds,
@@ -55,7 +55,7 @@ def test_structure_2d(
     patch_counts = pd.Series(
         [type(patch).__name__ for patch in ax.patches]
     ).value_counts()
-    assert patch_counts["Wedge"] == len(disordered_struct.composition)
+    assert patch_counts["Wedge"] == len(DISORDERED_STRUCT.composition)
 
     min_expected_n_patches = 182
     assert patch_counts["PathPatch"] > min_expected_n_patches
@@ -63,7 +63,7 @@ def test_structure_2d(
 
 @pytest.mark.parametrize("axis", [True, False, "on", "off", "square", "equal"])
 def test_structure_2d_axis(axis: str | bool) -> None:
-    ax = pmv.structure_2d(disordered_struct, axis=axis)
+    ax = pmv.structure_2d(DISORDERED_STRUCT, axis=axis)
     assert isinstance(ax, plt.Axes)
     assert ax.axes.axison == (axis not in (False, "off"))
 
@@ -75,7 +75,7 @@ def test_structure_2d_axis(axis: str | bool) -> None:
 def test_structure_2d_site_labels(
     site_labels: Literal[False, "symbol", "species"] | dict[str, str] | Sequence[str],
 ) -> None:
-    ax = pmv.structure_2d(disordered_struct, site_labels=site_labels)
+    ax = pmv.structure_2d(DISORDERED_STRUCT, site_labels=site_labels)
     assert isinstance(ax, plt.Axes)
     if site_labels is False:
         assert not ax.axes.texts
@@ -86,8 +86,8 @@ def test_structure_2d_site_labels(
 
 def test_structure_2d_warns() -> None:
     # for sites with negative fractional coordinates
-    orig_coords = disordered_struct[0].frac_coords.copy()
-    disordered_struct[0].frac_coords = [-0.1, 0.1, 0.1]
+    orig_coords = DISORDERED_STRUCT[0].frac_coords.copy()
+    DISORDERED_STRUCT[0].frac_coords = [-0.1, 0.1, 0.1]
     standardize_struct = False
     try:
         with pytest.warns(
@@ -97,24 +97,24 @@ def test_structure_2d_warns() -> None:
                 f"{standardize_struct=}, you may want to set standardize_struct=True"
             ),
         ):
-            pmv.structure_2d(disordered_struct, standardize_struct=standardize_struct)
+            pmv.structure_2d(DISORDERED_STRUCT, standardize_struct=standardize_struct)
     finally:
-        disordered_struct[0].frac_coords = orig_coords
+        DISORDERED_STRUCT[0].frac_coords = orig_coords
 
     # warns when passing subplot_kwargs for a single structure
     with pytest.warns(
         UserWarning, match="subplot_kwargs are ignored when plotting a single structure"
     ):
-        pmv.structure_2d(disordered_struct, subplot_kwargs={"facecolor": "red"})
+        pmv.structure_2d(DISORDERED_STRUCT, subplot_kwargs={"facecolor": "red"})
 
 
-struct1 = Structure(lattice, ["Fe", "O"], coords=coords)
+struct1 = Structure(lattice, ["Fe", "O"], coords=COORDS)
 struct1.properties = {"id": "struct1"}
-struct2 = Structure(lattice, ["Co", "O"], coords=coords)
+struct2 = Structure(lattice, ["Co", "O"], coords=COORDS)
 struct2.properties = {Key.mat_id: "struct2"}
-struct3 = Structure(lattice, ["Ni", "O"], coords=coords)
+struct3 = Structure(lattice, ["Ni", "O"], coords=COORDS)
 struct3.properties = {"ID": "struct3", "name": "nickel oxide"}  # extra properties
-struct4 = Structure(lattice, ["Cu", "O"], coords=coords)
+struct4 = Structure(lattice, ["Cu", "O"], coords=COORDS)
 
 
 def test_structure_2d_multiple() -> None:
@@ -165,7 +165,7 @@ def test_structure_2d_multiple() -> None:
 def test_structure_2d_color_warning() -> None:
     # Copernicium is not in the default color scheme
     elem_symbol = "Cn"
-    struct = Structure(np.eye(3) * 5, [elem_symbol] * 2, coords=coords)
+    struct = Structure(np.eye(3) * 5, [elem_symbol] * 2, coords=COORDS)
     fallback_color = "gray"
 
     for elem_colors in ElemColorScheme:
@@ -186,7 +186,7 @@ def test_structure_2d_color_warning() -> None:
 
     # create custom color scheme missing an element
     custom_colors = {"Fe": "red"}
-    struct = Structure(np.eye(3) * 5, ["Fe", "O"], coords=coords)
+    struct = Structure(np.eye(3) * 5, ["Fe", "O"], coords=COORDS)
 
     with pytest.warns(
         UserWarning,
@@ -300,13 +300,13 @@ def test_structure_2d_color_schemes() -> None:
     ],
 )
 def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
-    fig = pmv.structure_2d_plotly(disordered_struct, **kwargs)
+    fig = pmv.structure_2d_plotly(DISORDERED_STRUCT, **kwargs)
     assert isinstance(fig, go.Figure)
 
     # Check if the figure has the correct number of traces
     expected_traces = 0
     if show_sites := kwargs.get("show_sites"):
-        expected_traces += len(disordered_struct)
+        expected_traces += len(DISORDERED_STRUCT)
     if show_unit_cell := kwargs.get("show_unit_cell"):
         expected_traces += 12  # 12 edges in a cube
     assert len(fig.data) == expected_traces
@@ -343,17 +343,17 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
         # elif isinstance(kwargs["site_labels"], list):
         #     assert all(label in site_trace.text for label in kwargs["site_labels"])
         elif site_labels in ("symbol", "species"):
-            assert len(site_trace.text) == len(disordered_struct)
+            assert len(site_trace.text) == len(DISORDERED_STRUCT)
 
 
 def test_structure_2d_plotly_multiple() -> None:
-    struct1 = Structure(lattice, ["Fe", "O"], coords=coords)
+    struct1 = Structure(lattice, ["Fe", "O"], coords=COORDS)
     struct1.properties = {"id": "struct1"}
-    struct2 = Structure(lattice, ["Co", "O"], coords=coords)
+    struct2 = Structure(lattice, ["Co", "O"], coords=COORDS)
     struct2.properties = {Key.mat_id: "struct2"}
-    struct3 = Structure(lattice, ["Ni", "O"], coords=coords)
+    struct3 = Structure(lattice, ["Ni", "O"], coords=COORDS)
     struct3.properties = {"ID": "struct3", "name": "nickel oxide"}
-    struct4 = Structure(lattice, ["Cu", "O"], coords=coords)
+    struct4 = Structure(lattice, ["Cu", "O"], coords=COORDS)
 
     # Test dict[str, Structure]
     struct_dict = {
@@ -365,7 +365,7 @@ def test_structure_2d_plotly_multiple() -> None:
     fig = pmv.structure_2d_plotly(struct_dict, n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (
-        len(coords) + 12
+        len(COORDS) + 12
     )  # 4 structures, 2 sites each, 12 unit cell edges
     assert len(fig.layout.annotations) == 4
 
@@ -373,13 +373,13 @@ def test_structure_2d_plotly_multiple() -> None:
     struct_series = pd.Series(struct_dict)
     fig = pmv.structure_2d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(coords) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12)
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
     fig = pmv.structure_2d_plotly(list(struct_dict.values()), n_cols=2)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(coords) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12)
     assert len(fig.layout.annotations) == 4
 
     # Test subplot_title
@@ -388,7 +388,7 @@ def test_structure_2d_plotly_multiple() -> None:
 
     fig = pmv.structure_2d_plotly(struct_series, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(coords) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12)
     assert len(fig.layout.annotations) == 4
     for idx, (_key, struct) in enumerate(struct_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{idx} - {struct.formula}"

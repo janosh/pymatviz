@@ -9,7 +9,6 @@ import pytest
 
 from pymatviz.bar import spacegroup_bar
 from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY
-from tests.conftest import y_pred, y_true
 
 
 if TYPE_CHECKING:
@@ -18,9 +17,6 @@ if TYPE_CHECKING:
     from pymatgen.core import Structure
 
     from pymatviz.utils import Backend
-
-
-y_std_mock = y_true - y_pred
 
 
 @pytest.mark.parametrize("backend", BACKENDS)

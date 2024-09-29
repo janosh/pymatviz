@@ -17,9 +17,9 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 
-# if platform is windows, set matplotlib backend to "Agg" to fix
-# _tkinter.TclError: Can't find a usable init.tcl in the following directories
-# https://github.com/orgs/community/discussions/26434
+# If platform is Windows, set matplotlib backend to "Agg" to fix:
+# "_tkinter.TclError: Can't find a usable init.tcl in the following directories"
+# See: https://github.com/orgs/community/discussions/26434
 if platform.system() == "Windows":
     import matplotlib as mpl
 
@@ -52,10 +52,10 @@ df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]
 
 @pytest.fixture(autouse=True)
 def _run_around_tests() -> Generator[None, None, None]:
-    """Ensure matplotlib plots are closed after each test so as not to leak state
-    between tests."""
+    """Ensure matplotlib plots are closed after each test
+    so as not to leak state between tests.
+    """
     # runs before each test
-
     yield
 
     # runs after each test
@@ -121,7 +121,7 @@ def matplotlib_scatter() -> plt.Figure:
 
 @pytest.fixture
 def glass_formulas() -> list[str]:
-    """First 20 materials in the Matbench glass dataset.
+    """First 20 materials in the MatBench glass dataset.
 
     from matminer.datasets import load_dataset
 
