@@ -34,21 +34,22 @@ fig.show()
 struct_mp_ids = ("mp-19017", "mp-12712")
 structure_dir = f"{TEST_FILES}/structures"
 
-if not os.environ.get("GITHUB_ACTIONS"):
-    os.makedirs(structure_dir, exist_ok=True)
-    for mp_id in struct_mp_ids:
+os.makedirs(structure_dir, exist_ok=True)
+for mp_id in struct_mp_ids:
+    struct_file = f"{structure_dir}/{mp_id}.json.gz"
+    if not os.path.exists(struct_file):
+        if os.environ.get("CI"):
+            raise FileNotFoundError(
+                f"structure for {mp_id} not found, run this script locally to fetch it."
+            )
+
         struct: Structure = MPRester().get_structure_by_material_id(
             mp_id, conventional_unit_cell=True
         )
-        struct.to_file(f"{structure_dir}/{mp_id}.json")
+        struct.to_file(struct_file)
 
-for mp_id in struct_mp_ids:
-    try:
-        struct = Structure.from_file(f"{structure_dir}/{mp_id}.json")
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(
-            f"structure for {mp_id} not found, run this script locally to fetch it."
-        ) from exc
+    else:
+        struct = Structure.from_file(f"{structure_dir}/{mp_id}.json.gz")
 
     for site in struct:  # disorder structures in-place
         if "Fe" in site.species:
