@@ -91,44 +91,34 @@ def _angles_to_rotation_matrix(
 
 
 def get_image_atoms(
-    site: PeriodicSite, lattice: Lattice, tolerance: float = 0.02
-) -> list[ArrayLike]:
-    """Get image atoms for a given site.
+    site: PeriodicSite, lattice: Lattice, tol: float = 0.02
+) -> np.ndarray:
+    """Get image atoms for a given site."""
+    coords_image_atoms: list[np.ndarray] = []
 
-    Args:
-        site (PeriodicSite): The site to get image atoms for.
-        lattice (Lattice): The lattice of the structure.
-        tolerance (float, optional): Tolerance for considering an atom on the edge.
-            Defaults to 0.02 (2%).
-
-    Returns:
-        list: List of cartesian coordinates of image atoms.
-    """
-    frac_coords = site.frac_coords
-    image_atoms = []
+    # If the site is at the lattice origin, return an empty array
+    if np.allclose(site.frac_coords, (0, 0, 0), atol=tol):
+        return np.array(coords_image_atoms)
 
     # Generate all possible combinations of lattice vector offsets
-    offsets = list(itertools.product([0, 1], repeat=3))  # [0,0,0], [1,0,0], etc.
+    offsets = list(itertools.product([0, 1], repeat=3))
 
     for offset in offsets:
         if offset == (0, 0, 0):
             continue  # Skip the original atom
 
-        # Apply offset to fractional coordinates
-        new_frac = frac_coords + offset
+        new_frac = site.frac_coords + offset
         new_cart = lattice.get_cartesian_coords(new_frac)
 
-        # Check if the new position is within or very close to the unit cell
-        is_within_cell = all(-tolerance <= coord <= 1 + tolerance for coord in new_frac)
+        is_within_cell = all(-tol <= coord <= 1 + tol for coord in new_frac)
         is_on_edge = any(
-            np.isclose(new_frac, 0, atol=tolerance)
-            | np.isclose(new_frac, 1, atol=tolerance)
+            np.isclose(new_frac, 0, atol=tol) | np.isclose(new_frac, 1, atol=tol)
         )
 
         if is_within_cell and is_on_edge:
-            image_atoms.append(new_cart)
+            coords_image_atoms += [new_cart]
 
-    return image_atoms
+    return np.array(coords_image_atoms)
 
 
 def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
@@ -148,7 +138,7 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
     for idx in range(3):
         norm = math.sqrt(sum(cell[idx] ** 2))
         segment = max(2, int(norm / 0.3))
-        segments.append(segment)
+        segments += [segment]
         n_lines += 4 * segment
 
     lines = np.empty((n_lines, 3))
@@ -185,7 +175,8 @@ def get_elem_colors(elem_colors: ElemColorScheme | dict[str, str]) -> dict[str, 
 def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str, float]:
     """Get atomic radii based on the provided input."""
     if atomic_radii is None or isinstance(atomic_radii, float):
-        return 0.7 * df_ptable[Key.covalent_radius].fillna(0.2) * (atomic_radii or 1)
+        scale = atomic_radii or 1
+        return {elem: radius * scale for elem, radius in covalent_radii.items()}
     return atomic_radii
 
 
@@ -222,7 +213,7 @@ def generate_subplot_title(
 ) -> dict[str, Any]:
     """Generate a subplot title based on the provided function or default logic."""
     if callable(subplot_title):
-        sub_title = subplot_title(struct_i, idx)
+        sub_title = subplot_title(struct_i, struct_key)
         return dict(text=sub_title) if isinstance(sub_title, str) else sub_title
     if isinstance(struct_key, int):
         spg_num = struct_i.get_space_group_info()[1]
