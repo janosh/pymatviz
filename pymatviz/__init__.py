@@ -69,7 +69,11 @@ from pymatviz.scatter import (
     residual_vs_actual,
     scatter_with_err_bar,
 )
-from pymatviz.structure_viz import structure_2d, structure_2d_plotly
+from pymatviz.structure_viz import (
+    structure_2d,
+    structure_2d_plotly,
+    structure_3d_plotly,
+)
 from pymatviz.sunburst import spacegroup_sunburst
 from pymatviz.templates import (
     pmv_dark_template,

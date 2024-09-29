@@ -87,3 +87,11 @@ for anno in fig.layout.annotations:
 
 fig.show()
 pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")
+
+
+# %% 3d example
+fig = pmv.structure_3d_plotly(
+    df_phonons[Key.structure].head(6).to_dict(), elem_colors=ElemColorScheme.jmol
+)
+fig.show()
+pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")
