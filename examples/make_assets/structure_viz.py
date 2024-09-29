@@ -32,7 +32,7 @@ fig.show()
 
 # %% Plot some disordered structures in 2D
 struct_mp_ids = ("mp-19017", "mp-12712")
-structure_dir = f"{TEST_FILES}/structure"
+structure_dir = f"{TEST_FILES}/structures"
 
 if not os.environ.get("GITHUB_ACTIONS"):
     os.makedirs(structure_dir, exist_ok=True)
