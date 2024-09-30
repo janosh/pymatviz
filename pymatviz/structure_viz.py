@@ -6,10 +6,10 @@ inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matpl
 
 from __future__ import annotations
 
-import itertools
 import math
 import warnings
 from collections.abc import Callable, Sequence
+from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
@@ -308,7 +308,7 @@ def structure_2d(
 
         if show_unit_cell:
             lines, z_indices, unit_cell_lines = unit_cell_to_lines(unit_cell)
-            corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
+            corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
             cell_vertices = np.dot(corners, unit_cell)
             cell_vertices = np.dot(cell_vertices, rotation_matrix)
         else:
@@ -753,7 +753,7 @@ def structure_2d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
+            corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
             cell_vertices = np.dot(
                 np.dot(corners, struct_i.lattice.matrix), rotation_matrix
             )
