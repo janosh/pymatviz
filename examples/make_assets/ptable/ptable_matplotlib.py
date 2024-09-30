@@ -135,6 +135,9 @@ fig = pmv.ptable_lines(
     data_dict,
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
+    anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+    anno_pos=(0.25, 0.2),
+    anno_kwargs={"fontsize": 6},
 )
 pmv.io.save_and_compress_svg(fig, "ptable-lines")
 
