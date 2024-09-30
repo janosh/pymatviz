@@ -1,4 +1,5 @@
 # %%
+import os
 from typing import cast
 
 import matplotlib.pyplot as plt
@@ -8,9 +9,8 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key
+from pymatviz.utils import TEST_FILES
 
-
-struct: Structure  # for type hinting
 
 df_steels = load_dataset("matbench_steels")
 df_phonons = load_dataset("matbench_phonons")
@@ -31,12 +31,26 @@ fig.show()
 
 
 # %% Plot some disordered structures in 2D
-disordered_structs = {
-    mp_id: MPRester().get_structure_by_material_id(mp_id, conventional_unit_cell=True)
-    for mp_id in ["mp-19017", "mp-12712"]
-}
+struct_mp_ids = ("mp-19017", "mp-12712")
+structure_dir = f"{TEST_FILES}/structures"
 
-for mp_id, struct in disordered_structs.items():
+os.makedirs(structure_dir, exist_ok=True)
+for mp_id in struct_mp_ids:
+    struct_file = f"{structure_dir}/{mp_id}.json.gz"
+    if not os.path.isfile(struct_file):
+        if os.getenv("CI"):
+            raise FileNotFoundError(
+                f"structure for {mp_id} not found, run this script locally to fetch it."
+            )
+
+        struct: Structure = MPRester().get_structure_by_material_id(
+            mp_id, conventional_unit_cell=True
+        )
+        struct.to_file(struct_file)
+
+    else:
+        struct = Structure.from_file(f"{structure_dir}/{mp_id}.json.gz")
+
     for site in struct:  # disorder structures in-place
         if "Fe" in site.species:
             site.species = {"Fe": 0.4, "C": 0.4, "Mn": 0.2}
@@ -73,3 +87,11 @@ for anno in fig.layout.annotations:
 
 fig.show()
 pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")
+
+
+# %% 3d example
+fig = pmv.structure_3d_plotly(
+    df_phonons[Key.structure].head(6).to_dict(), elem_colors=ElemColorScheme.jmol
+)
+fig.show()
+pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")
