@@ -53,8 +53,6 @@ fig = pmv.ptable_heatmap_ratio(
     df_steels[Key.composition],
     log=True,
     value_fmt=".4g",
-    anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
-    anno_pos=(0.25, 0.25),
 )
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
