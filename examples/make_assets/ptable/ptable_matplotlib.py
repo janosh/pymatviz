@@ -17,6 +17,9 @@ df_steels = load_dataset("matbench_steels")
 ax = pmv.ptable_heatmap(
     pmv.count_elements(df_expt_gap[Key.composition]),
     log=True,
+    # TODO: remove this test args
+    anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+    anno_pos=(0.75, 0.8),
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
@@ -49,7 +52,10 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-percent")
 
 # %%
 fig = pmv.ptable_heatmap_ratio(
-    df_expt_gap[Key.composition], df_steels[Key.composition], log=True, value_fmt=".4g"
+    df_expt_gap[Key.composition],
+    df_steels[Key.composition],
+    log=True,
+    value_fmt=".4g",
 )
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
@@ -156,6 +162,9 @@ for n_splits in (2, 3, 4):
         start_angle=135 if n_splits % 2 == 0 else 90,
         cbar_title="Periodic Table Evenly-Split Heatmap Plots",
         hide_f_block=True,
+        # TODO: remove this test args
+        anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+        anno_pos=(0.75, 0.8),
     )
     fig.show()
     pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")
