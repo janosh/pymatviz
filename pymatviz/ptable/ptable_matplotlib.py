@@ -75,7 +75,7 @@ def ptable_heatmap(
     cbar_title: str = "Element Count",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
-    # Migration (would be removed in the future)
+    # Migration (will be removed in the future)
     return_type: Literal["figure", "axes"] = "axes",
     # Deprecated args, don't use
     colorscale: str | None = None,
