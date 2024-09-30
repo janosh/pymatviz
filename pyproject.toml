@@ -40,15 +40,16 @@ test = [
     "adjustText>=0.8",
     "bs4>=0.0.2",
     "cssutils>=2.9",
-    "kaleido>=0.2",
+    # https://github.com/plotly/Kaleido/issues/176
+    "kaleido>=0.2.1,!=0.2.1post1",
     "lxml>=4.9",
     "pdfCropMargins>=2",
     "pytest-cov>=5",
     "pytest>=8",
     "weasyprint>=60",
 ]
-make-assets = ["kaleido>=0.2", "matminer>=0.9", "mp_api>=0.42"]
-export-figs = ["kaleido>=0.2"]
+make-assets = ["kaleido>=0.2.1,!=0.2.1post1", "matminer>=0.9", "mp_api>=0.42"]
+export-figs = ["kaleido>=0.2.1,!=0.2.1post1"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
