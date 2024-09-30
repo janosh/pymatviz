@@ -353,6 +353,11 @@ def ptable_heatmap_ratio(
         "blue: not in 2nd list",
     ),
     not_in_either: tuple[str, str] | None = ("white", "white: not in either"),
+    # Annotation
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_text_color: ColorType | dict[ElemStr, ColorType] = "black",
+    anno_kwargs: dict[str, Any] | None = None,
     # Colorbar
     cbar_title: str = "Element Ratio",
     # Others
@@ -392,6 +397,17 @@ def ptable_heatmap_ratio(
         not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
             ("white", "white: not in either").
 
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_text_color (ColorType | dict[ElemStr, ColorType]): Texts colors
+            for annotations.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
+
         --- Colorbar ---
         cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
 
@@ -429,6 +445,10 @@ def ptable_heatmap_ratio(
         on_empty="show",
         overwrite_tiles=overwrite_tiles,
         return_type="figure",
+        anno_pos=anno_pos,
+        anno_text=anno_text,
+        anno_text_color=anno_text_color,
+        anno_kwargs=anno_kwargs,
         **kwargs,
     )
 
