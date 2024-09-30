@@ -40,6 +40,7 @@ test = [
     "adjustText>=0.8",
     "bs4>=0.0.2",
     "cssutils>=2.9",
+    # https://github.com/plotly/Kaleido/issues/176
     "kaleido>=0.2.1,!=0.2.1post1",
     "lxml>=4.9",
     "pdfCropMargins>=2",
