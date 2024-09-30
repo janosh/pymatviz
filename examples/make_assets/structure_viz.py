@@ -16,6 +16,11 @@ df_steels = load_dataset("matbench_steels")
 df_phonons = load_dataset("matbench_phonons")
 
 
+# DEBUG tag
+ci_tag = os.getenv("CI")
+print(ci_tag, type(ci_tag))
+
+
 # %% Plot Matbench phonon structures
 n_structs = 12
 fig, axs = pmv.structure_2d(
