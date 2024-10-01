@@ -1,4 +1,6 @@
 # %%
+import os
+
 import numpy as np
 import yaml
 from matminer.datasets import load_dataset
@@ -8,6 +10,7 @@ from pymatviz.enums import ElemCountMode, Key
 
 
 df_expt_gap = load_dataset("matbench_expt_gap")
+module_dir = os.path.dirname(__file__)
 
 
 # %% Plotly interactive periodic table heatmap
@@ -123,7 +126,7 @@ fig.show()
 
 
 # %% ex 6: valence electrons in VASP PBE 64 pseudo-potentials
-with open("vasp-pbe-64-n-val-elecs.yml") as file:
+with open(f"{module_dir}/vasp-pbe-64-n-val-elecs.yml") as file:
     elem_to_n_val_elecs = yaml.safe_load(file)
 
 elem_to_n_val_elecs = {  # convert Potcar symbol to element symbol
