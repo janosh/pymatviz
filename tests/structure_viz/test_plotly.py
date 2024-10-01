@@ -377,3 +377,30 @@ def test_structure_3d_plotly_invalid_input() -> None:
         TypeError, match="Expected pymatgen Structure or Sequence of them"
     ):
         pmv.structure_3d_plotly("invalid input")
+
+
+def test_structure_3d_plotly_subplot_title_override() -> None:
+    struct1 = Structure(lattice, ["Fe", "O"], COORDS)
+    struct2 = Structure(lattice, ["Co", "O"], COORDS)
+    struct_dict = {"struct1": struct1, "struct2": struct2}
+
+    def custom_subplot_title(struct: Structure, key: str | int) -> dict[str, Any]:
+        return {  # Overriding default font, y position, etc.
+            "text": f"Custom {key} - {struct.formula}",
+            "font": {"size": 16, "color": "red"},
+            "y": 0.8,
+            "yanchor": "bottom",
+        }
+
+    fig = pmv.structure_3d_plotly(struct_dict, subplot_title=custom_subplot_title)
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.layout.annotations) == 2
+
+    for idx, (key, struct) in enumerate(struct_dict.items()):
+        annotation = fig.layout.annotations[idx]
+        assert annotation.text == f"Custom {key} - {struct.formula}"
+        assert annotation.font.size == 16
+        assert annotation.font.color == "red"
+        assert annotation.y == 0.8
+        assert annotation.yanchor == "bottom"
