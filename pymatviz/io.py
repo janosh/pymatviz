@@ -139,7 +139,7 @@ def save_fig(
     if isinstance(fig, plt.Figure | plt.Axes):
         if hasattr(fig, "figure"):
             fig = fig.figure  # unwrap Axes
-        fig.savefig(path, **kwargs, transparent=transparent_bg)
+        fig.savefig(path, **kwargs | dict(transparent=transparent_bg))
         return
     if not isinstance(fig, go.Figure):
         raise TypeError(
