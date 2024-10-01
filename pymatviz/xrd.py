@@ -20,7 +20,15 @@ ValidHklFormats = HklCompact, HklFull, HklNone = get_args(HklFormat)
 
 
 def format_hkl(hkl: tuple[int, int, int], format_type: HklFormat) -> str:
-    """Format hkl indices as a string."""
+    """Format hkl indices as a string.
+
+    Args:
+        hkl (tuple[int, int, int]): The hkl indices to format.
+        format_type ('compact' | 'full' | None): How to display the hkl indices.
+
+    Raises:
+        ValueError: If format_type is not one of 'compact', 'full', or None.
+    """
     if format_type == "compact":
         return "".join(map(str, hkl))
     if format_type == "full":
