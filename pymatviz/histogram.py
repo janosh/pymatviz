@@ -120,8 +120,12 @@ def histogram(
     """Get a histogram with plotly (default) or matplotlib backend but using fast numpy
     pre-processing before handing the data off to the plot function.
 
-    Such a common use case when dealing with large datasets that it's worth having a
-    dedicated function for it. Speedup example:
+    Very common use case when dealing with large datasets so worth having a dedicated
+    function for it. Two advantages over the matplotlib/plotly native histograms are
+    much faster and much smaller file sizes (when saving plotly figs as HTML since
+    plotly saves a complete copy of the data to disk from which it recomputes the
+    histogram on the fly to render the figure).
+    Speedup example:
 
         gaussian = np.random.normal(0, 1, 1_000_000_000)
         plot_histogram(gaussian)  # takes 17s

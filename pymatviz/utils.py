@@ -485,6 +485,9 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
 
     Returns:
         plt.Axes | plt.Figure | go.Figure: The annotated figure.
+
+    Raises:
+        TypeError: If fig is not a Matplotlib or Plotly figure.
     """
     color = kwargs.pop("color", get_font_color(fig))
 
@@ -604,6 +607,9 @@ def get_font_color(fig: AxOrFig) -> str:
 
     Returns:
         str: The font color as a string (e.g., 'black', '#000000').
+
+    Raises:
+        TypeError: If fig is not a Matplotlib or Plotly figure.
     """
     if isinstance(fig, go.Figure):
         return _get_plotly_font_color(fig)

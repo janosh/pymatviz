@@ -121,7 +121,7 @@ def matplotlib_scatter() -> plt.Figure:
 
 @pytest.fixture
 def glass_formulas() -> list[str]:
-    """First 20 materials in the MatBench glass dataset.
+    """First 20 materials in the MatBench glass dataset. Equivalent to:
 
     from matminer.datasets import load_dataset
 

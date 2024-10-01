@@ -69,6 +69,9 @@ def structure_2d(
 ) -> plt.Axes | tuple[plt.Figure, np.ndarray[plt.Axes]]:
     """Plot pymatgen structures in 2D with matplotlib.
 
+    structure_2d is not deprecated but structure_(2d|3d)_plotly() have more features and
+    are recommended replacements.
+
     Inspired by ASE's ase.visualize.plot.plot_atoms()
     https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
     pymatviz aims to give similar output to ASE but supports disordered structures and

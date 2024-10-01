@@ -214,8 +214,9 @@ def structure_2d_plotly(
         # Set subplot titles
         anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
         subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
-        anno |= dict(y=subtitle_y_pos, yanchor="top")
-        fig.layout.annotations[idx - 1].update(**anno)
+        fig.layout.annotations[idx - 1].update(
+            **dict(y=subtitle_y_pos, yanchor="top") | anno
+        )
 
     # Update layout
     fig.layout.height = 300 * n_rows
@@ -392,10 +393,13 @@ def structure_3d_plotly(
 
         # Set subplot titles
         anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
-        row = (idx - 1) // n_cols + 1
-        subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
-        anno |= dict(y=subtitle_y_pos, yanchor="top")
-        fig.layout.annotations[idx - 1].update(**anno)
+        if "y" not in anno:
+            row = (idx - 1) // n_cols + 1
+            subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
+            anno["y"] = subtitle_y_pos
+        if "yanchor" not in anno:
+            anno["yanchor"] = "top"
+        fig.layout.annotations[idx - 1].update(anno)
 
         # Update 3D scene properties
         no_axes_kwargs = dict(

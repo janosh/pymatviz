@@ -1,5 +1,8 @@
 # %%
+import os
+
 import numpy as np
+import yaml
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv
@@ -7,6 +10,7 @@ from pymatviz.enums import ElemCountMode, Key
 
 
 df_expt_gap = load_dataset("matbench_expt_gap")
+module_dir = os.path.dirname(__file__)
 
 
 # %% Plotly interactive periodic table heatmap
@@ -119,3 +123,24 @@ fig = pmv.ptable_heatmap_plotly(
     color_bar=dict(title="Atomic Radius (pm)"),
 )
 fig.show()
+
+
+# %% ex 6: valence electrons in VASP PBE 64 pseudo-potentials
+with open(f"{module_dir}/vasp-pbe-64-n-val-elecs.yml") as file:
+    elem_to_n_val_elecs = yaml.safe_load(file)
+
+elem_to_n_val_elecs = {  # convert Potcar symbol to element symbol
+    key.split("_")[0]: val for key, val in elem_to_n_val_elecs.items()
+}
+
+fig = pmv.ptable_heatmap_plotly(elem_to_n_val_elecs, fmt=".0f")
+title = (
+    "Number of valence electrons in VASP PBE 64 pseudo-potentials<br>"
+    "(Materials Project input set)"
+)
+fig.layout.title.update(text=title, x=0.4, y=0.92)
+fig.show()
+
+pmv.io.save_and_compress_svg(
+    fig, "ptable-heatmap-plotly-vasp-psp-n-valence-electrons.pdf"
+)

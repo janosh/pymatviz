@@ -20,7 +20,7 @@ repos:
     rev: v1.11.2
     hooks:
       - id: mypy
-        additional_dependencies: [types-requests]
+        additional_dependencies: [types-requests, types-PyYAML]
 
   - repo: https://github.com/janosh/format-ipy-cells
     rev: v0.1.11

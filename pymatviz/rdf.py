@@ -138,7 +138,6 @@ def element_pair_rdfs(
             If None, all pairs present in any structure are plotted.
         reference_line (dict, optional): Keywords for reference line at g(r)=1 drawn
             with Figure.add_hline(). If None (default), no reference line is drawn.
-        n_cols (int, optional): Number of columns for subplot layout. Defaults to 3.
         colors (Sequence[str], optional): colors for each structure's RDF line. Defaults
             to plotly.colors.qualitative.Plotly.
         line_styles (Sequence[str], optional): line styles for each structure's RDF
