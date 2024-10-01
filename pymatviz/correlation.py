@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
+    from numpy.typing import ArrayLike
 
 
 def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
@@ -43,7 +43,7 @@ def marchenko_pastur_pdf(x: float, gamma: float, sigma: float = 1) -> float:
 
 
 def marchenko_pastur(
-    matrix: NDArray,
+    matrix: ArrayLike,
     gamma: float,
     *,
     sigma: float = 1,
@@ -58,7 +58,7 @@ def marchenko_pastur(
     appear, they correspond to statistically significant signals.
 
     Args:
-        matrix (NDArray): 2d array
+        matrix (ArrayLike): 2d array.
         gamma (float): The Marchenko-Pastur ratio of random variables to observation
             count. E.g. for N=1000 variables and p=500 observations of each,
             gamma = p/N = 1/2.
