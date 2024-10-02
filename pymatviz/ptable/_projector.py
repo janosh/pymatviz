@@ -514,17 +514,15 @@ class PTableProjector:
 
         TODO: need to list required keywords.
         """
-        # Update kwargs
-        kwargs.setdefault("fontsize", 12)
-        kwargs.setdefault("ha", "center")
-        kwargs.setdefault("va", "center")
-        kwargs.setdefault("text_color", "black")
-        kwargs.setdefault("pos", (0.75, 0.75))
+        # Set kwargs defaults
+        defaults = dict(
+            fontsize=12, ha="center", va="center", text_color="black", pos=(0.75, 0.75)
+        )
+        kwargs = defaults | kwargs
 
         # Unpack some kwargs
         text = kwargs.pop("text")
         text_color = kwargs.pop("text_color")
-        pos = kwargs.pop("pos")
 
         if text is None:
             raise ValueError("text for annotation cannot be None.")
@@ -552,8 +550,8 @@ class PTableProjector:
                 symbol_color = text_color
 
             ax.text(
-                *pos,
-                text.get(symbol, ""),
+                *kwargs.pop("pos"),
+                text.get(symbol, ""),  # type: ignore[attr-defined]
                 color=symbol_color,
                 transform=ax.transAxes,
                 **kwargs,
