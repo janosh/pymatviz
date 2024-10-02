@@ -528,12 +528,14 @@ class PTableProjector:
                     - "element-types": Use color from self.elem_type_colors.
             kwargs (dict): Additional keyword arguments to pass to `ax.text`.
         """
-        if text is None:
-            raise ValueError("text for annotation cannot be None.")
-
-        # Update annotate kwargs
+        # Update kwargs
         kwargs = kwargs or {}
         kwargs.setdefault("fontsize", 12)
+        kwargs.setdefault("ha", "center")
+        kwargs.setdefault("va", "center")
+
+        if text is None:
+            raise ValueError("text for annotation cannot be None.")
 
         # Add annotation for each element tile
         for element in Element:
@@ -561,8 +563,6 @@ class PTableProjector:
                 *pos,
                 text.get(symbol, ""),
                 color=symbol_color,
-                ha="center",
-                va="center",
                 transform=ax.transAxes,
                 **kwargs,
             )
