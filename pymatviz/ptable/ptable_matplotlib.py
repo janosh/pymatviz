@@ -294,10 +294,12 @@ def ptable_heatmap(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text,
-            pos=anno_pos,
-            text_color=anno_text_color,
-            kwargs=anno_kwargs,
+            **dict(
+                text=anno_text,
+                pos=anno_pos,
+                text_color=anno_text_color,
+                **(anno_kwargs or {}),
+            )
         )
 
     # [Optional] Show colorbar
@@ -593,10 +595,12 @@ def ptable_heatmap_splits(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text,
-            pos=anno_pos,
-            text_color=anno_text_color,
-            kwargs=anno_kwargs,
+            **dict(
+                text=anno_text,
+                pos=anno_pos,
+                text_color=anno_text_color,
+                **(anno_kwargs or {}),
+            )
         )
 
     # Add colorbar
@@ -929,10 +933,12 @@ def ptable_scatters(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text,
-            pos=anno_pos,
-            text_color=text_color,
-            kwargs=anno_kwargs,
+            **dict(
+                text=anno_text,
+                pos=anno_pos,
+                text_color=text_color,
+                **(anno_kwargs or {}),
+            )
         )
 
     # Color element tile background
@@ -1072,10 +1078,12 @@ def ptable_lines(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text,
-            pos=anno_pos,
-            text_color=text_color,
-            kwargs=anno_kwargs,
+            **dict(
+                text=anno_text,
+                pos=anno_pos,
+                text_color=text_color,
+                **(anno_kwargs or {}),
+            )
         )
 
     # Color element tile background
