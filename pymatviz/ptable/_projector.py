@@ -359,6 +359,8 @@ class PTableProjector:
         # Update element symbol kwargs
         kwargs = kwargs or {}
         kwargs.setdefault("fontsize", 12)
+        kwargs.setdefault("ha", "center")
+        kwargs.setdefault("va", "center")
 
         # Add symbol for each element
         for element in Element:
@@ -388,8 +390,6 @@ class PTableProjector:
                 *pos,
                 content,
                 color=symbol_color,
-                ha="center",
-                va="center",
                 transform=ax.transAxes,
                 **kwargs,
             )
@@ -530,6 +530,8 @@ class PTableProjector:
         """
         # Update kwargs
         kwargs.setdefault("fontsize", 12)
+        kwargs.setdefault("ha", "center")
+        kwargs.setdefault("va", "center")
 
         if text is None:
             raise ValueError("text for annotation cannot be None.")
@@ -560,8 +562,6 @@ class PTableProjector:
                 *pos,
                 text.get(symbol, ""),
                 color=symbol_color,
-                ha="center",  # TODO: use dict update
-                va="center",
                 transform=ax.transAxes,
                 **kwargs,
             )
@@ -918,8 +918,14 @@ class HeatMapPTableProjector(PTableProjector):
         """
         # Update kwargs
         ax_kwargs = ax_kwargs or {}
+
         symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
+        symbol_kwargs.setdefault("ha", "center")
+        symbol_kwargs.setdefault("va", "center")
+
         value_kwargs = value_kwargs or {}
+        value_kwargs.setdefault("ha", "center")
+        value_kwargs.setdefault("va", "center")
         if sci_notation:
             value_kwargs.setdefault("fontsize", 10)
         else:
@@ -961,8 +967,6 @@ class HeatMapPTableProjector(PTableProjector):
                 *symbol_pos,
                 symbol,
                 color=text_color,
-                ha="center",
-                va="center",
                 transform=ax.transAxes,
                 **symbol_kwargs,
             )
@@ -985,8 +989,6 @@ class HeatMapPTableProjector(PTableProjector):
                 *value_pos,
                 value,
                 color=text_color,
-                ha="center",
-                va="center",
                 transform=ax.transAxes,
                 **value_kwargs,
             )
