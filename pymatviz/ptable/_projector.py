@@ -508,30 +508,23 @@ class PTableProjector:
 
     def add_annotation(
         self,
-        text: dict[str, str] | None,
-        *,
-        pos: tuple[float, float] = (0.75, 0.75),
-        text_color: ColorType
-        | dict[str, ColorType]
-        | Literal[ElemColorMode.element_types] = "black",
         **kwargs: Any,
     ) -> None:
         """Add annotation for each element tile.
 
-        Args:
-            text (dict[str, str]): Element names to text mapping.
-            pos (tuple): The position of the text relative to the axes.
-            text_color (ColorType | dict[str, ColorType]): The color of the annotation.
-                Defaults to "black". Could take the following type:
-                    - ColorType: The same color for all elements.
-                    - dict[str, ColorType]: An element to color mapping.
-                    - "element-types": Use color from self.elem_type_colors.
-            kwargs (Any): Additional keyword arguments to pass to `ax.text`.
+        TODO: need to list required keywords.
         """
         # Update kwargs
         kwargs.setdefault("fontsize", 12)
         kwargs.setdefault("ha", "center")
         kwargs.setdefault("va", "center")
+        kwargs.setdefault("text_color", "black")
+        kwargs.setdefault("pos", (0.75, 0.75))
+
+        # Unpack some kwargs
+        text = kwargs.pop("text")
+        text_color = kwargs.pop("text_color")
+        pos = kwargs.pop("pos")
 
         if text is None:
             raise ValueError("text for annotation cannot be None.")
