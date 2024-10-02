@@ -298,8 +298,8 @@ def ptable_heatmap(
                 text=anno_text,
                 pos=anno_pos,
                 text_color=anno_text_color,
-                **(anno_kwargs or {}),
             )
+            | (anno_kwargs or {})
         )
 
     # [Optional] Show colorbar
@@ -599,8 +599,8 @@ def ptable_heatmap_splits(
                 text=anno_text,
                 pos=anno_pos,
                 text_color=anno_text_color,
-                **(anno_kwargs or {}),
             )
+            | (anno_kwargs or {})
         )
 
     # Add colorbar
@@ -772,8 +772,8 @@ def ptable_hists(
                 text=anno_text,
                 pos=anno_pos,
                 text_color=text_color,
-                **(anno_kwargs or {}),
             )
+            | (anno_kwargs or {})
         )
 
     # Color element tile background
@@ -937,8 +937,8 @@ def ptable_scatters(
                 text=anno_text,
                 pos=anno_pos,
                 text_color=text_color,
-                **(anno_kwargs or {}),
             )
+            | (anno_kwargs or {})
         )
 
     # Color element tile background
@@ -1082,8 +1082,8 @@ def ptable_lines(
                 text=anno_text,
                 pos=anno_pos,
                 text_color=text_color,
-                **(anno_kwargs or {}),
             )
+            | (anno_kwargs or {})
         )
 
     # Color element tile background
