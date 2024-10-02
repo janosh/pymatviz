@@ -508,7 +508,7 @@ class PTableProjector:
 
     def add_annotation(
         self,
-        text: dict[str, str],
+        text: dict[str, str] | None,
         *,
         pos: tuple[float, float] = (0.75, 0.75),
         text_color: ColorType
@@ -528,6 +528,9 @@ class PTableProjector:
                     - "element-types": Use color from self.elem_type_colors.
             kwargs (dict): Additional keyword arguments to pass to `ax.text`.
         """
+        if text is None:
+            raise ValueError("text for annotation cannot be None.")
+
         # Update annotate kwargs
         kwargs = kwargs or {}
         kwargs.setdefault("fontsize", 12)

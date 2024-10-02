@@ -294,7 +294,7 @@ def ptable_heatmap(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text or {},
+            text=anno_text,
             pos=anno_pos,
             text_color=anno_text_color,
             kwargs=anno_kwargs,
@@ -593,7 +593,7 @@ def ptable_heatmap_splits(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text or {},
+            text=anno_text,
             pos=anno_pos,
             text_color=anno_text_color,
             kwargs=anno_kwargs,
@@ -764,7 +764,7 @@ def ptable_hists(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text or {},
+            text=anno_text,
             pos=anno_pos,
             text_color=text_color,
             kwargs=anno_kwargs,
@@ -927,7 +927,7 @@ def ptable_scatters(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text or {},
+            text=anno_text,
             pos=anno_pos,
             text_color=text_color,
             kwargs=anno_kwargs,
@@ -1070,7 +1070,7 @@ def ptable_lines(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            text=anno_text or {},
+            text=anno_text,
             pos=anno_pos,
             text_color=text_color,
             kwargs=anno_kwargs,
