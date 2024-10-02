@@ -122,6 +122,20 @@ class TestPTableProjector:
         assert legend.get_title().get_text() == legend_title
         assert legend.get_texts()[0].get_fontsize() == 12
 
+    def test_add_annotation(self) -> None:
+        projector_0 = PTableProjector(data=self.test_dict)
+        projector_0.add_annotation(
+            text={ele: ele for ele in self.test_dict},
+            pos=(0.75, 0.75),
+            text_color="black",
+        )
+
+        projector_1 = PTableProjector(data=self.test_dict)
+        projector_1.add_annotation(
+            text={ele: ele for ele in self.test_dict},
+            text_color={ele: "black" for ele in self.test_dict},
+        )
+
 
 class TestPtableHeatmapGenTileValueColors:
     test_dict: ClassVar = {
