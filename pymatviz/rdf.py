@@ -10,7 +10,7 @@ Example usage:
     fig.show()
 """
 
-# from __future__ import annotations
+from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
