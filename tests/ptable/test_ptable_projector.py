@@ -90,14 +90,14 @@ class TestPTableProjector:
     @pytest.mark.parametrize(
         ("data", "elem_type_colors"),
         [
-            # data=dict, elem colors=empty dict
+            # data is dict, elem_type_colors is empty dict
             ({"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]}, {}),
-            # data=series, elem colors=dict
+            # data is series, elem_type_colors is dict
             (
                 pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
                 {"Transition Metal": "red", "Nonmetal": "blue"},
             ),
-            # data=dataframe, elem colors=None
+            # data is dataframe, elem_type_colors is None
             (pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6], "P": [7, 8, 9]}), None),
         ],
     )
