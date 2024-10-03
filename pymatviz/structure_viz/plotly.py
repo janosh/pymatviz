@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Callable, Sequence
-from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -20,7 +19,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedE
 from pymatviz.enums import ElemColorScheme
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
-    UNIT_CELL_EDGES,
+    _add_unit_cell,
     _angles_to_rotation_matrix,
     add_site_to_plot,
     generate_subplot_title,
@@ -184,32 +183,19 @@ def structure_2d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
-            cell_vertices = np.dot(
-                np.dot(corners, struct_i.lattice.matrix), rotation_matrix
-            )
-            unit_cell_kwargs = dict(color="black", width=1, dash=None)
+            unit_cell_kwargs = dict(color="black", width=1)
             if isinstance(show_unit_cell, dict):
                 unit_cell_kwargs |= show_unit_cell
 
-            for start, end in UNIT_CELL_EDGES:
-                hover_text = (
-                    f"Start: ({', '.join(f'{c:.3g}' for c in cell_vertices[start])}) "
-                    f"[{', '.join(f'{c:.3g}' for c in corners[start])}]<br>"
-                    f"End: ({', '.join(f'{c:.3g}' for c in cell_vertices[end])}) "
-                    f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
-                )
-                fig.add_scatter(
-                    x=[cell_vertices[start, 0], cell_vertices[end, 0]],
-                    y=[cell_vertices[start, 1], cell_vertices[end, 1]],
-                    mode="lines",
-                    line=unit_cell_kwargs,
-                    text=hover_text,
-                    hoverinfo="text",
-                    showlegend=False,
-                    row=row,
-                    col=col,
-                )
+            _add_unit_cell(
+                fig,
+                struct_i,
+                unit_cell_kwargs["color"],  # type: ignore[arg-type]
+                unit_cell_kwargs["width"],  # type: ignore[arg-type]
+                is_3d=False,
+                row=row,
+                col=col,
+            )
 
         # Set subplot titles
         anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
@@ -366,30 +352,18 @@ def structure_3d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
-            cell_vertices = np.dot(corners, struct_i.lattice.matrix)
             unit_cell_kwargs = dict(color="black", width=2)
             if isinstance(show_unit_cell, dict):
                 unit_cell_kwargs |= show_unit_cell
 
-            for start, end in UNIT_CELL_EDGES:
-                hover_text = (
-                    f"Start: ({', '.join(f'{c:.3g}' for c in cell_vertices[start])}) "
-                    f"[{', '.join(f'{c:.3g}' for c in corners[start])}]<br>"
-                    f"End: ({', '.join(f'{c:.3g}' for c in cell_vertices[end])}) "
-                    f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
-                )
-                fig.add_scatter3d(
-                    x=[cell_vertices[start, 0], cell_vertices[end, 0]],
-                    y=[cell_vertices[start, 1], cell_vertices[end, 1]],
-                    z=[cell_vertices[start, 2], cell_vertices[end, 2]],
-                    mode="lines",
-                    line=unit_cell_kwargs,
-                    text=hover_text,
-                    hoverinfo="text",
-                    showlegend=False,
-                    scene=f"scene{idx}",
-                )
+            _add_unit_cell(
+                fig,
+                struct_i,
+                unit_cell_kwargs["color"],  # type: ignore[arg-type]
+                unit_cell_kwargs["width"],  # type: ignore[arg-type]
+                is_3d=True,
+                scene=f"scene{idx}",
+            )
 
         # Set subplot titles
         anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
@@ -414,7 +388,7 @@ def structure_3d_plotly(
             bgcolor="rgba(90,90,90,0.01)",  # Transparent background
         )
 
-    # Calculate subplot positions with 2% gap
+    # Calculate subplot positions with small gap
     gap = 0.01
     for idx in range(1, n_structs + 1):
         row = (idx - 1) // n_cols + 1

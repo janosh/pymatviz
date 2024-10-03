@@ -311,3 +311,98 @@ def get_structures(
     if isinstance(struct, dict) and {*map(type, struct.values())} == {Structure}:
         return struct
     raise TypeError(f"Expected pymatgen Structure or Sequence of them, got {struct=}")
+
+
+def _add_unit_cell(
+    fig: go.Figure,
+    structure: Structure,
+    color: str,
+    width: float,
+    *,
+    is_3d: bool = True,
+    row: int | None = None,
+    col: int | None = None,
+    scene: str | None = None,
+) -> go.Figure:
+    corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
+    cart_corners = structure.lattice.get_cartesian_coords(corners)
+
+    alpha, beta, gamma = structure.lattice.angles
+
+    def add_trace(
+        x: float | Sequence[float],
+        y: float | Sequence[float],
+        z: float | Sequence[float] | None = None,
+        mode: str = "lines",
+        marker: dict[str, Any] | None = None,
+        line: dict[str, Any] | None = None,
+        hovertext: str | list[str | None] | None = None,
+    ) -> None:
+        trace_kwargs = dict(
+            mode=mode,
+            hoverinfo="text",
+            hovertext=hovertext,
+            showlegend=False,
+            marker=marker,
+            line=line,
+        )
+
+        if is_3d:
+            fig.add_scatter3d(x=x, y=y, z=z, scene=scene, **trace_kwargs)
+        else:
+            fig.add_scatter(x=x, y=y, row=row, col=col, **trace_kwargs)
+
+    # Add edges
+    for start, end in UNIT_CELL_EDGES:
+        start_point = cart_corners[start]
+        end_point = cart_corners[end]
+        mid_point = (start_point + end_point) / 2
+        edge_vector = end_point - start_point
+        edge_len = np.linalg.norm(edge_vector)
+
+        hover_text = (
+            f"Length: {edge_len:.3g} Å<br>"
+            f"Start: ({', '.join(f'{c:.3g}' for c in start_point)}) "
+            f"[{', '.join(f'{c:.3g}' for c in corners[start])}]<br>"
+            f"End: ({', '.join(f'{c:.3g}' for c in end_point)}) "
+            f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
+        )
+
+        add_trace(
+            x=[start_point[0], mid_point[0], end_point[0]],
+            y=[start_point[1], mid_point[1], end_point[1]],
+            z=[start_point[2], mid_point[2], end_point[2]] if is_3d else None,
+            mode="lines",
+            line=dict(color=color, width=width),
+            hovertext=[None, hover_text, None],
+        )
+
+    # Add corner spheres
+    for i, (frac_coord, cart_coord) in enumerate(
+        zip(corners, cart_corners, strict=False)
+    ):
+        adjacent_angles = []
+        for _ in range(3):
+            v1 = cart_corners[(i + 1) % 8] - cart_coord
+            v2 = cart_corners[(i + 2) % 8] - cart_coord
+            angle = np.degrees(
+                np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+            )
+            adjacent_angles.append(angle)
+
+        hover_text = (
+            f"({', '.join(f'{c:.3g}' for c in cart_coord)}) "
+            f"[{', '.join(f'{c:.3g}' for c in frac_coord)}]<br>"
+            f"α = {alpha:.2g}°, β = {beta:.2g}°, γ = {gamma:.2g}°"  # noqa: RUF001
+        )
+
+        add_trace(
+            x=[cart_coord[0]],
+            y=[cart_coord[1]],
+            z=[cart_coord[2]] if is_3d else None,
+            mode="markers",
+            marker=dict(size=3, color=color),
+            hovertext=hover_text,
+        )
+
+    return fig
