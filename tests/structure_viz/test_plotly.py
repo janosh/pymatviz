@@ -384,18 +384,43 @@ def test_structure_3d_plotly_invalid_input() -> None:
         pmv.structure_3d_plotly("invalid input")
 
 
-def test_structure_3d_plotly_subplot_title_override() -> None:
+@pytest.mark.parametrize(
+    "custom_title_dict",
+    [
+        {
+            "text": "Custom {key} - {struct.formula}",
+            "font": {"size": 16, "color": "red"},
+            "y": 0.8,
+            "yanchor": "bottom",
+        },
+        {
+            "text": "{struct.formula} ({key})",
+            "font": {"size": 14, "color": "blue"},
+            "x": 0.5,
+            "xanchor": "center",
+        },
+        {
+            "text": "Structure {key}",
+            "font": {"size": 18, "color": "green"},
+            "y": 1.0,
+            "yanchor": "top",
+        },
+        {},  # Empty dict to test default behavior
+    ],
+)
+def test_structure_3d_plotly_subplot_title_override(
+    custom_title_dict: dict[str, str | float | dict[str, str | float]],
+) -> None:
     struct1 = Structure(lattice, ["Fe", "O"], COORDS)
     struct2 = Structure(lattice, ["Co", "O"], COORDS)
     structs_dict = {"struct1": struct1, "struct2": struct2}
 
     def custom_subplot_title(struct: Structure, key: str | int) -> dict[str, Any]:
-        return {  # Overriding default font, y position, etc.
-            "text": f"Custom {key} - {struct.formula}",
-            "font": {"size": 16, "color": "red"},
-            "y": 0.8,
-            "yanchor": "bottom",
-        }
+        title_dict = custom_title_dict.copy()
+        if "text" in title_dict:
+            assert isinstance(title_dict["text"], str)  # for mypy
+            title_dict["text"] = title_dict["text"].format(key=key, struct=struct)
+        return title_dict
 
     fig = pmv.structure_3d_plotly(structs_dict, subplot_title=custom_subplot_title)
 
@@ -404,8 +429,23 @@ def test_structure_3d_plotly_subplot_title_override() -> None:
 
     for idx, (key, struct) in enumerate(structs_dict.items()):
         annotation = fig.layout.annotations[idx]
-        assert annotation.text == f"Custom {key} - {struct.formula}"
-        assert annotation.font.size == 16
-        assert annotation.font.color == "red"
-        assert annotation.y == 0.8
-        assert annotation.yanchor == "bottom"
+
+        if custom_title_dict:
+            custom_title = custom_title_dict.get("text", "")
+            assert isinstance(custom_title, str)  # for mypy
+            expected_text = custom_title.format(key=key, struct=struct)
+            assert annotation.text == expected_text
+
+            for attr, value in custom_title_dict.items():
+                if attr == "font":
+                    assert isinstance(value, dict)  # for mypy
+                    for font_attr, font_value in value.items():
+                        assert getattr(annotation.font, font_attr) == font_value
+                elif attr != "text":
+                    assert getattr(annotation, attr) == value
+        else:
+            # Check default behavior when an empty dict is provided
+            assert annotation.text == key  # Changed this line
+            assert annotation.font.size == 16
+            assert annotation.font.color == "black"
+            assert annotation.yanchor == "top"
