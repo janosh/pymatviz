@@ -764,12 +764,10 @@ def ptable_hists(
     # [Optional] Add annotation
     if anno_text is not None:
         projector.add_annotation(
-            **dict(
-                text=anno_text,
-                pos=anno_pos,
-                text_color=text_color,
-            )
-            | (anno_kwargs or {})
+            text=anno_text,
+            pos=anno_pos,
+            text_color=text_color,
+            kwargs=anno_kwargs,
         )
 
     # Color element tile background
