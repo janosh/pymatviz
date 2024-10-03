@@ -106,6 +106,7 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
         expected_traces += len(DISORDERED_STRUCT)
     if show_unit_cell := kwargs.get("show_unit_cell"):
         expected_traces += 12  # 12 edges in a cube
+        expected_traces += 8  # 8 nodes in a cube
     assert len(fig.data) == expected_traces
 
     # Check if the layout properties are set correctly
@@ -123,12 +124,13 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
 
     # Additional checks based on specific kwargs
     if isinstance(show_unit_cell, dict):
-        unit_cell_trace = next(
+        edge_kwargs = show_unit_cell.get("edge", {})
+        unit_cell_edge_trace = next(
             (trace for trace in fig.data if trace.mode == "lines"), None
         )
-        assert unit_cell_trace is not None
-        for key, value in show_unit_cell.items():
-            assert unit_cell_trace.line[key] == value
+        assert unit_cell_edge_trace is not None
+        for key, value in edge_kwargs.items():
+            assert unit_cell_edge_trace.line[key] == value
 
     site_trace = next(
         (trace for trace in fig.data if trace.mode == "markers+text"), None
@@ -162,21 +164,21 @@ def test_structure_2d_plotly_multiple() -> None:
     fig = pmv.structure_2d_plotly(struct_dict, n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (
-        len(COORDS) + 12
-    )  # 4 structures, 2 sites each, 12 unit cell edges
+        len(COORDS) + 12 + 8
+    )  # 4 structures, 2 sites each, 12 unit cell edges, 8 unit cell nodes
     assert len(fig.layout.annotations) == 4
 
     # Test pandas.Series[Structure]
     struct_series = pd.Series(struct_dict)
     fig = pmv.structure_2d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
     fig = pmv.structure_2d_plotly(list(struct_dict.values()), n_cols=2)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
 
     # Test subplot_title
@@ -185,7 +187,7 @@ def test_structure_2d_plotly_multiple() -> None:
 
     fig = pmv.structure_2d_plotly(struct_series, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
     for idx, (key, struct) in enumerate(struct_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
@@ -230,7 +232,7 @@ def test_structure_2d_plotly_invalid_input() -> None:
             "atom_size": 25,
             "elem_colors": {"Fe": "red", "O": "blue"},
             "scale": 0.9,
-            "show_unit_cell": {"color": "red", "width": 3},
+            "show_unit_cell": {"edge": {"color": "red", "width": 3}},
             "show_sites": {"line": {"width": 1, "color": "black"}},
             "show_image_sites": {"opacity": 0.3},
             "site_labels": {"Fe": "Iron", "O": "Oxygen"},
@@ -261,6 +263,7 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
         expected_traces += len(DISORDERED_STRUCT)
     if kwargs.get("show_unit_cell"):
         expected_traces += 12  # 12 edges in a cube
+        expected_traces += 8  # 8 nodes in a cube
     if kwargs.get("show_image_sites"):
         # Instead of assuming 8 image sites per atom, let's count the actual number
         image_sites = sum(
@@ -286,12 +289,13 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
 
     # Additional checks based on specific kwargs
     if isinstance(kwargs.get("show_unit_cell"), dict):
-        unit_cell_trace = next(
+        edge_kwargs = kwargs["show_unit_cell"].get("edge", {})
+        unit_cell_edge_trace = next(
             (trace for trace in fig.data if trace.mode == "lines"), None
         )
-        assert unit_cell_trace is not None
-        for key, value in kwargs["show_unit_cell"].items():
-            assert unit_cell_trace.line[key] == value
+        assert unit_cell_edge_trace is not None
+        for key, value in edge_kwargs.items():
+            assert unit_cell_edge_trace.line[key] == value
 
     if kwargs.get("show_sites"):
         site_traces = [
@@ -339,6 +343,7 @@ def test_structure_3d_plotly_multiple() -> None:
     for struct in struct_dict.values():
         expected_traces += len(struct)  # sites
         expected_traces += 12  # unit cell edges
+        expected_traces += 8  # unit cell nodes
         expected_traces += sum(
             len(get_image_atoms(site, struct.lattice)) for site in struct
         )  # image sites

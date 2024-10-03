@@ -69,7 +69,8 @@ def structure_2d_plotly(
             or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool | dict[str, Any], optional): Whether to plot unit cell. If
-            a dict, will be used to customize unit cell appearance. Defaults to True.
+            a dict, will be used to customize unit cell appearance. The dict should have
+            a "node"/"edge" key to customize node/edge appearance. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
             a dict, will be used to customize site marker appearance. Defaults to True.
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
@@ -183,15 +184,20 @@ def structure_2d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            unit_cell_kwargs = dict(color="black", width=1)
+            unit_cell_kwargs = dict(
+                edge=dict(color="black", width=1, dash="dash"),
+                node=dict(size=3, color="black"),
+            )
             if isinstance(show_unit_cell, dict):
-                unit_cell_kwargs |= show_unit_cell
+                unit_cell_kwargs = {
+                    "edge": unit_cell_kwargs["edge"] | show_unit_cell.get("edge", {}),
+                    "node": unit_cell_kwargs["node"] | show_unit_cell.get("node", {}),
+                }
 
             _add_unit_cell(
                 fig,
                 struct_i,
-                unit_cell_kwargs["color"],  # type: ignore[arg-type]
-                unit_cell_kwargs["width"],  # type: ignore[arg-type]
+                unit_cell_kwargs,
                 is_3d=False,
                 row=row,
                 col=col,
@@ -252,7 +258,8 @@ def structure_3d_plotly(
             or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool | dict[str, Any], optional): Whether to plot unit cell. If
-            a dict, will be used to customize unit cell appearance. Defaults to True.
+            a dict, will be used to customize unit cell appearance. The dict should have
+            a "node"/"edge" key to customize node/edge appearance. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
             a dict, will be used to customize site marker appearance. Defaults to True.
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
@@ -352,15 +359,20 @@ def structure_3d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            unit_cell_kwargs = dict(color="black", width=2)
+            unit_cell_kwargs = dict(
+                edge=dict(color="black", width=2, dash="dash"),
+                node=dict(size=3, color="black"),
+            )
             if isinstance(show_unit_cell, dict):
-                unit_cell_kwargs |= show_unit_cell
+                unit_cell_kwargs = {
+                    "edge": unit_cell_kwargs["edge"] | show_unit_cell.get("edge", {}),
+                    "node": unit_cell_kwargs["node"] | show_unit_cell.get("node", {}),
+                }
 
             _add_unit_cell(
                 fig,
                 struct_i,
-                unit_cell_kwargs["color"],  # type: ignore[arg-type]
-                unit_cell_kwargs["width"],  # type: ignore[arg-type]
+                unit_cell_kwargs,
                 is_3d=True,
                 scene=f"scene{idx}",
             )

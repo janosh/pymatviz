@@ -316,8 +316,7 @@ def get_structures(
 def _add_unit_cell(
     fig: go.Figure,
     structure: Structure,
-    color: str,
-    width: float,
+    unit_cell_kwargs: dict[str, Any],
     *,
     is_3d: bool = True,
     row: int | None = None,
@@ -353,6 +352,7 @@ def _add_unit_cell(
             fig.add_scatter(x=x, y=y, row=row, col=col, **trace_kwargs)
 
     # Add edges
+    edge_kwargs = unit_cell_kwargs.get("edge", {})
     for start, end in UNIT_CELL_EDGES:
         start_point = cart_corners[start]
         end_point = cart_corners[end]
@@ -373,11 +373,12 @@ def _add_unit_cell(
             y=[start_point[1], mid_point[1], end_point[1]],
             z=[start_point[2], mid_point[2], end_point[2]] if is_3d else None,
             mode="lines",
-            line=dict(color=color, width=width),
+            line=edge_kwargs,
             hovertext=[None, hover_text, None],
         )
 
     # Add corner spheres
+    node_kwargs = unit_cell_kwargs.get("node", {})
     for i, (frac_coord, cart_coord) in enumerate(
         zip(corners, cart_corners, strict=False)
     ):
@@ -393,7 +394,7 @@ def _add_unit_cell(
         hover_text = (
             f"({', '.join(f'{c:.3g}' for c in cart_coord)}) "
             f"[{', '.join(f'{c:.3g}' for c in frac_coord)}]<br>"
-            f"α = {alpha:.2g}°, β = {beta:.2g}°, γ = {gamma:.2g}°"  # noqa: RUF001
+            f"α = {alpha:.3g}°, β = {beta:.3g}°, γ = {gamma:.3g}°"  # noqa: RUF001
         )
 
         add_trace(
@@ -401,7 +402,7 @@ def _add_unit_cell(
             y=[cart_coord[1]],
             z=[cart_coord[2]] if is_3d else None,
             mode="markers",
-            marker=dict(size=3, color=color),
+            marker=node_kwargs,
             hovertext=hover_text,
         )
 
