@@ -212,14 +212,31 @@ def generate_subplot_title(
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
 ) -> dict[str, Any]:
     """Generate a subplot title based on the provided function or default logic."""
+    title_dict: dict[str, str | float | dict[str, str | float]] = {
+        "font": {"color": "black"}
+    }
+
     if callable(subplot_title):
         sub_title = subplot_title(struct_i, struct_key)
-        return dict(text=sub_title) if isinstance(sub_title, str) else sub_title
-    if isinstance(struct_key, int):
-        spg_num = struct_i.get_space_group_info()[1]
-        sub_title = f"{struct_i.formula} (spg={spg_num})"
-        return dict(text=f"{idx}. {sub_title}")
-    return dict(text=struct_key)
+        if isinstance(sub_title, str | int | float):
+            title_dict["text"] = str(sub_title)
+        elif isinstance(sub_title, dict):
+            title_dict |= sub_title
+        else:
+            raise TypeError(
+                f"Invalid subplot_title={sub_title}. Must be a str or dict."
+            )
+
+    if not title_dict.get("text"):
+        if isinstance(struct_key, int):
+            spg_num = struct_i.get_space_group_info()[1]
+            title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
+        elif isinstance(struct_key, str):
+            title_dict["text"] = str(struct_key)
+        else:
+            raise TypeError(f"Invalid {struct_key=}. Must be an int or str.")
+
+    return title_dict
 
 
 def add_site_to_plot(
@@ -311,3 +328,101 @@ def get_structures(
     if isinstance(struct, dict) and {*map(type, struct.values())} == {Structure}:
         return struct
     raise TypeError(f"Expected pymatgen Structure or Sequence of them, got {struct=}")
+
+
+def _add_unit_cell(
+    fig: go.Figure,
+    structure: Structure,
+    unit_cell_kwargs: dict[str, Any],
+    *,
+    is_3d: bool = True,
+    row: int | None = None,
+    col: int | None = None,
+    scene: str | None = None,
+) -> go.Figure:
+    corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
+    cart_corners = structure.lattice.get_cartesian_coords(corners)
+
+    alpha, beta, gamma = structure.lattice.angles
+
+    def add_trace(
+        x: float | Sequence[float],
+        y: float | Sequence[float],
+        z: float | Sequence[float] | None = None,
+        mode: str = "lines",
+        marker: dict[str, Any] | None = None,
+        line: dict[str, Any] | None = None,
+        hovertext: str | list[str | None] | None = None,
+    ) -> None:
+        trace_kwargs = dict(
+            mode=mode,
+            hoverinfo="text",
+            hovertext=hovertext,
+            showlegend=False,
+            marker=marker,
+            line=line,
+        )
+
+        if is_3d:
+            fig.add_scatter3d(x=x, y=y, z=z, scene=scene, **trace_kwargs)
+        else:
+            fig.add_scatter(x=x, y=y, row=row, col=col, **trace_kwargs)
+
+    # Add edges
+    edge_defaults = dict(color="black", width=1, dash="dash")
+    edge_kwargs = edge_defaults | unit_cell_kwargs.get("edge", {})
+    for start, end in UNIT_CELL_EDGES:
+        start_point = cart_corners[start]
+        end_point = cart_corners[end]
+        mid_point = (start_point + end_point) / 2
+        edge_vector = end_point - start_point
+        edge_len = np.linalg.norm(edge_vector)
+
+        hover_text = (
+            f"Length: {edge_len:.3g} Å<br>"
+            f"Start: ({', '.join(f'{c:.3g}' for c in start_point)}) "
+            f"[{', '.join(f'{c:.3g}' for c in corners[start])}]<br>"
+            f"End: ({', '.join(f'{c:.3g}' for c in end_point)}) "
+            f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
+        )
+
+        add_trace(
+            x=[start_point[0], mid_point[0], end_point[0]],
+            y=[start_point[1], mid_point[1], end_point[1]],
+            z=[start_point[2], mid_point[2], end_point[2]] if is_3d else None,
+            mode="lines",
+            line=edge_kwargs,
+            hovertext=[None, hover_text, None],
+        )
+
+    # Add corner spheres
+    node_defaults = dict(size=3, color="black")
+    node_kwargs = node_defaults | unit_cell_kwargs.get("node", {})
+    for i, (frac_coord, cart_coord) in enumerate(
+        zip(corners, cart_corners, strict=False)
+    ):
+        adjacent_angles = []
+        for _ in range(3):
+            v1 = cart_corners[(i + 1) % 8] - cart_coord
+            v2 = cart_corners[(i + 2) % 8] - cart_coord
+            angle = np.degrees(
+                np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+            )
+            adjacent_angles.append(angle)
+
+        hover_text = (
+            f"({', '.join(f'{c:.3g}' for c in cart_coord)}) "
+            f"[{', '.join(f'{c:.3g}' for c in frac_coord)}]<br>"
+            f"α = {alpha:.3g}°, β = {beta:.3g}°, γ = {gamma:.3g}°"  # noqa: RUF001
+        )
+
+        add_trace(
+            x=[cart_coord[0]],
+            y=[cart_coord[1]],
+            z=[cart_coord[2]] if is_3d else None,
+            mode="markers",
+            marker=node_kwargs,
+            hovertext=hover_text,
+        )
+
+    return fig

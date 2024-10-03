@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Callable, Sequence
-from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -20,7 +19,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedE
 from pymatviz.enums import ElemColorScheme
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
-    UNIT_CELL_EDGES,
+    _add_unit_cell,
     _angles_to_rotation_matrix,
     add_site_to_plot,
     generate_subplot_title,
@@ -70,7 +69,8 @@ def structure_2d_plotly(
             or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool | dict[str, Any], optional): Whether to plot unit cell. If
-            a dict, will be used to customize unit cell appearance. Defaults to True.
+            a dict, will be used to customize unit cell appearance. The dict should have
+            a "node"/"edge" key to customize node/edge appearance. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
             a dict, will be used to customize site marker appearance. Defaults to True.
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
@@ -184,32 +184,16 @@ def structure_2d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
-            cell_vertices = np.dot(
-                np.dot(corners, struct_i.lattice.matrix), rotation_matrix
+            _add_unit_cell(
+                fig,
+                struct_i,
+                unit_cell_kwargs=show_unit_cell
+                if isinstance(show_unit_cell, dict)
+                else {},
+                is_3d=False,
+                row=row,
+                col=col,
             )
-            unit_cell_kwargs = dict(color="black", width=1, dash=None)
-            if isinstance(show_unit_cell, dict):
-                unit_cell_kwargs |= show_unit_cell
-
-            for start, end in UNIT_CELL_EDGES:
-                hover_text = (
-                    f"Start: ({', '.join(f'{c:.3g}' for c in cell_vertices[start])}) "
-                    f"[{', '.join(f'{c:.3g}' for c in corners[start])}]<br>"
-                    f"End: ({', '.join(f'{c:.3g}' for c in cell_vertices[end])}) "
-                    f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
-                )
-                fig.add_scatter(
-                    x=[cell_vertices[start, 0], cell_vertices[end, 0]],
-                    y=[cell_vertices[start, 1], cell_vertices[end, 1]],
-                    mode="lines",
-                    line=unit_cell_kwargs,
-                    text=hover_text,
-                    hoverinfo="text",
-                    showlegend=False,
-                    row=row,
-                    col=col,
-                )
 
         # Set subplot titles
         anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
@@ -266,7 +250,8 @@ def structure_3d_plotly(
             or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool | dict[str, Any], optional): Whether to plot unit cell. If
-            a dict, will be used to customize unit cell appearance. Defaults to True.
+            a dict, will be used to customize unit cell appearance. The dict should have
+            a "node"/"edge" key to customize node/edge appearance. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
             a dict, will be used to customize site marker appearance. Defaults to True.
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
@@ -366,30 +351,15 @@ def structure_3d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
-            cell_vertices = np.dot(corners, struct_i.lattice.matrix)
-            unit_cell_kwargs = dict(color="black", width=2)
-            if isinstance(show_unit_cell, dict):
-                unit_cell_kwargs |= show_unit_cell
-
-            for start, end in UNIT_CELL_EDGES:
-                hover_text = (
-                    f"Start: ({', '.join(f'{c:.3g}' for c in cell_vertices[start])}) "
-                    f"[{', '.join(f'{c:.3g}' for c in corners[start])}]<br>"
-                    f"End: ({', '.join(f'{c:.3g}' for c in cell_vertices[end])}) "
-                    f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
-                )
-                fig.add_scatter3d(
-                    x=[cell_vertices[start, 0], cell_vertices[end, 0]],
-                    y=[cell_vertices[start, 1], cell_vertices[end, 1]],
-                    z=[cell_vertices[start, 2], cell_vertices[end, 2]],
-                    mode="lines",
-                    line=unit_cell_kwargs,
-                    text=hover_text,
-                    hoverinfo="text",
-                    showlegend=False,
-                    scene=f"scene{idx}",
-                )
+            _add_unit_cell(
+                fig,
+                struct_i,
+                unit_cell_kwargs=show_unit_cell
+                if isinstance(show_unit_cell, dict)
+                else {},
+                is_3d=True,
+                scene=f"scene{idx}",
+            )
 
         # Set subplot titles
         anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
@@ -411,10 +381,10 @@ def structure_3d_plotly(
             yaxis=no_axes_kwargs,
             zaxis=no_axes_kwargs,
             aspectmode="data",
-            bgcolor="rgba(90,90,90,0.01)",  # Transparent background
+            bgcolor="rgba(90, 90, 90, 0.01)",  # Transparent background
         )
 
-    # Calculate subplot positions with 2% gap
+    # Calculate subplot positions with small gap
     gap = 0.01
     for idx in range(1, n_structs + 1):
         row = (idx - 1) // n_cols + 1
@@ -429,13 +399,11 @@ def structure_3d_plotly(
         fig.update_layout({f"scene{idx}": dict(domain=domain, aspectmode="data")})
 
     # Update overall layout
-    fig.update_layout(
-        height=400 * n_rows,
-        width=400 * n_cols,
-        showlegend=False,
-        paper_bgcolor="rgba(0,0,0,0)",  # Transparent background
-        plot_bgcolor="rgba(0,0,0,0)",  # Transparent background
-        margin=dict(l=0, r=0, t=0, b=0),  # Minimize margins
-    )
+    fig.layout.height = 400 * n_rows
+    fig.layout.width = 400 * n_cols
+    fig.layout.showlegend = False
+    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"  # Transparent background
+    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"  # Transparent background
+    fig.layout.margin = dict(l=0, r=0, t=0, b=0)  # Minimize margins
 
     return fig
