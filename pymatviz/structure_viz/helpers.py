@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import warnings
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -426,3 +427,123 @@ def _add_unit_cell(
         )
 
     return fig
+
+
+def add_vector_arrow(
+    fig: go.Figure,
+    start: np.ndarray,
+    vector: np.ndarray,
+    *,
+    is_3d: bool = False,
+    arrow_kwargs: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> None:
+    """Add an arrow to represent a vector quantity on a Plotly figure.
+
+    This function adds an arrow to a 2D or 3D Plotly figure to represent a vector
+    quantity. In 3D, it uses a cone for the arrowhead and a line for the shaft.
+    In 2D, it uses a scatter plot with an arrow marker.
+
+    Args:
+        fig (go.Figure): The Plotly figure to add the arrow to.
+        start (np.ndarray): The starting point of the arrow (shape: (3,) for 3D,
+            (2,) for 2D).
+        vector (np.ndarray): The vector to be represented by the arrow (shape: (3,) for
+            3D, (2,) for 2D).
+        is_3d (bool, optional): Whether to add a 3D arrow. Defaults to False.
+        arrow_kwargs (dict[str, Any] | None, optional): Additional keyword arguments
+            for arrow customization. Supported keys:
+            - color (str): Color of the arrow.
+            - width (float): Width of the arrow shaft.
+            - arrow_head_length (float): Length of the arrowhead (3D only).
+            - arrow_head_angle (float): Angle of the arrowhead in degrees (3D only).
+            - scale (float): Scaling factor for the vector length.
+        **kwargs: Additional keyword arguments passed to the Plotly trace.
+
+    Note:
+        For 3D arrows, this function adds two traces to the figure: a cone for the
+        arrowhead and a line for the shaft. For 2D arrows, it adds a single scatter
+        trace with an arrow marker.
+    """
+    default_arrow_kwargs = dict(
+        color="lightblue",
+        width=5,
+        arrow_head_length=0.8,
+        arrow_head_angle=30,
+        scale=1.0,
+    )
+    arrow_kwargs = default_arrow_kwargs | (arrow_kwargs or {})
+
+    # Apply scaling to the vector
+    scaled_vector = vector * arrow_kwargs["scale"]
+    end = start + scaled_vector
+
+    if is_3d:
+        # Add the shaft (line) first
+        fig.add_scatter3d(
+            x=[start[0], end[0]],
+            y=[start[1], end[1]],
+            z=[start[2], end[2]],
+            mode="lines",
+            line=dict(color=arrow_kwargs["color"], width=arrow_kwargs["width"]),
+            showlegend=False,
+            **kwargs,
+        )
+        # Add the arrowhead (cone) at the end
+        fig.add_cone(
+            x=[end[0]],
+            y=[end[1]],
+            z=[end[2]],
+            u=[scaled_vector[0]],
+            v=[scaled_vector[1]],
+            w=[scaled_vector[2]],
+            colorscale=[[0, arrow_kwargs["color"]], [1, arrow_kwargs["color"]]],
+            sizemode="absolute",
+            sizeref=arrow_kwargs["arrow_head_length"],
+            showscale=False,
+            **kwargs,
+        )
+    else:
+        fig.add_scatter(
+            x=[start[0], end[0]],
+            y=[start[1], end[1]],
+            mode="lines+markers",
+            marker=dict(
+                symbol="arrow",
+                size=10,
+                color=arrow_kwargs["color"],
+                angle=np.arctan2(scaled_vector[1], scaled_vector[0]),
+                angleref="previous",
+            ),
+            line=dict(color=arrow_kwargs["color"], width=arrow_kwargs["width"]),
+            showlegend=False,
+            **kwargs,
+        )
+
+
+def get_first_matching_site_prop(
+    structures: Sequence[Structure],
+    prop_keys: Sequence[str],
+    *,
+    warn_if_none: bool = True,
+) -> str | None:
+    """Find the first property key that exists in any structure or site properties.
+
+    Args:
+        structures (Sequence[Structure]): pymatgen Structures to check.
+        prop_keys (Sequence[str]): Property keys to look for.
+        warn_if_none (bool, optional): Whether to warn if no matching property is found.
+
+    Returns:
+        str | None: The first matching property key found, or None if no match is found.
+    """
+    for prop in prop_keys:
+        for struct in structures:
+            if prop in struct.site_properties or prop in struct.properties:
+                return prop
+
+    if prop_keys and warn_if_none:
+        warn_msg = f"None of {prop_keys=} found in any site or structure properties"
+        warnings.warn(warn_msg, UserWarning, stacklevel=2)
+
+    return None

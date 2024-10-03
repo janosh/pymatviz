@@ -3,6 +3,7 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 from numpy.testing import assert_allclose
 from pymatgen.core import Structure
@@ -13,6 +14,7 @@ from pymatviz.structure_viz.helpers import (
     UNIT_CELL_EDGES,
     _angles_to_rotation_matrix,
     add_site_to_plot,
+    add_vector_arrow,
     generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
@@ -230,3 +232,95 @@ def test_constants() -> None:
     assert isinstance(NO_SYM_MSG, str)
     assert isinstance(UNIT_CELL_EDGES, tuple)
     assert all(isinstance(edge, tuple) and len(edge) == 2 for edge in UNIT_CELL_EDGES)
+
+
+@pytest.mark.parametrize(
+    ("start", "vector", "is_3d", "arrow_kwargs", "expected_traces"),
+    [
+        (
+            [0, 0, 0],
+            [1, 1, 1],
+            True,
+            {"color": "red", "width": 2, "arrow_head_length": 0.5},
+            2,  # One for the line, one for the cone
+        ),
+        (
+            [0, 0],
+            [1, 1],
+            False,
+            {"color": "blue", "width": 3},
+            1,  # One scatter trace for 2D
+        ),
+        (
+            [1, 1, 1],
+            [2, 2, 2],
+            True,
+            {"color": "green", "scale": 0.5},
+            2,  # One for the line, one for the cone
+        ),
+        (
+            [1, 1],
+            [2, 2],
+            False,
+            {"color": "yellow", "scale": 2},
+            1,  # One scatter trace for 2D
+        ),
+    ],
+)
+def test_add_vector_arrow(
+    start: list[float],
+    vector: list[float],
+    is_3d: bool,
+    arrow_kwargs: dict[str, Any],
+    expected_traces: int,
+) -> None:
+    fig, start, vector = go.Figure(), np.array(start), np.array(vector)
+    initial_trace_count = len(fig.data)
+    add_vector_arrow(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
+    assert len(fig.data) - initial_trace_count == expected_traces
+
+    if is_3d:
+        # Check 3D arrow properties
+        line_trace = fig.data[-2]
+        cone_trace = fig.data[-1]
+        assert line_trace.mode == "lines"
+        assert line_trace.line.color == arrow_kwargs["color"]
+        assert line_trace.line.width == arrow_kwargs.get("width", 5)
+        assert cone_trace.type == "cone"
+        assert cone_trace.colorscale[0][1] == arrow_kwargs["color"]
+        assert cone_trace.sizeref == arrow_kwargs.get("arrow_head_length", 0.8)
+    else:
+        # Check 2D arrow properties
+        scatter_trace = fig.data[-1]
+        assert scatter_trace.mode == "lines+markers"
+        assert scatter_trace.marker.color == arrow_kwargs["color"]
+        assert scatter_trace.line.width == arrow_kwargs.get("width", 5)
+
+    # Check scaling
+    scale = arrow_kwargs.get("scale", 1.0)
+    end_point = start + vector * scale
+    if is_3d:
+        assert_allclose(fig.data[-2].x[1], end_point[0])
+        assert_allclose(fig.data[-2].y[1], end_point[1])
+        assert_allclose(fig.data[-2].z[1], end_point[2])
+    else:
+        assert_allclose(fig.data[-1].x[1], end_point[0])
+        assert_allclose(fig.data[-1].y[1], end_point[1])
+
+
+def test_add_vector_arrow_default_values() -> None:
+    fig = go.Figure()
+    start = np.array([0, 0, 0])
+    vector = np.array([1, 1, 1])
+    add_vector_arrow(fig, start, vector, is_3d=True)
+
+    assert len(fig.data) == 2
+    line_trace = fig.data[0]
+    cone_trace = fig.data[1]
+
+    assert line_trace.line.color == "lightblue"
+    assert line_trace.line.width == 5
+    assert cone_trace.sizeref == 0.8
+    assert_allclose(cone_trace.x, [1])
+    assert_allclose(cone_trace.y, [1])
+    assert_allclose(cone_trace.z, [1])

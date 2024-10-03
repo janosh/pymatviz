@@ -22,9 +22,11 @@ from pymatviz.structure_viz.helpers import (
     _add_unit_cell,
     _angles_to_rotation_matrix,
     add_site_to_plot,
+    add_vector_arrow,
     generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
+    get_first_matching_site_prop,
     get_image_atoms,
     get_structures,
 )
@@ -55,6 +57,8 @@ def structure_2d_plotly(
     standardize_struct: bool | None = None,
     n_cols: int = 3,
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
+    show_site_vectors: str | Sequence[str] = ("force", "magmom"),
+    vector_kwargs: dict[str, dict[str, Any]] | None = None,
 ) -> go.Figure:
     """Plot pymatgen structures in 2D with Plotly.
 
@@ -83,6 +87,20 @@ def structure_2d_plotly(
         n_cols (int, optional): Number of columns for subplots. Defaults to 4.
         subplot_title (Callable[[Structure, str | int], str | dict], optional):
             Function to generate subplot titles. Defaults to None.
+        show_site_vectors (str | Sequence[str], optional): Whether to show vector site
+            quantities such as forces or magnetic moments as arrow heads originating
+            from each site. Pass the key (or sequence of keys) to look for in site
+            properties. Defaults to ("force", "magmom"). If not found as a site
+            property, will look for it in the structure properties as well and assume
+            the key points at a (N, 3) array with N the number of sites. If multiple
+            keys are provided, it plots the first key found in site properties or
+            structure properties in any of the passed structures (if a dict of
+            structures was passed). But it will only plot one vector per site and it
+            will use the same key for all sites and across all structures.
+        vector_kwargs (dict[str, dict[str, Any]], optional): For customizing vector
+            arrows. Keys are property names (e.g., "force", "magmom"), values are
+            dictionaries of arrow customization options. Use key "scale" to adjust
+            vector length.
 
     Returns:
         go.Figure: Plotly figure with the plotted structure(s).
@@ -104,6 +122,17 @@ def structure_2d_plotly(
     _elem_colors = get_elem_colors(elem_colors)
     _atomic_radii = get_atomic_radii(atomic_radii)
 
+    if isinstance(show_site_vectors, str):
+        show_site_vectors = [show_site_vectors]
+
+    # Determine which vector property to plot (calling outside loop ensures we plot the
+    # same prop for all sites in all structures)
+    vector_prop = get_first_matching_site_prop(
+        list(structures.values()),
+        show_site_vectors,
+        warn_if_none=show_site_vectors != ("force", "magmom"),
+    )
+
     for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
         row = (idx - 1) // n_cols + 1
         col = (idx - 1) % n_cols + 1
@@ -122,7 +151,7 @@ def structure_2d_plotly(
         rotation_matrix = _angles_to_rotation_matrix(rotation)
         rotated_coords = np.dot(struct_i.cart_coords, rotation_matrix)
 
-        # Plot atoms
+        # Plot atoms and vectors
         if show_sites:
             site_kwargs = dict(line=dict(width=0.3, color="gray"))
             if isinstance(show_sites, dict):
@@ -146,6 +175,25 @@ def structure_2d_plotly(
                     row=row,
                     col=col,
                 )
+
+                # Add vector arrows
+                if vector_prop:
+                    vector = None
+                    if vector_prop in site.properties:
+                        vector = np.array(site.properties[vector_prop])
+                    elif vector_prop in struct_i.properties:
+                        vector = struct_i.properties[vector_prop][site_idx]
+
+                    if vector is not None and np.any(vector):
+                        add_vector_arrow(
+                            fig,
+                            coords,
+                            vector,
+                            is_3d=False,
+                            arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
+                            row=row,
+                            col=col,
+                        )
 
                 # Add image sites
                 if show_image_sites:
@@ -238,6 +286,8 @@ def structure_3d_plotly(
     standardize_struct: bool | None = None,
     n_cols: int = 3,
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
+    show_site_vectors: str | Sequence[str] = ("force", "magmom"),
+    vector_kwargs: dict[str, dict[str, Any]] | None = None,
 ) -> go.Figure:
     """Plot pymatgen structures in 3D with Plotly.
 
@@ -264,6 +314,20 @@ def structure_3d_plotly(
         n_cols (int, optional): Number of columns for subplots. Defaults to 3.
         subplot_title (Callable[[Structure, str | int], str | dict], optional):
             Function to generate subplot titles. Defaults to None.
+        show_site_vectors (str | Sequence[str], optional): Whether to show vector site
+            quantities such as forces or magnetic moments as arrow heads originating
+            from each site. Pass the key (or sequence of keys) to look for in site
+            properties. Defaults to ("force", "magmom"). If not found as a site
+            property, will look for it in the structure properties as well and assume
+            the key points at a (N, 3) array with N the number of sites. If multiple
+            keys are provided, it plots the first key found in site properties or
+            structure properties in any of the passed structures (if a dict of
+            structures was passed). But it will only plot one vector per site and it
+            will use the same key for all sites and across all structures.
+        vector_kwargs (dict[str, dict[str, Any]], optional): For customizing vector
+        arrows. Keys are property names (e.g.,
+            "force", "magmom"), values are dictionaries of arrow customization options.
+            Use key "scale" to adjust vector length.
 
     Returns:
         go.Figure: Plotly figure with the plotted 3D structure(s).
@@ -284,6 +348,17 @@ def structure_3d_plotly(
     _elem_colors = get_elem_colors(elem_colors)
     _atomic_radii = get_atomic_radii(atomic_radii)
 
+    if isinstance(show_site_vectors, str):
+        show_site_vectors = [show_site_vectors]
+
+    # Determine which vector property to plot (calling outside loop ensures we plot the
+    # same prop for all sites in all structures)
+    vector_prop = get_first_matching_site_prop(
+        list(structures.values()),
+        show_site_vectors,
+        warn_if_none=show_site_vectors != ("force", "magmom"),
+    )
+
     for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
         # Standardize structure if needed
         if standardize_struct is None:
@@ -295,7 +370,7 @@ def structure_3d_plotly(
             except SymmetryUndeterminedError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
-        # Plot atoms
+        # Plot atoms and vectors
         if show_sites:
             site_kwargs = dict(line=dict(width=0.3, color="gray"))
             if isinstance(show_sites, dict):
@@ -316,6 +391,24 @@ def structure_3d_plotly(
                     is_3d=True,
                     scene=f"scene{idx}",
                 )
+
+                # Add vector arrows
+                if vector_prop:
+                    vector = None
+                    if vector_prop in site.properties:
+                        vector = np.array(site.properties[vector_prop])
+                    elif vector_prop in struct_i.properties:
+                        vector = struct_i.properties[vector_prop][site_idx]
+
+                    if vector is not None and np.any(vector):
+                        add_vector_arrow(
+                            fig,
+                            site.coords,
+                            vector,
+                            is_3d=True,
+                            arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
+                            scene=f"scene{idx}",
+                        )
 
                 # Add image sites
                 if show_image_sites:
