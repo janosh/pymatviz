@@ -212,14 +212,31 @@ def generate_subplot_title(
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
 ) -> dict[str, Any]:
     """Generate a subplot title based on the provided function or default logic."""
+    title_dict: dict[str, str | float | dict[str, str | float]] = {
+        "font": {"color": "black"}
+    }
+
     if callable(subplot_title):
         sub_title = subplot_title(struct_i, struct_key)
-        return dict(text=sub_title) if isinstance(sub_title, str) else sub_title
-    if isinstance(struct_key, int):
-        spg_num = struct_i.get_space_group_info()[1]
-        sub_title = f"{struct_i.formula} (spg={spg_num})"
-        return dict(text=f"{idx}. {sub_title}")
-    return dict(text=struct_key)
+        if isinstance(sub_title, str | int | float):
+            title_dict["text"] = str(sub_title)
+        elif isinstance(sub_title, dict):
+            title_dict |= sub_title
+        else:
+            raise TypeError(
+                f"Invalid subplot_title={sub_title}. Must be a str or dict."
+            )
+
+    if not title_dict.get("text"):
+        if isinstance(struct_key, int):
+            spg_num = struct_i.get_space_group_info()[1]
+            title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
+        elif isinstance(struct_key, str):
+            title_dict["text"] = str(struct_key)
+        else:
+            raise TypeError(f"Invalid {struct_key=}. Must be an int or str.")
+
+    return title_dict
 
 
 def add_site_to_plot(

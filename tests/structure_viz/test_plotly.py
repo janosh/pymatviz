@@ -155,13 +155,13 @@ def test_structure_2d_plotly_multiple() -> None:
     struct4 = Structure(lattice, ["Cu", "O"], coords=COORDS)
 
     # Test dict[str, Structure]
-    struct_dict = {
+    structs_dict = {
         "struct1": struct1,
         "struct2": struct2,
         "struct3": struct3,
         "struct4": struct4,
     }
-    fig = pmv.structure_2d_plotly(struct_dict, n_cols=3)
+    fig = pmv.structure_2d_plotly(structs_dict, n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (
         len(COORDS) + 12 + 8
@@ -169,14 +169,14 @@ def test_structure_2d_plotly_multiple() -> None:
     assert len(fig.layout.annotations) == 4
 
     # Test pandas.Series[Structure]
-    struct_series = pd.Series(struct_dict)
+    struct_series = pd.Series(structs_dict)
     fig = pmv.structure_2d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
-    fig = pmv.structure_2d_plotly(list(struct_dict.values()), n_cols=2)
+    fig = pmv.structure_2d_plotly(list(structs_dict.values()), n_cols=2)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
@@ -189,7 +189,7 @@ def test_structure_2d_plotly_multiple() -> None:
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
-    for idx, (key, struct) in enumerate(struct_dict.items(), start=1):
+    for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
 
 
@@ -330,17 +330,17 @@ def test_structure_3d_plotly_multiple() -> None:
     struct4 = Structure(lattice, ["Cu", "O"], COORDS)
 
     # Test dict[str, Structure]
-    struct_dict = {
+    structs_dict = {
         "struct1": struct1,
         "struct2": struct2,
         "struct3": struct3,
         "struct4": struct4,
     }
-    fig = pmv.structure_3d_plotly(struct_dict, n_cols=2)
+    fig = pmv.structure_3d_plotly(structs_dict, n_cols=2)
     assert isinstance(fig, go.Figure)
 
     expected_traces = 0
-    for struct in struct_dict.values():
+    for struct in structs_dict.values():
         expected_traces += len(struct)  # sites
         expected_traces += 12  # unit cell edges
         expected_traces += 8  # unit cell nodes
@@ -353,14 +353,14 @@ def test_structure_3d_plotly_multiple() -> None:
     assert len(fig.layout.annotations) == 4
 
     # Test pandas.Series[Structure]
-    struct_series = pd.Series(struct_dict)
+    struct_series = pd.Series(structs_dict)
     fig = pmv.structure_3d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
-    fig = pmv.structure_3d_plotly(list(struct_dict.values()), n_cols=3)
+    fig = pmv.structure_3d_plotly(list(structs_dict.values()), n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
@@ -373,7 +373,7 @@ def test_structure_3d_plotly_multiple() -> None:
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
-    for idx, (key, struct) in enumerate(struct_dict.items(), start=1):
+    for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
 
 
@@ -387,7 +387,7 @@ def test_structure_3d_plotly_invalid_input() -> None:
 def test_structure_3d_plotly_subplot_title_override() -> None:
     struct1 = Structure(lattice, ["Fe", "O"], COORDS)
     struct2 = Structure(lattice, ["Co", "O"], COORDS)
-    struct_dict = {"struct1": struct1, "struct2": struct2}
+    structs_dict = {"struct1": struct1, "struct2": struct2}
 
     def custom_subplot_title(struct: Structure, key: str | int) -> dict[str, Any]:
         return {  # Overriding default font, y position, etc.
@@ -397,12 +397,12 @@ def test_structure_3d_plotly_subplot_title_override() -> None:
             "yanchor": "bottom",
         }
 
-    fig = pmv.structure_3d_plotly(struct_dict, subplot_title=custom_subplot_title)
+    fig = pmv.structure_3d_plotly(structs_dict, subplot_title=custom_subplot_title)
 
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == 2
 
-    for idx, (key, struct) in enumerate(struct_dict.items()):
+    for idx, (key, struct) in enumerate(structs_dict.items()):
         annotation = fig.layout.annotations[idx]
         assert annotation.text == f"Custom {key} - {struct.formula}"
         assert annotation.font.size == 16

@@ -80,10 +80,8 @@ fig = pmv.structure_2d_plotly(
     # show_sites=dict(line=None),
     elem_colors=ElemColorScheme.jmol,
     n_cols=3,
+    subplot_title=lambda _struct, _key: dict(font=dict(color="lightgray")),
 )
-
-for anno in fig.layout.annotations:
-    anno.update(font=dict(color="white"))
 
 fig.show()
 pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")
