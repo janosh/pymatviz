@@ -184,20 +184,12 @@ def structure_2d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            unit_cell_kwargs = dict(
-                edge=dict(color="black", width=1, dash="dash"),
-                node=dict(size=3, color="black"),
-            )
-            if isinstance(show_unit_cell, dict):
-                unit_cell_kwargs = {
-                    "edge": unit_cell_kwargs["edge"] | show_unit_cell.get("edge", {}),
-                    "node": unit_cell_kwargs["node"] | show_unit_cell.get("node", {}),
-                }
-
             _add_unit_cell(
                 fig,
                 struct_i,
-                unit_cell_kwargs,
+                unit_cell_kwargs=show_unit_cell
+                if isinstance(show_unit_cell, dict)
+                else {},
                 is_3d=False,
                 row=row,
                 col=col,
@@ -359,20 +351,12 @@ def structure_3d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            unit_cell_kwargs = dict(
-                edge=dict(color="black", width=2, dash="dash"),
-                node=dict(size=3, color="black"),
-            )
-            if isinstance(show_unit_cell, dict):
-                unit_cell_kwargs = {
-                    "edge": unit_cell_kwargs["edge"] | show_unit_cell.get("edge", {}),
-                    "node": unit_cell_kwargs["node"] | show_unit_cell.get("node", {}),
-                }
-
             _add_unit_cell(
                 fig,
                 struct_i,
-                unit_cell_kwargs,
+                unit_cell_kwargs=show_unit_cell
+                if isinstance(show_unit_cell, dict)
+                else {},
                 is_3d=True,
                 scene=f"scene{idx}",
             )
@@ -397,7 +381,7 @@ def structure_3d_plotly(
             yaxis=no_axes_kwargs,
             zaxis=no_axes_kwargs,
             aspectmode="data",
-            bgcolor="rgba(90,90,90,0.01)",  # Transparent background
+            bgcolor="rgba(90, 90, 90, 0.01)",  # Transparent background
         )
 
     # Calculate subplot positions with small gap
@@ -415,13 +399,11 @@ def structure_3d_plotly(
         fig.update_layout({f"scene{idx}": dict(domain=domain, aspectmode="data")})
 
     # Update overall layout
-    fig.update_layout(
-        height=400 * n_rows,
-        width=400 * n_cols,
-        showlegend=False,
-        paper_bgcolor="rgba(0,0,0,0)",  # Transparent background
-        plot_bgcolor="rgba(0,0,0,0)",  # Transparent background
-        margin=dict(l=0, r=0, t=0, b=0),  # Minimize margins
-    )
+    fig.layout.height = 400 * n_rows
+    fig.layout.width = 400 * n_cols
+    fig.layout.showlegend = False
+    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"  # Transparent background
+    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"  # Transparent background
+    fig.layout.margin = dict(l=0, r=0, t=0, b=0)  # Minimize margins
 
     return fig

@@ -369,7 +369,8 @@ def _add_unit_cell(
             fig.add_scatter(x=x, y=y, row=row, col=col, **trace_kwargs)
 
     # Add edges
-    edge_kwargs = unit_cell_kwargs.get("edge", {})
+    edge_defaults = dict(color="black", width=1, dash="dash")
+    edge_kwargs = edge_defaults | unit_cell_kwargs.get("edge", {})
     for start, end in UNIT_CELL_EDGES:
         start_point = cart_corners[start]
         end_point = cart_corners[end]
@@ -395,7 +396,8 @@ def _add_unit_cell(
         )
 
     # Add corner spheres
-    node_kwargs = unit_cell_kwargs.get("node", {})
+    node_defaults = dict(size=3, color="black")
+    node_kwargs = node_defaults | unit_cell_kwargs.get("node", {})
     for i, (frac_coord, cart_coord) in enumerate(
         zip(corners, cart_corners, strict=False)
     ):

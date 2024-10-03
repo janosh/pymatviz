@@ -80,7 +80,7 @@ fig = pmv.structure_2d_plotly(
     # show_sites=dict(line=None),
     elem_colors=ElemColorScheme.jmol,
     n_cols=3,
-    subplot_title=lambda _struct, _key: dict(font=dict(color="lightgray")),
+    subplot_title=lambda _struct, _key: dict(font=dict(color="black")),
 )
 
 fig.show()
