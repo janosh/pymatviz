@@ -141,6 +141,4 @@ title = (
 fig.layout.title.update(text=title, x=0.4, y=0.92)
 fig.show()
 
-pmv.io.save_and_compress_svg(
-    fig, "ptable-heatmap-plotly-vasp-psp-n-valence-electrons.pdf"
-)
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-vasp-psp-n-valence-electrons")

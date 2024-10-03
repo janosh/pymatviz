@@ -106,6 +106,7 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
         expected_traces += len(DISORDERED_STRUCT)
     if show_unit_cell := kwargs.get("show_unit_cell"):
         expected_traces += 12  # 12 edges in a cube
+        expected_traces += 8  # 8 nodes in a cube
     assert len(fig.data) == expected_traces
 
     # Check if the layout properties are set correctly
@@ -123,12 +124,13 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
 
     # Additional checks based on specific kwargs
     if isinstance(show_unit_cell, dict):
-        unit_cell_trace = next(
+        edge_kwargs = show_unit_cell.get("edge", {})
+        unit_cell_edge_trace = next(
             (trace for trace in fig.data if trace.mode == "lines"), None
         )
-        assert unit_cell_trace is not None
-        for key, value in show_unit_cell.items():
-            assert unit_cell_trace.line[key] == value
+        assert unit_cell_edge_trace is not None
+        for key, value in edge_kwargs.items():
+            assert unit_cell_edge_trace.line[key] == value
 
     site_trace = next(
         (trace for trace in fig.data if trace.mode == "markers+text"), None
@@ -153,30 +155,30 @@ def test_structure_2d_plotly_multiple() -> None:
     struct4 = Structure(lattice, ["Cu", "O"], coords=COORDS)
 
     # Test dict[str, Structure]
-    struct_dict = {
+    structs_dict = {
         "struct1": struct1,
         "struct2": struct2,
         "struct3": struct3,
         "struct4": struct4,
     }
-    fig = pmv.structure_2d_plotly(struct_dict, n_cols=3)
+    fig = pmv.structure_2d_plotly(structs_dict, n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 4 * (
-        len(COORDS) + 12
-    )  # 4 structures, 2 sites each, 12 unit cell edges
+        len(COORDS) + 12 + 8
+    )  # 4 structures, 2 sites each, 12 unit cell edges, 8 unit cell nodes
     assert len(fig.layout.annotations) == 4
 
     # Test pandas.Series[Structure]
-    struct_series = pd.Series(struct_dict)
+    struct_series = pd.Series(structs_dict)
     fig = pmv.structure_2d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
-    fig = pmv.structure_2d_plotly(list(struct_dict.values()), n_cols=2)
+    fig = pmv.structure_2d_plotly(list(structs_dict.values()), n_cols=2)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
 
     # Test subplot_title
@@ -185,9 +187,9 @@ def test_structure_2d_plotly_multiple() -> None:
 
     fig = pmv.structure_2d_plotly(struct_series, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12)
+    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
     assert len(fig.layout.annotations) == 4
-    for idx, (key, struct) in enumerate(struct_dict.items(), start=1):
+    for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
 
 
@@ -230,7 +232,7 @@ def test_structure_2d_plotly_invalid_input() -> None:
             "atom_size": 25,
             "elem_colors": {"Fe": "red", "O": "blue"},
             "scale": 0.9,
-            "show_unit_cell": {"color": "red", "width": 3},
+            "show_unit_cell": {"edge": {"color": "red", "width": 3}},
             "show_sites": {"line": {"width": 1, "color": "black"}},
             "show_image_sites": {"opacity": 0.3},
             "site_labels": {"Fe": "Iron", "O": "Oxygen"},
@@ -261,6 +263,7 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
         expected_traces += len(DISORDERED_STRUCT)
     if kwargs.get("show_unit_cell"):
         expected_traces += 12  # 12 edges in a cube
+        expected_traces += 8  # 8 nodes in a cube
     if kwargs.get("show_image_sites"):
         # Instead of assuming 8 image sites per atom, let's count the actual number
         image_sites = sum(
@@ -286,12 +289,13 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
 
     # Additional checks based on specific kwargs
     if isinstance(kwargs.get("show_unit_cell"), dict):
-        unit_cell_trace = next(
+        edge_kwargs = kwargs["show_unit_cell"].get("edge", {})
+        unit_cell_edge_trace = next(
             (trace for trace in fig.data if trace.mode == "lines"), None
         )
-        assert unit_cell_trace is not None
-        for key, value in kwargs["show_unit_cell"].items():
-            assert unit_cell_trace.line[key] == value
+        assert unit_cell_edge_trace is not None
+        for key, value in edge_kwargs.items():
+            assert unit_cell_edge_trace.line[key] == value
 
     if kwargs.get("show_sites"):
         site_traces = [
@@ -326,19 +330,20 @@ def test_structure_3d_plotly_multiple() -> None:
     struct4 = Structure(lattice, ["Cu", "O"], COORDS)
 
     # Test dict[str, Structure]
-    struct_dict = {
+    structs_dict = {
         "struct1": struct1,
         "struct2": struct2,
         "struct3": struct3,
         "struct4": struct4,
     }
-    fig = pmv.structure_3d_plotly(struct_dict, n_cols=2)
+    fig = pmv.structure_3d_plotly(structs_dict, n_cols=2)
     assert isinstance(fig, go.Figure)
 
     expected_traces = 0
-    for struct in struct_dict.values():
+    for struct in structs_dict.values():
         expected_traces += len(struct)  # sites
         expected_traces += 12  # unit cell edges
+        expected_traces += 8  # unit cell nodes
         expected_traces += sum(
             len(get_image_atoms(site, struct.lattice)) for site in struct
         )  # image sites
@@ -348,14 +353,14 @@ def test_structure_3d_plotly_multiple() -> None:
     assert len(fig.layout.annotations) == 4
 
     # Test pandas.Series[Structure]
-    struct_series = pd.Series(struct_dict)
+    struct_series = pd.Series(structs_dict)
     fig = pmv.structure_3d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
-    fig = pmv.structure_3d_plotly(list(struct_dict.values()), n_cols=3)
+    fig = pmv.structure_3d_plotly(list(structs_dict.values()), n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
@@ -368,7 +373,7 @@ def test_structure_3d_plotly_multiple() -> None:
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
-    for idx, (key, struct) in enumerate(struct_dict.items(), start=1):
+    for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
 
 
@@ -379,28 +384,68 @@ def test_structure_3d_plotly_invalid_input() -> None:
         pmv.structure_3d_plotly("invalid input")
 
 
-def test_structure_3d_plotly_subplot_title_override() -> None:
-    struct1 = Structure(lattice, ["Fe", "O"], COORDS)
-    struct2 = Structure(lattice, ["Co", "O"], COORDS)
-    struct_dict = {"struct1": struct1, "struct2": struct2}
-
-    def custom_subplot_title(struct: Structure, key: str | int) -> dict[str, Any]:
-        return {  # Overriding default font, y position, etc.
-            "text": f"Custom {key} - {struct.formula}",
+@pytest.mark.parametrize(
+    "custom_title_dict",
+    [
+        {
+            "text": "Custom {key} - {struct.formula}",
             "font": {"size": 16, "color": "red"},
             "y": 0.8,
             "yanchor": "bottom",
-        }
+        },
+        {
+            "text": "{struct.formula} ({key})",
+            "font": {"size": 14, "color": "blue"},
+            "x": 0.5,
+            "xanchor": "center",
+        },
+        {
+            "text": "Structure {key}",
+            "font": {"size": 18, "color": "green"},
+            "y": 1.0,
+            "yanchor": "top",
+        },
+        {},  # Empty dict to test default behavior
+    ],
+)
+def test_structure_3d_plotly_subplot_title_override(
+    custom_title_dict: dict[str, str | float | dict[str, str | float]],
+) -> None:
+    struct1 = Structure(lattice, ["Fe", "O"], COORDS)
+    struct2 = Structure(lattice, ["Co", "O"], COORDS)
+    structs_dict = {"struct1": struct1, "struct2": struct2}
 
-    fig = pmv.structure_3d_plotly(struct_dict, subplot_title=custom_subplot_title)
+    def custom_subplot_title(struct: Structure, key: str | int) -> dict[str, Any]:
+        title_dict = custom_title_dict.copy()
+        if "text" in title_dict:
+            assert isinstance(title_dict["text"], str)  # for mypy
+            title_dict["text"] = title_dict["text"].format(key=key, struct=struct)
+        return title_dict
+
+    fig = pmv.structure_3d_plotly(structs_dict, subplot_title=custom_subplot_title)
 
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == 2
 
-    for idx, (key, struct) in enumerate(struct_dict.items()):
+    for idx, (key, struct) in enumerate(structs_dict.items()):
         annotation = fig.layout.annotations[idx]
-        assert annotation.text == f"Custom {key} - {struct.formula}"
-        assert annotation.font.size == 16
-        assert annotation.font.color == "red"
-        assert annotation.y == 0.8
-        assert annotation.yanchor == "bottom"
+
+        if custom_title_dict:
+            custom_title = custom_title_dict.get("text", "")
+            assert isinstance(custom_title, str)  # for mypy
+            expected_text = custom_title.format(key=key, struct=struct)
+            assert annotation.text == expected_text
+
+            for attr, value in custom_title_dict.items():
+                if attr == "font":
+                    assert isinstance(value, dict)  # for mypy
+                    for font_attr, font_value in value.items():
+                        assert getattr(annotation.font, font_attr) == font_value
+                elif attr != "text":
+                    assert getattr(annotation, attr) == value
+        else:
+            # Check default behavior when an empty dict is provided
+            assert annotation.text == key  # Changed this line
+            assert annotation.font.size == 16
+            assert annotation.font.color == "black"
+            assert annotation.yanchor == "top"

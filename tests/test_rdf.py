@@ -149,8 +149,8 @@ def test_element_pair_rdfs_consistency(structures: list[Structure]) -> None:
         fig1 = element_pair_rdfs(structure, cutoff=5, bin_size=0.1)
         fig2 = element_pair_rdfs(structure, cutoff=5, bin_size=0.1)
         for trace1, trace2 in zip(fig1.data, fig2.data, strict=True):
-            assert np.allclose(trace1.x, trace2.x)
-            assert np.allclose(trace1.y, trace2.y)
+            assert_allclose(trace1.x, trace2.x)
+            assert_allclose(trace1.y, trace2.y)
 
 
 @pytest.mark.parametrize("structs_type", ["dict", "list"])

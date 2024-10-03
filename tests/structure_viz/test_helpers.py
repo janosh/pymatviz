@@ -4,6 +4,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 from pymatgen.core import Structure
 
 from pymatviz.enums import ElemColorScheme
@@ -41,7 +42,7 @@ def test_angles_to_rotation_matrix(
 ) -> None:
     rot_matrix = _angles_to_rotation_matrix(angles)
     assert rot_matrix.shape == expected_shape
-    assert np.allclose(np.linalg.det(rot_matrix), 1.0)
+    assert_allclose(np.linalg.det(rot_matrix), 1.0)
 
 
 def test_angles_to_rotation_matrix_invalid_input() -> None:
@@ -63,8 +64,8 @@ def test_get_structures(structures: list[Structure]) -> None:
     assert all(isinstance(s, Structure) for s in result.values())
 
     # Test with dict of structures
-    struct_dict = {f"struct{i}": s for i, s in enumerate(structures)}
-    result = get_structures(struct_dict)
+    structs_dict = {f"struct{i}": struct for i, struct in enumerate(structures)}
+    result = get_structures(structs_dict)
     assert isinstance(result, dict)
     assert len(result) == len(structures)
     assert all(isinstance(s, Structure) for s in result.values())

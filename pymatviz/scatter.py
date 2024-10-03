@@ -226,7 +226,7 @@ def density_scatter_plotly(
                 group_df, x, y, density, n_bins, bin_counts_col
             )
             binned_df[facet_col] = group_name  # Add the facet column back
-            binned_dfs.append(binned_df)
+            binned_dfs += [binned_df]
 
         # Merge all binned dataframes
         df_plot = pd.concat(binned_dfs, ignore_index=True)

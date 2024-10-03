@@ -118,21 +118,21 @@ struct4 = Structure(lattice, ["Cu", "O"], coords=COORDS)
 
 def test_structure_2d_multiple() -> None:
     # Test dict[str, Structure]
-    struct_dict = {
+    structs_dict = {
         "struct1": struct1,
         "struct2": struct2,
         "struct3": struct3,
         "struct4": struct4,
     }
-    fig, axs = pmv.structure_2d(struct_dict, n_cols=3)
+    fig, axs = pmv.structure_2d(structs_dict, n_cols=3)
     assert isinstance(fig, plt.Figure)
     assert isinstance(axs, np.ndarray)
     assert axs.shape == (2, 3)
-    sub_titles = [f"{idx + 1}. {key}" for idx, key in enumerate(struct_dict)]
+    sub_titles = [f"{idx + 1}. {key}" for idx, key in enumerate(structs_dict)]
     assert [ax.get_title() for ax in axs.flat] == sub_titles + [""] * 2
 
     # Test pandas.Series[Structure]
-    struct_series = pd.Series(struct_dict)
+    struct_series = pd.Series(structs_dict)
     fig, axs = pmv.structure_2d(struct_series)
     assert axs.shape == (4,)  # default n_cols=4
     assert [ax.get_title() for ax in axs.flat] == sub_titles
@@ -141,7 +141,7 @@ def test_structure_2d_multiple() -> None:
     assert axs.shape == (1, 4)  # default n_cols=4
 
     # Test list[Structure]
-    fig, axs = pmv.structure_2d(list(struct_dict.values()), n_cols=2)
+    fig, axs = pmv.structure_2d(list(structs_dict.values()), n_cols=2)
     assert axs.shape == (2, 2)
     assert axs.flat[0].get_title() == f"1. {struct1.properties['id']}"
     assert axs.flat[1].get_title() == f"2. {struct2.properties[Key.mat_id]}"
@@ -156,7 +156,7 @@ def test_structure_2d_multiple() -> None:
     fig, axs = pmv.structure_2d(struct_series, subplot_title=subplot_title)
     sub_titles = [
         f"{idx}. {subplot_title(struct, key)}"
-        for idx, (key, struct) in enumerate(struct_dict.items(), start=1)
+        for idx, (key, struct) in enumerate(structs_dict.items(), start=1)
     ]
     assert [ax.get_title() for ax in axs.flat] == sub_titles
 
