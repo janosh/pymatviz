@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -27,7 +27,7 @@ from pymatviz.utils import df_ptable, pick_bw_for_contrast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any
+    from typing import Any, Literal
 
     import pandas as pd
     from matplotlib.typing import ColorType
@@ -354,11 +354,12 @@ class PTableProjector:
                     - ColorType: The same color for all elements.
                     - dict[str, ColorType]: An element to color mapping.
                     - "element-types": Use color from self.elem_type_colors.
-            kwargs (dict): Additional keyword arguments to pass to the `ax.text`.
+            kwargs (dict): Additional keyword arguments to pass to `ax.text`.
         """
-        # Update symbol kwargs
+        # Update element symbol kwargs
         kwargs = kwargs or {}
-        kwargs.setdefault("fontsize", 12)
+        defaults = dict(fontsize=12, ha="center", va="center")
+        kwargs = defaults | kwargs
 
         # Add symbol for each element
         for element in Element:
@@ -388,8 +389,6 @@ class PTableProjector:
                 *pos,
                 content,
                 color=symbol_color,
-                ha="center",
-                va="center",
                 transform=ax.transAxes,
                 **kwargs,
             )
@@ -505,6 +504,66 @@ class PTableProjector:
             # Set background color by element type
             rgb = mpl.colors.to_rgb(self.get_elem_type_color(symbol))
             ax.set_facecolor((*rgb, alpha))
+
+    def add_annotation(
+        self,
+        text: dict[str, str] | None,
+        *,
+        pos: tuple[float, float] = (0.75, 0.75),
+        text_color: ColorType
+        | dict[str, ColorType]
+        | Literal[ElemColorMode.element_types] = "black",
+        kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Add annotation for each element tile.
+
+        Args:
+            text (dict[str, str]): Element names to text mapping.
+            pos (tuple): The position of the text relative to the axes.
+            text_color (ColorType | dict[str, ColorType]): The color of the annotation.
+                Defaults to "black". Could take the following type:
+                    - ColorType: The same color for all elements.
+                    - dict[str, ColorType]: An element to color mapping.
+                    - "element-types": Use color from self.elem_type_colors.
+            kwargs (dict): Additional keyword arguments to pass to `ax.text`.
+        """
+        # Update kwargs
+        kwargs = kwargs or {}
+        defaults = dict(fontsize=12, ha="center", va="center")
+        kwargs = defaults | kwargs
+
+        if text is None:
+            raise ValueError("text for annotation cannot be None.")
+
+        # Add annotation for each element tile
+        for element in Element:
+            # Hide f-block
+            if self.hide_f_block and (element.is_lanthanoid or element.is_actinoid):
+                continue
+
+            # Get axis index by element symbol
+            symbol: str = element.symbol
+            if symbol not in self.data.index and self.on_empty == "hide":
+                continue
+
+            row, column = df_ptable.loc[symbol, ["row", "column"]]
+            ax: plt.Axes = self.axes[row - 1][column - 1]
+
+            # Generate symbol text color
+            if text_color == ElemColorMode.element_types:
+                symbol_color = self.get_elem_type_color(symbol, "black")
+            elif isinstance(text_color, dict):
+                symbol_color = text_color.get(symbol, "black")
+            else:
+                symbol_color = text_color
+
+            ax.text(
+                *pos,
+                text.get(symbol, ""),
+                color=symbol_color,
+                transform=ax.transAxes,
+                **kwargs,
+            )
 
 
 class ChildPlotters:
@@ -858,12 +917,16 @@ class HeatMapPTableProjector(PTableProjector):
         """
         # Update kwargs
         ax_kwargs = ax_kwargs or {}
-        symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
+
+        symbol_kwargs = symbol_kwargs or {}
+        symbol_defaults = dict(fontsize=16, fontweight="bold", ha="center", va="center")
+        symbol_kwargs = symbol_defaults | symbol_kwargs
+
         value_kwargs = value_kwargs or {}
-        if sci_notation:
-            value_kwargs.setdefault("fontsize", 10)
-        else:
-            value_kwargs.setdefault("fontsize", 12)
+        value_defaults = dict(
+            ha="center", va="center", fontsize=10 if sci_notation else 12
+        )
+        value_kwargs = value_defaults | value_kwargs
 
         for element in Element:
             # Hide f-block
@@ -901,8 +964,6 @@ class HeatMapPTableProjector(PTableProjector):
                 *symbol_pos,
                 symbol,
                 color=text_color,
-                ha="center",
-                va="center",
                 transform=ax.transAxes,
                 **symbol_kwargs,
             )
@@ -925,8 +986,6 @@ class HeatMapPTableProjector(PTableProjector):
                 *value_pos,
                 value,
                 color=text_color,
-                ha="center",
-                va="center",
                 transform=ax.transAxes,
                 **value_kwargs,
             )

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,6 +31,7 @@ from pymatviz.utils import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
 
     from matplotlib.offsetbox import AnchoredText
     from numpy.typing import ArrayLike
