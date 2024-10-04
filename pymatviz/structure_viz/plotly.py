@@ -21,8 +21,8 @@ from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     _add_unit_cell,
     _angles_to_rotation_matrix,
-    add_site_to_plot,
-    add_vector_arrow,
+    draw_site,
+    draw_vector,
     generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
@@ -160,7 +160,7 @@ def structure_2d_plotly(
             for site_idx, (site, coords) in enumerate(
                 zip(struct_i, rotated_coords, strict=False)
             ):
-                add_site_to_plot(
+                draw_site(
                     fig,
                     site,
                     coords,
@@ -174,6 +174,7 @@ def structure_2d_plotly(
                     is_3d=False,  # Explicitly set to False for 2D plot
                     row=row,
                     col=col,
+                    name=f"site{site_idx}",
                 )
 
                 # Add vector arrows
@@ -185,7 +186,7 @@ def structure_2d_plotly(
                         vector = struct_i.properties[vector_prop][site_idx]
 
                     if vector is not None and np.any(vector):
-                        add_vector_arrow(
+                        draw_vector(
                             fig,
                             coords,
                             vector,
@@ -193,6 +194,7 @@ def structure_2d_plotly(
                             arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
                             row=row,
                             col=col,
+                            name=f"vector{site_idx}",
                         )
 
                 # Add image sites
@@ -213,7 +215,7 @@ def structure_2d_plotly(
                         rotated_image_atoms = np.dot(image_atoms, rotation_matrix)
 
                         for image_coords in rotated_image_atoms:
-                            add_site_to_plot(
+                            draw_site(
                                 fig,
                                 site,
                                 image_coords,
@@ -377,7 +379,7 @@ def structure_3d_plotly(
                 site_kwargs |= show_sites
 
             for site_idx, site in enumerate(struct_i):
-                add_site_to_plot(
+                draw_site(
                     fig,
                     site,
                     site.coords,
@@ -390,6 +392,7 @@ def structure_3d_plotly(
                     site_kwargs,
                     is_3d=True,
                     scene=f"scene{idx}",
+                    name=f"site{site_idx}",
                 )
 
                 # Add vector arrows
@@ -401,13 +404,14 @@ def structure_3d_plotly(
                         vector = struct_i.properties[vector_prop][site_idx]
 
                     if vector is not None and np.any(vector):
-                        add_vector_arrow(
+                        draw_vector(
                             fig,
                             site.coords,
                             vector,
                             is_3d=True,
                             arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
                             scene=f"scene{idx}",
+                            name=f"vector{site_idx}",
                         )
 
                 # Add image sites
@@ -426,7 +430,7 @@ def structure_3d_plotly(
                     image_atoms = get_image_atoms(site, struct_i.lattice)
                     if len(image_atoms) > 0:  # Only proceed if there are image atoms
                         for image_coords in image_atoms:
-                            add_site_to_plot(
+                            draw_site(
                                 fig,
                                 site,
                                 image_coords,

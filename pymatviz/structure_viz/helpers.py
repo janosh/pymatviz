@@ -240,7 +240,7 @@ def generate_subplot_title(
     return title_dict
 
 
-def add_site_to_plot(
+def draw_site(
     fig: go.Figure,
     site: PeriodicSite,
     coords: np.ndarray,
@@ -257,6 +257,7 @@ def add_site_to_plot(
     row: int | None = None,
     col: int | None = None,
     scene: str | None = None,
+    **kwargs: Any,
 ) -> None:
     """Add a site (regular or image) to the plot."""
     species = getattr(site, "specie", site.species)
@@ -308,6 +309,7 @@ def add_site_to_plot(
         name=f"Image of {majority_species!s}" if is_image else str(majority_species),
         showlegend=False,
     )
+    scatter_kwargs |= kwargs
 
     if is_3d:
         scatter_kwargs["z"] = [coords[2]]
@@ -429,7 +431,7 @@ def _add_unit_cell(
     return fig
 
 
-def add_vector_arrow(
+def draw_vector(
     fig: go.Figure,
     start: np.ndarray,
     vector: np.ndarray,

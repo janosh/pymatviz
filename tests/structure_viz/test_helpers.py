@@ -13,8 +13,8 @@ from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     UNIT_CELL_EDGES,
     _angles_to_rotation_matrix,
-    add_site_to_plot,
-    add_vector_arrow,
+    draw_site,
+    draw_vector,
     generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
@@ -146,7 +146,7 @@ def test_get_image_atoms(structures: list[Structure]) -> None:
     assert len(image_atoms) == 0
 
 
-def test_add_site_to_plot(structures: list[Structure], mock_figure: Any) -> None:
+def test_draw_site(structures: list[Structure], mock_figure: Any) -> None:
     structure = structures[0]
     site = structure[0]
     coords = site.coords
@@ -161,7 +161,7 @@ def test_add_site_to_plot(structures: list[Structure], mock_figure: Any) -> None
     ]
 
     for case in test_cases:
-        add_site_to_plot(
+        draw_site(
             mock_figure,
             site,
             coords,
@@ -177,7 +177,7 @@ def test_add_site_to_plot(structures: list[Structure], mock_figure: Any) -> None
 
     # Test with custom site labels
     custom_labels = {site.species_string: "Custom"}
-    add_site_to_plot(
+    draw_site(
         mock_figure,
         site,
         coords,
@@ -267,7 +267,7 @@ def test_constants() -> None:
         ),
     ],
 )
-def test_add_vector_arrow(
+def test_draw_vector(
     start: list[float],
     vector: list[float],
     is_3d: bool,
@@ -276,7 +276,7 @@ def test_add_vector_arrow(
 ) -> None:
     fig, start, vector = go.Figure(), np.array(start), np.array(vector)
     initial_trace_count = len(fig.data)
-    add_vector_arrow(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
+    draw_vector(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
     assert len(fig.data) - initial_trace_count == expected_traces
 
     if is_3d:
@@ -308,11 +308,11 @@ def test_add_vector_arrow(
         assert_allclose(fig.data[-1].y[1], end_point[1])
 
 
-def test_add_vector_arrow_default_values() -> None:
+def test_draw_vector_default_values() -> None:
     fig = go.Figure()
     start = np.array([0, 0, 0])
     vector = np.array([1, 1, 1])
-    add_vector_arrow(fig, start, vector, is_3d=True)
+    draw_vector(fig, start, vector, is_3d=True)
 
     assert len(fig.data) == 2
     line_trace = fig.data[0]
