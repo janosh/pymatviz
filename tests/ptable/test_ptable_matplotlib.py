@@ -284,6 +284,10 @@ def test_ptable_lines(hide_f_block: bool) -> None:
             "O": [[10, 11], [12, 13], [14, 15]],
         },
         hide_f_block=hide_f_block,
+        # also test annotation
+        anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+        anno_pos=(0.25, 0.2),
+        anno_kwargs={"fontsize": 6},
     )
     assert isinstance(fig, plt.Figure)
     expected_n_axes = 126 if hide_f_block else 180

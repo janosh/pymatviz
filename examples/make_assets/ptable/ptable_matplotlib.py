@@ -49,7 +49,11 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-percent")
 
 # %%
 fig = pmv.ptable_heatmap_ratio(
-    df_expt_gap[Key.composition], df_steels[Key.composition], log=True, value_fmt=".4g"
+    df_expt_gap[Key.composition],
+    df_steels[Key.composition],
+    log=True,
+    value_fmt=".4g",
+    hide_f_block=False,
 )
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
@@ -69,9 +73,11 @@ fig = pmv.ptable_hists(
     cbar_axis="x",
     color_elem_strategy="background",
     add_elem_type_legend=True,
-    # x_range=(0, None),
+    symbol_pos=(0.25, 0.8),
+    anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+    anno_pos=(0.75, 0.8),
 )
-pmv.io.save_and_compress_svg(fig, "ptable-hists")
+pmv.io.save_and_compress_svg(fig, "ptable-hists", transparent_bg=False)
 
 
 # %% Scatter plots laid out as a periodic table
@@ -91,6 +97,9 @@ fig = pmv.ptable_scatters(
     child_kwargs=dict(marker="o", linestyle="", s=10),
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
+    anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+    anno_pos=(0.75, 0.2),
+    anno_kwargs={"fontsize": 10},
 )
 pmv.io.save_and_compress_svg(fig, "ptable-scatters-parity")
 
@@ -130,6 +139,9 @@ fig = pmv.ptable_lines(
     data_dict,
     symbol_pos=(0.5, 1.2),
     symbol_kwargs=dict(fontsize=14),
+    anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+    anno_pos=(0.25, 0.2),
+    anno_kwargs={"fontsize": 6},
 )
 pmv.io.save_and_compress_svg(fig, "ptable-lines")
 

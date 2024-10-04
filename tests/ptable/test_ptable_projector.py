@@ -90,14 +90,14 @@ class TestPTableProjector:
     @pytest.mark.parametrize(
         ("data", "elem_type_colors"),
         [
-            # data=dict, elem colors=empty dict
+            # data is dict, elem_type_colors is empty dict
             ({"Li": [1, 2, 3], "Na": [4, 5, 6], "K": [7, 8, 9]}, {}),
-            # data=series, elem colors=dict
+            # data is series, elem_type_colors is dict
             (
                 pd.Series([1, 2, 3], index=["Fe", "Fe", "Fe"]),
                 {"Transition Metal": "red", "Nonmetal": "blue"},
             ),
-            # data=dataframe, elem colors=None
+            # data is dataframe, elem_type_colors is None
             (pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6], "P": [7, 8, 9]}), None),
         ],
     )
@@ -121,6 +121,20 @@ class TestPTableProjector:
 
         assert legend.get_title().get_text() == legend_title
         assert legend.get_texts()[0].get_fontsize() == 12
+
+    def test_add_annotation(self) -> None:
+        projector_0 = PTableProjector(data=self.test_dict)
+        projector_0.add_annotation(
+            text={ele: ele for ele in self.test_dict},
+            pos=(0.75, 0.75),
+            text_color="black",
+        )
+
+        projector_1 = PTableProjector(data=self.test_dict)
+        projector_1.add_annotation(
+            text={ele: ele for ele in self.test_dict},
+            text_color={ele: "black" for ele in self.test_dict},
+        )
 
 
 class TestPtableHeatmapGenTileValueColors:
