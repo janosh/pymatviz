@@ -528,6 +528,7 @@ def get_first_matching_site_prop(
     prop_keys: Sequence[str],
     *,
     warn_if_none: bool = True,
+    filter_callback: Callable[[str, Any], bool] | None = None,
 ) -> str | None:
     """Find the first property key that exists in any structure or site properties.
 
@@ -535,14 +536,24 @@ def get_first_matching_site_prop(
         structures (Sequence[Structure]): pymatgen Structures to check.
         prop_keys (Sequence[str]): Property keys to look for.
         warn_if_none (bool, optional): Whether to warn if no matching property is found.
+        filter_callback (Callable[[str, Any], bool] | None, optional): A function that
+            takes the property key and value, and returns True if the property should be
+            considered a match. If None, all properties are considered matches.
 
     Returns:
         str | None: The first matching property key found, or None if no match is found.
     """
     for prop in prop_keys:
         for struct in structures:
-            if prop in struct.site_properties or prop in struct.properties:
-                return prop
+            if prop in struct.site_properties:
+                for site in struct:
+                    value = site.properties[prop]
+                    if filter_callback is None or filter_callback(prop, value):
+                        return prop
+            elif prop in struct.properties:
+                value = struct.properties[prop]
+                if filter_callback is None or filter_callback(prop, value):
+                    return prop
 
     if prop_keys and warn_if_none:
         warn_msg = f"None of {prop_keys=} found in any site or structure properties"

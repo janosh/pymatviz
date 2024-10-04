@@ -131,6 +131,9 @@ def structure_2d_plotly(
         list(structures.values()),
         show_site_vectors,
         warn_if_none=show_site_vectors != ("force", "magmom"),
+        # check that value is actually a 3-component vector. needs to handle both
+        # (N, 3) and (3,) cases
+        filter_callback=lambda _prop, value: (np.array(value).shape or [None])[-1] == 3,
     )
 
     for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
@@ -359,6 +362,9 @@ def structure_3d_plotly(
         list(structures.values()),
         show_site_vectors,
         warn_if_none=show_site_vectors != ("force", "magmom"),
+        # check that value is actually a 3-component vector. needs to handle both
+        # (N, 3) and (3,) cases
+        filter_callback=lambda _prop, value: (np.array(value).shape or [None])[-1] == 3,
     )
 
     for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
