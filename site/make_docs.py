@@ -7,6 +7,8 @@ It also converts all notebooks in the examples folder to HTML and adds a
 language class to the <pre> tag so that syntax highlighting works.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess

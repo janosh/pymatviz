@@ -58,7 +58,7 @@ def marchenko_pastur(
     appear, they correspond to statistically significant signals.
 
     Args:
-        matrix (ArrayLike): 2d array
+        matrix (ArrayLike): 2d array.
         gamma (float): The Marchenko-Pastur ratio of random variables to observation
             count. E.g. for N=1000 variables and p=500 observations of each,
             gamma = p/N = 1/2.

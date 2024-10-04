@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.express as px
@@ -10,6 +10,8 @@ import plotly.graph_objects as go
 
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from numpy.typing import ArrayLike
     from plotly.basedatatypes import BaseTraceType
 

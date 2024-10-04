@@ -10,17 +10,24 @@ Example usage:
     fig.show()
 """
 
-from collections.abc import Sequence
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.core import Structure
 from pymatgen.optimization.neighbors import find_points_in_spheres
-from pymatgen.util.typing import PbcLike
 from scipy.signal import find_peaks
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Any
+
+    import plotly.graph_objects as go
+    from pymatgen.util.typing import PbcLike
 
 
 def calculate_rdf(

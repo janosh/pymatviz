@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
-from typing import Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 
 PKG_NAME = "pymatviz"
