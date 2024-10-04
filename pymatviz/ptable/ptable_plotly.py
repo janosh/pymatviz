@@ -44,7 +44,7 @@ def ptable_heatmap_plotly(
     fill_value: float | None = None,
     label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
     border: dict[str, Any] | None | Literal[False] = None,
-    scaling_factor: float = 1.0,
+    scale: float = 1.0,
     **kwargs: Any,
 ) -> go.Figure:
     """Create a Plotly figure with an interactive heatmap of the periodic table.
@@ -125,7 +125,7 @@ def ptable_heatmap_plotly(
             dict(width=1, color="gray"). Other allowed keys are arguments of go.Heatmap
             which is (mis-)used to draw the borders as a 2nd heatmap below the main one.
             Pass False to disable borders.
-        scaling_factor (float): scaling factor for all figure layout
+        scale (float): Scaling factor for whole figure layout. Defaults to 1.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
 
@@ -199,9 +199,7 @@ def ptable_heatmap_plotly(
                 label = label_map(label)
             elif isinstance(label_map, dict):
                 label = label_map.get(label, label)
-        style = (
-            f"font-weight: bold; font-size: {1.5 * (font_size or 12*scaling_factor)};"
-        )
+        style = f"font-weight: bold; font-size: {1.5 * (font_size or 12 * scale)};"
         tile_text = f"<span {style=}>{symbol}</span>"
         if show_values and label:
             tile_text += f"<br>{label}"
@@ -316,9 +314,9 @@ def ptable_heatmap_plotly(
         plot_bgcolor="rgba(0, 0, 0, 0)",
         xaxis=dict(zeroline=False, showgrid=False),
         yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
-        font_size=font_size * scaling_factor if font_size else 12 * scaling_factor,
-        width=1000 * scaling_factor,
-        height=500 * scaling_factor,
+        font_size=font_size * scale if font_size else 12 * scale,
+        width=900 * scale,
+        height=500 * scale,
         title=dict(x=0.4, y=0.95),
     )
 
