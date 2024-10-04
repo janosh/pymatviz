@@ -6,7 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 import pytest
 from numpy.testing import assert_allclose
-from pymatgen.core import Structure
+from pymatgen.core import Lattice, Structure
 
 from pymatviz.enums import ElemColorScheme
 from pymatviz.structure_viz.helpers import (
@@ -18,6 +18,7 @@ from pymatviz.structure_viz.helpers import (
     generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
+    get_first_matching_site_prop,
     get_image_atoms,
     get_structures,
 )
@@ -102,12 +103,12 @@ def test_get_elem_colors_invalid_input() -> None:
 
 @pytest.mark.parametrize(
     ("atomic_radii", "expected_type"),
-    [(None, dict), (1.5, dict), ({"Si": 0.3, "O": 0.2}, dict), ("invalid_input", str)],
+    [(None, dict), (1.5, dict), ({"Si": 0.3, "O": 0.2}, dict)],
 )
 def test_get_atomic_radii(
-    atomic_radii: float | dict[str, float] | None | str, expected_type: type
+    atomic_radii: float | dict[str, float] | None, expected_type: type
 ) -> None:
-    radii = get_atomic_radii(atomic_radii)  # type: ignore[arg-type]
+    radii = get_atomic_radii(atomic_radii)
     assert isinstance(radii, expected_type)
 
     if atomic_radii is None or isinstance(atomic_radii, float):
@@ -116,8 +117,6 @@ def test_get_atomic_radii(
         if isinstance(atomic_radii, float):
             assert radii["Si"] == pytest.approx(1.11 * atomic_radii)
     elif isinstance(atomic_radii, dict):
-        assert radii == atomic_radii
-    else:
         assert radii == atomic_radii
 
 
@@ -146,34 +145,31 @@ def test_get_image_atoms(structures: list[Structure]) -> None:
     assert len(image_atoms) == 0
 
 
-def test_draw_site(structures: list[Structure], mock_figure: Any) -> None:
+@pytest.mark.parametrize("is_3d", [True, False])
+@pytest.mark.parametrize("is_image", [True, False])
+def test_draw_site(
+    structures: list[Structure], mock_figure: Any, is_3d: bool, is_image: bool
+) -> None:
     structure = structures[0]
     site = structure[0]
     coords = site.coords
     elem_colors = get_elem_colors(ElemColorScheme.jmol)
     atomic_radii = get_atomic_radii(None)
 
-    # Test cases
-    test_cases = [
-        {"is_3d": False, "is_image": False},
-        {"is_3d": True, "is_image": False},
-        {"is_3d": False, "is_image": True},
-    ]
-
-    for case in test_cases:
-        draw_site(
-            mock_figure,
-            site,
-            coords,
-            0,
-            "symbol",
-            elem_colors,
-            atomic_radii,
-            atom_size=40,
-            scale=1,
-            site_kwargs={},
-            **case,  # type: ignore[arg-type]
-        )
+    draw_site(
+        mock_figure,
+        site,
+        coords,
+        0,
+        "symbol",
+        elem_colors,
+        atomic_radii,
+        atom_size=40,
+        scale=1,
+        site_kwargs={},
+        is_3d=is_3d,
+        is_image=is_image,
+    )
 
     # Test with custom site labels
     custom_labels = {site.species_string: "Custom"}
@@ -188,7 +184,8 @@ def test_draw_site(structures: list[Structure], mock_figure: Any) -> None:
         atom_size=40,
         scale=1,
         site_kwargs={},
-        is_3d=False,
+        is_3d=is_3d,
+        is_image=is_image,
     )
 
 
@@ -197,11 +194,7 @@ def test_draw_site(structures: list[Structure], mock_figure: Any) -> None:
     [
         ("key", None, "key"),
         (1, None, "1. Si2 (spg="),  # Partial match due to dynamic spg number
-        (
-            "key",
-            lambda _struct, key: f"Custom title for {key}",
-            "Custom title for key",
-        ),
+        ("key", lambda _struct, key: f"Custom title for {key}", "Custom title for key"),
         (
             "key",
             lambda _struct, key: {"text": f"Custom for {key}", "font": {"size": 14}},
@@ -237,34 +230,20 @@ def test_constants() -> None:
 @pytest.mark.parametrize(
     ("start", "vector", "is_3d", "arrow_kwargs", "expected_traces"),
     [
+        # One for the line, one for the cone
         (
             [0, 0, 0],
             [1, 1, 1],
             True,
             {"color": "red", "width": 2, "arrow_head_length": 0.5},
-            2,  # One for the line, one for the cone
+            2,
         ),
-        (
-            [0, 0],
-            [1, 1],
-            False,
-            {"color": "blue", "width": 3},
-            1,  # One scatter trace for 2D
-        ),
-        (
-            [1, 1, 1],
-            [2, 2, 2],
-            True,
-            {"color": "green", "scale": 0.5},
-            2,  # One for the line, one for the cone
-        ),
-        (
-            [1, 1],
-            [2, 2],
-            False,
-            {"color": "yellow", "scale": 2},
-            1,  # One scatter trace for 2D
-        ),
+        # One scatter trace for 2D
+        ([0, 0], [1, 1], False, {"color": "blue", "width": 3}, 1),
+        # One for the line, one for the cone
+        ([1, 1, 1], [2, 2, 2], True, {"color": "green", "scale": 0.5}, 2),
+        # One scatter trace for 2D
+        ([1, 1], [2, 2], False, {"color": "yellow", "scale": 2}, 1),
     ],
 )
 def test_draw_vector(
@@ -324,3 +303,93 @@ def test_draw_vector_default_values() -> None:
     assert_allclose(cone_trace.x, [1])
     assert_allclose(cone_trace.y, [1])
     assert_allclose(cone_trace.z, [1])
+
+
+@pytest.fixture
+def test_structures() -> list[Structure]:
+    lattice = Lattice.cubic(5.0)
+    struct1 = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct1.add_site_property("force", [[1, 1, 1], [-1, -1, -1]])
+    struct1.add_site_property("charge", [1, -1])
+
+    struct2 = Structure(lattice, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct2.add_site_property("magmom", [5, -5])
+    struct2.properties["energy"] = -10.0
+
+    return [struct1, struct2]
+
+
+@pytest.mark.parametrize(
+    ("prop_keys", "expected_result"),
+    [
+        (["force", "magmom"], "force"),
+        (["magmom", "force"], "magmom"),
+        (["energy"], "energy"),
+        (["non_existent"], None),
+        ([], None),
+    ],
+)
+def test_get_first_matching_site_prop(
+    test_structures: list[Structure], prop_keys: list[str], expected_result: str | None
+) -> None:
+    assert get_first_matching_site_prop(test_structures, prop_keys) == expected_result
+
+
+def test_get_first_matching_site_prop_with_filter(
+    test_structures: list[Structure],
+) -> None:
+    def filter_positive(_prop: str, value: Any) -> bool:
+        return isinstance(value, int | float) and value > 0
+
+    assert (
+        get_first_matching_site_prop(
+            test_structures, ["charge", "magmom"], filter_callback=filter_positive
+        )
+        == "charge"
+    )
+
+
+def test_get_first_matching_site_prop_warning(test_structures: list[Structure]) -> None:
+    with pytest.warns(UserWarning, match="None of prop_keys="):
+        get_first_matching_site_prop(
+            test_structures, ["non_existent"], warn_if_none=True
+        )
+
+    assert (
+        get_first_matching_site_prop(
+            test_structures, ["non_existent"], warn_if_none=False
+        )
+        is None
+    )
+
+
+def test_get_first_matching_site_prop_edge_cases() -> None:
+    assert get_first_matching_site_prop([], ["force"]) is None
+
+    lattice = Lattice.cubic(5.0)
+    empty_struct = Structure(lattice, ["Si"], [[0, 0, 0]])
+    assert get_first_matching_site_prop([empty_struct], ["force"]) is None
+
+    multi_prop_struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    multi_prop_struct.add_site_property("force", [[1, 1, 1], [-1, -1, -1]])
+    multi_prop_struct.add_site_property(
+        "velocity", [[0.1, 0.1, 0.1], [-0.1, -0.1, -0.1]]
+    )
+    assert (
+        get_first_matching_site_prop([multi_prop_struct], ["force", "velocity"])
+        == "force"
+    )
+
+    def complex_filter(prop: str, value: Any) -> bool:
+        if prop == "force":
+            return all(abs(v) > 0.5 for v in value)
+        if prop == "velocity":
+            return all(abs(v) < 0.5 for v in value)
+        return False
+
+    assert (
+        get_first_matching_site_prop(
+            [multi_prop_struct], ["velocity", "force"], filter_callback=complex_filter
+        )
+        == "velocity"
+    )
