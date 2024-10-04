@@ -342,7 +342,7 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
             for vector_trace in vector_traces:
                 if vector_trace.type == "scatter3d":
                     assert vector_trace.mode == "lines"
-                    assert vector_trace.line.color == "lightblue"
+                    assert vector_trace.line.color == "white"
                     assert vector_trace.line.width == 5
                 elif vector_trace.type == "cone":
                     assert vector_trace.sizemode == "absolute"

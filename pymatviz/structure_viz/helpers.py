@@ -468,7 +468,7 @@ def draw_vector(
         trace with an arrow marker.
     """
     default_arrow_kwargs = dict(
-        color="lightblue",
+        color="white",
         width=5,
         arrow_head_length=0.8,
         arrow_head_angle=30,

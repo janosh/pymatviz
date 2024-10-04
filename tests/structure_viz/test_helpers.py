@@ -297,7 +297,7 @@ def test_draw_vector_default_values() -> None:
     line_trace = fig.data[0]
     cone_trace = fig.data[1]
 
-    assert line_trace.line.color == "lightblue"
+    assert line_trace.line.color == "white"
     assert line_trace.line.width == 5
     assert cone_trace.sizeref == 0.8
     assert_allclose(cone_trace.x, [1])
