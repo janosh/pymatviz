@@ -358,9 +358,8 @@ class PTableProjector:
         """
         # Update element symbol kwargs
         kwargs = kwargs or {}
-        kwargs.setdefault("fontsize", 12)
-        kwargs.setdefault("ha", "center")
-        kwargs.setdefault("va", "center")
+        defaults = dict(fontsize=12, ha="center", va="center")
+        kwargs = defaults | kwargs
 
         # Add symbol for each element
         for element in Element:
@@ -530,9 +529,8 @@ class PTableProjector:
         """
         # Update kwargs
         kwargs = kwargs or {}
-        kwargs.setdefault("fontsize", 12)
-        kwargs.setdefault("ha", "center")
-        kwargs.setdefault("va", "center")
+        defaults = dict(fontsize=12, ha="center", va="center")
+        kwargs = defaults | kwargs
 
         if text is None:
             raise ValueError("text for annotation cannot be None.")
@@ -920,17 +918,15 @@ class HeatMapPTableProjector(PTableProjector):
         # Update kwargs
         ax_kwargs = ax_kwargs or {}
 
-        symbol_kwargs = symbol_kwargs or {"fontsize": 16, "fontweight": "bold"}
-        symbol_kwargs.setdefault("ha", "center")
-        symbol_kwargs.setdefault("va", "center")
+        symbol_kwargs = symbol_kwargs or {}
+        symbol_defaults = dict(fontsize=16, fontweight="bold", ha="center", va="center")
+        symbol_kwargs = symbol_defaults | symbol_kwargs
 
         value_kwargs = value_kwargs or {}
-        value_kwargs.setdefault("ha", "center")
-        value_kwargs.setdefault("va", "center")
-        if sci_notation:
-            value_kwargs.setdefault("fontsize", 10)
-        else:
-            value_kwargs.setdefault("fontsize", 12)
+        value_defaults = dict(
+            ha="center", va="center", fontsize=10 if sci_notation else 12
+        )
+        value_kwargs = value_defaults | value_kwargs
 
         for element in Element:
             # Hide f-block
