@@ -60,7 +60,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         fig = ptable_heatmap_plotly(df_ptable["tmp"], log=True)
         assert isinstance(fig, go.Figure)
         heatmap_trace = fig.data[-1]
-        assert heatmap_trace.colorbar.title.text == "tmp"
+        assert heatmap_trace.colorbar.title.text == "tmp<br>"
         c_scale = heatmap_trace.colorscale
         assert isinstance(c_scale, tuple)
         assert isinstance(c_scale[0], tuple)
@@ -81,15 +81,25 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 
 
 @pytest.mark.parametrize(
-    ("exclude_elements", "heat_mode", "log", "show_scale", "font_size", "font_colors"),
+    (
+        "exclude_elements",
+        "heat_mode",
+        "log",
+        "show_scale",
+        "font_size",
+        "font_colors",
+        "scale",
+    ),
     [
-        ((), "value", True, False, None, ["red"]),
-        (["O"], "fraction", False, True, 12, ("black", "white")),
-        (["P", "S"], "percent", False, False, 14, ["blue"]),
-        ([], "value", True, True, 10, ("green", "yellow")),
-        (["H", "He", "Li"], "value", False, True, 16, ["purple"]),
-        (["Fe"], "fraction", True, False, 8, ("orange", "pink")),
-        (["Xe"], "percent", True, True, None, ["brown", "cyan"]),
+        ((), "value", True, False, None, ["red"], 1.3),
+        (["O"], "fraction", False, True, 12, ("black", "white"), 3),
+        (["P", "S"], "percent", False, False, 14, ["blue"], 1.1),
+        ([], "value", True, True, 10, ("green", "yellow"), 0.95),
+        (["H", "He", "Li"], "value", False, True, 16, ["purple"], 1.0),
+        (["Fe"], "fraction", True, False, 8, ("orange", "pink"), 2),
+        (["Xe"], "percent", True, True, None, ["brown", "cyan"], 0.2),
+        ([], "value", False, True, None, ["red"], 1.5),
+        (["O"], "fraction", False, True, 12, ("black", "white"), 0.8),
     ],
 )
 def test_ptable_heatmap_plotly_kwarg_combos(
@@ -100,6 +110,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
     show_scale: bool,
     font_size: int | None,
     font_colors: Sequence[str],
+    scale: float,
 ) -> None:
     if log and heat_mode != "value":
         pytest.skip("log scale only supported for heat_mode='value'")
@@ -111,6 +122,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         show_scale=show_scale,
         font_size=font_size,
         font_colors=font_colors,
+        scale=scale,
     )
     assert isinstance(fig, go.Figure)
 
@@ -119,7 +131,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         assert all(elem not in fig.data[-1].z for elem in exclude_elements)
 
     if font_size:
-        assert fig.layout.font.size == font_size
+        assert fig.layout.font.size == font_size * scale
 
     if len(font_colors) == 2:
         assert all(
@@ -129,6 +141,14 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         assert all(
             anno.font.color == font_colors[0] for anno in fig.layout.annotations
         ), f"{font_colors=}"
+
+    # Add assertions for scale
+    assert fig.layout.width == pytest.approx(900 * scale)
+    assert fig.layout.height == pytest.approx(500 * scale)
+    if font_size:
+        assert fig.layout.font.size == pytest.approx(font_size * scale)
+    else:
+        assert fig.layout.font.size == pytest.approx(12 * scale)
 
 
 @pytest.mark.parametrize(
@@ -247,7 +267,7 @@ def test_ptable_heatmap_plotly_color_bar_range_percent_mode() -> None:
 
     # Check if the color bar title includes '%'
     cbar_title = heatmap_trace.colorbar.title.text
-    assert cbar_title == "Test (%)", f"{cbar_title=}"
+    assert cbar_title == "Test<br> (%)", f"{cbar_title=}"
 
     assert heatmap_trace.colorbar.tickmode == "auto"
 

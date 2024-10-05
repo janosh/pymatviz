@@ -45,6 +45,7 @@ def ptable_heatmap_plotly(
     fill_value: float | None = None,
     label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
     border: dict[str, Any] | None | Literal[False] = None,
+    scale: float = 1.0,
     **kwargs: Any,
 ) -> go.Figure:
     """Create a Plotly figure with an interactive heatmap of the periodic table.
@@ -125,6 +126,7 @@ def ptable_heatmap_plotly(
             dict(width=1, color="gray"). Other allowed keys are arguments of go.Heatmap
             which is (mis-)used to draw the borders as a 2nd heatmap below the main one.
             Pass False to disable borders.
+        scale (float): Scaling factor for whole figure layout. Defaults to 1.
         **kwargs: Additional keyword arguments passed to
             plotly.figure_factory.create_annotated_heatmap().
 
@@ -198,7 +200,7 @@ def ptable_heatmap_plotly(
                 label = label_map(label)
             elif isinstance(label_map, dict):
                 label = label_map.get(label, label)
-        style = f"font-weight: bold; font-size: {1.5 * (font_size or 12)};"
+        style = f"font-weight: bold; font-size: {1.5 * (font_size or 12) * scale};"
         tile_text = f"<span {style=}>{symbol}</span>"
         if show_values and label:
             tile_text += f"<br>{label}"
@@ -313,21 +315,29 @@ def ptable_heatmap_plotly(
         plot_bgcolor="rgba(0, 0, 0, 0)",
         xaxis=dict(zeroline=False, showgrid=False),
         yaxis=dict(zeroline=False, showgrid=False, scaleanchor="x"),
-        font_size=font_size,
-        width=1000,
-        height=500,
+        font_size=(font_size or 12) * scale,
+        width=900 * scale,
+        height=500 * scale,
         title=dict(x=0.4, y=0.95),
     )
 
-    if color_bar.get("orientation") == "h":
-        dct = dict(x=0.4, y=0.75, titleside="top", len=0.4)
-        color_bar = {**dct, **color_bar}
+    horizontal_cbar = color_bar.get("orientation") == "h"
+    if horizontal_cbar:
+        defaults = dict(
+            x=0.4,
+            y=0.72,
+            titleside="top",
+            len=0.4,
+            title_font_size=scale * 1.2 * (font_size or 12),
+        )
+        color_bar = defaults | color_bar
     else:  # make title vertical
-        dct = dict(titleside="right", len=0.87)
-        color_bar = {**dct, **color_bar}
-        if title := color_bar.get("title"):
-            # <br><br> to increase title offset
-            color_bar["title"] = f"<br><br>{title}"
+        defaults = dict(titleside="right", len=0.87)
+        color_bar = defaults | color_bar
+
+    if title := color_bar.get("title"):
+        # <br> to increase title standoff
+        color_bar["title"] = f"{title}<br>" if horizontal_cbar else f"<br><br>{title}"
 
     if log:
         orig_min = np.floor(min(non_nan_values))
