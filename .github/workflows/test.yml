@@ -8,6 +8,7 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   tests:
@@ -15,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest] # windows-latest
         split: [1, 2, 3, 4]
-    uses: janosh/workflows/.github/workflows/pytest-release.yml@main
+    uses: janosh/workflows/.github/workflows/pytest.yml@main
     with:
       os: ${{ matrix.os }}
       python-version: "3.10"
