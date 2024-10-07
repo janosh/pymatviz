@@ -164,12 +164,16 @@ See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-| [`xrd_pattern(pattern)`](pymatviz/xrd.py) | [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py) |
-| :---------------------------------------: | :----------------------------------------------------------: |
-|              ![xrd-pattern]               |                   ![xrd-pattern-multiple]                    |
+|             [`xrd_pattern(pattern)`](pymatviz/xrd.py)             |             [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py)              |
+| :---------------------------------------------------------------: | :-----------------------------------------------------------------------------------: |
+|                          ![xrd-pattern]                           |                                ![xrd-pattern-multiple]                                |
+| [`xrd_pattern(struct_dict, stack="horizontal")`](pymatviz/xrd.py) | [`xrd_pattern(struct_dict, stack="vertical", title="Custom Title")`](pymatviz/xrd.py) |
+|                  ![xrd-pattern-horizontal-stack]                  |                             ![xrd-pattern-vertical-stack]                             |
 
 [xrd-pattern]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern.svg
 [xrd-pattern-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-multiple.svg
+[xrd-pattern-horizontal-stack]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-horizontal-stack.svg
+[xrd-pattern-vertical-stack]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-vertical-stack.svg
 
 ## Radial Distribution Functions
 

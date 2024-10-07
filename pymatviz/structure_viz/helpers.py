@@ -283,14 +283,12 @@ def draw_site(
         site_labels, site_idx, major_elem_symbol, majority_species
     )
 
-    marker = (
-        dict(
-            size=site_radius * atom_size * (0.8 if is_image else 1),
-            color=color,
-            opacity=0.5 if is_image else 1,
-        )
-        | site_kwargs
+    marker = dict(
+        size=site_radius * atom_size * (0.8 if is_image else 1),
+        color=color,
+        opacity=0.5 if is_image else 1,
     )
+    marker.update(site_kwargs)
 
     scatter_kwargs = dict(
         x=[coords[0]],
@@ -530,7 +528,9 @@ def get_first_matching_site_prop(
     warn_if_none: bool = True,
     filter_callback: Callable[[str, Any], bool] | None = None,
 ) -> str | None:
-    """Find the first property key that exists in any structure or site properties.
+    """Find the first property key that exists in any of the passed structures'
+    properties or site properties. Will look in site.properties first, then
+    structure.properties.
 
     Args:
         structures (Sequence[Structure]): pymatgen Structures to check.
