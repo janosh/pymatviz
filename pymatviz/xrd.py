@@ -39,7 +39,7 @@ def format_hkl(hkl: tuple[int, int, int], format_type: HklFormat) -> str:
     raise ValueError(f"{format_type=} must be one of {ValidHklFormats}")
 
 
-def xrd_pattern(
+def xrd_pattern(  # noqa: D417
     patterns: PatternOrStruct
     | dict[str, PatternOrStruct | tuple[PatternOrStruct, dict[str, Any]]],
     *,
@@ -56,26 +56,30 @@ def xrd_pattern(
     from a pymatgen Structure, or a dictionary of either of them.
 
     Args:
-        patterns: Either a single DiffractionPattern or Structure object, or a
-            dictionary where keys are legend labels
+        patterns (PatternOrStruct | dict[str, PatternOrStruct | tuple[PatternOrStruct,
+            dict[str, Any]]]): Either a single DiffractionPattern or Structure object,
+            or a dictionary where keys are legend labels
             and values are either DiffractionPattern/Structure objects or tuples of
             (DiffractionPattern/Structure, kwargs) for customizing individual patterns.
-        peak_width: Width of the diffraction peaks in degrees. Default is 0.5.
-        annotate_peaks: Controls peak annotation. If int, annotates that many highest
-            peaks. If float, should be in (0, 1) which will annotate peaks higher than
-            that fraction of the highest peak. Default is 5.
-        hkl_format: Format for hkl indices. One of 'compact' (ex: '100'), 'full'
-            (ex: '(1, 0, 0)'), or None for no hkl indices. Default is 'compact'.
-        show_angles: Whether to show angles in peak annotations. If None, it will
-            default to True if plotting 1 or 2 patterns, False for 3 or more patterns.
-        wavelength: X-ray wavelength for the XRD calculation (in Angstroms). Default is
-            1.54184 (Cu K-alpha). Only used if patterns contains Structure objects.
-        stack: If set to "horizontal" or "vertical", creates separate subplots for
-            each pattern. Default is None (all patterns in one plot).
-        subplot_kwargs: Passed to make_subplots. Can be used to control spacing
-            between subplots, e.g. {'vertical_spacing': 0.02}.
-        subtitle_kwargs: Override default subplot title settings. E.g.,
-            {'x': 0.5, 'y': 1.1, 'font': {'size': 14, 'color': 'blue'}}.
+        peak_width (float): Width of the diffraction peaks in degrees. Default is 0.5.
+        annotate_peaks (float): Controls peak annotation. If int, annotates that many
+            highest peaks. If float, should be in (0, 1) which will annotate peaks
+            higher than that fraction of the highest peak. Default is 5.
+        hkl_format (HklFormat): Format for hkl indices. One of 'compact' (ex: '100'),
+            'full' (ex: '(1, 0, 0)'), or None for no hkl indices. Default is 'compact'.
+        show_angles (bool | None): Whether to show angles in peak annotations. If None,
+            it will default to True if plotting 1 or 2 patterns, False for 3 or more
+            patterns.
+        wavelength (float): X-ray wavelength for the XRD calculation (in Angstroms).
+            Default is 1.54184 (Cu K-alpha). Only used if patterns argument contains
+            Structures.
+        stack (Literal["horizontal", "vertical"] | None): If set to "horizontal" or
+            "vertical", creates separate subplots for each pattern. Default is None
+            (all patterns in one plot).
+        subplot_kwargs (dict[str, Any] | None): Passed to make_subplots. Can be used to
+            control spacing between subplots, e.g. {'vertical_spacing': 0.02}.
+        subtitle_kwargs (dict[str, Any] | None): Override default subplot title
+            settings. E.g. dict(font_size=14). Default is None.
 
     Raises:
         ValueError: If annotate_peaks is not a positive int or a float in (0, 1).
