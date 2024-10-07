@@ -66,4 +66,4 @@ fig.layout.title = dict(
 )
 fig.layout.margin.t = 40
 fig.show()
-pmv.io.save_and_compress_svg(fig, "xrd-pattern-vertical-stack-custom-titles")
+pmv.io.save_and_compress_svg(fig, "xrd-pattern-vertical-stack")
