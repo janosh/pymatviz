@@ -580,10 +580,15 @@ def test_get_font_color_invalid_input() -> None:
         pmv.utils.get_font_color(fig)
 
 
-@pytest.mark.parametrize("color", ["red", "#00FF00", "rgb(0, 0, 255)"])
-def test_get_plotly_font_color(color: str) -> None:
-    fig = go.Figure().update_layout(font_color=color)
-    assert pmv.utils._get_plotly_font_color(fig) == color
+def test_get_plotly_font_color_default() -> None:
+    orig_template = pio.templates.default
+    try:
+        pio.templates.default = "plotly"
+        fig = go.Figure()
+        # test we get default Plotly color
+        assert pmv.utils._get_plotly_font_color(fig) == "#2a3f5f"
+    finally:
+        pio.templates.default = orig_template
 
 
 def test_get_plotly_font_color_from_template() -> None:
@@ -597,9 +602,10 @@ def test_get_plotly_font_color_from_template() -> None:
         pio.templates.default = "plotly"  # Reset to default template
 
 
-def test_get_plotly_font_color_default() -> None:
-    fig = go.Figure()
-    assert pmv.utils._get_plotly_font_color(fig) == "#2a3f5f"  # Default Plotly color
+@pytest.mark.parametrize("color", ["red", "#00FF00", "rgb(0, 0, 255)"])
+def test_get_plotly_font_color(color: str) -> None:
+    fig = go.Figure().update_layout(font_color=color)
+    assert pmv.utils._get_plotly_font_color(fig) == color
 
 
 @pytest.mark.parametrize("color", ["red", "#00FF00", "blue"])
