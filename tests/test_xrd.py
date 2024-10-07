@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import plotly.graph_objects as go
 import pytest
@@ -115,17 +115,13 @@ def test_xrd_pattern_annotation_format(
     if hkl_format is pmv.xrd.HklNone and not show_angles:
         assert len(fig.layout.annotations) == 0
     else:
-        for annotation in fig.layout.annotations:
+        for anno in fig.layout.annotations:
             if expected_format:
-                assert re.search(
-                    expected_format, annotation.text
-                ), f"{annotation.text=}"
+                assert re.search(expected_format, anno.text), f"{anno.text=}"
             if show_angles:
-                assert re.search(r"\d+\.\d+°", annotation.text), f"{annotation.text=}"
+                assert re.search(r"\d+\.\d+°", anno.text), f"{anno.text=}"
             else:
-                assert not re.search(
-                    r"\d+\.\d+°", annotation.text
-                ), f"{annotation.text=}"
+                assert not re.search(r"\d+\.\d+°", anno.text), f"{anno.text=}"
 
 
 def test_xrd_pattern_empty_input() -> None:
@@ -188,3 +184,76 @@ def test_xrd_pattern_tooltip_label() -> None:
             all(key in hover_text for key in ["2θ", "Intensity", "hkl", "d"])
             for hover_text in trace.hovertext
         )
+
+
+@pytest.mark.parametrize(
+    ("stack", "expected_rows", "expected_cols", "subplot_kwargs", "subtitle_kwargs"),
+    [
+        ("horizontal", 1, 2, None, None),
+        ("vertical", 2, 1, None, None),
+        (None, 1, 1, None, None),
+        (
+            "horizontal",
+            1,
+            2,
+            {"horizontal_spacing": 0.05},
+            {"font": {"size": 16, "color": "red"}},
+        ),
+        ("vertical", 2, 1, {"vertical_spacing": 0.1}, {"x": 0.1, "y": 0.9}),
+    ],
+)
+def test_xrd_pattern_stack_and_kwargs(
+    stack: Literal["horizontal", "vertical"] | None,
+    expected_rows: int,
+    expected_cols: int,
+    subplot_kwargs: dict[str, Any] | None,
+    subtitle_kwargs: dict[str, Any] | None,
+) -> None:
+    patterns = {
+        "Pattern 1": MOCK_DIFFRACTION_PATTERN,
+        "Pattern 2": MOCK_DIFFRACTION_PATTERN,
+    }
+    fig = pmv.xrd_pattern(
+        patterns,
+        stack=stack,
+        subplot_kwargs=subplot_kwargs,
+        subtitle_kwargs=subtitle_kwargs,
+    )
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 2
+
+    if stack:
+        actual_rows = len(fig._grid_ref)
+        actual_cols = len(fig._grid_ref[0])
+        assert actual_rows == expected_rows
+        assert actual_cols == expected_cols
+
+        for i, trace in enumerate(fig.data):
+            expected_xaxis = f"x{i+1 if i > 0 else ''}"
+            expected_yaxis = f"y{i+1 if i > 0 else ''}"
+            assert trace.xaxis == expected_xaxis, f"{trace.xaxis=}"
+            assert trace.yaxis == expected_yaxis, f"{trace.yaxis=}"
+
+        assert fig.layout.xaxis.matches == "x"
+        assert fig.layout.yaxis.matches == "y"
+
+        # Check subtitle annotations if subtitle_kwargs is provided
+        if subtitle_kwargs:
+            subtitle_annotations = [
+                anno for anno in fig.layout.annotations if anno.text in patterns
+            ]
+            assert len(subtitle_annotations) == 2
+            for anno in subtitle_annotations:
+                if "font" in subtitle_kwargs:
+                    assert anno.font.size == subtitle_kwargs["font"].get("size")
+                    assert anno.font.color == subtitle_kwargs["font"].get("color")
+                if "x" in subtitle_kwargs:
+                    assert anno.x == subtitle_kwargs["x"]
+                if "y" in subtitle_kwargs:
+                    assert anno.y == subtitle_kwargs["y"]
+    else:
+        assert fig.layout.grid == go.layout.Grid()
+        for trace in fig.data:
+            assert trace.xaxis is None, f"{trace.xaxis=}"
+            assert trace.yaxis is None, f"{trace.yaxis=}"
