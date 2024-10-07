@@ -30,5 +30,7 @@ changelog:
       labels: [dependencies, outdated]
     - title: 🏷️ Type Hints
       labels: [types]
+    - title: 🧹 Linting
+      labels: [linting]
     - title: 🤷‍♂️ Other Changes
       labels: ["*"]

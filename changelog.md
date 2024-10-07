@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.12.0](https://github.com/janosh/pymatviz/compare/v0.11.0...v0.12.0)
+
+> 7 October 2024
+
+- use `pytest-split` in GitHub Action [`#224`](https://github.com/janosh/pymatviz/pull/224)
+- Vertically/horizontally stacked XRD plots [`#223`](https://github.com/janosh/pymatviz/pull/223)
+- add scaling_factor to pymatviz/ptable/ptable_plotly.py [`#210`](https://github.com/janosh/pymatviz/pull/210)
+- Support plotting site vectors like forces/magmoms in `structure_(2|3)d_plotly` [`#220`](https://github.com/janosh/pymatviz/pull/220)
+- Add `add_annotation` functionality for ptable plotters [`#200`](https://github.com/janosh/pymatviz/pull/200)
+- Render spheres with hover tooltip on unit cell corners in `pmv.structure_(2|3)d_plotly` [`#219`](https://github.com/janosh/pymatviz/pull/219)
+- `structure_(2|3)d_plotly` allow overriding subplot title's y position and anchor    [`#218`](https://github.com/janosh/pymatviz/pull/218)
+- pin kaleido==0.2.1 [`#217`](https://github.com/janosh/pymatviz/pull/217)
+- Add `structure_3d_plotly` [`#214`](https://github.com/janosh/pymatviz/pull/214)
+- Clean up var names in unit tests, avoid MP API access in GitHub workflow [`#207`](https://github.com/janosh/pymatviz/pull/207)
+- Add `structure_2d_plotly` to `pymatviz/structure_viz.py` [`#213`](https://github.com/janosh/pymatviz/pull/213)
+- Fix `xrd_pattern` not allowing `annotate_peaks=0` to disable peak annotation [`#212`](https://github.com/janosh/pymatviz/pull/212)
+- Fix `calculate_rdf` not accounting for periodic boundaries [`#211`](https://github.com/janosh/pymatviz/pull/211)
+- Support `list`/`dict` of structures in `element_pair_rdfs` [`#206`](https://github.com/janosh/pymatviz/pull/206)
+- Add kwarg `use_tooltips: bool = True` to `df_to_html` (prev `df_to_html_table`) [`#205`](https://github.com/janosh/pymatviz/pull/205)
+- Exclude `tests` from source distribution, and drop python2 tag for wheel [`#202`](https://github.com/janosh/pymatviz/pull/202)
+- `element_pair_rdfs` plots radial distribution functions (RDFs) for element pairs in a structure [`#203`](https://github.com/janosh/pymatviz/pull/203)
+- Add `IS_IPYTHON` global [`#198`](https://github.com/janosh/pymatviz/pull/198)
+- ruff fixes [`#196`](https://github.com/janosh/pymatviz/pull/196)
+- breaking: rename &lt;xyz&gt;_kwds -&gt; &lt;xyz&gt;_kwargs for consistency [`24261ca`](https://github.com/janosh/pymatviz/commit/24261caea8af69ab9698308ce6034bd8ca67b3c1)
+
 #### [v0.11.0](https://github.com/janosh/pymatviz/compare/v0.10.1...v0.11.0)
 
 > 1 September 2024
