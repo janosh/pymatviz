@@ -45,6 +45,7 @@ test = [
     "lxml>=4.9",
     "pdfCropMargins>=2",
     "pytest-cov>=5",
+    "pytest-split>=0.9",
     "pytest>=8",
     "weasyprint>=60",
 ]
