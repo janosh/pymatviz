@@ -226,16 +226,14 @@ def element_pair_rdfs(
     n_rows = (n_pairs + actual_cols - 1) // actual_cols
 
     # Create the plotly figure with facets
-    fig = make_subplots(
-        **dict(
-            rows=n_rows,
-            cols=actual_cols,
-            subplot_titles=[f"{el1}-{el2}" for el1, el2 in element_pairs],
-            vertical_spacing=0.15 / n_rows,
-            horizontal_spacing=0.15 / actual_cols,
-        )
-        | subplot_kwargs
+    subplot_defaults = dict(
+        rows=n_rows,
+        cols=actual_cols,
+        subplot_titles=[f"{el1}-{el2}" for el1, el2 in element_pairs],
+        vertical_spacing=0.15 / n_rows,
+        horizontal_spacing=0.15 / actual_cols,
     )
+    fig = make_subplots(**subplot_defaults | subplot_kwargs)
 
     # Set default colors and line styles if not provided
     line_styles = line_styles or "solid dot dash longdash dashdot longdashdot".split()
