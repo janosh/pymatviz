@@ -2,13 +2,13 @@ ci:
   autoupdate_schedule: quarterly
   skip: [pyright]
 
-default_stages: [commit]
+default_stages: [Nonepre-commitNone]
 
 default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.8
+    rev: v0.6.9
     hooks:
       - id: ruff
         args: [--fix]
@@ -28,7 +28,7 @@ repos:
       - id: format-ipy-cells
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-case-conflict
       - id: check-symlinks
@@ -43,7 +43,7 @@ repos:
     rev: v2.3.0
     hooks:
       - id: codespell
-        stages: [commit, commit-msg]
+        stages: [Nonepre-commitNone, commit-msg]
         exclude_types: [csv, svg, html, yaml, jupyter]
         args: [--ignore-words-list, "hist,mape,te,nd,fpr", --check-filenames]
 
@@ -73,7 +73,7 @@ repos:
         exclude: ^(site/src/figs/.+\.svelte|data/wbm/20.+\..+|site/src/(routes|figs).+\.(yaml|json)|changelog.md)$
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.11.1
+    rev: v9.12.0
     hooks:
       - id: eslint
         stages: [manual] # TODO: skip eslint for now
@@ -88,6 +88,6 @@ repos:
           - typescript-eslint
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.382.post1
+    rev: v1.1.383
     hooks:
       - id: pyright
