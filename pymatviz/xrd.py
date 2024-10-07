@@ -113,14 +113,14 @@ def xrd_pattern(  # noqa: D417
     if stack:
         rows, cols = (n_patterns, 1) if stack == "vertical" else (1, n_patterns)
         subplot_defaults = dict(
+            rows=rows,
+            cols=cols,
             shared_xaxes=True,
             shared_yaxes=True,
             horizontal_spacing=0.05 / cols,
             vertical_spacing=0.05 / rows,
         )
-        fig = make_subplots(
-            rows=rows, cols=cols, **subplot_defaults | (subplot_kwargs or {})
-        )
+        fig = make_subplots(**subplot_defaults | (subplot_kwargs or {}))
         # increase peak width for horizontal stacking
         if stack == "horizontal":
             peak_width *= 3
@@ -258,8 +258,8 @@ def xrd_pattern(  # noqa: D417
 
             fig.add_annotation(
                 text=trace.name,
-                xref=f"x{trace_idx + 1} domain".replace("1", ""),
-                yref=f"y{trace_idx + 1} domain".replace("1", ""),
+                xref=f"x{trace_idx + 1} domain".replace("x1 ", "x "),
+                yref=f"y{trace_idx + 1} domain".replace("y1 ", "y "),
                 row=row,
                 col=col,
                 **subtitle_defaults | (subtitle_kwargs or {}),
