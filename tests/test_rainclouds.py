@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def sample_data() -> dict[str, np.ndarray]:
-    rng = np.random.default_rng(0)
+    rng = np.random.default_rng(seed=0)
     return {
         "A": rng.normal(0, 1, 100),
         "B": rng.normal(2, 1.5, 80),
@@ -28,7 +28,7 @@ def sample_data() -> dict[str, np.ndarray]:
 
 @pytest.fixture
 def sample_dataframe() -> pd.DataFrame:
-    rng = np.random.default_rng(0)
+    rng = np.random.default_rng(seed=0)
     return pd.DataFrame(
         {
             "value": rng.normal(0, 1, 100),

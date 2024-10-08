@@ -7,7 +7,7 @@ import pymatviz as pmv
 pmv.set_plotly_template("pymatviz_white")
 
 # Set up the RNG with a seed for reproducibility
-rng = np.random.default_rng(0)
+rng = np.random.default_rng(seed=0)
 
 
 # %% Example 1: Two bimodal distributions
