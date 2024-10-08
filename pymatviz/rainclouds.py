@@ -35,6 +35,13 @@ def rainclouds(
 ) -> go.Figure:
     """Create a raincloud plot for multiple datasets using Plotly.
 
+    This plot type was proposed in https://wellcomeopenresearch.org/articles/4-63/v2.
+    It is a vertical stack of:
+
+    1. violin plot (the cloud)
+    2. box plot (the umbrella)
+    3. strip plot (the rain)
+
     Args:
         data (dict[str, Union[Sequence[float], tuple[pd.DataFrame, str]]]): A dictionary
             where keys are labels and values are either sequences of float data or

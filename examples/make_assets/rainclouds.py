@@ -7,7 +7,7 @@ import pymatviz as pmv
 pmv.set_plotly_template("pymatviz_white")
 
 # Set up the RNG with a seed for reproducibility
-rng = np.random.default_rng(42)
+rng = np.random.default_rng(0)
 
 
 # %% Example 1: Two bimodal distributions
@@ -29,28 +29,16 @@ fig_bi.show()
 pmv.io.save_and_compress_svg(fig_bi, "raincloud-bimodal")
 
 
-# Example 2: Three trimodal distributions
+# %% Example 2: Three trimodal distributions
 data_trimodal = {
     "Distribution X": np.concatenate(
-        [
-            rng.normal(-3, 0.4, 300),
-            rng.normal(0, 0.3, 400),
-            rng.normal(3, 0.5, 300),
-        ]
+        [rng.normal(-3, 0.4, 300), rng.normal(0, 0.3, 400), rng.normal(3, 0.5, 300)]
     ),
     "Distribution Y": np.concatenate(
-        [
-            rng.normal(-2, 0.3, 350),
-            rng.normal(1, 0.4, 350),
-            rng.normal(4, 0.6, 300),
-        ]
+        [rng.normal(-2, 0.3, 350), rng.normal(1, 0.4, 350), rng.normal(4, 0.6, 300)]
     ),
     "Distribution Z": np.concatenate(
-        [
-            rng.normal(-4, 0.5, 250),
-            rng.normal(-1, 0.3, 450),
-            rng.normal(2, 0.4, 300),
-        ]
+        [rng.normal(-4, 0.5, 250), rng.normal(-1, 0.3, 450), rng.normal(2, 0.4, 300)]
     ),
 }
 
