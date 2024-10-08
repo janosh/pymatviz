@@ -44,7 +44,7 @@ def sample_dataframe() -> pd.DataFrame:
         {"orientation": "v"},
         {"alpha": 0.5, "width_viol": 0.4, "width_box": 0.2},
         {"jitter": 0.02, "point_size": 5, "bw": 0.3, "cut": 0.1},
-        {"scale": "count", "move": -0.2, "offset": 0.1},
+        {"scale": "count", "rain_offset": -0.2, "offset": 0.1},
         {"hover_data": ["extra"]},
     ],
 )
@@ -167,3 +167,32 @@ def test_rainclouds_long_labels(sample_data: dict[str, np.ndarray]) -> None:
     }
     fig = pmv.rainclouds(long_labels)
     assert fig.layout.yaxis.tickangle == -90
+
+
+@pytest.mark.parametrize(
+    ("show_violin", "show_box", "show_points", "n_expected_traces"),
+    [
+        (True, True, True, 3),
+        (False, True, True, 2),
+        (True, False, True, 2),
+        (True, True, False, 2),
+        (False, False, True, 1),
+        (False, True, False, 1),
+        (True, False, False, 1),
+        (False, False, False, 0),
+    ],
+)
+def test_rainclouds_trace_visibility(
+    sample_data: dict[str, np.ndarray],
+    show_violin: bool,
+    show_box: bool,
+    show_points: bool,
+    n_expected_traces: int,
+) -> None:
+    fig = pmv.rainclouds(
+        sample_data,
+        show_violin=show_violin,
+        show_box=show_box,
+        show_points=show_points,
+    )
+    assert len(fig.data) == len(sample_data) * n_expected_traces
