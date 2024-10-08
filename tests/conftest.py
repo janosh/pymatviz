@@ -136,6 +136,7 @@ def glass_formulas() -> list[str]:
 
 @pytest.fixture
 def df_float() -> pd.DataFrame:
+    np_rng = np.random.default_rng(seed=0)
     return pd.DataFrame(np_rng.random(size=(30, 5)), columns=[*"ABCDE"])
 
 
