@@ -56,7 +56,7 @@ def ptable_heatmap_plotly(
             symbols to heatmap values e.g. dict(Fe=2, O=3) or iterable of composition
             strings or Pymatgen composition objects.
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See count_elements() for
+            Reduce or normalize compositions before counting. See `count_elements` for
             details. Only used when values is list of composition strings/objects.
         colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
             Defaults to "viridis". See plotly.com/python/builtin-colorscales for names
