@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -151,7 +152,12 @@ def test_rainclouds_hover_data(
     ("data_input", "expected_msg"),
     [
         ({"A": "not a sequence"}, "`dataset` input should have multiple elements"),
-        ({}, "max() iterable argument is empty"),
+        (
+            {},
+            "max() iterable argument is empty"
+            if sys.version_info >= (3, 12)
+            else "max() arg is an empty sequence",
+        ),
     ],
 )
 def test_rainclouds_invalid_input(
