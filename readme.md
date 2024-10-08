@@ -204,6 +204,17 @@ See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
 | :----------------------------------------------------------: | :-------------------------------------------------------------: |
 |                     ![cumulative-error]                      |                     ![cumulative-residual]                      |
 
+## Rainclouds
+
+See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
+
+| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py) |
+| :--------------------------------------------------: | :----------------------------------------------------: |
+|                ![rainclouds-bimodal]                 |                 ![rainclouds-trimodal]                 |
+
+[rainclouds-bimodal]: https://github.com/janosh/pymatviz/raw/main/assets/rainclouds-bimodal.svg
+[rainclouds-trimodal]: https://github.com/janosh/pymatviz/raw/main/assets/rainclouds-trimodal.svg
+
 ## Classification
 
 See [`pymatviz/relevance.py`](pymatviz/relevance.py).

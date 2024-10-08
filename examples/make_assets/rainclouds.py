@@ -26,7 +26,7 @@ fig_bi.layout.xaxis.title = "Value"
 fig_bi.layout.yaxis.title = "Distribution"
 fig_bi.layout.margin.t = 40
 fig_bi.show()
-pmv.io.save_and_compress_svg(fig_bi, "raincloud-bimodal")
+pmv.io.save_and_compress_svg(fig_bi, "rainclouds-bimodal")
 
 
 # %% Example 2: Three trimodal distributions
@@ -48,4 +48,4 @@ fig_tri.layout.xaxis.title = "Value"
 fig_tri.layout.yaxis.title = "Distribution"
 fig_tri.layout.margin.t = 40
 fig_tri.show()
-pmv.io.save_and_compress_svg(fig_tri, "raincloud-trimodal")
+pmv.io.save_and_compress_svg(fig_tri, "rainclouds-trimodal")

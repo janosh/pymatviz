@@ -23,7 +23,7 @@ def rainclouds(
     orientation: Literal["h", "v"] = "h",
     alpha: float = 0.7,
     width_viol: float = 0.3,
-    width_box: float = 0.1,
+    width_box: float = 0.05,
     jitter: float = 0.01,
     point_size: float = 3,
     bw: float = 0.2,
@@ -54,7 +54,7 @@ def rainclouds(
             "h" for horizontal, "v" for vertical. Defaults to "h".
         alpha (float, optional): Transparency of the violin plots. Defaults to 0.7.
         width_viol (float, optional): Width of the violin plots. Defaults to 0.3.
-        width_box (float, optional): Width of the box plots. Defaults to 0.1.
+        width_box (float, optional): Width of the box plots. Defaults to 0.05.
         jitter (float, optional): Amount of jitter for the strip plot. Defaults to 0.01.
         point_size (float, optional): Size of the points in the strip plot.
             Defaults to 3.
