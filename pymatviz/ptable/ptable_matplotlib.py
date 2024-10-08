@@ -426,7 +426,7 @@ def ptable_heatmap_ratio(
     if normalize:
         values /= values.sum()
 
-    # Drop entries that is not is either (as NaN)
+    # Drop entries that is not in either numerator or denominator (as NaN)
     values = values.dropna(inplace=False)
 
     # Generate overwrite tile entries for near zero values
