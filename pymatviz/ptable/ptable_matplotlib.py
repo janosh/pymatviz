@@ -235,7 +235,7 @@ def ptable_heatmap(
     projector = HeatMapPTableProjector(
         data=data,
         exclude_elements=exclude_elements,
-        # tile_size=tile_size,
+        # tile_size=tile_size,  # TODO: WIP
         log=log,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
