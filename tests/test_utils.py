@@ -130,8 +130,8 @@ def test_bin_df_cols(
         density_col=density_col,
     )
 
-    assert len(df_binned) == expected_n_rows
-    assert len(df_binned) <= len(df_float)
+    assert len(df_binned) == expected_n_rows, f"{len(df_binned)=} {expected_n_rows=}"
+    assert len(df_binned) <= len(df_float), f"{len(df_binned)=} {len(df_float)=}"
     assert df_binned.index.name == idx_col
 
     # ensure binned DataFrame has a minimum set of expected columns
@@ -317,7 +317,7 @@ def test_si_fmt_int() -> None:
 
 
 class TestGetCbarLabelFormatter:
-    data = np.random.default_rng().random((10, 10))
+    data = np.random.default_rng(seed=0).random((10, 10))
     fig, ax = plt.subplots()
     cax = ax.imshow(data, cmap="viridis")
     cbar = fig.colorbar(cax)
