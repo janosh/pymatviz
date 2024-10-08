@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import warnings
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -59,6 +60,12 @@ def count_elements(
     Returns:
         pd.Series: Map element symbols to heatmap values.
     """
+    # TODO: remove warning after 2025-10-08
+    if fill_value is None:
+        warnings.warn(
+            "default value of fill_value changed from zero to None.", stacklevel=2
+        )
+
     valid_count_modes = list(ElemCountMode.key_val_dict())
     if count_mode not in valid_count_modes:
         raise ValueError(f"Invalid {count_mode=} must be one of {valid_count_modes}")
