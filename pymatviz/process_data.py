@@ -25,7 +25,7 @@ def count_elements(
 ) -> pd.Series:
     """Count element occurrence in list of formula strings or dict-like compositions.
     If passed values are already a map from element symbol to counts, ensure the
-    data is a pd.Series filled with zero values for missing element symbols.
+    data is a pd.Series filled with NaN for missing element symbols.
 
     Provided as standalone function for external use or to cache long computations.
     Caching long element counts is done by refactoring
@@ -52,7 +52,8 @@ def count_elements(
                 counts to {Fe: 3, O: 3, P: 1}.
         exclude_elements (Sequence[str]): Elements to exclude from the count. Defaults
             to ().
-        fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
+        fill_value (float | None): Value to fill in for missing elements.
+            Defaults to None for NaN.
 
     Returns:
         pd.Series: Map element symbols to heatmap values.
