@@ -665,3 +665,12 @@ class ElemColorScheme(LabelEnum):
     # https://wikipedia.org/wiki/Jmol"
     vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
     # https://jp-minerals.org/vesta
+
+
+@unique
+class SiteCoords(LabelEnum):
+    """Site coordinate representations."""
+
+    cartesian = "cartesian", "Cartesian"
+    fractional = "fractional", "Fractional"
+    cartesian_fractional = "cartesian+fractional", "Cartesian and Fractional"

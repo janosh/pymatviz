@@ -8,7 +8,7 @@ from mp_api.client import MPRester
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.enums import ElemColorScheme, Key
+from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.utils import TEST_FILES
 
 
@@ -93,7 +93,7 @@ fig = pmv.structure_3d_plotly(
     df_phonons[Key.structure].head(6).to_dict(),
     elem_colors=ElemColorScheme.jmol,
     # show_unit_cell={"edge": dict(color="white", width=1.5)},
-    hover_text="cartesian+fractional",
+    hover_text=SiteCoords.cartesian_fractional,
 )
 fig.show()
 pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")

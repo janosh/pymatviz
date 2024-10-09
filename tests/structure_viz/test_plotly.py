@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,7 @@ import pytest
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.enums import ElemColorScheme, Key
+from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.structure_viz.helpers import get_image_atoms
 
 
@@ -491,17 +491,11 @@ def test_structure_3d_plotly_subplot_title_override(
 )
 @pytest.mark.parametrize(
     "hover_text",
-    [
-        "cartesian",
-        "fractional",
-        "cartesian+fractional",
-        lambda site: f"<b>{site.frac_coords}</b>",
-    ],
+    [*SiteCoords, lambda site: f"<b>{site.frac_coords}</b>"],
 )
 def test_hover_text(
     plot_function: Callable[[Structure, Any], go.Figure],
-    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
-    | Callable[[PeriodicSite], str],
+    hover_text: SiteCoords | Callable[[PeriodicSite], str],
 ) -> None:
     struct = Structure(lattice, ["Fe", "O"], COORDS)
     fig = plot_function(struct, hover_text=hover_text)  # type: ignore[call-arg]
@@ -519,15 +513,15 @@ def test_hover_text(
         if callable(hover_text):
             assert "<b>" in site_hover_text, f"{site_hover_text=}"
             assert "</b>" in site_hover_text, f"{site_hover_text=}"
-        elif hover_text == "cartesian":
+        elif hover_text == SiteCoords.cartesian:
             assert re.search(
                 rf"Coordinates \({re_3_coords}\)", site_hover_text
             ), f"{site_hover_text=}"
-        elif hover_text == "fractional":
+        elif hover_text == SiteCoords.fractional:
             assert re.search(
                 rf"Coordinates \[{re_3_coords}\]", site_hover_text
             ), f"{site_hover_text=}"
-        elif hover_text == "cartesian+fractional":
+        elif hover_text == SiteCoords.cartesian_fractional:
             assert re.search(
                 rf"Coordinates \({re_3_coords}\) \[{re_3_coords}\]", site_hover_text
             ), f"{site_hover_text=}"

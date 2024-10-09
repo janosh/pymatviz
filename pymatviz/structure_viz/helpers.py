@@ -18,7 +18,7 @@ import plotly.graph_objects as go
 from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
-from pymatviz.enums import ElemColorScheme, Key
+from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.utils import df_ptable, pick_bw_for_contrast
 
 
@@ -239,8 +239,7 @@ def generate_subplot_title(
 
 def get_site_hover_text(
     site: PeriodicSite,
-    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
-    | Callable[[PeriodicSite], str],
+    hover_text: SiteCoords | Callable[[PeriodicSite], str],
     majority_species: Species,
 ) -> str:
     """Generate hover text for a site based on the hover template."""
@@ -249,11 +248,11 @@ def get_site_hover_text(
 
     cart_text = f"({', '.join(f'{c:.3g}' for c in site.coords)})"
     frac_text = f"[{', '.join(f'{c:.3g}' for c in site.frac_coords)}]"
-    if hover_text == "cartesian":
+    if hover_text == SiteCoords.cartesian:
         coords_text = cart_text
-    elif hover_text == "fractional":
+    elif hover_text == SiteCoords.fractional:
         coords_text = frac_text
-    elif hover_text == "cartesian+fractional":
+    elif hover_text == SiteCoords.cartesian_fractional:
         coords_text = f"{cart_text} {frac_text}"
     else:
         raise ValueError(f"Invalid {hover_text=}")
@@ -284,8 +283,8 @@ def draw_site(
     row: int | None = None,
     col: int | None = None,
     scene: str | None = None,
-    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
-    | Callable[[PeriodicSite], str] = "cartesian+fractional",
+    hover_text: SiteCoords
+    | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
     **kwargs: Any,
 ) -> None:
     """Add a site (regular or image) to the plot."""

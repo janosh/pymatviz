@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedError
 
-from pymatviz.enums import ElemColorScheme
+from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     _add_unit_cell,
@@ -59,8 +59,8 @@ def structure_2d_plotly(
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
-    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
-    | Callable[[PeriodicSite], str] = "cartesian+fractional",
+    hover_text: SiteCoords
+    | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
 ) -> go.Figure:
     """Plot pymatgen structures in 2D with Plotly.
 
@@ -103,10 +103,10 @@ def structure_2d_plotly(
             arrows. Keys are property names (e.g., "force", "magmom"), values are
             dictionaries of arrow customization options. Use key "scale" to adjust
             vector length.
-        hover_text (str | Callable, optional): Controls the hover tooltip template.
-            Can be "cartesian", "fractional", "cartesian+fractional", or a callable that
-            takes a site and returns a custom string. Defaults to
-            "cartesian+fractional".
+        hover_text (SiteCoords | Callable, optional): Controls the hover tooltip
+            template. Can be SiteCoords.cartesian, SiteCoords.fractional,
+            SiteCoords.cartesian_fractional, or a callable that takes a site and
+            returns a custom string. Defaults to SiteCoords.cartesian_fractional.
 
     Returns:
         go.Figure: Plotly figure with the plotted structure(s).
@@ -300,8 +300,8 @@ def structure_3d_plotly(
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
-    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
-    | Callable[[PeriodicSite], str] = "cartesian+fractional",
+    hover_text: SiteCoords
+    | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
 ) -> go.Figure:
     """Plot pymatgen structures in 3D with Plotly.
 
@@ -342,10 +342,10 @@ def structure_3d_plotly(
         arrows. Keys are property names (e.g.,
             "force", "magmom"), values are dictionaries of arrow customization options.
             Use key "scale" to adjust vector length.
-        hover_text (str | Callable, optional): Controls the hover tooltip template.
-            Can be "cartesian", "fractional", "cartesian+fractional", or a callable that
-            takes a site and returns a custom string. Defaults to
-            "cartesian+fractional".
+        hover_text (SiteCoords | Callable, optional): Controls the hover tooltip
+            template. Can be SiteCoords.cartesian, SiteCoords.fractional,
+            SiteCoords.cartesian_fractional, or a callable that takes a site and
+            returns a custom string. Defaults to SiteCoords.cartesian_fractional.
 
     Returns:
         go.Figure: Plotly figure with the plotted 3D structure(s).

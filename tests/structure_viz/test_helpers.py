@@ -1,6 +1,6 @@
 import re
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
@@ -8,7 +8,7 @@ import pytest
 from numpy.testing import assert_allclose
 from pymatgen.core import Lattice, PeriodicSite, Structure
 
-from pymatviz.enums import ElemColorScheme
+from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     UNIT_CELL_EDGES,
@@ -153,20 +153,14 @@ def test_get_image_atoms(structures: list[Structure]) -> None:
 @pytest.mark.parametrize("is_image", [True, False])
 @pytest.mark.parametrize(
     "hover_text",
-    [
-        "cartesian",
-        "fractional",
-        "cartesian+fractional",
-        lambda site: f"Custom: {site.species_string}",
-    ],
+    [*SiteCoords, lambda site: f"Custom: {site.species_string}"],
 )
 def test_draw_site(
     structures: list[Structure],
     mock_figure: Any,
     is_3d: bool,
     is_image: bool,
-    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
-    | Callable[[PeriodicSite], str],
+    hover_text: SiteCoords | Callable[[PeriodicSite], str],
 ) -> None:
     structure = structures[0]
     site = structure[0]
@@ -211,11 +205,11 @@ def test_draw_site(
     # check if the hover text is generated correctly
     if callable(hover_text):
         assert "Custom:" in mock_figure.last_trace_kwargs.get("hovertext", "")
-    elif hover_text == "cartesian":
+    elif hover_text == SiteCoords.cartesian:
         assert "Coordinates (0, 0, 0)" in mock_figure.last_trace_kwargs["hovertext"]
-    elif hover_text == "fractional":
+    elif hover_text == SiteCoords.fractional:
         assert "Coordinates [0, 0, 0]" in mock_figure.last_trace_kwargs["hovertext"]
-    elif hover_text == "cartesian+fractional":
+    elif hover_text == SiteCoords.cartesian_fractional:
         assert (
             "Coordinates (0, 0, 0) [0, 0, 0]"
             in mock_figure.last_trace_kwargs["hovertext"]
@@ -432,16 +426,17 @@ def test_get_first_matching_site_prop_edge_cases() -> None:
 @pytest.mark.parametrize(
     ("hover_text", "expected_output"),
     [
-        ("cartesian", "<b>Site: Si1</b><br>Coordinates (0, 0, 0)"),
-        ("fractional", "<b>Site: Si1</b><br>Coordinates [0, 0, 0]"),
-        ("cartesian+fractional", "<b>Site: Si1</b><br>Coordinates (0, 0, 0) [0, 0, 0]"),
+        (SiteCoords.cartesian, "<b>Site: Si1</b><br>Coordinates (0, 0, 0)"),
+        (SiteCoords.fractional, "<b>Site: Si1</b><br>Coordinates [0, 0, 0]"),
+        (
+            SiteCoords.cartesian_fractional,
+            "<b>Site: Si1</b><br>Coordinates (0, 0, 0) [0, 0, 0]",
+        ),
         (lambda site: f"Custom: {site.species_string}", "Custom: Si"),
     ],
 )
 def test_get_site_hover_text(
-    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
-    | Callable[[PeriodicSite], str],
-    expected_output: str,
+    hover_text: SiteCoords | Callable[[PeriodicSite], str], expected_output: str
 ) -> None:
     lattice = Lattice.cubic(1.0)
     site = PeriodicSite("Si", [0, 0, 0], lattice)
