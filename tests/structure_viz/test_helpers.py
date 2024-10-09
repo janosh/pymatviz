@@ -6,9 +6,9 @@ import numpy as np
 import plotly.graph_objects as go
 import pytest
 from numpy.testing import assert_allclose
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Lattice, PeriodicSite, Structure
 
-from pymatviz.enums import ElemColorScheme
+from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     UNIT_CELL_EDGES,
@@ -20,6 +20,7 @@ from pymatviz.structure_viz.helpers import (
     get_elem_colors,
     get_first_matching_site_prop,
     get_image_atoms,
+    get_site_hover_text,
     get_structures,
 )
 
@@ -27,11 +28,14 @@ from pymatviz.structure_viz.helpers import (
 @pytest.fixture
 def mock_figure() -> Any:
     class MockFigure:
-        def add_scatter(self, *args: Any, **kwargs: Any) -> None:
-            pass
+        def __init__(self) -> None:
+            self.last_trace_kwargs: dict[str, Any] = {}
 
-        def add_scatter3d(self, *args: Any, **kwargs: Any) -> None:
-            pass
+        def add_scatter(self, *_args: Any, **kwargs: Any) -> None:
+            self.last_trace_kwargs = kwargs
+
+        def add_scatter3d(self, *_args: Any, **kwargs: Any) -> None:
+            self.last_trace_kwargs = kwargs
 
     return MockFigure()
 
@@ -147,8 +151,16 @@ def test_get_image_atoms(structures: list[Structure]) -> None:
 
 @pytest.mark.parametrize("is_3d", [True, False])
 @pytest.mark.parametrize("is_image", [True, False])
+@pytest.mark.parametrize(
+    "hover_text",
+    [*SiteCoords, lambda site: f"Custom: {site.species_string}"],
+)
 def test_draw_site(
-    structures: list[Structure], mock_figure: Any, is_3d: bool, is_image: bool
+    structures: list[Structure],
+    mock_figure: Any,
+    is_3d: bool,
+    is_image: bool,
+    hover_text: SiteCoords | Callable[[PeriodicSite], str],
 ) -> None:
     structure = structures[0]
     site = structure[0]
@@ -169,6 +181,7 @@ def test_draw_site(
         site_kwargs={},
         is_3d=is_3d,
         is_image=is_image,
+        hover_text=hover_text,
     )
 
     # Test with custom site labels
@@ -186,7 +199,21 @@ def test_draw_site(
         site_kwargs={},
         is_3d=is_3d,
         is_image=is_image,
+        hover_text=hover_text,
     )
+
+    # check if the hover text is generated correctly
+    if callable(hover_text):
+        assert "Custom:" in mock_figure.last_trace_kwargs.get("hovertext", "")
+    elif hover_text == SiteCoords.cartesian:
+        assert "Coordinates (0, 0, 0)" in mock_figure.last_trace_kwargs["hovertext"]
+    elif hover_text == SiteCoords.fractional:
+        assert "Coordinates [0, 0, 0]" in mock_figure.last_trace_kwargs["hovertext"]
+    elif hover_text == SiteCoords.cartesian_fractional:
+        assert (
+            "Coordinates (0, 0, 0) [0, 0, 0]"
+            in mock_figure.last_trace_kwargs["hovertext"]
+        )
 
 
 @pytest.mark.parametrize(
@@ -393,3 +420,31 @@ def test_get_first_matching_site_prop_edge_cases() -> None:
         )
         == "velocity"
     )
+
+
+# Add this new test function for get_site_hover_text
+@pytest.mark.parametrize(
+    ("hover_text", "expected_output"),
+    [
+        (SiteCoords.cartesian, "(0, 0, 0)"),
+        (SiteCoords.fractional, "[0, 0, 0]"),
+        (SiteCoords.cartesian_fractional, "(0, 0, 0) [0, 0, 0]"),
+        (lambda site: f"Custom: {site.species_string}", "Custom: Si"),
+    ],
+)
+def test_get_site_hover_text(
+    hover_text: SiteCoords | Callable[[PeriodicSite], str], expected_output: str
+) -> None:
+    lattice = Lattice.cubic(1.0)
+    site = PeriodicSite("Si", [0, 0, 0], lattice)
+    result = get_site_hover_text(site, hover_text, site.species)
+    if isinstance(hover_text, str):
+        expected_output = f"<b>Site: Si1</b><br>Coordinates {expected_output}"
+    assert result == expected_output
+
+
+def test_get_site_hover_text_invalid_template() -> None:
+    lattice = Lattice.cubic(1.0)
+    site = PeriodicSite("Si", [0, 0, 0], lattice)
+    with pytest.raises(ValueError, match="Invalid hover_text="):
+        get_site_hover_text(site, "invalid_template", site.species)  # type: ignore[arg-type]
