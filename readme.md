@@ -223,21 +223,11 @@ See [`pymatviz/relevance.py`](pymatviz/relevance.py).
 | :------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                       ![roc-curve]                       |                       ![precision-recall-curve]                       |
 
-## Correlation
-
-See [`pymatviz/correlation.py`](pymatviz/correlation.py).
-
-| [`marchenko_pastur(corr_mat, gamma=ncols/nrows)`](pymatviz/correlation.py) | [`marchenko_pastur(corr_mat_significant_eval, gamma=ncols/nrows)`](pymatviz/correlation.py) |
-| :------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
-|                            ![marchenko-pastur]                             |                            ![marchenko-pastur-significant-eval]                             |
-
 [cumulative-error]: https://github.com/janosh/pymatviz/raw/main/assets/cumulative-error.svg
 [cumulative-residual]: https://github.com/janosh/pymatviz/raw/main/assets/cumulative-residual.svg
 [error-decay-with-uncert-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/error-decay-with-uncert-multiple.svg
 [error-decay-with-uncert]: https://github.com/janosh/pymatviz/raw/main/assets/error-decay-with-uncert.svg
 [elements-hist]: https://github.com/janosh/pymatviz/raw/main/assets/elements-hist.svg
-[marchenko-pastur-significant-eval]: https://github.com/janosh/pymatviz/raw/main/assets/marchenko-pastur-significant-eval.svg
-[marchenko-pastur]: https://github.com/janosh/pymatviz/raw/main/assets/marchenko-pastur.svg
 [matbench-phonons-structures-2d]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-phonons-structures-2d.svg
 [normal-prob-plot-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/normal-prob-plot-multiple.svg
 [normal-prob-plot]: https://github.com/janosh/pymatviz/raw/main/assets/normal-prob-plot.svg

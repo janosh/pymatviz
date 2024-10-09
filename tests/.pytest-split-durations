@@ -280,8 +280,6 @@
     "tests/test_bar.py::test_spacegroup_bar[all-True-True-True-plotly]": 0.2525725410087034,
     "tests/test_bar.py::test_spacegroup_bar[crys_sys_edges-False-False-False-matplotlib]": 0.2627071680035442,
     "tests/test_bar.py::test_spacegroup_bar[crys_sys_edges-False-False-False-plotly]": 0.21471391696832143,
-    "tests/test_correlation.py::test_marchenko_pastur[False]": 0.016467708977870643,
-    "tests/test_correlation.py::test_marchenko_pastur[True]": 0.023847625008784235,
     "tests/test_cumulative.py::test_cumulative_error[0.5]": 0.01006691699149087,
     "tests/test_cumulative.py::test_cumulative_error[None]": 0.010136916971532628,
     "tests/test_cumulative.py::test_cumulative_residual": 0.010760500998003408,
