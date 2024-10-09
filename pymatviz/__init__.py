@@ -22,7 +22,6 @@ import plotly.io as pio
 from pymatviz import (
     bar,
     colors,
-    correlation,
     cumulative,
     enums,
     io,
@@ -41,7 +40,6 @@ from pymatviz import (
     utils,
     xrd,
 )
-from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
