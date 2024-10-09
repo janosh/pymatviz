@@ -81,6 +81,7 @@ fig = pmv.structure_2d_plotly(
     elem_colors=ElemColorScheme.jmol,
     n_cols=3,
     subplot_title=lambda _struct, _key: dict(font=dict(color="black")),
+    hover_text=lambda site: f"<b>{site.frac_coords}</b>",
 )
 
 fig.show()
@@ -92,6 +93,7 @@ fig = pmv.structure_3d_plotly(
     df_phonons[Key.structure].head(6).to_dict(),
     elem_colors=ElemColorScheme.jmol,
     # show_unit_cell={"edge": dict(color="white", width=1.5)},
+    hover_text="cartesian+fractional",
 )
 fig.show()
 pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")

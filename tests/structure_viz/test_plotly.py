@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
+import re
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -12,6 +13,11 @@ import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.structure_viz.helpers import get_image_atoms
 
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from pymatgen.core import PeriodicSite
 
 COORDS = [[0, 0, 0], [0.5, 0.5, 0.5]]
 DISORDERED_STRUCT = Structure(
@@ -478,3 +484,50 @@ def test_structure_3d_plotly_subplot_title_override(
             assert annotation.font.size == 16
             assert annotation.font.color == "black"
             assert annotation.yanchor == "top"
+
+
+@pytest.mark.parametrize(
+    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
+)
+@pytest.mark.parametrize(
+    "hover_text",
+    [
+        "cartesian",
+        "fractional",
+        "cartesian+fractional",
+        lambda site: f"<b>{site.frac_coords}</b>",
+    ],
+)
+def test_hover_text(
+    plot_function: Callable[[Structure, Any], go.Figure],
+    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
+    | Callable[[PeriodicSite], str],
+) -> None:
+    struct = Structure(lattice, ["Fe", "O"], COORDS)
+    fig = plot_function(struct, hover_text=hover_text)  # type: ignore[call-arg]
+
+    site_traces = [
+        trace for trace in fig.data if trace.name and trace.name.startswith("site")
+    ]
+    assert len(site_traces) > 0
+
+    # regex for a single site coordinate with optional decimal point
+    re_coord = r"\d+\.?\d*"
+    re_3_coords = rf"{re_coord}, {re_coord}, {re_coord}"
+    for trace in site_traces:
+        site_hover_text = trace.hovertext
+        if callable(hover_text):
+            assert "<b>" in site_hover_text, f"{site_hover_text=}"
+            assert "</b>" in site_hover_text, f"{site_hover_text=}"
+        elif hover_text == "cartesian":
+            assert re.search(
+                rf"Coordinates \({re_3_coords}\)", site_hover_text
+            ), f"{site_hover_text=}"
+        elif hover_text == "fractional":
+            assert re.search(
+                rf"Coordinates \[{re_3_coords}\]", site_hover_text
+            ), f"{site_hover_text=}"
+        elif hover_text == "cartesian+fractional":
+            assert re.search(
+                rf"Coordinates \({re_3_coords}\) \[{re_3_coords}\]", site_hover_text
+            ), f"{site_hover_text=}"
