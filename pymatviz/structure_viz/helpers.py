@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from pymatgen.core import Composition, Lattice, PeriodicSite, Structure
+from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key
@@ -184,20 +184,17 @@ def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str,
 def generate_site_label(
     site_labels: Literal["symbol", "species", False] | dict[str, str] | Sequence[str],
     site_idx: int,
-    major_elem_symbol: str,
-    majority_species: str,
+    majority_species: Species,
 ) -> str:
     """Generate a label for a site based on the provided labeling scheme."""
     if site_labels == "symbol":
-        return str(major_elem_symbol)
+        return str(majority_species.symbol)
     if site_labels == "species":
         return str(majority_species)
     if site_labels is False:
         return ""
     if isinstance(site_labels, dict):
-        return site_labels.get(
-            repr(major_elem_symbol), site_labels.get(major_elem_symbol, "")
-        )
+        return site_labels.get(majority_species.symbol, "")
     if isinstance(site_labels, list | tuple):
         return site_labels[site_idx]
     raise ValueError(
@@ -240,6 +237,36 @@ def generate_subplot_title(
     return title_dict
 
 
+def get_site_hover_text(
+    site: PeriodicSite,
+    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
+    | Callable[[PeriodicSite], str],
+    majority_species: Species,
+) -> str:
+    """Generate hover text for a site based on the hover template."""
+    if callable(hover_text):
+        return hover_text(site)
+
+    cart_text = f"({', '.join(f'{c:.3g}' for c in site.coords)})"
+    frac_text = f"[{', '.join(f'{c:.3g}' for c in site.frac_coords)}]"
+    if hover_text == "cartesian":
+        coords_text = cart_text
+    elif hover_text == "fractional":
+        coords_text = frac_text
+    elif hover_text == "cartesian+fractional":
+        coords_text = f"{cart_text} {frac_text}"
+    else:
+        raise ValueError(f"Invalid {hover_text=}")
+
+    out_text = f"<b>Site: {majority_species}</b><br>Coordinates {coords_text}"
+
+    if site.properties:
+        out_text += "<br>Properties: " + ", ".join(
+            f"{k}: {v}" for k, v in site.properties.items()
+        )
+    return out_text
+
+
 def draw_site(
     fig: go.Figure,
     site: PeriodicSite,
@@ -257,6 +284,8 @@ def draw_site(
     row: int | None = None,
     col: int | None = None,
     scene: str | None = None,
+    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
+    | Callable[[PeriodicSite], str] = "cartesian+fractional",
     **kwargs: Any,
 ) -> None:
     """Add a site (regular or image) to the plot."""
@@ -264,24 +293,12 @@ def draw_site(
     majority_species = (
         max(species, key=species.get) if isinstance(species, Composition) else species
     )
-    major_elem_symbol = majority_species.symbol
-    site_radius = _atomic_radii[major_elem_symbol] * scale
-    color = _elem_colors.get(major_elem_symbol, "gray")
+    site_radius = _atomic_radii[majority_species.symbol] * scale
+    color = _elem_colors.get(majority_species.symbol, "gray")
 
-    hover_text = (
-        f"<b>Site: {majority_species}</b><br>"
-        f"Coordinates ({', '.join(f'{c:.3g}' for c in site.coords)})<br>"
-        f"[{', '.join(f'{c:.3g}' for c in site.frac_coords)}]"
-    )
+    site_hover_text = get_site_hover_text(site, hover_text, majority_species)
 
-    if site.properties:
-        hover_text += "<br>Properties: " + ", ".join(
-            f"{k}: {v}" for k, v in site.properties.items()
-        )
-
-    txt = generate_site_label(
-        site_labels, site_idx, major_elem_symbol, majority_species
-    )
+    txt = generate_site_label(site_labels, site_idx, majority_species)
 
     marker = dict(
         size=site_radius * atom_size * (0.8 if is_image else 1),
@@ -301,8 +318,8 @@ def draw_site(
             color=pick_bw_for_contrast(color, text_color_threshold=0.5),
             size=np.clip(atom_size * site_radius * (0.8 if is_image else 1), 10, 18),
         ),
-        hovertext=f"Image of {hover_text}" if is_image else hover_text,
-        hoverinfo="text",
+        hoverinfo="text" if hover_text else None,
+        hovertext=site_hover_text,
         hoverlabel=dict(namelength=-1),
         name=f"Image of {majority_species!s}" if is_image else str(majority_species),
         showlegend=False,
