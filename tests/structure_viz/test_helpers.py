@@ -426,12 +426,9 @@ def test_get_first_matching_site_prop_edge_cases() -> None:
 @pytest.mark.parametrize(
     ("hover_text", "expected_output"),
     [
-        (SiteCoords.cartesian, "<b>Site: Si1</b><br>Coordinates (0, 0, 0)"),
-        (SiteCoords.fractional, "<b>Site: Si1</b><br>Coordinates [0, 0, 0]"),
-        (
-            SiteCoords.cartesian_fractional,
-            "<b>Site: Si1</b><br>Coordinates (0, 0, 0) [0, 0, 0]",
-        ),
+        (SiteCoords.cartesian, "(0, 0, 0)"),
+        (SiteCoords.fractional, "[0, 0, 0]"),
+        (SiteCoords.cartesian_fractional, "(0, 0, 0) [0, 0, 0]"),
         (lambda site: f"Custom: {site.species_string}", "Custom: Si"),
     ],
 )
@@ -441,6 +438,8 @@ def test_get_site_hover_text(
     lattice = Lattice.cubic(1.0)
     site = PeriodicSite("Si", [0, 0, 0], lattice)
     result = get_site_hover_text(site, hover_text, site.species)
+    if isinstance(hover_text, str):
+        expected_output = f"<b>Site: Si1</b><br>Coordinates {expected_output}"
     assert result == expected_output
 
 

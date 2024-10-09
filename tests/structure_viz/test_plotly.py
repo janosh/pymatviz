@@ -490,8 +490,7 @@ def test_structure_3d_plotly_subplot_title_override(
     "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
 )
 @pytest.mark.parametrize(
-    "hover_text",
-    [*SiteCoords, lambda site: f"<b>{site.frac_coords}</b>"],
+    "hover_text", [*SiteCoords, lambda site: f"<b>{site.frac_coords}</b>"]
 )
 def test_hover_text(
     plot_function: Callable[[Structure, Any], go.Figure],
