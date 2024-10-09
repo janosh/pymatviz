@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     import plotly.graph_objects as go
-    from pymatgen.core import Structure
+    from pymatgen.core import PeriodicSite, Structure
 
 
 def structure_2d_plotly(
@@ -59,6 +59,8 @@ def structure_2d_plotly(
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
+    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
+    | Callable[[PeriodicSite], str] = "cartesian+fractional",
 ) -> go.Figure:
     """Plot pymatgen structures in 2D with Plotly.
 
@@ -101,6 +103,10 @@ def structure_2d_plotly(
             arrows. Keys are property names (e.g., "force", "magmom"), values are
             dictionaries of arrow customization options. Use key "scale" to adjust
             vector length.
+        hover_text (str | Callable, optional): Controls the hover tooltip template.
+            Can be "cartesian", "fractional", "cartesian+fractional", or a callable that
+            takes a site and returns a custom string. Defaults to
+            "cartesian+fractional".
 
     Returns:
         go.Figure: Plotly figure with the plotted structure(s).
@@ -174,10 +180,11 @@ def structure_2d_plotly(
                     atom_size,
                     scale,
                     site_kwargs,
-                    is_3d=False,  # Explicitly set to False for 2D plot
+                    is_3d=False,
                     row=row,
                     col=col,
                     name=f"site{site_idx}",
+                    hover_text=hover_text,
                 )
 
                 # Add vector arrows
@@ -230,7 +237,7 @@ def structure_2d_plotly(
                                 scale,
                                 image_site_kwargs,
                                 is_image=True,
-                                is_3d=False,  # Explicitly set to False for 2D plot
+                                is_3d=False,
                                 row=row,
                                 col=col,
                             )
@@ -293,6 +300,8 @@ def structure_3d_plotly(
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
+    hover_text: Literal["cartesian", "fractional", "cartesian+fractional"]
+    | Callable[[PeriodicSite], str] = "cartesian+fractional",
 ) -> go.Figure:
     """Plot pymatgen structures in 3D with Plotly.
 
@@ -333,6 +342,10 @@ def structure_3d_plotly(
         arrows. Keys are property names (e.g.,
             "force", "magmom"), values are dictionaries of arrow customization options.
             Use key "scale" to adjust vector length.
+        hover_text (str | Callable, optional): Controls the hover tooltip template.
+            Can be "cartesian", "fractional", "cartesian+fractional", or a callable that
+            takes a site and returns a custom string. Defaults to
+            "cartesian+fractional".
 
     Returns:
         go.Figure: Plotly figure with the plotted 3D structure(s).
@@ -399,6 +412,7 @@ def structure_3d_plotly(
                     is_3d=True,
                     scene=f"scene{idx}",
                     name=f"site{site_idx}",
+                    hover_text=hover_text,
                 )
 
                 # Add vector arrows
