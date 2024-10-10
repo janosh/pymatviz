@@ -38,7 +38,7 @@ os.makedirs(structure_dir, exist_ok=True)
 for mp_id in struct_mp_ids:
     struct_file = f"{structure_dir}/{mp_id}.json.gz"
     if not os.path.isfile(struct_file):
-        if os.getenv("CI"):
+        if os.getenv("CI") == "true":
             raise FileNotFoundError(
                 f"structure for {mp_id} not found, run this script locally to fetch it."
             )
