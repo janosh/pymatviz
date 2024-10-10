@@ -123,10 +123,19 @@ def test_count_elements_exclude_invalid_elements() -> None:
 
 def test_count_elements_fill_value() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv.count_elements(
-        compositions, count_mode=ElemCountMode.composition, fill_value=None
-    )
+    with pytest.warns(UserWarning, match="default value of fill_value changed"):
+        series = pmv.count_elements(compositions, count_mode=ElemCountMode.composition)
     expected = pd.Series(
         {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
     )
+    pd.testing.assert_series_equal(series, expected, check_dtype=False)
+
+    # Test previous default value (fill_value = 0)
+    compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
+    series = pmv.count_elements(
+        compositions, count_mode=ElemCountMode.composition, fill_value=0
+    )
+    expected = pd.Series(
+        {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
+    ).fillna(0)
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
