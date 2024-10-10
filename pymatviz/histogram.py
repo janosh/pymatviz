@@ -74,7 +74,7 @@ def elements_hist(
     """
     ax = ax or plt.gca()
 
-    elem_counts = count_elements(formulas, count_mode)
+    elem_counts = count_elements(formulas, count_mode, fill_value=0)
     non_zero = elem_counts[elem_counts > 0].sort_values(ascending=False)
     if keep_top is not None:
         non_zero = non_zero.head(keep_top)
