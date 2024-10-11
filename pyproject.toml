@@ -42,7 +42,7 @@ auto-text-pos = ["adjustText>=0.8"]
 df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
 # https://github.com/plotly/Kaleido/issues/176
-export-figs = ["kaleido>=0.2.1,!=0.2.1.post1"]
+export-figs = ["kaleido>=0.2.1, !=0.2.1.post1"]
 make-assets = ["pymatviz[export-figs]", "matminer>=0.9", "mp_api>=0.42"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 test = [
