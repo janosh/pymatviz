@@ -174,13 +174,23 @@ class Key(LabelEnum):
     bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
     bond_angles = "bond_angles", "Bond Angles (°)"
     packing_fraction = "packing_fraction", "Packing Fraction"
+    max_pair_dist = "max_pair_dist", f"Maximum Pair Distance {angstrom}"
+
+    # Crystal Symmetry Properties
+    choice_symbol = "choice_symbol", "Choice symbol"
+    hall_num = "hall_num", "Hall number"
+    hall_symbol = "hall_symbol", "Hall symbol"
+    n_rot_ops = "n_rot_ops", "Number of rotational operations"
+    n_sym_ops = "n_sym_ops", "Total number of symmetry operations"
+    n_trans_ops = "n_trans_ops", "Number of translational operations"
+    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
+    wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
+    wyckoff_symbols = "wyckoff_symbols", "Wyckoff symbols"
 
     # Structure Prototyping
     # AFLOW-style prototype label with appended chemical system
     protostructure = "protostructure", "Protostructure Label"
     # Deprecated name for the protostructure
-    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
-    wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
     prototype = "prototype", "Prototype Label"
     aflow_prototype = "aflow_prototype", "AFLOW-style Prototype Label"
     # AFLOW-style prototype label that has been canonicalized
@@ -471,6 +481,7 @@ class Key(LabelEnum):
     spearman = "Spearman", "Spearman Correlation"
     kendall = "Kendall", "Kendall Correlation"
     rmse = "RMSE", "Root Mean Squared Error"
+    rmsd = "rmsd", "Root Mean Square Deviation"
     mape = "MAPE", "Mean Absolute Percentage Error"
     variance = "variance", "Variance"
     std_dev = "std_dev", "Standard Deviation"
