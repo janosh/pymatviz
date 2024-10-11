@@ -14,6 +14,7 @@ from pymatviz.structure_viz.helpers import (
     UNIT_CELL_EDGES,
     _angles_to_rotation_matrix,
     draw_site,
+    draw_unit_cell,
     draw_vector,
     generate_subplot_title,
     get_atomic_radii,
@@ -250,7 +251,9 @@ def test_generate_subplot_title(
 
 def test_constants() -> None:
     assert isinstance(NO_SYM_MSG, str)
+    assert NO_SYM_MSG.startswith("Symmetry could not be determined")
     assert isinstance(UNIT_CELL_EDGES, tuple)
+    assert len(UNIT_CELL_EDGES) == 12
     assert all(isinstance(edge, tuple) and len(edge) == 2 for edge in UNIT_CELL_EDGES)
 
 
@@ -448,3 +451,69 @@ def test_get_site_hover_text_invalid_template() -> None:
     site = PeriodicSite("Si", [0, 0, 0], lattice)
     with pytest.raises(ValueError, match="Invalid hover_text="):
         get_site_hover_text(site, "invalid_template", site.species)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("is_3d", [True, False])
+@pytest.mark.parametrize(
+    "unit_cell_kwargs",
+    [
+        {},
+        {"edge": {"color": "red", "width": 2, "dash": "solid"}},
+        {"node": {"size": 5, "color": "blue"}},
+        {
+            "edge": {"color": "green", "width": 3},
+            "node": {"size": 4, "color": "yellow"},
+        },
+    ],
+)
+def test_draw_unit_cell(
+    structures: list[Structure], is_3d: bool, unit_cell_kwargs: dict[str, Any]
+) -> None:
+    structure = structures[0]  # Use the first structure from the fixture
+    fig = go.Figure()
+
+    draw_unit_cell(fig, structure, unit_cell_kwargs, is_3d=is_3d)
+
+    # Check if the correct number of traces were added (12 edges + 8 corners = 20)
+    assert len(fig.data) == 20
+    trace_types = {*map(type, fig.data)}
+    assert trace_types == {go.Scatter3d} if is_3d else {go.Scatter}
+    trace_modes = [trace.mode for trace in fig.data]
+    assert trace_modes.count("lines") == 12
+    assert trace_modes.count("markers") == 8
+
+    # Check if all traces are of the correct type
+    expected_trace_type = go.Scatter3d if is_3d else go.Scatter
+    assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
+
+    # Check if edge properties are applied correctly
+    if "edge" in unit_cell_kwargs:
+        edge_trace = fig.data[0]
+        for key, value in unit_cell_kwargs["edge"].items():
+            assert getattr(edge_trace.line, key) == value
+
+    # Check if node properties are applied correctly
+    if "node" in unit_cell_kwargs:
+        node_trace = fig.data[12]  # First node trace
+        for key, value in unit_cell_kwargs["node"].items():
+            assert getattr(node_trace.marker, key) == value
+
+
+def test_draw_unit_cell_hover_text(structures: list[Structure]) -> None:
+    structure = structures[0]  # Use the first structure from the fixture
+    fig = go.Figure()
+    draw_unit_cell(fig, structure, {}, is_3d=True)
+
+    # Check hover text for an edge
+    edge_trace = fig.data[0]
+    hover_text = edge_trace.hovertext[1]  # Middle point of the edge
+    assert "Length:" in hover_text
+    assert "Start:" in hover_text
+    assert "End:" in hover_text
+
+    # Check hover text for a corner
+    corner_trace = fig.data[12]  # First corner trace
+    hover_text = corner_trace.hovertext
+    assert "α =" in hover_text  # noqa: RUF001
+    assert "β =" in hover_text
+    assert "γ =" in hover_text  # noqa: RUF001

@@ -19,9 +19,9 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedE
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
-    _add_unit_cell,
     _angles_to_rotation_matrix,
     draw_site,
+    draw_unit_cell,
     draw_vector,
     generate_subplot_title,
     get_atomic_radii,
@@ -244,7 +244,7 @@ def structure_2d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            _add_unit_cell(
+            draw_unit_cell(
                 fig,
                 struct_i,
                 unit_cell_kwargs=show_unit_cell
@@ -468,7 +468,7 @@ def structure_3d_plotly(
 
         # Plot unit cell
         if show_unit_cell:
-            _add_unit_cell(
+            draw_unit_cell(
                 fig,
                 struct_i,
                 unit_cell_kwargs=show_unit_cell

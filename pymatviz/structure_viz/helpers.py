@@ -6,6 +6,7 @@ inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matpl
 
 from __future__ import annotations
 
+import functools
 import itertools
 import math
 import warnings
@@ -347,7 +348,7 @@ def get_structures(
     raise TypeError(f"Expected pymatgen Structure or Sequence of them, got {struct=}")
 
 
-def _add_unit_cell(
+def draw_unit_cell(
     fig: go.Figure,
     structure: Structure,
     unit_cell_kwargs: dict[str, Any],
@@ -357,33 +358,17 @@ def _add_unit_cell(
     col: int | None = None,
     scene: str | None = None,
 ) -> go.Figure:
+    """Draw the unit cell of a structure in a 2D or 3D Plotly figure."""
     corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
     cart_corners = structure.lattice.get_cartesian_coords(corners)
 
     alpha, beta, gamma = structure.lattice.angles
 
-    def add_trace(
-        x: float | Sequence[float],
-        y: float | Sequence[float],
-        z: float | Sequence[float] | None = None,
-        mode: str = "lines",
-        marker: dict[str, Any] | None = None,
-        line: dict[str, Any] | None = None,
-        hovertext: str | list[str | None] | None = None,
-    ) -> None:
-        trace_kwargs = dict(
-            mode=mode,
-            hoverinfo="text",
-            hovertext=hovertext,
-            showlegend=False,
-            marker=marker,
-            line=line,
-        )
-
-        if is_3d:
-            fig.add_scatter3d(x=x, y=y, z=z, scene=scene, **trace_kwargs)
-        else:
-            fig.add_scatter(x=x, y=y, row=row, col=col, **trace_kwargs)
+    trace_adder = (  # prefill args for add_scatter or add_scatter3d
+        functools.partial(fig.add_scatter3d, scene=scene)
+        if is_3d
+        else functools.partial(fig.add_scatter, row=row, col=col)
+    )
 
     # Add edges
     edge_defaults = dict(color="black", width=1, dash="dash")
@@ -403,13 +388,11 @@ def _add_unit_cell(
             f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
         )
 
-        add_trace(
-            x=[start_point[0], mid_point[0], end_point[0]],
-            y=[start_point[1], mid_point[1], end_point[1]],
-            z=[start_point[2], mid_point[2], end_point[2]] if is_3d else None,
-            mode="lines",
-            line=edge_kwargs,
-            hovertext=[None, hover_text, None],
+        coords = dict(x=[start_point[0], mid_point[0], end_point[0]])
+        if is_3d:
+            coords["z"] = [start_point[2], mid_point[2], end_point[2]]
+        trace_adder(
+            **coords, mode="lines", line=edge_kwargs, hovertext=[None, hover_text, None]
         )
 
     # Add corner spheres
@@ -432,15 +415,10 @@ def _add_unit_cell(
             f"[{', '.join(f'{c:.3g}' for c in frac_coord)}]<br>"
             f"α = {alpha:.3g}°, β = {beta:.3g}°, γ = {gamma:.3g}°"  # noqa: RUF001
         )
-
-        add_trace(
-            x=[cart_coord[0]],
-            y=[cart_coord[1]],
-            z=[cart_coord[2]] if is_3d else None,
-            mode="markers",
-            marker=node_kwargs,
-            hovertext=hover_text,
-        )
+        coords = dict(x=[cart_coord[0]], y=[cart_coord[1]])
+        if is_3d:
+            coords["z"] = [cart_coord[2]]
+        trace_adder(**coords, mode="markers", marker=node_kwargs, hovertext=hover_text)
 
     return fig
 
