@@ -204,7 +204,7 @@ def generate_site_label(
     )
 
 
-def generate_subplot_title(
+def get_subplot_title(
     struct_i: Structure,
     struct_key: Any,
     idx: int,

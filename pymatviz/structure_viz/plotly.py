@@ -23,12 +23,12 @@ from pymatviz.structure_viz.helpers import (
     draw_site,
     draw_unit_cell,
     draw_vector,
-    generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
     get_first_matching_site_prop,
     get_image_atoms,
     get_structures,
+    get_subplot_title,
 )
 
 
@@ -256,7 +256,7 @@ def structure_2d_plotly(
             )
 
         # Set subplot titles
-        anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
+        anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
         subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
         fig.layout.annotations[idx - 1].update(
             **dict(y=subtitle_y_pos, yanchor="top") | anno
@@ -479,7 +479,7 @@ def structure_3d_plotly(
             )
 
         # Set subplot titles
-        anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
+        anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
         if "y" not in anno:
             row = (idx - 1) // n_cols + 1
             subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02

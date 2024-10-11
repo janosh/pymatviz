@@ -16,13 +16,13 @@ from pymatviz.structure_viz.helpers import (
     draw_site,
     draw_unit_cell,
     draw_vector,
-    generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
     get_first_matching_site_prop,
     get_image_atoms,
     get_site_hover_text,
     get_structures,
+    get_subplot_title,
 )
 
 
@@ -230,14 +230,14 @@ def test_draw_site(
         ),
     ],
 )
-def test_generate_subplot_title(
+def test_get_subplot_title(
     structures: list[Structure],
     struct_key: Any,
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
     expected_text: str,
 ) -> None:
     structure = structures[0]
-    title = generate_subplot_title(structure, struct_key, 1, subplot_title)
+    title = get_subplot_title(structure, struct_key, 1, subplot_title)
     assert isinstance(title, dict)
     assert "text" in title
     assert expected_text in title["text"]
