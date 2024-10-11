@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from pymatgen.analysis.local_env import NearNeighbors
 from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
 
     import plotly.graph_objects as go
     from numpy.typing import ArrayLike
+    from pymatgen.analysis.local_env import NearNeighbors
 
 
 # fallback value (in nanometers) for covalent radius of an element
@@ -554,3 +556,59 @@ def get_first_matching_site_prop(
         warnings.warn(warn_msg, UserWarning, stacklevel=2)
 
     return None
+
+
+def draw_bonds(
+    fig: go.Figure,
+    structure: Structure,
+    nn: NearNeighbors,
+    *,
+    is_3d: bool = True,
+    bond_kwargs: dict[str, Any] | None = None,
+    row: int | None = None,
+    col: int | None = None,
+    scene: str | None = None,
+    visible_image_atoms: set[tuple[float, float, float]] | None = None,
+) -> None:
+    """Draw bonds between atoms in the structure."""
+    default_bond_kwargs = dict(color="white", width=4)
+    bond_kwargs = default_bond_kwargs | (bond_kwargs or {})
+
+    for i, site in enumerate(structure):
+        neighbors = nn.get_nn_info(structure, i)
+        for neighbor in neighbors:
+            end_site = neighbor["site"]
+            end_coords = tuple(end_site.coords)
+
+            # Check if the end site is within the unit cell or a visible image atom
+            is_in_unit_cell = all(0 <= c < 1 for c in end_site.frac_coords)
+            is_visible_image = visible_image_atoms and end_coords in visible_image_atoms
+
+            if is_in_unit_cell or is_visible_image:
+                start = site.coords
+                end = end_site.coords
+                mid = (start + end) / 2
+
+                trace_kwargs = dict(
+                    mode="lines",
+                    line=bond_kwargs,
+                    showlegend=False,
+                    hoverinfo="skip",
+                )
+
+                if is_3d:
+                    fig.add_scatter3d(
+                        x=[start[0], mid[0], end[0]],
+                        y=[start[1], mid[1], end[1]],
+                        z=[start[2], mid[2], end[2]],
+                        scene=scene,
+                        **trace_kwargs,
+                    )
+                else:
+                    fig.add_scatter(
+                        x=[start[0], mid[0], end[0]],
+                        y=[start[1], mid[1], end[1]],
+                        row=row,
+                        col=col,
+                        **trace_kwargs,
+                    )
