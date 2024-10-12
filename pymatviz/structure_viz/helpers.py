@@ -595,7 +595,6 @@ def draw_bonds(
             if is_in_unit_cell or is_visible_image:
                 start = site.coords
                 end = end_site.coords
-                mid = (start + end) / 2
 
                 trace_kwargs = dict(
                     mode="lines",
@@ -606,16 +605,16 @@ def draw_bonds(
 
                 if is_3d:
                     fig.add_scatter3d(
-                        x=[start[0], mid[0], end[0]],
-                        y=[start[1], mid[1], end[1]],
-                        z=[start[2], mid[2], end[2]],
+                        x=[start[0], end[0]],
+                        y=[start[1], end[1]],
+                        z=[start[2], end[2]],
                         scene=scene,
                         **trace_kwargs,
                     )
                 else:
                     fig.add_scatter(
-                        x=[start[0], mid[0], end[0]],
-                        y=[start[1], mid[1], end[1]],
+                        x=[start[0], end[0]],
+                        y=[start[1], end[1]],
                         row=row,
                         col=col,
                         **trace_kwargs,
