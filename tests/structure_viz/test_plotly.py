@@ -11,7 +11,7 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
-from pymatviz.structure_viz.helpers import get_image_atoms
+from pymatviz.structure_viz.helpers import get_image_sites
 
 
 if TYPE_CHECKING:
@@ -187,22 +187,35 @@ def test_structure_2d_plotly_multiple() -> None:
     }
     fig = pmv.structure_2d_plotly(structs_dict, n_cols=3)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (
-        len(COORDS) + 12 + 8
-    )  # 4 structures, 2 sites each, 12 unit cell edges, 8 unit cell nodes
+    # 4 structures, 2 sites each, 12 unit cell edges, 8 unit cell nodes
+    trace_names = [trace.name or "" for trace in fig.data]
+    n_site_traces = sum(name.startswith("site") for name in trace_names)
+    assert n_site_traces == 8
+    n_edge_traces = sum(name.startswith("edge") for name in trace_names)
+    assert n_edge_traces == 48
+    n_node_traces = sum(name.startswith("node") for name in trace_names)
+    assert n_node_traces == 32
+    n_bond_traces = sum(name.startswith("bond") for name in trace_names)
+    assert n_bond_traces == 0
+    n_image_site_traces = sum(name.startswith("Image of ") for name in trace_names)
+    assert n_image_site_traces == 28
+    expected_traces = (
+        n_site_traces + n_edge_traces + n_node_traces + n_image_site_traces
+    )
+    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
 
     # Test pandas.Series[Structure]
     struct_series = pd.Series(structs_dict)
     fig = pmv.structure_2d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
+    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
     fig = pmv.structure_2d_plotly(list(structs_dict.values()), n_cols=2)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
+    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
 
     # Test subplot_title
@@ -211,7 +224,7 @@ def test_structure_2d_plotly_multiple() -> None:
 
     fig = pmv.structure_2d_plotly(struct_series, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
+    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
     for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
@@ -380,7 +393,7 @@ def test_structure_3d_plotly_multiple() -> None:
         expected_traces += 12  # unit cell edges
         expected_traces += 8  # unit cell nodes
         expected_traces += sum(
-            len(get_image_atoms(site, struct.lattice)) for site in struct
+            len(get_image_sites(site, struct.lattice)) for site in struct
         )  # image sites
 
     assert len(fig.data) == expected_traces
