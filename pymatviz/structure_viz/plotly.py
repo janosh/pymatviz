@@ -14,21 +14,23 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedError
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
-    _add_unit_cell,
     _angles_to_rotation_matrix,
+    draw_bonds,
     draw_site,
+    draw_unit_cell,
     draw_vector,
-    generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
     get_first_matching_site_prop,
-    get_image_atoms,
+    get_image_sites,
     get_structures,
+    get_subplot_title,
 )
 
 
@@ -51,6 +53,7 @@ def structure_2d_plotly(
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
+    show_bonds: bool | NearNeighbors = False,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
     | Sequence[str] = "species",
@@ -61,6 +64,7 @@ def structure_2d_plotly(
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
     hover_text: SiteCoords
     | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
+    bond_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Plot pymatgen structures in 2D with Plotly.
 
@@ -82,6 +86,10 @@ def structure_2d_plotly(
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
             on unit cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
+        show_bonds (bool | NearNeighbors, optional): Whether to draw bonds between
+            sites. If True, uses CrystalNN to determine nearest neighbors. If a
+            NearNeighbors object, uses that to determine nearest neighbors.
+            Defaults to False (since still experimental).
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
         standardize_struct (bool, optional): Whether to standardize the structure.
@@ -107,6 +115,9 @@ def structure_2d_plotly(
             template. Can be SiteCoords.cartesian, SiteCoords.fractional,
             SiteCoords.cartesian_fractional, or a callable that takes a site and
             returns a custom string. Defaults to SiteCoords.cartesian_fractional.
+        bond_kwargs (dict[str, Any], optional): For customizing bond lines. Keys are
+            line properties (e.g., "color", "width"), values are the corresponding
+            values. Defaults to None.
 
     Returns:
         go.Figure: Plotly figure with the plotted structure(s).
@@ -159,6 +170,22 @@ def structure_2d_plotly(
         # Apply rotation
         rotation_matrix = _angles_to_rotation_matrix(rotation)
         rotated_coords = np.dot(struct_i.cart_coords, rotation_matrix)
+
+        visible_image_atoms: set[tuple[float, float, float]] = set()
+
+        # Draw bonds
+        if show_bonds:
+            nn = CrystalNN() if show_bonds is True else show_bonds
+            draw_bonds(
+                fig,
+                struct_i,
+                nn,
+                is_3d=False,
+                bond_kwargs=bond_kwargs,
+                row=row,
+                col=col,
+                visible_image_atoms=visible_image_atoms,
+            )
 
         # Plot atoms and vectors
         if show_sites:
@@ -220,8 +247,8 @@ def structure_2d_plotly(
                     if isinstance(show_image_sites, dict):
                         image_site_kwargs |= show_image_sites
 
-                    image_atoms = get_image_atoms(site, struct_i.lattice)
-                    if len(image_atoms) > 0:  # Only proceed if there are image atoms
+                    image_atoms = get_image_sites(site, struct_i.lattice)
+                    if len(image_atoms) > 0:
                         rotated_image_atoms = np.dot(image_atoms, rotation_matrix)
 
                         for image_coords in rotated_image_atoms:
@@ -241,10 +268,11 @@ def structure_2d_plotly(
                                 row=row,
                                 col=col,
                             )
+                            visible_image_atoms.add(tuple(image_coords))
 
         # Plot unit cell
         if show_unit_cell:
-            _add_unit_cell(
+            draw_unit_cell(
                 fig,
                 struct_i,
                 unit_cell_kwargs=show_unit_cell
@@ -256,7 +284,7 @@ def structure_2d_plotly(
             )
 
         # Set subplot titles
-        anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
+        anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
         subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
         fig.layout.annotations[idx - 1].update(
             **dict(y=subtitle_y_pos, yanchor="top") | anno
@@ -292,6 +320,7 @@ def structure_3d_plotly(
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool = True,
+    show_bonds: bool | NearNeighbors = False,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
     | Sequence[str] = "species",
@@ -302,6 +331,7 @@ def structure_3d_plotly(
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
     hover_text: SiteCoords
     | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
+    bond_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Plot pymatgen structures in 3D with Plotly.
 
@@ -321,6 +351,10 @@ def structure_3d_plotly(
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
             on unit cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
+        show_bonds (bool | NearNeighbors, optional): Whether to draw bonds between
+            sites. If True, uses CrystalNN to determine nearest neighbors. If a
+            NearNeighbors object, uses that to determine nearest neighbors.
+            Defaults to False (since still experimental).
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
         standardize_struct (bool, optional): Whether to standardize the structure.
@@ -346,6 +380,9 @@ def structure_3d_plotly(
             template. Can be SiteCoords.cartesian, SiteCoords.fractional,
             SiteCoords.cartesian_fractional, or a callable that takes a site and
             returns a custom string. Defaults to SiteCoords.cartesian_fractional.
+        bond_kwargs (dict[str, Any], optional): For customizing bond lines. Keys are
+            line properties (e.g., "color", "width"), values are the corresponding
+            values. Defaults to None.
 
     Returns:
         go.Figure: Plotly figure with the plotted 3D structure(s).
@@ -390,6 +427,21 @@ def structure_3d_plotly(
                 struct_i = spg_analyzer.get_conventional_standard_structure()  # noqa: PLW2901
             except SymmetryUndeterminedError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
+
+        visible_image_atoms: set[tuple[float, float, float]] = set()
+
+        # Draw bonds
+        if show_bonds:
+            nn = CrystalNN() if show_bonds is True else show_bonds
+            draw_bonds(
+                fig,
+                struct_i,
+                nn,
+                is_3d=True,
+                bond_kwargs=bond_kwargs,
+                scene=f"scene{idx}",
+                visible_image_atoms=visible_image_atoms,
+            )
 
         # Plot atoms and vectors
         if show_sites:
@@ -447,8 +499,8 @@ def structure_3d_plotly(
                     if isinstance(show_image_sites, dict):
                         image_site_kwargs |= show_image_sites
 
-                    image_atoms = get_image_atoms(site, struct_i.lattice)
-                    if len(image_atoms) > 0:  # Only proceed if there are image atoms
+                    image_atoms = get_image_sites(site, struct_i.lattice)
+                    if len(image_atoms) > 0:
                         for image_coords in image_atoms:
                             draw_site(
                                 fig,
@@ -465,10 +517,11 @@ def structure_3d_plotly(
                                 is_3d=True,
                                 scene=f"scene{idx}",
                             )
+                            visible_image_atoms.add(tuple(image_coords))
 
         # Plot unit cell
         if show_unit_cell:
-            _add_unit_cell(
+            draw_unit_cell(
                 fig,
                 struct_i,
                 unit_cell_kwargs=show_unit_cell
@@ -479,7 +532,7 @@ def structure_3d_plotly(
             )
 
         # Set subplot titles
-        anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
+        anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
         if "y" not in anno:
             row = (idx - 1) // n_cols + 1
             subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02

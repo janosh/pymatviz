@@ -6,6 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 import pytest
 from numpy.testing import assert_allclose
+from pymatgen.analysis.local_env import CrystalNN
 from pymatgen.core import Lattice, PeriodicSite, Structure
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
@@ -13,15 +14,17 @@ from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     UNIT_CELL_EDGES,
     _angles_to_rotation_matrix,
+    draw_bonds,
     draw_site,
+    draw_unit_cell,
     draw_vector,
-    generate_subplot_title,
     get_atomic_radii,
     get_elem_colors,
     get_first_matching_site_prop,
-    get_image_atoms,
+    get_image_sites,
     get_site_hover_text,
     get_structures,
+    get_subplot_title,
 )
 
 
@@ -124,29 +127,43 @@ def test_get_atomic_radii(
         assert radii == atomic_radii
 
 
-def test_get_image_atoms(structures: list[Structure]) -> None:
+def test_get_image_sites(structures: list[Structure]) -> None:
     structure = structures[0]
     site = structure[0]
     lattice = structure.lattice
 
     # Test with default tolerance
-    image_atoms = get_image_atoms(site, lattice)
+    image_atoms = get_image_sites(site, lattice)
     assert isinstance(image_atoms, np.ndarray)
     assert image_atoms.ndim in (1, 2)  # Allow both 1D and 2D arrays
     if image_atoms.size > 0:
         assert image_atoms.shape[1] == 3  # Each image atom should have 3 coordinates
 
     # Test with custom tolerance
-    image_atoms = get_image_atoms(site, lattice, tol=0.1)
+    image_atoms = get_image_sites(site, lattice, tol=0.1)
     assert isinstance(image_atoms, np.ndarray)
     assert image_atoms.ndim in (1, 2)
     if image_atoms.size > 0:
         assert image_atoms.shape[1] == 3
 
-    # Test with site at lattice origin (should return empty array)
-    site.coords = [0, 0, 0]
-    image_atoms = get_image_atoms(site, lattice)
-    assert len(image_atoms) == 0
+
+@pytest.mark.parametrize(
+    ("lattice", "site_coords", "expected_images"),
+    [
+        (Lattice.cubic(1), [0, 0, 0], 7),
+        (Lattice.cubic(1), [0, 0.5, 0], 3),
+        (Lattice.hexagonal(3, 5), [0, 0, 0], 7),
+        (Lattice.rhombohedral(3, 5), [0, 0, 0], 7),
+        (Lattice.rhombohedral(3, 5), [0.1, 0, 0], 3),
+        (Lattice.rhombohedral(3, 5), [0.5, 0, 0], 3),
+    ],
+)
+def test_get_image_sites_lattices(
+    lattice: Lattice, site_coords: list[float], expected_images: int
+) -> None:
+    site = PeriodicSite("Si", site_coords, lattice)
+    image_atoms = get_image_sites(site, lattice)
+    assert len(image_atoms) == expected_images
 
 
 @pytest.mark.parametrize("is_3d", [True, False])
@@ -229,14 +246,14 @@ def test_draw_site(
         ),
     ],
 )
-def test_generate_subplot_title(
+def test_get_subplot_title(
     structures: list[Structure],
     struct_key: Any,
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
     expected_text: str,
 ) -> None:
     structure = structures[0]
-    title = generate_subplot_title(structure, struct_key, 1, subplot_title)
+    title = get_subplot_title(structure, struct_key, 1, subplot_title)
     assert isinstance(title, dict)
     assert "text" in title
     assert expected_text in title["text"]
@@ -250,7 +267,9 @@ def test_generate_subplot_title(
 
 def test_constants() -> None:
     assert isinstance(NO_SYM_MSG, str)
+    assert NO_SYM_MSG.startswith("Symmetry could not be determined")
     assert isinstance(UNIT_CELL_EDGES, tuple)
+    assert len(UNIT_CELL_EDGES) == 12
     assert all(isinstance(edge, tuple) and len(edge) == 2 for edge in UNIT_CELL_EDGES)
 
 
@@ -448,3 +467,140 @@ def test_get_site_hover_text_invalid_template() -> None:
     site = PeriodicSite("Si", [0, 0, 0], lattice)
     with pytest.raises(ValueError, match="Invalid hover_text="):
         get_site_hover_text(site, "invalid_template", site.species)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("is_3d", [True, False])
+@pytest.mark.parametrize(
+    "unit_cell_kwargs",
+    [
+        {},
+        {"edge": {"color": "red", "width": 2, "dash": "solid"}},
+        {"node": {"size": 5, "color": "blue"}},
+        {
+            "edge": {"color": "green", "width": 3},
+            "node": {"size": 4, "color": "yellow"},
+        },
+    ],
+)
+def test_draw_unit_cell(
+    structures: list[Structure], is_3d: bool, unit_cell_kwargs: dict[str, Any]
+) -> None:
+    structure = structures[0]  # Use the first structure from the fixture
+    fig = go.Figure()
+
+    draw_unit_cell(fig, structure, unit_cell_kwargs, is_3d=is_3d)
+
+    # Check if the correct number of traces were added (12 edges + 8 corners = 20)
+    assert len(fig.data) == 20
+    trace_types = {*map(type, fig.data)}
+    assert trace_types == {go.Scatter3d} if is_3d else {go.Scatter}
+    trace_modes = [trace.mode for trace in fig.data]
+    assert trace_modes.count("lines") == 12
+    assert trace_modes.count("markers") == 8
+
+    # Check if all traces are of the correct type
+    expected_trace_type = go.Scatter3d if is_3d else go.Scatter
+    assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
+
+    # Check if edge properties are applied correctly
+    if "edge" in unit_cell_kwargs:
+        edge_trace = fig.data[0]
+        for key, value in unit_cell_kwargs["edge"].items():
+            assert getattr(edge_trace.line, key) == value
+
+    # Check if node properties are applied correctly
+    if "node" in unit_cell_kwargs:
+        node_trace = fig.data[12]  # First node trace
+        for key, value in unit_cell_kwargs["node"].items():
+            assert getattr(node_trace.marker, key) == value
+
+
+def test_draw_unit_cell_hover_text(structures: list[Structure]) -> None:
+    structure = structures[0]  # Use the first structure from the fixture
+    fig = go.Figure()
+    draw_unit_cell(fig, structure, {}, is_3d=True)
+
+    # Check hover text for an edge
+    edge_trace = fig.data[0]
+    hover_text = edge_trace.hovertext[1]  # Middle point of the edge
+    assert "Length:" in hover_text
+    assert "Start:" in hover_text
+    assert "End:" in hover_text
+
+    # Check hover text for a corner
+    corner_trace = fig.data[12]  # First corner trace
+    hover_text = corner_trace.hovertext
+    assert "α =" in hover_text  # noqa: RUF001
+    assert "β =" in hover_text
+    assert "γ =" in hover_text  # noqa: RUF001
+
+
+@pytest.mark.parametrize(
+    ("is_3d", "bond_kwargs", "visible_image_atoms"),
+    [
+        (True, None, None),
+        (True, {"color": "blue", "width": 0.2}, {(1, 1, 1)}),
+        (False, {"color": "red", "width": 2}, {(3.0, 3.0, 3.0)}),
+        (
+            True,
+            {"color": "blue", "width": 3, "dash": "dot"},
+            {(3.0, 3.0, 3.0), (-3.0, -3.0, -3.0)},
+        ),
+        (False, {"color": "green", "width": 1}, None),
+    ],
+)
+def test_draw_bonds(
+    is_3d: bool,
+    bond_kwargs: dict[str, Any] | None,
+    visible_image_atoms: set[tuple[float, float, float]] | None,
+) -> None:
+    # Create a simple structure
+    lattice = Lattice.cubic(3.0)
+    structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    # Create a figure and a NearNeighbors object
+    fig = go.Figure()
+    nn = CrystalNN()
+
+    # Draw bonds
+    draw_bonds(
+        fig=fig,
+        structure=structure,
+        nn=nn,
+        is_3d=is_3d,
+        bond_kwargs=bond_kwargs,
+        visible_image_atoms=visible_image_atoms,
+    )
+
+    # Check if bonds were added
+    assert len(fig.data) > 0
+
+    # Check if all traces are of the correct type
+    expected_trace_type = go.Scatter3d if is_3d else go.Scatter
+    assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
+
+    # Check if custom bond properties were applied
+    if bond_kwargs:
+        for trace in fig.data:
+            for key, value in bond_kwargs.items():
+                assert getattr(trace.line, key) == value
+
+    # Check if bonds to visible image atoms were added when applicable
+    if visible_image_atoms:
+        max_coords = max(
+            max(trace.x + trace.y + (trace.z if is_3d else ())) for trace in fig.data
+        )
+        assert max_coords >= 1.5  # Should be greater than half the lattice parameter
+
+    # Additional checks
+    for trace in fig.data:
+        assert trace.mode == "lines"
+        assert trace.showlegend is False
+        assert trace.hoverinfo == "skip"
+
+    # Check the number of bonds (should be at least 1 for the central bond)
+    assert len(fig.data) >= 1
+
+    # If visible_image_atoms is provided, check for additional bonds
+    if visible_image_atoms:
+        assert len(fig.data) > 1  # Should have more than just the central bond

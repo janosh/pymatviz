@@ -6,6 +6,7 @@ inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matpl
 
 from __future__ import annotations
 
+import functools
 import itertools
 import math
 import warnings
@@ -15,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from pymatgen.analysis.local_env import NearNeighbors
 from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
@@ -28,6 +30,7 @@ if TYPE_CHECKING:
 
     import plotly.graph_objects as go
     from numpy.typing import ArrayLike
+    from pymatgen.analysis.local_env import NearNeighbors
 
 
 # fallback value (in nanometers) for covalent radius of an element
@@ -91,23 +94,28 @@ def _angles_to_rotation_matrix(
     return rotation
 
 
-def get_image_atoms(
+def get_image_sites(
     site: PeriodicSite, lattice: Lattice, tol: float = 0.02
 ) -> np.ndarray:
-    """Get image atoms for a given site."""
+    """Get images for a given site in a lattice.
+
+    Images are sites that are integer translations of the given site that are within a
+    tolerance of the unit cell edges.
+
+    Args:
+        site (PeriodicSite): The site to get images for.
+        lattice (Lattice): The lattice to get images for.
+        tol (float): The tolerance for being on the unit cell edge. Defaults to 0.02.
+
+    Returns:
+        np.ndarray: Coordinates of all image sites.
+    """
     coords_image_atoms: list[np.ndarray] = []
 
-    # If the site is at the lattice origin, return an empty array
-    if np.allclose(site.frac_coords, (0, 0, 0), atol=tol):
-        return np.array(coords_image_atoms)
-
-    # Generate all possible combinations of lattice vector offsets
-    offsets = list(itertools.product([0, 1], repeat=3))
+    # Generate all possible combinations of lattice vector offsets (except zero offset)
+    offsets = set(itertools.product([-1, 0, 1], repeat=3)) - {(0, 0, 0)}
 
     for offset in offsets:
-        if offset == (0, 0, 0):
-            continue  # Skip the original atom
-
         new_frac = site.frac_coords + offset
         new_cart = lattice.get_cartesian_coords(new_frac)
 
@@ -203,7 +211,7 @@ def generate_site_label(
     )
 
 
-def generate_subplot_title(
+def get_subplot_title(
     struct_i: Structure,
     struct_key: Any,
     idx: int,
@@ -347,7 +355,7 @@ def get_structures(
     raise TypeError(f"Expected pymatgen Structure or Sequence of them, got {struct=}")
 
 
-def _add_unit_cell(
+def draw_unit_cell(
     fig: go.Figure,
     structure: Structure,
     unit_cell_kwargs: dict[str, Any],
@@ -357,38 +365,22 @@ def _add_unit_cell(
     col: int | None = None,
     scene: str | None = None,
 ) -> go.Figure:
+    """Draw the unit cell of a structure in a 2D or 3D Plotly figure."""
     corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
     cart_corners = structure.lattice.get_cartesian_coords(corners)
 
     alpha, beta, gamma = structure.lattice.angles
 
-    def add_trace(
-        x: float | Sequence[float],
-        y: float | Sequence[float],
-        z: float | Sequence[float] | None = None,
-        mode: str = "lines",
-        marker: dict[str, Any] | None = None,
-        line: dict[str, Any] | None = None,
-        hovertext: str | list[str | None] | None = None,
-    ) -> None:
-        trace_kwargs = dict(
-            mode=mode,
-            hoverinfo="text",
-            hovertext=hovertext,
-            showlegend=False,
-            marker=marker,
-            line=line,
-        )
-
-        if is_3d:
-            fig.add_scatter3d(x=x, y=y, z=z, scene=scene, **trace_kwargs)
-        else:
-            fig.add_scatter(x=x, y=y, row=row, col=col, **trace_kwargs)
+    trace_adder = (  # prefill args for add_scatter or add_scatter3d
+        functools.partial(fig.add_scatter3d, scene=scene)
+        if is_3d
+        else functools.partial(fig.add_scatter, row=row, col=col)
+    )
 
     # Add edges
     edge_defaults = dict(color="black", width=1, dash="dash")
     edge_kwargs = edge_defaults | unit_cell_kwargs.get("edge", {})
-    for start, end in UNIT_CELL_EDGES:
+    for idx, (start, end) in enumerate(UNIT_CELL_EDGES):
         start_point = cart_corners[start]
         end_point = cart_corners[end]
         mid_point = (start_point + end_point) / 2
@@ -403,25 +395,30 @@ def _add_unit_cell(
             f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
         )
 
-        add_trace(
+        coords = dict(
             x=[start_point[0], mid_point[0], end_point[0]],
             y=[start_point[1], mid_point[1], end_point[1]],
-            z=[start_point[2], mid_point[2], end_point[2]] if is_3d else None,
+        )
+        if is_3d:
+            coords["z"] = [start_point[2], mid_point[2], end_point[2]]
+        trace_adder(
+            **coords,
             mode="lines",
             line=edge_kwargs,
             hovertext=[None, hover_text, None],
+            name=f"edge {idx}",
         )
 
     # Add corner spheres
     node_defaults = dict(size=3, color="black")
     node_kwargs = node_defaults | unit_cell_kwargs.get("node", {})
-    for i, (frac_coord, cart_coord) in enumerate(
+    for idx, (frac_coord, cart_coord) in enumerate(
         zip(corners, cart_corners, strict=False)
     ):
         adjacent_angles = []
         for _ in range(3):
-            v1 = cart_corners[(i + 1) % 8] - cart_coord
-            v2 = cart_corners[(i + 2) % 8] - cart_coord
+            v1 = cart_corners[(idx + 1) % 8] - cart_coord
+            v2 = cart_corners[(idx + 2) % 8] - cart_coord
             angle = np.degrees(
                 np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
             )
@@ -432,14 +429,15 @@ def _add_unit_cell(
             f"[{', '.join(f'{c:.3g}' for c in frac_coord)}]<br>"
             f"α = {alpha:.3g}°, β = {beta:.3g}°, γ = {gamma:.3g}°"  # noqa: RUF001
         )
-
-        add_trace(
-            x=[cart_coord[0]],
-            y=[cart_coord[1]],
-            z=[cart_coord[2]] if is_3d else None,
+        coords = dict(x=[cart_coord[0]], y=[cart_coord[1]])
+        if is_3d:
+            coords["z"] = [cart_coord[2]]
+        trace_adder(
+            **coords,
             mode="markers",
             marker=node_kwargs,
             hovertext=hover_text,
+            name=f"node {idx}",
         )
 
     return fig
@@ -576,3 +574,59 @@ def get_first_matching_site_prop(
         warnings.warn(warn_msg, UserWarning, stacklevel=2)
 
     return None
+
+
+def draw_bonds(
+    fig: go.Figure,
+    structure: Structure,
+    nn: NearNeighbors,
+    *,
+    is_3d: bool = True,
+    bond_kwargs: dict[str, Any] | None = None,
+    row: int | None = None,
+    col: int | None = None,
+    scene: str | None = None,
+    visible_image_atoms: set[tuple[float, float, float]] | None = None,
+) -> None:
+    """Draw bonds between atoms in the structure."""
+    default_bond_kwargs = dict(color="white", width=4)
+    bond_kwargs = default_bond_kwargs | (bond_kwargs or {})
+
+    for i, site in enumerate(structure):
+        neighbors = nn.get_nn_info(structure, i)
+        for neighbor in neighbors:
+            end_site = neighbor["site"]
+            end_coords = tuple(end_site.coords)
+
+            # Check if the end site is within the unit cell or a visible image atom
+            is_in_unit_cell = all(0 <= c < 1 for c in end_site.frac_coords)
+            is_visible_image = visible_image_atoms and end_coords in visible_image_atoms
+
+            if is_in_unit_cell or is_visible_image:
+                start = site.coords
+                end = end_site.coords
+
+                trace_kwargs = dict(
+                    mode="lines",
+                    line=bond_kwargs,
+                    showlegend=False,
+                    hoverinfo="skip",
+                    name=f"bond {i}-{neighbor['site_index']}",
+                )
+
+                if is_3d:
+                    fig.add_scatter3d(
+                        x=[start[0], end[0]],
+                        y=[start[1], end[1]],
+                        z=[start[2], end[2]],
+                        scene=scene,
+                        **trace_kwargs,
+                    )
+                else:
+                    fig.add_scatter(
+                        x=[start[0], end[0]],
+                        y=[start[1], end[1]],
+                        row=row,
+                        col=col,
+                        **trace_kwargs,
+                    )
