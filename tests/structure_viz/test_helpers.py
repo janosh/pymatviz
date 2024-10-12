@@ -146,10 +146,24 @@ def test_get_image_sites(structures: list[Structure]) -> None:
     if image_atoms.size > 0:
         assert image_atoms.shape[1] == 3
 
-    # Test with site at lattice origin (should return empty array)
-    site.coords = [0, 0, 0]
+
+@pytest.mark.parametrize(
+    ("lattice", "site_coords", "expected_images"),
+    [
+        (Lattice.cubic(1), [0, 0, 0], 7),
+        (Lattice.cubic(1), [0, 0.5, 0], 3),
+        (Lattice.hexagonal(3, 5), [0, 0, 0], 7),
+        (Lattice.rhombohedral(3, 5), [0, 0, 0], 7),
+        (Lattice.rhombohedral(3, 5), [0.1, 0, 0], 3),
+        (Lattice.rhombohedral(3, 5), [0.5, 0, 0], 3),
+    ],
+)
+def test_get_image_sites_lattices(
+    lattice: Lattice, site_coords: list[float], expected_images: int
+) -> None:
+    site = PeriodicSite("Si", site_coords, lattice)
     image_atoms = get_image_sites(site, lattice)
-    assert len(image_atoms) == 0
+    assert len(image_atoms) == expected_images
 
 
 @pytest.mark.parametrize("is_3d", [True, False])

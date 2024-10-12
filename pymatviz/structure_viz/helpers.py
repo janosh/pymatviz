@@ -97,20 +97,25 @@ def _angles_to_rotation_matrix(
 def get_image_sites(
     site: PeriodicSite, lattice: Lattice, tol: float = 0.02
 ) -> np.ndarray:
-    """Get image atoms for a given site."""
+    """Get images for a given site in a lattice.
+
+    Images are sites that are integer translations of the given site that are within a
+    tolerance of the unit cell edges.
+
+    Args:
+        site (PeriodicSite): The site to get images for.
+        lattice (Lattice): The lattice to get images for.
+        tol (float): The tolerance for being on the unit cell edge. Defaults to 0.02.
+
+    Returns:
+        np.ndarray: Coordinates of all image sites.
+    """
     coords_image_atoms: list[np.ndarray] = []
 
-    # If the site is at the lattice origin, return an empty array
-    if np.allclose(site.frac_coords, (0, 0, 0), atol=tol):
-        return np.array(coords_image_atoms)
-
-    # Generate all possible combinations of lattice vector offsets
-    offsets = list(itertools.product([0, 1], repeat=3))
+    # Generate all possible combinations of lattice vector offsets (except zero offset)
+    offsets = set(itertools.product([-1, 0, 1], repeat=3)) - {(0, 0, 0)}
 
     for offset in offsets:
-        if offset == (0, 0, 0):
-            continue  # Skip the original atom
-
         new_frac = site.frac_coords + offset
         new_cart = lattice.get_cartesian_coords(new_frac)
 
