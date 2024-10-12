@@ -53,7 +53,7 @@ def structure_2d_plotly(
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
-    show_bonds: bool | NearNeighbors = True,
+    show_bonds: bool | NearNeighbors = False,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
     | Sequence[str] = "species",
@@ -89,7 +89,7 @@ def structure_2d_plotly(
         show_bonds (bool | NearNeighbors, optional): Whether to draw bonds between
             sites. If True, uses CrystalNN to determine nearest neighbors. If a
             NearNeighbors object, uses that to determine nearest neighbors.
-            Defaults to True.
+            Defaults to False (since still experimental).
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
         standardize_struct (bool, optional): Whether to standardize the structure.
@@ -173,7 +173,7 @@ def structure_2d_plotly(
 
         visible_image_atoms: set[tuple[float, float, float]] = set()
 
-        # Draw bonds first
+        # Draw bonds
         if show_bonds:
             nn = CrystalNN() if show_bonds is True else show_bonds
             draw_bonds(
@@ -320,7 +320,7 @@ def structure_3d_plotly(
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool = True,
-    show_bonds: bool | NearNeighbors = True,
+    show_bonds: bool | NearNeighbors = False,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
     | Sequence[str] = "species",
@@ -354,7 +354,7 @@ def structure_3d_plotly(
         show_bonds (bool | NearNeighbors, optional): Whether to draw bonds between
             sites. If True, uses CrystalNN to determine nearest neighbors. If a
             NearNeighbors object, uses that to determine nearest neighbors.
-            Defaults to True.
+            Defaults to False (since still experimental).
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
         standardize_struct (bool, optional): Whether to standardize the structure.
@@ -430,7 +430,7 @@ def structure_3d_plotly(
 
         visible_image_atoms: set[tuple[float, float, float]] = set()
 
-        # Draw bonds first
+        # Draw bonds
         if show_bonds:
             nn = CrystalNN() if show_bonds is True else show_bonds
             draw_bonds(
