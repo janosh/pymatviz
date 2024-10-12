@@ -380,7 +380,7 @@ def draw_unit_cell(
     # Add edges
     edge_defaults = dict(color="black", width=1, dash="dash")
     edge_kwargs = edge_defaults | unit_cell_kwargs.get("edge", {})
-    for start, end in UNIT_CELL_EDGES:
+    for idx, (start, end) in enumerate(UNIT_CELL_EDGES):
         start_point = cart_corners[start]
         end_point = cart_corners[end]
         mid_point = (start_point + end_point) / 2
@@ -402,19 +402,23 @@ def draw_unit_cell(
         if is_3d:
             coords["z"] = [start_point[2], mid_point[2], end_point[2]]
         trace_adder(
-            **coords, mode="lines", line=edge_kwargs, hovertext=[None, hover_text, None]
+            **coords,
+            mode="lines",
+            line=edge_kwargs,
+            hovertext=[None, hover_text, None],
+            name=f"edge {idx}",
         )
 
     # Add corner spheres
     node_defaults = dict(size=3, color="black")
     node_kwargs = node_defaults | unit_cell_kwargs.get("node", {})
-    for i, (frac_coord, cart_coord) in enumerate(
+    for idx, (frac_coord, cart_coord) in enumerate(
         zip(corners, cart_corners, strict=False)
     ):
         adjacent_angles = []
         for _ in range(3):
-            v1 = cart_corners[(i + 1) % 8] - cart_coord
-            v2 = cart_corners[(i + 2) % 8] - cart_coord
+            v1 = cart_corners[(idx + 1) % 8] - cart_coord
+            v2 = cart_corners[(idx + 2) % 8] - cart_coord
             angle = np.degrees(
                 np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
             )
@@ -428,7 +432,13 @@ def draw_unit_cell(
         coords = dict(x=[cart_coord[0]], y=[cart_coord[1]])
         if is_3d:
             coords["z"] = [cart_coord[2]]
-        trace_adder(**coords, mode="markers", marker=node_kwargs, hovertext=hover_text)
+        trace_adder(
+            **coords,
+            mode="markers",
+            marker=node_kwargs,
+            hovertext=hover_text,
+            name=f"node {idx}",
+        )
 
     return fig
 
@@ -601,6 +611,7 @@ def draw_bonds(
                     line=bond_kwargs,
                     showlegend=False,
                     hoverinfo="skip",
+                    name=f"bond {i}-{neighbor['site_index']}",
                 )
 
                 if is_3d:
