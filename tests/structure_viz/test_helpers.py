@@ -21,7 +21,7 @@ from pymatviz.structure_viz.helpers import (
     get_atomic_radii,
     get_elem_colors,
     get_first_matching_site_prop,
-    get_image_atoms,
+    get_image_sites,
     get_site_hover_text,
     get_structures,
     get_subplot_title,
@@ -127,20 +127,20 @@ def test_get_atomic_radii(
         assert radii == atomic_radii
 
 
-def test_get_image_atoms(structures: list[Structure]) -> None:
+def test_get_image_sites(structures: list[Structure]) -> None:
     structure = structures[0]
     site = structure[0]
     lattice = structure.lattice
 
     # Test with default tolerance
-    image_atoms = get_image_atoms(site, lattice)
+    image_atoms = get_image_sites(site, lattice)
     assert isinstance(image_atoms, np.ndarray)
     assert image_atoms.ndim in (1, 2)  # Allow both 1D and 2D arrays
     if image_atoms.size > 0:
         assert image_atoms.shape[1] == 3  # Each image atom should have 3 coordinates
 
     # Test with custom tolerance
-    image_atoms = get_image_atoms(site, lattice, tol=0.1)
+    image_atoms = get_image_sites(site, lattice, tol=0.1)
     assert isinstance(image_atoms, np.ndarray)
     assert image_atoms.ndim in (1, 2)
     if image_atoms.size > 0:
@@ -148,7 +148,7 @@ def test_get_image_atoms(structures: list[Structure]) -> None:
 
     # Test with site at lattice origin (should return empty array)
     site.coords = [0, 0, 0]
-    image_atoms = get_image_atoms(site, lattice)
+    image_atoms = get_image_sites(site, lattice)
     assert len(image_atoms) == 0
 
 

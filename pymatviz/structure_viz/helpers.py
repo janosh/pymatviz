@@ -94,7 +94,7 @@ def _angles_to_rotation_matrix(
     return rotation
 
 
-def get_image_atoms(
+def get_image_sites(
     site: PeriodicSite, lattice: Lattice, tol: float = 0.02
 ) -> np.ndarray:
     """Get image atoms for a given site."""
@@ -390,7 +390,10 @@ def draw_unit_cell(
             f"[{', '.join(f'{c:.3g}' for c in corners[end])}]"
         )
 
-        coords = dict(x=[start_point[0], mid_point[0], end_point[0]])
+        coords = dict(
+            x=[start_point[0], mid_point[0], end_point[0]],
+            y=[start_point[1], mid_point[1], end_point[1]],
+        )
         if is_3d:
             coords["z"] = [start_point[2], mid_point[2], end_point[2]]
         trace_adder(

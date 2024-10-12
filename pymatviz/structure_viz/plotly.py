@@ -28,7 +28,7 @@ from pymatviz.structure_viz.helpers import (
     get_atomic_radii,
     get_elem_colors,
     get_first_matching_site_prop,
-    get_image_atoms,
+    get_image_sites,
     get_structures,
     get_subplot_title,
 )
@@ -247,8 +247,8 @@ def structure_2d_plotly(
                     if isinstance(show_image_sites, dict):
                         image_site_kwargs |= show_image_sites
 
-                    image_atoms = get_image_atoms(site, struct_i.lattice)
-                    if len(image_atoms) > 0:  # Only proceed if there are image atoms
+                    image_atoms = get_image_sites(site, struct_i.lattice)
+                    if len(image_atoms) > 0:
                         rotated_image_atoms = np.dot(image_atoms, rotation_matrix)
 
                         for image_coords in rotated_image_atoms:
@@ -499,8 +499,8 @@ def structure_3d_plotly(
                     if isinstance(show_image_sites, dict):
                         image_site_kwargs |= show_image_sites
 
-                    image_atoms = get_image_atoms(site, struct_i.lattice)
-                    if len(image_atoms) > 0:  # Only proceed if there are image atoms
+                    image_atoms = get_image_sites(site, struct_i.lattice)
+                    if len(image_atoms) > 0:
                         for image_coords in image_atoms:
                             draw_site(
                                 fig,

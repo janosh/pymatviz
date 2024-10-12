@@ -11,7 +11,7 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
-from pymatviz.structure_viz.helpers import get_image_atoms
+from pymatviz.structure_viz.helpers import get_image_sites
 
 
 if TYPE_CHECKING:
@@ -380,7 +380,7 @@ def test_structure_3d_plotly_multiple() -> None:
         expected_traces += 12  # unit cell edges
         expected_traces += 8  # unit cell nodes
         expected_traces += sum(
-            len(get_image_atoms(site, struct.lattice)) for site in struct
+            len(get_image_sites(site, struct.lattice)) for site in struct
         )  # image sites
 
     assert len(fig.data) == expected_traces
