@@ -43,6 +43,7 @@ def ptable_heatmap_plotly(
     exclude_elements: Sequence[str] = (),
     log: bool = False,
     fill_value: float | None = None,
+    element_symbol_map: dict[str, str] | None = None,
     label_map: dict[str, str] | Callable[[str], str] | Literal[False] | None = None,
     border: dict[str, Any] | None | Literal[False] = None,
     scale: float = 1.0,
@@ -118,6 +119,9 @@ def ptable_heatmap_plotly(
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
             Piece of advice: colorscale="viridis" and log=True go well together.
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
+        element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
+            to custom strings. If provided, these custom strings will be displayed
+            instead of the standard element symbols. Defaults to None.
         label_map (dict[str, str] | Callable[[str], str] | None): Map heat values (after
             string formatting) to target strings. Set to False to disable. Defaults to
             dict.fromkeys((np.nan, None, "nan", "nan%"), "-") so as not to display "nan"
@@ -200,14 +204,17 @@ def ptable_heatmap_plotly(
                 label = label_map(label)
             elif isinstance(label_map, dict):
                 label = label_map.get(label, label)
+        # Apply custom element symbol if provided
+        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
+
         style = f"font-weight: bold; font-size: {1.5 * (font_size or 12) * scale};"
-        tile_text = f"<span {style=}>{symbol}</span>"
+        tile_text = f"<span {style=}>{display_symbol}</span>"
         if show_values and label:
             tile_text += f"<br>{label}"
 
         tile_texts[row][col] = tile_text
 
-        hover_text = name
+        hover_text = f"{name} ({symbol})"
 
         if heat_val := heat_value_element_map.get(symbol):
             if all_ints:

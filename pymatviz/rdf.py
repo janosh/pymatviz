@@ -262,8 +262,8 @@ def element_pair_rdfs(
                 "<extra></extra>",
             )
 
-        # Add x-axis label
-        fig.update_xaxes(title_text="r (Å)", row=row, col=col)
+    # only show x-axis label on the bottom row of subplots
+    fig.update_xaxes(title_text="r (Å)", title_standoff=9, row=n_rows)
 
     # Add reference line if specified
     if reference_line is not None:
@@ -272,11 +272,11 @@ def element_pair_rdfs(
 
     # Set subplot height/width and y-axis labels
     fig.update_layout(height=300 * n_rows, width=450 * actual_cols)
-    fig.update_yaxes(title_text="g(r)", col=1)
+    fig.update_yaxes(title_text="g(r)", title_standoff=9, col=1)
 
     # show legend centered above subplots only if multiple structures were passed
     if len(structures) > 1:
-        fig.layout.legend = dict(
+        fig.layout.legend.update(
             orientation="h",
             xanchor="center",
             x=0.5,

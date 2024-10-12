@@ -368,7 +368,7 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
     for elem_symb, value in float_values.items():
         elem_name = df_ptable.loc[elem_symb, "name"]
         hover_text = next(text for text in hover_texts if text.startswith(elem_name))
-        assert hover_text == f"{elem_name}<br>Value: {value:.3g}"
+        assert hover_text == f"{elem_name} ({elem_symb})<br>Value: {value:.3g}"
 
     # Test fraction and percent modes
     for heat_mode in ["fraction", "percent"]:
@@ -380,7 +380,10 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
             hover_text = next(
                 text for text in hover_texts if text.startswith(elem_name)
             )
-            assert hover_text == f"{elem_name}<br>Percentage: {value:.2%} ({value})"
+            expected_hover_text = (
+                f"{elem_name} ({elem_symb})<br>Percentage: {value:.2%} ({value})"
+            )
+            assert hover_text == expected_hover_text
 
     # Test with integer values
     int_values = {"Fe": 2, "O": 3, "H": 1}
@@ -396,10 +399,10 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
             )
 
             if heat_mode == "value":
-                assert hover_text == f"{elem_name}<br>Value: {value}"
+                expected_hover_text = f"{elem_name} ({elem_symb})<br>Value: {value}"
             else:
-                assert (
-                    hover_text == f"{elem_name}<br>Percentage: "
+                expected_hover_text = (
+                    f"{elem_name} ({elem_symb})<br>Percentage: "
                     f"{value / sum(int_values.values()):.2%} ({value})"
                 )
 
@@ -426,3 +429,45 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
     hover_texts = fig.data[-1].text.flat
     fe_hover_text = next(text for text in hover_texts if text.startswith("Iron"))
     assert "Custom Fe data" in fe_hover_text
+
+
+def test_ptable_heatmap_plotly_element_symbol_map() -> None:
+    values = {"Fe": 2, "O": 3, "H": 1}
+    element_symbol_map = {"Fe": "Iron", "O": "Oxygen", "H": "Hydrogen"}
+    fig = ptable_heatmap_plotly(values, element_symbol_map=element_symbol_map)
+
+    # Check if custom symbols are used in tile texts
+    tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
+    for custom_symbol in element_symbol_map.values():
+        assert any(
+            custom_symbol in text for text in tile_texts
+        ), f"Custom symbol {custom_symbol} not found in tile texts"
+
+    # Check if original element symbols are still used in hover texts
+    hover_texts = fig.data[-1].text.flat
+    for elem in values:
+        hover_text = next(
+            text for text in hover_texts if text.startswith(df_ptable.loc[elem, "name"])
+        )
+        assert (
+            f"({elem})" in hover_text
+        ), f"Original symbol {elem} not found in hover text"
+
+    # Test with partial mapping
+    partial_map = {"Fe": "This be Iron"}
+    fig = ptable_heatmap_plotly(values, element_symbol_map=partial_map)
+    tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
+    assert any(
+        "This be Iron" in text for text in tile_texts
+    ), "Custom symbol not found in tile texts"
+    assert any(
+        "O</span>" in text for text in tile_texts
+    ), "Original symbol 'O' not found in tile texts"
+
+    # Test with None value
+    fig = ptable_heatmap_plotly(values, element_symbol_map=None)
+    tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
+    for elem in values:
+        assert any(
+            f"{elem}</span>" in text for text in tile_texts
+        ), f"Original symbol {elem} not found in tile texts for element_symbol_map=None"

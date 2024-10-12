@@ -46,13 +46,13 @@ def test_set_template() -> None:
 
 def test_dark_template() -> None:
     layout = pmv.pmv_dark_template.layout
-    assert layout.xaxis["linecolor"] == layout.yaxis["linecolor"] == "white"
-    assert layout.xaxis["gridcolor"] == layout.yaxis["gridcolor"] == "darkgray"
-    assert layout.font["color"] == "white"
+    assert layout.xaxis.linecolor == layout.yaxis.linecolor == "white"
+    assert layout.xaxis.gridcolor == layout.yaxis.gridcolor == "darkgray"
+    assert layout.font.color == "white"
 
 
 def test_white_template() -> None:
     layout = pmv.pmv_white_template.layout
-    assert layout.xaxis["linecolor"] == layout.yaxis["linecolor"] == "black"
-    assert layout.xaxis["gridcolor"] == layout.yaxis["gridcolor"] == "lightgray"
-    assert layout.font["color"] == "black"
+    assert layout.xaxis.linecolor == layout.yaxis.linecolor == "black"
+    assert layout.xaxis.gridcolor == layout.yaxis.gridcolor == "lightgray"
+    assert layout.font.color == "black"
