@@ -177,11 +177,11 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 ## Radial Distribution Functions
 
-See [`pymatviz/rdf.py`](pymatviz/rdf.py).
+See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
-| [`rdf_plot(rdf)`](pymatviz/rdf.py) | [`rdf_plot(rdf, rdf2)`](pymatviz/rdf.py)  |
-| :--------------------------------: | :---------------------------------------: |
-|   ![element-pair-rdfs-Na8Nb8O24]   | ![element-pair-rdfs-crystal-vs-amorphous] |
+| [`rdf_plot(rdf)`](pymatviz/rdf/plotly.py) | [`rdf_plot(rdf, rdf2)`](pymatviz/rdf/plotly.py) |
+| :---------------------------------------: | :---------------------------------------------: |
+|      ![element-pair-rdfs-Na8Nb8O24]       |    ![element-pair-rdfs-crystal-vs-amorphous]    |
 
 [element-pair-rdfs-Na8Nb8O24]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-Na8Nb8O24.svg
 [element-pair-rdfs-crystal-vs-amorphous]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-crystal-vs-amorphous.svg
