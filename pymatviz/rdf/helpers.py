@@ -19,9 +19,6 @@ def normalize_structures(
     structures: Structure | Sequence[Structure] | dict[str, Structure],
 ) -> dict[str, Structure]:
     """Normalize input to a dictionary of structures."""
-    if not structures:
-        raise ValueError("No structures provided")
-
     if isinstance(structures, Structure):
         return {"": structures}
     if isinstance(structures, list | tuple) and all(

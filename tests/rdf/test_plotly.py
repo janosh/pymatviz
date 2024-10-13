@@ -6,7 +6,7 @@ import pytest
 from numpy.testing import assert_allclose
 from pymatgen.core import Lattice, Structure
 
-from pymatviz.rdf import calculate_rdf, element_pair_rdfs
+from pymatviz.rdf.plotly import element_pair_rdfs, full_rdf
 
 
 @pytest.mark.parametrize(
@@ -19,13 +19,13 @@ def test_element_pair_rdfs_basic(
     subplot_titles: list[str] | None,
     vertical_spacing: float,
 ) -> None:
-    for structure in structures:
+    for struct in structures:
         subplot_kwargs = dict(
             cols=n_cols,
             subplot_titles=subplot_titles,
             vertical_spacing=vertical_spacing,
         )
-        fig = element_pair_rdfs(structure, subplot_kwargs=subplot_kwargs)
+        fig = element_pair_rdfs(struct, subplot_kwargs=subplot_kwargs)
         assert isinstance(fig, go.Figure)
         assert fig.layout.title.text is None
         assert fig.layout.showlegend is None
@@ -33,7 +33,7 @@ def test_element_pair_rdfs_basic(
         # check grid ref matches n_cols
         actual_rows = len(fig._grid_ref)
         actual_cols = len(fig._grid_ref[0])
-        n_elem_pairs = len(structure.chemical_system_set) ** 2
+        n_elem_pairs = len(struct.chemical_system_set) ** 2
         assert actual_cols == min(n_cols, n_elem_pairs)
         assert actual_rows == (len(fig.data) + n_cols - 1) // n_cols
         annotation_texts = [anno.text for anno in fig.layout.annotations]
@@ -114,9 +114,9 @@ def test_element_pair_rdfs_cutoff_and_bin_size(
 
 
 def test_element_pair_rdfs_subplot_layout(structures: list[Structure]) -> None:
-    for structure in structures:
-        fig = element_pair_rdfs(structure)
-        n_elements = len({site.specie.symbol for site in structure})
+    for struct in structures:
+        fig = element_pair_rdfs(struct)
+        n_elements = len({site.specie.symbol for site in struct})
         expected_pairs = n_elements * (n_elements + 1) // 2
         assert len(fig.data) == expected_pairs
         assert all(isinstance(trace, go.Scatter) for trace in fig.data)
@@ -147,9 +147,9 @@ def test_element_pair_rdfs_custom_element_pairs(
 
 
 def test_element_pair_rdfs_consistency(structures: list[Structure]) -> None:
-    for structure in structures:
-        fig1 = element_pair_rdfs(structure, cutoff=5, bin_size=0.1)
-        fig2 = element_pair_rdfs(structure, cutoff=5, bin_size=0.1)
+    for struct in structures:
+        fig1 = element_pair_rdfs(struct, cutoff=5, bin_size=0.1)
+        fig2 = element_pair_rdfs(struct, cutoff=5, bin_size=0.1)
         for trace1, trace2 in zip(fig1.data, fig2.data, strict=True):
             assert_allclose(trace1.x, trace2.x)
             assert_allclose(trace1.y, trace2.y)
@@ -208,190 +208,131 @@ def test_element_pair_rdfs_cutoff_and_bins(structures: list[Structure]) -> None:
     assert len(fig.data[0].x) == n_bins
 
 
-def test_calculate_rdf(structures: list[Structure]) -> None:
-    for structure in structures:
-        elements = list({site.specie.symbol for site in structure})
-        for el1 in elements:
-            for el2 in elements:
-                radii, rdf = calculate_rdf(structure, el1, el2, 10, 100)
-                assert isinstance(radii, np.ndarray)
-                assert isinstance(rdf, np.ndarray)
-                assert len(radii) == len(rdf)
-                assert np.all(rdf >= 0)
+def test_full_rdf_basic(structures: list[Structure]) -> None:
+    for struct in structures:
+        fig = full_rdf(struct)
+        assert isinstance(fig, go.Figure)
+        assert fig.layout.xaxis.title.text == "r (Å)"
+        assert fig.layout.yaxis.title.text == "g(r)"
+        assert len(fig.data) == 1
+        assert fig.data[0].name == ""
+        assert fig.layout.title.text is None
+        assert fig.layout.showlegend is None
+
+
+def test_full_rdf_empty_structure() -> None:
+    empty_struct = Structure(Lattice.cubic(1), [], [])
+    for struct in (empty_struct, {"blank": empty_struct}):
+        key = " blank" if isinstance(struct, dict) else ""
+        with pytest.raises(ValueError, match=f"input structure{key} contains no sites"):
+            full_rdf(struct)
+
+
+def test_full_rdf_invalid_structure() -> None:
+    with pytest.raises(TypeError, match="Invalid input format for structures="):
+        full_rdf("not a structure")
+
+
+def test_full_rdf_conflicting_bins_and_bin_size(structures: list[Structure]) -> None:
+    with pytest.raises(
+        ValueError, match="Cannot specify both n_bins=.* and bin_size=.*"
+    ):
+        full_rdf(structures, n_bins=100, bin_size=0.1)
 
 
 @pytest.mark.parametrize(
-    ("composition", "n_atoms"),
-    [(["Si"], 100), (["Si", "Ge"], 100), (["Al", "O"], 100), (["Fe", "Ni", "Cr"], 165)],
+    ("param", "values"),
+    [("cutoff", (5, 10, 15)), ("bin_size", (0.05, 0.1, 0.2))],
 )
-def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> None:
-    # Create large structure with random coordinates
-    lattice = Lattice.cubic(30)
-    elements = sum(([el] * n_atoms for el in composition), [])  # noqa: RUF017
-    coords = np.random.default_rng(seed=0).uniform(size=(len(elements), 3))
-    structure = Structure(lattice, elements, coords)
+def test_full_rdf_cutoff_and_bin_size(
+    structures: list[Structure], param: str, values: tuple[float, ...]
+) -> None:
+    structure = structures[0]
+    for value in values:
+        fig = full_rdf(structure, **{param: value})  # type: ignore[arg-type]
 
-    # Calculate RDF for each element pair
-    cutoff, n_bins = 12, 75
-    for el1 in composition:
-        for el2 in composition:
-            radii, rdf = calculate_rdf(structure, el1, el2, cutoff, n_bins)
+        assert len(fig.data) == 1
+        trace = fig.data[0]
 
-            # Check if RDF approaches 1 for large separations
-            last_10_percent = int(0.9 * len(rdf))
-            avg_last_10_percent = round(np.mean(rdf[last_10_percent:]), 4)
-            assert 0.95 <= avg_last_10_percent <= 1.05, (
-                f"RDF does not approach 1 for large separations in {el1}-{el2} pairs, "
-                f"{avg_last_10_percent=}"
-            )
-
-            # Check if RDF starts from 0 at r=0
+        if param == "cutoff":
+            assert np.all(trace.x <= value), f"X-axis data exceeds cutoff of {value}"
+            assert max(trace.x) == pytest.approx(
+                value
+            ), f"Maximum x value {max(trace.x):.4} not close to cutoff {value}"
+        elif param == "bin_size":
+            default_cutoff = 15
+            expected_bins = int(np.ceil(default_cutoff / value))
             assert (
-                rdf[0] == 0
-            ), f"{rdf[0]=} should start from 0 at r=0 for {el1}-{el2} pair"
-
-            # Check there are no negative values in the RDF
-            assert all(rdf >= 0), f"RDF contains negative values for {el1}-{el2} pair"
-
-            # Check if the radii array is correct
-
-            assert_allclose(
-                radii,
-                np.linspace(cutoff / n_bins, cutoff, n_bins),
-                err_msg="Radii array is incorrect",
-            )
-
-            # Check if the RDF has the correct number of bins
-            assert (
-                len(rdf) == n_bins
-            ), f"RDF should have {n_bins=}, got {len(rdf)} for {el1}-{el2} pair"
+                abs(len(trace.x) - expected_bins) <= 1
+            ), f"Expected around {expected_bins} bins, got {len(trace.x)}"
 
 
-@pytest.mark.parametrize(
-    "pbc",
-    [(1, 1, 1), (1, 1, 0), (1, 0, 0), (0, 0, 0)],
-)
-def test_calculate_rdf_pbc_settings(pbc: tuple[int, int, int]) -> None:
-    lattice = Lattice.cubic(5)
-    coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-    structure = Structure(lattice, ["Si", "Si"], coords)
+def test_full_rdf_consistency(structures: list[Structure]) -> None:
+    for struct in structures:
+        fig1 = full_rdf(struct, cutoff=5, bin_size=0.1)
+        fig2 = full_rdf(struct, cutoff=5, bin_size=0.1)
+        assert_allclose(fig1.data[0].x, fig2.data[0].x)
+        assert_allclose(fig1.data[0].y, fig2.data[0].y)
+        assert len(fig1.data[0].x) == len(fig2.data[0].x)
 
-    cutoff, n_bins = 10, 100
-    radii, rdf = calculate_rdf(
-        structure,
-        center_species="Si",
-        neighbor_species="Si",
-        cutoff=cutoff,
-        n_bins=n_bins,
-        pbc=pbc,
+        fig3 = full_rdf(struct, cutoff=6, bin_size=0.2)
+        assert 30 == len(fig3.data[0].x) < len(fig1.data[0].x) == 50
+        assert 30 == len(fig3.data[0].y) < len(fig1.data[0].y) == 50
+
+
+@pytest.mark.parametrize("structs_type", ["dict", "list"])
+def test_full_rdf_list_dict_of_structures(
+    structures: list[Structure], structs_type: str
+) -> None:
+    structs_dict_or_list = (
+        {f"{struct} {idx}": struct for idx, struct in enumerate(structures)}
+        if structs_type == "dict"
+        else structures
+    )
+    fig = full_rdf(structs_dict_or_list)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == len(structs_dict_or_list)
+    labels = {trace.name for trace in fig.data}
+    assert len(labels) == len(structs_dict_or_list)
+    assert labels == (
+        set(structs_dict_or_list)
+        if isinstance(structs_dict_or_list, dict)
+        else {struct.formula for struct in structs_dict_or_list}
     )
 
-    assert len(radii) == n_bins
-    assert len(rdf) == n_bins
-    assert np.all(rdf >= 0)
-    assert rdf[0] == 0, f"RDF should start at 0 for PBC {pbc}"
 
-    peak_index = int(4.33 / cutoff * n_bins)  # √3/2 * 5 ≈ 4.33
-    if pbc == (1, 1, 1):
-        assert rdf[peak_index] > 1, f"Expected peak at 4.33 for PBC {pbc}"
-    elif pbc == (1, 1, 0):
-        assert rdf[peak_index] > 0, f"Expected non-zero value at 4.33 for PBC {pbc}"
+def test_full_rdf_custom_colors_and_styles(structures: list[Structure]) -> None:
+    colors = ["red", "blue", "green"]
+    line_styles = ["solid", "dash", "dot"]
+    fig = full_rdf(structures, colors=colors, line_styles=line_styles)
+    for idx, trace in enumerate(fig.data):
+        assert trace.line.color == colors[idx % len(colors)]
+        assert trace.line.dash == line_styles[idx % len(line_styles)]
 
 
-def test_calculate_rdf_pbc_consistency() -> None:
-    lattice = Lattice.cubic(10)
-    coords = np.random.default_rng(seed=0).uniform(size=(20, 3))
-    structure = Structure(lattice, ["Si"] * 20, coords)
-
-    cutoff, n_bins = 15, 150
-
-    _radii_full, rdf_full = calculate_rdf(
-        structure,
-        center_species="Si",
-        neighbor_species="Si",
-        cutoff=cutoff,
-        n_bins=n_bins,
-        pbc=(True, True, True),
+def test_full_rdf_reference_line(structures: list[Structure]) -> None:
+    ref_line_kwargs = {"line_color": "red", "line_width": 2}
+    fig = full_rdf(structures, reference_line=ref_line_kwargs)
+    n_ref_lines = sum(
+        shape.type == "line" and shape.line.color == "red"
+        for shape in fig.layout.shapes
     )
-
-    _radii_none, _rdf_none = calculate_rdf(
-        structure,
-        center_species="Si",
-        neighbor_species="Si",
-        cutoff=cutoff,
-        n_bins=n_bins,
-        pbc=(False, False, False),
-    )
-
-    assert np.sum(rdf_full > 0) > 0, "Full PBC should have non-zero values"
+    assert n_ref_lines == 1
 
 
-def test_calculate_rdf_different_species() -> None:
-    lattice = Lattice.cubic(5)
-    coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-    structure = Structure(lattice, ["Si", "Ge"], coords)
+def test_full_rdf_legend_position(structures: list[Structure]) -> None:
+    # Test with a single structure
+    fig_single = full_rdf(structures[0])
+    assert fig_single.layout.legend == go.layout.Legend()
+    assert len(fig_single.data) == 1
 
-    cutoff, n_bins = 10, 100
-
-    _radii_si_si, rdf_si_si = calculate_rdf(
-        structure,
-        center_species="Si",
-        neighbor_species="Si",
-        cutoff=cutoff,
-        n_bins=n_bins,
-    )
-    _radii_si_ge, rdf_si_ge = calculate_rdf(
-        structure,
-        center_species="Si",
-        neighbor_species="Ge",
-        cutoff=cutoff,
-        n_bins=n_bins,
-    )
-    _radii_ge_ge, rdf_ge_ge = calculate_rdf(
-        structure,
-        center_species="Ge",
-        neighbor_species="Ge",
-        cutoff=cutoff,
-        n_bins=n_bins,
-    )
-
-    assert np.all(rdf_si_si == 0), "Si-Si RDF should be all zeros"
-    assert np.all(rdf_ge_ge == 0), "Ge-Ge RDF should be all zeros"
-    assert np.any(rdf_si_ge > 0), "Si-Ge RDF should have non-zero values"
-
-    peak_index = int(4.33 / cutoff * n_bins)
-    assert (
-        rdf_si_ge[peak_index] > 0
-    ), "Expected peak in Si-Ge RDF at sqrt(3)/2 * lattice constant"
-
-
-@pytest.mark.parametrize(
-    ("cutoff", "frac_coords"),
-    [(4, [0.9, 0.9, 0.9]), (0.1, [0.1, 0.1, 0.1])],
-)
-def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> None:
-    lattice = Lattice.cubic(5)
-
-    # Test with a single atom
-    single_atom = Structure(lattice, ["Si"], [[0, 0, 0]])
-    _radii, rdf = calculate_rdf(
-        single_atom,
-        center_species="Si",
-        neighbor_species="Si",
-        cutoff=cutoff,
-        n_bins=100,
-    )
-    assert np.all(rdf == 0), "RDF for a single atom should be all zeros"
-
-    # Check RDF=0 everywhere for distant atoms (beyond cutoff)
-    distant_atoms = Structure(lattice, ["Si", "Si"], [[0, 0, 0], frac_coords])
-    _radii, rdf = calculate_rdf(
-        distant_atoms,
-        center_species="Si",
-        neighbor_species="Si",
-        cutoff=cutoff,
-        n_bins=30,
-        pbc=(0, 0, 0),
-    )
-    # get idx of first radial bin that is greater than 3
-    assert np.all(rdf == 0), "RDF for distant atoms should be all zeros"
+    # Test with multiple structures
+    fig_multiple = full_rdf(structures)
+    assert fig_multiple.layout.legend.orientation == "h"
+    assert fig_multiple.layout.legend.yanchor == "bottom"
+    assert fig_multiple.layout.legend.y == 1.02
+    assert fig_multiple.layout.legend.xanchor == "center"
+    assert fig_multiple.layout.legend.x == 0.5
+    assert len(fig_multiple.data) == len(structures)
+    for idx, trace in enumerate(fig_multiple.data):
+        assert trace.name == structures[idx].formula
