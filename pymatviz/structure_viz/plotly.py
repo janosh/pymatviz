@@ -95,8 +95,10 @@ def structure_2d_plotly(
         standardize_struct (bool, optional): Whether to standardize the structure.
             Defaults to None.
         n_cols (int, optional): Number of columns for subplots. Defaults to 4.
-        subplot_title (Callable[[Structure, str | int], str | dict], optional):
-            Function to generate subplot titles. Defaults to None.
+        subplot_title (Callable[[Structure, str | int], str | dict] | False, optional):
+            Function to generate subplot titles. Defaults to
+            lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
+            False to hide all subplot titles.
         show_site_vectors (str | Sequence[str], optional): Whether to show vector site
             quantities such as forces or magnetic moments as arrow heads originating
             from each site. Pass the key (or sequence of keys) to look for in site
@@ -131,6 +133,7 @@ def structure_2d_plotly(
     fig = make_subplots(
         rows=n_rows,
         cols=n_cols,
+        # # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
         subplot_titles=[" " for _ in range(n_structs)],
         vertical_spacing=0,
         horizontal_spacing=0,
@@ -326,7 +329,9 @@ def structure_3d_plotly(
     | Sequence[str] = "species",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
-    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
+    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]]
+    | None
+    | Literal[False] = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
     hover_text: SiteCoords
@@ -360,8 +365,10 @@ def structure_3d_plotly(
         standardize_struct (bool, optional): Whether to standardize the structure.
             Defaults to None.
         n_cols (int, optional): Number of columns for subplots. Defaults to 3.
-        subplot_title (Callable[[Structure, str | int], str | dict], optional):
-            Function to generate subplot titles. Defaults to None.
+        subplot_title (Callable[[Structure, str | int], str | dict] | False, optional):
+            Function to generate subplot titles. Defaults to
+            lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
+            False to hide all subplot titles.
         show_site_vectors (str | Sequence[str], optional): Whether to show vector site
             quantities such as forces or magnetic moments as arrow heads originating
             from each site. Pass the key (or sequence of keys) to look for in site
@@ -397,6 +404,7 @@ def structure_3d_plotly(
         rows=n_rows,
         cols=n_cols,
         specs=[[{"type": "scene"} for _ in range(n_cols)] for _ in range(n_rows)],
+        # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
         subplot_titles=[" " for _ in range(n_structs)],
     )
 
@@ -532,14 +540,15 @@ def structure_3d_plotly(
             )
 
         # Set subplot titles
-        anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
-        if "y" not in anno:
-            row = (idx - 1) // n_cols + 1
-            subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
-            anno["y"] = subtitle_y_pos
-        if "yanchor" not in anno:
-            anno["yanchor"] = "top"
-        fig.layout.annotations[idx - 1].update(anno)
+        if subplot_title is not False:
+            anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
+            if "y" not in anno:
+                row = (idx - 1) // n_cols + 1
+                subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
+                anno["y"] = subtitle_y_pos
+            if "yanchor" not in anno:
+                anno["yanchor"] = "top"
+            fig.layout.annotations[idx - 1].update(anno)
 
         # Update 3D scene properties
         no_axes_kwargs = dict(
