@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.core import Structure
 from pymatgen.optimization.neighbors import find_points_in_spheres
@@ -26,29 +27,49 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
 
-    import plotly.graph_objects as go
     from pymatgen.util.typing import PbcLike
+
+
+def normalize_structures(
+    structures: Structure | Sequence[Structure] | dict[str, Structure],
+) -> dict[str, Structure]:
+    """Normalize input to a dictionary of structures."""
+    if not structures:
+        raise ValueError("No structures provided")
+
+    if isinstance(structures, Structure):
+        return {"": structures}
+    if isinstance(structures, list | tuple) and all(
+        isinstance(s, Structure) for s in structures
+    ):
+        return {s.formula: s for s in structures}
+    if isinstance(structures, dict):
+        return structures
+    raise TypeError(f"Invalid input format for {structures=}")
 
 
 def calculate_rdf(
     structure: Structure,
-    center_species: str,
-    neighbor_species: str,
-    cutoff: float,
-    n_bins: int,
+    center_species: str | None = None,
+    neighbor_species: str | None = None,
+    cutoff: float = 15,
+    n_bins: int = 75,
     pbc: PbcLike = (True, True, True),
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Calculate the radial distribution function (RDF) for a given pair of species.
+    """Calculate the radial distribution function (RDF) for a given structure.
 
-    The RDF is normalized by the number of pairs and the shell volume density, which
-    makes the RDF approach 1 for large separations in a homogeneous system.
+    If center_species and neighbor_species are provided, calculates the partial RDF
+    for the specified element pair. Otherwise, calculates the full RDF.
 
     Args:
         structure (Structure): A pymatgen Structure object.
-        center_species (str): Symbol of the central species.
-        neighbor_species (str): Symbol of the neighbor species.
-        cutoff (float): Maximum distance for RDF calculation.
-        n_bins (int): Number of bins for RDF calculation.
+        center_species (str, optional): Symbol of the central species. If None, all
+            species are considered.
+        neighbor_species (str, optional): Symbol of the neighbor species. If None, all
+            species are considered.
+        cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
+        n_bins (int, optional): Number of bins for RDF calculation.
+            Default is 75.
         pbc (tuple[int, int, int], optional): Periodic boundary conditions as any
             3-tuple of 0s/1s. Defaults to (1, 1, 1).
 
@@ -60,12 +81,23 @@ def calculate_rdf(
     rdf = np.zeros_like(radii)
 
     # Get indices of center and neighbor species
-    center_indices = [
-        i for i, site in enumerate(structure) if site.specie.symbol == center_species
-    ]
-    neighbor_indices = [
-        i for i, site in enumerate(structure) if site.specie.symbol == neighbor_species
-    ]
+    if center_species:
+        center_indices = [
+            i
+            for i, site in enumerate(structure)
+            if site.specie.symbol == center_species
+        ]
+    else:
+        center_indices = list(range(len(structure)))
+
+    if neighbor_species:
+        neighbor_indices = [
+            i
+            for i, site in enumerate(structure)
+            if site.specie.symbol == neighbor_species
+        ]
+    else:
+        neighbor_indices = list(range(len(structure)))
 
     # If there are no center atoms or neighbor atoms, return an empty RDF
     if not center_indices or not neighbor_indices:
@@ -163,18 +195,7 @@ def element_pair_rdfs(
             if invalid element pairs are provided, or if both n_bins and bin_size are
             specified.
     """
-    # Normalize input to a dictionary of structures
-    if isinstance(structures, Structure):
-        structures = {"": structures}
-    elif isinstance(structures, list | tuple) and all(
-        isinstance(struct, Structure) for struct in structures
-    ):
-        structures = {struct.formula: struct for struct in structures}
-    elif not isinstance(structures, dict):
-        raise TypeError(f"Invalid input format for {structures=}")
-
-    if not structures:
-        raise ValueError("No structures provided")
+    structures = normalize_structures(structures)
 
     for key, struct in structures.items():
         if not struct.sites:
@@ -213,7 +234,7 @@ def element_pair_rdfs(
 
     elem_pair_rdfs: dict[tuple[str, str], list[tuple[np.ndarray, np.ndarray]]] = {
         pair: [
-            calculate_rdf(struct, *pair, cutoff, n_bins)
+            calculate_rdf(struct, *pair, cutoff=cutoff, n_bins=n_bins)
             for struct in structures.values()
         ]
         for pair in element_pairs
@@ -236,8 +257,8 @@ def element_pair_rdfs(
     fig = make_subplots(**subplot_defaults | subplot_kwargs)
 
     # Set default colors and line styles if not provided
-    line_styles = line_styles or "solid dot dash longdash dashdot longdashdot".split()
     colors = colors or plotly.colors.qualitative.Plotly
+    line_styles = line_styles or "solid dot dash longdash dashdot longdashdot".split()
     labels = list(structures)
 
     # Add RDF traces to the figure
@@ -262,17 +283,14 @@ def element_pair_rdfs(
                 "<extra></extra>",
             )
 
-    # only show x-axis label on the bottom row of subplots
     fig.update_xaxes(title_text="r (Å)", title_standoff=9, row=n_rows)
+    fig.update_yaxes(title_text="g(r)", title_standoff=9, col=1)
+    fig.update_layout(height=300 * n_rows, width=450 * actual_cols)
 
     # Add reference line if specified
     if reference_line is not None:
         defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
         fig.add_hline(y=1, **defaults | reference_line)
-
-    # Set subplot height/width and y-axis labels
-    fig.update_layout(height=300 * n_rows, width=450 * actual_cols)
-    fig.update_yaxes(title_text="g(r)", title_standoff=9, col=1)
 
     # show legend centered above subplots only if multiple structures were passed
     if len(structures) > 1:
@@ -283,6 +301,99 @@ def element_pair_rdfs(
             y=1.02,
             yanchor="bottom",
             font_size=14,
+        )
+
+    return fig
+
+
+def full_rdf(
+    structures: Structure | Sequence[Structure] | dict[str, Structure],
+    cutoff: float = 15,
+    n_bins: int = 75,
+    bin_size: float | None = None,
+    reference_line: dict[str, Any] | None = None,
+    colors: Sequence[str] | None = None,
+    line_styles: Sequence[str] | None = None,
+) -> go.Figure:
+    """Generate a plotly figure of full radial distribution functions (RDFs) for
+    one or multiple structures.
+
+    Args:
+        structures: Can be one of the following:
+            - single pymatgen Structure
+            - list of pymatgen Structures
+            - dictionary mapping labels to Structures
+        cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
+        n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
+        bin_size (float, optional): Size of bins for RDF calculation. If specified, it
+            overrides n_bins. Default is None.
+        reference_line (dict, optional): Keywords for reference line at g(r)=1 drawn
+            with Figure.add_hline(). If None (default), no reference line is drawn.
+        colors (Sequence[str], optional): colors for each structure's RDF line. Defaults
+            to plotly.colors.qualitative.Plotly.
+        line_styles (Sequence[str], optional): line styles for each structure's RDF
+            line. Defaults to ["solid", "dot", "dash", "longdash", "dashdot",
+            "longdashdot"].
+
+    Returns:
+        go.Figure: A plotly figure with full RDFs for one or multiple structures.
+
+    Raises:
+        ValueError: If no structures are provided, if structures have no sites,
+            or if both n_bins and bin_size are specified.
+    """
+    # Normalize input to a dictionary of structures
+    structures = normalize_structures(structures)
+
+    for key, struct in structures.items():
+        if not struct.sites:
+            raise ValueError(
+                f"input structure{f' {key}' if key else ''} contains no sites"
+            )
+
+    if n_bins != 75 and bin_size is not None:
+        raise ValueError(
+            f"Cannot specify both {n_bins=} and {bin_size=}. Pick one or the other."
+        )
+
+    # Calculate full RDFs for all structures
+    if bin_size is not None:
+        n_bins = int(cutoff / bin_size)
+
+    rdfs = {
+        label: calculate_rdf(struct, cutoff=cutoff, n_bins=n_bins)
+        for label, struct in structures.items()
+    }
+
+    fig = go.Figure()
+
+    colors = colors or plotly.colors.qualitative.Plotly
+    line_styles = line_styles or "solid dot dash longdash dashdot longdashdot".split()
+
+    for idx, (label, (radii, rdf)) in enumerate(rdfs.items()):
+        fig.add_scatter(
+            x=radii,
+            y=rdf,
+            mode="lines",
+            name=label,
+            line=dict(
+                color=colors[idx % len(colors)],
+                dash=line_styles[idx % len(line_styles)],
+            ),
+            hovertemplate=f"{label}<br>r = %{{x:.2f}} Å<br>g(r) = %{{y:.2f}}"
+            "<extra></extra>",
+        )
+
+    fig.update_layout(xaxis_title="r (Å)", yaxis_title="g(r)")
+
+    if reference_line is not None:
+        defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
+        fig.add_hline(y=1, **defaults | reference_line)
+
+    # Show legend centered above the plot if multiple structures were passed
+    if len(structures) > 1:
+        fig.layout.legend.update(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5
         )
 
     return fig
