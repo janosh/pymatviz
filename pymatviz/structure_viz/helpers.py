@@ -1,8 +1,4 @@
-"""2D plots of pymatgen structures with matplotlib.
-
-structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
-inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib.
-"""
+"""Helper functions for 2D and 3D plots of pymatgen structures with plotly."""
 
 from __future__ import annotations
 
