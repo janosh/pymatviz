@@ -57,6 +57,13 @@ fig_crys_vs_amorph.layout.title = dict(text=title, x=0.5, y=0.99)
 fig_crys_vs_amorph.layout.margin = dict(l=0, r=0, t=70, b=0)
 fig_crys_vs_amorph.show()
 
-pmv.io.save_and_compress_svg(
-    fig_crys_vs_amorph, "element-pair-rdfs-crystal-vs-amorphous"
+# pmv.io.save_and_compress_svg(
+#     fig_crys_vs_amorph, "element-pair-rdfs-crystal-vs-amorphous"
+# )
+
+
+# %% compare full RDFs for crystalline LiPO4 and randomly-placed "amorphous" LiPO4
+fig_crys_vs_amorph = pmv.full_rdf(
+    structures={"Crystal": crystal_lipo4, "Amorphous": amorphous_lipo4}
 )
+fig_crys_vs_amorph.show()
