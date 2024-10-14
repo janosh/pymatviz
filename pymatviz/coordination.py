@@ -9,7 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.colors import label_rgb
 from plotly.subplots import make_subplots
-from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
+from pymatgen.analysis.local_env import NearNeighbors
 from pymatgen.core import Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
@@ -52,7 +52,7 @@ def create_hover_text(
 def coordination_hist(
     structures: Structure | dict[str, Structure] | Sequence[Structure],
     *,
-    analyzer: NearNeighbors | None = None,
+    strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
     split_mode: SplitMode | str = SplitMode.by_element,
     bar_mode: Literal["group", "stack"] = "stack",
     hover_data: Sequence[str] | dict[str, str] | None = None,
@@ -64,7 +64,11 @@ def coordination_hist(
 
     Args:
         structures: A single structure or a dictionary or sequence of structures.
-        analyzer: A local environment analyzer (default is CrystalNN).
+        strategy: Neighbor-finding strategy. Can be one of:
+            - float: Cutoff distance for neighbor search in Angstroms.
+            - NearNeighbors: An instance of a NearNeighbors subclass.
+            - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
+            Defaults to 3.0 (Angstroms cutoff).
         split_mode: How to split the data into subplots or color groups.
             "none": Single plot with all data. All elements of all structures (if
                 multiple were passed) will be shown in the same plot.
@@ -95,8 +99,6 @@ def coordination_hist(
     """
     structures = normalize_to_dict(structures)
 
-    analyzer = analyzer or CrystalNN()
-
     # coord_data: coordination numbers and hover data for each structure and element
     coord_data: dict[str, dict[str, Any]] = {}
     min_cn, max_cn = float("inf"), 0  # will be updated in the loop below
@@ -109,10 +111,28 @@ def coordination_hist(
     elif not isinstance(hover_data, dict):
         raise TypeError(f"Invalid {hover_data=}")
 
+    # Prepare the neighbor-finding strategy
+    if isinstance(strategy, int | float):
+        get_neighbors = lambda site, structure: structure.get_neighbors(site, strategy)
+    elif isinstance(strategy, NearNeighbors):
+        get_neighbors = lambda site, structure: strategy.get_nn_info(
+            structure, structure.index(site)
+        )
+    elif issubclass(strategy, NearNeighbors):
+        nn_instance = strategy()
+        get_neighbors = lambda site, structure: nn_instance.get_nn_info(
+            structure, structure.index(site)
+        )
+    else:
+        raise TypeError(
+            f"Invalid {strategy=}. Expected float, NearNeighbors instance, or "
+            "NearNeighbors subclass."
+        )
+
     for struct_key, structure in structures.items():
         coord_data[struct_key] = {}
         for idx, site in enumerate(structure):
-            cn = analyzer.get_cn(structure, idx)
+            cn = len(get_neighbors(site, structure))
             min_cn = min(min_cn, cn)
             max_cn = max(max_cn, cn)
             elem_symbol = site.specie.symbol

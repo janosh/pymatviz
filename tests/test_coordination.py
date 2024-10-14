@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 import pytest
-from pymatgen.analysis.local_env import VoronoiNN
+from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
 from pymatgen.core import Structure
 
 from pymatviz.coordination import SplitMode, coordination_hist
@@ -41,12 +41,38 @@ def test_coordination_hist_split_modes(
         assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
 
 
-def test_coordination_hist_custom_analyzer(structures: Sequence[Structure]) -> None:
-    """Test coordination_hist with a custom analyzer."""
-    custom_analyzer = VoronoiNN()
-    fig = coordination_hist(structures[0], analyzer=custom_analyzer)
+@pytest.mark.parametrize(
+    "strategy", [3.0, 6, VoronoiNN(), CrystalNN, CrystalNN(distance_cutoffs=(0.5, 2))]
+)
+def test_coordination_hist_custom_strategy(
+    structures: Sequence[Structure],
+    strategy: NearNeighbors | type[NearNeighbors] | float,
+) -> None:
+    """Test coordination_hist with a custom strategy."""
+    fig = coordination_hist(structures[1], strategy=strategy)
     assert fig.data
-    assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
+    assert len(fig.data) == 3
+    expected_max_x = {
+        3.0: 9,
+        6: 47,
+        VoronoiNN(): 19,
+        CrystalNN: 10,
+        CrystalNN(distance_cutoffs=(0.5, 2)): 10,
+    }[strategy]
+    actual_max_x = max(max(trace.x) for trace in fig.data)
+    assert actual_max_x == expected_max_x, f"{actual_max_x=} for {strategy=}"
+
+    # Test with multiple structures
+    fig_multi = coordination_hist(structures, strategy=strategy)
+    assert fig_multi.data
+    assert len(fig_multi.data) >= len(fig.data)
+
+    # Test different split modes
+    for split_mode in SplitMode:
+        fig_split = coordination_hist(
+            structures[:2], strategy=strategy, split_mode=split_mode
+        )
+        assert fig_split.data
 
 
 def test_coordination_hist_bar_mode(structures: Sequence[Structure]) -> None:
@@ -114,5 +140,5 @@ def test_coordination_hist_invalid_input() -> None:
 
 def test_coordination_hist_empty() -> None:
     """Test coordination_hist with an empty structure."""
-    with pytest.raises(TypeError, match="Invalid structures="):
+    with pytest.raises(TypeError, match="Invalid inputs="):
         coordination_hist(())

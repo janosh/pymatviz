@@ -2,7 +2,7 @@
 from glob import glob
 
 from matminer.datasets import load_dataset
-from pymatgen.analysis.local_env import VoronoiNN
+from pymatgen.analysis.local_env import CrystalNN, VoronoiNN
 from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
@@ -47,11 +47,33 @@ for struct in structures.values():
 
 
 # %% Single structure example
-fig = pmv.coordination_hist(structures[key1])
+fig = pmv.coordination_hist(structures[key1], strategy=4.0)
 fig.layout.title = dict(text=f"Coordination Histogram: {key1}", x=0.5, y=0.98)
 fig.layout.margin.t = 50
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-single")
+
+
+# %% Example with CrystalNN
+for strategy in (CrystalNN(), VoronoiNN()):
+    cls_name = type(strategy).__name__
+    fig = pmv.coordination_hist(structures[key1], strategy=strategy)
+    fig.layout.title = dict(
+        text=f"Coordination Histogram ({cls_name}): {key1}", x=0.5, y=0.98
+    )
+    fig.layout.margin.t = 50
+    fig.show()
+    pmv.io.save_and_compress_svg(fig, f"coordination-hist-{cls_name.lower()}")
+
+
+# %% Custom analyzer example
+fig = pmv.coordination_hist(structures[key1], strategy=VoronoiNN())
+fig.layout.margin.t = 50
+fig.layout.title = dict(
+    text=f"Coordination Histogram (VoronoiNN): {key1}", x=0.5, y=0.98
+)
+fig.show()
+pmv.io.save_and_compress_svg(fig, "coordination-hist-voronoi")
 
 
 # %% Multiple structures example
@@ -72,17 +94,6 @@ fig.layout.title = dict(
 )
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-by-element")
-
-
-# %% Custom analyzer example
-custom_analyzer = VoronoiNN()
-fig = pmv.coordination_hist(structures[key1], analyzer=custom_analyzer)
-fig.layout.margin.t = 50
-fig.layout.title = dict(
-    text=f"Coordination Histogram (VoronoiNN): {key1}", x=0.5, y=0.98
-)
-fig.show()
-pmv.io.save_and_compress_svg(fig, "coordination-hist-voronoi")
 
 
 # %% Multiple structures with by_element split

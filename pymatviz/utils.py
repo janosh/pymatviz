@@ -702,7 +702,11 @@ def normalize_to_dict(
     """
     if isinstance(inputs, cls):
         return {"": inputs}
-    if isinstance(inputs, list | tuple) and all(isinstance(obj, cls) for obj in inputs):
+    if (
+        isinstance(inputs, list | tuple)
+        and all(isinstance(obj, cls) for obj in inputs)
+        and len(inputs) > 0
+    ):
         out_dict: dict[str, T] = {}
         for obj in inputs:
             key = key_gen(obj)
