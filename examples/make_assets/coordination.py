@@ -89,7 +89,6 @@ fig.layout.margin.t = 50
 fig.layout.title = dict(
     text="Coordination Histogram by Element: Multiple Structures", x=0.5, y=0.98
 )
-fig.update_layout(height=800)  # Increase height for better visibility
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element")
 
@@ -101,7 +100,6 @@ fig = pmv.coordination_hist(
 )
 fig.layout.margin.t = 50
 fig.layout.title = dict(text="Coordination Histogram by Structure", x=0.5, y=0.98)
-fig.update_layout(height=800)  # Increase height for better visibility
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-by-structure")
 
@@ -130,7 +128,6 @@ fig.layout.title = dict(
     x=0.5,
     y=0.98,
 )
-fig.update_layout(height=800)  # Increase height for better visibility
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element-custom-hover")
 
@@ -152,7 +149,6 @@ fig.layout.title = dict(
     x=0.5,
     y=0.99,
 )
-fig.update_layout(height=800)  # Increase height for better visibility
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element-custom-colors")
 
