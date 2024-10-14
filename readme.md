@@ -177,14 +177,25 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 ## Radial Distribution Functions
 
-See [`pymatviz/rdf.py`](pymatviz/rdf.py).
+See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
-| [`rdf_plot(rdf)`](pymatviz/rdf.py) | [`rdf_plot(rdf, rdf2)`](pymatviz/rdf.py)  |
-| :--------------------------------: | :---------------------------------------: |
-|   ![element-pair-rdfs-Na8Nb8O24]   | ![element-pair-rdfs-crystal-vs-amorphous] |
+| [`rdf_plot(rdf)`](pymatviz/rdf/plotly.py) | [`rdf_plot(rdf, rdf2)`](pymatviz/rdf/plotly.py) |
+| :---------------------------------------: | :---------------------------------------------: |
+|      ![element-pair-rdfs-Na8Nb8O24]       |    ![element-pair-rdfs-crystal-vs-amorphous]    |
 
 [element-pair-rdfs-Na8Nb8O24]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-Na8Nb8O24.svg
 [element-pair-rdfs-crystal-vs-amorphous]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-crystal-vs-amorphous.svg
+
+## Coordination
+
+See [`pymatviz/coordination.py`](pymatviz/coordination.py).
+
+| [`coordination_hist(struct_dict)`](pymatviz/coordination.py) | [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination.py) |
+| :----------------------------------------------------------: | :---------------------------------------------------------------------------: |
+|                 ![coordination-hist-single]                  |                 ![coordination-hist-by-structure-and-element]                 |
+
+[coordination-hist-single]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-hist-single.svg
+[coordination-hist-by-structure-and-element]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-hist-by-structure-and-element.svg
 
 ## Uncertainty
 
