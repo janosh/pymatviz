@@ -2,7 +2,8 @@
 
 import math
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from inspect import isclass
 from typing import Any, Literal
 
 import numpy as np
@@ -10,7 +11,7 @@ import plotly.graph_objects as go
 from plotly.colors import label_rgb
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import NearNeighbors
-from pymatgen.core import Structure
+from pymatgen.core import PeriodicSite, Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, LabelEnum
@@ -47,6 +48,28 @@ def create_hover_text(
         )
 
     return hover_text
+
+
+def normalize_get_neighbors(
+    strategy: float | NearNeighbors | type[NearNeighbors],
+) -> Callable[[PeriodicSite, Structure], list[dict[str, Any]]]:
+    """Normalize get_neighbors function."""
+    # Prepare the neighbor-finding strategy
+    if isinstance(strategy, int | float):
+        return lambda site, structure: structure.get_neighbors(site, strategy)
+    if isinstance(strategy, NearNeighbors):
+        return lambda site, structure: strategy.get_nn_info(
+            structure, structure.index(site)
+        )
+    if isclass(strategy) and issubclass(strategy, NearNeighbors):
+        nn_instance = strategy()
+        return lambda site, structure: nn_instance.get_nn_info(
+            structure, structure.index(site)
+        )
+    raise TypeError(
+        f"Invalid {strategy=}. Expected float, NearNeighbors instance, or "
+        "NearNeighbors subclass."
+    )
 
 
 def coordination_hist(
@@ -111,23 +134,7 @@ def coordination_hist(
     elif not isinstance(hover_data, dict):
         raise TypeError(f"Invalid {hover_data=}")
 
-    # Prepare the neighbor-finding strategy
-    if isinstance(strategy, int | float):
-        get_neighbors = lambda site, structure: structure.get_neighbors(site, strategy)
-    elif isinstance(strategy, NearNeighbors):
-        get_neighbors = lambda site, structure: strategy.get_nn_info(
-            structure, structure.index(site)
-        )
-    elif issubclass(strategy, NearNeighbors):
-        nn_instance = strategy()
-        get_neighbors = lambda site, structure: nn_instance.get_nn_info(
-            structure, structure.index(site)
-        )
-    else:
-        raise TypeError(
-            f"Invalid {strategy=}. Expected float, NearNeighbors instance, or "
-            "NearNeighbors subclass."
-        )
+    get_neighbors = normalize_get_neighbors(strategy)
 
     for struct_key, structure in structures.items():
         coord_data[struct_key] = {}
@@ -386,23 +393,54 @@ def coordination_hist(
 def coordination_vs_cutoff_line(
     structures: Structure | dict[str, Structure] | Sequence[Structure],
     *,
-    cutoff_range: tuple[float, float] = (1.0, 5.0),
+    strategy: tuple[float, float] | NearNeighbors | type[NearNeighbors] = (1.0, 5.0),
     num_points: int = 50,
     element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
+    subplot_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Create a plotly line plot of cumulative coordination numbers vs cutoff distance.
 
     Args:
         structures: A single structure or a dictionary or sequence of structures.
-        cutoff_range: A tuple of (min_cutoff, max_cutoff) in Angstroms.
+        strategy: Neighbor-finding strategy. Can be one of:
+            - float: Single cutoff distance for neighbor search in Angstroms.
+            - tuple[float, float]: (min_cutoff, max_cutoff) range in Angstroms.
+            - NearNeighbors: An instance of a NearNeighbors subclass.
+            - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
+            Defaults to (1.0, 5.0) Angstrom range.
         num_points: Number of points to calculate between min and max cutoff.
         element_color_scheme: Color scheme for elements. Can be "jmol", "vesta", or a
             custom dict.
+        subplot_kwargs: Additional keyword arguments to pass to make_subplots().
 
     Returns:
         A plotly Figure object containing the line plot.
     """
     structures = normalize_to_dict(structures)
+
+    # Determine cutoff range based on strategy
+    if (
+        isinstance(strategy, tuple)
+        and len(strategy) == 2
+        and {*map(type, strategy)} <= {int, float}
+    ):
+        cutoff_range = strategy
+    elif isinstance(strategy, NearNeighbors) or (
+        isclass(strategy) and issubclass(strategy, NearNeighbors)
+    ):
+        nn_instance = strategy if isinstance(strategy, NearNeighbors) else strategy()
+        if hasattr(nn_instance, "cutoff"):
+            max_cutoff = nn_instance.cutoff
+        elif hasattr(nn_instance, "distance_cutoffs"):
+            max_cutoff = nn_instance.distance_cutoffs[1]
+        else:
+            raise AttributeError(f"Could not determine cutoff for {nn_instance=}")
+        cutoff_range = (0, max_cutoff)
+    else:
+        raise TypeError(
+            f"Invalid {strategy=}. Expected float, tuple of floats, NearNeighbors "
+            "instance, or NearNeighbors subclass."
+        )
 
     cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
 
@@ -419,13 +457,14 @@ def coordination_vs_cutoff_line(
         )
 
     n_structures = len(structures)
-    fig = make_subplots(
+    subplot_kwargs = dict(
         rows=n_structures,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.05,
         subplot_titles=list(structures),
-    )
+    ) | (subplot_kwargs or {})
+    fig = make_subplots(**subplot_kwargs)
 
     for idx, (struct_name, structure) in enumerate(structures.items(), start=1):
         elements = sorted({site.specie.symbol for site in structure})
@@ -433,7 +472,8 @@ def coordination_vs_cutoff_line(
         for element in elements:
             coord_numbers = []
             for cutoff in cutoffs:
-                avg_cn = calculate_average_cn(structure, element, cutoff)
+                get_neighbors_fn = normalize_get_neighbors(cutoff)
+                avg_cn = calculate_average_cn(structure, element, get_neighbors_fn)
                 coord_numbers.append(avg_cn)
 
             color = element_colors.get(element)
@@ -458,8 +498,12 @@ def coordination_vs_cutoff_line(
     return fig
 
 
-def calculate_average_cn(structure: Structure, element: str, cutoff: float) -> float:
+def calculate_average_cn(
+    structure: Structure,
+    element: str,
+    get_neighbors: Callable[[PeriodicSite, Structure], list[dict[str, Any]]],
+) -> float:
     """Calculate the average coordination number for a given element in a structure."""
     element_sites = [site for site in structure if site.specie.symbol == element]
-    cn_sum = sum(len(structure.get_neighbors(site, cutoff)) for site in element_sites)
+    cn_sum = sum(len(get_neighbors(site, structure)) for site in element_sites)
     return cn_sum / len(element_sites) if element_sites else 0
