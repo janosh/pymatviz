@@ -55,7 +55,7 @@ def elements_hist(
     Args:
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See count_elements() for
+            Reduce or normalize compositions before counting. See `count_elements` for
             details. Only used when formulas is list of composition strings/objects.
         log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
