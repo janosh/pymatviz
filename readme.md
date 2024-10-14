@@ -186,6 +186,17 @@ See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 [element-pair-rdfs-Na8Nb8O24]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-Na8Nb8O24.svg
 [element-pair-rdfs-crystal-vs-amorphous]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-crystal-vs-amorphous.svg
 
+## Coordination
+
+See [`pymatviz/coordination.py`](pymatviz/coordination.py).
+
+| [`coordination_hist(struct_dict)`](pymatviz/coordination.py) | [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination.py) |
+| :----------------------------------------------------------: | :---------------------------------------------------------------------------: |
+|                 ![coordination-hist-single]                  |                 ![coordination-hist-by-structure-and-element]                 |
+
+[coordination-hist-single]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-hist-single.svg
+[coordination-hist-by-structure-and-element]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-hist-by-structure-and-element.svg
+
 ## Uncertainty
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).

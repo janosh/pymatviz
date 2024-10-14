@@ -6,6 +6,7 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 import pymatviz as pmv
+from pymatviz.coordination import SplitMode
 from pymatviz.utils import TEST_FILES
 
 
@@ -60,7 +61,7 @@ pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple")
 
 
 # %% By element example (now default, but explicitly specified for clarity)
-fig = pmv.coordination_hist(structures[key1], split_mode="by_element")
+fig = pmv.coordination_hist(structures[key1], split_mode=SplitMode.by_element)
 fig.layout.margin.t = 50
 fig.layout.title = dict(
     text=f"Coordination Histogram by Element: {key1}", x=0.5, y=0.98
@@ -96,7 +97,7 @@ pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element")
 # %% Multiple structures with by_structure split
 fig = pmv.coordination_hist(
     {key1: structures[key1], key2: structures[key2], key3: structures[key3]},
-    split_mode="by_structure",
+    split_mode=SplitMode.by_structure,
 )
 fig.layout.margin.t = 50
 fig.layout.title = dict(text="Coordination Histogram by Structure", x=0.5, y=0.98)
@@ -108,7 +109,7 @@ pmv.io.save_and_compress_svg(fig, "coordination-hist-by-structure")
 # %% Multiple structures with by_structure_and_element split
 fig = pmv.coordination_hist(
     {key1: structures[key1], key2: structures[key2], key3: structures[key3]},
-    split_mode="by_structure_and_element",
+    split_mode=SplitMode.by_structure_and_element,
 )
 fig.layout.margin.t = 60
 fig.layout.title = dict(
@@ -156,10 +157,10 @@ fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element-custom-colors")
 
 
-# %% Example with split_mode="none"
+# %% Example with split_mode=SplitMode.none
 fig = pmv.coordination_hist(
     {key1: structures[key1], key2: structures[key2], key3: structures[key3]},
-    split_mode="none",
+    split_mode=SplitMode.none,
 )
 fig.layout.margin.t = 50
 fig.layout.title = dict(
@@ -169,10 +170,10 @@ fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-all-combined")
 
 
-# %% Example with split_mode="none" and side-by-side bars
+# %% Example with split_mode=SplitMode.none and side-by-side bars
 fig = pmv.coordination_hist(
     {key1: structures[key1], key2: structures[key2], key3: structures[key3]},
-    split_mode="none",
+    split_mode=SplitMode.none,
     bar_mode="group",
     bar_kwargs=dict(width=0.2),
 )
