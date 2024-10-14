@@ -5,6 +5,7 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Any, Literal
 
+import numpy as np
 import plotly.graph_objects as go
 from plotly.colors import label_rgb
 from plotly.subplots import make_subplots
@@ -360,3 +361,85 @@ def coordination_hist(
                 fig.update_xaxes(title_text="", row=idx // n_cols + 1, col=idx % n_cols)
 
     return fig
+
+
+def coordination_vs_cutoff_line(
+    structures: Structure | dict[str, Structure] | Sequence[Structure],
+    *,
+    cutoff_range: tuple[float, float] = (1.0, 5.0),
+    num_points: int = 50,
+    element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
+) -> go.Figure:
+    """Create a plotly line plot of cumulative coordination numbers vs cutoff distance.
+
+    Args:
+        structures: A single structure or a dictionary or sequence of structures.
+        cutoff_range: A tuple of (min_cutoff, max_cutoff) in Angstroms.
+        num_points: Number of points to calculate between min and max cutoff.
+        element_color_scheme: Color scheme for elements. Can be "jmol", "vesta", or a
+            custom dict.
+
+    Returns:
+        A plotly Figure object containing the line plot.
+    """
+    structures = normalize_to_dict(structures)
+
+    cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
+
+    if isinstance(element_color_scheme, dict):
+        element_colors = ELEM_COLORS_JMOL | element_color_scheme
+    elif element_color_scheme == ElemColorScheme.jmol:
+        element_colors = ELEM_COLORS_JMOL
+    elif element_color_scheme == ElemColorScheme.vesta:
+        element_colors = ELEM_COLORS_VESTA
+    else:
+        raise ValueError(
+            f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
+            "or a custom dict."
+        )
+
+    n_structures = len(structures)
+    fig = make_subplots(
+        rows=n_structures,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.05,
+        subplot_titles=list(structures),
+    )
+
+    for idx, (struct_name, structure) in enumerate(structures.items(), start=1):
+        elements = sorted({site.specie.symbol for site in structure})
+
+        for element in elements:
+            coord_numbers = []
+            for cutoff in cutoffs:
+                avg_cn = calculate_average_cn(structure, element, cutoff)
+                coord_numbers.append(avg_cn)
+
+            color = element_colors.get(element)
+            if isinstance(color, tuple) and len(color) == 3:
+                color = label_rgb(color)
+
+            fig.add_scatter(
+                x=cutoffs,
+                y=coord_numbers,
+                mode="lines",
+                name=element,
+                line=dict(color=color),
+                legendgroup=struct_name,
+                legendgrouptitle_text=struct_name,
+                row=idx,
+                col=1,
+            )
+
+    fig.update_xaxes(title_text="Cutoff Distance (Å)", row=n_structures)
+    fig.update_yaxes(title_text="Coordination Number")
+
+    return fig
+
+
+def calculate_average_cn(structure: Structure, element: str, cutoff: float) -> float:
+    """Calculate the average coordination number for a given element in a structure."""
+    element_sites = [site for site in structure if site.specie.symbol == element]
+    cn_sum = sum(len(structure.get_neighbors(site, cutoff)) for site in element_sites)
+    return cn_sum / len(element_sites) if element_sites else 0
