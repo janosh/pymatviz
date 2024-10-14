@@ -12,9 +12,16 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import pytest
 from matplotlib.offsetbox import TextArea
+from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
-from pymatviz.utils import MATPLOTLIB, PLOTLY, VALID_FIG_NAMES, CrystalSystem
+from pymatviz.utils import (
+    MATPLOTLIB,
+    PLOTLY,
+    VALID_FIG_NAMES,
+    CrystalSystem,
+    normalize_to_dict,
+)
 from tests.conftest import y_pred, y_true
 
 
@@ -640,3 +647,84 @@ def test_get_matplotlib_font_color_from_rcparams() -> None:
         assert color == "green", f"Expected 'green', but got '{color}'"
     finally:
         plt.rcParams["text.color"] = original_color  # Reset to original value
+
+
+class DummyClass:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.formula = name  # Add a formula attribute to mimic Structure
+
+
+@pytest.mark.parametrize("cls", [Structure, DummyClass, Lattice])
+def test_normalize_to_dict(
+    cls: type[Structure | DummyClass | Lattice],
+) -> None:
+    # Test with a single instance
+    single_instance = {
+        Structure: Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
+        DummyClass: DummyClass("dummy"),
+        Lattice: Lattice.cubic(5),
+    }[cls]
+    result = normalize_to_dict(single_instance, cls=cls)
+    assert isinstance(result, dict)
+    assert len(result) == 1
+    assert "" in result
+    assert isinstance(result[""], cls)
+
+    # Test with empty input
+    assert normalize_to_dict([], cls=cls) == {}
+
+    # Test with a list of instances
+    instance_list = [single_instance, single_instance]
+    result = normalize_to_dict(instance_list, cls=cls)
+    assert isinstance(result, dict)
+    assert len(result) == 2
+    assert all(isinstance(s, cls) for s in result.values())
+    expected_keys = {
+        Structure: {"Si1", "Si1 1"},
+        DummyClass: {"dummy", "dummy 1"},
+        Lattice: {"Lattice", "Lattice 1"},
+    }[cls]
+    assert set(result) == expected_keys
+
+    # Test with a dictionary of instances
+    instance_dict = {"item1": single_instance, "item2": single_instance}
+    result = normalize_to_dict(instance_dict, cls=cls)
+    assert result == instance_dict
+
+    # Test with invalid input
+    inputs, cls_name = "invalid input", cls.__name__
+    err_msg = f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
+    with pytest.raises(TypeError, match=err_msg):
+        normalize_to_dict(inputs, cls=cls)
+
+    # Test with mixed valid and invalid inputs in a list
+    inputs = [single_instance, "invalid"]  # type: ignore[assignment]
+    err_msg = re.escape(
+        f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
+    )
+    with pytest.raises(TypeError, match=err_msg):
+        normalize_to_dict(inputs, cls=cls)
+
+
+@pytest.mark.parametrize(
+    ("cls1", "cls2"),
+    [
+        (Structure, DummyClass),
+        (DummyClass, Lattice),
+        (Structure, Lattice),
+    ],
+)
+def test_normalize_to_dict_mixed_classes(
+    cls1: type[Structure | DummyClass], cls2: type[Structure | DummyClass]
+) -> None:
+    obj_map = {
+        Structure: Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
+        DummyClass: DummyClass("dummy1"),
+        Lattice: Lattice.cubic(5),
+    }
+    instance1 = obj_map[cls1]
+    instance2 = obj_map[cls2]
+
+    with pytest.raises(TypeError, match=r"Invalid inputs=\["):
+        normalize_to_dict([instance1, instance2], cls=cls1)

@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from functools import partial, wraps
 from os.path import dirname
-from typing import TYPE_CHECKING, Literal, cast, get_args
+from typing import TYPE_CHECKING, Literal, TypeVar, cast, get_args
 
 import matplotlib.colors
 import matplotlib.pyplot as plt
@@ -20,17 +20,20 @@ import scipy.stats
 from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import AnchoredText
 from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
+from pymatgen.core import Structure
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
-    from typing import Any, ParamSpec, TypeAlias, TypeVar
+    from typing import Any, ParamSpec, TypeAlias
 
     from matplotlib.ticker import Formatter
     from numpy.typing import ArrayLike
 
-    P = ParamSpec("P")
-    R = TypeVar("R")
+    P = ParamSpec("P")  # generic type for function parameters
+    R = TypeVar("R")  # generic type for return value
+
+T = TypeVar("T")  # generic type for input validation
 
 PKG_DIR = dirname(__file__)
 ROOT = dirname(PKG_DIR)
@@ -673,3 +676,46 @@ def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
 
     # Check rcParams
     return plt.rcParams.get("text.color", "black")
+
+
+def normalize_to_dict(
+    inputs: T | Sequence[T] | dict[str, T],
+    cls: type[T] = Structure,
+    key_gen: Callable[[T], str] = lambda obj: getattr(
+        obj, "formula", type(obj).__name__
+    ),
+) -> dict[str, T]:
+    """Normalize input to a dictionary of objects.
+
+    Args:
+        inputs: A single object, a sequence of objects, or a dictionary of objects.
+        cls (type[T], optional): The class of the objects to normalize. Defaults to
+            pymatgen.core.Structure.
+        key_gen (Callable[[T], str], optional): A function that generates a key for
+            each object. Defaults to using the object's formula.
+
+    Returns:
+        A dictionary of objects with keys as object formulas or given keys.
+
+    Raises:
+        TypeError: If the input format is invalid.
+    """
+    if isinstance(inputs, cls):
+        return {"": inputs}
+    if isinstance(inputs, list | tuple) and all(isinstance(obj, cls) for obj in inputs):
+        out_dict: dict[str, T] = {}
+        for obj in inputs:
+            key = key_gen(obj)
+            idx = 1
+            while key in out_dict:
+                key += f" {idx}"
+                idx += 1
+            out_dict[key] = obj
+        return out_dict
+    if isinstance(inputs, dict):
+        return inputs
+
+    cls_name = cls.__name__
+    raise TypeError(
+        f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
+    )

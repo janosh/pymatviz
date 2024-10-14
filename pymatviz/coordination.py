@@ -13,6 +13,7 @@ from pymatgen.core import Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import LabelEnum
+from pymatviz.utils import normalize_to_dict
 
 
 class SplitMode(LabelEnum):
@@ -91,18 +92,9 @@ def coordination_hist(
     Returns:
         A plotly Figure object containing the histogram.
     """
-    analyzer = analyzer or CrystalNN()
+    structures = normalize_to_dict(structures)
 
-    if isinstance(structures, Structure):
-        structures = {structures.formula: structures}
-    elif (
-        isinstance(structures, Sequence)
-        and len(structures) > 0
-        and isinstance(structures[0], Structure)
-    ):
-        structures = {struct.formula: struct for struct in structures}
-    elif not isinstance(structures, dict):
-        raise TypeError(f"Invalid {structures=}")
+    analyzer = analyzer or CrystalNN()
 
     # coord_data: coordination numbers and hover data for each structure and element
     coord_data: dict[str, dict[str, Any]] = {}
