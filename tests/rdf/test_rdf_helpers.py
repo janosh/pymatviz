@@ -29,7 +29,7 @@ def test_normalize_structures() -> None:
     assert isinstance(result, dict)
     assert len(result) == 2
     assert all(isinstance(s, Structure) for s in result.values())
-    assert set(result.keys()) == {"Si1", "Ge1"}
+    assert set(result) == {"Si1", "Ge1"}
 
     # Test with a dictionary of Structures
     structure_dict = {
@@ -66,10 +66,9 @@ def test_calculate_rdf(structures: list[Structure]) -> None:
 )
 def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> None:
     # Create large structure with random coordinates
-    lattice = Lattice.cubic(30)
     elements = sum(([el] * n_atoms for el in composition), [])  # noqa: RUF017
     coords = np.random.default_rng(seed=0).uniform(size=(len(elements), 3))
-    structure = Structure(lattice, elements, coords)
+    structure = Structure(Lattice.cubic(30), elements, coords)
 
     # Calculate RDF for each element pair
     cutoff, n_bins = 12, 75
@@ -112,9 +111,8 @@ def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> No
     [(1, 1, 1), (1, 1, 0), (1, 0, 0), (0, 0, 0)],
 )
 def test_calculate_rdf_pbc_settings(pbc: tuple[int, int, int]) -> None:
-    lattice = Lattice.cubic(5)
     coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-    structure = Structure(lattice, ["Si", "Si"], coords)
+    structure = Structure(Lattice.cubic(5), ["Si", "Si"], coords)
 
     cutoff, n_bins = 10, 100
     radii, rdf = calculate_rdf(
@@ -139,9 +137,8 @@ def test_calculate_rdf_pbc_settings(pbc: tuple[int, int, int]) -> None:
 
 
 def test_calculate_rdf_pbc_consistency() -> None:
-    lattice = Lattice.cubic(10)
     coords = np.random.default_rng(seed=0).uniform(size=(20, 3))
-    structure = Structure(lattice, ["Si"] * 20, coords)
+    structure = Structure(Lattice.cubic(10), ["Si"] * 20, coords)
 
     cutoff, n_bins = 15, 150
 
@@ -167,9 +164,8 @@ def test_calculate_rdf_pbc_consistency() -> None:
 
 
 def test_calculate_rdf_different_species() -> None:
-    lattice = Lattice.cubic(5)
     coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
-    structure = Structure(lattice, ["Si", "Ge"], coords)
+    structure = Structure(Lattice.cubic(5), ["Si", "Ge"], coords)
 
     cutoff, n_bins = 10, 100
 
@@ -210,10 +206,8 @@ def test_calculate_rdf_different_species() -> None:
     [(4, [0.9, 0.9, 0.9]), (0.1, [0.1, 0.1, 0.1])],
 )
 def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> None:
-    lattice = Lattice.cubic(5)
-
     # Test with a single atom
-    single_atom = Structure(lattice, ["Si"], [[0, 0, 0]])
+    single_atom = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
     _radii, rdf = calculate_rdf(
         single_atom,
         center_species="Si",
@@ -224,7 +218,7 @@ def test_calculate_rdf_edge_cases(cutoff: float, frac_coords: list[float]) -> No
     assert np.all(rdf == 0), "RDF for a single atom should be all zeros"
 
     # Check RDF=0 everywhere for distant atoms (beyond cutoff)
-    distant_atoms = Structure(lattice, ["Si", "Si"], [[0, 0, 0], frac_coords])
+    distant_atoms = Structure(Lattice.cubic(5), ["Si", "Si"], [[0, 0, 0], frac_coords])
     _radii, rdf = calculate_rdf(
         distant_atoms,
         center_species="Si",
