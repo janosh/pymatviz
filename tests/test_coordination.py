@@ -70,7 +70,8 @@ def test_coordination_hist_element_color_scheme(
 ) -> None:
     """Test coordination_hist with custom element color scheme."""
     elements = {site.specie.symbol for site in structures[0]}
-    custom_colors = {elem: f"#{hash(elem) % 0xFFFFFF:06x}" for elem in elements}
+    colors = ("red", "blue", "green", "yellow", "purple", "orange", "pink", "brown")
+    custom_colors = dict(zip(elements, colors, strict=False))
     fig = coordination_hist(structures[0], element_color_scheme=custom_colors)
     assert fig.data
     for trace in fig.data:

@@ -12,7 +12,7 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
-from pymatviz.enums import LabelEnum
+from pymatviz.enums import ElemColorScheme, LabelEnum
 from pymatviz.utils import normalize_to_dict
 
 
@@ -55,7 +55,7 @@ def coordination_hist(
     split_mode: SplitMode | str = SplitMode.by_element,
     bar_mode: Literal["group", "stack"] = "stack",
     hover_data: Sequence[str] | dict[str, str] | None = None,
-    element_color_scheme: Literal["Jmol", "VESTA"] | dict[str, str] = "Jmol",
+    element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
     annotate_bars: bool | dict[str, Any] = False,
     bar_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
@@ -81,7 +81,7 @@ def coordination_hist(
         hover_data: Sequence of keys or dict mapping keys to pretty labels for
             additional data to be shown in the hover tooltip. The keys must exist in the
             site properties or properties dict of the structure.
-        element_color_scheme: Color scheme for elements. Can be "Jmol", "VESTA", or a
+        element_color_scheme: Color scheme for elements. Can be "jmol", "vesta", or a
             custom dict.
         annotate_bars: If True, annotate bars with element symbols when split_mode
             is 'by_element' or 'by_structure_and_element'. If a dict, used as keywords
@@ -156,15 +156,16 @@ def coordination_hist(
     if isinstance(element_color_scheme, dict):
         # Merge custom colors with default Jmol colors to get a complete color scheme
         element_colors = ELEM_COLORS_JMOL | element_color_scheme
-    elif element_color_scheme == "Jmol":
+    elif element_color_scheme == ElemColorScheme.jmol:
         element_colors = ELEM_COLORS_JMOL
-    elif element_color_scheme == "VESTA":
+    elif element_color_scheme == ElemColorScheme.vesta:
         element_colors = ELEM_COLORS_VESTA
     elif isinstance(element_color_scheme, dict):
         element_colors = element_color_scheme
     else:
         raise ValueError(
-            "Invalid element_color_scheme. Must be 'Jmol', 'VESTA' or a custom dict."
+            f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
+            f"or a custom dict."
         )
 
     max_count = 0

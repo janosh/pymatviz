@@ -133,11 +133,7 @@ pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element-custom-
 
 
 # %% Multiple structures with by_element split and custom element color scheme
-custom_colors = {
-    "Fe": "#FF0000",
-    "O": "#0000FF",
-    "H": "#00FF00",
-}  # Example custom colors
+custom_colors = {"Fe": "red", "O": "blue", "H": "green"}
 fig = pmv.coordination_hist(
     {key1: structures[key1], key2: structures[key2], key3: structures[key3]},
     hover_data=("oxidation_state", "wyckoff"),
