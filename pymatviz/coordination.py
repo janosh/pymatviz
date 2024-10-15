@@ -456,10 +456,11 @@ def coordination_vs_cutoff_line(
             "or a custom dict."
         )
 
-    n_structures = len(structures)
+    n_cols = min(3, len(structures))
+    n_rows = math.ceil(len(structures) / n_cols)
     subplot_kwargs = dict(
-        rows=n_structures,
-        cols=1,
+        cols=n_cols,
+        rows=n_rows,
         shared_xaxes=True,
         vertical_spacing=0.05,
         subplot_titles=list(structures),
@@ -488,11 +489,11 @@ def coordination_vs_cutoff_line(
                 line=dict(color=color),
                 legendgroup=struct_name,
                 legendgrouptitle_text=struct_name,
-                row=idx,
-                col=1,
+                row=(idx - 1) // n_cols + 1,
+                col=(idx - 1) % n_cols + 1,
             )
 
-    fig.update_xaxes(title_text="Cutoff Distance (Å)", row=n_structures)
+    fig.update_xaxes(title_text="Cutoff Distance (Å)", row=n_rows)
     fig.update_yaxes(title_text="Coordination Number")
 
     return fig

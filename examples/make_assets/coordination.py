@@ -203,12 +203,13 @@ pmv.io.save_and_compress_svg(fig, "coordination-vs-cutoff-single")
 # %% Coordination vs Cutoff example for multiple structures
 fig = pmv.coordination_vs_cutoff_line(
     {key1: structures[key1], key2: structures[key2], key3: structures[key3]},
-    cutoff_range=(1.0, 6.0),
+    strategy=(1.0, 6.0),
     num_points=100,
 )
 fig.layout.title = dict(
     text="Coordination vs Cutoff: Multiple Structures", x=0.5, y=0.98
 )
+fig.layout.legend.update(x=0, y=1, bgcolor="rgba(0,0,0,0)")
 fig.layout.margin.t = 50
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-vs-cutoff-multiple")
