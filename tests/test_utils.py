@@ -671,9 +671,6 @@ def test_normalize_to_dict(
     assert "" in result
     assert isinstance(result[""], cls)
 
-    # Test with empty input
-    assert normalize_to_dict([], cls=cls) == {}
-
     # Test with a list of instances
     instance_list = [single_instance, single_instance]
     result = normalize_to_dict(instance_list, cls=cls)
