@@ -63,7 +63,7 @@ def test_element_pair_rdfs_invalid_elements(structures: list[Structure]) -> None
 
 
 def test_element_pair_rdfs_invalid_structure() -> None:
-    with pytest.raises(TypeError, match="Invalid input format for structures"):
+    with pytest.raises(TypeError, match="Invalid inputs="):
         element_pair_rdfs("not a structure")
 
 
@@ -229,7 +229,7 @@ def test_full_rdf_empty_structure() -> None:
 
 
 def test_full_rdf_invalid_structure() -> None:
-    with pytest.raises(TypeError, match="Invalid input format for structures="):
+    with pytest.raises(TypeError, match="Invalid inputs="):
         full_rdf("not a structure")
 
 
