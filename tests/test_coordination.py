@@ -1,10 +1,18 @@
+import re
 from collections.abc import Sequence
+from typing import Any
 
 import pytest
-from pymatgen.analysis.local_env import VoronoiNN
-from pymatgen.core import Structure
+from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
+from pymatgen.core import Lattice, Structure
 
-from pymatviz.coordination import SplitMode, coordination_hist
+from pymatviz.colors import ELEM_COLORS_JMOL
+from pymatviz.coordination import (
+    ElemColorScheme,
+    SplitMode,
+    coordination_hist,
+    coordination_vs_cutoff_line,
+)
 
 
 def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> None:
@@ -41,12 +49,38 @@ def test_coordination_hist_split_modes(
         assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
 
 
-def test_coordination_hist_custom_analyzer(structures: Sequence[Structure]) -> None:
-    """Test coordination_hist with a custom analyzer."""
-    custom_analyzer = VoronoiNN()
-    fig = coordination_hist(structures[0], analyzer=custom_analyzer)
+@pytest.mark.parametrize(
+    "strategy", [3.0, 6, VoronoiNN(), CrystalNN, CrystalNN(distance_cutoffs=(0.5, 2))]
+)
+def test_coordination_hist_custom_strategy(
+    structures: Sequence[Structure],
+    strategy: NearNeighbors | type[NearNeighbors] | float,
+) -> None:
+    """Test coordination_hist with a custom strategy."""
+    fig = coordination_hist(structures[1], strategy=strategy)
     assert fig.data
-    assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
+    assert len(fig.data) == 3
+    expected_max_x = {
+        3.0: 9,
+        6: 47,
+        VoronoiNN(): 19,
+        CrystalNN: 10,
+        CrystalNN(distance_cutoffs=(0.5, 2)): 10,
+    }[strategy]
+    actual_max_x = max(max(trace.x) for trace in fig.data)
+    assert actual_max_x == expected_max_x, f"{actual_max_x=} for {strategy=}"
+
+    # Test with multiple structures
+    fig_multi = coordination_hist(structures, strategy=strategy)
+    assert fig_multi.data
+    assert len(fig_multi.data) >= len(fig.data)
+
+    # Test different split modes
+    for split_mode in SplitMode:
+        fig_split = coordination_hist(
+            structures[:2], strategy=strategy, split_mode=split_mode
+        )
+        assert fig_split.data
 
 
 def test_coordination_hist_bar_mode(structures: Sequence[Structure]) -> None:
@@ -70,7 +104,8 @@ def test_coordination_hist_element_color_scheme(
 ) -> None:
     """Test coordination_hist with custom element color scheme."""
     elements = {site.specie.symbol for site in structures[0]}
-    custom_colors = {elem: f"#{hash(elem) % 0xFFFFFF:06x}" for elem in elements}
+    colors = ("red", "blue", "green", "yellow", "purple", "orange", "pink", "brown")
+    custom_colors = dict(zip(elements, colors, strict=False))
     fig = coordination_hist(structures[0], element_color_scheme=custom_colors)
     assert fig.data
     for trace in fig.data:
@@ -113,5 +148,87 @@ def test_coordination_hist_invalid_input() -> None:
 
 def test_coordination_hist_empty() -> None:
     """Test coordination_hist with an empty structure."""
-    with pytest.raises(TypeError, match="Invalid structures="):
+    with pytest.raises(TypeError, match="Invalid inputs="):
         coordination_hist(())
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    [
+        (0, 3),  # int cutoff range
+        (1.0, 5.0),  # float cutoff range
+        # VoronoiNN(),  # NearNeighbors instance
+        CrystalNN,  # NearNeighbors subclass
+        CrystalNN(distance_cutoffs=(0.5, 2)),  # instance with custom params
+    ],
+)
+def test_coordination_vs_cutoff_line(
+    structures: Sequence[Structure],
+    strategy: float | tuple[float, float] | NearNeighbors | type[NearNeighbors],
+) -> None:
+    """Test coordination_vs_cutoff_line function with different strategies."""
+    # Test with a single structure
+    fig = coordination_vs_cutoff_line(structures[0], strategy=strategy)
+    assert fig.data
+    assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
+
+    # Test with multiple structures
+    fig_multi = coordination_vs_cutoff_line(structures[:2], strategy=strategy)
+    assert fig_multi.data
+    assert len(fig_multi.data) >= len(fig.data)
+
+    # Test with custom number of points
+    fig_custom_points = coordination_vs_cutoff_line(
+        structures[0], strategy=strategy, num_points=100
+    )
+    assert fig_custom_points.data
+    assert len(fig_custom_points.data[0].x) == 100
+
+    # Test with custom element color scheme
+    custom_colors = {"Si": "red", "O": "blue"}
+    fig_custom_colors = coordination_vs_cutoff_line(
+        structures[0], strategy=strategy, element_color_scheme=custom_colors
+    )
+    assert fig_custom_colors.data
+    for trace in fig_custom_colors.data:
+        element = trace.name.split(" (")[0]
+        assert trace.line.color == custom_colors.get(
+            element, ELEM_COLORS_JMOL.get(element)
+        )
+
+    # Test with built-in color schemes
+    for color_scheme in ElemColorScheme:
+        fig_color_scheme = coordination_vs_cutoff_line(
+            structures[0], strategy=strategy, element_color_scheme=color_scheme
+        )
+        assert fig_color_scheme.data
+
+    # Test y-axis label
+    assert fig.layout.yaxis.title.text == "Coordination Number"
+
+    # Test with custom subplot_kwargs
+    custom_subplot_kwargs = {
+        "vertical_spacing": 0.1,
+        "subplot_titles": ["Custom Title 1", "Custom Title 2"],
+    }
+    fig_custom_subplot = coordination_vs_cutoff_line(
+        structures[:2], strategy=strategy, subplot_kwargs=custom_subplot_kwargs
+    )
+    assert fig_custom_subplot.data
+    assert fig_custom_subplot.layout.annotations[0].text == "Custom Title 1"
+    assert fig_custom_subplot.layout.annotations[1].text == "Custom Title 2"
+
+
+def test_coordination_vs_cutoff_line_invalid_input() -> None:
+    """Test coordination_vs_cutoff_line with invalid input."""
+    inputs: Any
+    for inputs in ([], (), "invalid input", None):
+        with pytest.raises(TypeError, match=re.escape(f"Invalid {inputs=}")):
+            coordination_vs_cutoff_line(inputs)
+
+
+def test_coordination_vs_cutoff_line_invalid_strategy() -> None:
+    """Test coordination_vs_cutoff_line with invalid strategy."""
+    structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
+    with pytest.raises(TypeError, match="Invalid strategy="):
+        coordination_vs_cutoff_line(structure, strategy="invalid")

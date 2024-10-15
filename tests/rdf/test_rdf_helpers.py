@@ -5,47 +5,7 @@ import pytest
 from numpy.testing import assert_allclose
 from pymatgen.core import Lattice, Structure
 
-from pymatviz.rdf.helpers import calculate_rdf, normalize_structures
-
-
-def test_normalize_structures() -> None:
-    # Test with a single Structure
-    single_structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
-    result = normalize_structures(single_structure)
-    assert isinstance(result, dict)
-    assert len(result) == 1
-    assert "" in result
-    assert isinstance(result[""], Structure)
-
-    # Test with empty input
-    assert normalize_structures([]) == {}
-
-    # Test with a list of Structures
-    structure_list = [
-        Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
-        Structure(Lattice.cubic(5), ["Ge"], [[0, 0, 0]]),
-    ]
-    result = normalize_structures(structure_list)
-    assert isinstance(result, dict)
-    assert len(result) == 2
-    assert all(isinstance(s, Structure) for s in result.values())
-    assert set(result) == {"Si1", "Ge1"}
-
-    # Test with a dictionary of Structures
-    structure_dict = {
-        "silicon": Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
-        "germanium": Structure(Lattice.cubic(5), ["Ge"], [[0, 0, 0]]),
-    }
-    result = normalize_structures(structure_dict)
-    assert result == structure_dict
-
-    # Test with invalid input
-    with pytest.raises(TypeError, match="Invalid input format for structures="):
-        normalize_structures("invalid input")
-
-    # Test with mixed valid and invalid inputs in a list
-    with pytest.raises(TypeError, match="Invalid input format for structures="):
-        normalize_structures([single_structure, "invalid"])
+from pymatviz.rdf.helpers import calculate_rdf
 
 
 def test_calculate_rdf(structures: list[Structure]) -> None:

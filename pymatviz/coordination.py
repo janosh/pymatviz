@@ -2,17 +2,20 @@
 
 import math
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from inspect import isclass
 from typing import Any, Literal
 
+import numpy as np
 import plotly.graph_objects as go
 from plotly.colors import label_rgb
 from plotly.subplots import make_subplots
-from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
-from pymatgen.core import Structure
+from pymatgen.analysis.local_env import NearNeighbors
+from pymatgen.core import PeriodicSite, Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
-from pymatviz.enums import LabelEnum
+from pymatviz.enums import ElemColorScheme, LabelEnum
+from pymatviz.utils import normalize_to_dict
 
 
 class SplitMode(LabelEnum):
@@ -47,14 +50,36 @@ def create_hover_text(
     return hover_text
 
 
+def normalize_get_neighbors(
+    strategy: float | NearNeighbors | type[NearNeighbors],
+) -> Callable[[PeriodicSite, Structure], list[dict[str, Any]]]:
+    """Normalize get_neighbors function."""
+    # Prepare the neighbor-finding strategy
+    if isinstance(strategy, int | float):
+        return lambda site, structure: structure.get_neighbors(site, strategy)
+    if isinstance(strategy, NearNeighbors):
+        return lambda site, structure: strategy.get_nn_info(
+            structure, structure.index(site)
+        )
+    if isclass(strategy) and issubclass(strategy, NearNeighbors):
+        nn_instance = strategy()
+        return lambda site, structure: nn_instance.get_nn_info(
+            structure, structure.index(site)
+        )
+    raise TypeError(
+        f"Invalid {strategy=}. Expected float, NearNeighbors instance, or "
+        "NearNeighbors subclass."
+    )
+
+
 def coordination_hist(
     structures: Structure | dict[str, Structure] | Sequence[Structure],
     *,
-    analyzer: NearNeighbors | None = None,
+    strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
     split_mode: SplitMode | str = SplitMode.by_element,
     bar_mode: Literal["group", "stack"] = "stack",
     hover_data: Sequence[str] | dict[str, str] | None = None,
-    element_color_scheme: Literal["Jmol", "VESTA"] | dict[str, str] = "Jmol",
+    element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
     annotate_bars: bool | dict[str, Any] = False,
     bar_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
@@ -62,7 +87,11 @@ def coordination_hist(
 
     Args:
         structures: A single structure or a dictionary or sequence of structures.
-        analyzer: A local environment analyzer (default is CrystalNN).
+        strategy: Neighbor-finding strategy. Can be one of:
+            - float: Cutoff distance for neighbor search in Angstroms.
+            - NearNeighbors: An instance of a NearNeighbors subclass.
+            - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
+            Defaults to 3.0 (Angstroms cutoff).
         split_mode: How to split the data into subplots or color groups.
             "none": Single plot with all data. All elements of all structures (if
                 multiple were passed) will be shown in the same plot.
@@ -80,7 +109,7 @@ def coordination_hist(
         hover_data: Sequence of keys or dict mapping keys to pretty labels for
             additional data to be shown in the hover tooltip. The keys must exist in the
             site properties or properties dict of the structure.
-        element_color_scheme: Color scheme for elements. Can be "Jmol", "VESTA", or a
+        element_color_scheme: Color scheme for elements. Can be "jmol", "vesta", or a
             custom dict.
         annotate_bars: If True, annotate bars with element symbols when split_mode
             is 'by_element' or 'by_structure_and_element'. If a dict, used as keywords
@@ -91,18 +120,7 @@ def coordination_hist(
     Returns:
         A plotly Figure object containing the histogram.
     """
-    analyzer = analyzer or CrystalNN()
-
-    if isinstance(structures, Structure):
-        structures = {structures.formula: structures}
-    elif (
-        isinstance(structures, Sequence)
-        and len(structures) > 0
-        and isinstance(structures[0], Structure)
-    ):
-        structures = {struct.formula: struct for struct in structures}
-    elif not isinstance(structures, dict):
-        raise TypeError(f"Invalid {structures=}")
+    structures = normalize_to_dict(structures)
 
     # coord_data: coordination numbers and hover data for each structure and element
     coord_data: dict[str, dict[str, Any]] = {}
@@ -116,10 +134,12 @@ def coordination_hist(
     elif not isinstance(hover_data, dict):
         raise TypeError(f"Invalid {hover_data=}")
 
+    get_neighbors = normalize_get_neighbors(strategy)
+
     for struct_key, structure in structures.items():
         coord_data[struct_key] = {}
         for idx, site in enumerate(structure):
-            cn = analyzer.get_cn(structure, idx)
+            cn = len(get_neighbors(site, structure))
             min_cn = min(min_cn, cn)
             max_cn = max(max_cn, cn)
             elem_symbol = site.specie.symbol
@@ -164,15 +184,16 @@ def coordination_hist(
     if isinstance(element_color_scheme, dict):
         # Merge custom colors with default Jmol colors to get a complete color scheme
         element_colors = ELEM_COLORS_JMOL | element_color_scheme
-    elif element_color_scheme == "Jmol":
+    elif element_color_scheme == ElemColorScheme.jmol:
         element_colors = ELEM_COLORS_JMOL
-    elif element_color_scheme == "VESTA":
+    elif element_color_scheme == ElemColorScheme.vesta:
         element_colors = ELEM_COLORS_VESTA
     elif isinstance(element_color_scheme, dict):
         element_colors = element_color_scheme
     else:
         raise ValueError(
-            "Invalid element_color_scheme. Must be 'Jmol', 'VESTA' or a custom dict."
+            f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
+            f"or a custom dict."
         )
 
     max_count = 0
@@ -367,3 +388,123 @@ def coordination_hist(
                 fig.update_xaxes(title_text="", row=idx // n_cols + 1, col=idx % n_cols)
 
     return fig
+
+
+def coordination_vs_cutoff_line(
+    structures: Structure | dict[str, Structure] | Sequence[Structure],
+    *,
+    strategy: tuple[float, float] | NearNeighbors | type[NearNeighbors] = (1.0, 5.0),
+    num_points: int = 50,
+    element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
+    subplot_kwargs: dict[str, Any] | None = None,
+) -> go.Figure:
+    """Create a plotly line plot of cumulative coordination numbers vs cutoff distance.
+
+    Args:
+        structures: A single structure or a dictionary or sequence of structures.
+        strategy: Neighbor-finding strategy. Can be one of:
+            - float: Single cutoff distance for neighbor search in Angstroms.
+            - tuple[float, float]: (min_cutoff, max_cutoff) range in Angstroms.
+            - NearNeighbors: An instance of a NearNeighbors subclass.
+            - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
+            Defaults to (1.0, 5.0) Angstrom range.
+        num_points: Number of points to calculate between min and max cutoff.
+        element_color_scheme: Color scheme for elements. Can be "jmol", "vesta", or a
+            custom dict.
+        subplot_kwargs: Additional keyword arguments to pass to make_subplots().
+
+    Returns:
+        A plotly Figure object containing the line plot.
+    """
+    structures = normalize_to_dict(structures)
+
+    # Determine cutoff range based on strategy
+    if (
+        isinstance(strategy, tuple)
+        and len(strategy) == 2
+        and {*map(type, strategy)} <= {int, float}
+    ):
+        cutoff_range = strategy
+    elif isinstance(strategy, NearNeighbors) or (
+        isclass(strategy) and issubclass(strategy, NearNeighbors)
+    ):
+        nn_instance = strategy if isinstance(strategy, NearNeighbors) else strategy()
+        if hasattr(nn_instance, "cutoff"):
+            max_cutoff = nn_instance.cutoff
+        elif hasattr(nn_instance, "distance_cutoffs"):
+            max_cutoff = nn_instance.distance_cutoffs[1]
+        else:
+            raise AttributeError(f"Could not determine cutoff for {nn_instance=}")
+        cutoff_range = (0, max_cutoff)
+    else:
+        raise TypeError(
+            f"Invalid {strategy=}. Expected float, tuple of floats, NearNeighbors "
+            "instance, or NearNeighbors subclass."
+        )
+
+    cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
+
+    if isinstance(element_color_scheme, dict):
+        element_colors = ELEM_COLORS_JMOL | element_color_scheme
+    elif element_color_scheme == ElemColorScheme.jmol:
+        element_colors = ELEM_COLORS_JMOL
+    elif element_color_scheme == ElemColorScheme.vesta:
+        element_colors = ELEM_COLORS_VESTA
+    else:
+        raise ValueError(
+            f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
+            "or a custom dict."
+        )
+
+    n_cols = min(3, len(structures))
+    n_rows = math.ceil(len(structures) / n_cols)
+    subplot_kwargs = dict(
+        cols=n_cols,
+        rows=n_rows,
+        shared_xaxes=True,
+        vertical_spacing=0.05,
+        subplot_titles=list(structures),
+    ) | (subplot_kwargs or {})
+    fig = make_subplots(**subplot_kwargs)
+
+    for idx, (struct_name, structure) in enumerate(structures.items(), start=1):
+        elements = sorted({site.specie.symbol for site in structure})
+
+        for element in elements:
+            coord_numbers = []
+            for cutoff in cutoffs:
+                get_neighbors_fn = normalize_get_neighbors(cutoff)
+                avg_cn = calculate_average_cn(structure, element, get_neighbors_fn)
+                coord_numbers.append(avg_cn)
+
+            color = element_colors.get(element)
+            if isinstance(color, tuple) and len(color) == 3:
+                color = label_rgb(color)
+
+            fig.add_scatter(
+                x=cutoffs,
+                y=coord_numbers,
+                mode="lines",
+                name=element,
+                line=dict(color=color),
+                legendgroup=struct_name,
+                legendgrouptitle_text=struct_name,
+                row=(idx - 1) // n_cols + 1,
+                col=(idx - 1) % n_cols + 1,
+            )
+
+    fig.update_xaxes(title_text="Cutoff Distance (Å)", row=n_rows)
+    fig.update_yaxes(title_text="Coordination Number")
+
+    return fig
+
+
+def calculate_average_cn(
+    structure: Structure,
+    element: str,
+    get_neighbors: Callable[[PeriodicSite, Structure], list[dict[str, Any]]],
+) -> float:
+    """Calculate the average coordination number for a given element in a structure."""
+    element_sites = [site for site in structure if site.specie.symbol == element]
+    cn_sum = sum(len(get_neighbors(site, structure)) for site in element_sites)
+    return cn_sum / len(element_sites) if element_sites else 0

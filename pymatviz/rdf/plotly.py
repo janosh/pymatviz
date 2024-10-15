@@ -18,7 +18,8 @@ import plotly
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from pymatviz.rdf.helpers import calculate_rdf, normalize_structures
+from pymatviz.rdf.helpers import calculate_rdf
+from pymatviz.utils import normalize_to_dict
 
 
 if TYPE_CHECKING:
@@ -74,7 +75,7 @@ def element_pair_rdfs(
             if invalid element pairs are provided, or if both n_bins and bin_size are
             specified.
     """
-    structures = normalize_structures(structures)
+    structures = normalize_to_dict(structures)
 
     for key, struct in structures.items():
         if not struct.sites:
@@ -222,7 +223,7 @@ def full_rdf(
             or if both n_bins and bin_size are specified.
     """
     # Normalize input to a dictionary of structures
-    structures = normalize_structures(structures)
+    structures = normalize_to_dict(structures)
 
     for key, struct in structures.items():
         if not struct.sites:

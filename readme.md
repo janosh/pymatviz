@@ -190,12 +190,16 @@ See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
 See [`pymatviz/coordination.py`](pymatviz/coordination.py).
 
-| [`coordination_hist(struct_dict)`](pymatviz/coordination.py) | [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination.py) |
-| :----------------------------------------------------------: | :---------------------------------------------------------------------------: |
-|                 ![coordination-hist-single]                  |                 ![coordination-hist-by-structure-and-element]                 |
+|             [`coordination_hist(struct_dict)`](pymatviz/coordination.py)              |     [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination.py)     |
+| :-----------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------: |
+|                              ![coordination-hist-single]                              |                     ![coordination-hist-by-structure-and-element]                     |
+| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination.py) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination.py) |
+|                           ![coordination-vs-cutoff-single]                            |                          ![coordination-vs-cutoff-multiple]                           |
 
 [coordination-hist-single]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-hist-single.svg
 [coordination-hist-by-structure-and-element]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-hist-by-structure-and-element.svg
+[coordination-vs-cutoff-single]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-vs-cutoff-single.svg
+[coordination-vs-cutoff-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-vs-cutoff-multiple.svg
 
 ## Uncertainty
 

@@ -5,29 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pymatgen.core import Structure
 from pymatgen.optimization.neighbors import find_points_in_spheres
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
+    from pymatgen.core import Structure
     from pymatgen.util.typing import PbcLike
-
-
-def normalize_structures(
-    structures: Structure | Sequence[Structure] | dict[str, Structure],
-) -> dict[str, Structure]:
-    """Normalize input to a dictionary of structures."""
-    if isinstance(structures, Structure):
-        return {"": structures}
-    if isinstance(structures, list | tuple) and all(
-        isinstance(s, Structure) for s in structures
-    ):
-        return {s.formula: s for s in structures}
-    if isinstance(structures, dict):
-        return structures
-    raise TypeError(f"Invalid input format for {structures=}")
 
 
 def calculate_rdf(
