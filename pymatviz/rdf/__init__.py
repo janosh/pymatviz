@@ -1,4 +1,4 @@
-"""2D and 3D plots of Structures."""
+"""Radial distribution function plots (RDFs)."""
 
 from __future__ import annotations
 
