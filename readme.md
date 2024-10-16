@@ -94,22 +94,6 @@ See [`examples/mprester_ptable.ipynb`](https://github.com/janosh/pymatviz/blob/m
 
 <https://user-images.githubusercontent.com/30958850/181644052-b330f0a2-70fc-451c-8230-20d45d3af72f.mp4>
 
-## Sunburst
-
-See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
-
-| [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst.py) | [`spacegroup_sunburst(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/sunburst.py) |
-| :----------------------------------------------------------------: | :----------------------------------------------------------------------------: |
-|                        ![spg-num-sunburst]                         |                             ![spg-symbol-sunburst]                             |
-
-## Sankey
-
-See [`pymatviz/sankey.py`](pymatviz/sankey.py).
-
-| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py) | [`sankey_from_2_df_cols(df_rand_ints)`](pymatviz/sankey.py) |
-| :-----------------------------------------------------------: | :---------------------------------------------------------: |
-|             ![sankey-spglib-vs-aflow-spacegroups]             |              ![sankey-from-2-df-cols-randints]              |
-
 ## Structure
 
 See [`pymatviz/structure_viz/(mpl|plotly).py`](pymatviz/structure_viz/plotly.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
@@ -122,43 +106,6 @@ See [`pymatviz/structure_viz/(mpl|plotly).py`](pymatviz/structure_viz/plotly.py)
 
 [matbench-phonons-structures-2d-plotly]: assets/matbench-phonons-structures-2d-plotly.svg
 [matbench-phonons-structures-3d-plotly]: assets/matbench-phonons-structures-3d-plotly.svg
-
-## Histograms
-
-See [`pymatviz/histogram.py`](pymatviz/histogram.py).
-
-| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](pymatviz/histogram.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](pymatviz/histogram.py) |
-| :----------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------: |
-|                              ![spg-num-hist-matplotlib]                              |                                  ![spg-symbol-hist-matplotlib]                                   |
-|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](pymatviz/histogram.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histogram.py)   |
-|                                ![spg-num-hist-plotly]                                |                                    ![spg-symbol-hist-plotly]                                     |
-| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histogram.py) |             [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py)             |
-|                                   ![elements-hist]                                   |                                        ![histogram-ecdf]                                         |
-
-[spg-symbol-hist-plotly]: assets/spg-symbol-hist-plotly.svg
-[spg-num-hist-plotly]: assets/spg-num-hist-plotly.svg
-[spg-num-hist-matplotlib]: assets/spg-num-hist-matplotlib.svg
-[spg-symbol-hist-matplotlib]: assets/spg-symbol-hist-matplotlib.svg
-[histogram-ecdf]: assets/histogram-ecdf.svg
-
-## Scatter Plots
-
-See [`pymatviz/scatter.py`](pymatviz/scatter.py).
-
-| [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py) | [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py) |
-| :------------------------------------------------------------------------: | :------------------------------------------------------------------------: |
-|                         ![density-scatter-plotly]                          |                      ![density-scatter-plotly-blobs]                       |
-|           [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py)            |      [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py)       |
-|                             ![density-scatter]                             |                        ![density-scatter-with-hist]                        |
-|            [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py)            |       [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py)       |
-|                             ![density-hexbin]                              |                        ![density-hexbin-with-hist]                         |
-
-[density-scatter-plotly]: assets/density-scatter-plotly.svg
-[density-scatter-plotly-blobs]: assets/density-scatter-plotly-blobs.svg
-[density-hexbin-with-hist]: assets/density-hexbin-with-hist.svg
-[density-hexbin]: assets/density-hexbin.svg
-[density-scatter-with-hist]: assets/density-scatter-with-hist.svg
-[density-scatter]: assets/density-scatter.svg
 
 ## X-Ray Diffraction
 
@@ -201,6 +148,73 @@ See [`pymatviz/coordination.py`](pymatviz/coordination.py).
 [coordination-vs-cutoff-single]: assets/coordination-vs-cutoff-single.svg
 [coordination-vs-cutoff-multiple]: assets/coordination-vs-cutoff-multiple.svg
 
+## Sunburst
+
+See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
+
+| [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst.py) | [`spacegroup_sunburst(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/sunburst.py) |
+| :----------------------------------------------------------------: | :----------------------------------------------------------------------------: |
+|                        ![spg-num-sunburst]                         |                             ![spg-symbol-sunburst]                             |
+
+## Rainclouds
+
+See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
+
+| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py) |
+| :--------------------------------------------------: | :----------------------------------------------------: |
+|                ![rainclouds-bimodal]                 |                 ![rainclouds-trimodal]                 |
+
+[rainclouds-bimodal]: assets/rainclouds-bimodal.svg
+[rainclouds-trimodal]: assets/rainclouds-trimodal.svg
+
+## Sankey
+
+See [`pymatviz/sankey.py`](pymatviz/sankey.py).
+
+| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py) | [`sankey_from_2_df_cols(df_space_groups)`](pymatviz/sankey.py) |
+| :-----------------------------------------------------------: | :------------------------------------------------------------: |
+|             ![sankey-spglib-vs-aflow-spacegroups]             |              ![sankey-crystal-sys-to-spg-symbol]               |
+
+[sankey-spglib-vs-aflow-spacegroups]: assets/sankey-spglib-vs-aflow-spacegroups.svg
+[sankey-crystal-sys-to-spg-symbol]: assets/sankey-crystal-sys-to-spg-symbol.svg
+
+## Histograms
+
+See [`pymatviz/histogram.py`](pymatviz/histogram.py).
+
+| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](pymatviz/histogram.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](pymatviz/histogram.py) |
+| :----------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------: |
+|                              ![spg-num-hist-matplotlib]                              |                                  ![spg-symbol-hist-matplotlib]                                   |
+|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](pymatviz/histogram.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/histogram.py)   |
+|                                ![spg-num-hist-plotly]                                |                                    ![spg-symbol-hist-plotly]                                     |
+| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histogram.py) |             [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py)             |
+|                                   ![elements-hist]                                   |                                        ![histogram-ecdf]                                         |
+
+[spg-symbol-hist-plotly]: assets/spg-symbol-hist-plotly.svg
+[spg-num-hist-plotly]: assets/spg-num-hist-plotly.svg
+[spg-num-hist-matplotlib]: assets/spg-num-hist-matplotlib.svg
+[spg-symbol-hist-matplotlib]: assets/spg-symbol-hist-matplotlib.svg
+[histogram-ecdf]: assets/histogram-ecdf.svg
+
+## Scatter Plots
+
+See [`pymatviz/scatter.py`](pymatviz/scatter.py).
+
+| [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py) | [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py) |
+| :------------------------------------------------------------------------: | :------------------------------------------------------------------------: |
+|                         ![density-scatter-plotly]                          |                      ![density-scatter-plotly-blobs]                       |
+|           [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py)            |      [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py)       |
+|                             ![density-scatter]                             |                        ![density-scatter-with-hist]                        |
+|            [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py)            |       [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py)       |
+|                             ![density-hexbin]                              |                        ![density-hexbin-with-hist]                         |
+
+[density-scatter-plotly]: assets/density-scatter-plotly.svg
+[density-scatter-plotly-blobs]: assets/density-scatter-plotly-blobs.svg
+[density-hexbin-with-hist]: assets/density-hexbin-with-hist.svg
+[density-hexbin]: assets/density-hexbin.svg
+[density-scatter-with-hist]: assets/density-scatter-with-hist.svg
+[density-scatter]: assets/density-scatter.svg
+
 ## Uncertainty
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
@@ -218,17 +232,6 @@ See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
 | [`cumulative_error(preds, targets)`](pymatviz/cumulative.py) | [`cumulative_residual(preds, targets)`](pymatviz/cumulative.py) |
 | :----------------------------------------------------------: | :-------------------------------------------------------------: |
 |                     ![cumulative-error]                      |                     ![cumulative-residual]                      |
-
-## Rainclouds
-
-See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
-
-| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py) |
-| :--------------------------------------------------: | :----------------------------------------------------: |
-|                ![rainclouds-bimodal]                 |                 ![rainclouds-trimodal]                 |
-
-[rainclouds-bimodal]: assets/rainclouds-bimodal.svg
-[rainclouds-trimodal]: assets/rainclouds-trimodal.svg
 
 ## Classification
 
@@ -253,8 +256,6 @@ See [`pymatviz/relevance.py`](pymatviz/relevance.py).
 [ptable-heatmap]: assets/ptable-heatmap.svg
 [residual-vs-actual]: assets/residual-vs-actual.svg
 [roc-curve]: assets/roc-curve.svg
-[sankey-from-2-df-cols-randints]: assets/sankey-from-2-df-cols-randints.svg
-[sankey-spglib-vs-aflow-spacegroups]: assets/sankey-spglib-vs-aflow-spacegroups.svg
 [scatter-with-err-bar]: assets/scatter-with-err-bar.svg
 [spg-num-sunburst]: assets/spg-num-sunburst.svg
 [spg-symbol-sunburst]: assets/spg-symbol-sunburst.svg
