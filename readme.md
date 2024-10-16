@@ -66,12 +66,12 @@ See [`pymatviz/ptable/ptable_matplotlib.py`](pymatviz/ptable/ptable_matplotlib.p
 | [`ptable_heatmap_splits(2_vals_per_elem, colormap="coolwarm", start_angle=135)`](pymatviz/ptable/ptable_matplotlib.py) | [`ptable_heatmap_splits(3_vals_per_elem, colormap="coolwarm", start_angle=90)`](pymatviz/ptable/ptable_matplotlib.py) |
 |                                               ![ptable-heatmap-splits-2]                                               |                                              ![ptable-heatmap-splits-3]                                               |
 
-[ptable-hists]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-hists.svg
-[ptable-lines]: https://github.com/janosh/pymatviz/raw/main/examples/diatomics/homo-nuclear-mace-medium.svg
-[ptable-scatters-parity]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-scatters-parity.svg
-[ptable-scatters-parabola]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-scatters-parabola.svg
-[ptable-heatmap-splits-2]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-splits-2.svg
-[ptable-heatmap-splits-3]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-splits-3.svg
+[ptable-hists]: assets/ptable-hists.svg
+[ptable-lines]: assets/homo-nuclear-mace-medium.svg
+[ptable-scatters-parity]: assets/ptable-scatters-parity.svg
+[ptable-scatters-parabola]: assets/ptable-scatters-parabola.svg
+[ptable-heatmap-splits-2]: assets/ptable-heatmap-splits-2.svg
+[ptable-heatmap-splits-3]: assets/ptable-heatmap-splits-3.svg
 
 ## Phonons
 
@@ -83,10 +83,10 @@ See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main
 | [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons.py) | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons.py) |
 |                    ![phonon-bands-and-dos-mp-2758]                    |                    ![phonon-bands-and-dos-mp-23907]                     |
 
-[phonon-bands]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-mp-2758.svg
-[phonon-dos]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-dos-mp-2758.svg
-[phonon-bands-and-dos-mp-2758]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-and-dos-mp-2758.svg
-[phonon-bands-and-dos-mp-23907]: https://github.com/janosh/pymatviz/raw/main/assets/phonon-bands-and-dos-mp-23907.svg
+[phonon-bands]: assets/phonon-bands-mp-2758.svg
+[phonon-dos]: assets/phonon-dos-mp-2758.svg
+[phonon-bands-and-dos-mp-2758]: assets/phonon-bands-and-dos-mp-2758.svg
+[phonon-bands-and-dos-mp-23907]: assets/phonon-bands-and-dos-mp-23907.svg
 
 ### Dash app using `ptable_heatmap_plotly()`
 
@@ -120,8 +120,8 @@ See [`pymatviz/structure_viz/(mpl|plotly).py`](pymatviz/structure_viz/plotly.py)
 | [`structure_2d_plotly(six_structs)`](pymatviz/structure_viz/plotly.py) | [`structure_3d_plotly(six_structs)`](pymatviz/structure_viz/plotly.py) |
 |                ![matbench-phonons-structures-2d-plotly]                |                ![matbench-phonons-structures-3d-plotly]                |
 
-[matbench-phonons-structures-2d-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-phonons-structures-2d-plotly.svg
-[matbench-phonons-structures-3d-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-phonons-structures-3d-plotly.svg
+[matbench-phonons-structures-2d-plotly]: assets/matbench-phonons-structures-2d-plotly.svg
+[matbench-phonons-structures-3d-plotly]: assets/matbench-phonons-structures-3d-plotly.svg
 
 ## Histograms
 
@@ -135,11 +135,11 @@ See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 | [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histogram.py) |             [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py)             |
 |                                   ![elements-hist]                                   |                                        ![histogram-ecdf]                                         |
 
-[spg-symbol-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-plotly.svg
-[spg-num-hist-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-plotly.svg
-[spg-num-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-hist-matplotlib.svg
-[spg-symbol-hist-matplotlib]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-hist-matplotlib.svg
-[histogram-ecdf]: https://github.com/janosh/pymatviz/raw/main/assets/histogram-ecdf.svg
+[spg-symbol-hist-plotly]: assets/spg-symbol-hist-plotly.svg
+[spg-num-hist-plotly]: assets/spg-num-hist-plotly.svg
+[spg-num-hist-matplotlib]: assets/spg-num-hist-matplotlib.svg
+[spg-symbol-hist-matplotlib]: assets/spg-symbol-hist-matplotlib.svg
+[histogram-ecdf]: assets/histogram-ecdf.svg
 
 ## Scatter Plots
 
@@ -153,12 +153,12 @@ See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 |            [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py)            |       [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py)       |
 |                             ![density-hexbin]                              |                        ![density-hexbin-with-hist]                         |
 
-[density-scatter-plotly]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-plotly.svg
-[density-scatter-plotly-blobs]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-plotly-blobs.svg
-[density-hexbin-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-hexbin-with-hist.svg
-[density-hexbin]: https://github.com/janosh/pymatviz/raw/main/assets/density-hexbin.svg
-[density-scatter-with-hist]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter-with-hist.svg
-[density-scatter]: https://github.com/janosh/pymatviz/raw/main/assets/density-scatter.svg
+[density-scatter-plotly]: assets/density-scatter-plotly.svg
+[density-scatter-plotly-blobs]: assets/density-scatter-plotly-blobs.svg
+[density-hexbin-with-hist]: assets/density-hexbin-with-hist.svg
+[density-hexbin]: assets/density-hexbin.svg
+[density-scatter-with-hist]: assets/density-scatter-with-hist.svg
+[density-scatter]: assets/density-scatter.svg
 
 ## X-Ray Diffraction
 
@@ -170,10 +170,10 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 | [`xrd_pattern(struct_dict, stack="horizontal")`](pymatviz/xrd.py) | [`xrd_pattern(struct_dict, stack="vertical", title="Custom Title")`](pymatviz/xrd.py) |
 |                  ![xrd-pattern-horizontal-stack]                  |                             ![xrd-pattern-vertical-stack]                             |
 
-[xrd-pattern]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern.svg
-[xrd-pattern-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-multiple.svg
-[xrd-pattern-horizontal-stack]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-horizontal-stack.svg
-[xrd-pattern-vertical-stack]: https://github.com/janosh/pymatviz/raw/main/assets/xrd-pattern-vertical-stack.svg
+[xrd-pattern]: assets/xrd-pattern.svg
+[xrd-pattern-multiple]: assets/xrd-pattern-multiple.svg
+[xrd-pattern-horizontal-stack]: assets/xrd-pattern-horizontal-stack.svg
+[xrd-pattern-vertical-stack]: assets/xrd-pattern-vertical-stack.svg
 
 ## Radial Distribution Functions
 
@@ -183,8 +183,8 @@ See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 | :---------------------------------------: | :---------------------------------------------: |
 |      ![element-pair-rdfs-Na8Nb8O24]       |    ![element-pair-rdfs-crystal-vs-amorphous]    |
 
-[element-pair-rdfs-Na8Nb8O24]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-Na8Nb8O24.svg
-[element-pair-rdfs-crystal-vs-amorphous]: https://github.com/janosh/pymatviz/raw/main/assets/element-pair-rdfs-crystal-vs-amorphous.svg
+[element-pair-rdfs-Na8Nb8O24]: assets/element-pair-rdfs-Na8Nb8O24.svg
+[element-pair-rdfs-crystal-vs-amorphous]: assets/element-pair-rdfs-crystal-vs-amorphous.svg
 
 ## Coordination
 
@@ -196,10 +196,10 @@ See [`pymatviz/coordination.py`](pymatviz/coordination.py).
 | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination.py) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination.py) |
 |                           ![coordination-vs-cutoff-single]                            |                          ![coordination-vs-cutoff-multiple]                           |
 
-[coordination-hist-single]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-hist-single.svg
-[coordination-hist-by-structure-and-element]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-hist-by-structure-and-element.svg
-[coordination-vs-cutoff-single]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-vs-cutoff-single.svg
-[coordination-vs-cutoff-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/coordination-vs-cutoff-multiple.svg
+[coordination-hist-single]: assets/coordination-hist-single.svg
+[coordination-hist-by-structure-and-element]: assets/coordination-hist-by-structure-and-element.svg
+[coordination-vs-cutoff-single]: assets/coordination-vs-cutoff-single.svg
+[coordination-vs-cutoff-multiple]: assets/coordination-vs-cutoff-multiple.svg
 
 ## Uncertainty
 
@@ -227,8 +227,8 @@ See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 | :--------------------------------------------------: | :----------------------------------------------------: |
 |                ![rainclouds-bimodal]                 |                 ![rainclouds-trimodal]                 |
 
-[rainclouds-bimodal]: https://github.com/janosh/pymatviz/raw/main/assets/rainclouds-bimodal.svg
-[rainclouds-trimodal]: https://github.com/janosh/pymatviz/raw/main/assets/rainclouds-trimodal.svg
+[rainclouds-bimodal]: assets/rainclouds-bimodal.svg
+[rainclouds-trimodal]: assets/rainclouds-trimodal.svg
 
 ## Classification
 
@@ -238,28 +238,28 @@ See [`pymatviz/relevance.py`](pymatviz/relevance.py).
 | :------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                       ![roc-curve]                       |                       ![precision-recall-curve]                       |
 
-[cumulative-error]: https://github.com/janosh/pymatviz/raw/main/assets/cumulative-error.svg
-[cumulative-residual]: https://github.com/janosh/pymatviz/raw/main/assets/cumulative-residual.svg
-[error-decay-with-uncert-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/error-decay-with-uncert-multiple.svg
-[error-decay-with-uncert]: https://github.com/janosh/pymatviz/raw/main/assets/error-decay-with-uncert.svg
-[elements-hist]: https://github.com/janosh/pymatviz/raw/main/assets/elements-hist.svg
-[matbench-phonons-structures-2d]: https://github.com/janosh/pymatviz/raw/main/assets/matbench-phonons-structures-2d.svg
-[normal-prob-plot-multiple]: https://github.com/janosh/pymatviz/raw/main/assets/normal-prob-plot-multiple.svg
-[normal-prob-plot]: https://github.com/janosh/pymatviz/raw/main/assets/normal-prob-plot.svg
-[precision-recall-curve]: https://github.com/janosh/pymatviz/raw/main/assets/precision-recall-curve.svg
-[ptable-heatmap-plotly-log]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-plotly-log.svg
-[ptable-heatmap-plotly-more-hover-data]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-plotly-more-hover-data.svg
-[ptable-heatmap-ratio]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap-ratio.svg
-[ptable-heatmap]: https://github.com/janosh/pymatviz/raw/main/assets/ptable-heatmap.svg
-[residual-vs-actual]: https://github.com/janosh/pymatviz/raw/main/assets/residual-vs-actual.svg
-[roc-curve]: https://github.com/janosh/pymatviz/raw/main/assets/roc-curve.svg
-[sankey-from-2-df-cols-randints]: https://github.com/janosh/pymatviz/raw/main/assets/sankey-from-2-df-cols-randints.svg
-[sankey-spglib-vs-aflow-spacegroups]: https://github.com/janosh/pymatviz/raw/main/assets/sankey-spglib-vs-aflow-spacegroups.svg
-[scatter-with-err-bar]: https://github.com/janosh/pymatviz/raw/main/assets/scatter-with-err-bar.svg
-[spg-num-sunburst]: https://github.com/janosh/pymatviz/raw/main/assets/spg-num-sunburst.svg
-[spg-symbol-sunburst]: https://github.com/janosh/pymatviz/raw/main/assets/spg-symbol-sunburst.svg
-[struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: https://github.com/janosh/pymatviz/raw/main/assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
-[struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: https://github.com/janosh/pymatviz/raw/main/assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
+[cumulative-error]: assets/cumulative-error.svg
+[cumulative-residual]: assets/cumulative-residual.svg
+[error-decay-with-uncert-multiple]: assets/error-decay-with-uncert-multiple.svg
+[error-decay-with-uncert]: assets/error-decay-with-uncert.svg
+[elements-hist]: assets/elements-hist.svg
+[matbench-phonons-structures-2d]: assets/matbench-phonons-structures-2d.svg
+[normal-prob-plot-multiple]: assets/normal-prob-plot-multiple.svg
+[normal-prob-plot]: assets/normal-prob-plot.svg
+[precision-recall-curve]: assets/precision-recall-curve.svg
+[ptable-heatmap-plotly-log]: assets/ptable-heatmap-plotly-log.svg
+[ptable-heatmap-plotly-more-hover-data]: assets/ptable-heatmap-plotly-more-hover-data.svg
+[ptable-heatmap-ratio]: assets/ptable-heatmap-ratio.svg
+[ptable-heatmap]: assets/ptable-heatmap.svg
+[residual-vs-actual]: assets/residual-vs-actual.svg
+[roc-curve]: assets/roc-curve.svg
+[sankey-from-2-df-cols-randints]: assets/sankey-from-2-df-cols-randints.svg
+[sankey-spglib-vs-aflow-spacegroups]: assets/sankey-spglib-vs-aflow-spacegroups.svg
+[scatter-with-err-bar]: assets/scatter-with-err-bar.svg
+[spg-num-sunburst]: assets/spg-num-sunburst.svg
+[spg-symbol-sunburst]: assets/spg-symbol-sunburst.svg
+[struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: assets/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
+[struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: assets/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
 
 ## How to cite `pymatviz`
 
