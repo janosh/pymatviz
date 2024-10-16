@@ -1,25 +1,41 @@
 # %%
-import numpy as np
 import pandas as pd
+from mp_api.client import MPRester
+from mp_api.client.core import MPRestError
 
 import pymatviz as pmv
+from pymatviz.enums import Key
 
 
-# %% Sankey diagram of random integers
-cols = ["col_a", "col_b"]
-np_rng = np.random.default_rng(seed=0)
-df_rand_ints = pd.DataFrame(np_rng.integers(1, 6, size=(100, 2)), columns=cols)
-fig = pmv.sankey_from_2_df_cols(df_rand_ints, cols, labels_with_counts="percent")
-rand_int_title = "Two sets of 100 random integers from 1 to 5"
-fig.layout.title = dict(text=rand_int_title, x=0.5, y=0.87)
-code_anno = dict(
-    x=0.5,
-    y=-0.2,
-    text="<span style='font-family: monospace;'>df = pd.DataFrame("
-    "np_rng.integers(1, 6, size=(100, 2)), columns=['col_a','col_b'])<br>"
-    "fig = sankey_from_2_df_cols(df, df.columns)</span>",
-    font_size=12,
-    showarrow=False,
+pmv.set_plotly_template("pymatviz_white")
+
+
+# %% Sankey diagram of crystal systems and space groups
+try:
+    with MPRester(use_document_model=False) as mpr:
+        fields = [Key.mat_id, "symmetry.crystal_system", "symmetry.symbol"]
+    docs = mpr.materials.summary.search(
+        num_elements=(1, 3), fields=fields, num_chunks=30, chunk_size=1000
+    )
+except MPRestError:
+    raise SystemExit(0) from None
+
+
+# %%
+df_mp = pd.json_normalize(docs).set_index(Key.mat_id)
+df_mp.columns = [Key.crystal_system, Key.spg_symbol]
+
+frequent_symbols = df_mp[Key.spg_symbol].value_counts().nlargest(20).index
+
+df_spg = df_mp.query(f"{Key.spg_symbol} in @frequent_symbols")
+
+
+# %%
+fig = pmv.sankey_from_2_df_cols(
+    df_spg, [Key.crystal_system, Key.spg_symbol], labels_with_counts="percent"
 )
-fig.add_annotation(code_anno)
-pmv.io.save_and_compress_svg(fig, "sankey-from-2-df-cols-randints")
+title = "Common Space Groups in Materials Project"
+fig.layout.title = dict(text=title, x=0.5, y=0.95)
+fig.layout.margin.t = 50
+fig.show()
+pmv.io.save_and_compress_svg(fig, "sankey-crystal-sys-to-spg-symbol")
