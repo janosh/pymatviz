@@ -668,10 +668,9 @@ def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
             return text_color
 
     # Check tick label color
-    tick_color = (
-        ax.xaxis.get_ticklabels()[0].get_color() if ax.xaxis.get_ticklabels() else None
-    )
-    if tick_color != "auto":
+    x_labels = ax.xaxis.get_ticklabels()
+    tick_color = x_labels[0].get_color() if x_labels else None
+    if tick_color is not None and tick_color != "auto":
         return tick_color
 
     # Check rcParams
