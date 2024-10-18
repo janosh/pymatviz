@@ -19,7 +19,7 @@ from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedError
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key
@@ -199,7 +199,7 @@ def structure_2d(
             try:
                 spg_analyzer = SpacegroupAnalyzer(struct)
                 struct = spg_analyzer.get_conventional_standard_structure()
-            except SymmetryUndeterminedError:
+            except ValueError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
         # Get default colors

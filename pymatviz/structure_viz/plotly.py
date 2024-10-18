@@ -11,7 +11,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedError
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure_viz.helpers import (
@@ -163,7 +163,7 @@ def structure_2d_plotly(
             try:
                 spg_analyzer = SpacegroupAnalyzer(struct_i)
                 struct_i = spg_analyzer.get_conventional_standard_structure()  # noqa: PLW2901
-            except SymmetryUndeterminedError:
+            except ValueError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
         # Apply rotation
@@ -429,7 +429,7 @@ def structure_3d_plotly(
             try:
                 spg_analyzer = SpacegroupAnalyzer(struct_i)
                 struct_i = spg_analyzer.get_conventional_standard_structure()  # noqa: PLW2901
-            except SymmetryUndeterminedError:
+            except ValueError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
         visible_image_atoms: set[tuple[float, float, float]] = set()
