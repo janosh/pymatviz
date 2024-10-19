@@ -1,8 +1,4 @@
-"""2D plots of pymatgen structures with matplotlib.
-
-structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
-inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib.
-"""
+"""Create interactive hoverable 2D and 3D plots of pymatgen structures with plotly."""
 
 from __future__ import annotations
 
@@ -14,19 +10,23 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedError
+from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pymatviz.enums import ElemColorScheme
+from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
-    _add_unit_cell,
     _angles_to_rotation_matrix,
-    add_site_to_plot,
-    generate_subplot_title,
+    draw_bonds,
+    draw_site,
+    draw_unit_cell,
+    draw_vector,
     get_atomic_radii,
     get_elem_colors,
-    get_image_atoms,
+    get_first_matching_site_prop,
+    get_image_sites,
     get_structures,
+    get_subplot_title,
 )
 
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     import plotly.graph_objects as go
-    from pymatgen.core import Structure
+    from pymatgen.core import PeriodicSite, Structure
 
 
 def structure_2d_plotly(
@@ -49,12 +49,18 @@ def structure_2d_plotly(
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
+    show_bonds: bool | NearNeighbors = False,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
     | Sequence[str] = "species",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
+    show_site_vectors: str | Sequence[str] = ("force", "magmom"),
+    vector_kwargs: dict[str, dict[str, Any]] | None = None,
+    hover_text: SiteCoords
+    | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
+    bond_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Plot pymatgen structures in 2D with Plotly.
 
@@ -76,13 +82,40 @@ def structure_2d_plotly(
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
             on unit cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
+        show_bonds (bool | NearNeighbors, optional): Whether to draw bonds between
+            sites. If True, uses CrystalNN to determine nearest neighbors. If a
+            NearNeighbors object, uses that to determine nearest neighbors.
+            Defaults to False (since still experimental).
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
         standardize_struct (bool, optional): Whether to standardize the structure.
             Defaults to None.
         n_cols (int, optional): Number of columns for subplots. Defaults to 4.
-        subplot_title (Callable[[Structure, str | int], str | dict], optional):
-            Function to generate subplot titles. Defaults to None.
+        subplot_title (Callable[[Structure, str | int], str | dict] | False, optional):
+            Function to generate subplot titles. Defaults to
+            lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
+            False to hide all subplot titles.
+        show_site_vectors (str | Sequence[str], optional): Whether to show vector site
+            quantities such as forces or magnetic moments as arrow heads originating
+            from each site. Pass the key (or sequence of keys) to look for in site
+            properties. Defaults to ("force", "magmom"). If not found as a site
+            property, will look for it in the structure properties as well and assume
+            the key points at a (N, 3) array with N the number of sites. If multiple
+            keys are provided, it plots the first key found in site properties or
+            structure properties in any of the passed structures (if a dict of
+            structures was passed). But it will only plot one vector per site and it
+            will use the same key for all sites and across all structures.
+        vector_kwargs (dict[str, dict[str, Any]], optional): For customizing vector
+            arrows. Keys are property names (e.g., "force", "magmom"), values are
+            dictionaries of arrow customization options. Use key "scale" to adjust
+            vector length.
+        hover_text (SiteCoords | Callable, optional): Controls the hover tooltip
+            template. Can be SiteCoords.cartesian, SiteCoords.fractional,
+            SiteCoords.cartesian_fractional, or a callable that takes a site and
+            returns a custom string. Defaults to SiteCoords.cartesian_fractional.
+        bond_kwargs (dict[str, Any], optional): For customizing bond lines. Keys are
+            line properties (e.g., "color", "width"), values are the corresponding
+            values. Defaults to None.
 
     Returns:
         go.Figure: Plotly figure with the plotted structure(s).
@@ -96,6 +129,7 @@ def structure_2d_plotly(
     fig = make_subplots(
         rows=n_rows,
         cols=n_cols,
+        # # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
         subplot_titles=[" " for _ in range(n_structs)],
         vertical_spacing=0,
         horizontal_spacing=0,
@@ -103,6 +137,20 @@ def structure_2d_plotly(
 
     _elem_colors = get_elem_colors(elem_colors)
     _atomic_radii = get_atomic_radii(atomic_radii)
+
+    if isinstance(show_site_vectors, str):
+        show_site_vectors = [show_site_vectors]
+
+    # Determine which vector property to plot (calling outside loop ensures we plot the
+    # same prop for all sites in all structures)
+    vector_prop = get_first_matching_site_prop(
+        list(structures.values()),
+        show_site_vectors,
+        warn_if_none=show_site_vectors != ("force", "magmom"),
+        # check that value is actually a 3-component vector. needs to handle both
+        # (N, 3) and (3,) cases
+        filter_callback=lambda _prop, value: (np.array(value).shape or [None])[-1] == 3,
+    )
 
     for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
         row = (idx - 1) // n_cols + 1
@@ -115,14 +163,30 @@ def structure_2d_plotly(
             try:
                 spg_analyzer = SpacegroupAnalyzer(struct_i)
                 struct_i = spg_analyzer.get_conventional_standard_structure()  # noqa: PLW2901
-            except SymmetryUndeterminedError:
+            except ValueError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
         # Apply rotation
         rotation_matrix = _angles_to_rotation_matrix(rotation)
         rotated_coords = np.dot(struct_i.cart_coords, rotation_matrix)
 
-        # Plot atoms
+        visible_image_atoms: set[tuple[float, float, float]] = set()
+
+        # Draw bonds
+        if show_bonds:
+            nn = CrystalNN() if show_bonds is True else show_bonds
+            draw_bonds(
+                fig,
+                struct_i,
+                nn,
+                is_3d=False,
+                bond_kwargs=bond_kwargs,
+                row=row,
+                col=col,
+                visible_image_atoms=visible_image_atoms,
+            )
+
+        # Plot atoms and vectors
         if show_sites:
             site_kwargs = dict(line=dict(width=0.3, color="gray"))
             if isinstance(show_sites, dict):
@@ -131,7 +195,7 @@ def structure_2d_plotly(
             for site_idx, (site, coords) in enumerate(
                 zip(struct_i, rotated_coords, strict=False)
             ):
-                add_site_to_plot(
+                draw_site(
                     fig,
                     site,
                     coords,
@@ -142,10 +206,32 @@ def structure_2d_plotly(
                     atom_size,
                     scale,
                     site_kwargs,
-                    is_3d=False,  # Explicitly set to False for 2D plot
+                    is_3d=False,
                     row=row,
                     col=col,
+                    name=f"site{site_idx}",
+                    hover_text=hover_text,
                 )
+
+                # Add vector arrows
+                if vector_prop:
+                    vector = None
+                    if vector_prop in site.properties:
+                        vector = np.array(site.properties[vector_prop])
+                    elif vector_prop in struct_i.properties:
+                        vector = struct_i.properties[vector_prop][site_idx]
+
+                    if vector is not None and np.any(vector):
+                        draw_vector(
+                            fig,
+                            coords,
+                            vector,
+                            is_3d=False,
+                            arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
+                            row=row,
+                            col=col,
+                            name=f"vector{site_idx}",
+                        )
 
                 # Add image sites
                 if show_image_sites:
@@ -160,12 +246,12 @@ def structure_2d_plotly(
                     if isinstance(show_image_sites, dict):
                         image_site_kwargs |= show_image_sites
 
-                    image_atoms = get_image_atoms(site, struct_i.lattice)
-                    if len(image_atoms) > 0:  # Only proceed if there are image atoms
+                    image_atoms = get_image_sites(site, struct_i.lattice)
+                    if len(image_atoms) > 0:
                         rotated_image_atoms = np.dot(image_atoms, rotation_matrix)
 
                         for image_coords in rotated_image_atoms:
-                            add_site_to_plot(
+                            draw_site(
                                 fig,
                                 site,
                                 image_coords,
@@ -177,14 +263,15 @@ def structure_2d_plotly(
                                 scale,
                                 image_site_kwargs,
                                 is_image=True,
-                                is_3d=False,  # Explicitly set to False for 2D plot
+                                is_3d=False,
                                 row=row,
                                 col=col,
                             )
+                            visible_image_atoms.add(tuple(image_coords))
 
         # Plot unit cell
         if show_unit_cell:
-            _add_unit_cell(
+            draw_unit_cell(
                 fig,
                 struct_i,
                 unit_cell_kwargs=show_unit_cell
@@ -196,7 +283,7 @@ def structure_2d_plotly(
             )
 
         # Set subplot titles
-        anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
+        anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
         subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
         fig.layout.annotations[idx - 1].update(
             **dict(y=subtitle_y_pos, yanchor="top") | anno
@@ -232,12 +319,20 @@ def structure_3d_plotly(
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool = True,
+    show_bonds: bool | NearNeighbors = False,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
     | Sequence[str] = "species",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
-    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
+    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]]
+    | None
+    | Literal[False] = None,
+    show_site_vectors: str | Sequence[str] = ("force", "magmom"),
+    vector_kwargs: dict[str, dict[str, Any]] | None = None,
+    hover_text: SiteCoords
+    | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
+    bond_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Plot pymatgen structures in 3D with Plotly.
 
@@ -257,13 +352,40 @@ def structure_3d_plotly(
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
             on unit cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
+        show_bonds (bool | NearNeighbors, optional): Whether to draw bonds between
+            sites. If True, uses CrystalNN to determine nearest neighbors. If a
+            NearNeighbors object, uses that to determine nearest neighbors.
+            Defaults to False (since still experimental).
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
         standardize_struct (bool, optional): Whether to standardize the structure.
             Defaults to None.
         n_cols (int, optional): Number of columns for subplots. Defaults to 3.
-        subplot_title (Callable[[Structure, str | int], str | dict], optional):
-            Function to generate subplot titles. Defaults to None.
+        subplot_title (Callable[[Structure, str | int], str | dict] | False, optional):
+            Function to generate subplot titles. Defaults to
+            lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
+            False to hide all subplot titles.
+        show_site_vectors (str | Sequence[str], optional): Whether to show vector site
+            quantities such as forces or magnetic moments as arrow heads originating
+            from each site. Pass the key (or sequence of keys) to look for in site
+            properties. Defaults to ("force", "magmom"). If not found as a site
+            property, will look for it in the structure properties as well and assume
+            the key points at a (N, 3) array with N the number of sites. If multiple
+            keys are provided, it plots the first key found in site properties or
+            structure properties in any of the passed structures (if a dict of
+            structures was passed). But it will only plot one vector per site and it
+            will use the same key for all sites and across all structures.
+        vector_kwargs (dict[str, dict[str, Any]], optional): For customizing vector
+        arrows. Keys are property names (e.g.,
+            "force", "magmom"), values are dictionaries of arrow customization options.
+            Use key "scale" to adjust vector length.
+        hover_text (SiteCoords | Callable, optional): Controls the hover tooltip
+            template. Can be SiteCoords.cartesian, SiteCoords.fractional,
+            SiteCoords.cartesian_fractional, or a callable that takes a site and
+            returns a custom string. Defaults to SiteCoords.cartesian_fractional.
+        bond_kwargs (dict[str, Any], optional): For customizing bond lines. Keys are
+            line properties (e.g., "color", "width"), values are the corresponding
+            values. Defaults to None.
 
     Returns:
         go.Figure: Plotly figure with the plotted 3D structure(s).
@@ -278,11 +400,26 @@ def structure_3d_plotly(
         rows=n_rows,
         cols=n_cols,
         specs=[[{"type": "scene"} for _ in range(n_cols)] for _ in range(n_rows)],
+        # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
         subplot_titles=[" " for _ in range(n_structs)],
     )
 
     _elem_colors = get_elem_colors(elem_colors)
     _atomic_radii = get_atomic_radii(atomic_radii)
+
+    if isinstance(show_site_vectors, str):
+        show_site_vectors = [show_site_vectors]
+
+    # Determine which vector property to plot (calling outside loop ensures we plot the
+    # same prop for all sites in all structures)
+    vector_prop = get_first_matching_site_prop(
+        list(structures.values()),
+        show_site_vectors,
+        warn_if_none=show_site_vectors != ("force", "magmom"),
+        # check that value is actually a 3-component vector. needs to handle both
+        # (N, 3) and (3,) cases
+        filter_callback=lambda _prop, value: (np.array(value).shape or [None])[-1] == 3,
+    )
 
     for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
         # Standardize structure if needed
@@ -292,17 +429,32 @@ def structure_3d_plotly(
             try:
                 spg_analyzer = SpacegroupAnalyzer(struct_i)
                 struct_i = spg_analyzer.get_conventional_standard_structure()  # noqa: PLW2901
-            except SymmetryUndeterminedError:
+            except ValueError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
-        # Plot atoms
+        visible_image_atoms: set[tuple[float, float, float]] = set()
+
+        # Draw bonds
+        if show_bonds:
+            nn = CrystalNN() if show_bonds is True else show_bonds
+            draw_bonds(
+                fig,
+                struct_i,
+                nn,
+                is_3d=True,
+                bond_kwargs=bond_kwargs,
+                scene=f"scene{idx}",
+                visible_image_atoms=visible_image_atoms,
+            )
+
+        # Plot atoms and vectors
         if show_sites:
             site_kwargs = dict(line=dict(width=0.3, color="gray"))
             if isinstance(show_sites, dict):
                 site_kwargs |= show_sites
 
             for site_idx, site in enumerate(struct_i):
-                add_site_to_plot(
+                draw_site(
                     fig,
                     site,
                     site.coords,
@@ -315,7 +467,28 @@ def structure_3d_plotly(
                     site_kwargs,
                     is_3d=True,
                     scene=f"scene{idx}",
+                    name=f"site{site_idx}",
+                    hover_text=hover_text,
                 )
+
+                # Add vector arrows
+                if vector_prop:
+                    vector = None
+                    if vector_prop in site.properties:
+                        vector = np.array(site.properties[vector_prop])
+                    elif vector_prop in struct_i.properties:
+                        vector = struct_i.properties[vector_prop][site_idx]
+
+                    if vector is not None and np.any(vector):
+                        draw_vector(
+                            fig,
+                            site.coords,
+                            vector,
+                            is_3d=True,
+                            arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
+                            scene=f"scene{idx}",
+                            name=f"vector{site_idx}",
+                        )
 
                 # Add image sites
                 if show_image_sites:
@@ -330,10 +503,10 @@ def structure_3d_plotly(
                     if isinstance(show_image_sites, dict):
                         image_site_kwargs |= show_image_sites
 
-                    image_atoms = get_image_atoms(site, struct_i.lattice)
-                    if len(image_atoms) > 0:  # Only proceed if there are image atoms
+                    image_atoms = get_image_sites(site, struct_i.lattice)
+                    if len(image_atoms) > 0:
                         for image_coords in image_atoms:
-                            add_site_to_plot(
+                            draw_site(
                                 fig,
                                 site,
                                 image_coords,
@@ -348,10 +521,11 @@ def structure_3d_plotly(
                                 is_3d=True,
                                 scene=f"scene{idx}",
                             )
+                            visible_image_atoms.add(tuple(image_coords))
 
         # Plot unit cell
         if show_unit_cell:
-            _add_unit_cell(
+            draw_unit_cell(
                 fig,
                 struct_i,
                 unit_cell_kwargs=show_unit_cell
@@ -362,14 +536,15 @@ def structure_3d_plotly(
             )
 
         # Set subplot titles
-        anno = generate_subplot_title(struct_i, struct_key, idx, subplot_title)
-        if "y" not in anno:
-            row = (idx - 1) // n_cols + 1
-            subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
-            anno["y"] = subtitle_y_pos
-        if "yanchor" not in anno:
-            anno["yanchor"] = "top"
-        fig.layout.annotations[idx - 1].update(anno)
+        if subplot_title is not False:
+            anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
+            if "y" not in anno:
+                row = (idx - 1) // n_cols + 1
+                subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
+                anno["y"] = subtitle_y_pos
+            if "yanchor" not in anno:
+                anno["yanchor"] = "top"
+            fig.layout.annotations[idx - 1].update(anno)
 
         # Update 3D scene properties
         no_axes_kwargs = dict(

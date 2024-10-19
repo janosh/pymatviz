@@ -1,7 +1,7 @@
 import svelte from 'eslint-plugin-svelte'
 import tslint from 'typescript-eslint'
 
-/** @type { import("eslint").Linter.FlatConfig[] } */
+/** @type { import("eslint").Linter.Config[] } */
 export default [
   ...tslint.configs.recommended,
   ...svelte.configs[`flat/recommended`],
@@ -11,7 +11,7 @@ export default [
         `error`,
         { argsIgnorePattern: `^_`, varsIgnorePattern: `^_` },
       ],
-      '@typescript-eslint/quotes': [`error`, `backtick`, { avoidEscape: true }],
+      '@/quotes': [`error`, `backtick`, { avoidEscape: true }],
       'svelte/no-at-html-tags': `off`,
     },
   },

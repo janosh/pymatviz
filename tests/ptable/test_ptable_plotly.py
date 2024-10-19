@@ -60,7 +60,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         fig = ptable_heatmap_plotly(df_ptable["tmp"], log=True)
         assert isinstance(fig, go.Figure)
         heatmap_trace = fig.data[-1]
-        assert heatmap_trace.colorbar.title.text == "tmp"
+        assert heatmap_trace.colorbar.title.text == "tmp<br>"
         c_scale = heatmap_trace.colorscale
         assert isinstance(c_scale, tuple)
         assert isinstance(c_scale[0], tuple)
@@ -81,15 +81,25 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 
 
 @pytest.mark.parametrize(
-    ("exclude_elements", "heat_mode", "log", "show_scale", "font_size", "font_colors"),
+    (
+        "exclude_elements",
+        "heat_mode",
+        "log",
+        "show_scale",
+        "font_size",
+        "font_colors",
+        "scale",
+    ),
     [
-        ((), "value", True, False, None, ["red"]),
-        (["O"], "fraction", False, True, 12, ("black", "white")),
-        (["P", "S"], "percent", False, False, 14, ["blue"]),
-        ([], "value", True, True, 10, ("green", "yellow")),
-        (["H", "He", "Li"], "value", False, True, 16, ["purple"]),
-        (["Fe"], "fraction", True, False, 8, ("orange", "pink")),
-        (["Xe"], "percent", True, True, None, ["brown", "cyan"]),
+        ((), "value", True, False, None, ["red"], 1.3),
+        (["O"], "fraction", False, True, 12, ("black", "white"), 3),
+        (["P", "S"], "percent", False, False, 14, ["blue"], 1.1),
+        ([], "value", True, True, 10, ("green", "yellow"), 0.95),
+        (["H", "He", "Li"], "value", False, True, 16, ["purple"], 1.0),
+        (["Fe"], "fraction", True, False, 8, ("orange", "pink"), 2),
+        (["Xe"], "percent", True, True, None, ["brown", "cyan"], 0.2),
+        ([], "value", False, True, None, ["red"], 1.5),
+        (["O"], "fraction", False, True, 12, ("black", "white"), 0.8),
     ],
 )
 def test_ptable_heatmap_plotly_kwarg_combos(
@@ -100,6 +110,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
     show_scale: bool,
     font_size: int | None,
     font_colors: Sequence[str],
+    scale: float,
 ) -> None:
     if log and heat_mode != "value":
         pytest.skip("log scale only supported for heat_mode='value'")
@@ -111,6 +122,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         show_scale=show_scale,
         font_size=font_size,
         font_colors=font_colors,
+        scale=scale,
     )
     assert isinstance(fig, go.Figure)
 
@@ -119,7 +131,7 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         assert all(elem not in fig.data[-1].z for elem in exclude_elements)
 
     if font_size:
-        assert fig.layout.font.size == font_size
+        assert fig.layout.font.size == font_size * scale
 
     if len(font_colors) == 2:
         assert all(
@@ -129,6 +141,14 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         assert all(
             anno.font.color == font_colors[0] for anno in fig.layout.annotations
         ), f"{font_colors=}"
+
+    # Add assertions for scale
+    assert fig.layout.width == pytest.approx(900 * scale)
+    assert fig.layout.height == pytest.approx(500 * scale)
+    if font_size:
+        assert fig.layout.font.size == pytest.approx(font_size * scale)
+    else:
+        assert fig.layout.font.size == pytest.approx(12 * scale)
 
 
 @pytest.mark.parametrize(
@@ -247,7 +267,7 @@ def test_ptable_heatmap_plotly_color_bar_range_percent_mode() -> None:
 
     # Check if the color bar title includes '%'
     cbar_title = heatmap_trace.colorbar.title.text
-    assert cbar_title == "Test (%)", f"{cbar_title=}"
+    assert cbar_title == "Test<br> (%)", f"{cbar_title=}"
 
     assert heatmap_trace.colorbar.tickmode == "auto"
 
@@ -348,7 +368,7 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
     for elem_symb, value in float_values.items():
         elem_name = df_ptable.loc[elem_symb, "name"]
         hover_text = next(text for text in hover_texts if text.startswith(elem_name))
-        assert hover_text == f"{elem_name}<br>Value: {value:.3g}"
+        assert hover_text == f"{elem_name} ({elem_symb})<br>Value: {value:.3g}"
 
     # Test fraction and percent modes
     for heat_mode in ["fraction", "percent"]:
@@ -360,7 +380,10 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
             hover_text = next(
                 text for text in hover_texts if text.startswith(elem_name)
             )
-            assert hover_text == f"{elem_name}<br>Percentage: {value:.2%} ({value})"
+            expected_hover_text = (
+                f"{elem_name} ({elem_symb})<br>Percentage: {value:.2%} ({value})"
+            )
+            assert hover_text == expected_hover_text
 
     # Test with integer values
     int_values = {"Fe": 2, "O": 3, "H": 1}
@@ -376,10 +399,10 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
             )
 
             if heat_mode == "value":
-                assert hover_text == f"{elem_name}<br>Value: {value}"
+                expected_hover_text = f"{elem_name} ({elem_symb})<br>Value: {value}"
             else:
-                assert (
-                    hover_text == f"{elem_name}<br>Percentage: "
+                expected_hover_text = (
+                    f"{elem_name} ({elem_symb})<br>Percentage: "
                     f"{value / sum(int_values.values()):.2%} ({value})"
                 )
 
@@ -406,3 +429,45 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
     hover_texts = fig.data[-1].text.flat
     fe_hover_text = next(text for text in hover_texts if text.startswith("Iron"))
     assert "Custom Fe data" in fe_hover_text
+
+
+def test_ptable_heatmap_plotly_element_symbol_map() -> None:
+    values = {"Fe": 2, "O": 3, "H": 1}
+    element_symbol_map = {"Fe": "Iron", "O": "Oxygen", "H": "Hydrogen"}
+    fig = ptable_heatmap_plotly(values, element_symbol_map=element_symbol_map)
+
+    # Check if custom symbols are used in tile texts
+    tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
+    for custom_symbol in element_symbol_map.values():
+        assert any(
+            custom_symbol in text for text in tile_texts
+        ), f"Custom symbol {custom_symbol} not found in tile texts"
+
+    # Check if original element symbols are still used in hover texts
+    hover_texts = fig.data[-1].text.flat
+    for elem in values:
+        hover_text = next(
+            text for text in hover_texts if text.startswith(df_ptable.loc[elem, "name"])
+        )
+        assert (
+            f"({elem})" in hover_text
+        ), f"Original symbol {elem} not found in hover text"
+
+    # Test with partial mapping
+    partial_map = {"Fe": "This be Iron"}
+    fig = ptable_heatmap_plotly(values, element_symbol_map=partial_map)
+    tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
+    assert any(
+        "This be Iron" in text for text in tile_texts
+    ), "Custom symbol not found in tile texts"
+    assert any(
+        "O</span>" in text for text in tile_texts
+    ), "Original symbol 'O' not found in tile texts"
+
+    # Test with None value
+    fig = ptable_heatmap_plotly(values, element_symbol_map=None)
+    tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
+    for elem in values:
+        assert any(
+            f"{elem}</span>" in text for text in tile_texts
+        ), f"Original symbol {elem} not found in tile texts for element_symbol_map=None"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
+import re
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -9,13 +10,24 @@ import pytest
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.enums import ElemColorScheme, Key
-from pymatviz.structure_viz.helpers import get_image_atoms
+from pymatviz.enums import ElemColorScheme, Key, SiteCoords
+from pymatviz.structure_viz.helpers import get_image_sites
 
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from pymatgen.core import PeriodicSite
 
 COORDS = [[0, 0, 0], [0.5, 0.5, 0.5]]
 DISORDERED_STRUCT = Structure(
-    lattice := np.eye(3) * 5, species=[{"Fe": 0.75, "C": 0.25}, "O"], coords=COORDS
+    lattice := np.eye(3) * 5,
+    species=[{"Fe": 0.75, "C": 0.25}, "O"],
+    coords=COORDS,
+    site_properties={
+        "magmom": [[0, 0, 1], [0, 0, -1]],  # Vector values for magmom
+        "force": [[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]],
+    },
 )
 
 
@@ -33,6 +45,7 @@ DISORDERED_STRUCT = Structure(
             "site_labels": "symbol",
             "standardize_struct": None,
             "n_cols": 2,
+            "show_site_vectors": "magmom",
         },
         {
             "rotation": "10x,-10y,0z",
@@ -45,6 +58,7 @@ DISORDERED_STRUCT = Structure(
             "site_labels": "species",
             "standardize_struct": True,
             "n_cols": 4,
+            "show_site_vectors": ("magmom", "force"),
         },
         {
             "rotation": "5x,5y,5z",
@@ -57,6 +71,7 @@ DISORDERED_STRUCT = Structure(
             "site_labels": {"Fe": "Iron"},
             "standardize_struct": False,
             "n_cols": 3,
+            "show_site_vectors": (),
         },
         {
             "rotation": "15x,0y,10z",
@@ -100,15 +115,6 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
     fig = pmv.structure_2d_plotly(DISORDERED_STRUCT, **kwargs)
     assert isinstance(fig, go.Figure)
 
-    # Check if the figure has the correct number of traces
-    expected_traces = 0
-    if show_sites := kwargs.get("show_sites"):
-        expected_traces += len(DISORDERED_STRUCT)
-    if show_unit_cell := kwargs.get("show_unit_cell"):
-        expected_traces += 12  # 12 edges in a cube
-        expected_traces += 8  # 8 nodes in a cube
-    assert len(fig.data) == expected_traces
-
     # Check if the layout properties are set correctly
     assert fig.layout.showlegend is False
     assert fig.layout.paper_bgcolor == "rgba(0,0,0,0)"
@@ -123,8 +129,8 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
         assert axis.constrain == "domain"
 
     # Additional checks based on specific kwargs
-    if isinstance(show_unit_cell, dict):
-        edge_kwargs = show_unit_cell.get("edge", {})
+    if isinstance(kwargs.get("show_unit_cell"), dict):
+        edge_kwargs = kwargs["show_unit_cell"].get("edge", {})
         unit_cell_edge_trace = next(
             (trace for trace in fig.data if trace.mode == "lines"), None
         )
@@ -135,14 +141,32 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
     site_trace = next(
         (trace for trace in fig.data if trace.mode == "markers+text"), None
     )
+    show_sites = kwargs.get("show_sites")
     if (site_labels := kwargs.get("site_labels")) and show_sites is not False:
         assert site_trace is not None
         if isinstance(site_labels, dict):
             assert any(text in site_trace.text for text in site_labels.values())
-        # elif isinstance(kwargs["site_labels"], list):
-        #     assert all(label in site_trace.text for label in kwargs["site_labels"])
         elif site_labels in ("symbol", "species"):
             assert len(site_trace.text) == len(DISORDERED_STRUCT)
+
+    # Check for sites and arrows
+    if show_sites:
+        site_traces = [
+            trace for trace in fig.data if (trace.name or "").startswith("site")
+        ]
+        assert len(site_traces) > 0, "No site traces found when show_sites is True"
+
+        if kwargs.get("show_site_vectors"):
+            vector_traces = [
+                trace for trace in fig.data if (trace.name or "").startswith("vector")
+            ]
+            assert (
+                len(vector_traces) > 0
+            ), "No vector traces found when show_site_vectors is True"
+            for vector_trace in vector_traces:
+                assert vector_trace.mode == "lines+markers"
+                assert vector_trace.marker.symbol == "arrow"
+                assert "angle" in vector_trace.marker
 
 
 def test_structure_2d_plotly_multiple() -> None:
@@ -163,22 +187,35 @@ def test_structure_2d_plotly_multiple() -> None:
     }
     fig = pmv.structure_2d_plotly(structs_dict, n_cols=3)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (
-        len(COORDS) + 12 + 8
-    )  # 4 structures, 2 sites each, 12 unit cell edges, 8 unit cell nodes
+    # 4 structures, 2 sites each, 12 unit cell edges, 8 unit cell nodes
+    trace_names = [trace.name or "" for trace in fig.data]
+    n_site_traces = sum(name.startswith("site") for name in trace_names)
+    assert n_site_traces == 8
+    n_edge_traces = sum(name.startswith("edge") for name in trace_names)
+    assert n_edge_traces == 48
+    n_node_traces = sum(name.startswith("node") for name in trace_names)
+    assert n_node_traces == 32
+    n_bond_traces = sum(name.startswith("bond") for name in trace_names)
+    assert n_bond_traces == 0
+    n_image_site_traces = sum(name.startswith("Image of ") for name in trace_names)
+    assert n_image_site_traces == 28
+    expected_traces = (
+        n_site_traces + n_edge_traces + n_node_traces + n_image_site_traces
+    )
+    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
 
     # Test pandas.Series[Structure]
     struct_series = pd.Series(structs_dict)
     fig = pmv.structure_2d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
+    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
 
     # Test list[Structure]
     fig = pmv.structure_2d_plotly(list(structs_dict.values()), n_cols=2)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
+    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
 
     # Test subplot_title
@@ -187,7 +224,7 @@ def test_structure_2d_plotly_multiple() -> None:
 
     fig = pmv.structure_2d_plotly(struct_series, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 4 * (len(COORDS) + 12 + 8)
+    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
     for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
@@ -214,6 +251,7 @@ def test_structure_2d_plotly_invalid_input() -> None:
             "site_labels": "species",
             "standardize_struct": None,
             "n_cols": 3,
+            "show_site_vectors": "magmom",
         },
         {
             "atomic_radii": 0.5,
@@ -226,6 +264,7 @@ def test_structure_2d_plotly_invalid_input() -> None:
             "site_labels": "symbol",
             "standardize_struct": True,
             "n_cols": 2,
+            "show_site_vectors": ("magmom", "force"),
         },
         {
             "atomic_radii": {"Fe": 0.8, "O": 0.6},
@@ -238,6 +277,7 @@ def test_structure_2d_plotly_invalid_input() -> None:
             "site_labels": {"Fe": "Iron", "O": "Oxygen"},
             "standardize_struct": False,
             "n_cols": 4,
+            "show_site_vectors": (),
         },
         {
             "atomic_radii": 1.2,
@@ -256,23 +296,6 @@ def test_structure_2d_plotly_invalid_input() -> None:
 def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
     fig = pmv.structure_3d_plotly(DISORDERED_STRUCT, **kwargs)
     assert isinstance(fig, go.Figure)
-
-    # Check if the figure has the correct number of traces
-    expected_traces = 0
-    if kwargs.get("show_sites"):
-        expected_traces += len(DISORDERED_STRUCT)
-    if kwargs.get("show_unit_cell"):
-        expected_traces += 12  # 12 edges in a cube
-        expected_traces += 8  # 8 nodes in a cube
-    if kwargs.get("show_image_sites"):
-        # Instead of assuming 8 image sites per atom, let's count the actual number
-        image_sites = sum(
-            len(get_image_atoms(site, DISORDERED_STRUCT.lattice))
-            for site in DISORDERED_STRUCT
-        )
-        expected_traces += image_sites
-
-    assert len(fig.data) == expected_traces
 
     # Check if the layout properties are set correctly
     assert fig.layout.showlegend is False
@@ -299,7 +322,9 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
 
     if kwargs.get("show_sites"):
         site_traces = [
-            trace for trace in fig.data if trace.mode in ("markers", "markers+text")
+            trace
+            for trace in fig.data
+            if getattr(trace, "mode", None) in ("markers", "markers+text")
         ]
         assert len(site_traces) > 0, "No site traces found when show_sites is True"
         site_trace = site_traces[0]
@@ -318,6 +343,29 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
             assert (
                 site_trace.text is None or len(site_trace.text) == 0
             ), "Unexpected site labels found"
+
+    # Check for sites and arrows
+    if kwargs.get("show_sites"):
+        site_traces = [
+            trace for trace in fig.data if (trace.name or "").startswith("site")
+        ]
+        assert len(site_traces) > 0, "No site traces found when show_sites is True"
+
+        if show_site_vectors := kwargs.get("show_site_vectors"):
+            vector_traces = [
+                trace for trace in fig.data if (trace.name or "").startswith("vector")
+            ]
+            assert (
+                len(vector_traces) > 0
+            ), f"No vector traces even though {show_site_vectors=}"
+            for vector_trace in vector_traces:
+                if vector_trace.type == "scatter3d":
+                    assert vector_trace.mode == "lines"
+                    assert vector_trace.line.color == "white"
+                    assert vector_trace.line.width == 5
+                elif vector_trace.type == "cone":
+                    assert vector_trace.sizemode == "absolute"
+                    assert vector_trace.sizeref == 0.8
 
 
 def test_structure_3d_plotly_multiple() -> None:
@@ -345,7 +393,7 @@ def test_structure_3d_plotly_multiple() -> None:
         expected_traces += 12  # unit cell edges
         expected_traces += 8  # unit cell nodes
         expected_traces += sum(
-            len(get_image_atoms(site, struct.lattice)) for site in struct
+            len(get_image_sites(site, struct.lattice)) for site in struct
         )  # image sites
 
     assert len(fig.data) == expected_traces
@@ -449,3 +497,43 @@ def test_structure_3d_plotly_subplot_title_override(
             assert annotation.font.size == 16
             assert annotation.font.color == "black"
             assert annotation.yanchor == "top"
+
+
+@pytest.mark.parametrize(
+    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
+)
+@pytest.mark.parametrize(
+    "hover_text", [*SiteCoords, lambda site: f"<b>{site.frac_coords}</b>"]
+)
+def test_hover_text(
+    plot_function: Callable[[Structure, Any], go.Figure],
+    hover_text: SiteCoords | Callable[[PeriodicSite], str],
+) -> None:
+    struct = Structure(lattice, ["Fe", "O"], COORDS)
+    fig = plot_function(struct, hover_text=hover_text)  # type: ignore[call-arg]
+
+    site_traces = [
+        trace for trace in fig.data if trace.name and trace.name.startswith("site")
+    ]
+    assert len(site_traces) > 0
+
+    # regex for a single site coordinate with optional decimal point
+    re_coord = r"\d+\.?\d*"
+    re_3_coords = rf"{re_coord}, {re_coord}, {re_coord}"
+    for trace in site_traces:
+        site_hover_text = trace.hovertext
+        if callable(hover_text):
+            assert "<b>" in site_hover_text, f"{site_hover_text=}"
+            assert "</b>" in site_hover_text, f"{site_hover_text=}"
+        elif hover_text == SiteCoords.cartesian:
+            assert re.search(
+                rf"Coordinates \({re_3_coords}\)", site_hover_text
+            ), f"{site_hover_text=}"
+        elif hover_text == SiteCoords.fractional:
+            assert re.search(
+                rf"Coordinates \[{re_3_coords}\]", site_hover_text
+            ), f"{site_hover_text=}"
+        elif hover_text == SiteCoords.cartesian_fractional:
+            assert re.search(
+                rf"Coordinates \({re_3_coords}\) \[{re_3_coords}\]", site_hover_text
+            ), f"{site_hover_text=}"

@@ -174,13 +174,24 @@ class Key(LabelEnum):
     bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
     bond_angles = "bond_angles", "Bond Angles (°)"
     packing_fraction = "packing_fraction", "Packing Fraction"
+    max_pair_dist = "max_pair_dist", f"Maximum Pair Distance {angstrom}"
+
+    # Crystal Symmetry Properties
+    choice_symbol = "choice_symbol", "Choice symbol"
+    hall_num = "hall_num", "Hall number"
+    hall_symbol = "hall_symbol", "Hall symbol"
+    n_rot_ops = "n_rot_ops", "Number of rotational operations"
+    n_sym_ops = "n_sym_ops", "Total number of symmetry operations"
+    n_trans_ops = "n_trans_ops", "Number of translational operations"
+    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
+    wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
+    wyckoff_symbol = "wyckoff_symbol", "Wyckoff Symbol"
+    wyckoff_symbols = "wyckoff_symbols", "Wyckoff symbols"
 
     # Structure Prototyping
     # AFLOW-style prototype label with appended chemical system
     protostructure = "protostructure", "Protostructure Label"
     # Deprecated name for the protostructure
-    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
-    wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
     prototype = "prototype", "Prototype Label"
     aflow_prototype = "aflow_prototype", "AFLOW-style Prototype Label"
     # AFLOW-style prototype label that has been canonicalized
@@ -471,12 +482,26 @@ class Key(LabelEnum):
     spearman = "Spearman", "Spearman Correlation"
     kendall = "Kendall", "Kendall Correlation"
     rmse = "RMSE", "Root Mean Squared Error"
+    rmsd = "rmsd", "Root Mean Square Deviation"
     mape = "MAPE", "Mean Absolute Percentage Error"
     variance = "variance", "Variance"
     std_dev = "std_dev", "Standard Deviation"
     iqr = "IQR", "Interquartile Range"
     outlier = "outlier", "Outlier"
     error = "error", "Error"
+    energy_error = "energy_error", "Energy Error"
+    force_error = "force_error", "Force Error"
+    stress_error = "stress_error", "Stress Error"
+    volume_error = "volume_error", "Volume Error"
+    max_force_error = "max_force_error", "Max Force Error"
+    max_stress_error = "max_stress_error", "Max Stress Error"
+    max_volume_error = "max_volume_error", "Max Volume Error"
+    force_rmse = "force_rmse", "Force RMSE"
+    stress_rmse = "stress_rmse", "Stress RMSE"
+    volume_rmse = "volume_rmse", "Volume RMSE"
+    force_mae = "force_mae", "Force MAE"
+    stress_mae = "stress_mae", "Stress MAE"
+    volume_mae = "volume_mae", "Volume MAE"
     residuals = "residuals", "Residuals"
     prc = "PRC", "Precision-Recall Curve"
     prc_curve = "prc_curve", "PRC Curve"
@@ -510,6 +535,13 @@ class Key(LabelEnum):
     core_hours = "core_hours", "Core Hours"
     memory = "memory", "Memory"
     n_steps = "n_steps", "Number of Steps"
+    n_elec_steps = "n_elec_steps", "Number of Electronic Steps"
+    n_ionic_steps = "n_ionic_steps", "Number of Ionic Steps"
+    n_md_steps = "n_md_steps", "Number of Molecular Dynamics Steps"
+    n_relax_steps = "n_relax_steps", "Number of Relaxation Steps"
+    n_scf_steps = "n_scf_steps", "Number of SCF Steps"
+    n_bands = "n_bands", "Number of Bands"
+    n_kpoints = "n_kpoints", "Number of K-points"
     queue_name = "queue_name", "Queue Name"
     job_name = "job_name", "Job Name"
     job_type = "job_type", "Job Type"
@@ -665,3 +697,12 @@ class ElemColorScheme(LabelEnum):
     # https://wikipedia.org/wiki/Jmol"
     vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
     # https://jp-minerals.org/vesta
+
+
+@unique
+class SiteCoords(LabelEnum):
+    """Site coordinate representations."""
+
+    cartesian = "cartesian", "Cartesian"
+    fractional = "fractional", "Fractional"
+    cartesian_fractional = "cartesian+fractional", "Cartesian and Fractional"
