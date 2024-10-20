@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import plotly.figure_factory as ff
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
@@ -271,6 +270,8 @@ def ptable_heatmap_plotly(
     zmin = min(non_nan_values) if cscale_range[0] is None else cscale_range[0]
     zmax = max(non_nan_values) if cscale_range[1] is None else cscale_range[1]
     car_multiplier = 100 if heat_mode == "percent" else 1
+
+    import plotly.figure_factory as ff  # costly import
 
     fig = ff.create_annotated_heatmap(
         car_multiplier * heatmap_values,
