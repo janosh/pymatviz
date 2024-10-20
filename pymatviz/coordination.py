@@ -1,21 +1,29 @@
 """Visualizations of coordination numbers distributions."""
 
+from __future__ import annotations
+
 import math
 from collections import Counter
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from inspect import isclass
-from typing import Any, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.colors import label_rgb
 from plotly.subplots import make_subplots
-from pymatgen.analysis.local_env import NearNeighbors
-from pymatgen.core import PeriodicSite, Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, LabelEnum
-from pymatviz.utils import normalize_to_dict
+from pymatviz.utils import _check_type, normalize_to_dict
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any, Literal
+
+    from pymatgen.analysis.local_env import NearNeighbors
+    from pymatgen.core import PeriodicSite, Structure
 
 
 class SplitMode(LabelEnum):
@@ -57,10 +65,14 @@ def normalize_get_neighbors(
     # Prepare the neighbor-finding strategy
     if isinstance(strategy, int | float):
         return lambda site, structure: structure.get_neighbors(site, strategy)
-    if isinstance(strategy, NearNeighbors):
+
+    if _check_type(strategy, "pymatgen.analysis.local_env.NearNeighbors"):
         return lambda site, structure: strategy.get_nn_info(
             structure, structure.index(site)
         )
+
+    from pymatgen.analysis.local_env import NearNeighbors  # costly import
+
     if isclass(strategy) and issubclass(strategy, NearNeighbors):
         nn_instance = strategy()
         return lambda site, structure: nn_instance.get_nn_info(
@@ -418,6 +430,8 @@ def coordination_vs_cutoff_line(
     """
     structures = normalize_to_dict(structures)
 
+    from pymatgen.analysis.local_env import NearNeighbors
+
     # Determine cutoff range based on strategy
     if (
         isinstance(strategy, tuple)
@@ -425,6 +439,7 @@ def coordination_vs_cutoff_line(
         and {*map(type, strategy)} <= {int, float}
     ):
         cutoff_range = strategy
+
     elif isinstance(strategy, NearNeighbors) or (
         isclass(strategy) and issubclass(strategy, NearNeighbors)
     ):
@@ -436,6 +451,7 @@ def coordination_vs_cutoff_line(
         else:
             raise AttributeError(f"Could not determine cutoff for {nn_instance=}")
         cutoff_range = (0, max_cutoff)
+
     else:
         raise TypeError(
             f"Invalid {strategy=}. Expected float, tuple of floats, NearNeighbors "
