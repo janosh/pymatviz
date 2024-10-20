@@ -19,7 +19,6 @@ import plotly.io as pio
 from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import AnchoredText
 from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
-from pymatgen.core import Structure
 
 
 if TYPE_CHECKING:
@@ -680,7 +679,7 @@ def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
 
 def normalize_to_dict(
     inputs: T | Sequence[T] | dict[str, T],
-    cls: type[T] = Structure,
+    cls: type[T] | None = None,
     key_gen: Callable[[T], str] = lambda obj: getattr(
         obj, "formula", type(obj).__name__
     ),
@@ -700,8 +699,14 @@ def normalize_to_dict(
     Raises:
         TypeError: If the input format is invalid.
     """
+    if cls is None:
+        from pymatgen.core import Structure  # costly import
+
+        cls = Structure
+
     if isinstance(inputs, cls):
-        return {"": inputs}
+        return {"": inputs}  # type: ignore[dict-item]
+
     if (
         isinstance(inputs, list | tuple)
         and all(isinstance(obj, cls) for obj in inputs)
