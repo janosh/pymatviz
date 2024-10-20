@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
-import scipy.stats
 from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import AnchoredText
 from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
@@ -235,6 +234,8 @@ def bin_df_cols(
         )
 
     if density_col:
+        import scipy.stats  # expensive import
+
         # compute kernel density estimate for each bin
         values = df_in[bin_by_cols].dropna().T
         gaussian_kde = scipy.stats.gaussian_kde(values.astype(float))
