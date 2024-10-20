@@ -728,3 +728,23 @@ def normalize_to_dict(
     raise TypeError(
         f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
     )
+
+
+def _check_type(obj: object, type_str: tuple[str, ...] | str) -> bool:
+    """Alternative to isinstance that avoids imports.
+
+    Todo:
+    Taken from monty.json, use until monty.json import fix merged.
+
+    Note for future developers: the type_str is not always obvious for an
+    object. For example, pandas.DataFrame is actually pandas.core.frame.DataFrame.
+    To find out the type_str for an object, run type(obj).mro(). This will
+    list all the types that an object can resolve to in order of generality
+    (all objects have the builtins.object as the last one).
+    """
+    type_str = type_str if isinstance(type_str, tuple) else (type_str,)
+    try:
+        mro = type(obj).mro()
+    except TypeError:
+        return False
+    return any(f"{o.__module__}.{o.__name__}" == ts for o in mro for ts in type_str)

@@ -14,7 +14,13 @@ from matplotlib.ticker import FixedLocator
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import Key
-from pymatviz.utils import PLOTLY, Backend, crystal_sys_from_spg_num, si_fmt_int
+from pymatviz.utils import (
+    PLOTLY,
+    Backend,
+    _check_type,
+    crystal_sys_from_spg_num,
+    si_fmt_int,
+)
 
 
 if TYPE_CHECKING:
@@ -63,11 +69,7 @@ def spacegroup_bar(
         plt.Axes | go.Figure: matplotlib Axes or plotly Figure depending on backend.
     """
     # TODO: use this hacky type check to avoid expensive import of Structure, #209
-    obj = next(iter(data))
-    if (
-        obj.__class__.__module__ == "pymatgen.core.structure"
-        and obj.__class__.__qualname__ == "Structure"
-    ):
+    if _check_type(next(iter(data)), "pymatgen.core.structure.Structure"):
         # if 1st sequence item is structure, assume all are
         series = pd.Series(struct.get_space_group_info()[1] for struct in data)  # type: ignore[union-attr]
     else:
