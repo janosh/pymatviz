@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition
 
 from pymatviz.enums import ElemCountMode, Key
 from pymatviz.utils import ElemValues, df_ptable
@@ -63,8 +62,11 @@ def count_elements(
     # Ensure values is Series if we got dict/list/tuple
     srs = pd.Series(values)
 
+    from pymatgen.core import Composition  # costly import
+
     if is_numeric_dtype(srs):
         pass
+
     elif is_string_dtype(srs) or {*map(type, srs)} <= {str, Composition}:
         # all items are formula strings or Composition objects
         if count_mode == "occurrence":
