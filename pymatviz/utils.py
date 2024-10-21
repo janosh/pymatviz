@@ -16,9 +16,11 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
+import scipy.stats
 from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import AnchoredText
 from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
+from pymatgen.core import Structure
 
 
 if TYPE_CHECKING:
@@ -233,8 +235,6 @@ def bin_df_cols(
         )
 
     if density_col:
-        import scipy.stats  # expensive import
-
         # compute kernel density estimate for each bin
         values = df_in[bin_by_cols].dropna().T
         gaussian_kde = scipy.stats.gaussian_kde(values.astype(float))
@@ -679,7 +679,7 @@ def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
 
 def normalize_to_dict(
     inputs: T | Sequence[T] | dict[str, T],
-    cls: type[T] | None = None,
+    cls: type[T] = Structure,
     key_gen: Callable[[T], str] = lambda obj: getattr(
         obj, "formula", type(obj).__name__
     ),
@@ -699,13 +699,8 @@ def normalize_to_dict(
     Raises:
         TypeError: If the input format is invalid.
     """
-    if cls is None:
-        from pymatgen.core import Structure  # costly import
-
-        cls = Structure
-
     if isinstance(inputs, cls):
-        return {"": inputs}  # type: ignore[dict-item]
+        return {"": inputs}
 
     if (
         isinstance(inputs, list | tuple)
@@ -728,23 +723,3 @@ def normalize_to_dict(
     raise TypeError(
         f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
     )
-
-
-def _check_type(obj: object, type_str: tuple[str, ...] | str) -> bool:
-    """Alternative to isinstance that avoids imports.
-
-    Todo:
-    Taken from monty.json, use until monty.json import fix merged.
-
-    Note for future developers: the type_str is not always obvious for an
-    object. For example, pandas.DataFrame is actually pandas.core.frame.DataFrame.
-    To find out the type_str for an object, run type(obj).mro(). This will
-    list all the types that an object can resolve to in order of generality
-    (all objects have the builtins.object as the last one).
-    """
-    type_str = type_str if isinstance(type_str, tuple) else (type_str,)
-    try:
-        mro = type(obj).mro()
-    except TypeError:
-        return False
-    return any(f"{o.__module__}.{o.__name__}" == ts for o in mro for ts in type_str)

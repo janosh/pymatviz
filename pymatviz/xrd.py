@@ -8,17 +8,14 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
-
-from pymatviz.utils import _check_type
+from pymatgen.core import Structure
 
 
 if TYPE_CHECKING:
     from typing import Any, TypeAlias
 
-    from pymatgen.core import Structure
 
-    PatternOrStruct: TypeAlias = DiffractionPattern | Structure
-
+PatternOrStruct: TypeAlias = DiffractionPattern | Structure
 HklFormat: TypeAlias = Literal["compact", "full", None]
 ValidHklFormats = HklCompact, HklFull, HklNone = get_args(HklFormat)
 
@@ -101,9 +98,7 @@ def xrd_pattern(  # noqa: D417
         )
 
     # Convert single object to dict for uniform processing
-    if isinstance(patterns, DiffractionPattern) or _check_type(
-        patterns, "pymatgen.core.structure.Structure"
-    ):
+    if isinstance(patterns, DiffractionPattern | Structure):
         patterns = {"XRD Pattern": patterns}
     elif not isinstance(patterns, dict):
         raise TypeError(
@@ -141,7 +136,7 @@ def xrd_pattern(  # noqa: D417
         else:
             pattern_or_struct, trace_kwargs = pattern_data, {}
 
-        if _check_type(pattern_or_struct, "pymatgen.core.structure.Structure"):
+        if isinstance(pattern_or_struct, Structure):
             xrd_calculator = XRDCalculator(wavelength=wavelength)
             diffraction_pattern = xrd_calculator.get_pattern(pattern_or_struct)
         elif isinstance(pattern_or_struct, DiffractionPattern):

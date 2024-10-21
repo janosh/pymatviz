@@ -8,6 +8,9 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
+import sklearn
+from sklearn.metrics import mean_absolute_percentage_error as mape
+from sklearn.metrics import r2_score
 
 from pymatviz.utils import (
     BACKENDS,
@@ -75,11 +78,6 @@ def annotate_metrics(
         )
 
     backend: Backend = PLOTLY if isinstance(fig, go.Figure) else MATPLOTLIB
-
-    # Lazily import costly scikit-learn
-    import sklearn
-    from sklearn.metrics import mean_absolute_percentage_error as mape
-    from sklearn.metrics import r2_score
 
     funcs = {
         "MAE": lambda x, y: np.abs(x - y).mean(),

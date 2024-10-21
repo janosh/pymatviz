@@ -10,6 +10,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.constants as const
 from plotly.subplots import make_subplots
+from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
+from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
+from pymatgen.phonon.dos import PhononDos
 from pymatgen.util.string import htmlify
 
 
@@ -19,11 +22,9 @@ if TYPE_CHECKING:
 
     import numpy as np
     from pymatgen.core import Structure
-    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
-    from pymatgen.phonon.dos import PhononDos
     from typing_extensions import Self
 
-# AnyBandStructure: TypeAlias = BandStructureSymmLine | PhononBands
+AnyBandStructure: TypeAlias = BandStructureSymmLine | PhononBands
 YMin: TypeAlias = float | Literal["y_min"]
 YMax: TypeAlias = float | Literal["y_max"]
 BranchMode: TypeAlias = Literal["union", "intersection"]
@@ -200,9 +201,6 @@ def phonon_bands(
             f"Invalid {branch_mode=}, must be one of {get_args(BranchMode)}"
         )
 
-    # costly import
-    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
-
     if type(band_structs) not in {PhononBands, dict}:
         cls_name = PhononBands.__name__
         raise TypeError(
@@ -357,9 +355,6 @@ def phonon_dos(
     valid_normalize = (None, "max", "sum", "integral")
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
-
-    # costly import
-    from pymatgen.phonon.dos import PhononDos
 
     if type(doses) not in {PhononDos, dict}:
         raise TypeError(

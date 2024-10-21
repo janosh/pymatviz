@@ -12,17 +12,17 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.colors import label_rgb
 from plotly.subplots import make_subplots
+from pymatgen.analysis.local_env import NearNeighbors
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, LabelEnum
-from pymatviz.utils import _check_type, normalize_to_dict
+from pymatviz.utils import normalize_to_dict
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any, Literal
 
-    from pymatgen.analysis.local_env import NearNeighbors
     from pymatgen.core import PeriodicSite, Structure
 
 
@@ -66,12 +66,10 @@ def normalize_get_neighbors(
     if isinstance(strategy, int | float):
         return lambda site, structure: structure.get_neighbors(site, strategy)
 
-    if _check_type(strategy, "pymatgen.analysis.local_env.NearNeighbors"):
+    if isinstance(strategy, NearNeighbors):
         return lambda site, structure: strategy.get_nn_info(
             structure, structure.index(site)
         )
-
-    from pymatgen.analysis.local_env import NearNeighbors  # costly import
 
     if isclass(strategy) and issubclass(strategy, NearNeighbors):
         nn_instance = strategy()
@@ -429,8 +427,6 @@ def coordination_vs_cutoff_line(
         A plotly Figure object containing the line plot.
     """
     structures = normalize_to_dict(structures)
-
-    from pymatgen.analysis.local_env import NearNeighbors
 
     # Determine cutoff range based on strategy
     if (

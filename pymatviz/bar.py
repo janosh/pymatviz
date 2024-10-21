@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,23 +12,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 from matplotlib import transforms
 from matplotlib.ticker import FixedLocator
+from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import Key
-from pymatviz.utils import (
-    PLOTLY,
-    Backend,
-    _check_type,
-    crystal_sys_from_spg_num,
-    si_fmt_int,
-)
+from pymatviz.utils import PLOTLY, Backend, crystal_sys_from_spg_num, si_fmt_int
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from typing import Any, Literal
-
-    from pymatgen.core import Structure
 
 
 def spacegroup_bar(
@@ -68,10 +61,10 @@ def spacegroup_bar(
     Returns:
         plt.Axes | go.Figure: matplotlib Axes or plotly Figure depending on backend.
     """
-    # TODO: use this hacky type check to avoid expensive import of Structure, #209
-    if _check_type(next(iter(data)), "pymatgen.core.structure.Structure"):
+    if isinstance(next(iter(data)), Structure):
         # if 1st sequence item is structure, assume all are
-        series = pd.Series(struct.get_space_group_info()[1] for struct in data)  # type: ignore[union-attr]
+        data = cast(Sequence[Structure], data)
+        series = pd.Series(struct.get_space_group_info()[1] for struct in data)
     else:
         series = pd.Series(data)
 

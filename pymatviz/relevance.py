@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
+import sklearn.metrics as skm
 
 from pymatviz.utils import df_to_arrays
 
@@ -36,8 +37,6 @@ def roc_curve(
     ax = ax or plt.gca()
 
     # get the metrics
-    import sklearn.metrics as skm
-
     false_pos_rate, true_pos_rate, _ = skm.roc_curve(targets, proba_pos)
     roc_auc = skm.roc_auc_score(targets, proba_pos)
 
@@ -72,8 +71,6 @@ def precision_recall_curve(
     ax = ax or plt.gca()
 
     # get the metrics
-    import sklearn.metrics as skm
-
     precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
 
     # proba_pos.round() converts class probabilities to integer class labels
