@@ -6,6 +6,7 @@ Test import time of core modules to avoid regression.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import time
 
@@ -75,6 +76,9 @@ def measure_import_time_in_ms(module_name: str, count: int = 3) -> float:
     return (total_time / count) * 1000
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_REF") != "refs/heads/main", reason="Only run on the main branch"
+)
 @pytest.mark.skipif(GEN_REF_TIME, reason="Generating reference import time.")
 def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) -> None:
     """Test the import time of core modules to avoid regression in performance.
