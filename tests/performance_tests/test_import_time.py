@@ -12,13 +12,23 @@ import time
 import pytest
 
 
-# TODO: add more test modules
 REF_IMPORT_TIME: dict[str, float] = {
     "pymatviz": None,
-    "pymatviz.ptable": None,
-    "pymatviz.io": None,
-    "pymatviz.scatter": None,
+    "pymatviz.coordination": None,
+    "pymatviz.cumulative": None,
+    "pymatviz.histogram": None,
     "pymatviz.phonons": None,
+    "pymatviz.powerups": None,
+    "pymatviz.ptable": None,
+    "pymatviz.rainclouds": None,
+    "pymatviz.rdf": None,
+    "pymatviz.relevance": None,
+    "pymatviz.sankey": None,
+    "pymatviz.scatter": None,
+    "pymatviz.structure_viz": None,
+    "pymatviz.sunburst": None,
+    "pymatviz.uncertainty": None,
+    "pymatviz.xrd": None,
 }
 
 
