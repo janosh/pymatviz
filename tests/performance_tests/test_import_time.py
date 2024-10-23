@@ -15,23 +15,23 @@ import pytest
 GEN_REF_TIME = True  # switch for generating reference time
 
 # Last update date: Oct 23 2024
-REF_IMPORT_TIME: dict[str, float | None] = {
-    "pymatviz": None,
-    "pymatviz.coordination": None,
-    "pymatviz.cumulative": None,
-    "pymatviz.histogram": None,
-    "pymatviz.phonons": None,
-    "pymatviz.powerups": None,
-    "pymatviz.ptable": None,
-    "pymatviz.rainclouds": None,
-    "pymatviz.rdf": None,
-    "pymatviz.relevance": None,
-    "pymatviz.sankey": None,
-    "pymatviz.scatter": None,
-    "pymatviz.structure_viz": None,
-    "pymatviz.sunburst": None,
-    "pymatviz.uncertainty": None,
-    "pymatviz.xrd": None,
+REF_IMPORT_TIME: dict[str, float] = {
+    "pymatviz": 4016.14,
+    "pymatviz.coordination": 4051.99,
+    "pymatviz.cumulative": 4013.77,
+    "pymatviz.histogram": 4014.48,
+    "pymatviz.phonons": 4044.44,
+    "pymatviz.powerups": 4011.65,
+    "pymatviz.ptable": 3997.76,
+    "pymatviz.rainclouds": 4012.22,
+    "pymatviz.rdf": 4024.62,
+    "pymatviz.relevance": 4025.91,
+    "pymatviz.sankey": 4015.86,
+    "pymatviz.scatter": 4029.47,
+    "pymatviz.structure_viz": 4037.38,
+    "pymatviz.sunburst": 4022.42,
+    "pymatviz.uncertainty": 4024.33,
+    "pymatviz.xrd": 4026.99,
 }
 
 
@@ -53,7 +53,7 @@ def test_get_ref_import_time() -> None:
         print(f'    "{module_name}": {import_time:.2f},')
     print("}")
 
-    pytest.fail("Generated reference import times.")
+    pytest.fail("Generate reference import times.")
 
 
 def measure_import_time_in_ms(module_name: str, count: int = 3) -> float:
@@ -76,7 +76,7 @@ def measure_import_time_in_ms(module_name: str, count: int = 3) -> float:
     return (total_time / count) * 1000
 
 
-@pytest.mark.skipif(GEN_REF_TIME, reason="Generate reference import time.")
+@pytest.mark.skipif(GEN_REF_TIME, reason="Generating reference import time.")
 def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) -> None:
     """Test the import time of core modules to avoid regression in performance.
 
