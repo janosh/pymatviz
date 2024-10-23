@@ -12,6 +12,8 @@ import time
 import pytest
 
 
+GEN_REF_TIME = True  # switch for generating reference time
+
 # Last update date: Oct 23 2024
 REF_IMPORT_TIME: dict[str, float | None] = {
     "pymatviz": None,
@@ -33,7 +35,9 @@ REF_IMPORT_TIME: dict[str, float | None] = {
 }
 
 
-# @pytest.mark.skip(reason="Unskip to generate reference import time.")
+@pytest.mark.skipif(
+    not GEN_REF_TIME, reason="Set GEN_REF_TIME to generate reference import time."
+)
 def test_get_ref_import_time() -> None:
     """A dummy test that would always fail, used to generate copyable reference time."""
     # Measure import time for each module
@@ -72,6 +76,7 @@ def measure_import_time_in_ms(module_name: str, count: int = 3) -> float:
     return (total_time / count) * 1000
 
 
+@pytest.mark.skipif(GEN_REF_TIME, reason="Generate reference import time.")
 def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) -> None:
     """Test the import time of core modules to avoid regression in performance.
 
