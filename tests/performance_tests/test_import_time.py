@@ -12,9 +12,9 @@ import time
 import pytest
 
 
-GEN_REF_TIME = True  # switch for generating reference time
+GEN_REF_TIME = False  # switch for generating reference time
 
-# Last update date: Oct 23 2024
+# Last update: 2024-10-23
 REF_IMPORT_TIME: dict[str, float] = {
     "pymatviz": 4085.73,
     "pymatviz.coordination": 4135.77,
@@ -40,7 +40,6 @@ REF_IMPORT_TIME: dict[str, float] = {
 )
 def test_get_ref_import_time() -> None:
     """A dummy test that would always fail, used to generate copyable reference time."""
-    # Measure import time for each module
     import_times = {
         module_name: measure_import_time_in_ms(module_name)
         for module_name in REF_IMPORT_TIME
