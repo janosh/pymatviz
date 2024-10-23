@@ -16,22 +16,22 @@ GEN_REF_TIME = True  # switch for generating reference time
 
 # Last update date: Oct 23 2024
 REF_IMPORT_TIME: dict[str, float] = {
-    "pymatviz": 4016.14,
-    "pymatviz.coordination": 4051.99,
-    "pymatviz.cumulative": 4013.77,
-    "pymatviz.histogram": 4014.48,
-    "pymatviz.phonons": 4044.44,
-    "pymatviz.powerups": 4011.65,
-    "pymatviz.ptable": 3997.76,
-    "pymatviz.rainclouds": 4012.22,
-    "pymatviz.rdf": 4024.62,
-    "pymatviz.relevance": 4025.91,
-    "pymatviz.sankey": 4015.86,
-    "pymatviz.scatter": 4029.47,
-    "pymatviz.structure_viz": 4037.38,
-    "pymatviz.sunburst": 4022.42,
-    "pymatviz.uncertainty": 4024.33,
-    "pymatviz.xrd": 4026.99,
+    "pymatviz": 4085.73,
+    "pymatviz.coordination": 4135.77,
+    "pymatviz.cumulative": 4108.06,
+    "pymatviz.histogram": 4110.41,
+    "pymatviz.phonons": 4109.97,
+    "pymatviz.powerups": 4066.31,
+    "pymatviz.ptable": 4092.35,
+    "pymatviz.rainclouds": 4098.33,
+    "pymatviz.rdf": 4144.26,
+    "pymatviz.relevance": 4126.54,
+    "pymatviz.sankey": 4135.17,
+    "pymatviz.scatter": 4087.62,
+    "pymatviz.structure_viz": 4105.33,
+    "pymatviz.sunburst": 4133.78,
+    "pymatviz.uncertainty": 4179.99,
+    "pymatviz.xrd": 4156.52,
 }
 
 
