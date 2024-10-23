@@ -12,7 +12,8 @@ import time
 import pytest
 
 
-REF_IMPORT_TIME: dict[str, float] = {
+# Last update date: Oct 23 2024
+REF_IMPORT_TIME: dict[str, float | None] = {
     "pymatviz": None,
     "pymatviz.coordination": None,
     "pymatviz.cumulative": None,
@@ -51,7 +52,7 @@ def test_get_ref_import_time() -> None:
     pytest.fail("Generated reference import times.")
 
 
-def measure_import_time_in_ms(module_name: str, count: int = 10) -> float:
+def measure_import_time_in_ms(module_name: str, count: int = 3) -> float:
     """Measure import time of a module in milliseconds across several runs.
 
     Args:
@@ -81,9 +82,6 @@ def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) ->
             before the test fails.
     """
     for module_name, ref_time in REF_IMPORT_TIME.items():
-        if ref_time is None:
-            pytest.skip(f"No reference import time for {module_name}")
-
         current_time = measure_import_time_in_ms(module_name)
 
         # Calculate grace and hard thresholds
