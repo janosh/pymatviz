@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import subprocess
 import time
+import warnings
 
 import pytest
 
@@ -100,7 +101,7 @@ def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) ->
             if current_time > hard_threshold:
                 pytest.fail(f"{module_name} import too slow! {hard_threshold=:.2f} ms")
             else:
-                pytest.warns(
-                    UserWarning,
+                warnings.warn(
                     f"{module_name} import slightly slower: {grace_threshold=:.2f} ms",
+                    stacklevel=2,
                 )
