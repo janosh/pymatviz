@@ -70,11 +70,11 @@ def measure_import_time_in_ms(module_name: str, count: int = 3) -> float:
     total_time = 0.0
 
     for _ in range(count):
-        start_time = time.perf_counter()
+        start_time = time.perf_counter_ns()
         subprocess.run(["python", "-c", f"import {module_name}"], check=True)  # noqa: S603, S607
-        total_time += time.perf_counter() - start_time
+        total_time += time.perf_counter_ns() - start_time
 
-    return (total_time / count) * 1000
+    return (total_time / count) / 1e6
 
 
 @pytest.mark.skipif(
