@@ -161,6 +161,8 @@ def coordination_hist(
     elif split_mode in (SplitMode.by_structure, SplitMode.by_structure_and_element):
         n_subplots = len(coord_data)
     else:
+        if split_mode != SplitMode.none:
+            raise ValueError(f"Invalid {split_mode=}")
         n_subplots = 1
 
     n_cols = min(3, n_subplots)
@@ -196,7 +198,6 @@ def coordination_hist(
             f"or a custom dict."
         )
 
-    max_count = 0
     row, col = 1, 1
     is_single_structure = len(structures) == 1
     if annotate_bars is True:
@@ -211,7 +212,6 @@ def coordination_hist(
                     data = struct_data[elem_symbol]
                     counts = Counter(data["cn"])
                     y = [counts.get(i, 0) for i in x_range]
-                    max_count = max(max_count, *y)
 
                     hover_text = [
                         create_hover_text(
@@ -259,7 +259,6 @@ def coordination_hist(
             ]
             counts = Counter(all_cn)
             y = [counts.get(i, 0) for i in x_range]
-            max_count = max(max_count, *y)
 
             hover_text = [
                 create_hover_text(
@@ -283,7 +282,6 @@ def coordination_hist(
             for elem_symbol, data in struct_data.items():
                 counts = Counter(data["cn"])
                 y = [counts.get(i, 0) for i in x_range]
-                max_count = max(max_count, *y)
 
                 hover_text = [
                     create_hover_text(
@@ -322,7 +320,6 @@ def coordination_hist(
             for elem_symbol, data in struct_data.items():
                 counts = Counter(data["cn"])
                 y = [counts.get(i, 0) for i in x_range]
-                max_count = max(max_count, *y)
 
                 hover_text = [
                     create_hover_text(
@@ -358,11 +355,7 @@ def coordination_hist(
                 col = 1
                 row += 1
 
-    fig.update_layout(
-        barmode=bar_mode,
-        bargap=0.15,
-        bargroupgap=0.1,
-    )
+    fig.update_layout(barmode=bar_mode, bargap=0.15, bargroupgap=0.1)
 
     # start x-axis just below the smallest observed CN
     fig.update_xaxes(
@@ -370,9 +363,8 @@ def coordination_hist(
         dtick=1,
         range=[min_cn - 0.5, max_cn + 0.5],
     )
-    # Ensure y-axis starts at 0 and extends 10% higher than the max count
-    # TODO needs to a fix to get the right y_max when bar_mode="stack"
-    y_max = max_count * 1.1
+    y_max = fig.full_figure_for_development(warn=False).layout.yaxis.range[1]
+    # Ensure y-axis starts at 0
     fig.update_yaxes(title="Count", range=[0, y_max])
 
     # Add title "Coordination Number" to x axes of the last n_cols subplots

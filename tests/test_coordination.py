@@ -18,15 +18,28 @@ from pymatviz.coordination import (
 def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> None:
     """Test coordination_hist with a single structure."""
     fig = coordination_hist(structures[0])
-    assert fig.data
     assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
+
+    # Test y-axis range
+    expected_y_max = max(max(trace.y) for trace in fig.data)  # get max CN count
+    y_min, y_max = fig.layout.yaxis.range
+    assert y_min == 0
+    assert y_max == pytest.approx(expected_y_max, rel=0.1)
+
+    # Test x-axis properties
+    assert fig.layout.xaxis.tick0 is not None
+    assert fig.layout.xaxis.dtick == 1
+    assert fig.layout.xaxis.range[0] < min(trace.x[0] for trace in fig.data)
+
+    # Test y-axis properties
+    assert fig.layout.yaxis.range[0] == 0
+    assert fig.layout.yaxis.title.text == "Count"
 
 
 def test_coordination_hist_multiple_structures(structures: Sequence[Structure]) -> None:
     """Test coordination_hist with multiple structures."""
     struct_dict = {f"Structure_{i}": struct for i, struct in enumerate(structures)}
     fig = coordination_hist(struct_dict)
-    assert fig.data
     expected_traces = sum(
         len({site.specie.symbol for site in struct}) for struct in structures
     )
@@ -39,7 +52,6 @@ def test_coordination_hist_split_modes(
 ) -> None:
     """Test coordination_hist with different split modes."""
     fig = coordination_hist(structures[0], split_mode=split_mode)
-    assert fig.data
 
     if split_mode in (SplitMode.none, SplitMode.by_element):
         assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
@@ -58,7 +70,6 @@ def test_coordination_hist_custom_strategy(
 ) -> None:
     """Test coordination_hist with a custom strategy."""
     fig = coordination_hist(structures[1], strategy=strategy)
-    assert fig.data
     assert len(fig.data) == 3
     expected_max_x = {
         3.0: 9,
@@ -95,7 +106,6 @@ def test_coordination_hist_hover_data(structures: Sequence[Structure]) -> None:
     """Test coordination_hist with custom hover data."""
     structures[0].add_site_property("test_property", list(range(len(structures[0]))))
     fig = coordination_hist(structures[0], hover_data=["test_property"])
-    assert fig.data
     assert "test_property" in fig.data[0].hovertext[0]
 
 
@@ -107,7 +117,6 @@ def test_coordination_hist_element_color_scheme(
     colors = ("red", "blue", "green", "yellow", "purple", "orange", "pink", "brown")
     custom_colors = dict(zip(elements, colors, strict=False))
     fig = coordination_hist(structures[0], element_color_scheme=custom_colors)
-    assert fig.data
     for trace in fig.data:
         assert trace.marker.color == custom_colors[trace.name.split(" - ")[1]]
 
@@ -115,7 +124,6 @@ def test_coordination_hist_element_color_scheme(
 def test_coordination_hist_annotate_bars(structures: Sequence[Structure]) -> None:
     """Test coordination_hist with bar annotations."""
     fig = coordination_hist(structures[0], annotate_bars=True)
-    assert fig.data
     elements = {site.specie.symbol for site in structures[0]} | {""}
     for trace in fig.data:
         assert {trace.text} <= elements, f"Invalid text: {trace.text}"
@@ -125,19 +133,9 @@ def test_coordination_hist_bar_kwargs(structures: Sequence[Structure]) -> None:
     """Test coordination_hist with custom bar kwargs."""
     bar_kwargs = {"opacity": 0.5, "width": 0.5}
     fig = coordination_hist(structures[0], bar_kwargs=bar_kwargs)
-    assert fig.data
     for trace in fig.data:
         assert trace.opacity == 0.5
         assert trace.width == 0.5
-
-
-def test_coordination_hist_y_axis_range(structures: Sequence[Structure]) -> None:
-    """Test if y-axis range is 10% higher than the max count."""
-    fig = coordination_hist(structures[0])
-    assert fig.data
-    max_count = max(max(trace.y) for trace in fig.data)
-    expected_y_max = max_count * 1.1
-    assert fig.layout.yaxis.range[1] == pytest.approx(expected_y_max, rel=1e-6)
 
 
 def test_coordination_hist_invalid_input() -> None:
@@ -169,7 +167,6 @@ def test_coordination_vs_cutoff_line(
     """Test coordination_vs_cutoff_line function with different strategies."""
     # Test with a single structure
     fig = coordination_vs_cutoff_line(structures[0], strategy=strategy)
-    assert fig.data
     assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
 
     # Test with multiple structures
@@ -232,3 +229,106 @@ def test_coordination_vs_cutoff_line_invalid_strategy() -> None:
     structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
     with pytest.raises(TypeError, match="Invalid strategy="):
         coordination_vs_cutoff_line(structure, strategy="invalid")
+
+
+def test_coordination_hist_hover_text_formatting(
+    structures: Sequence[Structure],
+) -> None:
+    """Test hover text formatting in coordination_hist."""
+    # Add test property
+    structures[0].add_site_property("test_prop", list(range(len(structures[0]))))
+
+    # Test with single structure
+    fig = coordination_hist(structures[0], hover_data=["test_prop"])
+    hover_text = fig.data[0].hovertext[0]
+    assert "Element:" in hover_text
+    assert "Coordination number:" in hover_text
+    assert "test_prop:" in hover_text
+
+    # Test with multiple structures
+    struct_dict = {"struct1": structures[0], "struct2": structures[1]}
+    fig_multi = coordination_hist(struct_dict, hover_data=["test_prop"])
+    hover_text_multi = fig_multi.data[0].hovertext[0]
+    assert "Formula:" in hover_text_multi
+
+
+def test_coordination_hist_subplot_layout(structures: Sequence[Structure]) -> None:
+    """Test subplot layout in coordination_hist."""
+    struct_dict = {f"s{i}": struct for i, struct in enumerate(structures[:3])}
+
+    # Test by_structure layout
+    fig = coordination_hist(struct_dict, split_mode=SplitMode.by_structure)
+    assert len(fig.layout.annotations) == len(struct_dict)  # subplot titles
+
+    # Test by_element layout
+    elements = {
+        site.specie.symbol for struct in struct_dict.values() for site in struct
+    }
+    fig_elem = coordination_hist(struct_dict, split_mode=SplitMode.by_element)
+    assert len(fig_elem.layout.annotations) == len(elements)
+
+
+def test_coordination_hist_bar_customization(structures: Sequence[Structure]) -> None:
+    """Test bar customization options in coordination_hist."""
+    # Test bar width
+    bar_kwargs = {"width": 0.5}
+    fig = coordination_hist(structures[0], bar_kwargs=bar_kwargs)
+    assert all(trace.width == 0.5 for trace in fig.data)
+
+    # Test bar opacity
+    bar_kwargs = {"opacity": 0.7}
+    fig = coordination_hist(structures[0], bar_kwargs=bar_kwargs)
+    assert all(trace.opacity == 0.7 for trace in fig.data)
+
+
+def test_coordination_hist_color_schemes(structures: Sequence[Structure]) -> None:
+    """Test different color schemes in coordination_hist."""
+    # Test JMOL colors
+    fig_jmol = coordination_hist(
+        structures[0], element_color_scheme=ElemColorScheme.jmol
+    )
+
+    # Test VESTA colors
+    fig_vesta = coordination_hist(
+        structures[0], element_color_scheme=ElemColorScheme.vesta
+    )
+
+    # Colors should be different between schemes
+    assert any(
+        t1.marker.color != t2.marker.color
+        for t1, t2 in zip(fig_jmol.data, fig_vesta.data, strict=True)
+    )
+
+
+def test_coordination_hist_invalid_elem_colors(structures: Sequence[Structure]) -> None:
+    """Test invalid color scheme handling."""
+    with pytest.raises(ValueError, match="Invalid.*element_color_scheme"):
+        coordination_hist(structures[0], element_color_scheme="invalid")  # type: ignore[arg-type]
+
+
+def test_coordination_hist_invalid_hover_data(structures: Sequence[Structure]) -> None:
+    """Test invalid hover_data handling."""
+    with pytest.raises(TypeError, match="Invalid hover_data"):
+        coordination_hist(structures[0], hover_data=123)  # type: ignore[arg-type]
+
+
+def test_coordination_hist_invalid_split_mode(structures: Sequence[Structure]) -> None:
+    """Test invalid split_mode handling."""
+    split_mode = "invalid_mode"
+    with pytest.raises(ValueError, match=f"Invalid {split_mode=}"):
+        coordination_hist(structures[0], split_mode=split_mode)
+
+
+def test_coordination_hist_bar_annotations(structures: Sequence[Structure]) -> None:
+    """Test bar annotation functionality."""
+    # Test default annotation settings
+    fig = coordination_hist(structures[0], annotate_bars=True)
+    assert all(trace.text is not None for trace in fig.data)
+
+    # Test custom annotation settings
+    custom_annotations = {"size": 14, "color": "red"}
+    fig = coordination_hist(structures[0], annotate_bars=custom_annotations)
+    assert all(
+        trace.textfont.size == 14 and trace.textfont.color == "red"
+        for trace in fig.data
+    )
