@@ -78,39 +78,46 @@ def test_element_pair_rdfs_conflicting_bins_and_bin_size(
 
 @pytest.mark.parametrize(
     ("param", "values"),
-    [("cutoff", (5, 10, 15)), ("bin_size", (0.05, 0.1, 0.2))],
+    [
+        ("cutoff", (5, 10, 15, -1.5, -2)),
+        ("bin_size", (0.05, 0.1, 0.2)),
+    ],
 )
 def test_element_pair_rdfs_cutoff_and_bin_size(
     structures: list[Structure], param: str, values: tuple[float, ...]
 ) -> None:
-    structure = structures[0]
+    struct = structures[0]
     for value in values:
-        fig = element_pair_rdfs(structure, **{param: value})  # type: ignore[arg-type]
+        fig = element_pair_rdfs(struct, **{param: value})  # type: ignore[arg-type]
 
         # Check that we have the correct number of traces (one for each element pair)
-        n_elements = len({site.specie.symbol for site in structure})
+        n_elements = len({site.specie.symbol for site in struct})
         expected_traces = n_elements * (n_elements + 1) // 2
         assert (
             len(fig.data) == expected_traces
         ), f"Expected {expected_traces} traces, got {len(fig.data)}"
 
+        max_cell_len = max(struct.lattice.abc)
         for trace in fig.data:
             if param == "cutoff":
+                expected_cutoff = abs(value) * max_cell_len if value < 0 else value
                 # Check that the x-axis data doesn't exceed the cutoff
                 assert np.all(
-                    trace.x <= value
-                ), f"X-axis data exceeds cutoff of {value}"
+                    trace.x <= expected_cutoff
+                ), f"X-axis data exceeds cutoff of {expected_cutoff}"
                 # Check that the maximum x value is close to the cutoff
                 assert max(trace.x) == pytest.approx(
-                    value
-                ), f"Maximum x value {max(trace.x):.4} not close to cutoff {value}"
+                    expected_cutoff
+                ), f"Maximum x={max(trace.x):.4} not close to cutoff {expected_cutoff}"
             elif param == "bin_size":
+                # When bin_size is specified but cutoff is None,
+                # the default cutoff is 2 * max_cell_len
+                default_cutoff = 2 * max_cell_len
                 # Check that the number of bins is approximately correct
-                default_cutoff = 15  # Assuming default cutoff is 10
-                expected_bins = int(np.ceil(default_cutoff / value))
+                expected_bins = int(default_cutoff / value)
                 assert (
-                    abs(len(trace.x) - expected_bins) <= 1
-                ), f"Expected around {expected_bins} bins, got {len(trace.x)}"
+                    0.85 <= expected_bins / len(trace.x) <= 1
+                ), f"{expected_bins=}, got {len(trace.x)}"
 
 
 def test_element_pair_rdfs_subplot_layout(structures: list[Structure]) -> None:
@@ -202,10 +209,30 @@ def test_element_pair_rdfs_reference_line(structures: list[Structure]) -> None:
 
 
 def test_element_pair_rdfs_cutoff_and_bins(structures: list[Structure]) -> None:
+    # Test positive cutoff
     cutoff, n_bins = 8.5, 88
     fig = element_pair_rdfs(structures, cutoff=cutoff, n_bins=n_bins)
     assert max(fig.data[0].x) == pytest.approx(cutoff)
     assert len(fig.data[0].x) == n_bins
+
+    # Test negative cutoff
+    struct = structures[0]
+    max_cell_len = max(struct.lattice.abc)
+    neg_cutoff = -1.5
+    expected_cutoff = abs(neg_cutoff) * max_cell_len
+    fig = element_pair_rdfs(struct, cutoff=neg_cutoff, n_bins=n_bins)
+    assert max(fig.data[0].x) == pytest.approx(expected_cutoff)
+    assert len(fig.data[0].x) == n_bins
+
+    # Test None cutoff (should default to 2 * max_cell_len)
+    fig = element_pair_rdfs(struct, cutoff=None, n_bins=n_bins)
+    assert max(fig.data[0].x) == pytest.approx(2 * max_cell_len)
+    assert len(fig.data[0].x) == n_bins
+
+    large_struct = struct.make_supercell(5, in_place=False)
+    fig = element_pair_rdfs(large_struct)
+    # Default cutoff should be min(15, 2 * max_cell_len)
+    assert max(fig.data[0].x) == pytest.approx(15)
 
 
 def test_full_rdf_basic(structures: list[Structure]) -> None:

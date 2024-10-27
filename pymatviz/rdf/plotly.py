@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 def element_pair_rdfs(
     structures: Structure | Sequence[Structure] | dict[str, Structure],
-    cutoff: float = 15,
+    cutoff: float | None = None,
     n_bins: int = 75,
     bin_size: float | None = None,
     element_pairs: list[tuple[str, str]] | None = None,
@@ -49,7 +49,11 @@ def element_pair_rdfs(
             - single pymatgen Structure
             - list of pymatgen Structures
             - dictionary mapping labels to Structures
-        cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
+        cutoff (float | None, optional): Maximum distance for RDF calculation.
+            If None, defaults to twice the longest lattice vector length across all
+            structures (up to 15A). If negative, its absolute value is used as a scaling
+            factor for the longest lattice vector length (e.g. -1.5 means 1.5x the
+            longest lattice vector). Default is None.
         n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
         bin_size (float, optional): Size of bins for RDF calculation. If specified, it
             overrides n_bins. Default is None.
@@ -82,6 +86,15 @@ def element_pair_rdfs(
             raise ValueError(
                 f"input structure{f' {key}' if key else ''} contains no sites"
             )
+
+    # Calculate dynamic cutoff if not specified or negative
+    max_cell_len = max(max(struct.lattice.abc) for struct in structures.values())
+    if cutoff is None:
+        cutoff = min(15, 2 * max_cell_len)
+    elif cutoff < 0:
+        cutoff = abs(cutoff) * max_cell_len
+    if not isinstance(cutoff, int | float):
+        raise TypeError(f"Invalid {cutoff=}")
 
     if n_bins != 75 and bin_size is not None:
         raise ValueError(
