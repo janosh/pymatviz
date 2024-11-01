@@ -121,7 +121,6 @@ docstring-code-format = true
     "PLR2004", # magic-value-comparison
     "S101",    # use of assert
 ]
-
 "examples/*" = [
     "D100",   # missing docstring in public module
     "INP001", # implicit-namespace-package
