@@ -14,10 +14,7 @@ from __future__ import annotations
 import builtins
 from importlib.metadata import PackageNotFoundError, version
 
-import matplotlib.pyplot as plt
 import plotly.express as px
-import plotly.graph_objects as go
-import plotly.io as pio
 
 from pymatviz import (
     bar,
