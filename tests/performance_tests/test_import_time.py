@@ -43,21 +43,18 @@ REF_IMPORT_TIME: dict[str, float] = {
 def test_get_ref_import_time() -> None:
     """A dummy test that would always fail, used to generate copyable reference time."""
     import_times = {
-        module_name: measure_import_time_in_ms(module_name)
+        module_name: round(measure_import_time(module_name), 2)
         for module_name in REF_IMPORT_TIME
     }
 
     # Print out the import times in a copyable format
     print("\nCopyable import time dictionary:")
-    print("{")
-    for module_name, import_time in import_times.items():
-        print(f'    "{module_name}": {import_time:.2f},')
-    print("}")
+    print(import_times)
 
     pytest.fail("Generate reference import times.")
 
 
-def measure_import_time_in_ms(module_name: str, count: int = 3) -> float:
+def measure_import_time(module_name: str, repeats: int = 3) -> float:
     """Measure import time of a module in milliseconds across several runs.
 
     Args:
@@ -69,12 +66,12 @@ def measure_import_time_in_ms(module_name: str, count: int = 3) -> float:
     """
     total_time = 0.0
 
-    for _ in range(count):
-        start_time = time.perf_counter_ns()
+    for _ in range(repeats):
+        start_time = time.perf_counter()
         subprocess.run(["python", "-c", f"import {module_name}"], check=True)  # noqa: S603, S607
-        total_time += time.perf_counter_ns() - start_time
+        total_time += time.perf_counter() - start_time
 
-    return (total_time / count) / 1e6
+    return total_time / repeats * 1000
 
 
 @pytest.mark.skipif(
@@ -91,7 +88,7 @@ def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) ->
             before the test fails.
     """
     for module_name, ref_time in REF_IMPORT_TIME.items():
-        current_time = measure_import_time_in_ms(module_name)
+        current_time = measure_import_time(module_name)
 
         # Calculate grace and hard thresholds
         grace_threshold = ref_time * (1 + grace_percent)
