@@ -60,7 +60,7 @@ def count_elements(
     Returns:
         pd.Series: Map element symbols to heatmap values.
     """
-    # TODO: remove warning after 2025-10-08
+    # TODO: remove warning after 2025-01-01
     if fill_value is None:
         warnings.warn(
             "default value of fill_value changed from zero to None.", stacklevel=2
