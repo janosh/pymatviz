@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import math
 import warnings
-from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
