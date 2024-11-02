@@ -235,7 +235,7 @@ def ptable_heatmap(
     projector = HeatMapPTableProjector(
         data=data,
         exclude_elements=exclude_elements,
-        # tile_size=tile_size,
+        # tile_size=tile_size,  # TODO: WIP
         log=log,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
@@ -377,7 +377,7 @@ def ptable_heatmap_ratio(
 
         --- Data preprocessing ---
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See count_elements() for
+            Reduce or normalize compositions before counting. See `count_elements` for
             details. Only used when values is list of composition strings/objects.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
@@ -418,15 +418,15 @@ def ptable_heatmap_ratio(
         plt.Figure: matplotlib Figure object.
     """
     # Generate ratio data
-    values_num = count_elements(values_num, count_mode)
-    values_denom = count_elements(values_denom, count_mode)
+    values_num = count_elements(values_num, count_mode, fill_value=0)
+    values_denom = count_elements(values_denom, count_mode, fill_value=0)
 
     values = values_num / values_denom
 
     if normalize:
         values /= values.sum()
 
-    # Drop entries that is not is either (as NaN)
+    # Drop entries that is not in either numerator or denominator (as NaN)
     values = values.dropna(inplace=False)
 
     # Generate overwrite tile entries for near zero values
