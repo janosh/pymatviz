@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import math
 import warnings
-from collections.abc import Callable, Sequence
 from itertools import product
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np

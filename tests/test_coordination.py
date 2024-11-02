@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import re
-from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING
 
 import pytest
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
@@ -13,6 +14,11 @@ from pymatviz.coordination import (
     coordination_hist,
     coordination_vs_cutoff_line,
 )
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Any
 
 
 def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> None:

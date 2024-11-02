@@ -65,6 +65,7 @@ def count_elements(
 
     if is_numeric_dtype(srs):
         pass
+
     elif is_string_dtype(srs) or {*map(type, srs)} <= {str, Composition}:
         # all items are formula strings or Composition objects
         if count_mode == "occurrence":

@@ -701,6 +701,7 @@ def normalize_to_dict(
     """
     if isinstance(inputs, cls):
         return {"": inputs}
+
     if (
         isinstance(inputs, list | tuple)
         and all(isinstance(obj, cls) for obj in inputs)
