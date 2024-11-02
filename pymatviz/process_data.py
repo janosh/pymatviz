@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import warnings
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -24,13 +25,14 @@ def count_elements(
     fill_value: float | None = None,
 ) -> pd.Series:
     """Count element occurrence in list of formula strings or dict-like compositions.
+
     If passed values are already a map from element symbol to counts, ensure the
-    data is a pd.Series filled with zero values for missing element symbols.
+    data is a pd.Series filled with "fill_value" for missing element.
 
     Provided as standalone function for external use or to cache long computations.
-    Caching long element counts is done by refactoring
+    Caching long element counts is done by refactoring:
         ptable_heatmap(long_list_of_formulas) # slow
-    to
+    to:
         elem_counts = count_elements(long_list_of_formulas) # slow
         ptable_heatmap(elem_counts) # fast, only rerun this line to update the plot
 
@@ -50,13 +52,20 @@ def count_elements(
             - occurrence: Count the number of times each element occurs in a list of
                 formulas irrespective of compositions. E.g. [Fe2 O3, Fe O, Fe4 P4 O16]
                 counts to {Fe: 3, O: 3, P: 1}.
-        exclude_elements (Sequence[str]): Elements to exclude from the count. Defaults
-            to ().
-        fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
+        exclude_elements (Sequence[str]): Elements to exclude from the count.
+            Defaults to ().
+        fill_value (float | None): Value to fill in for missing elements.
+            Defaults to None for NaN.
 
     Returns:
         pd.Series: Map element symbols to heatmap values.
     """
+    # TODO: remove warning after 2025-01-01
+    if fill_value is None:
+        warnings.warn(
+            "default value of fill_value changed from zero to None.", stacklevel=2
+        )
+
     valid_count_modes = list(ElemCountMode.key_val_dict())
     if count_mode not in valid_count_modes:
         raise ValueError(f"Invalid {count_mode=} must be one of {valid_count_modes}")
