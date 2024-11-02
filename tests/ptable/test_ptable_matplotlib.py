@@ -22,7 +22,7 @@ df_ptable = pmv.df_ptable.copy()  # avoid changing the df in place
 
 @pytest.fixture
 def glass_elem_counts(glass_formulas: pd.Series[Composition]) -> pd.Series[int]:
-    return pmv.count_elements(glass_formulas)
+    return pmv.count_elements(glass_formulas, fill_value=0)
 
 
 @pytest.fixture
