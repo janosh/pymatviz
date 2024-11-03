@@ -684,14 +684,15 @@ def normalize_to_dict(
         obj, "formula", type(obj).__name__
     ),
 ) -> dict[str, T]:
-    """Normalize input to a dictionary of objects.
+    """Normalize any kind of object or dict/list/tuple of them into to a dictionary.
 
     Args:
         inputs: A single object, a sequence of objects, or a dictionary of objects.
         cls (type[T], optional): The class of the objects to normalize. Defaults to
             pymatgen.core.Structure.
         key_gen (Callable[[T], str], optional): A function that generates a key for
-            each object. Defaults to using the object's formula.
+            each object. Defaults to using the object's formula, assuming the objects
+            are pymatgen.core.(Structure|Molecule).
 
     Returns:
         A dictionary of objects with keys as object formulas or given keys.
@@ -718,6 +719,8 @@ def normalize_to_dict(
         return out_dict
     if isinstance(inputs, dict):
         return inputs
+    if isinstance(inputs, pd.Series):
+        return inputs.to_dict()
 
     cls_name = cls.__name__
     raise TypeError(
