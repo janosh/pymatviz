@@ -133,6 +133,7 @@ eV_per_kelvin = html_tag("(eV/K)", style="small")  # noqa: N816
 angstrom = html_tag("(Å)", style="small")
 angstrom_per_atom = html_tag("(Å/atom)", style="small")
 cubic_angstrom = html_tag("(Å<sup>3</sup>)", style="small")
+degrees = html_tag("(°)", style="small")
 gram_per_cm3 = html_tag("(g/cm³)", style="small")
 kelvin = html_tag("(K)", style="small")
 pascal = html_tag("(Pa)", style="small")
@@ -147,18 +148,14 @@ class Key(LabelEnum):
     """Keys used to access dataframes columns, organized by semantic groups."""
 
     # Structural
-    crystal_system = "crystal_system", "Crystal System"
-    spg_num = "space_group_number", "Space Group Number"
-    spg_symbol = "space_group_symbol", "Space Group Symbol"
     n_sites = "n_sites", "Number of Sites"
-    n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
     structure = "structure", "Structure"
     init_struct = "initial_structure", "Initial Structure"
     final_struct = "final_structure", "Final Structure"
     cell = "cell", "Cell"
     lattice = "lattice", "Lattice"
     lattice_vectors = "lattice_vectors", "Lattice Vectors"
-    lattice_angles = "lattice_angles", "Lattice Angles (°)"
+    lattice_angles = "lattice_angles", f"Lattice Angles {degrees}"
     lattice_lens = "lattice_lengths", f"Lattice Lengths {angstrom}"
     init_volume = "initial_volume", f"Initial Volume {cubic_angstrom}"
     final_volume = "final_volume", f"Final Volume {cubic_angstrom}"
@@ -166,24 +163,30 @@ class Key(LabelEnum):
     vol_per_atom = "volume_per_atom", f"Volume per Atom {cubic_angstrom}"
     density = "density", f"Density {gram_per_cm3}"
     pressure = "pressure", f"Pressure {pascal}"
-    symmetry = "symmetry", "Symmetry"
-    point_group = "point_group", "Point Group"
     lattice_params = "lattice_parameters", "Lattice Parameters"
     supercell = "supercell", "Supercell"
     atom_nums = "atom_nums", "Atomic Numbers", "Atomic numbers for each crystal site"
     coord_num = "coordination_number", "Coordination Number"
     bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
-    bond_angles = "bond_angles", "Bond Angles (°)"
+    bond_angles = "bond_angles", f"Bond Angles {degrees}"
     packing_fraction = "packing_fraction", "Packing Fraction"
     max_pair_dist = "max_pair_dist", f"Maximum Pair Distance {angstrom}"
 
     # Crystal Symmetry Properties
+    crystal_system = "crystal_system", "Crystal System"
+    spg_num = "space_group_number", "Space Group Number"
+    spg_symbol = "space_group_symbol", "Space Group Symbol"
     choice_symbol = "choice_symbol", "Choice symbol"
     hall_num = "hall_num", "Hall number"
     hall_symbol = "hall_symbol", "Hall symbol"
-    n_rot_ops = "n_rot_ops", "Number of rotational operations"
-    n_sym_ops = "n_sym_ops", "Total number of symmetry operations"
-    n_trans_ops = "n_trans_ops", "Number of translational operations"
+    translations = "translations", "Translations"
+    rotations = "rotations", "Rotations"
+    symmetry = "symmetry", "Symmetry"
+    point_group = "point_group", "Point Group"
+    n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
+    n_rot_syms = "n_rot_syms", "Number of rotational symmetries"
+    n_trans_syms = "n_trans_syms", "Number of translational symmetries"
+    n_sym_ops = "n_sym_ops", "Total number of symmetries"
     wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
     wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
     wyckoff_symbol = "wyckoff_symbol", "Wyckoff Symbol"
@@ -297,6 +300,7 @@ class Key(LabelEnum):
     bandgap_true = "bandgap_true", f"Actual Band Gap {eV}"
     bandgap_pred = "bandgap_pred", f"Predicted Band Gap {eV}"
     fermi_energy = "fermi_energy", f"Fermi Energy {eV}"
+    electronic_structure = "electronic_structure", "Electronic Structure"
     electron_affinity = "electron_affinity", f"Electron Affinity {eV}"
     work_function = "work_function", f"Work Function {eV}"
     dos = "density_of_states", "Density of States"
@@ -519,6 +523,7 @@ class Key(LabelEnum):
     mse = "MSE", "Mean Squared Error"
     rmse = "RMSE", "Root Mean Squared Error"
     rmsd = "rmsd", "Root Mean Square Deviation"
+    structure_rmsd = "structure_rmsd", f"Structure RMSD {angstrom}"
     mape = "MAPE", "Mean Absolute Percentage Error"
     srme = "SRME", "Symmetric Relative Mean Error"
     sre = "SRE", "Symmetric Relative Error"

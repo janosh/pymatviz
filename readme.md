@@ -135,13 +135,13 @@ See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
 ## Coordination
 
-See [`pymatviz/coordination.py`](pymatviz/coordination.py).
+See [`pymatviz/coordination/plotly.py`](pymatviz/coordination/plotly.py).
 
-|             [`coordination_hist(struct_dict)`](pymatviz/coordination.py)              |     [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination.py)     |
-| :-----------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------: |
-|                              ![coordination-hist-single]                              |                     ![coordination-hist-by-structure-and-element]                     |
-| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination.py) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination.py) |
-|                           ![coordination-vs-cutoff-single]                            |                          ![coordination-vs-cutoff-multiple]                           |
+|             [`coordination_hist(struct_dict)`](pymatviz/coordination/plotly.py)              |     [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/plotly.py)     |
+| :------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------: |
+|                                 ![coordination-hist-single]                                  |                        ![coordination-hist-by-structure-and-element]                         |
+| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/plotly.py) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/plotly.py) |
+|                               ![coordination-vs-cutoff-single]                               |                              ![coordination-vs-cutoff-multiple]                              |
 
 [coordination-hist-single]: assets/coordination-hist-single.svg
 [coordination-hist-by-structure-and-element]: assets/coordination-hist-by-structure-and-element.svg

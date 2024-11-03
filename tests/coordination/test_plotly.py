@@ -8,12 +8,9 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.colors import ELEM_COLORS_JMOL
-from pymatviz.coordination import (
-    ElemColorScheme,
-    SplitMode,
-    coordination_hist,
-    coordination_vs_cutoff_line,
-)
+from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
+from pymatviz.coordination.helpers import CnSplitMode
+from pymatviz.enums import ElemColorScheme
 
 
 if TYPE_CHECKING:
@@ -52,18 +49,18 @@ def test_coordination_hist_multiple_structures(structures: Sequence[Structure]) 
     assert len(fig.data) == expected_traces
 
 
-@pytest.mark.parametrize("split_mode", list(SplitMode))
+@pytest.mark.parametrize("split_mode", list(CnSplitMode))
 def test_coordination_hist_split_modes(
-    structures: Sequence[Structure], split_mode: SplitMode
+    structures: Sequence[Structure], split_mode: CnSplitMode
 ) -> None:
     """Test coordination_hist with different split modes."""
     fig = coordination_hist(structures[0], split_mode=split_mode)
 
-    if split_mode in (SplitMode.none, SplitMode.by_element):
+    if split_mode in (CnSplitMode.none, CnSplitMode.by_element):
         assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
-    elif split_mode == SplitMode.by_structure:
+    elif split_mode == CnSplitMode.by_structure:
         assert len(fig.data) == 1
-    elif split_mode == SplitMode.by_structure_and_element:
+    elif split_mode == CnSplitMode.by_structure_and_element:
         assert len(fig.data) == len({site.specie.symbol for site in structures[0]})
 
 
@@ -93,7 +90,7 @@ def test_coordination_hist_custom_strategy(
     assert len(fig_multi.data) >= len(fig.data)
 
     # Test different split modes
-    for split_mode in SplitMode:
+    for split_mode in CnSplitMode:
         fig_split = coordination_hist(
             structures[:2], strategy=strategy, split_mode=split_mode
         )
@@ -263,14 +260,14 @@ def test_coordination_hist_subplot_layout(structures: Sequence[Structure]) -> No
     struct_dict = {f"s{i}": struct for i, struct in enumerate(structures[:3])}
 
     # Test by_structure layout
-    fig = coordination_hist(struct_dict, split_mode=SplitMode.by_structure)
+    fig = coordination_hist(struct_dict, split_mode=CnSplitMode.by_structure)
     assert len(fig.layout.annotations) == len(struct_dict)  # subplot titles
 
     # Test by_element layout
     elements = {
         site.specie.symbol for struct in struct_dict.values() for site in struct
     }
-    fig_elem = coordination_hist(struct_dict, split_mode=SplitMode.by_element)
+    fig_elem = coordination_hist(struct_dict, split_mode=CnSplitMode.by_element)
     assert len(fig_elem.layout.annotations) == len(elements)
 
 

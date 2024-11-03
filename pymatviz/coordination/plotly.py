@@ -1,4 +1,4 @@
-"""Visualizations of coordination numbers distributions."""
+"""Plotly plots of coordination numbers distributions."""
 
 from __future__ import annotations
 
@@ -15,78 +15,27 @@ from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import NearNeighbors
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
-from pymatviz.enums import ElemColorScheme, LabelEnum
+from pymatviz.coordination.helpers import (
+    CnSplitMode,
+    calculate_average_cn,
+    create_hover_text,
+    normalize_get_neighbors,
+)
+from pymatviz.enums import ElemColorScheme
 from pymatviz.utils import normalize_to_dict
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from typing import Any, Literal
 
-    from pymatgen.core import PeriodicSite, Structure
-
-
-class SplitMode(LabelEnum):
-    """How to split the coordination number histogram into subplots."""
-
-    none = "none"
-    by_element = "by element"
-    by_structure = "by structure"
-    by_structure_and_element = "by structure and element"
-
-
-def create_hover_text(
-    struct_key: str,
-    elem_symbol: str,
-    cn: int,
-    count: int,
-    hover_data: dict[str, str],
-    data: dict[str, Any],
-    is_single_structure: bool,  # noqa: FBT001
-) -> str:
-    """Create hover text for a single bar in the histogram."""
-    hover_text = f"Formula: {struct_key}<br>" if not is_single_structure else ""
-    hover_text += f"Element: {elem_symbol}<br>" if elem_symbol else ""
-    hover_text += f"Coordination number: {cn}<br>Count: {count}"
-
-    if hover_data:
-        hover_text += "<br>" + "<br>".join(
-            f"{label}: {data['hover_data'][key][idx] if idx < len(data['hover_data'][key]) else 'N/A'}"  # noqa: E501
-            for idx, (key, label) in enumerate(hover_data.items())
-        )
-
-    return hover_text
-
-
-def normalize_get_neighbors(
-    strategy: float | NearNeighbors | type[NearNeighbors],
-) -> Callable[[PeriodicSite, Structure], list[dict[str, Any]]]:
-    """Normalize get_neighbors function."""
-    # Prepare the neighbor-finding strategy
-    if isinstance(strategy, int | float):
-        return lambda site, structure: structure.get_neighbors(site, strategy)
-
-    if isinstance(strategy, NearNeighbors):
-        return lambda site, structure: strategy.get_nn_info(
-            structure, structure.index(site)
-        )
-
-    if isclass(strategy) and issubclass(strategy, NearNeighbors):
-        nn_instance = strategy()
-        return lambda site, structure: nn_instance.get_nn_info(
-            structure, structure.index(site)
-        )
-    raise TypeError(
-        f"Invalid {strategy=}. Expected float, NearNeighbors instance, or "
-        "NearNeighbors subclass."
-    )
+    from pymatgen.core import Structure
 
 
 def coordination_hist(
     structures: Structure | dict[str, Structure] | Sequence[Structure],
     *,
     strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
-    split_mode: SplitMode | str = SplitMode.by_element,
+    split_mode: CnSplitMode | str = CnSplitMode.by_element,
     bar_mode: Literal["group", "stack"] = "stack",
     hover_data: Sequence[str] | dict[str, str] | None = None,
     element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
@@ -166,24 +115,24 @@ def coordination_hist(
     x_range = list(range(int(min_cn), int(max_cn) + 2))
 
     elements = sorted({elem for struct in coord_data.values() for elem in struct})
-    if split_mode == SplitMode.by_element:
+    if split_mode == CnSplitMode.by_element:
         n_subplots = len(elements)
-    elif split_mode in (SplitMode.by_structure, SplitMode.by_structure_and_element):
+    elif split_mode in (CnSplitMode.by_structure, CnSplitMode.by_structure_and_element):
         n_subplots = len(coord_data)
     else:
-        if split_mode != SplitMode.none:
+        if split_mode != CnSplitMode.none:
             raise ValueError(f"Invalid {split_mode=}")
         n_subplots = 1
 
     n_cols = min(3, n_subplots)
     n_rows = math.ceil(n_subplots / n_cols)
 
-    if split_mode != SplitMode.none:
+    if split_mode != CnSplitMode.none:
         fig = make_subplots(
             rows=n_rows,
             cols=n_cols,
             subplot_titles=(
-                elements if split_mode == SplitMode.by_element else list(coord_data)
+                elements if split_mode == CnSplitMode.by_element else list(coord_data)
             ),
             shared_xaxes=True,
             shared_yaxes=True,
@@ -216,7 +165,7 @@ def coordination_hist(
     bar_kwargs = {"width": 0.8 if bar_mode == "stack" else 0.6} | (bar_kwargs or {})
 
     for struct_key, struct_data in coord_data.items():
-        if split_mode == SplitMode.by_element:
+        if split_mode == CnSplitMode.by_element:
             for elem_symbol in elements:
                 if elem_symbol in struct_data:
                     data = struct_data[elem_symbol]
@@ -263,7 +212,7 @@ def coordination_hist(
 
                     fig.add_trace(trace, row=row, col=col)
 
-        elif split_mode == SplitMode.by_structure:
+        elif split_mode == CnSplitMode.by_structure:
             all_cn = [
                 cn for elem_data in struct_data.values() for cn in elem_data["cn"]
             ]
@@ -288,7 +237,7 @@ def coordination_hist(
                 **bar_kwargs,
             )
             fig.add_trace(trace, row=row, col=col)
-        elif split_mode == SplitMode.by_structure_and_element:
+        elif split_mode == CnSplitMode.by_structure_and_element:
             for elem_symbol, data in struct_data.items():
                 counts = Counter(data["cn"])
                 y = [counts.get(i, 0) for i in x_range]
@@ -359,7 +308,10 @@ def coordination_hist(
                     **bar_kwargs,
                 )
 
-        if split_mode in (SplitMode.by_structure, SplitMode.by_structure_and_element):
+        if split_mode in (
+            CnSplitMode.by_structure,
+            CnSplitMode.by_structure_and_element,
+        ):
             col += 1
             if col > n_cols:
                 col = 1
@@ -373,7 +325,8 @@ def coordination_hist(
         dtick=1,
         range=[min_cn - 0.5, max_cn + 0.5],
     )
-    y_max = fig.full_figure_for_development(warn=False).layout.yaxis.range[1]
+    dev_fig = fig.full_figure_for_development(warn=False)
+    y_max = dev_fig.layout.yaxis.range[1]
     # Ensure y-axis starts at 0
     fig.update_yaxes(title="Count", range=[0, y_max])
 
@@ -382,7 +335,7 @@ def coordination_hist(
         fig.layout[f"xaxis{idx}"].update(title="Coordination Number")
 
     # Remove axis labels for non-edge subplots
-    if split_mode != SplitMode.none:
+    if split_mode != CnSplitMode.none:
         for idx in range(1, n_rows * n_cols + 1):
             if idx % n_cols != 1:  # Not in the first column
                 fig.update_yaxes(title_text="", row=idx // n_cols + 1, col=idx % n_cols)
@@ -477,7 +430,7 @@ def coordination_vs_cutoff_line(
         for element in elements:
             coord_numbers = []
             for cutoff in cutoffs:
-                get_neighbors_fn = normalize_get_neighbors(cutoff)
+                get_neighbors_fn = normalize_get_neighbors(strategy=cutoff)
                 avg_cn = calculate_average_cn(structure, element, get_neighbors_fn)
                 coord_numbers.append(avg_cn)
 
@@ -501,14 +454,3 @@ def coordination_vs_cutoff_line(
     fig.update_yaxes(title_text="Coordination Number")
 
     return fig
-
-
-def calculate_average_cn(
-    structure: Structure,
-    element: str,
-    get_neighbors: Callable[[PeriodicSite, Structure], list[dict[str, Any]]],
-) -> float:
-    """Calculate the average coordination number for a given element in a structure."""
-    element_sites = [site for site in structure if site.specie.symbol == element]
-    cn_sum = sum(len(get_neighbors(site, structure)) for site in element_sites)
-    return cn_sum / len(element_sites) if element_sites else 0
