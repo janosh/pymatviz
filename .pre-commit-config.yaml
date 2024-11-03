@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.1
+    rev: v0.7.2
     hooks:
       - id: ruff
         args: [--fix]
@@ -48,7 +48,7 @@ repos:
         args: [--ignore-words-list, "hist,mape,te,nd,fpr", --check-filenames]
 
   - repo: https://github.com/kynan/nbstripout
-    rev: 0.7.1
+    rev: 0.8.0
     hooks:
       - id: nbstripout
         args: [--drop-empty-cells, --keep-output]
@@ -73,7 +73,7 @@ repos:
         exclude: ^(site/src/figs/.+\.svelte|data/wbm/20.+\..+|site/src/(routes|figs).+\.(yaml|json)|changelog.md)$
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.13.0
+    rev: v9.14.0
     hooks:
       - id: eslint
         stages: [manual] # TODO: skip eslint for now
@@ -88,6 +88,6 @@ repos:
           - typescript-eslint
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.386
+    rev: v1.1.387
     hooks:
       - id: pyright
