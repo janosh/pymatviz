@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.13.2](https://github.com/janosh/pymatviz/compare/v0.13.1...v0.13.2)
+
+> 3 November 2024
+
+- Split `coordination.py` module into `plotly.py` and `helpers.py` [`#239`](https://github.com/janosh/pymatviz/pull/239)
+- Fix `ptable_heatmap_ratio` following change of default `count_elements` `fill_value` to 0 [`#226`](https://github.com/janosh/pymatviz/pull/226)
+- Speedup import and add regression check for import time [`#238`](https://github.com/janosh/pymatviz/pull/238)
+- address coordination_hist TODO 'get the right y_max when bar_mode="stack"' [`f73ba99`](https://github.com/janosh/pymatviz/commit/f73ba99e691aa9c861d34641b87ac0113c8b54f2)
+- new Key enum attributes for DFT/experimental settings and paper/code metadata [`8426bc2`](https://github.com/janosh/pymatviz/commit/8426bc2bd45f9ea5ff7a521ee3da3d7f8039293a)
+- dynamic element_pair_rdfs cutoff, defaults to 2x max_cell_len, allow negative values interpreted as scaling factor to max_cell_len (instead of absolute length in Angstrom) [`d6b1b01`](https://github.com/janosh/pymatviz/commit/d6b1b0153e90cff2c6a32bbb2db8ac76aae30ae0)
+
+#### [v0.13.1](https://github.com/janosh/pymatviz/compare/v0.13.0...v0.13.1)
+
+> 18 October 2024
+
+- fix ImportError: cannot import pymatgen.symmetry.analyzer.SymmetryUndeterminedError [`298c49a`](https://github.com/janosh/pymatviz/commit/298c49a60a308ced2da54bc2d17ce997694c4ed6)
+
+#### [v0.13.0](https://github.com/janosh/pymatviz/compare/v0.12.0...v0.13.0)
+
+> 17 October 2024
+
+- Fix `/api` docs by migrating to `remark`/`rehype` [`#237`](https://github.com/janosh/pymatviz/pull/237)
+- Add `coordination_vs_cutoff_line` plot function [`#236`](https://github.com/janosh/pymatviz/pull/236)
+- Reduce duplicate in dependency declare [`#231`](https://github.com/janosh/pymatviz/pull/231)
+- Coordination number histograms [`#235`](https://github.com/janosh/pymatviz/pull/235)
+- Add `full_rdf` [`#234`](https://github.com/janosh/pymatviz/pull/234)
+- Experimental: add `show_bonds: bool | NearNeighbors = False` to `structure_(2|3)d_plotly` [`#233`](https://github.com/janosh/pymatviz/pull/233)
+- drop correlation.py module [`#229`](https://github.com/janosh/pymatviz/pull/229)
+- Custom site hover texts in `pmv.structure_(2|3)d_plotly` [`#228`](https://github.com/janosh/pymatviz/pull/228)
+- Rainclouds [`#227`](https://github.com/janosh/pymatviz/pull/227)
+- replace "sankey-crystal-sys-to-spg-symbol" with "sankey-spglib-vs-aflow-spacegroups" [`3d818a1`](https://github.com/janosh/pymatviz/commit/3d818a15c08d0396b99a12a469ce772f2b716f6d)
+- more Key enum attributes for various errors and number of steps properties [`701a445`](https://github.com/janosh/pymatviz/commit/701a44583e81673e34b077e2429582e91dcbd6da)
+
 #### [v0.12.0](https://github.com/janosh/pymatviz/compare/v0.11.0...v0.12.0)
 
 > 7 October 2024
