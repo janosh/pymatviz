@@ -81,14 +81,18 @@ class PTableProjector:
     def __init__(
         self,
         *,
+        # Data
         data: SupportedDataType | PTableData,
         log: bool = False,
-        colormap: str | Colormap = "viridis",
-        tile_size: tuple[float, float] = (0.75, 0.75),
-        plot_kwargs: dict[str, Any] | None = None,
         exclude_elements: Sequence[str] = (),
+        missing_strategy: Literal["zero", "mean"] = "mean",  # TODO: WIP
+        # Figure
         on_empty: Literal["hide", "show"] = "show",
         hide_f_block: bool | Literal["auto"] = "auto",
+        tile_size: tuple[float, float] = (0.75, 0.75),
+        plot_kwargs: dict[str, Any] | None = None,
+        # Color
+        colormap: str | Colormap = "viridis",
         elem_type_colors: dict[str, str] | None = None,
         elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.vesta,
     ) -> None:
@@ -118,6 +122,7 @@ class PTableProjector:
 
         # Preprocess data
         self.log: bool = log
+        self.missing_strategy = missing_strategy
         self.data: pd.DataFrame = data
 
         # Remove excluded element from internal data to avoid metadata pollution
@@ -164,7 +169,7 @@ class PTableProjector:
     def data(self, data: SupportedDataType) -> None:
         """Preprocess and set the data. Also set normalizer."""
         if not isinstance(data, PTableData):
-            data = PTableData(data)  # TODO: missing_strategy hard-coded
+            data = PTableData(data, missing_strategy=self.missing_strategy)
 
         self.ptable_data = data
 
