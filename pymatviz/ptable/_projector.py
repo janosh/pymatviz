@@ -164,7 +164,7 @@ class PTableProjector:
     def data(self, data: SupportedDataType) -> None:
         """Preprocess and set the data. Also set normalizer."""
         if not isinstance(data, PTableData):
-            data = PTableData(data)
+            data = PTableData(data)  # TODO: missing_strategy hard-coded
 
         self.ptable_data = data
 

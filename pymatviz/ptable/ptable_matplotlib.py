@@ -47,7 +47,7 @@ def ptable_heatmap(
     sci_notation: bool = False,
     tile_size: tuple[float, float] = (0.75, 0.75),  # TODO: WIP, don't use
     # Figure
-    on_empty: Literal["hide", "show"] = "show",
+    on_empty: Literal["hide", "show"] = "show",  # TODO: merge this?
     hide_f_block: bool | Literal["auto"] = "auto",
     f_block_voffset: float = 0,  # TODO: WIP, don't use
     plot_kwargs: dict[str, Any] | None = None,
