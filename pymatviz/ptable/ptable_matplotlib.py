@@ -175,11 +175,11 @@ def ptable_heatmap(
             cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
-        --- Migration  # TODO: remove after 2025-07-01 ---
+        --- Migration --- TODO: remove after 2025-07-01
         return_type ("figure" | "axes"): Whether to return plt.Figure or plt.axes.
             We encourage you to migrate to "figure".
 
-        --- Deprecated args, don't use ---
+        --- Deprecated args, don't use ---  TODO: remove after 2025-04-01
         colorscale: Use "colormap" instead.
         heat_mode: Use "value_show_mode" instead.
         show_values: Use "value_show_mode" instead.
@@ -200,7 +200,7 @@ def ptable_heatmap(
             stacklevel=2,
         )
 
-    # Handle deprecated args  # TODO: remove after 2025-01-01
+    # Handle deprecated args  # TODO: remove after 2025-04-01
     if colorscale is not None:
         warnings.warn(
             "colorscale is deprecated in favor of colormap.",
