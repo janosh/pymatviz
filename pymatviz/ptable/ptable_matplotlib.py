@@ -327,7 +327,11 @@ def ptable_heatmap(
     if return_type == "figure":
         return projector.fig
     warnings.warn(
-        "We encourage you to return plt.figure for more consistent results.",
+        (
+            "We encourage you to return plt.figure for more consistent results, "
+            "would return Figure instead of Axes by default after 2025-07"
+        ),
+        FutureWarning,
         stacklevel=2,
     )
     return plt.gca()
