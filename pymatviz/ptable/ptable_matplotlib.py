@@ -202,29 +202,45 @@ def ptable_heatmap(
 
     # Handle deprecated args  # TODO: remove after 2025-01-01
     if colorscale is not None:
-        warnings.warn("colorscale is deprecated in favor of colormap.", stacklevel=2)
+        warnings.warn(
+            "colorscale is deprecated in favor of colormap.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         colormap = colorscale
     if heat_mode is not None:
         warnings.warn(
-            "heat_mode is deprecated in favor of value_show_mode.", stacklevel=2
+            "heat_mode is deprecated in favor of value_show_mode.",
+            DeprecationWarning,
+            stacklevel=2,
         )
         value_show_mode = heat_mode
     if show_values is not None:
         warnings.warn(
-            "show_values is deprecated in favor of value_show_mode.", stacklevel=2
+            "show_values is deprecated in favor of value_show_mode.",
+            DeprecationWarning,
+            stacklevel=2,
         )
         if not show_values:
             value_show_mode = "off"
     if fmt is not None:
-        warnings.warn("fmt is deprecated in favor of value_fmt.", stacklevel=2)
+        warnings.warn(
+            "fmt is deprecated in favor of value_fmt.", DeprecationWarning, stacklevel=2
+        )
         value_fmt = fmt
     if cbar_fmt is not None:
         warnings.warn(
-            "cbar_fmt is deprecated in favor of cbar_label_fmt.", stacklevel=2
+            "cbar_fmt is deprecated in favor of cbar_label_fmt.",
+            DeprecationWarning,
+            stacklevel=2,
         )
         cbar_label_fmt = cbar_fmt
     if show_scale is not None:
-        warnings.warn("show_scale is deprecated in favor of show_cbar.", stacklevel=2)
+        warnings.warn(
+            "show_scale is deprecated in favor of show_cbar.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         show_cbar = show_scale
 
     # Prevent log scale and percent/fraction display mode being used together
