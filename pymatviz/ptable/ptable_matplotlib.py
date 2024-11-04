@@ -344,8 +344,8 @@ def ptable_heatmap(
         return projector.fig
     warnings.warn(
         (
-            "We return_type="figure" over return_type="axes" for more consistent results."
-            "This will become the default after 2025-07."
+            "We return_type='figure' over return_type='axes' for more "
+            "consistent results.\nThis will become the default after 2025-07."
         ),
         FutureWarning,
         stacklevel=2,
