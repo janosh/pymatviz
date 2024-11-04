@@ -175,11 +175,11 @@ def ptable_heatmap(
             cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
-        --- Migration  # TODO: remove after 2025-07-01 ---
+        --- Migration --- TODO: remove after 2025-07-01
         return_type ("figure" | "axes"): Whether to return plt.Figure or plt.axes.
             We encourage you to migrate to "figure".
 
-        --- Deprecated args, don't use ---
+        --- Deprecated args, don't use ---  TODO: remove after 2025-04-01
         colorscale: Use "colormap" instead.
         heat_mode: Use "value_show_mode" instead.
         show_values: Use "value_show_mode" instead.
@@ -200,31 +200,47 @@ def ptable_heatmap(
             stacklevel=2,
         )
 
-    # Handle deprecated args  # TODO: remove after 2025-01-01
+    # Handle deprecated args  # TODO: remove after 2025-04-01
     if colorscale is not None:
-        warnings.warn("colorscale is deprecated in favor of colormap.", stacklevel=2)
+        warnings.warn(
+            "colorscale is deprecated in favor of colormap.",
+            FutureWarning,
+            stacklevel=2,
+        )
         colormap = colorscale
     if heat_mode is not None:
         warnings.warn(
-            "heat_mode is deprecated in favor of value_show_mode.", stacklevel=2
+            "heat_mode is deprecated in favor of value_show_mode.",
+            FutureWarning,
+            stacklevel=2,
         )
         value_show_mode = heat_mode
     if show_values is not None:
         warnings.warn(
-            "show_values is deprecated in favor of value_show_mode.", stacklevel=2
+            "show_values is deprecated in favor of value_show_mode.",
+            FutureWarning,
+            stacklevel=2,
         )
         if not show_values:
             value_show_mode = "off"
     if fmt is not None:
-        warnings.warn("fmt is deprecated in favor of value_fmt.", stacklevel=2)
+        warnings.warn(
+            "fmt is deprecated in favor of value_fmt.", FutureWarning, stacklevel=2
+        )
         value_fmt = fmt
     if cbar_fmt is not None:
         warnings.warn(
-            "cbar_fmt is deprecated in favor of cbar_label_fmt.", stacklevel=2
+            "cbar_fmt is deprecated in favor of cbar_label_fmt.",
+            FutureWarning,
+            stacklevel=2,
         )
         cbar_label_fmt = cbar_fmt
     if show_scale is not None:
-        warnings.warn("show_scale is deprecated in favor of show_cbar.", stacklevel=2)
+        warnings.warn(
+            "show_scale is deprecated in favor of show_cbar.",
+            FutureWarning,
+            stacklevel=2,
+        )
         show_cbar = show_scale
 
     # Prevent log scale and percent/fraction display mode being used together
@@ -327,7 +343,11 @@ def ptable_heatmap(
     if return_type == "figure":
         return projector.fig
     warnings.warn(
-        "We encourage you to return plt.figure for more consistent results.",
+        (
+            "We return_type='figure' over return_type='axes' for more "
+            "consistent results.\nThis will become the default after 2025-07."
+        ),
+        FutureWarning,
         stacklevel=2,
     )
     return plt.gca()
