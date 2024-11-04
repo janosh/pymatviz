@@ -17,6 +17,7 @@ df_steels = load_dataset("matbench_steels")
 ax = pmv.ptable_heatmap(
     pmv.count_elements(df_expt_gap[Key.composition]),
     log=True,
+    return_type="axes",  # TODO: change to return Figure after 2025-07-01
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
