@@ -182,6 +182,10 @@ class Key(LabelEnum):
     translations = "translations", "Translations"
     rotations = "rotations", "Rotations"
     symmetry = "symmetry", "Symmetry"
+    symmetry_change = "symmetry_change", "Symmetry Change"
+    symmetry_decrease = "symmetry_decrease", "Symmetry Decrease"
+    symmetry_increase = "symmetry_increase", "Symmetry Increase"
+    symmetry_match = "symmetry_match", "Symmetry Match"
     point_group = "point_group", "Point Group"
     n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
     n_rot_syms = "n_rot_syms", "Number of rotational symmetries"
@@ -568,6 +572,11 @@ class Key(LabelEnum):
     gpu_hours = "gpu_hours", "GPU Hours"
     start_time = "start_time", "Start Time"
     start_date = "start_date", "Start Date"
+    date_time = "date_time", "Date and Time"
+    date = "date", "Date"
+    time = "time", "Time"
+    date_added = "date_added", "Date Added"
+    date_modified = "date_modified", "Date Modified"
     end_time = "end_time", "End Time"
     end_date = "end_date", "End Date"
     step = "step", "Step"  # as in job/optimizer step
@@ -693,6 +702,7 @@ class Task(LabelEnum):
 
     static = "static", "Static"  # aka single-point
     relax = "relax", "Relaxation"  # aka geometry optimization
+    geo_opt = "geo_opt", "Geometry Optimization"
     double_relax = "double_relax", "Double Relaxation"
     phonon = "phonon", "Phonon"  # aka vibrational analysis
     eos = "eos", "Equation of State"  # aka volume optimization
@@ -715,7 +725,7 @@ class Task(LabelEnum):
     dielectric = "dielectric", "Dielectric"  # aka optical properties
     electronic = "electronic", "Electronic"
     synthesis = "synthesis", "Synthesis"
-    molecular_dynamics = "molecular_dynamics", "Molecular Dynamics"
+    md = "md", "Molecular Dynamics"
     ion_diffusion = "ion_diffusion", "Ion Diffusion"
     electron_transport = "electron_transport", "Electron Transport"
     charge_transport = "charge_transport", "Charge Transport"
