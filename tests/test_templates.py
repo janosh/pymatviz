@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 import plotly.express as px
+import plotly.graph_objects as go
 import pytest
 from plotly import io as pio
 
@@ -44,15 +45,25 @@ def test_set_template() -> None:
         pio.templates.default = orig_template
 
 
-def test_dark_template() -> None:
-    layout = pmv.pmv_dark_template.layout
-    assert layout.xaxis.linecolor == layout.yaxis.linecolor == "white"
-    assert layout.xaxis.gridcolor == layout.yaxis.gridcolor == "darkgray"
-    assert layout.font.color == "white"
+@pytest.mark.parametrize(
+    ("template_name", "template", "line_color", "grid_color", "font_color"),
+    [
+        ("pymatviz_dark", pmv.pmv_dark_template, "white", "darkgray", "white"),
+        ("pymatviz_white", pmv.pmv_white_template, "black", "lightgray", "black"),
+    ],
+)
+def test_template(
+    template_name: str,
+    template: go.layout.Template,
+    line_color: str,
+    grid_color: str,
+    font_color: str,
+) -> None:
+    layout = template.layout
+    assert layout.xaxis.linecolor == layout.yaxis.linecolor == line_color
+    assert layout.xaxis.gridcolor == layout.yaxis.gridcolor == grid_color
+    assert layout.font.color == font_color
+    assert layout.margin.to_plotly_json() == dict(l=10, r=10, t=10, b=10)
+    assert layout.xaxis.ticks == layout.yaxis.ticks == "outside"
 
-
-def test_white_template() -> None:
-    layout = pmv.pmv_white_template.layout
-    assert layout.xaxis.linecolor == layout.yaxis.linecolor == "black"
-    assert layout.xaxis.gridcolor == layout.yaxis.gridcolor == "lightgray"
-    assert layout.font.color == "black"
+    assert template == pio.templates[template_name]

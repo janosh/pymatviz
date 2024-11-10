@@ -348,7 +348,7 @@ def coordination_hist(
 def coordination_vs_cutoff_line(
     structures: Structure | dict[str, Structure] | Sequence[Structure],
     *,
-    strategy: tuple[float, float] | NearNeighbors | type[NearNeighbors] = (1.0, 5.0),
+    strategy: tuple[float, float] | NearNeighbors | type[NearNeighbors] = (1, 5),
     num_points: int = 50,
     element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
     subplot_kwargs: dict[str, Any] | None = None,
@@ -362,7 +362,7 @@ def coordination_vs_cutoff_line(
             - tuple[float, float]: (min_cutoff, max_cutoff) range in Angstroms.
             - NearNeighbors: An instance of a NearNeighbors subclass.
             - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
-            Defaults to (1.0, 5.0) Angstrom range.
+            Defaults to (1, 5) Angstrom range.
         num_points: Number of points to calculate between min and max cutoff.
         element_color_scheme: Color scheme for elements. Can be "jmol", "vesta", or a
             custom dict.
