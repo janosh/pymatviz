@@ -145,7 +145,9 @@ class TestPtableHeatmap:
         )
         assert isinstance(fig, plt.Figure)
 
-        with pytest.warns(match="We encourage you to return plt.figure"):
+        with pytest.warns(
+            FutureWarning, match="We return_type='figure' over return_type='axes'"
+        ):
             ax = pmv.ptable_heatmap(df_ptable[Key.atomic_mass])
         assert isinstance(ax, plt.Axes)
 
