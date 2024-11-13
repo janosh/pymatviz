@@ -10,4 +10,4 @@ from pymatviz.ptable.ptable_matplotlib import (
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.ptable.ptable_plotly import ptable_heatmap_plotly
+from pymatviz.ptable.ptable_plotly import ptable_heatmap_plotly, ptable_hists_plotly

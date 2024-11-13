@@ -11,7 +11,7 @@ from plotly.exceptions import PlotlyError
 from plotly.graph_objs import Figure
 
 from pymatviz.enums import ElemCountMode, Key
-from pymatviz.ptable import ptable_heatmap_plotly
+from pymatviz.ptable import ptable_heatmap_plotly, ptable_hists_plotly
 from pymatviz.utils import df_ptable
 
 
@@ -471,3 +471,152 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
         assert any(
             f"{elem}</span>" in text for text in tile_texts
         ), f"Original symbol {elem} not found in tile texts for element_symbol_map=None"
+
+
+@pytest.mark.parametrize(
+    ("data", "bins", "x_range", "log", "colorscale"),
+    [
+        # Basic case
+        ({"Fe": [1, 2], "O": [3, 4]}, 10, None, False, "RdBu"),
+        # Single element, log scale
+        (pd.DataFrame({"Fe": [0.1, 0.2]}), 5, (0, 1), True, "Viridis"),
+        ({"H": [0.1, 0.2], "He": [0.3, 0.4]}, 5, None, True, "Turbo"),
+    ],
+)
+def test_ptable_hists_plotly_basic(
+    data: pd.DataFrame | dict[str, list[float]],
+    bins: int,
+    x_range: tuple[float | None, float | None] | None,
+    log: bool,
+    colorscale: str,
+) -> None:
+    fig = ptable_hists_plotly(
+        data, bins=bins, x_range=x_range, log=log, colorscale=colorscale
+    )
+    assert isinstance(fig, go.Figure)
+    # should have one subplot per element
+    n_elements = len(data if isinstance(data, dict) else data.columns)
+    assert len(fig.data) == n_elements
+
+
+@pytest.mark.parametrize(
+    ("font_size", "scale", "symbol_pos", "anno_pos"),
+    [
+        (12, 1.0, (0, 1), (1, 1)),  # Most common case
+        (None, 0.5, (0.5, 0.5), (0.5, 0.5)),  # Test None font_size
+    ],
+)
+def test_ptable_hists_plotly_layout(
+    font_size: int | None,
+    scale: float,
+    symbol_pos: tuple[float, float],
+    anno_pos: tuple[float, float],
+) -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    fig = ptable_hists_plotly(
+        data,
+        font_size=font_size,
+        scale=scale,
+        symbol_pos=symbol_pos,
+        anno_pos=anno_pos,
+    )
+    assert isinstance(fig, go.Figure)
+    if font_size:
+        assert any(
+            anno.font.size == font_size * scale
+            for anno in fig.layout.annotations
+            if anno.font is not None
+        )
+
+
+@pytest.mark.parametrize(
+    "color_elem_strategy",
+    ["symbol", "background", "both", "off"],
+)
+def test_ptable_hists_plotly_element_colors(
+    color_elem_strategy: Literal["symbol", "background", "both", "off"],
+) -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    fig = ptable_hists_plotly(data, color_elem_strategy=color_elem_strategy)
+    assert isinstance(fig, go.Figure)
+
+
+def test_ptable_hists_plotly_custom_annotations() -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    anno_text = {"Fe": "Iron", "O": "Oxygen"}
+    anno_kwargs = {"font": {"size": 14, "color": "red"}}
+    fig = ptable_hists_plotly(data, anno_text=anno_text, anno_kwargs=anno_kwargs)
+    assert isinstance(fig, go.Figure)
+
+
+def test_ptable_hists_plotly_error_cases() -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+
+    # Test invalid color_elem_strategy
+    with pytest.raises(
+        ValueError, match="color_elem_strategy='invalid' must be one of"
+    ):
+        ptable_hists_plotly(data, color_elem_strategy="invalid")  # type: ignore[arg-type]
+
+    # Test invalid scale
+    with pytest.raises(ValueError, match="Invalid value of type ") as exc:
+        ptable_hists_plotly(data, scale=-1.0)
+    assert "An int or float in the interval [1, inf]" in str(exc.value)
+
+    # Test invalid bins
+    with pytest.raises(ZeroDivisionError, match="division by zero"):
+        ptable_hists_plotly(data, bins=0)
+
+
+@pytest.mark.parametrize(
+    ("element_symbol_map", "symbol_kwargs"),
+    [
+        ({"Fe": "Iron", "O": "Oxygen"}, {"font": {"size": 14}}),
+        (None, None),
+        ({"Fe": "Fe*"}, {"font": {"color": "red"}}),
+    ],
+)
+def test_ptable_hists_plotly_symbol_customization(
+    element_symbol_map: dict[str, str] | None,
+    symbol_kwargs: dict[str, Any] | None,
+) -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    fig = ptable_hists_plotly(
+        data,
+        element_symbol_map=element_symbol_map,
+        symbol_kwargs=symbol_kwargs,
+    )
+    assert isinstance(fig, go.Figure)
+
+
+def test_ptable_hists_plotly_subplot_kwargs() -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    sub_titles = ["Iron", "Oxygen"]
+    subplot_kwargs = {
+        "horizontal_spacing": 0.05,
+        "vertical_spacing": 0.05,
+        "subplot_titles": sub_titles,
+    }
+    fig = ptable_hists_plotly(data, subplot_kwargs=subplot_kwargs)
+    assert isinstance(fig, go.Figure)
+    # Verify subplot titles are set
+    assert [anno.text for anno in fig.layout.annotations][:2] == sub_titles
+
+
+def test_ptable_hists_plotly_hover_tooltips() -> None:
+    """Test that hover tooltips show element info and histogram values."""
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    element_symbol_map = {"Fe": "Iron"}
+
+    fig = ptable_hists_plotly(data, element_symbol_map=element_symbol_map)
+
+    # Get hover templates for each histogram trace
+    hover_templates = [trace.hovertemplate for trace in fig.data]
+
+    expected_fe_template = (
+        "<b>Iron</b> (Fe)<br>Range: %{x}<br>Count: %{y}<extra></extra>"
+    )
+    expected_o_template = "<b>O</b><br>Range: %{x}<br>Count: %{y}<extra></extra>"
+
+    assert expected_fe_template in hover_templates
+    assert expected_o_template in hover_templates

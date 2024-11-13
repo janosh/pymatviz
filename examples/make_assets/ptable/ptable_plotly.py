@@ -4,6 +4,7 @@ import os
 import numpy as np
 import yaml
 from matminer.datasets import load_dataset
+from pymatgen.core.periodic_table import Element
 
 import pymatviz as pmv
 from pymatviz.enums import ElemCountMode, Key
@@ -11,6 +12,7 @@ from pymatviz.enums import ElemCountMode, Key
 
 df_expt_gap = load_dataset("matbench_expt_gap")
 module_dir = os.path.dirname(__file__)
+np_rng = np.random.default_rng(seed=0)
 
 
 # %% Plotly interactive periodic table heatmap
@@ -142,3 +144,14 @@ fig.layout.title.update(text=title, x=0.4, y=0.92)
 fig.show()
 
 pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-vasp-psp-n-valence-electrons")
+
+
+# %%
+data_dict = {
+    elem.symbol: np_rng.standard_normal(100) + np_rng.standard_normal(100)
+    for elem in Element
+}
+
+fig = pmv.ptable_hists_plotly(data_dict, bins=30)
+fig.show()
+pmv.io.save_and_compress_svg(fig, "ptable-hists-plotly")
