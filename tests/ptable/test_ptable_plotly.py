@@ -601,3 +601,22 @@ def test_ptable_hists_plotly_subplot_kwargs() -> None:
     assert isinstance(fig, go.Figure)
     # Verify subplot titles are set
     assert [anno.text for anno in fig.layout.annotations][:2] == sub_titles
+
+
+def test_ptable_hists_plotly_hover_tooltips() -> None:
+    """Test that hover tooltips show element info and histogram values."""
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    element_symbol_map = {"Fe": "Iron"}
+
+    fig = ptable_hists_plotly(data, element_symbol_map=element_symbol_map)
+
+    # Get hover templates for each histogram trace
+    hover_templates = [trace.hovertemplate for trace in fig.data]
+
+    expected_fe_template = (
+        "<b>Iron</b> (Fe)<br>Range: %{x}<br>Count: %{y}<extra></extra>"
+    )
+    expected_o_template = "<b>O</b><br>Range: %{x}<br>Count: %{y}<extra></extra>"
+
+    assert expected_fe_template in hover_templates
+    assert expected_o_template in hover_templates

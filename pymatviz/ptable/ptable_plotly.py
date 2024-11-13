@@ -462,7 +462,7 @@ def ptable_hists_plotly(
     # Initialize figure with subplots in periodic table layout
     n_rows, n_cols = 10, 18
     subplot_defaults = dict(
-        vertical_spacing=0.02 / n_rows, horizontal_spacing=0.01 / n_cols
+        vertical_spacing=0.05 / n_rows, horizontal_spacing=0.03 / n_cols
     )
     fig = make_subplots(
         rows=n_rows, cols=n_cols, **subplot_defaults | (subplot_kwargs or {})
@@ -511,6 +511,14 @@ def ptable_hists_plotly(
             if not values:
                 continue
 
+            # Get display symbol and create hover template
+            display_symbol = (element_symbol_map or {}).get(symbol, symbol)
+            hover_template = (
+                f"<b>{display_symbol}</b>"
+                if display_symbol == symbol
+                else f"<b>{display_symbol}</b> ({symbol})"
+            ) + "<br>Range: %{x}<br>Count: %{y}<extra></extra>"
+
             fig.add_histogram(
                 x=values,
                 xbins=dict(
@@ -520,6 +528,7 @@ def ptable_hists_plotly(
                 ),
                 marker_color=px.colors.sample_colorscale(colorscale, bins),
                 showlegend=False,
+                hovertemplate=hover_template,  # Add hover template
                 row=row + 1,
                 col=col + 1,
             )
