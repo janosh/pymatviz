@@ -448,6 +448,17 @@ def ptable_hists_plotly(
     elif isinstance(data, pd.Series):
         data = data.to_dict()
 
+    if isinstance(color_elem_strategy, dict):
+        elem_type_colors = color_elem_strategy
+    elif color_elem_strategy in (
+        valid_color_elem_strats := {"symbol", "background", "both", "off"}
+    ):
+        elem_type_colors = ELEM_TYPE_COLORS
+    else:
+        raise ValueError(
+            f"{color_elem_strategy=} must be one of {valid_color_elem_strats}"
+        )
+
     # Initialize figure with subplots in periodic table layout
     n_rows, n_cols = 10, 18
     subplot_defaults = dict(
@@ -463,8 +474,6 @@ def ptable_hists_plotly(
         bins_range = (min(all_values), max(all_values)) if all_values else (0, 1)
     else:
         bins_range = x_range
-
-    elem_type_colors = elem_type_colors or ELEM_TYPE_COLORS
 
     # Create histograms for each element
     max_count = 0
@@ -526,7 +535,9 @@ def ptable_hists_plotly(
             "font_weight": "bold",
             "xanchor": "left",
             "yanchor": "top",
-            "font_color": font_color,
+            "font_color": elem_type_colors.get(elem_type, font_color)
+            if color_elem_strategy in {"symbol", "both"}
+            else font_color,
         } | (symbol_kwargs or {})
 
         fig.add_annotation(
