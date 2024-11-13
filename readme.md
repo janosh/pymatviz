@@ -59,10 +59,10 @@ See [`pymatviz/ptable/ptable_matplotlib.py`](pymatviz/ptable/ptable_matplotlib.p
 |                                                   ![ptable-heatmap]                                                    |                                                ![ptable-heatmap-ratio]                                                |
 |                       [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/ptable_plotly.py)                       |                [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/ptable_matplotlib.py)                |
 |                                        ![ptable-heatmap-plotly-more-hover-data]                                        |                                             ![ptable-heatmap-plotly-log]                                              |
-|                   [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable/ptable_matplotlib.py)                    |                             [`ptable_lines(data)`](pymatviz/ptable/ptable_matplotlib.py)                              |
-|                                                    ![ptable-hists]                                                     |                                                    ![ptable-lines]                                                    |
-|                  [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable/ptable_matplotlib.py)                  |                 [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable/ptable_matplotlib.py)                  |
-|                                               ![ptable-scatters-parity]                                                |                                              ![ptable-scatters-parabola]                                              |
+|                   [`ptable_hists(data, colormap="coolwarm")`](pymatviz/ptable/ptable_matplotlib.py)                    |                            [`ptable_hists_plotly(data)`](pymatviz/ptable/ptable_plotly.py)                            |
+|                                                    ![ptable-hists]                                                     |                                                ![ptable-hists-plotly]                                                 |
+|                  [`ptable_scatters(data, colormap="coolwarm")`](pymatviz/ptable/ptable_matplotlib.py)                  |                             [`ptable_lines(data)`](pymatviz/ptable/ptable_matplotlib.py)                              |
+|                                               ![ptable-scatters-parity]                                                |                                                    ![ptable-lines]                                                    |
 | [`ptable_heatmap_splits(2_vals_per_elem, colormap="coolwarm", start_angle=135)`](pymatviz/ptable/ptable_matplotlib.py) | [`ptable_heatmap_splits(3_vals_per_elem, colormap="coolwarm", start_angle=90)`](pymatviz/ptable/ptable_matplotlib.py) |
 |                                               ![ptable-heatmap-splits-2]                                               |                                              ![ptable-heatmap-splits-3]                                               |
 
@@ -72,6 +72,7 @@ See [`pymatviz/ptable/ptable_matplotlib.py`](pymatviz/ptable/ptable_matplotlib.p
 [ptable-scatters-parabola]: assets/ptable-scatters-parabola.svg
 [ptable-heatmap-splits-2]: assets/ptable-heatmap-splits-2.svg
 [ptable-heatmap-splits-3]: assets/ptable-heatmap-splits-3.svg
+[ptable-hists-plotly]: assets/ptable-hists-plotly.svg
 
 ## Phonons
 

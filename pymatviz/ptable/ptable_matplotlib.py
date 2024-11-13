@@ -659,7 +659,7 @@ def ptable_hists(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
+    # Element type colors and legend
     color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
@@ -726,7 +726,7 @@ def ptable_hists(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -836,7 +836,7 @@ def ptable_scatters(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
+    # Element type colors and legend
     color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
@@ -898,7 +898,7 @@ def ptable_scatters(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -993,7 +993,7 @@ def ptable_lines(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
+    # Element type colors and legend
     color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
@@ -1044,7 +1044,7 @@ def ptable_lines(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".

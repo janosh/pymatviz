@@ -51,6 +51,7 @@ from pymatviz.ptable import (
     ptable_heatmap_ratio,
     ptable_heatmap_splits,
     ptable_hists,
+    ptable_hists_plotly,
     ptable_lines,
     ptable_scatters,
 )

@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
+from pymatviz.colors import ELEM_TYPE_COLORS
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
 from pymatviz.utils import ElemValues, df_ptable
@@ -17,8 +20,6 @@ from pymatviz.utils import ElemValues, df_ptable
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any, Literal
-
-    import plotly.graph_objects as go
 
 
 def ptable_heatmap_plotly(
@@ -366,4 +367,224 @@ def ptable_heatmap_plotly(
 
     fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
 
+    return fig
+
+
+def ptable_hists_plotly(
+    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    *,
+    # Histogram-specific
+    bins: int = 20,
+    x_range: tuple[float | None, float | None] | None = None,
+    log: bool = False,
+    colorscale: str = "RdBu",
+    # Layout
+    font_size: int | None = None,
+    scale: float = 1.0,
+    # Symbol
+    element_symbol_map: dict[str, str] | None = None,
+    symbol_pos: tuple[float, float] = (0, 1),
+    symbol_kwargs: dict[str, Any] | None = None,
+    # Annotation
+    anno_text: dict[str, str] | None = None,
+    anno_pos: tuple[float, float] = (1, 1),
+    anno_kwargs: dict[str, Any] | None = None,
+    # Element type colors
+    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    elem_type_colors: dict[str, str] | None = None,
+    subplot_kwargs: dict[str, Any] | None = None,
+) -> go.Figure:
+    """Plotly figure with histograms for each element laid out in a periodic table.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
+            symbols to histogram values. E.g. if dict, {"Fe": [1, 2, 3], "O": [4, 5]}.
+            If pd.Series, index is element symbols and values lists. If pd.DataFrame,
+            column names are element symbols histograms are plotted from each column.
+
+        --- Histogram-specific ---
+        bins (int): Number of bins for the histograms. Defaults to 20.
+        x_range (tuple[float | None, float | None]): x-axis range for all histograms.
+            Defaults to None.
+        log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
+        colorscale (str): Color scale for histogram bars. Defaults to "RdBu" (red to
+            blue). See plotly.com/python/builtin-colorscales for other options.
+
+        --- Layout ---
+        font_size (int): Element symbol and annotation text size. Defaults to automatic
+            font size based on plot size.
+        scale (float): Scaling factor for whole figure layout. Defaults to 1.
+
+        --- Symbol ---
+        element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
+            to custom strings. If provided, these custom strings will be displayed
+            instead of the standard element symbols. Defaults to None.
+        symbol_pos (tuple[float, float]): Position of element symbols relative to the
+            lower left corner of each tile. Defaults to (0, 1) for top left corner.
+        symbol_kwargs (dict): Additional keyword arguments for element symbol text.
+
+        --- Annotation ---
+        anno_text (dict[str, str]): Annotation to display for each element tile.
+            Defaults to None for not displaying.
+        anno_pos (tuple[float, float]): Position of annotation relative to the tile
+            domain coordinates. Defaults to (1, 1) for top right corner.
+        anno_kwargs (dict): Additional keyword arguments for annotation text.
+
+        --- Element type colors ---
+        color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
+            color element symbols, tile backgrounds, or both based on element type.
+            Defaults to "background".
+        elem_type_colors (dict | None): dict to map element types to colors.
+            None to use the default = pymatviz.colors.ELEM_TYPE_COLORS.
+        subplot_kwargs (dict | None): Additional keyword arguments passed to
+            plotly.subplots.make_subplots().
+
+    Returns:
+        go.Figure: Plotly Figure object with histograms in a periodic table layout.
+    """
+    # Process data into a consistent format
+    if isinstance(data, pd.DataFrame):
+        data = data.to_dict("list")
+    elif isinstance(data, pd.Series):
+        data = data.to_dict()
+
+    if isinstance(color_elem_strategy, dict):
+        elem_type_colors = color_elem_strategy
+    elif color_elem_strategy in (
+        valid_color_elem_strats := {"symbol", "background", "both", "off"}
+    ):
+        elem_type_colors = ELEM_TYPE_COLORS
+    else:
+        raise ValueError(
+            f"{color_elem_strategy=} must be one of {valid_color_elem_strats}"
+        )
+
+    # Initialize figure with subplots in periodic table layout
+    n_rows, n_cols = 10, 18
+    subplot_defaults = dict(
+        vertical_spacing=0.05 / n_rows, horizontal_spacing=0.03 / n_cols
+    )
+    fig = make_subplots(
+        rows=n_rows, cols=n_cols, **subplot_defaults | (subplot_kwargs or {})
+    )
+
+    # Get all-elements x_range if not provided
+    if x_range is None:
+        all_values = [val for vals in data.values() for val in vals if not pd.isna(val)]
+        bins_range = (min(all_values), max(all_values)) if all_values else (0, 1)
+    else:
+        bins_range = x_range
+
+    # Create histograms for each element
+    max_count = 0
+    for symbol, period, group, *_ in df_ptable.itertuples():
+        row = period - 1
+        col = group - 1
+
+        subplot_idx = row * n_cols + col + 1
+        subplot_key = subplot_idx if subplot_idx != 1 else ""
+        xy_ref = dict(xref=f"x{subplot_key} domain", yref=f"y{subplot_key} domain")
+
+        elem_type = df_ptable.loc[symbol].get("type", None)
+        # Add element type background
+        if elem_type in elem_type_colors and color_elem_strategy in {
+            "background",
+            "both",
+        }:
+            fig.add_shape(
+                type="rect",
+                x0=0,
+                y0=0,
+                x1=1,
+                y1=1,
+                fillcolor=elem_type_colors[elem_type],
+                line_width=0,
+                layer="below",
+                **xy_ref,
+                row=row + 1,
+                col=col + 1,
+                opacity=0.05,
+            )
+
+        if data.get(symbol) is not None:
+            values = [v for v in data[symbol] if not pd.isna(v)]
+            if not values:
+                continue
+
+            # Get display symbol and create hover template
+            display_symbol = (element_symbol_map or {}).get(symbol, symbol)
+            hover_template = (
+                f"<b>{display_symbol}</b>"
+                if display_symbol == symbol
+                else f"<b>{display_symbol}</b> ({symbol})"
+            ) + "<br>Range: %{x}<br>Count: %{y}<extra></extra>"
+
+            fig.add_histogram(
+                x=values,
+                xbins=dict(
+                    start=bins_range[0],
+                    end=bins_range[1],
+                    size=(bins_range[1] - bins_range[0]) / bins,
+                ),
+                marker_color=px.colors.sample_colorscale(colorscale, bins),
+                showlegend=False,
+                hovertemplate=hover_template,  # Add hover template
+                row=row + 1,
+                col=col + 1,
+            )
+
+            # Track maximum count for consistent scaling
+            max_count = max(max_count, *np.histogram(values, bins=bins)[0])
+
+        # Add element symbol
+        display_symbol = (element_symbol_map or {}).get(symbol, symbol)
+        font_color = "lightgray"
+        symbol_style = {
+            "font_size": (font_size or 12) * scale,
+            "font_weight": "bold",
+            "xanchor": "left",
+            "yanchor": "top",
+            "font_color": elem_type_colors.get(elem_type, font_color)
+            if color_elem_strategy in {"symbol", "both"}
+            else font_color,
+        } | (symbol_kwargs or {})
+
+        fig.add_annotation(
+            text=display_symbol,
+            x=symbol_pos[0],
+            y=symbol_pos[1],
+            **xy_ref,
+            showarrow=False,
+            **symbol_style,
+        )
+
+        if anno_str := (anno_text or {}).get(symbol):
+            anno_style = {
+                "font_size": (font_size or 12) * scale,
+                "font_color": font_color,
+            } | (anno_kwargs or {})
+
+            fig.add_annotation(
+                text=anno_str,
+                x=anno_pos[0],
+                y=anno_pos[1],
+                **xy_ref,
+                showarrow=False,
+                **anno_style,
+            )
+
+    # Update global figure layout
+    fig.layout.showlegend = False
+    fig.layout.margin = dict(l=10, r=10, t=10, b=10)
+    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.width = 900 * scale
+    fig.layout.height = 500 * scale
+
+    # equalize x/y-axes across all subplots
+    axes_kwargs = dict(showticklabels=False, showgrid=False, zeroline=False)
+    fig.update_xaxes(range=x_range, **axes_kwargs)
+    fig.update_yaxes(
+        range=[0, max_count], type="log" if log else "linear", **axes_kwargs
+    )
     return fig
