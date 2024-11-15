@@ -171,6 +171,10 @@ class Key(LabelEnum):
     bond_angles = "bond_angles", f"Bond Angles {degrees}"
     packing_fraction = "packing_fraction", "Packing Fraction"
     max_pair_dist = "max_pair_dist", f"Maximum Pair Distance {angstrom}"
+    conventional_cell = "conventional_cell", "Conventional Cell"
+    primitive_cell = "primitive_cell", "Primitive Cell"
+    reduced_cell = "reduced_cell", "Reduced Cell"
+    niggli_reduced_cell = "niggli_reduced_cell", "Niggli-reduced Cell"
 
     # Crystal Symmetry Properties
     crystal_system = "crystal_system", "Crystal System"

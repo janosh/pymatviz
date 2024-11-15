@@ -1,9 +1,10 @@
-"""Visualizations of coordination numbers distributions."""
+"""Helper functions for calculating coordination numbers."""
 
 from __future__ import annotations
 
+from collections import defaultdict
 from inspect import isclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pymatgen.analysis.local_env import NearNeighbors
 
@@ -82,3 +83,52 @@ def calculate_average_cn(
     element_sites = [site for site in structure if site.specie.symbol == element]
     cn_sum = sum(len(get_neighbors(site, structure)) for site in element_sites)
     return cn_sum / len(element_sites) if element_sites else 0
+
+
+def coordination_nums_in_structure(
+    structure: Structure,
+    strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
+    group_by: Literal["element", "specie", "site"] = "element",
+) -> dict[str, list[int]]:
+    """Get coordination numbers (CN) for each element in a structure.
+
+    Args:
+        structure: A pymatgen Structure object
+        strategy: Neighbor-finding strategy. Can be one of:
+            - float: Cutoff distance for neighbor search in Angstroms
+            - NearNeighbors: An instance of a NearNeighbors subclass
+            - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated)
+            Defaults to 3.0 (Angstroms cutoff)
+        group_by: How to group the coordination numbers. Can be one of:
+            - "element": Group by element symbol
+            - "site": Group by site
+            - "specie": Group by specie
+
+    Returns:
+        dict[str, list[int]]: Map of element symbols to lists of coordination numbers.
+        E.g. {"Si": [4, 4, 4], "O": [2, 2, 2, 2, 2, 2]} for SiO2.
+        Each number represents the CN of one atom of that element.
+
+    Example:
+        >>> from pymatgen.core import Structure
+        >>> structure = Structure.from_file("SiO2.cif")
+        >>> cns = coordination_nums_in_structure(structure)
+        >>> print(cns)
+        {"Si": [4, 4, 4], "O": [2, 2, 2, 2, 2, 2]}
+    """
+    get_neighbors = normalize_get_neighbors(strategy=strategy)
+
+    # Store coordination numbers for each group
+    cns: dict[str, list[int]] = defaultdict(list)
+
+    # Calculate CNs for all sites in the structure
+    for idx, site in enumerate(structure, start=1):
+        key = {
+            "element": site.specie.symbol,
+            "site": str(idx),
+            "specie": str(site.specie),
+        }[group_by]
+        cn = len(get_neighbors(site, structure))
+        cns[key] += [cn]
+
+    return cns
