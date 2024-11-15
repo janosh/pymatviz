@@ -494,9 +494,10 @@ def test_ptable_hists_plotly_basic(
         data, bins=bins, x_range=x_range, log=log, colorscale=colorscale
     )
     assert isinstance(fig, go.Figure)
-    # should have one subplot per element
+    # Count only histogram traces (exclude colorbar trace)
+    n_hist_traces = sum(1 for trace in fig.data if isinstance(trace, go.Histogram))
     n_elements = len(data if isinstance(data, dict) else data.columns)
-    assert len(fig.data) == n_elements
+    assert n_hist_traces == n_elements
 
 
 @pytest.mark.parametrize(
@@ -620,3 +621,82 @@ def test_ptable_hists_plotly_hover_tooltips() -> None:
 
     assert expected_fe_template in hover_templates
     assert expected_o_template in hover_templates
+
+
+@pytest.mark.parametrize(
+    ("colorbar", "expected"),
+    [
+        # Test default settings
+        (None, dict(orientation="h", len=0.4, thickness=15)),
+        # Test no colorbar
+        (False, None),
+        # Test horizontal colorbar with custom length
+        (dict(orientation="h", len=0.4), dict(orientation="h", len=0.4)),
+        # Test vertical colorbar with custom length
+        (dict(orientation="v", len=0.8), dict(orientation="v", len=0.8)),
+        # Test title formatting for horizontal orientation
+        (
+            dict(title="Test Title", orientation="h"),
+            dict(title="Test Title<br>", orientation="h"),
+        ),
+        # Test comprehensive custom settings
+        (
+            dict(
+                orientation="v",
+                len=0.6,
+                thickness=20,
+                title="Custom",
+                x=1.1,
+                y=0.5,
+            ),
+            dict(
+                orientation="v",
+                len=0.6,
+                thickness=20,
+                title="<br><br>Custom",
+                x=1.1,
+                y=0.5,
+            ),
+        ),
+    ],
+)
+def test_ptable_hists_plotly_colorbar(
+    colorbar: dict[str, Any] | Literal[False] | None,
+    expected: dict[str, Any] | None,
+) -> None:
+    """Test colorbar customization in ptable_hists_plotly including range and
+    visibility."""
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    x_range = (-1, 5)  # Test custom range
+    fig = ptable_hists_plotly(data, colorbar=colorbar, x_range=x_range)
+
+    if colorbar is False:
+        assert all(not hasattr(trace, "colorbar") for trace in fig.data)
+        return
+
+    # Find the scatter trace with the colorbar (should be last trace)
+    colorbar_trace = fig.data[-1]
+    assert isinstance(colorbar_trace, go.Scatter)
+    assert colorbar_trace.hoverinfo == "none"
+    assert colorbar_trace.showlegend is False
+
+    # Check colorbar properties
+    marker = colorbar_trace.marker
+    assert marker.showscale is True
+
+    # Check colorbar range matches x_range
+    assert marker.cmin == x_range[0]
+    assert marker.cmax == x_range[1]
+
+    # Check that axes for this trace are hidden
+    xaxis_num = len(fig.data)  # Last trace's axis number
+    assert not fig.layout[f"xaxis{xaxis_num}"].visible
+    assert not fig.layout[f"yaxis{xaxis_num}"].visible
+
+    # Check colorbar settings
+    if expected is not None:
+        for key, value in expected.items():
+            if key == "title":
+                assert marker.colorbar.title.text == value
+            else:
+                assert getattr(marker.colorbar, key) == value

@@ -571,8 +571,8 @@ def ptable_hists_plotly(
             fig.add_annotation(text=anno_text[symbol], **xy_ref, **anno_style)
 
     if colorbar is not False:
-        colorbar = (colorbar or {}) | dict(
-            orientation="h", lenmode="fraction", thickness=15
+        colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
+            colorbar or {}
         )
 
         horizontal_cbar = colorbar.get("orientation") == "h"

@@ -152,6 +152,8 @@ data_dict = {
     for elem in Element
 }
 
-fig = pmv.ptable_hists_plotly(data_dict, bins=30)
+fig = pmv.ptable_hists_plotly(
+    data_dict, bins=30, colorbar=dict(title="Element Distributions")
+)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "ptable-hists-plotly")
