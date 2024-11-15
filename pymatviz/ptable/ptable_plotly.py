@@ -574,17 +574,17 @@ def ptable_hists_plotly(
     fig.layout.height = 600 * scale
 
     # Update x/y-axes across all subplots
-    y_axes_kwargs = dict(
+    fig.update_yaxes(
         showticklabels=False,
         showgrid=False,
         zeroline=False,
         ticks="",
         showline=False,  # remove axis lines
+        type="log" if log else "linear",
     )
-    x_axes_kwargs = dict(
+    fig.update_xaxes(
         showgrid=False,
         zeroline=False,
-        tickformat=".2g",
         ticks="inside",
         ticklen=4,
         tickwidth=1,
@@ -592,32 +592,12 @@ def ptable_hists_plotly(
         mirror=False,  # only show bottom x-axis line
         linewidth=0.5,
         linecolor="lightgray",
+        # more readable tick labels
+        tickangle=0,
+        tickfont=dict(size=(font_size or 7) * scale),
+        showticklabels=True,  # show x tick labels on all subplots
+        nticks=3,
+        tickformat=".2",
     )
 
-    # Determine x-axis ticks based on range
-    if x_range is None:
-        x_min, x_max = bins_range
-    else:
-        x_min, x_max = x_range
-
-    # If 0 is in x-range, show 3 ticks: min, 0, max
-    # Otherwise show just min and max
-    if x_min is not None and x_max is not None:
-        tick_vals = [x_min, 0, x_max] if x_min <= 0 <= x_max else [x_min, x_max]
-        blank = "&nbsp;&nbsp;"  # move left/right-most x tick label inward
-        # TODO see if blank could be replaced by ticklabelposition="inside bottom"
-        # (doesn't appear to work)
-        x_axes_kwargs.update(
-            tickvals=tick_vals,
-            ticktext=[
-                f"{blank if x < 0 else ''}{x:.2g}{blank if x > 0 else ''}"
-                for x in tick_vals
-            ],
-            tickangle=0,
-            tickfont=dict(size=(font_size or 7) * scale),
-            showticklabels=True,  # show x tick labels on all subplots
-        )
-
-    fig.update_xaxes(**x_axes_kwargs)
-    fig.update_yaxes(type="log" if log else "linear", **y_axes_kwargs)
     return fig
