@@ -383,6 +383,7 @@ def ptable_hists_plotly(
     x_range: tuple[float | None, float | None] | None = None,
     log: bool = False,
     colorscale: str = "RdBu",
+    colorbar: dict[str, Any] | Literal[False] | None = None,
     # Layout
     font_size: int | None = None,
     scale: float = 1.0,
@@ -412,6 +413,9 @@ def ptable_hists_plotly(
         log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
         colorscale (str): Color scale for histogram bars. Defaults to "RdBu" (red to
             blue). See plotly.com/python/builtin-colorscales for other options.
+        colorbar (dict[str, Any] | None): Plotly colorbar properties. Defaults to
+            dict(orientation="h"). See https://plotly.com/python/reference#heatmap-colorbar
+            for available options. Set to False to hide the colorbar.
 
         --- Layout ---
         font_size (int): Element symbol and annotation text size. Defaults to automatic
@@ -565,6 +569,52 @@ def ptable_hists_plotly(
             } | (anno_kwargs or {})
 
             fig.add_annotation(text=anno_text[symbol], **xy_ref, **anno_style)
+
+    if colorbar is not False:
+        colorbar = (colorbar or {}) | dict(
+            orientation="h", lenmode="fraction", thickness=15
+        )
+
+        horizontal_cbar = colorbar.get("orientation") == "h"
+        if horizontal_cbar:
+            defaults = dict(
+                x=0.4,
+                y=0.76,
+                titleside="top",
+                len=0.4,
+                title_font_size=scale * 1.2 * (font_size or 12),
+            )
+            colorbar = defaults | colorbar
+        else:  # make title vertical
+            defaults = dict(titleside="right", len=0.87)
+            colorbar = defaults | colorbar
+
+        if title := colorbar.get("title"):
+            # <br> to increase title standoff
+            colorbar["title"] = (
+                f"{title}<br>" if horizontal_cbar else f"<br><br>{title}"
+            )
+
+        # Create an invisible scatter trace for the colorbar
+        fig.add_scatter(
+            x=[None],
+            y=[None],
+            mode="markers",
+            marker=dict(
+                colorscale=colorscale,
+                showscale=True,
+                cmin=bins_range[0],
+                cmax=bins_range[1],
+                colorbar=colorbar,
+            ),
+            row=n_rows,
+            col=n_cols,
+            showlegend=False,
+            hoverinfo="none",  # Disable hover tooltip
+        )
+        # Hide the axes for the invisible scatter trace
+        fig.update_xaxes(visible=False, row=n_rows, col=n_cols)
+        fig.update_yaxes(visible=False, row=n_rows, col=n_cols)
 
     # Update global figure layout
     fig.layout.margin = dict(l=10, r=10, t=10, b=10)
