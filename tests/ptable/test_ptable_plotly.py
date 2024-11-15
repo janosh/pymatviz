@@ -12,7 +12,7 @@ from plotly.graph_objs import Figure
 
 from pymatviz.enums import ElemCountMode, Key
 from pymatviz.ptable import ptable_heatmap_plotly, ptable_hists_plotly
-from pymatviz.utils import df_ptable
+from pymatviz.utils import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy, df_ptable
 
 
 if TYPE_CHECKING:
@@ -500,25 +500,25 @@ def test_ptable_hists_plotly_basic(
 
 
 @pytest.mark.parametrize(
-    ("font_size", "scale", "symbol_pos", "anno_pos"),
+    ("font_size", "scale", "symbol_kwargs", "anno_kwargs"),
     [
-        (12, 1.0, (0, 1), (1, 1)),  # Most common case
-        (None, 0.5, (0.5, 0.5), (0.5, 0.5)),  # Test None font_size
+        (12, 1.0, dict(x=0, y=1), dict(x=1, y=1)),  # Most common case
+        (None, 0.5, dict(x=0.5, y=0.5), dict(x=0.5, y=0.5)),  # Test None font_size
     ],
 )
 def test_ptable_hists_plotly_layout(
     font_size: int | None,
     scale: float,
-    symbol_pos: tuple[float, float],
-    anno_pos: tuple[float, float],
+    symbol_kwargs: dict[str, Any],
+    anno_kwargs: dict[str, Any],
 ) -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     fig = ptable_hists_plotly(
         data,
         font_size=font_size,
         scale=scale,
-        symbol_pos=symbol_pos,
-        anno_pos=anno_pos,
+        symbol_kwargs=symbol_kwargs,
+        anno_kwargs=anno_kwargs,
     )
     assert isinstance(fig, go.Figure)
     if font_size:
@@ -531,10 +531,10 @@ def test_ptable_hists_plotly_layout(
 
 @pytest.mark.parametrize(
     "color_elem_strategy",
-    ["symbol", "background", "both", "off"],
+    VALID_COLOR_ELEM_STRATEGIES,
 )
 def test_ptable_hists_plotly_element_colors(
-    color_elem_strategy: Literal["symbol", "background", "both", "off"],
+    color_elem_strategy: ColorElemTypeStrategy,
 ) -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     fig = ptable_hists_plotly(data, color_elem_strategy=color_elem_strategy)
