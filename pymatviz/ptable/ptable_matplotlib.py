@@ -16,7 +16,12 @@ from pymatviz.ptable._projector import (
     OverwriteTileValueColor,
     PTableProjector,
 )
-from pymatviz.utils import ElemValues, get_cbar_label_formatter, pick_bw_for_contrast
+from pymatviz.utils import (
+    ColorElemTypeStrategy,
+    ElemValues,
+    get_cbar_label_formatter,
+    pick_bw_for_contrast,
+)
 
 
 if TYPE_CHECKING:
@@ -660,7 +665,7 @@ def ptable_hists(
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
     # Element type colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -837,7 +842,7 @@ def ptable_scatters(
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
     # Element type colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -994,7 +999,7 @@ def ptable_lines(
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
     # Element type colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,

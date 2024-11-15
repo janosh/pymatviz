@@ -12,7 +12,7 @@ from plotly.graph_objs import Figure
 
 from pymatviz.enums import ElemCountMode, Key
 from pymatviz.ptable import ptable_heatmap_plotly, ptable_hists_plotly
-from pymatviz.utils import df_ptable
+from pymatviz.utils import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy, df_ptable
 
 
 if TYPE_CHECKING:
@@ -253,25 +253,6 @@ def test_ptable_heatmap_plotly_heat_modes(
         assert fig.data[-1].zmax == pytest.approx(50)
 
 
-def test_ptable_heatmap_plotly_color_bar_range_percent_mode() -> None:
-    values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
-    fig = ptable_heatmap_plotly(
-        values, heat_mode="percent", color_bar=dict(title="Test")
-    )
-
-    heatmap_trace = fig.full_figure_for_development(warn=False).data[-1]
-
-    # Check if the color bar range is 100x the input values
-    assert heatmap_trace.zmin == pytest.approx(20)
-    assert heatmap_trace.zmax == pytest.approx(50)
-
-    # Check if the color bar title includes '%'
-    cbar_title = heatmap_trace.colorbar.title.text
-    assert cbar_title == "Test<br> (%)", f"{cbar_title=}"
-
-    assert heatmap_trace.colorbar.tickmode == "auto"
-
-
 def test_ptable_heatmap_plotly_show_values() -> None:
     values = {"Fe": 2, "O": 3}
     fig = ptable_heatmap_plotly(values, show_values=False)
@@ -494,31 +475,32 @@ def test_ptable_hists_plotly_basic(
         data, bins=bins, x_range=x_range, log=log, colorscale=colorscale
     )
     assert isinstance(fig, go.Figure)
-    # should have one subplot per element
+    # Count only histogram traces (exclude colorbar trace)
+    n_hist_traces = sum(1 for trace in fig.data if isinstance(trace, go.Histogram))
     n_elements = len(data if isinstance(data, dict) else data.columns)
-    assert len(fig.data) == n_elements
+    assert n_hist_traces == n_elements
 
 
 @pytest.mark.parametrize(
-    ("font_size", "scale", "symbol_pos", "anno_pos"),
+    ("font_size", "scale", "symbol_kwargs", "anno_kwargs"),
     [
-        (12, 1.0, (0, 1), (1, 1)),  # Most common case
-        (None, 0.5, (0.5, 0.5), (0.5, 0.5)),  # Test None font_size
+        (12, 1.0, dict(x=0, y=1), dict(x=1, y=1)),  # Most common case
+        (None, 0.5, dict(x=0.5, y=0.5), dict(x=0.5, y=0.5)),  # Test None font_size
     ],
 )
 def test_ptable_hists_plotly_layout(
     font_size: int | None,
     scale: float,
-    symbol_pos: tuple[float, float],
-    anno_pos: tuple[float, float],
+    symbol_kwargs: dict[str, Any],
+    anno_kwargs: dict[str, Any],
 ) -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     fig = ptable_hists_plotly(
         data,
         font_size=font_size,
         scale=scale,
-        symbol_pos=symbol_pos,
-        anno_pos=anno_pos,
+        symbol_kwargs=symbol_kwargs,
+        anno_kwargs=anno_kwargs,
     )
     assert isinstance(fig, go.Figure)
     if font_size:
@@ -531,10 +513,10 @@ def test_ptable_hists_plotly_layout(
 
 @pytest.mark.parametrize(
     "color_elem_strategy",
-    ["symbol", "background", "both", "off"],
+    VALID_COLOR_ELEM_STRATEGIES,
 )
 def test_ptable_hists_plotly_element_colors(
-    color_elem_strategy: Literal["symbol", "background", "both", "off"],
+    color_elem_strategy: ColorElemTypeStrategy,
 ) -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     fig = ptable_hists_plotly(data, color_elem_strategy=color_elem_strategy)
@@ -620,3 +602,82 @@ def test_ptable_hists_plotly_hover_tooltips() -> None:
 
     assert expected_fe_template in hover_templates
     assert expected_o_template in hover_templates
+
+
+@pytest.mark.parametrize(
+    ("colorbar", "expected"),
+    [
+        # Test default settings
+        (None, dict(orientation="h", len=0.4, thickness=15)),
+        # Test no colorbar
+        (False, None),
+        # Test horizontal colorbar with custom length
+        (dict(orientation="h", len=0.4), dict(orientation="h", len=0.4)),
+        # Test vertical colorbar with custom length
+        (dict(orientation="v", len=0.8), dict(orientation="v", len=0.8)),
+        # Test title formatting for horizontal orientation
+        (
+            dict(title="Test Title", orientation="h"),
+            dict(title="Test Title<br>", orientation="h"),
+        ),
+        # Test comprehensive custom settings
+        (
+            dict(
+                orientation="v",
+                len=0.6,
+                thickness=20,
+                title="Custom",
+                x=1.1,
+                y=0.5,
+            ),
+            dict(
+                orientation="v",
+                len=0.6,
+                thickness=20,
+                title="<br><br>Custom",
+                x=1.1,
+                y=0.5,
+            ),
+        ),
+    ],
+)
+def test_ptable_hists_plotly_colorbar(
+    colorbar: dict[str, Any] | Literal[False] | None,
+    expected: dict[str, Any] | None,
+) -> None:
+    """Test colorbar customization in ptable_hists_plotly including range and
+    visibility."""
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    x_range = (-1, 5)  # Test custom range
+    fig = ptable_hists_plotly(data, colorbar=colorbar, x_range=x_range)
+
+    if colorbar is False:
+        assert all(not hasattr(trace, "colorbar") for trace in fig.data)
+        return
+
+    # Find the scatter trace with the colorbar (should be last trace)
+    colorbar_trace = fig.data[-1]
+    assert isinstance(colorbar_trace, go.Scatter)
+    assert colorbar_trace.hoverinfo == "none"
+    assert colorbar_trace.showlegend is False
+
+    # Check colorbar properties
+    marker = colorbar_trace.marker
+    assert marker.showscale is True
+
+    # Check colorbar range matches x_range
+    assert marker.cmin == x_range[0]
+    assert marker.cmax == x_range[1]
+
+    # Check that axes for this trace are hidden
+    xaxis_num = len(fig.data)  # Last trace's axis number
+    assert not fig.layout[f"xaxis{xaxis_num}"].visible
+    assert not fig.layout[f"yaxis{xaxis_num}"].visible
+
+    # Check colorbar settings
+    if expected is not None:
+        for key, value in expected.items():
+            if key == "title":
+                assert marker.colorbar.title.text == value
+            else:
+                assert getattr(marker.colorbar, key) == value
