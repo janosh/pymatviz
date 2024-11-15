@@ -621,7 +621,7 @@ def ptable_hists_plotly(
     fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
     fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
     fig.layout.width = 900 * scale
-    fig.layout.height = 600 * scale
+    fig.layout.height = 500 * scale
 
     # Update x/y-axes across all subplots
     fig.update_yaxes(
