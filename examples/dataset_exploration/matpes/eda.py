@@ -250,5 +250,4 @@ fig = pmv.ptable_heatmap_splits(
         for elem in df_r2scan_elem_forces.index
     },
     cbar_title="Mean |force| (eV/Å)",
-    # hide_f_block=False,
 )
