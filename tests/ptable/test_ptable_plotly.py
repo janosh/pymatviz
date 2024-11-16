@@ -482,7 +482,7 @@ def test_ptable_hists_plotly_basic(
 
 
 @pytest.mark.parametrize(
-    ("font_size", "scale", "symbol_kwargs", "anno_kwargs"),
+    ("font_size", "scale", "symbol_kwargs", "annotations"),
     [
         (12, 1.0, dict(x=0, y=1), dict(x=1, y=1)),  # Most common case
         (None, 0.5, dict(x=0.5, y=0.5), dict(x=0.5, y=0.5)),  # Test None font_size
@@ -492,7 +492,7 @@ def test_ptable_hists_plotly_layout(
     font_size: int | None,
     scale: float,
     symbol_kwargs: dict[str, Any],
-    anno_kwargs: dict[str, Any],
+    annotations: dict[str, Any],
 ) -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     fig = ptable_hists_plotly(
@@ -500,7 +500,7 @@ def test_ptable_hists_plotly_layout(
         font_size=font_size,
         scale=scale,
         symbol_kwargs=symbol_kwargs,
-        anno_kwargs=anno_kwargs,
+        annotations=annotations,
     )
     assert isinstance(fig, go.Figure)
     if font_size:
@@ -525,9 +525,12 @@ def test_ptable_hists_plotly_element_colors(
 
 def test_ptable_hists_plotly_custom_annotations() -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
-    anno_text = {"Fe": "Iron", "O": "Oxygen"}
-    anno_kwargs = {"font": {"size": 14, "color": "red"}}
-    fig = ptable_hists_plotly(data, anno_text=anno_text, anno_kwargs=anno_kwargs)
+    anno_kwargs: dict[str, str | int] = {"font_size": 14, "font_color": "red"}
+    annotations = {
+        "Fe": {"text": "Iron", **anno_kwargs},
+        "O": {"text": "Oxygen", **anno_kwargs},
+    }
+    fig = ptable_hists_plotly(data, annotations=annotations)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
 
 
@@ -681,3 +684,31 @@ def test_ptable_hists_plotly_colorbar(
                 assert marker.colorbar.title.text == value
             else:
                 assert getattr(marker.colorbar, key) == value
+
+
+def test_ptable_hists_plotly_x_axis_kwargs() -> None:
+    """Test that x_axis_kwargs properly modifies histogram x-axes."""
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+
+    # Test various x-axis customizations
+    x_axis_kwargs = {
+        "tickangle": 45,
+        "tickformat": ".3f",
+        "nticks": 5,
+        "showticklabels": False,
+        "tickfont": dict(size=14, color="red"),
+        "linecolor": "blue",
+        "linewidth": 2,
+    }
+
+    fig = ptable_hists_plotly(data, x_axis_kwargs=x_axis_kwargs)
+
+    xaxis = fig.layout.xaxis
+
+    for key, expected in x_axis_kwargs.items():
+        actual = getattr(xaxis, key)
+        if isinstance(expected, dict):
+            for sub_key, sub_expected in expected.items():
+                assert getattr(actual, sub_key) == sub_expected, f"{key}.{sub_key}"
+        else:
+            assert actual == expected, f"{key}: {actual} != {expected}"
