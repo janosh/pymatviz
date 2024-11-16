@@ -391,12 +391,14 @@ def ptable_hists_plotly(
     element_symbol_map: dict[str, str] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
     # Annotation
-    anno_text: dict[str, str] | None = None,
-    anno_kwargs: dict[str, Any] | None = None,
+    annotations: dict[str, str | dict[str, Any]]
+    | Callable[[np.ndarray], str | dict[str, Any]]
+    | None = None,
     # Element type colors
     color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     subplot_kwargs: dict[str, Any] | None = None,
+    x_axis_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Plotly figure with histograms for each element laid out in a periodic table.
 
@@ -422,16 +424,16 @@ def ptable_hists_plotly(
             font size based on plot size.
         scale (float): Scaling factor for whole figure layout. Defaults to 1.
 
-        --- Symbol ---
+        --- Text ---
         element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
             to custom strings. If provided, these custom strings will be displayed
             instead of the standard element symbols. Defaults to None.
         symbol_kwargs (dict): Additional keyword arguments for element symbol text.
-
-        --- Annotation ---
-        anno_text (dict[str, str]): Annotation to display for each element tile.
-            Defaults to None for not displaying.
-        anno_kwargs (dict): Additional keyword arguments for annotation text.
+        annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
+            display for each element tile. Can be either:
+            - dict mapping element symbols to annotation strings
+            - callable that takes histogram values and returns annotation string
+            - None for not displaying annotations (default)
 
         --- Element type colors ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
@@ -441,6 +443,8 @@ def ptable_hists_plotly(
             None to use the default = pymatviz.colors.ELEM_TYPE_COLORS.
         subplot_kwargs (dict | None): Additional keywords passed to make_subplots(). Can
             be used e.g. to toggle shared x/y-axes.
+        x_axis_kwargs (dict | None): Additional keywords for x-axis like tickfont,
+            showticklabels, nticks, tickformat, tickangle.
 
     Returns:
         go.Figure: Plotly Figure object with histograms in a periodic table layout.
@@ -559,16 +563,26 @@ def ptable_hists_plotly(
             **symbol_style,
         )
 
-        if anno_text is not None and symbol in anno_text:
-            anno_style = {
-                "font_size": (font_size or 8) * scale,
-                "font_color": font_color,
-                "x": 1,
-                "y": 0.97,
-                "showarrow": False,
-            } | (anno_kwargs or {})
+        if annotations is not None:
+            if callable(annotations):
+                # Pass the element's values to the callable
+                annotation = annotations(values)
+            else:
+                # Use dictionary lookup as before
+                annotation = annotations.get(symbol, "")
 
-            fig.add_annotation(text=anno_text[symbol], **xy_ref, **anno_style)
+            if annotation:  # Only add annotation if we have text
+                annotation = (
+                    {"text": annotation} if isinstance(annotation, str) else annotation
+                )
+                anno_defaults = {
+                    "font_size": (font_size or 8) * scale,
+                    "font_color": font_color,
+                    "x": 1,
+                    "y": 0.97,
+                    "showarrow": False,
+                }
+                fig.add_annotation(anno_defaults | xy_ref | annotation)
 
     if colorbar is not False:
         colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
@@ -632,7 +646,8 @@ def ptable_hists_plotly(
         showline=False,  # remove axis lines
         type="log" if log else "linear",
     )
-    fig.update_xaxes(
+    x_axis_kwargs = dict(
+        range=bins_range,
         showgrid=False,
         zeroline=False,
         ticks="inside",
@@ -647,7 +662,8 @@ def ptable_hists_plotly(
         tickfont=dict(size=(font_size or 7) * scale),
         showticklabels=True,  # show x tick labels on all subplots
         nticks=3,
-        tickformat=".2",
-    )
+        tickformat=".2g",
+    ) | (x_axis_kwargs or {})
+    fig.update_xaxes(**x_axis_kwargs)
 
     return fig
