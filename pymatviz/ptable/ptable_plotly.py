@@ -590,17 +590,17 @@ def ptable_hists_plotly(
 
         horizontal_cbar = colorbar.get("orientation") == "h"
         if horizontal_cbar:
-            defaults = dict(
+            h_defaults = dict(
                 x=0.4,
                 y=0.76,
                 titleside="top",
                 len=0.4,
                 title_font_size=scale * 1.2 * (font_size or 12),
             )
-            colorbar = defaults | colorbar
+            colorbar = h_defaults | colorbar
         else:  # make title vertical
-            defaults = dict(titleside="right", len=0.87)
-            colorbar = defaults | colorbar
+            v_defaults = dict(titleside="right", len=0.87)
+            colorbar = v_defaults | colorbar
 
         if title := colorbar.get("title"):
             # <br> to increase title standoff
@@ -965,20 +965,19 @@ def ptable_heatmap_splits_plotly(
         colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
             colorbar or {}
         )
-
         horizontal_cbar = colorbar.get("orientation") == "h"
         if horizontal_cbar:
-            defaults = dict(
+            h_defaults = dict(
                 x=0.4,
                 y=0.76,
                 titleside="top",
                 len=0.4,
                 title_font_size=scale * 1.2 * (font_size or 12),
             )
-            colorbar = defaults | colorbar
+            colorbar = h_defaults | colorbar
         else:  # make title vertical
-            defaults = dict(titleside="right", len=0.87)
-            colorbar = defaults | colorbar
+            v_defaults = dict(titleside="right", len=0.87)
+            colorbar = v_defaults | colorbar
 
         if title := colorbar.get("title"):
             # <br> to increase title standoff
