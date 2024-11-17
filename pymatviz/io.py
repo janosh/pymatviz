@@ -162,9 +162,8 @@ def save_fig(
             displaylogo=False,
         )
         config.update(plotly_config or {})
-        defaults = dict(include_plotlyjs=False, full_html=False, config=config)
-        defaults.update(kwargs)
-        fig.write_html(path, **defaults)
+        fig_defaults = dict(include_plotlyjs=False, full_html=False, config=config)
+        fig.write_html(path, **fig_defaults | kwargs)
         if path.lower().endswith(".svelte"):
             # insert {...$$props} into top-level div to be able to post-process and
             # style plotly figures from within Svelte files
