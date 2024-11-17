@@ -499,11 +499,11 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
 
     if isinstance(fig, plt.Figure | plt.Axes):
         ax = fig if isinstance(fig, plt.Axes) else plt.gca()
-        defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
-        text_box = AnchoredText(text, **(defaults | kwargs))
+        text_defaults = dict(frameon=False, loc="upper left", prop=dict(color=color))
+        text_box = AnchoredText(text, **(text_defaults | kwargs))
         ax.add_artist(text_box)
     elif isinstance(fig, go.Figure):
-        defaults = dict(
+        text_defaults = dict(
             x=0.02,
             y=0.96,
             showarrow=False,
@@ -528,7 +528,7 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
                 yref = f"y{subplot_idx} domain" if subplot_idx else "y domain"
                 fig.add_annotation(
                     text=sub_text,
-                    **(dict(xref=xref, yref=yref) | defaults | kwargs),
+                    **(dict(xref=xref, yref=yref) | text_defaults | kwargs),
                 )
         else:  # Non-faceted plot
             if not isinstance(text, str):
@@ -537,7 +537,7 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
                     f"Unexpected {text_type=} for non-faceted plot, must be str"
                 )
             fig.add_annotation(
-                text=text, **(dict(xref="paper", yref="paper") | defaults | kwargs)
+                text=text, **(dict(xref="paper", yref="paper") | text_defaults | kwargs)
             )
     else:
         raise TypeError(f"Unexpected {fig=}")

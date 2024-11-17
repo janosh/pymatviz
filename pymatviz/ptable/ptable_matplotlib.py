@@ -116,8 +116,8 @@ def ptable_heatmap(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         f_block_voffset (float): The vertical offset of f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
@@ -540,8 +540,8 @@ def ptable_heatmap_splits(
         colormap (str): Matplotlib colormap name to use.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -689,8 +689,8 @@ def ptable_hists(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -863,8 +863,8 @@ def ptable_scatters(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -1018,8 +1018,8 @@ def ptable_lines(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 

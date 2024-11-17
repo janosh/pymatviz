@@ -205,8 +205,8 @@ def spacegroup_bar(
     # keep this above df.plot.bar()! order matters
     ax.set(ylabel=count_col, xlim=x_range)
 
-    defaults = dict(width=0.9)  # set default histogram bar width
-    df_data[count_col].plot.bar(figsize=[16, 4], ax=ax, **defaults | kwargs)
+    bar_defaults = dict(width=0.9)  # set default histogram bar width
+    df_data[count_col].plot.bar(figsize=[16, 4], ax=ax, **bar_defaults | kwargs)
 
     ax.set_title(fig_title, fontdict={"fontsize": 18}, pad=30)
     ax.set(xlabel=x_label)

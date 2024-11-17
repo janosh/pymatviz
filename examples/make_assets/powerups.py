@@ -77,7 +77,7 @@ fig.show()
 
 
 # %% Toggle colorscale
-z = np.random.default_rng().standard_normal((50, 50))
+z = np.random.default_rng(seed=0).standard_normal((50, 50))
 fig = go.Figure(data=go.Heatmap(z=z))
 fig.layout.title = "Random Heatmap with Colorscale Toggle"
 fig.layout.updatemenus = [select_colorscale]

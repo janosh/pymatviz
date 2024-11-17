@@ -182,8 +182,8 @@ def element_pair_rdfs(
 
     # Add reference line if specified
     if reference_line is not None:
-        defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
-        fig.add_hline(y=1, **defaults | reference_line)
+        hline_defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
+        fig.add_hline(y=1, **hline_defaults | reference_line)
 
     # show legend centered above subplots only if multiple structures were passed
     if len(structures) > 1:
@@ -280,8 +280,8 @@ def full_rdf(
     fig.update_layout(xaxis_title="r (Å)", yaxis_title="g(r)")
 
     if reference_line is not None:
-        defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
-        fig.add_hline(y=1, **defaults | reference_line)
+        hline_defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
+        fig.add_hline(y=1, **hline_defaults | reference_line)
 
     # Show legend centered above the plot if multiple structures were passed
     if len(structures) > 1:
