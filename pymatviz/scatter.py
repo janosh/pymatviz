@@ -126,8 +126,8 @@ def density_scatter(
     xs, ys, cs = _hist_density(xs, ys, **(hist_density_kwargs or {}))
 
     # decrease marker size
-    defaults = dict(s=6, norm=LogNorm() if log_density else None)
-    ax.scatter(xs, ys, c=cs, **defaults | kwargs)
+    scatter_defaults = dict(s=6, norm=LogNorm() if log_density else None)
+    ax.scatter(xs, ys, c=cs, **scatter_defaults | kwargs)
 
     if identity_line:
         pmv.powerups.add_identity_line(

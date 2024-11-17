@@ -170,7 +170,7 @@ def rainclouds(
             )
 
         if show_points:  # the rain
-            rng = np.random.default_rng()
+            rng = np.random.default_rng(seed=0)
             jitter_values = rng.normal(0, jitter, size=len(values))
             hover_key = data_itm[1] if isinstance(data_itm, tuple) else "value"
             hover_text = [f"{label}<br>{hover_key}: {val:.3g}" for val in values]

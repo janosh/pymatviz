@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
@@ -43,7 +44,7 @@ def ptable_heatmap_plotly(
     font_size: int | None = None,
     bg_color: str | None = None,
     nan_color: str = "#eff",
-    color_bar: dict[str, Any] | None = None,
+    colorbar: dict[str, Any] | None = None,
     cscale_range: tuple[float | None, float | None] = (None, None),
     exclude_elements: Sequence[str] = (),
     log: bool = False,
@@ -103,7 +104,7 @@ def ptable_heatmap_plotly(
             allowed. Defaults to automatic font size based on plot size. Element symbols
             will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
-        color_bar (dict[str, Any]): Plotly colorbar properties documented at
+        colorbar (dict[str, Any]): Plotly colorbar properties documented at
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to
             dict(orientation="h"). Commonly used keys are:
             - title: colorbar title
@@ -142,6 +143,13 @@ def ptable_heatmap_plotly(
     Returns:
         Figure: Plotly Figure object.
     """
+    if "color_bar" in kwargs:
+        warnings.warn(
+            "color_bar is deprecated, use colorbar instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        kwargs["colorbar"] = kwargs.pop("color_bar")
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
@@ -159,11 +167,11 @@ def ptable_heatmap_plotly(
             "tuples(float, str)"
         )
 
-    color_bar = color_bar or {}
-    color_bar.setdefault("orientation", "h")
+    colorbar = colorbar or {}
+    colorbar.setdefault("orientation", "h")
     # if values is a series with a name, use it as the colorbar title
     if isinstance(values, pd.Series) and values.name:
-        color_bar.setdefault("title", values.name)
+        colorbar.setdefault("title", values.name)
 
     values = count_elements(values, count_mode, exclude_elements, fill_value)
 
@@ -335,7 +343,7 @@ def ptable_heatmap_plotly(
         title=dict(x=0.4, y=0.95),
     )
 
-    horizontal_cbar = color_bar.get("orientation") == "h"
+    horizontal_cbar = colorbar.get("orientation") == "h"
     if horizontal_cbar:
         defaults = dict(
             x=0.4,
@@ -344,14 +352,14 @@ def ptable_heatmap_plotly(
             len=0.4,
             title_font_size=scale * 1.2 * (font_size or 12),
         )
-        color_bar = defaults | color_bar
+        colorbar = defaults | colorbar
     else:  # make title vertical
         defaults = dict(titleside="right", len=0.87)
-        color_bar = defaults | color_bar
+        colorbar = defaults | colorbar
 
-    if title := color_bar.get("title"):
+    if title := colorbar.get("title"):
         # <br> to increase title standoff
-        color_bar["title"] = f"{title}<br>" if horizontal_cbar else f"<br><br>{title}"
+        colorbar["title"] = f"{title}<br>" if horizontal_cbar else f"<br><br>{title}"
 
     if log:
         orig_min = np.floor(min(non_nan_values))
@@ -360,17 +368,17 @@ def ptable_heatmap_plotly(
 
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
 
-        color_bar = dict(
+        colorbar = dict(
             tickvals=np.log10(tick_values),
             ticktext=[f"{v * car_multiplier:.2g}" for v in tick_values],
-            **color_bar,
+            **colorbar,
         )
 
     # suffix % to colorbar title if heat_mode is "percent"
-    if heat_mode == "percent" and (cbar_title := color_bar.get("title")):
-        color_bar["title"] = f"{cbar_title} (%)"
+    if heat_mode == "percent" and (cbar_title := colorbar.get("title")):
+        colorbar["title"] = f"{cbar_title} (%)"
 
-    fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
+    fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **colorbar))
 
     return fig
 
@@ -516,7 +524,6 @@ def ptable_hists_plotly(
         values = np.asarray(data[symbol])
         values = values[~np.isnan(values)]
 
-        # Get display symbol and create hover template
         if element_symbol_map is not None:
             display_symbol = element_symbol_map.get(symbol, symbol)
         else:
@@ -591,17 +598,17 @@ def ptable_hists_plotly(
 
         horizontal_cbar = colorbar.get("orientation") == "h"
         if horizontal_cbar:
-            defaults = dict(
+            h_defaults = dict(
                 x=0.4,
                 y=0.76,
                 titleside="top",
                 len=0.4,
                 title_font_size=scale * 1.2 * (font_size or 12),
             )
-            colorbar = defaults | colorbar
+            colorbar = h_defaults | colorbar
         else:  # make title vertical
-            defaults = dict(titleside="right", len=0.87)
-            colorbar = defaults | colorbar
+            v_defaults = dict(titleside="right", len=0.87)
+            colorbar = v_defaults | colorbar
 
         if title := colorbar.get("title"):
             # <br> to increase title standoff
@@ -665,5 +672,338 @@ def ptable_hists_plotly(
         tickformat=".2g",
     ) | (x_axis_kwargs or {})
     fig.update_xaxes(**x_axis_kwargs)
+
+    return fig
+
+
+def ptable_heatmap_splits_plotly(
+    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    *,
+    # Split-specific
+    orientation: Literal["diagonal", "horizontal", "vertical", "grid"] = "diagonal",
+    # Figure
+    colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
+    colorbar: dict[str, Any] | Literal[False] | None = None,
+    on_empty: Literal["hide", "show"] = "hide",
+    hide_f_block: bool | Literal["auto"] = "auto",
+    # Layout
+    font_size: int | None = None,
+    scale: float = 1.0,
+    # Symbol
+    element_symbol_map: dict[str, str] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+    # Annotation
+    annotations: dict[str, str | dict[str, Any]]
+    | Callable[[np.ndarray], str | dict[str, Any]]
+    | None = None,
+    # Additional options
+    nan_color: str = "#eff",
+    hover_data: dict[str, str | int | float] | pd.Series | None = None,
+    subplot_kwargs: dict[str, Any] | None = None,
+) -> go.Figure:
+    """Create a Plotly figure with an interactive heatmap of the periodic table,
+    where each element tile is split into sections representing different values.
+
+    Args:
+        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]): Map from element
+            symbols to plot data. E.g. if dict, {"Fe": [1, 2], "Co": [3, 4]}, where the
+            1st value would be plotted in lower-left corner, 2nd in the upper-right.
+
+        --- Figure ---
+        colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
+            Defaults to "viridis".
+        colorbar (dict[str, Any] | None): Plotly colorbar properties. Defaults to
+            dict(orientation="h"). See https://plotly.com/python/reference#heatmap-colorbar
+            for available options. Set to False to hide the colorbar.
+        on_empty ("hide" | "show"): Whether to show tiles for elements without data.
+            Defaults to "hide".
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
+        orientation (str): How to split each element tile. Defaults to "diagonal".
+            - "diagonal": Split at 45° angles
+            - "horizontal": Split into equal horizontal strips
+            - "vertical": Split into equal vertical strips
+            - "grid": Split into 2x2 grid (only valid for n_splits=4)
+
+
+        --- Layout ---
+        font_size (int): Element symbol and annotation text size. Defaults to automatic
+            font size based on plot size.
+        scale (float): Scaling factor for whole figure layout. Defaults to 1.
+
+        --- Symbol ---
+        element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
+            to custom strings. If provided, these custom strings will be displayed
+            instead of the standard element symbols. Defaults to None.
+        symbol_kwargs (dict): Additional keyword arguments for element symbol text.
+
+        --- Annotation ---
+        annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
+            display for each element tile. Can be either:
+            - dict mapping element symbols to annotation strings
+            - callable that takes values and returns annotation string
+            - None for not displaying annotations (default)
+
+        --- Additional options ---
+        nan_color (str): Color for NaN values. Defaults to "#eff".
+        hover_data (dict[str, str | int | float] | pd.Series): Additional data for
+            hover tooltip.
+        subplot_kwargs (dict | None): Additional keywords passed to make_subplots().
+
+    Returns:
+        go.Figure: Plotly Figure object with the periodic table heatmap splits.
+
+
+    Raises:
+        ValueError: If n_splits not in {2, 3, 4} or orientation="grid" with n_splits!=4
+    """
+    import plotly.colors
+
+    # Process input data
+    if isinstance(data, pd.Series):
+        data = data.to_dict()
+    elif isinstance(data, pd.DataFrame):
+        data = data.to_dict(orient="index")
+
+    # Find global min and max values for color scaling
+    all_values = [v for values in data.values() for v in values if not np.isnan(v)]
+    vmin, vmax = min(all_values), max(all_values)
+
+    # Initialize figure with subplots
+    n_rows, n_cols = 10, 18
+    subplot_kwargs = dict(
+        rows=n_rows,
+        cols=n_cols,
+        vertical_spacing=0.01,
+        horizontal_spacing=0.001,
+    ) | (subplot_kwargs or {})
+    fig = make_subplots(**subplot_kwargs)
+
+    def create_section_coords(
+        n_splits: Literal[2, 3, 4],
+        orientation: Literal["diagonal", "horizontal", "vertical", "grid"],
+    ) -> list[tuple[list[float], list[float]]]:
+        """Generate x,y coordinates to split a unit square into n equal sections."""
+        if n_splits not in {2, 3, 4}:
+            raise ValueError(f"{n_splits=} must be 2, 3, or 4")
+
+        if orientation == "grid":
+            if n_splits != 4:
+                raise ValueError(
+                    f"{orientation=} is only supported for n_splits=4, got {n_splits=}"
+                )
+            return [  # Split into 2x2 grid of squares
+                ([0, 0.5, 0.5, 0], [0, 0, 0.5, 0.5]),  # top-left
+                ([0.5, 1, 1, 0.5], [0, 0, 0.5, 0.5]),  # top-right
+                ([0, 0.5, 0.5, 0], [0.5, 0.5, 1, 1]),  # bottom-left
+                ([0.5, 1, 1, 0.5], [0.5, 0.5, 1, 1]),  # bottom-right
+            ]
+
+        if orientation == "horizontal":
+            # Split into equal horizontal strips
+            height = 1 / n_splits
+            return [
+                (
+                    [0.0, 1.0, 1.0, 0.0],  # x-coordinates
+                    [ii * height, ii * height, (ii + 1) * height, (ii + 1) * height],
+                )
+                for ii in range(n_splits)
+            ][::-1]  # reverse to maintain top-to-bottom order
+
+        if orientation == "vertical":
+            # Split into equal vertical strips
+            width = 1 / n_splits
+            return [
+                (
+                    [ii * width, (ii + 1) * width, (ii + 1) * width, ii * width],
+                    [0.0, 0.0, 1.0, 1.0],  # y-coordinates
+                )
+                for ii in range(n_splits)
+            ]
+
+        # orientation == "diagonal"
+        if n_splits == 2:
+            return [
+                ([0, 1, 1, 0], [0, 0, 1, 0]),  # top-right triangle
+                ([0, 0, 1, 0], [0, 1, 1, 0]),  # bottom-left triangle
+            ]
+        mid = 0.5
+        if n_splits == 3:
+            return [  # upside-down Y-shaped split
+                ([0, 1, 1, mid, 0, 0], [0, 0, 0.3, mid, 0.3, 0]),  # bottom
+                ([0, mid, mid, 0, 0, 0], [1, 1, mid, 0.3, 0, 1]),  # top-left
+                ([1, mid, mid, 1, 1, 1], [1, 1, mid, 0.3, 1, 1]),  # top-right
+            ]
+        # n_splits == 4, diagonal orientation
+        return [  # split square into 4 equal triangles whose tips meet at center
+            ([0, 1, mid, 0], [0, 0, mid, 0]),  # bottom
+            ([0, 0, mid, 0], [0, 1, mid, 0]),  # left
+            ([1, 1, mid, 1], [0, 1, mid, 0]),  # right
+            ([0, 1, mid, 0], [1, 1, mid, 1]),  # top
+        ]
+
+    # Process data and create shapes for each element
+    for symbol, period, group, name, *_ in df_ptable.itertuples():
+        row, col = period - 1, group - 1
+        if symbol not in data and on_empty == "hide":
+            continue
+
+        if (
+            (hide_f_block == "auto" or hide_f_block)
+            and row in (6, 7)
+            and 3 <= col <= 17
+        ):
+            continue
+
+        # Adjust positions for f-block elements
+        if row in (6, 7) and col >= 3:
+            col += 3
+
+        subplot_idx = row * n_cols + col + 1
+        subplot_key = subplot_idx if subplot_idx != 1 else ""
+        xy_ref = dict(xref=f"x{subplot_key}", yref=f"y{subplot_key}")
+
+        # Get values and colors
+        values = data.get(symbol, [])
+        if len(values) == 0:
+            values = [1]
+
+        # Create sections
+        sections = create_section_coords(len(values), orientation)  # type: ignore[arg-type]
+        for idx, (xs, ys) in enumerate(sections):
+            color = (
+                plotly.colors.sample_colorscale(
+                    colorscale, (values[idx] - vmin) / (vmax - vmin)
+                )[0]
+                if not np.isnan(values[idx])
+                else nan_color
+            )
+            fig.add_scatter(
+                x=xs,
+                y=ys,
+                mode="lines",
+                fill="toself",
+                fillcolor=color,
+                line=dict(color="white", width=0),
+                hoverinfo="skip",
+                showlegend=False,
+                row=row + 1,
+                col=col + 1,
+            )
+
+        if element_symbol_map is not None:
+            display_symbol = element_symbol_map.get(symbol, symbol)
+        else:
+            display_symbol = symbol
+        symbol_defaults = dict(
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font=dict(color="black", size=(font_size or 14) * scale),
+        )
+        fig.add_annotation(
+            text=f"<b>{display_symbol}</b>",
+            **symbol_defaults | xy_ref | (symbol_kwargs or {}),
+        )
+
+        # Add hover data
+        hover_text = f"{name} ({symbol})"
+        if hover_data and symbol in hover_data:
+            hover_text += f"<br>{hover_data[symbol]}"
+        fig.add_annotation(
+            x=0.5,
+            y=0.5,
+            text=hover_text,
+            showarrow=False,
+            opacity=0,
+            hovertext=hover_text,
+            **xy_ref,
+        )
+
+        if annotations is not None:
+            if callable(annotations):
+                # Pass the element's values to the callable
+                annotation = annotations(values)
+            else:
+                # Use dictionary lookup
+                annotation = annotations.get(symbol, "")
+
+            if annotation:  # Only add annotation if we have text
+                annotation = (
+                    {"text": annotation} if isinstance(annotation, str) else annotation
+                )
+                anno_defaults = {
+                    "font_size": (font_size or 8) * scale,
+                    "x": 0.95,
+                    "y": 0.95,
+                    "showarrow": False,
+                    "xanchor": "right",
+                    "yanchor": "top",
+                }
+                fig.add_annotation(**anno_defaults | xy_ref | annotation)
+
+    # Update layout
+    fig.layout.showlegend = False
+    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.width = 850 * scale
+    fig.layout.height = 500 * scale
+    fig.layout.margin = dict(l=10, r=10, t=50, b=10)
+    fig.layout.xaxis.visible = False
+    fig.layout.yaxis.visible = False
+
+    # Update subplot x and y axes to be invisible and fixed range
+    fig.update_xaxes(
+        visible=False,
+        showgrid=False,
+        zeroline=False,
+        range=[0, 1],
+        scaleanchor="y",
+    )
+    fig.update_yaxes(
+        visible=False,
+        showgrid=False,
+        zeroline=False,
+        range=[0, 1],
+        scaleratio=1,  # ensure square tiles
+    )
+
+    # Add colorbar
+    if colorbar is not False:
+        colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
+            colorbar or {}
+        )
+        horizontal_cbar = colorbar.get("orientation") == "h"
+        if horizontal_cbar:
+            h_defaults = dict(
+                x=0.4,
+                y=0.76,
+                titleside="top",
+                len=0.4,
+                title_font_size=scale * 1.2 * (font_size or 12),
+            )
+            colorbar = h_defaults | colorbar
+        else:  # make title vertical
+            v_defaults = dict(titleside="right", len=0.87)
+            colorbar = v_defaults | colorbar
+
+        if title := colorbar.get("title"):
+            # <br> to increase title standoff
+            colorbar["title"] = f"{title}" if horizontal_cbar else f"<br><br>{title}"
+
+        fig.add_scatter(
+            x=[None],
+            y=[None],
+            mode="markers",
+            marker=dict(
+                colorscale=colorscale,
+                showscale=True,
+                cmin=vmin,
+                cmax=vmax,
+                colorbar=colorbar,
+            ),
+            hoverinfo="none",
+            showlegend=False,
+        )
 
     return fig

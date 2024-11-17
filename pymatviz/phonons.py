@@ -389,13 +389,15 @@ def phonon_dos(
             bin_width = frequencies[1] - frequencies[0]
             densities = densities / densities.sum() / bin_width
 
-        defaults = dict(mode="lines")
+        scatter_defaults = dict(mode="lines")
         if stack:
             if fig.data:  # for stacked plots, accumulate densities
                 densities += fig.data[-1].y
-            defaults.setdefault("fill", "tonexty")
+            scatter_defaults.setdefault("fill", "tonexty")
 
-        fig.add_scatter(x=frequencies, y=densities, name=key, **(defaults | kwargs))
+        fig.add_scatter(
+            x=frequencies, y=densities, name=key, **scatter_defaults | kwargs
+        )
 
     fig.layout.xaxis.update(title=f"Frequency ({units})")
     fig.layout.yaxis.update(title="Density of States")

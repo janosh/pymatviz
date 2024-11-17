@@ -67,7 +67,8 @@ class PTableProjector:
         data (pd.DataFrame): Data for plotting.
         ptable_data (PTableData): Internal data container.
         norm (Normalize): Data min-max normalizer.
-        hide_f_block (bool): Whether to hide f-block.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         elem_types (set[str]): Types of elements present.
         elem_type_colors (dict[str, str]): Element typed based colors.
         elem_colors (dict): Element based colors.
@@ -106,7 +107,7 @@ class PTableProjector:
                 pass to the plt.subplots function call.
             exclude_elements (Sequence[str]): Elements to exclude.
             on_empty ("hide" | "show"): Hide or show tile if no data provided.
-            hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
+            hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
                 Defaults to "auto", meaning hide if no data present.
             elem_type_colors (dict | None): Element typed based colors.
             elem_colors (dict | ElemColors): Element-specific colors.
