@@ -57,7 +57,7 @@ fig = pmv.ptable_heatmap_plotly(
         el: f"Fun fact about {el}!" for el in df_ptable[Key.electronegativity].index
     },
     font_colors=["white", "black"],
-    color_bar=dict(title="Electronegativity", orientation="v"),
+    colorbar=dict(title="Electronegativity", orientation="v"),
     font_size=11,
 )
 fig.show()
@@ -72,7 +72,7 @@ fig = pmv.ptable_heatmap_plotly(
     exclude_elements=["H", "He", "C", "O"],
     heat_mode="value",
     fmt=".2",
-    color_bar=dict(title="Specific heat"),
+    colorbar=dict(title="Specific heat"),
     gap=3,
     # border=False
 )
@@ -123,7 +123,7 @@ fig = pmv.ptable_heatmap_plotly(
         elem: f"{radius} pm" for elem, radius in df_ptable[Key.atomic_radius].items()
     },
     font_colors=["black"],
-    color_bar=dict(title="Atomic Radius (pm)"),
+    colorbar=dict(title="Atomic Radius (pm)"),
 )
 fig.show()
 

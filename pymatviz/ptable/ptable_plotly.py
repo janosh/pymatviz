@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
@@ -43,7 +44,7 @@ def ptable_heatmap_plotly(
     font_size: int | None = None,
     bg_color: str | None = None,
     nan_color: str = "#eff",
-    color_bar: dict[str, Any] | None = None,
+    colorbar: dict[str, Any] | None = None,
     cscale_range: tuple[float | None, float | None] = (None, None),
     exclude_elements: Sequence[str] = (),
     log: bool = False,
@@ -103,7 +104,7 @@ def ptable_heatmap_plotly(
             allowed. Defaults to automatic font size based on plot size. Element symbols
             will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
-        color_bar (dict[str, Any]): Plotly colorbar properties documented at
+        colorbar (dict[str, Any]): Plotly colorbar properties documented at
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to
             dict(orientation="h"). Commonly used keys are:
             - title: colorbar title
@@ -142,6 +143,13 @@ def ptable_heatmap_plotly(
     Returns:
         Figure: Plotly Figure object.
     """
+    if "color_bar" in kwargs:
+        warnings.warn(
+            "color_bar is deprecated, use colorbar instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        kwargs["colorbar"] = kwargs.pop("color_bar")
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"
@@ -159,11 +167,11 @@ def ptable_heatmap_plotly(
             "tuples(float, str)"
         )
 
-    color_bar = color_bar or {}
-    color_bar.setdefault("orientation", "h")
+    colorbar = colorbar or {}
+    colorbar.setdefault("orientation", "h")
     # if values is a series with a name, use it as the colorbar title
     if isinstance(values, pd.Series) and values.name:
-        color_bar.setdefault("title", values.name)
+        colorbar.setdefault("title", values.name)
 
     values = count_elements(values, count_mode, exclude_elements, fill_value)
 
@@ -335,7 +343,7 @@ def ptable_heatmap_plotly(
         title=dict(x=0.4, y=0.95),
     )
 
-    horizontal_cbar = color_bar.get("orientation") == "h"
+    horizontal_cbar = colorbar.get("orientation") == "h"
     if horizontal_cbar:
         defaults = dict(
             x=0.4,
@@ -344,14 +352,14 @@ def ptable_heatmap_plotly(
             len=0.4,
             title_font_size=scale * 1.2 * (font_size or 12),
         )
-        color_bar = defaults | color_bar
+        colorbar = defaults | colorbar
     else:  # make title vertical
         defaults = dict(titleside="right", len=0.87)
-        color_bar = defaults | color_bar
+        colorbar = defaults | colorbar
 
-    if title := color_bar.get("title"):
+    if title := colorbar.get("title"):
         # <br> to increase title standoff
-        color_bar["title"] = f"{title}<br>" if horizontal_cbar else f"<br><br>{title}"
+        colorbar["title"] = f"{title}<br>" if horizontal_cbar else f"<br><br>{title}"
 
     if log:
         orig_min = np.floor(min(non_nan_values))
@@ -360,17 +368,17 @@ def ptable_heatmap_plotly(
 
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
 
-        color_bar = dict(
+        colorbar = dict(
             tickvals=np.log10(tick_values),
             ticktext=[f"{v * car_multiplier:.2g}" for v in tick_values],
-            **color_bar,
+            **colorbar,
         )
 
     # suffix % to colorbar title if heat_mode is "percent"
-    if heat_mode == "percent" and (cbar_title := color_bar.get("title")):
-        color_bar["title"] = f"{cbar_title} (%)"
+    if heat_mode == "percent" and (cbar_title := colorbar.get("title")):
+        colorbar["title"] = f"{cbar_title} (%)"
 
-    fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **color_bar))
+    fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **colorbar))
 
     return fig
 

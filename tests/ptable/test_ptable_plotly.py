@@ -171,17 +171,17 @@ def test_ptable_heatmap_plotly_colorscale(c_scale: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "color_bar", [{}, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)]
+    "colorbar", [{}, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)]
 )
 def test_ptable_heatmap_plotly_color_bar(
-    glass_formulas: list[str], color_bar: dict[str, Any]
+    glass_formulas: list[str], colorbar: dict[str, Any]
 ) -> None:
-    fig = ptable_heatmap_plotly(glass_formulas, color_bar=color_bar)
+    fig = ptable_heatmap_plotly(glass_formulas, colorbar=colorbar)
     # check color bar has expected length
-    assert fig.data[-1].colorbar.len == color_bar.get("len", 0.4)
+    assert fig.data[-1].colorbar.len == colorbar.get("len", 0.4)
     # check color bar has expected title side
     assert fig.data[-1].colorbar.title.side == (
-        "right" if color_bar.get("orientation") == "v" else "top"
+        "right" if colorbar.get("orientation") == "v" else "top"
     )
 
 
