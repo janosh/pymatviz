@@ -1,4 +1,5 @@
 # %%
+import itertools
 import os
 
 import numpy as np
@@ -7,6 +8,7 @@ from matminer.datasets import load_dataset
 from pymatgen.core.periodic_table import Element
 
 import pymatviz as pmv
+from pymatviz import df_ptable
 from pymatviz.enums import ElemCountMode, Key
 
 
@@ -17,9 +19,9 @@ np_rng = np.random.default_rng(seed=0)
 
 # %% Plotly interactive periodic table heatmap
 fig = pmv.ptable_heatmap_plotly(
-    pmv.df_ptable[Key.atomic_mass],
+    df_ptable[Key.atomic_mass],
     hover_props=[Key.atomic_mass, Key.atomic_number],
-    hover_data="density = " + pmv.df_ptable[Key.density].astype(str) + " g/cm^3",
+    hover_data="density = " + df_ptable[Key.density].astype(str) + " g/cm^3",
     show_values=False,
 )
 fig.layout.title = dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
@@ -48,11 +50,11 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 # %% ex 1: Electronegativity Heatmap with Custom Hover Data
 fig = pmv.ptable_heatmap_plotly(
-    pmv.df_ptable[Key.electronegativity],
+    df_ptable[Key.electronegativity],
     colorscale="Viridis",
     hover_props=["atomic_mass", "melting_point"],
     hover_data={
-        el: f"Fun fact about {el}!" for el in pmv.df_ptable[Key.electronegativity].index
+        el: f"Fun fact about {el}!" for el in df_ptable[Key.electronegativity].index
     },
     font_colors=["white", "black"],
     color_bar=dict(title="Electronegativity", orientation="v"),
@@ -63,7 +65,7 @@ fig.show()
 
 # %% ex 2: Log-scale Abundance with Excluded Elements
 fig = pmv.ptable_heatmap_plotly(
-    pmv.df_ptable[Key.specific_heat_capacity].dropna(),
+    df_ptable[Key.specific_heat_capacity].dropna(),
     # colorscale="YlOrRd",
     log=True,
     font_colors=["black"],
@@ -79,7 +81,7 @@ fig.show()
 
 # %% ex 3: Fictional Data with Percent Mode and Custom Color Scale
 rand_data = {
-    elem: np.random.default_rng().random() * 100 for elem in pmv.df_ptable.index
+    elem: np.random.default_rng(seed=0).random() * 100 for elem in df_ptable.index
 }
 custom_colorscale = [
     (0, "rgb(0,0,255)"),
@@ -115,11 +117,10 @@ fig.show()
 
 # %% ex 5: Atomic Radius with Custom Hover and Label Mapping
 fig = pmv.ptable_heatmap_plotly(
-    pmv.df_ptable[Key.atomic_radius],
+    df_ptable[Key.atomic_radius],
     colorscale="RdYlBu",
     hover_data={
-        elem: f"{radius} pm"
-        for elem, radius in pmv.df_ptable[Key.atomic_radius].items()
+        elem: f"{radius} pm" for elem, radius in df_ptable[Key.atomic_radius].items()
     },
     font_colors=["black"],
     color_bar=dict(title="Atomic Radius (pm)"),
@@ -157,3 +158,30 @@ fig = pmv.ptable_hists_plotly(
 )
 fig.show()
 pmv.io.save_and_compress_svg(fig, "ptable-hists-plotly")
+
+
+# %% Examples of ptable_heatmap_splits_plotly with different numbers of splits
+for n_splits, orientation in itertools.product(
+    range(2, 5),
+    ("diagonal", "horizontal", "vertical", "grid"),
+):
+    if orientation == "grid" and n_splits != 4:
+        continue
+
+    data_dict = {
+        elem.symbol: np_rng.integers(10 * n_splits, 20 * (n_splits + 1), size=n_splits)
+        for elem in Element
+    }
+
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data_dict,
+        orientation=orientation,  # type: ignore[arg-type]
+        colorscale="RdYlBu",
+        colorbar=dict(
+            title=f"Periodic Table Heatmap with {n_splits}-fold split",
+        ),
+    )
+
+    fig.show()
+    if orientation == "diagonal":
+        pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-plotly-{n_splits}")
