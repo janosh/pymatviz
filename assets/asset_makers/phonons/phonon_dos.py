@@ -36,5 +36,3 @@ for mp_id, formula in (
     fig.layout.title = dict(text=f"Phonon DOS of {formula} ({mp_id})", x=0.5, y=0.98)
     fig.layout.margin = dict(l=0, r=0, b=0, t=40)
     pmv.io.save_and_compress_svg(fig, f"phonon-dos-{mp_id}")
-
-
