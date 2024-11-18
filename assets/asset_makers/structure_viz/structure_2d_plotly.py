@@ -5,7 +5,6 @@ import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key
 
 
-df_steels = load_dataset("matbench_steels")
 df_phonons = load_dataset("matbench_phonons")
 
 
