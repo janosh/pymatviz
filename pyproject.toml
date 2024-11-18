@@ -32,10 +32,7 @@ dependencies = [
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "pandas[output-formatting]>=2.2",
     "plotly>=5.23",
-    "pymatgen>=2024.7.18",
-    # TODO: pmv doesn't actually depend on monty, however latest monty
-    # includes a critical import patch, remove this after pmg bump dep
-    "monty>=2024.10.21",
+    "pymatgen>=2024.11.13",
     "scikit-learn>=1.5",
     "scipy>=1.14",
 ]
