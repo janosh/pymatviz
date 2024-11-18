@@ -16,7 +16,12 @@ from pymatviz.ptable._projector import (
     OverwriteTileValueColor,
     PTableProjector,
 )
-from pymatviz.utils import ElemValues, get_cbar_label_formatter, pick_bw_for_contrast
+from pymatviz.utils import (
+    ColorElemTypeStrategy,
+    ElemValues,
+    get_cbar_label_formatter,
+    pick_bw_for_contrast,
+)
 
 
 if TYPE_CHECKING:
@@ -111,8 +116,8 @@ def ptable_heatmap(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         f_block_voffset (float): The vertical offset of f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
@@ -175,11 +180,11 @@ def ptable_heatmap(
             cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
-        --- Migration  # TODO: remove after 2025-07-01 ---
+        --- Migration --- TODO: remove after 2025-07-01
         return_type ("figure" | "axes"): Whether to return plt.Figure or plt.axes.
             We encourage you to migrate to "figure".
 
-        --- Deprecated args, don't use ---
+        --- Deprecated args, don't use ---  TODO: remove after 2025-04-01
         colorscale: Use "colormap" instead.
         heat_mode: Use "value_show_mode" instead.
         show_values: Use "value_show_mode" instead.
@@ -200,31 +205,47 @@ def ptable_heatmap(
             stacklevel=2,
         )
 
-    # Handle deprecated args  # TODO: remove after 2025-01-01
+    # Handle deprecated args  # TODO: remove after 2025-04-01
     if colorscale is not None:
-        warnings.warn("colorscale is deprecated in favor of colormap.", stacklevel=2)
+        warnings.warn(
+            "colorscale is deprecated in favor of colormap.",
+            FutureWarning,
+            stacklevel=2,
+        )
         colormap = colorscale
     if heat_mode is not None:
         warnings.warn(
-            "heat_mode is deprecated in favor of value_show_mode.", stacklevel=2
+            "heat_mode is deprecated in favor of value_show_mode.",
+            FutureWarning,
+            stacklevel=2,
         )
         value_show_mode = heat_mode
     if show_values is not None:
         warnings.warn(
-            "show_values is deprecated in favor of value_show_mode.", stacklevel=2
+            "show_values is deprecated in favor of value_show_mode.",
+            FutureWarning,
+            stacklevel=2,
         )
         if not show_values:
             value_show_mode = "off"
     if fmt is not None:
-        warnings.warn("fmt is deprecated in favor of value_fmt.", stacklevel=2)
+        warnings.warn(
+            "fmt is deprecated in favor of value_fmt.", FutureWarning, stacklevel=2
+        )
         value_fmt = fmt
     if cbar_fmt is not None:
         warnings.warn(
-            "cbar_fmt is deprecated in favor of cbar_label_fmt.", stacklevel=2
+            "cbar_fmt is deprecated in favor of cbar_label_fmt.",
+            FutureWarning,
+            stacklevel=2,
         )
         cbar_label_fmt = cbar_fmt
     if show_scale is not None:
-        warnings.warn("show_scale is deprecated in favor of show_cbar.", stacklevel=2)
+        warnings.warn(
+            "show_scale is deprecated in favor of show_cbar.",
+            FutureWarning,
+            stacklevel=2,
+        )
         show_cbar = show_scale
 
     # Prevent log scale and percent/fraction display mode being used together
@@ -327,7 +348,11 @@ def ptable_heatmap(
     if return_type == "figure":
         return projector.fig
     warnings.warn(
-        "We encourage you to return plt.figure for more consistent results.",
+        (
+            "We return_type='figure' over return_type='axes' for more "
+            "consistent results.\nThis will become the default after 2025-07."
+        ),
+        FutureWarning,
         stacklevel=2,
     )
     return plt.gca()
@@ -515,8 +540,8 @@ def ptable_heatmap_splits(
         colormap (str): Matplotlib colormap name to use.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -639,8 +664,8 @@ def ptable_hists(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -664,8 +689,8 @@ def ptable_hists(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -706,7 +731,7 @@ def ptable_hists(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -816,8 +841,8 @@ def ptable_scatters(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -838,8 +863,8 @@ def ptable_scatters(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -878,7 +903,7 @@ def ptable_scatters(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -973,8 +998,8 @@ def ptable_lines(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -993,8 +1018,8 @@ def ptable_lines(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -1024,7 +1049,7 @@ def ptable_lines(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".

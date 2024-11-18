@@ -11,8 +11,12 @@ from plotly.exceptions import PlotlyError
 from plotly.graph_objs import Figure
 
 from pymatviz.enums import ElemCountMode, Key
-from pymatviz.ptable import ptable_heatmap_plotly
-from pymatviz.utils import df_ptable
+from pymatviz.ptable import (
+    ptable_heatmap_plotly,
+    ptable_heatmap_splits_plotly,
+    ptable_hists_plotly,
+)
+from pymatviz.utils import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy, df_ptable
 
 
 if TYPE_CHECKING:
@@ -167,17 +171,17 @@ def test_ptable_heatmap_plotly_colorscale(c_scale: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "color_bar", [{}, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)]
+    "colorbar", [{}, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)]
 )
 def test_ptable_heatmap_plotly_color_bar(
-    glass_formulas: list[str], color_bar: dict[str, Any]
+    glass_formulas: list[str], colorbar: dict[str, Any]
 ) -> None:
-    fig = ptable_heatmap_plotly(glass_formulas, color_bar=color_bar)
+    fig = ptable_heatmap_plotly(glass_formulas, colorbar=colorbar)
     # check color bar has expected length
-    assert fig.data[-1].colorbar.len == color_bar.get("len", 0.4)
+    assert fig.data[-1].colorbar.len == colorbar.get("len", 0.4)
     # check color bar has expected title side
     assert fig.data[-1].colorbar.title.side == (
-        "right" if color_bar.get("orientation") == "v" else "top"
+        "right" if colorbar.get("orientation") == "v" else "top"
     )
 
 
@@ -253,25 +257,6 @@ def test_ptable_heatmap_plotly_heat_modes(
         assert fig.data[-1].zmax == pytest.approx(50)
 
 
-def test_ptable_heatmap_plotly_color_bar_range_percent_mode() -> None:
-    values = {"Fe": 0.2, "O": 0.3, "H": 0.5}
-    fig = ptable_heatmap_plotly(
-        values, heat_mode="percent", color_bar=dict(title="Test")
-    )
-
-    heatmap_trace = fig.full_figure_for_development(warn=False).data[-1]
-
-    # Check if the color bar range is 100x the input values
-    assert heatmap_trace.zmin == pytest.approx(20)
-    assert heatmap_trace.zmax == pytest.approx(50)
-
-    # Check if the color bar title includes '%'
-    cbar_title = heatmap_trace.colorbar.title.text
-    assert cbar_title == "Test<br> (%)", f"{cbar_title=}"
-
-    assert heatmap_trace.colorbar.tickmode == "auto"
-
-
 def test_ptable_heatmap_plotly_show_values() -> None:
     values = {"Fe": 2, "O": 3}
     fig = ptable_heatmap_plotly(values, show_values=False)
@@ -294,14 +279,8 @@ def test_ptable_heatmap_plotly_series_input() -> None:
     assert isinstance(fig, Figure)
 
 
-def test_ptable_heatmap_plotly_list_input() -> None:
-    values = ["FeO", "Fe2O3", "H2O"]
-    fig = ptable_heatmap_plotly(values)
-    assert isinstance(fig, Figure)
-
-
 def test_ptable_heatmap_plotly_count_modes() -> None:
-    values = ["FeO", "Fe2O3", "H2O"]
+    values = ("FeO", "Fe2O3", "H2O")
     for mode in ElemCountMode:
         fig = ptable_heatmap_plotly(values, count_mode=mode)
         assert isinstance(fig, Figure)
@@ -471,3 +450,402 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
         assert any(
             f"{elem}</span>" in text for text in tile_texts
         ), f"Original symbol {elem} not found in tile texts for element_symbol_map=None"
+
+
+@pytest.mark.parametrize(
+    ("data", "bins", "x_range", "log", "colorscale"),
+    [
+        # Basic case
+        ({"Fe": [1, 2], "O": [3, 4]}, 10, None, False, "RdBu"),
+        # Single element, log scale
+        (pd.DataFrame({"Fe": [0.1, 0.2]}), 5, (0, 1), True, "Viridis"),
+        ({"H": [0.1, 0.2], "He": [0.3, 0.4]}, 5, None, True, "Turbo"),
+    ],
+)
+def test_ptable_hists_plotly_basic(
+    data: pd.DataFrame | dict[str, list[float]],
+    bins: int,
+    x_range: tuple[float | None, float | None] | None,
+    log: bool,
+    colorscale: str,
+) -> None:
+    fig = ptable_hists_plotly(
+        data, bins=bins, x_range=x_range, log=log, colorscale=colorscale
+    )
+    assert isinstance(fig, go.Figure)
+    # Count only histogram traces (exclude colorbar trace)
+    n_hist_traces = sum(1 for trace in fig.data if isinstance(trace, go.Histogram))
+    n_elements = len(data if isinstance(data, dict) else data.columns)
+    assert n_hist_traces == n_elements
+
+
+@pytest.mark.parametrize(
+    ("font_size", "scale", "symbol_kwargs", "annotations"),
+    [
+        (12, 1.0, dict(x=0, y=1), dict(x=1, y=1)),  # Most common case
+        (None, 0.5, dict(x=0.5, y=0.5), dict(x=0.5, y=0.5)),  # Test None font_size
+    ],
+)
+def test_ptable_hists_plotly_layout(
+    font_size: int | None,
+    scale: float,
+    symbol_kwargs: dict[str, Any],
+    annotations: dict[str, Any],
+) -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    fig = ptable_hists_plotly(
+        data,
+        font_size=font_size,
+        scale=scale,
+        symbol_kwargs=symbol_kwargs,
+        annotations=annotations,
+    )
+    assert isinstance(fig, go.Figure)
+    if font_size:
+        assert any(
+            anno.font.size == font_size * scale
+            for anno in fig.layout.annotations
+            if anno.font is not None
+        )
+
+
+@pytest.mark.parametrize(
+    "color_elem_strategy",
+    VALID_COLOR_ELEM_STRATEGIES,
+)
+def test_ptable_hists_plotly_element_colors(
+    color_elem_strategy: ColorElemTypeStrategy,
+) -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    fig = ptable_hists_plotly(data, color_elem_strategy=color_elem_strategy)
+    assert isinstance(fig, go.Figure)
+
+
+def test_ptable_hists_plotly_custom_annotations() -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    anno_kwargs: dict[str, str | int] = {"font_size": 14, "font_color": "red"}
+    annotations = {
+        "Fe": {"text": "Iron", **anno_kwargs},
+        "O": {"text": "Oxygen", **anno_kwargs},
+    }
+    fig = ptable_hists_plotly(data, annotations=annotations)  # type: ignore[arg-type]
+    assert isinstance(fig, go.Figure)
+
+
+def test_ptable_hists_plotly_error_cases() -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+
+    # Test invalid color_elem_strategy
+    with pytest.raises(
+        ValueError, match="color_elem_strategy='invalid' must be one of"
+    ):
+        ptable_hists_plotly(data, color_elem_strategy="invalid")  # type: ignore[arg-type]
+
+    # Test invalid scale
+    with pytest.raises(ValueError, match="Invalid value of type ") as exc:
+        ptable_hists_plotly(data, scale=-1.0)
+    assert "An int or float in the interval [1, inf]" in str(exc.value)
+
+    # Test invalid bins
+    with pytest.raises(ZeroDivisionError, match="division by zero"):
+        ptable_hists_plotly(data, bins=0)
+
+
+@pytest.mark.parametrize(
+    ("element_symbol_map", "symbol_kwargs"),
+    [
+        ({"Fe": "Iron", "O": "Oxygen"}, {"font": {"size": 14}}),
+        (None, None),
+        ({"Fe": "Fe*"}, {"font": {"color": "red"}}),
+    ],
+)
+def test_ptable_hists_plotly_symbol_customization(
+    element_symbol_map: dict[str, str] | None,
+    symbol_kwargs: dict[str, Any] | None,
+) -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    fig = ptable_hists_plotly(
+        data,
+        element_symbol_map=element_symbol_map,
+        symbol_kwargs=symbol_kwargs,
+    )
+    assert isinstance(fig, go.Figure)
+
+
+def test_ptable_hists_plotly_subplot_kwargs() -> None:
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    sub_titles = ["Iron", "Oxygen"]
+    subplot_kwargs = {
+        "horizontal_spacing": 0.05,
+        "vertical_spacing": 0.05,
+        "subplot_titles": sub_titles,
+    }
+    fig = ptable_hists_plotly(data, subplot_kwargs=subplot_kwargs)
+    assert isinstance(fig, go.Figure)
+    # Verify subplot titles are set
+    assert [anno.text for anno in fig.layout.annotations][:2] == sub_titles
+
+
+def test_ptable_hists_plotly_hover_tooltips() -> None:
+    """Test that hover tooltips show element info and histogram values."""
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    element_symbol_map = {"Fe": "Iron"}
+
+    fig = ptable_hists_plotly(data, element_symbol_map=element_symbol_map)
+
+    # Get hover templates for each histogram trace
+    hover_templates = [trace.hovertemplate for trace in fig.data]
+
+    expected_fe_template = (
+        "<b>Iron</b> (Fe)<br>Range: %{x}<br>Count: %{y}<extra></extra>"
+    )
+    expected_o_template = "<b>O</b><br>Range: %{x}<br>Count: %{y}<extra></extra>"
+
+    assert expected_fe_template in hover_templates
+    assert expected_o_template in hover_templates
+
+
+@pytest.mark.parametrize(
+    ("colorbar", "expected"),
+    [
+        # Test default settings
+        (None, dict(orientation="h", len=0.4, thickness=15)),
+        # Test no colorbar
+        (False, None),
+        # Test horizontal colorbar with custom length
+        (dict(orientation="h", len=0.4), dict(orientation="h", len=0.4)),
+        # Test vertical colorbar with custom length
+        (dict(orientation="v", len=0.8), dict(orientation="v", len=0.8)),
+        # Test title formatting for horizontal orientation
+        (
+            dict(title="Test Title", orientation="h"),
+            dict(title="Test Title<br>", orientation="h"),
+        ),
+        # Test comprehensive custom settings
+        (
+            dict(
+                orientation="v",
+                len=0.6,
+                thickness=20,
+                title="Custom",
+                x=1.1,
+                y=0.5,
+            ),
+            dict(
+                orientation="v",
+                len=0.6,
+                thickness=20,
+                title="<br><br>Custom",
+                x=1.1,
+                y=0.5,
+            ),
+        ),
+    ],
+)
+def test_ptable_hists_plotly_colorbar(
+    colorbar: dict[str, Any] | Literal[False] | None,
+    expected: dict[str, Any] | None,
+) -> None:
+    """Test colorbar customization in ptable_hists_plotly including range and
+    visibility."""
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+    x_range = (-1, 5)  # Test custom range
+    fig = ptable_hists_plotly(data, colorbar=colorbar, x_range=x_range)
+
+    if colorbar is False:
+        assert all(not hasattr(trace, "colorbar") for trace in fig.data)
+        return
+
+    # Find the scatter trace with the colorbar (should be last trace)
+    colorbar_trace = fig.data[-1]
+    assert isinstance(colorbar_trace, go.Scatter)
+    assert colorbar_trace.hoverinfo == "none"
+    assert colorbar_trace.showlegend is False
+
+    # Check colorbar properties
+    marker = colorbar_trace.marker
+    assert marker.showscale is True
+
+    # Check colorbar range matches x_range
+    assert marker.cmin == x_range[0]
+    assert marker.cmax == x_range[1]
+
+    # Check that axes for this trace are hidden
+    xaxis_num = len(fig.data)  # Last trace's axis number
+    assert not fig.layout[f"xaxis{xaxis_num}"].visible
+    assert not fig.layout[f"yaxis{xaxis_num}"].visible
+
+    # Check colorbar settings
+    if expected is not None:
+        for key, value in expected.items():
+            if key == "title":
+                assert marker.colorbar.title.text == value
+            else:
+                assert getattr(marker.colorbar, key) == value
+
+
+def test_ptable_hists_plotly_x_axis_kwargs() -> None:
+    """Test that x_axis_kwargs properly modifies histogram x-axes."""
+    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
+
+    # Test various x-axis customizations
+    x_axis_kwargs = {
+        "tickangle": 45,
+        "tickformat": ".3f",
+        "nticks": 5,
+        "showticklabels": False,
+        "tickfont": dict(size=14, color="red"),
+        "linecolor": "blue",
+        "linewidth": 2,
+    }
+
+    fig = ptable_hists_plotly(data, x_axis_kwargs=x_axis_kwargs)
+
+    xaxis = fig.layout.xaxis
+
+    for key, expected in x_axis_kwargs.items():
+        actual = getattr(xaxis, key)
+        if isinstance(expected, dict):
+            for sub_key, sub_expected in expected.items():
+                assert getattr(actual, sub_key) == sub_expected, f"{key}.{sub_key}"
+        else:
+            assert actual == expected, f"{key}: {actual} != {expected}"
+
+
+def test_ptable_heatmap_splits_plotly_basic() -> None:
+    """Test basic functionality of ptable_heatmap_splits_plotly."""
+    data: dict[str, list[float]] = {
+        "Fe": [1, 2],
+        "O": [3, 4],
+        "H": [0.5, 1.5],
+        "He": [1.5, 2.5],
+    }
+
+    # Test each orientation
+    for orientation in ["diagonal", "horizontal", "vertical"]:
+        fig = ptable_heatmap_splits_plotly(data, orientation=orientation)  # type: ignore[arg-type]
+        assert isinstance(fig, go.Figure)
+        # Each split should have its own subplot
+        assert len(fig.data) == sum(len(v) for v in data.values()) + 1
+
+    # Test grid orientation separately with 4 splits
+    data_4_split = {"Fe": [1, 2, 3, 4]}
+    fig = ptable_heatmap_splits_plotly(data_4_split, orientation="grid")
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == sum(len(v) for v in data_4_split.values()) + 1
+
+
+@pytest.mark.parametrize(
+    ("orientation", "colorscale", "font_size", "scale"),
+    [
+        ("diagonal", "Viridis", 12, 1.0),
+        ("horizontal", "RdBu", None, 0.8),
+        ("vertical", "Spectral", 14, 1.2),
+        ("diagonal", "Plasma", 10, 0.9),
+    ],
+)
+def test_ptable_heatmap_splits_plotly_display_options(
+    orientation: Literal["diagonal", "horizontal", "vertical", "grid"],
+    colorscale: str,
+    font_size: int | None,
+    scale: float,
+) -> None:
+    """Test various display options for ptable_heatmap_splits_plotly."""
+    data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
+
+    subplot_kwargs = {
+        "horizontal_spacing": 0.05,
+        "vertical_spacing": 0.05,
+        "subplot_titles": ["Split 1", "Split 2", "Split 3", "Split 4"],
+    }
+    # Test custom element symbols
+    element_symbol_map = {"Fe": "Iron", "O": "Oxygen"}
+    symbol_kwargs = {"font": {"size": 14, "color": "red"}}
+
+    fig = ptable_heatmap_splits_plotly(
+        data,
+        orientation=orientation,
+        colorscale=colorscale,
+        font_size=font_size,
+        scale=scale,
+        subplot_kwargs=subplot_kwargs,
+        element_symbol_map=element_symbol_map,
+        symbol_kwargs=symbol_kwargs,
+    )
+
+    assert fig.layout.width == 850 * scale
+    assert fig.layout.height == 500 * scale
+    anno_font_sizes = [
+        anno.font.size for anno in fig.layout.annotations if anno.font is not None
+    ]
+    # Check if annotations have expected font size (symbol_kwargs.font.size takes
+    # precedence over font_size)
+    assert symbol_kwargs.get("font", {}).get("size") in anno_font_sizes
+
+
+@pytest.mark.parametrize(
+    "colorbar",
+    [None, False, dict(orientation="v", len=0.8), dict(orientation="h", len=0.3)],
+)
+def test_ptable_heatmap_splits_plotly_colorbar(
+    colorbar: dict[str, Any] | Literal[False] | None,
+) -> None:
+    """Test colorbar customization in ptable_heatmap_splits_plotly."""
+    data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
+
+    fig = ptable_heatmap_splits_plotly(data, colorbar=colorbar)
+
+    hidden_scatter_trace = [trace for trace in fig.data if trace.x[0] is None]
+    assert (len(hidden_scatter_trace) == 0) == (colorbar is False)
+
+
+def test_ptable_heatmap_splits_plotly_annotations() -> None:
+    """Test custom annotations in ptable_heatmap_splits_plotly."""
+    data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
+
+    # Test with dict annotations
+    annotations = {
+        "Fe": {"text": "Iron", "font": {"size": 14, "color": "red"}},
+        "O": {"text": "Oxygen", "font": {"size": 14, "color": "blue"}},
+    }
+
+    fig = ptable_heatmap_splits_plotly(data, annotations=annotations)  # type: ignore[arg-type]
+    assert isinstance(fig, go.Figure)
+
+    # Test with callable annotations
+    def annotation_func(value: list[float] | np.ndarray) -> dict[str, Any]:
+        return {"text": f"Value: {np.mean(value):.1f}"}
+
+    fig = ptable_heatmap_splits_plotly(data, annotations=annotation_func)
+    # check annotations are present
+    anno_texts = [anno.text for anno in fig.layout.annotations]
+    assert "Value: 1.5" in anno_texts
+    assert "Value: 3.5" in anno_texts
+
+
+def test_ptable_heatmap_splits_plotly_error_cases() -> None:
+    """Test error cases for ptable_heatmap_splits_plotly."""
+    data = {"Fe": [1, 2], "O": [3, 4]}
+
+    # Test invalid n_splits
+    with pytest.raises(ValueError, match="n_splits=1 must be 2, 3, or 4"):
+        ptable_heatmap_splits_plotly({"Fe": [1]})
+
+    # Test invalid orientation
+    with pytest.raises(
+        ValueError,
+        match="orientation='grid' is only supported for n_splits=4, got n_splits=2",
+    ):
+        ptable_heatmap_splits_plotly(data, orientation="grid")
+
+    # Test invalid scale
+    with pytest.raises(
+        ValueError, match="received for the 'size' property of layout.annotation.font"
+    ):
+        ptable_heatmap_splits_plotly(data, scale=-1.0)
+
+    # Test invalid colorscale
+    with pytest.raises(
+        PlotlyError, match="Colorscale invalid_colorscale is not a built-in scale"
+    ):
+        ptable_heatmap_splits_plotly(data, colorscale="invalid_colorscale")

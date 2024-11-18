@@ -145,7 +145,9 @@ class TestPtableHeatmap:
         )
         assert isinstance(fig, plt.Figure)
 
-        with pytest.warns(match="We encourage you to return plt.figure"):
+        with pytest.warns(
+            FutureWarning, match="We return_type='figure' over return_type='axes'"
+        ):
             ax = pmv.ptable_heatmap(df_ptable[Key.atomic_mass])
         assert isinstance(ax, plt.Axes)
 
@@ -153,7 +155,7 @@ class TestPtableHeatmap:
 @pytest.mark.parametrize("hide_f_block", ["auto", False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test pmv.ptable_heatmap_splits with arbitrary data length."""
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed=0)
     data_dict: dict[str, Any] = {
         elem.symbol: rng.integers(
             0, 10, size=rng.integers(1, 4)

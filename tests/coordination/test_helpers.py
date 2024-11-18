@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from typing import Literal
+
 import pytest
-from pymatgen.analysis.local_env import CrystalNN, VoronoiNN
+from pymatgen.analysis.local_env import CrystalNN, NearNeighbors, VoronoiNN
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.coordination.helpers import (
     CnSplitMode,
     calculate_average_cn,
+    coordination_nums_in_structure,
     normalize_get_neighbors,
 )
 from pymatviz.enums import LabelEnum
@@ -88,3 +91,47 @@ def test_calculate_average_cn_empty_element() -> None:
     avg_cn = calculate_average_cn(structure, "K", get_neighbors)
 
     assert avg_cn == 0  # No K atoms in structure
+
+
+@pytest.mark.parametrize(
+    ("group_by", "expected"),
+    [
+        ("element", {"Na": [6, 6], "Cl": [6, 6]}),
+        ("site", {"1": [6], "2": [6], "3": [6], "4": [6]}),
+        ("specie", {"Na+": [6, 6], "Cl-": [6, 6]}),
+    ],
+)
+def test_coordination_nums_in_structure_group_by(
+    group_by: Literal["element", "site", "specie"], expected: dict[str, list[int]]
+) -> None:
+    """Test different group_by options."""
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(
+        lattice,
+        ["Na", "Na", "Cl", "Cl"],
+        [[0, 0, 0], [0.5, 0, 0], [0.5, 0.5, 0.5], [0, 0.5, 0.5]],
+        charge={"Na": 1, "Cl": -1},  # Add charges to test specie grouping
+    ).add_oxidation_state_by_guess()
+
+    cns = coordination_nums_in_structure(struct, strategy=3.0, group_by=group_by)
+    assert cns == expected
+
+
+@pytest.mark.parametrize(
+    ("strategy", "expected_cn"),
+    [
+        (3.0, {"Na": [0], "Cl": [0]}),  # Simple distance cutoff
+        (VoronoiNN(), {"Na": [14], "Cl": [14]}),  # VoronoiNN instance
+        (CrystalNN(), {"Na": [0], "Cl": [0]}),  # CrystalNN instance
+        (VoronoiNN, {"Na": [14], "Cl": [14]}),  # VoronoiNN class
+    ],
+)
+def test_coordination_nums_in_structure_strategies(
+    strategy: float | NearNeighbors, expected_cn: dict[str, list[int]]
+) -> None:
+    """Test different neighbor-finding strategies."""
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    cns = coordination_nums_in_structure(struct, strategy=strategy)
+    assert cns == expected_cn

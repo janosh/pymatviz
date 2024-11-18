@@ -171,6 +171,10 @@ class Key(LabelEnum):
     bond_angles = "bond_angles", f"Bond Angles {degrees}"
     packing_fraction = "packing_fraction", "Packing Fraction"
     max_pair_dist = "max_pair_dist", f"Maximum Pair Distance {angstrom}"
+    conventional_cell = "conventional_cell", "Conventional Cell"
+    primitive_cell = "primitive_cell", "Primitive Cell"
+    reduced_cell = "reduced_cell", "Reduced Cell"
+    niggli_reduced_cell = "niggli_reduced_cell", "Niggli-reduced Cell"
 
     # Crystal Symmetry Properties
     crystal_system = "crystal_system", "Crystal System"
@@ -182,6 +186,10 @@ class Key(LabelEnum):
     translations = "translations", "Translations"
     rotations = "rotations", "Rotations"
     symmetry = "symmetry", "Symmetry"
+    symmetry_change = "symmetry_change", "Symmetry Change"
+    symmetry_decrease = "symmetry_decrease", "Symmetry Decrease"
+    symmetry_increase = "symmetry_increase", "Symmetry Increase"
+    symmetry_match = "symmetry_match", "Symmetry Match"
     point_group = "point_group", "Point Group"
     n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
     n_rot_syms = "n_rot_syms", "Number of rotational symmetries"
@@ -234,10 +242,10 @@ class Key(LabelEnum):
     charge = "total_charge", "Total Charge"
     oxi_states = "oxidation_states", "Oxidation States"
     oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
-    n_atoms = "n_atoms", "Number of Atoms"
-    n_elements = "n_elements", "Number of Elements"
-    n_val_electrons = "n_valence_electrons", "Number of Valence Electrons"
-    n_electrons = "n_total_electrons", "Total Number of Electrons"
+    n_atoms = "n_atoms", "N<sub>atoms</sub>"
+    n_elements = "n_elements", "N<sub>elements</sub>"
+    n_val_electrons = "n_valence_electrons", "N<sub>valence electrons</sub>"
+    n_electrons = "n_electrons", "N<sub>electrons</sub>"
     isotope_masses = "isotope_masses", "Isotope Masses"
     natural_abundance = "natural_abundance", "Natural Abundance (%)"
     half_life = "half_life", "Half-life"
@@ -492,12 +500,12 @@ class Key(LabelEnum):
     momentum = "momentum", "Momentum"
     weight_decay = "weight_decay", "Weight Decay"
     early_stopping = "early_stopping", "Early Stopping"
-    n_folds = "n_folds", "Number of Folds"
-    n_estimators = "n_estimators", "Number of Estimators"
-    n_features = "n_features", "Number of Features"
-    n_targets = "n_targets", "Number of Targets"
-    n_classes = "n_classes", "Number of Classes"
-    n_layers = "n_layers", "Number of Layers"
+    n_folds = "n_folds", "N<sub>folds</sub>"
+    n_estimators = "n_estimators", "N<sub>estimators</sub>"
+    n_features = "n_features", "N<sub>features</sub>"
+    n_targets = "n_targets", "N<sub>targets</sub>"
+    n_classes = "n_classes", "N<sub>classes</sub>"
+    n_layers = "n_layers", "N<sub>layers</sub>"
     radial_cutoff = "radial_cutoff", "Radial Cutoff"  # for GNNs, usually in Å
     angular_cutoff = "angular_cutoff", "Angular Cutoff"  # max order spherical harmonics
 
@@ -560,6 +568,11 @@ class Key(LabelEnum):
     roc_curve = "roc_curve", "ROC Curve"
     roc_auc = "ROC_AUC", "ROC AUC"
     hit_rate = "hit_rate", "Hit Rate"
+    n_structs = "n_structures", "N<sub>structures</sub>"
+    n_materials = "n_materials", "N<sub>materials</sub>"
+    n_molecules = "n_molecules", "N<sub>molecules</sub>"
+    n_samples = "n_samples", "N<sub>samples</sub>"
+    n_configs = "n_configs", "N<sub>configs</sub>"
 
     # Computational Details
     run_time_sec = "run_time_sec", "Run Time (sec)"
@@ -568,6 +581,11 @@ class Key(LabelEnum):
     gpu_hours = "gpu_hours", "GPU Hours"
     start_time = "start_time", "Start Time"
     start_date = "start_date", "Start Date"
+    date_time = "date_time", "Date and Time"
+    date = "date", "Date"
+    time = "time", "Time"
+    date_added = "date_added", "Date Added"
+    date_modified = "date_modified", "Date Modified"
     end_time = "end_time", "End Time"
     end_date = "end_date", "End Date"
     step = "step", "Step"  # as in job/optimizer step
@@ -693,6 +711,7 @@ class Task(LabelEnum):
 
     static = "static", "Static"  # aka single-point
     relax = "relax", "Relaxation"  # aka geometry optimization
+    geo_opt = "geo_opt", "Geometry Optimization"
     double_relax = "double_relax", "Double Relaxation"
     phonon = "phonon", "Phonon"  # aka vibrational analysis
     eos = "eos", "Equation of State"  # aka volume optimization
@@ -715,7 +734,7 @@ class Task(LabelEnum):
     dielectric = "dielectric", "Dielectric"  # aka optical properties
     electronic = "electronic", "Electronic"
     synthesis = "synthesis", "Synthesis"
-    molecular_dynamics = "molecular_dynamics", "Molecular Dynamics"
+    md = "md", "Molecular Dynamics"
     ion_diffusion = "ion_diffusion", "Ion Diffusion"
     electron_transport = "electron_transport", "Electron Transport"
     charge_transport = "charge_transport", "Charge Transport"

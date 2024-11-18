@@ -17,6 +17,7 @@ df_steels = load_dataset("matbench_steels")
 ax = pmv.ptable_heatmap(
     pmv.count_elements(df_expt_gap[Key.composition]),
     log=True,
+    return_type="axes",  # TODO: change to return Figure after 2025-07-01
 )
 title = (
     f"Elements in Matbench Experimental Band Gap ({len(df_expt_gap):,} compositions)"
@@ -49,11 +50,7 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-percent")
 
 # %%
 fig = pmv.ptable_heatmap_ratio(
-    df_expt_gap[Key.composition],
-    df_steels[Key.composition],
-    log=True,
-    value_fmt=".4g",
-    hide_f_block=False,
+    df_expt_gap[Key.composition], df_steels[Key.composition], log=True, value_fmt=".4g"
 )
 title = "Element ratios in Matbench Experimental Band Gap vs Matbench Steel"
 fig.suptitle(title, y=0.96, fontsize=16, fontweight="bold")
@@ -147,19 +144,21 @@ pmv.io.save_and_compress_svg(fig, "ptable-lines")
 
 
 # %% Evenly-split tile plots laid out as a periodic table
-rng = np.random.default_rng()
+rng = np.random.default_rng(seed=0)
 for n_splits in (2, 3, 4):
     data_dict = {
         elem.symbol: rng.integers(10 * n_splits, 20 * (n_splits + 1), size=n_splits)
         for elem in Element
     }
 
-    fig = pmv.ptable_heatmap_splits(
+    fig = pmv.ptable_heatmap_splits_plotly(
         data=data_dict,
-        colormap="coolwarm",
-        start_angle=135 if n_splits % 2 == 0 else 90,
-        cbar_title="Periodic Table Evenly-Split Heatmap Plots",
+        colorscale="agsunset",
+        hover_data=data_dict,
+        # start_angle=135 if n_splits % 2 == 0 else 90,
+        colorbar=dict(title="Periodic Table Evenly-Split Heatmap Plots"),
         hide_f_block=True,
     )
+    fig.layout.paper_bgcolor = "white"
     fig.show()
-    pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")
+    # pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")
