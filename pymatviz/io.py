@@ -227,7 +227,7 @@ def save_and_compress_svg(
         raise ValueError("Passed fig contains no axes. Nothing to plot!")
 
     if not filename.endswith(".svg") and not os.path.isabs(filename):
-        filepath = f"{ROOT}/assets/{filename}.svg"
+        filepath = f"{ROOT}/assets/svg/{filename}.svg"
     else:
         filepath = filename
 
