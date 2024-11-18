@@ -1,7 +1,6 @@
 # %%
 import pymatviz as pmv
-
-from ._random_regression_data import np_rng, y_pred, y_std, y_true
+from pymatviz.data.regression import np_rng, y_pred, y_std, y_true
 
 
 # %% Uncertainty Plots

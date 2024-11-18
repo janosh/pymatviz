@@ -6,8 +6,7 @@ import plotly.express as px
 import plotly.io as pio
 
 import pymatviz as pmv
-
-from ._random_regression_data import y_pred, y_true
+from pymatviz.data.regression import y_pred, y_true
 
 
 px.defaults.template = "pymatviz_white"
@@ -22,8 +21,6 @@ plt.rc("figure", dpi=200, titlesize=20, titleweight="bold")
 plt.rcParams["figure.constrained_layout.use"] = True
 
 
-# %% density hexbin with hist
-ax = pmv.density_hexbin_with_hist(
-    y_pred, y_true, best_fit_line={"annotate_params": {"loc": "lower center"}}
-)
-pmv.io.save_and_compress_svg(ax, "density-scatter-hex-with-hist")
+# %% density scatter
+ax = pmv.density_scatter(y_pred, y_true)
+pmv.io.save_and_compress_svg(ax, "density-scatter")

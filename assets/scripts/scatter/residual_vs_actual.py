@@ -6,8 +6,7 @@ import plotly.express as px
 import plotly.io as pio
 
 import pymatviz as pmv
-
-from ._random_regression_data import y_pred, y_true
+from pymatviz.data.regression import y_pred, y_true
 
 
 px.defaults.template = "pymatviz_white"
@@ -22,6 +21,6 @@ plt.rc("figure", dpi=200, titlesize=20, titleweight="bold")
 plt.rcParams["figure.constrained_layout.use"] = True
 
 
-# %% density scatter with hist
-ax = pmv.density_scatter_with_hist(y_pred, y_true)
-pmv.io.save_and_compress_svg(ax, "density-scatter-with-hist")
+# %% residual vs actual
+ax = pmv.residual_vs_actual(y_true, y_pred)
+pmv.io.save_and_compress_svg(ax, "residual-vs-actual")

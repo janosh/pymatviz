@@ -6,8 +6,7 @@ import plotly.express as px
 import plotly.io as pio
 
 import pymatviz as pmv
-
-from ._random_regression_data import y_pred, y_true
+from pymatviz.data.regression import y_pred, y_true
 
 
 px.defaults.template = "pymatviz_white"
