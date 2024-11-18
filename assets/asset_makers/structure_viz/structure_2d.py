@@ -8,7 +8,7 @@ from mp_api.client import MPRester
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.enums import ElemColorScheme, Key, SiteCoords
+from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.utils import TEST_FILES
 
 
@@ -71,29 +71,3 @@ for mp_id in struct_mp_ids:
 
     plt.show()
     pmv.io.save_and_compress_svg(ax, f"struct-2d-{mp_id}-{formula}-disordered")
-
-
-# %% Plot Matbench phonon structures with plotly
-fig = pmv.structure_2d_plotly(
-    df_phonons[Key.structure].head(6).to_dict(),
-    # show_unit_cell={"edge": dict(color="white", width=1.5)},
-    # show_sites=dict(line=None),
-    elem_colors=ElemColorScheme.jmol,
-    n_cols=3,
-    subplot_title=lambda _struct, _key: dict(font=dict(color="black")),
-    hover_text=lambda site: f"<b>{site.frac_coords}</b>",
-)
-
-fig.show()
-pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")
-
-
-# %% 3d example
-fig = pmv.structure_3d_plotly(
-    df_phonons[Key.structure].head(6).to_dict(),
-    elem_colors=ElemColorScheme.jmol,
-    # show_unit_cell={"edge": dict(color="white", width=1.5)},
-    hover_text=SiteCoords.cartesian_fractional,
-)
-fig.show()
-pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")
