@@ -13,14 +13,12 @@ for n_splits in (2, 3, 4):
         for elem in Element
     }
 
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         data=data_dict,
-        colorscale="agsunset",
-        hover_data=data_dict,
-        # start_angle=135 if n_splits % 2 == 0 else 90,
-        colorbar=dict(title="Periodic Table Evenly-Split Heatmap Plots"),
+        colormap="coolwarm",
+        start_angle=135 if n_splits % 2 == 0 else 90,
+        cbar_title="Periodic Table Evenly-Split Heatmap Plots",
         hide_f_block=True,
     )
-    fig.layout.paper_bgcolor = "white"
     fig.show()
-    # pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")
+    pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-{n_splits}")
