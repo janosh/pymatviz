@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, ParamSpec, TypeVar, get_args
 
+import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.graph_objects as go
 
 
 if TYPE_CHECKING:

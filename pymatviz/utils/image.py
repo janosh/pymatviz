@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-import matplotlib
-import matplotlib.colors
+import matplotlib as mpl
 
 
 if TYPE_CHECKING:
@@ -22,7 +21,7 @@ def luminance(color: str | tuple[float, float, float]) -> float:
         float: Luminance of the color.
     """
     # raises ValueError if color invalid
-    red, green, blue = matplotlib.colors.to_rgb(color)
+    red, green, blue = mpl.colors.to_rgb(color)
     return 0.299 * red + 0.587 * green + 0.114 * blue
 
 
@@ -41,7 +40,7 @@ def pick_bw_for_contrast(
         "black" | "white": depending on the luminance of the background color.
     """
     if isinstance(color, str):
-        color = matplotlib.colors.to_rgb(color)
+        color = mpl.colors.to_rgb(color)
 
     light_bg = luminance(cast(tuple[float, float, float], color)) > text_color_threshold
     return "black" if light_bg else "white"

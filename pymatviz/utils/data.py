@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from contextlib import contextmanager
 from functools import partial
 from typing import TYPE_CHECKING
@@ -16,10 +15,12 @@ from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Generator, Sequence
     from typing import Any
 
     from numpy.typing import ArrayLike
+
+    from pymatviz.utils.typing import CrystalSystem, T
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable: pd.DataFrame = pd.read_csv(elements_csv, comment="#").set_index("symbol")

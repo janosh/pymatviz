@@ -1,3 +1,5 @@
+"""Testing related utils."""
+
 from __future__ import annotations
 
 from pymatviz.utils import ROOT

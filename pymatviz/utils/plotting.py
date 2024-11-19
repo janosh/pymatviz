@@ -1,10 +1,9 @@
-"""pymatviz utility functions."""
+"""Plotting-related utility functions."""
 
 from __future__ import annotations
 
 import re
 import warnings
-from collections.abc import Sequence
 from functools import wraps
 from typing import TYPE_CHECKING, Literal
 
@@ -15,9 +14,20 @@ import plotly.io as pio
 from matplotlib.offsetbox import AnchoredText
 from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 
+from pymatviz.utils.typing import (
+    BACKENDS,
+    MATPLOTLIB,
+    PLOTLY,
+    VALID_FIG_NAMES,
+    AxOrFig,
+    Backend,
+    P,
+    R,
+)
+
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from typing import Any
 
     from matplotlib.ticker import Formatter
