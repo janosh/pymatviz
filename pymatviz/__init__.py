@@ -21,7 +21,6 @@ from pymatviz import (
     colors,
     coordination,
     cumulative,
-    data,
     enums,
     io,
     phonons,

@@ -6,11 +6,13 @@ import plotly.express as px
 import plotly.io as pio
 
 import pymatviz as pmv
-from pymatviz.data.regression import y_pred, y_true
+from pymatviz.test.data import get_regression_data
 
 
 px.defaults.template = "pymatviz_white"
 pio.templates.default = "pymatviz_white"
+
+dummy_data = get_regression_data()
 
 
 # %% Configure matplotlib and load test data
@@ -23,6 +25,8 @@ plt.rcParams["figure.constrained_layout.use"] = True
 
 # %% density hexbin
 ax = pmv.density_hexbin(
-    y_pred, y_true, best_fit_line={"annotate_params": {"loc": "lower center"}}
+    dummy_data.y_pred,
+    dummy_data.y_true,
+    best_fit_line={"annotate_params": {"loc": "lower center"}},
 )
 pmv.io.save_and_compress_svg(ax, "density-scatter-hex")

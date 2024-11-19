@@ -6,11 +6,13 @@ import plotly.express as px
 import plotly.io as pio
 
 import pymatviz as pmv
-from pymatviz.data.regression import y_pred, y_true
+from pymatviz.test.data import get_regression_data
 
 
 px.defaults.template = "pymatviz_white"
 pio.templates.default = "pymatviz_white"
+
+dummy_data = get_regression_data()
 
 
 # %% Configure matplotlib and load test data
@@ -22,5 +24,5 @@ plt.rcParams["figure.constrained_layout.use"] = True
 
 
 # %% residual vs actual
-ax = pmv.residual_vs_actual(y_true, y_pred)
+ax = pmv.residual_vs_actual(dummy_data.y_true, dummy_data.y_pred)
 pmv.io.save_and_compress_svg(ax, "residual-vs-actual")

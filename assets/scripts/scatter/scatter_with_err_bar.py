@@ -6,11 +6,13 @@ import plotly.express as px
 import plotly.io as pio
 
 import pymatviz as pmv
-from pymatviz.data.regression import y_pred, y_std, y_true
+from pymatviz.test.data import get_regression_data
 
 
 px.defaults.template = "pymatviz_white"
 pio.templates.default = "pymatviz_white"
+
+dummy_data = get_regression_data()
 
 
 # %% Configure matplotlib and load test data
@@ -22,5 +24,7 @@ plt.rcParams["figure.constrained_layout.use"] = True
 
 
 # %% scatter with error bar
-ax = pmv.scatter_with_err_bar(y_pred, y_true, yerr=y_std)
+ax = pmv.scatter_with_err_bar(
+    dummy_data.y_pred, dummy_data.y_true, yerr=dummy_data.y_std
+)
 pmv.io.save_and_compress_svg(ax, "scatter-with-err-bar")

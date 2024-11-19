@@ -1,15 +1,20 @@
 # %%
 import pymatviz as pmv
-from pymatviz.data.regression import np_rng, y_pred, y_std, y_true
+from pymatviz.test.data import get_regression_data, np_rng
+
+
+dummy_data = get_regression_data()
 
 
 # %% Uncertainty Plots
-ax = pmv.error_decay_with_uncert(y_true, y_pred, y_std)
+ax = pmv.error_decay_with_uncert(dummy_data.y_true, dummy_data.y_pred, dummy_data.y_std)
 pmv.io.save_and_compress_svg(ax, "error-decay-with-uncert")
 
-eps = 0.2 * np_rng.standard_normal(*y_std.shape)
+eps = 0.2 * np_rng.standard_normal(*dummy_data.y_std.shape)
 
 ax = pmv.error_decay_with_uncert(
-    y_true, y_pred, {"better": y_std, "worse": y_std + eps}
+    dummy_data.y_true,
+    dummy_data.y_pred,
+    {"better": dummy_data.y_std, "worse": dummy_data.y_std + eps},
 )
 pmv.io.save_and_compress_svg(ax, "error-decay-with-uncert-multiple")
