@@ -484,10 +484,10 @@ def phonon_bands_and_dos(
         subplot_kwargs (dict[str, Any]): Passed to Plotly's make_subplots method.
             Defaults to dict(shared_yaxes=True, column_widths=(0.8, 0.2),
             horizontal_spacing=0.01).
-        all_line_kwargs (dict[str, Any]): Passed to trace.update for each in fig.data.
-            Modify line appearance for all traces. Defaults to None.
+        all_line_kwargs (dict[str, Any]): Passed to trace.update for each trace in
+            fig.data. Modifies line appearance for all traces. Defaults to None.
         per_line_kwargs (dict[str, str]): Map of line labels to kwargs for trace.update.
-            Modify line appearance for specific traces. Defaults to None.
+            Modifies line appearance for specific traces. Defaults to None.
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:
