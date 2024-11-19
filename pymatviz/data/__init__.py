@@ -6,18 +6,22 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-SEED = 0
-
-
 class RegressionData(NamedTuple):
     """Regression data containing: y_true, y_pred and y_std."""
 
-    y_true: NDArray
-    y_pred: NDArray
-    y_std: NDArray
+    y_true: NDArray[np.float64]
+    y_pred: NDArray[np.float64]
+    y_std: NDArray[np.float64]
 
 
-def get_regression_data(n_samples: int = 500) -> RegressionData:
+def regression(
+    n_samples: int = 500,
+    true_mean: float = 5,
+    true_std: float = 4,
+    pred_slope: float = 1.2,
+    pred_intercept: float = -2,
+    seed: int = 0,
+) -> RegressionData:
     """Generate dummy regression data for testing and prototyping.
 
     This function creates synthetic data to simulate a regression task:
@@ -34,10 +38,13 @@ def get_regression_data(n_samples: int = 500) -> RegressionData:
     Returns:
         RegressionData: A named tuple containing y_true, y_pred, and y_std.
     """
-    np_rng = np.random.default_rng(seed=SEED)
+    np_rng = np.random.default_rng(seed=seed)
 
-    y_true = np_rng.normal(5, 4, n_samples)
-    y_pred = 1.2 * y_true - 2 * np_rng.normal(0, 1, n_samples)
-    y_std = (y_true - y_pred) * 10 * np_rng.normal(0, 0.1, n_samples)
+    y_true = np_rng.normal(loc=true_mean, scale=true_std, size=n_samples)
+
+    noise = np_rng.normal(loc=0, scale=1, size=n_samples)
+    y_pred = pred_slope * y_true + pred_intercept + noise
+
+    y_std = (y_true - y_pred) * 10 * np_rng.normal(loc=0, scale=0.1, size=n_samples)
 
     return RegressionData(y_true=y_true, y_pred=y_pred, y_std=y_std)

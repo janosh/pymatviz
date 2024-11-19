@@ -1,9 +1,8 @@
 # %%
 import pymatviz as pmv
-from pymatviz.test.data import get_regression_data
 
 
-dummy_data = get_regression_data()
+dummy_data = pmv.data.regression()
 
 
 # %% Cumulative Plots

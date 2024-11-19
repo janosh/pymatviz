@@ -2,11 +2,10 @@
 import numpy as np
 
 import pymatviz as pmv
-from pymatviz.test.data import get_regression_data
 
 
 np_rng = np.random.default_rng(seed=0)
-dummy_data = get_regression_data()
+dummy_data = pmv.data.regression()
 
 
 # %% Uncertainty Plots
