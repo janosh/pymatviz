@@ -10,6 +10,6 @@ pmv.utils.apply_matplotlib_template()
 
 # %% scatter with error bar
 ax = pmv.scatter_with_err_bar(
-    dummy_data.y_pred, dummy_data.y_true, yerr=dummy_data.y_std
+    dummy_data.y_pred, dummy_data.y_true, yerr=abs(dummy_data.y_std)
 )
 pmv.io.save_and_compress_svg(ax, "scatter-with-err-bar")
