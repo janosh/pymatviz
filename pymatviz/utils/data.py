@@ -1,35 +1,24 @@
 """Data processing utils, dummy data generator, ..."""
 
-
 from __future__ import annotations
 
-from pymatviz.utils import ROOT
-import re
-import warnings
 from collections.abc import Sequence
 from contextlib import contextmanager
-from functools import partial, wraps
+from functools import partial
+from typing import TYPE_CHECKING
 
-from typing import TYPE_CHECKING, Literal, TypeVar, cast, get_args
-
-import matplotlib.colors
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.io as pio
 import scipy.stats
-from matplotlib.colors import to_rgb
-from matplotlib.offsetbox import AnchoredText
-from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 from pymatgen.core import Structure
+
+from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
     from typing import Any
 
-    from matplotlib.ticker import Formatter
     from numpy.typing import ArrayLike
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
@@ -128,6 +117,7 @@ def patch_dict(
 
     yield patched
 
+
 def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | Sequence[str] | Sequence[ArrayLike],
@@ -187,7 +177,6 @@ def df_to_arrays(
             args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index]
 
     return args  # type: ignore[return-value]
-
 
 
 def bin_df_cols(
@@ -312,3 +301,59 @@ def si_fmt(
 
 
 si_fmt_int = partial(si_fmt, fmt=".0f")
+
+
+def crystal_sys_from_spg_num(spg: float) -> CrystalSystem:
+    """Get the crystal system for an international space group number."""
+    # Ensure integer or float with no decimal part
+    if not isinstance(spg, int | float) or spg != int(spg):
+        raise TypeError(f"Expect integer space group number, got {spg=}")
+
+    if not (1 <= spg <= 230):
+        raise ValueError(f"Invalid space group number {spg}, must be 1 <= num <= 230")
+
+    if 1 <= spg <= 2:
+        return "triclinic"
+    if spg <= 15:
+        return "monoclinic"
+    if spg <= 74:
+        return "orthorhombic"
+    if spg <= 142:
+        return "tetragonal"
+    if spg <= 167:
+        return "trigonal"
+    if spg <= 194:
+        return "hexagonal"
+    return "cubic"
+
+
+def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:
+    """Wrap text in a span with custom style.
+
+    Style defaults to decreased font size and weight e.g. to display units
+    in plotly labels and annotations.
+
+    Args:
+        text (str): Text to wrap in span.
+        tag (str, optional): HTML tag name. Defaults to "span".
+        style (str, optional): CSS style string. Defaults to "". Special keys:
+            "small": font-size: 0.8em; font-weight: lighter;
+            "bold": font-weight: bold;
+            "italic": font-style: italic;
+            "underline": text-decoration: underline;
+        title (str | None, optional): Title attribute which displays additional
+            information in a tooltip. Defaults to "".
+
+    Returns:
+        str: HTML string with tag-wrapped text.
+    """
+    style = {
+        "small": "font-size: 0.8em; font-weight: lighter;",
+        "bold": "font-weight: bold;",
+        "italic": "font-style: italic;",
+        "underline": "text-decoration: underline;",
+    }.get(style, style)
+    attr_str = f" {title=}" if title else ""
+    if style:
+        attr_str += f" {style=}"
+    return f"<{tag}{attr_str}>{text}</{tag}>"

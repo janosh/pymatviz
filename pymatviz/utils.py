@@ -6,14 +6,12 @@ import re
 import warnings
 from collections.abc import Sequence
 from functools import wraps
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 
-import matplotlib.colors
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
-from matplotlib.colors import to_rgb
 from matplotlib.offsetbox import AnchoredText
 from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 
@@ -23,10 +21,6 @@ if TYPE_CHECKING:
     from typing import Any
 
     from matplotlib.ticker import Formatter
-
-
-class ExperimentalWarning(Warning):
-    """Warning for experimental features."""
 
 
 def pretty_label(key: str, backend: Backend) -> str:
@@ -43,65 +37,6 @@ def pretty_label(key: str, backend: Backend) -> str:
     }
 
     return symbol_mapping.get(key, {}).get(backend, key)
-
-
-def crystal_sys_from_spg_num(spg: float) -> CrystalSystem:
-    """Get the crystal system for an international space group number."""
-    # Ensure integer or float with no decimal part
-    if not isinstance(spg, int | float) or spg != int(spg):
-        raise TypeError(f"Expect integer space group number, got {spg=}")
-
-    if not (1 <= spg <= 230):
-        raise ValueError(f"Invalid space group number {spg}, must be 1 <= num <= 230")
-
-    if 1 <= spg <= 2:
-        return "triclinic"
-    if spg <= 15:
-        return "monoclinic"
-    if spg <= 74:
-        return "orthorhombic"
-    if spg <= 142:
-        return "tetragonal"
-    if spg <= 167:
-        return "trigonal"
-    if spg <= 194:
-        return "hexagonal"
-    return "cubic"
-
-
-def luminance(color: str | tuple[float, float, float]) -> float:
-    """Compute the luminance of a color as in https://stackoverflow.com/a/596243.
-
-    Args:
-        color (tuple[float, float, float]): RGB color tuple with values in [0, 1].
-
-    Returns:
-        float: Luminance of the color.
-    """
-    # raises ValueError if color invalid
-    red, green, blue = matplotlib.colors.to_rgb(color)
-    return 0.299 * red + 0.587 * green + 0.114 * blue
-
-
-def pick_bw_for_contrast(
-    color: tuple[float, float, float] | str,
-    text_color_threshold: float = 0.7,
-) -> Literal["black", "white"]:
-    """Choose black or white text color for a given background color based on luminance.
-
-    Args:
-        color (tuple[float, float, float] | str): RGB color tuple with values in [0, 1].
-        text_color_threshold (float, optional): Luminance threshold for choosing
-            black or white text color. Defaults to 0.7.
-
-    Returns:
-        "black" | "white": depending on the luminance of the background color.
-    """
-    if isinstance(color, str):
-        color = to_rgb(color)
-
-    light_bg = luminance(cast(tuple[float, float, float], color)) > text_color_threshold
-    return "black" if light_bg else "white"
 
 
 def get_cbar_label_formatter(
@@ -155,38 +90,6 @@ def get_cbar_label_formatter(
         return formatter
 
     return FormatStrFormatter(f"%{cbar_label_fmt}")
-
-
-def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:
-    """Wrap text in a span with custom style.
-
-    Style defaults to decreased font size and weight e.g. to display units
-    in plotly labels and annotations.
-
-    Args:
-        text (str): Text to wrap in span.
-        tag (str, optional): HTML tag name. Defaults to "span".
-        style (str, optional): CSS style string. Defaults to "". Special keys:
-            "small": font-size: 0.8em; font-weight: lighter;
-            "bold": font-weight: bold;
-            "italic": font-style: italic;
-            "underline": text-decoration: underline;
-        title (str | None, optional): Title attribute which displays additional
-            information in a tooltip. Defaults to "".
-
-    Returns:
-        str: HTML string with tag-wrapped text.
-    """
-    style = {
-        "small": "font-size: 0.8em; font-weight: lighter;",
-        "bold": "font-weight: bold;",
-        "italic": "font-style: italic;",
-        "underline": "text-decoration: underline;",
-    }.get(style, style)
-    attr_str = f" {title=}" if title else ""
-    if style:
-        attr_str += f" {style=}"
-    return f"<{tag}{attr_str}>{text}</{tag}>"
 
 
 def validate_fig(func: Callable[P, R]) -> Callable[P, R]:

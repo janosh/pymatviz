@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-
-from typing import TYPE_CHECKING, Literal, TypeVar, get_args
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Literal, ParamSpec, TypeVar, get_args
 
 import pandas as pd
-
-from typing import Sequence, ParamSpec
 
 
 if TYPE_CHECKING:
