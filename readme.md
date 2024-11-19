@@ -82,11 +82,11 @@ See [`pymatviz/ptable/ptable_matplotlib.py`](pymatviz/ptable/ptable_matplotlib.p
 
 See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main/examples/mlff_phonons.ipynb) for usage example.
 
-|           [`phonon_bands(bands_dict)`](pymatviz/phonons.py)           |             [`phonon_dos(doses_dict)`](pymatviz/phonons.py)             |
-| :-------------------------------------------------------------------: | :---------------------------------------------------------------------: |
-|                     ![phonon-bands][phonon-bands]                     |                        ![phonon-dos][phonon-dos]                        |
-| [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons.py) | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons.py) |
-|     ![phonon-bands-and-dos-mp-2758][phonon-bands-and-dos-mp-2758]     |     ![phonon-bands-and-dos-mp-23907][phonon-bands-and-dos-mp-23907]     |
+|               [`phonon_bands(bands_dict)`](assets/scripts/phonons/phonon_bands.py)               |                  [`phonon_dos(doses_dict)`](assets/scripts/phonons/phonon_dos.py)                  |
+| :----------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
+|                                  ![phonon-bands][phonon-bands]                                   |                                     ![phonon-dos][phonon-dos]                                      |
+| [`phonon_bands_and_dos(bands_dict, doses_dict)`](assets/scripts/phonons/phonon_bands_and_dos.py) | [`phonon_bands_and_dos(single_bands, single_dos)`](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                  ![phonon-bands-and-dos-mp-2758][phonon-bands-and-dos-mp-2758]                   |                  ![phonon-bands-and-dos-mp-23907][phonon-bands-and-dos-mp-23907]                   |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
 [phonon-dos]: assets/svg/phonon-dos-mp-2758.svg
