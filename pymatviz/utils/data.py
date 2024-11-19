@@ -1,35 +1,24 @@
 """Data processing utils, dummy data generator, ..."""
 
-
 from __future__ import annotations
 
-from pymatviz.utils import ROOT
-import re
-import warnings
 from collections.abc import Sequence
 from contextlib import contextmanager
-from functools import partial, wraps
+from functools import partial
+from typing import TYPE_CHECKING
 
-from typing import TYPE_CHECKING, Literal, TypeVar, cast, get_args
-
-import matplotlib.colors
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.io as pio
 import scipy.stats
-from matplotlib.colors import to_rgb
-from matplotlib.offsetbox import AnchoredText
-from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 from pymatgen.core import Structure
+
+from pymatviz.utils import ROOT
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
     from typing import Any
 
-    from matplotlib.ticker import Formatter
     from numpy.typing import ArrayLike
 
 elements_csv = f"{ROOT}/pymatviz/elements.csv"
@@ -128,6 +117,7 @@ def patch_dict(
 
     yield patched
 
+
 def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | Sequence[str] | Sequence[ArrayLike],
@@ -187,7 +177,6 @@ def df_to_arrays(
             args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index]
 
     return args  # type: ignore[return-value]
-
 
 
 def bin_df_cols(
