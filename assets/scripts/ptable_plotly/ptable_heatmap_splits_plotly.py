@@ -23,13 +23,12 @@ for n_splits, orientation in itertools.product(
         for elem in Element
     }
 
+    cbar_title = f"Periodic Table Heatmap with {n_splits}-fold split"
     fig = pmv.ptable_heatmap_splits_plotly(
         data=data_dict,
         orientation=orientation,  # type: ignore[arg-type]
         colorscale="RdYlBu",
-        colorbar=dict(
-            title=f"Periodic Table Heatmap with {n_splits}-fold split",
-        ),
+        colorbar=dict(title=cbar_title),
     )
 
     fig.show()
