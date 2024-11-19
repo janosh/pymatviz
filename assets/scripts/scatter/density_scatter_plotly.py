@@ -2,18 +2,11 @@
 from __future__ import annotations
 
 import plotly.express as px
-import plotly.io as pio
 
 import pymatviz as pmv
-from pymatviz.test.config import config_matplotlib
 
 
-px.defaults.template = "pymatviz_white"
-pio.templates.default = "pymatviz_white"
-
-
-# Configure matplotlib
-config_matplotlib()
+pmv.set_plotly_template("pymatviz_white")
 
 
 # %% density scatter plotly
