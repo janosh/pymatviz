@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 
 
-PKG_DIR = os.path.dirname(__file__)
-ROOT = os.path.dirname(PKG_DIR)
+PKG_DIR: str = os.path.dirname(__file__)
+ROOT: str = os.path.dirname(PKG_DIR)
 
 
 class ExperimentalWarning(Warning):
@@ -27,3 +27,27 @@ from pymatviz.utils.data import (
     si_fmt_int,
 )
 from pymatviz.utils.image import luminance, pick_bw_for_contrast
+from pymatviz.utils.plotting import (
+    annotate,
+    get_cbar_label_formatter,
+    get_fig_xy_range,
+    get_font_color,
+    pretty_label,
+    validate_fig,
+)
+from pymatviz.utils.typing import (
+    BACKENDS,
+    MATPLOTLIB,
+    PLOTLY,
+    VALID_COLOR_ELEM_STRATEGIES,
+    VALID_FIG_NAMES,
+    VALID_FIG_TYPES,
+    AxOrFig,
+    Backend,
+    ColorElemTypeStrategy,
+    CrystalSystem,
+    ElemValues,
+    P,
+    R,
+    T,
+)
