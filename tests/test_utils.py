@@ -725,3 +725,27 @@ def test_normalize_to_dict_mixed_classes(
 
     with pytest.raises(TypeError, match=r"Invalid inputs=\["):
         normalize_to_dict([instance1, instance2], cls=cls1)
+
+
+def test_apply_matplotlib_template() -> None:
+    """Test that apply_matplotlib_template() correctly sets matplotlib parameters."""
+    # Store original values
+    orig_params = plt.rcParams.copy()
+
+    try:
+        # Apply the template
+        pmv.utils.apply_matplotlib_template()
+
+        # Check that parameters were set correctly
+        assert plt.rcParams["font.size"] == 14
+        assert plt.rcParams["savefig.bbox"] == "tight"
+        assert plt.rcParams["savefig.dpi"] == 200
+        assert plt.rcParams["axes.titlesize"] == 16
+        assert plt.rcParams["axes.titleweight"] == "bold"
+        assert plt.rcParams["figure.dpi"] == 200
+        assert plt.rcParams["figure.titlesize"] == 20
+        assert plt.rcParams["figure.titleweight"] == "bold"
+        assert plt.rcParams["figure.constrained_layout.use"] is True
+
+    finally:  # Restore original values
+        plt.rcParams.update(orig_params)

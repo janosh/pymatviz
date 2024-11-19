@@ -60,10 +60,3 @@ fig_crys_vs_amorph.show()
 # pmv.io.save_and_compress_svg(
 #     fig_crys_vs_amorph, "element-pair-rdfs-crystal-vs-amorphous"
 # )
-
-
-# %% compare full RDFs for crystalline LiPO4 and randomly-placed "amorphous" LiPO4
-fig_crys_vs_amorph = pmv.full_rdf(
-    structures={"Crystal": crystal_lipo4, "Amorphous": amorphous_lipo4}
-)
-fig_crys_vs_amorph.show()

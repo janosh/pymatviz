@@ -12,9 +12,5 @@ y_proba = np.clip(y_binary - 0.1 * np_rng.normal(scale=5, size=rand_clf_size), 0
 
 
 # %% Relevance Plots
-ax = pmv.roc_curve(y_binary, y_proba)
-pmv.io.save_and_compress_svg(ax, "roc-curve")
-
-
 ax = pmv.precision_recall_curve(y_binary, y_proba)
 pmv.io.save_and_compress_svg(ax, "precision-recall-curve")

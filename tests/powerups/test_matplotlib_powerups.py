@@ -82,7 +82,10 @@ def test_with_marginal_hist() -> None:
     assert isinstance(ax_main, plt.Axes)
     assert len(fig.axes) == 4
 
-    gs = fig.add_gridspec(2, 2)
+    gs = fig.add_gridspec(ncols=2, nrows=2)
     ax_main = pmv.powerups.with_marginal_hist([1, 2, 3], [4, 5, 6], cell=gs[1, 0])
     assert isinstance(ax_main, plt.Axes)
-    assert len(fig.axes) == 7
+    assert len(fig.axes) == 4
+    assert fig.get_axes()[0].get_position().get_points().flat == pytest.approx(
+        [0.125, 0.11, 0.9, 0.88]
+    )
