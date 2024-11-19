@@ -1,11 +1,11 @@
 # %%
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.io as pio
 
 import pymatviz as pmv
+from pymatviz.test.config import config_matplotlib
 from pymatviz.test.data import get_regression_data
 
 
@@ -14,13 +14,8 @@ pio.templates.default = "pymatviz_white"
 
 dummy_data = get_regression_data()
 
-
-# %% Configure matplotlib and load test data
-plt.rc("font", size=14)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("axes", titlesize=16, titleweight="bold")
-plt.rc("figure", dpi=200, titlesize=20, titleweight="bold")
-plt.rcParams["figure.constrained_layout.use"] = True
+# Configure matplotlib
+config_matplotlib()
 
 
 # %% density scatter with hist
