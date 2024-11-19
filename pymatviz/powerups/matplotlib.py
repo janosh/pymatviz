@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.gridspec import GridSpec
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
 
-    from matplotlib.gridspec import GridSpec
     from matplotlib.text import Annotation
     from numpy.typing import ArrayLike
 
@@ -23,6 +23,7 @@ def with_marginal_hist(
     cell: GridSpec | None = None,
     bins: int = 100,
     fig: plt.Figure | plt.Axes | None = None,
+    **kwargs: Any,
 ) -> plt.Axes:
     """Call before creating a matplotlib figure and use the returned `ax_main` for all
     subsequent plotting ops to create a grid of plots with the main plot in the
@@ -37,29 +38,43 @@ def with_marginal_hist(
         bins (int, optional): Resolution/bin count of the histograms. Defaults to 100.
         fig (Figure, optional): matplotlib Figure or Axes to add the marginal histograms
             to. Defaults to None.
+        **kwargs: Additional keywords passed to ax.hist().
 
     Returns:
         plt.Axes: The matplotlib Axes to be used for the main plot.
     """
-    if fig is None or isinstance(fig, plt.Axes):
-        ax_main = fig or plt.gca()
-        fig = ax_main.figure
+    if isinstance(fig, plt.Axes):
+        fig = fig.figure
+    if fig is None:
+        fig = plt.figure(figsize=(8, 8))
 
-    gs = (cell.subgridspec if cell else fig.add_gridspec)(
-        2, 2, width_ratios=(6, 1), height_ratios=(1, 5), wspace=0, hspace=0
+    # Create the grid
+    cell_kwargs = dict(
+        nrows=2, ncols=2, width_ratios=(6, 1), height_ratios=(1, 5), wspace=0, hspace=0
     )
+    if cell is None:
+        gs = GridSpec(figure=fig, **cell_kwargs)
+    else:
+        # Create a subgridspec within the provided cell
+        gs = cell.subgridspec(**cell_kwargs)
 
-    ax_main = fig.add_subplot(gs[1, 0])
-    ax_hist_x = fig.add_subplot(gs[0, 0], sharex=ax_main)
-    ax_hist_y = fig.add_subplot(gs[1, 1], sharey=ax_main)
+    # Create the three axes
+    ax_main = fig.add_subplot(gs[1, 0])  # Main scatter plot
+    ax_top = fig.add_subplot(gs[0, 0], sharex=ax_main)  # Top histogram
+    ax_right = fig.add_subplot(gs[1, 1], sharey=ax_main)  # Right histogram
+
+    # Plot the histograms
+    hist_defaults = dict(bins=bins, density=True, color="blue")
+    ax_top.hist(xs, **hist_defaults | kwargs)
+    ax_right.hist(ys, **dict(orientation="horizontal") | hist_defaults | kwargs)
 
     # x_hist
-    ax_hist_x.hist(xs, bins=bins, rwidth=0.8)
-    ax_hist_x.axis("off")
+    ax_top.hist(xs, bins=bins, rwidth=0.8)
+    ax_top.axis("off")
 
     # y_hist
-    ax_hist_y.hist(ys, bins=bins, rwidth=0.8, orientation="horizontal")
-    ax_hist_y.axis("off")
+    ax_right.hist(ys, bins=bins, rwidth=0.8, orientation="horizontal")
+    ax_right.axis("off")
 
     return ax_main
 
