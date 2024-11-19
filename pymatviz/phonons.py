@@ -17,7 +17,7 @@ from pymatgen.util.string import htmlify
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from typing import Any, TypeAlias
 
     import numpy as np
@@ -154,7 +154,14 @@ def _shaded_range(
 
 def phonon_bands(
     band_structs: PhononBands | dict[str, PhononBands],
-    line_kwargs: dict[str, Any] | None = None,
+    line_kwargs: (
+        dict[str, Any]  # single dict for all lines
+        # separate dicts for modes
+        | dict[Literal["acoustic", "optical"], dict[str, Any]]
+        # function taking (band_data, band_idx)
+        | Callable[[np.ndarray, int], dict[str, Any]]
+        | None
+    ) = None,
     branches: Sequence[str] = (),
     branch_mode: BranchMode = "union",
     shaded_ys: dict[tuple[YMin | YMax, YMin | YMax], dict[str, Any]]
@@ -162,8 +169,7 @@ def phonon_bands(
     | None = None,
     **kwargs: Any,
 ) -> go.Figure:
-    """Plot single or multiple pymatgen band structures using Plotly, focusing on the
-    minimum set of overlapping branches.
+    """Plot single or multiple pymatgen band structures using Plotly.
 
     Warning: Only tested with phonon band structures so far but plan is to extend to
     electronic band structures.
@@ -172,7 +178,13 @@ def phonon_bands(
         band_structs (PhononBandStructureSymmLine | dict[str, PhononBandStructure]):
             Single BandStructureSymmLine or PhononBandStructureSymmLine object or a dict
             with labels mapped to multiple such objects.
-        line_kwargs (dict[str, Any]): Passed to Plotly's Figure.add_scatter method.
+        line_kwargs (dict | dict[str, dict] | Callable): Line style configuration.
+            Can be:
+            - A single dict applied to all lines
+            - A dict with keys "acoustic" and "optical" containing style dicts for each
+              mode type
+            - A callable taking (band_data, band_idx) and returning a style dict
+            Common style options include color, width, dash. Defaults to None.
         branches (Sequence[str]): Branches to plot. Defaults to empty tuple, meaning all
             branches are plotted.
         branch_mode ("union" | "intersection"): Whether to plot union or intersection
@@ -251,29 +263,58 @@ def phonon_bands(
     for bs_idx, (label, bs) in enumerate(band_structs.items()):
         color = colors[bs_idx % len(colors)]
         line_style = line_styles[bs_idx % len(line_styles)]
-        line_defaults = dict(color=color, width=1.5, dash=line_style)
-        # 1st bands determine x-axis scale (there are usually slight scale differences
-        # between bands)
         first_bs = first_bs or bs
-        for branch_idx, branch in enumerate(bs.branches):
+
+        for branch in bs.branches:
             if branch["name"] not in common_branches:
                 continue
             start_idx = branch["start_index"]
-            end_idx = branch["end_index"] + 1  # Include the end point
-            # using the same first_bs x-axis for all band structures to avoid band
-            # shifting
+            end_idx = branch["end_index"] + 1
             distances = first_bs.distance[start_idx:end_idx]
-            for band in range(bs.nb_bands):
-                frequencies = bs.bands[band][start_idx:end_idx]
-                # group traces for toggling and set legend name only for 1st band
+
+            for band_idx in range(bs.nb_bands):
+                frequencies = bs.bands[band_idx][start_idx:end_idx]
+                # Determine if this is an acoustic or optical band
+                is_acoustic = band_idx < 3
+                mode_type = "acoustic" if is_acoustic else "optical"
+
+                # Default line style
+                line_defaults = dict(
+                    color=color, width=1.5 if is_acoustic else 1, dash=line_style
+                )
+                trace_name = label
+                existing_names = {trace.name for trace in fig.data}
+
+                # Apply line style based on line_kwargs type
+                if callable(line_kwargs):
+                    # Pass band data and index to callback
+                    custom_style = line_kwargs(frequencies, band_idx)
+                    line_defaults |= custom_style
+                elif isinstance(line_kwargs, dict):
+                    # check for custom line styles for one or both modes
+                    if {"acoustic", "optical"} <= set(line_kwargs):
+                        mode_styles = line_kwargs.get(mode_type, {})  # type: ignore[call-overload]
+                        # use custom trace name if provided (needs to be popped before
+                        # passed to line kwargs)
+                        if mode_name := mode_styles.pop("name", None):
+                            trace_name = mode_name
+                            # don't show default trace name in legend if got custom name
+                            existing_names.add(trace_name)
+
+                        # Use mode-specific styles
+                        line_defaults |= mode_styles
+                    else:  # Apply single style dict to all lines
+                        line_defaults |= line_kwargs  # type: ignore[arg-type]
+
+                is_new_name = trace_name not in existing_names
                 fig.add_scatter(
                     x=distances,
                     y=frequencies,
                     mode="lines",
-                    line=line_defaults | line_kwargs,
-                    legendgroup=label,
-                    name=label,
-                    showlegend=branch_idx == band == 0,
+                    line=line_defaults,
+                    legendgroup=trace_name,
+                    name=trace_name,
+                    showlegend=is_new_name,
                     **kwargs,
                 )
 
@@ -484,10 +525,10 @@ def phonon_bands_and_dos(
         subplot_kwargs (dict[str, Any]): Passed to Plotly's make_subplots method.
             Defaults to dict(shared_yaxes=True, column_widths=(0.8, 0.2),
             horizontal_spacing=0.01).
-        all_line_kwargs (dict[str, Any]): Passed to trace.update for each in fig.data.
-            Modify line appearance for all traces. Defaults to None.
+        all_line_kwargs (dict[str, Any]): Passed to trace.update for each trace in
+            fig.data. Modifies line appearance for all traces. Defaults to None.
         per_line_kwargs (dict[str, str]): Map of line labels to kwargs for trace.update.
-            Modify line appearance for specific traces. Defaults to None.
+            Modifies line appearance for specific traces. Defaults to None.
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:

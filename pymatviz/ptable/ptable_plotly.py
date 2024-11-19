@@ -759,15 +759,14 @@ def ptable_heatmap_splits_plotly(
     """
     import plotly.colors
 
-    # Process input data
-    if isinstance(data, pd.Series):
+    if isinstance(data, pd.Series):  # Process input data
         data = data.to_dict()
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="index")
 
     # Find global min and max values for color scaling
-    all_values = [v for values in data.values() for v in values if not np.isnan(v)]
-    vmin, vmax = min(all_values), max(all_values)
+    all_values = np.array(list(data.values()), dtype=float)
+    cbar_min, cbar_max = np.nanmin(all_values), np.nanmax(all_values)
 
     # Initialize figure with subplots
     n_rows, n_cols = 10, 18
@@ -864,20 +863,17 @@ def ptable_heatmap_splits_plotly(
         xy_ref = dict(xref=f"x{subplot_key}", yref=f"y{subplot_key}")
 
         # Get values and colors
-        values = data.get(symbol, [])
-        if len(values) == 0:
-            values = [1]
+        values = np.asarray(data.get(symbol, []), dtype=float)
 
         # Create sections
         sections = create_section_coords(len(values), orientation)  # type: ignore[arg-type]
         for idx, (xs, ys) in enumerate(sections):
-            color = (
-                plotly.colors.sample_colorscale(
-                    colorscale, (values[idx] - vmin) / (vmax - vmin)
+            if len(values) <= idx or np.isnan(values[idx]):
+                color = nan_color
+            else:
+                color = plotly.colors.sample_colorscale(
+                    colorscale, (values[idx] - cbar_min) / (cbar_max - cbar_min)
                 )[0]
-                if not np.isnan(values[idx])
-                else nan_color
-            )
             fig.add_scatter(
                 x=xs,
                 y=ys,
@@ -998,8 +994,8 @@ def ptable_heatmap_splits_plotly(
             marker=dict(
                 colorscale=colorscale,
                 showscale=True,
-                cmin=vmin,
-                cmax=vmax,
+                cmin=cbar_min,
+                cmax=cbar_max,
                 colorbar=colorbar,
             ),
             hoverinfo="none",

@@ -24,15 +24,32 @@ for mp_id, formula in (
 ):
     docs = {}
     for path in glob(f"{pmv.utils.TEST_FILES}/phonons/{mp_id}-{formula}-*.json.lzma"):
-        key = path.split("-")[-1].split(".")[0]
+        model_label = (
+            "CHGNet"
+            if "chgnet" in path
+            else "MACE"
+            if "mace" in path
+            else "M3GNet"
+            if "m3gnet" in path
+            else "PBE"
+        )
         with zopen(path) as file:
-            docs[key] = json.loads(file.read(), cls=MontyDecoder)
+            docs[model_label] = json.loads(file.read(), cls=MontyDecoder)
 
     ph_bands: dict[str, PhononBands] = {
         key: getattr(doc, Key.ph_band_structure) for key, doc in docs.items()
     }
 
-    fig = pmv.phonon_bands(ph_bands)
-    fig.layout.title = dict(text=f"Phonon Bands of {formula} ({mp_id})", x=0.5, y=0.98)
+    acoustic_lines: dict[str, str | float] = dict(width=1.5)
+    optical_lines: dict[str, str | float] = dict(width=1)
+    if len(ph_bands) == 1:
+        acoustic_lines |= dict(dash="dash", color="red", name="Acoustic")
+        optical_lines |= dict(dash="dot", color="blue", name="Optical")
+
+    fig = pmv.phonon_bands(
+        ph_bands, line_kwargs=dict(acoustic=acoustic_lines, optical=optical_lines)
+    )
+    fig.layout.title = dict(text=f"{formula} ({mp_id}) Phonon Bands", x=0.5, y=0.98)
     fig.layout.margin = dict(l=0, r=0, b=0, t=40)
+    fig.show()
     pmv.io.save_and_compress_svg(fig, f"phonon-bands-{mp_id}")
