@@ -35,6 +35,7 @@ from pymatviz import (
     structure_viz,
     sunburst,
     templates,
+    typing,
     uncertainty,
     utils,
     xrd,
