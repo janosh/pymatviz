@@ -8,6 +8,7 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 
 import pymatviz as pmv
 from pymatviz.enums import Key
+from pymatviz.utils.testing import TEST_FILES
 
 
 # TODO: ffonons not working properly (see #195)
@@ -23,7 +24,7 @@ for mp_id, formula in (
     ("mp-23907", "H2"),
 ):
     docs = {}
-    for path in glob(f"{pmv.utils.TEST_FILES}/phonons/{mp_id}-{formula}-*.json.lzma"):
+    for path in glob(f"{TEST_FILES}/phonons/{mp_id}-{formula}-*.json.lzma"):
         model_label = (
             "CHGNet"
             if "chgnet" in path

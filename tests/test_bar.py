@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import pytest
 
 from pymatviz.bar import spacegroup_bar
-from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY
+from pymatviz.typing import BACKENDS, MATPLOTLIB, PLOTLY
 
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from pymatgen.core import Structure
 
-    from pymatviz.utils import Backend
+    from pymatviz.typing import Backend
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
