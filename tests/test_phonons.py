@@ -13,7 +13,7 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
-from pymatviz.utils import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES
 
 
 if TYPE_CHECKING:

@@ -5,7 +5,7 @@ from pymatgen.analysis.diffraction.xrd import XRDCalculator
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.utils import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES
 
 
 pmv.set_plotly_template("pymatviz_white")
