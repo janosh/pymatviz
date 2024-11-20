@@ -1,4 +1,4 @@
-"""Typing related: TypeAlias, ..."""
+"""Typing related: TypeAlias, generic types and so on."""
 
 from __future__ import annotations
 

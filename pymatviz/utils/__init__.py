@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 
 
-PKG_DIR: str = os.path.dirname(__file__)
+PKG_DIR: str = os.path.dirname(os.path.dirname(__file__))
 ROOT: str = os.path.dirname(PKG_DIR)
+
 
 from pymatviz.utils.data import (
     atomic_numbers,
@@ -32,6 +33,7 @@ from pymatviz.utils.plotting import (
     pretty_label,
     validate_fig,
 )
+from pymatviz.utils.testing import TEST_FILES
 from pymatviz.utils.typing import (
     BACKENDS,
     MATPLOTLIB,
