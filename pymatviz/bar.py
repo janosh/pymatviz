@@ -16,11 +16,14 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import Key
-from pymatviz.utils import PLOTLY, Backend, crystal_sys_from_spg_num, si_fmt_int
+from pymatviz.typing import PLOTLY
+from pymatviz.utils import crystal_sys_from_spg_num, si_fmt_int
 
 
 if TYPE_CHECKING:
     from typing import Any, Literal
+
+    from pymatviz.typing import Backend
 
 
 def spacegroup_bar(

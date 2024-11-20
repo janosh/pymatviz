@@ -11,11 +11,13 @@ from pandas.api.types import is_numeric_dtype, is_string_dtype
 from pymatgen.core import Composition
 
 from pymatviz.enums import ElemCountMode, Key
-from pymatviz.utils import ElemValues, df_ptable
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from pymatviz.typing import ElemValues
 
 
 def count_elements(

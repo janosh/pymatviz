@@ -15,13 +15,8 @@ from matplotlib.offsetbox import TextArea
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
-from pymatviz.utils import (
-    MATPLOTLIB,
-    PLOTLY,
-    VALID_FIG_NAMES,
-    CrystalSystem,
-    normalize_to_dict,
-)
+from pymatviz.typing import MATPLOTLIB, PLOTLY, VALID_FIG_NAMES, CrystalSystem
+from pymatviz.utils import normalize_to_dict
 from pymatviz.utils.plotting import _get_matplotlib_font_color, _get_plotly_font_color
 from tests.conftest import y_pred, y_true
 

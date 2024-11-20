@@ -40,19 +40,3 @@ from pymatviz.utils.plotting import (
     validate_fig,
 )
 from pymatviz.utils.testing import TEST_FILES
-from pymatviz.utils.typing import (
-    BACKENDS,
-    MATPLOTLIB,
-    PLOTLY,
-    VALID_COLOR_ELEM_STRATEGIES,
-    VALID_FIG_NAMES,
-    VALID_FIG_TYPES,
-    AxOrFig,
-    Backend,
-    ColorElemTypeStrategy,
-    CrystalSystem,
-    ElemValues,
-    P,
-    R,
-    T,
-)

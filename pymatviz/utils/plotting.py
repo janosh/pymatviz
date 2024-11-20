@@ -20,7 +20,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from matplotlib.offsetbox import AnchoredText
 
-from pymatviz.utils.typing import (
+from pymatviz.typing import (
     BACKENDS,
     MATPLOTLIB,
     PLOTLY,
