@@ -21,6 +21,7 @@ from pymatviz.utils.image import luminance, pick_bw_for_contrast
 from pymatviz.utils.misc import ExperimentalWarning
 from pymatviz.utils.plotting import (
     annotate,
+    apply_matplotlib_template,
     get_cbar_label_formatter,
     get_fig_xy_range,
     get_font_color,
