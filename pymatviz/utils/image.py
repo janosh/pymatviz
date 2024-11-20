@@ -1,4 +1,8 @@
-"""Tools related to image processing."""
+"""Tools related to image processing:
+- luminance: Compute the luminance of a color.
+- pick_bw_for_contrast: Choose black or white text color
+    for a given background color based on luminance.
+"""
 
 from __future__ import annotations
 
