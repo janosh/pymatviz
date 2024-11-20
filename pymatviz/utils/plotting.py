@@ -33,94 +33,6 @@ if TYPE_CHECKING:
     from matplotlib.ticker import Formatter
 
 
-def pretty_label(key: str, backend: Backend) -> str:
-    """Map metric keys to their pretty labels."""
-    if backend not in BACKENDS:
-        raise ValueError(f"Unexpected {backend=}, must be one of {BACKENDS}")
-
-    symbol_mapping = {
-        "R2": {MATPLOTLIB: "$R^2$", PLOTLY: "R<sup>2</sup>"},
-        "R2_adj": {
-            MATPLOTLIB: "$R^2_{adj}$",
-            PLOTLY: "R<sup>2</sup><sub>adj</sub>",
-        },
-    }
-
-    return symbol_mapping.get(key, {}).get(backend, key)
-
-
-def get_cbar_label_formatter(
-    *,
-    cbar_label_fmt: str,
-    values_fmt: str,
-    values_show_mode: Literal["value", "fraction", "percent", "off"],
-    sci_notation: bool,
-    default_decimal_places: int = 1,
-) -> Formatter:
-    """Generate colorbar tick label formatter.
-
-    Work differently for different values_show_mode:
-        - "value/fraction" mode: Use cbar_label_fmt (or values_fmt) as is.
-        - "percent" mode: Get number of decimal places to keep from fmt
-            string, for example 1 from ".1%".
-
-    Args:
-        cbar_label_fmt (str): f-string option for colorbar tick labels.
-        values_fmt (str): f-string option for tile values, would be used if
-            cbar_label_fmt is "auto".
-        values_show_mode (str): The values display mode:
-            - "off": Hide values.
-            - "value": Display values as is.
-            - "fraction": As a fraction of the total (0.10).
-            - "percent": As a percentage of the total (10%).
-        sci_notation (bool): Whether to use scientific notation for values and
-            colorbar tick labels.
-        default_decimal_places (int): Default number of decimal places
-            to use if above fmt is invalid.
-
-    Returns:
-        PercentFormatter or FormatStrFormatter.
-    """
-    cbar_label_fmt = values_fmt if cbar_label_fmt == "auto" else cbar_label_fmt
-
-    if values_show_mode == "percent":
-        if match := re.search(r"\.(\d+)%", cbar_label_fmt):
-            decimal_places = int(match[1])
-        else:
-            warnings.warn(
-                f"Invalid {cbar_label_fmt=}, use {default_decimal_places=}",
-                stacklevel=2,
-            )
-            decimal_places = default_decimal_places
-        return PercentFormatter(xmax=1, decimals=decimal_places)
-
-    if sci_notation:
-        formatter = ScalarFormatter(useMathText=False)
-        formatter.set_powerlimits((0, 0))
-        return formatter
-
-    return FormatStrFormatter(f"%{cbar_label_fmt}")
-
-
-def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
-    """Decorator to validate the type of fig keyword argument in a function. fig MUST be
-    a keyword argument, not a positional argument.
-    """
-
-    @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        # TODO use typing.ParamSpec to type wrapper once py310 is oldest supported
-        fig = kwargs.get("fig")
-        if fig is not None and not isinstance(fig, plt.Axes | plt.Figure | go.Figure):
-            raise TypeError(
-                f"Unexpected type for fig: {type(fig).__name__}, must be one of None, "
-                f"{VALID_FIG_NAMES}"
-            )
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
 def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
     """Annotate a matplotlib or plotly figure. Supports faceted plots plotly figure with
     trace with empty strings skipped.
@@ -189,6 +101,169 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
     return fig
 
 
+def get_cbar_label_formatter(
+    *,
+    cbar_label_fmt: str,
+    values_fmt: str,
+    values_show_mode: Literal["value", "fraction", "percent", "off"],
+    sci_notation: bool,
+    default_decimal_places: int = 1,
+) -> Formatter:
+    """Generate colorbar tick label formatter.
+
+    Work differently for different values_show_mode:
+        - "value/fraction" mode: Use cbar_label_fmt (or values_fmt) as is.
+        - "percent" mode: Get number of decimal places to keep from fmt
+            string, for example 1 from ".1%".
+
+    Args:
+        cbar_label_fmt (str): f-string option for colorbar tick labels.
+        values_fmt (str): f-string option for tile values, would be used if
+            cbar_label_fmt is "auto".
+        values_show_mode (str): The values display mode:
+            - "off": Hide values.
+            - "value": Display values as is.
+            - "fraction": As a fraction of the total (0.10).
+            - "percent": As a percentage of the total (10%).
+        sci_notation (bool): Whether to use scientific notation for values and
+            colorbar tick labels.
+        default_decimal_places (int): Default number of decimal places
+            to use if above fmt is invalid.
+
+    Returns:
+        PercentFormatter or FormatStrFormatter.
+    """
+    cbar_label_fmt = values_fmt if cbar_label_fmt == "auto" else cbar_label_fmt
+
+    if values_show_mode == "percent":
+        if match := re.search(r"\.(\d+)%", cbar_label_fmt):
+            decimal_places = int(match[1])
+        else:
+            warnings.warn(
+                f"Invalid {cbar_label_fmt=}, use {default_decimal_places=}",
+                stacklevel=2,
+            )
+            decimal_places = default_decimal_places
+        return PercentFormatter(xmax=1, decimals=decimal_places)
+
+    if sci_notation:
+        formatter = ScalarFormatter(useMathText=False)
+        formatter.set_powerlimits((0, 0))
+        return formatter
+
+    return FormatStrFormatter(f"%{cbar_label_fmt}")
+
+
+def _get_plotly_font_color(fig: go.Figure) -> str:
+    """Get the font color used in a Plotly figure.
+
+    Args:
+        fig (go.Figure): A Plotly figure object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+    """
+    if fig.layout.font and fig.layout.font.color:
+        return fig.layout.font.color
+
+    if (
+        fig.layout.template
+        and fig.layout.template.layout
+        and fig.layout.template.layout.font
+        and fig.layout.template.layout.font.color
+    ):
+        return fig.layout.template.layout.font.color
+
+    template = pio.templates.default
+    if isinstance(template, str):
+        template = pio.templates[template]
+    if template.layout and template.layout.font and template.layout.font.color:
+        return template.layout.font.color
+
+    return "black"
+
+
+def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
+    """Get the font color used in a Matplotlib figure/axes.
+
+    Args:
+        fig (plt.Figure | plt.Axes): A Matplotlib figure or axes object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+    """
+    ax = fig if isinstance(fig, plt.Axes) else fig.gca()
+
+    # Check axes text color
+    for text_element in (ax.xaxis.label, ax.yaxis.label, ax.title):
+        text_color = text_element.get_color()
+        if text_color != "auto":
+            return text_color
+
+    # Check tick label color
+    x_labels = ax.xaxis.get_ticklabels()
+    tick_color = x_labels[0].get_color() if x_labels else None
+    if tick_color is not None and tick_color != "auto":
+        return tick_color
+
+    # Check rcParams
+    return plt.rcParams.get("text.color", "black")
+
+
+def get_font_color(fig: AxOrFig) -> str:
+    """Get the font color used in a Matplotlib figure/axes or a Plotly figure.
+
+    Args:
+        fig (plt.Figure | plt.Axes | go.Figure): A Matplotlib or Plotly figure object.
+
+    Returns:
+        str: The font color as a string (e.g., 'black', '#000000').
+
+    Raises:
+        TypeError: If fig is not a Matplotlib or Plotly figure.
+    """
+    if isinstance(fig, go.Figure):
+        return _get_plotly_font_color(fig)
+    if isinstance(fig, plt.Figure | plt.Axes):
+        return _get_matplotlib_font_color(fig)
+    raise TypeError(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
+
+
+def pretty_label(key: str, backend: Backend) -> str:
+    """Map metric keys to their pretty labels."""
+    if backend not in BACKENDS:
+        raise ValueError(f"Unexpected {backend=}, must be one of {BACKENDS}")
+
+    symbol_mapping = {
+        "R2": {MATPLOTLIB: "$R^2$", PLOTLY: "R<sup>2</sup>"},
+        "R2_adj": {
+            MATPLOTLIB: "$R^2_{adj}$",
+            PLOTLY: "R<sup>2</sup><sub>adj</sub>",
+        },
+    }
+
+    return symbol_mapping.get(key, {}).get(backend, key)
+
+
+def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
+    """Decorator to validate the type of fig keyword argument in a function. fig MUST be
+    a keyword argument, not a positional argument.
+    """
+
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        # TODO use typing.ParamSpec to type wrapper once py310 is oldest supported
+        fig = kwargs.get("fig")
+        if fig is not None and not isinstance(fig, plt.Axes | plt.Figure | go.Figure):
+            raise TypeError(
+                f"Unexpected type for fig: {type(fig).__name__}, must be one of None, "
+                f"{VALID_FIG_NAMES}"
+            )
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 @validate_fig
 def get_fig_xy_range(
     fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
@@ -247,78 +322,3 @@ def get_fig_xy_range(
             y_range = [min(df_xy.y), max(df_xy.y)]
 
     return x_range, y_range
-
-
-def get_font_color(fig: AxOrFig) -> str:
-    """Get the font color used in a Matplotlib figure/axes or a Plotly figure.
-
-    Args:
-        fig (plt.Figure | plt.Axes | go.Figure): A Matplotlib or Plotly figure object.
-
-    Returns:
-        str: The font color as a string (e.g., 'black', '#000000').
-
-    Raises:
-        TypeError: If fig is not a Matplotlib or Plotly figure.
-    """
-    if isinstance(fig, go.Figure):
-        return _get_plotly_font_color(fig)
-    if isinstance(fig, plt.Figure | plt.Axes):
-        return _get_matplotlib_font_color(fig)
-    raise TypeError(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
-
-
-def _get_plotly_font_color(fig: go.Figure) -> str:
-    """Get the font color used in a Plotly figure.
-
-    Args:
-        fig (go.Figure): A Plotly figure object.
-
-    Returns:
-        str: The font color as a string (e.g., 'black', '#000000').
-    """
-    if fig.layout.font and fig.layout.font.color:
-        return fig.layout.font.color
-
-    if (
-        fig.layout.template
-        and fig.layout.template.layout
-        and fig.layout.template.layout.font
-        and fig.layout.template.layout.font.color
-    ):
-        return fig.layout.template.layout.font.color
-
-    template = pio.templates.default
-    if isinstance(template, str):
-        template = pio.templates[template]
-    if template.layout and template.layout.font and template.layout.font.color:
-        return template.layout.font.color
-
-    return "black"
-
-
-def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
-    """Get the font color used in a Matplotlib figure/axes.
-
-    Args:
-        fig (plt.Figure | plt.Axes): A Matplotlib figure or axes object.
-
-    Returns:
-        str: The font color as a string (e.g., 'black', '#000000').
-    """
-    ax = fig if isinstance(fig, plt.Axes) else fig.gca()
-
-    # Check axes text color
-    for text_element in (ax.xaxis.label, ax.yaxis.label, ax.title):
-        text_color = text_element.get_color()
-        if text_color != "auto":
-            return text_color
-
-    # Check tick label color
-    x_labels = ax.xaxis.get_ticklabels()
-    tick_color = x_labels[0].get_color() if x_labels else None
-    if tick_color is not None and tick_color != "auto":
-        return tick_color
-
-    # Check rcParams
-    return plt.rcParams.get("text.color", "black")

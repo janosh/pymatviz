@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
     from pymatviz.utils.typing import CrystalSystem, T
 
-elements_csv = f"{ROOT}/pymatviz/elements.csv"
-df_ptable: pd.DataFrame = pd.read_csv(elements_csv, comment="#").set_index("symbol")
+_elements_csv = f"{ROOT}/pymatviz/elements.csv"
+df_ptable: pd.DataFrame = pd.read_csv(_elements_csv, comment="#").set_index("symbol")
 
 
 atomic_numbers: dict[str, int] = {}
@@ -32,6 +32,193 @@ element_symbols: dict[int, str] = {}
 for Z, symbol in enumerate(df_ptable.index, start=1):
     atomic_numbers[symbol] = Z
     element_symbols[Z] = symbol
+
+
+def bin_df_cols(
+    df_in: pd.DataFrame,
+    bin_by_cols: Sequence[str],
+    *,
+    group_by_cols: Sequence[str] = (),
+    n_bins: int | Sequence[int] = 100,
+    bin_counts_col: str = "bin_counts",
+    density_col: str = "",
+    verbose: bool = True,
+) -> pd.DataFrame:
+    """Bin columns of a DataFrame.
+
+    Args:
+        df_in (pd.DataFrame): Input dataframe to bin.
+        bin_by_cols (Sequence[str]): Columns to bin.
+        group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
+        n_bins (int): Number of bins to use. Defaults to 100.
+        bin_counts_col (str): Column name for bin counts. Defaults to "bin_counts".
+        density_col (str): Column name for density values. Defaults to "".
+        verbose (bool): If True, report df length reduction. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Binned DataFrame with original index name and values.
+    """
+    # Create a copy of the input DataFrame to avoid modifying the original
+    df_in = df_in.copy()
+
+    if isinstance(n_bins, int):
+        # broadcast integer n_bins to all bin_by_cols
+        n_bins = [n_bins] * len(bin_by_cols)
+
+    if len(bin_by_cols) != len(n_bins):
+        raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
+
+    cut_cols = [f"{col}_bins" for col in bin_by_cols]
+    for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols, strict=True):
+        df_in[cut_col] = pd.cut(df_in[col].values, bins=bins)
+
+    # Preserve the original index
+    orig_index_name = df_in.index.name or "index"
+    # Reset index so it participates in groupby. If the index name is already in the
+    # columns, we it'll participate already and be set back to the index at the end.
+    if orig_index_name not in df_in:
+        df_in = df_in.reset_index()
+
+    group = df_in.groupby(by=[*cut_cols, *group_by_cols], observed=True)
+
+    df_bin = group.first().dropna()
+    df_bin[bin_counts_col] = group.size()
+    df_bin = df_bin.reset_index()
+
+    if verbose:
+        print(  # noqa: T201
+            f"{1 - len(df_bin) / len(df_in):.1%} sample reduction from binning: from "
+            f"{len(df_in):,} to {len(df_bin):,}"
+        )
+
+    if density_col:
+        # compute kernel density estimate for each bin
+        values = df_in[bin_by_cols].dropna().T
+        gaussian_kde = scipy.stats.gaussian_kde(values.astype(float))
+
+        xy_binned = df_bin[bin_by_cols].T
+        density = gaussian_kde(xy_binned.astype(float))
+        df_bin[density_col] = density / density.sum() * len(values)
+
+    # Set the index back to the original index name
+    return df_bin.set_index(orig_index_name)
+
+
+def crystal_sys_from_spg_num(spg: float) -> CrystalSystem:
+    """Get the crystal system for an international space group number."""
+    # Ensure integer or float with no decimal part
+    if not isinstance(spg, int | float) or spg != int(spg):
+        raise TypeError(f"Expect integer space group number, got {spg=}")
+
+    if not (1 <= spg <= 230):
+        raise ValueError(f"Invalid space group number {spg}, must be 1 <= num <= 230")
+
+    if 1 <= spg <= 2:
+        return "triclinic"
+    if spg <= 15:
+        return "monoclinic"
+    if spg <= 74:
+        return "orthorhombic"
+    if spg <= 142:
+        return "tetragonal"
+    if spg <= 167:
+        return "trigonal"
+    if spg <= 194:
+        return "hexagonal"
+    return "cubic"
+
+
+def df_to_arrays(
+    df: pd.DataFrame | None,
+    *args: str | Sequence[str] | Sequence[ArrayLike],
+    strict: bool = True,
+) -> list[ArrayLike | dict[str, ArrayLike]]:
+    """If df is None, this is a no-op: args are returned as-is. If df is a
+    dataframe, all following args are used as column names and the column data
+    returned as arrays (after dropping rows with NaNs in any column).
+
+    Args:
+        df (pd.DataFrame | None): Optional pandas DataFrame.
+        *args (list[ArrayLike | str]): Arbitrary number of arrays or column names in df.
+        strict (bool, optional): If True, raise TypeError if df is not pd.DataFrame
+            or None. If False, return args as-is. Defaults to True.
+
+    Raises:
+        ValueError: If df is not None and any of the args is not a df column name.
+        TypeError: If df is not pd.DataFrame and not None.
+
+    Returns:
+        list[ArrayLike | dict[str, ArrayLike]]: Array data for each column name or
+            dictionary of column names and array data.
+    """
+    if df is None:
+        if cols := [arg for arg in args if isinstance(arg, str)]:
+            raise ValueError(f"got column names but no df to get data from: {cols}")
+        # pass through args as-is
+        return args  # type: ignore[return-value]
+
+    if not isinstance(df, pd.DataFrame):
+        if not strict:
+            return args  # type: ignore[return-value]
+        raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
+
+    if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
+        raise ValueError(
+            "don't pass dataframe and arrays to df_to_arrays(), should be either or, "
+            f"got {arrays}"
+        )
+
+    flat_args = []
+    # tuple doesn't support item assignment
+    args = list(args)  # type: ignore[assignment]
+
+    for col_name in args:
+        if isinstance(col_name, str | int):
+            flat_args.append(col_name)
+        else:
+            flat_args.extend(col_name)
+
+    df_no_nan = df.dropna(subset=flat_args)
+    for idx, col_name in enumerate(args):
+        if isinstance(col_name, str | int):
+            args[idx] = df_no_nan[col_name].to_numpy()  # type: ignore[index]
+        else:
+            col_data = df_no_nan[[*col_name]].to_numpy().T
+            args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index]
+
+    return args  # type: ignore[return-value]
+
+
+def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:
+    """Wrap text in a span with custom style.
+
+    Style defaults to decreased font size and weight e.g. to display units
+    in plotly labels and annotations.
+
+    Args:
+        text (str): Text to wrap in span.
+        tag (str, optional): HTML tag name. Defaults to "span".
+        style (str, optional): CSS style string. Defaults to "". Special keys:
+            "small": font-size: 0.8em; font-weight: lighter;
+            "bold": font-weight: bold;
+            "italic": font-style: italic;
+            "underline": text-decoration: underline;
+        title (str | None, optional): Title attribute which displays additional
+            information in a tooltip. Defaults to "".
+
+    Returns:
+        str: HTML string with tag-wrapped text.
+    """
+    style = {
+        "small": "font-size: 0.8em; font-weight: lighter;",
+        "bold": "font-weight: bold;",
+        "italic": "font-style: italic;",
+        "underline": "text-decoration: underline;",
+    }.get(style, style)
+    attr_str = f" {title=}" if title else ""
+    if style:
+        attr_str += f" {style=}"
+    return f"<{tag}{attr_str}>{text}</{tag}>"
 
 
 def normalize_to_dict(
@@ -119,137 +306,6 @@ def patch_dict(
     yield patched
 
 
-def df_to_arrays(
-    df: pd.DataFrame | None,
-    *args: str | Sequence[str] | Sequence[ArrayLike],
-    strict: bool = True,
-) -> list[ArrayLike | dict[str, ArrayLike]]:
-    """If df is None, this is a no-op: args are returned as-is. If df is a
-    dataframe, all following args are used as column names and the column data
-    returned as arrays (after dropping rows with NaNs in any column).
-
-    Args:
-        df (pd.DataFrame | None): Optional pandas DataFrame.
-        *args (list[ArrayLike | str]): Arbitrary number of arrays or column names in df.
-        strict (bool, optional): If True, raise TypeError if df is not pd.DataFrame
-            or None. If False, return args as-is. Defaults to True.
-
-    Raises:
-        ValueError: If df is not None and any of the args is not a df column name.
-        TypeError: If df is not pd.DataFrame and not None.
-
-    Returns:
-        list[ArrayLike | dict[str, ArrayLike]]: Array data for each column name or
-            dictionary of column names and array data.
-    """
-    if df is None:
-        if cols := [arg for arg in args if isinstance(arg, str)]:
-            raise ValueError(f"got column names but no df to get data from: {cols}")
-        # pass through args as-is
-        return args  # type: ignore[return-value]
-
-    if not isinstance(df, pd.DataFrame):
-        if not strict:
-            return args  # type: ignore[return-value]
-        raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
-
-    if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
-        raise ValueError(
-            "don't pass dataframe and arrays to df_to_arrays(), should be either or, "
-            f"got {arrays}"
-        )
-
-    flat_args = []
-    # tuple doesn't support item assignment
-    args = list(args)  # type: ignore[assignment]
-
-    for col_name in args:
-        if isinstance(col_name, str | int):
-            flat_args.append(col_name)
-        else:
-            flat_args.extend(col_name)
-
-    df_no_nan = df.dropna(subset=flat_args)
-    for idx, col_name in enumerate(args):
-        if isinstance(col_name, str | int):
-            args[idx] = df_no_nan[col_name].to_numpy()  # type: ignore[index]
-        else:
-            col_data = df_no_nan[[*col_name]].to_numpy().T
-            args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index]
-
-    return args  # type: ignore[return-value]
-
-
-def bin_df_cols(
-    df_in: pd.DataFrame,
-    bin_by_cols: Sequence[str],
-    *,
-    group_by_cols: Sequence[str] = (),
-    n_bins: int | Sequence[int] = 100,
-    bin_counts_col: str = "bin_counts",
-    density_col: str = "",
-    verbose: bool = True,
-) -> pd.DataFrame:
-    """Bin columns of a DataFrame.
-
-    Args:
-        df_in (pd.DataFrame): Input dataframe to bin.
-        bin_by_cols (Sequence[str]): Columns to bin.
-        group_by_cols (Sequence[str]): Additional columns to group by. Defaults to ().
-        n_bins (int): Number of bins to use. Defaults to 100.
-        bin_counts_col (str): Column name for bin counts. Defaults to "bin_counts".
-        density_col (str): Column name for density values. Defaults to "".
-        verbose (bool): If True, report df length reduction. Defaults to True.
-
-    Returns:
-        pd.DataFrame: Binned DataFrame with original index name and values.
-    """
-    # Create a copy of the input DataFrame to avoid modifying the original
-    df_in = df_in.copy()
-
-    if isinstance(n_bins, int):
-        # broadcast integer n_bins to all bin_by_cols
-        n_bins = [n_bins] * len(bin_by_cols)
-
-    if len(bin_by_cols) != len(n_bins):
-        raise ValueError(f"{len(bin_by_cols)=} != {len(n_bins)=}")
-
-    cut_cols = [f"{col}_bins" for col in bin_by_cols]
-    for col, bins, cut_col in zip(bin_by_cols, n_bins, cut_cols, strict=True):
-        df_in[cut_col] = pd.cut(df_in[col].values, bins=bins)
-
-    # Preserve the original index
-    orig_index_name = df_in.index.name or "index"
-    # Reset index so it participates in groupby. If the index name is already in the
-    # columns, we it'll participate already and be set back to the index at the end.
-    if orig_index_name not in df_in:
-        df_in = df_in.reset_index()
-
-    group = df_in.groupby(by=[*cut_cols, *group_by_cols], observed=True)
-
-    df_bin = group.first().dropna()
-    df_bin[bin_counts_col] = group.size()
-    df_bin = df_bin.reset_index()
-
-    if verbose:
-        print(  # noqa: T201
-            f"{1 - len(df_bin) / len(df_in):.1%} sample reduction from binning: from "
-            f"{len(df_in):,} to {len(df_bin):,}"
-        )
-
-    if density_col:
-        # compute kernel density estimate for each bin
-        values = df_in[bin_by_cols].dropna().T
-        gaussian_kde = scipy.stats.gaussian_kde(values.astype(float))
-
-        xy_binned = df_bin[bin_by_cols].T
-        density = gaussian_kde(xy_binned.astype(float))
-        df_bin[density_col] = density / density.sum() * len(values)
-
-    # Set the index back to the original index name
-    return df_bin.set_index(orig_index_name)
-
-
 def si_fmt(
     val: float,
     *,
@@ -302,59 +358,3 @@ def si_fmt(
 
 
 si_fmt_int = partial(si_fmt, fmt=".0f")
-
-
-def crystal_sys_from_spg_num(spg: float) -> CrystalSystem:
-    """Get the crystal system for an international space group number."""
-    # Ensure integer or float with no decimal part
-    if not isinstance(spg, int | float) or spg != int(spg):
-        raise TypeError(f"Expect integer space group number, got {spg=}")
-
-    if not (1 <= spg <= 230):
-        raise ValueError(f"Invalid space group number {spg}, must be 1 <= num <= 230")
-
-    if 1 <= spg <= 2:
-        return "triclinic"
-    if spg <= 15:
-        return "monoclinic"
-    if spg <= 74:
-        return "orthorhombic"
-    if spg <= 142:
-        return "tetragonal"
-    if spg <= 167:
-        return "trigonal"
-    if spg <= 194:
-        return "hexagonal"
-    return "cubic"
-
-
-def html_tag(text: str, tag: str = "span", style: str = "", title: str = "") -> str:
-    """Wrap text in a span with custom style.
-
-    Style defaults to decreased font size and weight e.g. to display units
-    in plotly labels and annotations.
-
-    Args:
-        text (str): Text to wrap in span.
-        tag (str, optional): HTML tag name. Defaults to "span".
-        style (str, optional): CSS style string. Defaults to "". Special keys:
-            "small": font-size: 0.8em; font-weight: lighter;
-            "bold": font-weight: bold;
-            "italic": font-style: italic;
-            "underline": text-decoration: underline;
-        title (str | None, optional): Title attribute which displays additional
-            information in a tooltip. Defaults to "".
-
-    Returns:
-        str: HTML string with tag-wrapped text.
-    """
-    style = {
-        "small": "font-size: 0.8em; font-weight: lighter;",
-        "bold": "font-weight: bold;",
-        "italic": "font-style: italic;",
-        "underline": "text-decoration: underline;",
-    }.get(style, style)
-    attr_str = f" {title=}" if title else ""
-    if style:
-        attr_str += f" {style=}"
-    return f"<{tag}{attr_str}>{text}</{tag}>"
