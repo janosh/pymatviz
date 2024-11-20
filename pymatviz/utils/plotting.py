@@ -12,7 +12,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 from matplotlib.offsetbox import AnchoredText
-from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
 
 from pymatviz.utils.typing import (
     BACKENDS,
@@ -148,6 +147,8 @@ def get_cbar_label_formatter(
     Returns:
         PercentFormatter or FormatStrFormatter.
     """
+    from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
+
     cbar_label_fmt = values_fmt if cbar_label_fmt == "auto" else cbar_label_fmt
 
     if values_show_mode == "percent":
