@@ -15,12 +15,12 @@ from plotly.subplots import make_subplots
 from pymatviz.colors import ELEM_TYPE_COLORS
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.utils import (
+from pymatviz.typing import (
     VALID_COLOR_ELEM_STRATEGIES,
     ColorElemTypeStrategy,
     ElemValues,
-    df_ptable,
 )
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:

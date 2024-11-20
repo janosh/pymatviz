@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import ArrayLike
 
-    from pymatviz.utils.typing import CrystalSystem, T
+    from pymatviz.typing import CrystalSystem, T
 
 _elements_csv = f"{ROOT}/pymatviz/elements.csv"
 df_ptable: pd.DataFrame = pd.read_csv(_elements_csv, comment="#").set_index("symbol")
