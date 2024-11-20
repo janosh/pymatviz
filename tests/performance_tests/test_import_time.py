@@ -40,34 +40,7 @@ REF_IMPORT_TIME: dict[str, float] = {
 @pytest.mark.skipif(
     not GEN_REF_TIME, reason="Set GEN_REF_TIME to generate reference import time."
 )
-def test_get_ref_import_time(
-    a: int,
-    b: int,
-    c: int,
-    d: int,
-    e: int,
-    f: int,
-    g: int,
-    h,
-    i,
-    j,
-    k,
-    l,
-    m,
-    n,
-    o,
-    p,
-    q,
-    r,
-    s,
-    t,
-    u,
-    v,
-    w,
-    x,
-    y,
-    z,
-) -> None:
+def test_get_ref_import_time() -> None:
     """A dummy test that would always fail, used to generate copyable reference time."""
     import_times = {
         module_name: round(measure_import_time(module_name), 2)
