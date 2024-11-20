@@ -18,29 +18,56 @@ GEN_REF_TIME = False  # switch for generating reference time
 
 # Last update: 2024-10-23
 REF_IMPORT_TIME: dict[str, float] = {
-    "pymatviz": 4085.73,
-    "pymatviz.coordination": 4135.77,
-    "pymatviz.cumulative": 4108.06,
-    "pymatviz.histogram": 4110.41,
-    "pymatviz.phonons": 4109.97,
-    "pymatviz.powerups": 4066.31,
-    "pymatviz.ptable": 4092.35,
-    "pymatviz.rainclouds": 4098.33,
-    "pymatviz.rdf": 4144.26,
-    "pymatviz.relevance": 4126.54,
-    "pymatviz.sankey": 4135.17,
-    "pymatviz.scatter": 4087.62,
-    "pymatviz.structure_viz": 4105.33,
-    "pymatviz.sunburst": 4133.78,
-    "pymatviz.uncertainty": 4179.99,
-    "pymatviz.xrd": 4156.52,
+    "pymatviz": 2084.25,
+    "pymatviz.coordination": 2342.41,
+    "pymatviz.cumulative": 2299.73,
+    "pymatviz.histogram": 2443.11,
+    "pymatviz.phonons": 2235.57,
+    "pymatviz.powerups": 2172.71,
+    "pymatviz.ptable": 2286.77,
+    "pymatviz.rainclouds": 2702.03,
+    "pymatviz.rdf": 2331.98,
+    "pymatviz.relevance": 2256.29,
+    "pymatviz.sankey": 2313.12,
+    "pymatviz.scatter": 2312.48,
+    "pymatviz.structure_viz": 2330.39,
+    "pymatviz.sunburst": 2395.04,
+    "pymatviz.uncertainty": 2317.87,
+    "pymatviz.xrd": 2242.09,
 }
 
 
 @pytest.mark.skipif(
     not GEN_REF_TIME, reason="Set GEN_REF_TIME to generate reference import time."
 )
-def test_get_ref_import_time() -> None:
+def test_get_ref_import_time(
+    a: int,
+    b: int,
+    c: int,
+    d: int,
+    e: int,
+    f: int,
+    g: int,
+    h,
+    i,
+    j,
+    k,
+    l,
+    m,
+    n,
+    o,
+    p,
+    q,
+    r,
+    s,
+    t,
+    u,
+    v,
+    w,
+    x,
+    y,
+    z,
+) -> None:
     """A dummy test that would always fail, used to generate copyable reference time."""
     import_times = {
         module_name: round(measure_import_time(module_name), 2)
