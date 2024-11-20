@@ -1,4 +1,16 @@
-"""Plotting-related utility functions."""
+"""Plotting-related utility functions.
+
+Available functions:
+    - annotate: Annotate a matplotlib or plotly figure with text.
+    - apply_matplotlib_template: Set default matplotlib configurations for consistency.
+    - get_cbar_label_formatter: Generate colorbar tick label formatter.
+    - get_font_color: Get the font color used in a Matplotlib or Plotly figure.
+    - get_fig_xy_range: Get the x and y range of a plotly or matplotlib figure.
+    - luminance: Compute the luminance of a color.
+    - pick_bw_for_contrast: Choose black or white text color for contrast.
+    - pretty_label: Map metric keys to their pretty labels.
+    - validate_fig: Decorator to validate the type of fig keyword argument.
+"""
 
 from __future__ import annotations
 
