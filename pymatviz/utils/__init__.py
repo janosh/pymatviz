@@ -9,10 +9,6 @@ PKG_DIR: str = os.path.dirname(__file__)
 ROOT: str = os.path.dirname(PKG_DIR)
 
 
-class ExperimentalWarning(Warning):
-    """Warning for experimental features."""
-
-
 from pymatviz.utils.data import (
     atomic_numbers,
     bin_df_cols,
@@ -27,6 +23,7 @@ from pymatviz.utils.data import (
     si_fmt_int,
 )
 from pymatviz.utils.image import luminance, pick_bw_for_contrast
+from pymatviz.utils.misc import ExperimentalWarning
 from pymatviz.utils.plotting import (
     annotate,
     get_cbar_label_formatter,
