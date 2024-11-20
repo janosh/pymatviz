@@ -14,6 +14,10 @@ class ExperimentalWarning(Warning):
     """Warning for experimental features."""
 
 
+class ExperimentalWarning(Warning):
+    """Warning for experimental features."""
+
+
 from pymatviz.utils.data import (
     atomic_numbers,
     bin_df_cols,
