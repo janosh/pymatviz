@@ -31,7 +31,6 @@ from pymatviz.utils.data import (
     si_fmt,
     si_fmt_int,
 )
-from pymatviz.utils.image import luminance, pick_bw_for_contrast
 from pymatviz.utils.plotting import (
     annotate,
     apply_matplotlib_template,
@@ -40,6 +39,8 @@ from pymatviz.utils.plotting import (
     get_font_color,
     pretty_label,
     validate_fig,
+    luminance,
+    pick_bw_for_contrast,
 )
 from pymatviz.utils.testing import TEST_FILES
 from pymatviz.utils.typing import (
