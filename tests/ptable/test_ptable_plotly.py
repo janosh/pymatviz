@@ -16,7 +16,8 @@ from pymatviz.ptable import (
     ptable_heatmap_splits_plotly,
     ptable_hists_plotly,
 )
-from pymatviz.utils import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy, df_ptable
+from pymatviz.typing import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
