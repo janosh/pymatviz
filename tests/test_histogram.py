@@ -8,14 +8,14 @@ import plotly.graph_objects as go
 import pytest
 
 from pymatviz.histogram import elements_hist, histogram
-from pymatviz.utils import BACKENDS, MATPLOTLIB
+from pymatviz.typing import BACKENDS, MATPLOTLIB
 from tests.conftest import df_regr, y_true
 
 
 if TYPE_CHECKING:
     import numpy as np
 
-    from pymatviz.utils import Backend
+    from pymatviz.typing import Backend
 
 
 def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:

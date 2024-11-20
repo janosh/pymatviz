@@ -8,7 +8,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 import pymatviz as pmv
 from pymatviz.coordination import CnSplitMode
-from pymatviz.utils import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES
 
 
 pmv.set_plotly_template("pymatviz_white")

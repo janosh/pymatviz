@@ -15,12 +15,12 @@ from plotly.subplots import make_subplots
 from pymatviz.colors import ELEM_TYPE_COLORS
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.utils import (
+from pymatviz.typing import (
     VALID_COLOR_ELEM_STRATEGIES,
     ColorElemTypeStrategy,
     ElemValues,
-    df_ptable,
 )
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
@@ -400,7 +400,7 @@ def ptable_hists_plotly(
     symbol_kwargs: dict[str, Any] | None = None,
     # Annotation
     annotations: dict[str, str | dict[str, Any]]
-    | Callable[[np.ndarray], str | dict[str, Any]]
+    | Callable[[Sequence[float]], str | dict[str, Any] | list[dict[str, Any]]]
     | None = None,
     # Element type colors
     color_elem_strategy: ColorElemTypeStrategy = "background",
@@ -575,21 +575,25 @@ def ptable_hists_plotly(
                 # Pass the element's values to the callable
                 annotation = annotations(values)
             else:
-                # Use dictionary lookup as before
+                # Use dictionary lookup
                 annotation = annotations.get(symbol, "")
 
             if annotation:  # Only add annotation if we have text
-                annotation = (
-                    {"text": annotation} if isinstance(annotation, str) else annotation
-                )
-                anno_defaults = {
-                    "font_size": (font_size or 8) * scale,
-                    "font_color": font_color,
-                    "x": 1,
-                    "y": 0.97,
-                    "showarrow": False,
-                }
-                fig.add_annotation(anno_defaults | xy_ref | annotation)
+                # Convert single annotation to list for uniform handling
+                for anno in (
+                    [annotation] if isinstance(annotation, str | dict) else annotation
+                ):
+                    # Convert string annotations to dict format
+                    anno_dict = {"text": anno} if isinstance(anno, str) else anno
+                    anno_defaults = {
+                        "font_size": (font_size or 8) * scale,
+                        "x": 0.95,
+                        "y": 0.95,
+                        "showarrow": False,
+                        "xanchor": "right",
+                        "yanchor": "top",
+                    }
+                    fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
 
     if colorbar is not False:
         colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
@@ -925,18 +929,21 @@ def ptable_heatmap_splits_plotly(
                 annotation = annotations.get(symbol, "")
 
             if annotation:  # Only add annotation if we have text
-                annotation = (
-                    {"text": annotation} if isinstance(annotation, str) else annotation
-                )
-                anno_defaults = {
-                    "font_size": (font_size or 8) * scale,
-                    "x": 0.95,
-                    "y": 0.95,
-                    "showarrow": False,
-                    "xanchor": "right",
-                    "yanchor": "top",
-                }
-                fig.add_annotation(**anno_defaults | xy_ref | annotation)
+                # Convert single annotation to list for uniform handling
+                for anno in (
+                    [annotation] if isinstance(annotation, str | dict) else annotation
+                ):
+                    # Convert string annotations to dict format
+                    anno_dict = {"text": anno} if isinstance(anno, str) else anno
+                    anno_defaults = {
+                        "font_size": (font_size or 8) * scale,
+                        "x": 0.95,
+                        "y": 0.95,
+                        "showarrow": False,
+                        "xanchor": "right",
+                        "yanchor": "top",
+                    }
+                    fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
 
     # Update layout
     fig.layout.showlegend = False

@@ -15,13 +15,9 @@ from matplotlib.offsetbox import TextArea
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
-from pymatviz.utils import (
-    MATPLOTLIB,
-    PLOTLY,
-    VALID_FIG_NAMES,
-    CrystalSystem,
-    normalize_to_dict,
-)
+from pymatviz.typing import MATPLOTLIB, PLOTLY, VALID_FIG_NAMES, CrystalSystem
+from pymatviz.utils import normalize_to_dict
+from pymatviz.utils.plotting import _get_matplotlib_font_color, _get_plotly_font_color
 from tests.conftest import y_pred, y_true
 
 
@@ -249,47 +245,6 @@ def test_patch_dict_remove_key_inside_context() -> None:
 
 
 assert ref_sample_dict == sample_dict, "sample_dict should not be modified"
-
-
-@pytest.mark.parametrize(
-    ("color", "expected"),
-    [
-        ((0, 0, 0), 0),  # Black
-        ((1, 1, 1), 1),  # White
-        ((0.5, 0.5, 0.5), 0.5),  # Gray
-        ((1, 0, 0), 0.299),  # Red
-        ((0, 1, 0), 0.587),  # Green
-        ((0, 0, 1, 0.3), 0.114),  # Blue with alpha (should be ignored)
-        ("#FF0000", 0.299),  # Red
-        ("#00FF00", 0.587),  # Green
-        ("#0000FF", 0.114),  # Blue
-        ("red", 0.299),
-        ("green", 0.294650),
-        ("blue", 0.114),
-    ],
-)
-def test_luminance(color: tuple[float, float, float], expected: float) -> None:
-    assert pmv.utils.luminance(color) == pytest.approx(expected, 0.001), f"{color=}"
-
-
-@pytest.mark.parametrize(
-    ("color", "text_color_threshold", "expected"),
-    [
-        ((1.0, 1.0, 1.0), 0.7, "black"),  # White
-        ((0, 0, 0), 0.7, "white"),  # Black
-        ((0.5, 0.5, 0.5), 0.7, "white"),  # Gray
-        ((0.5, 0.5, 0.5), 0, "black"),  # Gray with low threshold
-        ((1, 0, 0, 0.3), 0.7, "white"),  # Red with alpha (should be ignored)
-        ((0, 1, 0), 0.7, "white"),  # Green
-        ((0, 0, 1.0), 0.4, "white"),  # Blue with low threshold
-    ],
-)
-def test_pick_bw_for_contrast(
-    color: tuple[float, float, float],
-    text_color_threshold: float,
-    expected: Literal["black", "white"],
-) -> None:
-    assert pmv.utils.pick_bw_for_contrast(color, text_color_threshold) == expected
 
 
 def test_si_fmt() -> None:
@@ -593,7 +548,7 @@ def test_get_plotly_font_color_default() -> None:
         pio.templates.default = "plotly"
         fig = go.Figure()
         # test we get default Plotly color
-        assert pmv.utils._get_plotly_font_color(fig) == "#2a3f5f"
+        assert _get_plotly_font_color(fig) == "#2a3f5f"
     finally:
         pio.templates.default = orig_template
 
@@ -604,7 +559,7 @@ def test_get_plotly_font_color_from_template() -> None:
     pio.templates.default = "plotly_white"
     fig = go.Figure()
     try:
-        assert pmv.utils._get_plotly_font_color(fig) == "blue"
+        assert _get_plotly_font_color(fig) == "blue"
     finally:
         pio.templates.default = "plotly"  # Reset to default template
 
@@ -612,24 +567,20 @@ def test_get_plotly_font_color_from_template() -> None:
 @pytest.mark.parametrize("color", ["red", "#00FF00", "rgb(0, 0, 255)"])
 def test_get_plotly_font_color(color: str) -> None:
     fig = go.Figure().update_layout(font_color=color)
-    assert pmv.utils._get_plotly_font_color(fig) == color
+    assert _get_plotly_font_color(fig) == color
 
 
 @pytest.mark.parametrize("color", ["red", "#00FF00", "blue"])
 def test_get_matplotlib_font_color(color: str) -> None:
-    color = pmv.utils._get_matplotlib_font_color(plt.figure())
+    color = _get_matplotlib_font_color(plt.figure())
     assert color == "black"  # Default color
 
     fig, ax = plt.subplots()
-    assert (
-        pmv.utils._get_matplotlib_font_color(fig)
-        == pmv.utils._get_matplotlib_font_color(ax)
-        == "black"
-    )
+    assert _get_matplotlib_font_color(fig) == _get_matplotlib_font_color(ax) == "black"
 
     mpl_ax = plt.figure().add_subplot(111)
     mpl_ax.xaxis.label.set_color(color)
-    assert pmv.utils._get_matplotlib_font_color(mpl_ax) == color
+    assert _get_matplotlib_font_color(mpl_ax) == color
 
 
 def test_get_matplotlib_font_color_from_rcparams() -> None:
@@ -643,7 +594,7 @@ def test_get_matplotlib_font_color_from_rcparams() -> None:
         ax.tick_params(colors="green")
         plt.close(fig)  # Close the figure to ensure changes are applied
 
-        color = pmv.utils._get_matplotlib_font_color(ax)
+        color = _get_matplotlib_font_color(ax)
         assert color == "green", f"Expected 'green', but got '{color}'"
     finally:
         plt.rcParams["text.color"] = original_color  # Reset to original value

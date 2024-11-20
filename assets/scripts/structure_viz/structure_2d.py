@@ -9,7 +9,7 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key
-from pymatviz.utils import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES
 
 
 df_phonons = load_dataset("matbench_phonons")

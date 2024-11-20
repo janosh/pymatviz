@@ -8,6 +8,7 @@ from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
 from pymatviz.enums import Key
+from pymatviz.utils.testing import TEST_FILES
 
 
 # TODO: ffonons not working properly (see #195)
@@ -23,7 +24,7 @@ for mp_id, formula in (
     ("mp-23907", "H2"),
 ):
     docs = {}
-    for path in glob(f"{pmv.utils.TEST_FILES}/phonons/{mp_id}-{formula}-*.json.lzma"):
+    for path in glob(f"{TEST_FILES}/phonons/{mp_id}-{formula}-*.json.lzma"):
         key = path.split("-")[-1].split(".")[0]
         with zopen(path) as file:
             docs[key] = json.loads(file.read(), cls=MontyDecoder)

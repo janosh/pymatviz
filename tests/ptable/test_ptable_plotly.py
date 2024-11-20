@@ -16,7 +16,8 @@ from pymatviz.ptable import (
     ptable_heatmap_splits_plotly,
     ptable_hists_plotly,
 )
-from pymatviz.utils import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy, df_ptable
+from pymatviz.typing import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy
+from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
@@ -521,15 +522,44 @@ def test_ptable_hists_plotly_element_colors(
     assert isinstance(fig, go.Figure)
 
 
-def test_ptable_hists_plotly_custom_annotations() -> None:
+def test_ptable_hists_plotly_annotations() -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     anno_kwargs: dict[str, str | int] = {"font_size": 14, "font_color": "red"}
+
     annotations = {
-        "Fe": {"text": "Iron", **anno_kwargs},
+        # Test multiple annotations per element
+        "Fe": [
+            {"text": "Iron", **anno_kwargs},
+            {"text": "<br>Fe", "font_size": 12, "font_color": "gray"},
+        ],
         "O": {"text": "Oxygen", **anno_kwargs},
     }
     fig = ptable_hists_plotly(data, annotations=annotations)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
+
+    # Check multiple annotations are present
+    anno_texts = [anno.text for anno in fig.layout.annotations]
+    assert len(anno_texts) == 5
+    assert "Iron" in anno_texts
+    assert "<br>Fe" in anno_texts
+    assert "Oxygen" in anno_texts
+    assert "O" in anno_texts
+
+    # Test with callable annotations returning multiple annotations
+    def annotation_func(value: list[float] | np.ndarray) -> list[dict[str, Any]]:
+        mean_val = np.mean(value)
+        return [
+            {"text": f"Mean: {mean_val:.1f}"},
+            {"text": f"<br>Range: {max(value) - min(value):.1f}"},
+        ]
+
+    fig = ptable_hists_plotly(data, annotations=annotation_func)
+    # check multiple annotations are present
+    anno_texts = [anno.text for anno in fig.layout.annotations]
+    assert len(anno_texts) == 6
+    assert "Mean: 2.0" in anno_texts
+    assert "Mean: 3.0" in anno_texts
+    assert "<br>Range: 2.0" in anno_texts
 
 
 def test_ptable_hists_plotly_error_cases() -> None:

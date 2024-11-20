@@ -11,7 +11,8 @@ import pytest
 from matplotlib.offsetbox import AnchoredText
 
 import pymatviz as pmv
-from pymatviz.utils import MATPLOTLIB, PLOTLY, Backend, pretty_label
+from pymatviz.typing import MATPLOTLIB, PLOTLY, Backend
+from pymatviz.utils import pretty_label
 from tests.conftest import _extract_anno_from_fig, y_pred, y_true
 
 

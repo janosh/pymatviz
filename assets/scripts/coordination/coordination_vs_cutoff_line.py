@@ -7,7 +7,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 import pymatviz as pmv
 from pymatviz.enums import Key
-from pymatviz.utils import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES
 
 
 pmv.set_plotly_template("pymatviz_white")

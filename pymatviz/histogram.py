@@ -13,14 +13,14 @@ import pymatviz as pmv
 from pymatviz.bar import spacegroup_bar
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY, Backend
+from pymatviz.typing import BACKENDS, MATPLOTLIB, PLOTLY, Backend
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any, Literal
 
-    from pymatviz.utils import ElemValues
+    from pymatviz.typing import ElemValues
 
 
 def spacegroup_hist(*args: Any, **kwargs: Any) -> plt.Axes | go.Figure:

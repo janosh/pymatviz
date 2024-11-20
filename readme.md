@@ -224,7 +224,7 @@ See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
-|             [`qq_gaussian(y_true, y_pred, y_std)`](assets/scripts/uncertainty/qq_gaussian.py)             |            [`qq_gaussian(y_true, y_pred, y_std: dict)`](assets/scripts/uncertainty//qq_gaussian.py)             |
+|             [`qq_gaussian(y_true, y_pred, y_std)`](assets/scripts/uncertainty/qq_gaussian.py)             |             [`qq_gaussian(y_true, y_pred, y_std: dict)`](assets/scripts/uncertainty/qq_gaussian.py)             |
 | :-------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------: |
 |                                   ![normal-prob-plot][normal-prob-plot]                                   |                             ![normal-prob-plot-multiple][normal-prob-plot-multiple]                             |
 | [`error_decay_with_uncert(y_true, y_pred, y_std)`](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](assets/scripts/uncertainty/error_decay_with_uncert.py) |

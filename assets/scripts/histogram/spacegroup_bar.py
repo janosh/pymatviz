@@ -19,7 +19,7 @@ df_phonons[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %% Spacegroup histograms
-for backend in pmv.BACKENDS:
+for backend in pmv.typing.BACKENDS:
     fig = pmv.spacegroup_bar(df_phonons[Key.spg_num], backend=backend)
     pmv.io.save_and_compress_svg(fig, f"spg-num-hist-{backend}")
 

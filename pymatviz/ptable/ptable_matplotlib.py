@@ -16,12 +16,7 @@ from pymatviz.ptable._projector import (
     OverwriteTileValueColor,
     PTableProjector,
 )
-from pymatviz.utils import (
-    ColorElemTypeStrategy,
-    ElemValues,
-    get_cbar_label_formatter,
-    pick_bw_for_contrast,
-)
+from pymatviz.utils import get_cbar_label_formatter, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
@@ -34,6 +29,7 @@ if TYPE_CHECKING:
     from pymatgen.core import Element
 
     from pymatviz.ptable._process_data import PTableData
+    from pymatviz.typing import ColorElemTypeStrategy, ElemValues
 
 # Custom types
 ElemStr: TypeAlias = str  # element as a str

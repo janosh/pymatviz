@@ -12,7 +12,7 @@ import sklearn
 from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
-from pymatviz.utils import (
+from pymatviz.typing import (
     BACKENDS,
     MATPLOTLIB,
     PLOTLY,
@@ -20,6 +20,8 @@ from pymatviz.utils import (
     VALID_FIG_TYPES,
     AxOrFig,
     Backend,
+)
+from pymatviz.utils import (
     annotate,
     get_fig_xy_range,
     get_font_color,
