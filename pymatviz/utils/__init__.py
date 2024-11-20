@@ -1,5 +1,7 @@
 """pymatviz utility functions."""
 
+# ruff: noqa: E402 (Module level import not at top of file)
+
 from __future__ import annotations
 
 import os
