@@ -1,3 +1,4 @@
+import stylistic from '@stylistic/eslint-plugin'
 import svelte from 'eslint-plugin-svelte'
 import tslint from 'typescript-eslint'
 
@@ -5,13 +6,14 @@ import tslint from 'typescript-eslint'
 export default [
   ...tslint.configs.recommended,
   ...svelte.configs[`flat/recommended`],
+  { plugins: { '@stylistic': stylistic } },
   {
     rules: {
       '@typescript-eslint/no-unused-vars': [
         `error`,
         { argsIgnorePattern: `^_`, varsIgnorePattern: `^_` },
       ],
-      '@/quotes': [`error`, `backtick`, { avoidEscape: true }],
+      '@stylistic/quotes': [`error`, `backtick`, { avoidEscape: true }],
       'svelte/no-at-html-tags': `off`,
     },
   },
