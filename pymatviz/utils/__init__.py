@@ -10,6 +10,7 @@ import os
 PKG_DIR: str = os.path.dirname(os.path.dirname(__file__))
 ROOT: str = os.path.dirname(PKG_DIR)
 
+
 class ExperimentalWarning(Warning):
     """Warning for experimental features."""
 
@@ -37,10 +38,10 @@ from pymatviz.utils.plotting import (
     get_cbar_label_formatter,
     get_fig_xy_range,
     get_font_color,
-    pretty_label,
-    validate_fig,
     luminance,
     pick_bw_for_contrast,
+    pretty_label,
+    validate_fig,
 )
 from pymatviz.utils.testing import TEST_FILES
 from pymatviz.utils.typing import (
