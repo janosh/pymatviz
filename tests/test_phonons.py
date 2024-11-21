@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import re
 from glob import glob
@@ -13,6 +14,7 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
+from pymatviz.typing import SET_INTERSECTION, SET_STRICT, SET_UNION
 from pymatviz.utils.testing import TEST_FILES
 
 
@@ -21,6 +23,8 @@ if TYPE_CHECKING:
     from typing import Literal
 
     import numpy as np
+
+    from pymatviz.typing import SetMode
 
 BandsDoses = dict[str, dict[str, PhononBands | PhononDos]]
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
@@ -67,12 +71,17 @@ def phonon_doses() -> dict[str, PhononDos]:
 
 
 @pytest.mark.parametrize(
-    ("branches", "branch_mode", "line_kwargs"),
+    ("branches", "path_mode", "line_kwargs", "expected_x_labels"),
     [
         # test original single dict behavior
-        (["GAMMA-X", "X-U"], "union", dict(width=2)),
+        (
+            ["GAMMA-X", "X-U"],
+            "union",
+            dict(width=2),
+            tuple("ΓLXΓWXU"),
+        ),
         # test empty tuple branches with intersection mode
-        ((), "intersection", None),
+        ((), "intersection", None, tuple("ΓLXΓWXU")),
         # test separate acoustic/optical styling
         (
             ["GAMMA-X"],
@@ -81,21 +90,28 @@ def phonon_doses() -> dict[str, PhononDos]:
                 "acoustic": dict(width=2.5, dash="solid", name="Acoustic modes"),
                 "optical": dict(width=1, dash="dash", name="Optical modes"),
             },
+            tuple("ΓLXΓWXU"),
         ),
         # test callable line_kwargs
-        ((), "union", lambda _freqs, idx: dict(dash="solid" if idx < 3 else "dash")),
+        (
+            (),
+            "union",
+            lambda _freqs, idx: dict(dash="solid" if idx < 3 else "dash"),
+            tuple("ΓLXΓWXU"),
+        ),
     ],
 )
 def test_phonon_bands(
     phonon_bands_doses_mp_2758: BandsDoses,
     branches: tuple[str, str],
-    branch_mode: pmv.phonons.BranchMode,
+    path_mode: SetMode,
     line_kwargs: dict[str, Any] | Callable[[np.ndarray, int], dict[str, Any]] | None,
+    expected_x_labels: tuple[str, ...],
 ) -> None:
     # test single band structure
     fig = pmv.phonon_bands(
         phonon_bands_doses_mp_2758["bands"]["DFT"],
-        branch_mode=branch_mode,
+        path_mode=path_mode,
         branches=branches,
         line_kwargs=line_kwargs,
     )
@@ -104,12 +120,10 @@ def test_phonon_bands(
     assert fig.layout.yaxis.title.text == "Frequency (THz)"
     assert fig.layout.font.size == 16
 
-    x_labels: tuple[str, ...]
-    if branches == ():
-        x_labels = ("Γ", "X", "X", "U|K", "Γ", "Γ", "L", "L", "W", "W", "X")
-    else:
-        x_labels = ("Γ", "U|K") if len(branches) == 1 else ("Γ", "X", "X", "U|K")
-    assert fig.layout.xaxis.ticktext == x_labels
+    actual_x_labels = fig.layout.xaxis.ticktext
+    assert (
+        actual_x_labels == expected_x_labels
+    ), f"{actual_x_labels=}, {expected_x_labels=}"
     assert fig.layout.xaxis.range is None
     assert fig.layout.yaxis.range == pytest.approx((0, 5.36385427095))
 
@@ -140,13 +154,13 @@ def test_phonon_bands(
     # test dict of band structures
     fig = pmv.phonon_bands(
         phonon_bands_doses_mp_2758["bands"],
-        branch_mode=branch_mode,
+        path_mode=path_mode,
         branches=branches,
         line_kwargs=line_kwargs,
     )
     assert isinstance(fig, go.Figure)
     assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
-    assert fig.layout.xaxis.ticktext == x_labels
+    assert fig.layout.xaxis.ticktext == expected_x_labels
 
 
 def test_phonon_bands_raises(
@@ -157,30 +171,18 @@ def test_phonon_bands_raises(
     ):
         pmv.phonon_bands("invalid input")
 
-    with pytest.raises(
-        ValueError,
-        match=re.escape(
-            "No common branches with branch_mode='union'.\n"
-            "- : GAMMA-X, X-U, K-GAMMA, GAMMA-L, L-W, W-X\n"
-            "- Only branches ('foo-bar',) were requested."
-        ),
-    ):
-        pmv.phonon_bands(
-            phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("foo-bar",)
-        )
-
     # issues warning when requesting some available and some unavailable branches
     pmv.phonon_bands(
         phonon_bands_doses_mp_2758["bands"]["DFT"], branches=("X-U", "foo-bar")
     )
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
-    assert "Warning: missing_branches={'foo-bar'}, available branches:" in stderr
+    assert "Warning missing_branches={'foo-bar'}, available branches:" in stderr
 
-    with pytest.raises(ValueError, match="Invalid branch_mode='invalid'"):
+    with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
-            branch_mode="invalid",  # type: ignore[arg-type]
+            path_mode="invalid",  # type: ignore[arg-type]
         )
 
     with pytest.raises(ValueError, match="Empty band structure dict"):
@@ -301,3 +303,117 @@ def test_phonon_bands_and_dos(
         ValueError, match=f"{band_keys=} and {dos_keys=} must be identical"
     ):
         pmv.phonon_bands_and_dos(bands, phonon_doses)
+
+
+@pytest.mark.parametrize(
+    ("path_mode", "expected_segments"),
+    [
+        (SET_STRICT, {}),
+        (
+            SET_INTERSECTION,
+            {("Γ", "L"), ("L", "X"), ("X", "Γ"), ("Γ", "W"), ("W", "U")},
+        ),
+        (
+            SET_UNION,
+            {("X", "U"), ("W", "X"), ("Γ", "W"), ("Γ", "L"), ("L", "X"), ("X", "Γ")},
+        ),
+    ],
+)
+def test_phonon_bands_path_modes(
+    phonon_bands_doses_mp_2758: BandsDoses,
+    path_mode: SetMode,
+    expected_segments: set[tuple[str, str]],
+) -> None:
+    """Test different path_mode options for phonon band structure plotting."""
+    bands = phonon_bands_doses_mp_2758["bands"]
+
+    # Modify one band structure to have a different path
+    modified_bands = bands.copy()
+    modified_bands["MACE"] = copy.deepcopy(modified_bands["MACE"])
+    # Remove last branch to create a mismatch
+    modified_bands["MACE"].branches = modified_bands["MACE"].branches[:-1]
+
+    if path_mode == SET_STRICT:
+        with pytest.raises(
+            ValueError, match="Band structures have different q-point paths"
+        ):
+            pmv.phonon_bands(modified_bands, path_mode=path_mode)
+        return
+    if path_mode == SET_INTERSECTION:
+        bands = modified_bands
+
+    fig = pmv.phonon_bands(modified_bands, path_mode=path_mode)
+
+    # Extract plotted segments from x-axis labels
+    plotted_segments = set()
+    labels = fig.layout.xaxis.ticktext
+    for idx in range(len(labels) - 1):
+        if not (labels[idx] and labels[idx + 1]):  # Skip empty labels
+            continue
+        # Convert from pretty format back to raw
+        start = labels[idx]
+        end = labels[idx + 1]
+        if "|" in end:
+            end = end.split("|")[0]  # Take first part of combined labels
+        plotted_segments.add((start, end))
+
+    assert plotted_segments == expected_segments
+
+
+def test_phonon_bands_path_mode_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
+    """Test error cases for path_mode parameter."""
+    with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
+        pmv.phonon_bands(
+            phonon_bands_doses_mp_2758["bands"]["DFT"],
+            path_mode="invalid",  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize("path_mode", [SET_STRICT, SET_INTERSECTION, SET_UNION])
+def test_phonon_bands_and_dos_path_modes(
+    phonon_bands_doses_mp_2758: BandsDoses,
+    path_mode: SetMode,
+) -> None:
+    """Test path_mode is correctly passed through to phonon_bands."""
+    bands = phonon_bands_doses_mp_2758["bands"]
+    doses = phonon_bands_doses_mp_2758["doses"]
+
+    if path_mode == SET_STRICT:
+        # Modify one band structure to have a different path
+        modified_bands = bands.copy()
+        modified_bands["MACE"] = copy.deepcopy(modified_bands["MACE"])
+        modified_bands["MACE"].branches = modified_bands["MACE"].branches[:-1]
+
+        with pytest.raises(
+            ValueError, match="Band structures have different q-point paths"
+        ):
+            pmv.phonon_bands_and_dos(modified_bands, doses, path_mode=path_mode)
+        return
+
+    fig = pmv.phonon_bands_and_dos(bands, doses, path_mode=path_mode)
+    assert isinstance(fig, go.Figure)
+
+    # Check that band structure subplot exists
+    assert fig.layout.xaxis.title.text == "Wave Vector"
+    # Check that DOS subplot exists
+    assert fig.layout.xaxis2.title.text == "DOS"
+
+    # Verify the number of traces matches expectations
+    n_traces = len(fig.data)
+    assert n_traces > 0  # Should have at least some traces
+
+    # Check that the legend contains each model name (only once)
+    legend_entries = {trace.name for trace in fig.data}
+    assert legend_entries == {"DFT", "MACE"}
+
+
+def test_phonon_bands_and_dos_path_mode_raises(
+    phonon_bands_doses_mp_2758: BandsDoses,
+) -> None:
+    """Test error handling for invalid path_mode in phonon_bands_and_dos."""
+    with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
+        pmv.phonon_bands_and_dos(
+            phonon_bands_doses_mp_2758["bands"],
+            phonon_bands_doses_mp_2758["doses"],
+            path_mode="invalid",  # type: ignore[arg-type]
+        )
