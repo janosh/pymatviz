@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.14.0](https://github.com/janosh/pymatviz/compare/v0.13.2...v0.14.0)
+
+> 21 November 2024
+
+- [Breaking] Split `utils` into sub-modules, move `typing` from `utils` to root (`pmv.typing`) [`#248`](https://github.com/janosh/pymatviz/pull/248)
+- `phonon_bands` enable custom acoustic/optical bands [`#249`](https://github.com/janosh/pymatviz/pull/249)
+- Split `make_assets` scripts by plot functions [`#247`](https://github.com/janosh/pymatviz/pull/247)
+- `ptable_heatmap_splits_plotly` [`#246`](https://github.com/janosh/pymatviz/pull/246)
+- Better `ptable_hists_plotly` defaults [`#244`](https://github.com/janosh/pymatviz/pull/244)
+- Add `ptable_hists_plotly` [`#243`](https://github.com/janosh/pymatviz/pull/243)
+- Enhance warning message for default return type change of `ptable_heatmap` [`#240`](https://github.com/janosh/pymatviz/pull/240)
+- add @stylistic/eslint-plugin to fix eslint commit hook (closes https://github.com/janosh/pymatviz/issues/197) [`#197`](https://github.com/janosh/pymatviz/issues/197)
+- add coordination_nums_in_structure in pymatviz/coordination/helpers.py [`bd54679`](https://github.com/janosh/pymatviz/commit/bd54679c17c6c137949a162dce25770587ebe200)
+- ptable_hists_plotly add x_axis_kwargs: dict[str, Any] | None = None to tweak x ticks and allow annotations renamed to be callable [`6a6faad`](https://github.com/janosh/pymatviz/commit/6a6faadeb2b5d5a8be9d8e6f4383f122c7e5373d)
+- sankey_from_2_df_cols add kwarg annotate_columns: bool | dict = True [`eed306a`](https://github.com/janosh/pymatviz/commit/eed306a621e32584064f62be37aa7a1cd2db50a4)
+- new/renamed Key attributes n_structs, n_materials, n_molecules, n_samples, n_configs [`786a666`](https://github.com/janosh/pymatviz/commit/786a6667585b40b583e816bae7b857294418a735)
+
 #### [v0.13.2](https://github.com/janosh/pymatviz/compare/v0.13.1...v0.13.2)
 
 > 3 November 2024
