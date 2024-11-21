@@ -16,7 +16,7 @@ from pymatviz.ptable._projector import (
     OverwriteTileValueColor,
     PTableProjector,
 )
-from pymatviz.utils import ElemValues, get_cbar_label_formatter, pick_bw_for_contrast
+from pymatviz.utils import get_cbar_label_formatter, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from pymatgen.core import Element
 
     from pymatviz.ptable._process_data import PTableData
+    from pymatviz.typing import ColorElemTypeStrategy, ElemValues
 
 # Custom types
 ElemStr: TypeAlias = str  # element as a str
@@ -111,8 +112,8 @@ def ptable_heatmap(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         f_block_voffset (float): The vertical offset of f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
@@ -535,8 +536,8 @@ def ptable_heatmap_splits(
         colormap (str): Matplotlib colormap name to use.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -659,8 +660,8 @@ def ptable_hists(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -684,8 +685,8 @@ def ptable_hists(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -726,7 +727,7 @@ def ptable_hists(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -836,8 +837,8 @@ def ptable_scatters(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -858,8 +859,8 @@ def ptable_scatters(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -898,7 +899,7 @@ def ptable_scatters(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -993,8 +994,8 @@ def ptable_lines(
     anno_pos: tuple[float, float] = (0.75, 0.75),
     anno_text: dict[ElemStr, str] | None = None,
     anno_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -1013,8 +1014,8 @@ def ptable_lines(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -1044,7 +1045,7 @@ def ptable_lines(
         anno_kwargs (dict): Keyword arguments passed to ax.text() for
             annotation. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".

@@ -21,6 +21,7 @@ from pymatviz import (
     colors,
     coordination,
     cumulative,
+    data,
     enums,
     io,
     phonons,
@@ -34,6 +35,7 @@ from pymatviz import (
     structure_viz,
     sunburst,
     templates,
+    typing,
     uncertainty,
     utils,
     xrd,
@@ -50,7 +52,9 @@ from pymatviz.ptable import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_heatmap_splits,
+    ptable_heatmap_splits_plotly,
     ptable_hists,
+    ptable_hists_plotly,
     ptable_lines,
     ptable_scatters,
 )
@@ -79,15 +83,7 @@ from pymatviz.templates import (
     set_plotly_template,
 )
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import (
-    BACKENDS,
-    PKG_DIR,
-    ROOT,
-    df_ptable,
-    html_tag,
-    si_fmt,
-    si_fmt_int,
-)
+from pymatviz.utils import PKG_DIR, ROOT, df_ptable, html_tag, si_fmt, si_fmt_int
 from pymatviz.xrd import xrd_pattern
 
 

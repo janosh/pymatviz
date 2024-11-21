@@ -16,11 +16,14 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import Key
-from pymatviz.utils import PLOTLY, Backend, crystal_sys_from_spg_num, si_fmt_int
+from pymatviz.typing import PLOTLY
+from pymatviz.utils import crystal_sys_from_spg_num, si_fmt_int
 
 
 if TYPE_CHECKING:
     from typing import Any, Literal
+
+    from pymatviz.typing import Backend
 
 
 def spacegroup_bar(
@@ -205,8 +208,8 @@ def spacegroup_bar(
     # keep this above df.plot.bar()! order matters
     ax.set(ylabel=count_col, xlim=x_range)
 
-    defaults = dict(width=0.9)  # set default histogram bar width
-    df_data[count_col].plot.bar(figsize=[16, 4], ax=ax, **defaults | kwargs)
+    bar_defaults = dict(width=0.9)  # set default histogram bar width
+    df_data[count_col].plot.bar(figsize=[16, 4], ax=ax, **bar_defaults | kwargs)
 
     ax.set_title(fig_title, fontdict={"fontsize": 18}, pad=30)
     ax.set(xlabel=x_label)

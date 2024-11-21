@@ -39,7 +39,7 @@ jobs:
       - name: Find Python scripts
         id: set-matrix
         run: |
-          SCRIPTS=$(find examples/make_assets -name "*.py" | jq -R -s -c 'split("\n")[:-1]')
+          SCRIPTS=$(find assets/scripts -name "*.py" | jq -R -s -c 'split("\n")[:-1]')
           echo "script_list=$SCRIPTS" >> $GITHUB_OUTPUT
 
   test-scripts:
