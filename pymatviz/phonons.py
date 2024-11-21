@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, get_args
 
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.constants as const
@@ -20,7 +21,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Any, TypeAlias
 
-    import numpy as np
     from pymatgen.core import Structure
     from typing_extensions import Self
 
@@ -226,8 +226,8 @@ def phonon_bands(
 
     # find common branches by normalized branch names
     common_branches: set[str] = set()
-    for idx, bs in enumerate(band_structs.values()):
-        bs_branches = {branch["name"] for branch in bs.branches}
+    for idx, band_struct in enumerate(band_structs.values()):
+        bs_branches = {branch["name"] for branch in band_struct.branches}
         common_branches = (
             bs_branches
             if idx == 0
@@ -255,26 +255,64 @@ def phonon_bands(
             file=sys.stderr,
         )
 
-    # plotting only the common branches for each band structure
-    first_bs = None
+    # First, collect all unique branches and their endpoints across all structures
+    all_branches: dict[str, list[tuple[str | None, str | None, PhononBands]]] = {}
+
+    for band_struct in band_structs.values():
+        for branch in band_struct.branches:
+            name = branch["name"]
+            start_idx = branch["start_index"]
+            end_idx = branch["end_index"]
+
+            # Get start and end k-point labels for this branch
+            start_label = band_struct.qpoints[start_idx].label
+            end_label = band_struct.qpoints[end_idx].label
+
+            if name not in all_branches:
+                all_branches[name] = []
+            all_branches[name].append((start_label, end_label, band_struct))
+
+    # Create a mapping of k-point pairs to x-axis positions
+    x_positions: dict[tuple[str | None, str | None], tuple[float, float]] = {}
+    current_x = 0.0
+
+    for branch_segments in all_branches.values():
+        for start_label, end_label, band_struct in branch_segments:
+            segment_key = (start_label, end_label)
+            if segment_key not in x_positions:
+                # Find the length of this segment in the first band structure that has it
+                segment_length = (
+                    band_struct.distance[band_struct.branches[0]["end_index"]]
+                    - band_struct.distance[band_struct.branches[0]["start_index"]]
+                )
+                x_positions[segment_key] = (current_x, current_x + segment_length)
+                current_x += segment_length
+
+    # Now plot each band structure's segments at the correct x positions
     colors = px.colors.qualitative.Plotly
     line_styles = ("solid", "dot", "dash", "longdash", "dashdot", "longdashdot")
 
-    for bs_idx, (label, bs) in enumerate(band_structs.items()):
+    for bs_idx, (label, band_struct) in enumerate(band_structs.items()):
         color = colors[bs_idx % len(colors)]
         line_style = line_styles[bs_idx % len(line_styles)]
-        first_bs = first_bs or bs
 
-        for branch in bs.branches:
-            if branch["name"] not in common_branches:
-                continue
+        for branch in band_struct.branches:
             start_idx = branch["start_index"]
             end_idx = branch["end_index"] + 1
-            distances = first_bs.distance[start_idx:end_idx]
 
-            for band_idx in range(bs.nb_bands):
-                frequencies = bs.bands[band_idx][start_idx:end_idx]
-                # Determine if this is an acoustic or optical band
+            # Get the x-axis position for this segment
+            start_label = band_struct.qpoints[start_idx].label
+            end_label = band_struct.qpoints[end_idx - 1].label
+            x_start, x_end = x_positions[(start_label, end_label)]
+
+            # Scale the x-range corresponding to the current band's k-path segment
+            segment_distances = np.array(band_struct.distance[start_idx:end_idx])
+            segment_distances = (segment_distances - segment_distances[0]) * (
+                x_end - x_start
+            ) / (segment_distances[-1] - segment_distances[0]) + x_start
+
+            for band_idx in range(band_struct.nb_bands):
+                frequencies = band_struct.bands[band_idx][start_idx:end_idx]
                 is_acoustic = band_idx < 3
                 mode_type = "acoustic" if is_acoustic else "optical"
 
@@ -308,7 +346,7 @@ def phonon_bands(
 
                 is_new_name = trace_name not in existing_names
                 fig.add_scatter(
-                    x=distances,
+                    x=segment_distances,
                     y=frequencies,
                     mode="lines",
                     line=line_defaults,
@@ -318,13 +356,25 @@ def phonon_bands(
                     **kwargs,
                 )
 
-    # add x-axis labels and vertical lines for common high-symmetry points
-    first_bs = next(iter(band_structs.values()))
-    x_ticks, x_labels = get_band_xaxis_ticks(first_bs, branches=common_branches)
-    fig.layout.xaxis.update(tickvals=x_ticks, ticktext=x_labels, tickangle=0)
+    # Update x-axis ticks to show all k-points
+    x_ticks, x_labels = [], []
+    for (start_label, end_label), (x_start, x_end) in sorted(
+        x_positions.items(), key=lambda x: x[1][0]
+    ):
+        if x_start not in x_ticks:
+            x_ticks.append(x_start)
+            x_labels.append(start_label or "")
+        x_ticks.append(x_end)
+        x_labels.append(end_label or "")
 
-    # remove 0 and the last line to avoid duplicate vertical line, looks like
-    # graphical artifact
+    fig.layout.xaxis.update(
+        tickvals=x_ticks,
+        ticktext=[pretty_sym_point(label) for label in x_labels],
+        tickangle=0,
+    )
+
+    # Add vertical lines at high-symmetry points. Remove 0 and last line to avoid
+    # duplicate vertical line (they look like graphical artifacts)
     for x_pos in {*x_ticks} - {0, x_ticks[-1]}:
         fig.add_vline(x=x_pos, line=dict(color="black", width=1))
 
