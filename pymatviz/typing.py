@@ -37,6 +37,9 @@ T = TypeVar("T")  # generic type for input validation
 P = ParamSpec("P")  # generic type for function parameters
 R = TypeVar("R")  # generic type for return value
 
+SetMode: TypeAlias = Literal["union", "intersection", "strict"]
+SET_MODE = SET_UNION, SET_INTERSECTION, SET_STRICT = get_args(SetMode)
+
 
 VALID_FIG_TYPES = get_args(AxOrFig)
 VALID_FIG_NAMES: str = " | ".join(
