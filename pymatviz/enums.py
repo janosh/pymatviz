@@ -133,6 +133,7 @@ eV_per_kelvin = html_tag("(eV/K)", style="small")  # noqa: N816
 angstrom = html_tag("(Å)", style="small")
 angstrom_per_atom = html_tag("(Å/atom)", style="small")
 cubic_angstrom = html_tag("(Å<sup>3</sup>)", style="small")
+degrees = html_tag("(°)", style="small")
 gram_per_cm3 = html_tag("(g/cm³)", style="small")
 kelvin = html_tag("(K)", style="small")
 pascal = html_tag("(Pa)", style="small")
@@ -147,40 +148,62 @@ class Key(LabelEnum):
     """Keys used to access dataframes columns, organized by semantic groups."""
 
     # Structural
-    crystal_system = "crystal_system", "Crystal System"
-    spg_num = "space_group_number", "Space Group Number"
-    spg_symbol = "space_group_symbol", "Space Group Symbol"
     n_sites = "n_sites", "Number of Sites"
-    n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
     structure = "structure", "Structure"
     init_struct = "initial_structure", "Initial Structure"
     final_struct = "final_structure", "Final Structure"
     cell = "cell", "Cell"
     lattice = "lattice", "Lattice"
     lattice_vectors = "lattice_vectors", "Lattice Vectors"
-    lattice_angles = "lattice_angles", "Lattice Angles (°)"
+    lattice_angles = "lattice_angles", f"Lattice Angles {degrees}"
     lattice_lens = "lattice_lengths", f"Lattice Lengths {angstrom}"
     init_volume = "initial_volume", f"Initial Volume {cubic_angstrom}"
     final_volume = "final_volume", f"Final Volume {cubic_angstrom}"
     volume = "volume", f"Volume {cubic_angstrom}"
     vol_per_atom = "volume_per_atom", f"Volume per Atom {cubic_angstrom}"
     density = "density", f"Density {gram_per_cm3}"
-    symmetry = "symmetry", "Symmetry"
-    point_group = "point_group", "Point Group"
+    pressure = "pressure", f"Pressure {pascal}"
     lattice_params = "lattice_parameters", "Lattice Parameters"
     supercell = "supercell", "Supercell"
     atom_nums = "atom_nums", "Atomic Numbers", "Atomic numbers for each crystal site"
     coord_num = "coordination_number", "Coordination Number"
     bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
-    bond_angles = "bond_angles", "Bond Angles (°)"
+    bond_angles = "bond_angles", f"Bond Angles {degrees}"
     packing_fraction = "packing_fraction", "Packing Fraction"
+    max_pair_dist = "max_pair_dist", f"Maximum Pair Distance {angstrom}"
+    conventional_cell = "conventional_cell", "Conventional Cell"
+    primitive_cell = "primitive_cell", "Primitive Cell"
+    reduced_cell = "reduced_cell", "Reduced Cell"
+    niggli_reduced_cell = "niggli_reduced_cell", "Niggli-reduced Cell"
+
+    # Crystal Symmetry Properties
+    crystal_system = "crystal_system", "Crystal System"
+    spg_num = "space_group_number", "Space Group Number"
+    spg_symbol = "space_group_symbol", "Space Group Symbol"
+    choice_symbol = "choice_symbol", "Choice symbol"
+    hall_num = "hall_num", "Hall number"
+    hall_symbol = "hall_symbol", "Hall symbol"
+    translations = "translations", "Translations"
+    rotations = "rotations", "Rotations"
+    symmetry = "symmetry", "Symmetry"
+    symmetry_change = "symmetry_change", "Symmetry Change"
+    symmetry_decrease = "symmetry_decrease", "Symmetry Decrease"
+    symmetry_increase = "symmetry_increase", "Symmetry Increase"
+    symmetry_match = "symmetry_match", "Symmetry Match"
+    point_group = "point_group", "Point Group"
+    n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
+    n_rot_syms = "n_rot_syms", "Number of rotational symmetries"
+    n_trans_syms = "n_trans_syms", "Number of translational symmetries"
+    n_sym_ops = "n_sym_ops", "Total number of symmetries"
+    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
+    wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
+    wyckoff_symbol = "wyckoff_symbol", "Wyckoff Symbol"
+    wyckoff_symbols = "wyckoff_symbols", "Wyckoff symbols"
 
     # Structure Prototyping
     # AFLOW-style prototype label with appended chemical system
     protostructure = "protostructure", "Protostructure Label"
     # Deprecated name for the protostructure
-    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
-    wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
     prototype = "prototype", "Prototype Label"
     aflow_prototype = "aflow_prototype", "AFLOW-style Prototype Label"
     # AFLOW-style prototype label that has been canonicalized
@@ -206,6 +229,11 @@ class Key(LabelEnum):
     valence = "valence", "Valence"
     chem_sys = "chemical_system", "Chemical System"
     composition = "composition", "Composition"
+    molar_composition = "molar_composition", "Molar Composition"
+    weight_composition = "weight_composition", "Weight Composition"  # mass fraction
+    molar_fraction = "molar_fraction", "Molar Fraction"
+    weight_fraction = "weight_fraction", "Weight Fraction"  # mass fraction
+    molar_mass = "molar_mass", "Molar Mass"
     element = "element", "Element"
     formula = "formula", "Formula"
     formula_pretty = "formula_pretty", "Pretty Formula"
@@ -214,10 +242,10 @@ class Key(LabelEnum):
     charge = "total_charge", "Total Charge"
     oxi_states = "oxidation_states", "Oxidation States"
     oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
-    n_atoms = "n_atoms", "Number of Atoms"
-    n_elements = "n_elements", "Number of Elements"
-    n_val_electrons = "n_valence_electrons", "Number of Valence Electrons"
-    n_electrons = "n_total_electrons", "Total Number of Electrons"
+    n_atoms = "n_atoms", "N<sub>atoms</sub>"
+    n_elements = "n_elements", "N<sub>elements</sub>"
+    n_val_electrons = "n_valence_electrons", "N<sub>valence electrons</sub>"
+    n_electrons = "n_electrons", "N<sub>electrons</sub>"
     isotope_masses = "isotope_masses", "Isotope Masses"
     natural_abundance = "natural_abundance", "Natural Abundance (%)"
     half_life = "half_life", "Half-life"
@@ -280,6 +308,7 @@ class Key(LabelEnum):
     bandgap_true = "bandgap_true", f"Actual Band Gap {eV}"
     bandgap_pred = "bandgap_pred", f"Predicted Band Gap {eV}"
     fermi_energy = "fermi_energy", f"Fermi Energy {eV}"
+    electronic_structure = "electronic_structure", "Electronic Structure"
     electron_affinity = "electron_affinity", f"Electron Affinity {eV}"
     work_function = "work_function", f"Work Function {eV}"
     dos = "density_of_states", "Density of States"
@@ -302,6 +331,7 @@ class Key(LabelEnum):
     # Mechanical
     forces = "forces", "Forces"
     stress = "stress", "Stress"
+    virial = "virial", "Virial"
     stress_trace = "stress_trace", "Stress Trace"
     voigt_stress = "voigt_stress", "Voigt Stress"
     bulk_modulus = "bulk_modulus", f"Bulk Modulus {giga_pascal}"
@@ -415,10 +445,38 @@ class Key(LabelEnum):
     convergence_electronic = "convergence_electronic", "Electronic Convergence"
     convergence_ionic = "convergence_ionic", "Ionic Convergence"
     kpoints = "kpoints", "K-points"
-    pseudopotentials = "pseudopotentials", "Pseudopotentials"
+    pseudo_potential = "pseudo_potential", "Pseudo-Potential"
+    pseudo_potential_type = "pseudo_potential_type", "Pseudo-Potential Type"
     u_correction = "u_correction", "Hubbard U Correction"
     needs_u_correction = "needs_u_correction", "Needs Hubbard U correction"
     soc = "spin_orbit_coupling", "Spin-Orbit Coupling"
+    basis_set = "basis_set", "Basis Set"
+    basis_set_size = "basis_set_size", "Basis Set Size"
+    energy_cutoff = "energy_cutoff", "Energy Cutoff"
+    fft_grid = "fft_grid", "FFT Grid"
+    smearing = "smearing", "Smearing"
+    max_scf_iter = "max_scf_iter", "Max SCF Iterations"
+    scf_tol = "scf_tol", "SCF Tolerance"  # self-consistency tolerance
+    wave_function = "wave_function", "Wave Function"
+    charge_density = "charge_density", "Charge Density"
+    n_steps = "n_steps", "Number of Steps"
+    n_elec_steps = "n_elec_steps", "Number of Electronic Steps"
+    n_ionic_steps = "n_ionic_steps", "Number of Ionic Steps"
+    n_md_steps = "n_md_steps", "Number of Molecular Dynamics Steps"
+    n_relax_steps = "n_relax_steps", "Number of Relaxation Steps"
+    n_scf_steps = "n_scf_steps", "Number of SCF Steps"
+    n_bands = "n_bands", "Number of Bands"
+    n_kpoints = "n_kpoints", "Number of K-points"
+    kpoint_density = "kpoint_density", "K-point Density"
+    kpoint_spacing = "kpoint_spacing", "K-point Spacing"
+    kpoint_mesh = "kpoint_mesh", "K-point Mesh"
+    kpoint_offset = "kpoint_offset", "K-point Offset"
+    kpoint_symmetry = "kpoint_symmetry", "K-point Symmetry"
+    kpoint_sampling = "kpoint_sampling", "K-point Sampling"
+    relativistic = "relativistic", "Relativistic"
+    spin_polarized = "spin_polarized", "Spin Polarized"
+    collinear = "collinear", "Collinear"
+    non_collinear = "non_collinear", "Non-Collinear"
 
     # ML
     train_task = "train_task", "Training Task"
@@ -442,12 +500,12 @@ class Key(LabelEnum):
     momentum = "momentum", "Momentum"
     weight_decay = "weight_decay", "Weight Decay"
     early_stopping = "early_stopping", "Early Stopping"
-    n_folds = "n_folds", "Number of Folds"
-    n_estimators = "n_estimators", "Number of Estimators"
-    n_features = "n_features", "Number of Features"
-    n_targets = "n_targets", "Number of Targets"
-    n_classes = "n_classes", "Number of Classes"
-    n_layers = "n_layers", "Number of Layers"
+    n_folds = "n_folds", "N<sub>folds</sub>"
+    n_estimators = "n_estimators", "N<sub>estimators</sub>"
+    n_features = "n_features", "N<sub>features</sub>"
+    n_targets = "n_targets", "N<sub>targets</sub>"
+    n_classes = "n_classes", "N<sub>classes</sub>"
+    n_layers = "n_layers", "N<sub>layers</sub>"
     radial_cutoff = "radial_cutoff", "Radial Cutoff"  # for GNNs, usually in Å
     angular_cutoff = "angular_cutoff", "Angular Cutoff"  # max order spherical harmonics
 
@@ -470,13 +528,35 @@ class Key(LabelEnum):
     pearson = "Pearson", "Pearson Correlation"
     spearman = "Spearman", "Spearman Correlation"
     kendall = "Kendall", "Kendall Correlation"
+    mse = "MSE", "Mean Squared Error"
     rmse = "RMSE", "Root Mean Squared Error"
+    rmsd = "rmsd", "Root Mean Square Deviation"
+    structure_rmsd = "structure_rmsd", f"Structure RMSD {angstrom}"
     mape = "MAPE", "Mean Absolute Percentage Error"
+    srme = "SRME", "Symmetric Relative Mean Error"
+    sre = "SRE", "Symmetric Relative Error"
+    srd = "SRD", "Symmetric Relative Difference"
+    smpe = "SMPE", "Symmetric Mean Percentage Error"
+    smape = "SMAPE", "Symmetric Mean Absolute Percentage Error"
+    sse = "SSE", "Sum of Squared Errors"
     variance = "variance", "Variance"
     std_dev = "std_dev", "Standard Deviation"
     iqr = "IQR", "Interquartile Range"
     outlier = "outlier", "Outlier"
     error = "error", "Error"
+    energy_error = "energy_error", "Energy Error"
+    force_error = "force_error", "Force Error"
+    stress_error = "stress_error", "Stress Error"
+    volume_error = "volume_error", "Volume Error"
+    max_force_error = "max_force_error", "Max Force Error"
+    max_stress_error = "max_stress_error", "Max Stress Error"
+    max_volume_error = "max_volume_error", "Max Volume Error"
+    force_rmse = "force_rmse", "Force RMSE"
+    stress_rmse = "stress_rmse", "Stress RMSE"
+    volume_rmse = "volume_rmse", "Volume RMSE"
+    force_mae = "force_mae", "Force MAE"
+    stress_mae = "stress_mae", "Stress MAE"
+    volume_mae = "volume_mae", "Volume MAE"
     residuals = "residuals", "Residuals"
     prc = "PRC", "Precision-Recall Curve"
     prc_curve = "prc_curve", "PRC Curve"
@@ -488,6 +568,11 @@ class Key(LabelEnum):
     roc_curve = "roc_curve", "ROC Curve"
     roc_auc = "ROC_AUC", "ROC AUC"
     hit_rate = "hit_rate", "Hit Rate"
+    n_structs = "n_structures", "N<sub>structures</sub>"
+    n_materials = "n_materials", "N<sub>materials</sub>"
+    n_molecules = "n_molecules", "N<sub>molecules</sub>"
+    n_samples = "n_samples", "N<sub>samples</sub>"
+    n_configs = "n_configs", "N<sub>configs</sub>"
 
     # Computational Details
     run_time_sec = "run_time_sec", "Run Time (sec)"
@@ -496,6 +581,11 @@ class Key(LabelEnum):
     gpu_hours = "gpu_hours", "GPU Hours"
     start_time = "start_time", "Start Time"
     start_date = "start_date", "Start Date"
+    date_time = "date_time", "Date and Time"
+    date = "date", "Date"
+    time = "time", "Time"
+    date_added = "date_added", "Date Added"
+    date_modified = "date_modified", "Date Modified"
     end_time = "end_time", "End Time"
     end_date = "end_date", "End Date"
     step = "step", "Step"  # as in job/optimizer step
@@ -509,7 +599,6 @@ class Key(LabelEnum):
     n_threads = "n_threads", "Number of Threads"
     core_hours = "core_hours", "Core Hours"
     memory = "memory", "Memory"
-    n_steps = "n_steps", "Number of Steps"
     queue_name = "queue_name", "Queue Name"
     job_name = "job_name", "Job Name"
     job_type = "job_type", "Job Type"
@@ -535,10 +624,42 @@ class Key(LabelEnum):
     task_id = "task_id", "Task ID"
     task_type = "task_type", "Task Type"
     model = "model", "Model"
+    author = "author", "Author"
+    authors = "authors", "Authors"
+    year = "year", "Year"
+    journal = "journal", "Journal"
+    issue = "issue", "Issue"
+    pages = "pages", "Pages"
+    doi = "doi", "DOI"
+    url = "url", "URL"
+    citation = "citation", "Citation"
+    description = "description", "Description"  # type: ignore[assignment]
+    keywords = "keywords", "Keywords"
+    license = "license", "License"
+    version = "version", "Version"
+    abstract = "abstract", "Abstract"
+    tags = "tags", "Tags"
+    categories = "categories", "Categories"
+    funding = "funding", "Funding"
+    acknowledgements = "acknowledgements", "Acknowledgements"
+
+    # Code
+    repo = "repo", "Repository"
+    branch = "branch", "Branch"
+    commit = "commit", "Commit"
+    hash = "hash", "Hash"
+    tag = "tag", "Tag"
+    release = "release", "Release"
 
     # Synthesis-related
     synthesis_temperature = "synthesis_temperature", f"Synthesis Temperature {kelvin}"
     synthesis_pressure = "synthesis_pressure", f"Synthesis Pressure {pascal}"
+    synthesis_time = "synthesis_time", "Synthesis Time"
+    synthesis_method = "synthesis_method", "Synthesis Method"
+    synthesis_conditions = "synthesis_conditions", "Synthesis Conditions"
+    atmosphere = "atmosphere", "Atmosphere"
+    heat_treatment = "heat_treatment", "Heat Treatment"
+    powder_preparation = "powder_preparation", "Powder Preparation"
 
     # Performance Indicators
     fom = "figure_of_merit", "Figure of Merit"  # codespell:ignore
@@ -550,6 +671,7 @@ class Key(LabelEnum):
     lifetime = "lifetime", "Lifetime"
     stability = "stability", "Stability"
     selectivity = "selectivity", "Selectivity"
+    purity = "purity", "Purity"
     yield_ = "yield", "Yield"  # underscore because reserved keyword
     activity = "activity", "Activity"
     performance = "performance", "Performance"
@@ -568,6 +690,7 @@ class Key(LabelEnum):
     sustainability = "sustainability", "Sustainability Index"
 
     # Economic Factors
+    cost = "cost", "Cost"
     raw_material_cost = "raw_material_cost", "Raw Material Cost ($/kg)"
     abundance = "abundance", "Elemental Abundance (ppm)"
 
@@ -588,6 +711,7 @@ class Task(LabelEnum):
 
     static = "static", "Static"  # aka single-point
     relax = "relax", "Relaxation"  # aka geometry optimization
+    geo_opt = "geo_opt", "Geometry Optimization"
     double_relax = "double_relax", "Double Relaxation"
     phonon = "phonon", "Phonon"  # aka vibrational analysis
     eos = "eos", "Equation of State"  # aka volume optimization
@@ -610,7 +734,7 @@ class Task(LabelEnum):
     dielectric = "dielectric", "Dielectric"  # aka optical properties
     electronic = "electronic", "Electronic"
     synthesis = "synthesis", "Synthesis"
-    molecular_dynamics = "molecular_dynamics", "Molecular Dynamics"
+    md = "md", "Molecular Dynamics"
     ion_diffusion = "ion_diffusion", "Ion Diffusion"
     electron_transport = "electron_transport", "Electron Transport"
     charge_transport = "charge_transport", "Charge Transport"
@@ -665,3 +789,12 @@ class ElemColorScheme(LabelEnum):
     # https://wikipedia.org/wiki/Jmol"
     vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
     # https://jp-minerals.org/vesta
+
+
+@unique
+class SiteCoords(LabelEnum):
+    """Site coordinate representations."""
+
+    cartesian = "cartesian", "Cartesian"
+    fractional = "fractional", "Fractional"
+    cartesian_fractional = "cartesian+fractional", "Cartesian and Fractional"

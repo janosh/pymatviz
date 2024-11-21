@@ -69,13 +69,13 @@ def spacegroup_sunburst(
             SpaceGroup(x).crystal_system for x in df_spg_counts[Key.spg_num]
         ]
 
-    kwargs.setdefault("color_discrete_sequence", px.colors.qualitative.G10)
+    sunburst_defaults = dict(color_discrete_sequence=px.colors.qualitative.G10)
 
     fig = px.sunburst(
         df_spg_counts,
         path=[Key.crystal_system, Key.spg_num],
         values="count",
-        **kwargs,
+        **sunburst_defaults | kwargs,
     )
 
     if show_counts == "percent":

@@ -73,12 +73,14 @@ class TqdmDownload(tqdm):
 def save_fig(
     fig: go.Figure | plt.Figure | plt.Axes,
     path: str,
+    *,
     plotly_config: dict[str, Any] | None = None,
     env_disable: Sequence[str] = ("CI",),
     pdf_sleep: float = 0.6,
     style: str = "",
     prec: int | None = None,  # Added round keyword argument
     template: str | None = None,
+    transparent_bg: bool = True,
     **kwargs: Any,
 ) -> None:
     """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
@@ -109,6 +111,8 @@ def save_fig(
             saving. Will be reset to the original after. Defaults to "pymatviz_white" if
             path ends with .pdf or .pdfa, else None. Set to None to disable. Only used
             if fig is a plotly figure.
+        transparent_bg (bool): Whether to save matplotlib figures with transparent
+            background. Use False to show background colors.
         **kwargs: Keyword arguments passed to fig.write_html().
     """
     is_pdf = path.lower().endswith((".pdf", ".pdfa"))
@@ -135,7 +139,7 @@ def save_fig(
     if isinstance(fig, plt.Figure | plt.Axes):
         if hasattr(fig, "figure"):
             fig = fig.figure  # unwrap Axes
-        fig.savefig(path, **kwargs, transparent=True)
+        fig.savefig(path, **kwargs | dict(transparent=transparent_bg))
         return
     if not isinstance(fig, go.Figure):
         raise TypeError(
@@ -158,9 +162,8 @@ def save_fig(
             displaylogo=False,
         )
         config.update(plotly_config or {})
-        defaults = dict(include_plotlyjs=False, full_html=False, config=config)
-        defaults.update(kwargs)
-        fig.write_html(path, **defaults)
+        fig_defaults = dict(include_plotlyjs=False, full_html=False, config=config)
+        fig.write_html(path, **fig_defaults | kwargs)
         if path.lower().endswith(".svelte"):
             # insert {...$$props} into top-level div to be able to post-process and
             # style plotly figures from within Svelte files
@@ -198,6 +201,8 @@ def save_fig(
 def save_and_compress_svg(
     fig: go.Figure | plt.Figure | plt.Axes,
     filename: str,
+    *,
+    transparent_bg: bool = True,
 ) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder.
     Compresses SVG file with svgo CLI if available in PATH.
@@ -208,6 +213,9 @@ def save_and_compress_svg(
     Args:
         fig (Figure): Plotly or matplotlib Figure/Axes instance.
         filename (str): Name of SVG file (w/o extension).
+        transparent_bg (bool): Whether to save matplotlib figures
+            with transparent background. Use False to show
+            background colors.
 
     Raises:
         ValueError: If fig is None and plt.gcf() is empty.
@@ -219,11 +227,11 @@ def save_and_compress_svg(
         raise ValueError("Passed fig contains no axes. Nothing to plot!")
 
     if not filename.endswith(".svg") and not os.path.isabs(filename):
-        filepath = f"{ROOT}/assets/{filename}.svg"
+        filepath = f"{ROOT}/assets/svg/{filename}.svg"
     else:
         filepath = filename
 
-    pmv.save_fig(fig, filepath)
+    pmv.save_fig(fig, filepath, transparent_bg=transparent_bg)
     plt.close()
 
     # Compress SVG if svgo is available

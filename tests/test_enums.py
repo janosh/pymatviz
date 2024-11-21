@@ -61,11 +61,12 @@ def test_label_enum_new() -> None:
     # check label and description are not settable
     assert DummyEnum.TEST1.label == "Test Label 1"
     with pytest.raises(AttributeError):
-        DummyEnum.TEST1.label = "New Label"
+        # ignore mypy error from label attribute being read-only
+        DummyEnum.TEST1.label = "New Label"  # type: ignore[misc]
 
     assert DummyEnum.TEST1.description == "Test Description 1"
     with pytest.raises(AttributeError):
-        DummyEnum.TEST1.description = "New Description"
+        DummyEnum.TEST1.description = "New Description"  # type: ignore[misc]
 
 
 def test_label_enum_repr() -> None:

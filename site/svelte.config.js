@@ -3,7 +3,7 @@ import { s } from 'hastscript'
 import { mdsvex } from 'mdsvex'
 import link_headings from 'rehype-autolink-headings'
 import heading_slugs from 'rehype-slug'
-import preprocess from 'svelte-preprocess'
+import { sveltePreprocess } from 'svelte-preprocess'
 
 const rehypePlugins = [
   heading_slugs,
@@ -33,7 +33,7 @@ export default {
   preprocess: [
     // replace readme links to docs with site-internal links
     // (which don't require browser navigation)
-    preprocess({ replace: [[pkg.homepage, ``]] }),
+    sveltePreprocess({ replace: [[pkg.homepage, ``]] }),
     mdsvex({
       rehypePlugins,
       extensions: [`.svx`, `.md`],

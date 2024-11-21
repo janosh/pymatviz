@@ -14,16 +14,14 @@ from __future__ import annotations
 import builtins
 from importlib.metadata import PackageNotFoundError, version
 
-import matplotlib.pyplot as plt
 import plotly.express as px
-import plotly.graph_objects as go
-import plotly.io as pio
 
 from pymatviz import (
     bar,
     colors,
-    correlation,
+    coordination,
     cumulative,
+    data,
     enums,
     io,
     phonons,
@@ -37,11 +35,12 @@ from pymatviz import (
     structure_viz,
     sunburst,
     templates,
+    typing,
     uncertainty,
     utils,
     xrd,
 )
-from pymatviz.correlation import marchenko_pastur, marchenko_pastur_pdf
+from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
@@ -53,11 +52,14 @@ from pymatviz.ptable import (
     ptable_heatmap_plotly,
     ptable_heatmap_ratio,
     ptable_heatmap_splits,
+    ptable_heatmap_splits_plotly,
     ptable_hists,
+    ptable_hists_plotly,
     ptable_lines,
     ptable_scatters,
 )
-from pymatviz.rdf import element_pair_rdfs
+from pymatviz.rainclouds import rainclouds
+from pymatviz.rdf.plotly import element_pair_rdfs, full_rdf
 from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.scatter import (
@@ -81,15 +83,7 @@ from pymatviz.templates import (
     set_plotly_template,
 )
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
-from pymatviz.utils import (
-    BACKENDS,
-    PKG_DIR,
-    ROOT,
-    df_ptable,
-    html_tag,
-    si_fmt,
-    si_fmt_int,
-)
+from pymatviz.utils import PKG_DIR, ROOT, df_ptable, html_tag, si_fmt, si_fmt_int
 from pymatviz.xrd import xrd_pattern
 
 

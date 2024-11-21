@@ -22,7 +22,7 @@ df_ptable = pmv.df_ptable.copy()  # avoid changing the df in place
 
 @pytest.fixture
 def glass_elem_counts(glass_formulas: pd.Series[Composition]) -> pd.Series[int]:
-    return pmv.count_elements(glass_formulas)
+    return pmv.count_elements(glass_formulas, fill_value=0)
 
 
 @pytest.fixture
@@ -145,7 +145,9 @@ class TestPtableHeatmap:
         )
         assert isinstance(fig, plt.Figure)
 
-        with pytest.warns(match="We encourage you to return plt.figure"):
+        with pytest.warns(
+            FutureWarning, match="We return_type='figure' over return_type='axes'"
+        ):
             ax = pmv.ptable_heatmap(df_ptable[Key.atomic_mass])
         assert isinstance(ax, plt.Axes)
 
@@ -153,7 +155,7 @@ class TestPtableHeatmap:
 @pytest.mark.parametrize("hide_f_block", ["auto", False, True])
 def test_ptable_heatmap_splits(hide_f_block: bool) -> None:
     """Test pmv.ptable_heatmap_splits with arbitrary data length."""
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed=0)
     data_dict: dict[str, Any] = {
         elem.symbol: rng.integers(
             0, 10, size=rng.integers(1, 4)
@@ -284,6 +286,10 @@ def test_ptable_lines(hide_f_block: bool) -> None:
             "O": [[10, 11], [12, 13], [14, 15]],
         },
         hide_f_block=hide_f_block,
+        # also test annotation
+        anno_text={elem.symbol: str(idx - 1) for idx, elem in enumerate(Element)},
+        anno_pos=(0.25, 0.2),
+        anno_kwargs={"fontsize": 6},
     )
     assert isinstance(fig, plt.Figure)
     expected_n_axes = 126 if hide_f_block else 180

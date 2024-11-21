@@ -121,7 +121,7 @@ def matplotlib_scatter() -> plt.Figure:
 
 @pytest.fixture
 def glass_formulas() -> list[str]:
-    """First 20 materials in the MatBench glass dataset.
+    """First 20 materials in the MatBench glass dataset. Equivalent to:
 
     from matminer.datasets import load_dataset
 
@@ -136,6 +136,7 @@ def glass_formulas() -> list[str]:
 
 @pytest.fixture
 def df_float() -> pd.DataFrame:
+    np_rng = np.random.default_rng(seed=0)
     return pd.DataFrame(np_rng.random(size=(30, 5)), columns=[*"ABCDE"])
 
 

@@ -1,6 +1,6 @@
 [project]
 name = "pymatviz"
-version = "0.11.0"
+version = "0.13.2"
 description = "A toolkit for visualizations in materials informatics"
 authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
@@ -21,38 +21,36 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.9",
     "numpy>=1.26",
-    # output-formatting needed for pandas Stylers, see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
+    # output-formatting needed for pandas Stylers,
+    # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "pandas[output-formatting]>=2.2",
     "plotly>=5.23",
-    "pymatgen>=2024.7.18",
+    "pymatgen>=2024.11.13",
     "scikit-learn>=1.5",
     "scipy>=1.14",
 ]
 
 [project.optional-dependencies]
-test = [
-    "adjustText>=0.8",
-    "bs4>=0.0.2",
-    "cssutils>=2.9",
-    "kaleido>=0.2",
-    "lxml>=4.9",
-    "pdfCropMargins>=2",
-    "pytest-cov>=5",
-    "pytest>=8",
-    "weasyprint>=60",
-]
-make-assets = ["kaleido>=0.2", "matminer>=0.9", "mp_api>=0.42"]
-export-figs = ["kaleido>=0.2"]
-gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
+auto-text-pos = ["adjustText>=0.8"]
 df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
-auto-text-pos = ["adjustText>=0.8"]
+# https://github.com/plotly/Kaleido/issues/176
+export-figs = ["kaleido>=0.2.1, !=0.2.1.post1"]
+make-assets = ["matminer>=0.9", "mp_api>=0.42", "pymatviz[export-figs]"]
+gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
+test = [
+    "pymatviz[auto-text-pos,df-pdf-export,df-svg-export,export-figs]",
+    "pytest-cov>=5",
+    "pytest-split>=0.9",
+    "pytest>=8",
+]
 
 [tool.setuptools.packages.find]
 include = ["pymatviz*"]
@@ -123,8 +121,12 @@ docstring-code-format = true
     "PLR2004", # magic-value-comparison
     "S101",    # use of assert
 ]
-
 "examples/*" = [
+    "D100",   # missing docstring in public module
+    "INP001", # implicit-namespace-package
+    "T201",   # print found
+]
+"assets/scripts/*" = [
     "D100",   # missing docstring in public module
     "INP001", # implicit-namespace-package
     "T201",   # print found

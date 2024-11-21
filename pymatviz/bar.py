@@ -16,11 +16,14 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import Key
-from pymatviz.utils import PLOTLY, Backend, crystal_sys_from_spg_num, si_fmt_int
+from pymatviz.typing import PLOTLY
+from pymatviz.utils import crystal_sys_from_spg_num, si_fmt_int
 
 
 if TYPE_CHECKING:
     from typing import Any, Literal
+
+    from pymatviz.typing import Backend
 
 
 def spacegroup_bar(
@@ -89,7 +92,7 @@ def spacegroup_bar(
             crystal_sys_from_spg_num(x) for x in df_data.index
         ]
 
-        xlim = (df_data.index.min() - 0.5, df_data.index.max() + 0.5)
+        x_range = (df_data.index.min() - 0.5, df_data.index.max() + 0.5)
         x_label = "International Spacegroup Number"
 
     else:  # assume index is space group symbols
@@ -122,7 +125,7 @@ def spacegroup_bar(
     crys_sys_counts = crys_sys_counts.loc[
         [x for x in crystal_sys_colors if x in crys_sys_counts.index]
     ]
-    xlim = (0, len(df_data) - 1)
+    x_range = (0, len(df_data) - 1)
 
     fig_title = f"{count_col} per crystal system" if show_counts else None
     if backend == PLOTLY:
@@ -175,7 +178,7 @@ def spacegroup_bar(
 
         fig.layout.showlegend = False
         fig.layout.title = dict(text=fig_title, x=0.5)
-        fig.layout.xaxis.update(showgrid=False, title=x_label, range=xlim)
+        fig.layout.xaxis.update(showgrid=False, title=x_label, range=x_range)
         count_max = df_data[count_col].max()
         y_max = np.log10(count_max * 1.05) if log else count_max * 1.05
         fig.layout.yaxis.update(range=(0, y_max), type="log" if log else None)
@@ -203,10 +206,10 @@ def spacegroup_bar(
 
     ax = ax or plt.gca()
     # keep this above df.plot.bar()! order matters
-    ax.set(ylabel=count_col, xlim=xlim)
+    ax.set(ylabel=count_col, xlim=x_range)
 
-    defaults = dict(width=0.9)  # set default histogram bar width
-    df_data[count_col].plot.bar(figsize=[16, 4], ax=ax, **defaults | kwargs)
+    bar_defaults = dict(width=0.9)  # set default histogram bar width
+    df_data[count_col].plot.bar(figsize=[16, 4], ax=ax, **bar_defaults | kwargs)
 
     ax.set_title(fig_title, fontdict={"fontsize": 18}, pad=30)
     ax.set(xlabel=x_label)

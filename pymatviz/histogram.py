@@ -13,14 +13,14 @@ import pymatviz as pmv
 from pymatviz.bar import spacegroup_bar
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.utils import BACKENDS, MATPLOTLIB, PLOTLY, Backend
+from pymatviz.typing import BACKENDS, MATPLOTLIB, PLOTLY, Backend
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any, Literal
 
-    from pymatviz.utils import ElemValues
+    from pymatviz.typing import ElemValues
 
 
 def spacegroup_hist(*args: Any, **kwargs: Any) -> plt.Axes | go.Figure:
@@ -55,7 +55,7 @@ def elements_hist(
     Args:
         formulas (list[str]): compositional strings, e.g. ["Fe2O3", "Bi2Te3"].
         count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See count_elements() for
+            Reduce or normalize compositions before counting. See `count_elements` for
             details. Only used when formulas is list of composition strings/objects.
         log (bool, optional): Whether y-axis is log or linear. Defaults to False.
         keep_top (int | None): Display only the top n elements by prevalence.
@@ -120,8 +120,12 @@ def histogram(
     """Get a histogram with plotly (default) or matplotlib backend but using fast numpy
     pre-processing before handing the data off to the plot function.
 
-    Such a common use case when dealing with large datasets that it's worth having a
-    dedicated function for it. Speedup example:
+    Very common use case when dealing with large datasets so worth having a dedicated
+    function for it. Two advantages over the matplotlib/plotly native histograms are
+    much faster and much smaller file sizes (when saving plotly figs as HTML since
+    plotly saves a complete copy of the data to disk from which it recomputes the
+    histogram on the fly to render the figure).
+    Speedup example:
 
         gaussian = np.random.normal(0, 1, 1_000_000_000)
         plot_histogram(gaussian)  # takes 17s

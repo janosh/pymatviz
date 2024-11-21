@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import math
 import warnings
-from math import isclose
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 
@@ -16,12 +16,12 @@ from pymatviz.ptable._projector import (
     OverwriteTileValueColor,
     PTableProjector,
 )
-from pymatviz.utils import ElemValues, get_cbar_label_formatter, pick_bw_for_contrast
+from pymatviz.utils import get_cbar_label_formatter, pick_bw_for_contrast
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
-    from typing import Any
+    from typing import Any, Literal, TypeAlias
 
     import pandas as pd
     from matplotlib.colors import Colormap
@@ -29,9 +29,10 @@ if TYPE_CHECKING:
     from pymatgen.core import Element
 
     from pymatviz.ptable._process_data import PTableData
+    from pymatviz.typing import ColorElemTypeStrategy, ElemValues
 
 # Custom types
-ElemStr = str  # element as a str
+ElemStr: TypeAlias = str  # element as a str
 
 
 def ptable_heatmap(
@@ -57,6 +58,11 @@ def ptable_heatmap(
     # Symbol
     symbol_pos: tuple[float, float] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
+    # Annotation
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_text_color: ColorType | dict[ElemStr, ColorType] = "black",
+    anno_kwargs: dict[str, Any] | None = None,
     # Value
     value_show_mode: Literal["value", "fraction", "percent", "off"] = "value",
     value_pos: tuple[float, float] | None = None,
@@ -70,7 +76,7 @@ def ptable_heatmap(
     cbar_title: str = "Element Count",
     cbar_title_kwargs: dict[str, Any] | None = None,
     cbar_kwargs: dict[str, Any] | None = None,
-    # Migration
+    # Migration (will be removed in the future)
     return_type: Literal["figure", "axes"] = "axes",
     # Deprecated args, don't use
     colorscale: str | None = None,
@@ -106,8 +112,8 @@ def ptable_heatmap(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         f_block_voffset (float): The vertical offset of f-block elements.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
@@ -129,6 +135,17 @@ def ptable_heatmap(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         symbol_kwargs (dict): Keyword arguments passed to plt.text() for
             element symbols. Defaults to None.
+
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_text_color (ColorType | dict[ElemStr, ColorType]): Texts colors
+            for annotations.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
 
         --- Value ---
         value_show_mode (str): The values display mode:
@@ -159,11 +176,11 @@ def ptable_heatmap(
             cbar.ax.set_title(). Defaults to dict(fontsize=12, pad=10).
         cbar_kwargs (dict): Keyword arguments passed to fig.colorbar().
 
-        --- Migration  # TODO: remove after 2025-07-01 ---
+        --- Migration --- TODO: remove after 2025-07-01
         return_type ("figure" | "axes"): Whether to return plt.Figure or plt.axes.
             We encourage you to migrate to "figure".
 
-        --- Deprecated args, don't use ---
+        --- Deprecated args, don't use ---  TODO: remove after 2025-04-01
         colorscale: Use "colormap" instead.
         heat_mode: Use "value_show_mode" instead.
         show_values: Use "value_show_mode" instead.
@@ -184,31 +201,47 @@ def ptable_heatmap(
             stacklevel=2,
         )
 
-    # Handle deprecated args  # TODO: remove after 2025-01-01
+    # Handle deprecated args  # TODO: remove after 2025-04-01
     if colorscale is not None:
-        warnings.warn("colorscale is deprecated in favor of colormap.", stacklevel=2)
+        warnings.warn(
+            "colorscale is deprecated in favor of colormap.",
+            FutureWarning,
+            stacklevel=2,
+        )
         colormap = colorscale
     if heat_mode is not None:
         warnings.warn(
-            "heat_mode is deprecated in favor of value_show_mode.", stacklevel=2
+            "heat_mode is deprecated in favor of value_show_mode.",
+            FutureWarning,
+            stacklevel=2,
         )
         value_show_mode = heat_mode
     if show_values is not None:
         warnings.warn(
-            "show_values is deprecated in favor of value_show_mode.", stacklevel=2
+            "show_values is deprecated in favor of value_show_mode.",
+            FutureWarning,
+            stacklevel=2,
         )
         if not show_values:
             value_show_mode = "off"
     if fmt is not None:
-        warnings.warn("fmt is deprecated in favor of value_fmt.", stacklevel=2)
+        warnings.warn(
+            "fmt is deprecated in favor of value_fmt.", FutureWarning, stacklevel=2
+        )
         value_fmt = fmt
     if cbar_fmt is not None:
         warnings.warn(
-            "cbar_fmt is deprecated in favor of cbar_label_fmt.", stacklevel=2
+            "cbar_fmt is deprecated in favor of cbar_label_fmt.",
+            FutureWarning,
+            stacklevel=2,
         )
         cbar_label_fmt = cbar_fmt
     if show_scale is not None:
-        warnings.warn("show_scale is deprecated in favor of show_cbar.", stacklevel=2)
+        warnings.warn(
+            "show_scale is deprecated in favor of show_cbar.",
+            FutureWarning,
+            stacklevel=2,
+        )
         show_cbar = show_scale
 
     # Prevent log scale and percent/fraction display mode being used together
@@ -219,7 +252,7 @@ def ptable_heatmap(
     projector = HeatMapPTableProjector(
         data=data,
         exclude_elements=exclude_elements,
-        # tile_size=tile_size,
+        # tile_size=tile_size,  # TODO: WIP
         log=log,
         colormap=colormap,
         plot_kwargs=plot_kwargs,
@@ -275,7 +308,16 @@ def ptable_heatmap(
         ax_kwargs=ax_kwargs,
     )
 
-    # Show colorbar upon request
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text,
+            pos=anno_pos,
+            text_color=anno_text_color,
+            kwargs=anno_kwargs,
+        )
+
+    # [Optional] Show colorbar
     if show_cbar:
         # Generate colorbar tick label format
         cbar_kwargs = cbar_kwargs or {}
@@ -302,51 +344,72 @@ def ptable_heatmap(
     if return_type == "figure":
         return projector.fig
     warnings.warn(
-        "We encourage you to return plt.figure for more consistent results.",
+        (
+            "We return_type='figure' over return_type='axes' for more "
+            "consistent results.\nThis will become the default after 2025-07."
+        ),
+        FutureWarning,
         stacklevel=2,
     )
     return plt.gca()
 
 
 def ptable_heatmap_ratio(
+    # Ratio heatmap specific
     values_num: ElemValues,
     values_denom: ElemValues,
     *,
+    # Data preprocessing
     count_mode: ElemCountMode = ElemCountMode.composition,
     normalize: bool = False,
+    # Infinity and zero handling
     infty_color: ColorType = "lightskyblue",
     zero_color: ColorType = "lightgrey",
     zero_tol: float = 1e-6,
     zero_symbol: str = "ZERO",
-    cbar_title: str = "Element Ratio",
+    # Colors and legends for special cases
     not_in_numerator: tuple[str, str] | None = ("lightgray", "gray: not in 1st list"),
     not_in_denominator: tuple[str, str] | None = (
         "lightskyblue",
         "blue: not in 2nd list",
     ),
     not_in_either: tuple[str, str] | None = ("white", "white: not in either"),
+    # Annotation
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_text_color: ColorType | dict[ElemStr, ColorType] = "black",
+    anno_kwargs: dict[str, Any] | None = None,
+    # Colorbar
+    cbar_title: str = "Element Ratio",
+    # Others
     **kwargs: Any,
 ) -> plt.figure:
-    """Display the ratio of two maps from element symbols to heat values or of two sets
-    of compositions.
+    """Display the ratio of two maps from element symbols to
+        heat values or of two sets of compositions.
 
     Args:
+        --- Ratio heatmap specific ---
         values_num (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
             element symbols to heatmap values or iterable of composition strings/objects
             in the numerator.
         values_denom (dict[ElemStr, int | float] | pd.Series | list[ElemStr]): Map from
             element symbols to heatmap values or iterable of composition strings/objects
             in the denominator.
+
+        --- Data preprocessing ---
+        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
+            Reduce or normalize compositions before counting. See `count_elements` for
+            details. Only used when values is list of composition strings/objects.
         normalize (bool): Whether to normalize heatmap values so they sum to 1. Makes
             different ptable_heatmap_ratio plots comparable. Defaults to False.
+
+        --- Infinity and zero handling ---
         infty_color (ColorType): Color for infinity.
         zero_color (ColorType): Color for (near) zero element tiles.
         zero_tol (float): Absolute tolerance to consider a value zero.
         zero_symbol (str): Value to display for (near) zero element tiles.
-        count_mode ("composition" | "fractional_composition" | "reduced_composition"):
-            Reduce or normalize compositions before counting. See count_elements() for
-            details. Only used when values is list of composition strings/objects.
-        cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
+
+        --- Colors and legends for special cases ---
         not_in_numerator (tuple[str, str]): Color and legend description used for
             elements missing from numerator. Defaults to
             ("#eff", "gray: not in 1st list").
@@ -354,27 +417,43 @@ def ptable_heatmap_ratio(
             ("lightskyblue", "blue: not in 2nd list").
         not_in_either (tuple[str, str]): See not_in_numerator. Defaults to
             ("white", "white: not in either").
+
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_text_color (ColorType | dict[ElemStr, ColorType]): Texts colors
+            for annotations.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
+
+        --- Colorbar ---
+        cbar_title (str): Title for the colorbar. Defaults to "Element Ratio".
+
+        --- Others ---
         **kwargs: Additional keyword arguments passed to ptable_heatmap().
 
     Returns:
-        plt.Figure: matplotlib Figures object.
+        plt.Figure: matplotlib Figure object.
     """
     # Generate ratio data
-    values_num = count_elements(values_num, count_mode)
-    values_denom = count_elements(values_denom, count_mode)
+    values_num = count_elements(values_num, count_mode, fill_value=0)
+    values_denom = count_elements(values_denom, count_mode, fill_value=0)
 
     values = values_num / values_denom
 
     if normalize:
         values /= values.sum()
 
-    # Drop entries that is not is either (as NaN)
+    # Drop entries that is not in either numerator or denominator (as NaN)
     values = values.dropna(inplace=False)
 
     # Generate overwrite tile entries for near zero values
     overwrite_tiles = {}
     for elem, value in values.items():
-        if isclose(a=value, b=0, abs_tol=zero_tol):
+        if math.isclose(a=value, b=0, abs_tol=zero_tol):
             overwrite_tiles[elem] = OverwriteTileValueColor(
                 zero_symbol, pick_bw_for_contrast(zero_color), zero_color
             )
@@ -387,6 +466,10 @@ def ptable_heatmap_ratio(
         on_empty="show",
         overwrite_tiles=overwrite_tiles,
         return_type="figure",
+        anno_pos=anno_pos,
+        anno_text=anno_text,
+        anno_text_color=anno_text_color,
+        anno_kwargs=anno_kwargs,
         **kwargs,
     )
 
@@ -422,6 +505,11 @@ def ptable_heatmap_splits(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.5),
     symbol_kwargs: dict[str, Any] | None = None,
+    # Annotation
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_text_color: ColorType | dict[ElemStr, ColorType] = "black",
+    anno_kwargs: dict[str, Any] | None = None,
     # Colorbar
     cbar_title: str = "Values",
     cbar_title_kwargs: dict[str, Any] | None = None,
@@ -448,8 +536,8 @@ def ptable_heatmap_splits(
         colormap (str): Matplotlib colormap name to use.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -467,6 +555,17 @@ def ptable_heatmap_splits(
             Defaults to (0.5, 0.5). (1, 1) is the upper right corner.
         symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
+
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_text_color (ColorType | dict[ElemStr, ColorType]): Texts colors
+            for annotations.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
 
         --- Colorbar ---
         cbar_title (str): Colorbar title. Defaults to "Values".
@@ -512,6 +611,15 @@ def ptable_heatmap_splits(
         kwargs=symbol_kwargs,
     )
 
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text,
+            pos=anno_pos,
+            text_color=anno_text_color,
+            kwargs=anno_kwargs,
+        )
+
     # Add colorbar
     projector.add_colorbar(
         title=cbar_title,
@@ -548,8 +656,12 @@ def ptable_hists(
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Annotation
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_kwargs: dict[str, Any] | None = None,
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -573,8 +685,8 @@ def ptable_hists(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -606,7 +718,16 @@ def ptable_hists(
         symbol_kwargs (dict): Keyword arguments passed to ax.text() for element
             symbols. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
+
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -646,21 +767,35 @@ def ptable_hists(
         ax_kwargs=ax_kwargs,
     )
 
+    # Generate text color for both element symbols
+    # and annotation
+    if color_elem_strategy in {"both", "symbol"}:
+        text_color: str = ElemColorMode.element_types
+    else:
+        text_color = "black"
+
     # Add element symbols
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color=ElemColorMode.element_types
-        if color_elem_strategy in {"both", "symbol"}
-        else "black",
+        text_color=text_color,
         kwargs=symbol_kwargs,
     )
+
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text,
+            pos=anno_pos,
+            text_color=text_color,
+            kwargs=anno_kwargs,
+        )
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
         projector.set_elem_background_color()
 
-    # Add colorbar
+    # [Optional] Add colorbar
     if colormap is not None:
         projector.add_colorbar(
             title=cbar_title,
@@ -669,7 +804,7 @@ def ptable_hists(
             title_kwargs=cbar_title_kwargs,
         )
 
-    # Add element type legend
+    # [Optional] Add element type legend
     if add_elem_type_legend:
         projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
@@ -698,8 +833,12 @@ def ptable_scatters(
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
     symbol_kwargs: dict[str, Any] | None = None,
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Annotation
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_kwargs: dict[str, Any] | None = None,
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -720,8 +859,8 @@ def ptable_scatters(
             options at https://matplotlib.org/stable/users/explain/colors/colormaps.
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -751,7 +890,16 @@ def ptable_scatters(
         symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
+
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -782,15 +930,29 @@ def ptable_scatters(
         ax_kwargs=ax_kwargs,
     )
 
+    # Generate text color for both element symbols
+    # and annotation
+    if color_elem_strategy in {"both", "symbol"}:
+        text_color: str = ElemColorMode.element_types
+    else:
+        text_color = "black"
+
     # Add element symbols
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color=ElemColorMode.element_types
-        if color_elem_strategy in {"both", "symbol"}
-        else "black",
+        text_color=text_color,
         kwargs=symbol_kwargs,
     )
+
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text,
+            pos=anno_pos,
+            text_color=text_color,
+            kwargs=anno_kwargs,
+        )
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
@@ -805,7 +967,7 @@ def ptable_scatters(
             title_kwargs=cbar_title_kwargs,
         )
 
-    # Add element type legend
+    # [Optional] Add element type legend
     if add_elem_type_legend:
         projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,
@@ -828,8 +990,12 @@ def ptable_lines(
     symbol_kwargs: dict[str, Any] | None = None,
     symbol_text: str | Callable[[Element], str] = lambda elem: elem.symbol,
     symbol_pos: tuple[float, float] = (0.5, 0.8),
-    # Element types based colors and legend
-    color_elem_strategy: Literal["symbol", "background", "both", "off"] = "background",
+    # Annotation
+    anno_pos: tuple[float, float] = (0.75, 0.75),
+    anno_text: dict[ElemStr, str] | None = None,
+    anno_kwargs: dict[str, Any] | None = None,
+    # Element type colors and legend
+    color_elem_strategy: ColorElemTypeStrategy = "background",
     elem_type_colors: dict[str, str] | None = None,
     add_elem_type_legend: bool = False,
     elem_type_legend_kwargs: dict[str, Any] | None = None,
@@ -848,8 +1014,8 @@ def ptable_lines(
         --- Figure ---
         on_empty ("hide" | "show"): Whether to show or hide tiles for elements without
             data. Defaults to "hide".
-        hide_f_block (bool | "auto"): Hide f-block (Lanthanum and Actinium series).
-            Defaults to "auto", meaning hide if no data is provided.
+        hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
+            Defaults to "auto", meaning hide if no data present.
         plot_kwargs (dict): Additional keyword arguments to
             pass to the plt.subplots function call.
 
@@ -870,7 +1036,16 @@ def ptable_lines(
         symbol_kwargs (dict): Keyword arguments passed to ax.text() for
             element symbols. Defaults to None.
 
-        --- Element types based colors and legend ---
+        --- Annotation ---
+        anno_pos (tuple[float, float]): Position of annotation relative to the
+            lower left corner of each tile. Defaults to (0.75, 0.75).
+            (1, 1) is the upper right corner.
+        anno_text (dict[ElemStr, str]): Annotation to display for each
+            element tile. Defaults to None for not displaying.
+        anno_kwargs (dict): Keyword arguments passed to ax.text() for
+            annotation. Defaults to None.
+
+        --- Element type colors and legend ---
         color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
             color element symbols, tile backgrounds, or both based on element type.
             Defaults to "background".
@@ -898,21 +1073,35 @@ def ptable_lines(
         ax_kwargs=ax_kwargs,
     )
 
+    # Generate text color for both element symbols
+    # and annotation
+    if color_elem_strategy in {"both", "symbol"}:
+        text_color: str = ElemColorMode.element_types
+    else:
+        text_color = "black"
+
     # Add element symbols
     projector.add_elem_symbols(
         text=symbol_text,
         pos=symbol_pos,
-        text_color=ElemColorMode.element_types
-        if color_elem_strategy in {"both", "symbol"}
-        else "black",
+        text_color=text_color,
         kwargs=symbol_kwargs,
     )
+
+    # [Optional] Add annotation
+    if anno_text is not None:
+        projector.add_annotation(
+            text=anno_text,
+            pos=anno_pos,
+            text_color=text_color,
+            kwargs=anno_kwargs,
+        )
 
     # Color element tile background
     if color_elem_strategy in {"both", "background"}:
         projector.set_elem_background_color()
 
-    # Add element type legend
+    # [Optional] Add element type legend
     if add_elem_type_legend:
         projector.add_elem_type_legend(
             kwargs=elem_type_legend_kwargs,

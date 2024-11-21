@@ -122,6 +122,9 @@ def plot_element_heteronuclear(
         gs (plt.GridSpec): GridSpec object for subplot layout.
         model_size (str): Size of the model (e.g., "small", "medium").
         atomic_number (int): Atomic number of the main element.
+
+    Raises:
+        ValueError: If the GridSpec does not have 10 rows and 18 columns.
     """
     if gs.nrows != 10 or gs.ncols != 18:
         raise ValueError("GridSpec must have 10 rows and 18 columns.")

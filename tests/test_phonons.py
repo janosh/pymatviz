@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from glob import glob
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import plotly.graph_objects as go
 import pytest
@@ -13,11 +13,14 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
-from pymatviz.utils import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Literal
+
+    import numpy as np
 
 BandsDoses = dict[str, dict[str, PhononBands | PhononDos]]
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
@@ -64,37 +67,86 @@ def phonon_doses() -> dict[str, PhononDos]:
 
 
 @pytest.mark.parametrize(
-    ("branches", "branch_mode"), [(["GAMMA-X", "X-U"], "union"), ((), "intersection")]
+    ("branches", "branch_mode", "line_kwargs"),
+    [
+        # test original single dict behavior
+        (["GAMMA-X", "X-U"], "union", dict(width=2)),
+        # test empty tuple branches with intersection mode
+        ((), "intersection", None),
+        # test separate acoustic/optical styling
+        (
+            ["GAMMA-X"],
+            "union",
+            {
+                "acoustic": dict(width=2.5, dash="solid", name="Acoustic modes"),
+                "optical": dict(width=1, dash="dash", name="Optical modes"),
+            },
+        ),
+        # test callable line_kwargs
+        ((), "union", lambda _freqs, idx: dict(dash="solid" if idx < 3 else "dash")),
+    ],
 )
 def test_phonon_bands(
     phonon_bands_doses_mp_2758: BandsDoses,
     branches: tuple[str, str],
     branch_mode: pmv.phonons.BranchMode,
+    line_kwargs: dict[str, Any] | Callable[[np.ndarray, int], dict[str, Any]] | None,
 ) -> None:
     # test single band structure
     fig = pmv.phonon_bands(
         phonon_bands_doses_mp_2758["bands"]["DFT"],
         branch_mode=branch_mode,
         branches=branches,
+        line_kwargs=line_kwargs,
     )
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Wave Vector"
     assert fig.layout.yaxis.title.text == "Frequency (THz)"
     assert fig.layout.font.size == 16
 
+    x_labels: tuple[str, ...]
     if branches == ():
-        x_labels = ["Γ", "X", "X", "U|K", "Γ", "Γ", "L", "L", "W", "W", "X"]
+        x_labels = ("Γ", "X", "X", "U|K", "Γ", "Γ", "L", "L", "W", "W", "X")
     else:
-        x_labels = ["Γ", "X", "X", "U|K"]
-    assert list(fig.layout.xaxis.ticktext) == x_labels
+        x_labels = ("Γ", "U|K") if len(branches) == 1 else ("Γ", "X", "X", "U|K")
+    assert fig.layout.xaxis.ticktext == x_labels
     assert fig.layout.xaxis.range is None
     assert fig.layout.yaxis.range == pytest.approx((0, 5.36385427095))
 
+    # test line styling
+    if isinstance(line_kwargs, dict) and "acoustic" in line_kwargs:
+        # check that acoustic and optical modes have different styles
+        trace_names = {trace.name for trace in fig.data}
+        assert trace_names == {"", "Acoustic modes", "Optical modes"}
+
+        acoustic_traces = [t for t in fig.data if t.name == "Acoustic modes"]
+        optical_traces = [t for t in fig.data if t.name == "Optical modes"]
+
+        assert all(t.line.width == 2.5 for t in acoustic_traces)
+        assert all(t.line.dash == "solid" for t in acoustic_traces)
+        assert all(t.line.width == 1 for t in optical_traces)
+        assert all(t.line.dash == "dash" for t in optical_traces)
+    elif callable(line_kwargs):
+        # check that line width increases with band index
+        traces_by_width = sorted(fig.data, key=lambda t: t.line.width)
+        assert traces_by_width[0].line.width < traces_by_width[-1].line.width
+
+        # check acoustic/optical line style separation
+        acoustic_traces = [t for t in fig.data if t.line.dash == "solid"]
+        optical_traces = [t for t in fig.data if t.line.dash == "dash"]
+        assert len(acoustic_traces) == 18  # 6 segments for the first 3 bands
+        assert len(optical_traces) > 0  # should have some optical bands
+
     # test dict of band structures
     fig = pmv.phonon_bands(
-        phonon_bands_doses_mp_2758["bands"], branch_mode=branch_mode, branches=branches
+        phonon_bands_doses_mp_2758["bands"],
+        branch_mode=branch_mode,
+        branches=branches,
+        line_kwargs=line_kwargs,
     )
     assert isinstance(fig, go.Figure)
+    assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
+    assert fig.layout.xaxis.ticktext == x_labels
 
 
 def test_phonon_bands_raises(

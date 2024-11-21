@@ -126,8 +126,8 @@ def density_scatter(
     xs, ys, cs = _hist_density(xs, ys, **(hist_density_kwargs or {}))
 
     # decrease marker size
-    defaults = dict(s=6, norm=LogNorm() if log_density else None)
-    ax.scatter(xs, ys, c=cs, **defaults | kwargs)
+    scatter_defaults = dict(s=6, norm=LogNorm() if log_density else None)
+    ax.scatter(xs, ys, c=cs, **scatter_defaults | kwargs)
 
     if identity_line:
         pmv.powerups.add_identity_line(
@@ -226,7 +226,7 @@ def density_scatter_plotly(
                 group_df, x, y, density, n_bins, bin_counts_col
             )
             binned_df[facet_col] = group_name  # Add the facet column back
-            binned_dfs.append(binned_df)
+            binned_dfs += [binned_df]
 
         # Merge all binned dataframes
         df_plot = pd.concat(binned_dfs, ignore_index=True)

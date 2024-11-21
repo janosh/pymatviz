@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import math
 import warnings
-from collections.abc import Callable, Sequence
 from itertools import product
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,7 +18,7 @@ from matplotlib.patches import PathPatch, Wedge
 from matplotlib.path import Path
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer, SymmetryUndeterminedError
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key
@@ -68,6 +67,9 @@ def structure_2d(
     subplot_title: Callable[[Structure, str | int], str] | None = None,
 ) -> plt.Axes | tuple[plt.Figure, np.ndarray[plt.Axes]]:
     """Plot pymatgen structures in 2D with matplotlib.
+
+    structure_2d is not deprecated but structure_(2d|3d)_plotly() have more features and
+    are recommended replacements.
 
     Inspired by ASE's ase.visualize.plot.plot_atoms()
     https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib
@@ -196,7 +198,7 @@ def structure_2d(
             try:
                 spg_analyzer = SpacegroupAnalyzer(struct)
                 struct = spg_analyzer.get_conventional_standard_structure()
-            except SymmetryUndeterminedError:
+            except ValueError:
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
         # Get default colors

@@ -14,15 +14,14 @@ import pymatviz as pmv
 from pymatviz.utils import df_to_arrays
 
 
-if version.parse(np.__version__) < version.parse("2.0.0"):
-    np.trapezoid = np.trapz  # noqa: NPY201
-
-
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
 
     from numpy.typing import ArrayLike
+
+if version.parse(np.__version__) < version.parse("2.0.0"):
+    np.trapezoid = np.trapz  # noqa: NPY201
 
 
 def qq_gaussian(

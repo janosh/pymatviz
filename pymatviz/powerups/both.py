@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,7 +12,7 @@ import sklearn
 from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
-from pymatviz.utils import (
+from pymatviz.typing import (
     BACKENDS,
     MATPLOTLIB,
     PLOTLY,
@@ -20,6 +20,8 @@ from pymatviz.utils import (
     VALID_FIG_TYPES,
     AxOrFig,
     Backend,
+)
+from pymatviz.utils import (
     annotate,
     get_fig_xy_range,
     get_font_color,
@@ -31,6 +33,7 @@ from pymatviz.utils import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
 
     from matplotlib.offsetbox import AnchoredText
     from numpy.typing import ArrayLike
