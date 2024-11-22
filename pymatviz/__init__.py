@@ -18,6 +18,7 @@ import plotly.express as px
 
 from pymatviz import (
     bar,
+    brillouin,
     colors,
     coordination,
     cumulative,
@@ -40,6 +41,7 @@ from pymatviz import (
     utils,
     xrd,
 )
+from pymatviz.brillouin import plot_brillouin_zone_3d
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
