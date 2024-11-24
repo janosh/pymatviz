@@ -240,12 +240,20 @@ See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
 
 ## Classification
 
+See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix.py).
+
+| [`confusion_matrix(conf_mat, ...)`](assets/scripts/classify/confusion_matrix.py) | [`confusion_matrix(y_true, y_pred, ...)`](assets/scripts/classify/confusion_matrix.py) |
+| :------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
+|            ![stability-confusion-matrix][stability-confusion-matrix]             |          ![crystal-system-confusion-matrix][crystal-system-confusion-matrix]           |
+
 See [`pymatviz/relevance.py`](pymatviz/relevance.py).
 
 | [`roc_curve(targets, proba_pos)`](assets/scripts/relevance/roc_curve.py) | [`precision_recall_curve(targets, proba_pos)`](assets/scripts/relevance/precision_recall_curve.py) |
 | :----------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
 |                         ![roc-curve][roc-curve]                          |                         ![precision-recall-curve][precision-recall-curve]                          |
 
+[stability-confusion-matrix]: assets/svg/stability-confusion-matrix.svg
+[crystal-system-confusion-matrix]: assets/svg/crystal-system-confusion-matrix.svg
 [cumulative-error]: assets/svg/cumulative-error.svg
 [cumulative-residual]: assets/svg/cumulative-residual.svg
 [error-decay-with-uncert-multiple]: assets/svg/error-decay-with-uncert-multiple.svg
