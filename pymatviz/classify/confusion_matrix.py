@@ -19,7 +19,7 @@ def confusion_matrix(
     colorscale: str = "blues",
     float_fmt: str = ".1%",
     heatmap_kwargs: dict[str, Any] | None = None,
-    metrics: dict[str, str | None] | Sequence[str] = ("Acc", "MCC"),
+    metrics: dict[str, str | None] | Sequence[str] | set[str] = ("Acc", "MCC"),
     metrics_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Plot confusion matrix using plotly. Accepts either a pre-computed confusion
