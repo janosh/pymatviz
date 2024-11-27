@@ -96,9 +96,15 @@ def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) ->
 
         if current_time > grace_threshold:
             if current_time > hard_threshold:
-                pytest.fail(f"{module_name} import too slow! {hard_threshold=:.2f} ms")
+                pytest.fail(
+                    f"{module_name} import too slow at {current_time:.0f} ms! "
+                    f"{hard_threshold=:.0f} ms"
+                )
             else:
                 warnings.warn(
-                    f"{module_name} import slightly slower: {grace_threshold=:.2f} ms",
+                    (
+                        f"{module_name} import slightly slower at "
+                        f"{current_time:.0f} ms, {grace_threshold=:.0f} ms"
+                    ),
                     stacklevel=2,
                 )
