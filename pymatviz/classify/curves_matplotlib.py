@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 def roc_curve(
     targets: ArrayLike | str,
-    proba_pos: ArrayLike | str,
+    probs_positive: ArrayLike | str,
     df: pd.DataFrame | None = None,
     ax: plt.Axes | None = None,
 ) -> tuple[float, plt.Axes]:
@@ -26,19 +26,19 @@ def roc_curve(
 
     Args:
         targets (array): Ground truth targets.
-        proba_pos (array): predicted probabilities for the positive class.
-        df (pd.DataFrame, optional): DataFrame with targets and proba_pos columns.
+        probs_positive (array): predicted probabilities for the positive class.
+        df (pd.DataFrame, optional): DataFrame with targets and probs_positive columns.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
         tuple[float, ax]: The classifier's ROC-AUC and the plot's matplotlib Axes.
     """
-    targets, proba_pos = df_to_arrays(df, targets, proba_pos)
+    targets, probs_positive = df_to_arrays(df, targets, probs_positive)
     ax = ax or plt.gca()
 
     # get the metrics
-    false_pos_rate, true_pos_rate, _ = skm.roc_curve(targets, proba_pos)
-    roc_auc = skm.roc_auc_score(targets, proba_pos)
+    false_pos_rate, true_pos_rate, _ = skm.roc_curve(targets, probs_positive)
+    roc_auc = skm.roc_auc_score(targets, probs_positive)
 
     ax.plot(false_pos_rate, true_pos_rate, "b", label=f"AUC = {roc_auc:.2f}")
     ax.plot([0, 1.1], [0, 1.1], "r--", label="random")
@@ -52,7 +52,7 @@ def roc_curve(
 
 def precision_recall_curve(
     targets: ArrayLike | str,
-    proba_pos: ArrayLike | str,
+    probs_positive: ArrayLike | str,
     df: pd.DataFrame | None = None,
     ax: plt.Axes | None = None,
 ) -> tuple[float, plt.Axes]:
@@ -60,21 +60,21 @@ def precision_recall_curve(
 
     Args:
         targets (array): Ground truth targets.
-        proba_pos (array): predicted probabilities for the positive class.
-        df (pd.DataFrame, optional): DataFrame with targets and proba_pos columns.
+        probs_positive (array): predicted probabilities for the positive class.
+        df (pd.DataFrame, optional): DataFrame with targets and probs_positive columns.
         ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
 
     Returns:
         tuple[float, ax]: The classifier's precision score and the matplotlib Axes.
     """
-    targets, proba_pos = df_to_arrays(df, targets, proba_pos)
+    targets, probs_positive = df_to_arrays(df, targets, probs_positive)
     ax = ax or plt.gca()
 
     # get the metrics
-    precision, recall, _ = skm.precision_recall_curve(targets, proba_pos)
+    precision, recall, _ = skm.precision_recall_curve(targets, probs_positive)
 
-    # proba_pos.round() converts class probabilities to integer class labels
-    prec_score = skm.precision_score(targets, proba_pos.round())  # type: ignore[union-attr]
+    # probs_positive.round() converts class probabilities to integer class labels
+    prec_score = skm.precision_score(targets, probs_positive.round())  # type: ignore[union-attr]
 
     ax.plot(recall, precision, color="blue", label=f"precision = {prec_score:.2f}")
 
