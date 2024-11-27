@@ -18,22 +18,22 @@ GEN_REF_TIME = False  # switch for generating reference time
 
 # Last update: 2024-10-23
 REF_IMPORT_TIME: dict[str, float] = {
-    "pymatviz": 2084.25,
-    "pymatviz.coordination": 2342.41,
-    "pymatviz.cumulative": 2299.73,
-    "pymatviz.histogram": 2443.11,
-    "pymatviz.phonons": 2235.57,
-    "pymatviz.powerups": 2172.71,
-    "pymatviz.ptable": 2286.77,
-    "pymatviz.rainclouds": 2702.03,
-    "pymatviz.rdf": 2331.98,
-    "pymatviz.relevance": 2256.29,
-    "pymatviz.sankey": 2313.12,
-    "pymatviz.scatter": 2312.48,
-    "pymatviz.structure_viz": 2330.39,
-    "pymatviz.sunburst": 2395.04,
-    "pymatviz.uncertainty": 2317.87,
-    "pymatviz.xrd": 2242.09,
+    "pymatviz": 2084,
+    "pymatviz.coordination": 2342,
+    "pymatviz.cumulative": 2299,
+    "pymatviz.histogram": 2443,
+    "pymatviz.phonons": 2235,
+    "pymatviz.powerups": 2172,
+    "pymatviz.ptable": 2286,
+    "pymatviz.rainclouds": 2702,
+    "pymatviz.rdf": 2331,
+    "pymatviz.classify": 2256,
+    "pymatviz.sankey": 2313,
+    "pymatviz.scatter": 2312,
+    "pymatviz.structure_viz": 2330,
+    "pymatviz.sunburst": 2395,
+    "pymatviz.uncertainty": 2317,
+    "pymatviz.xrd": 2242,
 }
 
 
@@ -96,9 +96,13 @@ def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) ->
 
         if current_time > grace_threshold:
             if current_time > hard_threshold:
-                pytest.fail(f"{module_name} import too slow! {hard_threshold=:.2f} ms")
+                pytest.fail(
+                    f"{module_name} import too slow! took {current_time:.0f} ms, "
+                    f"{hard_threshold=:.0f} ms"
+                )
             else:
                 warnings.warn(
-                    f"{module_name} import slightly slower: {grace_threshold=:.2f} ms",
+                    f"{module_name} import slightly slower: took {current_time:.0f} "
+                    f"ms, {grace_threshold=:.0f} ms",
                     stacklevel=2,
                 )
