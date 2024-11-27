@@ -30,7 +30,6 @@ from pymatviz import (
     process_data,
     ptable,
     rdf,
-    relevance,
     sankey,
     scatter,
     structure_viz,
@@ -41,7 +40,13 @@ from pymatviz import (
     utils,
     xrd,
 )
-from pymatviz.classify.confusion_matrix import confusion_matrix
+from pymatviz.classify import (
+    confusion_matrix,
+    precision_recall_curve,
+    precision_recall_curve_plotly,
+    roc_curve,
+    roc_curve_plotly,
+)
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
 from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
@@ -62,7 +67,6 @@ from pymatviz.ptable import (
 )
 from pymatviz.rainclouds import rainclouds
 from pymatviz.rdf.plotly import element_pair_rdfs, full_rdf
-from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.scatter import (
     density_hexbin,
