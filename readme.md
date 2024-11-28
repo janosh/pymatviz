@@ -245,7 +245,7 @@ See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix
 | :------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
 |                          ![stability-confusion-matrix]                           |                           ![crystal-system-confusion-matrix]                           |
 
-See [`pymatviz/classify/curves_plotly.py`](pymatviz/classify/curves_plotly.py).
+See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
 | [`roc_curve_plotly(targets, probs_positive)`](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve_plotly(targets, probs_positive)`](assets/scripts/classify/precision_recall_curve.py) |
 | :---------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------: |

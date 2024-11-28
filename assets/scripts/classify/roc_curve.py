@@ -15,11 +15,6 @@ y_proba = np.clip(y_binary - 0.1 * np_rng.normal(scale=5, size=rand_clf_size), 0
 df_in = pd.DataFrame({"target": y_binary, "probability": y_proba})
 
 
-# %% Matplotlib version
-auc_score, ax = pmv.roc_curve(y_binary, y_proba)
-pmv.io.save_and_compress_svg(ax, "roc-curve")
-
-
 # %% Plotly version - basic usage
 fig = pmv.roc_curve_plotly(y_binary, y_proba)
 fig.show()
