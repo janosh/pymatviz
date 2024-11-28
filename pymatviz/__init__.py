@@ -40,12 +40,7 @@ from pymatviz import (
     utils,
     xrd,
 )
-from pymatviz.classify import (
-    precision_recall_curve,
-    precision_recall_curve_plotly,
-    roc_curve,
-    roc_curve_plotly,
-)
+from pymatviz.classify import precision_recall_curve_plotly, roc_curve_plotly
 from pymatviz.classify.confusion_matrix import confusion_matrix
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
 from pymatviz.cumulative import cumulative_error, cumulative_residual

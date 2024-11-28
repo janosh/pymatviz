@@ -8,10 +8,7 @@ import pytest
 from numpy._typing._array_like import NDArray
 from numpy.typing import ArrayLike
 
-from pymatviz.classify.curves_plotly import (
-    precision_recall_curve_plotly,
-    roc_curve_plotly,
-)
+from pymatviz.classify.curves import precision_recall_curve_plotly, roc_curve_plotly
 
 
 @pytest.fixture
