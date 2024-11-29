@@ -235,7 +235,7 @@ def brillouin_zone_3d(
     # Calculate adaptive camera position based on BZ size
     # Use the largest dimension to determine camera distance
     max_size = np.max(max_coords - min_coords)
-    camera_distance = max_size * 1.2  # Scale factor for good visibility
+    camera_distance = max_size * 0.5  # overall zoom level (smaller is more zoomed in)
     eye_position = dict(
         x=camera_distance / np.sqrt(3),
         y=camera_distance / np.sqrt(3),
