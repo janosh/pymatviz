@@ -35,6 +35,8 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
     from pymatgen.core import PeriodicSite, Structure
 
+    from pymatviz.typing import RgbColorType
+
 
 def structure_2d_plotly(
     struct: Structure | Sequence[Structure],
@@ -42,7 +44,7 @@ def structure_2d_plotly(
     rotation: str = "10x,8y,3z",
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 40,
-    elem_colors: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
+    elem_colors: ElemColorScheme | dict[str, RgbColorType] = ElemColorScheme.jmol,
     scale: float = 1,
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
@@ -312,7 +314,7 @@ def structure_3d_plotly(
     *,
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 20,
-    elem_colors: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
+    elem_colors: ElemColorScheme | dict[str, RgbColorType] = ElemColorScheme.jmol,
     scale: float = 1,
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,

@@ -10,7 +10,6 @@ from pymatgen.analysis.local_env import NearNeighbors, VoronoiNN
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key
 
 
@@ -163,23 +162,16 @@ def test_structure_2d_multiple() -> None:
 
 def test_structure_2d_color_warning() -> None:
     # Copernicium is not in the default color scheme
-    elem_symbol = "Cn"
+    elem_symbol = "Fl"
     struct = Structure(np.eye(3) * 5, [elem_symbol] * 2, coords=COORDS)
     fallback_color = "gray"
 
     for elem_colors in ElemColorScheme:
-        if elem_colors == ElemColorScheme.jmol:
-            elem_color_symbols = ", ".join(ELEM_COLORS_JMOL)
-        elif elem_colors == ElemColorScheme.vesta:
-            elem_color_symbols = ", ".join(ELEM_COLORS_VESTA)
-        else:
-            raise ValueError(f"Unexpected {elem_colors=}")
-
         with pytest.warns(
             UserWarning,
             match=f"{elem_symbol=} not in elem_colors, using "
             f"{fallback_color=}\nelement color palette specifies the "
-            f"following elements: {elem_color_symbols}",
+            f"following elements: {', '.join(elem_colors.color_map)}",
         ):
             pmv.structure_2d(struct, elem_colors=elem_colors)
 

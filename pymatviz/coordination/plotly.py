@@ -14,7 +14,7 @@ from plotly.colors import label_rgb
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import NearNeighbors
 
-from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
+from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination.helpers import (
     CnSplitMode,
     calculate_average_cn,
@@ -145,14 +145,10 @@ def coordination_hist(
     if isinstance(element_color_scheme, dict):
         # Merge custom colors with default Jmol colors to get a complete color scheme
         element_colors = ELEM_COLORS_JMOL | element_color_scheme
-    elif element_color_scheme == ElemColorScheme.jmol:
-        element_colors = ELEM_COLORS_JMOL
-    elif element_color_scheme == ElemColorScheme.vesta:
-        element_colors = ELEM_COLORS_VESTA
-    elif isinstance(element_color_scheme, dict):
-        element_colors = element_color_scheme
+    elif isinstance(element_color_scheme, ElemColorScheme):
+        element_colors = element_color_scheme.color_map
     else:
-        raise ValueError(
+        raise TypeError(
             f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
             f"or a custom dict."
         )
@@ -403,12 +399,10 @@ def coordination_vs_cutoff_line(
 
     if isinstance(element_color_scheme, dict):
         element_colors = ELEM_COLORS_JMOL | element_color_scheme
-    elif element_color_scheme == ElemColorScheme.jmol:
-        element_colors = ELEM_COLORS_JMOL
-    elif element_color_scheme == ElemColorScheme.vesta:
-        element_colors = ELEM_COLORS_VESTA
+    elif isinstance(element_color_scheme, ElemColorScheme):
+        element_colors = element_color_scheme.color_map
     else:
-        raise ValueError(
+        raise TypeError(
             f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
             "or a custom dict."
         )
