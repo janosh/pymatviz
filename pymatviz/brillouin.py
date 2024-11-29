@@ -90,14 +90,40 @@ def brillouin_zone_3d(
     labels = ["b₁", "b₂", "b₃"]
 
     for idx, vec in enumerate(k_space_cell):
-        # Add vector
-        fig.add_scatter3d(
-            x=[0, vec[0]],
-            y=[0, vec[1]],
-            z=[0, vec[2]],
-            mode="lines+text",
+        start, end = np.zeros(3), vec  # Vector points
+
+        fig.add_scatter3d(  # vector shaft
+            x=[start[0], end[0]],
+            y=[start[1], end[1]],
+            z=[start[2], end[2]],
+            mode="lines",
             line=dict(color=colors[idx], width=6),
-            text=["", labels[idx]],
+            showlegend=False,
+            hoverinfo="none",
+        )
+
+        # Add arrow head as cone at vector end (direction same as vector but shorter)
+        arrow_dir = 0.25 * (end - start)
+        fig.add_cone(  # arrow head
+            x=[end[0]],
+            y=[end[1]],
+            z=[end[2]],
+            u=[arrow_dir[0]],
+            v=[arrow_dir[1]],
+            w=[arrow_dir[2]],
+            anchor="cm",  # Place cone tip at vector end
+            hoverinfo="none",
+            colorscale=[colors[idx], colors[idx]],
+            showscale=False,
+            sizeref=0.4,  # control arrow head size
+        )
+
+        fig.add_scatter3d(  # vector label at the tip
+            x=[vec[0]],
+            y=[vec[1]],
+            z=[vec[2]],
+            mode="text",
+            text=[labels[idx]],
             textposition="top center",
             textfont=dict(size=20, color=colors[idx]),
             showlegend=False,

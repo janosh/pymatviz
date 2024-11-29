@@ -1,4 +1,5 @@
 # %%
+import numpy as np
 from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
@@ -136,6 +137,26 @@ fig_tri = pmv.brillouin_zone_3d(
 fig_tri.layout.title = dict(text="Triclinic (CuSO₄)", x=0.5, y=0.97, font_size=20)
 fig_tri.show()
 
+
+# %% 8. Non-standard tetragonal structure (TiO₂ with c along x)
+# c along x
+# a along y
+# b along z
+
+non_std_structure = Structure(
+    np.diag([6.0, 4.0, 4.0]),
+    ["Ti", "O", "O"],
+    [[0, 0, 0], [0.3, 0.3, 0], [0.7, 0.7, 0]],
+)
+
+# Plot BZ in original non-standard orientation
+fig_non_std = pmv.brillouin_zone_3d(non_std_structure)
+fig_non_std.layout.title = dict(
+    text="Non-standard Tetragonal (TiO₂, c along x)", x=0.5, y=0.97, font_size=20
+)
+fig_non_std.show()
+
+
 # Save all figures
 # pmv.io.save_and_compress_svg(fig_bcc, "brillouin-zone-bcc")
 # pmv.io.save_and_compress_svg(fig_tetra, "brillouin-zone-tetragonal")
@@ -144,3 +165,5 @@ fig_tri.show()
 # pmv.io.save_and_compress_svg(fig_trig, "brillouin-zone-trigonal")
 # pmv.io.save_and_compress_svg(fig_mono, "brillouin-zone-monoclinic")
 # pmv.io.save_and_compress_svg(fig_tri, "brillouin-zone-triclinic")
+# pmv.io.save_and_compress_svg(fig_non_std, "brillouin-zone-non-standard-tetragonal")
+# pmv.io.save_and_compress_svg(fig_std, "brillouin-zone-standardized-tetragonal")
