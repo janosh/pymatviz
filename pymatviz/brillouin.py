@@ -1,13 +1,11 @@
 """Plot the Brillouin zone of a structure."""
 
+import re
 from typing import Any, Literal
 
 import numpy as np
 import plotly.graph_objects as go
 from pymatgen.core import Structure
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pymatgen.symmetry.bandstructure import HighSymmKpath
-from scipy.spatial import ConvexHull, Voronoi
 
 
 def brillouin_zone_3d(
@@ -39,24 +37,32 @@ def brillouin_zone_3d(
     Returns:
         go.Figure: A plotly figure containing the first Brillouin zone
     """
+    import scipy.spatial as sps
+    import seekpath
+
     fig = go.Figure()
 
-    # Get primitive structure and symmetry info first
-    analyzer = SpacegroupAnalyzer(structure)
-    primitive = analyzer.get_primitive_standard_structure()
-    spg_symbol = analyzer.get_space_group_symbol()
-    spg_num = analyzer.get_space_group_number()
+    # Convert pymatgen Structure to seekpath input format
+    spglib_atoms = (
+        structure.lattice.matrix,  # cell
+        structure.frac_coords,  # positions
+        [site.specie.number for site in structure],  # atomic numbers
+    )
+    # Get primitive structure and symmetry info using seekpath
+    seekpath_dict = seekpath.get_path(spglib_atoms)
+
+    real_space_cell = np.array(seekpath_dict["primitive_lattice"])
+    spg_num = seekpath_dict["spacegroup_number"]
+    spg_symbol = seekpath_dict["spacegroup_international"]
 
     # Get reciprocal lattice vectors (scaled by 2π)
-    cell = primitive.lattice.matrix
-    icell = np.linalg.inv(cell).T * 2 * np.pi
+    k_space_cell = np.linalg.inv(real_space_cell).T * 2 * np.pi
 
     # Generate points for Voronoi construction
-    px, py, pz = np.tensordot(icell, np.mgrid[-1:2, -1:2, -1:2], axes=[0, 0])
+    px, py, pz = np.tensordot(k_space_cell, np.mgrid[-1:2, -1:2, -1:2], axes=[0, 0])
     points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
 
-    # Create Voronoi cell
-    voronoi = Voronoi(points)
+    voronoi = sps.Voronoi(points)  # Create Voronoi cell
 
     # Find central point (index 13 corresponds to [0,0,0])
     center_index = 13
@@ -83,7 +89,7 @@ def brillouin_zone_3d(
     colors = ["red", "green", "blue"]
     labels = ["b₁", "b₂", "b₃"]
 
-    for idx, vec in enumerate(icell):
+    for idx, vec in enumerate(k_space_cell):
         # Add vector
         fig.add_scatter3d(
             x=[0, vec[0]],
@@ -99,7 +105,7 @@ def brillouin_zone_3d(
 
     # Plot BZ faces using convex hull
     unique_vertices = np.array(vertices)
-    hull = ConvexHull(unique_vertices)
+    hull = sps.ConvexHull(unique_vertices)
 
     # Calculate BZ volume
     bz_volume = hull.volume  # in inverse cubic angstrom
@@ -136,24 +142,25 @@ def brillouin_zone_3d(
         )
 
     if point_kwargs is not False:  # Add high symmetry k-points
-        kpath = HighSymmKpath(structure)
-        if kpath.kpath is None:
-            raise ValueError(f"No high symmetry k-points found for {structure.formula}")
-        kpoints = kpath.kpath["kpoints"]
-        paths = kpath.kpath["path"]
+        k_points_dict = seekpath_dict["point_coords"]  # This is a dict of label: coords
+        k_paths = seekpath_dict["path"]
 
         # Convert fractional k-points to Cartesian coordinates
         cart_kpoints = {
-            label: np.dot(coords, icell) for label, coords in kpoints.items()
+            label: np.dot(coords, k_space_cell)
+            for label, coords in k_points_dict.items()
         }
 
         # Plot high symmetry points
-        x_coords, y_coords, z_coords, labels = [], [], [], []
+        x_coords, y_coords, z_coords, point_labels = [], [], [], []
         for label, coords in cart_kpoints.items():
-            x_coords.append(coords[0])
-            y_coords.append(coords[1])
-            z_coords.append(coords[2])
-            labels.append(label.replace("\\Gamma", "Γ"))
+            x_coords += [coords[0]]
+            y_coords += [coords[1]]
+            z_coords += [coords[2]]
+            pretty_label = label.replace("\\Gamma", "Γ").replace("GAMMA", "Γ")
+            # use <sub> for subscripts
+            pretty_label = re.sub(r"_(\d+)", r"<sub>\1</sub>", pretty_label)
+            point_labels += [pretty_label]
 
         fig.add_scatter3d(
             x=x_coords,
@@ -161,18 +168,18 @@ def brillouin_zone_3d(
             z=z_coords,
             mode="markers+text",
             marker=dict(color="red", size=6) | (point_kwargs or {}),
-            text=labels,
+            text=point_labels,
             textposition="top center",
-            textfont=dict(color="black", size=12) | (label_kwargs or {}),
+            textfont=dict(size=14) | (label_kwargs or {}),
             name="High Symmetry Points",
         )
 
-        # Add paths between high symmetry points with thicker lines
+        # Add paths between high symmetry points
         if path_kwargs is not False:
-            for path_points in paths:
-                for idx in range(len(path_points) - 1):
-                    start_point = cart_kpoints[path_points[idx]]
-                    end_point = cart_kpoints[path_points[idx + 1]]
+            for path in k_paths:
+                for idx in range(len(path) - 1):
+                    start_point = cart_kpoints[path[idx]]
+                    end_point = cart_kpoints[path[idx + 1]]
 
                     fig.add_scatter3d(
                         x=[start_point[0], end_point[0]],
