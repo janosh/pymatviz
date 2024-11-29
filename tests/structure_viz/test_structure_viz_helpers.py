@@ -103,9 +103,8 @@ def test_get_elem_colors(
 
 
 def test_get_elem_colors_invalid_input() -> None:
-    with pytest.raises(
-        ValueError, match=re.escape("colors must be a dict or one of ('jmol, vesta')")
-    ):
+    err_msg = f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
+    with pytest.raises(ValueError, match=re.escape(err_msg)):
         get_elem_colors("invalid_input")  # type: ignore[arg-type]
 
 
