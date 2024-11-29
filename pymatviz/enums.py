@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
     from typing_extensions import Self
 
+    from pymatviz.typing import RgbColorType
+
 # TODO: remove following definition of StrEnum once Python 3.11+
 if sys.version_info >= (3, 11):
     from enum import StrEnum
@@ -797,6 +799,13 @@ class ElemColorScheme(LabelEnum):
     vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
     # custom made for pymatviz
     alloy = "alloy", "Alloy", "High-contrast color scheme optimized for metal alloys"
+
+    @property
+    def color_map(self) -> dict[str, RgbColorType]:
+        """Return map from element symbol to color."""
+        import pymatviz.colors as pmv_colors
+
+        return getattr(pmv_colors, f"ELEM_COLORS_{self.value.upper()}")
 
 
 @unique

@@ -74,6 +74,7 @@ title = (
 )
 fig.layout.title.update(text=title, x=0.4, y=0.8)
 fig.show()
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-3-color-schemes")
 
 
 # %% Visualize multiple element color schemes on a split periodic table heatmap
@@ -89,3 +90,4 @@ fig = pmv.ptable_heatmap_splits_plotly(
 title = "<b>Element color schemes</b><br>left: VESTA, right: ALLOY"
 fig.layout.title.update(text=title, x=0.4, y=0.8)
 fig.show()
+pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-2-color-schemes")
