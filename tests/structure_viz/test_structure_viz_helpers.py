@@ -26,6 +26,7 @@ from pymatviz.structure_viz.helpers import (
     get_structures,
     get_subplot_title,
 )
+from pymatviz.typing import RgbColorType
 
 
 @pytest.fixture
@@ -90,7 +91,7 @@ def test_get_structures(structures: list[Structure]) -> None:
     ],
 )
 def test_get_elem_colors(
-    elem_colors: ElemColorScheme | dict[str, str], expected_result: type
+    elem_colors: ElemColorScheme | dict[str, RgbColorType], expected_result: type
 ) -> None:
     colors = get_elem_colors(elem_colors)
     assert isinstance(colors, expected_result)
@@ -102,9 +103,8 @@ def test_get_elem_colors(
 
 
 def test_get_elem_colors_invalid_input() -> None:
-    with pytest.raises(
-        ValueError, match=re.escape("colors must be a dict or one of ('jmol, vesta')")
-    ):
+    err_msg = f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
+    with pytest.raises(ValueError, match=re.escape(err_msg)):
         get_elem_colors("invalid_input")  # type: ignore[arg-type]
 
 

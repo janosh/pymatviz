@@ -879,3 +879,24 @@ def test_ptable_heatmap_splits_plotly_error_cases() -> None:
         PlotlyError, match="Colorscale invalid_colorscale is not a built-in scale"
     ):
         ptable_heatmap_splits_plotly(data, colorscale="invalid_colorscale")
+
+
+def test_ptable_heatmap_splits_plotly_callable_colorscale() -> None:
+    """Test that ptable_heatmap_splits_plotly accepts a callable colorscale."""
+    data = {"Fe": [1, 2], "O": [3, 4]}
+
+    def custom_colorscale(_element_symbol: str, _value: float, split_idx: int) -> str:
+        # Return a color based on element symbol, value and split index
+        if split_idx == 0:
+            return "rgb(255,0,0)"  # Red for first split
+        if split_idx == 1:
+            return "rgb(0,0,255)"  # Blue for second split
+        return "rgb(255,255,255)"  # White else (not used in this test)
+
+    fig = ptable_heatmap_splits_plotly(data, colorscale=custom_colorscale)
+    assert isinstance(fig, go.Figure)
+
+    # Check that colorscale was applied correctly to heatmap traces
+    for trace in fig.data:
+        # Each element tile should have a color array with custom colors
+        assert trace.fillcolor in {"rgb(255,0,0)", "rgb(0,0,255)"}

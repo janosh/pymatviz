@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -24,8 +24,12 @@ from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from typing import Any, Literal
+
+
+ColorScale: TypeAlias = (
+    str | Sequence[str] | Sequence[tuple[float, str]] | Callable[[str, float, int], str]
+)
 
 
 def ptable_heatmap_plotly(
@@ -683,10 +687,10 @@ def ptable_hists_plotly(
 def ptable_heatmap_splits_plotly(
     data: pd.DataFrame | pd.Series | dict[str, list[float]],
     *,
-    # Split-specific
+    # Split
     orientation: Literal["diagonal", "horizontal", "vertical", "grid"] = "diagonal",
     # Figure
-    colorscale: str | Sequence[str] | Sequence[tuple[float, str]] = "viridis",
+    colorscale: ColorScale = "viridis",
     colorbar: dict[str, Any] | Literal[False] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | Literal["auto"] = "auto",
@@ -714,8 +718,12 @@ def ptable_heatmap_splits_plotly(
             1st value would be plotted in lower-left corner, 2nd in the upper-right.
 
         --- Figure ---
-        colorscale (str | list[str] | list[tuple[float, str]]): Color scale for heatmap.
-            Defaults to "viridis".
+        colorscale (ColorScale): Color scale for heatmap. Defaults to "viridis". Can be:
+            - str: Name of built-in colorscale ("turbo", "inferno", "plasma", ...)
+            - list[str]: List of colors to interpolate between
+            - list[tuple[float, str]]: List of (position, color) pairs
+            - Callable[[str, float, int], str]: Function mapping (element symbol, split
+              value, split index) to color string. Useful for custom color schemes.
         colorbar (dict[str, Any] | None): Plotly colorbar properties. Defaults to
             dict(orientation="h"). See https://plotly.com/python/reference#heatmap-colorbar
             for available options. Set to False to hide the colorbar.
@@ -750,8 +758,8 @@ def ptable_heatmap_splits_plotly(
 
         --- Additional options ---
         nan_color (str): Color for NaN values. Defaults to "#eff".
-        hover_data (dict[str, str | int | float] | pd.Series): Additional data for
-            hover tooltip.
+        hover_data (dict[str, str] | pd.Series): Map from element symbol to hover text.
+            to additional text to append to hover tooltip.
         subplot_kwargs (dict | None): Additional keywords passed to make_subplots().
 
     Returns:
@@ -762,6 +770,7 @@ def ptable_heatmap_splits_plotly(
         ValueError: If n_splits not in {2, 3, 4} or orientation="grid" with n_splits!=4
     """
     import plotly.colors
+    from pymatgen.core import Element
 
     if isinstance(data, pd.Series):  # Process input data
         data = data.to_dict()
@@ -781,6 +790,15 @@ def ptable_heatmap_splits_plotly(
         horizontal_spacing=0.001,
     ) | (subplot_kwargs or {})
     fig = make_subplots(**subplot_kwargs)
+
+    # warn about unrecognized element symbols
+    unrecognized_element_symbols = set(data) - {*map(str, Element)}
+    if unrecognized_element_symbols:
+        warnings.warn(
+            f"{unrecognized_element_symbols=}\nShould be simple strings of element "
+            "symbols",
+            stacklevel=2,
+        )
 
     def create_section_coords(
         n_splits: Literal[2, 3, 4],
@@ -871,13 +889,18 @@ def ptable_heatmap_splits_plotly(
 
         # Create sections
         sections = create_section_coords(len(values), orientation)  # type: ignore[arg-type]
-        for idx, (xs, ys) in enumerate(sections):
+        for idx, (xs, ys) in enumerate(sections):  # Loop over element tile splits
             if len(values) <= idx or np.isnan(values[idx]):
                 color = nan_color
+            elif callable(colorscale):
+                # Use the callable to get color directly
+                color = colorscale(symbol, values[idx], idx)
             else:
+                # Use plotly builtin color interpolation logic
                 color = plotly.colors.sample_colorscale(
                     colorscale, (values[idx] - cbar_min) / (cbar_max - cbar_min)
                 )[0]
+
             fig.add_scatter(
                 x=xs,
                 y=ys,
@@ -972,7 +995,9 @@ def ptable_heatmap_splits_plotly(
     )
 
     # Add colorbar
-    if colorbar is not False:
+    if colorbar is not False and not callable(colorscale):
+        # TODO don't skip colorbar if colorscale is callable. problem: can't sample and
+        # interpolate callable to get color strings since it could be discrete
         colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
             colorbar or {}
         )

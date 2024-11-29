@@ -20,7 +20,6 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
@@ -202,13 +201,11 @@ def structure_2d(
                 warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
 
         # Get default colors
-        if str(elem_colors) == str(ElemColorScheme.jmol):
-            elem_colors = ELEM_COLORS_JMOL
-        elif str(elem_colors) == str(ElemColorScheme.vesta):
-            elem_colors = ELEM_COLORS_VESTA
+        if isinstance(elem_colors, ElemColorScheme):
+            elem_colors = elem_colors.color_map
         elif not isinstance(elem_colors, dict):
             valid_color_schemes = "', '".join(ElemColorScheme)
-            raise ValueError(
+            raise TypeError(
                 f"colors must be a dict or one of ('{valid_color_schemes}')"
             )
 
