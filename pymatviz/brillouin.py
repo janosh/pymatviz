@@ -183,9 +183,10 @@ def brillouin_zone_3d(
             x_coords += [coords[0]]
             y_coords += [coords[1]]
             z_coords += [coords[2]]
-            pretty_label = label.replace("\\Gamma", "Γ").replace("GAMMA", "Γ")
+            for text, repl in [("\\Gamma", "Γ"), ("GAMMA", "Γ"), ("DELTA", "Δ")]:
+                label = label.replace(text, repl)  # noqa: PLW2901
             # use <sub> for subscripts
-            pretty_label = re.sub(r"_(\d+)", r"<sub>\1</sub>", pretty_label)
+            pretty_label = re.sub(r"_(\d+)", r"<sub>\1</sub>", label)
             point_labels += [pretty_label]
 
         fig.add_scatter3d(

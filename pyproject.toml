@@ -51,6 +51,7 @@ test = [
     "pytest-split>=0.9",
     "pytest>=8",
 ]
+brillouin = ["seekpath>=2.1"]
 
 [tool.setuptools.packages.find]
 include = ["pymatviz*"]
