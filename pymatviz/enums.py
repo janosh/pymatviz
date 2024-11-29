@@ -190,6 +190,8 @@ class Key(LabelEnum):
     symmetry_decrease = "symmetry_decrease", "Symmetry Decrease"
     symmetry_increase = "symmetry_increase", "Symmetry Increase"
     symmetry_match = "symmetry_match", "Symmetry Match"
+    symprec = "symprec", "Symmetry Precision"
+    angle_tolerance = "angle_tolerance", "Angle Tolerance"
     point_group = "point_group", "Point Group"
     n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
     n_rot_syms = "n_rot_syms", "Number of rotational symmetries"
@@ -531,6 +533,10 @@ class Key(LabelEnum):
     mse = "MSE", "Mean Squared Error"
     rmse = "RMSE", "Root Mean Squared Error"
     rmsd = "rmsd", "Root Mean Square Deviation"
+    n_sym_ops_mae = (
+        "n_sym_ops_mae",
+        "Mean Absolute Error in Number of Symmetry Operations",
+    )
     structure_rmsd = "structure_rmsd", f"Structure RMSD {angstrom}"
     mape = "MAPE", "Mean Absolute Percentage Error"
     srme = "SRME", "Symmetric Relative Mean Error"
@@ -785,10 +791,12 @@ class ElemColorScheme(LabelEnum):
     """
 
     # key, label, color
+    # from https://wikipedia.org/wiki/Jmol"
     jmol = "jmol", "Jmol", "Java-based molecular visualization"
-    # https://wikipedia.org/wiki/Jmol"
+    # from https://jp-minerals.org/vesta
     vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
-    # https://jp-minerals.org/vesta
+    # custom made for pymatviz
+    alloy = "alloy", "Alloy", "High-contrast color scheme optimized for metal alloys"
 
 
 @unique
