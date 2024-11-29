@@ -45,3 +45,16 @@ VALID_FIG_TYPES = get_args(AxOrFig)
 VALID_FIG_NAMES: str = " | ".join(
     f"{t.__module__}.{t.__qualname__}" for t in VALID_FIG_TYPES
 )
+
+
+Rgb256ColorType: TypeAlias = tuple[int, int, int]  # 8-bit RGB
+
+RgbColorType: TypeAlias = tuple[float, float, float] | str  # normalized to [0, 1]
+
+RgbAColorType: TypeAlias = (  # normalized to [0, 1] with alpha
+    str  # "none" or "#RRGGBBAA"/"#RGBA" hex strings
+    | tuple[float, float, float, float]
+    | tuple[RgbColorType, float]
+    | tuple[tuple[float, float, float, float], float]
+)
+ColorType: TypeAlias = RgbColorType | RgbAColorType

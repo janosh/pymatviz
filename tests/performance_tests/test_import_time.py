@@ -18,22 +18,22 @@ GEN_REF_TIME = False  # switch for generating reference time
 
 # Last update: 2024-10-23
 REF_IMPORT_TIME: dict[str, float] = {
-    "pymatviz": 2084,
-    "pymatviz.coordination": 2342,
-    "pymatviz.cumulative": 2299,
-    "pymatviz.histogram": 2443,
-    "pymatviz.phonons": 2235,
-    "pymatviz.powerups": 2172,
-    "pymatviz.ptable": 2286,
-    "pymatviz.rainclouds": 2702,
-    "pymatviz.rdf": 2331,
-    "pymatviz.classify": 2256,
-    "pymatviz.sankey": 2313,
-    "pymatviz.scatter": 2312,
-    "pymatviz.structure_viz": 2330,
-    "pymatviz.sunburst": 2395,
-    "pymatviz.uncertainty": 2317,
-    "pymatviz.xrd": 2242,
+    "pymatviz": 4085,
+    "pymatviz.coordination": 4135,
+    "pymatviz.cumulative": 4108,
+    "pymatviz.histogram": 4110,
+    "pymatviz.phonons": 4109,
+    "pymatviz.powerups": 4066,
+    "pymatviz.ptable": 4092,
+    "pymatviz.rainclouds": 4098,
+    "pymatviz.rdf": 4144,
+    "pymatviz.classify": 4126,
+    "pymatviz.sankey": 4135,
+    "pymatviz.scatter": 4087,
+    "pymatviz.structure_viz": 4105,
+    "pymatviz.sunburst": 4133,
+    "pymatviz.uncertainty": 4179,
+    "pymatviz.xrd": 4156,
 }
 
 
