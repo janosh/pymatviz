@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from glob import glob
+from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
 import pytest
+from pymatgen.core import Structure
 
 from pymatviz.brillouin import brillouin_zone_3d
-
-
-if TYPE_CHECKING:
-    from pymatgen.core import Structure
+from pymatviz.utils.testing import TEST_FILES
 
 
 @pytest.mark.parametrize(
@@ -151,3 +150,60 @@ def test_brillouin_zone_3d_reciprocal_vectors(structures: list[Structure]) -> No
         ]
         min_angle = min(angles) if angles else np.pi
         assert min_angle == pytest.approx(0, abs=2)  # 2 degree tolerance
+
+
+@pytest.mark.parametrize(
+    "material_id",
+    "mp-1183085 mp-686119 mp-1183057 mp-862690 mp-1183089 mp-10018 mp-1207297".split(),
+)
+def test_brillouin_zone_3d_trace_counts(material_id: str) -> None:
+    """Test that brillouin_zone_3d produces the expected number of traces for each
+    crystal system.
+
+    Args:
+        material_id: Materials Project ID
+        formula: Chemical formula
+        system: Crystal system
+        expected_counts: Tuple of expected trace counts:
+            (mesh3d, scatter3d, cone, lines, markers+text, text)
+    """
+    struct_path = glob(f"{TEST_FILES}/structures/{material_id}-*.json.gz")[0]
+    struct = Structure.from_file(struct_path)
+
+    fig = brillouin_zone_3d(struct)
+
+    # (scatter3d, lines)
+    exp_scatter3d, exp_lines = {
+        "mp-1183085": (32, 25),
+        "mp-686119": (34, 27),
+        "mp-1183057": (30, 23),
+        "mp-862690": (30, 23),
+        "mp-1183089": (36, 29),
+        "mp-10018": (33, 26),
+        "mp-1207297": (28, 21),
+    }[material_id]
+    # Count different trace types
+    trace_counts = {"scatter3d": 0, "cone": 0, "mesh3d": 0}
+    scatter_modes = {"lines": 0, "markers+text": 0, "text": 0}
+
+    for trace in fig.data:
+        trace_counts[trace["type"]] += 1
+
+        if trace["type"] == "scatter3d":
+            scatter_modes[trace["mode"]] += 1
+
+    # Assert exact counts for each trace type
+    exp_mesh3d = 1
+    assert trace_counts["mesh3d"] == exp_mesh3d, f"{trace_counts=}, {exp_mesh3d=}"
+    assert (
+        trace_counts["scatter3d"] == exp_scatter3d
+    ), f"{trace_counts=}, {exp_scatter3d=}"
+    exp_cone = 6
+    assert trace_counts["cone"] == exp_cone, f"{trace_counts=}, {exp_cone=}"
+    assert scatter_modes["lines"] == exp_lines, f"{scatter_modes=}, {exp_lines=}"
+    exp_markers_text = 1
+    assert (
+        scatter_modes["markers+text"] == exp_markers_text
+    ), f"{scatter_modes=}, {exp_markers_text=}"
+    exp_text = 6
+    assert scatter_modes["text"] == exp_text, f"{scatter_modes=}, {exp_text=}"
