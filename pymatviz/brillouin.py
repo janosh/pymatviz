@@ -1,6 +1,7 @@
 """Plot the Brillouin zone of a structure."""
 
 import re
+import warnings
 from typing import Any, Literal
 
 import numpy as np
@@ -57,7 +58,11 @@ def brillouin_zone_3d(
         [site.specie.number for site in structure],  # atomic numbers
     )
     # Get primitive structure and symmetry info using seekpath
-    seekpath_dict = seekpath.get_path(spglib_atoms)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="dict interface .* is deprecated", module="spglib"
+        )
+        seekpath_dict = seekpath.get_path(spglib_atoms)
 
     real_space_cell = np.array(seekpath_dict["primitive_lattice"])
     spg_num = seekpath_dict["spacegroup_number"]
