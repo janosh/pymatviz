@@ -111,6 +111,20 @@ See [`pymatviz/structure_viz/(mpl|plotly).py`](pymatviz/structure_viz/plotly.py)
 [matbench-phonons-structures-2d-plotly]: assets/svg/matbench-phonons-structures-2d-plotly.svg
 [matbench-phonons-structures-3d-plotly]: assets/svg/matbench-phonons-structures-3d-plotly.svg
 
+## Brillouin Zone
+
+See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
+
+| [`brillouin_zone_3d(struct)`](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(struct, system="hexagonal")`](assets/scripts/brillouin/brillouin_zone_3d.py) |
+| :--------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------: |
+|                         ![brillouin-cubic-mp-10018]                          |                                 ![brillouin-hexagonal-mp-862690]                                 |
+|                      ![brillouin-monoclinic-mp-1183089]                      |                               ![brillouin-orthorhombic-mp-1183085]                               |
+
+[brillouin-cubic-mp-10018]: assets/svg/brillouin-cubic-mp-10018.svg
+[brillouin-hexagonal-mp-862690]: assets/svg/brillouin-hexagonal-mp-862690.svg
+[brillouin-monoclinic-mp-1183089]: assets/svg/brillouin-monoclinic-mp-1183089.svg
+[brillouin-orthorhombic-mp-1183085]: assets/svg/brillouin-orthorhombic-mp-1183085.svg
+
 ## X-Ray Diffraction
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
