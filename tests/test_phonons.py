@@ -23,8 +23,10 @@ if TYPE_CHECKING:
     from typing import Literal
 
     import numpy as np
+    from phonopy import Phonopy
 
     from pymatviz.typing import SetMode
+
 
 BandsDoses = dict[str, dict[str, PhononBands | PhononDos]]
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
@@ -417,3 +419,25 @@ def test_phonon_bands_and_dos_path_mode_raises(
             phonon_bands_doses_mp_2758["doses"],
             path_mode="invalid",  # type: ignore[arg-type]
         )
+
+
+@pytest.mark.importorskip("phonopy")
+def test_phonon_dos_phonopy(phonopy_nacl: Phonopy) -> None:
+    """Test that phonon_dos works with phonopy TotalDos objects."""
+
+    phonopy_nacl.run_mesh([5, 5, 5])
+    phonopy_nacl.run_total_dos(freq_pitch=1, use_tetrahedron_method=False)
+
+    # Test single TotalDos
+    fig = pmv.phonon_dos(
+        phonopy_nacl.total_dos, stack=False, sigma=0.1, normalize="max", units="THz"
+    )
+    assert isinstance(fig, go.Figure)
+    assert fig.layout.xaxis.title.text == "Frequency (THz)"
+    assert fig.layout.yaxis.title.text == "Density of States"
+
+    # Test dictionary of TotalDos objects
+    dos_dict = {"DFT": phonopy_nacl.total_dos, "ML": phonopy_nacl.total_dos}
+    fig = pmv.phonon_dos(dos_dict, stack=True, sigma=0.1, normalize="max", units="THz")
+    assert isinstance(fig, go.Figure)
+    assert {trace.name for trace in fig.data} == {"DFT", "ML"}
