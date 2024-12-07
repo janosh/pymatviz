@@ -487,7 +487,8 @@ def phonon_dos(
     """Plot phonon DOS using Plotly.
 
     Args:
-        doses (PhononDos | dict[str, PhononDos]): PhononDos or dict of multiple.
+        doses (PhononDos | dict[str, PhononDos]): pymatgen PhononDos or phonopy TotalDos
+            or dict of multiple of either.
         stack (bool): Whether to plot the DOS as a stacked area graph. Defaults to
             False.
         sigma (float): Standard deviation for Gaussian smearing. Defaults to None.
@@ -507,10 +508,18 @@ def phonon_dos(
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
 
-    if type(doses) not in {PhononDos, dict}:
-        raise TypeError(
-            f"Only {PhononDos.__name__} or dict supported, got {type(doses).__name__}"
-        )
+    doses = doses if isinstance(doses, dict) else {"": doses}
+    for key, dos in doses.items():
+        cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
+        if cls_name == "phonopy.phonon.dos.TotalDos":
+            # convert phonopy TotalDos to pymatgen PhononDos
+            dos = PhononDos(frequencies=dos.frequency_points, densities=dos.dos)  # noqa: PLW2901
+            doses[key] = dos
+
+        if not isinstance(dos, PhononDos):
+            raise TypeError(
+                f"Only {PhononDos.__name__} or dict supported, got {type(dos).__name__}"
+            )
     if isinstance(doses, dict) and len(doses) == 0:
         raise ValueError("Empty DOS dict")
 
@@ -518,7 +527,6 @@ def phonon_dos(
         last_peak_anno = "ω<sub>{key}</sub></span>={last_peak:.1f} {units}"
 
     fig = go.Figure()
-    doses = {"": doses} if isinstance(doses, PhononDos) else doses
 
     for key, dos in doses.items():
         if not isinstance(dos, PhononDos):
@@ -551,7 +559,7 @@ def phonon_dos(
         )
 
     fig.layout.xaxis.update(title=f"Frequency ({units})")
-    fig.layout.yaxis.update(title="Density of States")
+    fig.layout.yaxis.update(title="Density of States", rangemode="tozero")
     fig.layout.margin = dict(t=5, b=5, l=5, r=5)
     fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
     fig.layout.legend.update(x=0.005, y=0.99, orientation="h", yanchor="top")
