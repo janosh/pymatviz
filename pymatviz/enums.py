@@ -170,6 +170,13 @@ class Key(StrEnum):
         """Description associated with the key."""
         return _keys[self.value].get("desc")
 
+    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
+        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
+        the tuple self.__class__, (self._value_,). self.__class can cause pickle
+        failures if the corresponding Enum was moved or renamed in the meantime.
+        """
+        return str, (self.value,)
+
     # Structural
     n_sites = "n_sites"
     structure = "structure"
@@ -232,22 +239,8 @@ class Key(StrEnum):
     canonical_proto = "canonical_proto"
     uniq_proto = "uniq_proto"
 
-    # Composition and Chemical
+    # Composition
     arity = "arity"
-    atomic_mass = "atomic_mass"
-    atomic_number = "atomic_number"
-    atomic_radius = "atomic_radius"
-    atomic_symbol = "atomic_symbol"
-    elem_symbol = "elem_symbol"
-    atomic_volume = "atomic_volume"
-    block = "block"
-    group = "group"
-    period = "period"
-    row = "row"
-    column = "column"
-    series = "series"
-    shell = "shell"
-    valence = "valence"
     chem_sys = "chem_sys"
     composition = "composition"
     molar_composition = "molar_composition"
@@ -267,6 +260,22 @@ class Key(StrEnum):
     n_elements = "n_elements"
     n_val_electrons = "n_val_electrons"
     n_electrons = "n_electrons"
+
+    # Chemical
+    atomic_mass = "atomic_mass"
+    atomic_number = "atomic_number"
+    atomic_radius = "atomic_radius"
+    atomic_symbol = "atomic_symbol"
+    elem_symbol = "elem_symbol"
+    atomic_volume = "atomic_volume"
+    block = "block"
+    group = "group"
+    period = "period"
+    row = "row"
+    column = "column"
+    series = "series"
+    shell = "shell"
+    valence = "valence"
     isotope_masses = "isotope_masses"
     natural_abundance = "natural_abundance"
     half_life = "half_life"

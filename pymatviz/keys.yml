@@ -442,6 +442,11 @@ mechanical:
     symbol: α<sub>thermal</sub>
     unit: 1/K
 
+  viscosity:
+    label: Viscosity
+    symbol: η
+    unit: Pa·s
+
 thermal:
   temperature:
     label: Temperature
@@ -486,6 +491,7 @@ thermal:
   debye_temp:
     label: Debye Temperature
     symbol: T<sub>D</sub>
+    unit: K
 
   gruneisen_parameter:
     label: Gruneisen Parameter
@@ -541,24 +547,93 @@ phonon:
     label: Has Imaginary Phonon Modes
 
   last_ph_dos_peak:
-    label: ω<sub>max</sub>
+    label: Highest-frequency Phonon DOS Peak
     symbol: ω<sub>max</sub>
     unit: THz
 
   max_ph_freq:
-    label: Ω<sub>max</sub>
+    label: Maximum Phonon Frequency
     symbol: Ω<sub>max</sub>
     unit: THz
 
   min_ph_freq:
-    label: Ω<sub>min</sub>
+    label: Minimum Phonon Frequency
     symbol: Ω<sub>min</sub>
     unit: THz
 
 chemical:
+  atomic_mass:
+    label: Atomic Mass
+    symbol: m<sub>atom</sub>
+    unit: u
+
+  atomic_number:
+    label: Atomic Number
+
+  atomic_radius:
+    label: Atomic Radius
+    symbol: r<sub>atom</sub>
+    unit: Å
+
+  atomic_symbol:
+    label: Atomic Symbol
+
+  elem_symbol:
+    label: Element Symbol
+
+  atomic_volume:
+    label: Atomic Volume
+    symbol: V<sub>atom</sub>
+    unit: Å³
+
+  block:
+    label: Block
+
+  group:
+    label: Group
+
+  period:
+    label: Period
+
+  row:
+    label: Row
+
+  column:
+    label: Column
+
+  series:
+    label: Series
+
+  shell:
+    label: Shell
+
+  valence:
+    label: Valence
+
+  isotope_masses:
+    label: Isotope Masses
+
+  natural_abundance:
+    label: Natural Abundance
+    symbol: "%"
+
   half_life:
     label: Half-life
     symbol: t<sub>1/2</sub>
+
+  electronegativity:
+    label: Electronegativity
+    unit: Pauling scale
+
+  ionic_radius:
+    label: Ionic Radius
+    symbol: r<sub>ion</sub>
+    unit: Å
+
+  covalent_radius:
+    label: Covalent Radius
+    symbol: r<sub>covalent</sub>
+    unit: Å
 
   ionization_energy:
     label: Ionization Energy
@@ -588,15 +663,9 @@ economic:
     label: Elemental Abundance
     unit: ppm
 
-other:
   corrosion_resistance:
     label: Corrosion Resistance
     symbol: CR
-
-  viscosity:
-    label: Viscosity
-    symbol: η
-    unit: Pa·s
 
 crystal_symmetry_properties:
   crystal_system:
@@ -702,58 +771,10 @@ structure_prototyping:
   uniq_proto:
     label: Unique AFLOW-style Prototype
 
-composition_and_chemical:
+composition:
   arity:
     label: Arity
     symbol: N<sub>elements</sub>
-
-  atomic_mass:
-    label: Atomic Mass
-    symbol: m<sub>atom</sub>
-    unit: u
-
-  atomic_number:
-    label: Atomic Number
-
-  atomic_radius:
-    label: Atomic Radius
-    symbol: r<sub>atom</sub>
-    unit: Å
-
-  atomic_symbol:
-    label: Atomic Symbol
-
-  elem_symbol:
-    label: Element Symbol
-
-  atomic_volume:
-    label: Atomic Volume
-    symbol: V<sub>atom</sub>
-    unit: Å³
-
-  block:
-    label: Block
-
-  group:
-    label: Group
-
-  period:
-    label: Period
-
-  row:
-    label: Row
-
-  column:
-    label: Column
-
-  series:
-    label: Series
-
-  shell:
-    label: Shell
-
-  valence:
-    label: Valence
 
   chem_sys:
     label: Chemical System
@@ -819,27 +840,6 @@ composition_and_chemical:
   n_electrons:
     label: Number of Electrons
     symbol: N<sub>electrons</sub>
-
-  isotope_masses:
-    label: Isotope Masses
-
-  natural_abundance:
-    label: Natural Abundance
-    symbol: "%"
-
-  electronegativity:
-    label: Electronegativity
-    unit: Pauling scale
-
-  ionic_radius:
-    label: Ionic Radius
-    symbol: r<sub>ion</sub>
-    unit: Å
-
-  covalent_radius:
-    label: Covalent Radius
-    symbol: r<sub>covalent</sub>
-    unit: Å
 
 optical: # Optical Properties
   refractive_index:
