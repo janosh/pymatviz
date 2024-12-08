@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Any, TypeAlias
 
+    from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
     from pymatgen.core import Structure
     from typing_extensions import Self
 
@@ -154,8 +155,34 @@ def _shaded_range(
     return fig
 
 
+def phonopy_to_pymatgen_bands(band_struct: PhonopyBandStructure) -> PhononBands:
+    """Convert phonopy BandStructure to pymatgen PhononBandStructureSymmLine.
+
+    Args:
+        band_struct: Phonopy band structure object
+
+    Returns:
+        Converted pymatgen phonon band structure
+    """
+    import tempfile
+
+    import yaml
+    from pymatgen.io.phonopy import get_ph_bs_symm_line_from_dict
+
+    # Write band structure to temporary YAML file
+    with tempfile.NamedTemporaryFile() as tmp_file:
+        # Use phonopy's band structure YAML writer
+        band_struct.write_yaml(filename=tmp_file.name)
+        # Load YAML and convert to pymatgen band structure
+        with open(tmp_file.name) as file:
+            bands_dict = yaml.safe_load(file)
+        return get_ph_bs_symm_line_from_dict(bands_dict)
+
+
 def phonon_bands(
-    band_structs: PhononBands | dict[str, PhononBands],
+    band_structs: AnyBandStructure
+    | PhonopyBandStructure
+    | dict[str, AnyBandStructure | PhonopyBandStructure],
     line_kwargs: (
         dict[str, Any]  # single dict for all lines
         # separate dicts for modes
@@ -171,15 +198,15 @@ def phonon_bands(
     | None = None,
     **kwargs: Any,
 ) -> go.Figure:
-    """Plot single or multiple pymatgen band structures using Plotly.
+    """Plot single or multiple pymatgen or phonopy band structures using Plotly.
 
     Warning: Only tested with phonon band structures so far but plan is to extend to
     electronic band structures.
 
     Args:
-        band_structs (PhononBandStructureSymmLine | dict[str, PhononBandStructure]):
-            Single BandStructureSymmLine or PhononBandStructureSymmLine object or a dict
-            with labels mapped to multiple such objects.
+        band_structs: Single BandStructureSymmLine, PhononBandStructureSymmLine, or
+            phonopy BandStructure object, or a dict with labels mapped to multiple such
+            objects.
         line_kwargs (dict | dict[str, dict] | Callable): Line style configuration.
             Can be:
             - A single dict applied to all lines
@@ -206,6 +233,27 @@ def phonon_bands(
     Returns:
         go.Figure: Plotly figure object.
     """
+    # Convert input to dict if single band structure
+    if not isinstance(band_structs, dict):
+        band_structs = {"": band_structs}
+
+    # Convert phonopy band structures to pymatgen format
+    converted_band_structs: dict[str, AnyBandStructure] = {}
+    for key, bands in band_structs.items():
+        if type(bands).__module__.startswith("phonopy"):
+            converted_band_structs[key] = phonopy_to_pymatgen_bands(bands)
+        elif isinstance(bands, PhononBands):
+            converted_band_structs[key] = bands
+        else:
+            cls_name = PhononBands.__name__
+            raise TypeError(
+                f"Only {cls_name}, phonopy BandStructure or dict supported, "
+                f"got {type(bands).__name__}"
+            )
+
+    # use reassignment to avoid modifying original input band_structs
+    band_structs = converted_band_structs
+
     fig = go.Figure()
     line_kwargs = line_kwargs or {}
 
@@ -219,9 +267,6 @@ def phonon_bands(
         )
     if isinstance(band_structs, dict) and len(band_structs) == 0:
         raise ValueError("Empty band structure dict")
-
-    if not isinstance(band_structs, dict):  # normalize input to dictionary
-        band_structs = {"": band_structs}
 
     # First, collect all unique path segments and their endpoints across all structures
     all_segments: dict[tuple[str | None, str | None], list[tuple[str, PhononBands]]] = (
