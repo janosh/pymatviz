@@ -2,6 +2,7 @@
 import json
 from glob import glob
 
+import numpy as np
 from monty.io import zopen
 from monty.json import MontyDecoder
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
@@ -9,13 +10,6 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 import pymatviz as pmv
 from pymatviz.enums import Key
 from pymatviz.utils.testing import TEST_FILES
-
-
-# TODO: ffonons not working properly (see #195)
-try:
-    import ffonons  # noqa: F401
-except ImportError:
-    raise SystemExit(0) from None  # install ffonons to run this script
 
 
 # %% Plot phonon bands and DOS
@@ -38,7 +32,8 @@ for mp_id, formula in (
             docs[model_label] = json.loads(file.read(), cls=MontyDecoder)
 
     ph_bands: dict[str, PhononBands] = {
-        key: getattr(doc, Key.ph_band_structure) for key, doc in docs.items()
+        key: getattr(doc, Key.ph_band_structure, doc.phonon_bandstructure)
+        for key, doc in docs.items()
     }
 
     acoustic_lines: dict[str, str | float] = dict(width=1.5)
@@ -53,4 +48,28 @@ for mp_id, formula in (
     fig.layout.title = dict(text=f"{formula} ({mp_id}) Phonon Bands", x=0.5, y=0.98)
     fig.layout.margin = dict(l=0, r=0, b=0, t=40)
     fig.show()
-    pmv.io.save_and_compress_svg(fig, f"phonon-bands-{mp_id}")
+    # pmv.io.save_and_compress_svg(fig, f"phonon-bands-{mp_id}")
+
+
+# %% phonon bands
+try:
+    import phonopy
+except ImportError:
+    raise SystemExit(0) from None  # install phonopy to run this script
+
+phonopy_nacl: phonopy.Phonopy = phonopy.load(
+    phonopy_yaml=f"{TEST_FILES}/phonons/NaCl/phonopy_disp.yaml.xz",
+    force_sets_filename=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
+)
+phonopy_nacl.run_mesh([10, 10, 10])
+bands = {
+    "L -> Γ": np.linspace([1 / 3, 1 / 3, 0], [0, 0, 0], 51),
+    "Γ -> X": np.linspace([0, 0, 0], [1 / 2, 0, 0], 51),
+    "X -> K": np.linspace([1 / 2, 0, 0], [1 / 2, 1 / 2, 0], 51),
+    "K -> Γ": np.linspace([1 / 2, 1 / 2, 0], [0, 0, 0], 51),
+    "Γ -> W": np.linspace([0, 0, 0], [1 / 3, 1 / 3, 1 / 2], 51),
+}
+phonopy_nacl.run_band_structure(paths=bands.values())
+
+fig = pmv.phonon_bands({"NaCl (phonopy)": phonopy_nacl.band_structure})
+fig.show()

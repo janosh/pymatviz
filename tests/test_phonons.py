@@ -6,6 +6,7 @@ import re
 from glob import glob
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import plotly.graph_objects as go
 import pytest
 from monty.io import zopen
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Literal
 
-    import numpy as np
     from phonopy import Phonopy
 
     from pymatviz.typing import SetMode
@@ -422,7 +422,7 @@ def test_phonon_bands_and_dos_path_mode_raises(
 
 
 @pytest.mark.importorskip("phonopy")
-def test_phonon_dos_phonopy(phonopy_nacl: Phonopy) -> None:
+def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
     """Test that phonon_dos works with phonopy TotalDos objects."""
 
     phonopy_nacl.run_mesh([5, 5, 5])
@@ -441,3 +441,32 @@ def test_phonon_dos_phonopy(phonopy_nacl: Phonopy) -> None:
     fig = pmv.phonon_dos(dos_dict, stack=True, sigma=0.1, normalize="max", units="THz")
     assert isinstance(fig, go.Figure)
     assert {trace.name for trace in fig.data} == {"DFT", "ML"}
+
+
+@pytest.mark.importorskip("phonopy")
+def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
+    """Test plotting phonon bands from phonopy band structure."""
+    bands = {  # Define q-points path
+        "L -> Γ": np.linspace([1 / 3, 1 / 3, 0], [0, 0, 0], 51),
+        "Γ -> X": np.linspace([0, 0, 0], [1 / 2, 0, 0], 51),
+        "X -> K": np.linspace([1 / 2, 0, 0], [1 / 2, 1 / 2, 0], 51),
+        "K -> Γ": np.linspace([1 / 2, 1 / 2, 0], [0, 0, 0], 51),
+        "Γ -> W": np.linspace([0, 0, 0], [1 / 3, 1 / 3, 1 / 2], 51),
+    }
+
+    # Run band structure calculation
+    phonopy_nacl.run_band_structure(paths=bands.values())
+
+    # Test single band structure
+    fig = pmv.phonon_bands(phonopy_nacl.band_structure)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 6
+
+    # Test multiple band structures in dict
+    bands_dict = {
+        "NaCl (phonopy)": phonopy_nacl.band_structure,
+        "DFT": phonopy_nacl.band_structure,
+    }
+    fig = pmv.phonon_bands(bands_dict)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 6 * len(bands_dict)
