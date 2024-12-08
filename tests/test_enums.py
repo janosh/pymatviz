@@ -73,23 +73,3 @@ def test_label_enum_repr() -> None:
     assert repr(DummyEnum.TEST1) == DummyEnum.TEST1.label == "Test Label 1"
     assert repr(DummyEnum.TEST2) == "DummyEnum.TEST2"
     assert DummyEnum.TEST2.label is None
-
-
-def test_label_enum_key_val_dict() -> None:
-    expected = {"TEST1": "test1", "TEST2": "test2"}
-    assert DummyEnum.key_val_dict() == expected
-
-
-def test_label_enum_val_label_dict() -> None:
-    expected = {"test1": "Test Label 1", "test2": None}
-    assert DummyEnum.val_label_dict() == expected
-
-
-def test_label_enum_val_desc_dict() -> None:
-    expected = {"test1": "Test Description 1", "test2": None}
-    assert DummyEnum.val_desc_dict() == expected
-
-
-def test_label_enum_label_desc_dict() -> None:
-    expected = {"Test Label 1": "Test Description 1"}
-    assert DummyEnum.label_desc_dict() == expected

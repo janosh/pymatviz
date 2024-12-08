@@ -120,35 +120,6 @@ class LabelEnum(StrEnum):
         """Make description read-only."""
         return self.__dict__.get("desc")
 
-    @property
-    def symbol(self) -> str | None:
-        """Make symbol read-only."""
-        return self.__dict__.get("symbol")
-
-    @classmethod
-    def key_val_dict(cls) -> dict[str, str]:
-        """Map of keys to values."""
-        return {key: str(val) for key, val in cls.__members__.items()}
-
-    @classmethod
-    def val_label_dict(cls) -> dict[str, str | None]:
-        """Map of values to labels."""
-        return {str(val): val.label for val in cls.__members__.values()}
-
-    @classmethod
-    def val_desc_dict(cls) -> dict[str, str | None]:
-        """Map of values to descriptions."""
-        return {str(val): val.description for val in cls.__members__.values()}
-
-    @classmethod
-    def label_desc_dict(cls) -> dict[str, str | None]:
-        """Map of labels to descriptions. None-valued labels are omitted."""
-        return {
-            str(val.label): val.description
-            for val in cls.__members__.values()
-            if val.label
-        }
-
 
 eV_per_atom = html_tag("(eV/atom)", style="small")  # noqa: N816
 eV = html_tag("(eV)", style="small")  # noqa: N816
