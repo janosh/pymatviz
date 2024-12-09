@@ -50,6 +50,7 @@ make-assets = [
 ]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 test = [
+    "phonopy>=2.31",                                                   # only needed if user passes in phonopy objects
     "pymatviz[auto-text-pos,df-pdf-export,df-svg-export,export-figs]",
     "pytest-cov>=5",
     "pytest-split>=0.9",

@@ -1,0 +1,1242 @@
+structural:
+  n_sites:
+    label: Number of Sites
+    symbol: N<sub>sites</sub>
+  structure:
+    label: Structure
+  init_struct:
+    label: Initial Structure
+  final_struct:
+    label: Final Structure
+  cell:
+    label: Cell
+  lattice:
+    label: Lattice
+  lattice_vectors:
+    label: Lattice Vectors
+    symbol: L
+  lattice_angles:
+    label: Lattice Angles
+    unit: °
+  lattice_lens:
+    label: Lattice Lengths
+    unit: Å
+  init_volume:
+    label: Initial Volume
+    symbol: V<sub>init</sub>
+    unit: Å³
+  final_volume:
+    label: Final Volume
+    symbol: V<sub>final</sub>
+    unit: Å³
+  volume:
+    label: Volume
+    symbol: V
+    unit: Å³
+  vol_per_atom:
+    label: Volume per Atom
+    symbol: V/N<sub>atoms</sub>
+    unit: Å³
+  density:
+    label: Density
+    symbol: ρ
+    unit: g/cm³
+  pressure:
+    label: Pressure
+    symbol: P
+    unit: Pa
+  lattice_params:
+    label: Lattice Parameters
+    description: a, b, c, α, β, γ
+  supercell:
+    label: Supercell
+  atom_nums:
+    label: Atom Numbers
+  coord_num:
+    label: Coordination Number
+    symbol: N<sub>coord</sub>
+  bond_lens:
+    label: Bond Lengths
+    unit: Å
+  bond_angles:
+    label: Bond Angles
+    unit: °
+  packing_fraction:
+    label: Packing Fraction
+    symbol: V<sub>atoms</sub>/V
+  max_pair_dist:
+    label: Maximum Pair Distance
+    symbol: d<sub>max</sub>
+    unit: Å
+  conventional_cell:
+    label: Conventional Cell
+  primitive_cell:
+    label: Primitive Cell
+  reduced_cell:
+    label: Reduced Cell
+  niggli_reduced_cell:
+    label: Niggli Reduced Cell
+
+electronic:
+  bandgap:
+    label: Band Gap
+    symbol: E<sub>gap</sub>
+    unit: eV
+  bandgap_pbe:
+    label: PBE Band Gap
+    symbol: E<sub>gap,PBE</sub>
+    unit: eV
+  bandgap_hse:
+    label: HSE Band Gap
+    symbol: E<sub>gap,HSE</sub>
+    unit: eV
+  bandgap_ml:
+    label: ML Band Gap
+    symbol: E<sub>gap,ML</sub>
+    unit: eV
+  bandgap_true:
+    label: True Band Gap
+    symbol: E<sub>gap,true</sub>
+    unit: eV
+  bandgap_pred:
+    label: Predicted Band Gap
+    symbol: E<sub>gap,pred</sub>
+    unit: eV
+  bandgap_r2scan:
+    label: r2SCAN Band Gap
+    symbol: E<sub>gap,r2SCAN</sub>
+    unit: eV
+  fermi_energy:
+    label: Fermi Energy
+    symbol: E<sub>Fermi</sub>
+    unit: eV
+  electronic_structure:
+    label: Electronic Structure
+  electron_affinity:
+    label: Electron Affinity
+    symbol: E<sub>aff</sub>
+    unit: eV
+  work_function:
+    label: Work Function
+    symbol: E<sub>work</sub>
+    unit: eV
+  dos:
+    label: Density of States
+  band_structure:
+    label: Band Structure
+  conductivity:
+    label: Electrical Conductivity
+    symbol: σ
+    unit: S/m
+  seebeck_coefficient:
+    label: Seebeck Coefficient
+    symbol: S
+    unit: V/K
+  carrier_concentration:
+    label: Carrier Concentration
+    symbol: n
+    unit: cm⁻³
+  mobility:
+    label: Carrier Mobility
+    symbol: μ
+    unit: cm²/V·s
+  effective_mass:
+    label: Effective Mass
+    symbol: m<sub>e</sub>
+  polarizability:
+    label: Polarizability
+    symbol: α
+    unit: Å³
+  polarization:
+    label: Polarization
+    symbol: P
+    unit: C/m²
+
+thermodynamic:
+  energy:
+    label: Energy
+    symbol: E
+    unit: eV
+  enthalpy:
+    label: Enthalpy
+    symbol: H
+  entropy:
+    label: Entropy
+    symbol: S
+    unit: eV/K
+  free_energy:
+    label: Free Energy
+    symbol: F
+  gibbs_free_energy:
+    label: Gibbs Free Energy
+    symbol: G
+  helmholtz_free_energy:
+    label: Helmholtz Free Energy
+    symbol: A
+  internal_energy:
+    label: Internal Energy
+    symbol: U
+  energy_per_atom:
+    label: Energy
+    symbol: E/N<sub>atoms</sub>
+    unit: eV/atom
+  heat_of_formation:
+    label: Heat of Formation
+    symbol: E<sub>form</sub>
+    unit: eV
+  heat_of_reaction:
+    label: Heat of Reaction
+    symbol: E<sub>rxn</sub>
+    unit: eV
+  corrected_energy:
+    label: Corrected Energy
+    symbol: E<sub>corr</sub>
+    unit: eV
+  uncorrected_energy:
+    label: Uncorrected Energy
+    symbol: E<sub>uncorr</sub>
+    unit: eV
+  corrected_energy_per_atom:
+    label: Corrected Energy
+    symbol: E<sub>corr</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  uncorrected_energy_per_atom:
+    label: Uncorrected Energy
+    symbol: E<sub>uncorr</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  cohesive_energy_per_atom:
+    label: Cohesive Energy
+    symbol: E<sub>coh</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  e_form_per_atom:
+    label: E<sub>form</sub>
+    symbol: E<sub>form</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  e_form_pred:
+    label: Predicted E<sub>form</sub>
+    symbol: E<sub>form,pred</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  e_form_true:
+    label: Actual E<sub>form</sub>
+    symbol: E<sub>form,true</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  each:
+    label: Energy above convex hull
+    symbol: E<sub>hull dist</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  each_pred:
+    label: Predicted energy above convex hull
+    symbol: E<sub>hull dist,pred</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  each_true:
+    label: Actual energy above convex hull
+    symbol: E<sub>hull dist,true</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  form_energy:
+    label: Formation Energy
+    symbol: E<sub>form</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+  cse:
+    label: Computed Structure Entry
+
+mechanical:
+  forces:
+    label: Forces
+    symbol: F
+  stress:
+    label: Stress
+    symbol: σ
+  virial:
+    label: Virial
+    symbol: V
+  stress_trace:
+    label: Stress Trace
+    symbol: σ<sub>trace</sub>
+  voigt_stress:
+    label: Voigt Stress
+    symbol: σ<sub>Voigt</sub>
+  bulk_modulus:
+    label: Bulk Modulus
+    symbol: K
+    unit: GPa
+  shear_modulus:
+    label: Shear Modulus
+    symbol: G
+    unit: GPa
+  young_modulus:
+    label: Young's Modulus
+    symbol: Y
+    unit: GPa
+  poisson_ratio:
+    label: Poisson's Ratio
+    symbol: ν
+  hardness:
+    label: Hardness
+    symbol: H
+    unit: GPa
+  elastic_tensor:
+    label: Elastic Tensor
+    symbol: C
+  elastic_tensor_voigt:
+    label: Voigt Elastic Tensor
+    symbol: C<sub>Voigt</sub>
+  elastic_tensor_reuss:
+    label: Reuss Elastic Tensor
+    symbol: C<sub>Reuss</sub>
+  elastic_tensor_vrh:
+    label: Voigt-Reuss-Hill Elastic Tensor
+    symbol: C<sub>VRH</sub>
+  toughness:
+    label: Toughness
+    symbol: T
+    unit: J/m³
+  yield_strength:
+    label: Yield Strength
+    symbol: σ<sub>y</sub>
+    unit: MPa
+  tensile_strength:
+    label: Tensile Strength
+    symbol: σ<sub>tensile</sub>
+    unit: MPa
+  ductility:
+    label: Ductility
+    symbol: D
+    unit: "%"
+  fracture_toughness:
+    label: Fracture Toughness
+    symbol: K<sub>IC</sub>
+    unit: MPa·m<sup>1/2</sup>
+  sound_velocity:
+    label: Sound Velocity
+    symbol: v<sub>s</sub>
+    unit: m/s
+  thermal_conductivity:
+    label: Thermal Conductivity
+    symbol: κ
+    unit: W/m·K
+  thermal_expansion:
+    label: Thermal Expansion
+    symbol: α
+    unit: 1/K
+  lattice_thermal_conductivity:
+    label: Lattice Thermal Conductivity
+    symbol: κ<sub>lattice</sub>
+    unit: W/m·K
+  electronic_thermal_conductivity:
+    label: Electronic Thermal Conductivity
+    symbol: κ<sub>electronic</sub>
+    unit: W/m·K
+  heat_capacity:
+    label: Heat Capacity
+    symbol: C<sub>V</sub>
+    unit: J/K
+  specific_heat_capacity:
+    label: Specific Heat Capacity
+    symbol: c<sub>p</sub>
+    unit: J/kg·K
+  thermal_expansion_coefficient:
+    label: Thermal Expansion Coefficient
+    symbol: α<sub>thermal</sub>
+    unit: 1/K
+  thermal_diffusivity:
+    label: Thermal Diffusivity
+    symbol: α<sub>thermal</sub>
+    unit: m²/s
+  thermal_expansion_coeff:
+    label: Thermal Expansion Coefficient
+    symbol: α<sub>thermal</sub>
+    unit: 1/K
+  viscosity:
+    label: Viscosity
+    symbol: η
+    unit: Pa·s
+
+thermal:
+  temperature:
+    label: Temperature
+    symbol: T
+    unit: K
+  melting_point:
+    label: Melting Point
+    symbol: T<sub>melt</sub>
+    unit: K
+  boiling_point:
+    label: Boiling Point
+    symbol: T<sub>boil</sub>
+    unit: K
+  phase_transition_temp:
+    label: Phase Transition Temperature
+    symbol: T<sub>phase</sub>
+    unit: K
+  critical_temp:
+    label: Critical Temperature
+    symbol: T<sub>crit</sub>
+    unit: K
+  critical_pressure:
+    label: Critical Pressure
+    symbol: P<sub>crit</sub>
+    unit: Pa
+  critical_vol:
+    label: Critical Volume
+    symbol: V<sub>crit</sub>
+    unit: m³/mol
+  lattice_energy:
+    label: Lattice Energy
+    symbol: E<sub>lattice</sub>
+    unit: eV
+  debye_temp:
+    label: Debye Temperature
+    symbol: T<sub>D</sub>
+    unit: K
+  gruneisen_parameter:
+    label: Gruneisen Parameter
+    symbol: γ
+
+magnetic:
+  magnetic_moment:
+    label: Magnetic Moment
+    symbol: μ<sub>B</sub>
+    unit: μB
+  magmoms:
+    label: Magnetic Moments
+    symbol: μ
+  curie_temperature:
+    label: Curie Temperature
+    symbol: T<sub>C</sub>
+    unit: K
+  neel_temp:
+    label: Néel Temperature
+    symbol: T<sub>N</sub>
+    unit: K
+  magnetocrystalline_anisotropy:
+    label: Magnetocrystalline Anisotropy
+    symbol: K<sub>a</sub>
+    unit: meV
+  coercivity:
+    label: Coercivity
+    symbol: H<sub>c</sub>
+    unit: Oe
+
+phonon:
+  ph_band_structure:
+    label: Phonon Band Structure
+  ph_dos:
+    label: Phonon Density of States
+  ph_dos_mae:
+    label: Phonon DOS MAE
+  ph_dos_rmse:
+    label: Phonon DOS RMSE
+  has_imag_ph_gamma_modes:
+    label: Has Imaginary Phonon Gamma Modes
+  has_imag_ph_modes:
+    label: Has Imaginary Phonon Modes
+  last_ph_dos_peak:
+    label: Highest-frequency Phonon DOS Peak
+    symbol: ω<sub>max</sub>
+    unit: THz
+  max_ph_freq:
+    label: Maximum Phonon Frequency
+    symbol: Ω<sub>max</sub>
+    unit: THz
+  min_ph_freq:
+    label: Minimum Phonon Frequency
+    symbol: Ω<sub>min</sub>
+    unit: THz
+
+chemical:
+  atomic_mass:
+    label: Atomic Mass
+    symbol: m<sub>atom</sub>
+    unit: u
+  atomic_number:
+    label: Atomic Number
+  atomic_radius:
+    label: Atomic Radius
+    symbol: r<sub>atom</sub>
+    unit: Å
+  atomic_symbol:
+    label: Atomic Symbol
+  elem_symbol:
+    label: Element Symbol
+  atomic_volume:
+    label: Atomic Volume
+    symbol: V<sub>atom</sub>
+    unit: Å³
+  block:
+    label: Block
+  group:
+    label: Group
+  period:
+    label: Period
+  row:
+    label: Row
+  column:
+    label: Column
+  series:
+    label: Series
+  shell:
+    label: Shell
+  valence:
+    label: Valence
+  isotope_masses:
+    label: Isotope Masses
+  natural_abundance:
+    label: Natural Abundance
+    symbol: "%"
+  half_life:
+    label: Half-life
+    symbol: t<sub>1/2</sub>
+  electronegativity:
+    label: Electronegativity
+    unit: Pauling scale
+  ionic_radius:
+    label: Ionic Radius
+    symbol: r<sub>ion</sub>
+    unit: Å
+  covalent_radius:
+    label: Covalent Radius
+    symbol: r<sub>covalent</sub>
+    unit: Å
+  ionization_energy:
+    label: Ionization Energy
+    symbol: E<sub>ion</sub>
+    unit: eV
+  interface_energy:
+    label: Interface Energy
+    symbol: E<sub>interface</sub>
+    unit: J/m²
+  activation_energy:
+    label: Activation Energy
+    symbol: E<sub>act</sub>
+    unit: eV
+
+economic:
+  cost:
+    label: Cost
+    unit: $
+  raw_material_cost:
+    label: Raw Material Cost
+    unit: $/kg
+  abundance:
+    label: Elemental Abundance
+    unit: ppm
+  corrosion_resistance:
+    label: Corrosion Resistance
+    symbol: CR
+
+crystal_symmetry_properties:
+  crystal_system:
+    label: Crystal System
+  spg_num:
+    label: Space Group Number
+    symbol: N<sub>spg</sub>
+  spg_symbol:
+    label: Space Group Symbol
+  choice_symbol:
+    label: Choice symbol
+  hall_num:
+    label: Hall number
+    symbol: N<sub>hall</sub>
+  hall_symbol:
+    label: Hall symbol
+  hall_coefficient:
+    label: Hall Coefficient
+    symbol: R<sub>H</sub>
+  supercon_crit_temp:
+    label: Superconducting Critical Temperature
+    symbol: T<sub>c</sub>
+    unit: K
+  translations:
+    label: Translations
+  rotations:
+    label: Rotations
+  symmetry:
+    label: Symmetry
+  symmetry_change:
+    label: Symmetry Change
+  symmetry_decrease:
+    label: Symmetry Decrease
+  symmetry_increase:
+    label: Symmetry Increase
+  symmetry_match:
+    label: Symmetry Match
+  symprec:
+    label: Symmetry Precision
+  angle_tolerance:
+    label: Angle Tolerance
+  point_group:
+    label: Point Group
+  n_wyckoff:
+    label: Number of Wyckoff Positions
+    symbol: N<sub>wyckoff</sub>
+  n_rot_syms:
+    label: Number of rotational symmetries
+    symbol: N<sub>rot</sub>
+  n_trans_syms:
+    label: Number of translational symmetries
+    symbol: N<sub>trans</sub>
+  n_sym_ops:
+    label: Total number of symmetries
+    symbol: N<sub>sym</sub>
+  wyckoff:
+    label: AFLOW-style Label with Chemical System
+  wyckoff_spglib:
+    label: Wyckoff Label (spglib)
+  wyckoff_symbol:
+    label: Wyckoff Symbol
+  wyckoff_symbols:
+    label: Wyckoff symbols
+
+structure_prototyping:
+  protostructure:
+    label: Protostructure Label
+  prototype:
+    label: Prototype Label
+  aflow_prototype:
+    label: AFLOW-style Prototype Label
+  canonical_proto:
+    label: Canonical AFLOW-style Prototype
+  uniq_proto:
+    label: Unique AFLOW-style Prototype
+
+composition:
+  arity:
+    label: Arity
+    symbol: N<sub>elements</sub>
+  chem_sys:
+    label: Chemical System
+  composition:
+    label: Composition
+  molar_composition:
+    label: Molar Composition
+  weight_composition:
+    label: Weight Composition
+    symbol: w<sub>i</sub>
+  molar_fraction:
+    label: Molar Fraction
+  weight_fraction:
+    label: Weight Fraction
+    symbol: w<sub>i</sub>
+  molar_mass:
+    label: Molar Mass
+    symbol: M<sub>i</sub>
+  element:
+    label: Element
+  formula:
+    label: Formula
+  formula_pretty:
+    label: Pretty Formula
+  reduced_formula:
+    label: Reduced chemical formula
+  anonymous_formula:
+    label: Anonymous Formula
+  charge:
+    label: Total Charge
+    symbol: Q
+  oxi_states:
+    label: Oxidation States
+  oxi_state_guesses:
+    label: Oxidation State Guesses
+  n_atoms:
+    label: Number of Atoms
+    symbol: N<sub>atoms</sub>
+  n_elements:
+    label: Number of Elements
+    symbol: N<sub>elements</sub>
+  n_val_electrons:
+    label: Number of Valence Electrons
+    symbol: N<sub>valence electrons</sub>
+  n_electrons:
+    label: Number of Electrons
+    symbol: N<sub>electrons</sub>
+
+optical: # Optical Properties
+  refractive_index:
+    label: Refractive Index
+  diel_const:
+    label: Dielectric Constant
+    symbol: ε
+  piezoelectric_tensor:
+    label: Piezoelectric Tensor
+    symbol: Π
+  dielectric_tensor:
+    label: Dielectric Tensor
+    symbol: ε
+  absorption_spectrum:
+    label: Absorption Spectrum
+  photoluminescence:
+    label: Photoluminescence
+  optical_conductivity:
+    label: Optical Conductivity
+    unit: S/m
+  reflectivity:
+    label: Reflectivity
+  transmittance:
+    label: Transmittance
+  absorption_coefficient:
+    label: Absorption Coefficient
+    unit: cm⁻¹
+  extinction_coefficient:
+    label: Extinction Coefficient
+
+surface: # Surface Properties
+  surface_energy:
+    label: Surface Energy
+    unit: J/m²
+  wulff_shape:
+    label: Wulff Shape
+  surface_area:
+    label: Surface Area
+    unit: m²
+  surface_reconstruction:
+    label: Surface Reconstruction
+  adsorption_energy:
+    label: Adsorption Energy
+    unit: eV
+  work_of_adhesion:
+    label: Work of Adhesion
+    unit: J/m²
+
+defect:
+  vacancy_formation_energy:
+    label: Vacancy Formation Energy
+    unit: eV
+  interstitial_formation_energy:
+    label: Interstitial Formation Energy
+    unit: eV
+  defect_concentration:
+    label: Defect Concentration
+    unit: cm⁻³
+  migration_energy:
+    label: Migration Energy
+    unit: eV
+  dislocation_energy:
+    label: Dislocation Energy
+    unit: eV/Å
+  stacking_fault_energy:
+    label: Stacking Fault Energy
+    unit: mJ/m²
+
+dft: # Density Functional Theory
+  dft:
+    label: DFT
+  xc:
+    label: Exchange-Correlation
+  lda:
+    label: LDA
+  gga:
+    label: GGA
+  meta_gga:
+    label: Meta-GGA
+  hybrid:
+    label: Hybrid
+  hartree_fock:
+    label: Hartree-Fock
+  pbe:
+    label: PBE
+  pbe_sol:
+    label: PBEsol
+  scan:
+    label: SCAN
+  r2scan:
+    label: r2SCAN
+  hse:
+    label: HSE
+  xc_functional:
+    label: Exchange-Correlation Functional
+  convergence_electronic:
+    label: Electronic Convergence
+  convergence_ionic:
+    label: Ionic Convergence
+  kpoints:
+    label: K-points
+  pseudo_potential:
+    label: Pseudo-Potential
+  pseudo_potential_type:
+    label: Pseudo-Potential Type
+  u_correction:
+    label: Hubbard U Correction
+  needs_u_correction:
+    label: Needs Hubbard U correction
+  soc:
+    label: Spin-Orbit Coupling
+  basis_set:
+    label: Basis Set
+  basis_set_size:
+    label: Basis Set Size
+  energy_cutoff:
+    label: Energy Cutoff
+  fft_grid:
+    label: FFT Grid
+  smearing:
+    label: Smearing
+  max_scf_iter:
+    label: Max SCF Iterations
+  scf_tol:
+    label: SCF Tolerance
+  wave_function:
+    label: Wave Function
+  charge_density:
+    label: Charge Density
+  n_steps:
+    label: Number of Steps
+  n_elec_steps:
+    label: Number of Electronic Steps
+  n_ionic_steps:
+    label: Number of Ionic Steps
+  n_md_steps:
+    label: Number of Molecular Dynamics Steps
+  n_relax_steps:
+    label: Number of Relaxation Steps
+  n_scf_steps:
+    label: Number of SCF Steps
+  n_bands:
+    label: Number of Bands
+  n_kpoints:
+    label: Number of K-points
+  kpoint_density:
+    label: K-point Density
+  kpoint_spacing:
+    label: K-point Spacing
+  kpoint_mesh:
+    label: K-point Mesh
+  kpoint_offset:
+    label: K-point Offset
+  kpoint_symmetry:
+    label: K-point Symmetry
+  kpoint_sampling:
+    label: K-point Sampling
+  relativistic:
+    label: Relativistic
+  spin_polarized:
+    label: Spin Polarized
+  collinear:
+    label: Collinear
+  non_collinear:
+    label: Non-Collinear
+
+ml: # Machine Learning
+  train_task:
+    label: Training Task
+  test_task:
+    label: Test Task
+  train_set:
+    label: Training Set
+  targets:
+    label: Targets
+  model_name:
+    label: Model Name
+  model_id:
+    label: Model ID
+  model_version:
+    label: Model Version
+  model_type:
+    label: Model Type
+  model_params:
+    label: Model Parameters
+  model_framework:
+    label: Model Framework
+  hyperparams:
+    label: Hyperparameters
+  feature_importance:
+    label: Feature Importance
+  optimizer:
+    label: Optimizer
+  loss:
+    label: Loss
+  uncertainty:
+    label: Uncertainty
+  epochs:
+    label: Epochs
+  batch_size:
+    label: Batch Size
+  learning_rate:
+    label: Learning Rate
+  momentum:
+    label: Momentum
+  weight_decay:
+    label: Weight Decay
+  early_stopping:
+    label: Early Stopping
+  n_folds:
+    label: N<sub>folds</sub>
+  n_estimators:
+    label: N<sub>estimators</sub>
+  n_features:
+    label: N<sub>features</sub>
+  n_targets:
+    label: N<sub>targets</sub>
+  n_classes:
+    label: N<sub>classes</sub>
+  n_layers:
+    label: N<sub>layers</sub>
+  radial_cutoff:
+    label: Radial Cutoff
+  angular_cutoff:
+    label: Angular Cutoff
+
+metrics:
+  accuracy:
+    label: Accuracy
+  auc:
+    label: Area under the Curve
+  confusion_matrix:
+    label: Confusion Matrix
+  daf:
+    label: Discovery Acceleration Factor
+  f1:
+    label: F1 Score
+  fp:
+    label: False Positives
+  fn:
+    label: False Negatives
+  tp:
+    label: True Positives
+  tn:
+    label: True Negatives
+  tpr:
+    label: True Positive Rate
+  fpr:
+    label: False Positive Rate
+  tnr:
+    label: True Negative Rate
+  fnr:
+    label: False Negative Rate
+  mae:
+    label: Mean Absolute Error
+  r2:
+    label: R² Score
+  pearson:
+    label: Pearson Correlation
+  spearman:
+    label: Spearman Correlation
+  kendall:
+    label: Kendall Correlation
+  mse:
+    label: Mean Squared Error
+  rmse:
+    label: Root Mean Squared Error
+  rmsd:
+    label: Root Mean Square Deviation
+  n_sym_ops_mae:
+    label: Mean Absolute Error in Number of Symmetry Operations
+  structure_rmsd:
+    label: Structure RMSD
+    unit: Å
+  mape:
+    label: Mean Absolute Percentage Error
+  srme:
+    label: Symmetric Relative Mean Error
+  sre:
+    label: Symmetric Relative Error
+  srd:
+    label: Symmetric Relative Difference
+  smpe:
+    label: Symmetric Mean Percentage Error
+  smape:
+    label: Symmetric Mean Absolute Percentage Error
+  sse:
+    label: Sum of Squared Errors
+  variance:
+    label: Variance
+  std_dev:
+    label: Standard Deviation
+  iqr:
+    label: Interquartile Range
+  outlier:
+    label: Outlier
+  error:
+    label: Error
+  energy_error:
+    label: Energy Error
+  force_error:
+    label: Force Error
+  stress_error:
+    label: Stress Error
+  volume_error:
+    label: Volume Error
+  max_force_error:
+    label: Max Force Error
+  max_stress_error:
+    label: Max Stress Error
+  max_volume_error:
+    label: Max Volume Error
+  force_rmse:
+    label: Force RMSE
+  stress_rmse:
+    label: Stress RMSE
+  volume_rmse:
+    label: Volume RMSE
+  force_mae:
+    label: Force MAE
+  stress_mae:
+    label: Stress MAE
+  volume_mae:
+    label: Volume MAE
+  residuals:
+    label: Residuals
+  prc:
+    label: Precision-Recall Curve
+  prc_curve:
+    label: PRC Curve
+  precision:
+    label: Precision
+  recall:
+    label: Recall
+  sensitivity:
+    label: Sensitivity
+  specificity:
+    label: Specificity
+  roc:
+    label: Receiver Operating Characteristic
+  roc_curve:
+    label: ROC Curve
+  roc_auc:
+    label: ROC AUC
+  hit_rate:
+    label: Hit Rate
+  n_structs:
+    label: N<sub>structures</sub>
+  n_materials:
+    label: N<sub>materials</sub>
+  n_molecules:
+    label: N<sub>molecules</sub>
+  n_samples:
+    label: N<sub>samples</sub>
+  n_configs:
+    label: N<sub>configs</sub>
+  count:
+    label: Count
+  heat_val:
+    label: Heatmap Value
+
+computational_details:
+  run_time_sec:
+    label: Run Time
+    unit: sec
+  run_time_hr:
+    label: Run Time
+    unit: hr
+  cpu_hours:
+    label: CPU Hours
+    unit: hr
+  gpu_hours:
+    label: GPU Hours
+    unit: hr
+  start_time:
+    label: Start Time
+  start_date:
+    label: Start Date
+  date_time:
+    label: Date and Time
+  date:
+    label: Date
+  time:
+    label: Time
+  date_added:
+    label: Date Added
+  date_modified:
+    label: Date Modified
+  end_time:
+    label: End Time
+  end_date:
+    label: End Date
+  step:
+    label: Step
+    description: Step of a job/task/optimizer.
+  state:
+    label: State
+    description: State of a job/task/computation.
+  output:
+    label: Output
+  n_cores:
+    label: Number of Cores
+  n_nodes:
+    label: Number of Nodes
+  n_gpus:
+    label: Number of GPUs
+  n_tasks:
+    label: Number of Tasks
+  n_processes:
+    label: Number of Processes
+  n_threads:
+    label: Number of Threads
+  core_hours:
+    label: Core Hours
+  memory:
+    label: Memory
+  queue_name:
+    label: Queue Name
+  job_name:
+    label: Job Name
+  job_type:
+    label: Job Type
+  job_dir:
+    label: Job Directory
+  job_script:
+    label: Job Script
+  job_log:
+    label: Job Log
+  job_output:
+    label: Job Output
+  job_status:
+    label: Job Status
+  job_errors:
+    label: Job Errors
+  job_warnings:
+    label: Job Warnings
+  job_comments:
+    label: Job Comments
+  job_metadata:
+    label: Job Metadata
+
+identifiers_and_metadata:
+  id:
+    label: ID
+  db_id:
+    label: Database ID
+  uuid:
+    label: UUID
+  mat_id:
+    label: Material ID
+  frame_id:
+    label: Frame ID
+    description: Molecular dynamics or geometry optimization frame.
+  task:
+    label: Task
+  job_id:
+    label: Job ID
+  task_id:
+    label: Task ID
+  task_type:
+    label: Task Type
+  model:
+    label: Model
+  author:
+    label: Author
+  authors:
+    label: Authors
+  year:
+    label: Year
+  journal:
+    label: Journal
+  issue:
+    label: Issue
+  pages:
+    label: Pages
+  doi:
+    label: DOI
+  url:
+    label: URL
+  citation:
+    label: Citation
+  description:
+    label: Description
+  keywords:
+    label: Keywords
+  license:
+    label: License
+  version:
+    label: Version
+  abstract:
+    label: Abstract
+  tags:
+    label: Tags
+  categories:
+    label: Categories
+  funding:
+    label: Funding
+  acknowledgements:
+    label: Acknowledgements
+
+code:
+  repo:
+    label: Repository
+  branch:
+    label: Branch
+  commit:
+    label: Commit
+  hash:
+    label: Hash
+  tag:
+    label: Tag
+  release:
+    label: Release
+
+synthesis_related:
+  synthesis_temperature:
+    label: Synthesis Temperature
+    unit: K
+  synthesis_pressure:
+    label: Synthesis Pressure
+    unit: Pa
+  synthesis_time:
+    label: Synthesis Time
+    unit: hr
+  synthesis_method:
+    label: Synthesis Method
+  synthesis_conditions:
+    label: Synthesis Conditions
+  atmosphere:
+    label: Atmosphere
+  heat_treatment:
+    label: Heat Treatment
+  powder_preparation:
+    label: Powder Preparation
+
+performance_indicators:
+  fom:
+    label: Figure of Merit
+  power_factor:
+    label: Power Factor
+  zt:
+    label: Figure of Merit
+    symbol: ZT
+  efficiency:
+    label: Efficiency
+    symbol: η
+  capacity:
+    label: Capacity
+    symbol: C
+  rate:
+    label: Rate
+    symbol: R
+  lifetime:
+    label: Lifetime
+    symbol: T
+  stability:
+    label: Stability
+  selectivity:
+    label: Selectivity
+  purity:
+    label: Purity
+  yield:
+    label: Yield
+  activity:
+    label: Activity
+  performance:
+    label: Performance
+  gain:
+    label: Gain
+  power:
+    label: Power
+  current:
+    label: Current
+  voltage:
+    label: Voltage
+  resistance:
+    label: Resistance
+  impedance:
+    label: Impedance
+  capacitance:
+    label: Capacitance
+
+environmental_indicators:
+  toxicity:
+    label: Toxicity Index
+  recyclability:
+    label: Recyclability Score
+  biodegradability:
+    label: Biodegradability Score
+  sustainability:
+    label: Sustainability Index
