@@ -47,9 +47,11 @@ def test_brillouin_zone_3d_basic(
     [
         (
             0,
-            "Γ Y<sub>2</sub> Y<sub>4</sub> A M<sub>2</sub> V V<sub>2</sub> "
-            "L<sub>2</sub> C C<sub>2</sub> C<sub>4</sub> D D<sub>2</sub> "
-            "E E<sub>2</sub> E<sub>4</sub>".split(),
+            tuple(
+                "Γ Y<sub>2</sub> Y<sub>4</sub> A M<sub>2</sub> V V<sub>2</sub> "
+                "L<sub>2</sub> C C<sub>2</sub> C<sub>4</sub> D D<sub>2</sub> "
+                "E E<sub>2</sub> E<sub>4</sub>".split()
+            ),
         ),
         (1, ("Γ", "Z", "M", "A", "R", "X")),  # Different structure, different points
     ],
