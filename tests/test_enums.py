@@ -177,8 +177,8 @@ def test_keys_yaml_and_enum_are_in_sync() -> None:
     from pymatviz.enums import _keys
 
     # Check for differences
-    only_in_yaml = set(map(str, _keys)) - set(map(str, Key))
-    only_in_enum = set(map(str, Key)) - set(map(str, _keys))
+    only_in_yaml = set(map(str, _keys)) - set(map(str, Key)) - {"yield"}
+    only_in_enum = set(map(str, Key)) - set(map(str, _keys)) - {"yield_"}
 
     assert only_in_enum == set(), f"keys in enum but not in YAML: {only_in_enum}"
     assert only_in_yaml == set(), f"keys in YAML but not in enum: {only_in_yaml}"
