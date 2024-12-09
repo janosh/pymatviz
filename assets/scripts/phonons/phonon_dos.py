@@ -11,6 +11,12 @@ from pymatviz.phonons.helpers import PhononDBDoc
 from pymatviz.utils.testing import TEST_FILES
 
 
+try:
+    import atomate2  # noqa: F401
+except ImportError:
+    raise SystemExit(0) from None  # need atomate2 for MontyDecoder to load PhononDBDoc
+
+
 # %% Plot phonon bands and DOS
 for mp_id, formula in (
     ("mp-2758", "Sr4Se4"),
