@@ -68,7 +68,7 @@ def count_elements(
             "default value of fill_value changed from zero to None.", stacklevel=2
         )
 
-    valid_count_modes = list(ElemCountMode.key_val_dict())
+    valid_count_modes = set(ElemCountMode)
     if count_mode not in valid_count_modes:
         raise ValueError(f"Invalid {count_mode=} must be one of {valid_count_modes}")
     # Ensure values is Series if we got dict/list/tuple

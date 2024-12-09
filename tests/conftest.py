@@ -12,9 +12,13 @@ import pytest
 from plotly.subplots import make_subplots
 from pymatgen.core import Lattice, Structure
 
+from pymatviz.utils.testing import TEST_FILES
+
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from phonopy import Phonopy
 
 
 # If platform is Windows, set matplotlib backend to "Agg" to fix:
@@ -152,3 +156,16 @@ def _extract_anno_from_fig(fig: go.Figure | plt.Figure) -> str:
     if isinstance(fig, go.Figure):
         return fig.layout.annotations[-1].text
     return fig.axes[0].artists[-1].txt.get_text()
+
+
+@pytest.fixture(scope="session")
+def phonopy_nacl() -> Phonopy:
+    """Return Phonopy class instance of NaCl 2x2x2 without symmetrizing fc2."""
+    import phonopy
+
+    return phonopy.load(
+        f"{TEST_FILES}/phonons/NaCl/phonopy_disp.yaml.xz",
+        force_sets_filename=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
+        symmetrize_fc=False,
+        produce_fc=True,
+    )

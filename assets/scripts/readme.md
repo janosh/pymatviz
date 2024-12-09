@@ -1,3 +1,3 @@
-# Readme Asset Generation Scripts
+# Example Figure Generation Scripts
 
-This directory contains scripts to generate assets for the figures being shown in the readme that showcase `pymatviz` capabilities.
+This directory contains scripts to generate the figures that showcase `pymatviz` capabilities. Those figures are used in `readme.md`.
