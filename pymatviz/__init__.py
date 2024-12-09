@@ -106,7 +106,7 @@ crystal_sys_order = (
 
 px.defaults.labels |= {
     "gap expt": "Experimental band gap (eV)",
-} | Key.val_label_dict()
+} | {key: key.label for key in Key}
 
 # to hide math loading MathJax message in bottom left corner of plotly PDFs
 # https://github.com/plotly/Kaleido/issues/122#issuecomment-994906924

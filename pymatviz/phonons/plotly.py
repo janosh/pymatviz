@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -12,150 +11,31 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.constants as const
 from plotly.subplots import make_subplots
-from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
-from pymatgen.util.string import htmlify
 
+from pymatviz.phonons.helpers import (
+    AnyBandStructure,
+    YMax,
+    YMin,
+    _shaded_range,
+    phonopy_to_pymatgen_bands,
+    pretty_sym_point,
+)
 from pymatviz.typing import SET_INTERSECTION, SET_MODE, SET_STRICT, SET_UNION, SetMode
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
-    from typing import Any, TypeAlias
+    from typing import Any
 
-    from pymatgen.core import Structure
-    from typing_extensions import Self
-
-AnyBandStructure: TypeAlias = BandStructureSymmLine | PhononBands
-YMin: TypeAlias = float | Literal["y_min"]
-YMax: TypeAlias = float | Literal["y_max"]
-
-
-@dataclass
-class PhononDBDoc:
-    """Dataclass for phonon DB docs."""
-
-    structure: Structure
-    phonon_bandstructure: PhononBands
-    phonon_dos: PhononDos
-    free_energies: list[float]  # vibrational part of free energies per formula unit
-    internal_energies: list[float]  # vibrational part of internal energies per f.u.
-    heat_capacities: list[float]
-    entropies: list[float]
-    temps: list[float] | None = None  # temperatures
-    # whether imaginary modes are present in the BS
-    has_imaginary_modes: bool | None = None
-    primitive: Structure | None = None
-    supercell: list[list[int]] | None = None  # 3x3 matrix
-    # non-analytical corrections based on Born charges
-    nac_params: dict[str, Any] | None = None
-    thermal_displacement_data: dict[str, Any] | None = None
-    mp_id: str | None = None  # material ID
-    formula: str | None = None  # chemical formula
-
-    def __new__(cls, **kwargs: Any) -> Self:
-        """Ignore unexpected and initialize dataclass with known kwargs."""
-        try:
-            cls_init = cls.__initializer  # type: ignore[has-type]
-        except AttributeError:
-            # store original init on the class in a different place
-            cls.__initializer = cls_init = cls.__init__
-            # replace init with noop to avoid raising on unexpected kwargs
-            cls.__init__ = lambda *args, **kwargs: None  # type: ignore[method-assign] # noqa: ARG005
-
-        ret = object.__new__(cls)
-        known_kwargs = {
-            key: val for key, val in kwargs.items() if key in cls.__annotations__
-        }
-        cls_init(ret, **known_kwargs)
-
-        return ret
-
-
-def pretty_sym_point(symbol: str) -> str:
-    """Convert a symbol to a pretty-printed version."""
-    # htmlify maps S0 -> S<sub>0</sub> but leaves S_0 as is so we remove underscores
-    return (
-        htmlify(symbol.replace("_", ""))
-        .replace("GAMMA", "Γ")
-        .replace("DELTA", "Δ")
-        .replace("SIGMA", "Σ")
-    )
-
-
-def get_band_xaxis_ticks(
-    band_struct: PhononBands, branches: Sequence[str] | set[str] = ()
-) -> tuple[list[float], list[str]]:
-    """Get all ticks and labels for a band structure plot.
-
-    Returns:
-        tuple[list[float], list[str]]: Ticks and labels for the x-axis of a band
-            structure plot.
-        branches (Sequence[str]): Branches to plot. Defaults to empty tuple, meaning all
-            branches are plotted.
-    """
-    ticks_x_pos: list[float] = []
-    tick_labels: list[str] = []
-    prev_label = band_struct.qpoints[0].label
-    prev_branch = band_struct.branches[0]["name"]
-
-    for idx, point in enumerate(band_struct.qpoints):
-        if point.label is None:
-            continue
-
-        branch_names = (
-            branch["name"]
-            for branch in band_struct.branches
-            if branch["start_index"] <= idx <= branch["end_index"]
-        )
-        this_branch = next(branch_names, None)
-
-        if point.label != prev_label and prev_branch != this_branch:
-            tick_labels.pop()
-            ticks_x_pos.pop()
-            tick_labels += [f"{prev_label or ''}|{point.label}"]
-            ticks_x_pos += [band_struct.distance[idx]]
-        elif this_branch in branches:
-            tick_labels += [point.label]
-            ticks_x_pos += [band_struct.distance[idx]]
-
-        prev_label = point.label
-        prev_branch = this_branch
-
-    tick_labels = list(map(pretty_sym_point, tick_labels))
-    return ticks_x_pos, tick_labels
-
-
-def _shaded_range(
-    fig: go.Figure,
-    shaded_ys: dict[tuple[YMin | YMax, YMin | YMax], dict[str, Any]] | bool | None,
-) -> go.Figure:
-    if shaded_ys is False:
-        return fig
-
-    shade_defaults = dict(layer="below", row="all", col="all")
-    y_lim: dict[float | Literal["y_min", "y_max"], Any] = dict(
-        zip(("y_min", "y_max"), fig.layout.yaxis.range, strict=True),
-    )
-
-    shaded_ys = shaded_ys or {(0, "y_min"): dict(fillcolor="gray", opacity=0.07)}
-    if not isinstance(shaded_ys, dict):
-        raise TypeError(f"expect shaded_ys as dict, got {type(shaded_ys).__name__}")
-
-    for (y0, y1), kwds in shaded_ys.items():
-        for y_val in (y0, y1):
-            if isinstance(y_val, str) and y_val not in y_lim:
-                raise ValueError(f"Invalid {y_val=}, must be one of {[*y_lim]}")
-        fig.add_hrect(
-            y0=y_lim.get(y0, y0), y1=y_lim.get(y1, y1), **shade_defaults | kwds
-        )
-
-    return fig
+    from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
 
 
 def phonon_bands(
-    band_structs: PhononBands | dict[str, PhononBands],
+    band_structs: AnyBandStructure
+    | PhonopyBandStructure
+    | dict[str, AnyBandStructure | PhonopyBandStructure],
     line_kwargs: (
         dict[str, Any]  # single dict for all lines
         # separate dicts for modes
@@ -171,15 +51,15 @@ def phonon_bands(
     | None = None,
     **kwargs: Any,
 ) -> go.Figure:
-    """Plot single or multiple pymatgen band structures using Plotly.
+    """Plot single or multiple pymatgen or phonopy band structures using Plotly.
 
     Warning: Only tested with phonon band structures so far but plan is to extend to
     electronic band structures.
 
     Args:
-        band_structs (PhononBandStructureSymmLine | dict[str, PhononBandStructure]):
-            Single BandStructureSymmLine or PhononBandStructureSymmLine object or a dict
-            with labels mapped to multiple such objects.
+        band_structs: Single BandStructureSymmLine, PhononBandStructureSymmLine, or
+            phonopy BandStructure object, or a dict with labels mapped to multiple such
+            objects.
         line_kwargs (dict | dict[str, dict] | Callable): Line style configuration.
             Can be:
             - A single dict applied to all lines
@@ -206,6 +86,27 @@ def phonon_bands(
     Returns:
         go.Figure: Plotly figure object.
     """
+    # Convert input to dict if single band structure
+    if not isinstance(band_structs, dict):
+        band_structs = {"": band_structs}
+
+    # Convert phonopy band structures to pymatgen format
+    converted_band_structs: dict[str, AnyBandStructure] = {}
+    for key, bands in band_structs.items():
+        if type(bands).__module__.startswith("phonopy"):
+            converted_band_structs[key] = phonopy_to_pymatgen_bands(bands)
+        elif isinstance(bands, PhononBands):
+            converted_band_structs[key] = bands
+        else:
+            cls_name = PhononBands.__name__
+            raise TypeError(
+                f"Only {cls_name}, phonopy BandStructure or dict supported, "
+                f"got {type(bands).__name__}"
+            )
+
+    # use reassignment to avoid modifying original input band_structs
+    band_structs = converted_band_structs
+
     fig = go.Figure()
     line_kwargs = line_kwargs or {}
 
@@ -219,9 +120,6 @@ def phonon_bands(
         )
     if isinstance(band_structs, dict) and len(band_structs) == 0:
         raise ValueError("Empty band structure dict")
-
-    if not isinstance(band_structs, dict):  # normalize input to dictionary
-        band_structs = {"": band_structs}
 
     # First, collect all unique path segments and their endpoints across all structures
     all_segments: dict[tuple[str | None, str | None], list[tuple[str, PhononBands]]] = (
@@ -487,7 +385,8 @@ def phonon_dos(
     """Plot phonon DOS using Plotly.
 
     Args:
-        doses (PhononDos | dict[str, PhononDos]): PhononDos or dict of multiple.
+        doses (PhononDos | dict[str, PhononDos]): pymatgen PhononDos or phonopy TotalDos
+            or dict of multiple of either.
         stack (bool): Whether to plot the DOS as a stacked area graph. Defaults to
             False.
         sigma (float): Standard deviation for Gaussian smearing. Defaults to None.
@@ -507,10 +406,18 @@ def phonon_dos(
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
 
-    if type(doses) not in {PhononDos, dict}:
-        raise TypeError(
-            f"Only {PhononDos.__name__} or dict supported, got {type(doses).__name__}"
-        )
+    doses = doses if isinstance(doses, dict) else {"": doses}
+    for key, dos in doses.items():
+        cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
+        if cls_name == "phonopy.phonon.dos.TotalDos":
+            # convert phonopy TotalDos to pymatgen PhononDos
+            dos = PhononDos(frequencies=dos.frequency_points, densities=dos.dos)  # noqa: PLW2901
+            doses[key] = dos
+
+        if not isinstance(dos, PhononDos):
+            raise TypeError(
+                f"Only {PhononDos.__name__} or dict supported, got {type(dos).__name__}"
+            )
     if isinstance(doses, dict) and len(doses) == 0:
         raise ValueError("Empty DOS dict")
 
@@ -518,7 +425,6 @@ def phonon_dos(
         last_peak_anno = "ω<sub>{key}</sub></span>={last_peak:.1f} {units}"
 
     fig = go.Figure()
-    doses = {"": doses} if isinstance(doses, PhononDos) else doses
 
     for key, dos in doses.items():
         if not isinstance(dos, PhononDos):
@@ -551,7 +457,7 @@ def phonon_dos(
         )
 
     fig.layout.xaxis.update(title=f"Frequency ({units})")
-    fig.layout.yaxis.update(title="Density of States")
+    fig.layout.yaxis.update(title="Density of States", rangemode="tozero")
     fig.layout.margin = dict(t=5, b=5, l=5, r=5)
     fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
     fig.layout.legend.update(x=0.005, y=0.99, orientation="h", yanchor="top")

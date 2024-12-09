@@ -8,15 +8,14 @@ from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononB
 from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
-from pymatviz.enums import Key
+from pymatviz.phonons import PhononDBDoc
 from pymatviz.utils.testing import TEST_FILES
 
 
-# TODO: ffonons not working properly (see #195)
 try:
-    import ffonons  # noqa: F401
+    import atomate2  # noqa: F401
 except ImportError:
-    raise SystemExit(0) from None  # install ffonons to run this script
+    raise SystemExit(0) from None  # need atomate2 for MontyDecoder to load PhononDBDoc
 
 
 # %% Plot phonon bands and DOS
@@ -24,22 +23,21 @@ for mp_id, formula in (
     ("mp-2758", "Sr4Se4"),
     ("mp-23907", "H2"),
 ):
-    docs = {}
-    for path in glob(f"{TEST_FILES}/phonons/{mp_id}-{formula}-*.json.lzma"):
+    docs: dict[str, PhononDBDoc] = {}
+    for path in glob(f"{TEST_FILES}/phonons/{mp_id}-{formula}-*.json.xz"):
         key = path.split("-")[-1].split(".")[0]
         with zopen(path) as file:
             docs[key] = json.loads(file.read(), cls=MontyDecoder)
 
     ph_bands: dict[str, PhononBands] = {
-        key: getattr(doc, Key.ph_band_structure) for key, doc in docs.items()
+        key: doc.phonon_bandstructure for key, doc in docs.items()
     }
-    ph_doses: dict[str, PhononDos] = {
-        key: getattr(doc, Key.ph_dos) for key, doc in docs.items()
-    }
+    ph_doses: dict[str, PhononDos] = {key: doc.phonon_dos for key, doc in docs.items()}
 
     fig = pmv.phonon_bands_and_dos(ph_bands, ph_doses)
     fig.layout.title = dict(
         text=f"Phonon Bands and DOS of {formula} ({mp_id})", x=0.5, y=0.98
     )
     fig.layout.margin = dict(l=0, r=0, b=0, t=40)
+    fig.show()
     pmv.io.save_and_compress_svg(fig, f"phonon-bands-and-dos-{mp_id}")

@@ -58,7 +58,7 @@ def plot_homo_nuclear(model_size: str) -> None:
     )
     gs = plt.GridSpec(figure=fig, nrows=n_rows, ncols=n_columns)
 
-    lzma_path = f"{module_dir}/homo-nuclear-mace-{model_size}.json.lzma"
+    lzma_path = f"{module_dir}/homo-nuclear-mace-{model_size}.json.xz"
     with lzma.open(lzma_path, "rt") as file:
         data: dict[str, list[float]] = json.load(file)
 
@@ -153,7 +153,7 @@ def plot_element_heteronuclear(
 # %% plot homo-nuclear and heteronuclear pair repulsion curves
 # model_size = "small"
 model_size = "medium"
-lzma_path = f"{module_dir}/homo-nuclear-mace-{model_size}.json.lzma"
+lzma_path = f"{module_dir}/homo-nuclear-mace-{model_size}.json.xz"
 with lzma.open(lzma_path, "rt") as file:
     data: dict[str, list[float]] = json.load(file)
     x_dists = data.pop("distances")
@@ -186,7 +186,7 @@ pmv.save_fig(ax, f"{module_dir}/homo-nuclear-mace-{model_size}.svg")
 # %% count number of elements with energies below E_TOO_LOW
 E_TOO_LOW = -20
 for model_size in ("small", "medium"):
-    lzma_path = f"{module_dir}/homo-nuclear-mace-{model_size}.json.lzma"
+    lzma_path = f"{module_dir}/homo-nuclear-mace-{model_size}.json.xz"
     with lzma.open(lzma_path, "rt") as file:
         homo_nuc_diatomics = json.load(file)
 
