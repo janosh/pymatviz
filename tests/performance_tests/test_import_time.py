@@ -20,7 +20,6 @@ GEN_REF_TIME = False  # switch for generating reference time
 REF_IMPORT_TIME: dict[str, float] = {
     "pymatviz": 4085,
     "pymatviz.coordination": 4135,
-    "pymatviz.cumulative": 4108,
     "pymatviz.histogram": 4110,
     "pymatviz.phonons": 4109,
     "pymatviz.powerups": 4066,

@@ -217,9 +217,7 @@ def get_subplot_title(
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
 ) -> dict[str, Any]:
     """Generate a subplot title based on the provided function or default logic."""
-    title_dict: dict[str, str | float | dict[str, str | float]] = {
-        "font": {"color": "black"}
-    }
+    title_dict: dict[str, str | float | dict[str, str | float]] = {}
 
     if callable(subplot_title):
         sub_title = subplot_title(struct_i, struct_key)
@@ -229,7 +227,7 @@ def get_subplot_title(
             title_dict |= sub_title
         else:
             raise TypeError(
-                f"Invalid subplot_title={sub_title}. Must be a str or dict."
+                f"Invalid subplot_title, must be str or dict, got {sub_title}"
             )
 
     if not title_dict.get("text"):
