@@ -130,11 +130,11 @@ See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-|             [`xrd_pattern(pattern)`](assets/scripts/xrd/xrd_pattern.py)             |             [`xrd_pattern({key1: patt1, key2: patt2})`](assets/scripts/xrd/xrd_pattern.py)              |
-| :---------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------: |
-|                                   ![xrd-pattern]                                    |                                         ![xrd-pattern-multiple]                                         |
-| [`xrd_pattern(struct_dict, stack="horizontal")`](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical", title="Custom Title")`](assets/scripts/xrd/xrd_pattern.py) |
-|                           ![xrd-pattern-horizontal-stack]                           |                                      ![xrd-pattern-vertical-stack]                                      |
+|             [`xrd_pattern(pattern)`](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](assets/scripts/xrd/xrd_pattern.py)   |
+| :---------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
+|                                   ![xrd-pattern]                                    |                              ![xrd-pattern-multiple]                              |
+| [`xrd_pattern(struct_dict, stack="horizontal")`](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical")`](assets/scripts/xrd/xrd_pattern.py) |
+|                           ![xrd-pattern-horizontal-stack]                           |                           ![xrd-pattern-vertical-stack]                           |
 
 [xrd-pattern]: assets/svg/xrd-pattern.svg
 [xrd-pattern-multiple]: assets/svg/xrd-pattern-multiple.svg
@@ -145,9 +145,9 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
-| [`rdf_plot(rdf)`](assets/scripts/rdf/element_pair_rdfs.py) | [`rdf_plot(rdf, rdf2)`](assets/scripts/rdf/element_pair_rdfs.py) |
-| :--------------------------------------------------------: | :--------------------------------------------------------------: |
-|               ![element-pair-rdfs-Na8Nb8O24]               |            ![element-pair-rdfs-crystal-vs-amorphous]             |
+| [`element_pair_rdfs(pmg_struct)`](assets/scripts/rdf/element_pair_rdfs.py) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](assets/scripts/rdf/element_pair_rdfs.py) |
+| :------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------: |
+|                       ![element-pair-rdfs-Na8Nb8O24]                       |                          ![element-pair-rdfs-crystal-vs-amorphous]                           |
 
 [element-pair-rdfs-Na8Nb8O24]: assets/svg/element-pair-rdfs-Na8Nb8O24.svg
 [element-pair-rdfs-crystal-vs-amorphous]: assets/svg/element-pair-rdfs-crystal-vs-amorphous.svg
@@ -243,14 +243,6 @@ See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 |                                            ![normal-prob-plot]                                            |                                          ![normal-prob-plot-multiple]                                           |
 | [`error_decay_with_uncert(y_true, y_pred, y_std)`](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](assets/scripts/uncertainty/error_decay_with_uncert.py) |
 |                                        ![error-decay-with-uncert]                                         |                                       ![error-decay-with-uncert-multiple]                                       |
-
-## Cumulative Metrics
-
-See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
-
-| [`cumulative_error(preds, targets)`](assets/scripts/uncertainty/cumulative.py) | [`cumulative_residual(preds, targets)`](assets/scripts/uncertainty/cumulative.py) |
-| :----------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
-|                              ![cumulative-error]                               |                              ![cumulative-residual]                               |
 
 ## Classification
 
