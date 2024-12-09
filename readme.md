@@ -100,7 +100,7 @@ See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main
 
 ## Structure
 
-See [`pymatviz/structure_viz/(mpl|plotly).py`](pymatviz/structure_viz/plotly.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
+See [`pymatviz/structure_viz/plotly.py`](pymatviz/structure_viz/plotly.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
 
 |                 [`structure_2d(mp_19017)`](pymatviz/structure_viz/mpl.py)                 |                 [`structure_2d(mp_12712)`](pymatviz/structure_viz/mpl.py)                 |
 | :---------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------: |
@@ -197,22 +197,29 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 [sankey-spglib-vs-aflow-spacegroups]: assets/svg/sankey-spglib-vs-aflow-spacegroups.svg
 [sankey-crystal-sys-to-spg-symbol]: assets/svg/sankey-crystal-sys-to-spg-symbol.svg
 
-## Histograms
+## Bar Plots
 
-See [`pymatviz/histogram.py`](pymatviz/histogram.py).
+See [`pymatviz/bar.py`](pymatviz/bar.py).
 
-| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](assets/scripts/histogram/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](assets/scripts/histogram/spacegroup_bar.py) |
-| :-------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------: |
-|                                        ![spg-num-hist-matplotlib]                                         |                                             ![spg-symbol-hist-matplotlib]                                             |
-|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](assets/scripts/histogram/spacegroup_bar.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](assets/scripts/histogram/spacegroup_bar.py)   |
-|                                          ![spg-num-hist-plotly]                                           |                                               ![spg-symbol-hist-plotly]                                               |
-| [`elements_hist(compositions, log=True, bar_values='count')`](assets/scripts/histogram/elements_hist.py)  |               [`histogram({'key1': values1, 'key2': values2})`](assets/scripts/histogram/histogram.py)                |
-|                                             ![elements-hist]                                              |                                                   ![histogram-ecdf]                                                   |
+| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](assets/scripts/bar/spacegroup_bar.py) |
+| :-------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------: |
+|                                     ![spg-num-hist-matplotlib]                                      |                                          ![spg-symbol-hist-matplotlib]                                          |
+|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py)   |
+|                                       ![spg-num-hist-plotly]                                        |                                            ![spg-symbol-hist-plotly]                                            |
 
 [spg-symbol-hist-plotly]: assets/svg/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: assets/svg/spg-num-hist-plotly.svg
 [spg-num-hist-matplotlib]: assets/svg/spg-num-hist-matplotlib.svg
 [spg-symbol-hist-matplotlib]: assets/svg/spg-symbol-hist-matplotlib.svg
+
+## Histograms
+
+See [`pymatviz/histogram.py`](pymatviz/histogram.py).
+
+| [`elements_hist(compositions, log=True, bar_values='count')`](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](assets/scripts/histogram/histogram.py) |
+| :------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: |
+|                                             ![elements-hist]                                             |                                    ![histogram-ecdf]                                     |
+
 [histogram-ecdf]: assets/svg/histogram-ecdf.svg
 
 ## Scatter Plots
