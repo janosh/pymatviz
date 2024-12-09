@@ -592,12 +592,6 @@ structure_prototyping:
     label: Protostructure Label
   prototype:
     label: Prototype Label
-  aflow_prototype:
-    label: AFLOW-style Prototype Label
-  canonical_proto:
-    label: Canonical AFLOW-style Prototype
-  uniq_proto:
-    label: Unique AFLOW-style Prototype
 
 composition:
   arity:
@@ -884,40 +878,56 @@ metrics:
     label: Confusion Matrix
   daf:
     label: Discovery Acceleration Factor
+    symbol: DAF
   f1:
     label: F1 Score
+    symbol: F1
   fp:
     label: False Positives
+    symbol: FP
   fn:
     label: False Negatives
+    symbol: FN
   tp:
     label: True Positives
+    symbol: TP
   tn:
     label: True Negatives
+    symbol: TN
   tpr:
     label: True Positive Rate
+    symbol: TPR
   fpr:
     label: False Positive Rate
+    symbol: FPR
   tnr:
     label: True Negative Rate
+    symbol: TNR
   fnr:
     label: False Negative Rate
+    symbol: FNR
   mae:
     label: Mean Absolute Error
   r2:
     label: R² Score
   pearson:
     label: Pearson Correlation
+    symbol: r
   spearman:
     label: Spearman Correlation
+    symbol: r<sub>s</sub>
   kendall:
     label: Kendall Correlation
+    symbol: r<sub>k</sub>
   mse:
     label: Mean Squared Error
+    symbol: MSE
   rmse:
     label: Root Mean Squared Error
+    symbol: RMSE
   rmsd:
     label: Root Mean Square Deviation
+    symbol: RMSD
   n_sym_ops_mae:
     label: Mean Absolute Error in Number of Symmetry Operations
   structure_rmsd:
@@ -925,54 +935,76 @@ metrics:
     unit: Å
   mape:
     label: Mean Absolute Percentage Error
+    symbol: MAPE
   srme:
     label: Symmetric Relative Mean Error
+    symbol: SRME
   sre:
     label: Symmetric Relative Error
+    symbol: SRE
   srd:
     label: Symmetric Relative Difference
+    symbol: SRD
   smpe:
     label: Symmetric Mean Percentage Error
+    symbol: SMPE
   smape:
     label: Symmetric Mean Absolute Percentage Error
+    symbol: SMAPE
   sse:
     label: Sum of Squared Errors
+    symbol: SSE
   variance:
     label: Variance
+    symbol: Var
   std_dev:
     label: Standard Deviation
+    symbol: σ
   iqr:
     label: Interquartile Range
+    symbol: IQR
   outlier:
     label: Outlier
   error:
     label: Error
   energy_error:
     label: Energy Error
+    symbol: E<sub>err</sub>
   force_error:
     label: Force Error
+    symbol: F<sub>err</sub>
   stress_error:
     label: Stress Error
+    symbol: σ<sub>err</sub>
   volume_error:
     label: Volume Error
+    symbol: V<sub>err</sub>
   max_force_error:
     label: Max Force Error
   max_stress_error:
     label: Max Stress Error
+    symbol: σ<sub>err</sub>
   max_volume_error:
     label: Max Volume Error
+    symbol: V<sub>err</sub>
   force_rmse:
     label: Force RMSE
+    symbol: F<sub>RMSE</sub>
   stress_rmse:
     label: Stress RMSE
+    symbol: σ<sub>RMSE</sub>
   volume_rmse:
     label: Volume RMSE
+    symbol: V<sub>RMSE</sub>
   force_mae:
     label: Force MAE
+    symbol: F<sub>MAE</sub>
   stress_mae:
     label: Stress MAE
+    symbol: σ<sub>MAE</sub>
   volume_mae:
     label: Volume MAE
+    symbol: V<sub>MAE</sub>
   residuals:
     label: Residuals
   prc:
@@ -981,30 +1013,42 @@ metrics:
     label: PRC Curve
   precision:
     label: Precision
+    symbol: P
   recall:
     label: Recall
+    symbol: R
   sensitivity:
     label: Sensitivity
+    symbol: S
   specificity:
     label: Specificity
+    symbol: S
   roc:
     label: Receiver Operating Characteristic
+    symbol: ROC
   roc_curve:
-    label: ROC Curve
+    label: Receiver Operating Characteristic Curve
+    symbol: ROC
   roc_auc:
-    label: ROC AUC
+    label: Receiver Operating Characteristic Area Under the Curve
+    symbol: ROCAUC
   hit_rate:
     label: Hit Rate
   n_structs:
-    label: N<sub>structures</sub>
+    label: Number of Structures
+    symbol: N<sub>structs</sub>
   n_materials:
-    label: N<sub>materials</sub>
+    label: Number of Materials
+    symbol: N<sub>mats</sub>
   n_molecules:
-    label: N<sub>molecules</sub>
+    label: Number of Molecules
+    symbol: N<sub>molecules</sub>
   n_samples:
-    label: N<sub>samples</sub>
+    label: Number of Samples
+    symbol: N<sub>samples</sub>
   n_configs:
-    label: N<sub>configs</sub>
+    label: Number of Configurations
+    symbol: N<sub>configs</sub>
   count:
     label: Count
   heat_val:
@@ -1097,7 +1141,7 @@ identifiers_and_metadata:
     label: Database ID
   uuid:
     label: UUID
-  mat_id:
+  material_id:
     label: Material ID
   frame_id:
     label: Frame ID

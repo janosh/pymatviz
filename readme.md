@@ -100,7 +100,7 @@ See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main
 
 ## Structure
 
-See [`pymatviz/structure_viz/(mpl|plotly).py`](pymatviz/structure_viz/plotly.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
+See [`pymatviz/structure_viz/plotly.py`](pymatviz/structure_viz/plotly.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
 
 |                 [`structure_2d(mp_19017)`](pymatviz/structure_viz/mpl.py)                 |                 [`structure_2d(mp_12712)`](pymatviz/structure_viz/mpl.py)                 |
 | :---------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------: |
@@ -130,11 +130,11 @@ See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-|             [`xrd_pattern(pattern)`](assets/scripts/xrd/xrd_pattern.py)             |             [`xrd_pattern({key1: patt1, key2: patt2})`](assets/scripts/xrd/xrd_pattern.py)              |
-| :---------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------: |
-|                                   ![xrd-pattern]                                    |                                         ![xrd-pattern-multiple]                                         |
-| [`xrd_pattern(struct_dict, stack="horizontal")`](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical", title="Custom Title")`](assets/scripts/xrd/xrd_pattern.py) |
-|                           ![xrd-pattern-horizontal-stack]                           |                                      ![xrd-pattern-vertical-stack]                                      |
+|             [`xrd_pattern(pattern)`](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](assets/scripts/xrd/xrd_pattern.py)   |
+| :---------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
+|                                   ![xrd-pattern]                                    |                              ![xrd-pattern-multiple]                              |
+| [`xrd_pattern(struct_dict, stack="horizontal")`](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical")`](assets/scripts/xrd/xrd_pattern.py) |
+|                           ![xrd-pattern-horizontal-stack]                           |                           ![xrd-pattern-vertical-stack]                           |
 
 [xrd-pattern]: assets/svg/xrd-pattern.svg
 [xrd-pattern-multiple]: assets/svg/xrd-pattern-multiple.svg
@@ -145,9 +145,9 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
-| [`rdf_plot(rdf)`](assets/scripts/rdf/element_pair_rdfs.py) | [`rdf_plot(rdf, rdf2)`](assets/scripts/rdf/element_pair_rdfs.py) |
-| :--------------------------------------------------------: | :--------------------------------------------------------------: |
-|               ![element-pair-rdfs-Na8Nb8O24]               |            ![element-pair-rdfs-crystal-vs-amorphous]             |
+| [`element_pair_rdfs(pmg_struct)`](assets/scripts/rdf/element_pair_rdfs.py) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](assets/scripts/rdf/element_pair_rdfs.py) |
+| :------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------: |
+|                       ![element-pair-rdfs-Na8Nb8O24]                       |                          ![element-pair-rdfs-crystal-vs-amorphous]                           |
 
 [element-pair-rdfs-Na8Nb8O24]: assets/svg/element-pair-rdfs-Na8Nb8O24.svg
 [element-pair-rdfs-crystal-vs-amorphous]: assets/svg/element-pair-rdfs-crystal-vs-amorphous.svg
@@ -197,22 +197,29 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 [sankey-spglib-vs-aflow-spacegroups]: assets/svg/sankey-spglib-vs-aflow-spacegroups.svg
 [sankey-crystal-sys-to-spg-symbol]: assets/svg/sankey-crystal-sys-to-spg-symbol.svg
 
-## Histograms
+## Bar Plots
 
-See [`pymatviz/histogram.py`](pymatviz/histogram.py).
+See [`pymatviz/bar.py`](pymatviz/bar.py).
 
-| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](assets/scripts/histogram/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](assets/scripts/histogram/spacegroup_bar.py) |
-| :-------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------: |
-|                                        ![spg-num-hist-matplotlib]                                         |                                             ![spg-symbol-hist-matplotlib]                                             |
-|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](assets/scripts/histogram/spacegroup_bar.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](assets/scripts/histogram/spacegroup_bar.py)   |
-|                                          ![spg-num-hist-plotly]                                           |                                               ![spg-symbol-hist-plotly]                                               |
-| [`elements_hist(compositions, log=True, bar_values='count')`](assets/scripts/histogram/elements_hist.py)  |               [`histogram({'key1': values1, 'key2': values2})`](assets/scripts/histogram/histogram.py)                |
-|                                             ![elements-hist]                                              |                                                   ![histogram-ecdf]                                                   |
+| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](assets/scripts/bar/spacegroup_bar.py) |
+| :-------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------: |
+|                                     ![spg-num-hist-matplotlib]                                      |                                          ![spg-symbol-hist-matplotlib]                                          |
+|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py)   |
+|                                       ![spg-num-hist-plotly]                                        |                                            ![spg-symbol-hist-plotly]                                            |
 
 [spg-symbol-hist-plotly]: assets/svg/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: assets/svg/spg-num-hist-plotly.svg
 [spg-num-hist-matplotlib]: assets/svg/spg-num-hist-matplotlib.svg
 [spg-symbol-hist-matplotlib]: assets/svg/spg-symbol-hist-matplotlib.svg
+
+## Histograms
+
+See [`pymatviz/histogram.py`](pymatviz/histogram.py).
+
+| [`elements_hist(compositions, log=True, bar_values='count')`](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](assets/scripts/histogram/histogram.py) |
+| :------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: |
+|                                             ![elements-hist]                                             |                                    ![histogram-ecdf]                                     |
+
 [histogram-ecdf]: assets/svg/histogram-ecdf.svg
 
 ## Scatter Plots
@@ -244,14 +251,6 @@ See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 | [`error_decay_with_uncert(y_true, y_pred, y_std)`](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](assets/scripts/uncertainty/error_decay_with_uncert.py) |
 |                                        ![error-decay-with-uncert]                                         |                                       ![error-decay-with-uncert-multiple]                                       |
 
-## Cumulative Metrics
-
-See [`pymatviz/cumulative.py`](pymatviz/cumulative.py).
-
-| [`cumulative_error(preds, targets)`](assets/scripts/uncertainty/cumulative.py) | [`cumulative_residual(preds, targets)`](assets/scripts/uncertainty/cumulative.py) |
-| :----------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
-|                              ![cumulative-error]                               |                              ![cumulative-residual]                               |
-
 ## Classification
 
 See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix.py).
@@ -270,8 +269,6 @@ See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 [precision-recall-curve-plotly-multiple]: assets/svg/precision-recall-curve-plotly-multiple.svg
 [stability-confusion-matrix]: assets/svg/stability-confusion-matrix.svg
 [crystal-system-confusion-matrix]: assets/svg/crystal-system-confusion-matrix.svg
-[cumulative-error]: assets/svg/cumulative-error.svg
-[cumulative-residual]: assets/svg/cumulative-residual.svg
 [error-decay-with-uncert-multiple]: assets/svg/error-decay-with-uncert-multiple.svg
 [error-decay-with-uncert]: assets/svg/error-decay-with-uncert.svg
 [elements-hist]: assets/svg/elements-hist.svg

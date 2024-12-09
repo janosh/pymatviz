@@ -25,7 +25,8 @@ def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> 
 
     # Test y-axis range
     expected_y_max = max(max(trace.y) for trace in fig.data)  # get max CN count
-    y_min, y_max = fig.layout.yaxis.range
+    dev_fig = fig.full_figure_for_development(warn=False)
+    y_min, y_max = dev_fig.layout.yaxis.range
     assert y_min == 0
     assert y_max == pytest.approx(expected_y_max, rel=0.1)
 
@@ -35,7 +36,7 @@ def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> 
     assert fig.layout.xaxis.range[0] < min(trace.x[0] for trace in fig.data)
 
     # Test y-axis properties
-    assert fig.layout.yaxis.range[0] == 0
+    assert dev_fig.layout.yaxis.range[0] == 0
     assert fig.layout.yaxis.title.text == "Count"
 
 

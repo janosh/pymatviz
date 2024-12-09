@@ -22,7 +22,6 @@ from pymatviz import (
     classify,
     colors,
     coordination,
-    cumulative,
     data,
     enums,
     io,
@@ -45,7 +44,6 @@ from pymatviz.brillouin import brillouin_zone_3d
 from pymatviz.classify import precision_recall_curve_plotly, roc_curve_plotly
 from pymatviz.classify.confusion_matrix import confusion_matrix
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
-from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
 from pymatviz.io import df_to_html, df_to_pdf, df_to_svg, save_fig

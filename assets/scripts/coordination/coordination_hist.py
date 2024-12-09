@@ -57,9 +57,8 @@ pmv.io.save_and_compress_svg(fig, "coordination-hist-single")
 for strategy in (CrystalNN(), VoronoiNN()):
     cls_name = type(strategy).__name__
     fig = pmv.coordination_hist(structures[key1], strategy=strategy)
-    fig.layout.title = dict(
-        text=f"Coordination Histogram ({cls_name}): {key1}", x=0.5, y=0.98
-    )
+    title = f"Coordination Histogram ({cls_name}): {key1}"
+    fig.layout.title = dict(text=title, x=0.5, y=0.98)
     fig.layout.margin.t = 50
     fig.show()
     pmv.io.save_and_compress_svg(fig, f"coordination-hist-{cls_name.lower()}")
@@ -68,9 +67,8 @@ for strategy in (CrystalNN(), VoronoiNN()):
 # %% Custom analyzer example
 fig = pmv.coordination_hist(structures[key1], strategy=VoronoiNN())
 fig.layout.margin.t = 50
-fig.layout.title = dict(
-    text=f"Coordination Histogram (VoronoiNN): {key1}", x=0.5, y=0.98
-)
+title = f"Coordination Histogram (VoronoiNN): {key1}"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-voronoi")
 
@@ -78,9 +76,8 @@ pmv.io.save_and_compress_svg(fig, "coordination-hist-voronoi")
 # %% Multiple structures example
 fig = pmv.coordination_hist({key1: structures[key1], key2: structures[key2]})
 fig.layout.margin.t = 50
-fig.layout.title = dict(
-    text="Coordination Histogram: Multiple Structures", x=0.5, y=0.98
-)
+title = "Coordination Histogram: Multiple Structures"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple")
 
@@ -88,9 +85,8 @@ pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple")
 # %% By element example (now default, but explicitly specified for clarity)
 fig = pmv.coordination_hist(structures[key1], split_mode=CnSplitMode.by_element)
 fig.layout.margin.t = 50
-fig.layout.title = dict(
-    text=f"Coordination Histogram by Element: {key1}", x=0.5, y=0.98
-)
+title = f"Coordination Histogram by Element: {key1}"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-by-element")
 
@@ -100,9 +96,8 @@ fig = pmv.coordination_hist(
     {key1: structures[key1], key2: structures[key2], key3: structures[key3]},
 )
 fig.layout.margin.t = 50
-fig.layout.title = dict(
-    text="Coordination Histogram by Element: Multiple Structures", x=0.5, y=0.98
-)
+title = "Coordination Histogram by Element: Multiple Structures"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element")
 
@@ -113,7 +108,8 @@ fig = pmv.coordination_hist(
     split_mode=CnSplitMode.by_structure,
 )
 fig.layout.margin.t = 50
-fig.layout.title = dict(text="Coordination Histogram by Structure", x=0.5, y=0.98)
+title = "Coordination Histogram by Structure"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-by-structure")
 
@@ -124,9 +120,8 @@ fig = pmv.coordination_hist(
     split_mode=CnSplitMode.by_structure_and_element,
 )
 fig.layout.margin.t = 60
-fig.layout.title = dict(
-    text="Coordination Histogram by Structure and Element", x=0.5, y=0.98
-)
+title = "Coordination Histogram by Structure and Element"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-by-structure-and-element")
 
@@ -137,11 +132,8 @@ fig = pmv.coordination_hist(
     hover_data=("oxidation_state", "wyckoff"),
 )
 fig.layout.margin.t = 50
-fig.layout.title = dict(
-    text="Coordination Histogram by Element: Multiple Structures (with custom hover)",
-    x=0.5,
-    y=0.98,
-)
+title = "Coordination Histogram by Element: Multiple Structures (with custom hover)"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element-custom-hover")
 
@@ -154,11 +146,8 @@ fig = pmv.coordination_hist(
     element_color_scheme=custom_colors,
 )
 fig.layout.margin.t = 60
-fig.layout.title = dict(
-    text="Coordination Histogram by Element: Multiple Structures (with custom colors)",
-    x=0.5,
-    y=0.99,
-)
+title = "Coordination Histogram by Element: Multiple Structures (with custom colors)"
+fig.layout.title = dict(text=title, x=0.5, y=0.99)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-multiple-by-element-custom-colors")
 
@@ -169,9 +158,8 @@ fig = pmv.coordination_hist(
     split_mode=CnSplitMode.none,
 )
 fig.layout.margin.t = 50
-fig.layout.title = dict(
-    text="Coordination Histogram: All Structures Combined", x=0.5, y=0.98
-)
+title = "Coordination Histogram: All Structures Combined"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-all-combined")
 
@@ -184,8 +172,7 @@ fig = pmv.coordination_hist(
     bar_kwargs=dict(width=0.2),
 )
 fig.layout.margin.t = 50
-fig.layout.title = dict(
-    text="Coordination Histogram: All Structures Combined (Side-by-side)", x=0.5, y=0.98
-)
+title = "Coordination Histogram: All Structures Combined (Side-by-side)"
+fig.layout.title = dict(text=title, x=0.5, y=0.98)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "coordination-hist-all-combined-side-by-side")

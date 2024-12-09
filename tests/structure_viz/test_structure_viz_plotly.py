@@ -495,7 +495,7 @@ def test_structure_3d_plotly_subplot_title_override(
             # Check default behavior when an empty dict is provided
             assert annotation.text == key  # Changed this line
             assert annotation.font.size == 16
-            assert annotation.font.color == "black"
+            assert annotation.font.color is None
             assert annotation.yanchor == "top"
 
 

@@ -316,15 +316,8 @@ def coordination_hist(
     fig.update_layout(barmode=bar_mode, bargap=0.15, bargroupgap=0.1)
 
     # start x-axis just below the smallest observed CN
-    fig.update_xaxes(
-        tick0=int(min_cn),
-        dtick=1,
-        range=[min_cn - 0.5, max_cn + 0.5],
-    )
-    dev_fig = fig.full_figure_for_development(warn=False)
-    y_max = dev_fig.layout.yaxis.range[1]
-    # Ensure y-axis starts at 0
-    fig.update_yaxes(title="Count", range=[0, y_max])
+    fig.update_xaxes(tick0=int(min_cn), dtick=1, range=[min_cn - 0.5, max_cn + 0.5])
+    fig.update_yaxes(title="Count", rangemode="tozero")  # Ensure y_min=0, not <0
 
     # Add title "Coordination Number" to x axes of the last n_cols subplots
     for idx in range(n_subplots - n_cols + 1, n_subplots + 1):
