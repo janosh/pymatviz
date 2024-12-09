@@ -8,7 +8,7 @@ from monty.json import MontyDecoder
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 
 import pymatviz as pmv
-from pymatviz.enums import Key
+from pymatviz.phonons import PhononDBDoc
 from pymatviz.utils.testing import TEST_FILES
 
 
@@ -17,8 +17,8 @@ for mp_id, formula in (
     ("mp-2758", "Sr4Se4"),
     ("mp-23907", "H2"),
 ):
-    docs = {}
-    for path in glob(f"{TEST_FILES}/phonons/{mp_id}-{formula}-*.json.lzma"):
+    docs: dict[str, PhononDBDoc] = {}
+    for path in glob(f"{TEST_FILES}/phonons/{mp_id}-{formula}-*.json.xz"):
         model_label = (
             "CHGNet"
             if "chgnet" in path
@@ -32,8 +32,7 @@ for mp_id, formula in (
             docs[model_label] = json.loads(file.read(), cls=MontyDecoder)
 
     ph_bands: dict[str, PhononBands] = {
-        key: getattr(doc, Key.ph_band_structure, doc.phonon_bandstructure)
-        for key, doc in docs.items()
+        key: doc.phonon_bandstructure for key, doc in docs.items()
     }
 
     acoustic_lines: dict[str, str | float] = dict(width=1.5)

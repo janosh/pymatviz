@@ -3,4 +3,5 @@ pymatgen PhononDos and PhononBandStructureSymmLine as well as phonopy TotalDos a
 BandStructure objects.
 """
 
+from pymatviz.phonons.helpers import PhononDBDoc
 from pymatviz.phonons.plotly import phonon_bands, phonon_bands_and_dos, phonon_dos

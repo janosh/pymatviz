@@ -94,7 +94,7 @@ def generate_homonuclear(calculator: MACECalculator, label: str) -> None:
         formula = f"{chemical_symbols[z0]}{chemical_symbols[z1]}"
         with timer(formula):
             results[f"{z0}-{z1}"] = calc_one_pair(z0, z1, calculator, distances)
-    with lzma.open(f"homo-nuclear-{label}.json.lzma", "wt") as file:
+    with lzma.open(f"homo-nuclear-{label}.json.xz", "wt") as file:
         json.dump(results, file)
 
 
@@ -116,7 +116,7 @@ def generate_fixed_any(z0: int, calculator: MACECalculator, label: str) -> None:
         formula = f"{chemical_symbols[z0]}{chemical_symbols[z1]}"
         with timer(formula):
             results[f"{z0}-{z1}"] = calc_one_pair(z0, z1, calculator, distances)
-    with lzma.open(f"{label}-{z0}-X.json.lzma", "wt") as file:
+    with lzma.open(f"{label}-{z0}-X.json.xz", "wt") as file:
         json.dump(results, file)
 
 
