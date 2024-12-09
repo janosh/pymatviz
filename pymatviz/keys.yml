@@ -592,12 +592,6 @@ structure_prototyping:
     label: Protostructure Label
   prototype:
     label: Prototype Label
-  aflow_prototype:
-    label: AFLOW-style Prototype Label
-  canonical_proto:
-    label: Canonical AFLOW-style Prototype
-  uniq_proto:
-    label: Unique AFLOW-style Prototype
 
 composition:
   arity:
@@ -1097,7 +1091,7 @@ identifiers_and_metadata:
     label: Database ID
   uuid:
     label: UUID
-  mat_id:
+  material_id:
     label: Material ID
   frame_id:
     label: Frame ID

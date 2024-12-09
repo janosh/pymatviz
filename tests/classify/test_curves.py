@@ -1,11 +1,10 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, Literal, TypeAlias
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
-from numpy._typing._array_like import NDArray
 from numpy.typing import ArrayLike
 
 from pymatviz.classify.curves import precision_recall_curve_plotly, roc_curve_plotly
@@ -118,29 +117,14 @@ def test_invalid_inputs(
 @pytest.mark.parametrize(
     "edge_case",
     [
-        pytest.param(
-            (np.ones(4), np.array([0.1, 0.9, 0.8, 0.2])), id="all-positive-targets"
-        ),
-        pytest.param(
-            (np.zeros(4), np.array([0.1, 0.9, 0.8, 0.2])), id="all-negative-targets"
-        ),
-        pytest.param(
-            (np.array([0, 1, 0, 1]), np.array([0.0, 1.0, 0.0, 1.0])),
-            id="perfect-predictions",
-        ),
-        pytest.param(
-            (np.array([0, 1, 0, 1]), np.array([1.0, 0.0, 1.0, 0.0])),
-            id="worst-predictions",
-        ),
-        pytest.param(
-            (np.array([0, 1, 0, 1]), np.full(4, 0.5)), id="constant-predictions"
-        ),
+        (np.ones(4), np.array([0.1, 0.9, 0.8, 0.2])),
+        (np.zeros(4), np.array([0.1, 0.9, 0.8, 0.2])),
+        (np.array([0, 1, 0, 1]), np.array([0.0, 1.0, 0.0, 1.0])),
+        (np.array([0, 1, 0, 1]), np.array([1.0, 0.0, 1.0, 0.0])),
+        (np.array([0, 1, 0, 1]), np.full(4, 0.5)),
     ],
 )
-def test_edge_cases(
-    edge_case: tuple[NDArray[np.float64], NDArray[Any]]
-    | tuple[NDArray[Any], NDArray[Any]],
-) -> None:
+def test_edge_cases(edge_case: tuple[Sequence[float], Sequence[float]]) -> None:
     """Test edge cases for both curve types."""
     targets, probs = edge_case
 
@@ -148,13 +132,8 @@ def test_edge_cases(
     fig_pr = precision_recall_curve_plotly(targets, probs)
     assert isinstance(fig_pr, go.Figure)
 
-    # ROC curves should fail for single-class targets
-    if len(np.unique(targets)) == 1:
-        with pytest.raises(ValueError, match=".*ROC AUC score is not defined.*"):
-            roc_curve_plotly(targets, probs)
-    else:
-        fig_roc = roc_curve_plotly(targets, probs)
-        assert isinstance(fig_roc, go.Figure)
+    fig_roc = roc_curve_plotly(targets, probs)
+    assert isinstance(fig_roc, go.Figure)
 
 
 def test_custom_styling() -> None:

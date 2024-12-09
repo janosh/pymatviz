@@ -235,9 +235,6 @@ class Key(StrEnum):
     # Structure Prototyping
     protostructure = "protostructure"
     prototype = "prototype"
-    aflow_prototype = "aflow_prototype"
-    canonical_proto = "canonical_proto"
-    uniq_proto = "uniq_proto"
 
     # Composition
     arity = "arity"
@@ -612,7 +609,7 @@ class Key(StrEnum):
     id = "id"
     db_id = "db_id"
     uuid = "uuid"
-    mat_id = "mat_id"
+    mat_id = "material_id"
     frame_id = "frame_id"
     task = "task"
     job_id = "job_id"
