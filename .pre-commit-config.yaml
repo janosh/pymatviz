@@ -53,14 +53,6 @@ repos:
       - id: nbstripout
         args: [--drop-empty-cells, --keep-output]
 
-  - repo: local
-    hooks:
-      - id: no-missing-readme-images
-        name: No missing readme images
-        entry: python -c 'from tests.test_readme import test_no_missing_images; test_no_missing_images()'
-        language: system
-        files: readme.md
-
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v4.0.0-alpha.8
     hooks:
