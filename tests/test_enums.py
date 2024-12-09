@@ -177,8 +177,8 @@ def test_keys_yaml_and_enum_are_in_sync() -> None:
     from pymatviz.enums import _keys
 
     # Check for differences
-    only_in_yaml = set(map(str, _keys)) - set(map(str, Key)) - {"yield"}
-    only_in_enum = set(map(str, Key)) - set(map(str, _keys)) - {"yield_"}
+    only_in_yaml = set(map(str, _keys)) - set(map(str, Key)) - {"yield", "material_id"}
+    only_in_enum = set(map(str, Key)) - set(map(str, _keys)) - {"yield_", "mat_id"}
 
     assert only_in_enum == set(), f"keys in enum but not in YAML: {only_in_enum}"
     assert only_in_yaml == set(), f"keys in YAML but not in enum: {only_in_yaml}"
@@ -242,7 +242,7 @@ def test_key_value_matches_name() -> None:
     for key in Key:
         # yield is a reserved word in Python, so had to be suffixed, hence can't match
         # key name can't match value
-        if key == Key.yield_:
+        if key in (Key.yield_, Key.mat_id):
             continue
         assert str(key) == key.name.lower(), f"Value doesn't match name for {key}"
 
