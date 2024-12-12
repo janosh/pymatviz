@@ -304,7 +304,7 @@ class Key(StrEnum):
     each_pred = "each_pred"
     each_true = "each_true"
     form_energy = "form_energy"
-    cse = "cse"
+    computed_structure_entry = "computed_structure_entry"
     melting_point = "melting_point"
     boiling_point = "boiling_point"
     phase_transition_temp = "phase_transition_temp"
