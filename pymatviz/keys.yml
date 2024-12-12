@@ -236,8 +236,9 @@ thermodynamic:
     label: Formation Energy
     symbol: E<sub>form</sub>/N<sub>atoms</sub>
     unit: eV/atom
-  cse:
+  computed_structure_entry:
     label: Computed Structure Entry
+    symbol: CSE
 
 mechanical:
   forces:
