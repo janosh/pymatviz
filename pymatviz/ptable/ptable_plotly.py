@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -1033,5 +1033,272 @@ def ptable_heatmap_splits_plotly(
             hoverinfo="none",
             showlegend=False,
         )
+
+    return fig
+
+
+def ptable_scatter_plotly(
+    data: dict[str, tuple[list[float], list[float]]],
+    *,
+    # Plot mode
+    mode: Literal["markers", "lines", "lines+markers"] = "markers",
+    # Line-specific
+    x_range: tuple[float | None, float | None] | None = None,
+    y_range: tuple[float | None, float | None] | None = None,
+    # Layout
+    font_size: int | None = None,
+    scale: float = 1.0,
+    # Symbol
+    element_symbol_map: dict[str, str] | None = None,
+    symbol_kwargs: dict[str, Any] | None = None,
+    # Annotation
+    annotations: dict[str, str | dict[str, Any]]
+    | Callable[[Sequence[float]], str | dict[str, Any] | list[dict[str, Any]]]
+    | None = None,
+    # Element type colors
+    color_elem_strategy: ColorElemTypeStrategy = "background",
+    elem_type_colors: dict[str, str] | None = None,
+    subplot_kwargs: dict[str, Any] | None = None,
+    # Axis styling
+    x_axis_kwargs: dict[str, Any] | None = None,
+    y_axis_kwargs: dict[str, Any] | None = None,
+    # Line styling
+    line_kwargs: dict[str, Any] | None = None,
+) -> go.Figure:
+    """Create a Plotly figure with scatter/line plots for each element laid out in a
+    periodic table.
+
+    Args:
+        data (dict[str, tuple[list[float], list[float]]): Map from element symbols to
+            (x, y) data points. E.g. {"Fe": ([1, 2, 3], [4, 5, 6])} plots a line through
+            points (1,4), (2,5), (3,6) in the Fe tile.
+        mode ("markers" | "lines" | "lines+markers"): Plot mode. Defaults to "markers".
+
+        --- Line-specific ---
+        x_range (tuple[float | None, float | None]): x-axis range for all line plots.
+            Defaults to None, meaning auto-range.
+        y_range (tuple[float | None, float | None]): y-axis range for all line plots.
+            Defaults to None, meaning auto-range.
+
+        --- Layout ---
+        font_size (int): Element symbol and annotation text size. Defaults to automatic
+            font size based on plot size.
+        scale (float): Scaling factor for whole figure layout. Defaults to 1.
+
+        --- Symbol ---
+        element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
+            to custom strings. If provided, these custom strings will be displayed
+            instead of the standard element symbols. Defaults to None.
+        symbol_kwargs (dict): Additional keyword arguments for element symbol text.
+
+        --- Annotation ---
+        annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
+            display for each element tile. Can be either:
+            - dict mapping element symbols to annotation strings
+            - callable that takes values and returns annotation string
+            - None for not displaying annotations (default)
+
+        --- Element type colors ---
+        color_elem_strategy ("symbol" | "background" | "both" | "off"): Whether to
+            color element symbols, tile backgrounds, or both based on element type.
+            Defaults to "background".
+        elem_type_colors (dict | None): dict to map element types to colors.
+            None to use the default = pymatviz.colors.ELEM_TYPE_COLORS.
+
+        --- Subplot ---
+        subplot_kwargs (dict | None): Additional keywords passed to make_subplots().
+
+        --- Axis styling ---
+        x_axis_kwargs (dict | None): Additional keywords for x-axis like tickfont,
+            showticklabels, nticks, tickformat, tickangle.
+        y_axis_kwargs (dict | None): Additional keywords for y-axis.
+
+        --- Line styling ---
+        line_kwargs (dict | None): Additional keywords for line plots like color,
+            width, dash.
+
+    Returns:
+        go.Figure: Plotly Figure object with line plots in a periodic table layout.
+    """
+    if isinstance(color_elem_strategy, dict):
+        elem_type_colors = color_elem_strategy
+    elif color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
+        elem_type_colors = ELEM_TYPE_COLORS
+    else:
+        raise ValueError(
+            f"{color_elem_strategy=} must be one of {VALID_COLOR_ELEM_STRATEGIES}"
+        )
+
+    # Initialize figure with subplots
+    n_rows, n_cols = 10, 18
+    subplot_kwargs = dict(
+        rows=n_rows,
+        cols=n_cols,
+        vertical_spacing=0.03,
+        horizontal_spacing=0.01,
+    ) | (subplot_kwargs or {})
+    fig = make_subplots(**subplot_kwargs)
+
+    # get current plotly template line colors
+    import plotly.io as pio
+
+    template_line_color = pio.templates[pio.templates.default].layout.xaxis.linecolor
+
+    # Get global x and y ranges if not provided
+    if x_range is None or y_range is None:
+        all_x_vals = []
+        all_y_vals = []
+        for x_vals, y_vals in data.values():
+            all_x_vals.extend(x_vals)
+            all_y_vals.extend(y_vals)
+
+        if x_range is None:
+            x_range = (min(all_x_vals), max(all_x_vals))
+        if y_range is None:
+            y_range = (min(all_y_vals), max(all_y_vals))
+
+    # Process data and create line plots for each element
+    for symbol, period, group, elem_name, *_ in df_ptable.itertuples():
+        if symbol not in data:
+            continue
+        row, col = period - 1, group - 1
+
+        subplot_idx = row * n_cols + col + 1
+        subplot_key = subplot_idx if subplot_idx != 1 else ""
+        xy_ref = dict(xref=f"x{subplot_key} domain", yref=f"y{subplot_key} domain")
+
+        # Add element type background
+        elem_type = df_ptable.loc[symbol].get("type", None)
+        if elem_type in elem_type_colors and color_elem_strategy in {
+            "background",
+            "both",
+        }:
+            rect_pos = dict(x0=0, y0=0, x1=1, y1=1, row=row + 1, col=col + 1)
+            fig.add_shape(
+                type="rect",
+                **rect_pos,
+                fillcolor=elem_type_colors[elem_type],
+                line_width=0,
+                layer="below",
+                **xy_ref,
+                opacity=0.05,
+            )
+
+        # Add line plot if data exists for this element
+        if symbol in data:
+            x_vals, y_vals = data[symbol]
+            line_defaults = dict(color=template_line_color, width=1)
+            marker_defaults = dict(
+                color=template_line_color,
+                size=3,
+                line=dict(width=0),
+            )
+            fig.add_scatter(
+                x=x_vals,
+                y=y_vals,
+                mode=mode,
+                showlegend=False,
+                row=row + 1,
+                col=col + 1,
+                line=line_defaults | (line_kwargs or {}),
+                marker=marker_defaults,
+                hovertemplate=(
+                    f"{elem_name}<br>x: %{{x:.2f}}<br>y: %{{y:.2f}}<extra></extra>"
+                ),
+            )
+
+        # Add element symbol
+        if element_symbol_map is not None:
+            display_symbol = element_symbol_map.get(symbol, symbol)
+        else:
+            display_symbol = symbol
+
+        symbol_defaults = dict(
+            x=1,
+            y=1,
+            xanchor="right",
+            yanchor="top",
+            showarrow=False,
+            font=dict(
+                color=elem_type_colors.get(elem_type, template_line_color)
+                if color_elem_strategy in {"symbol", "both"}
+                else template_line_color,
+                size=(font_size or 12) * scale,
+            ),
+        )
+        fig.add_annotation(
+            text=f"<b>{display_symbol}</b>",
+            **symbol_defaults | xy_ref | (symbol_kwargs or {}),
+        )
+
+        # Add custom annotations if provided
+        if annotations is not None:
+            if callable(annotations):
+                # Pass the element's values to the callable
+                y_vals = data[symbol][1] if symbol in data else []
+                annotation = annotations(y_vals)
+            else:
+                # Use dictionary lookup
+                annotation = annotations.get(symbol, "")
+
+            if annotation:  # Only add annotation if we have text
+                # Convert single annotation to list for uniform handling
+                for anno in (
+                    [annotation] if isinstance(annotation, str | dict) else annotation
+                ):
+                    # Convert string annotations to dict format
+                    anno_dict = {"text": anno} if isinstance(anno, str) else anno
+                    anno_defaults = {
+                        "font_size": (font_size or 8) * scale,
+                        "x": 0.95,
+                        "y": 0.95,
+                        "showarrow": False,
+                        "xanchor": "right",
+                        "yanchor": "top",
+                    }
+                    fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
+
+    # Update layout
+    fig.layout.showlegend = False
+    fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    fig.layout.width = 850 * scale
+    fig.layout.height = 500 * scale
+    fig.layout.margin = dict(l=10, r=10, t=50, b=10)
+
+    # Update x and y axes
+    x_axis_defaults = dict(
+        showgrid=False,  # hide grid lines
+        zeroline=True,  # keep x=0 line for reference
+        range=x_range,
+        showline=True,  # show axis line
+        linecolor=template_line_color,
+        linewidth=1,
+        mirror=False,  # only show bottom line
+        ticks="outside",
+        tickwidth=1,
+        tickcolor=template_line_color,
+        # Configure tick count
+        nticks=2,  # show only 2 ticks by default
+        tickmode="auto",  # let plotly choose nice tick values
+    )
+    y_axis_defaults = dict(
+        showgrid=False,  # hide grid lines
+        zeroline=False,  # remove y=0 line
+        range=y_range,
+        showline=True,  # show axis line
+        linecolor=template_line_color,
+        linewidth=1,
+        mirror=False,  # only show left line
+        ticks="outside",
+        tickwidth=1,
+        tickcolor=template_line_color,
+        # Configure tick count
+        nticks=2,  # show only 2 ticks by default
+        tickmode="auto",  # let plotly choose nice tick values
+    )
+
+    fig.update_xaxes(**(x_axis_defaults | (x_axis_kwargs or {})))
+    fig.update_yaxes(**(y_axis_defaults | (y_axis_kwargs or {})))
 
     return fig

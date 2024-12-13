@@ -17,7 +17,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ubuntu-latest] # windows-latest
+        os: [ubuntu-latest, windows-latest]
         split: [1, 2, 3, 4]
     uses: janosh/workflows/.github/workflows/pytest.yml@main
     with:
