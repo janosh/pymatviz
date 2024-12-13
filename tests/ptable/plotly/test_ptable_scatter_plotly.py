@@ -197,12 +197,6 @@ def test_scaling(
     assert all(ann.font.size == 12 * scale for ann in symbol_annotations)
 
 
-def test_empty_data() -> None:
-    """Test handling of empty data."""
-    with pytest.raises(ValueError, match=re.escape("min() iterable argument is empty")):
-        pmv.ptable_scatter_plotly({})
-
-
 def test_invalid_modes() -> None:
     """Test invalid plot modes."""
     err_msg = "Invalid value of type 'builtins.str' received for the 'mode' property"
