@@ -1035,7 +1035,7 @@ metrics:
     symbol: ROCAUC
   hit_rate:
     label: Hit Rate
-  n_structs:
+  n_structures:
     label: Number of Structures
     symbol: N<sub>structs</sub>
   n_materials:

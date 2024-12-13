@@ -561,7 +561,7 @@ class Key(StrEnum):
     roc_curve = "roc_curve"
     roc_auc = "roc_auc"
     hit_rate = "hit_rate"
-    n_structs = "n_structs"
+    n_structures = "n_structures"
     n_materials = "n_materials"
     n_molecules = "n_molecules"
     n_samples = "n_samples"
