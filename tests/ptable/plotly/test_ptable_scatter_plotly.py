@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Callable, Sequence
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 import plotly.graph_objects as go
 import pytest
@@ -10,17 +10,22 @@ import pytest
 import pymatviz as pmv
 
 
+SampleData: TypeAlias = dict[str, tuple[Sequence[float], Sequence[float]]]
+ColorData: TypeAlias = dict[
+    str,
+    tuple[Sequence[float], Sequence[float]]
+    | tuple[Sequence[float], Sequence[float], Sequence[float | str]],
+]
+
+
 @pytest.fixture
-def sample_data() -> dict[str, tuple[list[float], list[float]]]:
+def sample_data() -> SampleData:
     """Create sample data for testing."""
-    return {
-        "Fe": ([1, 2, 3], [4, 5, 6]),
-        "O": ([0, 1, 2], [3, 4, 5]),
-    }
+    return {"Fe": ([1, 2, 3], [4, 5, 6]), "O": ([0, 1, 2], [3, 4, 5])}
 
 
 @pytest.fixture
-def color_data() -> dict[str, Sequence[Sequence[float | str]]]:
+def color_data() -> ColorData:
     """Create sample data with color information."""
     return {
         "Fe": ([1, 2], [4, 5], ["red", "blue"]),  # discrete colors
@@ -29,9 +34,7 @@ def color_data() -> dict[str, Sequence[Sequence[float | str]]]:
     }
 
 
-def test_basic_scatter_plot(
-    sample_data: dict[str, tuple[list[float], list[float]]],
-) -> None:
+def test_basic_scatter_plot(sample_data: SampleData) -> None:
     """Test basic scatter plot creation."""
     fig = pmv.ptable_scatter_plotly(sample_data)
 
@@ -101,7 +104,7 @@ def test_basic_scatter_plot(
     ],
 )
 def test_plot_modes(
-    sample_data: dict[str, tuple[list[float], list[float]]],
+    sample_data: SampleData,
     mode: Literal["markers", "lines", "lines+markers"],
     expected_color: str,
     expected_width: float | None,
@@ -121,7 +124,7 @@ def test_plot_modes(
             assert trace.line.width == expected_width
 
 
-def test_axis_ranges(sample_data: dict[str, tuple[list[float], list[float]]]) -> None:
+def test_axis_ranges(sample_data: SampleData) -> None:
     """Test x and y axis range settings."""
     # Test setting both x and y ranges
     x_range = (0, 10)
@@ -148,7 +151,7 @@ Annotations = dict[str, str | dict[str, Any]] | AnnotationCallable
     ],
 )
 def test_annotations(
-    sample_data: dict[str, tuple[list[float], list[float]]],
+    sample_data: SampleData,
     annotations: Annotations,
     expected_count: int,
 ) -> None:
@@ -179,7 +182,7 @@ def test_annotations(
 
 @pytest.mark.parametrize("scale", [0.5, 1.0, 2.0])
 def test_scaling(
-    sample_data: dict[str, tuple[list[float], list[float]]],
+    sample_data: SampleData,
     scale: float,
 ) -> None:
     """Test figure scaling with different values."""
@@ -215,7 +218,7 @@ def test_invalid_modes() -> None:
     ],
 )
 def test_axis_styling(
-    sample_data: dict[str, tuple[list[float], list[float]]],
+    sample_data: SampleData,
     axis_kwargs: dict[str, Any],
 ) -> None:
     """Test axis styling options."""
@@ -232,9 +235,7 @@ def test_axis_styling(
         assert obj == val
 
 
-def test_marker_styling(
-    sample_data: dict[str, tuple[list[float], list[float]]],
-) -> None:
+def test_marker_styling(sample_data: SampleData) -> None:
     """Test marker and line customization."""
     marker_kwargs = dict(size=10, symbol="diamond", line=dict(width=2, color="white"))
     line_kwargs = dict(width=3, dash="dot")
@@ -256,13 +257,9 @@ def test_marker_styling(
             assert trace.line.dash == "dot"
 
 
-def test_color_data_handling(
-    color_data: dict[
-        str, tuple[Sequence[float], Sequence[float], Sequence[float | str]]
-    ],
-) -> None:
+def test_color_data_handling(color_data: ColorData) -> None:
     """Test handling of color data in the third sequence."""
-    fig = pmv.ptable_scatter_plotly(color_data, color_elem_strategy="symbol")
+    fig = pmv.ptable_scatter_plotly(color_data)
 
     # Find traces with data and map them by their y-values
     data_traces = [trace for trace in fig.data if trace.x]
@@ -277,18 +274,14 @@ def test_color_data_handling(
     # Check numeric colors for Cu
     assert traces["Copper"].marker.color == (0.1, 0.9)
     # Check default color for O
-    assert traces["Oxygen"].marker.color == pmv.colors.ELEM_TYPE_COLORS["Nonmetal"]
+    assert traces["Oxygen"].marker.color == "white"
 
     # Check line colors are removed when using color data
     assert traces["Iron"].line.color is None
     assert traces["Copper"].line.color is None
 
 
-def test_color_precedence(
-    color_data: dict[
-        str, tuple[Sequence[float], Sequence[float], Sequence[float | str]]
-    ],
-) -> None:
+def test_color_precedence(color_data: ColorData) -> None:
     """Test color precedence: color_data > marker_kwargs > element_type_colors."""
     marker_kwargs = dict(color="yellow")
 
@@ -310,11 +303,7 @@ def test_color_precedence(
     assert traces["Oxygen"].marker.color == "yellow"
 
 
-def test_colorbar_with_numeric_colors(
-    color_data: dict[
-        str, tuple[Sequence[float], Sequence[float], Sequence[float | str]]
-    ],
-) -> None:
+def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
     """Test colorbar is added when numeric color values are provided."""
     # Create data with only numeric colors
     numeric_data = {
