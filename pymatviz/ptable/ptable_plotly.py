@@ -1267,38 +1267,25 @@ def ptable_scatter_plotly(
     fig.layout.margin = dict(l=10, r=10, t=50, b=10)
 
     # Update x and y axes
-    x_axis_defaults = dict(
+    axis_defaults = dict(
         showgrid=False,  # hide grid lines
-        zeroline=True,  # keep x=0 line for reference
-        range=x_range,
         showline=True,  # show axis line
         linecolor=template_line_color,
         linewidth=1,
-        mirror=False,  # only show bottom line
+        mirror=False,  # only show edge line
         ticks="outside",
         tickwidth=1,
         tickcolor=template_line_color,
         # Configure tick count
         nticks=2,  # show only 2 ticks by default
         tickmode="auto",  # let plotly choose nice tick values
-    )
-    y_axis_defaults = dict(
-        showgrid=False,  # hide grid lines
-        zeroline=False,  # remove y=0 line
-        range=y_range,
-        showline=True,  # show axis line
-        linecolor=template_line_color,
-        linewidth=1,
-        mirror=False,  # only show left line
-        ticks="outside",
-        tickwidth=1,
-        tickcolor=template_line_color,
-        # Configure tick count
-        nticks=2,  # show only 2 ticks by default
-        tickmode="auto",  # let plotly choose nice tick values
+        zeroline=False,  # remove x/y=0 line
     )
 
-    fig.update_xaxes(**(x_axis_defaults | (x_axis_kwargs or {})))
-    fig.update_yaxes(**(y_axis_defaults | (y_axis_kwargs or {})))
+    x_axis_defaults = axis_defaults | dict(range=x_range)
+    y_axis_defaults = axis_defaults | dict(range=y_range)
+
+    fig.update_xaxes(**x_axis_defaults | (x_axis_kwargs or {}))
+    fig.update_yaxes(**y_axis_defaults | (y_axis_kwargs or {}))
 
     return fig
