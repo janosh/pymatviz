@@ -58,6 +58,7 @@ from pymatviz.ptable import (
     ptable_hists,
     ptable_hists_plotly,
     ptable_lines,
+    ptable_scatter_plotly,
     ptable_scatters,
 )
 from pymatviz.rainclouds import rainclouds

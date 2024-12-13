@@ -234,7 +234,7 @@ def test_ptable_heatmap_ratio(
 
 
 @pytest.mark.parametrize(
-    ("data", "symbol_pos", "hist_kwargs"),
+    ("elem_data_dict", "symbol_pos", "hist_kwargs"),
     [
         ({"H": [1, 2, 3], "He": [4, 5, 6]}, (0, 0), None),
         (pd.DataFrame({"Fe": [1, 2, 3], "O": [4, 5, 6]}), (0, 0), None),
@@ -256,12 +256,12 @@ def test_ptable_heatmap_ratio(
     ],
 )
 def test_ptable_hists(
-    data: pd.DataFrame | pd.Series | dict[str, list[int]],
+    elem_data_dict: pd.DataFrame | pd.Series | dict[str, list[int]],
     symbol_pos: tuple[int, int],
     hist_kwargs: dict[str, Any],
 ) -> None:
     fig_0 = pmv.ptable_hists(
-        data,
+        elem_data_dict,
         symbol_pos=symbol_pos,
         child_kwargs=hist_kwargs,
     )
@@ -269,7 +269,7 @@ def test_ptable_hists(
 
     # Test partial x_range
     fig_1 = pmv.ptable_hists(
-        data,
+        elem_data_dict,
         x_range=(2, None),
         symbol_pos=symbol_pos,
         child_kwargs=hist_kwargs,
