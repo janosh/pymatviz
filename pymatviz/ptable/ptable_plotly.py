@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
@@ -1038,10 +1038,17 @@ def ptable_heatmap_splits_plotly(
 
 
 def ptable_scatter_plotly(
-    data: dict[str, tuple[list[float], list[float]]],
+    data: Mapping[
+        str,
+        tuple[Sequence[float], Sequence[float]]
+        | tuple[Sequence[float], Sequence[float], Sequence[float | str]],
+    ],
     *,
     # Plot mode
     mode: Literal["markers", "lines", "lines+markers"] = "markers",
+    # Color settings
+    colorscale: str = "viridis",
+    colorbar: dict[str, Any] | Literal[False] | None = None,
     # Line-specific
     x_range: tuple[float | None, float | None] | None = None,
     y_range: tuple[float | None, float | None] | None = None,
@@ -1051,28 +1058,35 @@ def ptable_scatter_plotly(
     # Symbol
     element_symbol_map: dict[str, str] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
+    # Marker and line styling
+    marker_kwargs: dict[str, Any] | None = None,
+    line_kwargs: dict[str, Any] | None = None,
     # Annotation
     annotations: dict[str, str | dict[str, Any]]
     | Callable[[Sequence[float]], str | dict[str, Any] | list[dict[str, Any]]]
     | None = None,
     # Element type colors
-    color_elem_strategy: ColorElemTypeStrategy = "background",
+    color_elem_strategy: ColorElemTypeStrategy = "symbol",
     elem_type_colors: dict[str, str] | None = None,
     subplot_kwargs: dict[str, Any] | None = None,
     # Axis styling
     x_axis_kwargs: dict[str, Any] | None = None,
     y_axis_kwargs: dict[str, Any] | None = None,
-    # Line styling
-    line_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Create a Plotly figure with scatter/line plots for each element laid out in a
     periodic table.
 
     Args:
-        data (dict[str, tuple[list[float], list[float]]): Map from element symbols to
-            (x, y) data points. E.g. {"Fe": ([1, 2, 3], [4, 5, 6])} plots a line through
-            points (1,4), (2,5), (3,6) in the Fe tile.
+        data: Map from element symbols to (x, y) or (x, y, color) data points.
+            E.g. {"Fe": ([1, 2, 3], [4, 5, 6])} plots a line through points
+            (1,4), (2,5), (3,6) in the Fe tile. If a third list is provided,
+            it will be used to color the points/lines.
         mode ("markers" | "lines" | "lines+markers"): Plot mode. Defaults to "markers".
+
+        --- Color settings ---
+        colorscale (str): Colorscale to use for numeric color data. Defaults to
+            "viridis".
+        colorbar (dict | False | None): Colorbar settings. Defaults to None.
 
         --- Line-specific ---
         x_range (tuple[float | None, float | None]): x-axis range for all line plots.
@@ -1113,9 +1127,11 @@ def ptable_scatter_plotly(
             showticklabels, nticks, tickformat, tickangle.
         y_axis_kwargs (dict | None): Additional keywords for y-axis.
 
-        --- Line styling ---
+        --- Line/marker styling ---
         line_kwargs (dict | None): Additional keywords for line plots like color,
             width, dash.
+        marker_kwargs (dict | None): Additional keywords for marker plots like color,
+            size, symbol.
 
     Returns:
         go.Figure: Plotly Figure object with line plots in a periodic table layout.
@@ -1146,9 +1162,10 @@ def ptable_scatter_plotly(
 
     # Get global x and y ranges if not provided
     if x_range is None or y_range is None:
-        all_x_vals = []
-        all_y_vals = []
-        for x_vals, y_vals in data.values():
+        all_x_vals: list[float] = []
+        all_y_vals: list[float] = []
+        # _* to ignore optional color data
+        for x_vals, y_vals, *_ in data.values():
             all_x_vals.extend(x_vals)
             all_y_vals.extend(y_vals)
 
@@ -1157,7 +1174,21 @@ def ptable_scatter_plotly(
         if y_range is None:
             y_range = (min(all_y_vals), max(all_y_vals))
 
-    # Process data and create line plots for each element
+    # Get default marker and line settings
+    marker_defaults = dict(size=6, color=template_line_color, line=dict(width=0))
+    line_defaults = dict(width=1, color=template_line_color)
+
+    # Find global color range if any numeric color values exist
+    cbar_min, cbar_max = float("inf"), float("-inf")
+    for elem_values in data.values():
+        if len(elem_values) > 2:  # Has color data
+            color_vals = elem_values[2]
+            if all(isinstance(val, int | float) for val in color_vals):
+                cbar_min = min(cbar_min, *color_vals)  # type: ignore[assignment]
+                cbar_max = max(cbar_max, *color_vals)  # type: ignore[assignment]
+
+    has_numeric_colors = cbar_min != float("inf")
+
     for symbol, period, group, elem_name, *_ in df_ptable.itertuples():
         if symbol not in data:
             continue
@@ -1186,26 +1217,58 @@ def ptable_scatter_plotly(
 
         # Add line plot if data exists for this element
         if symbol in data:
-            x_vals, y_vals = data[symbol]
-            line_defaults = dict(color=template_line_color, width=1)
-            marker_defaults = dict(
-                color=template_line_color,
-                size=3,
-                line=dict(width=0),
-            )
-            fig.add_scatter(
+            x_vals, y_vals = data[symbol][0], data[symbol][1]
+            color_vals = data[symbol][2] if len(data[symbol]) > 2 else ()  # type: ignore[misc]
+
+            # Set up line and marker properties
+            line_props = line_defaults.copy()
+            marker_props = marker_defaults.copy()
+
+            # Update with element type colors if enabled
+            if color_elem_strategy in {"symbol", "both"} and color_vals != ():
+                elem_color = elem_type_colors.get(elem_type, template_line_color)
+                if "markers" in mode:
+                    marker_props["color"] = elem_color
+                if "lines" in mode:
+                    line_props["color"] = elem_color
+
+            # Update with user-provided settings
+            if line_kwargs:
+                line_props.update(line_kwargs)
+            if marker_kwargs:
+                marker_props.update(marker_kwargs)
+
+            # Override with color data if provided
+            if color_vals != ():
+                if all(isinstance(v, int | float) for v in color_vals):
+                    # For numeric colors, use the colorscale
+                    marker_props.update(
+                        color=color_vals,
+                        colorscale=colorscale,
+                        cmin=cbar_min,
+                        cmax=cbar_max,
+                        showscale=False,  # Don't show individual colorbars
+                    )
+                else:
+                    # For discrete colors (strings), use as-is
+                    marker_props["color"] = color_vals
+                line_props["color"] = None
+
+            scatter_kwargs = dict(
                 x=x_vals,
                 y=y_vals,
                 mode=mode,
                 showlegend=False,
                 row=row + 1,
                 col=col + 1,
-                line=line_defaults | (line_kwargs or {}),
-                marker=marker_defaults,
+                line=line_props,
+                marker=marker_props,
                 hovertemplate=(
                     f"{elem_name}<br>x: %{{x:.2f}}<br>y: %{{y:.2f}}<extra></extra>"
                 ),
             )
+
+            fig.add_scatter(**scatter_kwargs)
 
         # Add element symbol
         if element_symbol_map is not None:
@@ -1287,5 +1350,43 @@ def ptable_scatter_plotly(
 
     fig.update_xaxes(**x_axis_defaults | (x_axis_kwargs or {}))
     fig.update_yaxes(**y_axis_defaults | (y_axis_kwargs or {}))
+
+    # Add colorbar if we have numeric color values
+    if has_numeric_colors and colorbar is not False:
+        colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
+            colorbar or {}
+        )
+        horizontal_cbar = colorbar.get("orientation") == "h"
+        if horizontal_cbar:
+            h_defaults = dict(
+                x=0.4,
+                y=0.74,
+                titleside="top",
+                len=0.4,
+                title_font_size=scale * 1.2 * (font_size or 12),
+            )
+            colorbar = h_defaults | colorbar
+        else:  # make title vertical
+            v_defaults = dict(titleside="right", len=0.87)
+            colorbar = v_defaults | colorbar
+
+        if title := colorbar.get("title"):
+            # <br> to increase title standoff
+            colorbar["title"] = f"{title}" if horizontal_cbar else f"<br><br>{title}"
+
+        fig.add_scatter(
+            x=[None],
+            y=[None],
+            mode="markers",
+            marker=dict(
+                colorscale=colorscale,
+                showscale=True,
+                cmin=cbar_min,
+                cmax=cbar_max,
+                colorbar=colorbar,
+            ),
+            hoverinfo="none",
+            showlegend=False,
+        )
 
     return fig

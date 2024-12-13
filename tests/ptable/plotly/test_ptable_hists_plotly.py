@@ -26,19 +26,19 @@ if TYPE_CHECKING:
     ],
 )
 def test_ptable_hists_plotly_basic(
-    data: pd.DataFrame | dict[str, list[float]],
+    elem_data: pd.DataFrame | dict[str, list[float]],
     bins: int,
     x_range: tuple[float | None, float | None] | None,
     log: bool,
     colorscale: str,
 ) -> None:
     fig = pmv.ptable_hists_plotly(
-        data, bins=bins, x_range=x_range, log=log, colorscale=colorscale
+        elem_data, bins=bins, x_range=x_range, log=log, colorscale=colorscale
     )
     assert isinstance(fig, go.Figure)
     # Count only histogram traces (exclude colorbar trace)
     n_hist_traces = sum(1 for trace in fig.data if isinstance(trace, go.Histogram))
-    n_elements = len(data if isinstance(data, dict) else data.columns)
+    n_elements = len(elem_data if isinstance(elem_data, dict) else elem_data.columns)
     assert n_hist_traces == n_elements
 
 
@@ -55,9 +55,8 @@ def test_ptable_hists_plotly_layout(
     symbol_kwargs: dict[str, Any],
     annotations: dict[str, Any],
 ) -> None:
-    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     fig = pmv.ptable_hists_plotly(
-        data,
+        {"Fe": [1, 2, 3], "O": [2, 3, 4]},
         font_size=font_size,
         scale=scale,
         symbol_kwargs=symbol_kwargs,
@@ -155,9 +154,8 @@ def test_ptable_hists_plotly_symbol_customization(
     element_symbol_map: dict[str, str] | None,
     symbol_kwargs: dict[str, Any] | None,
 ) -> None:
-    data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     fig = pmv.ptable_hists_plotly(
-        data,
+        {"Fe": [1, 2, 3], "O": [2, 3, 4]},
         element_symbol_map=element_symbol_map,
         symbol_kwargs=symbol_kwargs,
     )

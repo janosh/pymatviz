@@ -41,7 +41,7 @@ for symbol in homo_nuc_diatomics:
     # Shift energies so the energy at infinite separation (last point) is 0
     shifted_energies = energies - energies[-1]
 
-    diatomic_curves[elem_symbol] = (distances, shifted_energies)
+    diatomic_curves[elem_symbol] = distances, shifted_energies
 
 
 fig = pmv.ptable_scatter_plotly(
@@ -49,13 +49,12 @@ fig = pmv.ptable_scatter_plotly(
     mode="lines",
     x_axis_kwargs=dict(range=[0, 6]),
     y_axis_kwargs=dict(range=[-8, 15]),
-    color_elem_strategy="symbol",
     scale=1.2,
 )
 
-fig.layout.title.update(text=f"MACE {model} Diatomic Curves", x=0.4, y=0.8)
+fig.layout.title.update(text=f"MACE {model.title()} Diatomic Curves", x=0.4, y=0.8)
 fig.show()
-# pmv.save_fig(fig, f"{module_dir}/homo-nuclear-mace-{model}.svg")
+pmv.io.save_and_compress_svg(fig, f"homo-nuclear-mace-{model}")
 
 
 # %% count number of elements with energies below E_TOO_LOW

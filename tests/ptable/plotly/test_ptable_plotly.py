@@ -53,8 +53,6 @@ def test_ptable_heatmap_splits_plotly_display_options(
     scale: float,
 ) -> None:
     """Test various display options for ptable_heatmap_splits_plotly."""
-    data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
-
     subplot_kwargs = {
         "horizontal_spacing": 0.05,
         "vertical_spacing": 0.05,
@@ -65,7 +63,7 @@ def test_ptable_heatmap_splits_plotly_display_options(
     symbol_kwargs = {"font": {"size": 14, "color": "red"}}
 
     fig = pmv.ptable_heatmap_splits_plotly(
-        data,
+        {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]},
         orientation=orientation,
         colorscale=colorscale,
         font_size=font_size,

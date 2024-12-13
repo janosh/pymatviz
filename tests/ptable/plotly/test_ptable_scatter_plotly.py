@@ -19,6 +19,16 @@ def sample_data() -> dict[str, tuple[list[float], list[float]]]:
     }
 
 
+@pytest.fixture
+def color_data() -> dict[str, Sequence[Sequence[float | str]]]:
+    """Create sample data with color information."""
+    return {
+        "Fe": ([1, 2], [4, 5], ["red", "blue"]),  # discrete colors
+        "Cu": ([1, 2], [7, 8], [0.1, 0.9]),  # numeric colors
+        "O": ([1, 2], [3, 4]),  # no colors
+    }
+
+
 def test_basic_scatter_plot(
     sample_data: dict[str, tuple[list[float], list[float]]],
 ) -> None:
@@ -47,7 +57,7 @@ def test_basic_scatter_plot(
         # Check trace properties
         assert trace.mode == "markers"  # default mode
         assert trace.showlegend is False
-        assert trace.marker.size == 3
+        assert trace.marker.size == 6
         assert trace.marker.line.width == 0
 
     # Check axis properties
@@ -220,3 +230,142 @@ def test_axis_styling(
         for part in key_path.split("."):
             obj = getattr(obj, part)
         assert obj == val
+
+
+def test_marker_styling(
+    sample_data: dict[str, tuple[list[float], list[float]]],
+) -> None:
+    """Test marker and line customization."""
+    marker_kwargs = dict(size=10, symbol="diamond", line=dict(width=2, color="white"))
+    line_kwargs = dict(width=3, dash="dot")
+
+    fig = pmv.ptable_scatter_plotly(
+        sample_data,
+        mode="lines+markers",
+        marker_kwargs=marker_kwargs,
+        line_kwargs=line_kwargs,
+    )
+
+    for trace in fig.data:
+        if trace.x is not None:  # Skip empty traces
+            assert trace.marker.size == 10
+            assert trace.marker.symbol == "diamond"
+            assert trace.marker.line.width == 2
+            assert trace.marker.line.color == "white"
+            assert trace.line.width == 3
+            assert trace.line.dash == "dot"
+
+
+def test_color_data_handling(
+    color_data: dict[
+        str, tuple[Sequence[float], Sequence[float], Sequence[float | str]]
+    ],
+) -> None:
+    """Test handling of color data in the third sequence."""
+    fig = pmv.ptable_scatter_plotly(color_data, color_elem_strategy="symbol")
+
+    # Find traces with data and map them by their y-values
+    data_traces = [trace for trace in fig.data if trace.x]
+    traces = {}
+    for trace in data_traces:
+        if trace.x[0] == 1:  # First x value should be 1 for all traces
+            elem_name = trace.hovertemplate.split("<br>")[0]
+            traces[elem_name] = trace
+
+    # Check discrete colors for Fe
+    assert traces["Iron"].marker.color == ("red", "blue")
+    # Check numeric colors for Cu
+    assert traces["Copper"].marker.color == (0.1, 0.9)
+    # Check default color for O
+    assert traces["Oxygen"].marker.color == pmv.colors.ELEM_TYPE_COLORS["Nonmetal"]
+
+    # Check line colors are removed when using color data
+    assert traces["Iron"].line.color is None
+    assert traces["Copper"].line.color is None
+
+
+def test_color_precedence(
+    color_data: dict[
+        str, tuple[Sequence[float], Sequence[float], Sequence[float | str]]
+    ],
+) -> None:
+    """Test color precedence: color_data > marker_kwargs > element_type_colors."""
+    marker_kwargs = dict(color="yellow")
+
+    fig = pmv.ptable_scatter_plotly(
+        color_data, marker_kwargs=marker_kwargs, color_elem_strategy="symbol"
+    )
+
+    # Find traces with data and map them by their y-values
+    data_traces = [trace for trace in fig.data if trace.x]
+    traces = {}
+    for trace in data_traces:
+        if trace.x[0] == 1:  # First x value should be 1 for all traces
+            elem_name = trace.hovertemplate.split("<br>")[0]
+            traces[elem_name] = trace
+
+    # Color data should override marker_kwargs
+    assert traces["Iron"].marker.color == ("red", "blue")
+    # marker_kwargs should override element type colors
+    assert traces["Oxygen"].marker.color == "yellow"
+
+
+def test_colorbar_with_numeric_colors(
+    color_data: dict[
+        str, tuple[Sequence[float], Sequence[float], Sequence[float | str]]
+    ],
+) -> None:
+    """Test colorbar is added when numeric color values are provided."""
+    # Create data with only numeric colors
+    numeric_data = {
+        "Fe": ([1, 2], [4, 5], [0.1, 0.5]),
+        "Cu": ([1, 2], [7, 8], [0.3, 0.7]),
+        "O": ([1, 2], [3, 4], [0.2, 0.6]),
+    }
+
+    # Test default colorbar
+    fig = pmv.ptable_scatter_plotly(numeric_data)
+    colorbar_traces = [
+        trace
+        for trace in fig.data
+        if trace.x == (None,) and trace.marker.showscale is True
+    ]
+    assert len(colorbar_traces) == 1
+    cbar = colorbar_traces[0].marker
+    assert cbar.colorscale[0] == (0.0, "#440154")
+    assert cbar.cmin == 0.1  # min of all color values
+    assert cbar.cmax == 0.7  # max of all color values
+
+    # Test custom colorbar settings
+    fig = pmv.ptable_scatter_plotly(
+        numeric_data,
+        colorscale="RdYlBu",
+        colorbar=dict(
+            title="Test Title",
+            orientation="v",
+            thickness=20,
+        ),
+    )
+    cbar = next(trace for trace in fig.data if trace.x == (None,)).marker
+    assert cbar.colorscale[0] == (0.0, "rgb(165,0,38)")
+    assert cbar.colorbar.title.text == "<br><br>Test Title"  # vertical title
+    assert cbar.colorbar.thickness == 20
+    assert cbar.colorbar.orientation == "v"
+
+    # Test colorbar can be hidden
+    fig = pmv.ptable_scatter_plotly(numeric_data, colorbar=False)
+    colorbar_traces = [
+        trace
+        for trace in fig.data
+        if trace.x == (None,) and trace.marker.showscale is True
+    ]
+    assert len(colorbar_traces) == 0
+
+    # Test mixed numeric and string colors (should still show colorbar)
+    fig = pmv.ptable_scatter_plotly(color_data)
+    colorbar_traces = [
+        trace
+        for trace in fig.data
+        if trace.x == (None,) and trace.marker.showscale is True
+    ]
+    assert len(colorbar_traces) == 1
