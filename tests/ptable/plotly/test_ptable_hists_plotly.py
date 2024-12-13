@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize(
-    ("data", "bins", "x_range", "log", "colorscale"),
+    ("elem_data", "bins", "x_range", "log", "colorscale"),
     [
         # Basic case
         ({"Fe": [1, 2], "O": [3, 4]}, 10, None, False, "RdBu"),

@@ -1225,7 +1225,7 @@ def ptable_scatter_plotly(
             marker_props = marker_defaults.copy()
 
             # Update with element type colors if enabled
-            if color_elem_strategy in {"symbol", "both"} and color_vals != ():
+            if color_elem_strategy in {"symbol", "both"} and len(color_vals) > 0:
                 elem_color = elem_type_colors.get(elem_type, template_line_color)
                 if "markers" in mode:
                     marker_props["color"] = elem_color
@@ -1239,7 +1239,7 @@ def ptable_scatter_plotly(
                 marker_props.update(marker_kwargs)
 
             # Override with color data if provided
-            if color_vals != ():
+            if len(color_vals) > 0:
                 if all(isinstance(v, int | float) for v in color_vals):
                     # For numeric colors, use the colorscale
                     marker_props.update(
