@@ -83,8 +83,10 @@ def test_phonon_bands(
         trace_names = {trace.name for trace in fig.data}
         assert trace_names == {"", "Acoustic modes", "Optical modes"}
 
-        acoustic_traces = [t for t in fig.data if t.name == "Acoustic modes"]
-        optical_traces = [t for t in fig.data if t.name == "Optical modes"]
+        acoustic_traces = [
+            trace for trace in fig.data if trace.name == "Acoustic modes"
+        ]
+        optical_traces = [trace for trace in fig.data if trace.name == "Optical modes"]
 
         assert all(t.line.width == 2.5 for t in acoustic_traces)
         assert all(t.line.dash == "solid" for t in acoustic_traces)
@@ -96,8 +98,8 @@ def test_phonon_bands(
         assert traces_by_width[0].line.width < traces_by_width[-1].line.width
 
         # check acoustic/optical line style separation
-        acoustic_traces = [t for t in fig.data if t.line.dash == "solid"]
-        optical_traces = [t for t in fig.data if t.line.dash == "dash"]
+        acoustic_traces = [trace for trace in fig.data if trace.line.dash == "solid"]
+        optical_traces = [trace for trace in fig.data if trace.line.dash == "dash"]
         assert len(acoustic_traces) == 18  # 6 segments for the first 3 bands
         assert len(optical_traces) > 0  # should have some optical bands
 

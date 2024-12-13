@@ -37,32 +37,32 @@ def timer(label: str = "") -> Generator[None, None, None]:
 
 
 def generate_diatomics(
-    symbol0: str, symbol1: str, distances: list[float] | np.ndarray
+    elem1: str, elem2: str, distances: list[float] | np.ndarray
 ) -> list[Atoms]:
     """Build diatomic molecules in vacuum for given distances.
 
     Args:
-        symbol0: Chemical symbol of the first element.
-        symbol1: Chemical symbol of the second element.
+        elem1: Chemical symbol of the first element.
+        elem2: Chemical symbol of the second element.
         distances: Distances to sample at.
 
     Returns:
         list[Atoms]: List of diatomic molecules.
     """
     return [
-        Atoms(f"{symbol0}{symbol1}", positions=[[0, 0, 0], [dist, 0, 0]])
+        Atoms(f"{elem1}{elem2}", positions=[[0, 0, 0], [dist, 0, 0]])
         for dist in distances
     ]
 
 
 def calc_one_pair(
-    z0: int, z1: int, calc: MACECalculator, distances: list[float] | np.ndarray
+    elem1: str, elem2: str, calc: MACECalculator, distances: list[float] | np.ndarray
 ) -> list[float]:
     """Calculate potential energy for a pair of elements at given distances.
 
     Args:
-        z0: Atomic number of the first element.
-        z1: Atomic number of the second element.
+        elem1: Chemical symbol of the first element.
+        elem2: Chemical symbol of the second element.
         calc: MACECalculator instance.
         distances: Distances to calculate potential energy at.
 
@@ -71,9 +71,7 @@ def calc_one_pair(
     """
     return [
         calc.get_potential_energy(at)
-        for at in generate_diatomics(
-            chemical_symbols[z0], chemical_symbols[z1], distances
-        )
+        for at in generate_diatomics(elem1, elem2, distances)
     ]
 
 
@@ -90,11 +88,11 @@ def generate_homonuclear(calculator: MACECalculator, label: str) -> None:
     results = {"distances": list(distances)}
     # homo-nuclear diatomics
     for z0 in allowed_atomic_numbers:
-        z1 = z0
-        formula = f"{chemical_symbols[z0]}{chemical_symbols[z1]}"
+        elem1, elem2 = chemical_symbols[z0], chemical_symbols[z0]
+        formula = f"{elem1}-{elem2}"
         with timer(formula):
-            results[f"{z0}-{z1}"] = calc_one_pair(z0, z1, calculator, distances)
-    with lzma.open(f"homo-nuclear-{label}.json.xz", "wt") as file:
+            results[formula] = calc_one_pair(elem1, elem2, calculator, distances)
+    with lzma.open(f"homo-nuclear-{label}.json.xz", mode="wt") as file:
         json.dump(results, file)
 
 
@@ -113,10 +111,11 @@ def generate_fixed_any(z0: int, calculator: MACECalculator, label: str) -> None:
     results = {"distances": list(distances)}
     # hetero-nuclear diatomics
     for z1 in allowed_atomic_numbers:
-        formula = f"{chemical_symbols[z0]}{chemical_symbols[z1]}"
+        elem1, elem2 = chemical_symbols[z0], chemical_symbols[z1]
+        formula = f"{elem1}-{elem2}"
         with timer(formula):
-            results[f"{z0}-{z1}"] = calc_one_pair(z0, z1, calculator, distances)
-    with lzma.open(f"{label}-{z0}-X.json.xz", "wt") as file:
+            results[formula] = calc_one_pair(elem1, elem2, calculator, distances)
+    with lzma.open(f"{label}-{z0}-X.json.xz", mode="wt") as file:
         json.dump(results, file)
 
 
