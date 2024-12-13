@@ -24,10 +24,7 @@ jobs:
       os: ${{ matrix.os }}
       python-version: "3.10"
       install-cmd: uv pip install -e '.[test,brillouin]'  --system
-      test-cmd: |
-        pytest --durations 20 --cov . \
-          --splits 4 --group ${{ matrix.split }} \
-          --splitting-algorithm least_duration
+      test-cmd: pytest --durations 20 --cov . --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
 
   find-scripts:
     runs-on: ubuntu-latest
