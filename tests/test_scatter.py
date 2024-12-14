@@ -298,3 +298,18 @@ def test_density_scatter_plotly_facet_hover_template() -> None:
     for trace in fig.data:
         assert "total_bill" in trace.hovertemplate
         assert "tip" in trace.hovertemplate
+
+
+def test_density_scatter_plotly_colorbar_kwargs() -> None:
+    colorbar_kwargs = {"title": "Custom Title", "thickness": 30, "len": 0.8, "x": 1.1}
+
+    fig = density_scatter_plotly(
+        df=DF_TIPS, x="total_bill", y="tip", colorbar_kwargs=colorbar_kwargs
+    )
+
+    # Check that colorbar properties were applied correctly
+    actual_colorbar = fig.layout.coloraxis.colorbar
+    assert actual_colorbar.title.text == "Custom Title"
+    assert actual_colorbar.thickness == 30
+    assert actual_colorbar.len == 0.8
+    assert actual_colorbar.x == 1.1
