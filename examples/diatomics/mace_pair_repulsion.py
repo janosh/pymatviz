@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import lzma
+import os
 import time
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
@@ -50,7 +51,7 @@ def generate_diatomics(
         list[Atoms]: List of diatomic molecules.
     """
     return [
-        Atoms(f"{elem1}{elem2}", positions=[[0, 0, 0], [dist, 0, 0]])
+        Atoms(f"{elem1}{elem2}", positions=[[0, 0, 0], [dist, 0, 0]], pbc=False)
         for dist in distances
     ]
 
@@ -75,7 +76,7 @@ def calc_one_pair(
     ]
 
 
-def generate_homonuclear(calculator: MACECalculator, label: str) -> None:
+def generate_homo_nuclear(calculator: MACECalculator, label: str) -> None:
     """Generate potential energy data for homonuclear diatomic molecules.
 
     Args:
@@ -96,7 +97,7 @@ def generate_homonuclear(calculator: MACECalculator, label: str) -> None:
         json.dump(results, file)
 
 
-def generate_fixed_any(z0: int, calculator: MACECalculator, label: str) -> None:
+def generate_hetero_nuclear(z0: int, calculator: MACECalculator, label: str) -> None:
     """Generate potential energy data for hetero-nuclear diatomic molecules with a
     fixed first element.
 
@@ -105,6 +106,11 @@ def generate_fixed_any(z0: int, calculator: MACECalculator, label: str) -> None:
         calculator: MACECalculator instance.
         label: Label for the output file.
     """
+    out_path = f"hetero-nuclear-diatomics-{z0}-{label}.json.xz"
+    if os.path.isfile(out_path):
+        print(f"Skipping {z0} because {out_path} already exists")
+        return
+    print(f"Starting {z0}")
     distances = np.linspace(0.1, 6.0, 119)
     allowed_atomic_numbers = calculator.z_table.zs
     # saving the results in a dict: "z0-z1" -> [energy] & saved the distances
@@ -115,18 +121,18 @@ def generate_fixed_any(z0: int, calculator: MACECalculator, label: str) -> None:
         formula = f"{elem1}-{elem2}"
         with timer(formula):
             results[formula] = calc_one_pair(elem1, elem2, calculator, distances)
-    with lzma.open(f"{label}-{z0}-X.json.xz", mode="wt") as file:
+    with lzma.open(out_path, mode="wt") as file:
         json.dump(results, file)
 
 
 if __name__ == "__main__":
     # first homo-nuclear diatomics
-    for label in ("small", "medium", "large"):
-        calculator = mace_mp(model=label)
-        generate_homonuclear(calculator, f"mace-{label}")
+    # for label in ("small", "medium", "large"):
+    #     calculator = mace_mp(model=label)
+    #     generate_homo_nuclear(calculator, f"mace-{label}")
 
     # then all hetero-nuclear diatomics
     for label in ("small", "medium", "large"):
         calculator = mace_mp(model=label)
         for z0 in calculator.z_table.zs:
-            generate_fixed_any(z0, calculator, f"mace-{label}")
+            generate_hetero_nuclear(z0, calculator, f"mace-{label}")

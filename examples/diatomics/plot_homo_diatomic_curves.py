@@ -2,7 +2,7 @@
 
 Thanks to Tamas Stenczel who first did this type of PES smoothness and physicality
 analysis in https://github.com/stenczelt/MACE-MP-work for the MACE-MP paper
-https://arxiv.org/abs/2401.00096
+https://arxiv.org/abs/2401.00096 (see fig. 56).
 """
 
 # %%
