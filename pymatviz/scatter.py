@@ -166,6 +166,7 @@ def density_scatter_plotly(
     n_bins: int | None | Literal[False] = None,
     bin_counts_col: str | None = None,
     facet_col: str | None = None,
+    colorbar_kwargs: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Scatter plot colored by density using plotly backend.
@@ -201,6 +202,8 @@ def density_scatter_plotly(
         facet_col (str | None, optional): Column name to use for creating faceted
             subplots. If provided, the plot will be split into multiple subplots based
             on unique values in this column. Defaults to None.
+        colorbar_kwargs (dict, optional): Passed to fig.layout.coloraxis.colorbar.
+            E.g. dict(thickness=15) to make colorbar thinner.
         **kwargs: Passed to px.scatter().
 
     Returns:
@@ -252,6 +255,9 @@ def density_scatter_plotly(
         custom_data=[bin_counts_col],
         **kwargs,
     )
+
+    colorbar_defaults = dict(thickness=15)
+    fig.layout.coloraxis.colorbar.update(colorbar_defaults | (colorbar_kwargs or {}))
 
     if log_density:
         _update_colorbar_for_log_density(fig, color_vals, bin_counts_col)
