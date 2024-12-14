@@ -90,7 +90,7 @@ def _angles_to_rotation_matrix(
 
 
 def get_image_sites(
-    site: PeriodicSite, lattice: Lattice, tol: float = 0.02
+    site: PeriodicSite, lattice: Lattice, tol: float = 0.03
 ) -> np.ndarray:
     """Get images for a given site in a lattice.
 
