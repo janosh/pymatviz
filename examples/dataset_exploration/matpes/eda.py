@@ -24,10 +24,12 @@ module_dir = os.path.dirname(__file__)
 # %% 20240214-MatPES-178070-r2SCAN generated in collaboration with Shyue Ping Ong's
 # group and Aaron Kaplan is unpublished data as of 2024-07-10, to be shared
 # MIT-licensed in late 2024 at the earliest
-with gzip.open(f"{module_dir}/20240214-MatPES-178070-r2SCAN.json.gz", "rt") as file:
+with gzip.open(
+    f"{module_dir}/20240214-MatPES-178070-r2SCAN.json.gz", mode="rt"
+) as file:
     r2scan_data = json.load(file)
-# examples/dataset_exploration/matpes/20240214-MatPES-187023-PBE.json.gz
-with gzip.open(f"{module_dir}/20240214-MatPES-183027-PBE.json.gz", "rt") as file:
+# examples/dataset_exploration/matpes/20240214-MatPES-183027-PBE.json.gz
+with gzip.open(f"{module_dir}/20240214-MatPES-183027-PBE.json.gz", mode="rt") as file:
     pbe_data = json.load(file)
 
 n_r2scan, n_pbe = 178_070, 183_027
@@ -251,3 +253,18 @@ fig = pmv.ptable_heatmap_splits(
     },
     cbar_title="Mean |force| (eV/Å)",
 )
+
+
+# %%
+df_e_atoms = pd.read_csv(f"{module_dir}/2024-10-30-MatPES-atomic-energies.csv")
+
+fig = px.line(
+    df_e_atoms.round(3),
+    x=Key.element,
+    y=[Key.pbe.label, Key.r2scan.label],
+    markers=True,
+)
+fig.layout.yaxis.title = "Cohesive Energy (eV/atom)"
+fig.layout.legend.update(x=0, y=0, title="")
+fig.layout.xaxis.range = [-1, len(df_e_atoms)]
+fig.show()

@@ -14,7 +14,7 @@ from plotly.colors import label_rgb
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import NearNeighbors
 
-from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
+from pymatviz.colors import ELEM_COLORS_JMOL
 from pymatviz.coordination.helpers import (
     CnSplitMode,
     calculate_average_cn,
@@ -145,14 +145,10 @@ def coordination_hist(
     if isinstance(element_color_scheme, dict):
         # Merge custom colors with default Jmol colors to get a complete color scheme
         element_colors = ELEM_COLORS_JMOL | element_color_scheme
-    elif element_color_scheme == ElemColorScheme.jmol:
-        element_colors = ELEM_COLORS_JMOL
-    elif element_color_scheme == ElemColorScheme.vesta:
-        element_colors = ELEM_COLORS_VESTA
-    elif isinstance(element_color_scheme, dict):
-        element_colors = element_color_scheme
+    elif isinstance(element_color_scheme, ElemColorScheme):
+        element_colors = element_color_scheme.color_map
     else:
-        raise ValueError(
+        raise TypeError(
             f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
             f"or a custom dict."
         )
@@ -320,15 +316,8 @@ def coordination_hist(
     fig.update_layout(barmode=bar_mode, bargap=0.15, bargroupgap=0.1)
 
     # start x-axis just below the smallest observed CN
-    fig.update_xaxes(
-        tick0=int(min_cn),
-        dtick=1,
-        range=[min_cn - 0.5, max_cn + 0.5],
-    )
-    dev_fig = fig.full_figure_for_development(warn=False)
-    y_max = dev_fig.layout.yaxis.range[1]
-    # Ensure y-axis starts at 0
-    fig.update_yaxes(title="Count", range=[0, y_max])
+    fig.update_xaxes(tick0=int(min_cn), dtick=1, range=[min_cn - 0.5, max_cn + 0.5])
+    fig.update_yaxes(title="Count", rangemode="tozero")  # Ensure y_min=0, not <0
 
     # Add title "Coordination Number" to x axes of the last n_cols subplots
     for idx in range(n_subplots - n_cols + 1, n_subplots + 1):
@@ -403,12 +392,10 @@ def coordination_vs_cutoff_line(
 
     if isinstance(element_color_scheme, dict):
         element_colors = ELEM_COLORS_JMOL | element_color_scheme
-    elif element_color_scheme == ElemColorScheme.jmol:
-        element_colors = ELEM_COLORS_JMOL
-    elif element_color_scheme == ElemColorScheme.vesta:
-        element_colors = ELEM_COLORS_VESTA
+    elif isinstance(element_color_scheme, ElemColorScheme):
+        element_colors = element_color_scheme.color_map
     else:
-        raise ValueError(
+        raise TypeError(
             f"Invalid {element_color_scheme=}. Must be {', '.join(ElemColorScheme)} "
             "or a custom dict."
         )

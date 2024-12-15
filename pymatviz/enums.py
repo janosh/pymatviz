@@ -1,18 +1,34 @@
 """Enums used as keys/accessors for dicts and dataframes across Matbench Discovery."""
+# ruff: noqa: RUF001 (allow greek letters in math symbols)
 
 from __future__ import annotations
 
 import sys
 from enum import Enum, unique
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
-from pymatviz.utils import html_tag
+import yaml
+
+from pymatviz.utils import PKG_DIR, html_tag
 
 
 if TYPE_CHECKING:
     from typing import Any
 
     from typing_extensions import Self
+
+    from pymatviz.typing import RgbColorType
+
+
+# Load YAML data at module level
+with open(f"{PKG_DIR}/keys.yml", encoding="utf-8") as file:
+    _key_data = yaml.safe_load(file)
+
+# Flatten nested structure and add group info
+_keys: Final[dict[str, dict[str, str]]] = {}
+for category, keys in _key_data.items():
+    _keys |= {key: {"category": category} | val for key, val in keys.items()}  # type: ignore[misc]
+
 
 # TODO: remove following definition of StrEnum once Python 3.11+
 if sys.version_info >= (3, 11):
@@ -70,7 +86,10 @@ class LabelEnum(StrEnum):
     """
 
     def __new__(
-        cls, val: str, label: str | None = None, desc: str | None = None
+        cls,
+        val: str,
+        label: str | None = None,
+        desc: str | None = None,
     ) -> Self:
         """Create a new class from a value, label, and description. Label and
         description are optional.
@@ -101,30 +120,6 @@ class LabelEnum(StrEnum):
         """Make description read-only."""
         return self.__dict__.get("desc")
 
-    @classmethod
-    def key_val_dict(cls) -> dict[str, str]:
-        """Map of keys to values."""
-        return {key: str(val) for key, val in cls.__members__.items()}
-
-    @classmethod
-    def val_label_dict(cls) -> dict[str, str | None]:
-        """Map of values to labels."""
-        return {str(val): val.label for val in cls.__members__.values()}
-
-    @classmethod
-    def val_desc_dict(cls) -> dict[str, str | None]:
-        """Map of values to descriptions."""
-        return {str(val): val.description for val in cls.__members__.values()}
-
-    @classmethod
-    def label_desc_dict(cls) -> dict[str, str | None]:
-        """Map of labels to descriptions. None-valued labels are omitted."""
-        return {
-            str(val.label): val.description
-            for val in cls.__members__.values()
-            if val.label
-        }
-
 
 eV_per_atom = html_tag("(eV/atom)", style="small")  # noqa: N816
 eV = html_tag("(eV)", style="small")  # noqa: N816
@@ -144,566 +139,557 @@ joule_per_m2 = html_tag("(J/m²)", style="small")
 
 
 @unique
-class Key(LabelEnum):
+class Key(StrEnum):
     """Keys used to access dataframes columns, organized by semantic groups."""
 
+    @property
+    def label(self) -> str:
+        """Label associated with the key."""
+        label = _keys[self.value]["label"]
+        if unit := _keys[self.value].get("unit"):
+            label += f" ({unit})"
+        return label
+
+    @property
+    def unit(self) -> str | None:
+        """Unit associated with the key."""
+        return _keys[self.value].get("unit")
+
+    @property
+    def category(self) -> str:
+        """Category associated with the key."""
+        return _keys[self.value]["category"]
+
+    @property
+    def symbol(self) -> str | None:
+        """Symbol associated with the key."""
+        return _keys[self.value].get("symbol")
+
+    @property
+    def desc(self) -> str | None:
+        """Description associated with the key."""
+        return _keys[self.value].get("desc")
+
+    def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
+        """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
+        the tuple self.__class__, (self._value_,). self.__class can cause pickle
+        failures if the corresponding Enum was moved or renamed in the meantime.
+        """
+        return str, (self.value,)
+
     # Structural
-    n_sites = "n_sites", "Number of Sites"
-    structure = "structure", "Structure"
-    init_struct = "initial_structure", "Initial Structure"
-    final_struct = "final_structure", "Final Structure"
-    cell = "cell", "Cell"
-    lattice = "lattice", "Lattice"
-    lattice_vectors = "lattice_vectors", "Lattice Vectors"
-    lattice_angles = "lattice_angles", f"Lattice Angles {degrees}"
-    lattice_lens = "lattice_lengths", f"Lattice Lengths {angstrom}"
-    init_volume = "initial_volume", f"Initial Volume {cubic_angstrom}"
-    final_volume = "final_volume", f"Final Volume {cubic_angstrom}"
-    volume = "volume", f"Volume {cubic_angstrom}"
-    vol_per_atom = "volume_per_atom", f"Volume per Atom {cubic_angstrom}"
-    density = "density", f"Density {gram_per_cm3}"
-    pressure = "pressure", f"Pressure {pascal}"
-    lattice_params = "lattice_parameters", "Lattice Parameters"
-    supercell = "supercell", "Supercell"
-    atom_nums = "atom_nums", "Atomic Numbers", "Atomic numbers for each crystal site"
-    coord_num = "coordination_number", "Coordination Number"
-    bond_lens = "bond_lengths", f"Bond Lengths {angstrom}"
-    bond_angles = "bond_angles", f"Bond Angles {degrees}"
-    packing_fraction = "packing_fraction", "Packing Fraction"
-    max_pair_dist = "max_pair_dist", f"Maximum Pair Distance {angstrom}"
-    conventional_cell = "conventional_cell", "Conventional Cell"
-    primitive_cell = "primitive_cell", "Primitive Cell"
-    reduced_cell = "reduced_cell", "Reduced Cell"
-    niggli_reduced_cell = "niggli_reduced_cell", "Niggli-reduced Cell"
+    n_sites = "n_sites"
+    structure = "structure"
+    init_struct = "init_struct"
+    final_struct = "final_struct"
+    cell = "cell"
+    lattice = "lattice"
+    lattice_vectors = "lattice_vectors"
+    lattice_angles = "lattice_angles"
+    lattice_lens = "lattice_lens"
+    init_volume = "init_volume"
+    final_volume = "final_volume"
+    volume = "volume"
+    vol_per_atom = "vol_per_atom"
+    density = "density"
+    pressure = "pressure"
+    lattice_params = "lattice_params"
+    supercell = "supercell"
+    atom_nums = "atom_nums"
+    coord_num = "coord_num"
+    bond_lens = "bond_lens"
+    bond_angles = "bond_angles"
+    packing_fraction = "packing_fraction"
+    max_pair_dist = "max_pair_dist"
+    conventional_cell = "conventional_cell"
+    primitive_cell = "primitive_cell"
+    reduced_cell = "reduced_cell"
+    niggli_reduced_cell = "niggli_reduced_cell"
 
     # Crystal Symmetry Properties
-    crystal_system = "crystal_system", "Crystal System"
-    spg_num = "space_group_number", "Space Group Number"
-    spg_symbol = "space_group_symbol", "Space Group Symbol"
-    choice_symbol = "choice_symbol", "Choice symbol"
-    hall_num = "hall_num", "Hall number"
-    hall_symbol = "hall_symbol", "Hall symbol"
-    translations = "translations", "Translations"
-    rotations = "rotations", "Rotations"
-    symmetry = "symmetry", "Symmetry"
-    symmetry_change = "symmetry_change", "Symmetry Change"
-    symmetry_decrease = "symmetry_decrease", "Symmetry Decrease"
-    symmetry_increase = "symmetry_increase", "Symmetry Increase"
-    symmetry_match = "symmetry_match", "Symmetry Match"
-    point_group = "point_group", "Point Group"
-    n_wyckoff = "n_wyckoff", "Number of Wyckoff Positions"
-    n_rot_syms = "n_rot_syms", "Number of rotational symmetries"
-    n_trans_syms = "n_trans_syms", "Number of translational symmetries"
-    n_sym_ops = "n_sym_ops", "Total number of symmetries"
-    wyckoff = "wyckoff", "AFLOW-style Label with Chemical System"
-    wyckoff_spglib = "wyckoff_spglib", "Wyckoff Label (spglib)"
-    wyckoff_symbol = "wyckoff_symbol", "Wyckoff Symbol"
-    wyckoff_symbols = "wyckoff_symbols", "Wyckoff symbols"
+    crystal_system = "crystal_system"
+    spg_num = "spg_num"
+    spg_symbol = "spg_symbol"
+    choice_symbol = "choice_symbol"
+    hall_num = "hall_num"
+    hall_symbol = "hall_symbol"
+    translations = "translations"
+    rotations = "rotations"
+    symmetry = "symmetry"
+    symmetry_change = "symmetry_change"
+    symmetry_decrease = "symmetry_decrease"
+    symmetry_increase = "symmetry_increase"
+    symmetry_match = "symmetry_match"
+    symprec = "symprec"
+    angle_tolerance = "angle_tolerance"
+    point_group = "point_group"
+    n_wyckoff = "n_wyckoff"
+    n_rot_syms = "n_rot_syms"
+    n_trans_syms = "n_trans_syms"
+    n_sym_ops = "n_sym_ops"
+    wyckoff = "wyckoff"
+    wyckoff_spglib = "wyckoff_spglib"
+    wyckoff_symbol = "wyckoff_symbol"
+    wyckoff_symbols = "wyckoff_symbols"
 
     # Structure Prototyping
-    # AFLOW-style prototype label with appended chemical system
-    protostructure = "protostructure", "Protostructure Label"
-    # Deprecated name for the protostructure
-    prototype = "prototype", "Prototype Label"
-    aflow_prototype = "aflow_prototype", "AFLOW-style Prototype Label"
-    # AFLOW-style prototype label that has been canonicalized
-    canonical_proto = "canonical_prototype", "Canonical AFLOW-style Prototype"
-    # Deprecated name for the canonical_proto
-    uniq_proto = "unique_prototype", "Unique AFLOW-style Prototype"
+    protostructure = "protostructure"
+    prototype = "prototype"
 
-    # Composition and Chemical
-    arity = "arity", "N<sub>elements</sub>"
-    atomic_mass = "atomic_mass", "Atomic Mass (u)"
-    atomic_number = "atomic_number", "Atomic Number"
-    atomic_radius = "atomic_radius", f"Atomic Radius {angstrom}"
-    atomic_symbol = "atomic_symbol", "Atomic Symbol"
-    elem_symbol = "element_symbol", "Element Symbol"
-    atomic_volume = "atomic_volume", f"Atomic Volume {cubic_angstrom}"
-    block = "block", "Block"
-    group = "group", "Group"
-    period = "period", "Period"
-    row = "row", "Row"
-    column = "column", "Column"
-    series = "series", "Series"
-    shell = "shell", "Shell"
-    valence = "valence", "Valence"
-    chem_sys = "chemical_system", "Chemical System"
-    composition = "composition", "Composition"
-    molar_composition = "molar_composition", "Molar Composition"
-    weight_composition = "weight_composition", "Weight Composition"  # mass fraction
-    molar_fraction = "molar_fraction", "Molar Fraction"
-    weight_fraction = "weight_fraction", "Weight Fraction"  # mass fraction
-    molar_mass = "molar_mass", "Molar Mass"
-    element = "element", "Element"
-    formula = "formula", "Formula"
-    formula_pretty = "formula_pretty", "Pretty Formula"
-    reduced_formula = "reduced_formula", "Reduced chemical formula"
-    anonymous_formula = "anonymous_formula", "Anonymous Formula"
-    charge = "total_charge", "Total Charge"
-    oxi_states = "oxidation_states", "Oxidation States"
-    oxi_state_guesses = "oxidation_state_guesses", "Oxidation State Guesses"
-    n_atoms = "n_atoms", "N<sub>atoms</sub>"
-    n_elements = "n_elements", "N<sub>elements</sub>"
-    n_val_electrons = "n_valence_electrons", "N<sub>valence electrons</sub>"
-    n_electrons = "n_electrons", "N<sub>electrons</sub>"
-    isotope_masses = "isotope_masses", "Isotope Masses"
-    natural_abundance = "natural_abundance", "Natural Abundance (%)"
-    half_life = "half_life", "Half-life"
-    electronegativity = "electronegativity", "Electronegativity (Pauling scale)"
-    ionic_radius = "ionic_radius", f"Ionic Radius {angstrom}"
-    covalent_radius = "covalent_radius", f"Covalent Radius {angstrom}"
-    ionization_energy = "ionization_energy", f"Ionization Energy {eV}"
+    # Composition
+    arity = "arity"
+    chem_sys = "chem_sys"
+    composition = "composition"
+    molar_composition = "molar_composition"
+    weight_composition = "weight_composition"
+    molar_fraction = "molar_fraction"
+    weight_fraction = "weight_fraction"
+    molar_mass = "molar_mass"
+    element = "element"
+    formula = "formula"
+    formula_pretty = "formula_pretty"
+    reduced_formula = "reduced_formula"
+    anonymous_formula = "anonymous_formula"
+    charge = "charge"
+    oxi_states = "oxi_states"
+    oxi_state_guesses = "oxi_state_guesses"
+    n_atoms = "n_atoms"
+    n_elements = "n_elements"
+    n_val_electrons = "n_val_electrons"
+    n_electrons = "n_electrons"
+
+    # Chemical
+    atomic_mass = "atomic_mass"
+    atomic_number = "atomic_number"
+    atomic_radius = "atomic_radius"
+    atomic_symbol = "atomic_symbol"
+    elem_symbol = "elem_symbol"
+    atomic_volume = "atomic_volume"
+    block = "block"
+    group = "group"
+    period = "period"
+    row = "row"
+    column = "column"
+    series = "series"
+    shell = "shell"
+    valence = "valence"
+    isotope_masses = "isotope_masses"
+    natural_abundance = "natural_abundance"
+    half_life = "half_life"
+    electronegativity = "electronegativity"
+    ionic_radius = "ionic_radius"
+    covalent_radius = "covalent_radius"
+    ionization_energy = "ionization_energy"
 
     # Thermodynamic
-    energy = "energy", f"Energy {eV}"
-    enthalpy = "enthalpy", f"Enthalpy {eV}"
-    entropy = "entropy", f"Entropy {eV_per_kelvin}"
-    free_energy = "free_energy", f"Free Energy {eV}"
-    gibbs_free_energy = "gibbs_free_energy", f"Gibbs Free Energy {eV}"
-    helmholtz_free_energy = "helmholtz_free_energy", f"Helmholtz Free Energy {eV}"
-    corrected_energy = "corrected_energy", f"Corrected Energy {eV}"
-    uncorrected_energy = "uncorrected_energy", f"Uncorrected Energy {eV}"
-    internal_energy = "internal_energy", f"Internal Energy {eV}"
-    energy_per_atom = "energy_per_atom", f"Energy {eV_per_atom}"
-    corrected_energy_per_atom = (
-        "corrected_energy_per_atom",
-        f"Corrected Energy {eV_per_atom}",
-    )
-    uncorrected_energy_per_atom = (
-        "uncorrected_energy_per_atom",
-        f"Uncorrected Energy {eV_per_atom}",
-    )
-    cohesive_energy_per_atom = (
-        "cohesive_energy_per_atom",
-        f"Cohesive Energy {eV_per_atom}",
-    )
-    heat_of_formation = "heat_of_formation", f"Heat of Formation {eV}"
-    heat_of_reaction = "heat_of_reaction", f"Heat of Reaction {eV}"
-    e_form_per_atom = "e_form_per_atom", f"E<sub>form</sub> {eV_per_atom}"
-    e_form_pred = "e_form_per_atom_pred", f"Predicted E<sub>form</sub> {eV_per_atom}"
-    e_form_true = "e_form_per_atom_true", f"Actual E<sub>form</sub> {eV_per_atom}"
-    each = "energy_above_hull", f"E<sub>hull dist</sub> {eV_per_atom}"
-    each_pred = "e_above_hull_pred", f"Predicted E<sub>hull dist</sub> {eV_per_atom}"
-    each_true = "e_above_hull_true", f"Actual E<sub>MP hull dist</sub> {eV_per_atom}"
-    form_energy = "formation_energy_per_atom", f"Formation Energy {eV_per_atom}"
-    cse = "computed_structure_entry", "Computed Structure Entry"
-    melting_point = "melting_point", f"Melting Point {kelvin}"
-    boiling_point = "boiling_point", f"Boiling Point {kelvin}"
-    phase_transition_temp = (
-        "phase_transition_temperature",
-        f"Phase Transition Temperature {kelvin}",
-    )
-    critical_temp = "critical_temperature", f"Critical Temperature {kelvin}"
-    critical_pressure = "critical_pressure", f"Critical Pressure {pascal}"
-    critical_vol = "critical_volume", "Critical Volume (m³/mol)"
-    lattice_energy = "lattice_energy", f"Lattice Energy {eV}"
-    interface_energy = "interface_energy", f"Interface Energy {joule_per_m2}"
+    energy = "energy"
+    enthalpy = "enthalpy"
+    entropy = "entropy"
+    free_energy = "free_energy"
+    gibbs_free_energy = "gibbs_free_energy"
+    helmholtz_free_energy = "helmholtz_free_energy"
+    corrected_energy = "corrected_energy"
+    uncorrected_energy = "uncorrected_energy"
+    internal_energy = "internal_energy"
+    energy_per_atom = "energy_per_atom"
+    corrected_energy_per_atom = "corrected_energy_per_atom"
+    uncorrected_energy_per_atom = "uncorrected_energy_per_atom"
+    cohesive_energy_per_atom = "cohesive_energy_per_atom"
+    heat_of_formation = "heat_of_formation"
+    heat_of_reaction = "heat_of_reaction"
+    e_form_per_atom = "e_form_per_atom"
+    e_form_pred = "e_form_pred"
+    e_form_true = "e_form_true"
+    each = "each"
+    each_pred = "each_pred"
+    each_true = "each_true"
+    form_energy = "form_energy"
+    computed_structure_entry = "computed_structure_entry"
+    melting_point = "melting_point"
+    boiling_point = "boiling_point"
+    phase_transition_temp = "phase_transition_temp"
+    critical_temp = "critical_temp"
+    critical_pressure = "critical_pressure"
+    critical_vol = "critical_vol"
+    lattice_energy = "lattice_energy"
+    interface_energy = "interface_energy"
 
     # Electronic
-    bandgap = "bandgap", f"Band Gap {eV}"
-    bandgap_pbe = "bandgap_pbe", f"PBE Band Gap {eV}"
-    bandgap_hse = "bandgap_hse", f"HSE Band Gap {eV}"
-    bandgap_r2scan = "bandgap_r2scan", f"r2SCAN Band Gap {eV}"
-    bandgap_ml = "bandgap_ml", f"ML Band Gap {eV}"
-    bandgap_true = "bandgap_true", f"Actual Band Gap {eV}"
-    bandgap_pred = "bandgap_pred", f"Predicted Band Gap {eV}"
-    fermi_energy = "fermi_energy", f"Fermi Energy {eV}"
-    electronic_structure = "electronic_structure", "Electronic Structure"
-    electron_affinity = "electron_affinity", f"Electron Affinity {eV}"
-    work_function = "work_function", f"Work Function {eV}"
-    dos = "density_of_states", "Density of States"
-    band_structure = "band_structure", "Band Structure"
-    conductivity = "conductivity", "Electrical Conductivity (S/m)"
-    seebeck_coeff = "seebeck_coefficient", "Seebeck Coefficient (μV/K)"
-    hall_coeff = "hall_coefficient", "Hall Coefficient (m³/C)"
-    supercon_crit_temp = (
-        "superconducting_critical_temperature",
-        f"Superconducting Critical Temperature {kelvin}",
-    )
-    carrier_concentration = "carrier_concentration", "Carrier Concentration (cm⁻³)"
-    mobility = "mobility", "Carrier Mobility (cm²/V·s)"
-    effective_mass = "effective_mass", "Effective Mass (m<sub>e</sub>)"
-    # how easy it is to move an atom's cloud of electrons
-    polarizability = "polarizability", "Polarizability (Å³)"
-    # displacement of positive charges relative to negative charges
-    polarization = "polarization", "Polarization (C/m²)"
+    bandgap = "bandgap"
+    bandgap_pbe = "bandgap_pbe"
+    bandgap_hse = "bandgap_hse"
+    bandgap_r2scan = "bandgap_r2scan"
+    bandgap_ml = "bandgap_ml"
+    bandgap_true = "bandgap_true"
+    bandgap_pred = "bandgap_pred"
+    fermi_energy = "fermi_energy"
+    electronic_structure = "electronic_structure"
+    electron_affinity = "electron_affinity"
+    work_function = "work_function"
+    dos = "dos"
+    band_structure = "band_structure"
+    conductivity = "conductivity"
+    seebeck_coefficient = "seebeck_coefficient"
+    hall_coefficient = "hall_coefficient"
+    supercon_crit_temp = "supercon_crit_temp"
+    carrier_concentration = "carrier_concentration"
+    mobility = "mobility"
+    effective_mass = "effective_mass"
+    polarizability = "polarizability"
+    polarization = "polarization"
 
     # Mechanical
-    forces = "forces", "Forces"
-    stress = "stress", "Stress"
-    virial = "virial", "Virial"
-    stress_trace = "stress_trace", "Stress Trace"
-    voigt_stress = "voigt_stress", "Voigt Stress"
-    bulk_modulus = "bulk_modulus", f"Bulk Modulus {giga_pascal}"
-    shear_modulus = "shear_modulus", f"Shear Modulus {giga_pascal}"
-    young_modulus = "young_modulus", f"Young's Modulus {giga_pascal}"
-    poisson_ratio = "poisson_ratio", "Poisson's Ratio"
-    hardness = "hardness", "Hardness (Mohs scale)"
-    elastic_tensor = "elastic_tensor", "Elastic Tensor"
-    elastic_tensor_voigt = "elastic_tensor_voigt", "Voigt Elastic Tensor"
-    elastic_tensor_reuss = "elastic_tensor_reuss", "Reuss Elastic Tensor"
-    elastic_tensor_vrh = "elastic_tensor_vrh", "Voigt-Reuss-Hill Elastic Tensor"
-    toughness = "toughness", "Toughness (MPa)"
-    yield_strength = "yield_strength", "Yield Strength (MPa)"
-    tensile_strength = "tensile_strength", "Tensile Strength (MPa)"
-    ductility = "ductility", "Ductility (%)"
-    fracture_toughness = "fracture_toughness", "Fracture Toughness (MPa·m½)"
-    bulk_sound_velocity = "bulk_sound_velocity", "Bulk Sound Velocity (m/s)"
+    forces = "forces"
+    stress = "stress"
+    virial = "virial"
+    stress_trace = "stress_trace"
+    voigt_stress = "voigt_stress"
+    bulk_modulus = "bulk_modulus"
+    shear_modulus = "shear_modulus"
+    young_modulus = "young_modulus"
+    poisson_ratio = "poisson_ratio"
+    hardness = "hardness"
+    elastic_tensor = "elastic_tensor"
+    elastic_tensor_voigt = "elastic_tensor_voigt"
+    elastic_tensor_reuss = "elastic_tensor_reuss"
+    elastic_tensor_vrh = "elastic_tensor_vrh"
+    toughness = "toughness"
+    yield_strength = "yield_strength"
+    tensile_strength = "tensile_strength"
+    ductility = "ductility"
+    fracture_toughness = "fracture_toughness"
+    sound_velocity = "sound_velocity"
 
     # Thermal
-    temperature = "temperature", f"Temperature {kelvin}"
-    thermal_conductivity = "thermal_conductivity", "Thermal Conductivity (W/m·K)"
-    lattice_thermal_conductivity = (
-        "lattice_thermal_conductivity",
-        "Lattice Thermal Conductivity (W/m·K)",
-    )
-    electronic_thermal_conductivity = (
-        "electronic_thermal_conductivity",
-        "Electronic Thermal Conductivity (W/m·K)",
-    )
-    heat_capacity = "heat_capacity", "Heat Capacity (J/mol·K)"
-    specific_heat_capacity = "specific_heat_capacity", "Specific Heat Capacity (J/kg·K)"
-    thermal_expansion_coefficient = (
-        "thermal_expansion_coefficient",
-        "Thermal Expansion Coefficient (1/K)",
-    )
-    debye_temp = "debye_temperature", f"Debye Temperature {kelvin}"
-    gruneisen_parameter = "gruneisen_parameter", "Grüneisen Parameter"
-    thermal_diffusivity = "thermal_diffusivity", "Thermal Diffusivity (m²/s)"
+    temperature = "temperature"
+    thermal_conductivity = "thermal_conductivity"
+    lattice_thermal_conductivity = "lattice_thermal_conductivity"
+    electronic_thermal_conductivity = "electronic_thermal_conductivity"
+    heat_capacity = "heat_capacity"
+    specific_heat_capacity = "specific_heat_capacity"
+    thermal_expansion_coefficient = "thermal_expansion_coefficient"
+    debye_temp = "debye_temp"
+    gruneisen_parameter = "gruneisen_parameter"
+    thermal_diffusivity = "thermal_diffusivity"
+    thermal_expansion = "thermal_expansion"
+    thermal_expansion_coeff = "thermal_expansion_coeff"
 
     # Phonon
-    ph_band_structure = "phonon_bandstructure", "Phonon Band Structure"
-    ph_dos = "phonon_dos", "Phonon Density of States"
-    ph_dos_mae = "ph_dos_mae", "Phonon DOS MAE"
-    has_imag_ph_gamma_modes = (
-        "has_imaginary_gamma_phonon_freq",
-        "Has imaginary Γ phonon modes",
-    )
-    has_imag_ph_modes = "has_imag_phonon_freq", "Has imaginary phonon modes"
-    last_ph_dos_peak = "last_ph_dos_peak_thz", "ω<sub>max</sub> (THz)"
-    max_ph_freq = "max_freq_thz", "Ω<sub>max</sub> (THz)"  # highest phonon frequency
-    min_ph_freq = "min_freq_thz", "Ω<sub>min</sub> (THz)"  # lowest phonon frequency
+    ph_band_structure = "ph_band_structure"
+    ph_dos = "ph_dos"
+    ph_dos_mae = "ph_dos_mae"
+    ph_dos_rmse = "ph_dos_rmse"
+    has_imag_ph_gamma_modes = "has_imag_ph_gamma_modes"
+    has_imag_ph_modes = "has_imag_ph_modes"
+    last_ph_dos_peak = "last_ph_dos_peak"
+    max_ph_freq = "max_ph_freq"
+    min_ph_freq = "min_ph_freq"
 
     # Optical
-    refractive_index = "refractive_index", "Refractive Index"
-    diel_const = "dielectric_constant", "Dielectric Constant"
-    absorption_spectrum = "absorption_spectrum", "Absorption Spectrum"
-    photoluminescence = "photoluminescence", "Photoluminescence"
-    optical_conductivity = "optical_conductivity", "Optical Conductivity (S/m)"
-    reflectivity = "reflectivity", "Reflectivity"
-    transmittance = "transmittance", "Transmittance"
-    absorption_coefficient = "absorption_coefficient", "Absorption Coefficient (cm⁻¹)"
-    extinction_coefficient = "extinction_coefficient", "Extinction Coefficient"
+    refractive_index = "refractive_index"
+    diel_const = "diel_const"
+    absorption_spectrum = "absorption_spectrum"
+    photoluminescence = "photoluminescence"
+    optical_conductivity = "optical_conductivity"
+    reflectivity = "reflectivity"
+    transmittance = "transmittance"
+    absorption_coefficient = "absorption_coefficient"
+    extinction_coefficient = "extinction_coefficient"
 
     # Surface
-    surface_energy = "surface_energy", f"Surface Energy {joule_per_m2}"
-    wulff_shape = "wulff_shape", "Wulff Shape"
-    surface_area = "surface_area", "Surface Area (m²)"
-    surface_reconstruction = "surface_reconstruction", "Surface Reconstruction"
-    adsorption_energy = "adsorption_energy", f"Adsorption Energy {eV}"
-    work_of_adhesion = "work_of_adhesion", f"Work of Adhesion {joule_per_m2}"
+    surface_energy = "surface_energy"
+    wulff_shape = "wulff_shape"
+    surface_area = "surface_area"
+    surface_reconstruction = "surface_reconstruction"
+    adsorption_energy = "adsorption_energy"
+    work_of_adhesion = "work_of_adhesion"
 
     # Defect
-    vacancy_formation_energy = (
-        "vacancy_formation_energy",
-        f"Vacancy Formation Energy {eV}",
-    )
-    interstitial_formation_energy = (
-        "interstitial_formation_energy",
-        f"Interstitial Formation Energy {eV}",
-    )
-    defect_concentration = "defect_concentration", "Defect Concentration (cm⁻³)"
-    migration_energy = "migration_energy", f"Migration Energy {eV}"
-    dislocation_energy = "dislocation_energy", f"Dislocation Energy {eV_per_angstrom}"
-    stacking_fault_energy = "stacking_fault_energy", "Stacking Fault Energy (mJ/m²)"
+    vacancy_formation_energy = "vacancy_formation_energy"
+    interstitial_formation_energy = "interstitial_formation_energy"
+    defect_concentration = "defect_concentration"
+    migration_energy = "migration_energy"
+    dislocation_energy = "dislocation_energy"
+    stacking_fault_energy = "stacking_fault_energy"
 
     # Magnetic
-    magmoms = "magmoms", "Magnetic Moments"
-    magnetic_moment = "magnetic_moment", "Magnetic Moment (μB)"
-    curie_temperature = "curie_temperature", f"Curie Temperature {kelvin}"
-    neel_temp = "neel_temperature", f"Néel Temperature {kelvin}"
-    magnetocrystalline_anisotropy = (
-        "magnetocrystalline_anisotropy",
-        "Magnetocrystalline Anisotropy (meV)",
-    )
-    coercivity = "coercivity", "Coercivity (Oe)"
+    magmoms = "magmoms"
+    magnetic_moment = "magnetic_moment"
+    curie_temperature = "curie_temperature"
+    neel_temp = "neel_temp"
+    magnetocrystalline_anisotropy = "magnetocrystalline_anisotropy"
+    coercivity = "coercivity"
 
     # DFT
-    dft = "dft", "DFT"
-    xc = "exchange_correlation", "Exchange-Correlation"
-    lda = "lda", "LDA"
-    gga = "gga", "GGA"
-    meta_gga = "meta_gga", "Meta-GGA"
-    hybrid = "hybrid", "Hybrid"
-    hartree_fock = "hartree_fock", "Hartree-Fock"
-    pbe = "pbe", "PBE"
-    pbe_sol = "pbe_sol", "PBEsol"
-    scan = "scan", "SCAN"
-    r2scan = "r2scan", "r2SCAN"
-    hse = "hse", "HSE"
-    xc_functional = "xc_functional", "Exchange-Correlation Functional"
-    convergence_electronic = "convergence_electronic", "Electronic Convergence"
-    convergence_ionic = "convergence_ionic", "Ionic Convergence"
-    kpoints = "kpoints", "K-points"
-    pseudo_potential = "pseudo_potential", "Pseudo-Potential"
-    pseudo_potential_type = "pseudo_potential_type", "Pseudo-Potential Type"
-    u_correction = "u_correction", "Hubbard U Correction"
-    needs_u_correction = "needs_u_correction", "Needs Hubbard U correction"
-    soc = "spin_orbit_coupling", "Spin-Orbit Coupling"
-    basis_set = "basis_set", "Basis Set"
-    basis_set_size = "basis_set_size", "Basis Set Size"
-    energy_cutoff = "energy_cutoff", "Energy Cutoff"
-    fft_grid = "fft_grid", "FFT Grid"
-    smearing = "smearing", "Smearing"
-    max_scf_iter = "max_scf_iter", "Max SCF Iterations"
-    scf_tol = "scf_tol", "SCF Tolerance"  # self-consistency tolerance
-    wave_function = "wave_function", "Wave Function"
-    charge_density = "charge_density", "Charge Density"
-    n_steps = "n_steps", "Number of Steps"
-    n_elec_steps = "n_elec_steps", "Number of Electronic Steps"
-    n_ionic_steps = "n_ionic_steps", "Number of Ionic Steps"
-    n_md_steps = "n_md_steps", "Number of Molecular Dynamics Steps"
-    n_relax_steps = "n_relax_steps", "Number of Relaxation Steps"
-    n_scf_steps = "n_scf_steps", "Number of SCF Steps"
-    n_bands = "n_bands", "Number of Bands"
-    n_kpoints = "n_kpoints", "Number of K-points"
-    kpoint_density = "kpoint_density", "K-point Density"
-    kpoint_spacing = "kpoint_spacing", "K-point Spacing"
-    kpoint_mesh = "kpoint_mesh", "K-point Mesh"
-    kpoint_offset = "kpoint_offset", "K-point Offset"
-    kpoint_symmetry = "kpoint_symmetry", "K-point Symmetry"
-    kpoint_sampling = "kpoint_sampling", "K-point Sampling"
-    relativistic = "relativistic", "Relativistic"
-    spin_polarized = "spin_polarized", "Spin Polarized"
-    collinear = "collinear", "Collinear"
-    non_collinear = "non_collinear", "Non-Collinear"
+    dft = "dft"
+    xc = "xc"
+    lda = "lda"
+    gga = "gga"
+    meta_gga = "meta_gga"
+    hybrid = "hybrid"
+    hartree_fock = "hartree_fock"
+    pbe = "pbe"
+    pbe_sol = "pbe_sol"
+    scan = "scan"
+    r2scan = "r2scan"
+    hse = "hse"
+    xc_functional = "xc_functional"
+    convergence_electronic = "convergence_electronic"
+    convergence_ionic = "convergence_ionic"
+    kpoints = "kpoints"
+    pseudo_potential = "pseudo_potential"
+    pseudo_potential_type = "pseudo_potential_type"
+    u_correction = "u_correction"
+    needs_u_correction = "needs_u_correction"
+    soc = "soc"
+    basis_set = "basis_set"
+    basis_set_size = "basis_set_size"
+    energy_cutoff = "energy_cutoff"
+    fft_grid = "fft_grid"
+    smearing = "smearing"
+    max_scf_iter = "max_scf_iter"
+    scf_tol = "scf_tol"
+    wave_function = "wave_function"
+    charge_density = "charge_density"
+    n_steps = "n_steps"
+    n_elec_steps = "n_elec_steps"
+    n_ionic_steps = "n_ionic_steps"
+    n_md_steps = "n_md_steps"
+    n_relax_steps = "n_relax_steps"
+    n_scf_steps = "n_scf_steps"
+    n_bands = "n_bands"
+    n_kpoints = "n_kpoints"
+    kpoint_density = "kpoint_density"
+    kpoint_spacing = "kpoint_spacing"
+    kpoint_mesh = "kpoint_mesh"
+    kpoint_offset = "kpoint_offset"
+    kpoint_symmetry = "kpoint_symmetry"
+    kpoint_sampling = "kpoint_sampling"
+    relativistic = "relativistic"
+    spin_polarized = "spin_polarized"
+    collinear = "collinear"
+    non_collinear = "non_collinear"
 
     # ML
-    train_task = "train_task", "Training Task"
-    test_task = "test_task", "Test Task"
-    train_set = "training_set", "Training Set"
-    targets = "targets", "Targets"
-    model_name = "model_name", "Model Name"
-    model_id = "model_id", "Model ID"
-    model_version = "model_version", "Model Version"
-    model_type = "model_type", "Model Type"
-    model_params = "model_params", "Model Parameters"
-    model_framework = "model_framework", "Model Framework"  # e.g. PyTorch, TensorFlow
-    hyperparams = "hyperparameters", "Hyperparameters"
-    feature_importance = "feature_importance", "Feature Importance"
-    optimizer = "optimizer", "Optimizer"
-    loss = "loss", "Loss"
-    uncertainty = "uncertainty", "Uncertainty"
-    epochs = "epochs", "Epochs"
-    batch_size = "batch_size", "Batch Size"
-    learning_rate = "learning_rate", "Learning Rate"
-    momentum = "momentum", "Momentum"
-    weight_decay = "weight_decay", "Weight Decay"
-    early_stopping = "early_stopping", "Early Stopping"
-    n_folds = "n_folds", "N<sub>folds</sub>"
-    n_estimators = "n_estimators", "N<sub>estimators</sub>"
-    n_features = "n_features", "N<sub>features</sub>"
-    n_targets = "n_targets", "N<sub>targets</sub>"
-    n_classes = "n_classes", "N<sub>classes</sub>"
-    n_layers = "n_layers", "N<sub>layers</sub>"
-    radial_cutoff = "radial_cutoff", "Radial Cutoff"  # for GNNs, usually in Å
-    angular_cutoff = "angular_cutoff", "Angular Cutoff"  # max order spherical harmonics
+    train_task = "train_task"
+    test_task = "test_task"
+    train_set = "train_set"
+    targets = "targets"
+    model_name = "model_name"
+    model_id = "model_id"
+    model_version = "model_version"
+    model_type = "model_type"
+    model_params = "model_params"
+    model_framework = "model_framework"
+    hyperparams = "hyperparams"
+    feature_importance = "feature_importance"
+    optimizer = "optimizer"
+    loss = "loss"
+    uncertainty = "uncertainty"
+    epochs = "epochs"
+    batch_size = "batch_size"
+    learning_rate = "learning_rate"
+    momentum = "momentum"
+    weight_decay = "weight_decay"
+    early_stopping = "early_stopping"
+    n_folds = "n_folds"
+    n_estimators = "n_estimators"
+    n_features = "n_features"
+    n_targets = "n_targets"
+    n_classes = "n_classes"
+    n_layers = "n_layers"
+    radial_cutoff = "radial_cutoff"
+    angular_cutoff = "angular_cutoff"
 
     # Metrics
-    accuracy = "accuracy", "Accuracy"
-    auc = "AUC", "Area Under the Curve"
-    confusion_matrix = "confusion_matrix", "Confusion Matrix"
-    daf = "DAF", "Discovery Acceleration Factor"
-    f1 = "F1", "F1 Score"
-    fp = "FP", "False Positives"
-    fn = "FN", "False Negatives"
-    tp = "TP", "True Positives"
-    tn = "TN", "True Negatives"
-    tpr = "TPR", "True Positive Rate"
-    fpr = "FPR", "False Positive Rate"
-    tnr = "TNR", "True Negative Rate"
-    fnr = "FNR", "False Negative Rate"
-    mae = "MAE", "Mean Absolute Error"
-    r2 = "R²", "R² Score"
-    pearson = "Pearson", "Pearson Correlation"
-    spearman = "Spearman", "Spearman Correlation"
-    kendall = "Kendall", "Kendall Correlation"
-    mse = "MSE", "Mean Squared Error"
-    rmse = "RMSE", "Root Mean Squared Error"
-    rmsd = "rmsd", "Root Mean Square Deviation"
-    structure_rmsd = "structure_rmsd", f"Structure RMSD {angstrom}"
-    mape = "MAPE", "Mean Absolute Percentage Error"
-    srme = "SRME", "Symmetric Relative Mean Error"
-    sre = "SRE", "Symmetric Relative Error"
-    srd = "SRD", "Symmetric Relative Difference"
-    smpe = "SMPE", "Symmetric Mean Percentage Error"
-    smape = "SMAPE", "Symmetric Mean Absolute Percentage Error"
-    sse = "SSE", "Sum of Squared Errors"
-    variance = "variance", "Variance"
-    std_dev = "std_dev", "Standard Deviation"
-    iqr = "IQR", "Interquartile Range"
-    outlier = "outlier", "Outlier"
-    error = "error", "Error"
-    energy_error = "energy_error", "Energy Error"
-    force_error = "force_error", "Force Error"
-    stress_error = "stress_error", "Stress Error"
-    volume_error = "volume_error", "Volume Error"
-    max_force_error = "max_force_error", "Max Force Error"
-    max_stress_error = "max_stress_error", "Max Stress Error"
-    max_volume_error = "max_volume_error", "Max Volume Error"
-    force_rmse = "force_rmse", "Force RMSE"
-    stress_rmse = "stress_rmse", "Stress RMSE"
-    volume_rmse = "volume_rmse", "Volume RMSE"
-    force_mae = "force_mae", "Force MAE"
-    stress_mae = "stress_mae", "Stress MAE"
-    volume_mae = "volume_mae", "Volume MAE"
-    residuals = "residuals", "Residuals"
-    prc = "PRC", "Precision-Recall Curve"
-    prc_curve = "prc_curve", "PRC Curve"
-    precision = "precision", "Precision"
-    recall = "recall", "Recall"
-    sensitivity = "sensitivity", "Sensitivity"  # same as recall
-    specificity = "specificity", "Specificity"  # same as precision
-    roc = "ROC", "Receiver Operating Characteristic"
-    roc_curve = "roc_curve", "ROC Curve"
-    roc_auc = "ROC_AUC", "ROC AUC"
-    hit_rate = "hit_rate", "Hit Rate"
-    n_structs = "n_structures", "N<sub>structures</sub>"
-    n_materials = "n_materials", "N<sub>materials</sub>"
-    n_molecules = "n_molecules", "N<sub>molecules</sub>"
-    n_samples = "n_samples", "N<sub>samples</sub>"
-    n_configs = "n_configs", "N<sub>configs</sub>"
+    accuracy = "accuracy"
+    auc = "auc"
+    confusion_matrix = "confusion_matrix"
+    daf = "daf"
+    f1 = "f1"
+    fp = "fp"
+    fn = "fn"
+    tp = "tp"
+    tn = "tn"
+    tpr = "tpr"
+    fpr = "fpr"
+    tnr = "tnr"
+    fnr = "fnr"
+    mae = "mae"
+    r2 = "r2"
+    pearson = "pearson"
+    spearman = "spearman"
+    kendall = "kendall"
+    mse = "mse"
+    rmse = "rmse"
+    rmsd = "rmsd"
+    n_sym_ops_mae = "n_sym_ops_mae"
+    structure_rmsd = "structure_rmsd"
+    mape = "mape"
+    srme = "srme"
+    sre = "sre"
+    srd = "srd"
+    smpe = "smpe"
+    smape = "smape"
+    sse = "sse"
+    variance = "variance"
+    std_dev = "std_dev"
+    iqr = "iqr"
+    outlier = "outlier"
+    error = "error"
+    energy_error = "energy_error"
+    force_error = "force_error"
+    stress_error = "stress_error"
+    volume_error = "volume_error"
+    max_force_error = "max_force_error"
+    max_stress_error = "max_stress_error"
+    max_volume_error = "max_volume_error"
+    force_rmse = "force_rmse"
+    stress_rmse = "stress_rmse"
+    volume_rmse = "volume_rmse"
+    force_mae = "force_mae"
+    stress_mae = "stress_mae"
+    volume_mae = "volume_mae"
+    residuals = "residuals"
+    prc = "prc"
+    prc_curve = "prc_curve"
+    precision = "precision"
+    recall = "recall"
+    sensitivity = "sensitivity"
+    specificity = "specificity"
+    roc = "roc"
+    roc_curve = "roc_curve"
+    roc_auc = "roc_auc"
+    hit_rate = "hit_rate"
+    n_structures = "n_structures"
+    n_materials = "n_materials"
+    n_molecules = "n_molecules"
+    n_samples = "n_samples"
+    n_configs = "n_configs"
 
     # Computational Details
-    run_time_sec = "run_time_sec", "Run Time (sec)"
-    run_time_hr = "run_time_hr", "Run Time (hr)"
-    cpu_hours = "cpu_hours", "CPU Hours"
-    gpu_hours = "gpu_hours", "GPU Hours"
-    start_time = "start_time", "Start Time"
-    start_date = "start_date", "Start Date"
-    date_time = "date_time", "Date and Time"
-    date = "date", "Date"
-    time = "time", "Time"
-    date_added = "date_added", "Date Added"
-    date_modified = "date_modified", "Date Modified"
-    end_time = "end_time", "End Time"
-    end_date = "end_date", "End Date"
-    step = "step", "Step"  # as in job/optimizer step
-    state = "state", "State"  # as in job state
-    output = "output", "Output"
-    n_cores = "n_cores", "Number of Cores"
-    n_nodes = "n_nodes", "Number of Nodes"
-    n_gpus = "n_gpus", "Number of GPUs"
-    n_tasks = "n_tasks", "Number of Tasks"
-    n_processes = "n_processes", "Number of Processes"
-    n_threads = "n_threads", "Number of Threads"
-    core_hours = "core_hours", "Core Hours"
-    memory = "memory", "Memory"
-    queue_name = "queue_name", "Queue Name"
-    job_name = "job_name", "Job Name"
-    job_type = "job_type", "Job Type"
-    job_dir = "job_dir", "Job Directory"
-    job_script = "job_script", "Job Script"
-    job_log = "job_log", "Job Log"
-    job_output = "job_output", "Job Output"
-    job_status = "job_status", "Job Status"
-    job_errors = "job_errors", "Job Errors"
-    job_warnings = "job_warnings", "Job Warnings"
-    job_comments = "job_comments", "Job Comments"
-    job_metadata = "job_metadata", "Job Metadata"
+    run_time_sec = "run_time_sec"
+    run_time_hr = "run_time_hr"
+    cpu_hours = "cpu_hours"
+    gpu_hours = "gpu_hours"
+    start_time = "start_time"
+    start_date = "start_date"
+    date_time = "date_time"
+    date = "date"
+    time = "time"
+    date_added = "date_added"
+    date_modified = "date_modified"
+    end_time = "end_time"
+    end_date = "end_date"
+    step = "step"
+    state = "state"
+    output = "output"
+    n_cores = "n_cores"
+    n_nodes = "n_nodes"
+    n_gpus = "n_gpus"
+    n_tasks = "n_tasks"
+    n_processes = "n_processes"
+    n_threads = "n_threads"
+    core_hours = "core_hours"
+    memory = "memory"
+    queue_name = "queue_name"
+    job_name = "job_name"
+    job_type = "job_type"
+    job_dir = "job_dir"
+    job_script = "job_script"
+    job_log = "job_log"
+    job_output = "job_output"
+    job_status = "job_status"
+    job_errors = "job_errors"
+    job_warnings = "job_warnings"
+    job_comments = "job_comments"
+    job_metadata = "job_metadata"
 
     # Identifiers and Metadata
-    id = "id", "ID"
-    db_id = "db_id", "Database ID"
-    uuid = "uuid", "UUID"
-    mat_id = "material_id", "Material ID"
-    # as in molecular dynamics or geometry optimization frame
-    frame_id = "frame_id", "Frame ID"
-    task = "task", "Task"
-    job_id = "job_id", "Job ID"
-    task_id = "task_id", "Task ID"
-    task_type = "task_type", "Task Type"
-    model = "model", "Model"
-    author = "author", "Author"
-    authors = "authors", "Authors"
-    year = "year", "Year"
-    journal = "journal", "Journal"
-    issue = "issue", "Issue"
-    pages = "pages", "Pages"
-    doi = "doi", "DOI"
-    url = "url", "URL"
-    citation = "citation", "Citation"
-    description = "description", "Description"  # type: ignore[assignment]
-    keywords = "keywords", "Keywords"
-    license = "license", "License"
-    version = "version", "Version"
-    abstract = "abstract", "Abstract"
-    tags = "tags", "Tags"
-    categories = "categories", "Categories"
-    funding = "funding", "Funding"
-    acknowledgements = "acknowledgements", "Acknowledgements"
+    id = "id"
+    db_id = "db_id"
+    uuid = "uuid"
+    mat_id = "material_id"
+    frame_id = "frame_id"
+    task = "task"
+    job_id = "job_id"
+    task_id = "task_id"
+    task_type = "task_type"
+    model = "model"
+    author = "author"
+    authors = "authors"
+    year = "year"
+    journal = "journal"
+    issue = "issue"
+    pages = "pages"
+    doi = "doi"
+    url = "url"
+    citation = "citation"
+    description = "description"
+    keywords = "keywords"
+    license = "license"
+    version = "version"
+    abstract = "abstract"
+    tags = "tags"
+    categories = "categories"
+    funding = "funding"
+    acknowledgements = "acknowledgements"
 
     # Code
-    repo = "repo", "Repository"
-    branch = "branch", "Branch"
-    commit = "commit", "Commit"
-    hash = "hash", "Hash"
-    tag = "tag", "Tag"
-    release = "release", "Release"
-
-    # Synthesis-related
-    synthesis_temperature = "synthesis_temperature", f"Synthesis Temperature {kelvin}"
-    synthesis_pressure = "synthesis_pressure", f"Synthesis Pressure {pascal}"
-    synthesis_time = "synthesis_time", "Synthesis Time"
-    synthesis_method = "synthesis_method", "Synthesis Method"
-    synthesis_conditions = "synthesis_conditions", "Synthesis Conditions"
-    atmosphere = "atmosphere", "Atmosphere"
-    heat_treatment = "heat_treatment", "Heat Treatment"
-    powder_preparation = "powder_preparation", "Powder Preparation"
+    repo = "repo"
+    branch = "branch"
+    commit = "commit"
+    hash = "hash"
+    tag = "tag"
+    release = "release"
+    synthesis_temperature = "synthesis_temperature"
+    synthesis_pressure = "synthesis_pressure"
+    synthesis_time = "synthesis_time"
+    synthesis_method = "synthesis_method"
+    synthesis_conditions = "synthesis_conditions"
+    atmosphere = "atmosphere"
+    heat_treatment = "heat_treatment"
+    powder_preparation = "powder_preparation"
 
     # Performance Indicators
-    fom = "figure_of_merit", "Figure of Merit"  # codespell:ignore
-    power_factor = "power_factor", "Power Factor"
-    zt = "ZT", "ZT"
-    efficiency = "efficiency", "Efficiency"
-    capacity = "capacity", "Capacity"
-    rate = "rate", "Rate"
-    lifetime = "lifetime", "Lifetime"
-    stability = "stability", "Stability"
-    selectivity = "selectivity", "Selectivity"
-    purity = "purity", "Purity"
-    yield_ = "yield", "Yield"  # underscore because reserved keyword
-    activity = "activity", "Activity"
-    performance = "performance", "Performance"
-    gain = "gain", "Gain"
-    power = "power", "Power"
-    current = "current", "Current"
-    voltage = "voltage", "Voltage"
-    resistance = "resistance", "Resistance"
-    impedance = "impedance", "Impedance"
-    capacitance = "capacitance", "Capacitance"
+    fom = "fom"  # codespell:ignore
+    power_factor = "power_factor"
+    zt = "zt"
+    efficiency = "efficiency"
+    capacity = "capacity"
+    rate = "rate"
+    lifetime = "lifetime"
+    stability = "stability"
+    selectivity = "selectivity"
+    purity = "purity"
+    yield_ = "yield"
+    activity = "activity"
+    performance = "performance"
+    gain = "gain"
+    power = "power"
+    current = "current"
+    voltage = "voltage"
+    resistance = "resistance"
+    impedance = "impedance"
+    capacitance = "capacitance"
 
     # Environmental Indicators
-    toxicity = "toxicity", "Toxicity Index"
-    recyclability = "recyclability", "Recyclability Score"
-    biodegradability = "biodegradability", "Biodegradability Score"
-    sustainability = "sustainability", "Sustainability Index"
+    toxicity = "toxicity"
+    recyclability = "recyclability"
+    biodegradability = "biodegradability"
+    sustainability = "sustainability"
 
     # Economic Factors
-    cost = "cost", "Cost"
-    raw_material_cost = "raw_material_cost", "Raw Material Cost ($/kg)"
-    abundance = "abundance", "Elemental Abundance (ppm)"
-
-    # Chemical Properties
-    corrosion_resistance = "corrosion_resistance", "Corrosion Resistance"
-    viscosity = "viscosity", "Viscosity (Pa·s)"
-    activation_energy = "activation_energy", f"Activation Energy {eV}"
-
-    # Miscellaneous
-    count = "count", "Count"  # type: ignore[assignment]
-    heat_val = "heat_val", "Heatmap Value"
-    piezoelectric_tensor = "piezoelectric_tensor", "Piezoelectric Tensor"
-    dielectric_tensor = "dielectric_tensor", "Dielectric Tensor"
+    cost = "cost"
+    raw_material_cost = "raw_material_cost"
+    abundance = "abundance"
+    corrosion_resistance = "corrosion_resistance"
+    viscosity = "viscosity"
+    activation_energy = "activation_energy"
+    count = "count"  # type: ignore[assignment]
+    heat_val = "heat_val"
+    piezoelectric_tensor = "piezoelectric_tensor"
+    dielectric_tensor = "dielectric_tensor"
 
 
 class Task(LabelEnum):
@@ -785,10 +771,19 @@ class ElemColorScheme(LabelEnum):
     """
 
     # key, label, color
+    # from https://wikipedia.org/wiki/Jmol"
     jmol = "jmol", "Jmol", "Java-based molecular visualization"
-    # https://wikipedia.org/wiki/Jmol"
+    # from https://jp-minerals.org/vesta
     vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
-    # https://jp-minerals.org/vesta
+    # custom made for pymatviz
+    alloy = "alloy", "Alloy", "High-contrast color scheme optimized for metal alloys"
+
+    @property
+    def color_map(self) -> dict[str, RgbColorType]:
+        """Return map from element symbol to color."""
+        import pymatviz.colors as pmv_colors
+
+        return getattr(pmv_colors, f"ELEM_COLORS_{self.value.upper()}")
 
 
 @unique

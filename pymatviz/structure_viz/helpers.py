@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 
-from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
+from pymatviz.colors import ELEM_COLORS_ALLOY, ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.utils import df_ptable, pick_bw_for_contrast
 
@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
     from numpy.typing import ArrayLike
     from pymatgen.analysis.local_env import NearNeighbors
+
+    from pymatviz.typing import RgbColorType
 
 
 # fallback value (in nanometers) for covalent radius of an element
@@ -88,7 +90,7 @@ def _angles_to_rotation_matrix(
 
 
 def get_image_sites(
-    site: PeriodicSite, lattice: Lattice, tol: float = 0.02
+    site: PeriodicSite, lattice: Lattice, tol: float = 0.03
 ) -> np.ndarray:
     """Get images for a given site in a lattice.
 
@@ -161,14 +163,18 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
     return lines, z_indices, unit_cell_lines
 
 
-def get_elem_colors(elem_colors: ElemColorScheme | dict[str, str]) -> dict[str, str]:
+def get_elem_colors(
+    elem_colors: ElemColorScheme | dict[str, RgbColorType],
+) -> dict[str, RgbColorType]:
     """Get element colors based on the provided scheme or custom dictionary."""
+    if isinstance(elem_colors, dict):
+        return elem_colors
     if str(elem_colors) == str(ElemColorScheme.jmol):
         return ELEM_COLORS_JMOL
     if str(elem_colors) == str(ElemColorScheme.vesta):
         return ELEM_COLORS_VESTA
-    if isinstance(elem_colors, dict):
-        return elem_colors
+    if str(elem_colors) == str(ElemColorScheme.alloy):
+        return ELEM_COLORS_ALLOY
     raise ValueError(
         f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
     )
@@ -211,9 +217,7 @@ def get_subplot_title(
     subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
 ) -> dict[str, Any]:
     """Generate a subplot title based on the provided function or default logic."""
-    title_dict: dict[str, str | float | dict[str, str | float]] = {
-        "font": {"color": "black"}
-    }
+    title_dict: dict[str, str | float | dict[str, str | float]] = {}
 
     if callable(subplot_title):
         sub_title = subplot_title(struct_i, struct_key)
@@ -223,7 +227,7 @@ def get_subplot_title(
             title_dict |= sub_title
         else:
             raise TypeError(
-                f"Invalid subplot_title={sub_title}. Must be a str or dict."
+                f"Invalid subplot_title, must be str or dict, got {sub_title}"
             )
 
     if not title_dict.get("text"):
@@ -273,7 +277,7 @@ def draw_site(
     coords: np.ndarray,
     site_idx: int,
     site_labels: Any,
-    _elem_colors: dict[str, str],
+    _elem_colors: dict[str, RgbColorType],
     _atomic_radii: dict[str, float],
     atom_size: float,
     scale: float,

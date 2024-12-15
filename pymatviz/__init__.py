@@ -18,9 +18,10 @@ import plotly.express as px
 
 from pymatviz import (
     bar,
+    brillouin,
+    classify,
     colors,
     coordination,
-    cumulative,
     data,
     enums,
     io,
@@ -29,7 +30,6 @@ from pymatviz import (
     process_data,
     ptable,
     rdf,
-    relevance,
     sankey,
     scatter,
     structure_viz,
@@ -40,8 +40,10 @@ from pymatviz import (
     utils,
     xrd,
 )
+from pymatviz.brillouin import brillouin_zone_3d
+from pymatviz.classify import precision_recall_curve_plotly, roc_curve_plotly
+from pymatviz.classify.confusion_matrix import confusion_matrix
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
-from pymatviz.cumulative import cumulative_error, cumulative_residual
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
 from pymatviz.io import df_to_html, df_to_pdf, df_to_svg, save_fig
@@ -56,11 +58,11 @@ from pymatviz.ptable import (
     ptable_hists,
     ptable_hists_plotly,
     ptable_lines,
+    ptable_scatter_plotly,
     ptable_scatters,
 )
 from pymatviz.rainclouds import rainclouds
 from pymatviz.rdf.plotly import element_pair_rdfs, full_rdf
-from pymatviz.relevance import precision_recall_curve, roc_curve
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.scatter import (
     density_hexbin,
@@ -103,7 +105,7 @@ crystal_sys_order = (
 
 px.defaults.labels |= {
     "gap expt": "Experimental band gap (eV)",
-} | Key.val_label_dict()
+} | {key: key.label for key in Key}
 
 # to hide math loading MathJax message in bottom left corner of plotly PDFs
 # https://github.com/plotly/Kaleido/issues/122#issuecomment-994906924

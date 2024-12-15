@@ -1,6 +1,6 @@
 [project]
 name = "pymatviz"
-version = "0.13.2"
+version = "0.14.0"
 description = "A toolkit for visualizations in materials informatics"
 authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
@@ -43,20 +43,26 @@ df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
 # https://github.com/plotly/Kaleido/issues/176
 export-figs = ["kaleido>=0.2.1, !=0.2.1.post1"]
-make-assets = ["matminer>=0.9", "mp_api>=0.42", "pymatviz[export-figs]"]
+make-assets = [
+    "matminer>=0.9",
+    "mp_api>=0.42",
+    "pymatviz[export-figs, brillouin]",
+]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 test = [
+    "phonopy>=2.31",                                                   # only needed if user passes in phonopy objects
     "pymatviz[auto-text-pos,df-pdf-export,df-svg-export,export-figs]",
     "pytest-cov>=5",
     "pytest-split>=0.9",
     "pytest>=8",
 ]
+brillouin = ["seekpath>=2.1"]
 
 [tool.setuptools.packages.find]
 include = ["pymatviz*"]
 
 [tool.setuptools.package-data]
-pymatviz = ["*.csv"]
+pymatviz = ["*.csv", "*.yml"]
 
 [build-system]
 requires = ["setuptools>=71"]
