@@ -69,7 +69,7 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
         assert axis.showline is True
         assert axis.linewidth == 1
         assert axis.mirror is False
-        assert axis.ticks == "outside"
+        assert axis.ticks == "inside"
         assert axis.tickwidth == 1
         assert axis.nticks == 2
         assert axis.tickmode == "auto"

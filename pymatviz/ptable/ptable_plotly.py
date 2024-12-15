@@ -11,6 +11,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pymatgen.core import Element
 
 from pymatviz.colors import ELEM_TYPE_COLORS
 from pymatviz.enums import ElemCountMode
@@ -396,6 +397,7 @@ def ptable_hists_plotly(
     log: bool = False,
     colorscale: str = "RdBu",
     colorbar: dict[str, Any] | Literal[False] | None = None,
+    hide_f_block: bool | Literal["auto"] = False,
     # Layout
     font_size: int | None = None,
     scale: float = 1.0,
@@ -411,6 +413,7 @@ def ptable_hists_plotly(
     elem_type_colors: dict[str, str] | None = None,
     subplot_kwargs: dict[str, Any] | None = None,
     x_axis_kwargs: dict[str, Any] | None = None,
+    y_axis_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Plotly figure with histograms for each element laid out in a periodic table.
 
@@ -430,6 +433,8 @@ def ptable_hists_plotly(
         colorbar (dict[str, Any] | None): Plotly colorbar properties. Defaults to
             dict(orientation="h"). See https://plotly.com/python/reference#heatmap-colorbar
             for available options. Set to False to hide the colorbar.
+        hide_f_block (bool | "auto"): Whether to hide the F-block elements. If "auto",
+            hide F-block elements if row 7 is empty. Defaults to False.
 
         --- Layout ---
         font_size (int): Element symbol and annotation text size. Defaults to automatic
@@ -457,6 +462,7 @@ def ptable_hists_plotly(
             be used e.g. to toggle shared x/y-axes.
         x_axis_kwargs (dict | None): Additional keywords for x-axis like tickfont,
             showticklabels, nticks, tickformat, tickangle.
+        y_axis_kwargs (dict | None): Additional keywords for y-axis.
 
     Returns:
         go.Figure: Plotly Figure object with histograms in a periodic table layout.
@@ -495,10 +501,20 @@ def ptable_hists_plotly(
     else:
         bins_range = x_range
 
+    # Check if row 7 is empty. If so, pull all rows below it up by one.
+    row_7_is_empty = not bool(
+        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
+    )
+
     # Create histograms for each element
     for symbol, period, group, *_ in df_ptable.itertuples():
-        row = period - 1
-        col = group - 1
+        row, col = period - 1, group - 1  # row, col are 0-indexed
+
+        if hide_f_block in ("auto", True) and row in (6, 7) and 3 <= col <= 17:
+            continue
+
+        if row_7_is_empty and row >= 6:
+            row -= 1
 
         subplot_idx = row * n_cols + col + 1
         subplot_key = subplot_idx if subplot_idx != 1 else ""
@@ -652,32 +668,36 @@ def ptable_hists_plotly(
     fig.layout.width = 900 * scale
     fig.layout.height = 500 * scale
 
-    # Update x/y-axes across all subplots
-    fig.update_yaxes(
+    # get current plotly template line colors
+    import plotly.io as pio
+
+    template_line_color = pio.templates[pio.templates.default].layout.xaxis.linecolor
+
+    y_axis_kwargs = dict(
         showticklabels=False,
         showgrid=False,
         zeroline=False,
         ticks="",
         showline=False,  # remove axis lines
         type="log" if log else "linear",
-    )
+        linecolor=template_line_color,
+    ) | (y_axis_kwargs or {})
+    fig.update_yaxes(**y_axis_kwargs)
     x_axis_kwargs = dict(
-        range=bins_range,
-        showgrid=False,
+        showgrid=False,  # hide grid lines
+        showline=True,  # show axis line
+        linecolor=template_line_color,
         zeroline=False,
-        ticks="inside",
         ticklen=4,
+        ticks="inside",  # move ticks to inside
+        mirror=False,  # only show edge line
         tickwidth=1,
-        showline=True,
-        mirror=False,  # only show bottom x-axis line
-        linewidth=0.5,
-        linecolor="lightgray",
-        # more readable tick labels
-        tickangle=0,
-        tickfont=dict(size=(font_size or 7) * scale),
+        tickcolor=template_line_color,
+        tickmode="auto",
         showticklabels=True,  # show x tick labels on all subplots
         nticks=3,
         tickformat=".2g",
+        tickfont=dict(size=9 * scale),
     ) | (x_axis_kwargs or {})
     fig.update_xaxes(**x_axis_kwargs)
 
@@ -863,18 +883,21 @@ def ptable_heatmap_splits_plotly(
             ([0, 1, mid, 0], [1, 1, mid, 1]),  # top
         ]
 
+    # Check if row 7 is empty. If so, pull all rows below it up by one.
+    row_7_is_empty = not bool(
+        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
+    )
     # Process data and create shapes for each element
     for symbol, period, group, name, *_ in df_ptable.itertuples():
-        row, col = period - 1, group - 1
+        row, col = period - 1, group - 1  # row, col are 0-indexed
         if symbol not in data and on_empty == "hide":
             continue
 
-        if (
-            (hide_f_block == "auto" or hide_f_block)
-            and row in (6, 7)
-            and 3 <= col <= 17
-        ):
+        if hide_f_block in ("auto", True) and row in (6, 7) and 3 <= col <= 17:
             continue
+
+        if row_7_is_empty and row > 6:
+            row -= 1
 
         # Adjust positions for f-block elements
         if row in (6, 7) and col >= 3:
@@ -1055,6 +1078,7 @@ def ptable_scatter_plotly(
     # Layout
     font_size: int | None = None,
     scale: float = 1.0,
+    hide_f_block: bool | Literal["auto"] = False,
     # Symbol
     element_symbol_map: dict[str, str] | None = None,
     symbol_kwargs: dict[str, Any] | None = None,
@@ -1098,6 +1122,8 @@ def ptable_scatter_plotly(
         font_size (int): Element symbol and annotation text size. Defaults to automatic
             font size based on plot size.
         scale (float): Scaling factor for whole figure layout. Defaults to 1.
+        hide_f_block (bool | "auto"): Whether to hide the F-block elements. If "auto",
+            hide F-block elements if row 7 is empty. Defaults to False.
 
         --- Symbol ---
         element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
@@ -1150,7 +1176,7 @@ def ptable_scatter_plotly(
     subplot_kwargs = dict(
         rows=n_rows,
         cols=n_cols,
-        vertical_spacing=0.03,
+        vertical_spacing=0.035,
         horizontal_spacing=0.01,
     ) | (subplot_kwargs or {})
     fig = make_subplots(**subplot_kwargs)
@@ -1175,8 +1201,10 @@ def ptable_scatter_plotly(
             y_range = (min(all_y_vals), max(all_y_vals))
 
     # Get default marker and line settings
-    marker_defaults = dict(size=6, color=template_line_color, line=dict(width=0))
-    line_defaults = dict(width=1, color=template_line_color)
+    marker_defaults = dict(
+        size=6 * scale, color=template_line_color, line=dict(width=0)
+    )
+    line_defaults = dict(width=1 * scale, color=template_line_color)
 
     # Find global color range if any numeric color values exist
     cbar_min, cbar_max = float("inf"), float("-inf")
@@ -1189,10 +1217,18 @@ def ptable_scatter_plotly(
 
     has_numeric_colors = cbar_min != float("inf")
 
+    # Check if row 7 is empty. If so, pull all rows below it up by one.
+    row_7_is_empty = not bool(
+        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
+    )
+
     for symbol, period, group, elem_name, *_ in df_ptable.itertuples():
         if symbol not in data:
             continue
-        row, col = period - 1, group - 1
+        row, col = period - 1, group - 1  # row, col are 0-indexed
+
+        if hide_f_block in ("auto", True) and row_7_is_empty and row >= 6:
+            continue
 
         subplot_idx = row * n_cols + col + 1
         subplot_key = subplot_idx if subplot_idx != 1 else ""
@@ -1286,7 +1322,7 @@ def ptable_scatter_plotly(
                 color=elem_type_colors.get(elem_type, template_line_color)
                 if color_elem_strategy in {"symbol", "both"}
                 else template_line_color,
-                size=(font_size or 12) * scale,
+                size=(font_size or 11) * scale,
             ),
         )
         fig.add_annotation(
@@ -1336,13 +1372,14 @@ def ptable_scatter_plotly(
         linecolor=template_line_color,
         linewidth=1,
         mirror=False,  # only show edge line
-        ticks="outside",
+        ticks="inside",  # move ticks to inside
         tickwidth=1,
         tickcolor=template_line_color,
         # Configure tick count
         nticks=2,  # show only 2 ticks by default
         tickmode="auto",  # let plotly choose nice tick values
         zeroline=False,  # remove x/y=0 line
+        tickfont=dict(size=9 * scale),
     )
 
     x_axis_defaults = axis_defaults | dict(range=x_range)
