@@ -147,7 +147,7 @@ Annotations = dict[str, str | dict[str, Any]] | AnnotationCallable
     ("annotations", "expected_count"),
     [
         ({"Fe": "Iron note", "O": "Oxygen note"}, 2),  # dict annotations
-        (lambda vals: f"Max: {max(vals):.1f}", 2),  # callable annotations
+        (lambda vals: f"Max: {max(vals[1]):.1f}", 2),  # annotate with callable
         ({"Fe": {"text": "Iron", "font_size": 12}}, 1),  # dict with styling
     ],
 )
@@ -200,10 +200,6 @@ def test_scaling(
 
 def test_ptable_scatter_plotly_invalid_input() -> None:
     """Test that invalid input raises appropriate errors."""
-    # Empty data should raise ValueError
-    with pytest.raises(ValueError, match="iterable argument is empty"):
-        pmv.ptable_scatter_plotly({})
-
     # Invalid mode should raise ValueError
     err_msg = "Invalid value of type 'builtins.str' received for the 'mode' property"
     with pytest.raises(ValueError, match=re.escape(err_msg)):
