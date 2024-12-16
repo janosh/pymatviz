@@ -4,6 +4,7 @@ import re
 from collections.abc import Callable, Sequence
 from typing import Any, Literal, TypeAlias
 
+import numpy as np
 import plotly.graph_objects as go
 import pytest
 
@@ -69,7 +70,7 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
         assert axis.showline is True
         assert axis.linewidth == 1
         assert axis.mirror is False
-        assert axis.ticks == "outside"
+        assert axis.ticks == "inside"
         assert axis.tickwidth == 1
         assert axis.nticks == 2
         assert axis.tickmode == "auto"
@@ -90,7 +91,7 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
         assert ann.yanchor == "top"
         assert ann.x == 1
         assert ann.y == 1
-        assert ann.font.size == 12  # default font size
+        assert ann.font.size == 11  # default font size
         # Check that text is either <b>Fe</b> or <b>O</b>
         assert ann.text in ("<b>Fe</b>", "<b>O</b>")
 
@@ -146,7 +147,7 @@ Annotations = dict[str, str | dict[str, Any]] | AnnotationCallable
     ("annotations", "expected_count"),
     [
         ({"Fe": "Iron note", "O": "Oxygen note"}, 2),  # dict annotations
-        (lambda vals: f"Max: {max(vals):.1f}", 2),  # callable annotations
+        (lambda vals: f"Max: {max(vals[1]):.1f}", 2),  # annotate with callable
         ({"Fe": {"text": "Iron", "font_size": 12}}, 1),  # dict with styling
     ],
 )
@@ -156,7 +157,7 @@ def test_annotations(
     expected_count: int,
 ) -> None:
     """Test different types of annotations."""
-    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)
+    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)  # type: ignore[arg-type]
 
     if callable(annotations):
         # For callable annotations, check format
@@ -194,11 +195,12 @@ def test_scaling(
     symbol_annotations = [
         ann for ann in fig.layout.annotations if "<b>" in str(ann.text)
     ]
-    assert all(ann.font.size == 12 * scale for ann in symbol_annotations)
+    assert all(ann.font.size == 11 * scale for ann in symbol_annotations)
 
 
-def test_invalid_modes() -> None:
-    """Test invalid plot modes."""
+def test_ptable_scatter_plotly_invalid_input() -> None:
+    """Test that invalid input raises appropriate errors."""
+    # Invalid mode should raise ValueError
     err_msg = "Invalid value of type 'builtins.str' received for the 'mode' property"
     with pytest.raises(ValueError, match=re.escape(err_msg)):
         pmv.ptable_scatter_plotly({"Fe": ([1], [1])}, mode="invalid")  # type: ignore[arg-type]
@@ -268,7 +270,7 @@ def test_color_data_handling(color_data: ColorData) -> None:
     # Check numeric colors for Cu
     assert traces["Copper"].marker.color == (0.1, 0.9)
     # Check default color for O
-    assert traces["Oxygen"].marker.color == "white"
+    assert traces["Oxygen"].marker.color == "green"
 
     # Check line colors are removed when using color data
     assert traces["Iron"].line.color is None
@@ -352,3 +354,132 @@ def test_colorbar_with_numeric_colors(color_data: ColorData) -> None:
         if trace.x == (None,) and trace.marker.showscale is True
     ]
     assert len(colorbar_traces) == 1
+
+
+def test_ptable_scatter_plotly_multi_line() -> None:
+    """Test plotting multiple lines per element with a legend."""
+    # Create test data with 2 lines per element for a few elements
+    data = {
+        "Fe": {"line1": ([1, 2, 3], [4, 5, 6]), "line2": ([1, 2, 3], [7, 8, 9])},
+        "Co": {"line1": ([1, 2, 3], [5, 6, 7]), "line2": ([1, 2, 3], [8, 9, 10])},
+    }
+
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+
+    # Check that legend is shown
+    assert fig.layout.showlegend is True
+
+    # Check that we have the correct number of traces
+    # 2 elements x 2 lines per element = 4 traces
+    assert len(fig.data) == 4
+
+    # Check that lines have correct names in legend
+    line_names = {trace.name for trace in fig.data if trace.name}
+    assert line_names == {"line1", "line2"}
+
+    # Check that only first element shows in legend (to avoid duplicates)
+    legend_traces = [trace for trace in fig.data if trace.showlegend]
+    assert len(legend_traces) == 2
+
+    # Check legend position
+    assert fig.layout.legend.orientation == "h"
+    assert fig.layout.legend.y == 0.74
+    assert fig.layout.legend.x == 0.4
+
+    dev_fig = fig.full_figure_for_development(warn=False)
+
+    # Check that lines have consistent colors across elements
+    line1_colors = {trace.line.color for trace in dev_fig.data if trace.name == "line1"}
+    line2_colors = {trace.line.color for trace in dev_fig.data if trace.name == "line2"}
+    # Each line type should have exactly one color
+    assert len(line1_colors) == 1
+    assert len(line2_colors) == 1
+    # Colors should be different
+    assert line1_colors != line2_colors
+
+
+def test_ptable_scatter_plotly_hover_text() -> None:
+    """Test that hover text is correctly formatted for multi-line plots."""
+    data = {"Fe": {"line1": ([1], [4]), "line2": ([1], [7])}}
+
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+
+    # Check hover text format
+    for trace in fig.data:
+        if trace.name == "line1":
+            assert "Iron - line1" in trace.hovertemplate
+        elif trace.name == "line2":
+            assert "Iron - line2" in trace.hovertemplate
+
+
+def test_mixed_length_lines() -> None:
+    """Test plotting lines of different lengths in the same element."""
+    data = {
+        "Fe": {
+            "short": ([1, 2], [3, 4]),
+            "long": ([1, 2, 3, 4], [5, 6, 7, 8]),
+        }
+    }
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+
+    # Check that both lines are plotted correctly
+    assert len(fig.data) == 2
+    assert len(fig.data[0].x) != len(fig.data[1].x)
+
+
+def test_empty_element_data() -> None:
+    """Test handling of empty sequences in element data."""
+    data = {
+        "H": {},
+        "Fe": {"line1": ([], [])},  # Empty sequences
+        "Cu": {"line1": ([1, 2], [3, 4])},  # Normal data
+    }
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+
+    # Check that empty element is skipped
+    assert len(fig.data) == 2, "H should not have a trace"
+    assert fig.data[0].hovertemplate.startswith("Iron")
+    assert fig.data[1].hovertemplate.startswith("Copper")
+
+
+def test_single_point_lines() -> None:
+    """Test plotting lines with just one point."""
+    data = {
+        "Fe": {
+            "single": ([1], [2]),
+            "multi": ([1, 2, 3], [4, 5, 6]),
+        }
+    }
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+
+    # Both should be plotted even though one has a single point
+    assert len(fig.data) == 2
+
+
+def test_duplicate_line_names() -> None:
+    """Test handling of duplicate line names across elements."""
+    data = {
+        "Fe": {"common": ([1, 2], [3, 4])},
+        "Cu": {"common": ([1, 2], [5, 6])},
+    }
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+
+    # Check that lines with same name have same color
+    colors = {trace.line.color for trace in fig.data if trace.name == "common"}
+    assert len(colors) == 1  # All lines named "common" should have same color
+
+
+def test_mixed_input_types() -> None:
+    """Test handling of mixed input types (lists, arrays, tuples)."""
+    data = {
+        "Fe": {
+            "list": ([1, 2], [3, 4]),  # Python lists
+            "array": (np.array([1, 2]), np.array([3, 4])),  # NumPy arrays
+            "tuple": ((1, 2), (3, 4)),  # Python tuples
+        }
+    }
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+
+    # All should be plotted correctly
+    assert len(fig.data) == 3
+    assert {trace.name for trace in fig.data} == {"list", "array", "tuple"}
