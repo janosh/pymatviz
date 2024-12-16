@@ -14,8 +14,10 @@ TEST_FILES: str = f"{ROOT}/tests/files"
 
 def interactive_check(
     plot: plt.Figure | plt.Axes,
+    /,
+    *,
     elem_to_check: str = "figure",
-) -> bool:
+) -> bool | None:
     """Ask a human to visually inspect a matplotlib Figure or Axes.
 
     Args:
@@ -24,10 +26,11 @@ def interactive_check(
 
     Returns:
         bool: whether this passes inspection.
+        None: if running in CI.
     """
-    # Skip GitHub CI runs
-    if os.getenv("GITHUB_ACTIONS") == "true":
-        return True
+    # Skip CI runs
+    if os.getenv("CI"):
+        return None
 
     # Handle matplotlib Axes
     if isinstance(plot, plt.Axes):
@@ -37,6 +40,7 @@ def interactive_check(
 
     plot.show()
 
+    # TODO: simplify prompt strategy, asking user to give feedback might be tedious?
     return (
         input(f"Please check the {elem_to_check}. Is this plot good? (y/n): ")
         .strip()
