@@ -1060,12 +1060,15 @@ def ptable_heatmap_splits_plotly(
     return fig
 
 
+ElemData: TypeAlias = (
+    tuple[Sequence[float], Sequence[float]]
+    | tuple[Sequence[float], Sequence[float], Sequence[float | str]]
+    | dict[str, tuple[Sequence[float], Sequence[float]]]
+)
+
+
 def ptable_scatter_plotly(
-    data: Mapping[
-        str,
-        tuple[Sequence[float], Sequence[float]]
-        | tuple[Sequence[float], Sequence[float], Sequence[float | str]],
-    ],
+    data: Mapping[str, ElemData],
     *,
     # Plot mode
     mode: Literal["markers", "lines", "lines+markers"] = "markers",
@@ -1087,7 +1090,7 @@ def ptable_scatter_plotly(
     line_kwargs: dict[str, Any] | None = None,
     # Annotation
     annotations: dict[str, str | dict[str, Any]]
-    | Callable[[Sequence[float]], str | dict[str, Any] | list[dict[str, Any]]]
+    | Callable[[ElemData], str | dict[str, Any] | list[dict[str, Any]]]
     | None = None,
     # Element type colors
     color_elem_strategy: ColorElemTypeStrategy = "symbol",
@@ -1101,10 +1104,12 @@ def ptable_scatter_plotly(
     periodic table.
 
     Args:
-        data: Map from element symbols to (x, y) or (x, y, color) data points.
-            E.g. {"Fe": ([1, 2, 3], [4, 5, 6])} plots a line through points
-            (1,4), (2,5), (3,6) in the Fe tile. If a third list is provided,
-            it will be used to color the points/lines.
+        data: Map from element symbols to either:
+            1. (x, y) or (x, y, color) data points for a single line/scatter plot
+               E.g. {"Fe": ([1, 2, 3], [4, 5, 6])} plots points (1,4), (2,5), (3,6)
+            2. dict of (x, y) tuples for multiple lines per element
+               E.g. {"Fe": {"line1": ([1, 2], [3, 4]), "line2": ([2, 3], [4, 5])}}
+               In this case, a legend will be shown instead of a colorbar
         mode ("markers" | "lines" | "lines+markers"): Plot mode. Defaults to "markers".
 
         --- Color settings ---
@@ -1191,9 +1196,13 @@ def ptable_scatter_plotly(
         all_x_vals: list[float] = []
         all_y_vals: list[float] = []
         # _* to ignore optional color data
-        for x_vals, y_vals, *_ in data.values():
-            all_x_vals.extend(x_vals)
-            all_y_vals.extend(y_vals)
+        for elem_data in data.values():
+            for x_vals, y_vals, *_ in (
+                # handle both single line and multiple lines per element cases
+                elem_data if isinstance(elem_data, dict) else {"": elem_data}  # type: ignore[dict-item]
+            ).values():
+                all_x_vals.extend(x_vals)
+                all_y_vals.extend(y_vals)
 
         if x_range is None:
             x_range = (min(all_x_vals), max(all_x_vals))
@@ -1209,11 +1218,14 @@ def ptable_scatter_plotly(
     # Find global color range if any numeric color values exist
     cbar_min, cbar_max = float("inf"), float("-inf")
     for elem_values in data.values():
-        if len(elem_values) > 2:  # Has color data
-            color_vals = elem_values[2]
-            if all(isinstance(val, int | float) for val in color_vals):
-                cbar_min = min(cbar_min, *color_vals)  # type: ignore[assignment]
-                cbar_max = max(cbar_max, *color_vals)  # type: ignore[assignment]
+        for elem_data in (
+            elem_values if isinstance(elem_values, dict) else {"": elem_values}  # type: ignore[dict-item]
+        ).values():
+            if len(elem_data) > 2:  # Has color data
+                color_vals = elem_data[2]
+                if all(isinstance(val, int | float) for val in color_vals):
+                    cbar_min = min(cbar_min, *color_vals)
+                    cbar_max = max(cbar_max, *color_vals)
 
     has_numeric_colors = cbar_min != float("inf")
 
@@ -1222,9 +1234,31 @@ def ptable_scatter_plotly(
         set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
     )
 
+    # Track whether we're plotting multiple lines per element
+    line_colors: dict[str, str] | None = None
+    has_multiple_lines = any(isinstance(val, dict) for val in data.values())
+
+    if has_multiple_lines:
+        # Get all unique line names across elements for consistent colors
+        line_names = {
+            key
+            for elem_data in data.values()
+            if isinstance(elem_data, dict)
+            for key in elem_data
+        }
+        # Create color map for line names
+        import plotly.express as px
+
+        color_sequence = px.colors.qualitative.Set2
+        line_colors = {
+            name: color_sequence[idx % len(color_sequence)]
+            for idx, name in enumerate(sorted(line_names))
+        }
+
     for symbol, period, group, elem_name, *_ in df_ptable.itertuples():
         if symbol not in data:
             continue
+
         row, col = period - 1, group - 1  # row, col are 0-indexed
 
         if hide_f_block in ("auto", True) and row_7_is_empty and row >= 6:
@@ -1252,30 +1286,48 @@ def ptable_scatter_plotly(
             )
 
         # Add line plot if data exists for this element
-        if symbol in data:
-            x_vals, y_vals = data[symbol][0], data[symbol][1]
-            color_vals = data[symbol][2] if len(data[symbol]) > 2 else ()  # type: ignore[misc]
+        elem_data = (
+            data[symbol] if isinstance(data[symbol], dict) else {"": data[symbol]}  # type: ignore[dict-item]
+        )
+        for line_name, elem_vals in elem_data.items():  # type: ignore[union-attr]
+            x_vals, y_vals, *rest = elem_vals
+            color_vals = rest[0] if rest else None  # if 3-tuple, first entry is color
 
-            # Set up line and marker properties
             line_props = line_defaults.copy()
             marker_props = marker_defaults.copy()
 
-            # Update with element type colors if enabled
-            if color_elem_strategy in {"symbol", "both"} and len(color_vals) > 0:
+            # 1. Start with default colors
+            if "markers" in mode:
+                marker_props["color"] = template_line_color
+            if "lines" in mode:
+                line_props["color"] = template_line_color
+
+            # 2. Apply element type colors if enabled
+            if color_elem_strategy in {"symbol", "both"}:
                 elem_color = elem_type_colors.get(elem_type, template_line_color)
                 if "markers" in mode:
                     marker_props["color"] = elem_color
                 if "lines" in mode:
                     line_props["color"] = elem_color
 
-            # Update with user-provided settings
+            # 3. Apply user settings
             if line_kwargs:
                 line_props.update(line_kwargs)
             if marker_kwargs:
                 marker_props.update(marker_kwargs)
 
-            # Override with color data if provided
-            if len(color_vals) > 0:
+            # 4. Override with line colors for multi-line plots
+            if has_multiple_lines and line_name and line_colors:
+                if line_name not in line_colors:
+                    raise ValueError(f"{line_name=} not found in {line_colors=}")
+                line_color = line_colors[line_name]
+                if "markers" in mode:
+                    marker_props["color"] = line_color
+                if "lines" in mode:
+                    line_props["color"] = line_color
+
+            # 5. Finally, override with color data if provided (highest precedence)
+            if color_vals and hasattr(color_vals, "__iter__"):
                 if all(isinstance(v, int | float) for v in color_vals):
                     # For numeric colors, use the colorscale
                     marker_props.update(
@@ -1294,16 +1346,18 @@ def ptable_scatter_plotly(
                 x=x_vals,
                 y=y_vals,
                 mode=mode,
-                showlegend=False,
+                name=line_name or None,  # None for empty string to avoid legend entry
+                showlegend=bool(line_name) and symbol == next(iter(data)),
+                legendgroup=line_name,
                 row=row + 1,
                 col=col + 1,
                 line=line_props,
                 marker=marker_props,
                 hovertemplate=(
-                    f"{elem_name}<br>x: %{{x:.2f}}<br>y: %{{y:.2f}}<extra></extra>"
+                    f"{elem_name}{f' - {line_name}' if line_name else ''}<br>"
+                    f"x: %{{x:.2f}}<br>y: %{{y:.2f}}<extra></extra>"
                 ),
             )
-
             fig.add_scatter(**scatter_kwargs)
 
         # Add element symbol
@@ -1334,10 +1388,8 @@ def ptable_scatter_plotly(
         if annotations is not None:
             if callable(annotations):
                 # Pass the element's values to the callable
-                y_vals = data[symbol][1] if symbol in data else []
-                annotation = annotations(y_vals)
+                annotation = annotations(data[symbol])
             else:
-                # Use dictionary lookup
                 annotation = annotations.get(symbol, "")
 
             if annotation:  # Only add annotation if we have text
@@ -1388,7 +1440,20 @@ def ptable_scatter_plotly(
     fig.update_xaxes(**x_axis_defaults | (x_axis_kwargs or {}))
     fig.update_yaxes(**y_axis_defaults | (y_axis_kwargs or {}))
 
-    # Add colorbar if we have numeric color values
+    # Add colorbar or legend based on plot type
+    if has_multiple_lines:
+        # Configure legend instead of colorbar
+        fig.update_layout(
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=0.74,
+                xanchor="center",
+                x=0.4,
+                font=dict(size=(font_size or 10) * scale),
+            ),
+        )
     if has_numeric_colors and colorbar is not False:
         colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
             colorbar or {}
