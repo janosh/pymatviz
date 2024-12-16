@@ -1327,7 +1327,7 @@ def ptable_scatter_plotly(
                     line_props["color"] = line_color
 
             # 5. Finally, override with color data if provided (highest precedence)
-            if color_vals and hasattr(color_vals, "__iter__"):
+            if color_vals is not None:
                 if all(isinstance(v, int | float) for v in color_vals):
                     # For numeric colors, use the colorscale
                     marker_props.update(
@@ -1454,6 +1454,7 @@ def ptable_scatter_plotly(
                 font=dict(size=(font_size or 10) * scale),
             ),
         )
+
     if has_numeric_colors and colorbar is not False:
         colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
             colorbar or {}
