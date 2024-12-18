@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 
 import matplotlib.pyplot as plt
 import pytest
@@ -20,13 +21,6 @@ def interactive_check(
     elem_to_check: str = "figure",
 ) -> bool | None:
     """Ask a human to visually inspect a plot.
-
-    Note:
-        You would need to pass `-s` to `pytest` to release output.
-
-    Todo:
-        - `pytest` would capture output by default unless `pytest -s`, possible to
-            modify it within?
 
     Args:
         plot (plt.Figure | plt.Axes): Plot to inspect.
@@ -47,27 +41,34 @@ def interactive_check(
     elif not isinstance(plot, plt.Figure):
         raise TypeError(f"plot type {type(plot).__name__} is not supported.")
 
-    # TODO: scale the figure by screen resolution
-    # TODO: display at the top middle of the screen
+    # Save the figure to as a temporary file (ensure it matches the savefig style)
+    with tempfile.NamedTemporaryFile(suffix=".png") as tmpfile:
+        temp_filepath = tmpfile.name
+
+    plot.savefig(temp_filepath, dpi=300)
+    plt.close(plot)
+
+    # Show figure
+    img = plt.imread(temp_filepath)
+    plt.imshow(img)  # Display the saved image in the plot window
+    plt.axis("off")  # Hide axes for cleaner inspection
+
     plt.show(block=False)
 
-    # print()  # TODO: print the fully qualified name of the test
-
-    # KeyboardInterrupt (ctrl + C) would be treated as a quick "y"
+    # Ask the user to check (treat KeyboardInterrupt as "yes")
     try:
-        goodenough: bool = (
+        good_enough: bool = (
             input(f"Please check the {elem_to_check}. Is it looking good? (y/n): ")
             .strip()
             .lower()
         ) == "y"
-
     except KeyboardInterrupt:
-        goodenough = True
+        good_enough = True
 
     finally:
         plt.close()
 
-    if not goodenough:
+    if not good_enough:
         pytest.fail(reason=f"{elem_to_check} would need attention.")
 
-    return goodenough
+    return good_enough

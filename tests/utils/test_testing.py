@@ -20,8 +20,6 @@ class TestInteractiveCheck:
         # Test Axes
         interactive_check(ax, elem_to_check="line")
 
-        # TODO: after closing the first figure, the following don't show up
-
         # Test Figure
         interactive_check(fig, elem_to_check="line")
 
