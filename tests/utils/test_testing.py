@@ -20,6 +20,7 @@ def create_figure() -> tuple[plt.Figure, plt.Axes]:
     return fig, ax
 
 
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="could only run interactively")
 class TestInteractiveCheck:
     def test_good_figure(self, create_figure: tuple[plt.Figure, plt.Axes]) -> None:
         fig, ax = create_figure
