@@ -22,6 +22,13 @@ def interactive_check(
 ) -> bool | None:
     """Ask a human to visually inspect a plot.
 
+    Note: `pytest` would capture output by default, and you would
+        need to pass `-s` to release capture.
+
+    Todo:
+        - scale figure size by display.
+        - possible to automatically release `pytest` capture?
+
     Args:
         plot (plt.Figure | plt.Axes): Plot to inspect.
         elem_to_check (str): Prompt for what element in the plot to check.
@@ -57,11 +64,16 @@ def interactive_check(
 
     # Ask the user to check (treat KeyboardInterrupt as "yes")
     try:
-        good_enough: bool = (
-            input(f"Please check the {elem_to_check}. Is it looking good? (y/n): ")
-            .strip()
-            .lower()
-        ) == "y"
+        current_test_name = os.environ.get("PYTEST_CURRENT_TEST", "").removesuffix(
+            "(call)"
+        )
+        print(  # noqa: T201 (print)
+            f"\nCurrently checking: {current_test_name}"
+            f"\nPlease check the '{elem_to_check}'. ",
+            end="",
+        )
+
+        good_enough: bool = input("Is it looking good? (y/n): ").strip().lower() == "y"
     except KeyboardInterrupt:
         good_enough = True
 
