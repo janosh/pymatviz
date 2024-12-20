@@ -1,0 +1,61 @@
+"$schema": http://json-schema.org/draft-07/schema#
+
+# Schema for a single key entry
+definitions:
+  key_entry:
+    type: object
+    required: [label]
+    properties:
+      label:
+        type: string
+        minLength: 1
+      symbol:
+        type: string
+        # Allow Greek letters, HTML tags, combining marks etc.
+        pattern: '^[A-Za-z0-9<>/_ ,\u0300-\u036F\u0370-\u03FF%\-]+$'
+      unit:
+        type: string
+        # Added <sup> tags and more special characters
+        pattern: '^[A-Za-z0-9²³·/%⁻$°Å·∙⋅\u0370-\u03FF\- /<>sup¹½·⁻¹²³emu]+$'
+      description:
+        type: string
+        minLength: 10 # Ensure meaningful descriptions
+    additionalProperties: false
+
+# Main schema
+type: object
+propertyNames:
+  pattern: "^[a-z_]+$" # Category names should be lowercase with underscores
+additionalProperties:
+  type: object
+  propertyNames:
+    pattern: "^[a-z0-9_]+$" # Allow numbers in key names for r2scan etc.
+  additionalProperties:
+    "$ref": "#/definitions/key_entry"
+  minProperties: 1 # Each category must have at least one key
+
+required:
+  - structural
+  - electronic
+  - thermodynamic
+  - mechanical
+  - thermal
+  - magnetic
+  - phonon
+  - optical
+  - surface
+  - defect
+  - crystal_symmetry_properties
+  - dft
+  - ml
+  - metrics
+  - computational_details
+  - identifiers_and_metadata
+  - code
+  - synthesis_related
+  - performance_indicators
+  - environmental_indicators
+  - composition
+  - chemical
+  - structure_prototyping
+  - economic

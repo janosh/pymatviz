@@ -83,3 +83,10 @@ repos:
     rev: v1.1.390
     hooks:
       - id: pyright
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.30.0
+    hooks:
+      - id: check-jsonschema
+        files: ^pymatviz/keys\.yml$
+        args: [--schemafile, tests/keys-schema.yml]
