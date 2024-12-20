@@ -260,3 +260,29 @@ def test_key_symbol_html_validity() -> None:
             assert (
                 "</sub>" not in symbol[: symbol.index("<sub>")]
             ), f"Improper tag nesting in {symbol}"
+
+
+@pytest.mark.parametrize(
+    ("key", "expected_description"),
+    [
+        (Key.step, "Step of a job/task/optimizer."),
+        (Key.state, "State of a job/task/computation."),
+        (Key.frame_id, "Molecular dynamics or geometry optimization frame."),
+        # Keys that should have no description
+        (Key.energy, None),
+        (Key.volume, None),
+        (Key.bandgap, None),
+    ],
+)
+def test_key_descriptions(key: Key, expected_description: str | None) -> None:
+    """Test that Key enum descriptions match the YAML data."""
+    assert key.desc == expected_description, f"Unexpected description for {key}"
+
+
+def test_key_description_field_name() -> None:
+    """Test that the description field in YAML is accessed correctly."""
+    from pymatviz.enums import _keys
+
+    # Check that descriptions use "description" not "desc" in YAML data
+    keys_with_desc = [k for k, v in _keys.items() if "description" in v]
+    assert len(keys_with_desc) >= 50, "No descriptions found in YAML data"
