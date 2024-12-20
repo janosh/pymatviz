@@ -55,19 +55,24 @@ structural:
   coord_num:
     label: Coordination Number
     symbol: N<sub>coord</sub>
+    description: Number of nearest neighbor atoms surrounding each atom
   bond_lens:
     label: Bond Lengths
     unit: Å
+    description: Distances between bonded atoms, typically determined by distance cutoffs
   bond_angles:
     label: Bond Angles
     unit: °
+    description: Angles between three connected atoms (atom-atom-atom angles)
   packing_fraction:
     label: Packing Fraction
     symbol: V<sub>atoms</sub>/V
+    description: Ratio of volume occupied by atoms (modeled as hard spheres) to total cell volume
   max_pair_dist:
     label: Maximum Pair Distance
     symbol: d<sub>max</sub>
     unit: Å
+    description: Maximum distance between any pair of atoms in the structure
   conventional_cell:
     label: Conventional Cell
   primitive_cell:
@@ -76,6 +81,7 @@ structural:
     label: Reduced Cell
   niggli_reduced_cell:
     label: Niggli Reduced Cell
+    description: A unique, standardized representation of the unit cell following Niggli's reduction criteria
 
 electronic:
   bandgap:
@@ -94,6 +100,7 @@ electronic:
     label: ML Band Gap
     symbol: E<sub>gap,ML</sub>
     unit: eV
+    description: Band gap predicted by machine learning models
   bandgap_true:
     label: True Band Gap
     symbol: E<sub>gap,true</sub>
@@ -110,6 +117,7 @@ electronic:
     label: Fermi Energy
     symbol: E<sub>Fermi</sub>
     unit: eV
+    description: Highest occupied energy level at zero temperature
   electronic_structure:
     label: Electronic Structure
   electron_affinity:
@@ -120,18 +128,22 @@ electronic:
     label: Work Function
     symbol: E<sub>work</sub>
     unit: eV
+    description: Minimum energy needed to remove an electron from the solid to vacuum
   dos:
     label: Density of States
+    description: Number of available electronic states at each energy level
   band_structure:
     label: Band Structure
   conductivity:
     label: Electrical Conductivity
     symbol: σ
     unit: S/m
+    description: Material's ability to conduct electric current
   seebeck_coefficient:
     label: Seebeck Coefficient
     symbol: S
     unit: V/K
+    description: Voltage developed across material per unit temperature gradient
   carrier_concentration:
     label: Carrier Concentration
     symbol: n
@@ -143,14 +155,40 @@ electronic:
   effective_mass:
     label: Effective Mass
     symbol: m<sub>e</sub>
+    description: Mass that a particle appears to carry in a crystal, accounting for dispersion/band structure effects
   polarizability:
     label: Polarizability
     symbol: α
     unit: Å³
+    description: Tendency of electron cloud to be distorted by an electric field
   polarization:
     label: Polarization
     symbol: P
     unit: C/m²
+  dielectric_constant:
+    label: Dielectric Constant
+    symbol: ε<sub>r</sub>
+    description: Relative permittivity, measure of material's ability to store electrical energy
+  charge_density:
+    label: Charge Density
+    symbol: ρ
+    unit: e/Å³
+  electron_density:
+    label: Electron Density
+    symbol: n<sub>e</sub>
+    unit: cm⁻³
+  hole_density:
+    label: Hole Density
+    symbol: n<sub>h</sub>
+    unit: cm⁻³
+  electron_mobility:
+    label: Electron Mobility
+    symbol: μ<sub>e</sub>
+    unit: cm²/V·s
+  hole_mobility:
+    label: Hole Mobility
+    symbol: μ<sub>h</sub>
+    unit: cm²/V·s
 
 thermodynamic:
   energy:
@@ -192,6 +230,7 @@ thermodynamic:
     label: Corrected Energy
     symbol: E<sub>corr</sub>
     unit: eV
+    description: Energy after applying corrections (for U/J parameters, van der Waals, different XC functionals, ...)
   uncorrected_energy:
     label: Uncorrected Energy
     symbol: E<sub>uncorr</sub>
@@ -208,10 +247,12 @@ thermodynamic:
     label: Cohesive Energy
     symbol: E<sub>coh</sub>/N<sub>atoms</sub>
     unit: eV/atom
+    description: Energy required to break crystal into isolated neutral atoms
   e_form_per_atom:
     label: E<sub>form</sub>
     symbol: E<sub>form</sub>/N<sub>atoms</sub>
     unit: eV/atom
+    description: Formation energy per atom relative to constituent element reference states
   e_form_pred:
     label: Predicted E<sub>form</sub>
     symbol: E<sub>form,pred</sub>/N<sub>atoms</sub>
@@ -224,6 +265,7 @@ thermodynamic:
     label: Energy above convex hull
     symbol: E<sub>hull dist</sub>/N<sub>atoms</sub>
     unit: eV/atom
+    description: Energy difference between structure and convex hull of stable phases
   each_pred:
     label: Predicted energy above convex hull
     symbol: E<sub>hull dist,pred</sub>/N<sub>atoms</sub>
@@ -239,6 +281,7 @@ thermodynamic:
   computed_structure_entry:
     label: Computed Structure Entry
     symbol: CSE
+    description: Container for structure and its computed properties (energy, relaxed atomic positions, calculation parameters, etc.)
 
 mechanical:
   forces:
@@ -253,9 +296,11 @@ mechanical:
   stress_trace:
     label: Stress Trace
     symbol: σ<sub>trace</sub>
+    description: Sum of diagonal elements of stress tensor, related to pressure
   voigt_stress:
     label: Voigt Stress
     symbol: σ<sub>Voigt</sub>
+    description: Stress tensor in Voigt notation (6-component vector)
   bulk_modulus:
     label: Bulk Modulus
     symbol: K
@@ -271,10 +316,12 @@ mechanical:
   poisson_ratio:
     label: Poisson's Ratio
     symbol: ν
+    description: Negative ratio of transverse to axial strain under uniaxial stress
   hardness:
     label: Hardness
     symbol: H
     unit: GPa
+    description: Resistance to plastic deformation, typically measured by indentation
   elastic_tensor:
     label: Elastic Tensor
     symbol: C
@@ -287,6 +334,7 @@ mechanical:
   elastic_tensor_vrh:
     label: Voigt-Reuss-Hill Elastic Tensor
     symbol: C<sub>VRH</sub>
+    description: Elastic tensor averaged between Voigt (uniform strain) and Reuss (uniform stress) bounds
   toughness:
     label: Toughness
     symbol: T
@@ -351,6 +399,19 @@ mechanical:
     label: Viscosity
     symbol: η
     unit: Pa·s
+  strain:
+    label: Strain
+    symbol: ε
+    unit: "%"
+  strain_rate:
+    label: Strain Rate
+    symbol: ε<sub>dot</sub>
+    unit: s⁻¹
+  compliance:
+    label: Compliance
+    symbol: S
+    unit: GPa⁻¹
+    description: Inverse of elastic modulus, measure of material's ability to deform under load
 
 thermal:
   temperature:
@@ -392,6 +453,21 @@ thermal:
   gruneisen_parameter:
     label: Gruneisen Parameter
     symbol: γ
+  thermal_resistivity:
+    label: Thermal Resistivity
+    symbol: ρ<sub>th</sub>
+    unit: K·m/W
+    description: Resistance to heat flow, inverse of thermal conductivity
+  thermal_time_constant:
+    label: Thermal Time Constant
+    symbol: τ<sub>th</sub>
+    unit: s
+    description: Time for material to reach thermal equilibrium
+  heat_flux:
+    label: Heat Flux
+    symbol: q
+    unit: W/m²
+    description: Rate of heat transfer per unit area
 
 magnetic:
   magnetic_moment:
@@ -417,6 +493,21 @@ magnetic:
     label: Coercivity
     symbol: H<sub>c</sub>
     unit: Oe
+  exchange_coupling:
+    label: Exchange Coupling
+    symbol: J
+    unit: meV
+    description: Strength of magnetic interaction between neighboring spins
+  magnetic_susceptibility:
+    label: Magnetic Susceptibility
+    symbol: χ
+    unit: emu/mol
+    description: Measure of material's magnetic response to applied field
+  magnetic_anisotropy:
+    label: Magnetic Anisotropy
+    symbol: K<sub>u</sub>
+    unit: MJ/m³
+    description: Directional dependence of magnetic properties
 
 phonon:
   ph_band_structure:
@@ -429,8 +520,10 @@ phonon:
     label: Phonon DOS RMSE
   has_imag_ph_gamma_modes:
     label: Has Imaginary Phonon Gamma Modes
+    description: Whether structure has imaginary frequency modes at the Gamma point, indicating dynamic instability
   has_imag_ph_modes:
     label: Has Imaginary Phonon Modes
+    description: Whether structure has imaginary frequency modes, indicating dynamic instability
   last_ph_dos_peak:
     label: Highest-frequency Phonon DOS Peak
     symbol: ω<sub>max</sub>
@@ -563,26 +656,30 @@ crystal_symmetry_properties:
     label: Symmetry Match
   symprec:
     label: Symmetry Precision
+    description: Tolerance parameter for symmetry finding algorithms, typically in Angstroms
   angle_tolerance:
     label: Angle Tolerance
+    description: Angular tolerance (in degrees) for symmetry detection
   point_group:
     label: Point Group
   n_wyckoff:
     label: Number of Wyckoff Positions
     symbol: N<sub>wyckoff</sub>
+    description: Number of crystallographically distinct atomic positions in the structure
   n_rot_syms:
     label: Number of rotational symmetries
     symbol: N<sub>rot</sub>
+    description: Number of rotations that map crystal onto itself
   n_trans_syms:
     label: Number of translational symmetries
     symbol: N<sub>trans</sub>
+    description: Number of translations that map crystal onto itself
   n_sym_ops:
     label: Total number of symmetries
     symbol: N<sub>sym</sub>
+    description: Total number of symmetry operations (rotations, translations, etc.)
   wyckoff:
     label: AFLOW-style Label with Chemical System
-  wyckoff_spglib:
-    label: Wyckoff Label (spglib)
   wyckoff_symbol:
     label: Wyckoff Symbol
   wyckoff_symbols:
@@ -673,6 +770,30 @@ optical: # Optical Properties
     unit: cm⁻¹
   extinction_coefficient:
     label: Extinction Coefficient
+  absorption_length:
+    label: Absorption Length
+    symbol: α<sup>-1</sup>
+    unit: nm
+    description: Distance at which light intensity drops by 1/e
+  quantum_efficiency:
+    label: Quantum Efficiency
+    symbol: η<sub>QE</sub>
+    unit: "%"
+    description: Ratio of collected charge carriers to incident photons
+  oscillator_strength:
+    label: Oscillator Strength
+    symbol: f
+    description: Measure of transition probability in optical absorption
+  group_velocity:
+    label: Group Velocity
+    symbol: v<sub>g</sub>
+    unit: m/s
+    description: Velocity of wave packet/energy propagation
+  phase_velocity:
+    label: Phase Velocity
+    symbol: v<sub>p</sub>
+    unit: m/s
+    description: Velocity of wave phase propagation
 
 surface: # Surface Properties
   surface_energy:
@@ -711,6 +832,26 @@ defect:
   stacking_fault_energy:
     label: Stacking Fault Energy
     unit: mJ/m²
+  defect_formation_volume:
+    label: Defect Formation Volume
+    symbol: ΔV<sub>f</sub>
+    unit: Å³
+    description: Volume change associated with defect formation
+  migration_barrier:
+    label: Migration Barrier
+    symbol: E<sub>m</sub>
+    unit: eV
+    description: Energy barrier for defect migration between sites
+  diffusion_coefficient:
+    label: Diffusion Coefficient
+    symbol: D
+    unit: cm²/s
+    description: Rate of atomic/defect diffusion through material
+  activation_volume:
+    label: Activation Volume
+    symbol: V<sub>act</sub>
+    unit: Å³
+    description: Volume change at transition state during defect migration
 
 dft: # Density Functional Theory
   dft:
@@ -771,8 +912,6 @@ dft: # Density Functional Theory
     label: SCF Tolerance
   wave_function:
     label: Wave Function
-  charge_density:
-    label: Charge Density
   n_steps:
     label: Number of Steps
   n_elec_steps:
@@ -835,12 +974,16 @@ ml: # Machine Learning
     label: Hyperparameters
   feature_importance:
     label: Feature Importance
+    description: Relative influence of each input feature on model predictions
+    symbol: w<sub>i</sub>
   optimizer:
     label: Optimizer
   loss:
     label: Loss
   uncertainty:
     label: Uncertainty
+    description: Model's estimate of prediction uncertainty/confidence
+    symbol: u<sub>pred</sub>
   epochs:
     label: Epochs
   batch_size:
@@ -853,6 +996,7 @@ ml: # Machine Learning
     label: Weight Decay
   early_stopping:
     label: Early Stopping
+    description: Prevent overfitting by stopping training when validation metrics stop improving
   n_folds:
     label: N<sub>folds</sub>
   n_estimators:
@@ -867,8 +1011,10 @@ ml: # Machine Learning
     label: N<sub>layers</sub>
   radial_cutoff:
     label: Radial Cutoff
+    description: Maximum distance considered for atomic interactions in ML models
   angular_cutoff:
     label: Angular Cutoff
+    description: Maximum distance for three-body interactions in ML models
 
 metrics:
   accuracy:
@@ -880,9 +1026,11 @@ metrics:
   daf:
     label: Discovery Acceleration Factor
     symbol: DAF
+    description: Ratio of materials discovered to those that would be found by random search
   f1:
     label: F1 Score
     symbol: F1
+    description: Harmonic mean of precision and recall, reflecting overall performance of a binary classifier on the positive class
   fp:
     label: False Positives
     symbol: FP
@@ -914,12 +1062,15 @@ metrics:
   pearson:
     label: Pearson Correlation
     symbol: r
+    description: Linear correlation coefficient between two variables (-1 to 1)
   spearman:
     label: Spearman Correlation
     symbol: r<sub>s</sub>
+    description: Rank correlation measuring monotonic relationships between variables (-1 to 1)
   kendall:
     label: Kendall Correlation
     symbol: r<sub>k</sub>
+    description: Rank correlation based on concordant and discordant pairs (-1 to 1)
   mse:
     label: Mean Squared Error
     symbol: MSE
@@ -940,18 +1091,21 @@ metrics:
   srme:
     label: Symmetric Relative Mean Error
     symbol: SRME
+    description: Error metric that treats over- and under-prediction symmetrically
   sre:
     label: Symmetric Relative Error
     symbol: SRE
   srd:
     label: Symmetric Relative Difference
     symbol: SRD
+    description: Relative difference metric that treats signed differences symmetrically
   smpe:
     label: Symmetric Mean Percentage Error
     symbol: SMPE
   smape:
     label: Symmetric Mean Absolute Percentage Error
     symbol: SMAPE
+    description: Percentage absolute error that treats over- and under-prediction symmetrically
   sse:
     label: Sum of Squared Errors
     symbol: SSE
@@ -1232,11 +1386,14 @@ synthesis_related:
 performance_indicators:
   fom:
     label: Figure of Merit
+    description: Composite metric combining multiple performance characteristics
   power_factor:
     label: Power Factor
+    description: Product of electrical conductivity and square of Seebeck coefficient
   zt:
     label: Figure of Merit
     symbol: ZT
+    description: Thermoelectric figure of merit, dimensionless measure of material's electricity/heat conversion efficiency
   efficiency:
     label: Efficiency
     symbol: η
@@ -1253,12 +1410,14 @@ performance_indicators:
     label: Stability
   selectivity:
     label: Selectivity
+    description: Ability to preferentially interact with specific species/molecules
   purity:
     label: Purity
   yield:
     label: Yield
   activity:
     label: Activity
+    description: Rate or effectiveness of material in its intended function (catalysis, yield, etc.)
   performance:
     label: Performance
   gain:
@@ -1279,9 +1438,13 @@ performance_indicators:
 environmental_indicators:
   toxicity:
     label: Toxicity Index
+    description: Material's potential harmful effects on health/environment
   recyclability:
     label: Recyclability Score
+    description: How easily/efficiently material can be recycled
   biodegradability:
     label: Biodegradability Score
+    description: Material's ability to decompose naturally
   sustainability:
     label: Sustainability Index
+    description: Composite score of environmental impact including resource depletion, emissions, etc.

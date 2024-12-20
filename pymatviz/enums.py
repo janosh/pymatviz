@@ -168,7 +168,7 @@ class Key(StrEnum):
     @property
     def desc(self) -> str | None:
         """Description associated with the key."""
-        return _keys[self.value].get("desc")
+        return _keys[self.value].get("description")
 
     def __reduce_ex__(self, proto: object) -> tuple[type, tuple[str]]:
         """Return as a string when pickling. Overrides Enum.__reduce_ex__ which returns
@@ -228,7 +228,6 @@ class Key(StrEnum):
     n_trans_syms = "n_trans_syms"
     n_sym_ops = "n_sym_ops"
     wyckoff = "wyckoff"
-    wyckoff_spglib = "wyckoff_spglib"
     wyckoff_symbol = "wyckoff_symbol"
     wyckoff_symbols = "wyckoff_symbols"
 
@@ -337,6 +336,12 @@ class Key(StrEnum):
     effective_mass = "effective_mass"
     polarizability = "polarizability"
     polarization = "polarization"
+    dielectric_constant = "dielectric_constant"
+    charge_density = "charge_density"
+    electron_density = "electron_density"
+    hole_density = "hole_density"
+    electron_mobility = "electron_mobility"
+    hole_mobility = "hole_mobility"
 
     # Mechanical
     forces = "forces"
@@ -359,6 +364,9 @@ class Key(StrEnum):
     ductility = "ductility"
     fracture_toughness = "fracture_toughness"
     sound_velocity = "sound_velocity"
+    strain = "strain"
+    strain_rate = "strain_rate"
+    compliance = "compliance"
 
     # Thermal
     temperature = "temperature"
@@ -373,6 +381,9 @@ class Key(StrEnum):
     thermal_diffusivity = "thermal_diffusivity"
     thermal_expansion = "thermal_expansion"
     thermal_expansion_coeff = "thermal_expansion_coeff"
+    thermal_resistivity = "thermal_resistivity"
+    thermal_time_constant = "thermal_time_constant"
+    heat_flux = "heat_flux"
 
     # Phonon
     ph_band_structure = "ph_band_structure"
@@ -395,6 +406,11 @@ class Key(StrEnum):
     transmittance = "transmittance"
     absorption_coefficient = "absorption_coefficient"
     extinction_coefficient = "extinction_coefficient"
+    absorption_length = "absorption_length"
+    quantum_efficiency = "quantum_efficiency"
+    oscillator_strength = "oscillator_strength"
+    group_velocity = "group_velocity"
+    phase_velocity = "phase_velocity"
 
     # Surface
     surface_energy = "surface_energy"
@@ -411,6 +427,10 @@ class Key(StrEnum):
     migration_energy = "migration_energy"
     dislocation_energy = "dislocation_energy"
     stacking_fault_energy = "stacking_fault_energy"
+    defect_formation_volume = "defect_formation_volume"
+    migration_barrier = "migration_barrier"
+    diffusion_coefficient = "diffusion_coefficient"
+    activation_volume = "activation_volume"
 
     # Magnetic
     magmoms = "magmoms"
@@ -419,6 +439,9 @@ class Key(StrEnum):
     neel_temp = "neel_temp"
     magnetocrystalline_anisotropy = "magnetocrystalline_anisotropy"
     coercivity = "coercivity"
+    exchange_coupling = "exchange_coupling"
+    magnetic_susceptibility = "magnetic_susceptibility"
+    magnetic_anisotropy = "magnetic_anisotropy"
 
     # DFT
     dft = "dft"
@@ -450,7 +473,6 @@ class Key(StrEnum):
     max_scf_iter = "max_scf_iter"
     scf_tol = "scf_tol"
     wave_function = "wave_function"
-    charge_density = "charge_density"
     n_steps = "n_steps"
     n_elec_steps = "n_elec_steps"
     n_ionic_steps = "n_ionic_steps"
