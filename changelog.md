@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.15.0](https://github.com/janosh/pymatviz/compare/v0.14.0...v0.15.0)
+
+> 20 December 2024
+
+- Multi-line `ptable_scatter_plotly` [`#260`](https://github.com/janosh/pymatviz/pull/260)
+- Hetero-nuclear diatomics example with MACE [`#259`](https://github.com/janosh/pymatviz/pull/259)
+- Add `ptable_scatter_plotly` [`#258`](https://github.com/janosh/pymatviz/pull/258)
+- Remove `cumulative.py` and associated tests + assets [`#257`](https://github.com/janosh/pymatviz/pull/257)
+- Support `phonopy` `TotalDos` and `BandStructure` in `phonon_dos` and `phonon_bands` plots [`#256`](https://github.com/janosh/pymatviz/pull/256)
+- Add `brillouin_zone_3d` plot function [`#251`](https://github.com/janosh/pymatviz/pull/251)
+- Add element color schemes `alloys` [`#255`](https://github.com/janosh/pymatviz/pull/255)
+- delete pymatviz/classify/curves_matplotlib.py [`#254`](https://github.com/janosh/pymatviz/pull/254)
+- `plotly` ROC and precision-recall curves [`#253`](https://github.com/janosh/pymatviz/pull/253)
+- Add `pymatviz.classify.confusion_matrix` [`#252`](https://github.com/janosh/pymatviz/pull/252)
+- Fix `phonon_bands` for band structures with different paths in k-space [`#250`](https://github.com/janosh/pymatviz/pull/250)
+- keys.yml add more related to electronic, mechanical, thermal, and magnetic properties [`f377d95`](https://github.com/janosh/pymatviz/commit/f377d95aea1127f39108aa8a796f9fac13857d59)
+- classify/curves_plotly.py show threshold on hover, add _add_no_skill_line helper [`77e765a`](https://github.com/janosh/pymatviz/commit/77e765a1b6fc44006e2b684e2a4a76f86f2b4c52)
+- breaking: rename Key.cse to computed_structure_entry [`ab691bb`](https://github.com/janosh/pymatviz/commit/ab691bbfa9f42151a42bcc3a6b2e0a261820b8b6)
+- test_brillouin_zone_3d_trace_counts [`44353aa`](https://github.com/janosh/pymatviz/commit/44353aa5c02259ab82b1d42e1ac3ac9e02ef5a18)
+
 #### [v0.14.0](https://github.com/janosh/pymatviz/compare/v0.13.2...v0.14.0)
 
 > 21 November 2024
