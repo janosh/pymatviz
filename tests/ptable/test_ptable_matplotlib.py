@@ -10,6 +10,7 @@ from pymatgen.core.periodic_table import Element
 
 import pymatviz as pmv
 from pymatviz.enums import Key
+from pymatviz.utils.testing import interactive_check
 
 
 if TYPE_CHECKING:
@@ -58,6 +59,8 @@ class TestPtableHeatmap:
         )
         assert isinstance(fig, plt.Figure)
         assert len(fig.axes) == 127 if hide_f_block is True else 181, len(fig.axes)
+
+        interactive_check(fig)
 
     @pytest.mark.parametrize("log", [False, True])
     def test_log_scale(self, log: bool) -> None:
