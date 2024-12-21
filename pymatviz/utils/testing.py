@@ -6,7 +6,6 @@ import os
 import tempfile
 
 import matplotlib.pyplot as plt
-import pytest
 
 from pymatviz.utils import ROOT
 
@@ -81,6 +80,9 @@ def interactive_check(
         plt.close()
 
     if not good_enough:
+        # Lazily import to avoid installing for script checking
+        import pytest
+
         pytest.fail(reason=f"{elem_to_check} would need attention.")
 
     return good_enough
