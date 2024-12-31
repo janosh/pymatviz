@@ -312,7 +312,7 @@ def ptable_heatmap_plotly(
     if border is not False:
         border = border or {}
         border_color = border.pop("color", "darkgray")
-        border_width = border.pop("width", 2)
+        border_width = border.pop("width", 0.5)
 
         common_kwargs = dict(
             z=np.where(tile_texts, 1, np.nan), showscale=False, hoverinfo="none"

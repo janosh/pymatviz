@@ -152,8 +152,78 @@ class Key(StrEnum):
 
     @property
     def unit(self) -> str | None:
-        """Unit associated with the key."""
-        return _keys[self.value].get("unit")
+        """Unit associated with the key with HTML tags for sub/superscripts."""
+        if not (unit := _keys[self.value].get("unit")):
+            return None
+
+        # Map Unicode characters to their ASCII equivalents
+        superscript_map = {
+            "⁰": "0",
+            "¹": "1",
+            "²": "2",
+            "³": "3",
+            "⁴": "4",
+            "⁵": "5",
+            "⁶": "6",
+            "⁷": "7",
+            "⁸": "8",
+            "⁹": "9",
+            "⁻": "-",
+            "½": "1/2",
+        }
+        subscript_map = {
+            "₀": "0",
+            "₁": "1",
+            "₂": "2",
+            "₃": "3",
+            "₄": "4",
+            "₅": "5",
+            "₆": "6",
+            "₇": "7",
+            "₈": "8",
+            "₉": "9",
+            "₋": "-",
+            "½": "1/2",
+        }
+
+        # Process character by character
+        html_str = ""
+        in_super = in_sub = False
+
+        idx = 0
+        while idx < len(unit):
+            char = unit[idx]
+
+            # Check if character is superscript
+            if new_char := superscript_map.get(char):
+                if not in_super:
+                    html_str += "<sup>"
+                    in_super = True
+                html_str += new_char
+            # Check if character is subscript
+            elif new_char := subscript_map.get(char):
+                if not in_sub:
+                    html_str += "<sub>"
+                    in_sub = True
+                html_str += new_char
+            else:
+                # Close any open tags
+                if in_super:
+                    html_str += "</sup>"
+                    in_super = False
+                if in_sub:
+                    html_str += "</sub>"
+                    in_sub = False
+                html_str += char
+            idx += 1
+
+        # Close any remaining open tags
+        if in_super:
+            html_str += "</sup>"
+        if in_sub:
+            html_str += "</sub>"
+
+        return html_str
 
     @property
     def category(self) -> str:
@@ -296,6 +366,7 @@ class Key(StrEnum):
     cohesive_energy_per_atom = "cohesive_energy_per_atom"
     heat_of_formation = "heat_of_formation"
     heat_of_reaction = "heat_of_reaction"
+    e_form = "e_form"
     e_form_per_atom = "e_form_per_atom"
     e_form_pred = "e_form_pred"
     e_form_true = "e_form_true"
