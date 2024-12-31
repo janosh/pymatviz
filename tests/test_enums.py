@@ -223,43 +223,42 @@ def test_key_units_are_consistent() -> None:
 
 
 def test_key_label_formatting() -> None:
-    """Test that labels are properly formatted."""
+    """Test that all labels are properly formatted."""
     for key in Key:
         label = key.label
-        assert (  # Label should be capitalized
+        assert (
             label[0].isupper() or label[0].isdigit() or label.startswith("r2SCAN")
-        ), f"Label should be capitalized: {label}"
+        ), f"{label=} should be capitalized"
 
-        assert not label.endswith((".", ",")), f"{label=} ends with period or comma"
+        assert not label.endswith((".", ",")), f"{label=} ends with punctuation"
 
         assert label.strip() == label, f"{label=} has outer whitespace"
 
-        assert "  " not in label, f"Label has multiple spaces: {label}"
+        assert "  " not in label, f"{label=} has multiple spaces"
 
 
 def test_key_value_matches_name() -> None:
-    """Test that Key enum values match their names."""
+    """Test that all Key enum values match their names."""
     for key in Key:
         # yield is a reserved word in Python, so had to be suffixed, hence can't match
         # key name can't match value
         if key in (Key.yield_, Key.mat_id):
             continue
-        assert str(key) == key.name.lower(), f"Value doesn't match name for {key}"
+        name, value = key.name, str(key)
+        assert name == value, f"{name=} doesn't match {value=}"
 
 
-def test_key_symbol_html_validity() -> None:
+def test_key_html_validity() -> None:
     """Test that HTML subscripts in symbols are properly formatted."""
     for key in Key:
-        symbol = key.symbol
-        if symbol and "<sub>" in symbol:
-            # Check matching closing tags
-            assert symbol.count("<sub>") == symbol.count(
-                "</sub>"
-            ), f"Mismatched sub tags in {symbol}"
-            # Check proper nesting
-            assert (
-                "</sub>" not in symbol[: symbol.index("<sub>")]
-            ), f"Improper tag nesting in {symbol}"
+        for field in ("symbol", "unit"):
+            value = getattr(key, field)
+            if value and "<sub>" in value:
+                # Check matching closing tags
+                n_sub, n_sub_end = value.count("<sub>"), value.count("</sub>")
+                assert n_sub == n_sub_end, f"Mismatched sub tags in {value}"
+                # Check proper nesting
+                assert "</sub>" not in value[: value.index("<sub>")]
 
 
 @pytest.mark.parametrize(
@@ -279,10 +278,104 @@ def test_key_descriptions(key: Key, expected_description: str | None) -> None:
     assert key.desc == expected_description, f"Unexpected description for {key}"
 
 
-def test_key_description_field_name() -> None:
-    """Test that the description field in YAML is accessed correctly."""
-    from pymatviz.enums import _keys
+@pytest.mark.parametrize(
+    ("key", "expected_unit"),
+    [
+        # Basic units
+        (Key.volume, "Å<sup>3</sup>"),
+        (Key.energy, "eV"),
+        (Key.temperature, "K"),
+        (Key.pressure, "Pa"),
+        # Complex units
+        (Key.carrier_concentration, "cm<sup>-3</sup>"),
+        (Key.mobility, "cm<sup>2</sup>/V⋅s"),
+        (Key.thermal_conductivity, "W/m⋅K"),
+        (Key.fracture_toughness, "MPa⋅m<sup>1/2</sup>"),
+        # Units with subscripts
+        (Key.magnetic_moment, "μ<sub>B</sub>"),
+        (Key.energy_per_atom, "eV/atom"),
+        (Key.heat_capacity, "J/K"),
+        # Mixed sub/superscripts
+        (Key.specific_heat_capacity, "J/kg⋅K"),
+        (Key.thermal_resistivity, "K⋅m/W"),
+        # No units
+        (Key.formula, None),
+        (Key.structure, None),
+        (Key.crystal_system, None),
+    ],
+)
+def test_key_units(key: Key, expected_unit: str | None) -> None:
+    """Test that Key enum units are correctly formatted with HTML tags."""
+    assert key.unit == expected_unit
 
-    # Check that descriptions use "description" not "desc" in YAML data
-    keys_with_desc = [k for k, v in _keys.items() if "description" in v]
-    assert len(keys_with_desc) >= 50, "No descriptions found in YAML data"
+
+def test_unit_html_consistency() -> None:
+    """Test that all units follow consistent HTML formatting rules."""
+    for key in Key:
+        unit = key.unit
+        if unit is None:
+            continue
+
+        # Check proper HTML tag nesting
+        if "<sup>" in unit:
+            assert unit.count("<sup>") == unit.count(
+                "</sup>"
+            ), f"Mismatched sup tags in {unit}"
+            assert (
+                "</sup>" not in unit[: unit.index("<sup>")]
+            ), f"Improper sup tag nesting in {unit}"
+
+        if "<sub>" in unit:
+            assert unit.count("<sub>") == unit.count(
+                "</sub>"
+            ), f"Mismatched sub tags in {unit}"
+            assert (
+                "</sub>" not in unit[: unit.index("<sub>")]
+            ), f"Improper sub tag nesting in {unit}"
+
+        # Check no nested tags
+        if "<sup>" in unit and "<sub>" in unit:
+            sup_start = unit.index("<sup>")
+            sup_end = unit.index("</sup>")
+            sub_start = unit.index("<sub>")
+            sub_end = unit.index("</sub>")
+            assert not (sup_start < sub_start < sup_end), "Nested sup/sub tags"
+            assert not (sub_start < sup_start < sub_end), "Nested sub/sup tags"
+
+
+def test_unit_special_characters() -> None:
+    """Test that special characters in units are consistently used."""
+    for key in Key:
+        unit = key.unit
+        if unit is None:
+            continue
+
+        # Check for proper middle dot usage
+        assert "·" not in unit, f"ASCII middle dot in {unit}, use ⋅ instead"
+
+        # Check for proper minus sign usage
+        if "-" in unit:
+            assert (
+                "<sup>-" in unit
+            ), f"ASCII hyphen in {unit}, use <sup>-...</sup> for exponents"
+
+        # Common units should use standard symbols
+        if "angstrom" in unit:
+            assert "Å" in unit, f"Use Å symbol in {unit} of {key}"
+        if "micro" in unit:
+            assert "μ" in unit, f"Use μ symbol in {unit} of {key}"
+        if "ohm" in unit:
+            assert "Ω" in unit, f"Use Ω symbol in {unit} of {key}"
+        if "kelvin" in unit:
+            assert "K" in unit, f"Use K symbol in {unit} of {key}"
+        if "pascal" in unit:
+            assert "Pa" in unit, f"Use Pa symbol in {unit} of {key}"
+
+
+def test_unit_formatting_consistency() -> None:
+    """Test that similar quantities use consistent unit formatting."""
+    ev_keys = {k for k in Key if k.unit and "eV" in k.unit}
+    valid_ev_units = {"eV", "eV/atom", "eV/K", "eV/Å", "meV"}
+    for key in ev_keys:
+        unit = key.unit
+        assert unit in valid_ev_units, f"Unexpected {unit=} for {key=}"
