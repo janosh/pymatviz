@@ -151,7 +151,7 @@ electronic:
   mobility:
     label: Carrier Mobility
     symbol: μ
-    unit: cm²/V·s
+    unit: cm²/V⋅s
   effective_mass:
     label: Effective Mass
     symbol: m<sub>e</sub>
@@ -184,11 +184,11 @@ electronic:
   electron_mobility:
     label: Electron Mobility
     symbol: μ<sub>e</sub>
-    unit: cm²/V·s
+    unit: cm²/V⋅s
   hole_mobility:
     label: Hole Mobility
     symbol: μ<sub>h</sub>
-    unit: cm²/V·s
+    unit: cm²/V⋅s
 
 thermodynamic:
   energy:
@@ -248,6 +248,11 @@ thermodynamic:
     symbol: E<sub>coh</sub>/N<sub>atoms</sub>
     unit: eV/atom
     description: Energy required to break crystal into isolated neutral atoms
+  e_form:
+    label: E<sub>form</sub>
+    symbol: E<sub>form</sub>
+    unit: eV/atom
+    description: All-atoms formation energy relative to constituent element reference states
   e_form_per_atom:
     label: E<sub>form</sub>
     symbol: E<sub>form</sub>/N<sub>atoms</sub>
@@ -354,7 +359,7 @@ mechanical:
   fracture_toughness:
     label: Fracture Toughness
     symbol: K<sub>IC</sub>
-    unit: MPa·m<sup>1/2</sup>
+    unit: MPa⋅m½
   sound_velocity:
     label: Sound Velocity
     symbol: v<sub>s</sub>
@@ -362,7 +367,7 @@ mechanical:
   thermal_conductivity:
     label: Thermal Conductivity
     symbol: κ
-    unit: W/m·K
+    unit: W/m⋅K
   thermal_expansion:
     label: Thermal Expansion
     symbol: α
@@ -370,11 +375,11 @@ mechanical:
   lattice_thermal_conductivity:
     label: Lattice Thermal Conductivity
     symbol: κ<sub>lattice</sub>
-    unit: W/m·K
+    unit: W/m⋅K
   electronic_thermal_conductivity:
     label: Electronic Thermal Conductivity
     symbol: κ<sub>electronic</sub>
-    unit: W/m·K
+    unit: W/m⋅K
   heat_capacity:
     label: Heat Capacity
     symbol: C<sub>V</sub>
@@ -382,7 +387,7 @@ mechanical:
   specific_heat_capacity:
     label: Specific Heat Capacity
     symbol: c<sub>p</sub>
-    unit: J/kg·K
+    unit: J/kg⋅K
   thermal_expansion_coefficient:
     label: Thermal Expansion Coefficient
     symbol: α<sub>thermal</sub>
@@ -398,7 +403,7 @@ mechanical:
   viscosity:
     label: Viscosity
     symbol: η
-    unit: Pa·s
+    unit: Pa⋅s
   strain:
     label: Strain
     symbol: ε
@@ -456,7 +461,7 @@ thermal:
   thermal_resistivity:
     label: Thermal Resistivity
     symbol: ρ<sub>th</sub>
-    unit: K·m/W
+    unit: K⋅m/W
     description: Resistance to heat flow, inverse of thermal conductivity
   thermal_time_constant:
     label: Thermal Time Constant
@@ -473,7 +478,7 @@ magnetic:
   magnetic_moment:
     label: Magnetic Moment
     symbol: μ<sub>B</sub>
-    unit: μB
+    unit: μ<sub>B</sub>
   magmoms:
     label: Magnetic Moments
     symbol: μ
@@ -1134,6 +1139,7 @@ metrics:
   volume_error:
     label: Volume Error
     symbol: V<sub>err</sub>
+    unit: Å³
   max_force_error:
     label: Max Force Error
   max_stress_error:
