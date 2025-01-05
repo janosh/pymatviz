@@ -24,10 +24,6 @@ def interactive_check(
     Note: `pytest` would capture output by default, and you would
         need to pass `-s` to release capture.
 
-    Todo:
-        - scale figure size by display.
-        - possible to automatically release `pytest` capture?
-
     Args:
         plot (plt.Figure | plt.Axes): Plot to inspect.
         elem_to_check (str): Prompt for what element in the plot to check.

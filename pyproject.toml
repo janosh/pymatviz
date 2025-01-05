@@ -70,7 +70,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-p no:warnings"
+addopts = "-s -p no:warnings"
 
 [tool.mypy]
 check_untyped_defs = true
