@@ -45,9 +45,9 @@ def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> No
             )
 
             # Check if RDF starts from 0 at r=0
-            assert (
-                rdf[0] == 0
-            ), f"{rdf[0]=} should start from 0 at r=0 for {el1}-{el2} pair"
+            assert rdf[0] == 0, (
+                f"{rdf[0]=} should start from 0 at r=0 for {el1}-{el2} pair"
+            )
 
             # Check there are no negative values in the RDF
             assert all(rdf >= 0), f"RDF contains negative values for {el1}-{el2} pair"
@@ -61,9 +61,9 @@ def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> No
             )
 
             # Check if the RDF has the correct number of bins
-            assert (
-                len(rdf) == n_bins
-            ), f"RDF should have {n_bins=}, got {len(rdf)} for {el1}-{el2} pair"
+            assert len(rdf) == n_bins, (
+                f"RDF should have {n_bins=}, got {len(rdf)} for {el1}-{el2} pair"
+            )
 
 
 @pytest.mark.parametrize(
@@ -156,9 +156,9 @@ def test_calculate_rdf_different_species() -> None:
     assert np.any(rdf_si_ge > 0), "Si-Ge RDF should have non-zero values"
 
     peak_index = int(4.33 / cutoff * n_bins)
-    assert (
-        rdf_si_ge[peak_index] > 0
-    ), "Expected peak in Si-Ge RDF at sqrt(3)/2 * lattice constant"
+    assert rdf_si_ge[peak_index] > 0, (
+        "Expected peak in Si-Ge RDF at sqrt(3)/2 * lattice constant"
+    )
 
 
 @pytest.mark.parametrize(

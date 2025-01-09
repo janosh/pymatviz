@@ -208,6 +208,6 @@ def test_structure_2d_color_schemes() -> None:
         if isinstance(patch, plt.matplotlib.patches.Wedge)
     }
 
-    assert (
-        jmol_colors != vesta_colors
-    ), f"{jmol_colors=}\n\nshould not equal\n\n{vesta_colors=}"
+    assert jmol_colors != vesta_colors, (
+        f"{jmol_colors=}\n\nshould not equal\n\n{vesta_colors=}"
+    )
