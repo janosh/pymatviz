@@ -291,9 +291,9 @@ def test_annotate_metrics(
         y_pred, y_true, metrics=metrics, fmt=fmt, prefix=prefix, suffix=suffix, fig=fig
     )
     anno_text_with_fixes = _extract_anno_from_fig(out_fig)
-    assert (
-        anno_text_with_fixes == prefix + expected_text + suffix
-    ), f"{anno_text_with_fixes=}"
+    assert anno_text_with_fixes == prefix + expected_text + suffix, (
+        f"{anno_text_with_fixes=}"
+    )
 
 
 def test_annotate_metrics_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:

@@ -1,4 +1,4 @@
-"""Typing related: TypeAlias, generic types and so on."""
+"""Typing related: TypeAlias, generic types and so on."""  # noqa: A005
 
 from __future__ import annotations
 

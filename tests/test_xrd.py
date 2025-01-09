@@ -230,8 +230,8 @@ def test_xrd_pattern_stack_and_kwargs(
         assert actual_cols == expected_cols
 
         for i, trace in enumerate(fig.data):
-            expected_xaxis = f"x{i+1 if i > 0 else ''}"
-            expected_yaxis = f"y{i+1 if i > 0 else ''}"
+            expected_xaxis = f"x{i + 1 if i > 0 else ''}"
+            expected_yaxis = f"y{i + 1 if i > 0 else ''}"
             assert trace.xaxis == expected_xaxis, f"{trace.xaxis=}"
             assert trace.yaxis == expected_yaxis, f"{trace.yaxis=}"
 

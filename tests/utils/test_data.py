@@ -139,9 +139,9 @@ def test_bin_df_cols(
 
     # ensure binned DataFrame has a minimum set of expected columns
     expected_cols = {bin_counts_col, *df_float, *(f"{col}_bins" for col in bin_by_cols)}
-    assert (
-        {*df_binned} >= expected_cols
-    ), f"{set(df_binned)=}\n{expected_cols=},\n{bin_by_cols=}\n{group_by_cols=}"
+    assert {*df_binned} >= expected_cols, (
+        f"{set(df_binned)=}\n{expected_cols=},\n{bin_by_cols=}\n{group_by_cols=}"
+    )
 
     # validate the number of unique bins for each binned column
     for col, n_bins_expec in zip(bin_by_cols, expected_n_bins, strict=True):

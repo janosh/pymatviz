@@ -23,12 +23,12 @@ if TYPE_CHECKING:
 def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
     fig = pmv.ptable_heatmap_plotly(glass_formulas)
     assert isinstance(fig, go.Figure)
-    assert (
-        len(fig.layout.annotations) == 18 * 10
-    ), "not all periodic table tiles have annotations"
-    assert (
-        sum(anno.text != "" for anno in fig.layout.annotations) == 118
-    ), "no annotations should be empty"
+    assert len(fig.layout.annotations) == 18 * 10, (
+        "not all periodic table tiles have annotations"
+    )
+    assert sum(anno.text != "" for anno in fig.layout.annotations) == 118, (
+        "no annotations should be empty"
+    )
 
     # test hover_props and show_values=False
     pmv.ptable_heatmap_plotly(
@@ -134,9 +134,9 @@ def test_ptable_heatmap_plotly_kwarg_combos(
         assert fig.layout.font.size == font_size * scale
 
     if len(font_colors) == 2:
-        assert all(
-            anno.font.color in font_colors for anno in fig.layout.annotations
-        ), f"{font_colors=}"
+        assert all(anno.font.color in font_colors for anno in fig.layout.annotations), (
+            f"{font_colors=}"
+        )
     elif len(font_colors) == 1:
         assert all(
             anno.font.color == font_colors[0] for anno in fig.layout.annotations
@@ -197,12 +197,12 @@ def test_ptable_heatmap_plotly_cscale_range(
         assert trace.zmin == pytest.approx(data_min)
         assert trace.zmax == pytest.approx(data_max)
     else:
-        assert trace.zmin == pytest.approx(
-            cscale_range[0] or data_min
-        ), f"{cscale_range=}"
-        assert trace.zmax == pytest.approx(
-            cscale_range[1] or data_max
-        ), f"{cscale_range=}"
+        assert trace.zmin == pytest.approx(cscale_range[0] or data_min), (
+            f"{cscale_range=}"
+        )
+        assert trace.zmax == pytest.approx(cscale_range[1] or data_max), (
+            f"{cscale_range=}"
+        )
 
 
 def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
@@ -414,9 +414,9 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
     # Check if custom symbols are used in tile texts
     tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
     for custom_symbol in element_symbol_map.values():
-        assert any(
-            custom_symbol in text for text in tile_texts
-        ), f"Custom symbol {custom_symbol} not found in tile texts"
+        assert any(custom_symbol in text for text in tile_texts), (
+            f"Custom symbol {custom_symbol} not found in tile texts"
+        )
 
     # Check if original element symbols are still used in hover texts
     hover_texts = fig.data[-1].text.flat
@@ -424,25 +424,26 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
         hover_text = next(
             text for text in hover_texts if text.startswith(df_ptable.loc[elem, "name"])
         )
-        assert (
-            f"({elem})" in hover_text
-        ), f"Original symbol {elem} not found in hover text"
+        assert f"({elem})" in hover_text, (
+            f"Original symbol {elem} not found in hover text"
+        )
 
     # Test with partial mapping
     partial_map = {"Fe": "This be Iron"}
     fig = pmv.ptable_heatmap_plotly(values, element_symbol_map=partial_map)
     tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
-    assert any(
-        "This be Iron" in text for text in tile_texts
-    ), "Custom symbol not found in tile texts"
-    assert any(
-        "O</span>" in text for text in tile_texts
-    ), "Original symbol 'O' not found in tile texts"
+    assert any("This be Iron" in text for text in tile_texts), (
+        "Custom symbol not found in tile texts"
+    )
+    assert any("O</span>" in text for text in tile_texts), (
+        "Original symbol 'O' not found in tile texts"
+    )
 
     # Test with None value
     fig = pmv.ptable_heatmap_plotly(values, element_symbol_map=None)
     tile_texts = [anno.text for anno in fig.layout.annotations if anno.text]
     for elem in values:
-        assert any(
-            f"{elem}</span>" in text for text in tile_texts
-        ), f"Original symbol {elem} not found in tile texts for element_symbol_map=None"
+        assert any(f"{elem}</span>" in text for text in tile_texts), (
+            f"Original symbol {elem} not found in tile texts for "
+            "element_symbol_map=None"
+        )

@@ -226,9 +226,9 @@ def test_key_label_formatting() -> None:
     """Test that all labels are properly formatted."""
     for key in Key:
         label = key.label
-        assert (
-            label[0].isupper() or label[0].isdigit() or label.startswith("r2SCAN")
-        ), f"{label=} should be capitalized"
+        assert label[0].isupper() or label[0].isdigit() or label.startswith("r2SCAN"), (
+            f"{label=} should be capitalized"
+        )
 
         assert not label.endswith((".", ",")), f"{label=} ends with punctuation"
 
@@ -318,20 +318,20 @@ def test_unit_html_consistency() -> None:
 
         # Check proper HTML tag nesting
         if "<sup>" in unit:
-            assert unit.count("<sup>") == unit.count(
-                "</sup>"
-            ), f"Mismatched sup tags in {unit}"
-            assert (
-                "</sup>" not in unit[: unit.index("<sup>")]
-            ), f"Improper sup tag nesting in {unit}"
+            assert unit.count("<sup>") == unit.count("</sup>"), (
+                f"Mismatched sup tags in {unit}"
+            )
+            assert "</sup>" not in unit[: unit.index("<sup>")], (
+                f"Improper sup tag nesting in {unit}"
+            )
 
         if "<sub>" in unit:
-            assert unit.count("<sub>") == unit.count(
-                "</sub>"
-            ), f"Mismatched sub tags in {unit}"
-            assert (
-                "</sub>" not in unit[: unit.index("<sub>")]
-            ), f"Improper sub tag nesting in {unit}"
+            assert unit.count("<sub>") == unit.count("</sub>"), (
+                f"Mismatched sub tags in {unit}"
+            )
+            assert "</sub>" not in unit[: unit.index("<sub>")], (
+                f"Improper sub tag nesting in {unit}"
+            )
 
         # Check no nested tags
         if "<sup>" in unit and "<sub>" in unit:
@@ -355,9 +355,9 @@ def test_unit_special_characters() -> None:
 
         # Check for proper minus sign usage
         if "-" in unit:
-            assert (
-                "<sup>-" in unit
-            ), f"ASCII hyphen in {unit}, use <sup>-...</sup> for exponents"
+            assert "<sup>-" in unit, (
+                f"ASCII hyphen in {unit}, use <sup>-...</sup> for exponents"
+            )
 
         # Common units should use standard symbols
         if "angstrom" in unit:

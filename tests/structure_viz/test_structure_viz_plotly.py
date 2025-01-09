@@ -160,9 +160,9 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
             vector_traces = [
                 trace for trace in fig.data if (trace.name or "").startswith("vector")
             ]
-            assert (
-                len(vector_traces) > 0
-            ), "No vector traces found when show_site_vectors is True"
+            assert len(vector_traces) > 0, (
+                "No vector traces found when show_site_vectors is True"
+            )
             for vector_trace in vector_traces:
                 assert vector_trace.mode == "lines+markers"
                 assert vector_trace.marker.symbol == "arrow"
@@ -335,14 +335,14 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
                     text in site_trace.text for text in kwargs["site_labels"].values()
                 ), "Expected site labels not found in trace text"
             elif kwargs["site_labels"] in ("symbol", "species"):
-                assert len(site_trace.text) == len(
-                    DISORDERED_STRUCT
-                ), "Mismatch in number of site labels"
+                assert len(site_trace.text) == len(DISORDERED_STRUCT), (
+                    "Mismatch in number of site labels"
+                )
         else:
             # If site_labels is False, ensure that the trace has no text
-            assert (
-                site_trace.text is None or len(site_trace.text) == 0
-            ), "Unexpected site labels found"
+            assert site_trace.text is None or len(site_trace.text) == 0, (
+                "Unexpected site labels found"
+            )
 
     # Check for sites and arrows
     if kwargs.get("show_sites"):
@@ -355,9 +355,9 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
             vector_traces = [
                 trace for trace in fig.data if (trace.name or "").startswith("vector")
             ]
-            assert (
-                len(vector_traces) > 0
-            ), f"No vector traces even though {show_site_vectors=}"
+            assert len(vector_traces) > 0, (
+                f"No vector traces even though {show_site_vectors=}"
+            )
             for vector_trace in vector_traces:
                 if vector_trace.type == "scatter3d":
                     assert vector_trace.mode == "lines"
@@ -526,13 +526,13 @@ def test_hover_text(
             assert "<b>" in site_hover_text, f"{site_hover_text=}"
             assert "</b>" in site_hover_text, f"{site_hover_text=}"
         elif hover_text == SiteCoords.cartesian:
-            assert re.search(
-                rf"Coordinates \({re_3_coords}\)", site_hover_text
-            ), f"{site_hover_text=}"
+            assert re.search(rf"Coordinates \({re_3_coords}\)", site_hover_text), (
+                f"{site_hover_text=}"
+            )
         elif hover_text == SiteCoords.fractional:
-            assert re.search(
-                rf"Coordinates \[{re_3_coords}\]", site_hover_text
-            ), f"{site_hover_text=}"
+            assert re.search(rf"Coordinates \[{re_3_coords}\]", site_hover_text), (
+                f"{site_hover_text=}"
+            )
         elif hover_text == SiteCoords.cartesian_fractional:
             assert re.search(
                 rf"Coordinates \({re_3_coords}\) \[{re_3_coords}\]", site_hover_text

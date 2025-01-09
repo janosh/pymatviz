@@ -182,15 +182,15 @@ def test_brillouin_zone_3d_trace_counts(material_id: str) -> None:
     # Assert exact counts for each trace type
     exp_mesh3d = 1
     assert trace_counts["mesh3d"] == exp_mesh3d, f"{trace_counts=}, {exp_mesh3d=}"
-    assert (
-        trace_counts["scatter3d"] == exp_scatter3d
-    ), f"{trace_counts=}, {exp_scatter3d=}"
+    assert trace_counts["scatter3d"] == exp_scatter3d, (
+        f"{trace_counts=}, {exp_scatter3d=}"
+    )
     exp_cone = 6
     assert trace_counts["cone"] == exp_cone, f"{trace_counts=}, {exp_cone=}"
     assert scatter_modes["lines"] == exp_lines, f"{scatter_modes=}, {exp_lines=}"
     exp_markers_text = 1
-    assert (
-        scatter_modes["markers+text"] == exp_markers_text
-    ), f"{scatter_modes=}, {exp_markers_text=}"
+    assert scatter_modes["markers+text"] == exp_markers_text, (
+        f"{scatter_modes=}, {exp_markers_text=}"
+    )
     exp_text = 6
     assert scatter_modes["text"] == exp_text, f"{scatter_modes=}, {exp_text=}"

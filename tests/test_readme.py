@@ -110,6 +110,6 @@ def test_readme_function_names(file_path: str) -> None:
         # No functions from {file_path} mentioned in readme
         return
     missing_funcs = readme_funcs[file_path] - source_funcs
-    assert (
-        not missing_funcs
-    ), f"Functions mentioned in readme but missing in {file_path}: {missing_funcs}"
+    assert not missing_funcs, (
+        f"Functions mentioned in readme but missing in {file_path}: {missing_funcs}"
+    )

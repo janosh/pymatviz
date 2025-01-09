@@ -59,4 +59,4 @@ for mode, line_kwargs, marker_kwargs, symbol_kwargs, elem_data_dict in [
     title = f"<b>Periodic Table Scatter Plots</b><br>{mode=}"
     fig.layout.title.update(text=title, x=0.4, y=0.85, font_size=20)
     fig.show()
-    pmv.io.save_and_compress_svg(fig, f"ptable-scatter-plotly-{mode.replace('+','-')}")
+    pmv.io.save_and_compress_svg(fig, f"ptable-scatter-plotly-{mode.replace('+', '-')}")

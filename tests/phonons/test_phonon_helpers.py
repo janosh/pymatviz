@@ -71,9 +71,9 @@ def test_phonon_bands(
     assert fig.layout.font.size == 16
 
     actual_x_labels = fig.layout.xaxis.ticktext
-    assert (
-        actual_x_labels == expected_x_labels
-    ), f"{actual_x_labels=}, {expected_x_labels=}"
+    assert actual_x_labels == expected_x_labels, (
+        f"{actual_x_labels=}, {expected_x_labels=}"
+    )
     assert fig.layout.xaxis.range is None
     assert fig.layout.yaxis.range == pytest.approx((0, 5.36385427095))
 

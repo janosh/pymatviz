@@ -106,7 +106,7 @@ def confusion_matrix(
                 spaces = [i for i, c in enumerate(label) if c == " "]
                 if spaces:
                     split_point = min(spaces, key=lambda x: abs(x - mid))
-                    label = f"{label[:split_point]}<br>{label[split_point + 1:]}"  # noqa: PLW2901
+                    label = f"{label[:split_point]}<br>{label[split_point + 1 :]}"  # noqa: PLW2901
             formatted_labels[key] += [label]
 
     fmt_tile_vals = np.array(
