@@ -93,31 +93,31 @@ def test_element_pair_rdfs_cutoff_and_bin_size(
         # Check that we have the correct number of traces (one for each element pair)
         n_elements = len({site.specie.symbol for site in struct})
         expected_traces = n_elements * (n_elements + 1) // 2
-        assert (
-            len(fig.data) == expected_traces
-        ), f"Expected {expected_traces} traces, got {len(fig.data)}"
+        assert len(fig.data) == expected_traces, (
+            f"Expected {expected_traces} traces, got {len(fig.data)}"
+        )
 
         max_cell_len = max(struct.lattice.abc)
         for trace in fig.data:
             if param == "cutoff":
                 expected_cutoff = abs(value) * max_cell_len if value < 0 else value
                 # Check that the x-axis data doesn't exceed the cutoff
-                assert np.all(
-                    trace.x <= expected_cutoff
-                ), f"X-axis data exceeds cutoff of {expected_cutoff}"
+                assert np.all(trace.x <= expected_cutoff), (
+                    f"X-axis data exceeds cutoff of {expected_cutoff}"
+                )
                 # Check that the maximum x value is close to the cutoff
-                assert max(trace.x) == pytest.approx(
-                    expected_cutoff
-                ), f"Maximum x={max(trace.x):.4} not close to cutoff {expected_cutoff}"
+                assert max(trace.x) == pytest.approx(expected_cutoff), (
+                    f"Maximum x={max(trace.x):.4} not close to cutoff {expected_cutoff}"
+                )
             elif param == "bin_size":
                 # When bin_size is specified but cutoff is None,
                 # the default cutoff is 2 * max_cell_len
                 default_cutoff = 2 * max_cell_len
                 # Check that the number of bins is approximately correct
                 expected_bins = int(default_cutoff / value)
-                assert (
-                    0.85 <= expected_bins / len(trace.x) <= 1
-                ), f"{expected_bins=}, got {len(trace.x)}"
+                assert 0.85 <= expected_bins / len(trace.x) <= 1, (
+                    f"{expected_bins=}, got {len(trace.x)}"
+                )
 
 
 def test_element_pair_rdfs_subplot_layout(structures: list[Structure]) -> None:
@@ -283,15 +283,15 @@ def test_full_rdf_cutoff_and_bin_size(
 
         if param == "cutoff":
             assert np.all(trace.x <= value), f"X-axis data exceeds cutoff of {value}"
-            assert max(trace.x) == pytest.approx(
-                value
-            ), f"Maximum x value {max(trace.x):.4} not close to cutoff {value}"
+            assert max(trace.x) == pytest.approx(value), (
+                f"Maximum x value {max(trace.x):.4} not close to cutoff {value}"
+            )
         elif param == "bin_size":
             default_cutoff = 15
             expected_bins = int(np.ceil(default_cutoff / value))
-            assert (
-                abs(len(trace.x) - expected_bins) <= 1
-            ), f"Expected around {expected_bins} bins, got {len(trace.x)}"
+            assert abs(len(trace.x) - expected_bins) <= 1, (
+                f"Expected around {expected_bins} bins, got {len(trace.x)}"
+            )
 
 
 def test_full_rdf_consistency(structures: list[Structure]) -> None:
