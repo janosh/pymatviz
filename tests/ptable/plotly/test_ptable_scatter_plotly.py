@@ -7,6 +7,7 @@ from typing import Any, Literal, TypeAlias
 import numpy as np
 import plotly.graph_objects as go
 import pytest
+from pymatgen.core import Element
 
 import pymatviz as pmv
 
@@ -81,7 +82,7 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
 
     # Check element annotations
     symbol_annotations = [
-        ann for ann in fig.layout.annotations if "<b>" in str(ann.text)
+        ann for ann in fig.layout.annotations if ann.text in {e.name for e in Element}
     ]
     assert len(symbol_annotations) == len(sample_data)
 
@@ -92,8 +93,8 @@ def test_basic_scatter_plot(sample_data: SampleData) -> None:
         assert ann.x == 1
         assert ann.y == 1
         assert ann.font.size == 11  # default font size
-        # Check that text is either <b>Fe</b> or <b>O</b>
-        assert ann.text in ("<b>Fe</b>", "<b>O</b>")
+        # Check that text is either Fe or O
+        assert ann.text in ("Fe", "O")
 
 
 @pytest.mark.parametrize(
@@ -193,7 +194,7 @@ def test_scaling(
     assert fig.layout.height == 500 * scale
     # Check font scaling
     symbol_annotations = [
-        ann for ann in fig.layout.annotations if "<b>" in str(ann.text)
+        ann for ann in fig.layout.annotations if ann.text in {e.name for e in Element}
     ]
     assert all(ann.font.size == 11 * scale for ann in symbol_annotations)
 

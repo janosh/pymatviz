@@ -22,6 +22,8 @@ def create_diatomic_inputs(
     base_dir: str = "diatomic-calcs",
 ) -> None:
     """Create VASP input files for all pairs of elements at different separations.
+    The calculations can be run using run_vasp_diatomics.py, which will automatically
+    handle running calculations in sequence and copying WAVECAR files between distances.
 
     Args:
         distances (tuple[float, ...]): If tuple and length is 3 and last item is int,

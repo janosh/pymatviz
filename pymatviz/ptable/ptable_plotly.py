@@ -948,8 +948,7 @@ def ptable_heatmap_splits_plotly(
             font=dict(color="black", size=(font_size or 14) * scale),
         )
         fig.add_annotation(
-            text=f"<b>{display_symbol}</b>",
-            **symbol_defaults | xy_ref | (symbol_kwargs or {}),
+            text=display_symbol, **symbol_defaults | xy_ref | (symbol_kwargs or {})
         )
 
         # Add hover data
@@ -1380,8 +1379,7 @@ def ptable_scatter_plotly(
             ),
         )
         fig.add_annotation(
-            text=f"<b>{display_symbol}</b>",
-            **symbol_defaults | xy_ref | (symbol_kwargs or {}),
+            text=display_symbol, **symbol_defaults | xy_ref | (symbol_kwargs or {})
         )
 
         # Add custom annotations if provided
