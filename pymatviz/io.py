@@ -1,4 +1,4 @@
-"""I/O utilities for saving figures and dataframes to various image formats."""
+"""I/O utilities for saving figures and dataframes to various image formats."""  # noqa: A005
 
 from __future__ import annotations
 
