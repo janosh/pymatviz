@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Any, Literal
 
+    import ase.atoms
     import plotly.graph_objects as go
     from pymatgen.core import PeriodicSite, Structure
 
@@ -39,7 +40,10 @@ if TYPE_CHECKING:
 
 
 def structure_2d_plotly(
-    struct: Structure | Sequence[Structure],
+    struct: Structure
+    | Sequence[Structure]
+    | ase.atoms.Atoms
+    | Sequence[ase.atoms.Atoms],
     *,
     rotation: str = "10x,8y,3z",
     atomic_radii: float | dict[str, float] | None = None,
@@ -310,7 +314,10 @@ def structure_2d_plotly(
 
 
 def structure_3d_plotly(
-    struct: Structure | Sequence[Structure],
+    struct: Structure
+    | Sequence[Structure]
+    | ase.atoms.Atoms
+    | Sequence[ase.atoms.Atoms],
     *,
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 20,

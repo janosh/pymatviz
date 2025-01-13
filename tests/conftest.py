@@ -74,7 +74,7 @@ def spg_symbols() -> list[str]:
 
 
 @pytest.fixture
-def structures() -> list[Structure]:
+def structures() -> tuple[Structure, Structure]:
     coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
     lattice = [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]]
     si2_struct = Structure(lattice, ["Si4+", "Si4+"], coords)
@@ -89,7 +89,7 @@ def structures() -> list[Structure]:
     ]
     lattice = Lattice.tetragonal(4.192, 6.88)
     si2_ru2_pr2_struct = Structure(lattice, "Si Si Ru Ru Pr Pr".split(), coords)
-    return [si2_struct, si2_ru2_pr2_struct]
+    return si2_struct, si2_ru2_pr2_struct
 
 
 @pytest.fixture
