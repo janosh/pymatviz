@@ -340,7 +340,9 @@ def draw_site(
 def get_structures(
     struct: Structure | Sequence[Structure] | pd.Series | dict[Any, Structure],
 ) -> dict[Any, Structure]:
-    """Convert various input types to a dictionary of structures."""
+    """Convert pymatgen Structures or ASE Atoms or sequences of either to a dictionary
+    of pymatgen Structures.
+    """
     if isinstance(struct, Structure):
         return {0: struct}
     if isinstance(struct, pd.Series):
@@ -349,6 +351,24 @@ def get_structures(
         return dict(enumerate(struct))
     if isinstance(struct, dict) and {*map(type, struct.values())} == {Structure}:
         return struct
+
+    def is_ase_atoms(struct: Any) -> bool:
+        """Check if the input is an ASE Atoms object without importing ase."""
+        cls_name = f"{type(struct).__module__}.{type(struct).__qualname__}"
+        return cls_name in ("ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
+
+    if is_ase_atoms(struct):  # detect single ASE Atoms object
+        from pymatgen.io.ase import AseAtomsAdaptor
+
+        return {0: AseAtomsAdaptor().get_structure(struct)}
+    if is_ase_atoms(next(iter(struct), None)):  # detect sequence of ASE Atoms
+        from pymatgen.io.ase import AseAtomsAdaptor
+
+        return {
+            idx: AseAtomsAdaptor().get_structure(atoms)
+            for idx, atoms in enumerate(struct)
+        }
+
     raise TypeError(f"Expected pymatgen Structure or Sequence of them, got {struct=}")
 
 

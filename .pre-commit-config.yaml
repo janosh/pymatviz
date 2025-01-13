@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.0
+    rev: v0.9.1
     hooks:
       - id: ruff
         args: [--fix]
@@ -65,7 +65,7 @@ repos:
         exclude: ^(site/src/figs/.+\.svelte|data/wbm/20.+\..+|site/src/(routes|figs).+\.(yaml|json)|changelog.md)$
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.17.0
+    rev: v9.18.0
     hooks:
       - id: eslint
         types: [file]
