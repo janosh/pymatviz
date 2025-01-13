@@ -537,3 +537,38 @@ def test_hover_text(
             assert re.search(
                 rf"Coordinates \({re_3_coords}\) \[{re_3_coords}\]", site_hover_text
             ), f"{site_hover_text=}"
+
+
+@pytest.mark.parametrize(
+    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
+)
+def test_structure_plotly_ase_atoms(
+    plot_function: Callable[[Structure], go.Figure], structures: list[Structure]
+) -> None:
+    """Test that structure_2d_plotly works with ASE Atoms."""
+    pytest.importorskip("ase")
+
+    pmg_struct = structures[0]
+    # Create a simple ASE Atoms object
+
+    # Test single Atoms object
+    fig_ase = plot_function(pmg_struct.to_ase_atoms())
+    assert isinstance(fig_ase, go.Figure)
+
+    # Test equivalence with pymatgen Structure
+    fig_pmg = plot_function(pmg_struct)
+
+    # Compare figures
+    for trace_ase, trace_pmg in zip(fig_ase.data, fig_pmg.data, strict=True):
+        assert trace_ase.type == trace_pmg.type, f"{trace_ase.type=}, {trace_pmg.type=}"
+        assert trace_ase.mode == trace_pmg.mode, f"{trace_ase.mode=}, {trace_pmg.mode=}"
+        assert trace_ase.name == trace_pmg.name, f"{trace_ase.name=}, {trace_pmg.name=}"
+        n_x_ase, n_y_ase = len(trace_ase.x), len(trace_ase.y)
+        n_x_pmg, n_y_pmg = len(trace_pmg.x), len(trace_pmg.y)
+        assert n_x_ase == n_x_pmg, f"{n_x_ase=}, {n_x_pmg=}"
+        assert n_y_ase == n_y_pmg, f"{n_y_ase=}, {n_y_pmg=}"
+
+    # Test sequence of Atoms objects
+    atoms_list = [struct.to_ase_atoms() for struct in structures]
+    fig = plot_function(atoms_list)
+    assert isinstance(fig, go.Figure)
