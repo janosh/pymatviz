@@ -423,6 +423,7 @@ def density_hexbin(
     df: pd.DataFrame | None = None,
     ax: plt.Axes | None = None,
     weights: ArrayLike | None = None,
+    gridsize: int = 75,
     identity_line: bool | dict[str, Any] = True,
     best_fit_line: bool | dict[str, Any] = True,
     xlabel: str = "Actual",
@@ -443,6 +444,8 @@ def density_hexbin(
         weights (array, optional): If given, these values are accumulated in the bins.
             Otherwise, every point has value 1. Must be of the same length as x and y.
             Defaults to None.
+        gridsize (int, optional): Number of hexagons in the x and y directions.
+            Defaults to 75.
         identity_line (bool | dict[str, Any], optional): Whether to add an parity line
             (y = x). Defaults to True. Pass a dict to customize line properties.
         best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
@@ -462,7 +465,7 @@ def density_hexbin(
     ax = ax or plt.gca()
 
     # the scatter plot
-    hexbin = ax.hexbin(xs, ys, gridsize=75, mincnt=1, bins="log", C=weights, **kwargs)
+    hexbin = ax.hexbin(xs, ys, gridsize=gridsize, mincnt=1, bins="log", C=weights, **kwargs)
 
     cb_ax = ax.inset_axes(cbar_coords)
     plt.colorbar(hexbin, cax=cb_ax)
