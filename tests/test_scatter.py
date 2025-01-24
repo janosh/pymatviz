@@ -8,15 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 
-from pymatviz.scatter import (
-    density_hexbin,
-    density_hexbin_with_hist,
-    density_scatter,
-    density_scatter_plotly,
-    density_scatter_with_hist,
-    residual_vs_actual,
-    scatter_with_err_bar,
-)
+import pymatviz as pmv
 from tests.conftest import df_regr, np_rng
 
 
@@ -48,7 +40,7 @@ def test_density_scatter_mpl(
     kwargs: dict[str, Any],
 ) -> None:
     df, x, y = df_or_arrays
-    ax = density_scatter(
+    ax = pmv.density_scatter(
         df=df,
         x=x,
         y=y,
@@ -68,13 +60,13 @@ def test_density_scatter_raises_on_bad_stats_type(stats: Any) -> None:
 
     vals = [1, 2, 3]
     with pytest.raises(TypeError, match=match):
-        density_scatter(x=vals, y=vals, stats=stats)
+        pmv.density_scatter(x=vals, y=vals, stats=stats)
 
 
 def test_density_scatter_uses_series_name_as_label() -> None:
     x = pd.Series(np_rng.random(5), name="x")
     y = pd.Series(np_rng.random(5), name="y")
-    ax = density_scatter(x=x, y=y, log_density=False)
+    ax = pmv.density_scatter(x=x, y=y, log_density=False)
 
     assert ax.get_xlabel() == "x"
     assert ax.get_ylabel() == "y"
@@ -82,37 +74,50 @@ def test_density_scatter_uses_series_name_as_label() -> None:
 
 def test_density_scatter_with_hist(df_or_arrays: DfOrArrays) -> None:
     df, x, y = df_or_arrays
-    density_scatter_with_hist(df=df, x=x, y=y)
+    pmv.density_scatter_with_hist(df=df, x=x, y=y)
 
 
 @pytest.mark.parametrize(
-    ("cbar_label", "cbar_coords"),
-    [("foo", (0.95, 0.03, 0.03, 0.7)), (None, (1, 1, 1, 1))],
+    ("cbar_label", "cbar_coords", "gridsize"),
+    [("foo", (0.95, 0.03, 0.03, 0.7), 50), (None, (1, 1, 1, 1), 100)],
 )
 def test_density_hexbin(
     df_or_arrays: DfOrArrays,
     cbar_label: str | None,
     cbar_coords: tuple[float, float, float, float],
+    gridsize: int,
 ) -> None:
     df, x, y = df_or_arrays
-    density_hexbin(df=df, x=x, y=y, cbar_label=cbar_label, cbar_coords=cbar_coords)
+    ax = pmv.density_hexbin(
+        df=df,
+        x=x,
+        y=y,
+        cbar_label=cbar_label,
+        cbar_coords=cbar_coords,
+        gridsize=gridsize,
+    )
+    assert isinstance(ax, plt.Axes)
+
+    assert len(ax.collections) == 1
+    hexbin = ax.collections[0]
+    assert len(hexbin.get_offsets()) > 0
 
 
 def test_density_hexbin_with_hist(df_or_arrays: DfOrArrays) -> None:
     df, x, y = df_or_arrays
-    density_hexbin_with_hist(df=df, x=x, y=y)
+    pmv.density_hexbin_with_hist(df=df, x=x, y=y)
 
 
 def test_scatter_with_err_bar(df_or_arrays: DfOrArrays) -> None:
     df, x, y = df_or_arrays
     err = abs(df[x] - df[y]) if df is not None else abs(x - y)  # type: ignore[operator]
-    scatter_with_err_bar(df=df, x=x, y=y, yerr=err)
-    scatter_with_err_bar(df=df, x=x, y=y, xerr=err)
+    pmv.scatter_with_err_bar(df=df, x=x, y=y, yerr=err)
+    pmv.scatter_with_err_bar(df=df, x=x, y=y, xerr=err)
 
 
 def test_residual_vs_actual(df_or_arrays: DfOrArrays) -> None:
     df, x, y = df_or_arrays
-    residual_vs_actual(df=df, y_true=x, y_pred=y)
+    pmv.residual_vs_actual(df=df, y_true=x, y_pred=y)
 
 
 @pytest.mark.parametrize(
@@ -140,7 +145,7 @@ def test_density_scatter_plotly(
     df, x, y = df_or_arrays
     if df is None:
         return
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=df,
         x=x,
         y=y,
@@ -166,7 +171,7 @@ def test_density_scatter_plotly(
 
 
 def test_density_scatter_plotly_hover_template() -> None:
-    fig = density_scatter_plotly(df=df_regr, x=X_COL, y=Y_COL, log_density=True)
+    fig = pmv.density_scatter_plotly(df=df_regr, x=X_COL, y=Y_COL, log_density=True)
     hover_template = fig.data[0].hovertemplate
     assert "Point Density" in hover_template
     assert "color" not in hover_template  # Ensure log-count values are not displayed
@@ -175,17 +180,17 @@ def test_density_scatter_plotly_hover_template() -> None:
 @pytest.mark.parametrize("stats", [1, (1,), "foo"])
 def test_density_scatter_plotly_raises_on_bad_stats_type(stats: Any) -> None:
     with pytest.raises(TypeError, match="stats must be bool or dict"):
-        density_scatter_plotly(df=df_regr, x=X_COL, y=Y_COL, stats=stats)
+        pmv.density_scatter_plotly(df=df_regr, x=X_COL, y=Y_COL, stats=stats)
 
 
 def test_density_scatter_plotly_empty_dataframe() -> None:
     empty_df = pd.DataFrame({X_COL: [], Y_COL: []})
     with pytest.raises(ValueError, match="input should have multiple elements"):
-        density_scatter_plotly(df=empty_df, x=X_COL, y=Y_COL)
+        pmv.density_scatter_plotly(df=empty_df, x=X_COL, y=Y_COL)
 
 
 def test_density_scatter_plotly_facet() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker"
     )
 
@@ -195,7 +200,7 @@ def test_density_scatter_plotly_facet() -> None:
 
 
 def test_density_scatter_plotly_facet_log_density() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker", log_density=True
     )
 
@@ -204,7 +209,7 @@ def test_density_scatter_plotly_facet_log_density() -> None:
 
 
 def test_density_scatter_plotly_facet_stats() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker", stats=True
     )
 
@@ -216,7 +221,7 @@ def test_density_scatter_plotly_facet_stats() -> None:
 
 
 def test_density_scatter_plotly_facet_best_fit_line() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker", best_fit_line=True
     )
 
@@ -230,7 +235,7 @@ def test_density_scatter_plotly_facet_best_fit_line() -> None:
 
 
 def test_density_scatter_plotly_facet_custom_bins() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker", n_bins=10
     )
 
@@ -241,7 +246,7 @@ def test_density_scatter_plotly_facet_custom_bins() -> None:
 
 
 def test_density_scatter_plotly_facet_custom_color() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS,
         x="total_bill",
         y="tip",
@@ -250,16 +255,15 @@ def test_density_scatter_plotly_facet_custom_color() -> None:
     )
 
     # Check the colorscale is Viridis
-    assert [
-        color for _val, color in fig.layout.coloraxis.colorscale
-    ] == px.colors.sequential.Viridis
+    color_scale = fig.layout.coloraxis.colorscale
+    assert [color for _val, color in color_scale] == px.colors.sequential.Viridis
 
 
 @pytest.mark.parametrize("density", ["kde", "empirical"])
 def test_density_scatter_plotly_facet_density_methods(
     density: Literal["kde", "empirical"],
 ) -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker", density=density
     )
 
@@ -268,7 +272,7 @@ def test_density_scatter_plotly_facet_density_methods(
 
 
 def test_density_scatter_plotly_facet_size() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", size="size", facet_col="smoker"
     )
 
@@ -277,13 +281,15 @@ def test_density_scatter_plotly_facet_size() -> None:
 
 
 def test_density_scatter_plotly_facet_multiple_categories() -> None:
-    fig = density_scatter_plotly(df=DF_TIPS, x="total_bill", y="tip", facet_col="day")
+    fig = pmv.density_scatter_plotly(
+        df=DF_TIPS, x="total_bill", y="tip", facet_col="day"
+    )
 
     assert len(fig.data) == DF_TIPS["day"].nunique()
 
 
 def test_density_scatter_plotly_facet_identity_line() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker", identity_line=True
     )
 
@@ -291,7 +297,7 @@ def test_density_scatter_plotly_facet_identity_line() -> None:
 
 
 def test_density_scatter_plotly_facet_hover_template() -> None:
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker"
     )
 
@@ -303,7 +309,7 @@ def test_density_scatter_plotly_facet_hover_template() -> None:
 def test_density_scatter_plotly_colorbar_kwargs() -> None:
     colorbar_kwargs = {"title": "Custom Title", "thickness": 30, "len": 0.8, "x": 1.1}
 
-    fig = density_scatter_plotly(
+    fig = pmv.density_scatter_plotly(
         df=DF_TIPS, x="total_bill", y="tip", colorbar_kwargs=colorbar_kwargs
     )
 
