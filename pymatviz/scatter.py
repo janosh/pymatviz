@@ -465,7 +465,9 @@ def density_hexbin(
     ax = ax or plt.gca()
 
     # the scatter plot
-    hexbin = ax.hexbin(xs, ys, gridsize=gridsize, mincnt=1, bins="log", C=weights, **kwargs)
+    hexbin = ax.hexbin(
+        xs, ys, gridsize=gridsize, mincnt=1, bins="log", C=weights, **kwargs
+    )
 
     cb_ax = ax.inset_axes(cbar_coords)
     plt.colorbar(hexbin, cax=cb_ax)
