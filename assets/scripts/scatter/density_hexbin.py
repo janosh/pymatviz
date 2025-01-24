@@ -13,5 +13,6 @@ ax = pmv.density_hexbin(
     dummy_data.y_pred,
     dummy_data.y_true,
     best_fit_line={"annotate_params": {"loc": "lower center"}},
+    gridsize=40,
 )
 pmv.io.save_and_compress_svg(ax, "density-scatter-hex")

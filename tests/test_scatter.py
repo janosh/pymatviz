@@ -78,19 +78,29 @@ def test_density_scatter_with_hist(df_or_arrays: DfOrArrays) -> None:
 
 
 @pytest.mark.parametrize(
-    ("cbar_label", "cbar_coords"),
-    [("foo", (0.95, 0.03, 0.03, 0.7)), (None, (1, 1, 1, 1))],
+    ("cbar_label", "cbar_coords", "gridsize"),
+    [("foo", (0.95, 0.03, 0.03, 0.7), 50), (None, (1, 1, 1, 1), 100)],
 )
 def test_density_hexbin(
     df_or_arrays: DfOrArrays,
     cbar_label: str | None,
     cbar_coords: tuple[float, float, float, float],
+    gridsize: int,
 ) -> None:
     df, x, y = df_or_arrays
     ax = pmv.density_hexbin(
-        df=df, x=x, y=y, cbar_label=cbar_label, cbar_coords=cbar_coords
+        df=df,
+        x=x,
+        y=y,
+        cbar_label=cbar_label,
+        cbar_coords=cbar_coords,
+        gridsize=gridsize,
     )
     assert isinstance(ax, plt.Axes)
+
+    assert len(ax.collections) == 1
+    hexbin = ax.collections[0]
+    assert len(hexbin.get_offsets()) > 0
 
 
 def test_density_hexbin_with_hist(df_or_arrays: DfOrArrays) -> None:
