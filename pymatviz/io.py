@@ -37,7 +37,7 @@ class TqdmDownload(tqdm):
     """Progress bar for urllib.request.urlretrieve file download.
 
     Adapted from official TqdmUpTo example.
-    See https://github.com/tqdm/tqdm/blob/4c956c20b83be4312460fc0c4812eeb3fef5e7df/README.rst#hooks-and-callbacks
+    See https://github.com/tqdm/tqdm/blob/4c956c2/README.rst#hooks-and-callbacks
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

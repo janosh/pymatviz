@@ -279,6 +279,8 @@ class Key(StrEnum):
     # Crystal Symmetry Properties
     crystal_system = "crystal_system"
     spg_num = "spg_num"
+    init_spg_num = "init_spg_num"
+    final_spg_num = "final_spg_num"
     spg_symbol = "spg_symbol"
     choice_symbol = "choice_symbol"
     hall_num = "hall_num"
@@ -417,6 +419,7 @@ class Key(StrEnum):
     # Mechanical
     forces = "forces"
     stress = "stress"
+    max_stress = "max_stress"
     virial = "virial"
     stress_trace = "stress_trace"
     voigt_stress = "voigt_stress"
@@ -459,6 +462,9 @@ class Key(StrEnum):
     # Phonon
     ph_band_structure = "ph_band_structure"
     ph_dos = "ph_dos"
+    ph_freqs = "ph_freqs"
+    mode_weights = "mode_weights"
+    q_points = "q_points"
     ph_dos_mae = "ph_dos_mae"
     ph_dos_rmse = "ph_dos_rmse"
     has_imag_ph_gamma_modes = "has_imag_ph_gamma_modes"
@@ -530,7 +536,7 @@ class Key(StrEnum):
     xc_functional = "xc_functional"
     convergence_electronic = "convergence_electronic"
     convergence_ionic = "convergence_ionic"
-    kpoints = "kpoints"
+    k_points = "k_points"
     pseudo_potential = "pseudo_potential"
     pseudo_potential_type = "pseudo_potential_type"
     u_correction = "u_correction"
@@ -563,6 +569,56 @@ class Key(StrEnum):
     collinear = "collinear"
     non_collinear = "non_collinear"
 
+    # Molecular Dynamics
+    trajectory = "trajectory"
+    frames = "frames"
+    frame = "frame"
+    diffusivity = "diffusivity"
+    diffusion_tensor = "diffusion_tensor"
+    msd = "msd"  # mean squared displacement
+    velocity_autocorr = "velocity_autocorr"  # velocity autocorrelation function
+    ensemble = "ensemble"
+    nvt = "nvt"  # canonical ensemble
+    nve = "nve"  # microcanonical ensemble
+    npt = "npt"  # isothermal-isobaric ensemble
+    nvp = "nvp"  # isoenthalpic-isobaric ensemble
+    micro_canonical = "micro_canonical"
+    canonical = "canonical"
+    grand_canonical = "grand_canonical"
+    isothermal_isobaric = "isothermal_isobaric"
+    time_step = "time_step"
+    time_steps = "time_steps"
+    integration_time = "integration_time"
+    equilibration_time = "equilibration_time"
+    production_time = "production_time"
+    thermostat = "thermostat"
+    barostat = "barostat"
+    langevin_damping = "langevin_damping"
+    nose_hoover = "nose_hoover"
+    berendsen = "berendsen"
+    andersen = "andersen"
+    velocity_verlet = "velocity_verlet"
+    verlet = "verlet"
+    leap_frog = "leap_frog"
+    kinetic_energy = "kinetic_energy"
+    potential_energy = "potential_energy"
+    total_energy = "total_energy"
+    conserved_energy = "conserved_energy"
+    temperature_avg = "temperature_avg"
+    pressure_avg = "pressure_avg"
+    volume_avg = "volume_avg"
+    density_avg = "density_avg"
+    rdf = "rdf"  # radial distribution function
+    velocity = "velocity"
+    acceleration = "acceleration"
+    momentum = "momentum"
+    angular_momentum = "angular_momentum"
+    gyration_radius = "gyration_radius"
+    drift = "drift"
+    flux = "flux"
+    correlation_time = "correlation_time"
+    correlation_length = "correlation_length"
+
     # ML
     train_task = "train_task"
     test_task = "test_task"
@@ -582,7 +638,7 @@ class Key(StrEnum):
     epochs = "epochs"
     batch_size = "batch_size"
     learning_rate = "learning_rate"
-    momentum = "momentum"
+    optimizer_momentum = "optimizer_momentum"
     weight_decay = "weight_decay"
     early_stopping = "early_stopping"
     n_folds = "n_folds"
