@@ -106,7 +106,7 @@ def test_label_enum_repr() -> None:
         (Key.fermi_energy, "E<sub>Fermi</sub>"),
         (Key.work_function, "E<sub>work</sub>"),
         (Key.electron_affinity, "E<sub>aff</sub>"),
-        (Key.effective_mass, "m<sub>e</sub>"),
+        (Key.effective_mass, "m<sub>eff</sub>"),
         (Key.carrier_concentration, "n"),
         (Key.mobility, "μ"),
         (Key.polarizability, "α"),
@@ -191,7 +191,7 @@ def test_key_categories_are_valid() -> None:
         "optical surface defect crystal_symmetry_properties dft ml metrics "
         "computational_details identifiers_and_metadata code synthesis_related "
         "performance_indicators environmental_indicators composition chemical "
-        "structure_prototyping economic".split()
+        "structure_prototyping economic molecular_dynamics".split()
     )
 
     for key in Key:
@@ -226,9 +226,11 @@ def test_key_label_formatting() -> None:
     """Test that all labels are properly formatted."""
     for key in Key:
         label = key.label
-        assert label[0].isupper() or label[0].isdigit() or label.startswith("r2SCAN"), (
-            f"{label=} should be capitalized"
-        )
+        assert (
+            label[0].isupper()
+            or label[0].isdigit()
+            or label.startswith(("r2SCAN", "q-Points"))
+        ), f"{label=} should be capitalized"
 
         assert not label.endswith((".", ",")), f"{label=} ends with punctuation"
 
@@ -375,7 +377,15 @@ def test_unit_special_characters() -> None:
 def test_unit_formatting_consistency() -> None:
     """Test that similar quantities use consistent unit formatting."""
     ev_keys = {k for k in Key if k.unit and "eV" in k.unit}
-    valid_ev_units = {"eV", "eV/atom", "eV/K", "eV/Å", "meV"}
+    valid_units = {
+        "eV",
+        "eV/atom",
+        "eV/K",
+        "eV/Å",
+        "meV",
+        "eV/Å<sup>3</sup>",
+        "states/eV",
+    }
     for key in ev_keys:
         unit = key.unit
-        assert unit in valid_ev_units, f"Unexpected {unit=} for {key=}"
+        assert unit in valid_units, f"Unexpected {unit=} for {key=}"

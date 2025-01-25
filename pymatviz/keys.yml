@@ -2,6 +2,7 @@ structural:
   n_sites:
     label: Number of Sites
     symbol: N<sub>sites</sub>
+    unit: dimensionless
   structure:
     label: Structure
   init_struct:
@@ -15,6 +16,7 @@ structural:
   lattice_vectors:
     label: Lattice Vectors
     symbol: L
+    unit: Å
   lattice_angles:
     label: Lattice Angles
     unit: °
@@ -48,14 +50,18 @@ structural:
   lattice_params:
     label: Lattice Parameters
     description: a, b, c, α, β, γ
+    unit: Å, Å, Å, °, °, °
   supercell:
     label: Supercell
   atom_nums:
-    label: Atom Numbers
+    label: Atomic Numbers
+    symbol: Z
+    unit: dimensionless
   coord_num:
     label: Coordination Number
     symbol: N<sub>coord</sub>
     description: Number of nearest neighbor atoms surrounding each atom
+    unit: dimensionless
   bond_lens:
     label: Bond Lengths
     unit: Å
@@ -68,6 +74,7 @@ structural:
     label: Packing Fraction
     symbol: V<sub>atoms</sub>/V
     description: Ratio of volume occupied by atoms (modeled as hard spheres) to total cell volume
+    unit: dimensionless
   max_pair_dist:
     label: Maximum Pair Distance
     symbol: d<sub>max</sub>
@@ -132,6 +139,7 @@ electronic:
   dos:
     label: Density of States
     description: Number of available electronic states at each energy level
+    unit: states/eV
   band_structure:
     label: Band Structure
   conductivity:
@@ -154,8 +162,9 @@ electronic:
     unit: cm²/V⋅s
   effective_mass:
     label: Effective Mass
-    symbol: m<sub>e</sub>
+    symbol: m<sub>eff</sub>
     description: Mass that a particle appears to carry in a crystal, accounting for dispersion/band structure effects
+    unit: dimensionless
   polarizability:
     label: Polarizability
     symbol: α
@@ -167,8 +176,9 @@ electronic:
     unit: C/m²
   dielectric_constant:
     label: Dielectric Constant
-    symbol: ε<sub>r</sub>
+    symbol: ε<sub>rel</sub>
     description: Relative permittivity, measure of material's ability to store electrical energy
+    unit: dimensionless
   charge_density:
     label: Charge Density
     symbol: ρ
@@ -198,6 +208,7 @@ thermodynamic:
   enthalpy:
     label: Enthalpy
     symbol: H
+    unit: eV
   entropy:
     label: Entropy
     symbol: S
@@ -205,15 +216,19 @@ thermodynamic:
   free_energy:
     label: Free Energy
     symbol: F
+    unit: eV
   gibbs_free_energy:
     label: Gibbs Free Energy
     symbol: G
+    unit: eV
   helmholtz_free_energy:
     label: Helmholtz Free Energy
     symbol: A
+    unit: eV
   internal_energy:
     label: Internal Energy
     symbol: U
+    unit: eV
   energy_per_atom:
     label: Energy
     symbol: E/N<sub>atoms</sub>
@@ -292,20 +307,30 @@ mechanical:
   forces:
     label: Forces
     symbol: F
+    unit: eV/Å
   stress:
     label: Stress
     symbol: σ
+    unit: eV/Å³
+  max_stress:
+    label: Maximum Stress
+    symbol: σ<sub>max</sub>
+    unit: eV/Å³
+    description: Maximum component of the stress tensor
   virial:
     label: Virial
     symbol: V
+    unit: eV/Å³
   stress_trace:
     label: Stress Trace
     symbol: σ<sub>trace</sub>
     description: Sum of diagonal elements of stress tensor, related to pressure
+    unit: eV/Å³
   voigt_stress:
     label: Voigt Stress
     symbol: σ<sub>Voigt</sub>
     description: Stress tensor in Voigt notation (6-component vector)
+    unit: eV/Å³
   bulk_modulus:
     label: Bulk Modulus
     symbol: K
@@ -322,6 +347,7 @@ mechanical:
     label: Poisson's Ratio
     symbol: ν
     description: Negative ratio of transverse to axial strain under uniaxial stress
+    unit: dimensionless
   hardness:
     label: Hardness
     symbol: H
@@ -330,15 +356,19 @@ mechanical:
   elastic_tensor:
     label: Elastic Tensor
     symbol: C
+    unit: eV/Å³
   elastic_tensor_voigt:
     label: Voigt Elastic Tensor
     symbol: C<sub>Voigt</sub>
+    unit: eV/Å³
   elastic_tensor_reuss:
     label: Reuss Elastic Tensor
     symbol: C<sub>Reuss</sub>
+    unit: eV/Å³
   elastic_tensor_vrh:
     label: Voigt-Reuss-Hill Elastic Tensor
     symbol: C<sub>VRH</sub>
+    unit: eV/Å³
     description: Elastic tensor averaged between Voigt (uniform strain) and Reuss (uniform stress) bounds
   toughness:
     label: Toughness
@@ -458,6 +488,7 @@ thermal:
   gruneisen_parameter:
     label: Gruneisen Parameter
     symbol: γ
+    unit: dimensionless
   thermal_resistivity:
     label: Thermal Resistivity
     symbol: ρ<sub>th</sub>
@@ -482,6 +513,7 @@ magnetic:
   magmoms:
     label: Magnetic Moments
     symbol: μ
+    unit: μ<sub>B</sub>
   curie_temperature:
     label: Curie Temperature
     symbol: T<sub>C</sub>
@@ -519,6 +551,18 @@ phonon:
     label: Phonon Band Structure
   ph_dos:
     label: Phonon Density of States
+  ph_freqs:
+    label: Phonon Frequencies
+    symbol: ω
+    unit: THz
+    description: Vibrational frequencies of phonon modes
+  mode_weights:
+    label: Mode Weights
+    description: Weights of phonon modes in density of states calculation
+  q_points:
+    label: q-Points
+    symbol: q
+    description: Reciprocal space points for sampling phonon modes
   ph_dos_mae:
     label: Phonon DOS MAE
   ph_dos_rmse:
@@ -626,9 +670,19 @@ economic:
 crystal_symmetry_properties:
   crystal_system:
     label: Crystal System
+    description: One of the 7 crystal systems (triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, cubic)
   spg_num:
     label: Space Group Number
+    description: International space group number (1-230)
     symbol: N<sub>spg</sub>
+  init_spg_num:
+    label: Initial Space Group Number
+    description: Space group number before structure modification
+    symbol: N<sub>spg,init</sub>
+  final_spg_num:
+    label: Final Space Group Number
+    description: Space group number after structure modification
+    symbol: N<sub>spg,final</sub>
   spg_symbol:
     label: Space Group Symbol
   choice_symbol:
@@ -889,7 +943,7 @@ dft: # Density Functional Theory
     label: Electronic Convergence
   convergence_ionic:
     label: Ionic Convergence
-  kpoints:
+  k_points:
     label: K-points
   pseudo_potential:
     label: Pseudo-Potential
@@ -995,8 +1049,8 @@ ml: # Machine Learning
     label: Batch Size
   learning_rate:
     label: Learning Rate
-  momentum:
-    label: Momentum
+  optimizer_momentum:
+    label: Optimizer Momentum
   weight_decay:
     label: Weight Decay
   early_stopping:
@@ -1017,65 +1071,84 @@ ml: # Machine Learning
   radial_cutoff:
     label: Radial Cutoff
     description: Maximum distance considered for atomic interactions in ML models
+    unit: Å
   angular_cutoff:
     label: Angular Cutoff
     description: Maximum distance for three-body interactions in ML models
+    unit: Å
 
 metrics:
   accuracy:
     label: Accuracy
+    unit: dimensionless
   auc:
     label: Area under the Curve
+    unit: dimensionless
   confusion_matrix:
     label: Confusion Matrix
+    unit: dimensionless
   daf:
     label: Discovery Acceleration Factor
     symbol: DAF
     description: Ratio of materials discovered to those that would be found by random search
+    unit: dimensionless
   f1:
     label: F1 Score
     symbol: F1
     description: Harmonic mean of precision and recall, reflecting overall performance of a binary classifier on the positive class
+    unit: dimensionless
   fp:
     label: False Positives
     symbol: FP
+    unit: dimensionless
   fn:
     label: False Negatives
     symbol: FN
+    unit: dimensionless
   tp:
     label: True Positives
     symbol: TP
+    unit: dimensionless
   tn:
     label: True Negatives
     symbol: TN
+    unit: dimensionless
   tpr:
     label: True Positive Rate
     symbol: TPR
+    unit: dimensionless
   fpr:
     label: False Positive Rate
     symbol: FPR
+    unit: dimensionless
   tnr:
     label: True Negative Rate
     symbol: TNR
+    unit: dimensionless
   fnr:
     label: False Negative Rate
     symbol: FNR
+    unit: dimensionless
   mae:
     label: Mean Absolute Error
   r2:
     label: R² Score
+    unit: dimensionless
   pearson:
     label: Pearson Correlation
     symbol: r
     description: Linear correlation coefficient between two variables (-1 to 1)
+    unit: dimensionless
   spearman:
     label: Spearman Correlation
     symbol: r<sub>s</sub>
     description: Rank correlation measuring monotonic relationships between variables (-1 to 1)
+    unit: dimensionless
   kendall:
     label: Kendall Correlation
     symbol: r<sub>k</sub>
     description: Rank correlation based on concordant and discordant pairs (-1 to 1)
+    unit: dimensionless
   mse:
     label: Mean Squared Error
     symbol: MSE
@@ -1087,30 +1160,37 @@ metrics:
     symbol: RMSD
   n_sym_ops_mae:
     label: Mean Absolute Error in Number of Symmetry Operations
+    unit: dimensionless
   structure_rmsd:
     label: Structure RMSD
     unit: Å
   mape:
     label: Mean Absolute Percentage Error
     symbol: MAPE
+    unit: "%"
   srme:
     label: Symmetric Relative Mean Error
     symbol: SRME
     description: Error metric that treats over- and under-prediction symmetrically
+    unit: dimensionless
   sre:
     label: Symmetric Relative Error
     symbol: SRE
+    unit: dimensionless
   srd:
     label: Symmetric Relative Difference
     symbol: SRD
     description: Relative difference metric that treats signed differences symmetrically
+    unit: dimensionless
   smpe:
     label: Symmetric Mean Percentage Error
     symbol: SMPE
+    unit: "%"
   smape:
     label: Symmetric Mean Absolute Percentage Error
     symbol: SMAPE
     description: Percentage absolute error that treats over- and under-prediction symmetrically
+    unit: "%"
   sse:
     label: Sum of Squared Errors
     symbol: SSE
@@ -1130,88 +1210,116 @@ metrics:
   energy_error:
     label: Energy Error
     symbol: E<sub>err</sub>
+    unit: eV
   force_error:
     label: Force Error
     symbol: F<sub>err</sub>
+    unit: eV/Å
   stress_error:
     label: Stress Error
     symbol: σ<sub>err</sub>
+    unit: eV/Å³
   volume_error:
     label: Volume Error
     symbol: V<sub>err</sub>
     unit: Å³
   max_force_error:
     label: Max Force Error
+    unit: eV/Å
   max_stress_error:
     label: Max Stress Error
     symbol: σ<sub>err</sub>
+    unit: eV/Å³
   max_volume_error:
     label: Max Volume Error
     symbol: V<sub>err</sub>
+    unit: Å³
   force_rmse:
     label: Force RMSE
     symbol: F<sub>RMSE</sub>
+    unit: eV/Å
   stress_rmse:
     label: Stress RMSE
     symbol: σ<sub>RMSE</sub>
+    unit: eV/Å³
   volume_rmse:
     label: Volume RMSE
     symbol: V<sub>RMSE</sub>
+    unit: Å³
   force_mae:
     label: Force MAE
     symbol: F<sub>MAE</sub>
+    unit: eV/Å
   stress_mae:
     label: Stress MAE
     symbol: σ<sub>MAE</sub>
+    unit: eV/Å³
   volume_mae:
     label: Volume MAE
     symbol: V<sub>MAE</sub>
+    unit: Å³
   residuals:
     label: Residuals
   prc:
     label: Precision-Recall Curve
+    unit: dimensionless
   prc_curve:
     label: PRC Curve
+    unit: dimensionless
   precision:
     label: Precision
     symbol: P
+    unit: dimensionless
   recall:
     label: Recall
     symbol: R
+    unit: dimensionless
   sensitivity:
     label: Sensitivity
     symbol: S
+    unit: dimensionless
   specificity:
     label: Specificity
     symbol: S
+    unit: dimensionless
   roc:
     label: Receiver Operating Characteristic
     symbol: ROC
+    unit: dimensionless
   roc_curve:
     label: Receiver Operating Characteristic Curve
     symbol: ROC
+    unit: dimensionless
   roc_auc:
     label: Receiver Operating Characteristic Area Under the Curve
     symbol: ROCAUC
+    unit: dimensionless
   hit_rate:
     label: Hit Rate
+    unit: dimensionless
   n_structures:
     label: Number of Structures
     symbol: N<sub>structs</sub>
+    unit: dimensionless
   n_materials:
     label: Number of Materials
     symbol: N<sub>mats</sub>
+    unit: dimensionless
   n_molecules:
     label: Number of Molecules
     symbol: N<sub>molecules</sub>
+    unit: dimensionless
   n_samples:
     label: Number of Samples
     symbol: N<sub>samples</sub>
+    unit: dimensionless
   n_configs:
     label: Number of Configurations
     symbol: N<sub>configs</sub>
+    unit: dimensionless
   count:
     label: Count
+    unit: dimensionless
   heat_val:
     label: Heatmap Value
 
@@ -1249,6 +1357,7 @@ computational_details:
   step:
     label: Step
     description: Step of a job/task/optimizer.
+    unit: dimensionless
   state:
     label: State
     description: State of a job/task/computation.
@@ -1256,20 +1365,28 @@ computational_details:
     label: Output
   n_cores:
     label: Number of Cores
+    unit: dimensionless
   n_nodes:
     label: Number of Nodes
+    unit: dimensionless
   n_gpus:
     label: Number of GPUs
+    unit: dimensionless
   n_tasks:
     label: Number of Tasks
+    unit: dimensionless
   n_processes:
     label: Number of Processes
+    unit: dimensionless
   n_threads:
     label: Number of Threads
+    unit: dimensionless
   core_hours:
     label: Core Hours
+    unit: hr
   memory:
     label: Memory
+    unit: GB
   queue_name:
     label: Queue Name
   job_name:
@@ -1396,22 +1513,28 @@ performance_indicators:
   power_factor:
     label: Power Factor
     description: Product of electrical conductivity and square of Seebeck coefficient
+    unit: W/m⋅K²
   zt:
     label: Figure of Merit
     symbol: ZT
     description: Thermoelectric figure of merit, dimensionless measure of material's electricity/heat conversion efficiency
+    unit: dimensionless
   efficiency:
     label: Efficiency
     symbol: η
+    unit: "%"
   capacity:
     label: Capacity
     symbol: C
+    unit: mAh/g
   rate:
     label: Rate
     symbol: R
+    unit: s⁻¹
   lifetime:
     label: Lifetime
     symbol: T
+    unit: hr
   stability:
     label: Stability
   selectivity:
@@ -1419,8 +1542,10 @@ performance_indicators:
     description: Ability to preferentially interact with specific species/molecules
   purity:
     label: Purity
+    unit: "%"
   yield:
     label: Yield
+    unit: "%"
   activity:
     label: Activity
     description: Rate or effectiveness of material in its intended function (catalysis, yield, etc.)
@@ -1430,27 +1555,235 @@ performance_indicators:
     label: Gain
   power:
     label: Power
+    unit: W
   current:
     label: Current
+    unit: A
   voltage:
     label: Voltage
+    unit: V
   resistance:
     label: Resistance
+    unit: Ω
   impedance:
     label: Impedance
+    unit: Ω
   capacitance:
     label: Capacitance
+    unit: F
 
 environmental_indicators:
   toxicity:
     label: Toxicity Index
     description: Material's potential harmful effects on health/environment
+    unit: dimensionless
   recyclability:
     label: Recyclability Score
     description: How easily/efficiently material can be recycled
+    unit: dimensionless
   biodegradability:
     label: Biodegradability Score
     description: Material's ability to decompose naturally
+    unit: dimensionless
   sustainability:
     label: Sustainability Index
     description: Composite score of environmental impact including resource depletion, emissions, etc.
+    unit: dimensionless
+
+molecular_dynamics:
+  trajectory:
+    label: Trajectory
+    description: Time series of atomic positions and other system properties
+  frames:
+    label: Frames
+    description: Collection of snapshots from a molecular dynamics simulation
+  frame:
+    label: Frame
+    description: Single snapshot from a molecular dynamics simulation
+  diffusivity:
+    label: Diffusivity
+    symbol: D
+    unit: cm²/s
+    description: Rate of atomic/molecular motion through the system
+  diffusion_tensor:
+    label: Diffusion Tensor
+    symbol: D
+    unit: cm²/s
+    description: Anisotropic diffusion rates along different crystallographic directions
+  msd:
+    label: Mean Squared Displacement
+    symbol: ⟨r²⟩
+    unit: Å²
+    description: Average squared distance traveled by atoms over time
+  velocity_autocorr:
+    label: Velocity Autocorrelation Function
+    symbol: C<sub>v</sub>
+    description: Correlation of atomic velocities with their initial values over time, used to analyze atomic dynamics and vibrational properties.
+  ensemble:
+    label: Ensemble
+    description: Statistical ensemble used for the simulation (NVE, NVT, NPT, etc.)
+  nvt:
+    label: NVT Ensemble
+    description: Canonical ensemble with constant number of particles, volume, and temperature
+  nve:
+    label: NVE Ensemble
+    description: Microcanonical ensemble with constant number of particles, volume, and energy
+  npt:
+    label: NPT Ensemble
+    description: Isothermal-isobaric ensemble with constant number of particles, pressure, and temperature
+  nvp:
+    label: NVP Ensemble
+    description: Isoenthalpic-isobaric ensemble with constant number of particles, volume, and pressure
+  micro_canonical:
+    label: Microcanonical Ensemble
+    description: System with constant number of particles, volume, and energy (NVE)
+  canonical:
+    label: Canonical Ensemble
+    description: System with constant number of particles, volume, and temperature (NVT)
+  grand_canonical:
+    label: Grand Canonical Ensemble
+    description: System with constant chemical potential, volume, and temperature (μVT)
+  isothermal_isobaric:
+    label: Isothermal-Isobaric Ensemble
+    description: System with constant number of particles, pressure, and temperature (NPT)
+  time_step:
+    label: Time Step
+    symbol: Δt
+    unit: fs
+    description: Integration time step for equations of motion
+  time_steps:
+    label: Time Steps
+    symbol: N<sub>steps</sub>
+    description: Total number of integration steps
+    unit: dimensionless
+  integration_time:
+    label: Integration Time
+    symbol: t<sub>int</sub>
+    unit: ps
+    description: Total simulation time
+  equilibration_time:
+    label: Equilibration Time
+    symbol: t<sub>eq</sub>
+    unit: ps
+    description: Time allowed for system to reach equilibrium before data collection
+  production_time:
+    label: Production Time
+    symbol: t<sub>prod</sub>
+    unit: ps
+    description: Time during which data is collected for analysis
+  thermostat:
+    label: Thermostat
+    description: Algorithm used to control system temperature
+  barostat:
+    label: Barostat
+    description: Algorithm used to control system pressure
+  langevin_damping:
+    label: Langevin Damping
+    symbol: γ
+    unit: 1/ps
+    description: Friction coefficient in Langevin dynamics
+  nose_hoover:
+    label: Nosé-Hoover Thermostat
+    description: Deterministic thermostat based on extended system dynamics
+  berendsen:
+    label: Berendsen Thermostat/Barostat
+    description: Weak-coupling algorithm for temperature/pressure control
+  andersen:
+    label: Andersen Thermostat
+    description: Stochastic velocity reassignment thermostat
+  velocity_verlet:
+    label: Velocity Verlet
+    description: Symplectic integration algorithm for equations of motion
+  verlet:
+    label: Verlet
+    description: Basic integration algorithm for equations of motion
+  leap_frog:
+    label: Leap-Frog
+    description: Variant of Verlet algorithm with velocities offset by half time step
+  kinetic_energy:
+    label: Kinetic Energy
+    symbol: E<sub>k</sub>
+    unit: eV
+    description: Total kinetic energy of the system
+  potential_energy:
+    label: Potential Energy
+    symbol: E<sub>p</sub>
+    unit: eV
+    description: Total potential energy of the system
+  total_energy:
+    label: Total Energy
+    symbol: E<sub>tot</sub>
+    unit: eV
+    description: Sum of kinetic and potential energies
+  conserved_energy:
+    label: Conserved Energy
+    symbol: E<sub>cons</sub>
+    unit: eV
+    description: Energy quantity that should remain constant (includes thermostat terms)
+  temperature_avg:
+    label: Average Temperature
+    symbol: ⟨T⟩
+    unit: K
+    description: Time-averaged temperature during simulation
+  pressure_avg:
+    label: Average Pressure
+    symbol: ⟨P⟩
+    unit: GPa
+    description: Time-averaged pressure during simulation
+  volume_avg:
+    label: Average Volume
+    symbol: ⟨V⟩
+    unit: Å³
+    description: Time-averaged volume during simulation
+  density_avg:
+    label: Average Density
+    symbol: ⟨ρ⟩
+    unit: g/cm³
+    description: Time-averaged density during simulation
+  rdf:
+    label: Radial Distribution Function
+    symbol: g(r)
+    description: Probability of finding atoms at distance r relative to random distribution
+  velocity:
+    label: Velocity
+    symbol: v
+    unit: Å/ps
+    description: Atomic velocities
+  acceleration:
+    label: Acceleration
+    symbol: a
+    unit: Å/ps²
+    description: Atomic accelerations
+  momentum:
+    label: Momentum
+    symbol: p
+    unit: eV/Å
+    description: Linear momentum of atoms or system
+  angular_momentum:
+    label: Angular Momentum
+    symbol: L
+    unit: eV/Å
+    description: Angular momentum of atoms or system
+  gyration_radius:
+    label: Radius of Gyration
+    symbol: R<sub>g</sub>
+    unit: Å
+    description: Root mean square distance of atoms from their center of mass
+  drift:
+    label: Drift
+    unit: Å/ps
+    description: Systematic motion of center of mass
+  flux:
+    label: Flux
+    symbol: J
+    description: Flow rate of mass, momentum, or energy through system
+  correlation_time:
+    label: Correlation Time
+    symbol: τ<sub>c</sub>
+    unit: ps
+    description: Characteristic time for decay of time correlations
+  correlation_length:
+    label: Correlation Length
+    symbol: ξ
+    unit: Å
+    description: Characteristic length for decay of spatial correlations
