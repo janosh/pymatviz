@@ -11,12 +11,12 @@ definitions:
         minLength: 1
       symbol:
         type: string
-        # Allow Greek letters, HTML tags, combining marks etc.
-        pattern: '^[A-Za-z0-9<>/_ ,\u0300-\u036F\u0370-\u03FF%\-]+$'
+        # Allow Greek letters, HTML tags, combining marks, angle brackets, parentheses, etc.
+        pattern: '^[A-Za-z0-9<>/_ ,\u0300-\u036F\u0370-\u03FF%\-()⟨⟩²³ξτγ]+$'
       unit:
         type: string
-        # Added <sup> tags and more special characters
-        pattern: '^[A-Za-z0-9²³·/%⁻$°Å·∙⋅\u0370-\u03FF\- /<>sup¹½·⁻¹²³emu]+$'
+        # Added more special characters for units and mathematical notation
+        pattern: '^[A-Za-z0-9²³·/%⁻$°Å·∙⋅\u0370-\u03FF\- /<>sup¹½·⁻¹²³emu⋅⁻]+$'
       description:
         type: string
         minLength: 10 # Ensure meaningful descriptions

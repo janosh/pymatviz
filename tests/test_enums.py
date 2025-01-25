@@ -191,7 +191,7 @@ def test_key_categories_are_valid() -> None:
         "optical surface defect crystal_symmetry_properties dft ml metrics "
         "computational_details identifiers_and_metadata code synthesis_related "
         "performance_indicators environmental_indicators composition chemical "
-        "structure_prototyping economic".split()
+        "structure_prototyping economic molecular_dynamics".split()
     )
 
     for key in Key:
