@@ -995,8 +995,8 @@ ml: # Machine Learning
     label: Batch Size
   learning_rate:
     label: Learning Rate
-  momentum:
-    label: Momentum
+  optimizer_momentum:
+    label: Optimizer Momentum
   weight_decay:
     label: Weight Decay
   early_stopping:
@@ -1454,3 +1454,200 @@ environmental_indicators:
   sustainability:
     label: Sustainability Index
     description: Composite score of environmental impact including resource depletion, emissions, etc.
+
+molecular_dynamics:
+  trajectory:
+    label: Trajectory
+    description: Time series of atomic positions and other system properties
+  frames:
+    label: Frames
+    description: Collection of snapshots from a molecular dynamics simulation
+  frame:
+    label: Frame
+    description: Single snapshot from a molecular dynamics simulation
+  diffusivity:
+    label: Diffusivity
+    symbol: D
+    unit: cm²/s
+    description: Rate of atomic/molecular motion through the system
+  diffusion_tensor:
+    label: Diffusion Tensor
+    symbol: D
+    unit: cm²/s
+    description: Anisotropic diffusion rates along different crystallographic directions
+  msd:
+    label: Mean Squared Displacement
+    symbol: ⟨r²⟩
+    unit: Å²
+    description: Average squared distance traveled by atoms over time
+  velocity_autocorr:
+    label: Velocity Autocorrelation Function
+    symbol: C<sub>v</sub>
+    description: Correlation of atomic velocities with their initial values over time, used to analyze atomic dynamics and vibrational properties.
+  ensemble:
+    label: Ensemble
+    description: Statistical ensemble used for the simulation (NVE, NVT, NPT, etc.)
+  nvt:
+    label: NVT Ensemble
+    description: Canonical ensemble with constant number of particles, volume, and temperature
+  nve:
+    label: NVE Ensemble
+    description: Microcanonical ensemble with constant number of particles, volume, and energy
+  npt:
+    label: NPT Ensemble
+    description: Isothermal-isobaric ensemble with constant number of particles, pressure, and temperature
+  nvp:
+    label: NVP Ensemble
+    description: Isoenthalpic-isobaric ensemble with constant number of particles, volume, and pressure
+  micro_canonical:
+    label: Microcanonical Ensemble
+    description: System with constant number of particles, volume, and energy (NVE)
+  canonical:
+    label: Canonical Ensemble
+    description: System with constant number of particles, volume, and temperature (NVT)
+  grand_canonical:
+    label: Grand Canonical Ensemble
+    description: System with constant chemical potential, volume, and temperature (μVT)
+  isothermal_isobaric:
+    label: Isothermal-Isobaric Ensemble
+    description: System with constant number of particles, pressure, and temperature (NPT)
+  time_step:
+    label: Time Step
+    symbol: Δt
+    unit: fs
+    description: Integration time step for equations of motion
+  time_steps:
+    label: Time Steps
+    symbol: N<sub>steps</sub>
+    description: Total number of integration steps
+  integration_time:
+    label: Integration Time
+    symbol: t<sub>int</sub>
+    unit: ps
+    description: Total simulation time
+  equilibration_time:
+    label: Equilibration Time
+    symbol: t<sub>eq</sub>
+    unit: ps
+    description: Time allowed for system to reach equilibrium before data collection
+  production_time:
+    label: Production Time
+    symbol: t<sub>prod</sub>
+    unit: ps
+    description: Time during which data is collected for analysis
+  thermostat:
+    label: Thermostat
+    description: Algorithm used to control system temperature
+  barostat:
+    label: Barostat
+    description: Algorithm used to control system pressure
+  langevin_damping:
+    label: Langevin Damping
+    symbol: γ
+    unit: 1/ps
+    description: Friction coefficient in Langevin dynamics
+  nose_hoover:
+    label: Nosé-Hoover Thermostat
+    description: Deterministic thermostat based on extended system dynamics
+  berendsen:
+    label: Berendsen Thermostat/Barostat
+    description: Weak-coupling algorithm for temperature/pressure control
+  andersen:
+    label: Andersen Thermostat
+    description: Stochastic velocity reassignment thermostat
+  velocity_verlet:
+    label: Velocity Verlet
+    description: Symplectic integration algorithm for equations of motion
+  verlet:
+    label: Verlet
+    description: Basic integration algorithm for equations of motion
+  leap_frog:
+    label: Leap-Frog
+    description: Variant of Verlet algorithm with velocities offset by half time step
+  kinetic_energy:
+    label: Kinetic Energy
+    symbol: E<sub>k</sub>
+    unit: eV
+    description: Total kinetic energy of the system
+  potential_energy:
+    label: Potential Energy
+    symbol: E<sub>p</sub>
+    unit: eV
+    description: Total potential energy of the system
+  total_energy:
+    label: Total Energy
+    symbol: E<sub>tot</sub>
+    unit: eV
+    description: Sum of kinetic and potential energies
+  conserved_energy:
+    label: Conserved Energy
+    symbol: E<sub>cons</sub>
+    unit: eV
+    description: Energy quantity that should remain constant (includes thermostat terms)
+  temperature_avg:
+    label: Average Temperature
+    symbol: ⟨T⟩
+    unit: K
+    description: Time-averaged temperature during simulation
+  pressure_avg:
+    label: Average Pressure
+    symbol: ⟨P⟩
+    unit: GPa
+    description: Time-averaged pressure during simulation
+  volume_avg:
+    label: Average Volume
+    symbol: ⟨V⟩
+    unit: Å³
+    description: Time-averaged volume during simulation
+  density_avg:
+    label: Average Density
+    symbol: ⟨ρ⟩
+    unit: g/cm³
+    description: Time-averaged density during simulation
+  rdf:
+    label: Radial Distribution Function
+    symbol: g(r)
+    description: Probability of finding atoms at distance r relative to random distribution
+  velocity:
+    label: Velocity
+    symbol: v
+    unit: Å/ps
+    description: Atomic velocities
+  acceleration:
+    label: Acceleration
+    symbol: a
+    unit: Å/ps²
+    description: Atomic accelerations
+  momentum:
+    label: Momentum
+    symbol: p
+    unit: eV/Å
+    description: Linear momentum of atoms or system
+  angular_momentum:
+    label: Angular Momentum
+    symbol: L
+    unit: eV/Å
+    description: Angular momentum of atoms or system
+  gyration_radius:
+    label: Radius of Gyration
+    symbol: R<sub>g</sub>
+    unit: Å
+    description: Root mean square distance of atoms from their center of mass
+  drift:
+    label: Drift
+    unit: Å/ps
+    description: Systematic motion of center of mass
+  flux:
+    label: Flux
+    symbol: J
+    description: Flow rate of mass, momentum, or energy through system
+  correlation_time:
+    label: Correlation Time
+    symbol: τ<sub>c</sub>
+    unit: ps
+    description: Characteristic time for decay of time correlations
+  correlation_length:
+    label: Correlation Length
+    symbol: ξ
+    unit: Å
+    description: Characteristic length for decay of spatial correlations

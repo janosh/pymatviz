@@ -563,6 +563,56 @@ class Key(StrEnum):
     collinear = "collinear"
     non_collinear = "non_collinear"
 
+    # Molecular Dynamics
+    trajectory = "trajectory"
+    frames = "frames"
+    frame = "frame"
+    diffusivity = "diffusivity"
+    diffusion_tensor = "diffusion_tensor"
+    msd = "msd"  # mean squared displacement
+    velocity_autocorr = "velocity_autocorr"  # velocity autocorrelation function
+    ensemble = "ensemble"
+    nvt = "nvt"  # canonical ensemble
+    nve = "nve"  # microcanonical ensemble
+    npt = "npt"  # isothermal-isobaric ensemble
+    nvp = "nvp"  # isoenthalpic-isobaric ensemble
+    micro_canonical = "micro_canonical"
+    canonical = "canonical"
+    grand_canonical = "grand_canonical"
+    isothermal_isobaric = "isothermal_isobaric"
+    time_step = "time_step"
+    time_steps = "time_steps"
+    integration_time = "integration_time"
+    equilibration_time = "equilibration_time"
+    production_time = "production_time"
+    thermostat = "thermostat"
+    barostat = "barostat"
+    langevin_damping = "langevin_damping"
+    nose_hoover = "nose_hoover"
+    berendsen = "berendsen"
+    andersen = "andersen"
+    velocity_verlet = "velocity_verlet"
+    verlet = "verlet"
+    leap_frog = "leap_frog"
+    kinetic_energy = "kinetic_energy"
+    potential_energy = "potential_energy"
+    total_energy = "total_energy"
+    conserved_energy = "conserved_energy"
+    temperature_avg = "temperature_avg"
+    pressure_avg = "pressure_avg"
+    volume_avg = "volume_avg"
+    density_avg = "density_avg"
+    rdf = "rdf"  # radial distribution function
+    velocity = "velocity"
+    acceleration = "acceleration"
+    momentum = "momentum"
+    angular_momentum = "angular_momentum"
+    gyration_radius = "gyration_radius"
+    drift = "drift"
+    flux = "flux"
+    correlation_time = "correlation_time"
+    correlation_length = "correlation_length"
+
     # ML
     train_task = "train_task"
     test_task = "test_task"
@@ -582,7 +632,7 @@ class Key(StrEnum):
     epochs = "epochs"
     batch_size = "batch_size"
     learning_rate = "learning_rate"
-    momentum = "momentum"
+    optimizer_momentum = "optimizer_momentum"
     weight_decay = "weight_decay"
     early_stopping = "early_stopping"
     n_folds = "n_folds"

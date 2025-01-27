@@ -350,8 +350,8 @@ def test_df_to_svg(
 
     # check at least 10% file size reduction from compress=True
     if compress and which("svgo"):
-        assert (
-            file_size_after < file_size_before * 0.9
-        ), f"{file_size_before=} {file_size_after=}"
+        assert file_size_after < file_size_before * 0.9, (
+            f"{file_size_before=} {file_size_after=}"
+        )
     else:
         assert file_size_before == pytest.approx(file_size_after)
