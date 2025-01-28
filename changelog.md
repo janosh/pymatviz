@@ -2,9 +2,20 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.15.1](https://github.com/janosh/pymatviz/compare/v0.15.0...v0.15.1)
+
+> 28 January 2025
+
+- Remove hard-coded `gridsize` in `density_hexbin` [`#263`](https://github.com/janosh/pymatviz/pull/263)
+- structure_2d_plotly and structure_3d_plotly now support ase.Atoms and sequences of them on top of pymatgen.Structure [`#262`](https://github.com/janosh/pymatviz/pull/262)
+- add molecular dynamics attributes to Key enum [`4b55a40`](https://github.com/janosh/pymatviz/commit/4b55a400e639b696c25dc752a0a70c0e472740df)
+- better Key.unit formatting: replace unicode sup/superscripts with &lt;sup&gt;/&lt;sub&gt;+ASCII [`eb12217`](https://github.com/janosh/pymatviz/commit/eb122173df12cfcbcff1070a1a6177a581de248b)
+- bump ruff to 0.9 and auto-fix [`6989ba5`](https://github.com/janosh/pymatviz/commit/6989ba5496dcf5f699f3a64ef38dd33f65f3ac28)
+- calculate MACE-MPA-0 diatomic curves [`4dc5f1e`](https://github.com/janosh/pymatviz/commit/4dc5f1ee095d398089443a543519a386532d49c5)
+
 #### [v0.15.0](https://github.com/janosh/pymatviz/compare/v0.14.0...v0.15.0)
 
-> 20 December 2024
+> 21 December 2024
 
 - Multi-line `ptable_scatter_plotly` [`#260`](https://github.com/janosh/pymatviz/pull/260)
 - Hetero-nuclear diatomics example with MACE [`#259`](https://github.com/janosh/pymatviz/pull/259)
@@ -18,7 +29,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Add `pymatviz.classify.confusion_matrix` [`#252`](https://github.com/janosh/pymatviz/pull/252)
 - Fix `phonon_bands` for band structures with different paths in k-space [`#250`](https://github.com/janosh/pymatviz/pull/250)
 - keys.yml add more related to electronic, mechanical, thermal, and magnetic properties [`f377d95`](https://github.com/janosh/pymatviz/commit/f377d95aea1127f39108aa8a796f9fac13857d59)
-- classify/curves_plotly.py show threshold on hover, add _add_no_skill_line helper [`77e765a`](https://github.com/janosh/pymatviz/commit/77e765a1b6fc44006e2b684e2a4a76f86f2b4c52)
+- classify/curves_plotly.py show threshold on hover, add_add_no_skill_line helper [`77e765a`](https://github.com/janosh/pymatviz/commit/77e765a1b6fc44006e2b684e2a4a76f86f2b4c52)
 - breaking: rename Key.cse to computed_structure_entry [`ab691bb`](https://github.com/janosh/pymatviz/commit/ab691bbfa9f42151a42bcc3a6b2e0a261820b8b6)
 - test_brillouin_zone_3d_trace_counts [`44353aa`](https://github.com/janosh/pymatviz/commit/44353aa5c02259ab82b1d42e1ac3ac9e02ef5a18)
 
