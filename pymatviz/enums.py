@@ -146,7 +146,9 @@ class Key(StrEnum):
     def label(self) -> str:
         """Label associated with the key."""
         label = _keys[self.value]["label"]
-        if unit := _keys[self.value].get("unit"):
+        unit = _keys[self.value].get("unit")
+        # needlessly verbose to include "dimensionless" in label
+        if unit and unit != "dimensionless":
             label += f" ({unit})"
         return label
 
