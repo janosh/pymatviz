@@ -67,7 +67,7 @@ def test_spacegroup_sunburst_other_types(
     fig = spacegroup_sunburst(series, show_counts="value")
     assert isinstance(fig, go.Figure)
     values = [*map(int, fig.data[0].values)]
-    assert values == [3, 10, 5, 5, 13], f"actual {values=}"
+    assert values == [10, 5, 3, 13, 5], f"actual {values=}"
 
     # test with strings of space group symbols
     fig = spacegroup_sunburst(spg_symbols)

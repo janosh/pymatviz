@@ -307,6 +307,8 @@ class Key(StrEnum):
 
     # Structure Prototyping
     protostructure = "protostructure"
+    protostructure_moyo = "protostructure_moyo"
+    protostructure_spglib = "protostructure_spglib"
     prototype = "prototype"
 
     # Composition

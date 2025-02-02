@@ -113,7 +113,7 @@ def ptable_heatmap_plotly(
             https://plotly.com/python/reference#heatmap-colorbar. Defaults to
             dict(orientation="h"). Commonly used keys are:
             - title: colorbar title
-            - titleside: "top" | "bottom" | "right" | "left"
+            - title_side: "top" | "bottom" | "right" | "left"
             - tickmode: "array" | "auto" | "linear" | "log" | "date" | "category"
             - tickvals: list of tick values
             - ticktext: list of tick labels
@@ -353,13 +353,13 @@ def ptable_heatmap_plotly(
         defaults = dict(
             x=0.4,
             y=0.72,
-            titleside="top",
+            title_side="top",
             len=0.4,
             title_font_size=scale * 1.2 * (font_size or 12),
         )
         colorbar = defaults | colorbar
     else:  # make title vertical
-        defaults = dict(titleside="right", len=0.87)
+        defaults = dict(title_side="right", len=0.87)
         colorbar = defaults | colorbar
 
     if title := colorbar.get("title"):
@@ -625,13 +625,13 @@ def ptable_hists_plotly(
             h_defaults = dict(
                 x=0.4,
                 y=0.76,
-                titleside="top",
+                title_side="top",
                 len=0.4,
                 title_font_size=scale * 1.2 * (font_size or 12),
             )
             colorbar = h_defaults | colorbar
         else:  # make title vertical
-            v_defaults = dict(titleside="right", len=0.87)
+            v_defaults = dict(title_side="right", len=0.87)
             colorbar = v_defaults | colorbar
 
         if title := colorbar.get("title"):
@@ -1028,13 +1028,13 @@ def ptable_heatmap_splits_plotly(
             h_defaults = dict(
                 x=0.4,
                 y=0.76,
-                titleside="top",
+                title_side="top",
                 len=0.4,
                 title_font_size=scale * 1.2 * (font_size or 12),
             )
             colorbar = h_defaults | colorbar
         else:  # make title vertical
-            v_defaults = dict(titleside="right", len=0.87)
+            v_defaults = dict(title_side="right", len=0.87)
             colorbar = v_defaults | colorbar
 
         if title := colorbar.get("title"):
@@ -1462,13 +1462,13 @@ def ptable_scatter_plotly(
             h_defaults = dict(
                 x=0.4,
                 y=0.74,
-                titleside="top",
+                title_side="top",
                 len=0.4,
                 title_font_size=scale * 1.2 * (font_size or 12),
             )
             colorbar = h_defaults | colorbar
         else:  # make title vertical
-            v_defaults = dict(titleside="right", len=0.87)
+            v_defaults = dict(title_side="right", len=0.87)
             colorbar = v_defaults | colorbar
 
         if title := colorbar.get("title"):
