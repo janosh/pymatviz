@@ -747,6 +747,13 @@ crystal_symmetry_properties:
 structure_prototyping:
   protostructure:
     label: Protostructure Label
+    description: AFLOW-style protostructure label
+  protostructure_moyo:
+    label: Protostructure Label (Moyo)
+    description: AFLOW-style protostructure label using Moyopy for symmetry detection
+  protostructure_spglib:
+    label: Protostructure Label (Spglib)
+    description: AFLOW-style protostructure label using Spglib for symmetry detection
   prototype:
     label: Prototype Label
 
