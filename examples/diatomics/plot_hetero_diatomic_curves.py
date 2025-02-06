@@ -19,7 +19,7 @@ pmv.set_plotly_template("pymatviz_dark")
 module_dir = os.path.dirname(__file__)
 __date__ = "2024-03-31"
 
-model_name, z1 = "mace-small", 5
+model_name, z1 = "mace-mp-0-small", 5
 elem1 = Element.from_Z(z1)
 lzma_path = f"{module_dir}/hetero-nuclear-diatomics-{z1}-{model_name}.json.xz"
 with lzma.open(lzma_path, mode="rt") as file:

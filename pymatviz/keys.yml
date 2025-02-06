@@ -563,6 +563,18 @@ phonon:
     label: q-Points
     symbol: q
     description: Reciprocal space points for sampling phonon modes
+  n_q_points:
+    label: Number of q-Points
+    description: Number of q-points in the Brillouin zone
+  q_point_mesh:
+    label: q-Point Mesh
+    description: Number of q-points in each dimension of the Brillouin zone. Usually a list of three integers, e.g. [20, 20, 20].
+  fc2_supercell:
+    label: FC2 Supercell
+    description: Supercell used for computing 2nd order force constants
+  fc3_supercell:
+    label: FC3 Supercell
+    description: Supercell used for computing 3rd order force constants
   ph_dos_mae:
     label: Phonon DOS MAE
   ph_dos_rmse:

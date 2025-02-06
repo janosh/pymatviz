@@ -53,6 +53,7 @@ def create_diatomic_inputs(
         elements = sorted({*map(str, Element)} - set(skip_elements))
 
     os.makedirs(base_dir, exist_ok=True)
+    print(f"Created {base_dir=}")
     # Loop over all pairs of elements
     for elem1 in elements:
         elem1_dir = f"{base_dir}/{elem1}"
