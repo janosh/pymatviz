@@ -7,5 +7,6 @@ build/
 examples/*.html
 examples/**/*.json.gz
 examples/**/*.json.xz
+examples/**/*.pt
 examples/dataset_exploration/**/*.pdf
 gnome

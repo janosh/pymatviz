@@ -229,7 +229,7 @@ def test_key_label_formatting() -> None:
         assert (
             label[0].isupper()
             or label[0].isdigit()
-            or label.startswith(("r2SCAN", "q-Points"))
+            or label.startswith(("r2SCAN", "q-Point", "k-Point"))
         ), f"{label=} should be capitalized"
 
         assert not label.endswith((".", ",")), f"{label=} ends with punctuation"
