@@ -173,9 +173,12 @@ See [`pymatviz/coordination/plotly.py`](pymatviz/coordination/plotly.py).
 
 See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
 
-| [`spacegroup_sunburst([65, 134, 225, ...])`](assets/scripts/symmetry/spacegroup_sunburst.py) | [`spacegroup_sunburst(["C2/m", "P-43m", "Fm-3m", ...])`](assets/scripts/symmetry/spacegroup_sunburst.py) |
-| :------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------: |
-|                                     ![spg-num-sunburst]                                      |                                          ![spg-symbol-sunburst]                                          |
+| [`spacegroup_sunburst([65, 134, 225, ...])`](assets/scripts/sunburst/spacegroup_sunburst.py) | [`chem_sys_sunburst(["FeO", "Fe2O3", "LiPO4", ...])`](assets/scripts/sunburst/chem_sys_sunburst.py) |
+| :------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------: |
+|                                     ![spg-num-sunburst]                                      |                                    ![chem-sys-sunburst-ward-bmg]                                    |
+
+[spg-num-sunburst]: assets/svg/spg-num-sunburst.svg
+[chem-sys-sunburst-ward-bmg]: assets/svg/chem-sys-sunburst-ward-bmg.svg
 
 ## Rainclouds
 
@@ -280,8 +283,6 @@ See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 [ptable-heatmap-plotly-more-hover-data]: assets/svg/ptable-heatmap-plotly-more-hover-data.svg
 [ptable-heatmap-ratio]: assets/svg/ptable-heatmap-ratio.svg
 [ptable-heatmap]: assets/svg/ptable-heatmap.svg
-[spg-num-sunburst]: assets/svg/spg-num-sunburst.svg
-[spg-symbol-sunburst]: assets/svg/spg-symbol-sunburst.svg
 [struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: assets/svg/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
 [struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: assets/svg/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
 
