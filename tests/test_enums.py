@@ -13,7 +13,7 @@ from pymatviz.enums import Key, LabelEnum, Model, StrEnum
 
 class DummyEnum(LabelEnum):
     TEST1 = "test1", "Test Label 1", "Test Description 1"
-    TEST2 = "test2"
+    TEST2 = "test2", "Test Label 2"
 
 
 def test_str_enum() -> None:
@@ -74,8 +74,6 @@ def test_label_enum_new() -> None:
 
 def test_label_enum_repr() -> None:
     assert repr(DummyEnum.TEST1) == DummyEnum.TEST1.label == "Test Label 1"
-    assert repr(DummyEnum.TEST2) == "DummyEnum.TEST2"
-    assert DummyEnum.TEST2.label is None
 
 
 @pytest.mark.parametrize(
