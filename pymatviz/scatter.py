@@ -182,7 +182,8 @@ def density_scatter_plotly(
         y (str): y-values dataframe column name.
         df (pd.DataFrame): DataFrame with x and y columns.
         density ('kde' | 'interpolate' | 'empirical'): Determines the method for
-            calculating and displaying density.
+            calculating and displaying density. Default is 'empirical' when n_bins
+            is provided, else 'kde' for kernel density estimation.
         log_density (bool | None): Whether to apply logarithmic scaling to density.
             If None, automatically set based on density range.
         identity_line (bool | dict[str, Any], optional): Whether to add a parity line
