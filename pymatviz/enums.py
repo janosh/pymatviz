@@ -85,12 +85,7 @@ class LabelEnum(StrEnum):
     Simply add label and description as a tuple starting with the key's value.
     """
 
-    def __new__(
-        cls,
-        val: str,
-        label: str | None = None,
-        desc: str | None = None,
-    ) -> Self:
+    def __new__(cls, val: str, label: str, desc: str = "") -> Self:
         """Create a new class from a value, label, and description. Label and
         description are optional.
         """
@@ -111,14 +106,14 @@ class LabelEnum(StrEnum):
         return str, (self.value,)
 
     @property
-    def label(self) -> str | None:
+    def label(self) -> str:
         """Make label read-only."""
-        return self.__dict__.get("label")
+        return self.__dict__["label"]
 
     @property
-    def description(self) -> str | None:
+    def description(self) -> str:
         """Make description read-only."""
-        return self.__dict__.get("desc")
+        return self.__dict__["desc"]
 
 
 eV_per_atom = html_tag("(eV/atom)", style="small")  # noqa: N816

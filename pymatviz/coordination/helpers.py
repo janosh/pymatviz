@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 class CnSplitMode(LabelEnum):
     """How to split the coordination number histogram into subplots."""
 
-    none = "none"
-    by_element = "by element"
-    by_structure = "by structure"
-    by_structure_and_element = "by structure and element"
+    none = "none", "None"
+    by_element = "by element", "By element"
+    by_structure = "by structure", "By structure"
+    by_structure_and_element = "by structure and element", "By structure and element"
 
 
 def create_hover_text(
