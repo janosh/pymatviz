@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
@@ -8,6 +9,10 @@ from pymatgen.core import Composition
 
 import pymatviz as pmv
 from pymatviz.enums import ElemCountMode
+
+
+if TYPE_CHECKING:
+    from pymatviz.typing import FormulaGroupBy
 
 
 @pytest.mark.parametrize(
@@ -138,3 +143,100 @@ def test_count_elements_fill_value() -> None:
         {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
     ).fillna(0)
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
+
+
+def test_count_formulas_basic() -> None:
+    """Test basic functionality with formula strings."""
+    data = ["Fe2O3", "Fe4O6", "FeO", "Li2O", "LiFeO2"]
+    df_out = pmv.count_formulas(data)
+
+    # Test DataFrame structure
+    assert set(df_out.columns) == {"arity_name", "chem_sys", "count"}
+    assert len(df_out) == 3  # 2 binary systems (Fe-O, Li-O) and 1 ternary (Li-Fe-O)
+
+    # Test arity counts
+    arity_counts = df_out.groupby("arity_name")["count"].sum()
+    assert arity_counts["binary"] == 4  # Fe2O3, Fe4O6, FeO, Li2O
+    assert arity_counts["ternary"] == 1  # LiFeO2
+
+
+def test_count_formulas_empty() -> None:
+    """Test handling of empty input."""
+    with pytest.raises(ValueError, match="Empty input: data sequence is empty"):
+        pmv.count_formulas([])
+
+
+def test_count_formulas_invalid_formula() -> None:
+    """Test handling of invalid formulas."""
+    with pytest.raises(ValueError, match="Invalid formula"):
+        pmv.count_formulas(["Fe2O3", "NotAFormula"])
+
+
+def test_count_formulas_composition_objects() -> None:
+    """Test handling of Composition objects."""
+    data = [
+        Composition("Fe2O3"),
+        Composition("Fe4O6"),  # same as Fe2O3 when reduced
+        Composition("FeO"),
+        Composition("Li2O"),
+    ]
+    df_out = pmv.count_formulas(data, group_by="reduced_formula")
+
+    # Should have 3 unique reduced formulas: Fe2O3 (2 entries), FeO, Li2O
+    assert len(df_out) == 3
+    assert df_out["count"].sum() == 4
+
+    # Test that Fe2O3 and Fe4O6 are counted together
+    fe_o_counts = df_out[df_out["formula"].str.contains("Fe")]
+    assert len(fe_o_counts) == 2  # Fe2O3 and FeO
+    assert fe_o_counts[fe_o_counts["formula"] == "Fe2O3"]["count"].iloc[0] == 2
+
+
+@pytest.mark.parametrize(
+    ("group_by", "expected_formulas", "expected_counts"),
+    [
+        (
+            "formula",
+            ["Fe2O3", "Fe4O6", "FeO"],  # all formulas kept separate
+            [1, 1, 1],
+        ),
+        (
+            "reduced_formula",
+            ["Fe2O3", "FeO"],  # Fe4O6 -> Fe2O3
+            [2, 1],
+        ),
+        (
+            "chem_sys",
+            ["Fe-O"],  # all Fe-O formulas grouped together
+            [3],
+        ),
+    ],
+)
+def test_count_formulas_grouping_modes(
+    group_by: FormulaGroupBy, expected_formulas: list[str], expected_counts: list[int]
+) -> None:
+    """Test different grouping modes."""
+    data = ["Fe2O3", "Fe4O6", "FeO"]
+    df_out = pmv.count_formulas(data, group_by=group_by)
+
+    if group_by == "chem_sys":
+        assert list(df_out["chem_sys"]) == expected_formulas
+    else:
+        assert list(df_out["formula"]) == expected_formulas
+    assert list(df_out["count"]) == expected_counts
+
+
+def test_count_formulas_mixed_input() -> None:
+    """Test handling of mixed input types."""
+    data = [
+        "Fe2O3",
+        Composition("Fe4O6"),
+        "Fe-O",  # chemical system string
+        Composition("FeO"),
+    ]
+    df_out = pmv.count_formulas(data, group_by="chem_sys")
+
+    # All should be grouped into Fe-O system
+    assert len(df_out) == 1
+    assert df_out["chem_sys"].iloc[0] == "Fe-O"
+    assert df_out["count"].iloc[0] == 4

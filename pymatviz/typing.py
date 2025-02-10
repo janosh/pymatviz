@@ -58,3 +58,4 @@ RgbAColorType: TypeAlias = (  # normalized to [0, 1] with alpha
     | tuple[tuple[float, float, float, float], float]
 )
 ColorType: TypeAlias = RgbColorType | RgbAColorType
+FormulaGroupBy = Literal["formula", "reduced_formula", "chem_sys"]
