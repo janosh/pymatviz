@@ -71,25 +71,24 @@ fig = pmv.chem_sys_sunburst(
     df_mg[Key.composition],
     group_by="chem_sys",
     show_counts="value+percent",
-    title="Ward BMG Dataset - Grouped by chemical system",
+    title="Ward Metallic Glass Dataset - Grouped by chemical system",
     color_discrete_sequence=px.colors.qualitative.Set2,
 )
-title = "Ward BMG Dataset - Grouped by chemical system"
+title = "Ward Metallic Glass Dataset - Grouped by chemical system"
 fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
 fig.layout.update(height=500)
 fig.show()
 
 
 # %% Create a plot focusing on glass-forming ability (GFA)
-for gfa in ("BMG", "Ribbon", "None"):
-    df_sub = df_mg.query(f"gfa_type == '{gfa}'")["composition"]
+for key, df_group in df_mg.groupby("gfa_type"):
     fig = pmv.chem_sys_sunburst(
-        df_sub,
+        df_group[Key.composition],
         show_counts="value+percent",
-        title=f"Ward BMG Dataset - {gfa} Compositions",
+        title=f"Ward Metallic Glass Dataset - {key} Compositions",
         color_discrete_sequence=px.colors.qualitative.Set2,
     )
-    title = f"Ward BMG Dataset - {gfa} Compositions"
+    title = f"Ward Metallic Glass Dataset - {key} Compositions"
     fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
     fig.layout.update(height=500)
     fig.show()

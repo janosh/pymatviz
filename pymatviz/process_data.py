@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition
+from pymatgen.core import Composition, Structure
 
 from pymatviz.enums import ElemCountMode, Key
 from pymatviz.utils import df_ptable
@@ -16,7 +16,7 @@ from pymatviz.utils import df_ptable
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pymatviz.typing import ElemValues
+    from pymatviz.typing import ElemValues, FormulaGroupBy
 
 
 def count_elements(
@@ -131,3 +131,120 @@ def count_elements(
             ) from exc
 
     return srs
+
+
+def count_formulas(
+    data: Sequence[str | Composition | Structure],
+    *,
+    group_by: FormulaGroupBy = "chem_sys",
+) -> pd.DataFrame:
+    """Process chemical system data into a standardized DataFrame format.
+
+    Used e.g. by chem_sys_sunburst and chem_sys_treemap to preprocess input data.
+
+    Args:
+        data (Sequence[str | Composition | Structure]): Chemical systems. Can be:
+            - Chemical system strings like ["Fe-O", "Li-P-O"]
+            - Formula strings like ["Fe2O3", "LiPO4"]
+            - Pymatgen Compositions
+            - Pymatgen Structures
+        group_by ("formula" | "reduced_formula" | "chem_sys"): How to group formulas:
+            - "formula": Each unique formula is counted separately.
+            - "reduced_formula": Formulas are reduced to simplest ratios.
+            - "chem_sys": All formulas with same elements are grouped.
+
+    Returns:
+        pd.DataFrame: DataFrame with columns for arity, chemical system, and optionally
+        formula, sorted by arity and chemical system for consistent ordering.
+
+    Raises:
+        ValueError: If data is empty or contains invalid formulas/elements.
+        TypeError: If data contains unsupported types.
+    """
+    if len(data) == 0:
+        raise ValueError("Empty input: data sequence is empty")
+
+    # Map from number of elements to arity name
+    arity_names: Final[dict[int, str]] = {
+        1: "unary",
+        2: "binary",
+        3: "ternary",
+        4: "quaternary",
+        5: "quinary",
+        6: "senary",
+        7: "septenary",
+        8: "octonary",
+        9: "nonary",
+        10: "denary",
+    }
+
+    # Convert all inputs to chemical systems (sorted tuples of element strings)
+    systems: list[tuple[str, ...]] = []
+    formulas: list[str | None] = []  # store formulas if not grouping by chem_sys
+    for item in data:
+        if isinstance(item, Structure):
+            elems = sorted(item.composition.chemical_system.split("-"))
+            if group_by == "formula":
+                formula = str(item.composition)
+            elif group_by == "reduced_formula":
+                formula = item.composition.reduced_formula
+            else:  # chem_sys
+                formula = None
+        elif isinstance(item, Composition):
+            elems = sorted(item.chemical_system.split("-"))
+            if group_by == "formula":
+                formula = str(item)
+            elif group_by == "reduced_formula":
+                formula = item.reduced_formula
+            else:  # chem_sys
+                formula = None
+        elif isinstance(item, str):
+            if "-" in item:  # already a chemical system string
+                elems = sorted(item.split("-"))
+                formula = item if group_by != Key.chem_sys else None
+            else:  # assume it's a formula string
+                try:
+                    comp = Composition(item)
+                    elems = sorted(comp.chemical_system.split("-"))
+                    if group_by == "formula":
+                        formula = item  # preserve original formula string
+                    elif group_by == "reduced_formula":
+                        formula = comp.reduced_formula
+                    else:  # chem_sys
+                        formula = None
+                except (ValueError, KeyError) as e:
+                    raise ValueError(f"Invalid formula: {item}") from e
+        else:
+            raise TypeError(
+                f"Expected str, Composition or Structure, got {type(item)} instead"
+            )
+
+        # Remove duplicates and sort elements
+        elems = sorted(set(elems))
+        if not all(elem.isalpha() for elem in elems):
+            raise ValueError(f"Invalid elements in system: {item}")
+        systems += [tuple(elems)]
+        if group_by != Key.chem_sys:
+            formulas += [formula]
+
+    # Create a DataFrame with arity and chemical system columns
+    df_systems = pd.DataFrame({"system": systems})
+    if group_by != Key.chem_sys:
+        df_systems[Key.formula] = formulas
+
+    df_systems[Key.arity] = df_systems["system"].map(len)
+    df_systems["arity_name"] = df_systems[Key.arity].map(
+        lambda n_elems: arity_names.get(n_elems, f"{n_elems}-component")
+    )
+    df_systems[Key.chem_sys] = df_systems["system"].str.join("-")
+
+    # Count occurrences of each system
+    group_cols = ["arity_name", Key.chem_sys]
+    if group_by != Key.chem_sys:
+        group_cols += [Key.formula]
+
+    df_counts = df_systems.value_counts(group_cols).reset_index()
+    df_counts.columns = [*group_cols, Key.count]  # preserve original column names
+
+    # Sort by arity and chemical system for consistent ordering
+    return df_counts.sort_values(["arity_name", Key.chem_sys])

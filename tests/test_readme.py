@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import glob
 import importlib
 import inspect
 import os
 import re
+from glob import glob
 
 import pytest
 
@@ -95,7 +95,7 @@ def get_function_names_from_readme() -> dict[str, set[str]]:
 # Get all Python files in the package, excluding tests and __init__.py
 package_files = [
     path
-    for path in glob.glob("pymatviz/**/*.py", recursive=True)
+    for path in glob("pymatviz/**/*.py", recursive=True)
     if not path.startswith("pymatviz/tests/") and not path.endswith("__init__.py")
 ]
 
