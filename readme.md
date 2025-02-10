@@ -180,6 +180,17 @@ See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
 [spg-num-sunburst]: assets/svg/spg-num-sunburst.svg
 [chem-sys-sunburst-ward-bmg]: assets/svg/chem-sys-sunburst-ward-bmg.svg
 
+## Treemap
+
+See [`pymatviz/treemap.py`](pymatviz/treemap.py).
+
+| [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...])`](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...], group_by="formula")`](assets/scripts/treemap/chem_sys_treemap.py) |
+| :----------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------: |
+|                                   ![chem-sys-treemap-formula]                                    |                                             ![chem-sys-treemap-ward-bmg]                                             |
+
+[chem-sys-treemap-formula]: assets/svg/chem-sys-treemap-formula.svg
+[chem-sys-treemap-ward-bmg]: assets/svg/chem-sys-treemap-ward-bmg.svg
+
 ## Rainclouds
 
 See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
