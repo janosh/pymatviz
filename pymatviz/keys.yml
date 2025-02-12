@@ -777,6 +777,15 @@ composition:
     label: Chemical System
   composition:
     label: Composition
+  reduced_composition:
+    label: Reduced Composition
+    description: Composition with element amounts reduced by their lowest common denominator
+  fractional_composition:
+    label: Fractional Composition
+    description: Composition with element amounts normalized to one
+  composition_wt_perc:
+    label: Composition by weight percent
+    description: Percentage of an element in a mixture, calculated based on its mass relative to total mass of the mixture
   molar_composition:
     label: Molar Composition
   weight_composition:
@@ -794,12 +803,18 @@ composition:
     label: Element
   formula:
     label: Formula
+    description: Chemical formula
+  reduced_formula:
+    label: Reduced Formula
+    description: Chemical formula with element amounts reduced by their lowest common denominator
+  fractional_formula:
+    label: Fractional Formula
+    description: Chemical formula with element amounts normalized to one
   formula_pretty:
     label: Pretty Formula
-  reduced_formula:
-    label: Reduced chemical formula
   anonymous_formula:
     label: Anonymous Formula
+    description: Chemical formula with element symbols replaced by A,B,C, etc. to denote arbitrary elements
   charge:
     label: Total Charge
     symbol: Q

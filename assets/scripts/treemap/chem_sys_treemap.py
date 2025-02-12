@@ -56,4 +56,4 @@ for key, df_sub in df_mg.groupby("gfa_type"):
     title = f"Ward Metallic Glass Dataset - {key} Compositions"
     fig.layout.title = dict(text=title, x=0.5, y=0.8, font_size=18)
     fig.show()
-    pmv.io.save_and_compress_svg(fig, f"chem-sys-treemap-ward-bmg-{key.lower()}")
+    # pmv.io.save_and_compress_svg(fig, f"chem-sys-treemap-ward-bmg-{key.lower()}")

@@ -310,6 +310,9 @@ class Key(StrEnum):
     arity = "arity"
     chem_sys = "chem_sys"
     composition = "composition"
+    reduced_composition = "reduced_composition"
+    fractional_composition = "fractional_composition"
+    composition_wt_perc = "composition_wt_perc"
     molar_composition = "molar_composition"
     weight_composition = "weight_composition"
     molar_fraction = "molar_fraction"
@@ -317,8 +320,9 @@ class Key(StrEnum):
     molar_mass = "molar_mass"
     element = "element"
     formula = "formula"
-    formula_pretty = "formula_pretty"
     reduced_formula = "reduced_formula"
+    fractional_formula = "fractional_formula"
+    formula_pretty = "formula_pretty"
     anonymous_formula = "anonymous_formula"
     charge = "charge"
     oxi_states = "oxi_states"
@@ -895,14 +899,26 @@ class ElemCountMode(LabelEnum):
     """Mode of counting elements in a chemical formula."""
 
     # key, label, color
-    composition = "composition", "Composition", "blue"
+    composition = (
+        "composition",
+        "Composition",
+        "Count elements by their amount in the composition",
+    )
     fractional_composition = (
         "fractional_composition",
         "Fractional Composition",
-        "orange",
+        "Count elements by their fraction of the composition",
     )
-    reduced_composition = "reduced_composition", "Reduced Composition", "green"
-    occurrence = "occurrence", "Occurrence", "gray"
+    reduced_composition = (
+        "reduced_composition",
+        "Reduced Composition",
+        "Count elements by their amount in the reduced composition",
+    )
+    occurrence = (
+        "occurrence",
+        "Occurrence",
+        "Count elements by occurrence in composition, ignoring their amount",
+    )
 
 
 @unique
