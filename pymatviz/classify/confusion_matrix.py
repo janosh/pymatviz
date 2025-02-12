@@ -1,6 +1,6 @@
 """Confusion matrix plotting functions."""
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import numpy as np
@@ -14,10 +14,12 @@ def confusion_matrix(
     y_pred: Sequence[str | int] | None = None,
     x_labels: tuple[str, ...] | None = None,
     y_labels: tuple[str, ...] | None = None,
-    annotations: Sequence[Sequence[str]] | None = None,
+    annotations: Sequence[Sequence[str]]
+    | Callable[[int, int, float, float], str]
+    | None = None,
     normalize: bool = True,
     colorscale: str = "blues",
-    float_fmt: str = ".1%",
+    float_fmt: str = "",
     heatmap_kwargs: dict[str, Any] | None = None,
     metrics: dict[str, str | None] | Sequence[str] | set[str] = ("Acc",),
     metrics_kwargs: dict[str, Any] | None = None,
@@ -34,8 +36,14 @@ def confusion_matrix(
             using raw labels, will be inferred from unique values in y_true and y_pred
         y_labels (tuple[str, ...] | None): Labels for y-axis (true). If None, same as
             x_labels
-        annotations (Sequence[Sequence[str]] | None): Optional array of custom cell
-            annotations. If None, will use pretty-formatted values in conf_mat.
+        annotations (Sequence[Sequence[str]] | Callable | None): Custom cell
+            annotations or a callable that takes (count, total, pct, row_pct, col_pct)
+            and returns a string. If None, will use pretty-formatted values in conf_mat.
+            The callable receives:
+            - count: Raw count for this cell
+            - total: Total count across all cells
+            - row_pct: Row percentage (count/row_sum)
+            - col_pct: Column percentage (count/col_sum)
         normalize (bool): Whether to normalize values to percentages that sum to 100%
         colorscale (str): Plotly colorscale name
         float_fmt (str): Format string for floating point numbers in annotations
@@ -55,6 +63,9 @@ def confusion_matrix(
     """
     import plotly.figure_factory as ff
     import sklearn.metrics as skm
+
+    if float_fmt == "":
+        float_fmt = ".1%" if normalize else ".0f"
 
     if conf_mat is None and (y_true is None or y_pred is None):
         raise ValueError("Must provide either conf_mat or both y_true and y_pred")
@@ -114,12 +125,33 @@ def confusion_matrix(
     ).T
     if annotations is None:
         annotations = fmt_tile_vals
+    elif callable(annotations):  # If annotations is a callable, apply it to each cell
+        total = sample_counts.sum()
+        anno_matrix = []
+        for ii in range(len(conf_mat_arr)):
+            row = []
+            for jj in range(len(conf_mat_arr[ii])):
+                count = int(sample_counts[ii, jj])
+                pct = conf_mat_arr[ii, jj]
+                row_pct = (
+                    conf_mat_arr[ii, jj] / conf_mat_arr[ii].sum()
+                    if conf_mat_arr[ii].sum() > 0
+                    else 0
+                )
+                col_pct = (
+                    conf_mat_arr[ii, jj] / conf_mat_arr[:, jj].sum()
+                    if conf_mat_arr[:, jj].sum() > 0
+                    else 0
+                )
+                row += [annotations(count, total, row_pct, col_pct)]
+            anno_matrix += [row]
+        annotations = np.array(anno_matrix).T
     else:  # When custom annotations provided, append percentage values
         annotations = np.char.add(annotations, "<br>")
         annotations = np.char.add(annotations, fmt_tile_vals)
 
     heatmap_defaults = dict(
-        z=np.rot90(conf_mat_arr.T),
+        z=np.rot90(conf_mat_arr),
         x=formatted_labels["x"],
         y=formatted_labels["y"],
         annotation_text=np.rot90(np.array(annotations).T),
@@ -174,20 +206,20 @@ def confusion_matrix(
             print(f"Warning: skipping binary {metric=} for multi-class problem")  # noqa: T201
             continue
 
-        value = available_metrics[metric]()
-        if value is None:  # skip metrics that returned None
+        metric_val = available_metrics[metric]()
+        if metric_val is None:  # skip metrics that returned None
             continue
 
         # use float_fmt if no specific format given
         f_fmt = float_fmt if fmt is None else fmt
-        metrics_text += [f"{metric}={value:{f_fmt}}"]
+        metrics_text += [f"{metric}={metric_val:{f_fmt}}"]
 
     if metrics_text:  # only add annotation if there are metrics to show
         metrics_defaults = dict(
             xref="paper",
             yref="paper",
             x=0.5,
-            y=1.05,
+            y=-0.1,
             text=", ".join(metrics_text),
             showarrow=False,
             xanchor="center",
@@ -197,6 +229,8 @@ def confusion_matrix(
         fig.add_annotation(**metrics_defaults)
         if metrics_defaults.get("y", 0) >= 1:  # type: ignore[operator]
             fig.layout.margin.t = 60
+        if metrics_defaults.get("y", 0) <= 0:  # type: ignore[operator]
+            fig.layout.margin.b = 60
 
     # Update axes formatting
     axes_kwargs = dict(
@@ -207,11 +241,14 @@ def confusion_matrix(
     fig.layout.font.size = 18
     fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
     fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.xaxis = axes_kwargs
-    fig.layout.yaxis = dict(
-        scaleanchor="x",  # ensure square tiles by forcing same scale as x-axis
-        tickangle=-90,  # Rotate labels 90 degrees
-        **axes_kwargs,
+    fig.layout.xaxis.update(dict(title="Actual") | axes_kwargs)
+    fig.layout.yaxis.update(
+        dict(
+            title="Predicted",
+            scaleanchor="x",  # ensure square tiles by forcing same scale as x-axis
+            tickangle=-90,  # Rotate labels 90 degrees
+        )
+        | axes_kwargs,
     )
 
     return fig

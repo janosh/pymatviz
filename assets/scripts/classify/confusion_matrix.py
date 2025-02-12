@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 from numpy.random import default_rng
 
@@ -9,8 +10,22 @@ pmv.set_plotly_template("pymatviz_dark")
 np_rng = default_rng(seed=0)
 
 
+# %%
+y_true = ["Negative"] * 6 + ["Positive"] * 2
+# 4 TN, 2 FP, 1 FN, 1 TP
+y_pred = ["Negative"] * 4 + ["Positive", "Positive", "Negative", "Positive"]
+
+fig = pmv.confusion_matrix(
+    y_true=y_true,
+    y_pred=y_pred,
+    annotations=lambda cnt, total, *_: f"N={cnt:,}<br>{cnt / total:.1%}",
+)
+fig.show()
+
+
 # %% Custom annotations for material stability with specific metrics
 fig = pmv.confusion_matrix(
+    # [[TP, FP], [FN, TN]]
     conf_mat=np.array([[0.7, 0.3], [0.15, 0.85]]),
     x_labels=("Stable", "Unstable"),
     y_labels=("Stable", "Unstable"),
@@ -21,7 +36,7 @@ fig = pmv.confusion_matrix(
 fig.layout.xaxis.title = "Predicted Stability"
 fig.layout.yaxis.title = "True Stability"
 fig.show()
-pmv.io.save_and_compress_svg(fig, "stability-confusion-matrix")
+# pmv.io.save_and_compress_svg(fig, "stability-confusion-matrix")
 
 
 # %% Multi-class crystal system classification
@@ -45,7 +60,7 @@ fig.layout.yaxis.title = "True System"
 fig.layout.width = 650
 fig.layout.height = 650
 fig.show()
-pmv.io.save_and_compress_svg(fig, "crystal-system-confusion-matrix")
+# pmv.io.save_and_compress_svg(fig, "crystal-system-confusion-matrix")
 
 
 # %% Binary classification passing in raw labels and custom class names
