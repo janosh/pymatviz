@@ -37,6 +37,39 @@ def test_ptable_heatmap_splits_plotly_basic() -> None:
     assert len(fig.data) == sum(len(v) for v in data_4_split.values()) + 1
 
 
+def test_ptable_heatmap_splits_plotly_f_block() -> None:
+    """Test that f-block elements are only hidden in 'auto' mode when there's no data
+    for any f-block element."""
+    # Data with no f-block elements
+    data_no_f = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5]}
+
+    rows_per_mode: dict[bool | Literal["auto"], int] = {True: 7, "auto": 7, False: 10}
+
+    for hide_f_block, expected_n_rows in rows_per_mode.items():
+        fig = pmv.ptable_heatmap_splits_plotly(data_no_f, hide_f_block=hide_f_block)
+        n_rows = len(fig._grid_ref)
+        assert n_rows == expected_n_rows, f"{n_rows=}, {hide_f_block=}"
+
+    # Data including f-block elements
+    data_with_f = {"Fe": [1, 2], "La": [3, 4], "U": [5, 6]}
+
+    rows_per_mode["auto"] = 10
+    for hide_f_block, expected_n_rows in rows_per_mode.items():
+        fig = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block=hide_f_block)
+        n_rows = len(fig._grid_ref)
+        assert n_rows == expected_n_rows, f"{n_rows=}, {hide_f_block=}"
+
+    fig_with_f = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block="auto")
+    anno_texts = [anno.text for anno in fig_with_f.layout.annotations]
+    expected = ["Fe", "Iron (Fe)", "La", "Lanthanum (La)", "U", "Uranium (U)"]
+    assert anno_texts == expected, f"{anno_texts=}"
+
+    fig_with_f = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block=True)
+    anno_texts = [anno.text for anno in fig_with_f.layout.annotations]
+    expected = ["Fe", "Iron (Fe)"]
+    assert anno_texts == expected, f"{anno_texts=}"
+
+
 @pytest.mark.parametrize(
     ("orientation", "colorscale", "font_size", "scale"),
     [
@@ -73,8 +106,8 @@ def test_ptable_heatmap_splits_plotly_display_options(
         symbol_kwargs=symbol_kwargs,
     )
 
-    assert fig.layout.width == 850 * scale
-    assert fig.layout.height == 500 * scale
+    assert fig.layout.width == 45 * 18 * scale
+    assert fig.layout.height == 45 * 7 * scale + 40
     anno_font_sizes = [
         anno.font.size for anno in fig.layout.annotations if anno.font is not None
     ]
