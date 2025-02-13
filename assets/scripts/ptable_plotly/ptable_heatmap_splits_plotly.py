@@ -46,9 +46,8 @@ def make_color_scale(
     """Return element colors in different palettes based on split index."""
 
     def elem_color_scale(element: str, _val: float, split_idx: int) -> str:
-        color = color_schemes[split_idx].get(element)
-        if color is None:
-            raise ValueError(f"no color for {element=} in {split_idx=}")
+        # Default to gray for elements without defined colors
+        color = color_schemes[split_idx].get(element, "(128, 128, 128)")
         return f"rgb{color}"
 
     return elem_color_scale

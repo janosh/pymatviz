@@ -750,7 +750,9 @@ def ptable_heatmap_splits_plotly(
         on_empty ("hide" | "show"): Whether to show tiles for elements without data.
             Defaults to "hide".
         hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
-            Defaults to "auto", meaning hide if no data present.
+            Defaults to "auto", meaning hide if no data present. This keyword is
+            slightly imprecisely named since it will hide the whole lanthanide and
+            actinide rows even though the last items Lu + Lr in those rows are d-block.
         orientation (str): How to split each element tile. Defaults to "diagonal".
             - "diagonal": Split at 45° angles
             - "horizontal": Split into equal horizontal strips
@@ -802,7 +804,13 @@ def ptable_heatmap_splits_plotly(
     cbar_min, cbar_max = np.nanmin(all_values), np.nanmax(all_values)
 
     # Initialize figure with subplots
-    n_rows, n_cols = 10, 18
+    has_f_block_data = any(
+        Element(symbol).is_actinoid or Element(symbol).is_lanthanoid for symbol in data
+    )
+    should_hide_f_block = hide_f_block is True or (
+        not has_f_block_data and hide_f_block == "auto"
+    )
+    n_rows, n_cols = 7 if should_hide_f_block else 10, 18
     subplot_kwargs = dict(
         rows=n_rows,
         cols=n_cols,
@@ -893,15 +901,14 @@ def ptable_heatmap_splits_plotly(
         if symbol not in data and on_empty == "hide":
             continue
 
-        if hide_f_block in ("auto", True) and row in (6, 7) and 3 <= col <= 17:
+        # Skip f-block elements if hide_f_block is True or if it's auto and there is no
+        # data to show for those elements
+        elem = Element(symbol)
+        if (elem.is_actinoid or elem.is_lanthanoid) and should_hide_f_block:
             continue
 
         if row_7_is_empty and row > 6:
             row -= 1
-
-        # Adjust positions for f-block elements
-        if row in (6, 7) and col >= 3:
-            col += 3
 
         subplot_idx = row * n_cols + col + 1
         subplot_key = subplot_idx if subplot_idx != 1 else ""
@@ -994,8 +1001,8 @@ def ptable_heatmap_splits_plotly(
     fig.layout.showlegend = False
     fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
     fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.width = 850 * scale
-    fig.layout.height = 500 * scale
+    fig.layout.width = 45 * n_cols * scale
+    fig.layout.height = 45 * n_rows * scale + 40
     fig.layout.margin = dict(l=10, r=10, t=50, b=10)
     fig.layout.xaxis.visible = False
     fig.layout.yaxis.visible = False
