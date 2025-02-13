@@ -13,7 +13,6 @@ import plotly.graph_objects as go
 import scipy.interpolate
 import scipy.stats
 from matplotlib.colors import LogNorm
-from sklearn.metrics import r2_score
 
 import pymatviz as pmv
 from pymatviz.utils import bin_df_cols, df_to_arrays
@@ -129,26 +128,20 @@ def density_scatter(
     scatter_defaults = dict(s=6, norm=LogNorm() if log_density else None)
     ax.scatter(xs, ys, c=cs, **scatter_defaults | kwargs)
 
-    if identity_line:
-        pmv.powerups.add_identity_line(
-            ax, **(identity_line if isinstance(identity_line, dict) else {})
-        )
-    if best_fit_line:
-        best_fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
-        # default trace_idx=0 to suppress add_best_fit_line ambiguous trace_idx warning
-        best_fit_kwargs.setdefault("trace_idx", 0)
-        pmv.powerups.add_best_fit_line(ax, **best_fit_kwargs)
-
-    if stats:
-        pmv.powerups.annotate_metrics(
-            xs, ys, fig=ax, **(stats if isinstance(stats, dict) else {})
-        )
-
     ax.set(xlabel=xlabel, ylabel=ylabel)
 
     if color_bar:
         kwds = dict(label="Density") if color_bar is True else color_bar
         color_bar = ax.figure.colorbar(ax.collections[0], **kwds)
+
+    pmv.powerups.enhance_parity_plot(
+        ax,
+        xs=xs,
+        ys=ys,
+        identity_line=identity_line,
+        best_fit_line=best_fit_line,
+        stats=stats,
+    )
 
     return ax
 
@@ -263,24 +256,9 @@ def density_scatter_plotly(
     if log_density:
         _update_colorbar_for_log_density(fig, color_vals, bin_counts_col)
 
-    if identity_line:
-        pmv.powerups.add_identity_line(
-            fig, **(identity_line if isinstance(identity_line, dict) else {})
-        )
-
-    # if None, set best_fit_line if predictive power seems to warrant it
-    if best_fit_line is None:
-        r2 = r2_score(*df[[x, y]].dropna().T.to_numpy())
-        best_fit_line = r2 > 0.3
-    if best_fit_line:
-        pmv.powerups.add_best_fit_line(
-            fig, **(best_fit_line if isinstance(best_fit_line, dict) else {})
-        )
-
-    if stats:
-        stats_kwargs = stats if isinstance(stats, dict) else {}
-        pmv.powerups.annotate_metrics(df[x], df[y], fig=fig, **stats_kwargs)
-
+    pmv.powerups.enhance_parity_plot(
+        fig, identity_line=identity_line, best_fit_line=best_fit_line, stats=stats
+    )
     return fig
 
 

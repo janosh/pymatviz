@@ -34,14 +34,6 @@ for idx in range(len(fig.data)):
 fig.show()
 
 
-# %% Configure matplotlib and load test data
-# Random regression data
-rand_regression_size = 500
-np_rng = np.random.default_rng(seed=0)
-gauss1 = np_rng.normal(5, 4, rand_regression_size)
-gauss2 = np_rng.normal(10, 2, rand_regression_size)
-
-
 # %% ECDF line
 fig = pmv.histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=200)
 for idx in range(len(fig.data)):
@@ -113,3 +105,13 @@ fig.layout.updatemenus = [
     toggle_grid | dict(x=0.02, y=1, xanchor="left", yanchor="top"),
 ]
 fig.show()
+
+
+# %%
+fig = px.scatter(x=gauss1, y=gauss2)
+pmv.powerups.enhance_parity_plot(fig)
+
+
+# closer agreement between xs and ys to see stats
+fig = px.scatter(x=np.arange(100), y=np.arange(100) + 10 * np_rng.random(100))
+pmv.powerups.enhance_parity_plot(fig)
