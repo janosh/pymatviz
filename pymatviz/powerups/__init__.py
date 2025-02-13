@@ -8,6 +8,7 @@ from pymatviz.powerups.both import (
     add_best_fit_line,
     add_identity_line,
     annotate_metrics,
+    enhance_parity_plot,
 )
 from pymatviz.powerups.matplotlib import annotate_bars, with_marginal_hist
 from pymatviz.powerups.plotly import (
