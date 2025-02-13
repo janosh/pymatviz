@@ -9,6 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 import pytest
 from matplotlib.offsetbox import AnchoredText
+from sklearn.metrics import r2_score
 
 import pymatviz as pmv
 from pymatviz.typing import MATPLOTLIB, PLOTLY, Backend
@@ -335,3 +336,161 @@ def test_annotate_metrics_different_lengths(backend: Backend) -> None:
     err_msg = f"xs and ys must have the same shape. Got {xs.shape} and {ys.shape}"
     with pytest.raises(ValueError, match=re.escape(err_msg)):
         pmv.powerups.annotate_metrics(xs, ys, fig=fig)
+
+
+@pytest.mark.parametrize(
+    ("identity_line", "best_fit_line", "stats"),
+    [
+        (True, True, True),  # all features enabled
+        (False, False, False),  # all features disabled
+        ({}, {}, {}),  # custom styling
+        (True, None, True),  # auto best-fit line based on R²
+    ],
+)
+def test_enhance_parity_plot(
+    plotly_scatter: go.Figure,
+    matplotlib_scatter: plt.Figure,
+    identity_line: bool | dict[str, Any],
+    best_fit_line: bool | dict[str, Any] | None,
+    stats: bool | dict[str, Any],
+) -> None:
+    """Test enhance_parity_plot with different combinations of features and styling."""
+    # Test with plotly backend
+    fig_plotly = pmv.powerups.enhance_parity_plot(
+        plotly_scatter,
+        identity_line=identity_line,
+        best_fit_line=best_fit_line,
+        stats=stats,
+    )
+    assert isinstance(fig_plotly, go.Figure)
+
+    # Check identity line
+    identity_lines = [
+        shape
+        for shape in fig_plotly.layout.shapes
+        if shape.type == "line" and shape.x0 == shape.y0 and shape.x1 == shape.y1
+    ]
+    if identity_line:
+        assert len(identity_lines) == 1
+        if isinstance(identity_line, dict) and "color" in identity_line:
+            assert identity_lines[0].line.color == identity_line["color"]
+    else:
+        assert not identity_lines
+
+    # Check best fit line
+    best_fit_lines = [
+        shape
+        for shape in fig_plotly.layout.shapes
+        if shape.type == "line" and shape.x0 != shape.y0
+    ]
+    if best_fit_line or (
+        best_fit_line is None
+        and r2_score(fig_plotly.data[0].x, fig_plotly.data[0].y) > 0.3
+    ):
+        assert len(best_fit_lines) == 1
+        if isinstance(best_fit_line, dict) and "color" in best_fit_line:
+            assert best_fit_lines[0].line.color == best_fit_line["color"]
+    else:
+        assert not best_fit_lines
+
+    # Check stats
+    if stats:
+        assert fig_plotly.layout.annotations
+        anno_text = fig_plotly.layout.annotations[-1].text
+        assert anno_text == "MAE = 3.34e+02<br>R<sup>2</sup> = -1.36e+02<br>"
+        if isinstance(stats, dict) and stats.get("loc") == "upper left":
+            assert fig_plotly.layout.annotations[-1].x < 0.5
+            assert fig_plotly.layout.annotations[-1].y > 0.5
+
+    # Test with matplotlib backend
+    # Create test data since we can't extract it from matplotlib figure
+    xs = np.array([1, 2, 3, 4, 5])
+    ys = np.array([2, 3, 4, 5, 6])
+
+    fig_mpl = pmv.powerups.enhance_parity_plot(
+        matplotlib_scatter,
+        xs=xs,
+        ys=ys,
+        identity_line=identity_line,
+        best_fit_line=best_fit_line,
+        stats=stats,
+    )
+    assert isinstance(fig_mpl, plt.Figure)
+
+    ax = fig_mpl.axes[0]
+    lines = ax.lines
+
+    # Check identity line (should be first line if present)
+    if identity_line:
+        plt_identity_line = next(
+            (line for line in lines if np.allclose(line.get_xdata(), line.get_ydata())),
+            None,
+        )
+        assert isinstance(plt_identity_line, plt.Line2D)
+        if isinstance(identity_line, dict) and "color" in identity_line:
+            assert plt_identity_line.get_color() == identity_line["color"]
+
+    # Check best fit line (should be last line if present)
+    if best_fit_line or (best_fit_line is None and r2_score(xs, ys) > 0.3):
+        plt_best_fit_line = next(
+            (ln for ln in lines if not np.allclose(ln.get_xdata(), ln.get_ydata())),
+            None,
+        )
+        assert isinstance(plt_best_fit_line, plt.Line2D)
+        if isinstance(best_fit_line, dict) and "color" in best_fit_line:
+            assert plt_best_fit_line.get_color() == best_fit_line["color"]
+
+    # Check stats
+    if stats:
+        anno = next(
+            (child for child in ax.get_children() if isinstance(child, AnchoredText)),
+            None,
+        )
+        assert anno is not None
+        anno_text = anno.txt.get_text()
+        assert anno_text == "LS fit: y = 1x + 1"
+
+
+def test_enhance_parity_plot_no_data_matplotlib() -> None:
+    """Test enhance_parity_plot raises error when no data provided for matplotlib."""
+    fig, ax = plt.subplots()
+    with pytest.raises(ValueError, match="this powerup can only get x/y data from"):
+        pmv.powerups.enhance_parity_plot(ax)
+
+
+def test_enhance_parity_plot_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:
+    """Test enhance_parity_plot with faceted plotly figure."""
+    fig = pmv.powerups.enhance_parity_plot(plotly_faceted_scatter)
+    n_facets = len(plotly_faceted_scatter.data)
+
+    # Should add identity line and best fit line to each subplot
+    assert sum(shape.type == "line" for shape in fig.layout.shapes) == n_facets
+
+    # Should add stats to each subplot
+    assert len(fig.layout.annotations) == n_facets
+    assert [anno.text for anno in fig.layout.annotations] == [
+        "MAE = 3.0<br>R<sup>2</sup> = -12.5<br>"
+    ] * n_facets
+
+
+def test_enhance_parity_plot_custom_data() -> None:
+    """Test enhance_parity_plot with custom x/y data."""
+    fig = go.Figure()
+    xs = np.array([1, 2, 3, 4, 5])
+    ys = np.array([2, 3, 4, 5, 6])
+
+    fig.add_scatter(x=[10, 20, 30], y=[10, 20, 30])  # dummy data
+
+    enhanced_fig = pmv.powerups.enhance_parity_plot(fig, xs=xs, ys=ys)
+
+    # Should use provided data for best fit line and stats
+    assert len(enhanced_fig.layout.shapes) == 2  # at least identity line
+    assert len(enhanced_fig.layout.annotations) == 2  # stats and least fit annotation
+
+    # Check that stats are computed from provided data, not figure data
+    # (which has perfect x/y agreement)
+    anno_text = enhanced_fig.layout.annotations[-1].text
+    assert anno_text == "MAE = 1.0<br>R<sup>2</sup> = 0.5<br>"
+    enhanced_fig = pmv.powerups.enhance_parity_plot(fig)
+    anno_text = enhanced_fig.layout.annotations[-1].text
+    assert anno_text == "MAE = 0.0<br>R<sup>2</sup> = 1.0<br>"

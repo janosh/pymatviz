@@ -373,3 +373,77 @@ def add_best_fit_line(
         return fig
 
     raise ValueError(f"Unsupported {backend=}. Must be one of {BACKENDS}")
+
+
+def enhance_parity_plot(
+    fig: AxOrFig | None = None,
+    xs: ArrayLike = (),
+    ys: ArrayLike = (),
+    *,
+    identity_line: bool | dict[str, Any] = True,
+    best_fit_line: bool | dict[str, Any] | None = None,
+    stats: bool | dict[str, Any] = True,
+    trace_idx: int = 0,
+) -> AxOrFig:
+    """Add parity plot powerups to either a plotly or matplotlib figure, including
+    identity line (y=x), best-fit line, and pred vs ref statistics (MAE, R², ...).
+
+    Args:
+        xs (array): x-values to use for fitting best-fit line and computing stats.
+        ys (array): y-values to use for fitting best-fit line and computing stats.
+        fig (plt.Axes | plt.Figure | go.Figure | None): matplotlib Axes or Figure or
+            plotly Figure to add powerups to. Defaults to None.
+        identity_line (bool | dict[str, Any], optional): Whether to add a parity line
+            (y=x). Pass a dict to customize line properties. Defaults to True.
+        best_fit_line (bool | dict[str, Any] | None, optional): Whether to add a
+            best-fit line. Pass a dict to customize line properties. If None (default),
+            will be enabled if R² > 0.3.
+        stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
+            and R². Pass a dict to customize text box properties. Defaults to True.
+        trace_idx (int, optional): Index of the trace to use for measuring x/y values
+            for fitting if xs and ys are not provided. Defaults to 0.
+
+    Returns:
+        plt.Axes | plt.Figure | go.Figure: The enhanced figure.
+
+    Raises:
+        ValueError: If xs and ys are not provided and fig is not a plotly figure where
+            the data can be directly accessed. matplotlib does not have a consistent way
+            to access the data from an Axes instance, depends on the type of plot.
+    """
+    err_msg = (
+        "this powerup can only get x/y data from the figure directly for plotly "
+        "figures. for matplotlib, pass pass xs and ys explicitly"
+    )
+    if len(xs) == 0:
+        if isinstance(fig, go.Figure):
+            xs = fig.data[trace_idx].x
+        else:
+            raise ValueError(err_msg)
+    if len(ys) == 0:
+        if isinstance(fig, go.Figure):
+            ys = fig.data[trace_idx].y
+        else:
+            raise ValueError(err_msg)
+
+    if identity_line:
+        add_identity_line(
+            fig, **(identity_line if isinstance(identity_line, dict) else {})
+        )
+
+    # if None, set best_fit_line if predictive power seems to warrant it
+    if best_fit_line is None:
+        r2 = r2_score(xs, ys)
+        best_fit_line = r2 > 0.3
+
+    if best_fit_line:
+        best_fit_kwargs = best_fit_line if isinstance(best_fit_line, dict) else {}
+        # default trace_idx=0 to suppress add_best_fit_line ambiguous trace_idx warning
+        best_fit_kwargs.setdefault("trace_idx", trace_idx)
+        add_best_fit_line(fig, xs=xs, ys=ys, **best_fit_kwargs)
+
+    if stats:
+        stats_kwargs = stats if isinstance(stats, dict) else {}
+        annotate_metrics(xs, ys, fig=fig, **stats_kwargs)
+
+    return fig

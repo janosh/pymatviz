@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import pytest
+from sklearn.metrics import r2_score
 
 import pymatviz as pmv
 from tests.conftest import df_regr, np_rng
@@ -52,6 +53,27 @@ def test_density_scatter_mpl(
     assert isinstance(ax, plt.Axes)
     assert ax.get_xlabel() == x if isinstance(x, str) else "Actual"
     assert ax.get_ylabel() == y if isinstance(y, str) else "Predicted"
+
+    # Identity and best fit lines are added by default unless explicitly disabled
+    identity_line = kwargs.get("identity_line", True)
+    best_fit_line = kwargs.get("best_fit_line", True)
+
+    if identity_line:
+        # Check identity line exists (black dashed)
+        identity_lines = [
+            line
+            for line in ax.lines
+            if line.get_color() == "black" and line.get_linestyle() == "--"
+        ]
+        assert len(identity_lines) == 1, "Identity line not found"
+
+    r2_val = r2_score(df[x], df[y]) if isinstance(df, pd.DataFrame) else r2_score(x, y)
+    if best_fit_line and r2_val > 0.3:
+        # Check best fit line exists (navy solid)
+        best_fit_lines = [
+            line for line in ax.lines if line.get_color() in ("navy", "lightskyblue")
+        ]
+        assert len(best_fit_lines) == 1, "Best fit line not found"
 
 
 @pytest.mark.parametrize("stats", [1, (1,), "foo"])
@@ -168,6 +190,38 @@ def test_density_scatter_plotly(
     else:
         assert colorbar.tickvals is None
         assert colorbar.ticktext is None
+
+    # Check powerup elements
+    if stats:
+        # Check stats annotation exists and contains expected metrics
+        stats_annotations = [
+            ann
+            for ann in fig.layout.annotations
+            if any(metric in ann.text for metric in ["MAE", "RMSE", "R<sup>2</sup>"])
+        ]
+        assert len(stats_annotations) == 1, "Stats annotation not found"
+        assert all(
+            metric in stats_annotations[0].text for metric in ["MAE", "R<sup>2</sup>"]
+        ), f"{stats_annotations[0].text=}"
+        if isinstance(stats, dict):
+            if "prefix" in stats:
+                assert stats_annotations[0].text.startswith(stats["prefix"])
+            if "x" in stats:
+                assert stats_annotations[0].x == stats["x"]
+            if "y" in stats:
+                assert stats_annotations[0].y == stats["y"]
+
+    # Identity and best fit lines are added by default unless explicitly disabled
+    identity_line = kwargs.get("identity_line", True)
+
+    if identity_line:
+        # Check identity line exists (gray dashed)
+        identity_lines = [
+            shape
+            for shape in fig.layout.shapes
+            if shape.line.dash == "dash" and shape.line.color in ("gray", "black")
+        ]
+        assert len(identity_lines) == 1, "Identity line not found"
 
 
 def test_density_scatter_plotly_hover_template() -> None:
