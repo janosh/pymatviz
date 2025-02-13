@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import pytest
 from plotly.exceptions import PlotlyError
 from plotly.graph_objs import Figure
+from pymatgen.core import Element
 
 import pymatviz as pmv
 from pymatviz.enums import ElemCountMode, Key
@@ -447,3 +448,179 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
             f"Original symbol {elem} not found in tile texts for "
             "element_symbol_map=None"
         )
+
+
+def test_ptable_heatmap_splits_plotly_colorscales() -> None:
+    """Test different colorscale configurations."""
+    # Create test data with 2 values per element
+    data = {str(elem): [1, 2] for elem in list(Element)[:5]}
+
+    # Test single colorscale
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="diagonal",
+        colorscale="Viridis",
+        colorbar=dict(title="Test"),  # Add colorbar to trigger split_names check
+    )
+    assert isinstance(fig, go.Figure)
+
+    # Test multiple colorscales as list of strings
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="diagonal",
+        colorscale=["Viridis", "Plasma"],  # One colorscale per split
+        colorbar=[
+            dict(title="First"),
+            dict(title="Second"),
+        ],  # Add colorbars to trigger split_names check
+    )
+    assert isinstance(fig, go.Figure)
+
+    # Test custom colorscale as list of RGB tuples
+    custom_colorscale = [
+        (0.0, "rgb(255,0,0)"),
+        (0.5, "rgb(255,255,0)"),
+        (1.0, "rgb(0,0,255)"),
+    ]
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="diagonal",
+        colorscale=[custom_colorscale, custom_colorscale],  # One per split
+    )
+    assert isinstance(fig, go.Figure)
+
+    # Test invalid number of splits
+    with pytest.raises(ValueError, match="must be 2, 3, or 4"):
+        pmv.ptable_heatmap_splits_plotly(
+            data={str(elem): [1] * 5 for elem in list(Element)[:5]},  # 5 splits
+            orientation="diagonal",
+        )
+
+    # Test mismatched colorscales and data splits
+    with pytest.raises(ValueError, match="Number of colorscales .* must match"):
+        pmv.ptable_heatmap_splits_plotly(
+            data=data,  # 2 splits
+            orientation="diagonal",
+            colorscale=["Viridis", "Plasma", "Inferno"],  # 3 colorscales
+        )
+
+
+def test_ptable_heatmap_splits_plotly_colorbars() -> None:
+    """Test different colorbar configurations."""
+    # Create test data with 2 values per element
+    data = {str(elem): [1, 2] for elem in list(Element)[:5]}
+
+    # Test single colorbar dict
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="diagonal",
+        colorbar=dict(title="Test"),
+    )
+    assert isinstance(fig, go.Figure)
+
+    # Test multiple colorbars with custom positions
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="diagonal",
+        colorbar=[
+            dict(title="First", orientation="v", x=0.8, y=0.7),  # Custom position
+            dict(title="Second", orientation="v", x=1.0, y=0.7),  # Custom position
+        ],
+    )
+    assert isinstance(fig, go.Figure)
+    # Check that last two traces used the custom positions (dummy traces for colorbars)
+    colorbar_traces = [
+        trace
+        for trace in fig.data
+        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
+    ]
+    assert len(colorbar_traces) >= 2
+    cbar1 = colorbar_traces[-2].marker.colorbar
+    cbar2 = colorbar_traces[-1].marker.colorbar
+    assert (cbar1.x, cbar1.y) == (0.8, 0.7)
+    assert (cbar2.x, cbar2.y) == (1.0, 0.7)
+
+    # Test mixed orientations
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="diagonal",
+        colorbar=[
+            dict(title="First", orientation="h"),
+            dict(title="Second", orientation="v"),
+        ],
+    )
+    assert isinstance(fig, go.Figure)
+    colorbar_traces = [
+        trace
+        for trace in fig.data
+        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
+    ]
+    assert len(colorbar_traces) >= 2
+    assert colorbar_traces[-2].marker.colorbar.orientation == "h"
+    assert colorbar_traces[-1].marker.colorbar.orientation == "v"
+
+    # Test mismatched colorbars and splits
+    with pytest.raises(ValueError, match="Number of colorbars .* must match"):
+        pmv.ptable_heatmap_splits_plotly(
+            data=data,  # 2 splits
+            orientation="diagonal",
+            colorbar=[dict(title="1"), dict(title="2"), dict(title="3")],  # 3 colorbars
+        )
+
+
+def test_ptable_heatmap_splits_plotly_split_names() -> None:
+    """Test that split names are correctly assigned based on orientation."""
+    # Create test data with 2 values per element
+    data = {str(elem): [1, 2] for elem in list(Element)[:5]}
+
+    # Test diagonal orientation split names
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="diagonal",
+        colorscale=["Viridis", "Plasma"],  # One colorscale per split
+        colorbar=[dict(title="First"), dict(title="Second")],
+    )
+    # Check that colorbar titles contain the correct split names
+    colorbar_traces = [
+        trace
+        for trace in fig.data
+        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
+    ]
+    assert len(colorbar_traces) >= 2
+    titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
+    assert any("bottom-left" in title for title in titles)
+    assert any("top-right" in title for title in titles)
+
+    # Test horizontal orientation split names
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="horizontal",
+        colorscale=["Viridis", "Plasma"],
+        colorbar=[dict(title="First"), dict(title="Second")],
+    )
+    colorbar_traces = [
+        trace
+        for trace in fig.data
+        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
+    ]
+    assert len(colorbar_traces) >= 2
+    titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
+    assert any("bottom" in title for title in titles)
+    assert any("top" in title for title in titles)
+
+    # Test vertical orientation split names
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data,
+        orientation="vertical",
+        colorscale=["Viridis", "Plasma"],
+        colorbar=[dict(title="First"), dict(title="Second")],
+    )
+    colorbar_traces = [
+        trace
+        for trace in fig.data
+        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
+    ]
+    assert len(colorbar_traces) >= 2
+    titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
+    assert any("left" in title for title in titles)
+    assert any("right" in title for title in titles)

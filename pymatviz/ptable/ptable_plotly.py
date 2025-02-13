@@ -520,8 +520,8 @@ def ptable_hists_plotly(
         subplot_key = subplot_idx if subplot_idx != 1 else ""
         xy_ref = dict(xref=f"x{subplot_key} domain", yref=f"y{subplot_key} domain")
 
-        elem_type = df_ptable.loc[symbol].get("type", None)
         # Add element type background
+        elem_type = df_ptable.loc[symbol].get("type", None)
         if elem_type in elem_type_colors and color_elem_strategy in {
             "background",
             "both",
@@ -710,8 +710,8 @@ def ptable_heatmap_splits_plotly(
     # Split
     orientation: Literal["diagonal", "horizontal", "vertical", "grid"] = "diagonal",
     # Figure
-    colorscale: ColorScale = "viridis",
-    colorbar: dict[str, Any] | Literal[False] | None = None,
+    colorscale: ColorScale | Sequence[ColorScale] = "Viridis",
+    colorbar: dict[str, Any] | Sequence[dict[str, Any]] | Literal[False] | None = None,
     on_empty: Literal["hide", "show"] = "hide",
     hide_f_block: bool | Literal["auto"] = "auto",
     # Layout
@@ -738,15 +738,25 @@ def ptable_heatmap_splits_plotly(
             1st value would be plotted in lower-left corner, 2nd in the upper-right.
 
         --- Figure ---
-        colorscale (ColorScale): Color scale for heatmap. Defaults to "viridis". Can be:
+        colorscale (ColorScale | Sequence[ColorScale]): Color scale(s) for heatmap.
+            If a single colorscale is provided, it will be used for all splits.
+            If a sequence is provided, each colorscale will be used for its
+            corresponding split. Can be:
             - str: Name of built-in colorscale ("turbo", "inferno", "plasma", ...)
             - list[str]: List of colors to interpolate between
             - list[tuple[float, str]]: List of (position, color) pairs
             - Callable[[str, float, int], str]: Function mapping (element symbol, split
               value, split index) to color string. Useful for custom color schemes.
-        colorbar (dict[str, Any] | None): Plotly colorbar properties. Defaults to
-            dict(orientation="h"). See https://plotly.com/python/reference#heatmap-colorbar
-            for available options. Set to False to hide the colorbar.
+        colorbar (dict[str, Any] | Sequence[dict[str, Any]] | None): Plotly colorbar
+            properties. If a single dict is provided, it will be used as a template for
+            all colorbars. If a sequence is provided, each dict will be used for its
+            corresponding split. Set to False to hide all colorbars. Defaults to
+            dict(orientation="v"). Each colorbar dict can include:
+            - v_offset (float): Vertical offset from default position. Defaults to 0 for
+              vertical colorbars and 0.05 for horizontal colorbars.
+            - h_offset (float): Horizontal offset from default position. Defaults to
+              0.05 for vertical colorbars and 0 for horizontal colorbars.
+            See https://plotly.com/python/reference#heatmap-colorbar for other options.
         on_empty ("hide" | "show"): Whether to show tiles for elements without data.
             Defaults to "hide".
         hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
@@ -758,7 +768,6 @@ def ptable_heatmap_splits_plotly(
             - "horizontal": Split into equal horizontal strips
             - "vertical": Split into equal vertical strips
             - "grid": Split into 2x2 grid (only valid for n_splits=4)
-
 
         --- Layout ---
         font_size (int): Element symbol and annotation text size. Defaults to automatic
@@ -786,7 +795,6 @@ def ptable_heatmap_splits_plotly(
 
     Returns:
         go.Figure: Plotly Figure object with the periodic table heatmap splits.
-
 
     Raises:
         ValueError: If n_splits not in {2, 3, 4} or orientation="grid" with n_splits!=4
@@ -895,6 +903,7 @@ def ptable_heatmap_splits_plotly(
     row_7_is_empty = not bool(
         set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
     )
+
     # Process data and create shapes for each element
     for symbol, period, group, name, *_ in df_ptable.itertuples():
         row, col = period - 1, group - 1  # row, col are 0-indexed
@@ -926,10 +935,56 @@ def ptable_heatmap_splits_plotly(
                 # Use the callable to get color directly
                 color = colorscale(symbol, values[idx], idx)
             else:
+                # Get the colorscale for this split
+                cscale = (
+                    colorscale
+                    if not isinstance(colorscale, Sequence)
+                    or isinstance(colorscale, str)
+                    else colorscale[idx]
+                )
+                # Convert string colorscale to actual colorscale
+                if isinstance(cscale, str):
+                    cscale = plotly.colors.get_colorscale(cscale)
                 # Use plotly builtin color interpolation logic
-                color = plotly.colors.sample_colorscale(
-                    colorscale, (values[idx] - cbar_min) / (cbar_max - cbar_min)
-                )[0]
+                if isinstance(cscale, str) or (
+                    isinstance(cscale, list | tuple)
+                    and len(cscale) > 0
+                    and isinstance(cscale[0], list | tuple)
+                    and isinstance(cscale[0][1], str)
+                    and cscale[0][1].startswith("rgb")
+                ):
+                    # If colorscale contains RGB strings, use it directly
+                    scale_pos = (values[idx] - cbar_min) / (cbar_max - cbar_min)
+                    if isinstance(cscale, str):
+                        color = cscale
+                    else:
+                        # Find the right color pair in the scale
+                        for i in range(len(cscale) - 1):
+                            pos1, color1 = cscale[i]
+                            pos2, color2 = cscale[i + 1]
+                            if pos1 <= scale_pos <= pos2:
+                                # Linear interpolation between colors
+                                frac = (scale_pos - pos1) / (pos2 - pos1)
+                                rgb1 = [
+                                    int(x) for x in color1.strip("rgb()").split(",")
+                                ]
+                                rgb2 = [
+                                    int(x) for x in color2.strip("rgb()").split(",")
+                                ]
+                                rgb = [
+                                    int(c1 + (c2 - c1) * frac)
+                                    for c1, c2 in zip(rgb1, rgb2, strict=False)
+                                ]
+                                color = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
+                                break
+                        else:
+                            # If we didn't break, use the last color
+                            color = cscale[-1][1]
+                else:
+                    # Use plotly's built-in color interpolation
+                    color = plotly.colors.sample_colorscale(
+                        cscale, (values[idx] - cbar_min) / (cbar_max - cbar_min)
+                    )[0]
 
             fig.add_scatter(
                 x=xs,
@@ -1024,44 +1079,143 @@ def ptable_heatmap_splits_plotly(
     )
 
     # Add colorbar
-    if colorbar is not False and not callable(colorscale):
-        # TODO don't skip colorbar if colorscale is callable. problem: can't sample and
-        # interpolate callable to get color strings since it could be discrete
-        colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
-            colorbar or {}
+    # Process colorscales and colorbars first
+    if colorbar is not False:
+        n_splits = len(
+            next(iter(data.values()))
+        )  # Convert single colorscale to list if needed
+        colorscales = (
+            [colorscale] * n_splits
+            if not isinstance(colorscale, Sequence) or isinstance(colorscale, str)
+            else colorscale
         )
-        horizontal_cbar = colorbar.get("orientation") == "h"
-        if horizontal_cbar:
-            h_defaults = dict(
-                x=0.4,
-                y=0.76,
-                title_side="top",
-                len=0.4,
-                title_font_size=scale * 1.2 * (font_size or 12),
+
+        # Validate number of colorscales
+        if len(colorscales) != n_splits:
+            raise ValueError(
+                f"Number of colorscales ({len(colorscales)}) must match number of "
+                f"splits ({n_splits})"
             )
-            colorbar = h_defaults | colorbar
-        else:  # make title vertical
-            v_defaults = dict(title_side="right", len=0.87)
-            colorbar = v_defaults | colorbar
 
-        if title := colorbar.get("title"):
-            # <br> to increase title standoff
-            colorbar["title"] = f"{title}" if horizontal_cbar else f"<br><br>{title}"
+        # Convert colorscale strings to actual colorscales
+        plotly_colorscales = [
+            cs if not isinstance(cs, str) else plotly.colors.get_colorscale(cs)
+            for cs in colorscales
+        ]
 
-        fig.add_scatter(
-            x=[None],
-            y=[None],
-            mode="markers",
-            marker=dict(
-                colorscale=colorscale,
+        # Convert single colorbar dict to list if needed
+        colorbars = (
+            [colorbar or {}] * len(colorscales)
+            if not isinstance(colorbar, Sequence)
+            else colorbar
+        )
+
+        # Validate number of colorbars
+        if len(colorbars) != n_splits:
+            raise ValueError(
+                f"Number of colorbars ({len(colorbars)}) must match {n_splits=}"
+            )
+
+        # Get split names based on orientation
+        split_names = {
+            "diagonal": {
+                2: ["bottom-left", "top-right"],
+                3: ["bottom", "top-left", "top-right"],
+                4: ["bottom", "left", "right", "top"],
+            },
+            "horizontal": {
+                2: ["bottom", "top"],
+                3: ["bottom", "middle", "top"],
+                4: ["bottom", "lower-middle", "upper-middle", "top"],
+            },
+            "vertical": {
+                2: ["left", "right"],
+                3: ["left", "middle", "right"],
+                4: ["left", "left-middle", "right-middle", "right"],
+            },
+            "grid": {4: ["top-left", "top-right", "bottom-left", "bottom-right"]},
+        }[orientation][len(colorscales)]
+
+        # Count number of horizontal and vertical colorbars for positioning
+        n_horizontal = sum((cbar or {}).get("orientation") == "h" for cbar in colorbars)
+        n_vertical = len(colorbars) - n_horizontal
+        v_idx = h_idx = 0
+
+        for cscale, cbar, split_name in zip(
+            plotly_colorscales, colorbars, split_names, strict=True
+        ):
+            # Create base colorbar settings
+            cbar_settings = dict(
+                lenmode="fraction",
+                thickness=15,
+                len=0.87 / len(colorscales) if n_vertical > 0 else 0.4,
+            ) | (cbar or {})
+
+            horizontal_cbar = cbar_settings.get("orientation") == "h"
+
+            # Get offsets with appropriate defaults based on orientation
+            v_offset: float = cbar_settings.pop(  # type: ignore[assignment]
+                "v_offset", 0.05 if horizontal_cbar else 0
+            )
+            h_offset: float = cbar_settings.pop(  # type: ignore[assignment]
+                "h_offset", 0 if horizontal_cbar else 0.05
+            )
+
+            # Only update x and y if they're not already specified in colorbar settings
+            if "x" not in cbar_settings:
+                if horizontal_cbar:
+                    cbar_settings["x"] = 0.4 + h_offset
+                else:  # vertical colorbar
+                    cbar_settings["x"] = 1.02 + v_idx * 0.15 + h_offset
+
+            if "y" not in cbar_settings:
+                if horizontal_cbar:
+                    cbar_settings["y"] = 0.76 - h_idx * 0.05 - v_offset
+                else:  # vertical colorbar
+                    cbar_settings["y"] = 0.5  # Center vertically
+
+            # Update indices for next colorbar
+            if horizontal_cbar:
+                h_idx += 1
+            else:
+                v_idx += 1
+
+            # Set title side and font size if not already specified
+            if "title_side" not in cbar_settings:
+                cbar_settings["title_side"] = "top" if horizontal_cbar else "right"
+            if "title_font_size" not in cbar_settings:
+                cbar_settings["title_font_size"] = scale * 1.2 * (font_size or 12)
+
+            # Add split name to title if not already set
+            if title := cbar_settings.get("title"):
+                # Handle both string and dict title formats
+                title_text = title.get("text", "") if isinstance(title, dict) else title
+                # <br> to increase title standoff
+                cbar_settings["title"] = dict(
+                    text=f"{title_text} ({split_name})"
+                    if horizontal_cbar
+                    else f"<br><br>{title_text} ({split_name})"
+                )
+            else:
+                cbar_settings["title"] = dict(
+                    text=split_name if horizontal_cbar else f"<br><br>{split_name}"
+                )
+
+            # Create dummy trace for colorbar
+            dummy_data = np.linspace(cbar_min, cbar_max, 2)
+            marker = dict(
+                size=0,
+                color=dummy_data,
+                colorscale=cscale,
                 showscale=True,
                 cmin=cbar_min,
                 cmax=cbar_max,
-                colorbar=colorbar,
-            ),
-            hoverinfo="none",
-            showlegend=False,
-        )
+                colorbar=cbar_settings,
+            )
+
+            fig.add_scatter(
+                x=[None], y=[None], mode="markers", marker=marker, showlegend=False
+            )
 
     return fig
 
