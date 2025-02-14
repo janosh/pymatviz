@@ -447,3 +447,44 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
             f"Original symbol {elem} not found in tile texts for "
             "element_symbol_map=None"
         )
+
+
+def test_ptable_heatmap_plotly_colorbar() -> None:
+    """Test colorbar customization in ptable_heatmap_plotly."""
+    data = {"Fe": 1.234, "O": 5.678}
+
+    # Test colorbar title and formatting
+    colorbar = dict(
+        title="Test Title", tickformat=".2f", orientation="v", len=0.8, x=1.1
+    )
+
+    fig = pmv.ptable_heatmap_plotly(data, colorbar=colorbar)
+
+    # Get the colorbar from the figure
+    colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
+    actual_colorbar = colorbar_trace.colorbar
+
+    # Check colorbar properties were set correctly
+    assert actual_colorbar.title.text == "<br><br>Test Title"
+    assert actual_colorbar.tickformat == ".2f"
+    assert actual_colorbar.orientation == "v"
+    assert actual_colorbar.len == 0.8
+    assert actual_colorbar.x == 1.1
+
+    # Test horizontal colorbar title formatting
+    h_colorbar = dict(title="Horizontal Title", orientation="h", y=0.8)
+
+    fig = pmv.ptable_heatmap_plotly(data, colorbar=h_colorbar)
+    h_colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
+    actual_h_colorbar = h_colorbar_trace.colorbar
+
+    # Check horizontal colorbar properties
+    assert (
+        actual_h_colorbar.title.text == "Horizontal Title<br>"
+    )  # Horizontal title has break after
+    assert actual_h_colorbar.orientation == "h"
+    assert actual_h_colorbar.y == 0.8
+
+    # Test disabling colorbar
+    fig = pmv.ptable_heatmap_plotly(data, show_scale=False)
+    assert not any(trace.showscale for trace in fig.data)

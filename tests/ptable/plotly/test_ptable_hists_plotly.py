@@ -199,7 +199,7 @@ def test_ptable_hists_plotly_hover_tooltips() -> None:
     ("colorbar", "expected"),
     [
         # Test default settings
-        (None, dict(orientation="h", len=0.4, thickness=15)),
+        (None, dict(len=0.87, thickness=15)),
         # Test no colorbar
         (False, None),
         # Test horizontal colorbar with custom length
@@ -267,11 +267,12 @@ def test_ptable_hists_plotly_colorbar(
 
     # Check colorbar settings
     if expected is not None:
-        for key, value in expected.items():
+        for key, expect in expected.items():
             if key == "title":
-                assert marker.colorbar.title.text == value
+                assert marker.colorbar.title.text == expect
             else:
-                assert getattr(marker.colorbar, key) == value
+                actual = getattr(marker.colorbar, key)
+                assert actual == expect, f"{key=}: {actual=} != {expect=}"
 
 
 def test_ptable_hists_plotly_x_axis_kwargs() -> None:
