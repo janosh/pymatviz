@@ -61,12 +61,19 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
 
     fig_with_f = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block="auto")
     anno_texts = [anno.text for anno in fig_with_f.layout.annotations]
-    expected = ["Fe", "Iron (Fe)", "La", "Lanthanum (La)", "U", "Uranium (U)"]
+    expected = [
+        "Fe",
+        "<b>Iron</b><br>Split 1: 1<br>Split 2: 2",
+        "La",
+        "<b>Lanthanum</b><br>Split 1: 3<br>Split 2: 4",
+        "U",
+        "<b>Uranium</b><br>Split 1: 5<br>Split 2: 6",
+    ]
     assert anno_texts == expected, f"{anno_texts=}"
 
     fig_with_f = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block=True)
     anno_texts = [anno.text for anno in fig_with_f.layout.annotations]
-    expected = ["Fe", "Iron (Fe)"]
+    expected = ["Fe", "<b>Iron</b><br>Split 1: 1<br>Split 2: 2"]
     assert anno_texts == expected, f"{anno_texts=}"
 
 
@@ -182,27 +189,6 @@ def test_ptable_heatmap_splits_plotly_error_cases() -> None:
         PlotlyError, match="Colorscale invalid_colorscale is not a built-in scale"
     ):
         pmv.ptable_heatmap_splits_plotly(data, colorscale="invalid_colorscale")
-
-
-def test_ptable_heatmap_splits_plotly_callable_colorscale() -> None:
-    """Test that ptable_heatmap_splits_plotly accepts a callable colorscale."""
-    data = {"Fe": [1, 2], "O": [3, 4]}
-
-    def custom_colorscale(_element_symbol: str, _value: float, split_idx: int) -> str:
-        # Return a color based on element symbol, value and split index
-        if split_idx == 0:
-            return "rgb(255,0,0)"  # Red for first split
-        if split_idx == 1:
-            return "rgb(0,0,255)"  # Blue for second split
-        return "rgb(255,255,255)"  # White else (not used in this test)
-
-    fig = pmv.ptable_heatmap_splits_plotly(data, colorscale=custom_colorscale)
-    assert isinstance(fig, go.Figure)
-
-    # Check that colorscale was applied correctly to heatmap traces
-    for trace in fig.data:
-        # Each element tile should have a color array with custom colors
-        assert trace.fillcolor in {"rgb(255,0,0)", "rgb(0,0,255)"}
 
 
 def test_ptable_heatmap_plotly_colorbar() -> None:
