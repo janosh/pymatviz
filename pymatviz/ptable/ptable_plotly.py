@@ -779,6 +779,16 @@ def ptable_heatmap_splits_plotly(
             to custom strings. If provided, these custom strings will be displayed
             instead of the standard element symbols. Defaults to None.
         symbol_kwargs (dict): Additional keyword arguments for element symbol text.
+            Supports all plotly annotation properties plus font customization through
+            the "font" key. Font properties include:
+            - color (str): Text color. Defaults to "black".
+            - size (int): Font size in pixels. Defaults to font_size * 1.5.
+            - family (str): Font family. Defaults to "Arial, sans-serif".
+            - weight (str): Font weight. Defaults to "bold".
+            Example: dict(font=dict(color="red", size=16, weight="normal"))
+            Other common kwargs:
+            - x, y (float): Position within tile. Defaults to (0.5, 0.5).
+            - xanchor, yanchor (str): Text anchor point. Defaults to "center", "middle".
 
         --- Annotation ---
         annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
@@ -807,9 +817,49 @@ def ptable_heatmap_splits_plotly(
     elif isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="index")
 
-    # Find global min and max values for color scaling
-    all_values = np.array(list(data.values()), dtype=float)
-    cbar_min, cbar_max = np.nanmin(all_values), np.nanmax(all_values)
+    # Calculate split ranges early if using multiple colorscales
+    n_splits = len(next(iter(data.values())))
+    use_multiple = (
+        isinstance(colorscale, Sequence) and not isinstance(colorscale, str)
+    ) or isinstance(colorbar, Sequence)
+
+    if use_multiple:
+        # Multiple colorscales/colorbars mode
+        colorscales = (
+            [colorscale] * n_splits
+            if not isinstance(colorscale, Sequence) or isinstance(colorscale, str)
+            else colorscale
+        )
+        colorbars = (
+            [colorbar or {}] * len(colorscales)
+            if not isinstance(colorbar, Sequence)
+            else colorbar
+        )
+
+        # Validate lengths
+        if len(colorscales) != n_splits:
+            raise ValueError(
+                f"Number of colorscales ({len(colorscales)}) must match {n_splits=}"
+            )
+        if len(colorbars) != n_splits:
+            raise ValueError(
+                f"Number of colorbars ({len(colorbars)}) must match {n_splits=}"
+            )
+
+        # Calculate ranges per split
+        split_ranges = []
+        for split_idx in range(n_splits):
+            split_values = [
+                values[split_idx] for values in data.values() if len(values) > split_idx
+            ]
+            split_ranges.append((min(split_values), max(split_values)))
+    else:
+        # Single colorscale/colorbar mode (default)
+        colorscales = [colorscale] * n_splits
+        colorbars = [colorbar or {}]
+        # Use single range for all splits
+        all_values = [val for values in data.values() for val in values]
+        split_ranges = [(min(all_values), max(all_values))] * n_splits
 
     # Initialize figure with subplots
     has_f_block_data = any(
@@ -936,29 +986,24 @@ def ptable_heatmap_splits_plotly(
                 color = colorscale(symbol, values[idx], idx)
             else:
                 # Get the colorscale for this split
-                cscale = (
-                    colorscale
-                    if not isinstance(colorscale, Sequence)
-                    or isinstance(colorscale, str)
-                    else colorscale[idx]
-                )
-                # Convert string colorscale to actual colorscale
-                if isinstance(cscale, str):
-                    cscale = plotly.colors.get_colorscale(cscale)
+                cscale = colorscales[idx]
+
+                # Get range for this split
+                cmin, cmax = split_ranges[idx]
+
+                # Calculate normalized position in colorscale
+                scale_pos = (values[idx] - cmin) / (cmax - cmin)
+                # Clamp scale_pos to [0, 1] to handle values outside the range
+                scale_pos = max(0, min(1, scale_pos))
+
                 # Use plotly builtin color interpolation logic
-                if isinstance(cscale, str) or (
-                    isinstance(cscale, list | tuple)
-                    and len(cscale) > 0
-                    and isinstance(cscale[0], list | tuple)
-                    and isinstance(cscale[0][1], str)
-                    and cscale[0][1].startswith("rgb")
-                ):
-                    # If colorscale contains RGB strings, use it directly
-                    scale_pos = (values[idx] - cbar_min) / (cbar_max - cbar_min)
-                    if isinstance(cscale, str):
-                        color = cscale
-                    else:
-                        # Find the right color pair in the scale
+                if isinstance(cscale, str):
+                    # For string colorscales, use plotly's get_colorscale
+                    cscale = plotly.colors.get_colorscale(cscale)
+                    color = plotly.colors.sample_colorscale(cscale, [scale_pos])[0]
+                elif isinstance(cscale, list | tuple):
+                    if len(cscale) > 0 and isinstance(cscale[0], list | tuple):
+                        # If colorscale is list of (pos, color) pairs
                         for i in range(len(cscale) - 1):
                             pos1, color1 = cscale[i]
                             pos2, color2 = cscale[i + 1]
@@ -980,11 +1025,21 @@ def ptable_heatmap_splits_plotly(
                         else:
                             # If we didn't break, use the last color
                             color = cscale[-1][1]
+                    else:
+                        # If colorscale is list of colors, convert to proper format
+                        n_colors = len(cscale)
+                        formatted_cscale = [
+                            [i / (n_colors - 1), color]
+                            for i, color in enumerate(cscale)
+                        ]
+                        color = plotly.colors.sample_colorscale(
+                            formatted_cscale, [scale_pos]
+                        )[0]
                 else:
-                    # Use plotly's built-in color interpolation
-                    color = plotly.colors.sample_colorscale(
-                        cscale, (values[idx] - cbar_min) / (cbar_max - cbar_min)
-                    )[0]
+                    raise ValueError(
+                        f"Invalid colorscale type: {type(cscale)}. Must be string, "
+                        "list of colors, or list of (position, color) pairs."
+                    )
 
             fig.add_scatter(
                 x=xs,
@@ -1003,14 +1058,12 @@ def ptable_heatmap_splits_plotly(
             display_symbol = element_symbol_map.get(symbol, symbol)
         else:
             display_symbol = symbol
-        symbol_defaults = dict(
-            x=0.5,
-            y=0.5,
-            showarrow=False,
-            font=dict(color="black", size=(font_size or 14) * scale),
-        )
+        symbol_defaults = dict(x=0.5, y=0.5, showarrow=False)
+        symbol_kwargs = symbol_kwargs or {}
+        font_defaults = dict(size=(font_size or 14) * scale)
+        symbol_kwargs["font"] = font_defaults | symbol_kwargs.get("font", {})
         fig.add_annotation(
-            text=display_symbol, **symbol_defaults | xy_ref | (symbol_kwargs or {})
+            text=display_symbol, **symbol_defaults | xy_ref | symbol_kwargs
         )
 
         # Add hover data
@@ -1079,43 +1132,7 @@ def ptable_heatmap_splits_plotly(
     )
 
     # Add colorbar
-    # Process colorscales and colorbars first
     if colorbar is not False:
-        n_splits = len(
-            next(iter(data.values()))
-        )  # Convert single colorscale to list if needed
-        colorscales = (
-            [colorscale] * n_splits
-            if not isinstance(colorscale, Sequence) or isinstance(colorscale, str)
-            else colorscale
-        )
-
-        # Validate number of colorscales
-        if len(colorscales) != n_splits:
-            raise ValueError(
-                f"Number of colorscales ({len(colorscales)}) must match number of "
-                f"splits ({n_splits})"
-            )
-
-        # Convert colorscale strings to actual colorscales
-        plotly_colorscales = [
-            cs if not isinstance(cs, str) else plotly.colors.get_colorscale(cs)
-            for cs in colorscales
-        ]
-
-        # Convert single colorbar dict to list if needed
-        colorbars = (
-            [colorbar or {}] * len(colorscales)
-            if not isinstance(colorbar, Sequence)
-            else colorbar
-        )
-
-        # Validate number of colorbars
-        if len(colorbars) != n_splits:
-            raise ValueError(
-                f"Number of colorbars ({len(colorbars)}) must match {n_splits=}"
-            )
-
         # Get split names based on orientation
         split_names = {
             "diagonal": {
@@ -1137,18 +1154,28 @@ def ptable_heatmap_splits_plotly(
         }[orientation][len(colorscales)]
 
         # Count number of horizontal and vertical colorbars for positioning
-        n_horizontal = sum((cbar or {}).get("orientation") == "h" for cbar in colorbars)
-        n_vertical = len(colorbars) - n_horizontal
+        n_horizontal = sum(
+            (cbar or {}).get("orientation") == "h"
+            for cbar in colorbars[: 1 if not use_multiple else None]
+        )
+        n_vertical = len(colorbars[: 1 if not use_multiple else None]) - n_horizontal
         v_idx = h_idx = 0
 
-        for cscale, cbar, split_name in zip(
-            plotly_colorscales, colorbars, split_names, strict=True
+        for split_idx, (cscale, split_name) in enumerate(
+            zip(colorscales, split_names, strict=True)
         ):
+            # Skip if not using multiple colorbars and not first split
+            if not use_multiple and split_idx > 0:
+                continue
+
+            cbar = colorbars[split_idx if use_multiple else 0]
+            cmin, cmax = split_ranges[split_idx]
+
             # Create base colorbar settings
             cbar_settings = dict(
                 lenmode="fraction",
                 thickness=15,
-                len=0.87 / len(colorscales) if n_vertical > 0 else 0.4,
+                len=0.87 / len(colorbars) if n_vertical > 0 else 0.4,
             ) | (cbar or {})
 
             horizontal_cbar = cbar_settings.get("orientation") == "h"
@@ -1186,30 +1213,30 @@ def ptable_heatmap_splits_plotly(
             if "title_font_size" not in cbar_settings:
                 cbar_settings["title_font_size"] = scale * 1.2 * (font_size or 12)
 
-            # Add split name to title if not already set
+            # Add split name to title if multiple colorbars
             if title := cbar_settings.get("title"):
                 # Handle both string and dict title formats
                 title_text = title.get("text", "") if isinstance(title, dict) else title
                 # <br> to increase title standoff
+                if use_multiple:
+                    title_text = f"{title_text} ({split_name})"
                 cbar_settings["title"] = dict(
-                    text=f"{title_text} ({split_name})"
-                    if horizontal_cbar
-                    else f"<br><br>{title_text} ({split_name})"
+                    text=title_text if horizontal_cbar else f"<br><br>{title_text}"
                 )
-            else:
+            elif use_multiple:
                 cbar_settings["title"] = dict(
                     text=split_name if horizontal_cbar else f"<br><br>{split_name}"
                 )
 
             # Create dummy trace for colorbar
-            dummy_data = np.linspace(cbar_min, cbar_max, 2)
+            dummy_data = np.linspace(cmin, cmax, 2)
             marker = dict(
                 size=0,
                 color=dummy_data,
                 colorscale=cscale,
                 showscale=True,
-                cmin=cbar_min,
-                cmax=cbar_max,
+                cmin=cmin,
+                cmax=cmax,
                 colorbar=cbar_settings,
             )
 
@@ -1295,6 +1322,16 @@ def ptable_scatter_plotly(
             to custom strings. If provided, these custom strings will be displayed
             instead of the standard element symbols. Defaults to None.
         symbol_kwargs (dict): Additional keyword arguments for element symbol text.
+            Supports all plotly annotation properties plus font customization through
+            the "font" key. Font properties include:
+            - color (str): Text color. Defaults to "black".
+            - size (int): Font size in pixels. Defaults to font_size * 1.5.
+            - family (str): Font family. Defaults to "Arial, sans-serif".
+            - weight (str): Font weight. Defaults to "bold".
+            Example: dict(font=dict(color="red", size=16, weight="normal"))
+            Other common kwargs:
+            - x, y (float): Position within tile. Defaults to (0.5, 0.5).
+            - xanchor, yanchor (str): Text anchor point. Defaults to "center", "middle".
 
         --- Annotation ---
         annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
