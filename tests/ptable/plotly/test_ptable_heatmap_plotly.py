@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 import pytest
 from plotly.exceptions import PlotlyError
 from plotly.graph_objs import Figure
-from pymatgen.core import Element
 
 import pymatviz as pmv
 from pymatviz.enums import ElemCountMode, Key
@@ -450,388 +449,42 @@ def test_ptable_heatmap_plotly_element_symbol_map() -> None:
         )
 
 
-def test_ptable_heatmap_splits_plotly_colorscales() -> None:
-    """Test different colorscale configurations."""
-    # Create test data with 2 values per element
-    data = {str(elem): [1, 2] for elem in list(Element)[:5]}
+def test_ptable_heatmap_plotly_colorbar() -> None:
+    """Test colorbar customization in ptable_heatmap_plotly."""
+    data = {"Fe": 1.234, "O": 5.678}
 
-    # Test single colorscale
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        colorscale="Viridis",
-        colorbar=dict(title="Test"),  # Add colorbar to trigger split_names check
-    )
-    assert isinstance(fig, go.Figure)
-
-    # Test multiple colorscales as list of strings
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        colorscale=["Viridis", "Plasma"],  # One colorscale per split
-        colorbar=[
-            dict(title="First"),
-            dict(title="Second"),
-        ],  # Add colorbars to trigger split_names check
-    )
-    assert isinstance(fig, go.Figure)
-
-    # Test custom colorscale as list of RGB tuples
-    custom_colorscale = [
-        (0.0, "rgb(255,0,0)"),
-        (0.5, "rgb(255,255,0)"),
-        (1.0, "rgb(0,0,255)"),
-    ]
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        colorscale=[custom_colorscale, custom_colorscale],  # One per split
-    )
-    assert isinstance(fig, go.Figure)
-
-    # Test invalid number of splits
-    with pytest.raises(ValueError, match="must be 2, 3, or 4"):
-        pmv.ptable_heatmap_splits_plotly(
-            data={str(elem): [1] * 5 for elem in list(Element)[:5]},  # 5 splits
-            orientation="diagonal",
-        )
-
-    # Test mismatched colorscales and data splits
-    with pytest.raises(ValueError, match="Number of colorscales .* must match"):
-        pmv.ptable_heatmap_splits_plotly(
-            data=data,  # 2 splits
-            orientation="diagonal",
-            colorscale=["Viridis", "Plasma", "Inferno"],  # 3 colorscales
-        )
-
-
-def test_ptable_heatmap_splits_plotly_colorbars() -> None:
-    """Test different colorbar configurations."""
-    # Create test data with 2 values per element
-    data = {str(elem): [1, 2] for elem in list(Element)[:5]}
-
-    # Test single colorbar dict
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        colorbar=dict(title="Test"),
-    )
-    assert isinstance(fig, go.Figure)
-
-    # Test multiple colorbars with custom positions
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        colorbar=[
-            dict(title="First", orientation="v", x=0.8, y=0.7),  # Custom position
-            dict(title="Second", orientation="v", x=1.0, y=0.7),  # Custom position
-        ],
-    )
-    assert isinstance(fig, go.Figure)
-    # Check that last two traces used the custom positions (dummy traces for colorbars)
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
-    ]
-    assert len(colorbar_traces) >= 2
-    cbar1 = colorbar_traces[-2].marker.colorbar
-    cbar2 = colorbar_traces[-1].marker.colorbar
-    assert (cbar1.x, cbar1.y) == (0.8, 0.7)
-    assert (cbar2.x, cbar2.y) == (1.0, 0.7)
-
-    # Test mixed orientations
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        colorbar=[
-            dict(title="First", orientation="h"),
-            dict(title="Second", orientation="v"),
-        ],
-    )
-    assert isinstance(fig, go.Figure)
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
-    ]
-    assert len(colorbar_traces) >= 2
-    assert colorbar_traces[-2].marker.colorbar.orientation == "h"
-    assert colorbar_traces[-1].marker.colorbar.orientation == "v"
-
-    # Test mismatched colorbars and splits
-    with pytest.raises(ValueError, match="Number of colorbars .* must match"):
-        pmv.ptable_heatmap_splits_plotly(
-            data=data,  # 2 splits
-            orientation="diagonal",
-            colorbar=[dict(title="1"), dict(title="2"), dict(title="3")],  # 3 colorbars
-        )
-
-
-def test_ptable_heatmap_splits_plotly_split_names() -> None:
-    """Test that split names are correctly assigned based on orientation."""
-    # Create test data with 2 values per element
-    data = {str(elem): [1, 2] for elem in list(Element)[:5]}
-
-    # Test diagonal orientation split names
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        colorscale=["Viridis", "Plasma"],  # One colorscale per split
-        colorbar=[dict(title="First"), dict(title="Second")],
-    )
-    # Check that colorbar titles contain the correct split names
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
-    ]
-    assert len(colorbar_traces) >= 2
-    titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
-    assert any("bottom-left" in title for title in titles), f"{titles=}"
-    assert any("top-right" in title for title in titles), f"{titles=}"
-
-    # Test horizontal orientation split names
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="horizontal",
-        colorscale=["Viridis", "Plasma"],
-        colorbar=[dict(title="First"), dict(title="Second")],
-    )
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
-    ]
-    assert len(colorbar_traces) >= 2
-    titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
-    assert any("bottom" in title for title in titles)
-    assert any("top" in title for title in titles)
-
-    # Test vertical orientation split names
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="vertical",
-        colorscale=["Viridis", "Plasma"],
-        colorbar=[dict(title="First"), dict(title="Second")],
-    )
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
-    ]
-    assert len(colorbar_traces) >= 2
-    titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
-    assert any("left" in title for title in titles)
-    assert any("right" in title for title in titles)
-
-
-def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
-    """Test hover tooltip customization."""
-    # Create test data with 2 values per element
-    data = {str(elem): [1.0, 2.0] for elem in list(Element)[:5]}
-
-    # Test default hover tooltip
-    fig = pmv.ptable_heatmap_splits_plotly(data=data, orientation="diagonal")
-    hover_texts = [
-        anno.hovertext
-        for anno in fig.layout.annotations
-        if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
-    ]
-    assert len(hover_texts) > 0, "No hover texts found"
-    split_texts = [text for text in hover_texts if "Split 1" in text]
-    assert len(split_texts) > 0, "No split texts found"
-    for text in split_texts:
-        assert "Split 1" in text, "Default split name not in hover text"
-        assert "Split 2" in text, "Default split name not in hover text"
-
-    # Test custom hover template with string formatter
-    custom_template = "{name} ({symbol}) - {split_name}: {value}"
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        hover_template=custom_template,
-        hover_fmt=".0f",  # Test integer format
-    )
-    hover_texts = [
-        anno.hovertext
-        for anno in fig.layout.annotations
-        if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
-    ]
-    assert len(hover_texts) > 0, "No hover texts found"
-    split_texts = [text for text in hover_texts if "Split 1" in text]
-    assert len(split_texts) > 0, "No split texts found"
-    for text in split_texts:
-        assert " - Split 1: 1" in text, f"Value format wrong in text: {text}"
-        assert " - Split 2: 2" in text, f"Value format wrong in text: {text}"
-
-    # Test with non-integer values and string formatter
-    data = {str(elem): [1.23456, 2.34567] for elem in list(Element)[:5]}
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        hover_template=custom_template,
-        hover_fmt=".2f",  # Test float format with 2 decimals
-    )
-    hover_texts = [
-        anno.hovertext
-        for anno in fig.layout.annotations
-        if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
-    ]
-    assert len(hover_texts) > 0, "No hover texts found"
-    split_texts = [text for text in hover_texts if "Split 1" in text]
-    assert len(split_texts) > 0, "No split texts found"
-    for text in split_texts:
-        assert " - Split 1: 1.23" in text, (
-            f"String format not applied correctly in text: {text}"
-        )
-        assert " - Split 2: 2.35" in text, (
-            f"String format not applied correctly in text: {text}"
-        )
-
-    # Test with callable formatter
-    def custom_formatter(val: float) -> str:
-        if val < 2:
-            return f"{val:.1f} (low)"
-        return f"{val:.1f} (high)"
-
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        hover_template=custom_template,
-        hover_fmt=custom_formatter,
-    )
-    hover_texts = [
-        anno.hovertext
-        for anno in fig.layout.annotations
-        if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
-    ]
-    assert len(hover_texts) > 0, "No hover texts found"
-    split_texts = [text for text in hover_texts if "Split 1" in text]
-    assert len(split_texts) > 0, "No split texts found"
-    for text in split_texts:
-        assert " - Split 1: 1.2 (low)" in text, (
-            f"Callable format not applied correctly in text: {text}"
-        )
-        assert " - Split 2: 2.3 (high)" in text, (
-            f"Callable format not applied correctly in text: {text}"
-        )
-
-    # Test hover tooltip with DataFrame input
-    df_data = pd.DataFrame(data).T
-    df_data.columns = ["First Value", "Second Value"]
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=df_data,
-        orientation="diagonal",
-        hover_fmt=".2f",
-    )
-    hover_texts = [
-        anno.hovertext
-        for anno in fig.layout.annotations
-        if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
-    ]
-    assert len(hover_texts) > 0, "No hover texts found"
-    split_texts = [text for text in hover_texts if "First Value" in text]
-    assert len(split_texts) > 0, "No split texts found"
-    for text in split_texts:
-        assert "First Value" in text, "DataFrame column name not in hover text"
-        assert "Second Value" in text, "DataFrame column name not in hover text"
-
-    # Test hover tooltip with custom hover data
-    hover_data = {str(elem): f"Custom data for {elem}" for elem in list(Element)[:5]}
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        hover_data=hover_data,
-    )
-    hover_texts = [
-        anno.hovertext
-        for anno in fig.layout.annotations
-        if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
-    ]
-    assert len(hover_texts) > 0, "No hover texts found"
-    custom_texts = [text for text in hover_texts if "Custom data" in text]
-    assert len(custom_texts) > 0, "No custom hover data found"
-    for text in custom_texts:
-        assert "Custom data for" in text, "Custom hover data not in hover text"
-
-
-def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
-    """Test that ptable_heatmap_splits_plotly correctly handles DataFrame input."""
-    # Create test DataFrame with meaningful column names
-    data = pd.DataFrame(
-        {
-            "Formation Energy": [1.23, 3.45, 5.67],
-            "Band Gap": [2.34, 4.56, 6.78],
-        },
-        index=["Fe", "O", "H"],
+    # Test colorbar title and formatting
+    colorbar = dict(
+        title="Test Title", tickformat=".2f", orientation="v", len=0.8, x=1.1
     )
 
-    # Test default hover tooltip with DataFrame
-    fig = pmv.ptable_heatmap_splits_plotly(data=data, orientation="diagonal")
-    hover_texts = [
-        anno.hovertext
-        for anno in fig.layout.annotations
-        if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
-    ]
-    assert len(hover_texts) > 0, "No hover texts found"
+    fig = pmv.ptable_heatmap_plotly(data, colorbar=colorbar)
 
-    # Check that column names are used as split labels in hover text
-    fe_texts = [text for text in hover_texts if "Iron" in text]
-    assert len(fe_texts) > 0, "No hover text found for Iron"
-    fe_hover_text = fe_texts[0]
-    assert "Formation Energy: 1.23" in fe_hover_text, (
-        "DataFrame column name 'Formation Energy' not used in hover text"
-    )
-    assert "Band Gap: 2.34" in fe_hover_text, (
-        "DataFrame column name 'Band Gap' not used in hover text"
-    )
+    # Get the colorbar from the figure
+    colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
+    actual_colorbar = colorbar_trace.colorbar
 
-    # Test custom hover template with DataFrame
-    custom_template = "{name} ({symbol}): {split_name} = {value} eV"
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        hover_template=custom_template,
-        hover_fmt=".2f",
-    )
-    hover_texts = [
-        anno.hovertext
-        for anno in fig.layout.annotations
-        if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
-    ]
-    assert len(hover_texts) > 0, "No hover texts found with custom template"
+    # Check colorbar properties were set correctly
+    assert actual_colorbar.title.text == "<br><br>Test Title"
+    assert actual_colorbar.tickformat == ".2f"
+    assert actual_colorbar.orientation == "v"
+    assert actual_colorbar.len == 0.8
+    assert actual_colorbar.x == 1.1
 
-    # Check that column names are used with custom template
-    fe_texts = [text for text in hover_texts if "Iron" in text]
-    assert len(fe_texts) > 0, "No hover text found for Iron"
-    fe_hover_text = fe_texts[0]
-    assert "Formation Energy = 1.23 eV" in fe_hover_text, (
-        "Column name not used correctly with custom template"
-    )
-    assert "Band Gap = 2.34 eV" in fe_hover_text, (
-        "Column name not used correctly with custom template"
-    )
+    # Test horizontal colorbar title formatting
+    h_colorbar = dict(title="Horizontal Title", orientation="h", y=0.8)
 
-    # Test that colorbar titles include column names when using multiple colorbars
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="diagonal",
-        colorbar=[
-            dict(title="First"),
-            dict(title="Second"),
-        ],
-    )
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if hasattr(trace, "marker")
-        and hasattr(trace.marker, "colorbar")
-        and all(val is None for val in trace.x)  # Only dummy traces for colorbars
-        and trace.marker.colorbar.title is not None
-    ]
-    assert len(colorbar_traces) == 2, "Expected 2 colorbars"
-    # TODO make sure dataframe column names make their way into colorbar titles
-    # titles = [trace.marker.colorbar.title.text for trace in colorbar_traces]
-    # assert any("Formation Energy" in title for title in titles), f"{titles=}"
-    # assert any("Band Gap" in title for title in titles), f"{titles=}"
+    fig = pmv.ptable_heatmap_plotly(data, colorbar=h_colorbar)
+    h_colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
+    actual_h_colorbar = h_colorbar_trace.colorbar
+
+    # Check horizontal colorbar properties
+    assert (
+        actual_h_colorbar.title.text == "Horizontal Title<br>"
+    )  # Horizontal title has break after
+    assert actual_h_colorbar.orientation == "h"
+    assert actual_h_colorbar.y == 0.8
+
+    # Test disabling colorbar
+    fig = pmv.ptable_heatmap_plotly(data, show_scale=False)
+    assert not any(trace.showscale for trace in fig.data)
