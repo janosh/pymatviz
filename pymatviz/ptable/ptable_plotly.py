@@ -724,6 +724,9 @@ def ptable_heatmap_splits_plotly(
     annotations: dict[str, str | dict[str, Any]]
     | Callable[[np.ndarray], str | dict[str, Any]]
     | None = None,
+    # Hover tooltip
+    hover_template: str | None = None,
+    hover_fmt: str | Callable[[float], str] = ".3g",
     # Additional options
     nan_color: str = "#eff",
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
@@ -797,11 +800,23 @@ def ptable_heatmap_splits_plotly(
             - callable that takes values and returns annotation string
             - None for not displaying annotations (default)
 
+        --- Hover tooltip ---
+        hover_template (str | None): Custom template for hover tooltip. Use {name} for
+            element name, {symbol} for element symbol, {split_name} for split name,
+            {value} for split value, and {hover_data} for custom hover data.
+            Defaults to None, which shows element name, symbol and all split values.
+        hover_fmt (str | Callable[[float], str]): Format for values in hover tooltip.
+            Can be either a format string (e.g. ".3g", ".2f") or a callable that takes
+            a float value and returns a formatted string. Defaults to ".3g".
+
         --- Additional options ---
         nan_color (str): Color for NaN values. Defaults to "#eff".
-        hover_data (dict[str, str] | pd.Series): Map from element symbol to hover text.
-            to additional text to append to hover tooltip.
-        subplot_kwargs (dict | None): Additional keywords passed to make_subplots().
+        hover_data (dict[str, str] | pd.Series): Additional text to append to hover
+            tooltip for each element. Defaults to None.
+        subplot_kwargs (dict): Additional keyword arguments for subplots.
+            See https://plotly.com/python/subplots/ for more information.
+
+        For other args, see ptable_heatmap_plotly().
 
     Returns:
         go.Figure: Plotly Figure object with the periodic table heatmap splits.
@@ -812,18 +827,25 @@ def ptable_heatmap_splits_plotly(
     import plotly.colors
     from pymatgen.core import Element
 
-    if isinstance(data, pd.Series):  # Process input data
+    # Get split names if data is a DataFrame
+    split_labels: list[str] = []
+    if isinstance(data, pd.DataFrame):
+        split_labels = list(data.columns)
+        data = {idx: row.tolist() for idx, row in data.iterrows()}
+    elif isinstance(data, pd.Series):
         data = data.to_dict()
-    elif isinstance(data, pd.DataFrame):
-        data = data.to_dict(orient="index")
 
     # Calculate split ranges early if using multiple colorscales
     n_splits = len(next(iter(data.values())))
-    use_multiple = (
+
+    if not split_labels:  # if not DataFrame or empty columns
+        split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
+
+    use_multiple_cbar = (
         isinstance(colorscale, Sequence) and not isinstance(colorscale, str)
     ) or isinstance(colorbar, Sequence)
 
-    if use_multiple:
+    if use_multiple_cbar:
         # Multiple colorscales/colorbars mode
         colorscales = (
             [colorscale] * n_splits
@@ -855,8 +877,8 @@ def ptable_heatmap_splits_plotly(
             split_ranges.append((min(split_values), max(split_values)))
     else:
         # Single colorscale/colorbar mode (default)
-        colorscales = [colorscale] * n_splits
-        colorbars = [colorbar or {}]
+        colorscales = [colorscale] * n_splits  # type: ignore[assignment]
+        colorbars = [colorbar or {}]  # type: ignore[list-item]
         # Use single range for all splits
         all_values = [val for values in data.values() for val in values]
         split_ranges = [(min(all_values), max(all_values))] * n_splits
@@ -955,7 +977,7 @@ def ptable_heatmap_splits_plotly(
     )
 
     # Process data and create shapes for each element
-    for symbol, period, group, name, *_ in df_ptable.itertuples():
+    for symbol, period, group, _name, *_ in df_ptable.itertuples():
         row, col = period - 1, group - 1  # row, col are 0-indexed
         if symbol not in data and on_empty == "hide":
             continue
@@ -1067,9 +1089,40 @@ def ptable_heatmap_splits_plotly(
         )
 
         # Add hover data
-        hover_text = f"{name} ({symbol})"
-        if hover_data and symbol in hover_data:
-            hover_text += f"<br>{hover_data[symbol]}"
+        elem_name = df_ptable.loc[symbol, "name"]
+        if hover_template is not None:
+            # Use custom hover template
+            split_values = []
+            for idx, val in enumerate(values):
+                if not np.isnan(val):
+                    split_name = split_labels[idx]
+                    formatted_val = (
+                        hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
+                    )
+                    split_values.append(
+                        hover_template.format(
+                            name=elem_name,
+                            symbol=symbol,
+                            split_name=split_name,
+                            value=formatted_val,
+                            hover_data=hover_data.get(symbol, "") if hover_data else "",
+                        )
+                    )
+            hover_text = "<br>".join(map(str, split_values))
+        else:
+            # Use default hover template
+            hover_text = f"<b>{elem_name}</b>"
+            for idx, val in enumerate(values):
+                if not np.isnan(val):
+                    split_name = split_labels[idx]
+                    formatted_val = (
+                        hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
+                    )
+                    hover_text += f"<br>{split_name}: {formatted_val}"
+
+            if hover_data and symbol in hover_data:
+                hover_text += f"<br>{hover_data[symbol]}"
+
         fig.add_annotation(
             x=0.5,
             y=0.5,
@@ -1156,19 +1209,21 @@ def ptable_heatmap_splits_plotly(
         # Count number of horizontal and vertical colorbars for positioning
         n_horizontal = sum(
             (cbar or {}).get("orientation") == "h"
-            for cbar in colorbars[: 1 if not use_multiple else None]
+            for cbar in colorbars[: 1 if not use_multiple_cbar else None]
         )
-        n_vertical = len(colorbars[: 1 if not use_multiple else None]) - n_horizontal
+        n_vertical = (
+            len(colorbars[: 1 if not use_multiple_cbar else None]) - n_horizontal
+        )
         v_idx = h_idx = 0
 
         for split_idx, (cscale, split_name) in enumerate(
             zip(colorscales, split_names, strict=True)
         ):
             # Skip if not using multiple colorbars and not first split
-            if not use_multiple and split_idx > 0:
+            if not use_multiple_cbar and split_idx > 0:
                 continue
 
-            cbar = colorbars[split_idx if use_multiple else 0]
+            cbar = colorbars[split_idx if use_multiple_cbar else 0]
             cmin, cmax = split_ranges[split_idx]
 
             # Create base colorbar settings
@@ -1218,12 +1273,12 @@ def ptable_heatmap_splits_plotly(
                 # Handle both string and dict title formats
                 title_text = title.get("text", "") if isinstance(title, dict) else title
                 # <br> to increase title standoff
-                if use_multiple:
+                if use_multiple_cbar:
                     title_text = f"{title_text} ({split_name})"
                 cbar_settings["title"] = dict(
                     text=title_text if horizontal_cbar else f"<br><br>{title_text}"
                 )
-            elif use_multiple:
+            elif use_multiple_cbar:
                 cbar_settings["title"] = dict(
                     text=split_name if horizontal_cbar else f"<br><br>{split_name}"
                 )
