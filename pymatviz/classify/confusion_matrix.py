@@ -160,7 +160,7 @@ def confusion_matrix(
         ygap=7,
         hoverongaps=False,
         hoverinfo="text",
-        text=np.rot90(np.array(hover_text).T),
+        text=np.rot90(hover_text),
     )
     fig = ff.create_annotated_heatmap(**heatmap_defaults | (heatmap_kwargs or {}))
 

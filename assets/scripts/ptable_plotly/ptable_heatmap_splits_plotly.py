@@ -15,31 +15,61 @@ np_rng = np.random.default_rng(seed=0)
 
 # %% Examples of ptable_heatmap_splits_plotly with different numbers of splits
 for n_splits, orientation in itertools.product(
-    range(2, 5),
-    ("diagonal", "horizontal", "vertical", "grid"),
+    range(2, 5), ("diagonal", "horizontal", "vertical", "grid")
 ):
     if orientation == "grid" and n_splits != 4:
         continue
 
+    # Example 1: Single colorscale with single colorbar
     data_dict = {
-        elem.symbol: np_rng.integers(10 * n_splits, 20 * (n_splits + 1), size=n_splits)
-        for elem in Element
+        elem.symbol: np_rng.integers(10, 20, size=n_splits) for elem in Element
     }
-
     cbar_title = f"Periodic Table Heatmap with {n_splits}-fold split"
     fig = pmv.ptable_heatmap_splits_plotly(
         data=data_dict,
         orientation=orientation,  # type: ignore[arg-type]
-        colorscale="RdYlBu",
+        colorscale="RdYlBu",  # Single colorscale will be used for all splits
         colorbar=dict(title=cbar_title),
     )
-
     fig.show()
-    if orientation == "diagonal":
-        pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-plotly-{n_splits}")
+
+    # Example 2: Multiple colorscales with vertical colorbars
+    colorscales = ["Viridis", "Plasma", "Inferno", "Magma"][:n_splits]
+    colorbars = [
+        dict(title=f"Metric {idx + 1}", orientation="v") for idx in range(n_splits)
+    ]
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data_dict,
+        orientation=orientation,  # type: ignore[arg-type]
+        colorscale=colorscales,
+        colorbar=colorbars,
+    )
+    fig.show()
+
+    # Example 3: Multiple colorscales with horizontal colorbars
+    # Use sequential colors from the same family
+    sequential_colors = [
+        [(0, "rgb(255,220,220)"), (1, "rgb(255,0,0)")],  # Red scale
+        [(0, "rgb(220,220,255)"), (1, "rgb(0,0,255)")],  # Blue scale
+        [(0, "rgb(220,255,220)"), (1, "rgb(0,255,0)")],  # Green scale
+        [(0, "rgb(255,220,255)"), (1, "rgb(128,0,128)")],  # Purple scale
+    ][:n_splits]
+    colorbars = [
+        dict(title=f"Metric {idx + 1}", orientation="h") for idx in range(n_splits)
+    ]
+    fig = pmv.ptable_heatmap_splits_plotly(
+        data=data_dict,
+        orientation=orientation,  # type: ignore[arg-type]
+        colorscale=sequential_colors,
+        colorbar=colorbars,
+    )
+    fig.show()
+
+    # if orientation == "diagonal":
+    #     pmv.io.save_and_compress_svg(fig, f"ptable-heatmap-splits-plotly-{n_splits}")
 
 
-# %% Visualize multiple element color schemes on a split periodic table heatmap
+# %% Example 4: Custom color schemes with multiple colorbars
 def make_color_scale(
     color_schemes: Sequence[dict[str, RgbColorType]],
 ) -> Callable[[str, float, int], str]:
@@ -59,11 +89,17 @@ palettes_3 = (
     pmv_colors.ELEM_COLORS_VESTA,
 )
 
+# Example with vertical colorbars
 fig = pmv.ptable_heatmap_splits_plotly(
     # Use dummy values for all elements
     {str(elem): list(range(len(palettes_3))) for elem in Element},
     orientation="diagonal",  # could also use "grid"
     colorscale=make_color_scale(palettes_3),
+    colorbar=[
+        dict(title="ALLOY Colors", orientation="v"),
+        dict(title="JMOL Colors", orientation="v"),
+        dict(title="VESTA Colors", orientation="v"),
+    ],
     hover_data=dict.fromkeys(
         map(str, Element), "top left: JMOL<br>top right: VESTA, bottom: ALLOY"
     ),
@@ -76,7 +112,7 @@ fig.show()
 pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-3-color-schemes")
 
 
-# %% Visualize multiple element color schemes on a split periodic table heatmap
+# %% Example 5: Two color schemes with horizontal colorbars
 palettes_2 = (pmv_colors.ELEM_COLORS_ALLOY, pmv_colors.ELEM_COLORS_VESTA)
 
 fig = pmv.ptable_heatmap_splits_plotly(
@@ -84,9 +120,36 @@ fig = pmv.ptable_heatmap_splits_plotly(
     {str(elem): list(range(len(palettes_2))) for elem in Element},
     orientation="vertical",
     colorscale=make_color_scale(palettes_2),
+    colorbar=[
+        dict(title="VESTA Colors", orientation="h"),
+        dict(title="ALLOY Colors", orientation="h"),
+    ],
     hover_data=dict.fromkeys(map(str, Element), "left: VESTA<br>right: ALLOY"),
 )
 title = "<b>Element color schemes</b><br>left: VESTA, right: ALLOY"
 fig.layout.title.update(text=title, x=0.4, y=0.8)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-2-color-schemes")
+
+
+# %% Example 6: Mixed colorbar orientations
+# Create data with 4 splits
+data_dict = {elem.symbol: np_rng.integers(0, 100, size=4) for elem in Element}
+
+# Use grid orientation with 4 different colorscales and mixed colorbar orientations
+fig = pmv.ptable_heatmap_splits_plotly(
+    data=data_dict,
+    orientation="grid",
+    # Use colorscale names directly
+    colorscale=["Viridis", "Plasma", "Inferno", "Magma"],
+    colorbar=[
+        dict(title="Top Left", orientation="v", x=-0.05, y=0, len=0.4),
+        dict(title="Top Right", orientation="v", x=0.05, y=0, len=0.4),
+        dict(title="Bottom Left", orientation="h"),
+        dict(title="Bottom Right", orientation="h"),
+    ],
+)
+title = "<b>Mixed Colorbar Orientations</b><br>Grid Layout Example"
+fig.layout.title.update(text=title, x=0.4, y=0.9)
+fig.show()
+# pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-mixed-colorbars")
