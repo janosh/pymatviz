@@ -1113,18 +1113,6 @@ def ptable_heatmap_splits_plotly(
                     )
                 color = plotly.colors.sample_colorscale(cscale, [scale_pos])[0]
 
-            # Add hover data
-            elem_name = df_ptable.loc[symbol, "name"]
-            hover_text = _split_tile_hover_text(
-                elem_name=elem_name,
-                symbol=symbol,
-                values=values,
-                split_labels=split_labels,
-                hover_template=hover_template,
-                hover_fmt=hover_fmt,
-                hover_data=hover_data,
-            )
-
             fig.add_scatter(
                 x=xs,
                 y=ys,
@@ -1132,10 +1120,7 @@ def ptable_heatmap_splits_plotly(
                 fill="toself",
                 fillcolor=color,
                 line=dict(color="white", width=0),
-                hoverinfo="text"
-                if idx == 0
-                else "skip",  # only show hover on first split
-                hovertext=hover_text if idx == 0 else None,
+                hoverinfo="skip",
                 showlegend=False,
                 row=row + 1,
                 col=col + 1,
@@ -1151,6 +1136,51 @@ def ptable_heatmap_splits_plotly(
         symbol_kwargs["font"] = font_defaults | symbol_kwargs.get("font", {})
         fig.add_annotation(
             text=display_symbol, **symbol_defaults | xy_ref | symbol_kwargs
+        )
+
+        # Add hover data
+        elem_name = df_ptable.loc[symbol, "name"]
+        if hover_template is not None:
+            # Use custom hover template
+            split_values = []
+            for idx, val in enumerate(values):
+                if not np.isnan(val):
+                    split_name = split_labels[idx]
+                    formatted_val = (
+                        hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
+                    )
+                    split_values.append(
+                        hover_template.format(
+                            name=elem_name,
+                            symbol=symbol,
+                            split_name=split_name,
+                            value=formatted_val,
+                            hover_data=hover_data.get(symbol, "") if hover_data else "",
+                        )
+                    )
+            hover_text = "<br>".join(map(str, split_values))
+        else:
+            # Use default hover template
+            hover_text = f"<b>{elem_name}</b>"
+            for idx, val in enumerate(values):
+                if not np.isnan(val):
+                    split_name = split_labels[idx]
+                    formatted_val = (
+                        hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
+                    )
+                    hover_text += f"<br>{split_name}: {formatted_val}"
+
+            if hover_data and symbol in hover_data:
+                hover_text += f"<br>{hover_data[symbol]}"
+
+        fig.add_annotation(
+            x=0.5,
+            y=0.5,
+            text=hover_text,
+            showarrow=False,
+            opacity=0,
+            hovertext=hover_text,
+            **xy_ref,
         )
 
         if annotations is not None:
@@ -1691,62 +1721,3 @@ def ptable_scatter_plotly(
         )
 
     return fig
-
-
-def _split_tile_hover_text(
-    elem_name: str,
-    symbol: str,
-    values: np.ndarray,
-    split_labels: list[str],
-    hover_template: str | None = None,
-    hover_fmt: str | Callable[[float], str] = ".3g",
-    hover_data: dict[str, str | int | float] | None = None,
-) -> str:
-    """Format hover text for an element tile.
-
-    Args:
-        elem_name: Element name (e.g. "Iron")
-        symbol: Element symbol (e.g. "Fe")
-        values: Array of values for each split
-        split_labels: Labels for each split
-        hover_template: Custom hover template
-        hover_fmt: Format for values
-        hover_data: Additional hover data
-
-    Returns:
-        Formatted hover text string
-    """
-    if hover_template is not None:
-        # Use custom hover template
-        split_values = []
-        for idx, val in enumerate(values):
-            if not np.isnan(val):
-                split_name = split_labels[idx]
-                formatted_val = (
-                    hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
-                )
-                split_values.append(
-                    hover_template.format(
-                        name=elem_name,
-                        symbol=symbol,
-                        split_name=split_name,
-                        value=formatted_val,
-                        hover_data=hover_data.get(symbol, "") if hover_data else "",
-                    )
-                )
-        return "<br>".join(map(str, split_values))
-
-    # Use default hover template
-    hover_text = f"<b>{elem_name}</b>"
-    for idx, val in enumerate(values):
-        if not np.isnan(val):
-            split_name = split_labels[idx]
-            formatted_val = (
-                hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
-            )
-            hover_text += f"<br>{split_name}: {formatted_val}"
-
-    if hover_data and symbol in hover_data:
-        hover_text += f"<br>{hover_data[symbol]}"
-
-    return hover_text
