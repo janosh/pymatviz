@@ -727,35 +727,29 @@ def _get_colorbar_settings(
         title_font_size=scale * 1.2 * (font_size or 12),
     ) | (colorbar or {})
 
+    # Only apply orientation-specific defaults for values not set by user
     horizontal = cbar_settings.get("orientation") == "h"
     if horizontal:
-        cbar_settings.update(
-            len=0.4,
-            x=cbar_settings.get("x", 0.4),
-            y=cbar_settings.get("y", 0.76 - split_idx * 0.1),
-            title_side="top",
-        )
+        h_defaults = dict(len=0.4, x=0.4, y=0.76 - split_idx * 0.1, title_side="top")
+        cbar_settings = h_defaults | cbar_settings
     else:
-        cbar_settings.update(
-            len=0.87 / max(1, n_splits),
-            x=cbar_settings.get("x", 1.02 + split_idx * 0.15),
-            y=cbar_settings.get("y", 0.5),
-            title_side="right",
+        bar_len = 0.87 / max(1, n_splits)
+        v_defaults = dict(
+            len=bar_len, x=1.02 + split_idx * 0.15, y=0.5, title_side="right"
         )
+        cbar_settings = v_defaults | cbar_settings
 
     # Handle title
     if title := cbar_settings.get("title"):
         title_text = title.get("text", "") if isinstance(title, dict) else title
         if split_name:
             title_text = f"{title_text} ({split_name})"
+        # Add line breaks based on orientation
+        title_text = f"{title_text}<br>" if horizontal else f"<br><br>{title_text}"
+        cbar_settings["title"] = dict(text=title_text)
     elif split_name:
-        title_text = split_name
-    else:
-        return cbar_settings
+        cbar_settings["title"] = dict(text=split_name)
 
-    cbar_settings["title"] = dict(
-        text=title_text if horizontal else f"<br><br>{title_text}"
-    )
     return cbar_settings
 
 
@@ -1119,6 +1113,18 @@ def ptable_heatmap_splits_plotly(
                     )
                 color = plotly.colors.sample_colorscale(cscale, [scale_pos])[0]
 
+            # Add hover data
+            elem_name = df_ptable.loc[symbol, "name"]
+            hover_text = _split_tile_hover_text(
+                elem_name=elem_name,
+                symbol=symbol,
+                values=values,
+                split_labels=split_labels,
+                hover_template=hover_template,
+                hover_fmt=hover_fmt,
+                hover_data=hover_data,
+            )
+
             fig.add_scatter(
                 x=xs,
                 y=ys,
@@ -1126,7 +1132,10 @@ def ptable_heatmap_splits_plotly(
                 fill="toself",
                 fillcolor=color,
                 line=dict(color="white", width=0),
-                hoverinfo="skip",
+                hoverinfo="text"
+                if idx == 0
+                else "skip",  # only show hover on first split
+                hovertext=hover_text if idx == 0 else None,
                 showlegend=False,
                 row=row + 1,
                 col=col + 1,
@@ -1142,27 +1151,6 @@ def ptable_heatmap_splits_plotly(
         symbol_kwargs["font"] = font_defaults | symbol_kwargs.get("font", {})
         fig.add_annotation(
             text=display_symbol, **symbol_defaults | xy_ref | symbol_kwargs
-        )
-
-        # Add hover data
-        elem_name = df_ptable.loc[symbol, "name"]
-        hover_text = _split_tile_hover_text(
-            elem_name=elem_name,
-            symbol=symbol,
-            values=values,
-            split_labels=split_labels,
-            hover_template=hover_template,
-            hover_fmt=hover_fmt,
-            hover_data=hover_data,
-        )
-
-        fig.add_annotation(
-            x=0.5,
-            y=0.5,
-            text=hover_text,
-            hovertext=hover_text,
-            **xy_ref,
-            showarrow=False,
         )
 
         if annotations is not None:

@@ -15,8 +15,7 @@ np_rng = np.random.default_rng(seed=0)
 
 # %% Examples of ptable_heatmap_splits_plotly with different numbers of splits
 for n_splits, orientation in itertools.product(
-    range(2, 5),  # Only use 2, 3, or 4 splits since that's what the function supports
-    ("diagonal", "horizontal", "vertical", "grid"),
+    range(2, 5), ("diagonal", "horizontal", "vertical", "grid")
 ):
     if orientation == "grid" and n_splits != 4:
         continue
