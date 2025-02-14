@@ -616,50 +616,18 @@ def ptable_hists_plotly(
                     fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
 
     if colorbar is not False:
-        colorbar = dict(orientation="h", lenmode="fraction", thickness=15) | (
-            colorbar or {}
+        cbar_settings = _get_colorbar_settings(
+            colorbar, font_size=font_size, scale=scale
         )
-
-        horizontal_cbar = colorbar.get("orientation") == "h"
-        if horizontal_cbar:
-            h_defaults = dict(
-                x=0.4,
-                y=0.76,
-                title_side="top",
-                len=0.4,
-                title_font_size=scale * 1.2 * (font_size or 12),
-            )
-            colorbar = h_defaults | colorbar
-        else:  # make title vertical
-            v_defaults = dict(title_side="right", len=0.87)
-            colorbar = v_defaults | colorbar
-
-        if title := colorbar.get("title"):
-            # <br> to increase title standoff
-            colorbar["title"] = (
-                f"{title}<br>" if horizontal_cbar else f"<br><br>{title}"
-            )
-
-        # Create an invisible scatter trace for the colorbar
-        fig.add_scatter(
-            x=[None],
-            y=[None],
-            mode="markers",
-            marker=dict(
-                colorscale=colorscale,
-                showscale=True,
-                cmin=bins_range[0],
-                cmax=bins_range[1],
-                colorbar=colorbar,
-            ),
+        _add_colorbar_trace(
+            fig,
+            colorscale,
+            bins_range[0],
+            bins_range[1],
+            cbar_settings,
             row=n_rows,
             col=n_cols,
-            showlegend=False,
-            hoverinfo="none",  # Disable hover tooltip
         )
-        # Hide the axes for the invisible scatter trace
-        fig.update_xaxes(visible=False, row=n_rows, col=n_cols)
-        fig.update_yaxes(visible=False, row=n_rows, col=n_cols)
 
     # Update global figure layout
     fig.layout.margin = dict(l=10, r=10, t=10, b=10)
@@ -702,6 +670,93 @@ def ptable_hists_plotly(
     fig.update_xaxes(**x_axis_kwargs)
 
     return fig
+
+
+def _add_colorbar_trace(
+    fig: go.Figure,
+    colorscale: ColorScale,
+    cmin: float,
+    cmax: float,
+    colorbar: dict[str, Any],
+    row: int | None = None,
+    col: int | None = None,
+) -> None:
+    """Add an invisible scatter trace with a colorbar to the figure."""
+    # For callable colorscales, sample at endpoints to create a 2-point colorscale
+    if callable(colorscale):
+        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]  # type: ignore[assignment]
+
+    marker = dict(
+        size=0,
+        color=[cmin, cmax],
+        colorscale=colorscale,
+        showscale=True,
+        cmin=cmin,
+        cmax=cmax,
+        colorbar=colorbar,
+    )
+    scatter_kwargs = dict(
+        x=[None],
+        y=[None],
+        mode="markers",
+        marker=marker,
+        showlegend=False,
+        hoverinfo="none",
+    )
+    if row is not None and col is not None:
+        scatter_kwargs.update(row=row, col=col)
+        # Hide the axes for the invisible scatter trace
+        fig.update_xaxes(visible=False, row=row, col=col)
+        fig.update_yaxes(visible=False, row=row, col=col)
+    fig.add_scatter(**scatter_kwargs)
+
+
+def _get_colorbar_settings(
+    colorbar: dict[str, Any] | None,
+    *,
+    split_idx: int = 0,
+    n_splits: int = 1,
+    split_name: str | None = None,
+    font_size: int | None = None,
+    scale: float = 1.0,
+) -> dict[str, Any]:
+    """Get colorbar settings with consistent positioning logic."""
+    cbar_settings = dict(
+        lenmode="fraction",
+        thickness=15,
+        title_font_size=scale * 1.2 * (font_size or 12),
+    ) | (colorbar or {})
+
+    horizontal = cbar_settings.get("orientation") == "h"
+    if horizontal:
+        cbar_settings.update(
+            len=0.4,
+            x=cbar_settings.get("x", 0.4),
+            y=cbar_settings.get("y", 0.76 - split_idx * 0.1),
+            title_side="top",
+        )
+    else:
+        cbar_settings.update(
+            len=0.87 / max(1, n_splits),
+            x=cbar_settings.get("x", 1.02 + split_idx * 0.15),
+            y=cbar_settings.get("y", 0.5),
+            title_side="right",
+        )
+
+    # Handle title
+    if title := cbar_settings.get("title"):
+        title_text = title.get("text", "") if isinstance(title, dict) else title
+        if split_name:
+            title_text = f"{title_text} ({split_name})"
+    elif split_name:
+        title_text = split_name
+    else:
+        return cbar_settings
+
+    cbar_settings["title"] = dict(
+        text=title_text if horizontal else f"<br><br>{title_text}"
+    )
+    return cbar_settings
 
 
 def ptable_heatmap_splits_plotly(
@@ -825,12 +880,29 @@ def ptable_heatmap_splits_plotly(
         ValueError: If n_splits not in {2, 3, 4} or orientation="grid" with n_splits!=4
     """
     import plotly.colors
+    from plotly.validators.scatter.marker import ColorscaleValidator
     from pymatgen.core import Element
 
     # Get split names if data is a DataFrame
     split_labels: list[str] = []
     if isinstance(data, pd.DataFrame):
         split_labels = list(data.columns)
+        # Propagate column names to colorbar titles if not explicitly set
+        if isinstance(colorbar, dict):
+            colorbar = colorbar.copy()
+            if "title" not in colorbar:
+                colorbar["title"] = split_labels[0] if len(split_labels) == 1 else None
+        elif isinstance(colorbar, Sequence):
+            colorbar = list(colorbar)  # Convert to list to allow modification
+            for idx, (cbar, label) in enumerate(
+                zip(colorbar, split_labels, strict=False)
+            ):
+                if isinstance(cbar, dict) and "title" not in cbar:
+                    colorbar[idx] = cbar.copy()
+                    colorbar[idx]["title"] = label
+        elif colorbar is None:
+            # Create colorbar settings with column names as titles
+            colorbar = [dict(title=label) for label in split_labels]
         data = {idx: row.tolist() for idx, row in data.iterrows()}
     elif isinstance(data, pd.Series):
         data = data.to_dict()
@@ -882,6 +954,16 @@ def ptable_heatmap_splits_plotly(
         # Use single range for all splits
         all_values = [val for values in data.values() for val in values]
         split_ranges = [(min(all_values), max(all_values))] * n_splits
+
+    # Validate colorscales
+    validator = ColorscaleValidator()
+    for idx, cscale in enumerate(colorscales):
+        if callable(cscale):
+            continue
+        if isinstance(cscale, str):
+            colorscales[idx] = validator.validate_coerce(cscale)  # type: ignore[index]
+        else:
+            colorscales[idx] = validator.validate_coerce(list(cscale))  # type: ignore[index]
 
     # Initialize figure with subplots
     has_f_block_data = any(
@@ -1022,46 +1104,20 @@ def ptable_heatmap_splits_plotly(
                 if isinstance(cscale, str):
                     # For string colorscales, use plotly's get_colorscale
                     cscale = plotly.colors.get_colorscale(cscale)
-                    color = plotly.colors.sample_colorscale(cscale, [scale_pos])[0]
-                elif isinstance(cscale, list | tuple):
-                    if len(cscale) > 0 and isinstance(cscale[0], list | tuple):
-                        # If colorscale is list of (pos, color) pairs
-                        for i in range(len(cscale) - 1):
-                            pos1, color1 = cscale[i]
-                            pos2, color2 = cscale[i + 1]
-                            if pos1 <= scale_pos <= pos2:
-                                # Linear interpolation between colors
-                                frac = (scale_pos - pos1) / (pos2 - pos1)
-                                rgb1 = [
-                                    int(x) for x in color1.strip("rgb()").split(",")
-                                ]
-                                rgb2 = [
-                                    int(x) for x in color2.strip("rgb()").split(",")
-                                ]
-                                rgb = [
-                                    int(c1 + (c2 - c1) * frac)
-                                    for c1, c2 in zip(rgb1, rgb2, strict=False)
-                                ]
-                                color = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
-                                break
-                        else:
-                            # If we didn't break, use the last color
-                            color = cscale[-1][1]
-                    else:
-                        # If colorscale is list of colors, convert to proper format
-                        n_colors = len(cscale)
-                        formatted_cscale = [
-                            [i / (n_colors - 1), color]
-                            for i, color in enumerate(cscale)
-                        ]
-                        color = plotly.colors.sample_colorscale(
-                            formatted_cscale, [scale_pos]
-                        )[0]
-                else:
+                elif isinstance(cscale, list | tuple) and not isinstance(
+                    cscale[0], list | tuple
+                ):
+                    # If colorscale is list of colors, convert to proper format
+                    n_colors = len(cscale)
+                    cscale = [
+                        [i / (n_colors - 1), color] for i, color in enumerate(cscale)
+                    ]  # type: ignore[assignment]
+                elif not isinstance(cscale, list | tuple):
                     raise ValueError(
                         f"Invalid colorscale type: {type(cscale)}. Must be string, "
                         "list of colors, or list of (position, color) pairs."
                     )
+                color = plotly.colors.sample_colorscale(cscale, [scale_pos])[0]
 
             fig.add_scatter(
                 x=xs,
@@ -1090,47 +1146,23 @@ def ptable_heatmap_splits_plotly(
 
         # Add hover data
         elem_name = df_ptable.loc[symbol, "name"]
-        if hover_template is not None:
-            # Use custom hover template
-            split_values = []
-            for idx, val in enumerate(values):
-                if not np.isnan(val):
-                    split_name = split_labels[idx]
-                    formatted_val = (
-                        hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
-                    )
-                    split_values.append(
-                        hover_template.format(
-                            name=elem_name,
-                            symbol=symbol,
-                            split_name=split_name,
-                            value=formatted_val,
-                            hover_data=hover_data.get(symbol, "") if hover_data else "",
-                        )
-                    )
-            hover_text = "<br>".join(map(str, split_values))
-        else:
-            # Use default hover template
-            hover_text = f"<b>{elem_name}</b>"
-            for idx, val in enumerate(values):
-                if not np.isnan(val):
-                    split_name = split_labels[idx]
-                    formatted_val = (
-                        hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
-                    )
-                    hover_text += f"<br>{split_name}: {formatted_val}"
-
-            if hover_data and symbol in hover_data:
-                hover_text += f"<br>{hover_data[symbol]}"
+        hover_text = _split_tile_hover_text(
+            elem_name=elem_name,
+            symbol=symbol,
+            values=values,
+            split_labels=split_labels,
+            hover_template=hover_template,
+            hover_fmt=hover_fmt,
+            hover_data=hover_data,
+        )
 
         fig.add_annotation(
             x=0.5,
             y=0.5,
             text=hover_text,
-            showarrow=False,
-            opacity=0,
             hovertext=hover_text,
             **xy_ref,
+            showarrow=False,
         )
 
         if annotations is not None:
@@ -1186,7 +1218,6 @@ def ptable_heatmap_splits_plotly(
 
     # Add colorbar
     if colorbar is not False:
-        # Get split names based on orientation
         split_names = {
             "diagonal": {
                 2: ["bottom-left", "top-right"],
@@ -1206,98 +1237,26 @@ def ptable_heatmap_splits_plotly(
             "grid": {4: ["top-left", "top-right", "bottom-left", "bottom-right"]},
         }[orientation][len(colorscales)]
 
-        # Count number of horizontal and vertical colorbars for positioning
-        n_horizontal = sum(
-            (cbar or {}).get("orientation") == "h"
-            for cbar in colorbars[: 1 if not use_multiple_cbar else None]
-        )
-        n_vertical = (
-            len(colorbars[: 1 if not use_multiple_cbar else None]) - n_horizontal
-        )
-        v_idx = h_idx = 0
-
+        # Calculate positions for vertical and horizontal colorbars
         for split_idx, (cscale, split_name) in enumerate(
             zip(colorscales, split_names, strict=True)
         ):
-            # Skip if not using multiple colorbars and not first split
             if not use_multiple_cbar and split_idx > 0:
-                continue
+                continue  # Skip if not using multiple colorbars and not first split
 
             cbar = colorbars[split_idx if use_multiple_cbar else 0]
             cmin, cmax = split_ranges[split_idx]
 
-            # Create base colorbar settings
-            cbar_settings = dict(
-                lenmode="fraction",
-                thickness=15,
-                len=0.87 / len(colorbars) if n_vertical > 0 else 0.4,
-            ) | (cbar or {})
-
-            horizontal_cbar = cbar_settings.get("orientation") == "h"
-
-            # Get offsets with appropriate defaults based on orientation
-            v_offset: float = cbar_settings.pop(  # type: ignore[assignment]
-                "v_offset", 0.05 if horizontal_cbar else 0
+            # Get colorbar settings with consistent positioning
+            cbar_settings = _get_colorbar_settings(
+                cbar,
+                split_idx=split_idx,
+                n_splits=n_splits if use_multiple_cbar else 1,
+                split_name=split_name if use_multiple_cbar else None,
+                font_size=font_size,
+                scale=scale,
             )
-            h_offset: float = cbar_settings.pop(  # type: ignore[assignment]
-                "h_offset", 0 if horizontal_cbar else 0.05
-            )
-
-            # Only update x and y if they're not already specified in colorbar settings
-            if "x" not in cbar_settings:
-                if horizontal_cbar:
-                    cbar_settings["x"] = 0.4 + h_offset
-                else:  # vertical colorbar
-                    cbar_settings["x"] = 1.02 + v_idx * 0.15 + h_offset
-
-            if "y" not in cbar_settings:
-                if horizontal_cbar:
-                    cbar_settings["y"] = 0.76 - h_idx * 0.05 - v_offset
-                else:  # vertical colorbar
-                    cbar_settings["y"] = 0.5  # Center vertically
-
-            # Update indices for next colorbar
-            if horizontal_cbar:
-                h_idx += 1
-            else:
-                v_idx += 1
-
-            # Set title side and font size if not already specified
-            if "title_side" not in cbar_settings:
-                cbar_settings["title_side"] = "top" if horizontal_cbar else "right"
-            if "title_font_size" not in cbar_settings:
-                cbar_settings["title_font_size"] = scale * 1.2 * (font_size or 12)
-
-            # Add split name to title if multiple colorbars
-            if title := cbar_settings.get("title"):
-                # Handle both string and dict title formats
-                title_text = title.get("text", "") if isinstance(title, dict) else title
-                # <br> to increase title standoff
-                if use_multiple_cbar:
-                    title_text = f"{title_text} ({split_name})"
-                cbar_settings["title"] = dict(
-                    text=title_text if horizontal_cbar else f"<br><br>{title_text}"
-                )
-            elif use_multiple_cbar:
-                cbar_settings["title"] = dict(
-                    text=split_name if horizontal_cbar else f"<br><br>{split_name}"
-                )
-
-            # Create dummy trace for colorbar
-            dummy_data = np.linspace(cmin, cmax, 2)
-            marker = dict(
-                size=0,
-                color=dummy_data,
-                colorscale=cscale,
-                showscale=True,
-                cmin=cmin,
-                cmax=cmax,
-                colorbar=cbar_settings,
-            )
-
-            fig.add_scatter(
-                x=[None], y=[None], mode="markers", marker=marker, showlegend=False
-            )
+            _add_colorbar_trace(fig, cscale, cmin, cmax, cbar_settings)  # type: ignore[arg-type]
 
     return fig
 
@@ -1744,3 +1703,62 @@ def ptable_scatter_plotly(
         )
 
     return fig
+
+
+def _split_tile_hover_text(
+    elem_name: str,
+    symbol: str,
+    values: np.ndarray,
+    split_labels: list[str],
+    hover_template: str | None = None,
+    hover_fmt: str | Callable[[float], str] = ".3g",
+    hover_data: dict[str, str | int | float] | None = None,
+) -> str:
+    """Format hover text for an element tile.
+
+    Args:
+        elem_name: Element name (e.g. "Iron")
+        symbol: Element symbol (e.g. "Fe")
+        values: Array of values for each split
+        split_labels: Labels for each split
+        hover_template: Custom hover template
+        hover_fmt: Format for values
+        hover_data: Additional hover data
+
+    Returns:
+        Formatted hover text string
+    """
+    if hover_template is not None:
+        # Use custom hover template
+        split_values = []
+        for idx, val in enumerate(values):
+            if not np.isnan(val):
+                split_name = split_labels[idx]
+                formatted_val = (
+                    hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
+                )
+                split_values.append(
+                    hover_template.format(
+                        name=elem_name,
+                        symbol=symbol,
+                        split_name=split_name,
+                        value=formatted_val,
+                        hover_data=hover_data.get(symbol, "") if hover_data else "",
+                    )
+                )
+        return "<br>".join(map(str, split_values))
+
+    # Use default hover template
+    hover_text = f"<b>{elem_name}</b>"
+    for idx, val in enumerate(values):
+        if not np.isnan(val):
+            split_name = split_labels[idx]
+            formatted_val = (
+                hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
+            )
+            hover_text += f"<br>{split_name}: {formatted_val}"
+
+    if hover_data and symbol in hover_data:
+        hover_text += f"<br>{hover_data[symbol]}"
+
+    return hover_text
