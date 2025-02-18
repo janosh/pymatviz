@@ -159,7 +159,7 @@ electronic:
   mobility:
     label: Carrier Mobility
     symbol: μ
-    unit: cm²/V⋅s
+    unit: cm²/(V⋅s)
   effective_mass:
     label: Effective Mass
     symbol: m<sub>eff</sub>
@@ -194,11 +194,31 @@ electronic:
   electron_mobility:
     label: Electron Mobility
     symbol: μ<sub>e</sub>
-    unit: cm²/V⋅s
+    unit: cm²/(V⋅s)
   hole_mobility:
     label: Hole Mobility
     symbol: μ<sub>h</sub>
-    unit: cm²/V⋅s
+    unit: cm²/(V⋅s)
+  quantum_capacitance:
+    label: Quantum Capacitance
+    symbol: C<sub>q</sub>
+    unit: F/m²
+    description: Capacitance arising from finite density of states at Fermi level
+  plasmon_frequency:
+    label: Plasmon Frequency
+    symbol: ω<sub>p</sub>
+    unit: eV
+    description: Collective oscillation frequency of free electron gas
+  spin_orbit_coupling:
+    label: Spin-Orbit Coupling
+    symbol: λ<sub>SO</sub>
+    unit: meV
+    description: Interaction between electron's spin and orbital motion
+  carrier_mobility:
+    label: Carrier Mobility
+    symbol: μ
+    unit: cm²/(V⋅s)
+    description: Measure of charge carrier drift velocity per unit electric field
 
 thermodynamic:
   energy:
@@ -397,7 +417,7 @@ mechanical:
   thermal_conductivity:
     label: Thermal Conductivity
     symbol: κ
-    unit: W/m⋅K
+    unit: W/(m⋅K)
   thermal_expansion:
     label: Thermal Expansion
     symbol: α
@@ -405,11 +425,11 @@ mechanical:
   lattice_thermal_conductivity:
     label: Lattice Thermal Conductivity
     symbol: κ<sub>lattice</sub>
-    unit: W/m⋅K
+    unit: W/(m⋅K)
   electronic_thermal_conductivity:
     label: Electronic Thermal Conductivity
     symbol: κ<sub>electronic</sub>
-    unit: W/m⋅K
+    unit: W/(m⋅K)
   heat_capacity:
     label: Heat Capacity
     symbol: C<sub>V</sub>
@@ -510,26 +530,37 @@ magnetic:
     label: Magnetic Moment
     symbol: μ<sub>B</sub>
     unit: μ<sub>B</sub>
+    description: The magnetic moment of a material measured in Bohr magnetons μ<sub>B</sub>.
   magmoms:
     label: Magnetic Moments
     symbol: μ
     unit: μ<sub>B</sub>
+    description: The magnetic moment of a material measured in Bohr magnetons μ<sub>B</sub>.
   curie_temperature:
     label: Curie Temperature
     symbol: T<sub>C</sub>
     unit: K
+    description: The temperature at which a material's magnetic properties change or are lost
   neel_temp:
     label: Néel Temperature
     symbol: T<sub>N</sub>
     unit: K
+    description: The critical temperature at which the magnetization of an antiferromagnetic system changes behavior, determined by the Curie constant and the magnetic field interactions.
+  anisotropy:
+    label: Anisotropy
+    symbol: A
+    unit: dimensionless
+    description: The property of being directionally dependent.
   magnetocrystalline_anisotropy:
     label: Magnetocrystalline Anisotropy
     symbol: K<sub>a</sub>
     unit: meV
+    description: Measure of material's directional dependence of magnetic properties
   coercivity:
     label: Coercivity
     symbol: H<sub>c</sub>
     unit: Oe
+    description: The field required to reduce the magnetization to zero.
   exchange_coupling:
     label: Exchange Coupling
     symbol: J
@@ -551,7 +582,12 @@ phonon:
     label: Phonon Band Structure
   ph_dos:
     label: Phonon Density of States
-  ph_freqs:
+  phonon_frequency:
+    label: Phonon Frequency
+    symbol: ω
+    unit: THz
+    description: Frequency of lattice vibrations in crystalline materials
+  ph_freqs: # shorter synonym of phonon_frequency
     label: Phonon Frequencies
     symbol: ω
     unit: THz
@@ -597,6 +633,11 @@ phonon:
     label: Minimum Phonon Frequency
     symbol: Ω<sub>min</sub>
     unit: THz
+  relaxation_time:
+    label: Relaxation Time
+    symbol: τ
+    unit: ps
+    description: Time required for a system to return to equilibrium after perturbation
 
 chemical:
   atomic_mass:
@@ -707,6 +748,8 @@ crystal_symmetry_properties:
   hall_coefficient:
     label: Hall Coefficient
     symbol: R<sub>H</sub>
+    unit: m³/C
+    description: Measure of type and density of charge carriers
   supercon_crit_temp:
     label: Superconducting Critical Temperature
     symbol: T<sub>c</sub>
@@ -1356,6 +1399,37 @@ metrics:
     unit: dimensionless
   heat_val:
     label: Heatmap Value
+  conservative:
+    label: Conservative
+    unit: dimensionless
+    symbol: C
+  non_conservative:
+    label: Non-Conservative
+    unit: dimensionless
+  conservation_error:
+    label: Conservation Error
+    unit: dimensionless
+    symbol: C<sub>err</sub>
+  conservativeness:
+    label: Conservativeness
+    unit: dimensionless
+    symbol: C
+  smoothness:
+    label: Smoothness
+    unit: dimensionless
+    symbol: S
+  tortuosity:
+    label: Tortuosity
+    unit: dimensionless
+    symbol: 𝜏
+  force_flips:
+    label: Force Flips
+    unit: dimensionless
+    symbol: F<sub>flips</sub>
+  energy_jumps:
+    label: Energy Jumps
+    unit: dimensionless
+    symbol: E<sub>jumps</sub>
 
 computational_details:
   run_time_sec:
