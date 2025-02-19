@@ -418,6 +418,10 @@ class Key(StrEnum):
     hole_density = "hole_density"
     electron_mobility = "electron_mobility"
     hole_mobility = "hole_mobility"
+    quantum_capacitance = "quantum_capacitance"
+    plasmon_frequency = "plasmon_frequency"
+    spin_orbit_coupling = "spin_orbit_coupling"
+    carrier_mobility = "carrier_mobility"
 
     # Mechanical
     forces = "forces"
@@ -479,6 +483,7 @@ class Key(StrEnum):
     last_ph_dos_peak = "last_ph_dos_peak"
     max_ph_freq = "max_ph_freq"
     min_ph_freq = "min_ph_freq"
+    phonon_frequency = "phonon_frequency"
 
     # Optical
     refractive_index = "refractive_index"
@@ -521,6 +526,7 @@ class Key(StrEnum):
     magnetic_moment = "magnetic_moment"
     curie_temperature = "curie_temperature"
     neel_temp = "neel_temp"
+    anisotropy = "anisotropy"
     magnetocrystalline_anisotropy = "magnetocrystalline_anisotropy"
     coercivity = "coercivity"
     exchange_coupling = "exchange_coupling"
@@ -625,6 +631,7 @@ class Key(StrEnum):
     flux = "flux"
     correlation_time = "correlation_time"
     correlation_length = "correlation_length"
+    relaxation_time = "relaxation_time"
 
     # ML
     train_task = "train_task"
@@ -722,6 +729,14 @@ class Key(StrEnum):
     n_molecules = "n_molecules"
     n_samples = "n_samples"
     n_configs = "n_configs"
+    conservative = "conservative"
+    non_conservative = "non_conservative"
+    conservation_error = "conservation_error"
+    conservativeness = "conservativeness"
+    smoothness = "smoothness"
+    tortuosity = "tortuosity"
+    force_flips = "force_flips"
+    energy_jumps = "energy_jumps"
 
     # Computational Details
     run_time_sec = "run_time_sec"

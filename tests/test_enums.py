@@ -288,8 +288,8 @@ def test_key_descriptions(key: Key, expected_description: str | None) -> None:
         (Key.pressure, "Pa"),
         # Complex units
         (Key.carrier_concentration, "cm<sup>-3</sup>"),
-        (Key.mobility, "cm<sup>2</sup>/V⋅s"),
-        (Key.thermal_conductivity, "W/m⋅K"),
+        (Key.mobility, "cm<sup>2</sup>/(V⋅s)"),
+        (Key.thermal_conductivity, "W/(m⋅K)"),
         (Key.fracture_toughness, "MPa⋅m<sup>1/2</sup>"),
         # Units with subscripts
         (Key.magnetic_moment, "μ<sub>B</sub>"),
@@ -351,7 +351,7 @@ def test_unit_special_characters() -> None:
             continue
 
         # Check for proper middle dot usage
-        assert "·" not in unit, f"ASCII middle dot in {unit}, use ⋅ instead"
+        assert "·" not in unit, f"ASCII middle dot in {unit} of {key}, use ⋅ instead"
 
         # Check for proper minus sign usage
         if "-" in unit:
