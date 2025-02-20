@@ -681,34 +681,24 @@ def _add_colorbar_trace(
     row: int | None = None,
     col: int | None = None,
 ) -> None:
-    """Add an invisible scatter trace with a colorbar to the figure."""
-    # For callable colorscales, sample at endpoints to create a 2-point colorscale
-    if callable(colorscale):
-        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]  # type: ignore[assignment]
-
-    marker = dict(
-        size=0,
-        color=[cmin, cmax],
-        colorscale=colorscale,
-        showscale=True,
-        cmin=cmin,
-        cmax=cmax,
-        colorbar=colorbar,
-    )
-    scatter_kwargs = dict(
+    """Add a colorbar trace to a figure."""
+    # Create a dummy scatter trace to hold the colorbar
+    fig.add_scatter(
         x=[None],
         y=[None],
         mode="markers",
-        marker=marker,
-        showlegend=False,
+        marker=dict(
+            colorscale=colorscale,
+            showscale=True,
+            cmin=cmin,
+            cmax=cmax,
+            colorbar=colorbar,
+        ),
         hoverinfo="none",
+        showlegend=False,
+        row=row,
+        col=col,
     )
-    if row is not None and col is not None:
-        scatter_kwargs.update(row=row, col=col)
-        # Hide the axes for the invisible scatter trace
-        fig.update_xaxes(visible=False, row=row, col=col)
-        fig.update_yaxes(visible=False, row=row, col=col)
-    fig.add_scatter(**scatter_kwargs)
 
 
 def _get_colorbar_settings(
@@ -744,8 +734,6 @@ def _get_colorbar_settings(
         title_text = title.get("text", "") if isinstance(title, dict) else title
         if split_name:
             title_text = f"{title_text} ({split_name})"
-        # Add line breaks based on orientation
-        title_text = f"{title_text}<br>" if horizontal else f"<br><br>{title_text}"
         cbar_settings["title"] = dict(text=title_text)
     elif split_name:
         cbar_settings["title"] = dict(text=split_name)
@@ -778,6 +766,7 @@ def ptable_heatmap_splits_plotly(
     hover_fmt: str | Callable[[float], str] = ".3g",
     # Additional options
     nan_color: str = "#eff",
+    zero_color: str = "#aaa",
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
     subplot_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
@@ -860,6 +849,7 @@ def ptable_heatmap_splits_plotly(
 
         --- Additional options ---
         nan_color (str): Color for NaN values. Defaults to "#eff".
+        zero_color (str): Color for zero values. Defaults to "#aaa".
         hover_data (dict[str, str] | pd.Series): Additional text to append to hover
             tooltip for each element. Defaults to None.
         subplot_kwargs (dict): Additional keyword arguments for subplots.
@@ -911,6 +901,21 @@ def ptable_heatmap_splits_plotly(
         isinstance(colorscale, Sequence) and not isinstance(colorscale, str)
     ) or isinstance(colorbar, Sequence)
 
+    # Calculate ranges per split
+    split_ranges = []
+    for split_idx in range(n_splits):
+        split_values = [
+            values[split_idx]
+            for values in data.values()
+            if len(values) > split_idx
+            and not np.isnan(values[split_idx])
+            and values[split_idx] != 0
+        ]
+        if split_values:
+            split_ranges.append((min(split_values), max(split_values)))
+        else:
+            split_ranges.append((0, 1))  # Default range if no valid values
+
     if use_multiple_cbar:
         # Multiple colorscales/colorbars mode
         colorscales = (
@@ -933,21 +938,10 @@ def ptable_heatmap_splits_plotly(
             raise ValueError(
                 f"Number of colorbars ({len(colorbars)}) must match {n_splits=}"
             )
-
-        # Calculate ranges per split
-        split_ranges = []
-        for split_idx in range(n_splits):
-            split_values = [
-                values[split_idx] for values in data.values() if len(values) > split_idx
-            ]
-            split_ranges.append((min(split_values), max(split_values)))
     else:
         # Single colorscale/colorbar mode (default)
         colorscales = [colorscale] * n_splits  # type: ignore[assignment]
         colorbars = [colorbar or {}]  # type: ignore[list-item]
-        # Use single range for all splits
-        all_values = [val for values in data.values() for val in values]
-        split_ranges = [(min(all_values), max(all_values))] * n_splits
 
     # Validate colorscales
     validator = ColorscaleValidator()
@@ -1077,7 +1071,9 @@ def ptable_heatmap_splits_plotly(
         # Create sections
         sections = create_section_coords(len(values), orientation)  # type: ignore[arg-type]
         for idx, (xs, ys) in enumerate(sections):  # Loop over element tile splits
-            if len(values) <= idx or np.isnan(values[idx]):
+            if values[idx] == 0:
+                color = zero_color
+            elif len(values) <= idx or np.isnan(values[idx]):
                 color = nan_color
             elif callable(colorscale):
                 # Use the callable to get color directly
