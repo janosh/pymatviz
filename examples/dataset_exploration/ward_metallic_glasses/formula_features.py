@@ -14,9 +14,9 @@ and other literature sources.
 import os
 import pathlib
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from itertools import combinations
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -111,7 +111,7 @@ def calc_reduced_binary_liquidus_temp(
     binary_interpolations: dict[str, interp1d],
     *,
     on_key_err: Literal["raise", "set-none"] = "set-none",
-) -> float | None:
+) -> float:
     """Calculate the reduced average binary liquidus temperature for a general alloy.
 
     NOTE the unary melting points from the tabulated data are not used here as
@@ -128,14 +128,14 @@ def calc_reduced_binary_liquidus_temp(
             Defaults to "raise".
 
     Returns:
-        The reduced binary liquidus temperature or None if on_key_err="set-none"
-        and a binary system is missing.
+        float: The reduced binary liquidus temperature or None if on_key_err="set-none"
+            and a binary system is missing.
     """
     if len(composition) < 2:
-        return 1
+        return 1.0
 
-    temp_alloy = 0
-    temp_alloy_norm = 0
+    temp_alloy = 0.0
+    temp_alloy_norm = 0.0
     for binary_pair in combinations(composition, 2):
         comp_dict = {el: composition[el] for el in binary_pair}
         binary_composition = Composition(comp_dict).fractional_composition
@@ -147,7 +147,7 @@ def calc_reduced_binary_liquidus_temp(
         except KeyError:
             if on_key_err == "raise":
                 raise
-            return None
+            return None  # type: ignore[return-value]
         binary_weight = sum(comp_dict.values())
         temp_alloy += temp_binary * binary_weight
         temp_alloy_norm += binary_weight
@@ -250,13 +250,13 @@ def calc_liu_features(
         formulas = [formulas]
 
     results = {}
-    feature_funcs = {
+    feature_funcs: dict[str, Callable[[Any], float]] = {
         "mixing_enthalpy": calc_miedema_maximum_heat_of_mixing,
         "atomic_size_diff": calc_atomic_size_difference,
     }
     if binary_liquidus_data is not None:
         feature_funcs["liquidus_temp"] = lambda comp: calc_reduced_binary_liquidus_temp(
-            comp, binary_liquidus_data
+            comp, binary_interpolations=binary_liquidus_data
         )
 
     for key, func in feature_funcs.items():

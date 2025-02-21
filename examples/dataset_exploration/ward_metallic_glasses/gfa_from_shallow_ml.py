@@ -48,7 +48,7 @@ N_RANDOM_TERNARY_NEG_EXAMPLES = 5_000  # number of random ternary compositions t
 MAX_RADIUS_DIFF_PERCENT = 5.0  # maximum allowed difference in atomic radii (%)
 
 # Define models for each target type
-regression_models = {
+regression_models: dict[str, BaseEstimator] = {
     # "RandomForest": RandomForestRegressor(n_estimators=100, random_state=0),
     # "XGBoost": XGBRegressor(n_estimators=100, random_state=0),
 }

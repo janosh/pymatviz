@@ -69,7 +69,7 @@ def make_rand_ternaries_similar_radii(
     # Get atomic radii for all elements
     radii = df_ptable[Key.covalent_radius].fillna(0.2)  # fallback value of 0.2 nm
 
-    compositions = []
+    compositions: list[str] = []
     max_attempts = n_samples * 100  # avoid infinite loop if constraints too strict
     attempts = 0
 
