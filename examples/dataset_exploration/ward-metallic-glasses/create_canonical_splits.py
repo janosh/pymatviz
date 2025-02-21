@@ -207,9 +207,12 @@ def print_split_stats(df_in: pd.DataFrame, split: pd.Series, split_name: str) ->
 
 # Load dataset
 ward_csv_path = f"{module_dir}/ward-metallic-glasses.csv.xz"
-df_ward = pd.read_csv(
-    ward_csv_path, na_values=["Unknown", "DifferentMeasurement?"]
-).query("comment.isna()")
+df_ward = pd.read_csv(ward_csv_path, na_values=["Unknown", "DifferentMeasurement?"])
+
+# Add material IDs that enumerates rows as ward-1, ward-2, ...
+df_ward[Key.mat_id] = [f"ward-{idx + 1}" for idx in range(len(df_ward))]
+df_ward.set_index(Key.mat_id).to_csv(ward_csv_path)
+df_ward = df_ward.query("comment.isna()")
 
 # 1. Random split (80/10/10)
 random_split = create_random_split(df_ward, train_size=0.8, random_state=0)

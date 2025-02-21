@@ -681,24 +681,34 @@ def _add_colorbar_trace(
     row: int | None = None,
     col: int | None = None,
 ) -> None:
-    """Add a colorbar trace to a figure."""
-    # Create a dummy scatter trace to hold the colorbar
-    fig.add_scatter(
+    """Add an invisible scatter trace with a colorbar to the figure."""
+    # For callable colorscales, sample at endpoints to create a 2-point colorscale
+    if callable(colorscale):
+        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]  # type: ignore[assignment]
+
+    marker = dict(
+        size=0,
+        color=[cmin, cmax],
+        colorscale=colorscale,
+        showscale=True,
+        cmin=cmin,
+        cmax=cmax,
+        colorbar=colorbar,
+    )
+    scatter_kwargs = dict(
         x=[None],
         y=[None],
         mode="markers",
-        marker=dict(
-            colorscale=colorscale,
-            showscale=True,
-            cmin=cmin,
-            cmax=cmax,
-            colorbar=colorbar,
-        ),
-        hoverinfo="none",
+        marker=marker,
         showlegend=False,
-        row=row,
-        col=col,
+        hoverinfo="none",
     )
+    if row is not None and col is not None:
+        scatter_kwargs.update(row=row, col=col)
+        # Hide the axes for the invisible scatter trace
+        fig.update_xaxes(visible=False, row=row, col=col)
+        fig.update_yaxes(visible=False, row=row, col=col)
+    fig.add_scatter(**scatter_kwargs)
 
 
 def _get_colorbar_settings(
