@@ -105,6 +105,7 @@ ignore = [
     "PLR0915", # too-many-statements
     "PLR2004", # magic-number-comparison
     "PTH",     # prefer pathlib over os.path
+    "S108",    # Probable insecure usage of temporary file or directory
     "SIM105",  # Use contextlib.suppress instead of try-except-pass
     "SLF001",  # Access private class members
     "TD",      # TODO related

@@ -13,7 +13,7 @@ from pymatviz.classify.curves import precision_recall_curve_plotly, roc_curve_pl
 @pytest.fixture
 def binary_classification_data() -> tuple[np.ndarray, np.ndarray]:
     """Generate synthetic binary classification data."""
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(seed=0)
     targets = np.array([0, 1, 1, 0, 1, 0, 1, 1, 0, 1])
     probs = rng.random(size=len(targets))
     return targets, probs
@@ -157,7 +157,7 @@ def test_custom_styling() -> None:
 
 def test_large_dataset() -> None:
     """Test performance with a larger dataset."""
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(seed=0)
     n_samples = 10_000
     targets = rng.binomial(n=1, p=0.5, size=n_samples)
     probs = rng.random(size=n_samples)
