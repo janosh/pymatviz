@@ -24,6 +24,57 @@ from pymatviz.enums import ElemCountMode, Key
 DataSplit = Literal["train", "val", "test"]
 data_splits = get_args(DataSplit)
 module_dir = os.path.dirname(__file__)
+target_cols = ccd_col, liquidus_range_col = ["D_max", "dTx"]
+
+
+def drop_dupe_formulas(df_in: pd.DataFrame) -> pd.DataFrame:
+    """Drop duplicate compositions, keeping the most complete rows, i.e. the rows with
+    the least NaN values.
+
+    Args:
+        df_in: Input DataFrame with a 'composition' column
+
+    Returns:
+        pd.DataFrame: with duplicate formulas removed.
+    """
+    df_out = df_in.copy()
+    n_dupes = df_out[Key.composition].duplicated().sum()
+    print(f"\nFound {n_dupes:,} duplicate compositions")
+
+    if n_dupes == 0:
+        print("No duplicate compositions found")
+        return df_out
+
+    # Print some examples of duplicates before filtering
+    print("\nExample duplicate compositions before filtering:")
+    for comp in df_out[df_out[Key.composition].duplicated(keep=False)][
+        Key.composition
+    ].unique()[:3]:
+        print(f"\n{comp}:")
+        dupe_rows = df_out[df_out[Key.composition] == comp]
+        print(f"NaN counts: {dupe_rows.isna().sum(axis=1)}")
+        print(dupe_rows.to_string())
+
+    # For each composition, keep the row with the least NaN values
+    # First, count NaN values for each row
+    nan_counts = df_out.isna().sum(axis=1)
+
+    # Group by composition and keep row with minimum NaN count in each group
+    df_out = df_out.assign(nan_count=nan_counts).sort_values("nan_count")
+    df_out = df_out.drop_duplicates(subset=[Key.composition], keep="first")
+    df_out = df_out.drop(columns=["nan_count"])
+
+    print("\nAfter dropping duplicates (keeping most complete rows):")
+    print(f"Remaining rows: {len(df_out):,}")
+
+    # Print NaN statistics for key columns before and after
+    print("\nNaN counts in columns:")
+    cols_with_nans = dict(df_out.isna().sum().items())
+    for col, n_nan in cols_with_nans.items():
+        pct_nan = n_nan / len(df_out) * 100
+        print(f"{col}: {n_nan:,} NaN values ({pct_nan:.1f}%)")
+
+    return df_out
 
 
 def get_most_common_elements(df_in: pd.DataFrame, n_elements: int = 3) -> list[str]:
@@ -205,49 +256,53 @@ def print_split_stats(df_in: pd.DataFrame, split: pd.Series, split_name: str) ->
     )
 
 
-# Load dataset
-ward_csv_path = f"{module_dir}/ward-metallic-glasses.csv.xz"
-df_ward = pd.read_csv(ward_csv_path, na_values=["Unknown", "DifferentMeasurement?"])
+if __name__ == "__main__":
+    # Load dataset
+    ward_csv_path = f"{module_dir}/ward-metallic-glasses.csv.xz"
+    df_ward = pd.read_csv(ward_csv_path, na_values=["Unknown", "DifferentMeasurement?"])
 
-# Add material IDs that enumerates rows as ward-1, ward-2, ...
-df_ward[Key.mat_id] = [f"ward-{idx + 1}" for idx in range(len(df_ward))]
-df_ward.set_index(Key.mat_id).to_csv(ward_csv_path)
-df_ward = df_ward.query("comment.isna()")
+    # Add material IDs that enumerates rows as ward-1, ward-2, ...
+    df_ward[Key.mat_id] = [f"ward-{idx + 1}" for idx in range(len(df_ward))]
+    df_ward.set_index(Key.mat_id).to_csv(ward_csv_path)
+    df_ward = df_ward.query("comment.isna()")
 
-# 1. Random split (80/10/10)
-random_split = create_random_split(df_ward, train_size=0.8, random_state=0)
-print_split_stats(df_ward, random_split, "holdout Random")
-df_ward["split_random"] = random_split
+    # Drop duplicates keeping most complete rows
+    df_ward = drop_dupe_formulas(df_ward)
 
-# 2. Element-based splits (one for each of the 3 most common elements)
-n_elements = 3
-most_common_elements = get_most_common_elements(df_ward, n_elements)
-print(f"\nMost common elements: {', '.join(most_common_elements)}")
+    # 1. Random split (80/10/10)
+    random_split = create_random_split(df_ward, train_size=0.8, random_state=0)
+    print_split_stats(df_ward, random_split, "holdout Random")
+    df_ward["split_random"] = random_split
 
-for element in most_common_elements:
-    split = create_element_split(df_ward, [element], random_state=0)
-    split_name = f"split_holdout_element_{element}"
-    print_split_stats(df_ward, split, f"holdout {element}")
-    df_ward[split_name] = split
+    # 2. Element-based splits (one for each of the 3 most common elements)
+    n_elements = 3
+    most_common_elements = get_most_common_elements(df_ward, n_elements)
+    print(f"\nMost common elements: {', '.join(most_common_elements)}")
 
-# 3. System-based splits (one for each of the 3 most common systems)
-n_systems = 3
-most_common_systems = get_most_common_systems(df_ward, n_systems)
-print(f"\nMost common systems: {', '.join(most_common_systems)}")
+    for element in most_common_elements:
+        split = create_element_split(df_ward, [element], random_state=0)
+        split_name = f"split_holdout_element_{element}"
+        print_split_stats(df_ward, split, f"holdout {element}")
+        df_ward[split_name] = split
 
-for system in most_common_systems:
-    split = create_system_split(df_ward, [system], random_state=0)
-    split_name = f"split_holdout_chem_sys_{system}"
-    print_split_stats(df_ward, split, f"holdout {system}")
-    df_ward[split_name] = split
+    # 3. System-based splits (one for each of the 3 most common systems)
+    n_systems = 3
+    most_common_systems = get_most_common_systems(df_ward, n_systems)
+    print(f"\nMost common systems: {', '.join(most_common_systems)}")
 
-# Save augmented dataset
-out_path = f"{module_dir}/ward-metallic-glasses-with-splits.csv.xz"
-df_ward.to_csv(out_path, index=False)
-print(f"\nSaved augmented dataset to {out_path}")
+    for system in most_common_systems:
+        split = create_system_split(df_ward, [system], random_state=0)
+        split_name = f"split_holdout_chem_sys_{system}"
+        print_split_stats(df_ward, split, f"holdout {system}")
+        df_ward[split_name] = split
 
-# Print column names for verification
-split_cols = [col for col in df_ward.columns if col.startswith("split_")]
-print("\nSplit columns in output dataset:")
-for col in split_cols:
-    print(f"- {col}")
+    # Save augmented dataset
+    out_path = f"{module_dir}/ward-metallic-glasses-with-splits.csv.xz"
+    df_ward.to_csv(out_path, index=False)
+    print(f"\nSaved augmented dataset to {out_path}")
+
+    # Print column names for verification
+    split_cols = [col for col in df_ward.columns if col.startswith("split_")]
+    print("\nSplit columns in output dataset:")
+    for col in split_cols:
+        print(f"- {col}")
