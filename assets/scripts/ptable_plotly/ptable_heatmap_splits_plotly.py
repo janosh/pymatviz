@@ -14,11 +14,13 @@ np_rng = np.random.default_rng(seed=0)
 
 
 # %% Examples of ptable_heatmap_splits_plotly with different numbers of splits
-for n_splits, orientation in itertools.product(
-    range(2, 5), ("diagonal", "horizontal", "vertical", "grid")
+for idx, (n_splits, orientation) in enumerate(
+    itertools.product(range(2, 5), ("diagonal", "horizontal", "vertical", "grid"))
 ):
     if orientation == "grid" and n_splits != 4:
         continue
+    if idx > 5:  # running all n_split/orientation combos takes long
+        break
 
     # Example 1: Single colorscale with single colorbar
     data_dict = {
@@ -109,7 +111,7 @@ title = (
 )
 fig.layout.title.update(text=title, x=0.4, y=0.8)
 fig.show()
-pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-3-color-schemes")
+# pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-3-color-schemes")
 
 
 # %% Example 5: Two color schemes with horizontal colorbars
@@ -129,7 +131,7 @@ fig = pmv.ptable_heatmap_splits_plotly(
 title = "<b>Element color schemes</b><br>left: VESTA, right: ALLOY"
 fig.layout.title.update(text=title, x=0.4, y=0.8)
 fig.show()
-pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-2-color-schemes")
+# pmv.io.save_and_compress_svg(fig, "ptable-heatmap-splits-plotly-2-color-schemes")
 
 
 # %% Example 6: Mixed colorbar orientations

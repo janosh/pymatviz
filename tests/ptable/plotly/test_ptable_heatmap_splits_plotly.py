@@ -579,3 +579,24 @@ def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
     # titles = [trace.marker.colorbar.title.text for trace in colorbar_traces]
     # assert any("Formation Energy" in title for title in titles), f"{titles=}"
     # assert any("Band Gap" in title for title in titles), f"{titles=}"
+
+
+def test_ptable_heatmap_splits_plotly_special_colors() -> None:
+    """Test nan_color and zero_color customization."""
+    data = {"Fe": [1.0, np.nan], "O": [0.0, 2.0]}  # Test NaN and zero values
+
+    # Test both custom and default colors
+    fig_default = pmv.ptable_heatmap_splits_plotly(data)
+    fig_custom = pmv.ptable_heatmap_splits_plotly(
+        data, nan_color="#f00", zero_color="#0f0"
+    )
+
+    for fig, nan_color, zero_color in (
+        (fig_default, "#eff", "#aaa"),
+        (fig_custom, "#f00", "#0f0"),
+    ):
+        fill_colors = [
+            trace.fillcolor for trace in fig.data if hasattr(trace, "fillcolor")
+        ]
+        assert nan_color in fill_colors, f"{nan_color=} not found in figure"
+        assert zero_color in fill_colors, f"{zero_color=} not found in figure"
