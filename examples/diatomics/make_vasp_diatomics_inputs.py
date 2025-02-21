@@ -92,4 +92,4 @@ def create_diatomic_inputs(
 
 
 if __name__ == "__main__":
-    create_diatomic_inputs(base_dir=f"{ROOT}/tmp/diatomic-calcs")  # noqa: S108
+    create_diatomic_inputs(base_dir=f"{ROOT}/tmp/diatomic-calcs")
