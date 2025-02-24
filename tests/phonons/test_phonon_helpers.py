@@ -11,7 +11,7 @@ from pymatviz.phonons.helpers import pretty_sym_point
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     import numpy as np
 
@@ -23,8 +23,7 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize(
     ("branches", "path_mode", "line_kwargs", "expected_x_labels"),
     [
-        # test original single dict behavior
-        (
+        (  # test original single dict behavior
             ["GAMMA-X", "X-U"],
             "union",
             dict(width=2),
@@ -32,8 +31,7 @@ if TYPE_CHECKING:
         ),
         # test empty tuple branches with intersection mode
         ((), "intersection", None, tuple("ΓLXΓWXU")),
-        # test separate acoustic/optical styling
-        (
+        (  # test separate acoustic/optical styling
             ["GAMMA-X"],
             "union",
             {
@@ -42,18 +40,30 @@ if TYPE_CHECKING:
             },
             tuple("ΓLXΓWXU"),
         ),
-        # test callable line_kwargs
-        (
+        (  # test callable line_kwargs
             (),
             "union",
             lambda _freqs, idx: dict(dash="solid" if idx < 3 else "dash"),
             tuple("ΓLXΓWXU"),
         ),
+        (  # test shaded_ys as True
+            (),
+            "union",
+            None,
+            tuple("ΓLXΓWXU"),
+        ),
+        pytest.param(  # test invalid line_kwargs structure
+            (),
+            "union",
+            {"acoustic": dict(width=2)},  # missing optical key
+            tuple("ΓLXΓWXU"),
+            marks=pytest.mark.xfail(raises=ValueError),
+        ),
     ],
 )
 def test_phonon_bands(
     phonon_bands_doses_mp_2758: BandsDoses,
-    branches: tuple[str, str],
+    branches: Sequence[str],
     path_mode: SetMode,
     line_kwargs: dict[str, Any] | Callable[[np.ndarray, int], dict[str, Any]] | None,
     expected_x_labels: tuple[str, ...],
@@ -113,6 +123,25 @@ def test_phonon_bands(
     assert isinstance(fig, go.Figure)
     assert {trace.name for trace in fig.data} == {"DFT", "MACE"}
     assert fig.layout.xaxis.ticktext == expected_x_labels
+    # verify default shading is present
+    assert any(
+        shape.fillcolor == "gray" and shape.opacity == 0.07
+        for shape in fig.layout.shapes or []
+    ), f"{fig.layout.shapes=}"
+
+    # test shaded_ys as dict with custom values
+    fig = pmv.phonon_bands(
+        phonon_bands_doses_mp_2758["bands"]["DFT"],
+        path_mode=path_mode,
+        branches=branches,
+        line_kwargs=line_kwargs,
+        shaded_ys={(0, "y_max"): dict(fillcolor="red", opacity=0.1)},
+    )
+    assert isinstance(fig, go.Figure)
+    assert any(
+        shape.fillcolor == "red" and shape.opacity == 0.1
+        for shape in fig.layout.shapes or []
+    ), f"{fig.layout.shapes=}"
 
 
 def test_phonon_bands_raises(
@@ -141,6 +170,19 @@ def test_phonon_bands_raises(
 
     with pytest.raises(ValueError, match="Empty band structure dict"):
         pmv.phonon_bands({})
+
+    # test invalid shaded_ys values
+    with pytest.raises(TypeError, match="expect shaded_ys as dict, got str"):
+        pmv.phonon_bands(
+            phonon_bands_doses_mp_2758["bands"]["DFT"],
+            shaded_ys="invalid",  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(ValueError, match="Invalid y_val='invalid', must be one of"):
+        pmv.phonon_bands(
+            phonon_bands_doses_mp_2758["bands"]["DFT"],
+            shaded_ys={(0, "invalid"): dict(fillcolor="red")},  # type: ignore[dict-item]
+        )
 
 
 @pytest.mark.parametrize(
