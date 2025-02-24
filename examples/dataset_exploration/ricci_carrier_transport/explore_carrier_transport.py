@@ -24,7 +24,6 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz import count_elements, ptable_heatmap, spacegroup_bar
 from pymatviz.enums import Key
 
 
@@ -39,25 +38,28 @@ df_carrier[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %%
-fig = ptable_heatmap(
-    count_elements(df_carrier.pretty_formula.dropna()), log=True, return_type="figure"
+fig = pmv.ptable_heatmap_plotly(
+    df_carrier.pretty_formula.dropna(),
+    heat_mode="percent",
 )
-fig.suptitle("Elemental prevalence in the Ricci Carrier Transport dataset")
-pmv.save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
+title = "Elemental prevalence in the Ricci Carrier Transport dataset"
+fig.layout.title.update(text=title)
+fig.show()
+# pmv.save_fig(fig, "carrier-transport-ptable-heatmap.pdf")
 
 
 # %%
-ax = df_carrier.hist(bins=50, log=True, figsize=[30, 16])
+axs = df_carrier.hist(bins=50, log=True, figsize=[30, 16])
 plt.suptitle("Ricci Carrier Transport Dataset", y=1.05)
-pmv.save_fig(ax, "carrier-transport-hists.pdf")
+pmv.save_fig(axs[0][0], "carrier-transport-hists.pdf")
 
 
 # %%
-ax = df_carrier[["S.p [µV/K]", "S.n [µV/K]"]].hist(bins=50, log=True, figsize=[18, 8])
+axs = df_carrier[["S.p [µV/K]", "S.n [µV/K]"]].hist(bins=50, log=True, figsize=[18, 8])
 plt.suptitle(
     "Ricci Carrier Transport dataset histograms for n- and p-type Seebeck coefficients"
 )
-pmv.save_fig(ax, "carrier-transport-seebeck-n+p.pdf")
+# pmv.save_fig(axs[0][0], "carrier-transport-seebeck-n+p.pdf")
 
 
 # %%
@@ -80,12 +82,15 @@ dependent_vars = [
     "κₑᵉ.n.v [W/K/m/s]",
 ]
 
-ax = df_carrier[dependent_vars].hist(bins=50, log=True, figsize=[30, 16])
+axs = df_carrier[dependent_vars].hist(bins=50, log=True, figsize=[30, 16])
 plt.suptitle("Ricci Carrier Transport Dataset dependent variables", y=1.05)
-pmv.save_fig(ax, "carrier-transport-hists-dependent-vars.pdf")
+# pmv.save_fig(ax, "carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%
-ax = spacegroup_bar(df_carrier[Key.spg_num])
-ax.set(title="Spacegroup distribution in the Ricci carrier transport dataset")
-pmv.save_fig(ax, "carrier-transport-spacegroup-hist.pdf")
+fig = pmv.spacegroup_bar(df_carrier[Key.spg_num])
+fig.layout.title.update(
+    text="Spacegroup distribution in the Ricci carrier transport dataset"
+)
+fig.show()
+# pmv.save_fig(fig, "carrier-transport-spacegroup-hist.pdf")

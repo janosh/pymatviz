@@ -32,10 +32,10 @@ def count_elements(
 
     Provided as standalone function for external use or to cache long computations.
     Caching long element counts is done by refactoring:
-        ptable_heatmap(long_list_of_formulas) # slow
+        ptable_heatmap_plotly(long_list_of_formulas) # slow
     to:
         elem_counts = count_elements(long_list_of_formulas) # slow
-        ptable_heatmap(elem_counts) # fast, only rerun this line to update the plot
+        ptable_heatmap_plotly(elem_counts) # fast, only rerun this line to update plot
 
     Args:
         values (dict[str, int | float] | pd.Series | list[str]): Iterable of

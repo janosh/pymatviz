@@ -23,13 +23,6 @@ from pymatgen.core import Structure
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz import (
-    count_elements,
-    crystal_sys_order,
-    ptable_heatmap,
-    spacegroup_bar,
-    spacegroup_sunburst,
-)
 from pymatviz.enums import Key
 
 
@@ -55,7 +48,7 @@ df_grvh[Key.wyckoff] = [
         df_grvh[Key.structure], desc="Getting matbench_log_gvrh Wyckoff strings"
     )
 ]
-df_grvh[Key.n_wyckoff] = df_grvh.wyckoff.map(count_wyckoff_positions)
+df_grvh[Key.n_wyckoff_pos] = df_grvh.wyckoff.map(count_wyckoff_positions)
 df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
 
@@ -73,15 +66,19 @@ print(sum(df_kvrh["log10(K_VRH)"] == 0))  # sum is 14
 ax = df_kvrh.hist(column="log10(K_VRH)", bins=50, alpha=0.8)
 
 df_grvh.hist(column="log10(G_VRH)", bins=50, ax=ax, alpha=0.8)
-pmv.save_fig(ax, "log_g+kvrh-target-hist.pdf")
+# pmv.save_fig(ax, "log_g+kvrh-target-hist.pdf")
 
 
 # %%
 df_grvh[Key.volume] = [x.volume for x in df_grvh[Key.structure]]
 df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
 
-ax = df_grvh.hist(column=Key.volume, bins=50, log=True, alpha=0.8)
-pmv.save_fig(ax, "log_gvrh-volume-hist.pdf")
+fig = df_grvh[Key.volume].hist(nbins=100, log_y=True, opacity=0.8, backend="plotly")
+title = "<b>Volume histogram of the Matbench bulk/shear modulus datasets</b>"
+fig.layout.title.update(text=title, x=0.5)
+fig.layout.showlegend = False
+fig.show()
+# pmv.save_fig(ax, "log_gvrh-volume-hist.pdf")
 
 
 # %%
@@ -126,28 +123,38 @@ for idx, structure, target, *_ in df_grvh.query("graph_size == 0").itertuples():
 # %%
 df_grvh[Key.volume] = df_grvh[Key.structure].map(lambda struct: struct.volume)
 
-df_grvh.hist(column=Key.volume, bins=50, log=True)
+fig = df_grvh[Key.volume].hist(nbins=100, backend="plotly", log_y=True)
+title = "<b>Volume histogram of the Matbench bulk/shear modulus datasets</b>"
+fig.layout.title.update(text=title, x=0.5)
+fig.layout.showlegend = False
+fig.show()
 
 
 # %%
 df_grvh[Key.formula] = df_grvh[Key.structure].map(lambda struct: struct.formula)
 
-fig = ptable_heatmap(
-    count_elements(df_grvh[Key.formula]), log=True, return_type="figure"
+fig = pmv.ptable_heatmap_plotly(pmv.count_elements(df_grvh[Key.formula]), log=True)
+title = "<b>Element counts in the Matbench<br>bulk/shear modulus datasets</b>"
+fig.layout.title.update(text=title)
+fig.show()
+# pmv.save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
+
+
+# %%
+fig = pmv.spacegroup_bar(df_grvh[Key.spg_num])
+fig.layout.margin.update(b=10, l=10, r=10, t=50)
+fig.layout.title.update(
+    text="Spacegroup histogram of the Matbench bulk/shear modulus datasets"
 )
-fig.suptitle("Elemental prevalence in the Matbench bulk/shear modulus datasets")
-pmv.save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
+fig.show()
+# pmv.save_fig(ax, "log_gvrh-spacegroup-hist.pdf")
 
 
 # %%
-ax = spacegroup_bar(df_grvh[Key.spg_num])
-pmv.save_fig(ax, "log_gvrh-spacegroup-hist.pdf")
-
-
-# %%
-fig = spacegroup_sunburst(df_grvh[Key.spg_num], show_counts="percent")
-fig.layout.title = "Spacegroup sunburst of the JARVIS DFT 2D dataset"
-fig.write_image("log_gvrh-spacegroup-sunburst.pdf")
+fig = pmv.spacegroup_sunburst(df_grvh[Key.spg_num], show_counts="percent")
+title = "Spacegroup sunburst of the Matbench bulk/shear modulus datasets"
+fig.layout.title.update(text=title, x=0.5)
+# fig.write_image("log_gvrh-spacegroup-sunburst.pdf")
 fig.show()
 
 
@@ -156,11 +163,11 @@ fig = px.violin(
     df_grvh,
     color=Key.crystal_system,
     x=Key.crystal_system,
-    y=Key.n_wyckoff,
+    y=Key.n_wyckoff_pos,
     points="all",
     hover_data=[Key.spg_num],
     hover_name=Key.formula,
-    category_orders={Key.crystal_system: crystal_sys_order},
+    category_orders={Key.crystal_system: pmv.crystal_sys_order},
     log_y=True,
 ).update_traces(jitter=1)
 
@@ -172,9 +179,9 @@ def rgb_color(val: float, max_val: float) -> str:
 
 x_ticks = {}
 for cry_sys, df_group in sorted(
-    df_grvh.groupby(Key.crystal_system), key=lambda x: crystal_sys_order.index(x[0])
+    df_grvh.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
 ):
-    n_wyckoff_top = df_group[Key.n_wyckoff].mean()
+    n_wyckoff_top = df_group[Key.n_wyckoff_pos].mean()
     clr = rgb_color(n_wyckoff_top, 14)
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
@@ -182,12 +189,14 @@ for cry_sys, df_group in sorted(
         f"mean = <span style='color:{clr}'><b>{n_wyckoff_top:.1f}</b></span>"
     )
 
-title = "Matbench dielectric: Number of Wyckoff positions by crystal system"
-fig.layout.title = dict(text=title, x=0.5)
-fig.layout.margin = dict(b=10, l=10, r=10, t=50)
+title = (
+    "Matbench bulk/shear modulus datasets<br>Number of Wyckoff positions "
+    "per structure by crystal system"
+)
+fig.layout.title.update(text=title, x=0.5)
+fig.layout.margin.update(b=10, l=10, r=10, t=50)
 fig.layout.showlegend = False
 fig.layout.update(width=1000, height=400)
 fig.layout.xaxis = dict(tickvals=list(range(7)), ticktext=list(x_ticks.values()))
-
-# fig.write_image("log_grvh-violin-num-wyckoffs.pdf")
 fig.show()
+# fig.write_image("log_grvh-violin-num-wyckoffs.pdf")

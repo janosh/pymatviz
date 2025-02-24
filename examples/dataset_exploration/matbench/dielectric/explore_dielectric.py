@@ -1,17 +1,4 @@
-# %%
-import plotly.express as px
-from aviary.wren.utils import (
-    count_wyckoff_positions,
-    get_protostructure_label_from_spglib,
-)
-from matminer.datasets import load_dataset
-from tqdm import tqdm
-
-import pymatviz as pmv
-from pymatviz.enums import Key
-
-
-"""matbench_dielectric dataset
+"""matbench_dielectric dataset.
 
 Input: Pymatgen Structure of the material.
 Target variable: refractive index.
@@ -26,6 +13,19 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 """
 
 # %%
+import plotly.express as px
+from matbench_discovery.structure.prototype import (
+    count_wyckoff_positions,
+    get_protostructure_label,
+)
+from matminer.datasets import load_dataset
+from tqdm import tqdm
+
+import pymatviz as pmv
+from pymatviz.enums import Key
+
+
+# %%
 df_diel = load_dataset("matbench_dielectric")
 
 df_diel[[Key.spg_symbol, Key.spg_num]] = [
@@ -33,11 +33,13 @@ df_diel[[Key.spg_symbol, Key.spg_num]] = [
     for struct in tqdm(df_diel[Key.structure], desc="Getting spacegroups")
 ]
 
-df_diel[Key.wyckoff] = [
-    get_protostructure_label_from_spglib(struct)
+proto_label_key = f"{Key.protostructure}_moyo"
+n_wyckoff_pos_key = f"{Key.n_wyckoff_pos}_moyo"
+df_diel[proto_label_key] = [
+    get_protostructure_label(struct)
     for struct in tqdm(df_diel[Key.structure], desc="Getting Wyckoff strings")
 ]
-df_diel[Key.n_wyckoff] = df_diel.wyckoff.map(count_wyckoff_positions)
+df_diel[n_wyckoff_pos_key] = df_diel[proto_label_key].map(count_wyckoff_positions)
 
 df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(
     pmv.utils.crystal_sys_from_spg_num
@@ -48,29 +50,24 @@ df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
 
 
 # %%
-fig = pmv.ptable_heatmap(
-    pmv.count_elements(df_diel[Key.formula]), log=True, return_type="figure"
-)
-fig.suptitle("Elemental prevalence in the Matbench dielectric dataset")
-pmv.save_fig(fig, "dielectric-ptable-heatmap.pdf")
-
-
-# %%
 fig = pmv.ptable_heatmap_plotly(df_diel[Key.formula], log=True, colorscale="viridis")
 title = "<b>Elements in Matbench Dielectric</b>"
 fig.layout.title = dict(text=title, x=0.4, y=0.94, font_size=20)
+fig.show()
 # pmv.save_fig(fig, "dielectric-ptable-heatmap-plotly.pdf")
 
 
 # %%
-ax = pmv.spacegroup_bar(df_diel[Key.spg_num])
-ax.set_title("Space group histogram", y=1.1)
-pmv.save_fig(ax, "dielectric-spacegroup-hist.pdf")
+fig = pmv.spacegroup_bar(df_diel[Key.spg_num])
+fig.layout.title.update(text="<b>Space group histogram</b>")
+fig.layout.margin.update(b=10, l=10, r=10, t=50)
+# pmv.save_fig(ax, "dielectric-spacegroup-hist.pdf")
+fig.show()
 
 
 # %%
 fig = pmv.spacegroup_sunburst(df_diel[Key.spg_num], show_counts="percent")
-fig.layout.title = "Space group sunburst"
+fig.layout.title.update(text="<b>Space group sunburst</b>", x=0.5)
 # pmv.save_fig(fig, "dielectric-spacegroup-sunburst.pdf")
 fig.show()
 
@@ -114,7 +111,7 @@ fig = px.violin(
     df_diel,
     color=Key.crystal_system,
     x=Key.crystal_system,
-    y=Key.n_wyckoff,
+    y=n_wyckoff_pos_key,
     points="all",
     hover_data=[Key.spg_num],
     hover_name=Key.formula,
@@ -132,12 +129,12 @@ x_ticks = {}
 for cry_sys, df_group in sorted(
     df_diel.groupby(Key.crystal_system), key=lambda x: pmv.crystal_sys_order.index(x[0])
 ):
-    n_wyckoff = df_group[Key.n_wyckoff].mean()
-    clr = rgb_color(n_wyckoff, 14)
+    avg_n_wyckoff = df_group[n_wyckoff_pos_key].mean()
+    clr = rgb_color(avg_n_wyckoff, 14)
     x_ticks[cry_sys] = (
         f"<b>{cry_sys}</b><br>"
         f"{len(df_group):,} = {len(df_group) / len(df_diel):.0%}<br>"
-        f"mean = <span style='color:{clr}'><b>{n_wyckoff:.1f}</b></span>"
+        f"mean = <span style='color:{clr}'><b>{avg_n_wyckoff:.1f}</b></span>"
     )
 
 title = "<b>Matbench dielectric: Number of Wyckoff positions by crystal system</b>"
@@ -167,6 +164,7 @@ fig.layout.legend = dict(x=1, y=1, xanchor="right")
 
 # slightly increase scatter point size (lower sizeref means larger)
 fig.update_traces(marker_sizeref=0.08, selector=dict(mode="markers"))
+fig.layout.margin.update(b=10, l=10, r=10, t=40)
 
 # pmv.save_fig(fig, "dielectric-scatter.pdf")
 fig.show()

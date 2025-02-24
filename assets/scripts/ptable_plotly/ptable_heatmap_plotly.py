@@ -10,6 +10,8 @@ from pymatviz import df_ptable
 from pymatviz.enums import ElemCountMode, Key
 
 
+# %%
+df_steels = load_dataset("matbench_steels")
 df_expt_gap = load_dataset("matbench_expt_gap")
 module_dir = os.path.dirname(__file__)
 
@@ -142,3 +144,23 @@ fig.layout.title.update(text=title, x=0.4, y=0.92)
 fig.show()
 
 pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-vasp-psp-n-valence-electrons")
+
+
+# %% Compute element counts in 2 datasets and plot their ratios
+# Normalize by dataset size to get average counts per composition
+gap_counts = pmv.count_elements(df_expt_gap[Key.composition]) / len(df_expt_gap)
+steel_counts = pmv.count_elements(df_steels[Key.composition]) / len(df_steels)
+
+fig = pmv.ptable_heatmap_plotly(
+    gap_counts / steel_counts,
+    log=True,  # ratios are better viewed on log scale
+    fmt=".2g",  # 2 significant digits for values
+    colorscale="RdBu",  # red-white-blue diverging colorscale
+    nan_color="#ddd",  # light gray for elements not present in either dataset
+    colorbar=dict(title="Matbench (Band gap / Steel) element counts"),
+)
+title = "Matbench Experimental Band Gap vs Steel Dataset<br>Element frequency ratios"
+fig.layout.title = dict(text=title, x=0.4, y=0.95)
+
+fig.show()
+# pmv.io.save_and_compress_svg(fig, "ptable-heatmap-ratio-plotly")
