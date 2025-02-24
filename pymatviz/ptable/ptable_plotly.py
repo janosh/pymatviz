@@ -364,7 +364,7 @@ def ptable_heatmap_plotly(
 
     if title := colorbar.get("title"):
         # <br> to increase title standoff
-        colorbar["title"] = f"{title}<br>" if horizontal_cbar else f"<br><br>{title}"
+        colorbar["title"] = f"{title}" if horizontal_cbar else f"<br><br>{title}"
 
     if log:
         orig_min = np.floor(min(non_nan_values))

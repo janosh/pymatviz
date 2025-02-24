@@ -52,32 +52,24 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 ## Periodic Table
 
-See [`pymatviz/ptable/ptable_matplotlib.py`](pymatviz/ptable/ptable_matplotlib.py) and [`pymatviz/ptable/ptable_plotly.py`](pymatviz/ptable/ptable_plotly.py). `matplotlib` supports heatmaps, heatmap ratios, heatmap splits (multiple values per element), histograms, scatter plots and line plots. `plotly` currently only supports heatmaps (PRs to port over other `matplotlib` `ptable` variants to `plotly` are very welcome!). The `plotly` heatmap supports displaying additional data on hover or full interactivity through [Dash](https://plotly.com/dash).
+See [`pymatviz/ptable/ptable_plotly.py`](pymatviz/ptable/ptable_plotly.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
-|                       [`ptable_heatmap(compositions, log=True)`](assets/scripts/ptable_matplotlib/ptable_heatmap.py)                        |                    [`ptable_heatmap_ratio(comps_a, comps_b)`](assets/scripts/ptable_matplotlib/ptable_heatmap_ratio.py)                    |
-| :-----------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------: |
-|                                                              ![ptable-heatmap]                                                              |                                                          ![ptable-heatmap-ratio]                                                           |
-|                       [`ptable_heatmap_plotly(atomic_masses)`](assets/scripts/ptable_plotly/ptable_heatmap_plotly.py)                       |                  [`ptable_heatmap_plotly(compositions, log=True)`](assets/scripts/ptable_plotly/ptable_heatmap_plotly.py)                  |
-|                                                  ![ptable-heatmap-plotly-more-hover-data]                                                   |                                                        ![ptable-heatmap-plotly-log]                                                        |
-|                        [`ptable_hists(data, colormap="coolwarm")`](assets/scripts/ptable_matplotlib/ptable_hists.py)                        |                             [`ptable_hists_plotly(data)`](assets/scripts/ptable_plotly/ptable_hists_plotly.py)                             |
-|                                                               ![ptable-hists]                                                               |                                                           ![ptable-hists-plotly]                                                           |
-|                   [`ptable_scatters_plotly(data, mode="markers")`](assets/scripts/ptable_plotly/ptable_scatter_plotly.py)                   |                    [`ptable_scatter_plotly(data, mode="lines")`](assets/scripts/ptable_plotly/ptable_scatter_plotly.py)                    |
-|                                                      ![ptable-scatter-plotly-markers]                                                       |                                                       ![ptable-lines-mace-diatomic]                                                        |
-| [`ptable_heatmap_splits(2_vals_per_elem, colormap="coolwarm", start_angle=135)`](assets/scripts/ptable_matplotlib/ptable_heatmap_splits.py) | [`ptable_heatmap_splits(3_vals_per_elem, colormap="coolwarm", start_angle=90)`](assets/scripts/ptable_matplotlib/ptable_heatmap_splits.py) |
-|                                                         ![ptable-heatmap-splits-2]                                                          |                                                         ![ptable-heatmap-splits-3]                                                         |
-|               [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](assets/scripts/ptable_plotly/ptable_heatmap_splits_plotly.py)               |              [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](assets/scripts/ptable_plotly/ptable_heatmap_splits_plotly.py)               |
-|                                                      ![ptable-heatmap-splits-plotly-2]                                                      |                                                     ![ptable-heatmap-splits-plotly-3]                                                      |
+> [!WARNING]
+> Version 0.16.0 of `pymatviz` dropped the matplotlib-based functions in `ptable_matplotlib.py`. Please use the `plotly`-based functions shown below instead which have feature parity, interactivity and better test coverage.
 
-[ptable-hists]: assets/svg/ptable-hists.svg
-[ptable-lines-mace-diatomic]: assets/svg/homo-nuclear-mace-medium.svg
-[ptable-scatters-parity]: assets/svg/ptable-scatters-parity.svg
-[ptable-scatters-parabola]: assets/svg/ptable-scatters-parabola.svg
-[ptable-heatmap-splits-2]: assets/svg/ptable-heatmap-splits-2.svg
-[ptable-heatmap-splits-3]: assets/svg/ptable-heatmap-splits-3.svg
+|         [`ptable_heatmap_plotly(atomic_masses)`](assets/scripts/ptable_plotly/ptable_heatmap_plotly.py)         |    [`ptable_heatmap_plotly(compositions, log=True)`](assets/scripts/ptable_plotly/ptable_heatmap_plotly.py)     |
+| :-------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------: |
+|                                    ![ptable-heatmap-plotly-more-hover-data]                                     |                                          ![ptable-heatmap-plotly-log]                                           |
+|               [`ptable_hists_plotly(data)`](assets/scripts/ptable_plotly/ptable_hists_plotly.py)                |     [`ptable_scatter_plotly(data, mode="markers")`](assets/scripts/ptable_plotly/ptable_scatter_plotly.py)      |
+|                                             ![ptable-hists-plotly]                                              |                                        ![ptable-scatter-plotly-markers]                                         |
+| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](assets/scripts/ptable_plotly/ptable_heatmap_splits_plotly.py) | [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](assets/scripts/ptable_plotly/ptable_heatmap_splits_plotly.py) |
+|                                        ![ptable-heatmap-splits-plotly-2]                                        |                                        ![ptable-heatmap-splits-plotly-3]                                        |
+
+[ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
+[ptable-heatmap-plotly-more-hover-data]: assets/svg/ptable-heatmap-plotly-more-hover-data.svg
 [ptable-heatmap-splits-plotly-2]: assets/svg/ptable-heatmap-splits-plotly-2.svg
 [ptable-heatmap-splits-plotly-3]: assets/svg/ptable-heatmap-splits-plotly-3.svg
 [ptable-hists-plotly]: assets/svg/ptable-hists-plotly.svg
-[ptable-scatter-plotly-lines]: assets/svg/ptable-scatter-plotly-lines.svg
 [ptable-scatter-plotly-markers]: assets/svg/ptable-scatter-plotly-markers.svg
 
 ### Dash app using `ptable_heatmap_plotly()`
@@ -291,10 +283,6 @@ See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 [elements-hist]: assets/svg/elements-hist.svg
 [normal-prob-plot-multiple]: assets/svg/normal-prob-plot-multiple.svg
 [normal-prob-plot]: assets/svg/normal-prob-plot.svg
-[ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
-[ptable-heatmap-plotly-more-hover-data]: assets/svg/ptable-heatmap-plotly-more-hover-data.svg
-[ptable-heatmap-ratio]: assets/svg/ptable-heatmap-ratio.svg
-[ptable-heatmap]: assets/svg/ptable-heatmap.svg
 [struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: assets/svg/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
 [struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: assets/svg/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
 

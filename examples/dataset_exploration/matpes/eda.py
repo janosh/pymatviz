@@ -7,17 +7,14 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import plotly.io as pio
 from pymatgen.core import Composition, Structure
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz import count_elements, pmv_dark_template
 from pymatviz.enums import Key
 
 
-px.defaults.template = pmv_dark_template
-pio.templates.default = pmv_dark_template
+pmv.set_plotly_template("pymatviz_dark")
 module_dir = os.path.dirname(__file__)
 
 
@@ -42,12 +39,12 @@ for data, expected in ((r2scan_data, n_r2scan), (pbe_data, n_pbe)):
 df_r2scan = pd.DataFrame(r2scan_data).T
 df_pbe = pd.DataFrame(pbe_data).T
 
-for df in (df_r2scan, df_pbe):
-    df.index.name = Key.mat_id
-    df.rename(columns={"magmom": Key.magmoms}, inplace=True)  # noqa: PD002
-    df[Key.structure] = df[Key.structure].map(Structure.from_dict)
-    df[Key.formula] = [struct.formula for struct in df[Key.structure]]
-    df[Key.n_sites] = df[Key.structure].map(len)
+for df_data in (df_r2scan, df_pbe):
+    df_data.index.name = Key.mat_id
+    df_data.rename(columns={"magmom": Key.magmoms}, inplace=True)  # noqa: PD002
+    df_data[Key.structure] = df_data[Key.structure].map(Structure.from_dict)
+    df_data[Key.formula] = [struct.formula for struct in df_data[Key.structure]]
+    df_data[Key.n_sites] = df_data[Key.structure].map(len)
 
 
 # %% plot histogram of energies
@@ -91,7 +88,6 @@ df_r2scan[total_force_col] = df_r2scan[Key.forces].map(
 )
 
 fig = go.Figure()
-
 fig.add_histogram(x=df_r2scan[total_force_col].explode(), name="r2scan", opacity=0.8)
 fig.add_histogram(x=df_pbe[total_force_col].explode(), name="pbe", opacity=0.8)
 
@@ -105,24 +101,27 @@ fig.show()
 # %% plot element counts
 r2scan_elem_counts = locals().get("r2scan_elem_counts")
 if r2scan_elem_counts is None:
-    r2scan_elem_counts = count_elements(df_r2scan[Key.formula])
-fig = pmv.ptable_heatmap(r2scan_elem_counts, return_type="figure")
+    r2scan_elem_counts = pmv.count_elements(df_r2scan[Key.formula])
 
-pmv.save_fig(fig, "r2scan-element-counts-ptable.pdf")
+fig = pmv.ptable_heatmap_plotly(r2scan_elem_counts)
+fig.show()
+
+# pmv.save_fig(fig, "r2scan-element-counts-ptable.pdf")
 
 
 # %%
 pbe_elem_counts = locals().get("pbe_elem_counts")
 if pbe_elem_counts is None:
-    pbe_elem_counts = count_elements(df_pbe[Key.formula])
-fig = pmv.ptable_heatmap(pbe_elem_counts, return_type="figure")
+    pbe_elem_counts = pmv.count_elements(df_pbe[Key.formula])
+fig = pmv.ptable_heatmap_plotly(pbe_elem_counts)
+fig.show()
 
 
 # %% calculate per element energies
 frac_comp_col = "fractional composition"
-for df in (df_r2scan, df_pbe):
-    df[frac_comp_col] = [
-        Composition(comp).fractional_composition for comp in tqdm(df[Key.formula])
+for df_data in (df_r2scan, df_pbe):
+    df_data[frac_comp_col] = [
+        Composition(comp).fractional_composition for comp in tqdm(df_data[Key.formula])
     ]
 
 df_r2scan_frac_comp = pd.DataFrame(
@@ -150,19 +149,22 @@ per_elem_cohesive_energy = {
     key: list(dct.values()) for key, dct in df_per_elem.to_dict(orient="index").items()
 }
 
-fig = pmv.ptable_heatmap_splits(
-    per_elem_cohesive_energy, cbar_title=f"{col_name.label} (eV)"
+fig = pmv.ptable_heatmap_splits_plotly(
+    per_elem_cohesive_energy,
+    colorbar=dict(title=col_name.label, orientation="h"),
 )
+fig.show()
 
 
 # %% which elements have a higher share of missing r2scan data
-fig = pmv.ptable_heatmap(
+fig = pmv.ptable_heatmap_plotly(
     (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
-    value_fmt=".1%",
-    cbar_label_fmt=".0%",
-    cbar_title="Fraction of missing PBE calcs missing r2SCAN",
-    return_type="figure",
+    colorbar=dict(
+        title="Fraction of missing PBE calcs missing r2SCAN", orientation="h"
+    ),
+    heat_mode="percent",
 )
+fig.show()
 
 pmv.save_fig(fig, "ptable-has-pbe-but-no-r2scan.pdf")
 
@@ -173,23 +175,20 @@ df_per_elem_magmoms = pd.DataFrame(
     for struct in df_r2scan[Key.structure]
 ).mean()
 
-fig = pmv.ptable_heatmap(
-    df_per_elem_magmoms,
-    cbar_title=r"Mean |magmom| ($\mu_B$)",
-    value_fmt=".1f",
-    return_type="figure",
-)
-pmv.save_fig(fig, "magmoms-ptable.pdf")
+fig = pmv.ptable_heatmap_plotly(df_per_elem_magmoms)
+fig.layout.coloraxis.colorbar.title = r"Mean |magmom| ($\mu_B$)"
+fig.show()
+# pmv.save_fig(fig, "magmoms-ptable.pdf")
 
 
 # %% spacegroup distribution
-for label, df in (
+for label, df_data in (
     ("r2scan", df_r2scan),
     # ("pbe", df_pbe),
 ):
-    df[Key.spg_num] = [
+    df_data[Key.spg_num] = [
         struct.get_space_group_info()[1]
-        for struct in tqdm(df[Key.structure], desc=f"{label} spacegroups")
+        for struct in tqdm(df_data[Key.structure], desc=f"{label} spacegroups")
     ]
 
 
@@ -198,7 +197,7 @@ fig = pmv.spacegroup_sunburst(df_r2scan[Key.spg_num], show_counts="percent")
 fig.layout.title = dict(text=f"{n_r2scan:,} r2SCAN spacegroups", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=30)
 fig.show()
-pmv.save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
+# pmv.save_fig(fig, "r2scan-spacegroup-sunburst.pdf")
 
 
 # %% spacegroup histogram
@@ -206,7 +205,7 @@ fig = pmv.spacegroup_bar(
     df_r2scan[Key.spg_num], title="r2SCAN spacegroup histogram", log=True
 )
 fig.show()
-pmv.save_fig(fig, "r2scan-spacegroup-hist.pdf")
+# pmv.save_fig(fig, "r2scan-spacegroup-hist.pdf")
 
 
 # %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2scan calcs
@@ -246,13 +245,14 @@ df_pbe_elem_forces = pd.DataFrame(
 
 
 # %%
-fig = pmv.ptable_heatmap_splits(
+fig = pmv.ptable_heatmap_splits_plotly(
     {
         elem: [df_r2scan_elem_forces[elem], df_pbe_elem_forces[elem]]
         for elem in df_r2scan_elem_forces.index
     },
-    cbar_title="Mean |force| (eV/Å)",
+    colorbar=dict(title="Mean |force| (eV/Å)", orientation="h"),
 )
+fig.show()
 
 
 # %%

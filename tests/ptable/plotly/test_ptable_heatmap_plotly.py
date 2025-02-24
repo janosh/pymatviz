@@ -60,7 +60,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
         fig = pmv.ptable_heatmap_plotly(df_ptable["tmp"], log=True)
         assert isinstance(fig, go.Figure)
         heatmap_trace = fig.data[-1]
-        assert heatmap_trace.colorbar.title.text == "tmp<br>"
+        assert heatmap_trace.colorbar.title.text == "tmp"
         c_scale = heatmap_trace.colorscale
         assert isinstance(c_scale, tuple)
         assert isinstance(c_scale[0], tuple)
@@ -479,9 +479,7 @@ def test_ptable_heatmap_plotly_colorbar() -> None:
     actual_h_colorbar = h_colorbar_trace.colorbar
 
     # Check horizontal colorbar properties
-    assert (
-        actual_h_colorbar.title.text == "Horizontal Title<br>"
-    )  # Horizontal title has break after
+    assert actual_h_colorbar.title.text == "Horizontal Title"
     assert actual_h_colorbar.orientation == "h"
     assert actual_h_colorbar.y == 0.8
 

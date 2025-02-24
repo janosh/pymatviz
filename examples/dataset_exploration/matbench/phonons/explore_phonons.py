@@ -20,7 +20,6 @@ from matminer.datasets import load_dataset
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz import count_elements, ptable_heatmap, spacegroup_bar
 from pymatviz.enums import Key
 
 
@@ -34,21 +33,27 @@ df_phonon[[Key.spg_symbol, Key.spg_num]] = [
 
 
 # %%
-ax = df_phonon.hist(column=last_dos_peak, bins=50)
-pmv.save_fig(ax, "phonons-last-dos-peak-hist.pdf")
+fig = df_phonon[last_dos_peak].hist(bins=50, backend="plotly")
+fig.layout.title.update(
+    text="Last phonon DOS peak histogram of Matbench Phonons dataset"
+)
+fig.show()
+# pmv.save_fig(ax, "phonons-last-dos-peak-hist.pdf")
 
 
 # %%
 df_phonon[Key.formula] = df_phonon[Key.structure].map(lambda cryst: cryst.formula)
 df_phonon[Key.volume] = df_phonon[Key.structure].map(lambda cryst: cryst.volume)
 
-fig = ptable_heatmap(
-    count_elements(df_phonon[Key.formula]), log=True, return_type="figure"
-)
-fig.suptitle("Elemental prevalence in the Matbench phonons dataset")
-pmv.save_fig(fig, "phonons-ptable-heatmap.pdf")
+fig = pmv.ptable_heatmap_plotly(df_phonon[Key.formula], log=True)
+fig.layout.title.update(text="Elemental prevalence in the Matbench phonons dataset")
+fig.show()
+# pmv.save_fig(fig, "phonons-ptable-heatmap.pdf")
 
 
 # %%
-ax = spacegroup_bar(df_phonon[Key.spg_num])
-pmv.save_fig(ax, "phonons-spacegroup-hist.pdf")
+fig = pmv.spacegroup_bar(df_phonon[Key.spg_num])
+fig.layout.title.update(text="Spacegroup histogram of Matbench Phonons dataset", y=0.98)
+fig.layout.margin.update(b=10, l=10, r=10, t=60)
+fig.show()
+# pmv.save_fig(fig, "phonons-spacegroup-hist.pdf")

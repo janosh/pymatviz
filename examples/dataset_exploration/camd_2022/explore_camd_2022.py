@@ -18,10 +18,9 @@ import os
 
 import pandas as pd
 import requests
-from pymatgen.symmetry.groups import SpaceGroup
+from moyopy import SpaceGroupType
 
 import pymatviz as pmv
-from pymatviz import count_elements, ptable_heatmap, spacegroup_sunburst
 from pymatviz.enums import Key
 
 
@@ -44,10 +43,11 @@ df_camd.hist(bins=50)
 
 
 # %%
-elem_counts = count_elements(df_camd.reduced_formula)
-fig = ptable_heatmap(elem_counts, log=True, return_type="figure")
-fig.suptitle("Elements in CAMD 2022 dataset")
-pmv.save_fig(fig, "camd-2022-ptable-heatmap.pdf")
+elem_counts = pmv.count_elements(df_camd.reduced_formula)
+fig = pmv.ptable_heatmap_plotly(elem_counts, log=True)
+fig.layout.title.update(text="<b>Elements in CAMD 2022 dataset</b>")
+fig.show()
+# pmv.save_fig(fig, "camd-2022-ptable-heatmap.pdf")
 
 
 # %%
@@ -56,8 +56,8 @@ pmv.powerups.annotate_bars(ax, v_offset=3e3)
 
 
 # %%
-df_camd[Key.spg_num] = [SpaceGroup(spg).int_number for spg in df_camd.space_group]
+df_camd[Key.spg_num] = [SpaceGroupType(spg).number for spg in df_camd.space_group]
 
-fig = spacegroup_sunburst(df_camd[Key.spg_num], show_counts="percent")
-fig.write_image("camd-2022-spacegroup-sunburst.pdf")
+fig = pmv.spacegroup_sunburst(df_camd[Key.spg_num], show_counts="percent")
+pmv.save_fig(fig, "camd-2022-spacegroup-sunburst.pdf")
 fig.show()

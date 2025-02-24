@@ -776,9 +776,9 @@ crystal_symmetry_properties:
     description: Angular tolerance (in degrees) for symmetry detection
   point_group:
     label: Point Group
-  n_wyckoff:
+  n_wyckoff_pos:
     label: Number of Wyckoff Positions
-    symbol: N<sub>wyckoff</sub>
+    symbol: N<sub>wyckoff pos</sub>
     description: Number of crystallographically distinct atomic positions in the structure
   n_rot_syms:
     label: Number of rotational symmetries

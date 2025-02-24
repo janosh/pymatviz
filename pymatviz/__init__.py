@@ -51,16 +51,10 @@ from pymatviz.io import df_to_html, df_to_pdf, df_to_svg, save_fig
 from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import count_elements, count_formulas
 from pymatviz.ptable import (
-    ptable_heatmap,
     ptable_heatmap_plotly,
-    ptable_heatmap_ratio,
-    ptable_heatmap_splits,
     ptable_heatmap_splits_plotly,
-    ptable_hists,
     ptable_hists_plotly,
-    ptable_lines,
     ptable_scatter_plotly,
-    ptable_scatters,
 )
 from pymatviz.rainclouds import rainclouds
 from pymatviz.rdf.plotly import element_pair_rdfs, full_rdf
