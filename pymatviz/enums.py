@@ -292,7 +292,7 @@ class Key(StrEnum):
     symprec = "symprec"
     angle_tolerance = "angle_tolerance"
     point_group = "point_group"
-    n_wyckoff = "n_wyckoff"
+    n_wyckoff_pos = "n_wyckoff_pos"
     n_rot_syms = "n_rot_syms"
     n_trans_syms = "n_trans_syms"
     n_sym_ops = "n_sym_ops"
