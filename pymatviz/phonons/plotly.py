@@ -71,9 +71,9 @@ def phonon_bands(
             branches are plotted.
         path_mode ("union" | "intersection" | "strict"): How to handle band structures
             with different q-point paths. Defaults to "strict":
-            - "union": Plot all path segments from all band structures (default)
+            - "union": Plot all path segments from all band structures
             - "intersection": Only plot segments common to all band structures
-            - "strict": Raise error if paths don't match exactly
+            - "strict": Raise error if paths don't match exactly (default)
         shaded_ys (dict[tuple[float | str, float | str], dict]): Keys are y-ranges
             (min, max) tuple and values are kwargs for shaded regions created by
             fig.add_hrect(). Defaults to single entry (0, "y_min"):
