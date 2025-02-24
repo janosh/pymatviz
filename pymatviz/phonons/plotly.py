@@ -60,12 +60,14 @@ def phonon_bands(
         band_structs: Single BandStructureSymmLine, PhononBandStructureSymmLine, or
             phonopy BandStructure object, or a dict with labels mapped to multiple such
             objects.
-        line_kwargs (dict | dict[str, dict] | Callable): Line style configuration.
-            Can be:
-            - A single dict applied to all lines
+        line_kwargs (dict | dict[str, dict] | Callable): Line style configuration. Can
+            be one of:
+            - A single dict applied to all lines with Plotly line properties
+              (e.g., dict(width=2, color="red", dash="solid"))
             - A dict with keys "acoustic" and "optical" containing style dicts for each
               mode type
-            - A callable taking (band_data, band_idx) and returning a style dict
+            - A callable taking (frequencies: np.ndarray, band_idx: int) and returning
+              a style dict
             Common style options include color, width, dash. Defaults to None.
         branches (Sequence[str]): Branches to plot. Defaults to empty tuple, meaning all
             branches are plotted.
@@ -85,6 +87,10 @@ def phonon_bands(
 
     Returns:
         go.Figure: Plotly figure object.
+
+    Raises:
+        TypeError: If band_structs is not a PhononBandStructureSymmLine, phonopy
+            BandStructure or dict of these.
     """
     # Convert input to dict if single band structure
     if not isinstance(band_structs, dict):
@@ -552,6 +558,9 @@ def phonon_bands_and_dos(
 
     Returns:
         go.Figure: Plotly figure object.
+
+    Raises:
+        ValueError: If band_structs and doses keys don't match.
     """
     if not isinstance(band_structs, dict):  # normalize input to dictionary
         band_structs = {"": band_structs}
