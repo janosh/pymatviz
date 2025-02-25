@@ -11,7 +11,7 @@
 - normalize_to_dict: Normalize object or dict/list/tuple of them into to a dict.
 - patch_dict: Context manager to temporarily patch the specified keys in a
     dictionary and restore it to its original state on context exit.
-- si_fmt: Convert large numbers into human readable format using SI prefixes.
+- si_fmt: Convert large numbers into human readable format using SI suffixes.
 """
 
 from __future__ import annotations
@@ -328,7 +328,7 @@ def si_fmt(
     binary: bool = False,
     decimal_threshold: float = 0.01,
 ) -> str:
-    """Convert large numbers into human readable format using SI prefixes.
+    """Convert large numbers into human readable format using SI suffixes.
 
     Supports binary (1024) and metric (1000) mode.
 
@@ -357,7 +357,7 @@ def si_fmt(
 
     if abs(val) >= 1:
         # 1, Kilo, Mega, Giga, Tera, Peta, Exa, Zetta, Yotta
-        for _scale in ("", "K", "M", "G", "T", "P", "E", "Z", "Y"):
+        for _scale in ("", "k", "M", "G", "T", "P", "E", "Z", "Y"):
             if abs(val) < factor:
                 break
             val /= factor
