@@ -1,3 +1,9 @@
+"""The WBM dataset named after the author initials was published in
+https://nature.com/articles/s41524-020-00481-6.
+
+See also https://matbench-discovery.materialsproject.org/data.
+"""
+
 # %%
 import pandas as pd
 import plotly.express as px

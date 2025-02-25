@@ -57,6 +57,7 @@ test = [
     "pytest>=8",
 ]
 brillouin = ["seekpath>=2.1"]
+symmetry = ["moyopy>=0.4"]
 
 [tool.setuptools.packages.find]
 include = ["pymatviz*"]

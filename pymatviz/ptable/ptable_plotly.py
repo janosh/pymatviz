@@ -22,6 +22,7 @@ from pymatviz.typing import (
     ElemValues,
 )
 from pymatviz.utils import df_ptable
+from pymatviz.utils.data import si_fmt
 
 
 if TYPE_CHECKING:
@@ -292,6 +293,8 @@ def ptable_heatmap_plotly(
 
     import plotly.figure_factory as ff  # slow import
 
+    cbar_settings = _get_colorbar_settings(colorbar, font_size=font_size, scale=scale)
+
     fig = ff.create_annotated_heatmap(
         car_multiplier * heatmap_values,
         annotation_text=tile_texts,
@@ -305,6 +308,7 @@ def ptable_heatmap_plotly(
         zauto=False,  # Disable auto-scaling
         zmin=zmin * car_multiplier,
         zmax=zmax * car_multiplier,
+        colorbar=cbar_settings,
         **kwargs,
     )
 
@@ -370,12 +374,11 @@ def ptable_heatmap_plotly(
         orig_min = np.floor(min(non_nan_values))
         orig_max = np.ceil(max(non_nan_values))
         tick_values = np.logspace(orig_min, orig_max, num=10, endpoint=True)
-
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
 
         colorbar = dict(
             tickvals=np.log10(tick_values),
-            ticktext=[f"{v * car_multiplier:.2g}" for v in tick_values],
+            ticktext=[si_fmt(v * car_multiplier, fmt=".0f") for v in tick_values],
             **colorbar,
         )
 
@@ -383,7 +386,10 @@ def ptable_heatmap_plotly(
     if heat_mode == "percent" and (cbar_title := colorbar.get("title")):
         colorbar["title"] = f"{cbar_title} (%)"
 
-    fig.update_traces(colorbar=dict(lenmode="fraction", thickness=15, **colorbar))
+    cbar_settings = _get_colorbar_settings(colorbar, font_size=font_size, scale=scale)
+
+    if show_scale:
+        fig.update_traces(colorbar=cbar_settings)
 
     return fig
 
@@ -669,6 +675,18 @@ def ptable_hists_plotly(
     ) | (x_axis_kwargs or {})
     fig.update_xaxes(**x_axis_kwargs)
 
+    if colorbar is not False:
+        cbar_settings = _get_colorbar_settings(
+            colorbar or {}, font_size=font_size, scale=scale
+        )
+
+        for trace in fig.data:
+            if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
+                trace.marker.colorbar = cbar_settings
+
+        if log:
+            fig.update_xaxes(tickformat=".1~s")
+
     return fig
 
 
@@ -685,6 +703,10 @@ def _add_colorbar_trace(
     # For callable colorscales, sample at endpoints to create a 2-point colorscale
     if callable(colorscale):
         colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]  # type: ignore[assignment]
+
+    # Ensure tickformat is included in colorbar settings
+    if "tickformat" not in colorbar:
+        colorbar["tickformat"] = ".1~s"  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
 
     marker = dict(
         size=0,
@@ -725,6 +747,7 @@ def _get_colorbar_settings(
         lenmode="fraction",
         thickness=15,
         title_font_size=scale * 1.2 * (font_size or 12),
+        tickformat=".1~s",  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
     ) | (colorbar or {})
 
     # Only apply orientation-specific defaults for values not set by user
@@ -1146,6 +1169,7 @@ def ptable_heatmap_splits_plotly(
 
         # Add hover data
         elem_name = df_ptable.loc[symbol, "name"]
+        split_name: str | None  # for mypy
         if hover_template is not None:
             # Use custom hover template
             split_values = []
@@ -1281,6 +1305,28 @@ def ptable_heatmap_splits_plotly(
                 scale=scale,
             )
             _add_colorbar_trace(fig, cscale, cmin, cmax, cbar_settings)  # type: ignore[arg-type]
+
+    # Apply SI suffixes to all colorbars
+    if colorbar is not False:
+        for idx, trace in enumerate(fig.data):
+            if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
+                # Get the appropriate colorbar settings for this split
+                split_idx = idx % n_splits
+                split_name = split_labels[split_idx] if split_labels else None
+                cb = (
+                    colorbars[split_idx]
+                    if isinstance(colorbar, Sequence)
+                    else colorbars[0]
+                )
+                cbar_settings = _get_colorbar_settings(
+                    cb,
+                    split_idx=split_idx,
+                    n_splits=n_splits,
+                    split_name=split_name,
+                    font_size=font_size,
+                    scale=scale,
+                )
+                trace.marker.colorbar = cbar_settings
 
     return fig
 
@@ -1725,5 +1771,15 @@ def ptable_scatter_plotly(
             hoverinfo="none",
             showlegend=False,
         )
+
+    # Apply colorbar settings
+    if colorbar is not False and has_numeric_colors:
+        cbar_settings = _get_colorbar_settings(
+            colorbar or {}, font_size=font_size, scale=scale
+        )
+
+        for trace in fig.data:
+            if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
+                trace.marker.colorbar = cbar_settings
 
     return fig

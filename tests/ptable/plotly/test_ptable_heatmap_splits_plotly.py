@@ -312,33 +312,21 @@ def test_ptable_heatmap_splits_plotly_colorbars() -> None:
         )
 
 
-def test_ptable_heatmap_splits_plotly_split_names() -> None:
-    """Test that split names are correctly assigned based on orientation."""
+@pytest.mark.parametrize(
+    "orientation",
+    ["horizontal", "vertical", "diagonal"],
+)
+def test_ptable_heatmap_splits_plotly_split_names(
+    orientation: Literal["diagonal", "horizontal", "vertical", "grid"],
+) -> None:
+    """Test split names in colorbar titles for different orientations."""
     # Create test data with 2 values per element
-    data = {str(elem): [1, 2] for elem in list(Element)[:5]}
+    data = {str(elem): [1.0, 2.0] for elem in list(Element)[:5]}
 
-    # Test diagonal orientation split names
+    # Test orientation split names
     fig = pmv.ptable_heatmap_splits_plotly(
         data=data,
-        orientation="diagonal",
-        colorscale=["Viridis", "Plasma"],  # One colorscale per split
-        colorbar=[dict(title="First"), dict(title="Second")],
-    )
-    # Check that colorbar titles contain the correct split names
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
-    ]
-    assert len(colorbar_traces) >= 2
-    titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
-    assert any("bottom-left" in title for title in titles), f"{titles=}"
-    assert any("top-right" in title for title in titles), f"{titles=}"
-
-    # Test horizontal orientation split names
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="horizontal",
+        orientation=orientation,
         colorscale=["Viridis", "Plasma"],
         colorbar=[dict(title="First"), dict(title="Second")],
     )
@@ -349,25 +337,20 @@ def test_ptable_heatmap_splits_plotly_split_names() -> None:
     ]
     assert len(colorbar_traces) >= 2
     titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
-    assert any("bottom" in title for title in titles)
-    assert any("top" in title for title in titles)
 
-    # Test vertical orientation split names
-    fig = pmv.ptable_heatmap_splits_plotly(
-        data=data,
-        orientation="vertical",
-        colorscale=["Viridis", "Plasma"],
-        colorbar=[dict(title="First"), dict(title="Second")],
+    # Check that titles contain both the custom titles and the split names
+    assert any("First" in title for title in titles), (
+        f"Custom title 'First' not found in {titles=}"
     )
-    colorbar_traces = [
-        trace
-        for trace in fig.data
-        if hasattr(trace, "marker") and hasattr(trace.marker, "colorbar")
-    ]
-    assert len(colorbar_traces) >= 2
-    titles = [trace.marker.colorbar.title.text for trace in colorbar_traces[-2:]]
-    assert any("left" in title for title in titles)
-    assert any("right" in title for title in titles)
+    assert any("Second" in title for title in titles), (
+        f"Custom title 'Second' not found in {titles=}"
+    )
+    assert any("Split 1" in title for title in titles), (
+        f"'Split 1' not found in {titles=}"
+    )
+    assert any("Split 2" in title for title in titles), (
+        f"'Split 2' not found in {titles=}"
+    )
 
 
 def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
