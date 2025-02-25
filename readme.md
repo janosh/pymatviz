@@ -55,7 +55,7 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 See [`pymatviz/ptable/ptable_plotly.py`](pymatviz/ptable/ptable_plotly.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
 > [!WARNING]
-> Version 0.16.0 of `pymatviz` dropped the matplotlib-based functions in `ptable_matplotlib.py`. Please use the `plotly`-based functions shown below instead which have feature parity, interactivity and better test coverage.
+> Version 0.16.0 of `pymatviz` dropped the matplotlib-based functions in `ptable_matplotlib.py` in https://github.com/janosh/pymatviz/pull/270. Please use the `plotly`-based functions shown below instead which have feature parity, interactivity and better test coverage.
 
 |         [`ptable_heatmap_plotly(atomic_masses)`](assets/scripts/ptable_plotly/ptable_heatmap_plotly.py)         |    [`ptable_heatmap_plotly(compositions, log=True)`](assets/scripts/ptable_plotly/ptable_heatmap_plotly.py)     |
 | :-------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------: |
@@ -210,16 +210,12 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 See [`pymatviz/bar.py`](pymatviz/bar.py).
 
-| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](assets/scripts/bar/spacegroup_bar.py) |
-| :-------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------: |
-|                                     ![spg-num-hist-matplotlib]                                      |                                          ![spg-symbol-hist-matplotlib]                                          |
-|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py)   |
-|                                       ![spg-num-hist-plotly]                                        |                                            ![spg-symbol-hist-plotly]                                            |
+| [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py) |
+| :---------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------: |
+|                                     ![spg-num-hist-plotly]                                      |                                          ![spg-symbol-hist-plotly]                                          |
 
 [spg-symbol-hist-plotly]: assets/svg/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: assets/svg/spg-num-hist-plotly.svg
-[spg-num-hist-matplotlib]: assets/svg/spg-num-hist-matplotlib.svg
-[spg-symbol-hist-matplotlib]: assets/svg/spg-symbol-hist-matplotlib.svg
 
 ## Histograms
 
