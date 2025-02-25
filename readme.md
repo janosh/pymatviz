@@ -210,16 +210,12 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 See [`pymatviz/bar.py`](pymatviz/bar.py).
 
-| [`spacegroup_bar([65, 134, 225, ...], backend="matplotlib")`](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="matplotlib")`](assets/scripts/bar/spacegroup_bar.py) |
-| :-------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------: |
-|                                     ![spg-num-hist-matplotlib]                                      |                                          ![spg-symbol-hist-matplotlib]                                          |
-|   [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py)   |   [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py)   |
-|                                       ![spg-num-hist-plotly]                                        |                                            ![spg-symbol-hist-plotly]                                            |
+| [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](assets/scripts/bar/spacegroup_bar.py) |
+| :---------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------: |
+|                                     ![spg-num-hist-plotly]                                      |                                          ![spg-symbol-hist-plotly]                                          |
 
 [spg-symbol-hist-plotly]: assets/svg/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: assets/svg/spg-num-hist-plotly.svg
-[spg-num-hist-matplotlib]: assets/svg/spg-num-hist-matplotlib.svg
-[spg-symbol-hist-matplotlib]: assets/svg/spg-symbol-hist-matplotlib.svg
 
 ## Histograms
 
