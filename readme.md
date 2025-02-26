@@ -95,16 +95,18 @@ See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main
 
 ## Structure
 
-See [`pymatviz/structure_viz/plotly.py`](pymatviz/structure_viz/plotly.py). Currently structure plotting is only supported with `matplotlib` in 2d. 3d interactive plots (probably with `plotly`) are on the road map.
+See [`pymatviz/structure_viz/plotly.py`](pymatviz/structure_viz/plotly.py).
 
-|                 [`structure_2d(mp_19017)`](pymatviz/structure_viz/mpl.py)                 |                 [`structure_2d(mp_12712)`](pymatviz/structure_viz/mpl.py)                 |
-| :---------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------: |
-|                  ![struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]                  |                        ![struct-2d-mp-12712-Hf9Zr9Pd24-disordered]                        |
-| [`structure_2d_plotly(six_structs)`](assets/scripts/structure_viz/structure_2d_plotly.py) | [`structure_3d_plotly(six_structs)`](assets/scripts/structure_viz/structure_3d_plotly.py) |
-|                         ![matbench-phonons-structures-2d-plotly]                          |                         ![matbench-phonons-structures-3d-plotly]                          |
+| [`structure_3d_plotly(hea_structure)`](assets/scripts/structure_viz/structure_3d_plotly.py) | [`structure_3d_plotly(lco_supercell)`](assets/scripts/structure_viz/structure_2d_plotly.py) |
+| :-----------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
+|                                 ![hea-structure-3d-plotly]                                  |                                 ![lco-structure-3d-plotly]                                  |
+|  [`structure_2d_plotly(six_structs)`](assets/scripts/structure_viz/structure_2d_plotly.py)  |  [`structure_3d_plotly(six_structs)`](assets/scripts/structure_viz/structure_3d_plotly.py)  |
+|                          ![matbench-phonons-structures-2d-plotly]                           |                          ![matbench-phonons-structures-3d-plotly]                           |
 
 [matbench-phonons-structures-2d-plotly]: assets/svg/matbench-phonons-structures-2d-plotly.svg
 [matbench-phonons-structures-3d-plotly]: assets/svg/matbench-phonons-structures-3d-plotly.svg
+[hea-structure-3d-plotly]: assets/svg/hea-structure-3d-plotly.svg
+[lco-structure-3d-plotly]: assets/svg/lco-structure-3d-plotly.svg
 
 ## Brillouin Zone
 
