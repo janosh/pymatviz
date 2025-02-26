@@ -604,31 +604,46 @@ def draw_bonds(
     col: int | None = None,
     scene: str | None = None,
     visible_image_atoms: set[tuple[float, float, float]] | None = None,
+    rotation_matrix: np.ndarray | None = None,
 ) -> None:
     """Draw bonds between atoms in the structure."""
     default_bond_kwargs = dict(color="white", width=4)
     bond_kwargs = default_bond_kwargs | (bond_kwargs or {})
 
-    for i, site in enumerate(structure):
-        neighbors = nn.get_nn_info(structure, i)
+    for idx, site in enumerate(structure):
+        neighbors = nn.get_nn_info(structure, idx)
         for neighbor in neighbors:
             end_site = neighbor["site"]
-            end_coords = tuple(end_site.coords)
 
             # Check if the end site is within the unit cell or a visible image atom
             is_in_unit_cell = all(0 <= c < 1 for c in end_site.frac_coords)
+
+            # For 2D plots with rotation, we need to apply the same rotation to the end
+            # site coordinates before checking if they're in visible_image_atoms
+            if not is_3d and rotation_matrix is not None:
+                end_coords = tuple(np.dot(end_site.coords, rotation_matrix))
+            else:
+                end_coords = tuple(end_site.coords)
+
             is_visible_image = visible_image_atoms and end_coords in visible_image_atoms
 
+            # Only draw bonds to sites that are either within the unit cell or are
+            # visible image atoms
             if is_in_unit_cell or is_visible_image:
                 start = site.coords
                 end = end_site.coords
+
+                # Apply rotation to start and end points for 2D plots
+                if not is_3d and rotation_matrix is not None:
+                    start = np.dot(start, rotation_matrix)
+                    end = np.dot(end, rotation_matrix)
 
                 trace_kwargs = dict(
                     mode="lines",
                     line=bond_kwargs,
                     showlegend=False,
                     hoverinfo="skip",
-                    name=f"bond {i}-{neighbor['site_index']}",
+                    name=f"bond {idx}-{neighbor['site_index']}",
                 )
 
                 if is_3d:
