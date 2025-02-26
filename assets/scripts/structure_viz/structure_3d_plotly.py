@@ -11,10 +11,14 @@ df_phonons = load_dataset("matbench_phonons")
 
 # %% 3d example
 fig = pmv.structure_3d_plotly(
-    df_phonons[Key.structure].head(6).to_dict(),
+    {
+        key: struct.make_supercell(2, in_place=False)
+        for key, struct in df_phonons[Key.structure].head(6).to_dict().items()
+    },
     elem_colors=ElemColorScheme.jmol,
     # show_unit_cell={"edge": dict(color="white", width=1.5)},
     hover_text=SiteCoords.cartesian_fractional,
+    show_bonds=True,
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")

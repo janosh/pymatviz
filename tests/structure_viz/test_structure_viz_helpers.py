@@ -179,13 +179,14 @@ def test_draw_site(
     is_image: bool,
     hover_text: SiteCoords | Callable[[PeriodicSite], str],
 ) -> None:
+    """Test site drawing with various settings."""
     structure = structures[0]
     site = structure[0]
     coords = site.coords
     elem_colors = get_elem_colors(ElemColorScheme.jmol)
     atomic_radii = get_atomic_radii(None)
 
-    draw_site(
+    draw_site(  # Test with default site labels
         mock_figure,
         site,
         coords,
@@ -201,9 +202,8 @@ def test_draw_site(
         hover_text=hover_text,
     )
 
-    # Test with custom site labels
     custom_labels = {site.species_string: "Custom"}
-    draw_site(
+    draw_site(  # Test with custom site labels
         mock_figure,
         site,
         coords,
@@ -219,18 +219,18 @@ def test_draw_site(
         hover_text=hover_text,
     )
 
-    # check if the hover text is generated correctly
+    # Verify hover text format
+    expected_text = ""
     if callable(hover_text):
-        assert "Custom:" in mock_figure.last_trace_kwargs.get("hovertext", "")
+        expected_text = "Custom:"
     elif hover_text == SiteCoords.cartesian:
-        assert "Coordinates (0, 0, 0)" in mock_figure.last_trace_kwargs["hovertext"]
+        expected_text = "Coordinates (0, 0, 0)"
     elif hover_text == SiteCoords.fractional:
-        assert "Coordinates [0, 0, 0]" in mock_figure.last_trace_kwargs["hovertext"]
+        expected_text = "Coordinates [0, 0, 0]"
     elif hover_text == SiteCoords.cartesian_fractional:
-        assert (
-            "Coordinates (0, 0, 0) [0, 0, 0]"
-            in mock_figure.last_trace_kwargs["hovertext"]
-        )
+        expected_text = "Coordinates (0, 0, 0) [0, 0, 0]"
+
+    assert expected_text in mock_figure.last_trace_kwargs["hovertext"]
 
 
 @pytest.mark.parametrize(
@@ -276,13 +276,12 @@ def test_constants() -> None:
 @pytest.mark.parametrize(
     ("start", "vector", "is_3d", "arrow_kwargs", "expected_traces"),
     [
-        # One for the line, one for the cone
         (
             [0, 0, 0],
             [1, 1, 1],
             True,
             {"color": "red", "width": 2, "arrow_head_length": 0.5},
-            2,
+            2,  # One for the line, one for the cone
         ),
         # One scatter trace for 2D
         ([0, 0], [1, 1], False, {"color": "blue", "width": 3}, 1),
@@ -299,13 +298,18 @@ def test_draw_vector(
     arrow_kwargs: dict[str, Any],
     expected_traces: int,
 ) -> None:
-    fig, start, vector = go.Figure(), np.array(start), np.array(vector)
+    """Test vector drawing with various settings."""
+    fig = go.Figure()
+    start, vector = np.array(start), np.array(vector)
+
+    # Draw vector and check trace count
     initial_trace_count = len(fig.data)
     draw_vector(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
     assert len(fig.data) - initial_trace_count == expected_traces
 
+    # Check trace properties based on dimensionality
     if is_3d:
-        # Check 3D arrow properties
+        # 3D arrow properties (line + cone)
         line_trace = fig.data[-2]
         cone_trace = fig.data[-1]
         assert line_trace.mode == "lines"
@@ -315,7 +319,7 @@ def test_draw_vector(
         assert cone_trace.colorscale[0][1] == arrow_kwargs["color"]
         assert cone_trace.sizeref == arrow_kwargs.get("arrow_head_length", 0.8)
     else:
-        # Check 2D arrow properties
+        # 2D arrow properties
         scatter_trace = fig.data[-1]
         assert scatter_trace.mode == "lines+markers"
         assert scatter_trace.marker.color == arrow_kwargs["color"]
@@ -334,15 +338,13 @@ def test_draw_vector(
 
 
 def test_draw_vector_default_values() -> None:
+    """Test vector drawing with default parameters."""
     fig = go.Figure()
-    start = np.array([0, 0, 0])
-    vector = np.array([1, 1, 1])
-    draw_vector(fig, start, vector, is_3d=True)
-
+    start, vector = np.zeros(3), np.ones(3)
+    draw_vector(fig, start=start, vector=vector, is_3d=True)
     assert len(fig.data) == 2
-    line_trace = fig.data[0]
-    cone_trace = fig.data[1]
 
+    line_trace, cone_trace = fig.data
     assert line_trace.line.color == "white"
     assert line_trace.line.width == 5
     assert cone_trace.sizeref == 0.8
@@ -353,6 +355,7 @@ def test_draw_vector_default_values() -> None:
 
 @pytest.fixture
 def test_structures() -> list[Structure]:
+    """Create test structures with various site properties."""
     lattice = Lattice.cubic(5.0)
     struct1 = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     struct1.add_site_property("force", [[1, 1, 1], [-1, -1, -1]])
@@ -366,52 +369,55 @@ def test_structures() -> list[Structure]:
 
 
 @pytest.mark.parametrize(
-    ("prop_keys", "expected_result"),
+    ("prop_keys", "expected_result", "filter_callback", "warn_if_none"),
     [
-        (["force", "magmom"], "force"),
-        (["magmom", "force"], "magmom"),
-        (["energy"], "energy"),
-        (["non_existent"], None),
-        ([], None),
+        (["force", "magmom"], "force", None, False),
+        (["magmom", "force"], "magmom", None, False),
+        (["energy"], "energy", None, False),
+        (["non_existent"], None, None, False),
+        ([], None, None, False),
+        (
+            ["charge", "magmom"],
+            "charge",
+            lambda _p, v: isinstance(v, int) and v > 0,
+            False,
+        ),
+        (["non_existent"], None, None, True),
     ],
 )
 def test_get_first_matching_site_prop(
-    test_structures: list[Structure], prop_keys: list[str], expected_result: str | None
-) -> None:
-    assert get_first_matching_site_prop(test_structures, prop_keys) == expected_result
-
-
-def test_get_first_matching_site_prop_with_filter(
     test_structures: list[Structure],
+    prop_keys: list[str],
+    expected_result: str | None,
+    filter_callback: Callable[[str, Any], bool] | None,
+    warn_if_none: bool,
 ) -> None:
-    def filter_positive(_prop: str, value: Any) -> bool:
-        return isinstance(value, int | float) and value > 0
-
-    assert (
-        get_first_matching_site_prop(
-            test_structures, ["charge", "magmom"], filter_callback=filter_positive
+    """Test finding the first matching site property with various parameters."""
+    if warn_if_none and expected_result is None:
+        with pytest.warns(UserWarning, match="None of prop_keys="):
+            result = get_first_matching_site_prop(
+                test_structures,
+                prop_keys,
+                warn_if_none=warn_if_none,
+                filter_callback=filter_callback,
+            )
+    else:
+        result = get_first_matching_site_prop(
+            test_structures,
+            prop_keys,
+            warn_if_none=warn_if_none,
+            filter_callback=filter_callback,
         )
-        == "charge"
-    )
 
-
-def test_get_first_matching_site_prop_warning(test_structures: list[Structure]) -> None:
-    with pytest.warns(UserWarning, match="None of prop_keys="):
-        get_first_matching_site_prop(
-            test_structures, ["non_existent"], warn_if_none=True
-        )
-
-    assert (
-        get_first_matching_site_prop(
-            test_structures, ["non_existent"], warn_if_none=False
-        )
-        is None
-    )
+    assert result == expected_result
 
 
 def test_get_first_matching_site_prop_edge_cases() -> None:
+    """Test edge cases for get_first_matching_site_prop."""
+    # Empty structure list
     assert get_first_matching_site_prop([], ["force"]) is None
 
+    # Structure with multiple properties and complex filtering
     lattice = Lattice.cubic(5.0)
     empty_struct = Structure(lattice, ["Si"], [[0, 0, 0]])
     assert get_first_matching_site_prop([empty_struct], ["force"]) is None
@@ -426,6 +432,7 @@ def test_get_first_matching_site_prop_edge_cases() -> None:
         == "force"
     )
 
+    # Test with complex filter
     def complex_filter(prop: str, value: Any) -> bool:
         if prop == "force":
             return all(abs(v) > 0.5 for v in value)
@@ -441,28 +448,30 @@ def test_get_first_matching_site_prop_edge_cases() -> None:
     )
 
 
-# Add this new test function for get_site_hover_text
 @pytest.mark.parametrize(
     ("hover_text", "expected_output"),
     [
-        (SiteCoords.cartesian, "(0, 0, 0)"),
-        (SiteCoords.fractional, "[0, 0, 0]"),
-        (SiteCoords.cartesian_fractional, "(0, 0, 0) [0, 0, 0]"),
+        (SiteCoords.cartesian, "<b>Site: Si1</b><br>Coordinates (0, 0, 0)"),
+        (SiteCoords.fractional, "<b>Site: Si1</b><br>Coordinates [0, 0, 0]"),
+        (
+            SiteCoords.cartesian_fractional,
+            "<b>Site: Si1</b><br>Coordinates (0, 0, 0) [0, 0, 0]",
+        ),
         (lambda site: f"Custom: {site.species_string}", "Custom: Si"),
     ],
 )
 def test_get_site_hover_text(
     hover_text: SiteCoords | Callable[[PeriodicSite], str], expected_output: str
 ) -> None:
+    """Test hover text generation for sites with various formats."""
     lattice = Lattice.cubic(1.0)
     site = PeriodicSite("Si", [0, 0, 0], lattice)
     result = get_site_hover_text(site, hover_text, site.species)
-    if isinstance(hover_text, str):
-        expected_output = f"<b>Site: Si1</b><br>Coordinates {expected_output}"
     assert result == expected_output
 
 
 def test_get_site_hover_text_invalid_template() -> None:
+    """Test error handling for invalid hover text templates."""
     lattice = Lattice.cubic(1.0)
     site = PeriodicSite("Si", [0, 0, 0], lattice)
     with pytest.raises(ValueError, match="Invalid hover_text="):
@@ -485,54 +494,66 @@ def test_get_site_hover_text_invalid_template() -> None:
 def test_draw_unit_cell(
     structures: list[Structure], is_3d: bool, unit_cell_kwargs: dict[str, Any]
 ) -> None:
-    structure = structures[0]  # Use the first structure from the fixture
+    """Test unit cell drawing with various parameters."""
+    structure = structures[0]
     fig = go.Figure()
 
     draw_unit_cell(fig, structure, unit_cell_kwargs, is_3d=is_3d)
 
-    # Check if the correct number of traces were added (12 edges + 8 corners = 20)
-    assert len(fig.data) == 20
-    trace_types = {*map(type, fig.data)}
-    assert trace_types == {go.Scatter3d} if is_3d else {go.Scatter}
-    trace_modes = [trace.mode for trace in fig.data]
-    assert trace_modes.count("lines") == 12
-    assert trace_modes.count("markers") == 8
-
-    # Check if all traces are of the correct type
+    # Check trace count and types
+    n_edge_traces, n_node_traces = 12, 8
+    assert len(fig.data) == n_edge_traces + n_node_traces
     expected_trace_type = go.Scatter3d if is_3d else go.Scatter
     assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
 
-    # Check if edge properties are applied correctly
-    if "edge" in unit_cell_kwargs:
-        edge_trace = fig.data[0]
-        for key, value in unit_cell_kwargs["edge"].items():
-            assert getattr(edge_trace.line, key) == value
+    # Check trace modes
+    edge_traces = fig.data[:n_edge_traces]
+    node_traces = fig.data[n_edge_traces:]
+    assert all(trace.mode == "lines" for trace in edge_traces)
+    assert all(trace.mode == "markers" for trace in node_traces)
 
-    # Check if node properties are applied correctly
+    # Check if custom properties were applied
+    if "edge" in unit_cell_kwargs:
+        for trace in edge_traces:
+            for key, value in unit_cell_kwargs["edge"].items():
+                assert getattr(trace.line, key) == value
+
     if "node" in unit_cell_kwargs:
-        node_trace = fig.data[12]  # First node trace
-        for key, value in unit_cell_kwargs["node"].items():
-            assert getattr(node_trace.marker, key) == value
+        for trace in node_traces:
+            for key, value in unit_cell_kwargs["node"].items():
+                assert getattr(trace.marker, key) == value
 
 
 def test_draw_unit_cell_hover_text(structures: list[Structure]) -> None:
-    structure = structures[0]  # Use the first structure from the fixture
+    """Test hover text for unit cell elements."""
+    structure = structures[0]
     fig = go.Figure()
     draw_unit_cell(fig, structure, {}, is_3d=True)
 
-    # Check hover text for an edge
-    edge_trace = fig.data[0]
-    hover_text = edge_trace.hovertext[1]  # Middle point of the edge
-    assert "Length:" in hover_text
-    assert "Start:" in hover_text
-    assert "End:" in hover_text
+    # Check hover text content
+    edge_trace = fig.data[0]  # First edge
+    assert "Length:" in edge_trace.hovertext[1]
+    assert "Start:" in edge_trace.hovertext[1]
+    assert "End:" in edge_trace.hovertext[1]
 
-    # Check hover text for a corner
-    corner_trace = fig.data[12]  # First corner trace
-    hover_text = corner_trace.hovertext
-    assert "α =" in hover_text  # noqa: RUF001
-    assert "β =" in hover_text
-    assert "γ =" in hover_text  # noqa: RUF001
+    corner_trace = fig.data[12]  # First corner
+    assert "α =" in corner_trace.hovertext  # noqa: RUF001
+    assert "β =" in corner_trace.hovertext
+    assert "γ =" in corner_trace.hovertext  # noqa: RUF001
+
+
+@pytest.fixture
+def bond_test_structure() -> Structure:
+    """Simple cubic structure for bond tests."""
+    lattice = Lattice.cubic(3.0)
+    return Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+
+@pytest.fixture
+def bond_test_structure_extended() -> Structure:
+    """Structure with atoms closer to the cell boundary."""
+    lattice = Lattice.cubic(3.0)
+    return Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.9, 0.9, 0.9]])
 
 
 @pytest.mark.parametrize(
@@ -550,57 +571,150 @@ def test_draw_unit_cell_hover_text(structures: list[Structure]) -> None:
     ],
 )
 def test_draw_bonds(
+    bond_test_structure: Structure,
     is_3d: bool,
     bond_kwargs: dict[str, Any] | None,
     visible_image_atoms: set[tuple[float, float, float]] | None,
 ) -> None:
-    # Create a simple structure
-    lattice = Lattice.cubic(3.0)
-    structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-    # Create a figure and a NearNeighbors object
+    """Test basic bond drawing functionality with various parameters."""
     fig = go.Figure()
-    nn = CrystalNN()
+    nn_strat = CrystalNN()
 
-    # Draw bonds
     draw_bonds(
         fig=fig,
-        structure=structure,
-        nn=nn,
+        structure=bond_test_structure,
+        nn=nn_strat,
         is_3d=is_3d,
         bond_kwargs=bond_kwargs,
         visible_image_atoms=visible_image_atoms,
     )
 
-    # Check if bonds were added
+    # Verify bonds were created with correct properties
     assert len(fig.data) > 0
-
-    # Check if all traces are of the correct type
     expected_trace_type = go.Scatter3d if is_3d else go.Scatter
     assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
 
-    # Check if custom bond properties were applied
+    # Check custom bond styling
     if bond_kwargs:
         for trace in fig.data:
             for key, value in bond_kwargs.items():
                 assert getattr(trace.line, key) == value
 
-    # Check if bonds to visible image atoms were added when applicable
+    # Check bonds to image atoms
     if visible_image_atoms:
-        max_coords = max(
-            max(trace.x + trace.y + (trace.z if is_3d else ())) for trace in fig.data
-        )
-        assert max_coords >= 1.5  # Should be greater than half the lattice parameter
+        if is_3d:
+            max_coords = max(
+                max(list(trace.x) + list(trace.y) + list(trace.z)) for trace in fig.data
+            )
+        else:
+            max_coords = max(max(list(trace.x) + list(trace.y)) for trace in fig.data)
+        assert max_coords >= 1.5
+        assert len(fig.data) > 1  # More than just central bond
 
-    # Additional checks
+    # Verify trace properties
     for trace in fig.data:
         assert trace.mode == "lines"
         assert trace.showlegend is False
         assert trace.hoverinfo == "skip"
 
-    # Check the number of bonds (should be at least 1 for the central bond)
-    assert len(fig.data) >= 1
 
-    # If visible_image_atoms is provided, check for additional bonds
-    if visible_image_atoms:
-        assert len(fig.data) > 1  # Should have more than just the central bond
+@pytest.mark.parametrize(
+    ("test_case", "is_3d", "rotation_angle", "image_coords", "check_outside_cell"),
+    [
+        ("rotation_only", False, np.pi / 4, None, False),
+        ("image_filtering", True, None, (3.0, 3.0, 3.0), True),
+        ("rotation_with_image", False, np.pi / 6, (3.0, 3.0, 3.0), True),
+        ("no_image_atoms", True, None, None, False),
+    ],
+)
+def test_draw_bonds_advanced(
+    bond_test_structure: Structure,
+    bond_test_structure_extended: Structure,
+    test_case: str,
+    is_3d: bool,
+    rotation_angle: float | None,
+    image_coords: tuple[float, float, float] | None,
+    check_outside_cell: bool,
+) -> None:
+    """Test advanced bond drawing scenarios with rotation and image atoms."""
+    fig = go.Figure()
+    nn_strat = CrystalNN()
+
+    # Use extended structure for cases that need to check bonds to image atoms
+    structure = (
+        bond_test_structure_extended if check_outside_cell else bond_test_structure
+    )
+
+    # Setup rotation matrix if needed
+    rotation_matrix = None
+    if rotation_angle is not None:
+        rotation_matrix = [
+            [np.cos(rotation_angle), -np.sin(rotation_angle), 0],
+            [np.sin(rotation_angle), np.cos(rotation_angle), 0],
+            [0, 0, 1],
+        ]
+
+    # Setup visible image atoms
+    visible_image_atoms = None
+    if image_coords is not None:
+        if rotation_matrix is not None and rotation_angle is not None:
+            # Apply rotation to image coordinates
+            rotated_coords = np.dot(np.array(image_coords), rotation_matrix)
+            visible_image_atoms = {tuple(rotated_coords)}
+        else:
+            visible_image_atoms = {image_coords}
+    elif test_case == "no_image_atoms":
+        visible_image_atoms = set()  # Empty set
+
+    # Draw bonds
+    draw_bonds(
+        fig=fig,
+        structure=structure,
+        nn=nn_strat,
+        is_3d=is_3d,
+        rotation_matrix=rotation_matrix,
+        visible_image_atoms=visible_image_atoms,
+    )
+
+    # Common assertions
+    assert len(fig.data) > 0
+    expected_trace_type = go.Scatter3d if is_3d else go.Scatter
+    assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
+
+    # Test-specific assertions
+    if test_case == "rotation_only":
+        # Check rotation was applied
+        original_x, original_y = structure[0].coords[0], structure[0].coords[1]
+        for trace in fig.data:
+            assert not all(x == original_x for x in trace.x)
+            assert not all(y == original_y for y in trace.y)
+
+    elif test_case == "image_filtering" and image_coords is not None:
+        # Check bonds only go to specified image atoms
+        for trace in fig.data:
+            max_x, max_y, max_z = max(trace.x), max(trace.y), max(trace.z)
+            if max_x > 3.0 or max_y > 3.0 or max_z > 3.0:
+                assert any(
+                    abs(x - image_coords[0]) < 0.01
+                    and abs(y - image_coords[1]) < 0.01
+                    and abs(z - image_coords[2]) < 0.01
+                    for x, y, z in zip(trace.x, trace.y, trace.z, strict=False)
+                )
+
+    elif test_case == "rotation_with_image":
+        # Check bonds are rotated and only go to visible image atoms
+        rotated_coords = tuple(np.dot(np.array(image_coords), rotation_matrix))
+        for trace in fig.data:
+            if max(trace.x) > 3.0 or max(trace.y) > 3.0:
+                assert any(
+                    abs(x - rotated_coords[0]) < 0.01
+                    and abs(y - rotated_coords[1]) < 0.01
+                    for x, y in zip(trace.x, trace.y, strict=False)
+                )
+
+    elif test_case == "no_image_atoms":
+        # Check no bonds go outside unit cell
+        for trace in fig.data:
+            assert max(trace.x) <= 3.1
+            assert max(trace.y) <= 3.1
+            assert max(trace.z) <= 3.1
