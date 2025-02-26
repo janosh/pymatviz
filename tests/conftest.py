@@ -169,3 +169,24 @@ def phonopy_nacl() -> Phonopy:
         symmetrize_fc=False,
         produce_fc=True,
     )
+
+
+@pytest.fixture
+def fe3co4_disordered() -> Structure:
+    """Disordered Fe3C-O2 structure without site properties. This structure has
+    disordered sites with Fe:C ratio of 3:1."""
+    return Structure(
+        lattice=np.eye(3) * 5,
+        species=[{"Fe": 0.75, "C": 0.25}, "O"],
+        coords=[[0, 0, 0], [0.5, 0.5, 0.5]],
+    )
+
+
+@pytest.fixture
+def fe3co4_disordered_with_props(fe3co4_disordered: Structure) -> Structure:
+    """Disordered Fe3C-O2 structure with magnetic moment and force site properties."""
+    site_props = {
+        "magmom": [[0, 0, 1], [0, 0, -1]],
+        "force": [[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]],
+    }
+    return fe3co4_disordered.copy(site_properties=site_props)

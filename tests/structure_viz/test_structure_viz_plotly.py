@@ -20,15 +20,7 @@ if TYPE_CHECKING:
     from pymatgen.core import PeriodicSite
 
 COORDS = [[0, 0, 0], [0.5, 0.5, 0.5]]
-DISORDERED_STRUCT = Structure(
-    lattice := np.eye(3) * 5,
-    species=[{"Fe": 0.75, "C": 0.25}, "O"],
-    coords=COORDS,
-    site_properties={
-        "magmom": [[0, 0, 1], [0, 0, -1]],  # Vector values for magmom
-        "force": [[1.0, 1.0, 1.0], [-1.0, -1.0, -1.0]],
-    },
-)
+lattice_cubic = 5 * np.eye(3)  # 5 Å cubic lattice
 
 
 @pytest.mark.parametrize(
@@ -111,9 +103,11 @@ DISORDERED_STRUCT = Structure(
         },
     ],
 )
-def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
+def test_structure_2d_plotly(
+    kwargs: dict[str, Any], fe3co4_disordered_with_props: Structure
+) -> None:
     """Test structure_2d_plotly with various parameter combinations."""
-    fig = pmv.structure_2d_plotly(DISORDERED_STRUCT, **kwargs)
+    fig = pmv.structure_2d_plotly(fe3co4_disordered_with_props, **kwargs)
     assert isinstance(fig, go.Figure)
 
     # Check that all traces are Scatter (2D)
@@ -151,7 +145,7 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
         if isinstance(site_labels, dict):
             assert any(text in site_trace.text for text in site_labels.values())
         elif site_labels in ("symbol", "species"):
-            assert len(site_trace.text) == len(DISORDERED_STRUCT)
+            assert len(site_trace.text) == len(fe3co4_disordered_with_props)
 
     # Check for sites and arrows
     if show_sites:
@@ -174,13 +168,13 @@ def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
 
 
 def test_structure_2d_plotly_multiple() -> None:
-    struct1 = Structure(lattice, ["Fe", "O"], coords=COORDS)
+    struct1 = Structure(lattice_cubic, ["Fe", "O"], coords=COORDS)
     struct1.properties = {"id": "struct1"}
-    struct2 = Structure(lattice, ["Co", "O"], coords=COORDS)
+    struct2 = Structure(lattice_cubic, ["Co", "O"], coords=COORDS)
     struct2.properties = {Key.mat_id: "struct2"}
-    struct3 = Structure(lattice, ["Ni", "O"], coords=COORDS)
+    struct3 = Structure(lattice_cubic, ["Ni", "O"], coords=COORDS)
     struct3.properties = {"ID": "struct3", "name": "nickel oxide"}
-    struct4 = Structure(lattice, ["Cu", "O"], coords=COORDS)
+    struct4 = Structure(lattice_cubic, ["Cu", "O"], coords=COORDS)
 
     # Test dict[str, Structure]
     structs_dict = {
@@ -249,8 +243,7 @@ def test_structure_2d_plotly_invalid_input() -> None:
         pmv.structure_2d_plotly([])
 
     # Test with invalid rotation string
-    lattice = np.eye(3) * 3.0
-    struct = Structure(lattice, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
     with pytest.raises(ValueError, match="could not convert string to float: "):
         pmv.structure_2d_plotly(struct, rotation="invalid_rotation")
@@ -316,8 +309,10 @@ def test_structure_2d_plotly_invalid_input() -> None:
         },
     ],
 )
-def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
-    fig = pmv.structure_3d_plotly(DISORDERED_STRUCT, **kwargs)
+def test_structure_3d_plotly(
+    kwargs: dict[str, Any], fe3co4_disordered_with_props: Structure
+) -> None:
+    fig = pmv.structure_3d_plotly(fe3co4_disordered_with_props, **kwargs)
     assert isinstance(fig, go.Figure)
 
     # Check if the layout properties are set correctly
@@ -358,7 +353,7 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
                     text in site_trace.text for text in kwargs["site_labels"].values()
                 ), "Expected site labels not found in trace text"
             elif kwargs["site_labels"] in ("symbol", "species"):
-                assert len(site_trace.text) == len(DISORDERED_STRUCT), (
+                assert len(site_trace.text) == len(fe3co4_disordered_with_props), (
                     "Mismatch in number of site labels"
                 )
         else:
@@ -392,13 +387,13 @@ def test_structure_3d_plotly(kwargs: dict[str, Any]) -> None:
 
 
 def test_structure_3d_plotly_multiple() -> None:
-    struct1 = Structure(lattice, ["Fe", "O"], COORDS)
+    struct1 = Structure(lattice_cubic, ["Fe", "O"], COORDS)
     struct1.properties = {"id": "struct1"}
-    struct2 = Structure(lattice, ["Co", "O"], COORDS)
+    struct2 = Structure(lattice_cubic, ["Co", "O"], COORDS)
     struct2.properties = {Key.mat_id: "struct2"}
-    struct3 = Structure(lattice, ["Ni", "O"], COORDS)
+    struct3 = Structure(lattice_cubic, ["Ni", "O"], COORDS)
     struct3.properties = {"ID": "struct3", "name": "nickel oxide"}
-    struct4 = Structure(lattice, ["Cu", "O"], COORDS)
+    struct4 = Structure(lattice_cubic, ["Cu", "O"], COORDS)
 
     # Test dict[str, Structure]
     structs_dict = {
@@ -482,8 +477,8 @@ def test_structure_3d_plotly_invalid_input() -> None:
 def test_structure_3d_plotly_subplot_title_override(
     custom_title_dict: dict[str, str | float | dict[str, str | float]],
 ) -> None:
-    struct1 = Structure(lattice, ["Fe", "O"], COORDS)
-    struct2 = Structure(lattice, ["Co", "O"], COORDS)
+    struct1 = Structure(lattice_cubic, ["Fe", "O"], COORDS)
+    struct2 = Structure(lattice_cubic, ["Co", "O"], COORDS)
     structs_dict = {"struct1": struct1, "struct2": struct2}
 
     def custom_subplot_title(struct: Structure, key: str | int) -> dict[str, Any]:
@@ -532,7 +527,7 @@ def test_hover_text(
     plot_function: Callable[..., go.Figure],
     hover_text: SiteCoords | Callable[[PeriodicSite], str],
 ) -> None:
-    struct = Structure(lattice, ["Fe", "O"], COORDS)
+    struct = Structure(lattice_cubic, ["Fe", "O"], COORDS)
     fig = plot_function(struct, hover_text=hover_text)
 
     site_traces = [
@@ -606,8 +601,7 @@ def test_structure_plotly_show_bonds(
 ) -> None:
     """Test that bonds are drawn correctly when show_bonds is True."""
     # Create a simple structure with known bonding
-    lattice = np.eye(3) * 3.0
-    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
 
     # Test with show_bonds=True (default CrystalNN)
     fig = plot_function(struct, show_bonds=True)
@@ -639,8 +633,7 @@ def test_structure_plotly_show_bonds_custom_nn(
     from pymatgen.analysis.local_env import VoronoiNN
 
     # Create a simple structure with known bonding
-    lattice = np.eye(3) * 3.0
-    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
 
     # Use VoronoiNN instead of default CrystalNN
     nn = VoronoiNN()
@@ -661,8 +654,7 @@ def test_structure_plotly_show_bonds_custom_kwargs(
 ) -> None:
     """Test that bond_kwargs are applied correctly."""
     # Create a simple structure with known bonding
-    lattice = np.eye(3) * 3.0
-    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
 
     # Custom bond styling
     bond_kwargs = {"color": "red", "width": 2, "dash": "dot"}
@@ -688,8 +680,7 @@ def test_structure_plotly_show_bonds_with_image_sites(
 ) -> None:
     """Test that bonds are drawn correctly to visible image sites."""
     # Create a simple structure where bonds will cross unit cell boundaries
-    lattice = np.eye(3) * 3.0
-    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
+    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
 
     # Test with both show_bonds and show_image_sites enabled
     fig = plot_function(struct, show_bonds=True, show_image_sites=True)
@@ -718,8 +709,7 @@ def test_structure_plotly_no_bonds_to_hidden_sites(
 ) -> None:
     """Test that bonds are not drawn to sites that aren't visible."""
     # Create a simple structure
-    lattice = np.eye(3) * 3.0
-    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
+    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
 
     # Test with show_bonds but without show_image_sites
     fig = plot_function(struct, show_bonds=True, show_image_sites=False)
@@ -752,8 +742,7 @@ def test_structure_plotly_visible_image_atoms_population() -> None:
     """Test that the visible_image_atoms set is correctly populated and used for bond
     drawing."""
     # Create a simple structure where bonds will cross unit cell boundaries
-    lattice = np.eye(3) * 3.0
-    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
+    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
 
     # Test with both show_bonds and show_image_sites enabled
     fig = pmv.structure_3d_plotly(struct, show_bonds=True, show_image_sites=True)

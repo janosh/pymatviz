@@ -17,9 +17,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 COORDS = [[0, 0, 0], [0.5, 0.5, 0.5]]
-DISORDERED_STRUCT = Structure(
-    lattice := np.eye(3) * 5, species=[{"Fe": 0.75, "C": 0.25}, "O"], coords=COORDS
-)
 
 
 @pytest.mark.parametrize("radii", [None, 0.5])
@@ -34,9 +31,10 @@ def test_structure_2d(
     rotation: str,
     show_bonds: bool | NearNeighbors,
     standardize_struct: bool | None,
+    fe3co4_disordered: Structure,
 ) -> None:
     ax = pmv.structure_2d(
-        DISORDERED_STRUCT,
+        fe3co4_disordered,
         atomic_radii=radii,
         rotation=rotation,
         show_bonds=show_bonds,
@@ -53,15 +51,15 @@ def test_structure_2d(
     patch_counts = pd.Series(
         [type(patch).__name__ for patch in ax.patches]
     ).value_counts()
-    assert patch_counts["Wedge"] == len(DISORDERED_STRUCT.composition)
+    assert patch_counts["Wedge"] == len(fe3co4_disordered.composition)
 
     min_expected_n_patches = 182
     assert patch_counts["PathPatch"] > min_expected_n_patches
 
 
 @pytest.mark.parametrize("axis", [True, False, "on", "off", "square", "equal"])
-def test_structure_2d_axis(axis: str | bool) -> None:
-    ax = pmv.structure_2d(DISORDERED_STRUCT, axis=axis)
+def test_structure_2d_axis(axis: str | bool, fe3co4_disordered: Structure) -> None:
+    ax = pmv.structure_2d(fe3co4_disordered, axis=axis)
     assert isinstance(ax, plt.Axes)
     assert ax.axes.axison == (axis not in (False, "off"))
 
@@ -72,8 +70,9 @@ def test_structure_2d_axis(axis: str | bool) -> None:
 )
 def test_structure_2d_site_labels(
     site_labels: Literal[False, "symbol", "species"] | dict[str, str] | Sequence[str],
+    fe3co4_disordered: Structure,
 ) -> None:
-    ax = pmv.structure_2d(DISORDERED_STRUCT, site_labels=site_labels)
+    ax = pmv.structure_2d(fe3co4_disordered, site_labels=site_labels)
     assert isinstance(ax, plt.Axes)
     if site_labels is False:
         assert not ax.axes.texts
@@ -82,10 +81,10 @@ def test_structure_2d_site_labels(
         assert label in ("Fe", "O", "1.0", "Iron")
 
 
-def test_structure_2d_warns() -> None:
+def test_structure_2d_warns(fe3co4_disordered: Structure) -> None:
     # for sites with negative fractional coordinates
-    orig_coords = DISORDERED_STRUCT[0].frac_coords.copy()
-    DISORDERED_STRUCT[0].frac_coords = [-0.1, 0.1, 0.1]
+    orig_coords = fe3co4_disordered[0].frac_coords.copy()
+    fe3co4_disordered[0].frac_coords = [-0.1, 0.1, 0.1]
     standardize_struct = False
     try:
         with pytest.warns(
@@ -95,24 +94,24 @@ def test_structure_2d_warns() -> None:
                 f"{standardize_struct=}, you may want to set standardize_struct=True"
             ),
         ):
-            pmv.structure_2d(DISORDERED_STRUCT, standardize_struct=standardize_struct)
+            pmv.structure_2d(fe3co4_disordered, standardize_struct=standardize_struct)
     finally:
-        DISORDERED_STRUCT[0].frac_coords = orig_coords
+        fe3co4_disordered[0].frac_coords = orig_coords
 
     # warns when passing subplot_kwargs for a single structure
     with pytest.warns(
         UserWarning, match="subplot_kwargs are ignored when plotting a single structure"
     ):
-        pmv.structure_2d(DISORDERED_STRUCT, subplot_kwargs={"facecolor": "red"})
+        pmv.structure_2d(fe3co4_disordered, subplot_kwargs={"facecolor": "red"})
 
 
-struct1 = Structure(lattice, ["Fe", "O"], coords=COORDS)
+struct1 = Structure(np.eye(3) * 5, ["Fe", "O"], coords=COORDS)
 struct1.properties = {"id": "struct1"}
-struct2 = Structure(lattice, ["Co", "O"], coords=COORDS)
+struct2 = Structure(np.eye(3) * 5, ["Co", "O"], coords=COORDS)
 struct2.properties = {Key.mat_id: "struct2"}
-struct3 = Structure(lattice, ["Ni", "O"], coords=COORDS)
+struct3 = Structure(np.eye(3) * 5, ["Ni", "O"], coords=COORDS)
 struct3.properties = {"ID": "struct3", "name": "nickel oxide"}  # extra properties
-struct4 = Structure(lattice, ["Cu", "O"], coords=COORDS)
+struct4 = Structure(np.eye(3) * 5, ["Cu", "O"], coords=COORDS)
 
 
 def test_structure_2d_multiple() -> None:

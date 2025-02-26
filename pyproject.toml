@@ -32,7 +32,7 @@ dependencies = [
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "pandas[output-formatting]>=2.2",
     "plotly>=5.23",
-    "pymatgen>=2024.11.13",
+    "pymatgen>=2025.2.18",
     "scikit-learn>=1.5",
     "scipy>=1.14",
 ]
@@ -57,7 +57,7 @@ test = [
     "pytest>=8",
 ]
 brillouin = ["seekpath>=2.1"]
-symmetry = ["moyopy>=0.4"]
+symmetry = ["moyopy[interface]>=0.4"]
 
 [tool.setuptools.packages.find]
 include = ["pymatviz*"]

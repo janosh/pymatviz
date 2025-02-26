@@ -28,7 +28,7 @@ def test_element_pair_rdfs_basic(
         fig = element_pair_rdfs(struct, subplot_kwargs=subplot_kwargs)
         assert isinstance(fig, go.Figure)
         assert fig.layout.title.text is None
-        assert fig.layout.showlegend is None
+        assert fig.layout.showlegend is False
         assert fig.layout.yaxis.title.text == "g(r)"
         # check grid ref matches n_cols
         actual_rows = len(fig._grid_ref)
@@ -181,6 +181,9 @@ def test_element_pair_rdfs_list_dict_of_structures(
         if isinstance(structs, dict)
         else {structs.formula for structs in structs}
     )
+    # Check that legend is shown for multiple structures
+    assert fig.layout.showlegend is None
+    assert sum(trace.showlegend for trace in fig.data) == len(structs)
 
 
 def test_element_pair_rdfs_custom_colors_and_styles(
@@ -244,7 +247,8 @@ def test_full_rdf_basic(structures: list[Structure]) -> None:
         assert len(fig.data) == 1
         assert fig.data[0].name == ""
         assert fig.layout.title.text is None
-        assert fig.layout.showlegend is None
+        assert fig.layout.showlegend is None or fig.layout.showlegend is False
+        assert not fig.data[0].showlegend
 
 
 def test_full_rdf_empty_structure() -> None:
