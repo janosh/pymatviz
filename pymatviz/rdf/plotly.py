@@ -169,7 +169,8 @@ def element_pair_rdfs(
                 name=label,
                 line=dict(color=color, dash=line_style),
                 legendgroup=label,
-                showlegend=subplot_idx == 0,  # Show legend only for the first subplot
+                # Only show legend for first subplot and if multiple structures
+                showlegend=subplot_idx == 0 and len(structures) > 1,
                 row=row + 1,
                 col=col + 1,
                 hovertemplate=f"{label}<br>r = %{{x:.2f}} Å<br>g(r) = %{{y:.2f}}"
@@ -195,6 +196,9 @@ def element_pair_rdfs(
             yanchor="bottom",
             font_size=14,
         )
+    else:
+        # Hide legend for single structure
+        fig.layout.showlegend = False
 
     return fig
 

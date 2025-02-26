@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from pymatgen.core import Structure
 from pymatgen.optimization.neighbors import find_points_in_spheres
 
 
 if TYPE_CHECKING:
-    from pymatgen.core import Structure
     from pymatgen.util.typing import PbcLike
 
 
@@ -40,7 +40,21 @@ def calculate_rdf(
 
     Returns:
         tuple[np.ndarray, np.ndarray]: Arrays of (radii, g(r)) values.
+
+    Raises:
+        ValueError: If cutoff or n_bins are not positive values.
     """
+    # Input validation
+    if not isinstance(structure, Structure):
+        raise TypeError(f"Expected pymatgen Structure, got {type(structure).__name__}")
+    # Handle empty structure
+    if len(structure) == 0:
+        return np.linspace(cutoff / n_bins, cutoff, n_bins), np.zeros(n_bins)
+    if cutoff <= 0:
+        raise ValueError(f"{cutoff=} must be positive")
+    if n_bins <= 0:
+        raise ValueError(f"{n_bins=} must be positive")
+
     bin_size = cutoff / n_bins
     radii = np.linspace(0, cutoff, n_bins + 1)[1:]
     rdf = np.zeros_like(radii)
