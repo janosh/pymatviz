@@ -97,7 +97,7 @@ See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main
 
 See [`pymatviz/structure_viz/plotly.py`](pymatviz/structure_viz/plotly.py).
 
-| [`structure_3d_plotly(hea_structure)`](assets/scripts/structure_viz/structure_3d_plotly.py) | [`structure_3d_plotly(lco_supercell)`](assets/scripts/structure_viz/structure_2d_plotly.py) |
+| [`structure_3d_plotly(hea_structure)`](assets/scripts/structure_viz/structure_3d_plotly.py) | [`structure_3d_plotly(lco_supercell)`](assets/scripts/structure_viz/structure_3d_plotly.py) |
 | :-----------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------: |
 |                                 ![hea-structure-3d-plotly]                                  |                                 ![lco-structure-3d-plotly]                                  |
 |  [`structure_2d_plotly(six_structs)`](assets/scripts/structure_viz/structure_2d_plotly.py)  |  [`structure_3d_plotly(six_structs)`](assets/scripts/structure_viz/structure_3d_plotly.py)  |
