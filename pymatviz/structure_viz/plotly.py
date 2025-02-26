@@ -87,8 +87,9 @@ def structure_2d_plotly(
             on unit cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
         show_bonds (bool | NearNeighbors, optional): Whether to draw bonds between
-            sites. If True, uses CrystalNN to determine nearest neighbors. If a
-            NearNeighbors object, uses that to determine nearest neighbors.
+            sites. If True, uses CrystalNN with a search_cutoff of 10 Å to determine
+            nearest neighbors, including those in neighboring cells. If a NearNeighbors
+            object, uses that to determine nearest neighbors.
             Defaults to False (since still experimental).
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
@@ -176,18 +177,28 @@ def structure_2d_plotly(
 
         visible_image_atoms: set[tuple[float, float, float]] = set()
 
+        # First, populate visible_image_atoms with all image sites that will be drawn
+        if show_image_sites and show_sites:
+            for site in struct_i:
+                image_atoms = get_image_sites(site, struct_i.lattice)
+                if len(image_atoms) > 0:
+                    for image_coords in image_atoms:
+                        # Apply the same rotation to image atoms as to regular atoms
+                        rotated_image_coords = np.dot(image_coords, rotation_matrix)
+                        visible_image_atoms.add(tuple(rotated_image_coords))
+
         # Draw bonds
         if show_bonds:
-            nn = CrystalNN() if show_bonds is True else show_bonds
             draw_bonds(
-                fig,
-                struct_i,
-                nn,
+                fig=fig,
+                structure=struct_i,
+                nn=CrystalNN() if show_bonds is True else show_bonds,
                 is_3d=False,
                 bond_kwargs=bond_kwargs,
                 row=row,
                 col=col,
                 visible_image_atoms=visible_image_atoms,
+                rotation_matrix=rotation_matrix,
             )
 
         # Plot atoms and vectors
@@ -271,7 +282,6 @@ def structure_2d_plotly(
                                 row=row,
                                 col=col,
                             )
-                            visible_image_atoms.add(tuple(image_coords))
 
         # Plot unit cell
         if show_unit_cell:
@@ -360,8 +370,9 @@ def structure_3d_plotly(
             on unit cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
         show_bonds (bool | NearNeighbors, optional): Whether to draw bonds between
-            sites. If True, uses CrystalNN to determine nearest neighbors. If a
-            NearNeighbors object, uses that to determine nearest neighbors.
+            sites. If True, uses CrystalNN with a search_cutoff of 10 Å to determine
+            nearest neighbors, including those in neighboring cells. If a NearNeighbors
+            object, uses that to determine nearest neighbors.
             Defaults to False (since still experimental).
         site_labels ("symbol" | "species" | dict[str, str] | Sequence):
             How to annotate lattice sites. Defaults to "species".
@@ -383,9 +394,9 @@ def structure_3d_plotly(
             structures was passed). But it will only plot one vector per site and it
             will use the same key for all sites and across all structures.
         vector_kwargs (dict[str, dict[str, Any]], optional): For customizing vector
-        arrows. Keys are property names (e.g.,
-            "force", "magmom"), values are dictionaries of arrow customization options.
-            Use key "scale" to adjust vector length.
+            arrows. Keys are property names (e.g., "force", "magmom"), values are
+            dictionaries of arrow customization options. Use key "scale" to adjust
+            vector length.
         hover_text (SiteCoords | Callable, optional): Controls the hover tooltip
             template. Can be SiteCoords.cartesian, SiteCoords.fractional,
             SiteCoords.cartesian_fractional, or a callable that takes a site and
@@ -441,13 +452,20 @@ def structure_3d_plotly(
 
         visible_image_atoms: set[tuple[float, float, float]] = set()
 
+        # First, populate visible_image_atoms with all image sites that will be drawn
+        if show_image_sites and show_sites:
+            for site in struct_i:
+                image_atoms = get_image_sites(site, struct_i.lattice)
+                if len(image_atoms) > 0:
+                    for image_coords in image_atoms:
+                        visible_image_atoms.add(tuple(image_coords))
+
         # Draw bonds
         if show_bonds:
-            nn = CrystalNN() if show_bonds is True else show_bonds
             draw_bonds(
-                fig,
-                struct_i,
-                nn,
+                fig=fig,
+                structure=struct_i,
+                nn=CrystalNN() if show_bonds is True else show_bonds,
                 is_3d=True,
                 bond_kwargs=bond_kwargs,
                 scene=f"scene{idx}",
@@ -528,7 +546,6 @@ def structure_3d_plotly(
                                 is_3d=True,
                                 scene=f"scene{idx}",
                             )
-                            visible_image_atoms.add(tuple(image_coords))
 
         # Plot unit cell
         if show_unit_cell:

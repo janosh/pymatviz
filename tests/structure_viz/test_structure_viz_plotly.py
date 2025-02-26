@@ -112,15 +112,19 @@ DISORDERED_STRUCT = Structure(
     ],
 )
 def test_structure_2d_plotly(kwargs: dict[str, Any]) -> None:
+    """Test structure_2d_plotly with various parameter combinations."""
     fig = pmv.structure_2d_plotly(DISORDERED_STRUCT, **kwargs)
     assert isinstance(fig, go.Figure)
 
-    # Check if the layout properties are set correctly
+    # Check that all traces are Scatter (2D)
+    assert {*map(type, fig.data)} in ({go.Scatter}, set())
+
+    # Verify layout properties
     assert fig.layout.showlegend is False
     assert fig.layout.paper_bgcolor == "rgba(0,0,0,0)"
     assert fig.layout.plot_bgcolor == "rgba(0,0,0,0)"
 
-    # Check if the axes properties are set correctly
+    # Check that axes are properly configured
     for axis in fig.layout.xaxis, fig.layout.yaxis:
         assert axis.showticklabels is False
         assert axis.showgrid is False
@@ -205,36 +209,55 @@ def test_structure_2d_plotly_multiple() -> None:
     assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
     assert len(fig.layout.annotations) == 4
 
-    # Test pandas.Series[Structure]
+    # Test with pandas.Series[Structure]
     struct_series = pd.Series(structs_dict)
     fig = pmv.structure_2d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
+    assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
 
-    # Test list[Structure]
+    # Test with list[Structure]
     fig = pmv.structure_2d_plotly(list(structs_dict.values()), n_cols=2)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
+    assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
 
-    # Test subplot_title
+    # Test with custom subplot_title function
     def subplot_title(struct: Structure, key: str | int) -> str:
         return f"{key} - {struct.formula}"
 
     fig = pmv.structure_2d_plotly(struct_series, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == expected_traces, f"{len(fig.data)=}, {expected_traces=}"
+    assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
+
+    # Verify subplot titles
     for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
         assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
 
 
 def test_structure_2d_plotly_invalid_input() -> None:
+    """Test that structure_2d_plotly raises errors for invalid inputs."""
     with pytest.raises(
         TypeError, match="Expected pymatgen Structure or Sequence of them"
     ):
         pmv.structure_2d_plotly("invalid input")
+
+    with pytest.raises(
+        TypeError, match="Expected pymatgen Structure or Sequence of them, got"
+    ):
+        pmv.structure_2d_plotly([])
+
+    # Test with invalid rotation string
+    lattice = np.eye(3) * 3.0
+    struct = Structure(lattice, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    with pytest.raises(ValueError, match="could not convert string to float: "):
+        pmv.structure_2d_plotly(struct, rotation="invalid_rotation")
+
+    # Test with invalid site_labels
+    with pytest.raises(ValueError, match="Invalid site_labels=123. Must be one of "):
+        pmv.structure_2d_plotly(struct, site_labels=123)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -506,11 +529,11 @@ def test_structure_3d_plotly_subplot_title_override(
     "hover_text", [*SiteCoords, lambda site: f"<b>{site.frac_coords}</b>"]
 )
 def test_hover_text(
-    plot_function: Callable[[Structure, Any], go.Figure],
+    plot_function: Callable[..., go.Figure],
     hover_text: SiteCoords | Callable[[PeriodicSite], str],
 ) -> None:
     struct = Structure(lattice, ["Fe", "O"], COORDS)
-    fig = plot_function(struct, hover_text=hover_text)  # type: ignore[call-arg]
+    fig = plot_function(struct, hover_text=hover_text)
 
     site_traces = [
         trace for trace in fig.data if trace.name and trace.name.startswith("site")
@@ -572,3 +595,190 @@ def test_structure_plotly_ase_atoms(
     atoms_list = [struct.to_ase_atoms() for struct in structures]
     fig = plot_function(atoms_list)
     assert isinstance(fig, go.Figure)
+
+
+@pytest.mark.parametrize(
+    ("plot_function", "is_3d"),
+    [(pmv.structure_2d_plotly, False), (pmv.structure_3d_plotly, True)],
+)
+def test_structure_plotly_show_bonds(
+    plot_function: Callable[..., go.Figure], is_3d: bool
+) -> None:
+    """Test that bonds are drawn correctly when show_bonds is True."""
+    # Create a simple structure with known bonding
+    lattice = np.eye(3) * 3.0
+    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+
+    # Test with show_bonds=True (default CrystalNN)
+    fig = plot_function(struct, show_bonds=True)
+
+    # Check that bonds were drawn
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) == 2
+
+    # Check bond properties
+    for trace in bond_traces:
+        assert trace.mode == "lines"
+        assert trace.showlegend is False
+        assert trace.hoverinfo == "skip"
+        assert trace.line.color == "white"  # Default color
+        assert trace.line.width == 4  # Default width
+
+    # Check that the trace type is correct based on dimension
+    expected_trace_type = go.Scatter3d if is_3d else go.Scatter
+    assert all(isinstance(trace, expected_trace_type) for trace in bond_traces)
+
+
+@pytest.mark.parametrize(
+    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
+)
+def test_structure_plotly_show_bonds_custom_nn(
+    plot_function: Callable[..., go.Figure],
+) -> None:
+    """Test that bonds are drawn correctly with custom NearNeighbors."""
+    from pymatgen.analysis.local_env import VoronoiNN
+
+    # Create a simple structure with known bonding
+    lattice = np.eye(3) * 3.0
+    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+
+    # Use VoronoiNN instead of default CrystalNN
+    nn = VoronoiNN()
+
+    # Test with custom NearNeighbors
+    fig = plot_function(struct, show_bonds=nn)
+
+    # Check that bonds were drawn
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) == 12
+
+
+@pytest.mark.parametrize(
+    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
+)
+def test_structure_plotly_show_bonds_custom_kwargs(
+    plot_function: Callable[..., go.Figure],
+) -> None:
+    """Test that bond_kwargs are applied correctly."""
+    # Create a simple structure with known bonding
+    lattice = np.eye(3) * 3.0
+    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+
+    # Custom bond styling
+    bond_kwargs = {"color": "red", "width": 2, "dash": "dot"}
+
+    # Test with custom bond styling
+    fig = plot_function(struct, show_bonds=True, bond_kwargs=bond_kwargs)
+
+    # Check that bonds were drawn with custom styling
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) == 2
+
+    # Check that custom styling was applied
+    for trace in bond_traces:
+        for key, value in bond_kwargs.items():
+            assert getattr(trace.line, key) == value
+
+
+@pytest.mark.parametrize(
+    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
+)
+def test_structure_plotly_show_bonds_with_image_sites(
+    plot_function: Callable[..., go.Figure],
+) -> None:
+    """Test that bonds are drawn correctly to visible image sites."""
+    # Create a simple structure where bonds will cross unit cell boundaries
+    lattice = np.eye(3) * 3.0
+    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
+
+    # Test with both show_bonds and show_image_sites enabled
+    fig = plot_function(struct, show_bonds=True, show_image_sites=True)
+
+    # Check that bonds were drawn
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) == 1
+
+    # Check for image sites
+    image_site_traces = [
+        trace for trace in fig.data if (trace.name or "").startswith("Image of ")
+    ]
+    assert len(image_site_traces) == 7
+
+    # Verify that at least one bond is drawn
+    # The exact count will depend on the structure and NearNeighbors algorithm
+    assert len(bond_traces) == 1
+
+
+@pytest.mark.parametrize(
+    ("plot_function", "is_3d"),
+    [(pmv.structure_2d_plotly, False), (pmv.structure_3d_plotly, True)],
+)
+def test_structure_plotly_no_bonds_to_hidden_sites(
+    plot_function: Callable[..., go.Figure], is_3d: bool
+) -> None:
+    """Test that bonds are not drawn to sites that aren't visible."""
+    # Create a simple structure
+    lattice = np.eye(3) * 3.0
+    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
+
+    # Test with show_bonds but without show_image_sites
+    fig = plot_function(struct, show_bonds=True, show_image_sites=False)
+
+    # Check that bonds were drawn
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+
+    # Check for image sites (should be none)
+    image_site_traces = [
+        trace for trace in fig.data if (trace.name or "").startswith("Image of ")
+    ]
+    assert len(image_site_traces) == 0, "Image sites found when show_image_sites=False"
+
+    # Verify that we only have bonds within the unit cell
+    # For this structure, we should have fewer bonds when image sites are hidden
+    if len(bond_traces) > 0:  # Some bonds might still be drawn within the unit cell
+        # Get the maximum coordinate value in any bond
+        max_coords = []
+        for trace in bond_traces:
+            if is_3d:
+                max_coords.extend([max(trace.x), max(trace.y), max(trace.z)])
+            else:
+                max_coords.extend([max(trace.x), max(trace.y)])
+
+        # All coordinates should be within or very close to the unit cell
+        assert max(max_coords) <= 3.1, "Bonds drawn outside the unit cell"
+
+
+def test_structure_plotly_visible_image_atoms_population() -> None:
+    """Test that the visible_image_atoms set is correctly populated and used for bond
+    drawing."""
+    # Create a simple structure where bonds will cross unit cell boundaries
+    lattice = np.eye(3) * 3.0
+    struct = Structure(lattice, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
+
+    # Test with both show_bonds and show_image_sites enabled
+    fig = pmv.structure_3d_plotly(struct, show_bonds=True, show_image_sites=True)
+
+    # Check that bonds were drawn
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) == 1
+
+    # Check for image sites
+    image_site_traces = [
+        trace for trace in fig.data if (trace.name or "").startswith("Image of ")
+    ]
+    assert len(image_site_traces) == 7
+
+    # Now test the 2D case with rotation
+    fig = pmv.structure_2d_plotly(
+        struct, rotation="45x,30y,15z", show_bonds=True, show_image_sites=True
+    )
+
+    # Check that bonds were drawn
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) == 1
+
+    # Check for image sites
+    image_site_traces = [
+        trace for trace in fig.data if (trace.name or "").startswith("Image of ")
+    ]
+    assert len(image_site_traces) == 7
