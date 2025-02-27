@@ -31,7 +31,6 @@ from pymatviz.utils.data import (
 from pymatviz.utils.plotting import (
     annotate,
     apply_matplotlib_template,
-    get_cbar_label_formatter,
     get_fig_xy_range,
     get_font_color,
     luminance,
