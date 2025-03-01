@@ -14,7 +14,7 @@ from matplotlib.ticker import FixedLocator
 
 from pymatviz.enums import Key
 from pymatviz.typing import PLOTLY
-from pymatviz.utils import crystal_sys_from_spg_num, si_fmt_int
+from pymatviz.utils import si_fmt_int, spg_to_crystal_sys
 
 
 if TYPE_CHECKING:
@@ -92,28 +92,18 @@ def spacegroup_bar(
         df_data = df_data.reindex(range(1, 231), fill_value=0).sort_index()
         if not show_empty_bins:
             df_data = df_data.query(f"{count_col} > 0")
-        df_data[Key.crystal_system] = [
-            crystal_sys_from_spg_num(x) for x in df_data.index
-        ]
+        df_data[Key.crystal_system] = [spg_to_crystal_sys(x) for x in df_data.index]
 
         x_range = (df_data.index.min() - 0.5, df_data.index.max() + 0.5)
         x_label = "International Spacegroup Number"
 
     else:  # assume index is space group symbols
-        from moyopy import SpaceGroupType
-
-        map_spg_num_to_symbol = {
-            # SpaceGroupType(number).hm_short is separated by a space like "F m -3 m"
-            number: SpaceGroupType(number).hm_short.replace(" ", "")
-            for number in range(1, 230 + 1)
-        }
-
         # TODO: figure out how to implement show_empty_bins for space group symbols
         # if show_empty_bins:
         #     idx = [SpaceGroup.from_int_number(x).symbol for x in range(1, 231)]
         #     df = df.reindex(idx, fill_value=0)
         df_data = df_data[df_data[count_col] > 0]
-        df_data[Key.crystal_system] = df_data.index.map(map_spg_num_to_symbol)
+        df_data[Key.crystal_system] = df_data.index.map(spg_to_crystal_sys)
 
         # sort df by crystal system going from smallest to largest spacegroup numbers
         # e.g. triclinic (1-2) comes first, cubic (195-230) last

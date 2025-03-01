@@ -31,9 +31,7 @@ df_perov[Key.volume] = df_perov[Key.structure].map(lambda struct: struct.volume)
 
 df_perov[Key.formula] = df_perov[Key.structure].map(lambda cryst: cryst.formula)
 
-df_perov[Key.crystal_system] = df_perov[Key.spg_num].map(
-    pmv.utils.crystal_sys_from_spg_num
-)
+df_perov[Key.crystal_system] = df_perov[Key.spg_num].map(pmv.utils.spg_to_crystal_sys)
 
 
 # %%

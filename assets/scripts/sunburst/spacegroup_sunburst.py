@@ -1,17 +1,9 @@
 # %%
 from matminer.datasets import load_dataset
-from moyopy import SpaceGroupType
 from tqdm import tqdm
 
 import pymatviz as pmv
 from pymatviz.enums import Key
-
-
-map_spg_num_to_symbol = {
-    # SpaceGroupType(number).hm_short is separated by a space like "F m -3 m"
-    number: SpaceGroupType(number).hm_short.replace(" ", "")
-    for number in range(1, 230 + 1)
-}
 
 
 # %%
@@ -22,7 +14,9 @@ df_phonons[Key.spg_num] = [
     for struct in tqdm(df_phonons[Key.structure])
 ]
 
-df_phonons[Key.spg_symbol] = df_phonons[Key.spg_num].map(map_spg_num_to_symbol)
+df_phonons[Key.spg_symbol] = df_phonons[Key.spg_num].map(
+    pmv.utils.spg_num_to_from_symbol
+)
 
 
 # %% Sunburst Plots

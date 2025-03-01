@@ -30,6 +30,7 @@ dependencies = [
     "numpy>=1.26",
     # output-formatting needed for pandas Stylers,
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
+    "moyopy[interface]>=0.4.1",
     "pandas[output-formatting]>=2.2",
     "plotly>=5.23",
     "pymatgen>=2025.2.18",
@@ -57,7 +58,6 @@ test = [
     "pytest>=8",
 ]
 brillouin = ["seekpath>=2.1"]
-symmetry = ["moyopy[interface]>=0.4"]
 
 [tool.setuptools.packages.find]
 include = ["pymatviz*"]

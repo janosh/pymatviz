@@ -35,7 +35,7 @@ df_sym = pd.DataFrame(
     struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).as_dict()
     for struct in df_grvh[Key.structure]
 )
-df_sym[Key.crystal_system] = df_sym["number"].map(pmv.utils.crystal_sys_from_spg_num)
+df_sym[Key.crystal_system] = df_sym["number"].map(pmv.utils.spg_to_crystal_sys)
 df_grvh[Key.protostructure] = [
     get_protostructure_label(struct)
     for struct in tqdm(df_grvh[Key.structure], desc="matbench_log_gvrh Wyckoff strings")

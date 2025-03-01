@@ -67,19 +67,12 @@ def spacegroup_sunburst(
 
     try:  # assume column contains integers as space group numbers
         df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
-            pmv.utils.crystal_sys_from_spg_num
+            pmv.utils.spg_to_crystal_sys
         )
 
     except (ValueError, TypeError):  # assume column is strings of space group symbols
-        from moyopy import SpaceGroupType
-
-        map_spg_num_to_symbol = {
-            # SpaceGroupType(number).hm_short is separated by a space like "F m -3 m"
-            number: SpaceGroupType(number).hm_short.replace(" ", "")
-            for number in range(1, 230 + 1)
-        }
         df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
-            map_spg_num_to_symbol
+            pmv.utils.spg_num_to_from_symbol
         )
 
     sunburst_defaults = dict(color_discrete_sequence=px.colors.qualitative.G10)

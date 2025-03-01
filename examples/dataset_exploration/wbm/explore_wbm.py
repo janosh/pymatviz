@@ -22,7 +22,7 @@ df_wbm = df_wbm.set_index(Key.mat_id, drop=False)
 
 df_wbm["batch_idx"] = df_wbm.index.str.split("-").str[2].astype(int)
 df_wbm[Key.spg_num] = df_wbm[f"{Key.wyckoff}_spglib"].str.split("_").str[2].astype(int)
-df_wbm[Key.crystal_system] = df_wbm[Key.spg_num].map(pmv.utils.crystal_sys_from_spg_num)
+df_wbm[Key.crystal_system] = df_wbm[Key.spg_num].map(pmv.utils.spg_to_crystal_sys)
 df_wbm[Key.energy_per_atom] = df_wbm[Key.energy] / df_wbm[Key.n_sites]
 
 
