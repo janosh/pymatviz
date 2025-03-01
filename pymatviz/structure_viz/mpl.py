@@ -458,7 +458,7 @@ def structure_2d(
                 sub_title = props[id_key]
             elif isinstance(key, int):  # key=int means it's an index, i.e. not to be
                 # used as title. instead make title from formula and space group number
-                spg_num = struct_i.get_space_group_info()[1]
+                spg_num = struct_i.get_symmetry_dataset()["number"]
                 sub_title = f"{struct_i.formula} (spg={spg_num})"
             else:
                 sub_title = key

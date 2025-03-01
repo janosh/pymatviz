@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 import plotly.express as px
-from pymatgen.core import Composition, Structure
 from pymatgen.symmetry.groups import SpaceGroup
 
 import pymatviz as pmv
@@ -22,6 +21,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     import plotly.graph_objects as go
+    from pymatgen.core import Composition, Structure
 
     from pymatviz.typing import FormulaGroupBy
 
@@ -52,11 +52,13 @@ def spacegroup_sunburst(
     Returns:
         Figure: The Plotly figure.
     """
-    if isinstance(next(iter(data)), Structure):
-        # if 1st sequence item is structure, assume all are
+    if type(next(iter(data))).__qualname__ in ("Structure", "Atoms"):
+        # if 1st sequence item is pymatgen structure or ASE Atoms, assume all are
+        from moyopy import MoyoDataset
+        from moyopy.interface import MoyoAdapter
+
         series = pd.Series(
-            struct.get_space_group_info()[1]  # type: ignore[union-attr]
-            for struct in data
+            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
         )
     else:
         series = pd.Series(data)
