@@ -304,16 +304,16 @@ def get_fig_xy_range(
     try:
         # https://stackoverflow.com/a/62042077
         dev_fig = fig.full_figure_for_development(warn=False)
-        xaxis_type = dev_fig.layout.xaxis.type
-        yaxis_type = dev_fig.layout.yaxis.type
+        x_axis_type = dev_fig.layout.xaxis.type
+        y_axis_type = dev_fig.layout.yaxis.type
 
         x_range = dev_fig.layout.xaxis.range
         y_range = dev_fig.layout.yaxis.range
 
         # Convert log range to linear if necessary
-        if xaxis_type == "log":
+        if x_axis_type == "log":
             x_range = [10**val for val in x_range]
-        if yaxis_type == "log":
+        if y_axis_type == "log":
             y_range = [10**val for val in y_range]
 
     except ValueError:

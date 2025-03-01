@@ -28,7 +28,7 @@ title = "<b>Formation energy histogram of the Matbench formation energy dataset<
 fig.layout.title.update(text=title, x=0.5)
 fig.layout.showlegend = False
 fig.show()
-# pmv.save_fig(ax, "mp_e_form_hist.pdf")
+# pmv.save_fig(fig, "mp-e-form-hist.pdf")
 
 
 # %%
