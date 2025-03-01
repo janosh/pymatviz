@@ -98,8 +98,8 @@ def test_add_best_fit_line_custom_line_kwargs(plotly_scatter: go.Figure) -> None
 @pytest.mark.parametrize("trace_idx", [0, 1])
 def test_add_best_fit_line_trace_idx(trace_idx: int) -> None:
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=[1, 2, 3], y=[1, 2, 3]))
-    fig.add_trace(go.Scatter(x=[1, 2, 3], y=[3, 2, 1]))
+    fig.add_scatter(x=[1, 2, 3], y=[1, 2, 3])
+    fig.add_scatter(x=[1, 2, 3], y=[3, 2, 1])
 
     result = pmv.powerups.add_best_fit_line(fig, trace_idx=trace_idx)
 

@@ -31,7 +31,7 @@ title = "PBE band gap histogram of the Matbench MP band gap dataset"
 fig.layout.title.update(text=title, x=0.5)
 fig.layout.showlegend = False
 fig.show()
-# pmv.save_fig(ax, "pbe_gap_hist.pdf")
+# pmv.save_fig(fig, "pbe-gap-hist.pdf")
 
 
 # %%
@@ -47,4 +47,4 @@ title = "Volume per atom histogram of the Matbench MP band gap dataset"
 fig.layout.title.update(text=title, x=0.5)
 fig.layout.showlegend = False
 fig.show()
-# pmv.save_fig(ax, "volume_per_atom_hist.pdf")
+# pmv.save_fig(fig, "volume-per-atom-hist.pdf")

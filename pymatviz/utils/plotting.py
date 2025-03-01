@@ -3,7 +3,6 @@
 Available functions:
     - annotate: Annotate a matplotlib or plotly figure with text.
     - apply_matplotlib_template: Set default matplotlib configurations for consistency.
-    - get_cbar_label_formatter: Generate colorbar tick label formatter.
     - get_font_color: Get the font color used in a Matplotlib or Plotly figure.
     - get_fig_xy_range: Get the x and y range of a plotly or matplotlib figure.
     - luminance: Compute the luminance of a color.
@@ -14,8 +13,6 @@ Available functions:
 
 from __future__ import annotations
 
-import re
-import warnings
 from functools import wraps
 from typing import TYPE_CHECKING, Literal, cast
 
@@ -47,8 +44,6 @@ from pymatviz.typing import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Any
-
-    from matplotlib.ticker import Formatter
 
 
 def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
@@ -132,61 +127,6 @@ def apply_matplotlib_template() -> None:
     plt.rc("axes", titlesize=16, titleweight="bold")
     plt.rc("figure", dpi=200, titlesize=20, titleweight="bold")
     plt.rcParams["figure.constrained_layout.use"] = True
-
-
-def get_cbar_label_formatter(
-    *,
-    cbar_label_fmt: str,
-    values_fmt: str,
-    values_show_mode: Literal["value", "fraction", "percent", "off"],
-    sci_notation: bool,
-    default_decimal_places: int = 1,
-) -> Formatter:
-    """Generate colorbar tick label formatter.
-
-    Work differently for different values_show_mode:
-        - "value/fraction" mode: Use cbar_label_fmt (or values_fmt) as is.
-        - "percent" mode: Get number of decimal places to keep from fmt
-            string, for example 1 from ".1%".
-
-    Args:
-        cbar_label_fmt (str): f-string option for colorbar tick labels.
-        values_fmt (str): f-string option for tile values, would be used if
-            cbar_label_fmt is "auto".
-        values_show_mode (str): The values display mode:
-            - "off": Hide values.
-            - "value": Display values as is.
-            - "fraction": As a fraction of the total (0.10).
-            - "percent": As a percentage of the total (10%).
-        sci_notation (bool): Whether to use scientific notation for values and
-            colorbar tick labels.
-        default_decimal_places (int): Default number of decimal places
-            to use if above fmt is invalid.
-
-    Returns:
-        PercentFormatter or FormatStrFormatter.
-    """
-    from matplotlib.ticker import FormatStrFormatter, PercentFormatter, ScalarFormatter
-
-    cbar_label_fmt = values_fmt if cbar_label_fmt == "auto" else cbar_label_fmt
-
-    if values_show_mode == "percent":
-        if match := re.search(r"\.(\d+)%", cbar_label_fmt):
-            decimal_places = int(match[1])
-        else:
-            warnings.warn(
-                f"Invalid {cbar_label_fmt=}, use {default_decimal_places=}",
-                stacklevel=2,
-            )
-            decimal_places = default_decimal_places
-        return PercentFormatter(xmax=1, decimals=decimal_places)
-
-    if sci_notation:
-        formatter = ScalarFormatter(useMathText=False)
-        formatter.set_powerlimits((0, 0))
-        return formatter
-
-    return FormatStrFormatter(f"%{cbar_label_fmt}")
 
 
 def _get_plotly_font_color(fig: go.Figure) -> str:
@@ -364,16 +304,16 @@ def get_fig_xy_range(
     try:
         # https://stackoverflow.com/a/62042077
         dev_fig = fig.full_figure_for_development(warn=False)
-        xaxis_type = dev_fig.layout.xaxis.type
-        yaxis_type = dev_fig.layout.yaxis.type
+        x_axis_type = dev_fig.layout.xaxis.type
+        y_axis_type = dev_fig.layout.yaxis.type
 
         x_range = dev_fig.layout.xaxis.range
         y_range = dev_fig.layout.yaxis.range
 
         # Convert log range to linear if necessary
-        if xaxis_type == "log":
+        if x_axis_type == "log":
             x_range = [10**val for val in x_range]
-        if yaxis_type == "log":
+        if y_axis_type == "log":
             y_range = [10**val for val in y_range]
 
     except ValueError:

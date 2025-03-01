@@ -18,10 +18,8 @@ import os
 
 import pandas as pd
 import requests
-from moyopy import SpaceGroupType
 
 import pymatviz as pmv
-from pymatviz.enums import Key
 
 
 # %% Download data (if needed)
@@ -56,8 +54,6 @@ pmv.powerups.annotate_bars(ax, v_offset=3e3)
 
 
 # %%
-df_camd[Key.spg_num] = [SpaceGroupType(spg).number for spg in df_camd.space_group]
-
-fig = pmv.spacegroup_sunburst(df_camd[Key.spg_num], show_counts="percent")
+fig = pmv.spacegroup_sunburst(df_camd.space_group, show_counts="percent")
 pmv.save_fig(fig, "camd-2022-spacegroup-sunburst.pdf")
 fig.show()

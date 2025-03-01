@@ -89,22 +89,22 @@ def structure_2d(
     plot_atoms(AseAtomsAdaptor().get_atoms(mp_19017), rotation="10x,8y,3z", radii=0.5)
 
     # pymatviz
-    from pymatviz import structure_2d
+    import pymatviz as pmv
 
-    structure_2d(mp_19017)
+    pmv.structure_2d(mp_19017)
     ```
 
     Multiple structures in single figure example:
 
     ```py
     from pymatgen.ext.matproj import MPRester
-    from pymatviz import structure_2d
+    import pymatviz as pmv
 
     structures = {
         (mp_id := f"mp-{idx}"): MPRester().get_structure_by_material_id(mp_id)
         for idx in range(1, 5)
     }
-    structure_2d(structures)
+    pmv.structure_2d(structures)
     ```
 
     Args:
@@ -458,7 +458,7 @@ def structure_2d(
                 sub_title = props[id_key]
             elif isinstance(key, int):  # key=int means it's an index, i.e. not to be
                 # used as title. instead make title from formula and space group number
-                spg_num = struct_i.get_space_group_info()[1]
+                spg_num = struct_i.get_symmetry_dataset()["number"]
                 sub_title = f"{struct_i.formula} (spg={spg_num})"
             else:
                 sub_title = key

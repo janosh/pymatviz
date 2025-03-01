@@ -38,7 +38,7 @@ fig.layout.title.update(
     text="Last phonon DOS peak histogram of Matbench Phonons dataset"
 )
 fig.show()
-# pmv.save_fig(ax, "phonons-last-dos-peak-hist.pdf")
+# pmv.save_fig(fig, "phonons-last-dos-peak-hist.pdf")
 
 
 # %%

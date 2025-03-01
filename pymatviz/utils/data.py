@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import scipy.stats
+from moyopy import SpaceGroupType
 from pymatgen.core import Structure
 
 from pymatviz.utils import ROOT
@@ -118,11 +119,22 @@ def bin_df_cols(
     return df_bin.set_index(orig_index_name)
 
 
-def crystal_sys_from_spg_num(spg: float) -> CrystalSystem:
+# SpaceGroupType(number).hm_short is separated by a space like "F m -3 m"
+hm_symbol_to_spg_num_map = {
+    SpaceGroupType(number).hm_short: number for number in range(1, 230 + 1)
+} | {SpaceGroupType(number).hm_full: number for number in range(1, 230 + 1)}
+for spg, val in [*hm_symbol_to_spg_num_map.items()]:
+    hm_symbol_to_spg_num_map[spg.replace(" ", "")] = val
+
+
+def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:
     """Get the crystal system for an international space group number."""
     # Ensure integer or float with no decimal part
+    if isinstance(spg, str):
+        spg = hm_symbol_to_spg_num_map.get(spg, spg)
+
     if not isinstance(spg, int | float) or spg != int(spg):
-        raise TypeError(f"Expect integer space group number, got {spg=}")
+        raise ValueError(f"Invalid space group {spg}")
 
     if not (1 <= spg <= 230):
         raise ValueError(f"Invalid space group number {spg}, must be 1 <= num <= 230")
@@ -140,6 +152,25 @@ def crystal_sys_from_spg_num(spg: float) -> CrystalSystem:
     if spg <= 194:
         return "hexagonal"
     return "cubic"
+
+
+def spg_num_to_from_symbol(spg: int | str) -> str | int:
+    """Get the Hermann-Mauguin short or full symbol for an international space group
+    number or vice versa.
+
+    Args:
+        spg: Either a space group number (int) or a Hermann-Mauguin symbol (str).
+
+    Returns:
+        int | str: str if input was a number, int if input was a str.
+    """
+    if isinstance(spg, str):  # Convert symbol to number
+        if spg_num := hm_symbol_to_spg_num_map.get(spg):
+            return spg_num
+
+        raise ValueError(f"Invalid space group symbol {spg}")
+
+    return SpaceGroupType(spg).hm_short.replace(" ", "")  # Convert number to symbol
 
 
 def df_to_arrays(
