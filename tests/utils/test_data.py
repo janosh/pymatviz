@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize(
-    ("spg_num", "crystal_sys"),
+    ("spg", "crystal_sys"),
     [
         (1, "triclinic"),
         (15, "monoclinic"),
@@ -34,15 +34,7 @@ if TYPE_CHECKING:
         (143, "trigonal"),
         (168, "hexagonal"),
         (230, "cubic"),
-    ],
-)
-def test_crystal_sys_from_spg_num(spg_num: int, crystal_sys: CrystalSystem) -> None:
-    assert crystal_sys == pmv.utils.spg_to_crystal_sys(spg_num)
-
-
-@pytest.mark.parametrize(
-    ("spg_symbol", "crystal_sys"),
-    [
+        # Test with short Hermann-Mauguin symbols
         ("P1", "triclinic"),
         ("P-1", "triclinic"),
         ("P2/m", "monoclinic"),
@@ -63,25 +55,12 @@ def test_crystal_sys_from_spg_num(spg_num: int, crystal_sys: CrystalSystem) -> N
         ("C12/c1", "monoclinic"),
     ],
 )
-def test_crystal_sys_from_spg_symbol(
-    spg_symbol: str, crystal_sys: CrystalSystem
-) -> None:
-    """Test that crystal system can be determined from space group symbols."""
-    assert crystal_sys == pmv.utils.spg_to_crystal_sys(spg_symbol)
+def test_spg_to_crystal_sys(spg: int, crystal_sys: CrystalSystem) -> None:
+    assert crystal_sys == pmv.utils.spg_to_crystal_sys(spg)
 
 
-@pytest.mark.parametrize("spg", [-1, 0, 231])
-def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
-    with pytest.raises(
-        ValueError,
-        match=f"Invalid space group number {spg}, must be 1 <= num <= 230",
-    ):
-        pmv.utils.spg_to_crystal_sys(spg)
-
-
-@pytest.mark.parametrize("spg", [1.2, "3", "invalid", "P999", "X2/m"])
-def test_crystal_sys_from_spg_symbol_invalid(spg: str) -> None:
-    """Test that invalid space group symbols raise appropriate errors."""
+@pytest.mark.parametrize("spg", [-1, 0, 231, 1.2, "3", "invalid", "P999", "X2/m"])
+def test_spg_to_crystal_sys_invalid(spg: int) -> None:
     with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
         pmv.utils.spg_to_crystal_sys(spg)
 
