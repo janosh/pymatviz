@@ -57,10 +57,10 @@ for mp_id in struct_mp_ids:
             site.species = {"Zr": 0.5, "Hf": 0.5}
 
     ax = cast(plt.Axes, pmv.structure_2d(struct))
-    _, spacegroup = struct.get_space_group_info()
+    spg_num = struct.get_symmetry_dataset(backend="moyopy")["number"]
 
     formula = struct.formula.replace(" ", "")
-    text = f"{formula}\ndisordered {mp_id}, {spacegroup = }"
+    text = f"{formula}\ndisordered {mp_id}, {spg_num = }"
     href = f"https://materialsproject.org/materials/{mp_id}"
     ax.text(
         0.5, 1, text, url=href, ha="center", transform=ax.transAxes, fontweight="bold"

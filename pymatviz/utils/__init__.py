@@ -18,7 +18,6 @@ class ExperimentalWarning(Warning):
 from pymatviz.utils.data import (
     atomic_numbers,
     bin_df_cols,
-    crystal_sys_from_spg_num,
     df_ptable,
     df_to_arrays,
     element_symbols,
@@ -27,11 +26,12 @@ from pymatviz.utils.data import (
     patch_dict,
     si_fmt,
     si_fmt_int,
+    spg_num_to_from_symbol,
+    spg_to_crystal_sys,
 )
 from pymatviz.utils.plotting import (
     annotate,
     apply_matplotlib_template,
-    get_cbar_label_formatter,
     get_fig_xy_range,
     get_font_color,
     luminance,

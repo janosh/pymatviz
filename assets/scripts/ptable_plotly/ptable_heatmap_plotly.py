@@ -6,7 +6,6 @@ import yaml
 from matminer.datasets import load_dataset
 
 import pymatviz as pmv
-from pymatviz import df_ptable
 from pymatviz.enums import ElemCountMode, Key
 
 
@@ -18,9 +17,9 @@ module_dir = os.path.dirname(__file__)
 
 # %% Plotly interactive periodic table heatmap
 fig = pmv.ptable_heatmap_plotly(
-    df_ptable[Key.atomic_mass],
+    pmv.df_ptable[Key.atomic_mass],
     hover_props=[Key.atomic_mass, Key.atomic_number],
-    hover_data="density = " + df_ptable[Key.density].astype(str) + " g/cm^3",
+    hover_data="density = " + pmv.df_ptable[Key.density].astype(str) + " g/cm^3",
     show_values=False,
 )
 fig.layout.title = dict(text="<b>Atomic mass heatmap</b>", x=0.4, y=0.94, font_size=20)
@@ -49,11 +48,11 @@ pmv.io.save_and_compress_svg(fig, "ptable-heatmap-plotly-log")
 
 # %% ex 1: Electronegativity Heatmap with Custom Hover Data
 fig = pmv.ptable_heatmap_plotly(
-    df_ptable[Key.electronegativity],
+    pmv.df_ptable[Key.electronegativity],
     colorscale="Viridis",
     hover_props=["atomic_mass", "melting_point"],
     hover_data={
-        el: f"Fun fact about {el}!" for el in df_ptable[Key.electronegativity].index
+        el: f"Fun fact about {el}!" for el in pmv.df_ptable[Key.electronegativity].index
     },
     font_colors=["white", "black"],
     colorbar=dict(title="Electronegativity", orientation="v"),
@@ -64,7 +63,7 @@ fig.show()
 
 # %% ex 2: Log-scale Abundance with Excluded Elements
 fig = pmv.ptable_heatmap_plotly(
-    df_ptable[Key.specific_heat_capacity].dropna(),
+    pmv.df_ptable[Key.specific_heat_capacity].dropna(),
     # colorscale="YlOrRd",
     log=True,
     font_colors=["black"],
@@ -80,7 +79,7 @@ fig.show()
 
 # %% ex 3: Fictional Data with Percent Mode and Custom Color Scale
 rand_data = {
-    elem: np.random.default_rng(seed=0).random() * 100 for elem in df_ptable.index
+    elem: np.random.default_rng(seed=0).random() * 100 for elem in pmv.df_ptable.index
 }
 custom_colorscale = [
     (0, "rgb(0,0,255)"),
@@ -116,10 +115,11 @@ fig.show()
 
 # %% ex 5: Atomic Radius with Custom Hover and Label Mapping
 fig = pmv.ptable_heatmap_plotly(
-    df_ptable[Key.atomic_radius],
+    pmv.df_ptable[Key.atomic_radius],
     colorscale="RdYlBu",
     hover_data={
-        elem: f"{radius} pm" for elem, radius in df_ptable[Key.atomic_radius].items()
+        elem: f"{radius} pm"
+        for elem, radius in pmv.df_ptable[Key.atomic_radius].items()
     },
     font_colors=["black"],
     colorbar=dict(title="Atomic Radius (pm)"),

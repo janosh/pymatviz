@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,16 +11,17 @@ import plotly.express as px
 import plotly.graph_objects as go
 from matplotlib import transforms
 from matplotlib.ticker import FixedLocator
-from pymatgen.core import Structure
-from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import Key
 from pymatviz.typing import PLOTLY
-from pymatviz.utils import crystal_sys_from_spg_num, si_fmt_int
+from pymatviz.utils import si_fmt_int, spg_to_crystal_sys
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Any, Literal
+
+    from pymatgen.core import Structure
 
     from pymatviz.typing import Backend
 
@@ -64,10 +64,14 @@ def spacegroup_bar(
     Returns:
         plt.Axes | go.Figure: matplotlib Axes or plotly Figure depending on backend.
     """
-    if isinstance(next(iter(data)), Structure):
-        # if 1st sequence item is structure, assume all are
-        data = cast(Sequence[Structure], data)
-        series = pd.Series(struct.get_space_group_info()[1] for struct in data)
+    if type(next(iter(data))).__qualname__ in ("Structure", "Atoms"):
+        # if 1st sequence item is pymatgen structure or ASE Atoms, assume all are
+        from moyopy import MoyoDataset
+        from moyopy.interface import MoyoAdapter
+
+        series = pd.Series(
+            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
+        )
     else:
         series = pd.Series(data)
 
@@ -88,9 +92,7 @@ def spacegroup_bar(
         df_data = df_data.reindex(range(1, 231), fill_value=0).sort_index()
         if not show_empty_bins:
             df_data = df_data.query(f"{count_col} > 0")
-        df_data[Key.crystal_system] = [
-            crystal_sys_from_spg_num(x) for x in df_data.index
-        ]
+        df_data[Key.crystal_system] = [spg_to_crystal_sys(x) for x in df_data.index]
 
         x_range = (df_data.index.min() - 0.5, df_data.index.max() + 0.5)
         x_label = "International Spacegroup Number"
@@ -101,9 +103,7 @@ def spacegroup_bar(
         #     idx = [SpaceGroup.from_int_number(x).symbol for x in range(1, 231)]
         #     df = df.reindex(idx, fill_value=0)
         df_data = df_data[df_data[count_col] > 0]
-        df_data[Key.crystal_system] = [
-            SpaceGroup(x).crystal_system for x in df_data.index
-        ]
+        df_data[Key.crystal_system] = df_data.index.map(spg_to_crystal_sys)
 
         # sort df by crystal system going from smallest to largest spacegroup numbers
         # e.g. triclinic (1-2) comes first, cubic (195-230) last

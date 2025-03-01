@@ -84,7 +84,7 @@ dependent_vars = [
 
 axs = df_carrier[dependent_vars].hist(bins=50, log=True, figsize=[30, 16])
 plt.suptitle("Ricci Carrier Transport Dataset dependent variables", y=1.05)
-# pmv.save_fig(ax, "carrier-transport-hists-dependent-vars.pdf")
+# pmv.save_fig(ax.flat[0], "carrier-transport-hists-dependent-vars.pdf")
 
 
 # %%

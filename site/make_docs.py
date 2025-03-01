@@ -14,11 +14,11 @@ import os
 import subprocess
 from glob import glob
 
-from pymatviz import ROOT
+import pymatviz as pmv
 
 
-os.chdir(ROOT)
-with open(f"{ROOT}/site/package.json") as file:
+os.chdir(pmv.ROOT)
+with open(f"{pmv.ROOT}/site/package.json") as file:
     pkg = json.load(file)
 route = "site/src/routes/api"
 

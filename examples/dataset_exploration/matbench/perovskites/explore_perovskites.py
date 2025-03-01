@@ -31,9 +31,7 @@ df_perov[Key.volume] = df_perov[Key.structure].map(lambda struct: struct.volume)
 
 df_perov[Key.formula] = df_perov[Key.structure].map(lambda cryst: cryst.formula)
 
-df_perov[Key.crystal_system] = df_perov[Key.spg_num].map(
-    pmv.utils.crystal_sys_from_spg_num
-)
+df_perov[Key.crystal_system] = df_perov[Key.spg_num].map(pmv.utils.spg_to_crystal_sys)
 
 
 # %%
@@ -41,7 +39,7 @@ fig = pmv.structure_2d_plotly(df_perov[Key.structure].iloc[:12])
 fig.layout.title.update(text="Perovskite structures in Matbench Perovskites dataset")
 fig.layout.paper_bgcolor = "white"
 fig.show()
-# pmv.save_fig(ax, "perovskite-structures-2d.pdf")
+# pmv.save_fig(fig, "perovskite-structures-2d.pdf")
 
 
 # %%
@@ -51,7 +49,7 @@ fig.layout.title.update(
 )
 fig.layout.showlegend = False
 fig.show()
-# pmv.save_fig(ax, "perovskites-e_form-hist.pdf")
+# pmv.save_fig(fig, "perovskites-e_form-hist.pdf")
 
 
 # %%
@@ -67,7 +65,7 @@ fig.layout.title.update(text="Crystal systems in Matbench Perovskites")
 pmv.powerups.annotate_bars(fig, v_offset=250)
 
 fig.show()
-# pmv.save_fig(ax, "perovskites-crystal-system-counts.pdf")
+# pmv.save_fig(fig, "perovskites-crystal-system-counts.pdf")
 
 
 # %%
