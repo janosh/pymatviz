@@ -18,6 +18,6 @@ fig = pmv.structure_2d_plotly(
     subplot_title=lambda _struct, _key: dict(font=dict(color="black")),
     hover_text=lambda site: f"<b>{site.frac_coords}</b>",
 )
-
+fig.layout.paper_bgcolor = "rgba(255,255,255,0.4)"
 fig.show()
-pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")
+# pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")

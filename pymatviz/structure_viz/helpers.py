@@ -381,10 +381,15 @@ def draw_unit_cell(
     row: int | None = None,
     col: int | None = None,
     scene: str | None = None,
+    rotation_matrix: np.ndarray | None = None,
 ) -> go.Figure:
     """Draw the unit cell of a structure in a 2D or 3D Plotly figure."""
     corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
     cart_corners = structure.lattice.get_cartesian_coords(corners)
+
+    # Apply rotation to cartesian corners for 2D plots
+    if not is_3d and rotation_matrix is not None:
+        cart_corners = np.dot(cart_corners, rotation_matrix)
 
     alpha, beta, gamma = structure.lattice.angles
 

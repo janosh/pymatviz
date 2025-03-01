@@ -134,7 +134,7 @@ def structure_2d_plotly(
     fig = make_subplots(
         rows=n_rows,
         cols=n_cols,
-        # # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
+        # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
         subplot_titles=[" " for _ in range(n_structs)],
         vertical_spacing=0,
         horizontal_spacing=0,
@@ -294,6 +294,7 @@ def structure_2d_plotly(
                 is_3d=False,
                 row=row,
                 col=col,
+                rotation_matrix=rotation_matrix,
             )
 
         # Set subplot titles
@@ -317,8 +318,15 @@ def structure_2d_plotly(
         scaleratio=1,
         constrain="domain",
     )
-    fig.update_xaxes(**common_kwargs, scaleanchor="y")
-    fig.update_yaxes(**common_kwargs, scaleanchor="x")
+    fig.update_xaxes(**common_kwargs)
+    fig.update_yaxes(**common_kwargs)
+
+    # Need to set scaleanchor on each subplot individually to keep them individually
+    # pan and zoomable, else zooming in on one will zoom all
+    for idx in range(1, n_structs + 1):
+        key = idx if idx > 1 else ""
+        fig.layout[f"xaxis{key}"].scaleanchor = f"y{key}"
+        fig.layout[f"yaxis{key}"].scaleanchor = f"x{key}"
 
     return fig
 

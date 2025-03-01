@@ -57,7 +57,7 @@ for mp_id in struct_mp_ids:
             site.species = {"Zr": 0.5, "Hf": 0.5}
 
     ax = cast(plt.Axes, pmv.structure_2d(struct))
-    spg_num = struct.get_symmetry_dataset(backend="moyopy")["number"]
+    spg_num = struct.get_space_group_info()[1]
 
     formula = struct.formula.replace(" ", "")
     text = f"{formula}\ndisordered {mp_id}, {spg_num = }"
