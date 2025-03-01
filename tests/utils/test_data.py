@@ -6,7 +6,6 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -22,7 +21,7 @@ from tests.conftest import y_pred, y_true
 
 
 if TYPE_CHECKING:
-    from typing import Any, Literal
+    from typing import Any
 
 
 @pytest.mark.parametrize(
@@ -38,7 +37,37 @@ if TYPE_CHECKING:
     ],
 )
 def test_crystal_sys_from_spg_num(spg_num: int, crystal_sys: CrystalSystem) -> None:
-    assert crystal_sys == pmv.utils.crystal_sys_from_spg_num(spg_num)
+    assert crystal_sys == pmv.utils.spg_to_crystal_sys(spg_num)
+
+
+@pytest.mark.parametrize(
+    ("spg_symbol", "crystal_sys"),
+    [
+        ("P1", "triclinic"),
+        ("P-1", "triclinic"),
+        ("P2/m", "monoclinic"),
+        ("C2/c", "monoclinic"),
+        ("Pnma", "orthorhombic"),
+        ("Cmcm", "orthorhombic"),
+        ("P4/mmm", "tetragonal"),
+        ("I4/mcm", "tetragonal"),
+        ("R-3m", "trigonal"),
+        ("R3c", "trigonal"),
+        ("P6/mmm", "hexagonal"),
+        ("P6_3/mmc", "hexagonal"),
+        ("Fm-3m", "cubic"),
+        ("Ia-3d", "cubic"),
+        # Test with full Hermann-Mauguin symbols
+        ("P2_1/c", "monoclinic"),
+        ("P12_1/c1", "monoclinic"),
+        ("C12/c1", "monoclinic"),
+    ],
+)
+def test_crystal_sys_from_spg_symbol(
+    spg_symbol: str, crystal_sys: CrystalSystem
+) -> None:
+    """Test that crystal system can be determined from space group symbols."""
+    assert crystal_sys == pmv.utils.spg_to_crystal_sys(spg_symbol)
 
 
 @pytest.mark.parametrize("spg", [-1, 0, 231])
@@ -47,15 +76,14 @@ def test_crystal_sys_from_spg_num_invalid(spg: int) -> None:
         ValueError,
         match=f"Invalid space group number {spg}, must be 1 <= num <= 230",
     ):
-        pmv.utils.crystal_sys_from_spg_num(spg)
+        pmv.utils.spg_to_crystal_sys(spg)
 
 
-@pytest.mark.parametrize("spg", [1.2, "3"])
-def test_crystal_sys_from_spg_num_typeerror(spg: int) -> None:
-    with pytest.raises(
-        TypeError, match=f"Expect integer space group number, got {spg=}"
-    ):
-        pmv.utils.crystal_sys_from_spg_num(spg)
+@pytest.mark.parametrize("spg", [1.2, "3", "invalid", "P999", "X2/m"])
+def test_crystal_sys_from_spg_symbol_invalid(spg: str) -> None:
+    """Test that invalid space group symbols raise appropriate errors."""
+    with pytest.raises(ValueError, match=f"Invalid space group {spg}"):
+        pmv.utils.spg_to_crystal_sys(spg)
 
 
 def test_df_to_arrays() -> None:
@@ -278,80 +306,6 @@ def test_si_fmt_int() -> None:
     assert pmv.utils.si_fmt_int(1.23456789e-10, sep="\t") == "123\tp"
 
 
-class TestGetCbarLabelFormatter:
-    data = np.random.default_rng(seed=0).random((10, 10))
-    fig, ax = plt.subplots()
-    cax = ax.imshow(data, cmap="viridis")
-    cbar = fig.colorbar(cax)
-    cbar.set_ticks([0.0123456789])
-
-    @pytest.mark.parametrize(
-        ("default_decimal_places", "expected"),
-        [
-            (3, "1.235%"),
-            (4, "1.2346%"),
-        ],
-    )
-    def test_default_decimal_places(
-        self, default_decimal_places: int, expected: str
-    ) -> None:
-        with pytest.warns(match="Invalid cbar_label_fmt="):
-            formatter = pmv.utils.get_cbar_label_formatter(
-                cbar_label_fmt=".2f",  # bad f-string format for percent mode
-                values_fmt=".2f",  # bad f-string format for percent mode
-                values_show_mode="percent",
-                sci_notation=False,
-                default_decimal_places=default_decimal_places,
-            )
-
-        self.cbar.ax.yaxis.set_major_formatter(formatter)
-        labels = [label.get_text() for label in self.cbar.ax.get_yticklabels()]
-
-        assert labels[0] == expected, labels
-
-    @pytest.mark.parametrize(
-        ("sci_notation", "expected"), [(True, "1.23"), (False, "0.01")]
-    )
-    def test_sci_notation(self, sci_notation: bool, expected: str) -> None:
-        formatter = pmv.utils.get_cbar_label_formatter(
-            cbar_label_fmt=".2f",
-            values_fmt=".2f",
-            values_show_mode="value",
-            sci_notation=sci_notation,
-        )
-
-        self.cbar.ax.yaxis.set_major_formatter(formatter)
-        labels = [label.get_text() for label in self.cbar.ax.get_yticklabels()]
-
-        assert labels[0] == expected, labels
-
-    @pytest.mark.parametrize(
-        ("values_show_mode", "expected"),
-        [
-            ("value", "0.0123"),
-            ("fraction", "0.0123"),
-            ("percent", "1.2%"),  # default decimal place being 1
-            ("off", "0.0123"),
-        ],
-    )
-    def test_values_show_mode(
-        self,
-        values_show_mode: Literal["value", "fraction", "percent", "off"],
-        expected: str,
-    ) -> None:
-        formatter = pmv.utils.get_cbar_label_formatter(
-            cbar_label_fmt=".4f",
-            values_fmt=".4f",
-            values_show_mode=values_show_mode,
-            sci_notation=False,
-        )
-
-        self.cbar.ax.yaxis.set_major_formatter(formatter)
-        labels = [label.get_text() for label in self.cbar.ax.get_yticklabels()]
-
-        assert labels[0] == expected, labels
-
-
 @pytest.mark.parametrize(
     ("text", "tag", "title", "style"),
     [
@@ -572,8 +526,8 @@ def test_get_plotly_font_color(color: str) -> None:
 
 @pytest.mark.parametrize("color", ["red", "#00FF00", "blue"])
 def test_get_matplotlib_font_color(color: str) -> None:
-    color = _get_matplotlib_font_color(plt.figure())
-    assert color == "black"  # Default color
+    color_result = _get_matplotlib_font_color(plt.figure())
+    assert color_result == "black"  # Default color
 
     fig, ax = plt.subplots()
     assert _get_matplotlib_font_color(fig) == _get_matplotlib_font_color(ax) == "black"
@@ -700,3 +654,30 @@ def test_apply_matplotlib_template() -> None:
 
     finally:  # Restore original values
         plt.rcParams.update(orig_params)
+
+
+def test_hm_symbol_to_spg_num_map() -> None:
+    """Test the hm_symbol_to_spg_num_map dictionary properties."""
+    from pymatviz.utils.data import hm_symbol_to_spg_num_map
+
+    # Map contains both dense and space separated format of Hermann-Mauguin symbols
+    assert len(hm_symbol_to_spg_num_map) == 636
+
+    # Test some specific mappings for common space groups
+    assert hm_symbol_to_spg_num_map["P1"] == 1
+    assert hm_symbol_to_spg_num_map["P-1"] == 2
+    assert hm_symbol_to_spg_num_map["Fm-3m"] == 225
+    assert hm_symbol_to_spg_num_map["Ia-3d"] == 230
+    assert hm_symbol_to_spg_num_map["P2_1/c"] == 14
+    assert hm_symbol_to_spg_num_map["P6_3/mmc"] == 194
+
+    # Test that all values are valid space group numbers
+    assert set(hm_symbol_to_spg_num_map.values()) == set(range(1, 230 + 1))
+
+
+def test_spg_num_to_from_symbol_roundtrip() -> None:
+    """Test that converting from number to symbol and back gives the original number."""
+    for num in range(1, 230 + 1):
+        symbol = pmv.utils.spg_num_to_from_symbol(num)
+        num_back = pmv.utils.spg_num_to_from_symbol(symbol)
+        assert num == num_back, f"Roundtrip failed for {num} -> {symbol} -> {num_back}"

@@ -24,7 +24,7 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: "3.10"
-      install-cmd: uv pip install -e '.[test,brillouin,symmetry]'  --system
+      install-cmd: uv pip install -e '.[test,brillouin]'  --system
       # pytest-split distributes work load so parallel jobs finish in similar time
       # update durations file with `pytest --store-durations --durations-path tests/files/.pytest-split-durations`
       test-cmd: pytest --durations 20 --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
@@ -61,7 +61,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install package and dependencies
-        run: pip install -e .[make-assets,symmetry]
+        run: pip install -e .[make-assets]
 
       - name: Run script
         run: python ${{ matrix.script }}

@@ -232,7 +232,7 @@ def get_subplot_title(
 
     if not title_dict.get("text"):
         if isinstance(struct_key, int):
-            spg_num = struct_i.get_space_group_info()[1]
+            spg_num = struct_i.get_symmetry_dataset()["number"]
             title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
         elif isinstance(struct_key, str):
             title_dict["text"] = str(struct_key)

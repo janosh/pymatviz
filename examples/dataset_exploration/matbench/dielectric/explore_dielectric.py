@@ -41,9 +41,7 @@ df_diel[proto_label_key] = [
 ]
 df_diel[n_wyckoff_pos_key] = df_diel[proto_label_key].map(count_wyckoff_positions)
 
-df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(
-    pmv.utils.crystal_sys_from_spg_num
-)
+df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(pmv.utils.spg_to_crystal_sys)
 
 df_diel[Key.volume] = [x.volume for x in df_diel[Key.structure]]
 df_diel[Key.formula] = [x.formula for x in df_diel[Key.structure]]
@@ -61,7 +59,7 @@ fig.show()
 fig = pmv.spacegroup_bar(df_diel[Key.spg_num])
 fig.layout.title.update(text="<b>Space group histogram</b>")
 fig.layout.margin.update(b=10, l=10, r=10, t=50)
-# pmv.save_fig(ax, "dielectric-spacegroup-hist.pdf")
+# pmv.save_fig(fig, "dielectric-spacegroup-hist.pdf")
 fig.show()
 
 

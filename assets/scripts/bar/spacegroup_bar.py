@@ -1,7 +1,6 @@
 # %%
+import pandas as pd
 from matminer.datasets import load_dataset
-from moyopy import SpaceGroupType
-from tqdm import tqdm
 
 import pymatviz as pmv
 from pymatviz.enums import Key
@@ -13,13 +12,12 @@ pmv.set_plotly_template("pymatviz_white")
 # %%
 df_phonons = load_dataset("matbench_phonons")
 
-df_phonons[Key.spg_num] = [
-    struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).number
-    for struct in tqdm(df_phonons[Key.structure], desc="Getting spacegroups")
-]
-df_phonons[Key.spg_symbol] = [
-    SpaceGroupType(spg_num).hm_short for spg_num in df_phonons[Key.spg_num]
-]
+df_sym = pd.DataFrame(
+    struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).as_dict()
+    for struct in df_phonons[Key.structure]
+)
+df_phonons[Key.spg_num] = df_sym["number"]
+df_phonons[Key.spg_symbol] = df_sym["number"].map(pmv.utils.spg_num_to_from_symbol)
 
 
 # %% Spacegroup histograms

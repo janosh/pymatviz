@@ -13,10 +13,11 @@ https://ml.materialsproject.org/projects/matbench_log_kvrh
 from time import perf_counter
 
 import numpy as np
+import pandas as pd
 import plotly.express as px
-from aviary.wren.utils import (
+from matbench_discovery.structure.prototype import (
     count_wyckoff_positions,
-    get_protostructure_label_from_spglib,
+    get_protostructure_label,
 )
 from matminer.datasets import load_dataset
 from pymatgen.core import Structure
@@ -30,36 +31,33 @@ from pymatviz.enums import Key
 df_grvh = load_dataset("matbench_log_gvrh")
 df_kvrh = load_dataset("matbench_log_kvrh")
 
-# getting space group symbols and numbers for 10,987 structures takes about 45 sec
-df_grvh[[Key.spg_symbol, Key.spg_num]] = [
-    struct.get_space_group_info()
-    for struct in tqdm(
-        df_grvh[Key.structure], desc="Getting matbench_log_gvrh spacegroups"
-    )
-]
-df_grvh[Key.crystal_system] = df_grvh[Key.spg_num].map(
-    pmv.utils.crystal_sys_from_spg_num
+df_sym = pd.DataFrame(
+    struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True).as_dict()
+    for struct in df_grvh[Key.structure]
 )
-
-
-df_grvh[Key.wyckoff] = [
-    get_protostructure_label_from_spglib(struct)
-    for struct in tqdm(
-        df_grvh[Key.structure], desc="Getting matbench_log_gvrh Wyckoff strings"
-    )
+df_sym[Key.crystal_system] = df_sym["number"].map(pmv.utils.spg_to_crystal_sys)
+df_grvh[Key.protostructure] = [
+    get_protostructure_label(struct)
+    for struct in tqdm(df_grvh[Key.structure], desc="matbench_log_gvrh Wyckoff strings")
 ]
-df_grvh[Key.n_wyckoff_pos] = df_grvh.wyckoff.map(count_wyckoff_positions)
-df_grvh[Key.formula] = [x.formula for x in df_grvh[Key.structure]]
+df_kvrh[Key.protostructure] = df_grvh[Key.protostructure]
+
+for df in (df_grvh, df_kvrh):
+    df[[Key.spg_num, Key.wyckoff_symbols]] = df_sym[["number", "wyckoffs"]]
+    df[Key.crystal_system] = df_sym[Key.crystal_system]
+
+    df[Key.n_wyckoff_pos] = df[Key.protostructure].map(count_wyckoff_positions)
+    df[Key.formula] = [x.formula for x in df[Key.structure]]
 
 
 # %%
 print("Number of materials with shear modulus of 0:")
-print(sum(df_grvh["log10(G_VRH)"] == 0))  # sum is 31
+print(sum(df_grvh["log10(G_VRH)"] == 0))  # expect 31
 
 
 # %%
 print("Number of materials with bulk modulus of 0:")
-print(sum(df_kvrh["log10(K_VRH)"] == 0))  # sum is 14
+print(sum(df_kvrh["log10(K_VRH)"] == 0))  # expect 14
 
 
 # %%
@@ -78,7 +76,7 @@ title = "<b>Volume histogram of the Matbench bulk/shear modulus datasets</b>"
 fig.layout.title.update(text=title, x=0.5)
 fig.layout.showlegend = False
 fig.show()
-# pmv.save_fig(ax, "log_gvrh-volume-hist.pdf")
+# pmv.save_fig(fig, "gvrh-volume-hist.pdf")
 
 
 # %%
@@ -137,7 +135,7 @@ fig = pmv.ptable_heatmap_plotly(pmv.count_elements(df_grvh[Key.formula]), log=Tr
 title = "<b>Element counts in the Matbench<br>bulk/shear modulus datasets</b>"
 fig.layout.title.update(text=title)
 fig.show()
-# pmv.save_fig(fig, "log_gvrh-ptable-heatmap.pdf")
+# pmv.save_fig(fig, "gvrh-ptable-heatmap.pdf")
 
 
 # %%
@@ -147,14 +145,14 @@ fig.layout.title.update(
     text="Spacegroup histogram of the Matbench bulk/shear modulus datasets"
 )
 fig.show()
-# pmv.save_fig(ax, "log_gvrh-spacegroup-hist.pdf")
+# pmv.save_fig(fig, "gvrh-spacegroup-hist.pdf")
 
 
 # %%
 fig = pmv.spacegroup_sunburst(df_grvh[Key.spg_num], show_counts="percent")
 title = "Spacegroup sunburst of the Matbench bulk/shear modulus datasets"
 fig.layout.title.update(text=title, x=0.5)
-# fig.write_image("log_gvrh-spacegroup-sunburst.pdf")
+# pmv.save_fig(fig, "gvrh-spacegroup-sunburst.pdf")
 fig.show()
 
 
@@ -199,4 +197,4 @@ fig.layout.showlegend = False
 fig.layout.update(width=1000, height=400)
 fig.layout.xaxis = dict(tickvals=list(range(7)), ticktext=list(x_ticks.values()))
 fig.show()
-# fig.write_image("log_grvh-violin-num-wyckoffs.pdf")
+# pmv.save_fig(fig, "grvh-violin-num-wyckoffs.pdf")

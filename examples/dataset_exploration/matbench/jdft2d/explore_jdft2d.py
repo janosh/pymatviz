@@ -35,7 +35,7 @@ title = "<b>Exfoliation energy histogram of the Matbench Jarvis DFT 2D dataset</
 fig.layout.title.update(text=title, x=0.5)
 fig.layout.showlegend = False
 fig.show()
-# pmv.save_fig(ax, "jdft2d-exfoliation-energy-hist.pdf")
+# pmv.save_fig(fig, "jdft2d-exfoliation-energy-hist.pdf")
 
 
 # %%
@@ -56,7 +56,7 @@ title = "Spacegroup histogram of the JARVIS DFT 2D dataset"
 fig.layout.title.update(text=title, y=0.98)
 fig.layout.margin.update(b=10, l=10, r=10, t=70)
 fig.show()
-# pmv.save_fig(ax, "jdft2d-spacegroup-hist.pdf")
+# pmv.save_fig(fig, "jdft2d-spacegroup-hist.pdf")
 
 
 # %%
@@ -64,4 +64,4 @@ fig = pmv.spacegroup_sunburst(df_2d[Key.spg_num], show_counts="percent")
 fig.layout.title.update(text="Spacegroup sunburst of the JARVIS DFT 2D dataset", x=0.5)
 fig.layout.margin.update(b=0, l=0, r=0, t=40)
 fig.show()
-# fig.write_image("jdft2d-spacegroup-sunburst.pdf")
+# pmv.save_fig(fig, "jdft2d-spacegroup-sunburst.pdf")

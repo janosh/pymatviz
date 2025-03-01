@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from pymatgen.core import Composition
 
+import pymatviz as pmv
 from examples.dataset_exploration.ward_metallic_glasses import formula_features
-from pymatviz import df_ptable
 from pymatviz.enums import Key
 
 
@@ -19,9 +19,11 @@ def make_rand_binaries(
     """Generate random binary compositions with integer percentages summing to 100.
 
     Args:
-        n_samples: Number of compositions to generate
-        elements: element set to choose from. If None, uses all elements in df_ptable
-        rng: Random number generator. If None, creates a new one with fixed seed
+        n_samples (int): Number of compositions to generate
+        elements (list[str] | None): element set to choose from. If None, uses all
+            elements in pmv.df_ptable.
+        rng (np.random.Generator | None): Random number generator. If None, creates a
+            new one with fixed seed.
 
     Returns:
         List of composition strings like ["Cu35Au65", "Fe70Ni30"]
@@ -29,7 +31,7 @@ def make_rand_binaries(
     if rng is None:
         rng = np.random.default_rng(seed=0)
     if elements is None:
-        elements = list(df_ptable.index)
+        elements = list(pmv.df_ptable.index)
 
     compositions = []
     for _ in range(n_samples):
@@ -52,11 +54,13 @@ def make_rand_ternaries_similar_radii(
     """Generate random ternary compositions with similar atomic radii.
 
     Args:
-        n_samples: Number of compositions to generate
-        elements: Element set to choose from. If None, uses all elements in df_ptable
-        max_radius_diff_percent: Max allowed difference in atomic radii between any 2
-            elements in the ternary composition, as a percentage of the smaller radius
-        rng: Random number generator. If None, creates a new one with fixed seed
+        n_samples (int): Number of compositions to generate
+        elements (list[str] | None): Element set to choose from. If None, uses all
+            elements in pmv.df_ptable.
+        max_radius_diff_percent (float): Max allowed difference in atomic radii between
+            any 2 elements in the ternary composition, as percentage of smaller radius.
+        rng (np.random.Generator | None): Random number generator. If None, creates a
+            new one with fixed seed.
 
     Returns:
         List of composition strings like ["Cu33Fe33Ni34", "Al30Ti35V35"]
@@ -64,10 +68,10 @@ def make_rand_ternaries_similar_radii(
     if rng is None:
         rng = np.random.default_rng(seed=0)
     if elements is None:
-        elements = list(df_ptable.index)
+        elements = list(pmv.df_ptable.index)
 
     # Get atomic radii for all elements
-    radii = df_ptable[Key.covalent_radius].fillna(0.2)  # fallback value of 0.2 nm
+    radii = pmv.df_ptable[Key.covalent_radius].fillna(0.2)  # fallback value of 0.2 nm
 
     compositions: list[str] = []
     max_attempts = n_samples * 100  # avoid infinite loop if constraints too strict
