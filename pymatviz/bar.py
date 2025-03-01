@@ -11,7 +11,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from matplotlib import transforms
 from matplotlib.ticker import FixedLocator
-from pymatgen.symmetry.groups import SpaceGroup
 
 from pymatviz.enums import Key
 from pymatviz.typing import PLOTLY
@@ -101,14 +100,20 @@ def spacegroup_bar(
         x_label = "International Spacegroup Number"
 
     else:  # assume index is space group symbols
+        from moyopy import SpaceGroupType
+
+        map_spg_num_to_symbol = {
+            # SpaceGroupType(number).hm_short is separated by a space like "F m -3 m"
+            number: SpaceGroupType(number).hm_short.replace(" ", "")
+            for number in range(1, 230 + 1)
+        }
+
         # TODO: figure out how to implement show_empty_bins for space group symbols
         # if show_empty_bins:
         #     idx = [SpaceGroup.from_int_number(x).symbol for x in range(1, 231)]
         #     df = df.reindex(idx, fill_value=0)
         df_data = df_data[df_data[count_col] > 0]
-        df_data[Key.crystal_system] = [
-            SpaceGroup(x).crystal_system for x in df_data.index
-        ]
+        df_data[Key.crystal_system] = df_data.index.map(map_spg_num_to_symbol)
 
         # sort df by crystal system going from smallest to largest spacegroup numbers
         # e.g. triclinic (1-2) comes first, cubic (195-230) last

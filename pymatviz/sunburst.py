@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 import plotly.express as px
-from pymatgen.symmetry.groups import SpaceGroup
 
 import pymatviz as pmv
 from pymatviz.enums import Key
@@ -71,10 +70,17 @@ def spacegroup_sunburst(
             pmv.utils.crystal_sys_from_spg_num
         )
 
-    except (ValueError, TypeError):  # column must be strings of space group symbols
-        df_spg_counts[Key.crystal_system] = [
-            SpaceGroup(x).crystal_system for x in df_spg_counts[Key.spg_num]
-        ]
+    except (ValueError, TypeError):  # assume column is strings of space group symbols
+        from moyopy import SpaceGroupType
+
+        map_spg_num_to_symbol = {
+            # SpaceGroupType(number).hm_short is separated by a space like "F m -3 m"
+            number: SpaceGroupType(number).hm_short.replace(" ", "")
+            for number in range(1, 230 + 1)
+        }
+        df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
+            map_spg_num_to_symbol
+        )
 
     sunburst_defaults = dict(color_discrete_sequence=px.colors.qualitative.G10)
 
