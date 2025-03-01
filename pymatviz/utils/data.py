@@ -137,7 +137,7 @@ def spg_to_crystal_sys(spg: float | str) -> CrystalSystem:
         raise ValueError(f"Invalid space group {spg}")
 
     if not (1 <= spg <= 230):
-        raise ValueError(f"Invalid space group number {spg}, must be 1 <= num <= 230")
+        raise ValueError(f"Invalid space group {spg}, must be 1 <= num <= 230")
 
     if 1 <= spg <= 2:
         return "triclinic"
