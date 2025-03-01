@@ -11,7 +11,7 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
-from pymatviz.structure_viz.helpers import get_image_sites
+from pymatviz.structure_viz.helpers import _angles_to_rotation_matrix, get_image_sites
 
 
 if TYPE_CHECKING:
@@ -771,3 +771,151 @@ def test_structure_plotly_visible_image_atoms_population() -> None:
         trace for trace in fig.data if (trace.name or "").startswith("Image of ")
     ]
     assert len(image_site_traces) == 7
+
+
+def test_unit_cell_rotation() -> None:
+    """Test rotation is correctly applied to the unit cell in structure_2d_plotly."""
+    struct = Structure(lattice_cubic, ["Fe", "O"], COORDS)
+    rotations: list[str] = [
+        "0x,0y,0z",
+        "45x,0y,0z",
+        "0x,45y,0z",
+        "0x,0y,45z",
+        "30x,30y,30z",
+    ]
+
+    for rotation in rotations:
+        rotation_matrix = _angles_to_rotation_matrix(rotation)
+        fig = pmv.structure_2d_plotly(
+            struct,
+            rotation=rotation,
+            show_unit_cell={"edge": {"color": "red", "width": 2}},
+        )
+
+        edge_traces = [
+            trace for trace in fig.data if trace.name and trace.name.startswith("edge")
+        ]
+        site_traces = [
+            trace for trace in fig.data if trace.name and trace.name.startswith("site")
+        ]
+
+        assert len(edge_traces) == 12
+        assert len(site_traces) == 2
+
+        if rotation != "0x,0y,0z":
+            corners = [
+                (0, 0, 0),
+                (1, 0, 0),
+                (0, 1, 0),
+                (1, 1, 0),
+                (0, 0, 1),
+                (1, 0, 1),
+                (0, 1, 1),
+                (1, 1, 1),
+            ]
+            cart_corners = struct.lattice.get_cartesian_coords(corners)
+            rotated_corners = np.dot(cart_corners, rotation_matrix)
+
+            edge_start = [edge_traces[0].x[0], edge_traces[0].y[0]]
+            distances = np.sum((rotated_corners[:, :2] - edge_start) ** 2, axis=1)
+            assert (np.min(distances) ** 0.5) < 1e-10
+
+
+def test_consistent_rotation_atoms_and_unit_cell() -> None:
+    """Test that rotation is applied consistently to both atoms and unit cell."""
+    positions: list[list[float]] = [
+        [0.0, 0.0, 0.0],  # origin
+        [1.0, 0.0, 0.0],  # x-axis corner
+        [0.0, 1.0, 0.0],  # y-axis corner
+        [0.0, 0.0, 1.0],  # z-axis corner
+    ]
+    species: list[str] = ["Fe", "O", "Ni", "Co"]
+    struct = Structure(lattice_cubic, species, positions)
+
+    rotation = "30x,45y,60z"
+    fig = pmv.structure_2d_plotly(
+        struct,
+        rotation=rotation,
+        show_unit_cell={"edge": {"color": "red", "width": 2}},
+    )
+
+    edge_traces = [
+        trace for trace in fig.data if trace.name and trace.name.startswith("edge")
+    ]
+    site_traces = [
+        trace for trace in fig.data if trace.name and trace.name.startswith("site")
+    ]
+
+    # Check origin alignment
+    origin_atom_pos = np.array([site_traces[0].x[0], site_traces[0].y[0]])
+    origin_corner_pos = np.array([edge_traces[0].x[0], edge_traces[0].y[0]])
+    assert np.sqrt(np.sum((origin_atom_pos - origin_corner_pos) ** 2)) < 1e-10
+
+    # Check x-axis alignment
+    x_atom_pos = np.array([site_traces[1].x[0], site_traces[1].y[0]])
+    x_corner_candidates: list[np.ndarray] = []
+    for trace in edge_traces:
+        if np.allclose([trace.x[0], trace.y[0]], origin_corner_pos, atol=1e-10):
+            x_corner_candidates.append(np.array([trace.x[2], trace.y[2]]))
+        elif np.allclose([trace.x[2], trace.y[2]], origin_corner_pos, atol=1e-10):
+            x_corner_candidates.append(np.array([trace.x[0], trace.y[0]]))
+
+    distances = [
+        np.sqrt(np.sum((x_atom_pos - candidate) ** 2))
+        for candidate in x_corner_candidates
+    ]
+    assert min(distances) < 1e-10
+
+
+def test_independent_subplot_zooming() -> None:
+    """Test that each subplot in structure_2d_plotly can be zoomed independently."""
+    structs: dict[str, Structure] = {
+        f"struct{idx}": Structure(lattice_cubic, [elem, "O"], COORDS)
+        for idx, elem in enumerate(["Fe", "Co", "Ni", "Cu"], 1)
+    }
+
+    fig = pmv.structure_2d_plotly(structs, n_cols=2)
+
+    for idx in range(1, len(structs) + 1):
+        x_axis = getattr(fig.layout, f"xaxis{idx if idx > 1 else ''}")
+        y_axis = getattr(fig.layout, f"yaxis{idx if idx > 1 else ''}")
+
+        # Check that axes are properly anchored
+        assert x_axis.scaleanchor == f"y{idx if idx > 1 else ''}"
+        assert y_axis.scaleanchor == f"x{idx if idx > 1 else ''}"
+
+        # Set fixedrange to False to make axes zoomable
+        assert x_axis.fixedrange is None
+        assert y_axis.fixedrange is None
+
+
+def test_rotation_matrix_passed_to_draw_unit_cell() -> None:
+    """Test that the rotation matrix is passed to draw_unit_cell."""
+    struct = Structure(lattice_cubic, ["Fe", "O"], COORDS)
+
+    from pymatviz.structure_viz import plotly
+
+    original_draw_unit_cell = plotly.draw_unit_cell
+    passed_rotation_matrix: list[np.ndarray] = []
+
+    def mock_draw_unit_cell(
+        fig: go.Figure,
+        structure: Structure,
+        unit_cell_kwargs: dict[str, Any],
+        **kwargs: Any,
+    ) -> go.Figure:
+        if "rotation_matrix" in kwargs:
+            passed_rotation_matrix.append(kwargs["rotation_matrix"])
+        return original_draw_unit_cell(fig, structure, unit_cell_kwargs, **kwargs)
+
+    plotly.draw_unit_cell = mock_draw_unit_cell
+
+    try:
+        rotation = "30x,30y,30z"
+        pmv.structure_2d_plotly(struct, rotation=rotation)
+
+        assert len(passed_rotation_matrix) == 1
+        expected_matrix = _angles_to_rotation_matrix(rotation)
+        assert np.allclose(passed_rotation_matrix[0], expected_matrix)
+    finally:
+        plotly.draw_unit_cell = original_draw_unit_cell

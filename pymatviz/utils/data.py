@@ -4,7 +4,7 @@
 * element_symbols (dict[int, str]): Map atomic numbers to elements.
 
 - bin_df_cols: Bin columns of a DataFrame.
-- crystal_sys_from_spg_num: Get the crystal system for an international
+- spg_to_crystal_sys: Get the crystal system for an international
     space group number.
 - df_to_arrays: Convert DataFrame to arrays.
 - html_tag: Wrap text in a span with custom style.
