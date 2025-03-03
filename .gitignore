@@ -10,3 +10,4 @@ examples/**/*.json.xz
 examples/**/*.pt
 examples/dataset_exploration/**/*.pdf
 gnome
+assets/scripts/scholar-papers*.yml.gz

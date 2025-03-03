@@ -301,3 +301,22 @@ See [`citation.cff`](citation.cff) or cite the [Zenodo record](https://zenodo.or
   version = {0.8.2}, % replace with the version you use
 }
 ```
+
+## Papers using `pymatviz`
+
+Sorted by number of citations. Last updated 2025-03-03. Auto-generated from Google Scholar. Manual additions via PR welcome.
+
+1. C Zeni, R Pinsler, D Zügner et al. (2023). [Mattergen: a generative model for inorganic materials design](https://arxiv.org/abs/2312.03687) (cited by 116)
+1. J Riebesell, REA Goodall, P Benner et al. (2023). [Matbench Discovery--A framework to evaluate machine learning crystal stability predictions](https://arxiv.org/abs/2308.14920) (cited by 38)
+1. C Chen, DT Nguyen, SJ Lee et al. (2024). [Accelerating computational materials discovery with machine learning and cloud high-performance computing: from large-scale screening to experimental validation](https://pubs.acs.org/doi/abs/10.1021/jacs.4c03849) (cited by 34)
+1. L Barroso-Luque, M Shuaibi, X Fu et al. (2024). [Open materials 2024 (omat24) inorganic materials dataset and models](https://www.rivista.ai/wp-content/uploads/2024/10/2410.12771v1.pdf) (cited by 21)
+1. M Giantomassi, G Materzanini (2024). [Systematic assessment of various universal machine‐learning interatomic potentials](https://onlinelibrary.wiley.com/doi/abs/10.1002/mgea.58) (cited by 12)
+1. AA Naik, C Ertural, P Benner et al. (2023). [A quantum-chemical bonding database for solid-state materials](https://www.nature.com/articles/s41597-023-02477-5) (cited by 11)
+1. K Li, AN Rubungo, X Lei et al. (2025). [Probing out-of-distribution generalization in machine learning for materials](https://www.nature.com/articles/s43246-024-00731-w) (cited by 6)
+1. N Tuchinda, CA Schuh (2025). [Grain Boundary Segregation and Embrittlement of Aluminum Binary Alloys from First Principles](https://arxiv.org/abs/2502.01579) (cited by 2)
+1. A Onwuli, KT Butler, A Walsh (2024). [Ionic species representations for materials informatics](https://pubs.aip.org/aip/aml/article/2/3/036112/3313198) (cited by 1)
+1. A Peng, MY Guo (2025). [The OpenLAM Challenges](https://arxiv.org/abs/2501.16358)
+1. F Therrien, JA Haibeh (2025). [OBELiX: A Curated Dataset of Crystal Structures and Experimentally Measured Ionic Conductivities for Lithium Solid-State Electrolytes](https://arxiv.org/abs/2502.14234)
+1. HH Li, Q Chen, G Ceder (2024). [Voltage Mining for (De) lithiation-Stabilized Cathodes and a Machine Learning Model for Li-Ion Cathode Voltage](https://pubs.acs.org/doi/abs/10.1021/acsami.4c15742)
+1. RA Mayo (2025). [MOSAEC-DB: a comprehensive database of experimental metal–organic frameworks with verified chemical accuracy suitable for molecular simulations](https://pubs.rsc.org/en/content/articlehtml/2025/sc/d4sc07438f)
+1. N Tuchinda, CA Schuh (2025). [A Grain Boundary Embrittlement Genome for Substitutional Cubic Alloys](https://arxiv.org/abs/2502.06531)
