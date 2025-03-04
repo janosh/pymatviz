@@ -20,7 +20,6 @@ import re
 import shutil
 import sys
 from datetime import datetime, timedelta, timezone
-from typing import NotRequired, TypedDict
 
 import yaml
 from serpapi import GoogleSearch
@@ -30,6 +29,9 @@ from pymatviz import ROOT
 
 if os.getenv("CI"):
     raise SystemExit("Skip scraping Google Scholar in CI")
+
+# NotRequired can't be imported below Python 3.11
+from typing import NotRequired, TypedDict
 
 
 class ScholarPaper(TypedDict):

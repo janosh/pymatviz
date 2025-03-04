@@ -197,11 +197,11 @@ def test_density_scatter_plotly(
         stats_annotations = [
             ann
             for ann in fig.layout.annotations
-            if any(metric in ann.text for metric in ["MAE", "RMSE", "R<sup>2</sup>"])
+            if any(metric in ann.text for metric in ("MAE", "RMSE", "R<sup>2</sup>"))
         ]
         assert len(stats_annotations) == 1, "Stats annotation not found"
         assert all(
-            metric in stats_annotations[0].text for metric in ["MAE", "R<sup>2</sup>"]
+            metric in stats_annotations[0].text for metric in ("MAE", "R<sup>2</sup>")
         ), f"{stats_annotations[0].text=}"
         if isinstance(stats, dict):
             if "prefix" in stats:
