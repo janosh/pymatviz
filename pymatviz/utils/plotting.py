@@ -14,15 +14,9 @@ Available functions:
 from __future__ import annotations
 
 from functools import wraps
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING
 
-import matplotlib as mpl
-
-
-if TYPE_CHECKING:
-    from typing import Literal
-
-
+import matplotlib.colors
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
@@ -36,6 +30,7 @@ from pymatviz.typing import (
     VALID_FIG_NAMES,
     AxOrFig,
     Backend,
+    ColorType,
     P,
     R,
 )
@@ -204,39 +199,45 @@ def get_font_color(fig: AxOrFig) -> str:
     raise TypeError(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
 
 
-def luminance(color: str | tuple[float, float, float]) -> float:
-    """Compute the luminance of a color as in https://stackoverflow.com/a/596243.
+def luminance(color: ColorType) -> float:
+    """Compute the relative luminance of a color using the WCAG 2.0 formula.
 
     Args:
-        color (tuple[float, float, float]): RGB color tuple with values in [0, 1].
+        color (ColorType): RGB color tuple with values in [0, 1] or a color string
+            that can be converted to RGB.
 
     Returns:
-        float: Luminance of the color.
+        float: Relative luminance of the color in range [0, 1].
     """
     # raises ValueError if color invalid
-    red, green, blue = mpl.colors.to_rgb(color)
-    return 0.299 * red + 0.587 * green + 0.114 * blue
+    r, g, b = matplotlib.colors.to_rgb(color)
+
+    # Calculate relative luminance using WCAG 2.0 coefficients
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def pick_bw_for_contrast(
-    color: tuple[float, float, float] | str,
-    text_color_threshold: float = 0.7,
-) -> Literal["black", "white"]:
-    """Choose black or white text color for a given background color based on luminance.
+def pick_max_contrast_color(
+    bg_color: ColorType,
+    luminance_threshold: float = 0.3,  # Threshold for light/dark color distinction
+    colors: tuple[ColorType, ColorType] = ("white", "black"),
+) -> ColorType:
+    """Choose dark or light text color for a given background color based on WCAG 2.0.
 
     Args:
-        color (tuple[float, float, float] | str): RGB color tuple with values in [0, 1].
-        text_color_threshold (float, optional): Luminance threshold for choosing
-            black or white text color. Defaults to 0.7.
+        bg_color (ColorType): Background color.
+        luminance_threshold (float, optional): Luminance threshold for choosing text
+            color. Defaults to 0.5 to distinguish between light and dark colors.
+        colors (tuple[ColorType, ColorType], optional): One light and one dark text
+            color to choose from in that order. Defaults to ("white", "black").
 
     Returns:
-        "black" | "white": depending on the luminance of the background color.
+        ColorType: The color that provides better contrast, usually "black" or "white".
     """
-    if isinstance(color, str):
-        color = mpl.colors.to_rgb(color)
+    # Calculate luminance of the background color
+    bg_luminance = luminance(bg_color)
 
-    light_bg = luminance(cast(tuple[float, float, float], color)) > text_color_threshold
-    return "black" if light_bg else "white"
+    # Use black text on light colors (luminance > threshold)
+    return colors[1] if bg_luminance > luminance_threshold else colors[0]
 
 
 def pretty_label(key: str, backend: Backend) -> str:

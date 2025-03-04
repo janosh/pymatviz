@@ -17,15 +17,15 @@ if TYPE_CHECKING:
         ((0, 0, 0), 0),  # Black
         ((1, 1, 1), 1),  # White
         ((0.5, 0.5, 0.5), 0.5),  # Gray
-        ((1, 0, 0), 0.299),  # Red
-        ((0, 1, 0), 0.587),  # Green
-        ((0, 0, 1, 0.3), 0.114),  # Blue with alpha (should be ignored)
-        ("#FF0000", 0.299),  # Red
-        ("#00FF00", 0.587),  # Green
-        ("#0000FF", 0.114),  # Blue
-        ("red", 0.299),
-        ("green", 0.294650),
-        ("blue", 0.114),
+        ((1, 0, 0), 0.2126),  # Red
+        ((0, 1, 0), 0.7152),  # Green
+        ((0, 0, 1, 0.3), 0.0722),  # Blue with alpha (should be ignored)
+        ("#FF0000", 0.2126),  # Red
+        ("#00FF00", 0.7152),  # Green
+        ("#0000FF", 0.0722),  # Blue
+        ("red", 0.2126),
+        ("green", 0.35900235),
+        ("blue", 0.0722),
     ],
 )
 def test_luminance(color: tuple[float, float, float], expected: float) -> None:
@@ -33,20 +33,20 @@ def test_luminance(color: tuple[float, float, float], expected: float) -> None:
 
 
 @pytest.mark.parametrize(
-    ("color", "text_color_threshold", "expected"),
+    ("color", "luminance_threshold", "expected"),
     [
         ((1.0, 1.0, 1.0), 0.7, "black"),  # White
         ((0, 0, 0), 0.7, "white"),  # Black
         ((0.5, 0.5, 0.5), 0.7, "white"),  # Gray
         ((0.5, 0.5, 0.5), 0, "black"),  # Gray with low threshold
         ((1, 0, 0, 0.3), 0.7, "white"),  # Red with alpha (should be ignored)
-        ((0, 1, 0), 0.7, "white"),  # Green
+        ((0, 1, 0), 0.7, "black"),  # Green
         ((0, 0, 1.0), 0.4, "white"),  # Blue with low threshold
     ],
 )
 def test_pick_bw_for_contrast(
     color: tuple[float, float, float],
-    text_color_threshold: float,
+    luminance_threshold: float,
     expected: Literal["black", "white"],
 ) -> None:
-    assert pmv.utils.pick_bw_for_contrast(color, text_color_threshold) == expected
+    assert pmv.utils.pick_max_contrast_color(color, luminance_threshold) == expected
