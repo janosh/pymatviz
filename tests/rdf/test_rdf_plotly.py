@@ -78,10 +78,7 @@ def test_element_pair_rdfs_conflicting_bins_and_bin_size(
 
 @pytest.mark.parametrize(
     ("param", "values"),
-    [
-        ("cutoff", (5, 10, 15, -1.5, -2)),
-        ("bin_size", (0.05, 0.1, 0.2)),
-    ],
+    [("cutoff", (5, 10, 15, -1.5, -2)), ("bin_size", (0.05, 0.1, 0.2))],
 )
 def test_element_pair_rdfs_cutoff_and_bin_size(
     structures: list[Structure], param: str, values: tuple[float, ...]
@@ -199,12 +196,12 @@ def test_element_pair_rdfs_custom_colors_and_styles(
 
 
 def test_element_pair_rdfs_reference_line(structures: list[Structure]) -> None:
-    ref_line_kwargs = {"line_color": "red", "line_width": 2}
+    ref_line_kwargs = {"line_color": "teal", "line_width": 2}
     fig = element_pair_rdfs(structures, reference_line=ref_line_kwargs)
     n_subplots = len(fig._grid_ref) * len(fig._grid_ref[0])
     assert (
         sum(
-            shape.type == "line" and shape.line.color == "red"
+            shape.type == "line" and shape.line.color == "teal"
             for shape in fig.layout.shapes
         )
         == n_subplots
@@ -242,7 +239,7 @@ def test_full_rdf_basic(structures: list[Structure]) -> None:
     for struct in structures:
         fig = full_rdf(struct)
         assert isinstance(fig, go.Figure)
-        assert fig.layout.xaxis.title.text == "r (Å)"
+        assert fig.layout.xaxis.title.text == "r [Å]"
         assert fig.layout.yaxis.title.text == "g(r)"
         assert len(fig.data) == 1
         assert fig.data[0].name == ""

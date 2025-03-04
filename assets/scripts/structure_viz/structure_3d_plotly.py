@@ -11,11 +11,12 @@ df_phonons = load_dataset("matbench_phonons")
 
 
 # %% 3d example
+supercells = {
+    key: struct.make_supercell(2, in_place=False)
+    for key, struct in df_phonons[Key.structure].head(6).items()
+}
 fig = pmv.structure_3d_plotly(
-    {
-        key: struct.make_supercell(2, in_place=False)
-        for key, struct in df_phonons[Key.structure].head(6).to_dict().items()
-    },
+    supercells,
     elem_colors=ElemColorScheme.jmol,
     # show_unit_cell={"edge": dict(color="white", width=1.5)},
     hover_text=SiteCoords.cartesian_fractional,
