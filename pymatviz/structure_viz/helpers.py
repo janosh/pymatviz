@@ -14,7 +14,7 @@ from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 
 from pymatviz.colors import ELEM_COLORS_ALLOY, ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
-from pymatviz.utils import df_ptable, pick_bw_for_contrast
+from pymatviz.utils import df_ptable, pick_max_contrast_color
 
 
 if TYPE_CHECKING:
@@ -319,7 +319,7 @@ def draw_site(
         text=txt,
         textposition="middle center",
         textfont=dict(
-            color=pick_bw_for_contrast(color, text_color_threshold=0.5),
+            color=pick_max_contrast_color(color),
             size=np.clip(atom_size * site_radius * (0.8 if is_image else 1), 10, 18),
         ),
         hoverinfo="text" if hover_text else None,
