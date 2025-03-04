@@ -28,6 +28,10 @@ from serpapi import GoogleSearch
 from pymatviz import ROOT
 
 
+if os.getenv("CI"):
+    raise SystemExit("Skip scraping Google Scholar in CI")
+
+
 class ScholarPaper(TypedDict):
     """Type for a paper fetched from Google Scholar."""
 

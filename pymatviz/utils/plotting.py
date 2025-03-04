@@ -6,7 +6,7 @@ Available functions:
     - get_font_color: Get the font color used in a Matplotlib or Plotly figure.
     - get_fig_xy_range: Get the x and y range of a plotly or matplotlib figure.
     - luminance: Compute the luminance of a color.
-    - pick_bw_for_contrast: Choose black or white text color for contrast.
+    - pick_max_contrast_color: Choose black or white text color for contrast.
     - pretty_label: Map metric keys to their pretty labels.
     - validate_fig: Decorator to validate the type of fig keyword argument.
 """

@@ -44,7 +44,7 @@ def test_luminance(color: tuple[float, float, float], expected: float) -> None:
         ((0, 0, 1.0), 0.4, "white"),  # Blue with low threshold
     ],
 )
-def test_pick_bw_for_contrast(
+def test_pick_max_contrast_color(
     color: tuple[float, float, float],
     luminance_threshold: float,
     expected: Literal["black", "white"],
