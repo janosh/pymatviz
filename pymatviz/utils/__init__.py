@@ -35,7 +35,7 @@ from pymatviz.utils.plotting import (
     get_fig_xy_range,
     get_font_color,
     luminance,
-    pick_bw_for_contrast,
+    pick_max_contrast_color,
     pretty_label,
     validate_fig,
 )
