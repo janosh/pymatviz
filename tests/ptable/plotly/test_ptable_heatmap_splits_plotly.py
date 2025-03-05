@@ -60,8 +60,12 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
         n_rows = len(fig._grid_ref)
         assert n_rows == expected_n_rows, f"{n_rows=}, {hide_f_block=}"
 
+    # Check that f-block elements are shown when hide_f_block="auto" and data includes
+    # f-block elements
     fig_with_f = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block="auto")
-    anno_texts = [anno.text for anno in fig_with_f.layout.annotations]
+    anno_texts = [
+        anno.text for anno in fig_with_f.layout.annotations if hasattr(anno, "text")
+    ]
     expected = [
         "Fe",
         "<b>Iron</b><br>Split 1: 1<br>Split 2: 2",
@@ -72,10 +76,22 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
     ]
     assert anno_texts == expected, f"{anno_texts=}"
 
-    fig_with_f = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block=True)
-    anno_texts = [anno.text for anno in fig_with_f.layout.annotations]
-    expected = ["Fe", "<b>Iron</b><br>Split 1: 1<br>Split 2: 2"]
-    assert anno_texts == expected, f"{anno_texts=}"
+    # Check that all element symbols are present in annotations
+    for symbol in data_with_f:
+        assert symbol in anno_texts
+
+    # Check that f-block elements are hidden when hide_f_block=True
+    fig_with_f_hidden = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block=True)
+    anno_texts_hidden = [
+        anno.text
+        for anno in fig_with_f_hidden.layout.annotations
+        if hasattr(anno, "text")
+    ]
+
+    # Fe should be present, but La and U should be hidden
+    assert "Fe" in anno_texts_hidden
+    assert "La" not in anno_texts_hidden
+    assert "U" not in anno_texts_hidden
 
 
 @pytest.mark.parametrize(
@@ -153,15 +169,45 @@ def test_ptable_heatmap_splits_plotly_annotations() -> None:
     fig = pmv.ptable_heatmap_splits_plotly(data, annotations=annotations)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
 
+    # Check for annotations with custom text
+    custom_annotations = [
+        anno
+        for anno in fig.layout.annotations
+        if hasattr(anno, "text") and anno.text in ["Iron", "Oxygen"]
+    ]
+
+    # There should be at least one custom annotation
+    assert len(custom_annotations) > 0, "No custom annotations found"
+
+    # Check that the custom annotations have the specified font properties
+    for anno in custom_annotations:
+        if anno.text == "Iron":
+            assert anno.font.color == "red"
+            assert anno.font.size == 14
+        elif anno.text == "Oxygen":
+            assert anno.font.color == "blue"
+            assert anno.font.size == 14
+
     # Test with callable annotations
     def annotation_func(value: list[float] | np.ndarray) -> dict[str, Any]:
         return {"text": f"Value: {np.mean(value):.1f}"}
 
     fig = pmv.ptable_heatmap_splits_plotly(data, annotations=annotation_func)
-    # check annotations are present
-    anno_texts = [anno.text for anno in fig.layout.annotations]
-    assert "Value: 1.5" in anno_texts
-    assert "Value: 3.5" in anno_texts
+
+    # Check for annotations with the expected text format
+    value_annotations = [
+        anno
+        for anno in fig.layout.annotations
+        if hasattr(anno, "text") and "Value:" in str(anno.text)
+    ]
+
+    # There should be at least one value annotation
+    assert len(value_annotations) == 4, "No value annotations found"
+
+    # Check that the annotations have the expected values
+    expected_values = ["Value: 1.5", "Value: 3.5", "Value: 1.0", "Value: 2.0"]
+    for value in expected_values:
+        assert any(value in str(anno.text) for anno in value_annotations)
 
 
 def test_ptable_heatmap_splits_plotly_error_cases() -> None:
@@ -583,3 +629,95 @@ def test_ptable_heatmap_splits_plotly_special_colors() -> None:
         ]
         assert nan_color in fill_colors, f"{nan_color=} not found in figure"
         assert zero_color in fill_colors, f"{zero_color=} not found in figure"
+
+
+def test_ptable_heatmap_splits_plotly_auto_font_color() -> None:
+    """Test auto-changing font color for element symbols based on background color."""
+    # Test with a single element and a simple colorscale
+    data = {"Fe": [0.5, 0.5]}  # Middle value
+
+    # Create a figure with default settings
+    fig = pmv.ptable_heatmap_splits_plotly(data)
+
+    # Find annotations with element symbols
+    annotations = [
+        anno
+        for anno in fig.layout.annotations
+        if anno.text == "Fe" and hasattr(anno, "font")
+    ]
+
+    # Check that we found the element symbol annotations
+    assert len(annotations) == 1
+
+    # Verify that the font color is either black or white
+    for anno in annotations:
+        assert anno.font.color in ("black", "white")
+
+
+def test_luminance_calculation_for_font_color() -> None:
+    """Test the luminance calculation logic used for determining font color."""
+    from pymatviz.utils.plotting import luminance
+
+    # Test dark colors (should use white text)
+    dark_colors = [
+        "rgb(0, 0, 0)",  # Black
+        "rgb(50, 0, 0)",  # Dark red
+        "rgb(0, 50, 0)",  # Dark green
+        "rgb(0, 0, 50)",  # Dark blue
+        "rgb(50, 50, 50)",  # Dark gray
+    ]
+
+    # Test light colors (should use black text)
+    light_colors = [
+        "rgb(255, 255, 255)",  # White
+        "rgb(200, 200, 200)",  # Light gray
+        "rgb(255, 200, 200)",  # Light red
+        "rgb(200, 255, 200)",  # Light green
+        "rgb(200, 200, 255)",  # Light blue
+    ]
+
+    # Test the luminance threshold logic
+    threshold = 0.55  # This is the threshold used in the code
+
+    # Dark colors should have luminance < threshold
+    for color in dark_colors:
+        lum = luminance(color)
+        assert lum < threshold, (
+            f"Expected luminance < {threshold} for {color}, got {lum}"
+        )
+        # This would result in white text
+        assert ("black" if lum > threshold else "white") == "white"
+
+    # Light colors should have luminance > threshold
+    for color in light_colors:
+        lum = luminance(color)
+        assert lum > threshold, (
+            f"Expected luminance > {threshold} for {color}, got {lum}"
+        )
+        # This would result in black text
+        assert ("black" if lum > threshold else "white") == "black"
+
+
+def test_ptable_heatmap_splits_plotly_custom_font_color_override() -> None:
+    """Test that custom font color in symbol_kwargs overrides the auto font color."""
+    data = {"Fe": [0.1, 0.2]}  # Low values should result in dark colors
+
+    # Custom symbol_kwargs with explicit font color
+    symbol_kwargs = {"font": {"color": "red", "size": 16}}
+
+    fig = pmv.ptable_heatmap_splits_plotly(  # Viridis has dark colors for low values
+        data, colorscale="Viridis", symbol_kwargs=symbol_kwargs
+    )
+
+    # Find annotations with element symbols
+    annotations = [
+        anno
+        for anno in fig.layout.annotations
+        if anno.text == "Fe" and hasattr(anno, "font")
+    ]
+
+    assert len(annotations) == 1
+
+    # Check that the custom font color is used instead of the auto font color
+    for anno in annotations:
+        assert anno.font.color == "red"

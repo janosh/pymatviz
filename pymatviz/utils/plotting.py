@@ -209,8 +209,13 @@ def luminance(color: ColorType) -> float:
     Returns:
         float: Relative luminance of the color in range [0, 1].
     """
-    # raises ValueError if color invalid
-    r, g, b = matplotlib.colors.to_rgb(color)
+    if isinstance(color, str) and color.startswith("rgb("):
+        r, g, b, *_a = map(float, color.strip("rgb()").split(","))
+        if r > 1 or g > 1 or b > 1:
+            r, g, b = r / 255, g / 255, b / 255
+    else:
+        # raises ValueError if color invalid
+        r, g, b, *_a = matplotlib.colors.to_rgba(color)
 
     # Calculate relative luminance using WCAG 2.0 coefficients
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
