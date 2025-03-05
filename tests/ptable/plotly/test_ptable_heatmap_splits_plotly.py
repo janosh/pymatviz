@@ -215,7 +215,7 @@ def test_ptable_heatmap_splits_plotly_error_cases() -> None:
     data = {"Fe": [1, 2], "O": [3, 4]}
 
     # Test invalid n_splits
-    with pytest.raises(ValueError, match="n_splits=1 must be 2, 3, or 4"):
+    with pytest.raises(ValueError, match="Number of splits 1 must be 2, 3, or 4"):
         pmv.ptable_heatmap_splits_plotly({"Fe": [1]})
 
     # Test invalid orientation

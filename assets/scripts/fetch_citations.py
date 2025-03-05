@@ -27,7 +27,8 @@ from pymatviz import ROOT
 
 
 if os.getenv("CI"):
-    raise SystemExit("Skip scraping Google Scholar in CI")
+    print(f"Skip {__file__.split('/')[-1]} in CI")
+    raise SystemExit(0)
 
 # NotRequired can't be imported below Python 3.11
 from typing import NotRequired, TypedDict
