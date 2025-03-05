@@ -320,3 +320,5 @@ Sorted by number of citations. Last updated 2025-03-03. Auto-generated from Goog
 1. HH Li, Q Chen, G Ceder (2024). [Voltage Mining for (De) lithiation-Stabilized Cathodes and a Machine Learning Model for Li-Ion Cathode Voltage](https://pubs.acs.org/doi/abs/10.1021/acsami.4c15742)
 1. RA Mayo (2025). [MOSAEC-DB: a comprehensive database of experimental metal–organic frameworks with verified chemical accuracy suitable for molecular simulations](https://pubs.rsc.org/en/content/articlehtml/2025/sc/d4sc07438f)
 1. N Tuchinda, CA Schuh (2025). [A Grain Boundary Embrittlement Genome for Substitutional Cubic Alloys](https://arxiv.org/abs/2502.06531)
+1. Daniel W. Davies, Keith T. Butler, Adam J. Jackson et al. (2024). [SMACT: Semiconducting Materials by Analogy and Chemical Theory](https://github.com/WMD-group/SMACT)
+1. Hui Zheng, Eric Sivonxay, Rasmus Christensen et al. (2024). [The ab initio non-crystalline structure database: empowering machine learning to decode diffusivity](https://www.nature.com/articles/s41524-024-01469-2)

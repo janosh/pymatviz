@@ -177,7 +177,7 @@ def element_pair_rdfs(
                 "<extra></extra>",
             )
 
-    fig.update_xaxes(title_text="r (Å)", title_standoff=9, row=n_rows)
+    fig.update_xaxes(title_text="r [Å]", title_standoff=9, row=n_rows)
     fig.update_yaxes(title_text="g(r)", title_standoff=9, col=1)
     fig.update_layout(height=300 * n_rows, width=450 * actual_cols)
 
@@ -281,7 +281,7 @@ def full_rdf(
             "<extra></extra>",
         )
 
-    fig.update_layout(xaxis_title="r (Å)", yaxis_title="g(r)")
+    fig.update_layout(xaxis_title="r [Å]", yaxis_title="g(r)")
 
     if reference_line is not None:
         hline_defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)

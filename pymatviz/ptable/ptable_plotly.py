@@ -23,6 +23,7 @@ from pymatviz.typing import (
 )
 from pymatviz.utils import df_ptable
 from pymatviz.utils.data import si_fmt
+from pymatviz.utils.plotting import luminance
 
 
 if TYPE_CHECKING:
@@ -1016,9 +1017,6 @@ def ptable_heatmap_splits_plotly(
         orientation: Literal["diagonal", "horizontal", "vertical", "grid"],
     ) -> list[tuple[list[float], list[float]]]:
         """Generate x,y coordinates to split a unit square into n equal sections."""
-        if n_splits not in {2, 3, 4}:
-            raise ValueError(f"{n_splits=} must be 2, 3, or 4")
-
         if orientation == "grid":
             if n_splits != 4:
                 raise ValueError(
@@ -1101,8 +1099,12 @@ def ptable_heatmap_splits_plotly(
         # Get values and colors
         values = np.asarray(data.get(symbol, []), dtype=float)
 
+        if len(values) not in {2, 3, 4}:
+            raise ValueError(f"Number of splits {len(values)} must be 2, 3, or 4")
+
         # Create sections
         sections = create_section_coords(len(values), orientation)  # type: ignore[arg-type]
+        split_colors: list[str] = []  # Store colors for each split
         for idx, (xs, ys) in enumerate(sections):  # Loop over element tile splits
             if values[idx] == 0:
                 color = zero_color
@@ -1142,6 +1144,8 @@ def ptable_heatmap_splits_plotly(
                     )
                 color = plotly.colors.sample_colorscale(cscale, [scale_pos])[0]
 
+            split_colors.append(color)
+
             fig.add_scatter(
                 x=xs,
                 y=ys,
@@ -1159,12 +1163,23 @@ def ptable_heatmap_splits_plotly(
             display_symbol = element_symbol_map.get(symbol, symbol)
         else:
             display_symbol = symbol
+
+        # Calculate text color based on background color
+        mean_luminance = sum(luminance(color) for color in split_colors) / len(
+            split_colors
+        )
+        high_contrast_text_color = "black" if mean_luminance > 0.55 else "white"
         symbol_defaults = dict(x=0.5, y=0.5, showarrow=False)
         symbol_kwargs = symbol_kwargs or {}
-        font_defaults = dict(size=(font_size or 14) * scale)
-        symbol_kwargs["font"] = font_defaults | symbol_kwargs.get("font", {})
+        font_defaults = dict(
+            size=(font_size or 14) * scale, color=high_contrast_text_color
+        )
         fig.add_annotation(
-            text=display_symbol, **symbol_defaults | xy_ref | symbol_kwargs
+            text=display_symbol,
+            **symbol_defaults
+            | xy_ref
+            | symbol_kwargs
+            | dict(font=font_defaults | symbol_kwargs.get("font", {})),
         )
 
         # Add hover data
@@ -1212,7 +1227,6 @@ def ptable_heatmap_splits_plotly(
             hovertext=hover_text,
             **xy_ref,
         )
-
         if annotations is not None:
             if callable(annotations):
                 # Pass the element's values to the callable
@@ -1229,12 +1243,15 @@ def ptable_heatmap_splits_plotly(
                     # Convert string annotations to dict format
                     anno_dict = {"text": anno} if isinstance(anno, str) else anno
                     anno_defaults = {
-                        "font_size": (font_size or 8) * scale,
                         "x": 0.95,
                         "y": 0.95,
                         "showarrow": False,
                         "xanchor": "right",
                         "yanchor": "top",
+                        "font": dict(
+                            color=high_contrast_text_color,
+                            size=(font_size or 8) * scale,
+                        ),
                     }
                     fig.add_annotation(**anno_defaults | xy_ref | anno_dict)
 
