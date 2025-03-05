@@ -22,7 +22,6 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 import yaml
-from serpapi import GoogleSearch
 
 from pymatviz import ROOT
 
@@ -112,6 +111,8 @@ def fetch_scholar_papers(
         list[ScholarPaper]: List of papers with their metadata including title, authors,
             publication info, year, and citation count.
     """
+    from serpapi import GoogleSearch
+
     if api_key is None:
         api_key = os.getenv("SERPAPI_KEY")
     if not api_key:
@@ -185,9 +186,7 @@ def fetch_scholar_papers(
     return papers
 
 
-def save_papers(
-    papers: list[ScholarPaper], filename: str = "scholar-papers.yml.gz"
-) -> None:
+def save_papers(papers: list[ScholarPaper], filename: str) -> None:
     """Save papers to a gzipped YAML file.
 
     Args:
@@ -241,7 +240,8 @@ def update_readme(
     )
 
     for paper in sorted_papers:
-        if not paper["authors"]:
+        if not paper.get("authors"):
+            print(f"Paper {paper['title']} has no authors, skipping")
             continue
         authors_str = ", ".join(paper["authors"][:3])
         if len(paper["authors"]) > 3:
@@ -262,6 +262,8 @@ def update_readme(
     with open(readme_path, mode="w", encoding="utf-8") as file:
         file.write(content)
 
+    print(f"Wrote {len(sorted_papers)} papers to {readme_path}")
+
 
 def main(update_freq_days: int = 7) -> None:
     """Main function to fetch papers and update readme.
@@ -269,39 +271,55 @@ def main(update_freq_days: int = 7) -> None:
     Args:
         update_freq_days (int): Number of days to wait between updates.
     """
-    data_file = f"{ROOT}/assets/scholar-papers.yml.gz"
+    module_dir = os.path.dirname(__file__)
+    data_file = f"{module_dir}/pmv-used-by-list-google-scholar.yaml.gz"
 
     # Load existing papers
     if os.path.isfile(data_file):
         with gzip.open(data_file, mode="rt", encoding="utf-8") as file:
-            existing_papers = yaml.safe_load(file)
+            scholar_papers = yaml.safe_load(file)
     else:
-        existing_papers = []
+        scholar_papers = []
 
     # Check if we need to update
-    if not should_update(data_file, update_freq_days):
+    if should_update(data_file, update_freq_days):
+        # Still update readme with existing data
+        update_readme(scholar_papers)
+
+        new_papers = fetch_scholar_papers()  # Fetch new papers
+
+        # Merge papers, keeping the most recent citation counts
+        paper_dict: dict[str, ScholarPaper] = {
+            paper["title"]: paper for paper in scholar_papers
+        } | {paper["title"]: paper for paper in new_papers}
+
+        # Save updated papers
+        scholar_papers = list(paper_dict.values())
+        save_papers(scholar_papers, filename=data_file)
+    else:
         print(
             f"{data_file=} is less than {update_freq_days} days old, skipping update."
         )
-        # Still update readme with existing data
-        update_readme(existing_papers)
-        return
 
-    # Fetch new papers
-    new_papers = fetch_scholar_papers()
+    # load assets/scripts/pmv-used-by-list-zotero.yaml
+    with open(f"{module_dir}/pmv-used-by-list-zotero.yaml", encoding="utf-8") as file:
+        zotero_papers = yaml.safe_load(file)["references"]
 
-    # Merge papers, keeping the most recent citation counts
-    paper_dict: dict[str, ScholarPaper] = {
-        paper["title"]: paper for paper in existing_papers
-    } | {paper["title"]: paper for paper in new_papers}
+    converted_zotero_papers = [  # convert zotero_papers to common format
+        {
+            "title": paper["title"],
+            "authors": [
+                f"{auth['given']} {auth['family']}" for auth in paper["author"]
+            ],
+            "year": paper["issued"][0]["year"],
+            "link": paper["URL"],
+            "citations": 0,
+        }
+        for paper in zotero_papers
+    ]
 
-    # Convert back to list
-    all_papers = list(paper_dict.values())
+    all_papers = scholar_papers + converted_zotero_papers
 
-    # Save updated papers
-    save_papers(all_papers, data_file)
-
-    # Update readme
     update_readme(all_papers)
 
 
