@@ -3,61 +3,162 @@ from composition.
 """
 
 # %%
+import json
 import os
+import sys
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import yaml  # Add YAML import
 from pymatgen.core import Composition
+from pymongo import MongoClient
 from sklearn.base import BaseEstimator
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    f1_score,
+    mean_absolute_error,
+    precision_score,
+    r2_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import train_test_split
 
 import pymatviz as pmv
-from examples.dataset_exploration.ward_metallic_glasses import (
+from pymatviz.enums import Key
+
+
+sys.path.append(os.path.dirname(module_dir := os.path.dirname(__file__)))
+
+from ward_metallic_glasses import (
     create_canonical_splits,
     formula_features,
-    negative_examples,
+    synthetic_non_glasses,
 )
-from examples.dataset_exploration.ward_metallic_glasses.formula_features import (
-    liu_featurize,
-    load_binary_liquidus_data,
-)
-from pymatviz.enums import Key
 
 
 # from sklearn.ensemble import RandomForestRegressor
 # from xgboost import XGBRegressor  # commented out as not currently used
-
-
 module_dir = os.path.dirname(__file__)
 pmv.set_plotly_template("pymatviz_white")
-sim_features_path = f"{module_dir}/ward_df_with_viscosities.csv"
-df_sim = pd.read_csv(sim_features_path)
+# sim_features_path = f"{module_dir}/tmp/ward_df_with_viscosities.csv"  # no longer used
+mongo_uri = "mongodb+srv://ysanspeur:PerovNorm123*@production.fjgmii3.mongodb.net"
+db_name = "ray_md_testing"
+viscosity_coll_name = "viscosity_and_diffusivity_means"
+
+# Connect to MongoDB and fetch viscosity data
+client = MongoClient(mongo_uri)
+viscosity_coll = client[db_name][viscosity_coll_name]
+df_vd = (  # viscosity and diffusivity
+    pd.DataFrame(
+        viscosity_coll.find({}, projection=[Key.mat_id, "viscosity", "diffusivity"])
+    )
+    .set_index(Key.mat_id, drop=False)
+    .drop(columns=["_id"])
+)
 
 
-# Configuration
+# %% Load A2C comparison metrics
+mongo_uri = "mongodb+srv://ysanspeur:PerovNorm123*@production.fjgmii3.mongodb.net"
+db_name = "ward-gfa-prod"
+model_key = "mace_mpa_0_medium_2025_03_03"
+model_key = "FT_BMG_GN_S_OMat_grad_noquad_cutoff6_2025_03_04"
+if "mace" in model_key:
+    model_type = "MACE"
+elif "GN" in model_key:
+    model_type = "GemNet"
+else:
+    raise ValueError(f"Unknown {model_key=}")
+coll_name = f"a2c_ward_bmgs_{model_key}"
+
+client = MongoClient(mongo_uri)
+a2c_coll = client[db_name][coll_name]
+a2c_fields = [
+    "result.material_id",
+    "result.config.n_relaxed_structures",
+    "result.comparison",
+    "result.n_relaxed_structures",
+    "result.crystalline.formula",
+    "result.crystalline.symmetry.number",
+    "result.crystalline.energy_per_atom",
+    "result.crystalline.forces",
+    "result.crystalline.stress",
+    "result.amorphous.formula",
+    "result.amorphous.energy_per_atom",
+    "result.amorphous.pressure",
+    "result.amorphous.density",
+    "result.amorphous.forces",
+    "result.amorphous.stress",
+]
+n_docs = a2c_coll.count_documents({})
+print(f"Found {n_docs:,} documents in {coll_name}")
+docs = list(a2c_coll.find({}, projection=a2c_fields))
+df_a2c = pd.json_normalize(docs)
+df_a2c.columns = df_a2c.columns.str.removeprefix("result.")
+df_a2c = df_a2c.set_index(Key.mat_id, drop=False)
+df_a2c["amorphous.max_force"] = (
+    df_a2c["amorphous.forces"]
+    .map(lambda forces: np.linalg.norm(forces, axis=1).max())
+    .round(4)
+)
+n_dupe_ids = df_a2c.index.duplicated().sum()
+print(f"Number of duplicate IDs: {n_dupe_ids:,}")
+for dup_id in df_a2c.index[df_a2c.index.duplicated()]:
+    n_dupe_docs = a2c_coll.count_documents({"result.material_id": dup_id})
+    if n_dupe_docs > 1:
+        print(f"Found {n_dupe_docs} documents with {dup_id=}")
+        res = a2c_coll.delete_one({"result.material_id": dup_id})
+        print(f"Deleted {res.deleted_count} document(s) with {dup_id=}")
+
+# Load A2C+FIRE data from the specified collection
+fire_model_key = "FT_BMG_GN_S_OMat_grad_noquad_cutoff6_2025_03_05"
+fire_coll_name = f"a2c_ward_bmgs_{fire_model_key}"
+fire_coll = client[db_name][fire_coll_name]
+n_a2c_fire_docs = fire_coll.count_documents({})
+print(f"Found {n_a2c_fire_docs:,} documents in {fire_coll_name}")
+df_a2c_fire = pd.json_normalize(fire_coll.find({}, projection=a2c_fields))
+df_a2c_fire.columns = df_a2c_fire.columns.str.removeprefix("result.")
+df_a2c_fire = df_a2c_fire.set_index(Key.mat_id, drop=False)
+df_a2c_fire["amorphous.max_force"] = (
+    df_a2c_fire["amorphous.forces"]
+    .map(lambda forces: np.linalg.norm(forces, axis=1).max())
+    .round(4)
+)
+n_fire_dupe_ids = df_a2c_fire.index.duplicated().sum()
+print(f"Number of duplicate IDs in FIRE collection: {n_fire_dupe_ids:,}")
+df_a2c_fire = df_a2c_fire.loc[~df_a2c_fire.index.duplicated(keep="first")]
+
+# leave-one-out element and chemical system analysis
 N_L1O_ELEMENTS = 3
-N_L1O_SYSTEMS = 0
+N_L1O_SYSTEMS = 3
 TEST_SIZE = 0.2  # fraction of data to use for testing in random splits
 # number of random binary compositions to add as negative examples
-N_RANDOM_NEG_EXAMPLES = 10_000
-N_RANDOM_TERNARY_NEG_EXAMPLES = 5_000  # number of random ternary compositions to add
+N_RANDOM_NEG_EXAMPLES = 0  # Temporarily set to 0 to disable random negative examples
+N_RANDOM_TERNARY_NEG_EXAMPLES = (
+    0  # Temporarily set to 0 to disable random negative examples
+)
 MAX_RADIUS_DIFF_PERCENT = 5.0  # maximum allowed difference in atomic radii (%)
 
 # Define models for each target type
 regression_models: dict[str, BaseEstimator] = {
-    # "RandomForest": RandomForestRegressor(n_estimators=100, random_state=0),
-    # "XGBoost": XGBRegressor(n_estimators=100, random_state=0),
+    # RandomForestRegressor.__name__: RandomForestRegressor(
+    #     n_estimators=100, random_state=0
+    # ),
+    # XGBRegressor.__name__: XGBRegressor(n_estimators=100, random_state=0),
 }
 fitted_regressors: dict[
     str, dict[str, BaseEstimator]
 ] = {}  # split_name -> model_name -> model
 
 classification_models = {
-    "RandomForest": RandomForestClassifier(n_estimators=100, random_state=0),
+    RandomForestClassifier.__name__: RandomForestClassifier(
+        n_estimators=100, random_state=0
+    ),
 }
 fitted_classifiers: dict[
     str, dict[str, BaseEstimator]
@@ -70,205 +171,236 @@ def evaluate_split(
     model_name: str,
     target: str,
     split_name: str,
-    compositions: pd.Series | None = None,
-    element_split_counts: dict[str, tuple[int, int]] | None = None,
-    n_random_samples: int = 0,
-    y_train: pd.Series | np.ndarray | None = None,
-) -> tuple[go.Figure | None, go.Figure | None]:
-    """Evaluate model predictions and create visualization plots.
-
-    This function handles both classification and regression tasks differently:
-    - For classification (target='is_glass'):
-        - Generates a confusion matrix with counts and percentages
-        - Shows accuracy, precision and F1 score
-        - Optionally indicates number of random negative examples added
-    - For regression (target='dTx' or 'D_max'):
-        - Creates a parity plot of predicted vs actual values
-        - Shows R² score and mean absolute error
-        - Adds composition hover data if provided
-
-    The function also creates a periodic table heatmap showing the distribution
-    of elements between train and test sets, but only once per split type
-    (since it's the same for all models in a given split).
+    feature_set: str = "default",
+) -> tuple[go.Figure | None, dict[str, float]]:
+    """Evaluate a model on a train/test split.
 
     Args:
-        y_true: Ground truth target values
-        y_pred: Model predictions
-        model_name: Name of the model (e.g. 'RandomForest')
-        target: Name of target variable ('is_glass', 'dTx', or 'D_max')
-        split_name: Description of the split type (e.g. 'Random split',
-            'Leave out Fe')
-        compositions: Composition strings for hover data in parity plots
-        element_split_counts: Element counts in train/test sets for periodic
-            table plot. Dict mapping element symbols to (test_count, train_count)
-            tuples.
-        n_random_samples: Number of random negative examples added (only relevant
-            for classification)
-        y_train: Training set labels (only needed for classification to show
-            class distribution)
+        y_true: True values
+        y_pred: Predicted values
+        model_name: Name of the model
+        target: Name of the target variable
+        split_name: Name of the split
+        n_random_samples: Number of random samples to plot
+        y_train: Training set values (for periodic table plot)
+        feature_set: Name of the feature set used
 
     Returns:
-        A tuple of (main_plot, ptable_plot) where:
-        - main_plot is either a confusion matrix (classification) or parity plot
-          (regression)
-        - ptable_plot is a periodic table heatmap showing element distributions
-          between train and test sets (only generated once per split type)
+        fig: Figure object for the confusion matrix or parity plot
+        metrics: Dictionary of metrics for this evaluation
     """
-    figs_dir = f"{module_dir}/figs/{split_name}"
-    os.makedirs(figs_dir, exist_ok=True)
+    # Create a metrics dictionary to store all evaluation metrics
+    metrics = {}
 
-    # Convert inputs to pandas Series for easier handling
-    y_true, y_pred = map(pd.Series, (y_true, y_pred))
-    if y_train is not None:
-        y_train = pd.Series(y_train)
-
-    # Drop NaN values
-    valid_mask = ~(y_true.isna() | y_pred.isna())
-    y_true = y_true[valid_mask]
-    y_pred = y_pred[valid_mask]
-    if compositions is not None:
-        # Ensure compositions has the same index as y_true/y_pred before filtering
-        compositions = pd.Series(compositions)
-        compositions.index = y_true.index
-        compositions = compositions[valid_mask]
-
-    if len(y_true) == 0:
-        print("No valid predictions after dropping NaN values")
-        return None, None
-
-    # Plot train/test element prevalence once since it's the same for all models
-    fig_ptable = None
-    ptable_pdf_path = f"{figs_dir}/ptable-train-test-split.svg"
-    if element_split_counts is not None and not os.path.isfile(ptable_pdf_path):
-        fig_ptable = pmv.ptable_heatmap_splits_plotly(element_split_counts)
-        title = f"Element counts in train (top) and test (bottom)<br>{split_name}"
-        fig_ptable.layout.title.update(text=title, x=0.4, y=0.9)
-        fig_ptable.layout.paper_bgcolor = "white"
-        fig_ptable.show()
-
-        # Save ptable plot
-        # fig_ptable.write_image(ptable_pdf_path)
-
-    # Handle classification and regression metrics differently
     if target == "is_glass":
-        # Create confusion matrix plot
-        title = f"{model_name}, {split_name}"
-        if n_random_samples > 0:
-            title += f"<br>({n_random_samples:,} random negative examples)"
+        # Classification metrics
+        if len(np.unique(y_true)) > 1 and len(np.unique(y_pred)) > 1:
+            # For string labels, we need to specify the pos_label
+            pos_label = "glass"  # Assuming 'glass' is the positive class
 
-        # Add training set statistics if y_train is provided
-        if y_train is not None:
-            # Drop NaN values from y_train
-            y_train = y_train[~y_train.isna()]
-            if len(y_train) > 0:
-                n_pos = (y_train == "glass").sum()
-                n_neg = (y_train == "crystal").sum()
-                total = len(y_train)
-                title += (
-                    f"<br>Training set: {n_pos:,} glass ({n_pos / total:.1%}), "
-                    f"{n_neg:,} crystal ({n_neg / total:.1%})"
-                )
+            metrics["accuracy"] = accuracy_score(y_true, y_pred)
+            metrics["precision"] = precision_score(y_true, y_pred, pos_label=pos_label)
+            metrics["recall"] = recall_score(y_true, y_pred, pos_label=pos_label)
+            metrics["f1"] = f1_score(y_true, y_pred, pos_label=pos_label)
+            # For ROC AUC, we need to convert labels to binary
+            y_true_binary = np.array([1 if y == pos_label else 0 for y in y_true])
+            y_pred_binary = np.array([1 if y == pos_label else 0 for y in y_pred])
+            metrics["roc_auc"] = roc_auc_score(y_true_binary, y_pred_binary)
+            metrics["prc_auc"] = average_precision_score(y_true_binary, y_pred_binary)
+        else:
+            metrics |= dict.fromkeys(
+                ("accuracy", "precision", "recall", "f1", "roc_auc", "prc_auc"), np.nan
+            )
 
+        # Create confusion matrix
         fig = pmv.confusion_matrix(
             y_true=y_true,
             y_pred=y_pred,
-            metrics={"Acc": ".1%", "Prec": ".1%", "F1": ".2f"},
-            metrics_kwargs={"y": 1.3, "font_size": 18},
+            metrics_kwargs=dict(
+                y=1.5,  # Increased from 1.3 to avoid overlap with title
+                x=0.5,
+                showarrow=False,
+                font=dict(size=16),
+                align="center",
+            ),
         )
-        fig.layout.xaxis.title = "Predicted"
-        fig.layout.yaxis.title = "Actual"
-        fig.layout.update(
-            title=dict(text=title, x=0.5, y=0.95, font_size=18, yanchor="top"),
+
+        # Update the layout with title and other properties
+        fig.update_layout(
+            title=dict(text=f"{model_name} - {split_name} - {feature_set}", x=0.5),
+            margin=dict(t=250, l=50, r=50, b=50),  # Increased top margin
+            width=800,
+            height=700,
             paper_bgcolor="white",
-            margin=dict(t=200, l=100),  # increase top and left margins
-            font=dict(size=18),
         )
-        # img_path = f"{figs_dir}/confusion-matrix-{target}-{model_name}.svg"
-        # fig.write_image(img_path)
-        fig.show()
+    else:
+        # Regression metrics
+        metrics["mae"] = mean_absolute_error(y_true, y_pred)
+        metrics["r2"] = (
+            r2_score(y_true, y_pred) if len(np.unique(y_true)) > 1 else np.nan
+        )
 
-        return fig, fig_ptable
+        # Create parity plot
+        df_plot = pd.DataFrame({"actual": y_true, "predicted": y_pred})
 
-    # Regression metrics
-    print(
-        f"{model_name}, {split_name}: "
-        f"R² = {r2_score(y_true, y_pred):.3f}, "
-        f"MAE = {mean_absolute_error(y_true, y_pred):.3f}"
+        fig = px.scatter(
+            df_plot,
+            x="actual",
+            y="predicted",
+            title=f"{model_name} - {split_name} - {target} - {feature_set}",
+        )
+        fig.update_layout(
+            margin=dict(t=100, l=50, r=50, b=50),
+            width=800,
+            height=700,
+            paper_bgcolor="white",
+        )
+
+    return fig, metrics
+
+
+def clean_features_and_target(
+    features_df: pd.DataFrame,
+    target_series: pd.Series | np.ndarray,
+    target_col: str,
+) -> tuple[pd.DataFrame, pd.Series | np.ndarray]:
+    """Clean features dataframe and target series by removing NaN, Inf, and values
+    too large for float32.
+    """
+    # Make a copy to avoid modifying the original
+    features = features_df.copy()
+
+    # Determine columns to drop
+    cols_to_drop = [target_col]
+
+    # Drop specified columns
+    features = features.drop(columns=cols_to_drop, errors="ignore")
+
+    # Create mask for invalid values
+    invalid_mask = (
+        features.isna().any(axis=1)
+        | np.isinf(features).any(axis=1)
+        | (features.abs() > np.finfo(np.float32).max).any(axis=1)
     )
 
-    # Create DataFrame for plotting with aligned indices
-    plot_data = {"Actual": y_true, "Predicted": y_pred}
-    if compositions is not None:
-        plot_data["Composition"] = compositions
+    # Filter out invalid rows
+    cleaned_features = features[~invalid_mask].copy()
+    # Convert to float32 to match model expectations
+    cleaned_features = cleaned_features.astype(np.float32)
+    # Also filter the target using the same mask
+    cleaned_target = target_series[~invalid_mask].copy()
 
-    df_plot = pd.DataFrame(plot_data)
-
-    # Plot parity plot
-    hover_data = ["Composition"] if compositions is not None else None
-    fig = px.scatter(df_plot, x="Actual", y="Predicted", hover_data=hover_data)
-    fig = pmv.powerups.enhance_parity_plot(fig)
-    title = f"{model_name}, {split_name}"
-    fig.layout.title = dict(text=title, x=0.5, y=0.96)
-    fig.layout.margin = dict(l=0, r=0, t=50, b=0)
-    fig.layout.paper_bgcolor = "white"
-    fig.show()
-
-    # Save parity plot
-    # fig.write_image(f"{figs_dir}/parity-plot-{target}-{model_name}.svg")
-
-    return fig, fig_ptable
+    return cleaned_features, cleaned_target
 
 
-def map_sim_features_to_ward(
-    df_ward: pd.DataFrame, df_sim: pd.DataFrame
-) -> pd.DataFrame:
-    """Map simulation features (diffusivity, viscosity) from df_sim to df_ward based on
-    matching compositions.
+def find_common_valid_subset(
+    data_df: pd.DataFrame,
+    feature_sets: dict[str, pd.DataFrame],
+    target_cols: list[str],
+) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
+    """Find the subset of data where all feature sets and targets have valid values.
 
     Args:
-        df_ward: Ward metallic glasses dataset
-        df_sim: Simulation dataset with diffusivity and viscosity data
+        data_df: DataFrame containing the data
+        feature_sets: Dictionary of feature set name -> feature DataFrame
+        target_cols: List of target column names
 
     Returns:
-        DataFrame with ward data plus mapped simulation features
+        Tuple of (filtered_data_df, filtered_feature_sets)
     """
-    # Create a copy of ward df to avoid modifying original
-    df_ward_with_sim = df_ward.copy()
+    # Start with all rows
+    valid_indices = set(data_df.index)
 
-    # Initialize new columns with NaN
-    df_ward_with_sim["diffusivity"] = np.nan
-    df_ward_with_sim["viscosity"] = np.nan
+    # Filter for valid target values
+    for col in target_cols:
+        valid_indices &= set(data_df[~data_df[col].isna()].index)
 
-    # Create normalized compositions for comparison
-    ward_comps = df_ward[Key.composition].map(
-        lambda comp: str(Composition(comp).fractional_composition)
-    )
-    sim_comps = df_sim["source_composition_wt%"].map(
-        lambda comp: str(Composition(comp).fractional_composition)
-    )
+    # Filter for valid feature values in each feature set
+    for df in feature_sets.values():
+        valid_indices &= set(df.dropna().index)
 
-    # Find matching compositions
-    for ward_idx, ward_comp in ward_comps.items():
-        matches = sim_comps == ward_comp
-        if matches.any():
-            sim_idx = matches.idxmax()  # Get first match if multiple exist
-            df_ward_with_sim.loc[ward_idx, "diffusivity"] = df_sim.loc[
-                sim_idx, "diffusivity"
-            ]
-            df_ward_with_sim.loc[ward_idx, "viscosity"] = df_sim.loc[
-                sim_idx, "viscosity"
-            ]
+    # Apply the filter to data_df and all feature sets
+    filtered_data_df = data_df.loc[list(valid_indices)]
+    filtered_feature_sets = {
+        name: df.loc[list(valid_indices)] for name, df in feature_sets.items()
+    }
 
-    # Print mapping statistics
-    n_mapped = (
-        (~df_ward_with_sim[["diffusivity", "viscosity"]].isna()).all(axis=1).sum()
-    )
-    print(
-        f"\nMapped {n_mapped} compositions out of {len(df_ward)} "
-        f"({n_mapped / len(df_ward) * 100:.1f}%)"
-    )
+    return filtered_data_df, filtered_feature_sets
 
-    return df_ward_with_sim
+
+def evaluate_model_on_split(
+    df_feat_target: pd.DataFrame,
+    y: pd.Series | np.ndarray,
+    train_mask: pd.Series,
+    test_mask: pd.Series,
+    target: str,
+    split_name: str,
+    feature_set_name: str,
+    models: dict[str, BaseEstimator],
+    all_plots: dict[str, dict[str, dict[str, go.Figure]]],
+    all_metrics: dict[str, dict[str, dict[str, dict[str, dict[str, float]]]]],
+) -> None:
+    """Evaluate models on a specific train/test split.
+
+    Args:
+        df_feat_target: DataFrame containing features
+        y: Target values
+        train_mask: Boolean mask for training data
+        test_mask: Boolean mask for test data
+        target: Target column name
+        split_name: Name of the split
+        feature_set_name: Name of the feature set
+        models: Dictionary of model name -> model
+        all_plots: Dictionary to store plots
+        all_metrics: Dictionary to store metrics
+    """
+    y_train = y[train_mask]
+    y_test = y[test_mask]
+
+    print(f"Training size: {train_mask.sum()}, Test size: {test_mask.sum()}")
+
+    if split_name not in all_plots:
+        all_plots[split_name] = {}
+
+    for model_name, model in models.items():
+        if model_name not in all_plots[split_name]:
+            all_plots[model_name][split_name] = {}
+
+        # Clean and prepare training data
+        train_features, y_train_clean = clean_features_and_target(
+            df_feat_target.loc[train_mask], y_train, target
+        )
+
+        # Fit the model
+        model.fit(train_features, y_train_clean)
+
+        # Clean and prepare test data
+        test_features, y_test_clean = clean_features_and_target(
+            df_feat_target.loc[test_mask], y_test, target
+        )
+
+        # Make predictions
+        preds = model.predict(test_features)
+
+        # Evaluate the model
+        fig, metrics = evaluate_split(
+            y_test_clean,
+            preds,
+            model_name,
+            target,
+            split_name,
+            feature_set=feature_set_name,
+        )
+
+        # Store results
+        all_plots[model_name][split_name][feature_set_name] = fig
+
+        # Store metrics
+        all_metrics[target][model_name][split_name][feature_set_name] = metrics | {
+            "train_size": len(train_features),
+            "test_size": len(test_features),
+            "n_features": train_features.shape[1],
+        }
 
 
 # --- Main benchmark routine ---
@@ -305,16 +437,18 @@ print(df_ward["is_glass"].value_counts())
 # Load binary liquidus data for Liu features
 if (df_liu := locals().get("df_liu")) is None:
     zip_path = f"{module_dir}/tmp/binary-liquidus-temperatures.zip"
-    binary_interpolations = load_binary_liquidus_data(zip_path)
+    binary_interpolations = formula_features.load_binary_liquidus_data(zip_path)
 
     # Calculate Liu features
-    df_liu = liu_featurize(df_ward, binary_liquidus_data=binary_interpolations)
+    df_liu = formula_features.liu_featurize(
+        df_ward, binary_liquidus_data=binary_interpolations
+    )
 
 # Add classification target
 df_liu["is_glass"] = df_ward["is_glass"]
 
 # List of targets (both regression and classification)
-targets = ["dTx", "D_max", "is_glass"]
+all_targets = ["dTx", "D_max", "is_glass"]
 
 # Convert 'Unknown' to NaN and drop rows with NaN in target columns
 for target in ["dTx", "D_max"]:  # only convert regression targets
@@ -346,10 +480,8 @@ print("\nMost common systems:")
 for system, count in most_common_systems:
     print(f"{system}: {count} compositions")
 
-# Build features
-df_feat = formula_features.one_hot_encode(df_liu)
 
-# non-feature columns
+# Define columns to exclude from feature sets (target columns and non-feature columns)
 feature_exclude_cols = [
     Key.composition,
     "D_max",
@@ -359,183 +491,214 @@ feature_exclude_cols = [
     "Unnamed: 4",
     "comment",
 ]
-df_feat = df_feat.drop(columns=feature_exclude_cols)  # Keep only feature columns
-
 # Map simulation features to ward dataset
-df_ward_with_sim = map_sim_features_to_ward(df_ward, df_sim)
+df_ward_with_vd_fea = df_ward.copy()
+df_ward_with_vd_fea[df_vd.columns] = df_vd
 
-df_ward_with_sim.describe().to_string()
 
-for target in targets:
+# Dictionary to store all plots, organized by split_name -> model_name -> feature_set
+all_plots: dict[str, dict[str, dict[str, go.Figure]]] = defaultdict(dict)
+
+# Get A2C comparison metrics
+comparison_cols = df_a2c.filter(like="comparison.").columns
+print(f"\nFound {len(comparison_cols)} A2C comparison metrics as features:")
+for col in comparison_cols:
+    print(f"- {col}")
+
+# Get A2C+FIRE comparison metrics
+fire_comparison_cols = df_a2c_fire.filter(like="comparison.").columns
+# Create A2C features DataFrame
+df_a2c_features = df_a2c[comparison_cols].copy()
+
+# Create A2C+FIRE features DataFrame
+df_a2c_fire_features = df_a2c_fire[fire_comparison_cols].copy()
+
+# Keep the first occurrence of each duplicate index
+df_a2c_fire_features = df_a2c_fire_features[
+    ~df_a2c_fire_features.index.duplicated(keep="first")
+]
+
+# Ensure all feature dataframes have the same index structure
+# First, get the index from df_liu which will be our reference
+liu_index = df_liu.index
+
+# Reindex all feature dataframes to match df_liu's index
+# For dataframes that don't have all indices, NaN values will be introduced
+df_ward_with_vd_reindexed = df_ward_with_vd_fea.reindex(liu_index)
+df_a2c_features_reindexed = df_a2c_features.reindex(liu_index)
+df_a2c_fire_features_reindexed = df_a2c_fire_features.reindex(liu_index)
+
+# Create combined feature sets with aligned indices
+# Liu + VD features
+df_liu_vd = pd.concat([df_ward_with_vd_reindexed, df_liu], axis=1)
+df_liu_vd = df_liu_vd.loc[:, ~df_liu_vd.columns.duplicated()]
+
+# A2C + Liu features
+df_a2c_liu = pd.concat([df_a2c_features_reindexed, df_liu], axis=1)
+df_a2c_liu = df_a2c_liu.loc[:, ~df_a2c_liu.columns.duplicated()]
+
+# A2C + Liu + VD features
+df_a2c_liu_vd = pd.concat(
+    [df_a2c_features_reindexed, df_liu, df_ward_with_vd_reindexed],
+    axis=1,
+)
+df_a2c_liu_vd = df_a2c_liu_vd.loc[:, ~df_a2c_liu_vd.columns.duplicated()]
+
+# A2C+FIRE features
+df_a2c_fire_only = df_a2c_fire_features_reindexed.copy()
+
+# Create one-hot encoding features
+print("\nCreating one-hot encoding features...")
+# Use formula_features.one_hot_encode but extract only the element columns
+df_onehot = formula_features.one_hot_encode(df_liu[["composition"]])
+# Get only the element columns (exclude any non-numeric columns)
+print(f"One-hot encoding features: {df_onehot.shape[1]} features")
+
+
+# Define feature sets
+feature_sets = {
+    "Liu": df_liu,
+    "VD": df_ward_with_vd_reindexed,
+    "Liu+VD": df_liu_vd,
+    "OneHot": df_onehot,  # Add one-hot encoding as a separate feature set
+    "A2C": df_a2c_features_reindexed,
+    "A2C+Liu": pd.concat([df_a2c_features_reindexed, df_liu], axis=1),
+    "A2C+Liu+VD": df_a2c_liu_vd,
+    "A2C+OneHot": pd.concat([df_a2c_features_reindexed, df_onehot], axis=1),
+    "A2C+FIRE": df_a2c_fire_only,
+}
+
+# Create a dictionary to store all metrics
+all_metrics: dict[str, dict[str, dict[str, dict[str, dict[str, float]]]]] = defaultdict(
+    lambda: defaultdict(lambda: defaultdict(dict))
+)
+
+# Print feature set sizes
+print("\nFeature set sizes:")
+for model_name, df in feature_sets.items():
+    print(f"- {model_name}: {df.shape[1]} features")
+
+for target in all_targets:
     y = df_liu[target]
     print(f"\n--- Predicting {target} ---")
 
     # Select appropriate models based on target type
     models = classification_models if target == "is_glass" else regression_models
-    fitted_models = fitted_classifiers if target == "is_glass" else fitted_regressors
 
-    # For classification target, add random negative examples and encode labels
-    if target == "is_glass":
-        # Make copies to avoid modifying originals since we'll be adding examples
-        df_feat_target = df_feat.copy()
-        data_df_for_comps = df_liu.copy()
-        n_random = 0
+    for feature_set_name, df_raw in feature_sets.items():
+        print(f"\n=== Using feature set: {feature_set_name} ===")
 
-        # Drop rows with NaN values in target
-        valid_mask = ~data_df_for_comps["is_glass"].isna()
-        df_feat_target = df_feat_target[valid_mask]
-        data_df_for_comps = data_df_for_comps[valid_mask]
+        # Double-check that target column is not in features
+        df_features = df_raw.drop(
+            columns=[target, "_id", Key.mat_id, Key.composition, *feature_exclude_cols],
+            errors="ignore",
+        )
 
-        if N_RANDOM_NEG_EXAMPLES > 0 or N_RANDOM_TERNARY_NEG_EXAMPLES > 0:
-            print(
-                f"\nAdding {N_RANDOM_NEG_EXAMPLES} random binary compositions and "
-                f"{N_RANDOM_TERNARY_NEG_EXAMPLES} random ternary compositions with "
-                f"similar atomic radii (≤{MAX_RADIUS_DIFF_PERCENT}% difference) as "
-                "negative examples"
-            )
-            # Add random examples and get updated DataFrames
-            data_df_for_comps, df_feat_target = (
-                negative_examples.add_random_negative_examples(
-                    data_df=data_df_for_comps,  # use filtered data
-                    df_feat=df_feat_target,  # use filtered features
-                    n_binary_samples=N_RANDOM_NEG_EXAMPLES,
-                    n_ternary_samples=N_RANDOM_TERNARY_NEG_EXAMPLES,
-                    max_radius_diff_percent=MAX_RADIUS_DIFF_PERCENT,
+        # For classification target, add random negative examples and encode labels
+        if target == "is_glass":
+            # Make copies to avoid modifying originals since we'll be adding examples
+            df_feat_target = df_features.copy()
+            data_df_for_comps = df_liu.copy()
+            n_random = 0
+
+            # Drop rows with NaN values in target
+            valid_mask = ~data_df_for_comps["is_glass"].isna()
+            df_feat_target = df_feat_target.loc[valid_mask]
+            data_df_for_comps = data_df_for_comps.loc[valid_mask]
+
+            if N_RANDOM_NEG_EXAMPLES > 0 or N_RANDOM_TERNARY_NEG_EXAMPLES > 0:
+                print(
+                    f"\nAdding {N_RANDOM_NEG_EXAMPLES} random binary compositions and "
+                    f"{N_RANDOM_TERNARY_NEG_EXAMPLES} random ternary compositions with "
+                    f"similar atomic radii (≤{MAX_RADIUS_DIFF_PERCENT}% difference) as "
+                    "negative examples"
                 )
-            )
-            n_random = N_RANDOM_NEG_EXAMPLES + N_RANDOM_TERNARY_NEG_EXAMPLES
+                # Add random examples and get updated DataFrames
+                data_df_for_comps, df_feat_target = (
+                    synthetic_non_glasses.add_random_negative_examples(
+                        data_df=data_df_for_comps,  # use filtered data
+                        df_feat=df_feat_target,  # use filtered features
+                        n_binary_samples=N_RANDOM_NEG_EXAMPLES,
+                        n_ternary_samples=N_RANDOM_TERNARY_NEG_EXAMPLES,
+                        max_radius_diff_percent=MAX_RADIUS_DIFF_PERCENT,
+                    )
+                )
+                n_random = N_RANDOM_NEG_EXAMPLES + N_RANDOM_TERNARY_NEG_EXAMPLES
 
-        y = data_df_for_comps["is_glass"]
-    else:
-        # For regression targets, filter out rows with NaN values
-        non_nan_mask = ~df_liu[target].isna()
-        df_feat_target = df_feat[non_nan_mask].copy()
-        y = y[non_nan_mask]
-        data_df_for_comps = df_liu[non_nan_mask].copy()  # Filter data_df as well
-        n_random = 0
-
-    # 1. Random train/test split
-    print("\n=== Random train/test split ===")
-    df_train, df_test, y_train, y_test = train_test_split(
-        df_feat_target, y, test_size=TEST_SIZE, random_state=0
-    )
-    print(f"Training size: {len(df_train)}, Test size: {len(df_test)}")
-
-    fitted_models["random"] = {}
-    for name, model in models.items():
-        if "is_glass" in df_train:
-            raise ValueError("Target column found in training data")
-        model.fit(df_train, y_train)
-        fitted_models["random"][name] = model
-        preds = model.predict(df_test)
-        if target == "is_glass":
-            evaluate_split(
-                y_test,
-                preds,
-                name,
-                target,
-                "Random split",
-                data_df_for_comps.loc[y_test.index, Key.composition],
-                n_random_samples=n_random,
-                y_train=y_train,
-            )
+            y = data_df_for_comps["is_glass"]
         else:
-            evaluate_split(
-                y_test,
-                preds,
-                name,
-                target,
-                "Random split",
-                data_df_for_comps.loc[y_test.index, Key.composition],
-                y_train=None,
-            )
+            # For regression targets, filter out rows with NaN values
+            non_nan_mask = ~df_liu[target].isna()
+            # Use .loc to avoid the IndexingError
+            df_feat_target = df_features.loc[non_nan_mask].copy()
+            y = y[non_nan_mask]
+            data_df_for_comps = df_liu.loc[
+                non_nan_mask
+            ].copy()  # Filter data_df as well
+            n_random = 0
 
-    # 2. Leave-one-element-out testing
-    print("\n=== Leave-one-element-out testing ===")
-    for holdout_elem, _ in most_common_elements:
-        # Create masks for the augmented dataset if using classification
-        if target == "is_glass":
+        # 1. Random train/test split
+        print("\n=== Random train/test split ===")
+        df_train, df_test, y_train, y_test = train_test_split(
+            df_feat_target, y, test_size=TEST_SIZE, random_state=0
+        )
+
+        # Create masks for the random split
+        train_indices = df_train.index
+        test_indices = df_test.index
+        train_mask = df_feat_target.index.isin(train_indices)
+        test_mask = df_feat_target.index.isin(test_indices)
+
+        # Evaluate models on random split
+        evaluate_model_on_split(
+            df_feat_target=df_feat_target,
+            y=y,
+            train_mask=train_mask,
+            test_mask=test_mask,
+            target=target,
+            split_name="Random split",
+            feature_set_name=feature_set_name,
+            models=models,
+            all_plots=all_plots,
+            all_metrics=all_metrics,
+        )
+
+        # 2. Leave-one-element-out testing
+        print("\n=== Leave-one-element-out testing ===")
+        for holdout_elem, _ in most_common_elements[
+            :3
+        ]:  # Limit to top 3 elements for efficiency
+            # Create masks for the leave-one-element-out split
             test_mask = data_df_for_comps[Key.composition].map(
                 lambda comp, holdout=holdout_elem: holdout
                 in Composition(comp).chemical_system_set
             )
             train_mask = ~test_mask
 
-            # Use the masks on the feature matrix and encoded labels
-            X_train = df_feat_target[train_mask]
-            X_test = df_feat_target[test_mask]
-            y_train = y[train_mask]  # y is already encoded
-            y_test = y[test_mask]
-        else:
-            test_mask = df_liu[Key.composition].map(
-                lambda comp, holdout=holdout_elem: holdout
-                in Composition(comp).chemical_system_set
+            if test_mask.sum() == 0:
+                print(f"No entries found containing {holdout_elem}")
+                continue
+
+            # Evaluate models on leave-one-element-out split
+            evaluate_model_on_split(
+                df_feat_target=df_feat_target,
+                y=y,
+                train_mask=train_mask,
+                test_mask=test_mask,
+                target=target,
+                split_name=f"Hold out {holdout_elem}",
+                feature_set_name=feature_set_name,
+                models=models,
+                all_plots=all_plots,
+                all_metrics=all_metrics,
             )
-            train_mask = ~test_mask
 
-            # For regression, use original features and targets
-            X_train = df_feat_target[train_mask]
-            X_test = df_feat_target[test_mask]
-            y_train = y[train_mask]
-            y_test = y[test_mask]
+        # 3. Leave-one-system-out testing
+        print("\n=== Leave-one-system-out testing ===")
+        for idx, (holdout_chem_sys, _) in enumerate(most_common_systems[:3]):
+            print(f"Testing system {idx + 1}/3: {holdout_chem_sys}")
 
-        if test_mask.sum() == 0:
-            print(f"No entries found containing {holdout_elem}")
-            continue
-
-        print(f"Training size: {train_mask.sum()}, Test size: {test_mask.sum()}")
-
-        # Count elements in train and test sets
-        train_comps = data_df_for_comps[train_mask][Key.composition]
-        test_comps = data_df_for_comps[test_mask][Key.composition]
-
-        train_counts = pmv.count_elements(train_comps)
-        test_counts = pmv.count_elements(test_comps)
-
-        element_split_counts = {
-            el: (test_counts.get(el, 0), train_counts.get(el, 0))
-            for el in set(train_counts.index) | set(test_counts.index)
-        }
-
-        split_name = f"Leave out {holdout_elem}"
-        fitted_models[split_name] = {}
-        for name, model in models.items():
-            if "is_glass" in X_train:
-                raise ValueError("Target column found in training data")
-            model.fit(X_train, y_train)
-            fitted_models[split_name][name] = model
-            preds = model.predict(X_test)
-            if target == "is_glass":
-                evaluate_split(
-                    y_test,
-                    preds,
-                    name,
-                    target,
-                    split_name,
-                    data_df_for_comps[test_mask][Key.composition],
-                    element_split_counts,
-                    n_random_samples=n_random,
-                    y_train=y_train,
-                )
-            else:
-                evaluate_split(
-                    y_test,
-                    preds,
-                    name,
-                    target,
-                    split_name,
-                    df_liu[test_mask][Key.composition],
-                    element_split_counts,
-                    y_train=None,
-                )
-
-    # 3. Leave-one-system-out testing
-    print("\n=== Leave-one-system-out testing ===")
-    for holdout_chem_sys, _ in most_common_systems:
-        print(f"\nLeaving out system: {holdout_chem_sys}")
-
-        # Create masks for the augmented dataset if using classification
-        if target == "is_glass":
+            # Create masks for the leave-one-system-out split
             test_mask = data_df_for_comps[Key.composition].map(
                 lambda comp, holdout=holdout_chem_sys: Composition(
                     comp
@@ -543,65 +706,43 @@ for target in targets:
                 == set(holdout.split("-"))
             )
             train_mask = ~test_mask
-            y_train = y[train_mask]
-            y_test = y[test_mask]
-        else:
-            test_mask = df_liu[Key.composition].map(
-                lambda comp, holdout=holdout_chem_sys: Composition(
-                    comp
-                ).chemical_system_set
-                == set(holdout.split("-"))
+
+            if test_mask.sum() == 0:
+                print(f"No entries found for system {holdout_chem_sys}")
+                continue
+
+            # Evaluate models on leave-one-system-out split
+            evaluate_model_on_split(
+                df_feat_target=df_feat_target,
+                y=y,
+                train_mask=train_mask,
+                test_mask=test_mask,
+                target=target,
+                split_name=f"Hold out {holdout_chem_sys}",
+                feature_set_name=feature_set_name,
+                models=models,
+                all_plots=all_plots,
+                all_metrics=all_metrics,
             )
-            train_mask = ~test_mask
-            y_train = y[train_mask]
-            y_test = y[test_mask]
 
-        if test_mask.sum() == 0:
-            print(f"No entries found for system {holdout_chem_sys}")
-            continue
 
-        print(f"Training size: {train_mask.sum()}, Test size: {test_mask.sum()}")
+# Display plots grouped by split and model
+print("\n=== Displaying plots grouped by split and model ===")
+for split_name, split_plots in all_plots.items():
+    print(f"\n--- {split_name} ---")
+    for model_name, model_plots in split_plots.items():
+        print(f"\n{model_name}:")
+        for feature_set_name, fig in model_plots.items():
+            if fig is None:
+                continue
+            print(f"Feature set: {feature_set_name}")
+            # fig.show()  # Removing this line to avoid showing too many figures
 
-        # Count elements in train and test sets
-        train_comps = data_df_for_comps[train_mask][Key.composition]
-        test_comps = data_df_for_comps[test_mask][Key.composition]
 
-        train_counts = pmv.count_elements(train_comps)
-        test_counts = pmv.count_elements(test_comps)
+metrics_file = f"{module_dir}/gfa_metrics.yaml"
+serialized_metrics = json.loads(json.dumps(all_metrics))
 
-        element_split_counts = {
-            el: (test_counts.get(el, 0), train_counts.get(el, 0))
-            for el in set(train_counts.index) | set(test_counts.index)
-        }
+with open(metrics_file, mode="w") as yaml_file:
+    yaml.dump(serialized_metrics, yaml_file, default_flow_style=False)
 
-        split_name = f"Leave out {holdout_chem_sys}"
-        fitted_models[split_name] = {}
-        for name, model in models.items():
-            if "is_glass" in df_feat_target:
-                raise ValueError("Target column found in training data")
-            model.fit(df_feat_target[train_mask], y_train)
-            fitted_models[split_name][name] = model
-            preds = model.predict(df_feat_target[test_mask])
-            if target == "is_glass":
-                evaluate_split(
-                    y_test,
-                    preds,
-                    name,
-                    target,
-                    split_name,
-                    data_df_for_comps[test_mask][Key.composition],
-                    element_split_counts,
-                    n_random_samples=n_random,
-                    y_train=y_train,
-                )
-            else:
-                evaluate_split(
-                    y_test,
-                    preds,
-                    name,
-                    target,
-                    split_name,
-                    df_liu[test_mask][Key.composition],
-                    element_split_counts,
-                    y_train=None,
-                )
+print(f"\nMetrics saved to {metrics_file}")

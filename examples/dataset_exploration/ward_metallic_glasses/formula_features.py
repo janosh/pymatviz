@@ -188,7 +188,7 @@ def calc_atomic_size_difference(composition: Composition) -> float:
     return ((np.average((1 - radii / mean_radius) ** 2, weights=amounts)) ** 0.5) * 100
 
 
-def calc_miedema_maximum_heat_of_mixing(composition: Composition) -> float:
+def calc_miedema_maximum_heat_of_mixing(composition: Composition) -> float | None:
     """Calculate the maximum heat of mixing feature for a general alloy.
 
     The assumption behind this feature is that the largest magnitude heat of
@@ -202,7 +202,7 @@ def calc_miedema_maximum_heat_of_mixing(composition: Composition) -> float:
     if len(composition) < 2:
         return 0
 
-    mixing_enthalpy = MixingEnthalpy()
+    mixing_enthalpy = MixingEnthalpy(impute_nan=True)
 
     delta_h_max = delta_h_best = 0
     binary_fracs_max = [0, 0]  # Initialize with zeros
@@ -214,6 +214,8 @@ def calc_miedema_maximum_heat_of_mixing(composition: Composition) -> float:
             delta_h_best = delta_h
             binary_fracs_max = binary_fracs
 
+    if np.sum(binary_fracs_max) == 0:
+        return None
     return delta_h_best * 2 * np.prod(binary_fracs_max) / np.sum(binary_fracs_max)
 
 
@@ -221,7 +223,7 @@ def calc_liu_features(
     formulas: str | Composition | Sequence[str | Composition],
     include: Sequence[str] = (),
     binary_liquidus_data: dict[str, interp1d] | None = None,
-) -> dict[str, dict[str, float]]:
+) -> dict[str, dict[str, float | None]]:
     """Calculate Liu et al.'s (2023) compositional features for metallic glasses.
 
     Args:
@@ -250,7 +252,7 @@ def calc_liu_features(
         formulas = [formulas]
 
     results = {}
-    feature_funcs: dict[str, Callable[[Any], float]] = {
+    feature_funcs: dict[str, Callable[[Any], float | None]] = {
         "mixing_enthalpy": calc_miedema_maximum_heat_of_mixing,
         "atomic_size_diff": calc_atomic_size_difference,
     }
