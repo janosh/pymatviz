@@ -1,0 +1,639 @@
+is_glass:
+  RandomForestClassifier:
+    Hold out Al:
+      A2C:
+        accuracy: 0.6528681253696038
+        f1: 0.7823507601038191
+        n_features: 3
+        prc_auc: 0.6773295182563221
+        precision: 0.6775850995504175
+        recall: 0.9254385964912281
+        roc_auc: 0.507183908045977
+        test_size: 1691
+        train_size: 4035
+      A2C+FIRE:
+        accuracy: 0.6721915285451197
+        f1: 0.7986425339366516
+        n_features: 4
+        prc_auc: 0.6829629225915204
+        precision: 0.6832258064516129
+        recall: 0.9609800362976406
+        roc_auc: 0.5146456158717805
+        test_size: 1629
+        train_size: 3900
+      A2C+Liu:
+        accuracy: 0.7162485065710872
+        f1: 0.8077701335491704
+        n_features: 6
+        prc_auc: 0.7326192380878798
+        precision: 0.7403560830860534
+        recall: 0.8886910062333037
+        roc_auc: 0.6267411473997735
+        test_size: 1674
+        train_size: 3767
+      A2C+Liu+VD:
+        accuracy: 0.6801152737752162
+        f1: 0.5811320754716981
+        n_features: 8
+        prc_auc: 0.6129356388088376
+        precision: 0.77
+        recall: 0.4666666666666667
+        roc_auc: 0.6701465201465202
+        test_size: 347
+        train_size: 611
+      A2C+OneHot:
+        accuracy: 0.6924896510940272
+        f1: 0.8076923076923077
+        n_features: 58
+        prc_auc: 0.6971969853943172
+        precision: 0.6982097186700768
+        recall: 0.9578947368421052
+        roc_auc: 0.5506352087114337
+        test_size: 1691
+        train_size: 4035
+      Liu:
+        accuracy: 0.6754385964912281
+        f1: 0.7760591795561533
+        n_features: 3
+        prc_auc: 0.6952274507798927
+        precision: 0.7023737066342057
+        recall: 0.8670172802404207
+        roc_auc: 0.5943962961534974
+        test_size: 2052
+        train_size: 4471
+      Liu+VD:
+        accuracy: 0.7111111111111111
+        f1: 0.5517241379310345
+        n_features: 5
+        prc_auc: 0.5855600396145645
+        precision: 0.8089887640449438
+        recall: 0.4186046511627907
+        roc_auc: 0.6728216388861163
+        test_size: 405
+        train_size: 642
+      OneHot:
+        accuracy: 0.6497584541062802
+        f1: 0.7544869624111074
+        n_features: 55
+        prc_auc: 0.6870538341711747
+        precision: 0.6945137157107232
+        recall: 0.8257968865826538
+        roc_auc: 0.5730926180486084
+        test_size: 2070
+        train_size: 4762
+      VD:
+        accuracy: 0.616504854368932
+        f1: 0.5775401069518716
+        n_features: 2
+        prc_auc: 0.5064942569498625
+        precision: 0.5538461538461539
+        recall: 0.6033519553072626
+        roc_auc: 0.6149806986836742
+        test_size: 412
+        train_size: 695
+    Hold out Al-La-Ni:
+      A2C:
+        accuracy: 0.9105691056910569
+        f1: 0.9527896995708155
+        n_features: 3
+        prc_auc: 0.9648693016038488
+        precision: 0.9652173913043478
+        recall: 0.940677966101695
+        roc_auc: 0.5703389830508475
+        test_size: 123
+        train_size: 5603
+      A2C+FIRE:
+        accuracy: 0.8547008547008547
+        f1: 0.9216589861751152
+        n_features: 4
+        prc_auc: 0.9529042386185242
+        precision: 0.9523809523809523
+        recall: 0.8928571428571429
+        roc_auc: 0.44642857142857145
+        test_size: 117
+        train_size: 5412
+      A2C+Liu:
+        accuracy: 0.8699186991869918
+        f1: 0.9272727272727272
+        n_features: 6
+        prc_auc: 0.994488080474025
+        precision: 1.0
+        recall: 0.864406779661017
+        roc_auc: 0.9322033898305084
+        test_size: 123
+        train_size: 5318
+      A2C+Liu+VD:
+        accuracy: 1.0
+        f1: 1.0
+        n_features: 8
+        prc_auc: 1.0
+        precision: 1.0
+        recall: 1.0
+        roc_auc: 1.0
+        test_size: 4
+        train_size: 954
+      A2C+OneHot:
+        accuracy: 0.7723577235772358
+        f1: 0.8679245283018868
+        n_features: 58
+        prc_auc: 0.9744545984947768
+        precision: 0.9787234042553191
+        recall: 0.7796610169491526
+        roc_auc: 0.6898305084745763
+        test_size: 123
+        train_size: 5603
+      Liu:
+        accuracy: 0.7121951219512195
+        f1: 0.8279883381924198
+        n_features: 3
+        prc_auc: 0.8779186858780803
+        precision: 0.8765432098765432
+        recall: 0.7845303867403315
+        roc_auc: 0.475598526703499
+        test_size: 205
+        train_size: 6318
+      Liu+VD:
+        accuracy: 0.7777777777777778
+        f1: 0.5
+        n_features: 5
+        prc_auc: 0.3333333333333333
+        precision: 0.3333333333333333
+        recall: 1.0
+        roc_auc: 0.875
+        test_size: 9
+        train_size: 1038
+      OneHot:
+        accuracy: 0.6390243902439025
+        f1: 0.7533333333333333
+        n_features: 55
+        prc_auc: 0.9245389248544047
+        precision: 0.9495798319327731
+        recall: 0.6243093922651933
+        roc_auc: 0.6871546961325967
+        test_size: 205
+        train_size: 6627
+      VD:
+        accuracy: 0.8888888888888888
+        f1: 0.6666666666666666
+        n_features: 2
+        prc_auc: 0.5
+        precision: 0.5
+        recall: 1.0
+        roc_auc: 0.9375
+        test_size: 9
+        train_size: 1098
+    Hold out Al-Ni-Zr:
+      A2C:
+        accuracy: 0.8121546961325967
+        f1: 0.8950617283950617
+        n_features: 3
+        prc_auc: 0.8478146883235002
+        precision: 0.847953216374269
+        recall: 0.9477124183006536
+        roc_auc: 0.5095704948646125
+        test_size: 181
+        train_size: 5545
+      A2C+FIRE:
+        accuracy: 0.8011049723756906
+        f1: 0.8875
+        n_features: 4
+        prc_auc: 0.8499402451731788
+        precision: 0.8502994011976048
+        recall: 0.9281045751633987
+        roc_auc: 0.5176237161531279
+        test_size: 181
+        train_size: 5348
+      A2C+Liu:
+        accuracy: 0.7734806629834254
+        f1: 0.8681672025723473
+        n_features: 6
+        prc_auc: 0.8533566724123036
+        precision: 0.8544303797468354
+        recall: 0.8823529411764706
+        roc_auc: 0.5304621848739496
+        test_size: 181
+        train_size: 5260
+      A2C+Liu+VD:
+        accuracy: .nan
+        f1: .nan
+        n_features: 8
+        prc_auc: .nan
+        precision: .nan
+        recall: .nan
+        roc_auc: .nan
+        test_size: 10
+        train_size: 948
+      A2C+OneHot:
+        accuracy: 0.8397790055248618
+        f1: 0.9123867069486404
+        n_features: 58
+        prc_auc: 0.8482752506717919
+        precision: 0.848314606741573
+        recall: 0.9869281045751634
+        roc_auc: 0.5113211951447245
+        test_size: 181
+        train_size: 5545
+      Liu:
+        accuracy: 0.726775956284153
+        f1: 0.8322147651006712
+        n_features: 3
+        prc_auc: 0.8572966195917016
+        precision: 0.8611111111111112
+        recall: 0.8051948051948052
+        roc_auc: 0.557769816390506
+        test_size: 183
+        train_size: 6340
+      Liu+VD:
+        accuracy: .nan
+        f1: .nan
+        n_features: 5
+        prc_auc: .nan
+        precision: .nan
+        recall: .nan
+        roc_auc: .nan
+        test_size: 11
+        train_size: 1036
+      OneHot:
+        accuracy: 0.825136612021858
+        f1: 0.9036144578313253
+        n_features: 55
+        prc_auc: 0.8426663285753357
+        precision: 0.8426966292134831
+        recall: 0.974025974025974
+        roc_auc: 0.5042543663233318
+        test_size: 183
+        train_size: 6649
+      VD:
+        accuracy: .nan
+        f1: .nan
+        n_features: 2
+        prc_auc: .nan
+        precision: .nan
+        recall: .nan
+        roc_auc: .nan
+        test_size: 11
+        train_size: 1096
+    Hold out B:
+      A2C:
+        accuracy: 0.6684210526315789
+        f1: 0.769019248395967
+        n_features: 3
+        prc_auc: 0.8078660126050854
+        precision: 0.8241650294695482
+        recall: 0.7207903780068728
+        roc_auc: 0.608990694621414
+        test_size: 1520
+        train_size: 4206
+      A2C+FIRE:
+        accuracy: 0.7205387205387206
+        f1: 0.831506293138449
+        n_features: 4
+        prc_auc: 0.7751265940242318
+        precision: 0.7757575757575758
+        recall: 0.8958880139982502
+        roc_auc: 0.5151954689874293
+        test_size: 1485
+        train_size: 4044
+      A2C+Liu:
+        accuracy: 0.7537796976241901
+        f1: 0.8442622950819673
+        n_features: 6
+        prc_auc: 0.7987402656494377
+        precision: 0.8046875
+        recall: 0.8879310344827587
+        roc_auc: 0.6178785607196402
+        test_size: 1389
+        train_size: 4052
+      A2C+Liu+VD:
+        accuracy: 0.5459183673469388
+        f1: 0.06315789473684211
+        n_features: 8
+        prc_auc: 0.4058956916099774
+        precision: 0.21428571428571427
+        recall: 0.037037037037037035
+        roc_auc: 0.47069243156199675
+        test_size: 196
+        train_size: 762
+      A2C+OneHot:
+        accuracy: 0.6927631578947369
+        f1: 0.7929046563192904
+        n_features: 58
+        prc_auc: 0.8069889263161872
+        precision: 0.8194317140238313
+        recall: 0.7680412371134021
+        roc_auc: 0.6073352252982741
+        test_size: 1520
+        train_size: 4206
+      Liu:
+        accuracy: 0.7455329636475663
+        f1: 0.8482175670709298
+        n_features: 3
+        prc_auc: 0.7865895425161736
+        precision: 0.7877133105802048
+        recall: 0.9187898089171974
+        roc_auc: 0.5356891823877541
+        test_size: 1623
+        train_size: 4900
+      Liu+VD:
+        accuracy: 0.47342995169082125
+        f1: 0.05217391304347826
+        n_features: 5
+        prc_auc: 0.39476056902424367
+        precision: 0.0967741935483871
+        recall: 0.03571428571428571
+        roc_auc: 0.4040360046457608
+        test_size: 207
+        train_size: 840
+      OneHot:
+        accuracy: 0.683494044242768
+        f1: 0.7960526315789473
+        n_features: 55
+        prc_auc: 0.8016933007048701
+        precision: 0.8060695780903034
+        recall: 0.7862815884476534
+        roc_auc: 0.5465799476629802
+        test_size: 1763
+        train_size: 5069
+      VD:
+        accuracy: 0.43902439024390244
+        f1: 0.09210526315789473
+        n_features: 2
+        prc_auc: 0.4721100101626016
+        precision: 0.21875
+        recall: 0.058333333333333334
+        roc_auc: 0.4299603174603175
+        test_size: 246
+        train_size: 861
+    Hold out B-Fe-Ni:
+      A2C:
+        accuracy: 0.6218487394957983
+        f1: 0.7305389221556886
+        n_features: 3
+        prc_auc: 0.7531138317395923
+        precision: 0.7625
+        recall: 0.7011494252873564
+        roc_auc: 0.5536997126436782
+        test_size: 119
+        train_size: 5607
+      A2C+FIRE:
+        accuracy: 0.7058823529411765
+        f1: 0.8205128205128205
+        n_features: 4
+        prc_auc: 0.7399644404377331
+        precision: 0.7407407407407407
+        recall: 0.9195402298850575
+        roc_auc: 0.5222701149425287
+        test_size: 119
+        train_size: 5410
+      A2C+Liu:
+        accuracy: 0.7226890756302521
+        f1: 0.7659574468085106
+        n_features: 6
+        prc_auc: 0.8980005795421617
+        precision: 1.0
+        recall: 0.6206896551724138
+        roc_auc: 0.8103448275862069
+        test_size: 119
+        train_size: 5322
+      A2C+Liu+VD:
+        accuracy: .nan
+        f1: .nan
+        n_features: 8
+        prc_auc: .nan
+        precision: .nan
+        recall: .nan
+        roc_auc: .nan
+        test_size: 12
+        train_size: 946
+      A2C+OneHot:
+        accuracy: 0.9411764705882353
+        f1: 0.96045197740113
+        n_features: 58
+        prc_auc: 0.9395398005945673
+        precision: 0.9444444444444444
+        recall: 0.9770114942528736
+        roc_auc: 0.9103807471264368
+        test_size: 119
+        train_size: 5607
+      Liu:
+        accuracy: 0.8740157480314961
+        f1: 0.9111111111111111
+        n_features: 3
+        prc_auc: 0.935055703176422
+        precision: 0.9647058823529412
+        recall: 0.8631578947368421
+        roc_auc: 0.8847039473684211
+        test_size: 127
+        train_size: 6396
+      Liu+VD:
+        accuracy: .nan
+        f1: .nan
+        n_features: 5
+        prc_auc: .nan
+        precision: .nan
+        recall: .nan
+        roc_auc: .nan
+        test_size: 12
+        train_size: 1035
+      OneHot:
+        accuracy: 0.8110236220472441
+        f1: 0.8857142857142857
+        n_features: 55
+        prc_auc: 0.807418512045262
+        precision: 0.808695652173913
+        recall: 0.9789473684210527
+        roc_auc: 0.6457236842105263
+        test_size: 127
+        train_size: 6705
+      VD:
+        accuracy: .nan
+        f1: .nan
+        n_features: 2
+        prc_auc: .nan
+        precision: .nan
+        recall: .nan
+        roc_auc: .nan
+        test_size: 12
+        train_size: 1095
+    Hold out Ni:
+      A2C:
+        accuracy: 0.7098765432098766
+        f1: 0.8184159690920798
+        n_features: 3
+        prc_auc: 0.7922811318614982
+        precision: 0.795369211514393
+        recall: 0.8428381962864722
+        roc_auc: 0.5464190981432361
+        test_size: 1944
+        train_size: 3782
+      A2C+FIRE:
+        accuracy: 0.7153720803910918
+        f1: 0.8272907053394858
+        n_features: 4
+        prc_auc: 0.7846828827571702
+        precision: 0.7853566958698373
+        recall: 0.8739554317548747
+        roc_auc: 0.5135209257539806
+        test_size: 1841
+        train_size: 3688
+      A2C+Liu:
+        accuracy: 0.7438320209973753
+        f1: 0.8348002708192281
+        n_features: 6
+        prc_auc: 0.8207964520555977
+        precision: 0.8303030303030303
+        recall: 0.8393464942137508
+        roc_auc: 0.630682421418802
+        test_size: 1905
+        train_size: 3536
+      A2C+Liu+VD:
+        accuracy: 0.7657342657342657
+        f1: 0.7351778656126482
+        n_features: 8
+        prc_auc: 0.7293537884134215
+        precision: 0.8532110091743119
+        recall: 0.6458333333333334
+        roc_auc: 0.7665786384976527
+        test_size: 286
+        train_size: 672
+      A2C+OneHot:
+        accuracy: 0.7309670781893004
+        f1: 0.8259567387687188
+        n_features: 58
+        prc_auc: 0.819559354816651
+        precision: 0.8289913159652639
+        recall: 0.8229442970822282
+        roc_auc: 0.617894166889738
+        test_size: 1944
+        train_size: 3782
+      Liu:
+        accuracy: 0.740788903337668
+        f1: 0.8299203640500569
+        n_features: 3
+        prc_auc: 0.8144902409018111
+        precision: 0.8256932654216186
+        recall: 0.834190966266438
+        roc_auc: 0.6411098200507817
+        test_size: 2307
+        train_size: 4216
+      Liu+VD:
+        accuracy: 0.7794561933534743
+        f1: 0.7286245353159851
+        n_features: 5
+        prc_auc: 0.6835553794594951
+        precision: 0.8032786885245902
+        recall: 0.6666666666666666
+        roc_auc: 0.7681159420289854
+        test_size: 331
+        train_size: 716
+      OneHot:
+        accuracy: 0.7485106382978723
+        f1: 0.8366952196739431
+        n_features: 55
+        prc_auc: 0.8184222468028541
+        precision: 0.8286808976464148
+        recall: 0.8448660714285714
+        roc_auc: 0.6419670858934972
+        test_size: 2350
+        train_size: 4482
+      VD:
+        accuracy: 0.7074626865671642
+        f1: 0.6423357664233577
+        n_features: 2
+        prc_auc: 0.6050090365488018
+        precision: 0.7154471544715447
+        recall: 0.5827814569536424
+        roc_auc: 0.6962820328246472
+        test_size: 335
+        train_size: 772
+    Random split:
+      A2C:
+        accuracy: 0.7458515283842795
+        f1: 0.8408966648441771
+        n_features: 3
+        prc_auc: 0.7813846701617607
+        precision: 0.7854954034729316
+        recall: 0.9047058823529411
+        roc_auc: 0.5964207377866401
+        test_size: 1145
+        train_size: 4581
+      A2C+FIRE:
+        accuracy: 0.7355072463768116
+        f1: 0.8392070484581498
+        n_features: 4
+        prc_auc: 0.767267951085461
+        precision: 0.768920282542886
+        recall: 0.9236363636363636
+        roc_auc: 0.5514239165852068
+        test_size: 1104
+        train_size: 4425
+      A2C+Liu:
+        accuracy: 0.8330258302583026
+        f1: 0.892325996430696
+        n_features: 6
+        prc_auc: 0.8384648020332492
+        precision: 0.8445945945945946
+        recall: 0.9457755359394704
+        roc_auc: 0.7357743659078796
+        test_size: 1084
+        train_size: 4357
+      A2C+Liu+VD:
+        accuracy: 0.9359605911330049
+        f1: 0.9395348837209302
+        n_features: 8
+        prc_auc: 0.9075282396389283
+        precision: 0.926605504587156
+        recall: 0.9528301886792453
+        roc_auc: 0.9351779809375607
+        test_size: 203
+        train_size: 755
+      A2C+OneHot:
+        accuracy: 0.8777292576419214
+        f1: 0.9196326061997704
+        n_features: 58
+        prc_auc: 0.8890107978100281
+        precision: 0.897982062780269
+        recall: 0.9423529411764706
+        roc_auc: 0.8169391824526421
+        test_size: 1145
+        train_size: 4581
+      Liu:
+        accuracy: 0.8261538461538461
+        f1: 0.8883399209486166
+        n_features: 3
+        prc_auc: 0.8409271510216862
+        precision: 0.8481132075471698
+        recall: 0.9325726141078838
+        roc_auc: 0.7267029737206085
+        test_size: 1300
+        train_size: 5223
+      Liu+VD:
+        accuracy: 0.9174311926605505
+        f1: 0.9142857142857143
+        n_features: 5
+        prc_auc: 0.8916471787491754
+        precision: 0.9411764705882353
+        recall: 0.8888888888888888
+        roc_auc: 0.9171717171717172
+        test_size: 218
+        train_size: 829
+      OneHot:
+        accuracy: 0.902706656912948
+        f1: 0.9365155131264916
+        n_features: 55
+        prc_auc: 0.9110476793843859
+        precision: 0.9185393258426966
+        recall: 0.9552093476144109
+        roc_auc: 0.8496634973366173
+        test_size: 1367
+        train_size: 5465
+      VD:
+        accuracy: 0.7652173913043478
+        f1: 0.7610619469026548
+        n_features: 2
+        prc_auc: 0.724331162777992
+        precision: 0.8037383177570093
+        recall: 0.7226890756302521
+        roc_auc: 0.7667499432205315
+        test_size: 230
+        train_size: 877
