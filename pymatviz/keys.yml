@@ -1158,9 +1158,11 @@ metrics:
   accuracy:
     label: Accuracy
     unit: dimensionless
+    symbol: Acc
   auc:
     label: Area under the Curve
     unit: dimensionless
+    symbol: AUC
   confusion_matrix:
     label: Confusion Matrix
     unit: dimensionless
@@ -1208,22 +1210,24 @@ metrics:
     unit: dimensionless
   mae:
     label: Mean Absolute Error
+    symbol: MAE
   r2:
     label: R² Score
     unit: dimensionless
+    symbol: R²
   pearson:
     label: Pearson Correlation
-    symbol: r
+    symbol: r<sub>P</sub>
     description: Linear correlation coefficient between two variables (-1 to 1)
     unit: dimensionless
   spearman:
     label: Spearman Correlation
-    symbol: r<sub>s</sub>
+    symbol: r<sub>S</sub>
     description: Rank correlation measuring monotonic relationships between variables (-1 to 1)
     unit: dimensionless
   kendall:
     label: Kendall Correlation
-    symbol: r<sub>k</sub>
+    symbol: r<sub>K</sub>
     description: Rank correlation based on concordant and discordant pairs (-1 to 1)
     unit: dimensionless
   mse:
@@ -1380,7 +1384,7 @@ metrics:
     unit: dimensionless
   n_materials:
     label: Number of Materials
-    symbol: N<sub>mats</sub>
+    symbol: N<sub>materials</sub>
     unit: dimensionless
   n_molecules:
     label: Number of Molecules

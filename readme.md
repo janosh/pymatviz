@@ -19,7 +19,7 @@ A toolkit for visualizations in materials informatics.
 
 <slot name="how-to-cite">
 
-> If you use `pymatviz` in your research, [see how to cite](#how-to-cite-pymatviz).
+> If you use `pymatviz` in your research, [see how to cite](#how-to-cite-pymatviz). Check out [existing papers using `pymatviz`](#papers-using-pymatviz) for inspiration!
 
 </slot>
 
@@ -27,6 +27,13 @@ A toolkit for visualizations in materials informatics.
 
 ```sh
 pip install pymatviz
+```
+
+Available extras include:
+
+```sh
+pip install 'pymatviz[pdf-export]' # save figures to PDF
+pip install 'pymatviz[brillouin]' # render 3d Brillouin zones
 ```
 
 ## API Docs
