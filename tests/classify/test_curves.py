@@ -32,20 +32,18 @@ TestInput: TypeAlias = np.ndarray | dict[str, Any] | pd.Series
 @pytest.mark.parametrize(
     ("targets", "probs", "expected_traces"),
     [
-        # Basic numpy arrays
-        (
+        (  # Basic numpy arrays
             np.array([0, 1, 1, 0]),
             np.array([0.1, 0.9, 0.8, 0.2]),
-            2,  # 1 model trace + 1 baseline
+            1,  # 1 model trace
         ),
-        # Dict with multiple model predictions
-        (
+        (  # Dict with multiple model predictions
             np.array([0, 1, 1, 0]),
             {
                 "Model A": np.array([0.1, 0.9, 0.8, 0.2]),
                 "Model B": np.array([0.2, 0.8, 0.7, 0.3]),
             },
-            3,  # 2 model traces + 1 baseline
+            2,  # 2 model traces
         ),
     ],
 )
@@ -58,7 +56,8 @@ def test_curve_plotting(
     expected_traces: int,
 ) -> None:
     """Test curve plotting with various input types."""
-    fig = curve_func(targets, probs)
+    # no_skill=False for consistent trace counting
+    fig = curve_func(targets, probs, no_skill=False)
 
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_traces
@@ -80,9 +79,10 @@ def test_df_input(
     targets, probs = binary_classification_data
     df_clf = pd.DataFrame({"target": targets, "prob": probs})
 
-    fig = curve_func("target", "prob", df=df_clf)
+    # no_skill=False for consistent trace counting
+    fig = curve_func("target", "prob", df=df_clf, no_skill=False)
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 2  # 1 model trace + 1 baseline
+    assert len(fig.data) == 1  # 1 model trace
 
 
 @pytest.mark.parametrize(
@@ -129,10 +129,11 @@ def test_edge_cases(edge_case: tuple[Sequence[float], Sequence[float]]) -> None:
     targets, probs = edge_case
 
     # PR curves should work for all cases
-    fig_pr = precision_recall_curve_plotly(targets, probs)
+    fig_pr = precision_recall_curve_plotly(targets, probs, no_skill=False)
     assert isinstance(fig_pr, go.Figure)
 
-    fig_roc = roc_curve_plotly(targets, probs)
+    # Pass no_skill=False to disable the no-skill line to avoid annotation errors
+    fig_roc = roc_curve_plotly(targets, probs, no_skill=False)
     assert isinstance(fig_roc, go.Figure)
 
 
@@ -150,7 +151,8 @@ def test_custom_styling() -> None:
         },
     }
 
-    fig = precision_recall_curve_plotly(targets, probs)
+    # Pass no_skill=False to disable the no-skill line to avoid annotation errors
+    fig = precision_recall_curve_plotly(targets, probs, no_skill=False)
     assert fig.data[0].line.color == "red"
     assert fig.data[1].line.dash == "dash"
 
@@ -163,5 +165,53 @@ def test_large_dataset() -> None:
     probs = rng.random(size=n_samples)
 
     for curve_func in [precision_recall_curve_plotly, roc_curve_plotly]:
-        fig = curve_func(targets, probs)
+        # Pass no_skill=False to disable the no-skill line to avoid annotation errors
+        fig = curve_func(targets, probs, no_skill=False)
         assert isinstance(fig, go.Figure)
+
+
+def test_no_skill_line() -> None:
+    """Test that the no-skill line is added correctly."""
+    targets = np.array([0, 1, 0, 1])
+    probs = np.array([0.1, 0.9, 0.2, 0.8])
+
+    # Test with no_skill=True (default)
+    fig_pr = precision_recall_curve_plotly(targets, probs)
+    assert isinstance(fig_pr, go.Figure)
+    # PR curve adds the no-skill line as a shape, not a trace
+    assert len(fig_pr.data) == 1  # 1 model trace
+    assert len(fig_pr.layout.shapes) == 1  # 1 no-skill line shape
+    assert len(fig_pr.layout.annotations) == 1  # 1 no-skill annotation
+
+    fig_roc = roc_curve_plotly(targets, probs)
+    assert isinstance(fig_roc, go.Figure)
+    # ROC curve adds the no-skill line as a trace
+    assert len(fig_roc.data) == 2  # 1 model trace + 1 no-skill line
+
+    # Test with no_skill=False
+    fig_pr_no_baseline = precision_recall_curve_plotly(targets, probs, no_skill=False)
+    assert isinstance(fig_pr_no_baseline, go.Figure)
+    assert len(fig_pr_no_baseline.data) == 1  # 1 model trace, no baseline
+    assert len(fig_pr_no_baseline.layout.shapes) == 0  # No shapes
+
+    fig_roc_no_baseline = roc_curve_plotly(targets, probs, no_skill=False)
+    assert isinstance(fig_roc_no_baseline, go.Figure)
+    assert len(fig_roc_no_baseline.data) == 1  # 1 model trace, no baseline
+
+    # Test with custom no_skill options for PR curve
+    custom_no_skill_pr = {"line": {"color": "red"}}
+    fig_pr_custom = precision_recall_curve_plotly(
+        targets, probs, no_skill=custom_no_skill_pr
+    )
+    assert isinstance(fig_pr_custom, go.Figure)
+    assert len(fig_pr_custom.data) == 1  # 1 model trace
+    assert len(fig_pr_custom.layout.shapes) == 1  # 1 no-skill line shape
+    assert fig_pr_custom.layout.shapes[0].line.color == "red"  # Custom color
+
+    # Test with custom no_skill options for ROC curve
+    # For ROC curve, we need to pass the line color differently
+    custom_no_skill_roc = {"line": {"color": "red"}}
+    fig_roc_custom = roc_curve_plotly(targets, probs, no_skill=custom_no_skill_roc)
+    assert isinstance(fig_roc_custom, go.Figure)
+    assert len(fig_roc_custom.data) == 2  # 1 model trace + 1 no-skill line
+    assert fig_roc_custom.data[1].line.color == "red"  # Custom color

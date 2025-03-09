@@ -73,54 +73,6 @@ def _standardize_input(
     return targets, curves_dict
 
 
-def _add_no_skill_line(
-    fig: go.Figure, y_values: ArrayLike, scatter_kwargs: dict[str, Any] | None = None
-) -> None:
-    """Add no-skill baseline line to figure.
-
-    Args:
-        fig (go.Figure): Plotly figure to add line to
-        y_values (ArrayLike): Y-values for no-skill line (constant or linear)
-        scatter_kwargs (dict[str, Any] | None): Options for no-skill baseline.
-            Commonly needed keys:
-            - show_legend: bool = True
-            - annotation: dict = None (plotly annotation dict to label the line)
-            All other keys are passed to fig.add_scatter()
-    """
-    if scatter_kwargs is False:
-        return
-
-    scatter_kwargs = scatter_kwargs or {}
-    annotation = scatter_kwargs.pop("annotation", {})
-
-    no_skill_line = dict(color="gray", width=1, dash="dash")
-    no_skill_defaults = dict(
-        x=np.linspace(0, 1, 100),
-        y=y_values,
-        name="No skill",
-        line=no_skill_line,
-        showlegend=False,
-        hovertemplate=(
-            "<b>No skill</b><br>"
-            f"{fig.layout.xaxis.title.text}: %{{x:.3f}}<br>"
-            f"{fig.layout.yaxis.title.text}: %{{y:.3f}}<br>"
-            "<extra></extra>"
-        ),
-    )
-    fig.add_scatter(**no_skill_defaults | scatter_kwargs)
-
-    if annotation is not None:
-        anno_defaults = dict(
-            x=0.5,
-            y=0.5,
-            text="No skill",
-            showarrow=False,
-            font=dict(color="gray"),
-            yshift=10,
-        )
-        fig.add_annotation(anno_defaults | annotation)
-
-
 def roc_curve_plotly(
     targets: ArrayLike | str,
     probs_positive: Predictions,
@@ -153,6 +105,14 @@ def roc_curve_plotly(
     targets, curves_dict = _standardize_input(targets, probs_positive, df)
     targets = np.asarray(targets)
 
+    def hover_template(trace_name: str) -> str:
+        return (
+            f"<b>{trace_name}</b><br>"
+            "FPR: %{x:.3f}<br>"
+            "TPR: %{y:.3f}<br>"
+            "Threshold: %{customdata.threshold:.3f}<br>"
+        )
+
     for idx, (name, trace_kwargs) in enumerate(curves_dict.items()):
         # Extract required data and optional trace kwargs
         curve_probs = np.asarray(trace_kwargs.pop("probs_positive"))
@@ -170,13 +130,7 @@ def roc_curve_plotly(
             "line": dict(
                 width=2, dash=PLOTLY_LINE_STYLES[idx % len(PLOTLY_LINE_STYLES)]
             ),
-            "hovertemplate": (
-                f"<b>{display_name}</b><br>"
-                "FPR: %{x:.3f}<br>"
-                "TPR: %{y:.3f}<br>"
-                "Threshold: %{customdata.threshold:.3f}<br>"
-                "<extra></extra>"
-            ),
+            "hovertemplate": hover_template(display_name),
             "customdata": [dict(threshold=thr) for thr in thresholds],
             "meta": dict(roc_auc=roc_auc),
         }
@@ -185,12 +139,30 @@ def roc_curve_plotly(
     # Sort traces by AUC (descending)
     fig.data = sorted(fig.data, key=lambda tr: tr.meta.get("roc_auc"), reverse=True)
 
-    # Random baseline (has 100 points so whole line is hoverable, not just end points)
-    _add_no_skill_line(
-        fig,
-        y_values=np.linspace(0, 1, 100),
-        scatter_kwargs=dict(annotation=dict(textangle=0)) | (no_skill or {}),
-    )
+    # Add no-skill baseline line
+    if no_skill is not False:
+        # Set up hover template for no-skill line
+        no_skill = no_skill or {}
+        no_skill.setdefault("hovertemplate", hover_template("No skill"))
+
+        # default to 100 points so whole line is hoverable, not just end points
+        xs = no_skill.pop("xs", np.linspace(0, 1, 100))
+        ys = no_skill.pop("ys", np.linspace(0, 1, 100))
+
+        # Extract line options if provided
+        line_kwargs = no_skill.pop("line", {})
+
+        fig.add_scatter(
+            x=xs,
+            y=ys,
+            line=dict(dash="dash", color="gray") | line_kwargs,
+            showlegend=False,
+            hovertemplate=hover_template("No skill"),
+        )
+        anno = dict(text="No skill", font=dict(color="gray")) | no_skill.pop(
+            "annotation", {}
+        )
+        fig.add_annotation(**anno, xref="x", yref="y")
 
     fig.layout.legend.update(yanchor="bottom", y=0, xanchor="right", x=0.99)
     fig.layout.update(xaxis_range=[0, 1.05], yaxis_range=[0, 1.05])
@@ -206,7 +178,7 @@ def precision_recall_curve_plotly(
     probs_positive: Predictions,
     df: pd.DataFrame | None = None,
     *,
-    no_skill: dict[str, Any] | None = None,
+    no_skill: dict[str, Any] | Literal[False] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot the precision-recall curve using Plotly.
@@ -219,8 +191,8 @@ def precision_recall_curve_plotly(
             - dict of form {"name": {"probs_positive": np.array, **trace_kwargs}}
         df (pd.DataFrame | None): Optional DataFrame containing targets and
             probs_positive columns
-        no_skill (dict[str, Any] | None): options for no-skill baseline or None
-            to hide it. Commonly needed keys:
+        no_skill (dict[str, Any] | False): Options for no-skill baseline
+            or False to hide it. Commonly needed keys:
             - show_legend: bool = True
             - annotation: dict = None (plotly annotation dict to label the line)
             All other keys are passed to fig.add_scatter()
@@ -276,8 +248,17 @@ def precision_recall_curve_plotly(
     # Sort traces by F1 score (descending)
     fig.data = sorted(fig.data, key=lambda tr: tr.meta.get("f1_score"), reverse=True)
 
-    # No-skill baseline (has 100 points so whole line is hoverable, not just end points)
-    _add_no_skill_line(fig, y_values=np.full(100, 0.5), scatter_kwargs=no_skill)
+    # Add no-skill baseline if not explicitly disabled
+    if no_skill is not False:
+        no_skill = no_skill or {}
+        no_skill_line = no_skill.pop("line", {})
+        no_skill_anno = no_skill.pop("annotation", {})
+        fig.add_hline(
+            y=0.5,
+            line=dict(dash="dash", color="gray") | no_skill_line,
+            showlegend=False,
+            annotation=dict(text="No skill", font=dict(color="gray")) | no_skill_anno,
+        )
 
     fig.layout.legend.update(yanchor="bottom", y=0, xanchor="left", x=0)
     fig.layout.update(xaxis_title="Recall", yaxis_title="Precision")
