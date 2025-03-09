@@ -437,7 +437,7 @@ def coordination_vs_cutoff_line(
                 col=(idx - 1) % n_cols + 1,
             )
 
-    fig.update_xaxes(title_text="Cutoff Distance (Å)", row=n_rows)
+    fig.update_xaxes(title_text="Cutoff Distance [Å]", row=n_rows)
     fig.update_yaxes(title_text="Coordination Number")
 
     return fig
