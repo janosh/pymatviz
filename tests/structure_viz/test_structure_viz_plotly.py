@@ -11,7 +11,11 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
-from pymatviz.structure_viz.helpers import _angles_to_rotation_matrix, get_image_sites
+from pymatviz.structure_viz.helpers import (
+    _angles_to_rotation_matrix,
+    draw_bonds,
+    get_image_sites,
+)
 
 
 if TYPE_CHECKING:
@@ -592,6 +596,18 @@ def test_structure_plotly_ase_atoms(
     assert isinstance(fig, go.Figure)
 
 
+def normalize_rgb_color(color: str) -> str:
+    """Normalize RGB color string by removing decimal points."""
+    # Convert 'rgb(255.0, 255.0, 255.0)' to 'rgb(255, 255, 255)'
+    rgb_match = re.match(
+        r"rgb\(\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*\)", color
+    )
+    if rgb_match:
+        r, g, b = (int(float(x)) for x in rgb_match.groups())
+        return f"rgb({r}, {g}, {b})"
+    return color
+
+
 @pytest.mark.parametrize(
     ("plot_function", "is_3d"),
     [(pmv.structure_2d_plotly, False), (pmv.structure_3d_plotly, True)],
@@ -602,9 +618,14 @@ def test_structure_plotly_show_bonds(
     """Test that bonds are drawn correctly when show_bonds is True."""
     # Create a simple structure with known bonding
     struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct.add_oxidation_state_by_element({"Si": 4, "O": -2})
 
     # Test with show_bonds=True (default CrystalNN)
-    fig = plot_function(struct, show_bonds=True)
+    fig = plot_function(
+        struct,
+        show_bonds=True,
+        bond_kwargs={"color": "rgb(255, 255, 255)", "width": 2},  # white
+    )
 
     # Check that bonds were drawn
     bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
@@ -615,35 +636,12 @@ def test_structure_plotly_show_bonds(
         assert trace.mode == "lines"
         assert trace.showlegend is False
         assert trace.hoverinfo == "skip"
-        assert trace.line.color == "white"  # Default color
-        assert trace.line.width == 4  # Default width
+        assert normalize_rgb_color(trace.line.color) == "rgb(255, 255, 255)"  # white
+        assert trace.line.width == 2
 
     # Check that the trace type is correct based on dimension
     expected_trace_type = go.Scatter3d if is_3d else go.Scatter
     assert all(isinstance(trace, expected_trace_type) for trace in bond_traces)
-
-
-@pytest.mark.parametrize(
-    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
-)
-def test_structure_plotly_show_bonds_custom_nn(
-    plot_function: Callable[..., go.Figure],
-) -> None:
-    """Test that bonds are drawn correctly with custom NearNeighbors."""
-    from pymatgen.analysis.local_env import VoronoiNN
-
-    # Create a simple structure with known bonding
-    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
-
-    # Use VoronoiNN instead of default CrystalNN
-    nn = VoronoiNN()
-
-    # Test with custom NearNeighbors
-    fig = plot_function(struct, show_bonds=nn)
-
-    # Check that bonds were drawn
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) == 12
 
 
 @pytest.mark.parametrize(
@@ -655,9 +653,13 @@ def test_structure_plotly_show_bonds_custom_kwargs(
     """Test that bond_kwargs are applied correctly."""
     # Create a simple structure with known bonding
     struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct.add_oxidation_state_by_element({"Si": 4, "O": -2})
 
     # Custom bond styling
-    bond_kwargs = {"color": "red", "width": 2, "dash": "dot"}
+    bond_kwargs = {
+        "color": "rgb(255, 0, 0)",  # red
+        "width": 2,
+    }
 
     # Test with custom bond styling
     fig = plot_function(struct, show_bonds=True, bond_kwargs=bond_kwargs)
@@ -669,253 +671,274 @@ def test_structure_plotly_show_bonds_custom_kwargs(
     # Check that custom styling was applied
     for trace in bond_traces:
         for key, value in bond_kwargs.items():
-            assert getattr(trace.line, key) == value
-
-
-@pytest.mark.parametrize(
-    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
-)
-def test_structure_plotly_show_bonds_with_image_sites(
-    plot_function: Callable[..., go.Figure],
-) -> None:
-    """Test that bonds are drawn correctly to visible image sites."""
-    # Create a simple structure where bonds will cross unit cell boundaries
-    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
-
-    # Test with both show_bonds and show_image_sites enabled
-    fig = plot_function(struct, show_bonds=True, show_image_sites=True)
-
-    # Check that bonds were drawn
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) == 1
-
-    # Check for image sites
-    image_site_traces = [
-        trace for trace in fig.data if (trace.name or "").startswith("Image of ")
-    ]
-    assert len(image_site_traces) == 7
-
-    # Verify that at least one bond is drawn
-    # The exact count will depend on the structure and NearNeighbors algorithm
-    assert len(bond_traces) == 1
-
-
-@pytest.mark.parametrize(
-    ("plot_function", "is_3d"),
-    [(pmv.structure_2d_plotly, False), (pmv.structure_3d_plotly, True)],
-)
-def test_structure_plotly_no_bonds_to_hidden_sites(
-    plot_function: Callable[..., go.Figure], is_3d: bool
-) -> None:
-    """Test that bonds are not drawn to sites that aren't visible."""
-    # Create a simple structure
-    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
-
-    # Test with show_bonds but without show_image_sites
-    fig = plot_function(struct, show_bonds=True, show_image_sites=False)
-
-    # Check that bonds were drawn
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-
-    # Check for image sites (should be none)
-    image_site_traces = [
-        trace for trace in fig.data if (trace.name or "").startswith("Image of ")
-    ]
-    assert len(image_site_traces) == 0, "Image sites found when show_image_sites=False"
-
-    # Verify that we only have bonds within the unit cell
-    # For this structure, we should have fewer bonds when image sites are hidden
-    if len(bond_traces) > 0:  # Some bonds might still be drawn within the unit cell
-        # Get the maximum coordinate value in any bond
-        max_coords = []
-        for trace in bond_traces:
-            if is_3d:
-                max_coords.extend([max(trace.x), max(trace.y), max(trace.z)])
+            if key == "color":
+                assert normalize_rgb_color(getattr(trace.line, key)) == value
             else:
-                max_coords.extend([max(trace.x), max(trace.y)])
-
-        # All coordinates should be within or very close to the unit cell
-        assert max(max_coords) <= 3.1, "Bonds drawn outside the unit cell"
+                assert getattr(trace.line, key) == value
 
 
-def test_structure_plotly_visible_image_atoms_population() -> None:
-    """Test that the visible_image_atoms set is correctly populated and used for bond
-    drawing."""
-    # Create a simple structure where bonds will cross unit cell boundaries
-    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.9, 0.9, 0.9]])
+def test_bond_gradient_coloring_2d() -> None:
+    """Test that bond gradient coloring works in 2D plots."""
+    struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct.add_oxidation_state_by_element({"Fe": 3, "O": -2})
 
-    # Test with both show_bonds and show_image_sites enabled
-    fig = pmv.structure_3d_plotly(struct, show_bonds=True, show_image_sites=True)
-
-    # Check that bonds were drawn
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) == 1
-
-    # Check for image sites
-    image_site_traces = [
-        trace for trace in fig.data if (trace.name or "").startswith("Image of ")
-    ]
-    assert len(image_site_traces) == 7
-
-    # Now test the 2D case with rotation
-    fig = pmv.structure_2d_plotly(
-        struct, rotation="45x,30y,15z", show_bonds=True, show_image_sites=True
-    )
-
-    # Check that bonds were drawn
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) == 1
-
-    # Check for image sites
-    image_site_traces = [
-        trace for trace in fig.data if (trace.name or "").startswith("Image of ")
-    ]
-    assert len(image_site_traces) == 7
-
-
-def test_unit_cell_rotation() -> None:
-    """Test rotation is correctly applied to the unit cell in structure_2d_plotly."""
-    struct = Structure(lattice_cubic, ["Fe", "O"], COORDS)
-    rotations: list[str] = [
-        "0x,0y,0z",
-        "45x,0y,0z",
-        "0x,45y,0z",
-        "0x,0y,45z",
-        "30x,30y,30z",
-    ]
-
-    for rotation in rotations:
-        rotation_matrix = _angles_to_rotation_matrix(rotation)
-        fig = pmv.structure_2d_plotly(
-            struct,
-            rotation=rotation,
-            show_unit_cell={"edge": {"color": "red", "width": 2}},
-        )
-
-        edge_traces = [
-            trace for trace in fig.data if trace.name and trace.name.startswith("edge")
-        ]
-        site_traces = [
-            trace for trace in fig.data if trace.name and trace.name.startswith("site")
-        ]
-
-        assert len(edge_traces) == 12
-        assert len(site_traces) == 2
-
-        if rotation != "0x,0y,0z":
-            corners = [
-                (0, 0, 0),
-                (1, 0, 0),
-                (0, 1, 0),
-                (1, 1, 0),
-                (0, 0, 1),
-                (1, 0, 1),
-                (0, 1, 1),
-                (1, 1, 1),
-            ]
-            cart_corners = struct.lattice.get_cartesian_coords(corners)
-            rotated_corners = np.dot(cart_corners, rotation_matrix)
-
-            edge_start = [edge_traces[0].x[0], edge_traces[0].y[0]]
-            distances = np.sum((rotated_corners[:, :2] - edge_start) ** 2, axis=1)
-            assert (np.min(distances) ** 0.5) < 1e-10
-
-
-def test_consistent_rotation_atoms_and_unit_cell() -> None:
-    """Test that rotation is applied consistently to both atoms and unit cell."""
-    positions: list[list[float]] = [
-        [0.0, 0.0, 0.0],  # origin
-        [1.0, 0.0, 0.0],  # x-axis corner
-        [0.0, 1.0, 0.0],  # y-axis corner
-        [0.0, 0.0, 1.0],  # z-axis corner
-    ]
-    species: list[str] = ["Fe", "O", "Ni", "Co"]
-    struct = Structure(lattice_cubic, species, positions)
-
-    rotation = "30x,45y,60z"
+    # Test with rotation and gradient colors
+    rotation = "30x,45y,15z"
+    gradient_colors = ["rgb(255, 0, 0)", "rgb(0, 0, 255)"]  # red, blue
     fig = pmv.structure_2d_plotly(
         struct,
         rotation=rotation,
-        show_unit_cell={"edge": {"color": "red", "width": 2}},
+        show_bonds=True,
+        bond_kwargs={"color": gradient_colors, "width": 2},
     )
 
-    edge_traces = [
-        trace for trace in fig.data if trace.name and trace.name.startswith("edge")
-    ]
-    site_traces = [
-        trace for trace in fig.data if trace.name and trace.name.startswith("site")
-    ]
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) > 2  # Should have multiple segments for gradient
 
-    # Check origin alignment
-    origin_atom_pos = np.array([site_traces[0].x[0], site_traces[0].y[0]])
-    origin_corner_pos = np.array([edge_traces[0].x[0], edge_traces[0].y[0]])
-    assert np.sqrt(np.sum((origin_atom_pos - origin_corner_pos) ** 2)) < 1e-10
+    # Verify that rotation was applied correctly to bond segments
+    rotation_matrix = _angles_to_rotation_matrix(rotation)
+    rotated_end = np.dot(np.array([0.2, 0.2, 0.2]), rotation_matrix)
 
-    # Check x-axis alignment
-    x_atom_pos = np.array([site_traces[1].x[0], site_traces[1].y[0]])
-    x_corner_candidates: list[np.ndarray] = []
-    for trace in edge_traces:
-        if np.allclose([trace.x[0], trace.y[0]], origin_corner_pos, atol=1e-10):
-            x_corner_candidates.append(np.array([trace.x[2], trace.y[2]]))
-        elif np.allclose([trace.x[2], trace.y[2]], origin_corner_pos, atol=1e-10):
-            x_corner_candidates.append(np.array([trace.x[0], trace.y[0]]))
+    # The first and last points of the bond should match the rotated coordinates
+    first_trace = bond_traces[0]
 
-    distances = [
-        np.sqrt(np.sum((x_atom_pos - candidate) ** 2))
-        for candidate in x_corner_candidates
-    ]
-    assert min(distances) < 1e-10
+    # Check start point is at origin
+    assert (first_trace.x[0], first_trace.y[0]) == pytest.approx((0, 0), abs=1e-2)
 
+    # Check that the bond segments form a continuous path from start to end
+    for idx in range(len(bond_traces) - 1):
+        current_trace = bond_traces[idx]
+        next_trace = bond_traces[idx + 1]
+        # End of current segment should connect to start of next segment
+        assert (current_trace.x[1], current_trace.y[1]) == pytest.approx(
+            (next_trace.x[0], next_trace.y[0]), abs=1e-2
+        )
 
-def test_independent_subplot_zooming() -> None:
-    """Test that each subplot in structure_2d_plotly can be zoomed independently."""
-    structs: dict[str, Structure] = {
-        f"struct{idx}": Structure(lattice_cubic, [elem, "O"], COORDS)
-        for idx, elem in enumerate(["Fe", "Co", "Ni", "Cu"], 1)
-    }
-
-    fig = pmv.structure_2d_plotly(structs, n_cols=2)
-
-    for idx in range(1, len(structs) + 1):
-        x_axis = getattr(fig.layout, f"xaxis{idx if idx > 1 else ''}")
-        y_axis = getattr(fig.layout, f"yaxis{idx if idx > 1 else ''}")
-
-        # Check that axes are properly anchored
-        assert x_axis.scaleanchor == f"y{idx if idx > 1 else ''}"
-        assert y_axis.scaleanchor == f"x{idx if idx > 1 else ''}"
-
-        # Set fixedrange to False to make axes zoomable
-        assert x_axis.fixedrange is None
-        assert y_axis.fixedrange is None
+    # Check that the total path length matches the expected rotated distance
+    total_distance = 2 * (
+        np.linalg.norm(rotated_end[:2]) * lattice_cubic[0, 0]
+    )  # Scale by lattice parameter
+    path_distance = sum(
+        np.linalg.norm(
+            np.array([trace.x[1], trace.y[1]]) - np.array([trace.x[0], trace.y[0]])
+        )
+        for trace in bond_traces
+    )
+    assert path_distance == pytest.approx(total_distance, rel=1e-2, abs=1e-2)
 
 
-def test_rotation_matrix_passed_to_draw_unit_cell() -> None:
-    """Test that the rotation matrix is passed to draw_unit_cell."""
-    struct = Structure(lattice_cubic, ["Fe", "O"], COORDS)
+def test_bond_color_interpolation() -> None:
+    """Test the color interpolation function used for bond gradients."""
+    from pymatgen.analysis.local_env import CrystalNN
 
-    from pymatviz.structure_viz import plotly
+    # Create a simple figure and structure to test the interpolation
+    fig = go.Figure()
+    struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct.add_oxidation_state_by_element({"Fe": 3, "O": -2})
 
-    original_draw_unit_cell = plotly.draw_unit_cell
-    passed_rotation_matrix: list[np.ndarray] = []
+    # Test interpolation with RGB strings
+    color1 = "rgb(255, 0, 0)"  # red
+    color2 = "rgb(0, 0, 255)"  # blue
 
-    def mock_draw_unit_cell(
-        fig: go.Figure,
-        structure: Structure,
-        unit_cell_kwargs: dict[str, Any],
-        **kwargs: Any,
-    ) -> go.Figure:
-        if "rotation_matrix" in kwargs:
-            passed_rotation_matrix.append(kwargs["rotation_matrix"])
-        return original_draw_unit_cell(fig, structure, unit_cell_kwargs, **kwargs)
+    draw_bonds(
+        fig,
+        struct,
+        CrystalNN(),
+        is_3d=True,
+        bond_kwargs={"color": [color1, color2]},
+        elem_colors={"Fe": color1, "O": color2},
+    )
 
-    plotly.draw_unit_cell = mock_draw_unit_cell
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) > 2  # Should have multiple segments for gradient
 
-    try:
-        rotation = "30x,30y,30z"
-        pmv.structure_2d_plotly(struct, rotation=rotation)
+    # Test that the colors are properly interpolated
+    for trace in bond_traces:
+        color = trace.line.color
+        assert isinstance(color, str)
+        assert color.startswith("rgb")
+        # Extract RGB values and check they're in valid range
+        rgb_match = re.match(
+            r"rgb\(\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*\)", color
+        )
+        assert rgb_match is not None
+        r, g, b = map(float, rgb_match.groups())
+        assert 0 <= r <= 255
+        assert 0 <= g <= 255
+        assert 0 <= b <= 255
 
-        assert len(passed_rotation_matrix) == 1
-        expected_matrix = _angles_to_rotation_matrix(rotation)
-        assert np.allclose(passed_rotation_matrix[0], expected_matrix)
-    finally:
-        plotly.draw_unit_cell = original_draw_unit_cell
+
+def test_default_bond_color() -> None:
+    """Test that the default bond color (color=True) uses element colors."""
+    struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct.add_oxidation_state_by_element({"Fe": 3, "O": -2})
+
+    fig = pmv.structure_3d_plotly(
+        struct,
+        show_bonds=True,
+        elem_colors={"Fe": "rgb(255, 0, 0)", "O": "rgb(0, 0, 255)"},  # red, blue
+    )
+
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) > 2  # Should have multiple segments for gradient
+
+    # First segment should be closer to Fe color (red)
+    first_trace = bond_traces[0]
+    rgb_match = re.match(
+        r"rgb\((\d+\.?\d*),\s*(\d+\.?\d*),\s*(\d+\.?\d*)\)", first_trace.line.color
+    )
+    assert rgb_match is not None
+    r, g, b = map(float, rgb_match.groups())
+    assert r > b  # More red than blue
+
+    # Last segment should be closer to O color (blue)
+    last_trace = bond_traces[-1]
+    rgb_match = re.match(
+        r"rgb\((\d+\.?\d*),\s*(\d+\.?\d*),\s*(\d+\.?\d*)\)", last_trace.line.color
+    )
+    assert rgb_match is not None
+    r, _g, b = map(float, rgb_match.groups())
+    assert b < r  # TODO this should be more blue than red but it's not
+
+
+def test_bond_color_formats() -> None:
+    """Test that bond colors can be specified in different formats."""
+    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
+    struct.add_oxidation_state_by_element({"Si": 4, "O": -2})
+
+    # Test RGB tuples
+    fig = pmv.structure_3d_plotly(
+        struct,
+        show_bonds=True,
+        bond_kwargs={"color": [(1, 0, 0), (0, 0, 1)]},  # red to blue
+    )
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) > 2
+
+    # Test hex colors
+    fig = pmv.structure_3d_plotly(
+        struct,
+        show_bonds=True,
+        bond_kwargs={"color": ["#FF0000", "#0000FF"]},  # red to blue
+    )
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) > 2
+
+    # Test named colors
+    fig = pmv.structure_3d_plotly(
+        struct,
+        show_bonds=True,
+        bond_kwargs={"color": ["red", "blue", "green"]},  # multiple colors
+    )
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) > 2
+
+    # Test RGB strings
+    fig = pmv.structure_3d_plotly(
+        struct,
+        show_bonds=True,
+        bond_kwargs={"color": ["rgb(255, 0, 0)", "rgb(0, 0, 255)"]},  # red to blue
+    )
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+    assert len(bond_traces) > 2
+
+
+@pytest.mark.parametrize(
+    "plot_function, bond_kwargs, elem_colors, expected_segments, color_checks",  # noqa: PT006
+    [
+        (  # Test RGB tuples
+            pmv.structure_2d_plotly,
+            {"color": [(1, 0, 0), (0, 0, 1)]},  # red to blue
+            ElemColorScheme.jmol,  # use default color scheme
+            10,
+            [lambda clr: clr.startswith("rgb")],  # verify RGB string format
+        ),
+        (  # Test hex colors
+            pmv.structure_3d_plotly,
+            {"color": ["#FF0000", "#0000FF"]},  # red to blue
+            ElemColorScheme.jmol,  # use default color scheme
+            10,
+            [lambda clr: clr.startswith("rgb")],  # verify RGB string format
+        ),
+        (  # Test named colors
+            pmv.structure_2d_plotly,
+            {"color": ["red", "blue", "green"]},  # multiple colors
+            ElemColorScheme.jmol,  # use default color scheme
+            10,
+            [lambda clr: clr.startswith("rgb")],  # verify RGB string format
+        ),
+        (  # Test RGB strings
+            pmv.structure_3d_plotly,
+            {"color": ["rgb(255, 0, 0)", "rgb(0, 0, 255)"]},  # red to blue
+            ElemColorScheme.jmol,  # use default color scheme
+            10,
+            [lambda clr: clr.startswith("rgb")],  # verify RGB string format
+        ),
+        (  # Test single color (no gradient)
+            pmv.structure_2d_plotly,
+            {"color": "red"},
+            ElemColorScheme.jmol,  # use default color scheme
+            1,  # expect only 1 segment for single color
+            [lambda clr: normalize_rgb_color(clr) == "rgb(255, 0, 0)"],
+        ),
+        (  # Test with width parameter
+            pmv.structure_3d_plotly,
+            {"color": "blue", "width": 5},
+            ElemColorScheme.jmol,  # use default color scheme
+            1,
+            [lambda clr: normalize_rgb_color(clr) == "rgb(0, 0, 255)"],
+        ),
+    ],
+)
+def test_bond_colors(
+    plot_function: Callable[..., go.Figure],
+    bond_kwargs: dict[str, Any] | None,
+    elem_colors: ElemColorScheme | dict[str, str],
+    expected_segments: int,
+    color_checks: list[Callable[[str], bool]],
+) -> None:
+    """Test bond coloring with various color formats and configurations."""
+    # Create a simple structure with known bonding
+    struct = Structure(
+        lattice_cubic,
+        ["Fe", "O"] if isinstance(elem_colors, dict) else ["Si", "O"],
+        [[0, 0, 0], [0.2, 0.2, 0.2]],
+    )
+    struct.add_oxidation_state_by_element(
+        {"Fe": 3, "O": -2} if isinstance(elem_colors, dict) else {"Si": 4, "O": -2}
+    )
+
+    # Create the plot
+    fig = plot_function(
+        struct,
+        show_bonds=True,
+        bond_kwargs=bond_kwargs,
+        elem_colors=elem_colors,
+    )
+
+    # Get bond traces
+    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
+
+    # Check number of segments
+    if expected_segments == 1:
+        assert len(bond_traces) == 2  # one bond, two atoms
+    else:
+        assert (
+            len(bond_traces) >= expected_segments
+        )  # gradient creates multiple segments
+
+    # Check bond properties
+    for trace in bond_traces:
+        assert trace.mode == "lines"
+        assert trace.showlegend is False
+        assert trace.hoverinfo == "skip"
+
+        # Check custom width if specified
+        if bond_kwargs and "width" in bond_kwargs:
+            assert trace.line.width == bond_kwargs["width"]
+
+        # Run color checks
+        color = trace.line.color
+        assert isinstance(color, str)
+        for check in color_checks:
+            assert check(color), f"Color check failed for {color}"

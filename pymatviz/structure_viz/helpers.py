@@ -18,14 +18,14 @@ from pymatviz.utils import df_ptable, pick_max_contrast_color
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
     from typing import Any, Literal
 
     import plotly.graph_objects as go
     from numpy.typing import ArrayLike
     from pymatgen.analysis.local_env import NearNeighbors
 
-    from pymatviz.typing import RgbColorType
+    from pymatviz.typing import ColorType
 
 
 # fallback value (in nanometers) for covalent radius of an element
@@ -164,17 +164,17 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
 
 
 def get_elem_colors(
-    elem_colors: ElemColorScheme | dict[str, RgbColorType],
-) -> dict[str, RgbColorType]:
+    elem_colors: ElemColorScheme | Mapping[str, ColorType],
+) -> dict[str, ColorType]:
     """Get element colors based on the provided scheme or custom dictionary."""
     if isinstance(elem_colors, dict):
         return elem_colors
     if str(elem_colors) == str(ElemColorScheme.jmol):
-        return ELEM_COLORS_JMOL
+        return ELEM_COLORS_JMOL  # type: ignore[return-value]
     if str(elem_colors) == str(ElemColorScheme.vesta):
-        return ELEM_COLORS_VESTA
+        return ELEM_COLORS_VESTA  # type: ignore[return-value]
     if str(elem_colors) == str(ElemColorScheme.alloy):
-        return ELEM_COLORS_ALLOY
+        return ELEM_COLORS_ALLOY  # type: ignore[return-value]
     raise ValueError(
         f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
     )
@@ -277,7 +277,7 @@ def draw_site(
     coords: np.ndarray,
     site_idx: int,
     site_labels: Any,
-    _elem_colors: dict[str, RgbColorType],
+    _elem_colors: dict[str, ColorType],
     _atomic_radii: dict[str, float],
     atom_size: float,
     scale: float,
@@ -435,7 +435,7 @@ def draw_unit_cell(
     node_defaults = dict(size=3, color="black")
     node_kwargs = node_defaults | unit_cell_kwargs.get("node", {})
     for idx, (frac_coord, cart_coord) in enumerate(
-        zip(corners, cart_corners, strict=False)
+        zip(corners, cart_corners, strict=True)
     ):
         adjacent_angles = []
         for _ in range(3):
@@ -610,59 +610,157 @@ def draw_bonds(
     scene: str | None = None,
     visible_image_atoms: set[tuple[float, float, float]] | None = None,
     rotation_matrix: np.ndarray | None = None,
+    elem_colors: dict[str, ColorType] | None = None,
 ) -> None:
-    """Draw bonds between atoms in the structure."""
-    default_bond_kwargs = dict(color="white", width=4)
+    """Draw bonds between atoms in the structure.
+
+    Args:
+        fig: Plotly figure to add bonds to
+        structure: Pymatgen structure
+        nn: NearNeighbors object to determine bonds
+        is_3d: Whether the plot is 3D
+        bond_kwargs: Customization options for bonds. If bond_kwargs["color"] is a
+            tuple/list of colors, gradient coloring will be used. If color=True and
+            elem_colors is provided, the gradient will use the colors of the connected
+            atoms.
+        row: Row index for 2D subplots
+        col: Column index for 2D subplots
+        scene: Scene name for 3D plots
+        visible_image_atoms: Set of coordinates of visible image atoms
+        rotation_matrix: Rotation matrix for 2D plots
+        elem_colors: Element color map, used for gradient coloring if color=True
+    """
+    from matplotlib.colors import to_rgb
+    from plotly.colors import find_intermediate_color
+
+    default_bond_kwargs = dict(color=True, width=4)
     bond_kwargs = default_bond_kwargs | (bond_kwargs or {})
+    elem_colors = elem_colors or {}
 
-    for idx, site in enumerate(structure):
-        neighbors = nn.get_nn_info(structure, idx)
-        for neighbor in neighbors:
+    def parse_color(color: str | ColorType) -> str:
+        """Convert various color formats to RGB string."""
+        if isinstance(color, str) and color.startswith("rgb"):
+            return color
+        if (
+            isinstance(color, tuple | list)
+            and len(color) == 3
+            and all(0 <= val <= 1 for val in color)
+        ):
+            rgb_values = [int(255 * val) for val in color]
+            return f"rgb({rgb_values[0]}, {rgb_values[1]}, {rgb_values[2]})"
+        red, green, blue = to_rgb(color)
+        return f"rgb({int(red * 255)}, {int(green * 255)}, {int(blue * 255)})"
+
+    for site_idx, site in enumerate(structure):
+        for neighbor in nn.get_nn_info(structure, site_idx):
             end_site = neighbor["site"]
+            is_in_unit_cell = all(0 <= coord < 1 for coord in end_site.frac_coords)
+            end_coords = tuple(
+                np.dot(end_site.coords, rotation_matrix)
+                if not is_3d and rotation_matrix is not None
+                else end_site.coords
+            )
 
-            # Check if the end site is within the unit cell or a visible image atom
-            is_in_unit_cell = all(0 <= c < 1 for c in end_site.frac_coords)
+            if not (
+                is_in_unit_cell
+                or (visible_image_atoms and end_coords in visible_image_atoms)
+            ):
+                continue
 
-            # For 2D plots with rotation, we need to apply the same rotation to the end
-            # site coordinates before checking if they're in visible_image_atoms
-            if not is_3d and rotation_matrix is not None:
-                end_coords = tuple(np.dot(end_site.coords, rotation_matrix))
+            start_coords = (
+                np.dot(site.coords, rotation_matrix)
+                if not is_3d and rotation_matrix is not None
+                else site.coords
+            )
+            end_coords = (
+                np.dot(end_site.coords, rotation_matrix)
+                if not is_3d and rotation_matrix is not None
+                else end_site.coords
+            )
+
+            # Set up colors for gradient or single color
+            use_gradient = isinstance(bond_kwargs["color"], list | tuple) or (
+                bond_kwargs["color"] is True and elem_colors
+            )
+            if use_gradient:
+                if isinstance(bond_kwargs["color"], list | tuple):
+                    colors = [parse_color(color) for color in bond_kwargs["color"]]
+                else:  # color is True, use element colors
+                    start_elem, end_elem = (
+                        site.species.elements[0].symbol,
+                        end_site.species.elements[0].symbol,
+                    )
+                    colors = [
+                        parse_color(elem_colors.get(start_elem, "gray")),
+                        parse_color(elem_colors.get(end_elem, "gray")),
+                    ]
+                n_segments = 10
             else:
-                end_coords = tuple(end_site.coords)
+                colors = [parse_color(bond_kwargs["color"])]
+                n_segments = 1
 
-            is_visible_image = visible_image_atoms and end_coords in visible_image_atoms
+            # Draw bond segments
+            for segment_idx in range(n_segments):
+                frac_start, frac_end = (
+                    segment_idx / n_segments,
+                    (segment_idx + 1) / n_segments,
+                )
+                segment_start = [
+                    start + frac * (end - start)
+                    for start, end, frac in zip(
+                        start_coords, end_coords, [frac_start] * 3, strict=True
+                    )
+                ]
+                segment_end = [
+                    start + frac * (end - start)
+                    for start, end, frac in zip(
+                        start_coords, end_coords, [frac_end] * 3, strict=True
+                    )
+                ]
 
-            # Only draw bonds to sites that are either within the unit cell or are
-            # visible image atoms
-            if is_in_unit_cell or is_visible_image:
-                start = site.coords
-                end = end_site.coords
-
-                # Apply rotation to start and end points for 2D plots
-                if not is_3d and rotation_matrix is not None:
-                    start = np.dot(start, rotation_matrix)
-                    end = np.dot(end, rotation_matrix)
+                if len(colors) == 1:
+                    segment_color = colors[0]
+                elif len(colors) == 2:
+                    segment_color = find_intermediate_color(
+                        colors[0],
+                        colors[1],
+                        (frac_start + frac_end) / 2,
+                        colortype="rgb",
+                    )
+                else:
+                    color_idx = min(
+                        int((len(colors) - 1) * (frac_start + frac_end) / 2),
+                        len(colors) - 2,
+                    )
+                    segment_color = find_intermediate_color(
+                        colors[color_idx],
+                        colors[color_idx + 1],
+                        ((frac_start + frac_end) / 2 - color_idx / (len(colors) - 1))
+                        * (len(colors) - 1),
+                        colortype="rgb",
+                    )
 
                 trace_kwargs = dict(
                     mode="lines",
-                    line=bond_kwargs,
+                    line=dict(width=bond_kwargs.get("width", 2), color=segment_color),
                     showlegend=False,
                     hoverinfo="skip",
-                    name=f"bond {idx}-{neighbor['site_index']}",
+                    name=f"bond {site_idx}-{neighbor['site_index']} segment "
+                    f"{segment_idx}",
                 )
 
                 if is_3d:
                     fig.add_scatter3d(
-                        x=[start[0], end[0]],
-                        y=[start[1], end[1]],
-                        z=[start[2], end[2]],
+                        x=[segment_start[0], segment_end[0]],
+                        y=[segment_start[1], segment_end[1]],
+                        z=[segment_start[2], segment_end[2]],
                         scene=scene,
                         **trace_kwargs,
                     )
                 else:
                     fig.add_scatter(
-                        x=[start[0], end[0]],
-                        y=[start[1], end[1]],
+                        x=[segment_start[0], segment_end[0]],
+                        y=[segment_start[1], segment_end[1]],
                         row=row,
                         col=col,
                         **trace_kwargs,
