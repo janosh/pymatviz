@@ -560,14 +560,14 @@ def bond_test_structure_extended() -> Structure:
     ("is_3d", "bond_kwargs", "visible_image_atoms"),
     [
         (True, None, None),
-        (True, {"color": "blue", "width": 0.2}, {(1, 1, 1)}),
-        (False, {"color": "red", "width": 2}, {(3.0, 3.0, 3.0)}),
+        (True, {"color": "rgb(0, 0, 255)", "width": 0.2}, {(1, 1, 1)}),
+        (False, {"color": "rgb(255, 0, 0)", "width": 2}, {(3.0, 3.0, 3.0)}),
         (
             True,
-            {"color": "blue", "width": 3, "dash": "dot"},
+            {"color": "rgb(0, 0, 255)", "width": 3, "dash": "dot"},
             {(3.0, 3.0, 3.0), (-3.0, -3.0, -3.0)},
         ),
-        (False, {"color": "green", "width": 1}, None),
+        (False, {"color": "rgb(0, 128, 0)", "width": 1}, None),
     ],
 )
 def test_draw_bonds(
