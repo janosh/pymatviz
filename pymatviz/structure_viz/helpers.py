@@ -648,6 +648,8 @@ def draw_bonds(
         ):
             rgb_values = [int(255 * val) for val in color]
             return f"rgb({rgb_values[0]}, {rgb_values[1]}, {rgb_values[2]})"
+        if color is True:  # Handle the case where color is True
+            return "rgb(128, 128, 128)"  # Default to gray
         red, green, blue = to_rgb(color)
         return f"rgb({int(red * 255)}, {int(green * 255)}, {int(blue * 255)})"
 
@@ -742,7 +744,11 @@ def draw_bonds(
 
                 trace_kwargs = dict(
                     mode="lines",
-                    line=dict(width=bond_kwargs.get("width", 2), color=segment_color),
+                    line=dict(
+                        width=bond_kwargs.get("width", 2),
+                        color=segment_color,
+                        dash=bond_kwargs.get("dash"),
+                    ),
                     showlegend=False,
                     hoverinfo="skip",
                     name=f"bond {site_idx}-{neighbor['site_index']} segment "
