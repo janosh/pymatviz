@@ -32,9 +32,13 @@ batio3 = Structure(
     species=["Ba", "Ti", "O", "O", "O"],
     coords=[(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
 )
+# Add oxidation states to help with bond determination
+batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
 
 fig = pmv.structure_3d_plotly(
-    batio3, show_unit_cell={"edge": dict(color="white", width=2)}
+    batio3,
+    show_unit_cell={"edge": dict(color="white", width=2)},
+    show_bonds=True,
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "bato3-structure-3d-plotly")

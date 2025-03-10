@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
     from pymatgen.core import PeriodicSite, Structure
 
-    from pymatviz.typing import RgbColorType
+    from pymatviz.typing import ColorType
 
 
 def structure_2d_plotly(
@@ -48,7 +48,7 @@ def structure_2d_plotly(
     rotation: str = "10x,8y,3z",
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 40,
-    elem_colors: ElemColorScheme | dict[str, RgbColorType] = ElemColorScheme.jmol,
+    elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
@@ -70,13 +70,13 @@ def structure_2d_plotly(
 
     Args:
         struct (Structure | Sequence[Structure]): Pymatgen Structure(s) to plot.
-        rotation (str, optional): Euler angles in degrees in the form '10x,20y,30z'
-            describing angle at which to view structure. Defaults to "10x,8y,3z".
+        rotation (str, optional): Rotation angles in degrees in the form '10x,20y,30z'
+            from which to view the structure. Defaults to "10x,8y,3z".
         atomic_radii (float | dict[str, float], optional): Either a scaling factor for
             default radii or map from element symbol to atomic radii. Defaults to None.
         atom_size (float, optional): Scaling factor for atom sizes. Defaults to 40.
-        elem_colors (ElemColorScheme | dict[str, str], optional): Element color scheme
-            or custom color map. Defaults to ElemColorScheme.jmol.
+        elem_colors (ElemColorScheme | dict[str, ColorType], optional): Element color
+            scheme or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
         show_unit_cell (bool | dict[str, Any], optional): Whether to plot unit cell. If
             a dict, will be used to customize unit cell appearance. The dict should have
@@ -123,7 +123,7 @@ def structure_2d_plotly(
             values. Defaults to None.
 
     Returns:
-        go.Figure: Plotly figure with the plotted structure(s).
+        go.Figure: Plotly figure showing the 2D structure(s).
     """
     structures = get_structures(struct)
 
@@ -199,6 +199,7 @@ def structure_2d_plotly(
                 col=col,
                 visible_image_atoms=visible_image_atoms,
                 rotation_matrix=rotation_matrix,
+                elem_colors=_elem_colors,
             )
 
         # Plot atoms and vectors
@@ -339,11 +340,11 @@ def structure_3d_plotly(
     *,
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 20,
-    elem_colors: ElemColorScheme | dict[str, RgbColorType] = ElemColorScheme.jmol,
+    elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
     show_unit_cell: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
-    show_image_sites: bool = True,
+    show_image_sites: bool | dict[str, Any] = True,
     show_bonds: bool | NearNeighbors = False,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
@@ -414,7 +415,7 @@ def structure_3d_plotly(
             values. Defaults to None.
 
     Returns:
-        go.Figure: Plotly figure with the plotted 3D structure(s).
+        go.Figure: Plotly figure showing the 3D structure(s).
     """
     structures = get_structures(struct)
 
@@ -478,6 +479,7 @@ def structure_3d_plotly(
                 bond_kwargs=bond_kwargs,
                 scene=f"scene{idx}",
                 visible_image_atoms=visible_image_atoms,
+                elem_colors=_elem_colors,
             )
 
         # Plot atoms and vectors
