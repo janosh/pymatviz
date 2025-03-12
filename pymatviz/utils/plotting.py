@@ -203,8 +203,8 @@ def luminance(color: ColorType) -> float:
     """Compute the relative luminance of a color using the WCAG 2.0 formula.
 
     Args:
-        color (ColorType): RGB color tuple with values in [0, 1] or a color string
-            that can be converted to RGB.
+        color (ColorType): RGB color tuple with values in [0, 1] or [0, 255], or a color
+            string that can be converted to RGB.
 
     Returns:
         float: Relative luminance of the color in range [0, 1].
@@ -213,36 +213,84 @@ def luminance(color: ColorType) -> float:
         r, g, b, *_a = map(float, color.strip("rgb()").split(","))
         if r > 1 or g > 1 or b > 1:
             r, g, b = r / 255, g / 255, b / 255
+    elif isinstance(color, tuple) and len(color) >= 3:
+        # Check if any value is > 1, indicating 0-255 range
+        if any(c > 1 for c in color[:3]):
+            r, g, b = color[0] / 255, color[1] / 255, color[2] / 255
+        else:
+            r, g, b = color[:3]
     else:
         # raises ValueError if color invalid
         r, g, b, *_a = matplotlib.colors.to_rgba(color)
+
+    def _convert_rgb_to_linear(rgb: float) -> float:
+        """Convert an RGB value to linear RGB (remove gamma correction)."""
+        return rgb / 12.92 if rgb <= 0.03928 else ((rgb + 0.055) / 1.055) ** 2.4
+
+    # Convert RGB to linear RGB (remove gamma correction)
+    r, g, b = map(_convert_rgb_to_linear, (r, g, b))
 
     # Calculate relative luminance using WCAG 2.0 coefficients
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
+def contrast_ratio(color1: ColorType, color2: ColorType) -> float:
+    """Calculate the contrast ratio between two colors according to WCAG 2.0.
+
+    Args:
+        color1 (ColorType): First color (RGB tuple with values in [0, 1] or [0, 255],
+            or a color string that can be converted to RGB).
+        color2 (ColorType): Second color (RGB tuple with values in [0, 1] or [0, 255],
+            or a color string that can be converted to RGB).
+
+    Returns:
+        float: Contrast ratio between the two colors, ranging from 1:1 to 21:1.
+    """
+    lum1 = luminance(color1)
+    lum2 = luminance(color2)
+
+    # Ensure lighter color is first for the formula
+    lighter = max(lum1, lum2)
+    darker = min(lum1, lum2)
+
+    # Calculate contrast ratio: (L1 + 0.05) / (L2 + 0.05)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
 def pick_max_contrast_color(
     bg_color: ColorType,
-    luminance_threshold: float = 0.3,  # Threshold for light/dark color distinction
     colors: tuple[ColorType, ColorType] = ("white", "black"),
+    min_contrast_ratio: float = 2.0,  # Lower threshold makes dark colors get white text
 ) -> ColorType:
-    """Choose dark or light text color for a given background color based on WCAG 2.0.
+    """Choose text color for a given background color based on WCAG 2.0 contrast ratio.
+
+    This function calculates the contrast ratio between the background color and each
+    of the provided text colors, then returns the color with the highest contrast ratio.
+    If the contrast ratio with white is above the minimum contrast ratio, white will be
+    chosen even if black has a slightly higher contrast ratio. This ensures that darker
+    colors always get white text, which is often more readable in 3D visualizations.
 
     Args:
         bg_color (ColorType): Background color.
-        luminance_threshold (float, optional): Luminance threshold for choosing text
-            color. Defaults to 0.5 to distinguish between light and dark colors.
-        colors (tuple[ColorType, ColorType], optional): One light and one dark text
-            color to choose from in that order. Defaults to ("white", "black").
+        colors (tuple[ColorType, ColorType], optional): Text colors to choose
+            from. Defaults to ("white", "black").
+        min_contrast_ratio (float, optional): Minimum contrast ratio to prefer white
+            over black text. Defaults to 2.0 (lower than WCAG AA standard to ensure
+            dark colors get white text).
 
     Returns:
-        ColorType: The color that provides better contrast, usually "black" or "white".
+        ColorType: item in `colors` that provides the best contrast with bg_color.
     """
-    # Calculate luminance of the background color
-    bg_luminance = luminance(bg_color)
+    # Calculate contrast ratios for each potential text color
+    contrast_ratios = [contrast_ratio(bg_color, color) for color in colors]
 
-    # Use black text on light colors (luminance > threshold)
-    return colors[1] if bg_luminance > luminance_threshold else colors[0]
+    # If the contrast ratio with white is above the minimum contrast ratio,
+    # prefer white text even if black has a slightly higher contrast ratio
+    if contrast_ratios[0] >= min_contrast_ratio:
+        return colors[0]
+
+    # Otherwise, return the color with the highest contrast ratio
+    return colors[contrast_ratios.index(max(contrast_ratios))]
 
 
 def pretty_label(key: str, backend: Backend) -> str:

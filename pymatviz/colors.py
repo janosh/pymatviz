@@ -273,47 +273,47 @@ ELEM_COLORS_VESTA: dict[str, RgbColorType] = {
 # overriding metal colors.
 ELEM_COLORS_ALLOY_256: dict[str, Rgb256ColorType] = ELEM_COLORS_VESTA_256 | {
     # Alkali metals - bright purples
-    "Li": (0, 53, 0),  # Bright purple
-    "Na": (0, 41, 255),  # Deep purple
-    "K": (0, 255, 0),  # Royal purple
-    "Rb": (0, 255, 255),  # Dark purple
-    "Cs": (255, 0, 0),  # Deep violet
+    "Li": (0, 53, 0),  # Dark green
+    "Na": (0, 41, 255),  # Deep blue
+    "K": (0, 255, 0),  # Bright green
+    "Rb": (0, 255, 255),  # Cyan
+    "Cs": (255, 0, 0),  # Bright red
     # Alkaline earth metals - yellows/oranges
-    "Be": (255, 0, 255),  # Golden yellow
-    "Mg": (255, 255, 0),  # Dark orange
-    "Ca": (255, 255, 255),  # Bright orange
-    "Sr": (38, 154, 0),  # Red-orange
-    "Ba": (0, 150, 255),  # Pure red
+    "Be": (255, 0, 255),  # Magenta
+    "Mg": (255, 255, 0),  # Yellow
+    "Ca": (255, 255, 255),  # White
+    "Sr": (38, 154, 0),  # Green
+    "Ba": (0, 150, 255),  # Blue
     # Transition metals - maximizing contrast
-    "Sc": (207, 26, 128),  # Light gray (from JMOL)
-    "Ti": (216, 219, 127),  # Purple (changed from blue for more contrast with Zr)
-    "V": (255, 150, 0),  # Pink
-    "Cr": (197, 163, 255),  # Bright green
-    "Mn": (0, 46, 133),  # Magenta
-    "Fe": (0, 151, 134),  # Bright orange (changed from JMOL)
-    "Co": (0, 255, 121),  # Deep blue
-    "Ni": (99, 0, 62),  # Orange (changed from green for contrast with Zr)
-    "Cu": (129, 0, 255),  # Brown (changed from JMOL)
-    "Zn": (168, 74, 0),  # Light blue
-    "Zr": (108, 96, 208),  # Cyan (kept)
-    "Nb": (134, 228, 15),  # Purple (new)
+    "Sc": (207, 26, 128),  # Pink
+    "Ti": (216, 219, 127),  # Light yellow-green
+    "V": (255, 150, 0),  # Orange
+    "Cr": (197, 163, 255),  # Light purple
+    "Mn": (0, 46, 133),  # Dark blue
+    "Fe": (0, 151, 134),  # Teal
+    "Co": (0, 255, 121),  # Bright green
+    "Ni": (99, 0, 62),  # Dark red/burgundy
+    "Cu": (129, 0, 255),  # Purple
+    "Zn": (168, 74, 0),  # Brown
+    "Zr": (108, 96, 208),  # Medium blue-purple
+    "Nb": (134, 228, 15),  # Lime green
     # Post-transition metals - earth tones
-    "Al": (102, 211, 188),  # Gray (from JMOL)
-    "Ga": (255, 121, 143),  # Rose
-    "In": (131, 143, 93),  # Dusty rose
-    "Sn": (197, 163, 255),  # Dark orange (changed from blue-gray for contrast with Zr)
-    "Tl": (0, 46, 133),  # Terra cotta
-    "Pb": (0, 151, 134),  # Dark gray
-    "Bi": (0, 255, 121),  # Purple
+    "Al": (102, 211, 188),  # Light teal
+    "Ga": (255, 121, 143),  # Pink
+    "In": (131, 143, 93),  # Olive green
+    "Sn": (197, 163, 255),  # Light purple
+    "Tl": (0, 46, 133),  # Dark blue
+    "Pb": (0, 151, 134),  # Teal
+    "Bi": (0, 255, 121),  # Bright green
     # Noble metals - preserving traditional colors
-    "Ru": (99, 0, 62),  # Teal
-    "Rh": (129, 0, 255),  # Hot pink
-    "Pd": (168, 74, 0),  # Blue (from JMOL)
-    "Ag": (108, 96, 208),  # Silver (from JMOL)
-    "Os": (134, 228, 15),  # Blue (from JMOL)
-    "Ir": (102, 211, 188),  # Dark blue (from JMOL)
-    "Pt": (255, 121, 143),  # Light gray (from JMOL)
-    "Au": (131, 143, 93),  # Gold (from JMOL)
+    "Ru": (99, 0, 62),  # Dark red/burgundy
+    "Rh": (129, 0, 255),  # Purple
+    "Pd": (168, 74, 0),  # Brown
+    "Ag": (108, 96, 208),  # Medium blue-purple
+    "Os": (134, 228, 15),  # Lime green
+    "Ir": (102, 211, 188),  # Light teal
+    "Pt": (255, 121, 143),  # Pink
+    "Au": (131, 143, 93),  # Olive green
 }
 
 ELEM_COLORS_ALLOY: dict[str, RgbColorType] = {

@@ -58,7 +58,7 @@ fig = pmv.structure_3d_plotly(
 title = "CoCrFeNiMn High-Entropy Alloy"
 fig.layout.title = title
 fig.show()
-pmv.io.save_and_compress_svg(fig, "hea-structure-3d-plotly")
+# pmv.io.save_and_compress_svg(fig, "hea-structure-3d-plotly")
 
 
 # %% Li-ion battery cathode material with Li vacancies: Li0.8CoO2
@@ -78,4 +78,4 @@ fig = pmv.structure_3d_plotly(
 title = "Li0.8CoO2 with Li Vacancies"
 fig.layout.title = title
 fig.show()
-pmv.io.save_and_compress_svg(fig, "lco-structure-3d-plotly")
+# pmv.io.save_and_compress_svg(fig, "lco-structure-3d-plotly")
