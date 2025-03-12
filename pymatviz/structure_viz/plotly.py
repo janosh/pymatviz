@@ -204,10 +204,6 @@ def structure_2d_plotly(
 
         # Plot atoms and vectors
         if show_sites:
-            site_kwargs = dict(line=dict(width=0.3, color="gray"))
-            if isinstance(show_sites, dict):
-                site_kwargs |= show_sites
-
             for site_idx, (site, coords) in enumerate(
                 zip(struct_i, rotated_coords, strict=False)
             ):
@@ -221,7 +217,7 @@ def structure_2d_plotly(
                     _atomic_radii,
                     atom_size,
                     scale,
-                    site_kwargs,
+                    {} if show_sites is True else show_sites,
                     is_3d=False,
                     row=row,
                     col=col,
@@ -251,17 +247,6 @@ def structure_2d_plotly(
 
                 # Add image sites
                 if show_image_sites:
-                    image_site_kwargs = dict(
-                        size=_atomic_radii[site.species.elements[0].symbol]
-                        * scale
-                        * atom_size
-                        * 0.8,
-                        color=_elem_colors.get(site.species.elements[0].symbol, "gray"),
-                        opacity=0.5,
-                    )
-                    if isinstance(show_image_sites, dict):
-                        image_site_kwargs |= show_image_sites
-
                     image_atoms = get_image_sites(site, struct_i.lattice)
                     if len(image_atoms) > 0:
                         rotated_image_atoms = np.dot(image_atoms, rotation_matrix)
@@ -277,7 +262,7 @@ def structure_2d_plotly(
                                 _atomic_radii,
                                 atom_size,
                                 scale,
-                                image_site_kwargs,
+                                {} if show_image_sites is True else show_image_sites,
                                 is_image=True,
                                 is_3d=False,
                                 row=row,
@@ -289,9 +274,7 @@ def structure_2d_plotly(
             draw_unit_cell(
                 fig,
                 struct_i,
-                unit_cell_kwargs=show_unit_cell
-                if isinstance(show_unit_cell, dict)
-                else {},
+                unit_cell_kwargs={} if show_unit_cell is True else show_unit_cell,
                 is_3d=False,
                 row=row,
                 col=col,
@@ -484,10 +467,6 @@ def structure_3d_plotly(
 
         # Plot atoms and vectors
         if show_sites:
-            site_kwargs = dict(line=dict(width=0.3, color="gray"))
-            if isinstance(show_sites, dict):
-                site_kwargs |= show_sites
-
             for site_idx, site in enumerate(struct_i):
                 draw_site(
                     fig,
@@ -499,7 +478,7 @@ def structure_3d_plotly(
                     _atomic_radii,
                     atom_size,
                     scale,
-                    site_kwargs,
+                    {} if show_sites is True else show_sites,
                     is_3d=True,
                     scene=f"scene{idx}",
                     name=f"site{site_idx}",
@@ -527,17 +506,6 @@ def structure_3d_plotly(
 
                 # Add image sites
                 if show_image_sites:
-                    image_site_kwargs = dict(
-                        size=_atomic_radii[site.species.elements[0].symbol]
-                        * scale
-                        * atom_size
-                        * 0.8,
-                        color=_elem_colors.get(site.species.elements[0].symbol, "gray"),
-                        opacity=0.5,
-                    )
-                    if isinstance(show_image_sites, dict):
-                        image_site_kwargs |= show_image_sites
-
                     image_atoms = get_image_sites(site, struct_i.lattice)
                     if len(image_atoms) > 0:
                         for image_coords in image_atoms:
@@ -551,7 +519,7 @@ def structure_3d_plotly(
                                 _atomic_radii,
                                 atom_size,
                                 scale,
-                                image_site_kwargs,
+                                {} if show_image_sites is True else show_image_sites,
                                 is_image=True,
                                 is_3d=True,
                                 scene=f"scene{idx}",
@@ -562,9 +530,7 @@ def structure_3d_plotly(
             draw_unit_cell(
                 fig,
                 struct_i,
-                unit_cell_kwargs=show_unit_cell
-                if isinstance(show_unit_cell, dict)
-                else {},
+                unit_cell_kwargs={} if show_unit_cell is True else show_unit_cell,
                 is_3d=True,
                 scene=f"scene{idx}",
             )
