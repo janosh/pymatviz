@@ -160,6 +160,7 @@ def density_scatter_plotly(
     bin_counts_col: str | None = None,
     facet_col: str | None = None,
     colorbar_kwargs: dict[str, Any] | None = None,
+    hover_format: str = ".3f",
     **kwargs: Any,
 ) -> go.Figure:
     """Scatter plot colored by density using plotly backend.
@@ -198,6 +199,11 @@ def density_scatter_plotly(
             on unique values in this column. Defaults to None.
         colorbar_kwargs (dict, optional): Passed to fig.layout.coloraxis.colorbar.
             E.g. dict(thickness=15) to make colorbar thinner.
+        hover_format (str, optional): Format specifier for the point density values in
+            the hover tooltip. Defaults to ".3f" (3 decimal places). Can be any valid
+            Python format specifier, e.g. ".2e" for scientific notation, ".0f" for
+            integers, etc. See https://docs.python.org/3/library/string.html#format-specification-mini-language
+            for more options.
         **kwargs: Passed to px.scatter().
 
     Returns:
@@ -238,6 +244,9 @@ def density_scatter_plotly(
     if log_density:
         color_vals = np.log10(color_vals + 1)
 
+    # Check if a custom hovertemplate is provided in kwargs
+    custom_hovertemplate = kwargs.pop("hovertemplate", None)
+
     kwargs = dict(color_continuous_scale="Viridis") | kwargs
 
     fig = px.scatter(
@@ -253,8 +262,22 @@ def density_scatter_plotly(
     colorbar_defaults = dict(thickness=15)
     fig.layout.coloraxis.colorbar.update(colorbar_defaults | (colorbar_kwargs or {}))
 
+    # Apply custom hover template if provided
+    if custom_hovertemplate:
+        for trace in fig.data:
+            trace.hovertemplate = custom_hovertemplate
+
+    # For non-log density case, apply hover formatting directly
+    elif not log_density:
+        for trace in fig.data:
+            # Create a custom hover template with formatted point density
+            trace.hovertemplate = f"{x}: %{{x}}<br>{y}: %{{y}}<br>{bin_counts_col}: "
+            f"%{{customdata[0]:{hover_format}}}<extra></extra>"
+
     if log_density:
-        _update_colorbar_for_log_density(fig, color_vals, bin_counts_col)
+        _update_colorbar_for_log_density(
+            fig, color_vals, bin_counts_col, x, y, hover_format, custom_hovertemplate
+        )
 
     pmv.powerups.enhance_parity_plot(
         fig, identity_line=identity_line, best_fit_line=best_fit_line, stats=stats
@@ -303,34 +326,109 @@ def _bin_and_calculate_density(
 
 
 def _update_colorbar_for_log_density(
-    fig: go.Figure, color_vals: np.ndarray, bin_counts_col: str
+    fig: go.Figure,
+    color_vals: np.ndarray,
+    bin_counts_col: str,
+    x: str = "x",
+    y: str = "y",
+    hover_format: str = ".3f",
+    custom_hovertemplate: str | None = None,
 ) -> None:
-    """Helper function to update colorbar for log density."""
-    min_count = color_vals.min()
-    max_count = color_vals.max()
-    log_min = np.floor(np.log10(max(min_count, 1)))
-    log_max = np.ceil(np.log10(max_count))
-    tick_values = np.logspace(log_min, log_max, num=max(int(log_max - log_min) + 1, 5))
+    """Helper function to update colorbar for log density.
 
-    # Round tick values to nice numbers
-    tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
-    # Remove duplicates that might arise from rounding
-    tick_values = sorted(set(tick_values))
+    Creates evenly spaced tick labels on a logarithmic scale across the full data range.
+    Also updates hover tooltip to display point density in specified format.
 
+    Args:
+        fig (go.Figure): The plotly figure to update
+        color_vals (np.ndarray): The logged color values
+        bin_counts_col (str): The name of the column containing bin counts
+        x (str, optional): Name of the x-axis variable. Defaults to "x".
+        y (str, optional): Name of the y-axis variable. Defaults to "y".
+        hover_format (str, optional): Format specifier for the point density values in
+            the hover tooltip. Defaults to ".3f" (3 decimal places).
+        custom_hovertemplate (str | None, optional): Custom hover template provided by
+            the user. If provided, the hover template will be modified to include
+            point density information.
+    """
+    from pymatviz.utils.data import si_fmt
+
+    # Get the actual (non-logged) min and max counts from the original data
+    # color_vals are already log10(counts + 1), so we need to convert back
+    logged_min = color_vals.min()
+    logged_max = color_vals.max()
+
+    # The actual values in the data (before logging)
+    actual_min = max(10 ** (logged_min) - 1, 1)  # Ensure min is at least 1
+    actual_max = 10 ** (logged_max) - 1
+
+    # Generate tick positions that will be evenly spaced on a log scale
+    # For large ranges, use powers of 10 and intermediate values
+    if np.log10(actual_max) - np.log10(actual_min) > 2:
+        # Start with powers of 10
+        decades = range(
+            int(np.floor(np.log10(actual_min))), int(np.ceil(np.log10(actual_max))) + 1
+        )
+        tick_values = [10**decade for decade in decades]
+
+        # Add intermediate values (2x and 5x) for each decade
+        intermediate_ticks = []
+        for power in decades[:-1]:  # Skip the last decade
+            intermediate_ticks.extend([2 * 10**power, 5 * 10**power])
+
+        tick_values.extend(intermediate_ticks)
+        tick_values = sorted(tick_values)
+
+        # Filter out values outside our range
+        tick_values = [v for v in tick_values if actual_min <= v <= actual_max]
+    else:
+        # For smaller ranges, use more points
+        num_ticks = min(
+            10, max(5, int(np.log10(actual_max) - np.log10(actual_min)) * 5)
+        )
+        tick_values = np.logspace(np.log10(actual_min), np.log10(actual_max), num_ticks)
+
+    # Format tick labels using si_fmt for consistent formatting
+    # and manually strip trailing zeros for cleaner display
+    tick_labels = []
+    for val in tick_values:
+        # float precision based on magnitude: small (large) values use 1 (0) decimals
+        formatted = si_fmt(val, fmt=".1f") if val < 10 else si_fmt(val, fmt=".0f")
+
+        # Remove trailing .0 if present
+        formatted = formatted.removesuffix(".0")
+
+        tick_labels.append(formatted)
+
+    # Calculate the tick positions in the transformed (logged) scale
+    # The transformation applied is log10(x + 1), so we need to apply the same
+    tick_positions = np.log10(np.array(tick_values) + 1)
+
+    # Update the colorbar with the correct tick positions and labels
     colorbar = fig.layout.coloraxis.colorbar
     colorbar.update(
-        tickvals=np.log10(np.array(tick_values) + 1),
-        ticktext=[f"{v:.0f}" for v in tick_values],
+        tickvals=tick_positions,
+        ticktext=tick_labels,
     )
 
-    # show original non-logged counts in hover
+    # Apply hover formatting to all traces
     for trace in fig.data:
-        orig_tooltip = trace.hovertemplate
-        new_tooltip = (
-            orig_tooltip.split("<br>color")[0]
-            + f"<br>{bin_counts_col}: %{{customdata[0]}}"
+        # Use default template if None, otherwise use custom template
+        template = (
+            f"{x}: %{{x}}<br>{y}: %{{y}}"
+            if custom_hovertemplate is None
+            else custom_hovertemplate
         )
-        trace.hovertemplate = new_tooltip
+
+        # Split at <extra> tag if present
+        parts = template.split("<extra>", 1)
+        base = parts[0]
+        extra = f"<extra>{parts[1]}" if len(parts) > 1 else "<extra></extra>"
+
+        # Combine template with density info
+        trace.hovertemplate = (
+            f"{base}<br>{bin_counts_col}: %{{customdata[0]:{hover_format}}}{extra}"
+        )
 
     colorbar.title = bin_counts_col.replace(" ", "<br>")
 
