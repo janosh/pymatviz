@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -228,7 +229,11 @@ def test_density_scatter_plotly_hover_template() -> None:
     fig = pmv.density_scatter_plotly(df=df_regr, x=X_COL, y=Y_COL, log_density=True)
     hover_template = fig.data[0].hovertemplate
     assert "Point Density" in hover_template
-    assert "color" not in hover_template  # Ensure log-count values are not displayed
+    # With the new approach, we preserve the default hover template which includes color
+    # Just ensure the bin counts are displayed correctly
+    assert f"{X_COL}" in hover_template
+    assert f"{Y_COL}" in hover_template
+    assert "customdata[0]" in hover_template
 
 
 @pytest.mark.parametrize("stats", [1, (1,), "foo"])
@@ -250,7 +255,17 @@ def test_density_scatter_plotly_facet() -> None:
 
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 2  # Two traces for smoker/non-smoker
+    for key, val in {
+        "anchor": "x2",
+        "domain": (0, 1),
+        "matches": "y",
+        "showticklabels": False,
+    }.items():
+        assert getattr(fig.layout.yaxis2, key) == val, f"{key=}, {val=}"
     assert fig.layout.xaxis2 is not None  # Check second x-axis exists for faceting
+    for key, val in {"anchor": "y2", "domain": (0.51, 1.0), "matches": "x"}.items():
+        assert getattr(fig.layout.xaxis2, key) == val, f"{key=}, {val=}"
+    assert fig.layout.xaxis2.title.text == "total_bill"
 
 
 def test_density_scatter_plotly_facet_log_density() -> None:
@@ -258,8 +273,35 @@ def test_density_scatter_plotly_facet_log_density() -> None:
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker", log_density=True
     )
 
-    assert fig.layout.coloraxis.colorbar.ticktext is not None
-    assert fig.layout.coloraxis.colorbar.tickvals is not None
+    # Check that the colorbar exists and has tick values and labels
+    colorbar = fig.layout.coloraxis.colorbar
+    tick_values = colorbar.tickvals
+    tick_labels = colorbar.ticktext
+
+    # Basic checks
+    assert tick_values is not None
+    assert len(tick_values) > 0
+    assert tick_labels is not None
+    assert len(tick_labels) > 0
+
+    # Check that the tick values are in a reasonable range for log-transformed data
+    # For log10(x+1) transformed data, values should be between 0 and 1 for most cases
+    assert all(0 <= val <= 1 for val in tick_values), (
+        "Tick values outside expected range"
+    )
+
+    # Check that the labels include both "0" and "1" (common for density plots)
+    assert "0" in tick_labels, "Label '0' missing from colorbar"
+    assert "1" in tick_labels, "Label '1' missing from colorbar"
+
+    # Check that the tick values are in consistent order
+    is_ascending = all(
+        tick_values[i] < tick_values[i + 1] for i in range(len(tick_values) - 1)
+    )
+    is_descending = all(
+        tick_values[i] > tick_values[i + 1] for i in range(len(tick_values) - 1)
+    )
+    assert is_ascending or is_descending, "Tick values not in consistent order"
 
 
 def test_density_scatter_plotly_facet_stats() -> None:
@@ -373,3 +415,174 @@ def test_density_scatter_plotly_colorbar_kwargs() -> None:
     assert actual_colorbar.thickness == 30
     assert actual_colorbar.len == 0.8
     assert actual_colorbar.x == 1.1
+
+
+def test_colorbar_tick_labels_no_trailing_zeros() -> None:
+    """Test that colorbar tick labels don't have trailing zeros."""
+    # Create a dataframe with a wide range of counts to ensure various tick formats
+    n_points = 1000
+    df_xy = pd.DataFrame(
+        {
+            "x": np_rng.random(n_points),
+            "y": np_rng.random(n_points),
+            "count": np.logspace(0, 4, n_points),  # Values from 1 to 10000
+        }
+    )
+
+    # Use the count column to simulate different bin densities
+    fig = pmv.density_scatter_plotly(
+        df=df_xy, x="x", y="y", log_density=True, bin_counts_col="count"
+    )
+
+    # Check that the colorbar has tick labels and none have trailing .0
+    colorbar = fig.layout.coloraxis.colorbar
+    assert colorbar.ticktext is not None
+    assert len(colorbar.ticktext) > 0
+
+    for label in colorbar.ticktext:
+        assert not label.endswith(".0"), f"Label '{label}' has trailing .0"
+
+        # Check for correct SI prefix usage (if applicable)
+        if "k" in label and "." in label.split("k")[0]:
+            decimal_part = label.split("k")[0].split(".")[1]
+            assert decimal_part != "0", f"Label '{label}' has unnecessary decimal"
+
+
+def test_colorbar_density_range_and_formatting() -> None:
+    """Test colorbar tick formatting for wide range of density values."""
+    # Create a dataset with controlled point densities using clusters
+    # We'll create 5 clusters with exponentially increasing point densities
+    n_clusters = 5
+    points_per_cluster = np.logspace(0, 4, n_clusters).astype(
+        int
+    )  # 1, 10, 100, 1000, 10000 points
+
+    # Create empty arrays for x and y
+    x_vals = []
+    y_vals = []
+
+    # Create clusters with different densities at specific locations
+    for i, n_pts in enumerate(points_per_cluster):
+        # Create a tight cluster of points at position (i, i)
+        cluster_x = np_rng.normal(i, 0.05, size=n_pts)
+        cluster_y = np_rng.normal(i, 0.05, size=n_pts)
+
+        x_vals.extend(cluster_x)
+        y_vals.extend(cluster_y)
+
+    # Create DataFrame with the clustered points
+    df_xy = pd.DataFrame({"x": x_vals, "y": y_vals})
+
+    # Create plot with log density and fixed number of bins to ensure consistent results
+    fig = pmv.density_scatter_plotly(
+        df=df_xy, x="x", y="y", log_density=True, n_bins=50
+    )
+
+    # Get colorbar properties
+    colorbar = fig.layout.coloraxis.colorbar
+    tick_values = colorbar.tickvals
+    tick_labels = colorbar.ticktext
+
+    # Basic checks
+    assert tick_values is not None
+    assert len(tick_values) > 0
+    assert tick_labels is not None
+    assert len(tick_labels) > 0
+
+    # Convert tick labels to numeric values
+    numeric_labels = []
+    for label in tick_labels:
+        # Handle SI prefixes
+        if "k" in label:
+            value = float(label.replace("k", "")) * 1000
+        elif "M" in label:
+            value = float(label.replace("M", "")) * 1000000
+        else:
+            try:
+                value = float(label)
+            except ValueError:
+                continue  # Skip non-numeric labels
+        numeric_labels.append(value)
+
+    # Check that we have a sufficient range of values (at least 2 orders of magnitude)
+    assert len(numeric_labels) >= 3, "Not enough numeric labels on colorbar"
+    assert max(numeric_labels) / min(numeric_labels) >= 100, (
+        "Colorbar range is too small"
+    )
+
+    # Check that the minimum value is 1 (or close to it)
+    assert min(numeric_labels) <= 2, "Minimum colorbar value should be close to 1"
+
+    # Check that the maximum value is at least 100
+    assert max(numeric_labels) >= 100, "Maximum colorbar value should be at least 100"
+
+    # Check formatting of labels
+    for label in tick_labels:
+        # No trailing zeros
+        assert not label.endswith(".0"), f"Label '{label}' has trailing .0"
+
+        # If using SI prefix with decimal, ensure decimal is meaningful
+        if any(prefix in label for prefix in ["k", "M"]) and "." in label:
+            prefix = "k" if "k" in label else "M"
+            decimal_part = label.split(prefix)[0].split(".")[1]
+            assert decimal_part != "0", f"Label '{label}' has unnecessary decimal"
+
+    # Check that tick values are in ascending order
+    assert all(
+        tick_values[i] < tick_values[i + 1] for i in range(len(tick_values) - 1)
+    ), "Tick values not in ascending order"
+
+
+def test_density_scatter_plotly_hover_template_with_custom_template() -> None:
+    """Test that custom hover templates are preserved with bin counts appended."""
+    # Create a custom hover template
+    custom_template = "Custom: %{x}<br>Value: %{y}<extra>Additional Info</extra>"
+
+    fig = pmv.density_scatter_plotly(
+        df=df_regr, x=X_COL, y=Y_COL, log_density=True, hovertemplate=custom_template
+    )
+
+    hover_template = fig.data[0].hovertemplate
+    # Check that the custom template is preserved
+    assert "Custom:" in hover_template
+    assert "Value:" in hover_template
+    # Check that the bin counts are added
+    assert "Point Density" in hover_template
+    # Check that the extra tag is preserved
+    assert "Additional Info" in hover_template
+
+
+def test_density_scatter_plotly_hover_template_without_extra_tag() -> None:
+    """Test that bin counts are correctly appended when no </extra> tag exists."""
+    # Create a custom hover template without an </extra> tag
+    custom_template = "Custom: %{x}<br>Value: %{y}"
+
+    fig = pmv.density_scatter_plotly(
+        df=df_regr, x=X_COL, y=Y_COL, log_density=True, hovertemplate=custom_template
+    )
+
+    hover_template = fig.data[0].hovertemplate
+    # Check that the custom template is preserved
+    assert "Custom:" in hover_template
+    assert "Value:" in hover_template
+    # Check that the bin counts are added
+    assert "Point Density" in hover_template
+    # Check that an </extra> tag is added
+    assert hover_template.endswith("</extra>")
+
+
+def test_density_scatter_plotly_hover_format() -> None:
+    """Test that hover_format parameter correctly formats bin counts."""
+    # Test with integer format
+    fig_int = pmv.density_scatter_plotly(
+        df=df_regr, x=X_COL, y=Y_COL, log_density=True, hover_format=".0f"
+    )
+
+    # Test with decimal format
+    fig_decimal = pmv.density_scatter_plotly(
+        df=df_regr, x=X_COL, y=Y_COL, log_density=True, hover_format=".2f"
+    )
+
+    # Check that the format specifiers are included in the hover templates
+    assert ":.0f" in fig_int.data[0].hovertemplate
+    assert ":.2f" in fig_decimal.data[0].hovertemplate
