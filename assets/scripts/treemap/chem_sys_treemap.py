@@ -16,7 +16,7 @@ pmv.set_plotly_template("plotly_dark")
 
 # %% Basic example with different group_by options
 formulas = (
-    "Pb(Zr0.52Ti0.48)O3 La0.7Sr0.3MnO3 Li0.5Na0.5O LiNaO2 Li2O LiFeO2 "
+    "Pb(Zr0.52Ti0.48)O3 La0.7Sr0.3MnO3 Li0.5Na0.5O LiNaO2 Li2O LiFeO2 "  # noqa: SIM905
     "LiFeO3 Al2O3 MgO".split()
 )
 for group_by in ("formula", "reduced_formula", "chem_sys"):

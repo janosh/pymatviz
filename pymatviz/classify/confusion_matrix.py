@@ -169,7 +169,7 @@ def confusion_matrix(
 
     # Handle metrics parameter
     if isinstance(metrics, list | tuple | set):
-        metrics_dict: dict[str, str | None] = {metric: None for metric in metrics}
+        metrics_dict: dict[str, str | None] = dict.fromkeys(metrics)
     elif isinstance(metrics, dict):
         metrics_dict = metrics
     else:

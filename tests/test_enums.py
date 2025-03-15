@@ -207,13 +207,33 @@ def test_keys_yaml_and_enum_are_in_sync() -> None:
 
 def test_key_categories_are_valid() -> None:
     """Test that all keys have valid categories that match the class structure."""
-    valid_categories = (
-        "structural electronic thermodynamic mechanical thermal magnetic phonon "
-        "optical surface defect crystal_symmetry_properties dft ml metrics "
-        "computational_details identifiers_and_metadata code synthesis_related "
-        "performance_indicators environmental_indicators composition chemical "
-        "structure_prototyping economic molecular_dynamics".split()
-    )
+    valid_categories = [
+        "structural",
+        "electronic",
+        "thermodynamic",
+        "mechanical",
+        "thermal",
+        "magnetic",
+        "phonon",
+        "optical",
+        "surface",
+        "defect",
+        "crystal_symmetry_properties",
+        "dft",
+        "ml",
+        "metrics",
+        "computational_details",
+        "identifiers_and_metadata",
+        "code",
+        "synthesis_related",
+        "performance_indicators",
+        "environmental_indicators",
+        "composition",
+        "chemical",
+        "structure_prototyping",
+        "economic",
+        "molecular_dynamics",
+    ]
 
     for key in Key:
         category = key.category
