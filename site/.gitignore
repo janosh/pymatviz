@@ -5,3 +5,6 @@ node_modules
 .svelte-kit
 build
 src/routes/api/*.md
+
+# environment variables
+.env
