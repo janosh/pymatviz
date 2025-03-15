@@ -116,7 +116,7 @@ melting_point = 2500 / (atomic_radius + 0.2) + np_rng.normal(0, 150, n_samples)
 
 # Group by element groups
 element_groups = (
-    "Alkali Metals,Transition Metals,Noble Gases,Lanthanides,Actinides".split(",")
+    "Alkali Metals,Transition Metals,Noble Gases,Lanthanides,Actinides".split(",")  # noqa: SIM905
 )
 element_weights = [0.2, 0.4, 0.15, 0.15, 0.1]
 element_group = np_rng.choice(element_groups, n_samples, p=element_weights)

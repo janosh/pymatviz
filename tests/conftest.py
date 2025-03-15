@@ -68,8 +68,8 @@ def _run_around_tests() -> Generator[None, None, None]:
 
 @pytest.fixture
 def spg_symbols() -> list[str]:
-    symbols = "C2/m C2/m Fm-3m C2/m Cmc2_1 P4/nmm P-43m P-43m P6_3mc".split()
-    symbols += "P-43m P6_3mc Cmcm P2_1/m I2_13 P-6m2".split()
+    symbols = ["C2/m", "C2/m", "Fm-3m", "C2/m", "Cmc2_1", "P4/nmm", "P-43m", "P-43m"]
+    symbols += ["P6_3mc", "P-43m", "P6_3mc", "Cmcm", "P2_1/m", "I2_13", "P-6m2"]
     return symbols
 
 
@@ -88,7 +88,9 @@ def structures() -> tuple[Structure, Structure]:
         [0.75, 0.75, 0.324],
     ]
     lattice = Lattice.tetragonal(4.192, 6.88)
-    si2_ru2_pr2_struct = Structure(lattice, "Si Si Ru Ru Pr Pr".split(), coords)
+    si2_ru2_pr2_struct = Structure(
+        lattice, ("Si", "Si", "Ru", "Ru", "Pr", "Pr"), coords
+    )
     return si2_struct, si2_ru2_pr2_struct
 
 
@@ -131,7 +133,7 @@ def glass_formulas() -> list[str]:
 
     load_dataset("matbench_glass").composition.head(20)
     """
-    return (
+    return (  # noqa: SIM905
         "Al Al(NiB)2 Al10Co21B19 Al10Co23B17 Al10Co27B13 Al10Co29B11 Al10Co31B9 "
         "Al10Co33B7 Al10Cr3Si7 Al10Fe23B17 Al10Fe27B13 Al10Fe31B9 Al10Fe33B7 "
         "Al10Ni23B17 Al10Ni27B13 Al10Ni29B11 Al10Ni31B9 Al10Ni33B7 Al11(CrSi2)3"

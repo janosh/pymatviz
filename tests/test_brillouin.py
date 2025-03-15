@@ -48,7 +48,7 @@ def test_brillouin_zone_3d_basic(
         (
             0,
             tuple(
-                "Γ Y<sub>2</sub> Y<sub>4</sub> A M<sub>2</sub> V V<sub>2</sub> "
+                "Γ Y<sub>2</sub> Y<sub>4</sub> A M<sub>2</sub> V V<sub>2</sub> "  # noqa: SIM905
                 "L<sub>2</sub> C C<sub>2</sub> C<sub>4</sub> D D<sub>2</sub> "
                 "E E<sub>2</sub> E<sub>4</sub>".split()
             ),
@@ -141,7 +141,7 @@ def test_brillouin_zone_3d_reciprocal_vectors(structures: list[Structure]) -> No
 
 @pytest.mark.parametrize(
     "material_id",
-    "mp-1183085 mp-686119 mp-1183057 mp-862690 mp-1183089 mp-10018 mp-1207297".split(),
+    "mp-1183085 mp-686119 mp-1183057 mp-862690 mp-1183089 mp-10018 mp-1207297".split(),  # noqa: SIM905
 )
 def test_brillouin_zone_3d_trace_counts(material_id: str) -> None:
     """Test that brillouin_zone_3d produces the expected number of traces for each

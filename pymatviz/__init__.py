@@ -95,9 +95,8 @@ except PackageNotFoundError:
 IS_IPYTHON = hasattr(builtins, "__IPYTHON__")
 
 # define a sensible order for crystal systems across plots
-crystal_sys_order = (
-    "cubic hexagonal trigonal tetragonal orthorhombic monoclinic triclinic".split()
-)
+crystal_sys_order = ["cubic", "hexagonal", "trigonal", "tetragonal", "orthorhombic"]
+crystal_sys_order += ["monoclinic", "triclinic"]
 
 px.defaults.labels |= {
     "gap expt": "Experimental band gap (eV)",

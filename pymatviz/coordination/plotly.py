@@ -166,7 +166,7 @@ def coordination_hist(
                 if elem_symbol in struct_data:
                     data = struct_data[elem_symbol]
                     counts = Counter(data["cn"])
-                    y = [counts.get(i, 0) for i in x_range]
+                    y = [counts.get(idx, 0) for idx in x_range]
 
                     hover_text = [
                         create_hover_text(
@@ -213,7 +213,7 @@ def coordination_hist(
                 cn for elem_data in struct_data.values() for cn in elem_data["cn"]
             ]
             counts = Counter(all_cn)
-            y = [counts.get(i, 0) for i in x_range]
+            y = [counts.get(idx, 0) for idx in x_range]
 
             hover_text = [
                 create_hover_text(
@@ -236,7 +236,7 @@ def coordination_hist(
         elif split_mode == CnSplitMode.by_structure_and_element:
             for elem_symbol, data in struct_data.items():
                 counts = Counter(data["cn"])
-                y = [counts.get(i, 0) for i in x_range]
+                y = [counts.get(idx, 0) for idx in x_range]
 
                 hover_text = [
                     create_hover_text(
@@ -274,7 +274,7 @@ def coordination_hist(
         else:  # No split
             for elem_symbol, data in struct_data.items():
                 counts = Counter(data["cn"])
-                y = [counts.get(i, 0) for i in x_range]
+                y = [counts.get(idx, 0) for idx in x_range]
 
                 hover_text = [
                     create_hover_text(

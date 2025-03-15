@@ -151,7 +151,14 @@ def element_pair_rdfs(
 
     # Set default colors and line styles if not provided
     colors = colors or plotly.colors.qualitative.Plotly
-    line_styles = line_styles or "solid dot dash longdash dashdot longdashdot".split()
+    line_styles = line_styles or (
+        "solid",
+        "dot",
+        "dash",
+        "longdash",
+        "dashdot",
+        "longdashdot",
+    )
     labels = list(structures)
 
     # Add RDF traces to the figure
@@ -265,7 +272,14 @@ def full_rdf(
     fig = go.Figure()
 
     colors = colors or plotly.colors.qualitative.Plotly
-    line_styles = line_styles or "solid dot dash longdash dashdot longdashdot".split()
+    line_styles = line_styles or (
+        "solid",
+        "dot",
+        "dash",
+        "longdash",
+        "dashdot",
+        "longdashdot",
+    )
 
     for idx, (label, (radii, rdf)) in enumerate(rdfs.items()):
         fig.add_scatter(

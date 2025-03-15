@@ -1,4 +1,4 @@
-"""I/O utilities for saving figures and dataframes to various image formats."""  # noqa: A005
+"""I/O utilities for saving figures and dataframes to various image formats."""
 
 from __future__ import annotations
 
@@ -340,8 +340,8 @@ def normalize_and_crop_pdf(
         # Normalize the PDF with Ghostscript
         subprocess.run(  # noqa: S603
             [
-                *"gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.7".split(),
-                *"-dPDFSETTINGS=/default -dNOPAUSE -dQUIET -dBATCH".split(),
+                *["gs", "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.7"],
+                *["-dPDFSETTINGS=/default", "-dNOPAUSE", "-dQUIET", "-dBATCH"],
                 f"-sOutputFile={normalized_file_path}",
                 str(file_path),
             ],

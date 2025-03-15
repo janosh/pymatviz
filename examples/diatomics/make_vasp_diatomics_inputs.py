@@ -47,7 +47,7 @@ def create_diatomic_inputs(
     if elements == ():
         # skip superheavy elements (most have no POTCARs and are radioactive)
         skip_elements = set(
-            "Am At Bk Cf Cm Es Fr Fm Md No Lr Rf Po Db Sg Bh Hs Mt Ds Cn Nh Fl Mc Lv "
+            "Am At Bk Cf Cm Es Fr Fm Md No Lr Rf Po Db Sg Bh Hs Mt Ds Cn Nh Fl Mc Lv "  # noqa: SIM905
             "Ra Rg Ts Og".split()
         )
         elements = sorted({*map(str, Element)} - set(skip_elements))

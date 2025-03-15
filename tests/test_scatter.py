@@ -296,10 +296,10 @@ def test_density_scatter_plotly_facet_log_density() -> None:
 
     # Check that the tick values are in consistent order
     is_ascending = all(
-        tick_values[i] < tick_values[i + 1] for i in range(len(tick_values) - 1)
+        tick_values[idx] < tick_values[idx + 1] for idx in range(len(tick_values) - 1)
     )
     is_descending = all(
-        tick_values[i] > tick_values[i + 1] for i in range(len(tick_values) - 1)
+        tick_values[idx] > tick_values[idx + 1] for idx in range(len(tick_values) - 1)
     )
     assert is_ascending or is_descending, "Tick values not in consistent order"
 
@@ -529,7 +529,7 @@ def test_colorbar_density_range_and_formatting() -> None:
 
     # Check that tick values are in ascending order
     assert all(
-        tick_values[i] < tick_values[i + 1] for i in range(len(tick_values) - 1)
+        tick_values[idx] < tick_values[idx + 1] for idx in range(len(tick_values) - 1)
     ), "Tick values not in ascending order"
 
 
