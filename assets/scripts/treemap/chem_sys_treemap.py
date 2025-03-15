@@ -101,8 +101,7 @@ title = "Ward Metallic Glass Dataset - Top 5 systems per arity with rounded corn
 fig.layout.title = dict(text=title, x=0.5, y=0.85, font_size=18)
 fig.layout.update(height=500)
 fig.show()
-# pmv.io.save_and_compress_svg(fig1, "chem-sys-treemap-all")
-# pmv.io.save_and_compress_svg(fig2, "chem-sys-treemap-top-5")
+pmv.io.save_and_compress_svg(fig, "chem-sys-treemap-top-5")
 
 
 # %% Custom color mapping with additional customizations
