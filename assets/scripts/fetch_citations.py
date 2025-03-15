@@ -1,16 +1,17 @@
-# /// script
-# dependencies = [
-#     "google-search-results>=2.4.2",
-#     "pyyaml>=6.0.2",
-# ]
-# ///
 """Script to fetch papers that cite pymatviz from Google Scholar and update readme.
 
 Invoke with 64-character SERPAPI_KEY:
 
 SERPAPI_KEY=ccd7f7ea8... python assets/fetch_citations.py
 """
+
 # ruff: noqa: T201
+# /// script
+# dependencies = [
+#     "google-search-results>=2.4.2",
+#     "pyyaml>=6.0.2",
+# ]
+# ///
 
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 import yaml
+from dotenv import load_dotenv
 
 from pymatviz import ROOT
 
@@ -32,6 +34,9 @@ if os.getenv("CI"):
 
 # NotRequired can't be imported below Python 3.11
 from typing import NotRequired, TypedDict
+
+
+load_dotenv(f"{ROOT}/site/.env")
 
 
 class ScholarPaper(TypedDict):
@@ -336,6 +341,6 @@ if __name__ == "__main__":
         default=7,
         help="Number of days to wait between updates (default: 7)",
     )
-    args = parser.parse_args()
+    args, _unknown = parser.parse_known_args()
 
     main(args.update_freq)
