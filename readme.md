@@ -123,12 +123,13 @@ See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 | :-------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------: |
 |                               ![brillouin-cubic-mp-10018]                               |                             ![brillouin-hexagonal-mp-862690]                              |
 | [`brillouin_zone_3d(monoclinic_struct)`](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](assets/scripts/brillouin/brillouin_zone_3d.py) |
-|                           ![brillouin-monoclinic-mp-1183089]                            |                           ![brillouin-orthorhombic-mp-1183085]                            |
+|                           ![brillouin-monoclinic-mp-1183089]                            |                                ![brillouin-volumes-3-cols]                                |
 
 [brillouin-cubic-mp-10018]: assets/svg/brillouin-cubic-mp-10018.svg
 [brillouin-hexagonal-mp-862690]: assets/svg/brillouin-hexagonal-mp-862690.svg
 [brillouin-monoclinic-mp-1183089]: assets/svg/brillouin-monoclinic-mp-1183089.svg
 [brillouin-orthorhombic-mp-1183085]: assets/svg/brillouin-orthorhombic-mp-1183085.svg
+[brillouin-volumes-3-cols]: assets/svg/brillouin-volumes-3-cols.svg
 
 ## X-Ray Diffraction
 
