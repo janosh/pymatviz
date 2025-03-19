@@ -321,13 +321,16 @@ def test_density_scatter_plotly_facet_best_fit_line() -> None:
         df=DF_TIPS, x="total_bill", y="tip", facet_col="smoker", best_fit_line=True
     )
 
-    # Check there are at least 4 shapes (2 identity lines, 2 best fit lines)
-    assert len(fig.layout.shapes) == 4
-    # Check the best fit lines are present with color navy
-    best_fit_lines = [
-        shape for shape in fig.layout.shapes if shape.line.color == "navy"
+    # Check there are shapes (identity and best fit lines)
+    assert len(fig.layout.shapes) == 3
+
+    # Check there are annotations for the best fit lines
+    best_fit_annotations = [
+        anno for anno in fig.layout.annotations if "LS fit: y =" in str(anno.text)
     ]
-    assert len(best_fit_lines) == 2  # One for each facet
+    # Should have one annotation per facet
+    assert len(best_fit_annotations) == 2
+    assert best_fit_annotations[0].font.color == "navy"
 
 
 def test_density_scatter_plotly_facet_custom_bins() -> None:
@@ -462,10 +465,10 @@ def test_colorbar_density_range_and_formatting() -> None:
     y_vals = []
 
     # Create clusters with different densities at specific locations
-    for i, n_pts in enumerate(points_per_cluster):
+    for idx, n_pts in enumerate(points_per_cluster):
         # Create a tight cluster of points at position (i, i)
-        cluster_x = np_rng.normal(i, 0.05, size=n_pts)
-        cluster_y = np_rng.normal(i, 0.05, size=n_pts)
+        cluster_x = np_rng.normal(idx, 0.05, size=n_pts)
+        cluster_y = np_rng.normal(idx, 0.05, size=n_pts)
 
         x_vals.extend(cluster_x)
         y_vals.extend(cluster_y)
