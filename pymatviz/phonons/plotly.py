@@ -63,7 +63,7 @@ def phonon_bands(
         line_kwargs (dict | dict[str, dict] | Callable): Line style configuration. Can
             be one of:
             - A single dict applied to all lines with Plotly line properties
-              (e.g., dict(width=2, color="red", dash="solid"))
+              (e.g. dict(width=2, color="red", dash="solid"))
             - A dict with keys "acoustic" and "optical" containing style dicts for each
               mode type
             - A callable taking (frequencies: np.ndarray, band_idx: int) and returning

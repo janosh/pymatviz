@@ -1135,7 +1135,8 @@ def ptable_heatmap_splits_plotly(
                     # If colorscale is list of colors, convert to proper format
                     n_colors = len(cscale)
                     cscale = [
-                        [i / (n_colors - 1), color] for i, color in enumerate(cscale)
+                        [idx / (n_colors - 1), color]
+                        for idx, color in enumerate(cscale)
                     ]  # type: ignore[assignment]
                 elif not isinstance(cscale, list | tuple):
                     raise ValueError(
