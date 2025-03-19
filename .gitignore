@@ -11,3 +11,4 @@ examples/**/*.pt
 examples/dataset_exploration/**/*.pdf
 gnome
 assets/scripts/pmv-used-by-list-*.yaml*
+.cursor

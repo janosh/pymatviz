@@ -114,7 +114,7 @@ def confusion_matrix(
             if len(label) > 15:
                 # Split at space closest to middle
                 mid = len(label) // 2
-                spaces = [i for i, c in enumerate(label) if c == " "]
+                spaces = [idx for idx, char in enumerate(label) if char == " "]
                 if spaces:
                     split_point = min(spaces, key=lambda x: abs(x - mid))
                     label = f"{label[:split_point]}<br>{label[split_point + 1 :]}"  # noqa: PLW2901

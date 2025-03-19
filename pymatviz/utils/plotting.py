@@ -87,7 +87,7 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
                 if not sub_text:
                     continue
 
-                subplot_idx = trace.xaxis[1:] or ""  # e.g., 'x2' -> '2', 'x' -> ''
+                subplot_idx = trace.xaxis[1:] or ""  # e.g. 'x2' -> '2', 'x' -> ''
                 xref = f"x{subplot_idx} domain" if subplot_idx else "x domain"
                 yref = f"y{subplot_idx} domain" if subplot_idx else "y domain"
                 fig.add_annotation(
@@ -131,7 +131,7 @@ def _get_plotly_font_color(fig: go.Figure) -> str:
         fig (go.Figure): A Plotly figure object.
 
     Returns:
-        str: The font color as a string (e.g., 'black', '#000000').
+        str: The font color as a string (e.g. 'black', '#000000').
     """
     if fig.layout.font and fig.layout.font.color:
         return fig.layout.font.color
@@ -160,7 +160,7 @@ def _get_matplotlib_font_color(fig: plt.Figure | plt.Axes) -> str:
         fig (plt.Figure | plt.Axes): A Matplotlib figure or axes object.
 
     Returns:
-        str: The font color as a string (e.g., 'black', '#000000').
+        str: The font color as a string (e.g. 'black', '#000000').
     """
     ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
@@ -187,7 +187,7 @@ def get_font_color(fig: AxOrFig) -> str:
         fig (plt.Figure | plt.Axes | go.Figure): A Matplotlib or Plotly figure object.
 
     Returns:
-        str: The font color as a string (e.g., 'black', '#000000').
+        str: The font color as a string (e.g. 'black', '#000000').
 
     Raises:
         TypeError: If fig is not a Matplotlib or Plotly figure.
@@ -330,15 +330,20 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
 
 @validate_fig
 def get_fig_xy_range(
-    fig: go.Figure | plt.Figure | plt.Axes, trace_idx: int = 0
+    fig: go.Figure | plt.Figure | plt.Axes,
+    traces: int | slice | Sequence[int] | Callable[[go.Scatter], bool] = 0,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
     """Get the x and y range of a plotly or matplotlib figure.
 
     Args:
         fig (go.Figure | plt.Figure | plt.Axes): plotly/matplotlib figure or axes.
-        trace_idx (int, optional): Index of the trace to use for measuring x/y limits.
-            Defaults to 0. Unused if kaleido package is installed and the figure's
-            actual x/y-range can be obtained from fig.full_figure_for_development().
+        traces (int | slice | Sequence[int] | Callable, optional): Specifies which
+            trace(s) to use for determining the x/y range. Can be:
+            - int: A single trace index (default: 0)
+            - slice: A slice object to select a range of traces
+            - list[int]: A list of specific trace indices
+            - Callable: A function that takes a trace and returns True/False
+            Only used if kaleido package is not installed or for matplotlib figures.
 
     Returns:
         tuple[float, float, float, float]: The x and y range of the figure in the format
@@ -371,7 +376,22 @@ def get_fig_xy_range(
             y_range = [10**val for val in y_range]
 
     except ValueError:
-        trace = fig.data[trace_idx]
+        # Select a trace to use for determining the range
+        trace_index = 0
+        if isinstance(traces, int):
+            trace_index = traces
+        elif isinstance(traces, slice):
+            indices = list(range(*traces.indices(len(fig.data))))
+            trace_index = indices[0] if indices else 0
+        elif isinstance(traces, list):
+            trace_index = traces[0] if traces else 0
+        elif callable(traces):
+            for idx, trace in enumerate(fig.data):
+                if traces(trace):
+                    trace_index = idx
+                    break
+
+        trace = fig.data[trace_index]
         df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
 
         # Determine ranges based on the type of axes

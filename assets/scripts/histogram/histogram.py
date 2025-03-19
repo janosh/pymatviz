@@ -14,8 +14,6 @@ gauss1 = np_rng.normal(5, 4, rand_regression_size)
 gauss2 = np_rng.normal(10, 2, rand_regression_size)
 
 fig = pmv.histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=100)
-for idx in range(len(fig.data)):
-    pmv.powerups.add_ecdf_line(fig, trace_idx=idx)
+pmv.powerups.add_ecdf_line(fig)
 fig.show()
-
-pmv.io.save_and_compress_svg(fig, "histogram-ecdf")
+# pmv.io.save_and_compress_svg(fig, "histogram-ecdf")

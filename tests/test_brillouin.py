@@ -206,7 +206,7 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
     assert len(fig._grid_ref[0]) == 2  # number of columns
 
     # Test with dict of structures
-    struct_dict = {f"struct_{i}": struct for i, struct in enumerate(structures)}
+    struct_dict = {f"struct_{idx}": struct for idx, struct in enumerate(structures)}
     fig = brillouin_zone_3d(struct_dict, n_cols=1)
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == len(struct_dict)

@@ -42,7 +42,7 @@ def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> 
 
 def test_coordination_hist_multiple_structures(structures: Sequence[Structure]) -> None:
     """Test coordination_hist with multiple structures."""
-    struct_dict = {f"Structure_{i}": struct for i, struct in enumerate(structures)}
+    struct_dict = {f"Structure_{idx}": struct for idx, struct in enumerate(structures)}
     fig = coordination_hist(struct_dict)
     expected_traces = sum(
         len({site.specie.symbol for site in struct}) for struct in structures
@@ -258,7 +258,7 @@ def test_coordination_hist_hover_text_formatting(
 
 def test_coordination_hist_subplot_layout(structures: Sequence[Structure]) -> None:
     """Test subplot layout in coordination_hist."""
-    struct_dict = {f"s{i}": struct for i, struct in enumerate(structures[:3])}
+    struct_dict = {f"s{idx}": struct for idx, struct in enumerate(structures[:3])}
 
     # Test by_structure layout
     fig = coordination_hist(struct_dict, split_mode=CnSplitMode.by_structure)

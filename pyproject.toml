@@ -115,6 +115,7 @@ ignore = [
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
 isort.split-on-trailing-comma = false
+pep8-naming.ignore-names = ["E_kin", "E_pot", "E_tot", "kT"]
 
 [tool.ruff.format]
 docstring-code-format = true
