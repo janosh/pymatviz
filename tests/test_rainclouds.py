@@ -169,7 +169,8 @@ def test_rainclouds_invalid_input(
 
 def test_rainclouds_long_labels(sample_data: dict[str, np.ndarray]) -> None:
     long_labels = {
-        f"Very long label {i}": data for i, (_, data) in enumerate(sample_data.items())
+        f"Very long label {idx}": data
+        for idx, (_, data) in enumerate(sample_data.items())
     }
     fig = pmv.rainclouds(long_labels)
     assert fig.layout.yaxis.tickangle == -90

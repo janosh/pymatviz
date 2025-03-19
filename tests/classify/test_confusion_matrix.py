@@ -434,7 +434,7 @@ def test_confusion_matrix_callable_annotations(sample_conf_mat: np.ndarray) -> N
         assert "Row:" in anno
         assert "Col:" in anno
 
-    # Verify values for a specific cell (e.g., TN = 50)
+    # Verify values for a specific cell (e.g. TN = 50)
     tn_anno = next(
         anno.text
         for anno in fig.layout.annotations

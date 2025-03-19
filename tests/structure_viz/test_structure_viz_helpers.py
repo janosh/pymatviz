@@ -75,7 +75,7 @@ def test_get_structures(structures: list[Structure]) -> None:
     assert all(isinstance(s, Structure) for s in result.values())
 
     # Test with dict of structures
-    structs_dict = {f"struct{i}": struct for i, struct in enumerate(structures)}
+    structs_dict = {f"struct{idx}": struct for idx, struct in enumerate(structures)}
     result = get_structures(structs_dict)
     assert isinstance(result, dict)
     assert len(result) == len(structures)
