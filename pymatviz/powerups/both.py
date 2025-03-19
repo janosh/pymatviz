@@ -400,7 +400,6 @@ def add_best_fit_line(
                 xref=xref,
                 yref=yref,
                 line=plotly_line_defaults,
-                **kwargs,
             )
 
         # Add annotation if requested
