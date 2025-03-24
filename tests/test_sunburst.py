@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -80,6 +80,90 @@ def test_spacegroup_sunburst_other_types(
     assert isinstance(fig, go.Figure)
 
 
+@pytest.mark.parametrize(
+    ("max_slices", "max_slices_mode", "expected_systems", "expected_others"),
+    [
+        # Edge cases for max_slices
+        (None, "other", 7, None),  # no limit
+        (0, "other", 7, None),  # treated as None
+        (-1, "other", 7, None),  # negative treated as None
+        (10, "other", 7, None),  # greater than number of systems
+        # Normal cases with "other" mode
+        (
+            1,
+            "other",
+            4,
+            [("Other (4 more not shown)", 4), ("Other (1 more not shown)", 1)],
+        ),  # top 1 + Others
+        (2, "other", 5, [("Other (3 more not shown)", 3)]),  # top 2 + Other
+        (3, "other", 6, [("Other (2 more not shown)", 2)]),  # top 3 + Other
+        # Cases with "drop" mode
+        (1, "drop", 2, None),  # only top 1
+        (2, "drop", 4, None),  # only top 2
+        (3, "drop", 5, None),  # only top 3
+    ],
+)
+def test_spacegroup_sunburst_max_slices(
+    max_slices: int | None,
+    max_slices_mode: Literal["other", "drop"],
+    expected_systems: int,
+    expected_others: list[tuple[str, int]] | None,
+) -> None:
+    """Test spacegroup_sunburst with max_slices functionality and edge cases.
+
+    Args:
+        max_slices: Maximum number of space groups to show per crystal system
+        max_slices_mode: How to handle space groups beyond max_slices
+        expected_systems: Expected number of space group entries (including "Other")
+        expected_others: Expected "Other" entry labels and counts if present
+    """
+    # Create a dataset with multiple space groups per crystal system
+    # Triclinic (1-2), Monoclinic (3-15), Orthorhombic (16-74)
+    spg_numbers = (1, 2, 3, 4, 5, 6, 7)
+
+    fig = pmv.spacegroup_sunburst(
+        spg_numbers, max_slices=max_slices, max_slices_mode=max_slices_mode
+    )
+    assert isinstance(fig, go.Figure)
+
+    # Get all space group entries (excluding crystal system level)
+    space_groups = {
+        label: val
+        for idx, (label, val) in enumerate(
+            zip(fig.data[0].labels, fig.data[0].values, strict=True)
+        )
+        if fig.data[0].parents[idx] != ""  # exclude root level
+    }
+    assert len(space_groups) == expected_systems
+
+    # Check for expected "Other" entries
+    if expected_others:
+        other_entries = [
+            (label, val) for label, val in space_groups.items() if "Other" in label
+        ]
+        assert len(other_entries) == len(expected_others)
+
+        for expected_other in expected_others:
+            expected_label, expected_count = expected_other
+            found = False
+            for label, val in other_entries:
+                if label == expected_label and val == expected_count:
+                    found = True
+                    break
+            assert found, (
+                f"{expected_label=} with {expected_count=} not in {other_entries=}"
+            )
+    else:
+        assert not any("Other" in label for label in space_groups)
+
+
+def test_spacegroup_sunburst_max_slices_mode_invalid() -> None:
+    """Test spacegroup_sunburst with invalid max_slices_mode."""
+    spg_numbers = [1, 2, 3]
+    with pytest.raises(ValueError, match="Invalid max_slices_mode="):
+        pmv.spacegroup_sunburst(spg_numbers, max_slices=1, max_slices_mode="invalid")  # type: ignore[arg-type]
+
+
 def test_chem_sys_sunburst_basic() -> None:
     """Test chem_sys_sunburst plot with various scenarios."""
     # Test basic functionality with mixed arity systems
@@ -102,25 +186,19 @@ def test_chem_sys_sunburst_basic() -> None:
 
     # Check unary elements
     unary_elements = {
-        label
-        for label, parent in zip(labels, parents, strict=False)
-        if parent == "unary"
+        label for idx, label in enumerate(labels) if parents[idx] == "unary"
     }
     assert unary_elements == {"Fe", "O"}  # only Fe and O appear as pure elements
 
     # Check binary systems
     binary_systems = {
-        label
-        for label, parent in zip(labels, parents, strict=False)
-        if parent == "binary"
+        label for idx, label in enumerate(labels) if parents[idx] == "binary"
     }
     assert binary_systems == {"Fe-O", "Li-O"}
 
     # Check ternary systems
     ternary_systems = {
-        label
-        for label, parent in zip(labels, parents, strict=False)
-        if parent == "ternary"
+        label for idx, label in enumerate(labels) if parents[idx] == "ternary"
     }
     assert ternary_systems == {"Li-O-P"}
 
@@ -143,9 +221,7 @@ def test_chem_sys_sunburst_empty_level() -> None:
 
     # Check that no systems have binary as parent
     binary_systems = {
-        label
-        for label, parent in zip(labels, parents, strict=False)
-        if parent == "binary"
+        label for idx, label in enumerate(labels) if parents[idx] == "binary"
     }
     assert not binary_systems, "There should be no binary systems"
 
@@ -153,15 +229,11 @@ def test_chem_sys_sunburst_empty_level() -> None:
     values = fig.data[0].values  # noqa: PD011
 
     # Find indices for unary elements and check their values
-    unary_values = [
-        val for label, val in zip(labels, values, strict=False) if label in {"Fe", "O"}
-    ]
+    unary_values = [val for idx, val in enumerate(values) if labels[idx] in {"Fe", "O"}]
     assert all(val == 1 for val in unary_values), "Each unary element should count once"
 
     # Find index for ternary system and check its value
-    ternary_values = [
-        val for label, val in zip(labels, values, strict=False) if label == "Fe-Li-O"
-    ]
+    ternary_values = [val for idx, val in enumerate(values) if labels[idx] == "Fe-Li-O"]
     assert len(ternary_values) == 1
     assert ternary_values[0] == 1, "Ternary system should count once"
 
@@ -193,10 +265,8 @@ def test_chem_sys_sunburst_input_types(structures: list[Structure]) -> None:
     # Fe2O3 and Fe-O should be counted together
     binary_count = sum(
         val
-        for label, parent, val in zip(
-            fig.data[0].labels, fig.data[0].parents, fig.data[0].values, strict=False
-        )
-        if parent == "binary" and label == "Fe-O"
+        for idx, val in enumerate(fig.data[0].values)
+        if fig.data[0].parents[idx] == "binary" and fig.data[0].labels[idx] == "Fe-O"
     )
     assert binary_count == 2, "Fe2O3 and Fe-O should be merged"
 
@@ -241,17 +311,17 @@ def test_chem_sys_sunburst_high_arity() -> None:
 
     # Get counts for each arity level
     arity_counts = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if parent == ""  # root level = arity level
+        labels[idx]: values[idx]
+        for idx in range(len(labels))
+        if parents[idx] == ""  # root level = arity level
     }
     assert arity_counts == {"ternary": 5, "quinary": 5}
 
     # Check chemical systems under ternary
     ternary_systems = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if parent == "ternary"
+        labels[idx]: values[idx]
+        for idx in range(len(labels))
+        if parents[idx] == "ternary"
     }
     assert len(ternary_systems) == 1  # all ternaries have same elements
     assert "Cu-Ga-Zr" in ternary_systems  # elements are sorted alphabetically
@@ -259,9 +329,9 @@ def test_chem_sys_sunburst_high_arity() -> None:
 
     # Check chemical systems under quinary
     quinary_systems = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if parent == "quinary"
+        labels[idx]: values[idx]
+        for idx in range(len(labels))
+        if parents[idx] == "quinary"
     }
     assert len(quinary_systems) == 2  # two different quinary systems
     assert "Ag-Al-Cu-Pd-Zr" in quinary_systems  # elements are sorted alphabetically
@@ -327,9 +397,9 @@ def test_chem_sys_sunburst_large_dataset() -> None:
 
     # Get counts for each system
     system_counts = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if parent != ""  # exclude arity level labels
+        labels[idx]: values[idx]
+        for idx in range(len(labels))
+        if parents[idx] != ""  # exclude arity level labels
     }
 
     # Check binary systems are properly merged
@@ -396,10 +466,8 @@ def test_chem_sys_sunburst_case_and_whitespace() -> None:
     # All variations should be counted as the same system
     binary_count = sum(
         val
-        for label, parent, val in zip(
-            fig.data[0].labels, fig.data[0].parents, fig.data[0].values, strict=False
-        )
-        if parent == "binary" and label == "Fe-O"
+        for idx, val in enumerate(fig.data[0].values)
+        if fig.data[0].parents[idx] == "binary" and fig.data[0].labels[idx] == "Fe-O"
     )
     assert binary_count == 4, "All Fe2O3 variations should be counted together"
 
@@ -422,11 +490,7 @@ def test_chem_sys_sunburst_complex_formulas() -> None:
     parents = fig.data[0].parents
 
     # Get all chemical systems (excluding arity level labels)
-    chemical_systems = {
-        label
-        for label, parent in zip(labels, parents, strict=False)
-        if parent != ""  # exclude arity level labels
-    }
+    chemical_systems = {label for idx, label in enumerate(labels) if parents[idx] != ""}
 
     # Check that elements are properly extracted and sorted
     assert "O-P-U" in chemical_systems  # from (UO2)3(PO4)2
@@ -459,9 +523,9 @@ def test_chem_sys_sunburst_grouping() -> None:
     values = fig_formula.data[0].values  # noqa: PD011
 
     formula_counts = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if parent not in {"", "unary", "binary", "ternary"}  # only formula level
+        labels[idx]: values[idx]
+        for idx in range(len(labels))
+        if parents[idx] not in {"", "unary", "binary", "ternary"}  # only formula level
     }
 
     # Each unique formula should be counted separately
@@ -482,9 +546,9 @@ def test_chem_sys_sunburst_grouping() -> None:
     values = fig_reduced.data[0].values  # noqa: PD011
 
     reduced_counts = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if parent not in {"", "unary", "binary", "ternary"}  # only formula level
+        labels[idx]: values[idx]
+        for idx in range(len(labels))
+        if parents[idx] not in {"", "unary", "binary", "ternary"}  # only formula level
     }
 
     # Formulas with same reduced form should be grouped
@@ -504,9 +568,9 @@ def test_chem_sys_sunburst_grouping() -> None:
     values = fig_system.data[0].values  # noqa: PD011
 
     system_counts = {
-        label: val
-        for label, parent, val in zip(labels, parents, values, strict=False)
-        if parent in {"binary", "ternary"}  # chemical system level
+        labels[idx]: values[idx]
+        for idx in range(len(labels))
+        if parents[idx] in {"binary", "ternary"}  # chemical system level
     }
 
     # Formulas with same elements should be grouped
@@ -537,13 +601,11 @@ def test_chem_sys_sunburst_grouping_edge_cases() -> None:
 
     formula_counts = {
         label: val
-        for label, parent, val in zip(
-            fig_formula.data[0].labels,
-            fig_formula.data[0].parents,
-            fig_formula.data[0].values,
-            strict=False,
+        for idx, (label, val) in enumerate(
+            zip(fig_formula.data[0].labels, fig_formula.data[0].values, strict=True)
         )
-        if parent not in {"", "binary", "ternary", "quaternary"}
+        if fig_formula.data[0].parents[idx]
+        not in {"", "binary", "ternary", "quaternary"}
     }
     assert len(formula_counts) == len(systems), (
         "Each formula should be counted separately"
@@ -555,13 +617,11 @@ def test_chem_sys_sunburst_grouping_edge_cases() -> None:
 
     reduced_counts = {
         label: val
-        for label, parent, val in zip(
-            fig_reduced.data[0].labels,
-            fig_reduced.data[0].parents,
-            fig_reduced.data[0].values,
-            strict=False,
+        for idx, (label, val) in enumerate(
+            zip(fig_reduced.data[0].labels, fig_reduced.data[0].values, strict=True)
         )
-        if parent not in {"", "binary", "ternary", "quaternary"}
+        if fig_reduced.data[0].parents[idx]
+        not in {"", "binary", "ternary", "quaternary"}
     }
     assert reduced_counts["Fe2O3"] == 3  # all Fe2O3 variations
     assert reduced_counts["NaLiO2"] == 1
@@ -573,16 +633,96 @@ def test_chem_sys_sunburst_grouping_edge_cases() -> None:
 
     system_counts = {
         label: val
-        for label, parent, val in zip(
-            fig_system.data[0].labels,
-            fig_system.data[0].parents,
-            fig_system.data[0].values,
-            strict=False,
+        for idx, (label, val) in enumerate(
+            zip(fig_system.data[0].labels, fig_system.data[0].values, strict=True)
         )
-        if parent in {"binary", "ternary", "quaternary"}
+        if fig_system.data[0].parents[idx] in {"binary", "ternary", "quaternary"}
     }
 
     # Check that different notations are properly grouped
     assert system_counts["Fe-O"] == 3  # all Fe2O3 variations
     assert system_counts["Li-Na-O"] == 2  # both mixed alkali variations
     assert system_counts["O-P-U"] == 2  # both uranium phosphate variations
+
+
+@pytest.mark.parametrize(
+    ("max_slices", "expected_systems", "expected_other"),
+    [
+        (None, 4, None),  # no limit
+        (0, 4, None),  # treated as None
+        (1, 2, ("Other (3 more not shown)", 3)),  # top 1 + Other
+        (2, 3, ("Other (2 more not shown)", 2)),  # top 2 + Other
+        (3, 4, ("Other (1 more not shown)", 1)),  # top 3 + Other
+        (10, 4, None),  # greater than number of systems
+        (-1, 4, None),  # negative treated as None
+    ],
+)
+def test_chem_sys_sunburst_max_slices_edge_cases(
+    max_slices: int | None,
+    expected_systems: int,
+    expected_other: tuple[str, int] | None,
+) -> None:
+    """Test chem_sys_sunburst with edge cases for max_slices."""
+    systems = ["Fe2O3", "Li2O", "Na2O", "K2O"]
+    fig = pmv.chem_sys_sunburst(systems, max_slices=max_slices, max_slices_mode="other")
+    assert isinstance(fig, go.Figure)
+
+    # Get all binary systems
+    binary = {
+        label: val
+        for idx, (label, val) in enumerate(
+            zip(fig.data[0].labels, fig.data[0].values, strict=True)
+        )
+        if fig.data[0].parents[idx] == "binary"
+    }
+    assert len(binary) == expected_systems
+
+    if expected_other:
+        other_label, other_count = expected_other
+        other = next(label for label in binary if "Other" in label)
+        assert other == other_label
+        assert binary[other] == other_count
+    else:
+        assert not any("Other" in label for label in binary)
+
+
+@pytest.mark.parametrize(
+    ("max_slices_mode", "expected_systems", "expected_other"),
+    [
+        ("other", 3, ("Other (1 more not shown)", 1)),  # top 2 + Other
+        ("drop", 2, None),  # only top 2
+    ],
+)
+def test_chem_sys_sunburst_max_slices_mode(
+    max_slices_mode: Literal["other", "drop"],
+    expected_systems: int,
+    expected_other: tuple[str, int] | None,
+) -> None:
+    """Test chem_sys_sunburst with different max_slices_mode values."""
+    systems = ["Fe2O3", "Fe2O3", "Fe2O3", "Li2O", "Li2O", "Na2O"]
+    fig = pmv.chem_sys_sunburst(systems, max_slices=2, max_slices_mode=max_slices_mode)
+    assert isinstance(fig, go.Figure)
+
+    binary = {
+        fig.data[0].labels[idx]: fig.data[0].values[idx]  # noqa: PD011
+        for idx in range(len(fig.data[0].labels))
+        if fig.data[0].parents[idx] == "binary"
+    }
+    assert len(binary) == expected_systems
+    assert binary["Fe-O"] == 3
+    assert binary["Li-O"] == 2
+
+    if expected_other:
+        other_label, other_count = expected_other
+        other = next(label for label in binary if "Other" in label)
+        assert other == other_label
+        assert binary[other] == other_count
+    else:
+        assert not any("Other" in label for label in binary)
+
+
+def test_chem_sys_sunburst_max_slices_mode_invalid() -> None:
+    """Test chem_sys_sunburst with invalid max_slices_mode."""
+    systems = ["Fe2O3", "Li2O"]
+    with pytest.raises(ValueError, match="Invalid max_slices_mode="):
+        pmv.chem_sys_sunburst(systems, max_slices=1, max_slices_mode="invalid")  # type: ignore[arg-type]

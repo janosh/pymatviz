@@ -27,10 +27,93 @@ if TYPE_CHECKING:
 ShowCounts = Literal["value", "percent", "value+percent", False]
 
 
+def _limit_slices(
+    df: pd.DataFrame,
+    group_col: str,
+    count_col: str,
+    max_slices: int | None,
+    max_slices_mode: Literal["other", "drop"],
+    other_label: str | None = None,
+) -> pd.DataFrame:
+    """Limit the number of slices shown in each group of a sunburst plot.
+
+    Args:
+        df (pd.DataFrame): The data to limit.
+        group_col (str): Column name to group by.
+        count_col (str): Column name containing the count values.
+        max_slices (int | None): Maximum number of slices to show per group. If None,
+            all slices are shown. Defaults to None.
+        max_slices_mode ("other" | "drop"): How to handle slices beyond max_slices:
+            - "other": Combine remaining slices into an "Other" slice
+            - "drop": Discard remaining slices entirely
+        other_label (str | None): Label to use for the "Other" slice. If None, defaults
+            to "Other (N more not shown)" where N is the number of omitted slices.
+
+    Returns:
+        DataFrame with limited slices per group
+    """
+    if max_slices is None or max_slices <= 0:
+        return df
+
+    # Validate max_slices_mode
+    if max_slices_mode not in ("other", "drop"):
+        raise ValueError(f"Invalid {max_slices_mode=}, must be 'other' or 'drop'")
+
+    grouped = df.groupby(group_col)
+    limited_dfs: list[pd.DataFrame] = []
+
+    for group_name, group in grouped:
+        # Sort by count in descending order
+        sorted_group = group.sort_values(count_col, ascending=False)
+
+        # If the group has more slices than the limit
+        if len(sorted_group) > max_slices:
+            # Take the top N slices
+            top_slices = sorted_group.iloc[:max_slices]
+
+            if max_slices_mode == "other":
+                # Create an "Other" entry for the remaining slices
+                other_slices = sorted_group.iloc[max_slices:]
+                other_count = other_slices[count_col].sum()
+                n_omitted = len(other_slices)
+
+                # Create "Other" entry that combines the count of the omitted cells
+                other_slice = pd.DataFrame(
+                    {group_col: [group_name], count_col: [other_count]}
+                )
+
+                # Add any additional columns from the original DataFrame
+                for col in df.columns:
+                    if col not in (group_col, count_col):
+                        if col in (Key.chem_sys, Key.formula):
+                            other_slice[col] = [
+                                other_label or f"Other ({n_omitted} more not shown)"
+                            ]
+                        elif col == Key.spg_num:
+                            other_slice[col] = [f"Other ({n_omitted} more not shown)"]
+                        else:
+                            other_slice[col] = [""]  # Empty string for other columns
+
+                # Combine top slices with the "Other" entry
+                limited_group = pd.concat([top_slices, other_slice])
+            else:  # max_slices_mode == "drop"
+                limited_group = top_slices
+
+            limited_dfs += [limited_group]
+        else:
+            # If the group has fewer slices than the limit, keep all of them
+            limited_dfs += [sorted_group]
+
+    # Combine all the limited groups
+    return pd.concat(limited_dfs)
+
+
 def spacegroup_sunburst(
     data: Sequence[int | str] | pd.Series,
     *,
     show_counts: ShowCounts = "value",
+    max_slices: int | None = None,
+    max_slices_mode: Literal["other", "drop"] = "other",
     **kwargs: Any,
 ) -> go.Figure:
     """Generate a sunburst plot with crystal systems as the inner ring for a list of
@@ -44,6 +127,12 @@ def spacegroup_sunburst(
             space group strings or numbers (from 1 - 230) or pymatgen structures.
         show_counts ("value" | "percent" | "value+percent" | False): Whether to display
             values below each labels on the sunburst.
+        max_slices (int | None): Maximum number of space groups to show
+            for each crystal system. If None (default), all space groups are shown. If
+            positive integer, only the top N space groups by count are shown.
+        max_slices_mode ("other" | "drop"): How to handle spacegroups beyond max_slices:
+            - "other": Combine remaining space groups into an "Other" slice (default)
+            - "drop": Discard remaining space groups entirely
         color_discrete_sequence (list[str]): A list of 7 colors, one for each crystal
             system. Defaults to plotly.express.colors.qualitative.G10.
         **kwargs: Additional keyword arguments passed to plotly.express.sunburst.
@@ -74,6 +163,16 @@ def spacegroup_sunburst(
         df_spg_counts[Key.crystal_system] = df_spg_counts[Key.spg_num].map(
             pmv.utils.spg_num_to_from_symbol
         )
+
+    # Limit the number of space groups per crystal system if requested
+    df_spg_counts = _limit_slices(
+        df_spg_counts,
+        group_col=Key.crystal_system,
+        count_col="count",
+        max_slices=max_slices,
+        max_slices_mode=max_slices_mode,
+        other_label=f"Other ({max_slices} more not shown)" if max_slices else None,
+    )
 
     sunburst_defaults = dict(color_discrete_sequence=px.colors.qualitative.G10)
 
@@ -109,6 +208,8 @@ def chem_sys_sunburst(
     *,
     show_counts: ShowCounts = "value",
     group_by: FormulaGroupBy = "chem_sys",
+    max_slices: int | None = None,
+    max_slices_mode: Literal["other", "drop"] = "other",
     **kwargs: Any,
 ) -> go.Figure:
     """Generate a sunburst plot showing the distribution of chemical systems by arity.
@@ -131,6 +232,12 @@ def chem_sys_sunburst(
                 and Fe4O6 count as same).
             - "chem_sys": All formulas with same elements are grouped (e.g. FeO and
                 Fe2O3 count as Fe-O). Defaults to "chem_sys".
+        max_slices (int | None): Maximum number of chemical systems to show
+            for each arity level. If None (default), all systems are shown. If positive
+            integer, only the top N systems by count are shown.
+        max_slices_mode ("other" | "drop"): How to handle systems beyond max_slices:
+            - "other": Combine remaining systems into an "Other" slice (default)
+            - "drop": Discard remaining systems entirely
         **kwargs: Additional keyword arguments passed to plotly.express.sunburst.
 
     Returns:
@@ -145,14 +252,21 @@ def chem_sys_sunburst(
         ...     "Li2O",  # binary
         ...     "LiFeO2",  # ternary
         ... ]
-        >>> # Count each formula separately
-        >>> fig1 = pmv.arity_sunburst(formulas, group_by="formula")
-        >>> # Group by reduced formulas
-        >>> fig2 = pmv.arity_sunburst(formulas, group_by="reduced_formula")
-        >>> # Group by chemical systems (default)
-        >>> fig3 = pmv.arity_sunburst(formulas)  # group_by="chem_sys"
+        >>> # Show top 5 systems per arity, combine rest into "Other"
+        >>> fig1 = pmv.chem_sys_sunburst(formulas, max_slices=5)
+        >>> # Show only top 5 systems per arity, drop the rest
+        >>> fig2 = pmv.chem_sys_sunburst(formulas, max_slices=5, max_slices_mode="drop")
     """
     df_counts = count_formulas(data, group_by=group_by)
+
+    # Limit the number of systems per arity if requested
+    df_counts = _limit_slices(
+        df_counts,
+        group_col="arity_name",
+        count_col=Key.count,
+        max_slices=max_slices,
+        max_slices_mode=max_slices_mode,
+    )
 
     sunburst_defaults = dict(
         color_discrete_sequence=px.colors.qualitative.Set3,
@@ -163,10 +277,7 @@ def chem_sys_sunburst(
         path += [Key.formula]
 
     fig = px.sunburst(
-        df_counts,
-        path=path,
-        values=Key.count,
-        **sunburst_defaults | kwargs,
+        df_counts, path=path, values=Key.count, **sunburst_defaults | kwargs
     )
 
     if show_counts == "percent":

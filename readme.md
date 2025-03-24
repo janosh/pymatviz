@@ -312,7 +312,7 @@ See [`citation.cff`](citation.cff) or cite the [Zenodo record](https://zenodo.or
 
 ## Papers using `pymatviz`
 
-Sorted by number of citations. Last updated 2025-03-15. Auto-generated from Google Scholar. Manual additions via PR welcome.
+Sorted by number of citations. Last updated 2025-03-15. Auto-generated [from Google Scholar](https://scholar.google.com/scholar?q=pymatviz). Manual additions via PR welcome.
 
 1. C Zeni, R Pinsler, D Zügner et al. (2023). [Mattergen: a generative model for inorganic materials design](https://arxiv.org/abs/2312.03687) (cited by 119)
 1. J Riebesell, REA Goodall, P Benner et al. (2023). [Matbench Discovery--A framework to evaluate machine learning crystal stability predictions](https://arxiv.org/abs/2308.14920) (cited by 41)

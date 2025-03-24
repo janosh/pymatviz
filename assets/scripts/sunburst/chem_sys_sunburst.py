@@ -11,8 +11,7 @@ from pymatviz.enums import Key
 from pymatviz.utils import ROOT
 
 
-# %% Basic examples
-# Example 1: Different grouping modes for the same formulas
+# %% Basic examples: Different grouping modes for the same formulas
 formulas = [
     "Fe2O3",  # binary
     "Fe4O6",  # same as Fe2O3 when group_by="reduced_formula"
@@ -46,7 +45,7 @@ fig = pmv.chem_sys_sunburst(
 fig.show()
 
 
-# Example 2: Complex formulas with fractional occupancies
+# %% Example 2: Complex formulas with fractional occupancies
 complex_formulas = [
     "Pb(Zr0.52Ti0.48)O3",  # PZT with fractional occupancy
     "La0.7Sr0.3MnO3",  # LSMO with fractional composition
@@ -61,7 +60,7 @@ fig = pmv.chem_sys_sunburst(
 fig.show()
 
 
-# %% Load the Ward metallic glass dataset https://pubs.acs.org/doi/10.1021/acs.chemmater.6b04153
+# %% Load the Ward metallic glasses https://pubs.acs.org/doi/10.1021/acs.chemmater.6b04153
 data_path = "ward_metallic_glasses/ward-metallic-glasses.csv.xz"
 df_mg = pd.read_csv(
     f"{ROOT}/examples/dataset_exploration/{data_path}", na_values=()
@@ -71,10 +70,10 @@ fig = pmv.chem_sys_sunburst(
     df_mg[Key.composition],
     group_by="chem_sys",
     show_counts="value+percent",
-    title="Ward Metallic Glass Dataset - Grouped by chemical system",
+    title="Ward Metallic Glasses - Grouped by chemical system",
     color_discrete_sequence=px.colors.qualitative.Set2,
 )
-title = "Ward Metallic Glass Dataset - Grouped by chemical system"
+title = "Ward Metallic Glasses - Grouped by chemical system"
 fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
 fig.layout.update(height=500)
 fig.show()
@@ -85,12 +84,46 @@ for key, df_group in df_mg.groupby("gfa_type"):
     fig = pmv.chem_sys_sunburst(
         df_group[Key.composition],
         show_counts="value+percent",
-        title=f"Ward Metallic Glass Dataset - {key} Compositions",
+        title=f"Ward Metallic Glasses - {key} Compositions",
         color_discrete_sequence=px.colors.qualitative.Set2,
     )
-    title = f"Ward Metallic Glass Dataset - {key} Compositions"
+    title = f"Ward Metallic Glasses - {key} Compositions"
     fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
     fig.layout.update(height=500)
     fig.show()
-    pmv.io.save_and_compress_svg(fig, "chem-sys-sunburst-ward-bmg")
+    # pmv.io.save_and_compress_svg(fig, "chem-sys-sunburst-ward-bmg")
     break
+
+
+# %% Show only top 3 systems per arity with "Other" slices
+max_slices = 15
+fig = pmv.chem_sys_sunburst(
+    df_mg[Key.composition],
+    group_by="chem_sys",
+    show_counts="value+percent",
+    max_slices=max_slices,
+    max_slices_mode="other",  # combine remaining systems into "Other" slices
+    color_discrete_sequence=px.colors.qualitative.Set2,
+)
+title = f"Ward Metallic Glasses - Top {max_slices} Systems per Arity (with Other)"
+fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.96, font_size=18)
+fig.layout.update(height=500)
+fig.show()
+# pmv.io.save_and_compress_svg(fig, "chem-sys-sunburst-ward-bmg-top3-other")
+
+
+# %% Show only top 3 systems per arity, dropping the rest
+max_slices = 12
+fig = pmv.chem_sys_sunburst(
+    df_mg[Key.composition],
+    group_by="chem_sys",
+    show_counts="value+percent",
+    max_slices=max_slices,
+    max_slices_mode="drop",  # discard remaining systems
+    color_discrete_sequence=px.colors.qualitative.Set2,
+)
+title = f"Ward Metallic Glasses<br>Top {max_slices} Systems per Arity (dropped)"
+fig.layout.title = dict(text=f"<b>{title}</b>", x=0.5, y=0.9, font_size=18)
+fig.layout.update(height=500)
+fig.show()
+# pmv.io.save_and_compress_svg(fig, "chem-sys-sunburst-ward-bmg-top3-drop")
