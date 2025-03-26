@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import itertools
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,11 @@ import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Composition
 
-from pymatviz.cluster.composition import ProjectionMethod, cluster_compositions
+import pymatviz as pmv
+
+
+if TYPE_CHECKING:
+    from pymatviz.cluster.composition import ProjectionMethod
 
 
 np_rng = np.random.default_rng(seed=0)
@@ -44,7 +48,7 @@ def sample_properties() -> np.ndarray:
 
 def test_basic_functionality(sample_compositions: list[Composition]) -> None:
     """Test basic functionality of chem_cluster_plot."""
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=sample_compositions,
         embedding_method="one-hot",
         projection_method="pca",
@@ -85,7 +89,7 @@ def test_property_coloring(
             sample_properties, index=[str(comp.formula) for comp in sample_compositions]
         )
 
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=sample_compositions,
         properties=properties,
         prop_name=prop_name,
@@ -107,14 +111,14 @@ def test_colorbar_consistency(
     prop_name = "Test Property"
 
     # Create plots with and without log scaling
-    fig_linear = cluster_compositions(
+    fig_linear = pmv.cluster_compositions(
         compositions=sample_compositions,
         properties=sample_properties,
         prop_name=prop_name,
         embedding_method="one-hot",
         projection_method="pca",
     )
-    fig_log = cluster_compositions(
+    fig_log = pmv.cluster_compositions(
         compositions=sample_compositions,
         properties=np.log10(sample_properties),
         prop_name=f"log10({prop_name})",
@@ -136,7 +140,7 @@ def test_sorting_options(
     sort_value: bool | int,
 ) -> None:
     """Test different sorting options for property values."""
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=sample_compositions,
         properties=sample_properties,
         prop_name="Test Property",
@@ -168,7 +172,7 @@ def test_custom_sort_function(
     def custom_sort(values: np.ndarray) -> np.ndarray:
         return np.argsort(values)[::-1]
 
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=sample_compositions,
         properties=sample_properties,
         prop_name="Test Property",
@@ -206,7 +210,7 @@ def test_projection_stats(
     stats_text: list[str],
 ) -> None:
     """Test projection statistics display for different methods."""
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=sample_compositions,
         properties=sample_properties,
         prop_name="Test Property",
@@ -255,7 +259,7 @@ def test_projection_stats_invalid_type(
     with pytest.raises(
         TypeError, match=re.escape(f"{show_projection_stats=} must be bool or dict")
     ):
-        cluster_compositions(
+        pmv.cluster_compositions(
             compositions=sample_compositions,
             properties=sample_properties,
             prop_name="Test Property",
@@ -301,7 +305,7 @@ def test_cluster_compositions_methods(
     elif projection_method == "kernel_pca":
         projection_kwargs = {"kernel": "rbf", "gamma": 0.1}
 
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         sample_compositions,
         properties=sample_properties,
         prop_name="property",
@@ -328,7 +332,7 @@ def test_cluster_compositions_custom_embedding(
         """Custom embedding that just returns random values."""
         return np_rng.random((len(compositions), 10))
 
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         sample_compositions,
         properties=sample_properties,
         prop_name="property",
@@ -355,7 +359,7 @@ def test_cluster_compositions_custom_projection(
         """Custom projection that just returns random values."""
         return np_rng.random((data.shape[0], n_components))
 
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         sample_compositions,
         properties=sample_properties,
         prop_name="property",
@@ -386,7 +390,7 @@ def test_cluster_compositions_custom_both(
         """Custom projection that just returns random values."""
         return np_rng.random((data.shape[0], n_components))
 
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         sample_compositions,
         properties=sample_properties,
         prop_name="property",
@@ -420,7 +424,7 @@ def test_cluster_compositions_custom_kwargs(
         """Custom projection that scales random values."""
         return np_rng.random((data.shape[0], n_components)) * scale
 
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         sample_compositions,
         properties=sample_properties,
         prop_name="property",
@@ -446,7 +450,7 @@ def test_precomputed_embeddings(
     embeddings = {str(comp.formula): np_rng.random(10) for comp in sample_compositions}
 
     # Test with pre-computed embeddings
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=embeddings,
         properties=sample_properties,
         prop_name="Test Property",
@@ -459,7 +463,7 @@ def test_precomputed_embeddings(
     assert fig.data[0].y.shape == (3,)
 
     # Test that embedding_method is ignored when using pre-computed embeddings
-    fig2 = cluster_compositions(
+    fig2 = pmv.cluster_compositions(
         compositions=embeddings,
         properties=sample_properties,
         prop_name="Test Property",
@@ -486,7 +490,7 @@ def test_precomputed_embeddings_with_properties_dict(
     }
 
     # Test with pre-computed embeddings and dictionary properties
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=embeddings,
         properties=properties,
         prop_name="Test Property",
@@ -513,7 +517,7 @@ def test_precomputed_embeddings_with_properties_series(
     )
 
     # Test with pre-computed embeddings and Series properties
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=embeddings,
         properties=properties,
         prop_name="Test Property",
@@ -534,12 +538,12 @@ def test_precomputed_embeddings_with_chemical_systems(
     embeddings = {str(comp.formula): np_rng.random(10) for comp in sample_compositions}
 
     # Test with pre-computed embeddings and chemical system coloring
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=embeddings, show_chem_sys=True, projection_method="pca"
     )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 3
     assert fig.data[0].type == "scatter"
-    assert fig.data[0].x.shape == (3,)
-    assert fig.data[0].y.shape == (3,)
-    assert "chem_system" in fig.data[0].marker.color
+    assert fig.data[0].x.shape == (1,)
+    assert fig.data[0].y.shape == (1,)
+    assert fig.data[0].marker.color == "#636efa"

@@ -24,7 +24,6 @@ from tqdm import tqdm
 import pymatviz as pmv
 from pymatviz.cluster.composition import (
     EmbeddingMethod,
-    cluster_compositions,
     matminer_featurize,
     one_hot_encode,
 )
@@ -120,7 +119,7 @@ def process_dataset(
             json.dump(data, file)
 
     # Create plot with pre-computed embeddings
-    fig = cluster_compositions(
+    fig = pmv.cluster_compositions(
         compositions=embeddings_dict,
         properties=dict(zip(compositions, properties, strict=False)),
         prop_name=title,

@@ -58,6 +58,7 @@ test = [
     "pytest>=8",
 ]
 brillouin = ["seekpath>=2.1"]
+cluster = ["matminer>=0.9", "umap-learn>=0.5"]
 
 [tool.setuptools.packages.find]
 include = ["pymatviz*"]
