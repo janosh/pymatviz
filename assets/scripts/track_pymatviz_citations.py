@@ -11,6 +11,7 @@ SERPAPI_KEY=ccd7f7ea8... python assets/scripts/track_pymatviz_citations.py
 # dependencies = [
 #     "google-search-results>=2.4.2",
 #     "pyyaml>=6.0.2",
+#     "python-dotenv>=1.1",
 # ]
 # ///
 

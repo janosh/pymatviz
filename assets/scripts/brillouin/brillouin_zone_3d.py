@@ -1,3 +1,10 @@
+# /// script
+# dependencies = [
+#     "seekpath>=2.1",
+# ]
+# ///
+
+
 # %%
 from glob import glob
 
@@ -12,7 +19,7 @@ structures = {
     tuple(
         path.split("/")[-1].replace(".json.gz", "").rsplit("-", maxsplit=2)
     ): Structure.from_file(path)
-    for path in glob(f"{TEST_FILES}/structures/*-*-*-*.json.gz")
+    for path in glob(f"{TEST_FILES}/structures/mp-*-*-*.json.gz")
 }
 
 

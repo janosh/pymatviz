@@ -38,6 +38,8 @@ repos:
         exclude: ^assets/.+\.(svg|html)$
       - id: mixed-line-ending
       - id: trailing-whitespace
+      - id: check-added-large-files
+        args: [--maxkb=1024]
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1

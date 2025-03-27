@@ -7,8 +7,9 @@ build/
 examples/*.html
 examples/**/*.json.gz
 examples/**/*.json.xz
+examples/**/*.csv.*
 examples/**/*.pt
-examples/dataset_exploration/**/*.pdf
+examples/**/*.pdf
 gnome
 assets/scripts/pmv-used-by-list-*.yaml*
 *.archive

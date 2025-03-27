@@ -3,6 +3,13 @@
 Resulting plots are colored by target property of each dataset.
 """
 
+# /// script
+# dependencies = [
+#     "matminer>=0.9.1",
+#     "umap-learn>=0.5",
+# ]
+# ///
+
 from __future__ import annotations
 
 import gzip
@@ -163,8 +170,9 @@ plot_combinations: list[
     (*mb_steels, "magpie", "pca", 2, dict(x=0.01, xanchor="left")),
     # 2. Steels with t-SNE (2D) - shows non-linear clustering
     (*mb_steels, "magpie", "tsne", 2, dict(x=0.01, xanchor="left")),
+    # TODO umap-learn seemingly not installed by uv run in CI, fix later
     # 3. JDFT2D with UMAP (2D) - shows modern non-linear projection
-    (*mb_jdft2d, "magpie", "umap", 2, dict(x=0.01, xanchor="left")),
+    # (*mb_jdft2d, "magpie", "umap", 2, dict(x=0.01, xanchor="left")),
     # 4. JDFT2D with one-hot encoding and PCA (3D) - shows raw element relationships
     (*mb_jdft2d, "one-hot", "pca", 3, dict()),
     # 5. Steels with Matscholar embedding and t-SNE (3D) - shows advanced embedding
