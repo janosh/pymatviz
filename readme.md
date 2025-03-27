@@ -119,12 +119,12 @@ Dimensionality reduction methods:
 - Isomap (non-linear)
 - Kernel PCA (non-linear)
 
-| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components)`](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components)`](assets/scripts/cluster/composition/cluster_compositions_matbench.py) |
-| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                                                   ![matbench_perovskites_magpie_pca_2d]                                                                    |                                                                  ![matbench_steels_matscholar_el_tsne_3d]                                                                  |
+| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](assets/scripts/cluster/composition/cluster_compositions_matbench.py) |
+| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|                                                                    ![matbench-perovskites-magpie-pca-2d]                                                                     |                                                                    ![matbench-perovskites-magpie-tsne-3d]                                                                    |
 
-[matbench_perovskites_magpie_pca_2d]: assets/svg/matbench_perovskites_magpie_pca_2d.svg
-[matbench_steels_matscholar_el_tsne_3d]: assets/svg/matbench_steels_matscholar_el_tsne_3d.svg
+[matbench-perovskites-magpie-pca-2d]: assets/svg/matbench-perovskites-magpie-pca-2d.svg
+[matbench-perovskites-magpie-tsne-3d]: assets/svg/matbench-perovskites-magpie-tsne-3d.svg
 
 Example usage:
 

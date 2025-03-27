@@ -177,6 +177,8 @@ plot_combinations: list[
     (*mb_phonons, "magpie", "pca", 2, dict(x=0.01, xanchor="left")),
     # 9. Bulk Modulus with PCA (2D) - shows clear linear trends
     (*mb_bulk_modulus, "magpie", "pca", 2, dict(x=0.99, y=0.96, yanchor="top")),
+    # 10. Perovskites with t-SNE (3D) - shows raw element relationships
+    (*mb_perovskites, "magpie", "tsne", 3, dict()),
 ]
 
 for (
@@ -199,8 +201,10 @@ for (
     fig.update_layout(coloraxis_colorbar=cbar_args)
 
     # Save as HTML and SVG
-    output_name = f"{data_name}_{embed_method}_{proj_method}_{n_components}d"
-    fig.write_html(f"{plot_dir}/{output_name}.html", include_plotlyjs="cdn")
-    pmv.io.save_and_compress_svg(fig, output_name)
+    img_name = f"{data_name}-{embed_method}-{proj_method}-{n_components}d".replace(
+        "_", "-"
+    )
+    fig.write_html(f"{plot_dir}/{img_name}.html", include_plotlyjs="cdn")
+    pmv.io.save_and_compress_svg(fig, img_name)
 
     fig.show()

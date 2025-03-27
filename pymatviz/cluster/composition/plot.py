@@ -467,25 +467,6 @@ def cluster_compositions(
                         marker=dict(symbol=symbol_map[trace.name]),
                     )
 
-    def configure_colorbar(fig: go.Figure) -> None:
-        """Configure the colorbar for property-colored plots."""
-        if prop_values is not None:
-            color_bar = dict(
-                orientation="h",
-                yanchor="bottom",
-                y=0,
-                xanchor="right",
-                x=0.99,
-                thickness=12,
-                len=350,
-                lenmode="pixels",
-                title_side="top",
-            )
-            fig.update_layout(coloraxis_colorbar=color_bar)
-            # Ensure colorbar has a title
-            if fig.layout.coloraxis.colorbar is not None:
-                fig.layout.coloraxis.colorbar.title = {"text": prop_name}
-
     # Set up color mapping
     def configure_color_options(kwargs: dict[str, Any]) -> None:
         """Configure color options based on properties and chemical systems."""
@@ -511,9 +492,6 @@ def cluster_compositions(
         # Apply symbols
         symbol_map = get_symbol_mapping()
         apply_symbol_mapping(fig, symbol_map)
-
-        # Configure colorbar
-        configure_colorbar(fig)
 
     elif show_chem_sys == "color+shape":
         # For color+shape mode, we need to ensure a single trace with both color and
@@ -561,9 +539,6 @@ def cluster_compositions(
             # Set marker colors directly
             fig.data[0].marker.color = chem_sys_colors
 
-        # Configure colorbar
-        configure_colorbar(fig)
-
     elif show_chem_sys == "color":
         # For color mode, we create a plot with color by chemical system
         # Update plot kwargs
@@ -575,9 +550,6 @@ def cluster_compositions(
         # Create the figure
         fig = plot_func(df_plot, **plot_kwargs)
 
-        # Configure colorbar for property coloring
-        configure_colorbar(fig)
-
     else:
         # No chemical system visualization
         # Configure color options
@@ -585,9 +557,6 @@ def cluster_compositions(
 
         # Create the figure
         fig = plot_func(df_plot, **plot_kwargs)
-
-        # Configure colorbar for property coloring
-        configure_colorbar(fig)
 
     fig.update_traces(marker_size=marker_size / 3 if n_components == 3 else marker_size)
 
@@ -636,5 +605,19 @@ def cluster_compositions(
         }
         default_stats.update(stats_kwargs)
         fig.add_annotation(**default_stats)
+
+    if prop_values is not None:
+        color_bar = dict(
+            orientation="h",
+            yanchor="bottom",
+            y=0,
+            xanchor="right",
+            x=0.99,
+            thickness=12,
+            len=350,
+            lenmode="pixels",
+            title=dict(text=prop_name, side="top"),
+        )
+        fig.update_layout(coloraxis_colorbar=color_bar)
 
     return fig
