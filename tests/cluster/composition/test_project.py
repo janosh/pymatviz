@@ -4,7 +4,10 @@ from typing import Any
 
 import numpy as np
 import pytest
+import umap
 from sklearn.datasets import make_blobs
+from sklearn.decomposition import PCA, KernelPCA
+from sklearn.manifold import TSNE, Isomap
 
 from pymatviz.cluster.composition import ProjectionMethod, project_vectors
 
@@ -13,7 +16,7 @@ from pymatviz.cluster.composition import ProjectionMethod, project_vectors
 def sample_data() -> np.ndarray:
     """Generate sample data for testing projection methods."""
     xs, _ = make_blobs(  # Create synthetic data with 3 clusters in 10 dimensions
-        n_samples=100, n_features=10, centers=3, random_state=42, cluster_std=1.0
+        n_samples=100, n_features=10, centers=3, random_state=0, cluster_std=1.0
     )
     return xs
 
@@ -21,13 +24,16 @@ def sample_data() -> np.ndarray:
 def test_project_vectors_basic(sample_data: np.ndarray) -> None:
     """Test basic functionality of project_vectors."""
     # Test with default parameters (PCA)
-    result: np.ndarray = project_vectors(sample_data)
+    result, proj_obj = project_vectors(sample_data)
 
-    # Check shape
+    # Check shape and type of projected data
     assert result.shape == (100, 2)
-
-    # Check output type
     assert isinstance(result, np.ndarray)
+
+    # Check projection object
+    assert isinstance(proj_obj, PCA)
+    assert proj_obj.n_components_ == 2
+    assert proj_obj.explained_variance_ratio_.shape == (2,)
 
     # Check that result is not degenerate
     assert not np.allclose(result, 0, atol=1e-10)
@@ -42,23 +48,41 @@ def test_project_vectors_basic(sample_data: np.ndarray) -> None:
 
 
 @pytest.mark.parametrize(
-    ("method", "kwargs"),
+    ("method", "kwargs", "expected_obj_type", "obj_attrs"),
     [
-        ("pca", {}),  # PCA preserves scale of standardized input
+        ("pca", {}, PCA, {"n_components_": 2}),
         (
             "tsne",
             {"perplexity": 10.0, "learning_rate": 100.0},
-        ),  # t-SNE has its own scale
-        ("umap", {"n_neighbors": 5, "min_dist": 0.2}),  # UMAP has its own scale
+            TSNE,
+            {"n_components": 2, "perplexity": 10.0},
+        ),
+        (
+            "umap",
+            {"n_neighbors": 5, "min_dist": 0.2},
+            umap.UMAP,
+            {"n_neighbors": 5, "min_dist": 0.2},
+        ),
         (
             "isomap",
             {"n_neighbors": 5, "metric": "euclidean"},
-        ),  # Isomap preserves distances
-        ("kernel_pca", {"kernel": "rbf", "gamma": 0.1}),  # Kernel PCA has its own scale
+            Isomap,
+            {"n_neighbors": 5, "metric": "euclidean"},
+        ),
+        (
+            "kernel_pca",
+            {"kernel": "rbf", "gamma": 0.1},
+            KernelPCA,
+            {"n_components": 2, "kernel": "rbf", "gamma": 0.1},
+        ),
     ],
 )
 def test_project_vectors_methods(
-    sample_data: np.ndarray, method: ProjectionMethod, kwargs: dict[str, Any]
+    sample_data: np.ndarray,
+    method: ProjectionMethod,
+    kwargs: dict[str, Any],
+    expected_obj_type: type | str,
+    obj_attrs: dict[str, Any],
 ) -> None:
     """Test different projection methods."""
     # Skip UMAP test if not installed
@@ -69,10 +93,17 @@ def test_project_vectors_methods(
             pytest.skip("umap-learn is not installed")
 
     # Test projection with specified method
-    result: np.ndarray = project_vectors(sample_data, method=method, **kwargs)
+    result, proj_obj = project_vectors(sample_data, method=method, **kwargs)
 
-    # Check shape
+    # Check shape of projected data
     assert result.shape == (100, 2)
+
+    # Check projection object type
+    assert isinstance(proj_obj, expected_obj_type)
+
+    # Check projection object attributes
+    for attr, value in obj_attrs.items():
+        assert getattr(proj_obj, attr) == value
 
     # Check that result is not degenerate
     assert not np.allclose(result, 0, atol=1e-10)
@@ -94,10 +125,11 @@ def test_project_vectors_methods(
 @pytest.mark.parametrize("n_components", [2, 3])
 def test_project_vectors_components(sample_data: np.ndarray, n_components: int) -> None:
     """Test projecting to different numbers of components."""
-    result: np.ndarray = project_vectors(sample_data, n_components=n_components)
+    result, proj_obj = project_vectors(sample_data, n_components=n_components)
 
     # Check shape matches requested components
     assert result.shape == (100, n_components)
+    assert proj_obj.n_components_ == n_components
 
     # Check that result is not degenerate
     assert not np.allclose(result, 0, atol=1e-10)
@@ -112,31 +144,9 @@ def test_project_vectors_components(sample_data: np.ndarray, n_components: int) 
     assert np.linalg.matrix_rank(result) == n_components
 
 
-def test_project_vectors_pca_explained_variance(sample_data: np.ndarray) -> None:
-    """Test PCA with explained variance return."""
-    # Get projection with explained variance
-    result, explained_variance = project_vectors(
-        sample_data, method="pca", return_explained_variance=True
-    )
-
-    # Check shape of result
-    assert result.shape == (100, 2)
-
-    # Check that explained variance is a float
-    assert isinstance(explained_variance, float)
-
-    # Check that explained variance is between 0 and 1
-    assert 0 <= explained_variance <= 1
-
-    # Check that explained variance is reasonable for synthetic data
-    assert explained_variance == pytest.approx(
-        0.9, rel=0.1
-    )  # Should explain ~90% of variance
-
-
 def test_project_vectors_tsne_params(sample_data: np.ndarray) -> None:
     """Test t-SNE with custom parameters."""
-    result: np.ndarray = project_vectors(
+    result, tsne_obj = project_vectors(
         sample_data,
         method="tsne",
         perplexity=10.0,
@@ -144,8 +154,14 @@ def test_project_vectors_tsne_params(sample_data: np.ndarray) -> None:
         max_iter=500,
     )
 
-    # Check shape
+    # Check shape and object type
     assert result.shape == (100, 2)
+    assert isinstance(tsne_obj, TSNE)
+
+    # Check t-SNE specific parameters
+    assert tsne_obj.perplexity == 10.0
+    assert tsne_obj.learning_rate == 100.0
+    assert tsne_obj.max_iter == 500
 
     # Check that result is not degenerate
     assert not np.allclose(result, 0, atol=1e-10)
@@ -159,19 +175,24 @@ def test_project_vectors_tsne_params(sample_data: np.ndarray) -> None:
 def test_project_vectors_umap_params(sample_data: np.ndarray) -> None:
     """Test UMAP with custom parameters."""
     try:
-        import umap  # noqa: F401
+        import umap
     except ImportError:
         pytest.skip("umap-learn is not installed")
 
-    result: np.ndarray = project_vectors(
+    result, umap_obj = project_vectors(
         sample_data,
         method="umap",
         n_neighbors=10,
         min_dist=0.05,
     )
 
-    # Check shape
+    # Check shape and object type
     assert result.shape == (100, 2)
+    assert isinstance(umap_obj, umap.UMAP)
+
+    # Check UMAP specific parameters
+    assert umap_obj.n_neighbors == 10
+    assert umap_obj.min_dist == 0.05
 
     # Check that result is not degenerate
     assert not np.allclose(result, 0, atol=1e-10)
@@ -185,13 +206,20 @@ def test_project_vectors_umap_params(sample_data: np.ndarray) -> None:
 def test_project_vectors_with_scaling(sample_data: np.ndarray) -> None:
     """Test projection with and without data scaling."""
     # With scaling (default)
-    result_with_scaling = project_vectors(sample_data, scale_data=True)
+    result_with_scaling, proj_obj1 = project_vectors(sample_data, scale_data=True)
 
     # Without scaling
-    result_without_scaling = project_vectors(sample_data, scale_data=False)
+    result_without_scaling, proj_obj2 = project_vectors(sample_data, scale_data=False)
 
     # Results should be different
     assert not np.allclose(result_with_scaling, result_without_scaling, atol=1e-10)
+
+    # Both projection objects should be PCA instances
+    assert isinstance(proj_obj1, PCA)
+    assert isinstance(proj_obj2, PCA)
+    assert proj_obj1.n_components_ == proj_obj2.n_components_ == 2
+    assert proj_obj1.explained_variance_ratio_.mean() == pytest.approx(0.4348426)
+    assert proj_obj2.explained_variance_ratio_.mean() == pytest.approx(0.4691580)
 
     # Check that both results have reasonable scale (not zero or infinite)
     assert 0.01 < np.std(result_with_scaling) < 100
@@ -207,14 +235,14 @@ def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
         pytest.skip("umap-learn is not installed")
 
     # Run twice with same random state for UMAP
-    result1 = project_vectors(sample_data, method="umap", random_state=42)
-    result2 = project_vectors(sample_data, method="umap", random_state=42)
+    result1, umap_obj1 = project_vectors(sample_data, method="umap", random_state=0)
+    result2, umap_obj2 = project_vectors(sample_data, method="umap", random_state=0)
 
     # Results should be identical with same random state
     assert np.allclose(result1, result2, atol=1e-10)
 
     # Run with different random state for UMAP
-    result3 = project_vectors(sample_data, method="umap", random_state=0)
+    result3, umap_obj3 = project_vectors(sample_data, method="umap", random_state=1)
 
     # Results should be different with different random states
     assert not np.allclose(result1, result3, atol=1e-10)
@@ -256,43 +284,49 @@ def test_project_vectors_tsne_max_components(sample_data: np.ndarray) -> None:
 
 def test_project_vectors_pca_consistency(sample_data: np.ndarray) -> None:
     """Test PCA projection consistency with same random state."""
-    result1 = project_vectors(sample_data, method="pca", random_state=42)
-    result2 = project_vectors(sample_data, method="pca", random_state=42)
+    result1, pca_obj1 = project_vectors(sample_data, method="pca", random_state=0)
+    result2, pca_obj2 = project_vectors(sample_data, method="pca", random_state=0)
 
     # PCA should be deterministic with same random state
     assert np.allclose(result1, result2, atol=1e-10)
 
     # Also check with different random state (should still be the same for PCA)
-    result3 = project_vectors(sample_data, method="pca", random_state=0)
+    result3, pca_obj3 = project_vectors(sample_data, method="pca", random_state=1)
     assert np.allclose(result1, result3, atol=1e-10)
 
     # Check that results have reasonable scale
     assert np.std(result1) == pytest.approx(1.0, rel=0.5)
     assert np.mean(result1) == pytest.approx(0.0, abs=1e-10)
 
+    # Check that all PCA objects have the same explained variance ratios
+    assert np.allclose(
+        pca_obj1.explained_variance_ratio_, pca_obj2.explained_variance_ratio_
+    )
+    assert np.allclose(
+        pca_obj1.explained_variance_ratio_, pca_obj3.explained_variance_ratio_
+    )
+
 
 def test_project_vectors_small_dataset() -> None:
     """Test handling of small datasets."""
     # Create a very small dataset
-    xs, _ = make_blobs(n_samples=20, n_features=5, centers=2, random_state=42)
+    xs, _ = make_blobs(n_samples=20, n_features=5, centers=2, random_state=0)
 
     # Test with t-SNE (should adjust perplexity)
-    result_tsne: np.ndarray = project_vectors(xs, method="tsne")
-    assert result_tsne.shape == (20, 2)
+    result_tsne, tsne_obj = project_vectors(xs, method="tsne")
+    assert result_tsne.shape == (len(xs), 2)
+    assert isinstance(tsne_obj, TSNE)
+    assert tsne_obj.perplexity == pytest.approx(min(30, len(xs) / 3))
     assert not np.allclose(result_tsne, 0, atol=1e-10)
     assert not np.any(np.isnan(result_tsne))
     assert not np.any(np.isinf(result_tsne))
     assert np.std(result_tsne) == pytest.approx(1.0, rel=0.5)
 
-    # Test with UMAP (should adjust n_neighbors)
-    try:
-        import umap  # noqa: F401
-
-        result_umap: np.ndarray = project_vectors(xs, method="umap")
-        assert result_umap.shape == (20, 2)
-        assert not np.allclose(result_umap, 0, atol=1e-10)
-        assert not np.any(np.isnan(result_umap))
-        assert not np.any(np.isinf(result_umap))
-        assert np.std(result_umap) == pytest.approx(1.0, rel=0.5)
-    except ImportError:
-        pytest.skip("umap-learn is not installed")
+    result_umap, umap_obj = project_vectors(xs, method="umap")
+    assert result_umap.shape == (len(xs), 2)
+    assert isinstance(umap_obj, umap.UMAP)
+    assert umap_obj.n_neighbors == 15  # Default value
+    assert not np.allclose(result_umap, 0, atol=1e-10)
+    assert not np.any(np.isnan(result_umap))
+    assert not np.any(np.isinf(result_umap))
+    assert np.std(result_umap) == pytest.approx(1.0, rel=0.5)

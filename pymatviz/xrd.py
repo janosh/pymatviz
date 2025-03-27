@@ -73,7 +73,7 @@ def xrd_pattern(  # noqa: D417
         wavelength (float): X-ray wavelength for the XRD calculation (in Angstroms).
             Default is 1.54184 (Cu K-alpha). Only used if patterns argument contains
             Structures.
-        stack (Literal["horizontal", "vertical"] | None): If set to "horizontal" or
+        stack ("horizontal" | "vertical" | None): If set to "horizontal" or
             "vertical", creates separate subplots for each pattern. Default is None
             (all patterns in one plot).
         subplot_kwargs (dict[str, Any] | None): Passed to make_subplots. Can be used to

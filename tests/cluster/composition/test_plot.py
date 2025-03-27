@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -24,25 +23,13 @@ np_rng = np.random.default_rng(seed=0)
 
 @pytest.fixture
 def sample_compositions() -> list[Composition]:
-    """Create a list of sample compositions for testing.
-
-    Returns:
-        List of pymatgen Composition objects
-    """
-    return [
-        Composition("Fe0.5Co0.5"),
-        Composition("Ni0.7Cu0.3"),
-        Composition("Zr0.6Ti0.4"),
-    ]
+    """List of sample compositions for testing."""
+    return [Composition(comp) for comp in ["Fe0.5Co0.5", "Ni0.7Cu0.3", "Zr0.6Ti0.4"]]
 
 
 @pytest.fixture
 def sample_properties() -> np.ndarray:
-    """Create sample property values for testing.
-
-    Returns:
-        Array of property values with a wide range (1-1000)
-    """
+    """Sample property values for testing."""
     return np.array([1, 10, 100])
 
 
@@ -61,14 +48,7 @@ def test_basic_functionality(sample_compositions: list[Composition]) -> None:
     assert fig.data[0].y.shape == (3,)
 
 
-@pytest.mark.parametrize(
-    "properties_input",
-    [
-        "array",
-        "dict",
-        "series",
-    ],
-)
+@pytest.mark.parametrize("properties_input", ["array", "dict", "series"])
 def test_property_coloring(
     sample_compositions: list[Composition],
     sample_properties: np.ndarray,
@@ -164,8 +144,7 @@ def test_sorting_options(
 
 
 def test_custom_sort_function(
-    sample_compositions: list[Composition],
-    sample_properties: np.ndarray,
+    sample_compositions: list[Composition], sample_properties: np.ndarray
 ) -> None:
     """Test custom sorting function for property values."""
 
@@ -186,20 +165,40 @@ def test_custom_sort_function(
 
 
 @pytest.mark.parametrize(
-    ("projection_method", "projection_kwargs", "stats_text"),
+    ("projection_method", "projection_kwargs", "expected_stats"),
     [
-        ("pca", {}, ["PC1:", "PC2:"]),
+        (
+            "pca",
+            {},
+            {
+                "PC1": r"PC1: \d+\.?\d*% \(cumulative: \d+\.?\d*%\)",
+                "PC2": r"PC2: \d+\.?\d*% \(cumulative: \d+\.?\d*%\)",
+            },
+        ),
         (
             "tsne",
             {"perplexity": 1.0, "learning_rate": "auto"},
-            ["Perplexity:", "Learning rate:"],
+            {
+                "perplexity": r"Perplexity: 1\.0",
+                "learning_rate": r"Learning rate: auto",
+            },
         ),
         (
             "isomap",
             {"n_neighbors": 2, "metric": "euclidean"},
-            ["n_neighbors:", "metric:"],
+            {
+                "n_neighbors": r"n_neighbors: 2",
+                "metric": r"metric: euclidean",
+            },
         ),
-        ("kernel_pca", {"kernel": "rbf", "gamma": 0.1}, ["kernel:", "gamma:"]),
+        (
+            "kernel_pca",
+            {"kernel": "rbf", "gamma": 0.1},
+            {
+                "kernel": r"kernel: rbf",
+                "gamma": r"gamma: 0\.1",
+            },
+        ),
     ],
 )
 def test_projection_stats(
@@ -207,7 +206,7 @@ def test_projection_stats(
     sample_properties: np.ndarray,
     projection_method: ProjectionMethod,
     projection_kwargs: dict[str, Any],
-    stats_text: list[str],
+    expected_stats: dict[str, str],
 ) -> None:
     """Test projection statistics display for different methods."""
     fig = pmv.cluster_compositions(
@@ -222,30 +221,60 @@ def test_projection_stats(
 
     # Check if stats annotation exists
     stats_annotations = [
-        ann
-        for ann in fig.layout.annotations
-        if any(text in str(ann.text) for text in stats_text)
+        anno
+        for anno in fig.layout.annotations
+        if any(
+            re.search(pattern, anno.text) is not None
+            for pattern in expected_stats.values()
+        )
     ]
     assert len(stats_annotations) == 1, (
         f"{projection_method} stats annotation not found"
     )
 
+    # Get the stats text
+    stats_text = stats_annotations[0].text
+
     # For PCA, verify variance percentages are reasonable
     if projection_method == "pca":
-        import re
+        # Extract all PC percentages
+        pc_percentages = []
+        for line in stats_text.split("<br>"):
+            if "PC" in line:
+                # Extract both individual and cumulative percentages
+                match = re.search(
+                    r"PC\d+: (\d+\.?\d*)% \(cumulative: (\d+\.?\d*)%\)", line
+                )
+                assert match is not None, f"Could not parse PCA line: {line}"
+                pc_percentages.append((float(match[1]), float(match[2])))
 
-        percentages = [
-            float(re.search(r"(\d+\.?\d*)%", line)[1]) / 100  # type: ignore[index]
-            for line in stats_annotations[0].text.split("<br>")
-            if "PC" in line
-        ]
-        # Check that percentages are between 0 and 1
-        assert all(0 <= p <= 1 for p in percentages), (
-            "Variance percentages out of range"
-        )
+        # Check that we have the expected number of PCs
+        assert len(pc_percentages) == 2, f"Expected 2 PCs, got {len(pc_percentages)}"
+
+        # Check percentages are between 0 and 100 (since they're in percentage form)
+        for pc, cum in pc_percentages:
+            assert 0 <= pc <= 100, f"PC percentage {pc} out of range [0,100]"
+            assert 0 <= cum <= 100, f"Cumulative percentage {cum} out of range [0,100]"
+
         # Check that percentages are in descending order
-        assert all(p1 >= p2 for p1, p2 in itertools.pairwise(percentages)), (
-            f"{percentages=}"
+        assert pc_percentages[0][0] >= pc_percentages[1][0], (
+            f"PC percentages not in descending order: {pc_percentages}"
+        )
+
+        # Check that cumulative percentages are in ascending order
+        assert pc_percentages[0][1] <= pc_percentages[1][1], (
+            f"Cumulative percentages not in ascending order: {pc_percentages}"
+        )
+
+        # Check that cumulative percentages are reasonable
+        assert pc_percentages[-1][1] <= 100, (
+            f"Final cumulative percentage {pc_percentages[-1][1]} exceeds 100%"
+        )
+
+    # Check that each expected stat is present and matches the pattern
+    for pattern in expected_stats.values():
+        assert re.search(pattern, stats_text) is not None, (
+            f"Expected pattern '{pattern}' not found in stats text: {stats_text}"
         )
 
 

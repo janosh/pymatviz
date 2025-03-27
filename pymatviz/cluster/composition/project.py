@@ -30,23 +30,23 @@ def project_vectors(
     n_components: int = 2,
     random_state: int | None = 42,
     scale_data: bool = True,
-    return_explained_variance: bool = False,
     **kwargs: Any,
-) -> NDArray | tuple[NDArray, float]:
+) -> tuple[NDArray, PCA | TSNE | Isomap | KernelPCA | Any]:
     """Project high-dimensional data to lower dimensions using various methods.
 
     Args:
-        data: Input data array of shape (n_samples, n_features)
-        method: Projection method to use
-        n_components: Number of dimensions to project to
-        random_state: Random seed for reproducibility
-        scale_data: Whether to scale data before projection
-        return_explained_variance: Whether to return explained variance (PCA only)
+        data (NDArray): Input data array of shape (n_samples, n_features)
+        method ("pca" | "tsne" | "umap" | "isomap" | "kernel_pca"): Projection
+            method to use
+        n_components (int): Projection dimensions (2 or 3) (default: 2)
+        random_state (int | None): Random seed for reproducibility
+        scale_data (bool): Whether to scale data before projection
         **kwargs: Additional arguments passed to the projection method
 
     Returns:
-        Projected data array of shape (n_samples, n_components) or tuple of
-        (projected_data, explained_variance) if return_explained_variance is True
+        tuple[np.array, PCA | TSNE | Isomap | KernelPCA | Any]: A tuple containing:
+            - Projected data array of shape (n_samples, n_components)
+            - The fitted projection object (PCA, TSNE, UMAP, Isomap, or KernelPCA)
 
     Raises:
         ValueError: If method is invalid or n_components is too small
@@ -71,19 +71,11 @@ def project_vectors(
     if method == "pca":
         pca = PCA(n_components=n_components, random_state=random_state)
         projected_data = pca.fit_transform(data)
-        if return_explained_variance:
-            explained_variance = np.sum(pca.explained_variance_ratio_)
-            # Scale the projected data to have unit standard deviation
-            if scale_data:
-                projected_data = (
-                    projected_data - np.mean(projected_data, axis=0)
-                ) / np.std(projected_data, axis=0)
-            return projected_data, explained_variance
         if scale_data:
             projected_data = (
                 projected_data - np.mean(projected_data, axis=0)
             ) / np.std(projected_data, axis=0)
-        return projected_data
+        return projected_data, pca
 
     if method == "tsne":
         if n_components > 3:
@@ -104,7 +96,7 @@ def project_vectors(
             projected_data = (
                 projected_data - np.mean(projected_data, axis=0)
             ) / np.std(projected_data, axis=0)
-        return projected_data
+        return projected_data, tsne
 
     if method == "umap":
         try:
@@ -125,7 +117,7 @@ def project_vectors(
             projected_data = (
                 projected_data - np.mean(projected_data, axis=0)
             ) / np.std(projected_data, axis=0)
-        return projected_data
+        return projected_data, umap_reducer
 
     if method == "isomap":
         # Adjust n_neighbors for small datasets
@@ -144,7 +136,7 @@ def project_vectors(
             projected_data = (
                 projected_data - np.mean(projected_data, axis=0)
             ) / np.std(projected_data, axis=0)
-        return projected_data
+        return projected_data, isomap
 
     if method == "kernel_pca":
         kpca = KernelPCA(
@@ -160,6 +152,6 @@ def project_vectors(
             projected_data = (
                 projected_data - np.mean(projected_data, axis=0)
             ) / np.std(projected_data, axis=0)
-        return projected_data
+        return projected_data, kpca
 
     raise ValueError(f"Unknown projection {method=}")

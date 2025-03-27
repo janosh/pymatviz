@@ -31,11 +31,12 @@ from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
+    import plotly.graph_objects as go
+
     from pymatviz.cluster.composition import ProjectionMethod
 
 
 pmv.set_plotly_template("pymatviz_white")
-# Set up directories
 module_dir = os.path.dirname(__file__)
 cache_dir = f"{module_dir}/tmp/embeddings"
 plot_dir = f"{module_dir}/tmp/figs/composition_clustering"
@@ -51,15 +52,18 @@ def process_dataset(
     title: str,
     embedding_method: EmbeddingMethod,
     projection_method: ProjectionMethod,
-) -> None:
+) -> go.Figure:
     """Process a single dataset and create clustering visualizations.
 
     Args:
-        dataset_name: Name of the MatBench dataset to load
-        target_col: Name of the target property column
-        title: Display title for the property
-        embedding_method: Method to convert compositions to vectors
-        projection_method: Method to reduce dimensionality for visualization
+        dataset_name (str): Name of the MatBench dataset to load
+        target_col (str): Name of the target property column
+        title (str): Display title for the property
+        embedding_method (EmbeddingMethod): Method to convert compositions to vectors
+        projection_method (ProjectionMethod): Method to reduce dimensionality
+
+    Returns:
+        fig: Plotly figure
     """
     # Load dataset
     df_data = load_dataset(dataset_name)
@@ -133,6 +137,7 @@ def process_dataset(
     fig.layout.update(title=dict(text=title, x=0.5), margin_t=50)
     img_path = f"{plot_dir}/{dataset_name}_{embedding_method}_{projection_method}.html"
     fig.write_html(img_path, include_plotlyjs="cdn")
+    return fig
 
 
 datasets = {

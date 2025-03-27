@@ -94,12 +94,12 @@ def cluster_compositions(
             - Callable: Custom projection function that takes (N, D) array of values and
               returns (N, n_components) projected array where n_components is 2 or 3 and
               D is the number of dimensions in the embedding space.
-        n_components: Number of dimensions for projection (2 or 3) (default: 2)
-        hover_format: Format string for hover data (default: ".2f")
-        heatmap_colorscale: Colorscale for continuous property values
+        n_components (int): Projection dimensions (2 or 3) (default: 2)
+        hover_format (str): Format string for hover data (default: ".2f")
+        heatmap_colorscale (str): Colorscale for continuous property values
             (default: "Viridis")
-        point_size: Size of the scatter plot points (default: 8)
-        opacity: Opacity of the scatter plot points (default: 0.8)
+        point_size (int): Size of the scatter plot points (default: 8)
+        opacity (float): Opacity of the scatter plot points (default: 0.8)
         show_chem_sys (bool): If True and no properties provided, color by chemical
             system (default: True)
         color_discrete_map (dict[str, ColorType] | None): Optional mapping of chemical
@@ -108,9 +108,9 @@ def cluster_compositions(
             embedding function (default: None)
         projection_kwargs (dict[str, Any] | None): Additional keyword arguments for the
             projection function (default: None)
-        title: Optional plot title (default: None)
-        width: Optional plot width in pixels (default: None)
-        height: Optional plot height in pixels (default: None)
+        title (str | None): Optional plot title (default: None)
+        width (int | None): Optional plot width in pixels (default: None)
+        height (int | None): Optional plot height in pixels (default: None)
         sort (bool | int | Callable[[np.ndarray], np.ndarray]): Controls point sorting
             before plotting (default: True)
             - True or 1: Sort by prop values in ascending order (highest points
@@ -185,9 +185,10 @@ def cluster_compositions(
             n_components=n_components,
             **projection_kwargs,  # type: ignore[call-arg]
         )
+        pca_obj = None
     elif projection_method in get_args(ProjectionMethod):
         # Use built-in projection methods
-        projected = project_vectors(
+        projected, pca_obj = project_vectors(
             embeddings,
             method=projection_method,
             n_components=n_components,
@@ -317,13 +318,9 @@ def cluster_compositions(
     # Calculate projection statistics
     projection_stats: str | None = None
     if show_projection_stats:
-        if projection_method == "pca":
-            from sklearn.decomposition import PCA
-
-            # Fit PCA to get explained variance ratios
-            pca = PCA()
-            pca.fit(embeddings)
-            var_explained_ratio = pca.explained_variance_ratio_[:n_components]
+        if projection_method == "pca" and pca_obj is not None:
+            # Get explained variance ratios from PCA object
+            var_explained_ratio = pca_obj.explained_variance_ratio_[:n_components]
             cum_var_explained = np.cumsum(var_explained_ratio)
 
             # Create variance stats text
