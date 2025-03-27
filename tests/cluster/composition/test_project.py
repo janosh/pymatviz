@@ -4,7 +4,6 @@ from typing import Any
 
 import numpy as np
 import pytest
-import umap
 from sklearn.datasets import make_blobs
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.manifold import TSNE, Isomap
@@ -60,7 +59,7 @@ def test_project_vectors_basic(sample_data: np.ndarray) -> None:
         (
             "umap",
             {"n_neighbors": 5, "min_dist": 0.2},
-            umap.UMAP,
+            None,
             {"n_neighbors": 5, "min_dist": 0.2},
         ),
         (
@@ -85,14 +84,14 @@ def test_project_vectors_methods(
     obj_attrs: dict[str, Any],
 ) -> None:
     """Test different projection methods."""
-    # Skip UMAP test if not installed
     if method == "umap":
-        try:
-            import umap  # noqa: F401
-        except ImportError:
-            pytest.skip("umap-learn is not installed")
+        pytest.importorskip("umap")
+        from umap import UMAP
 
-    # Test projection with specified method
+        kwargs = {"n_neighbors": 5, "min_dist": 0.2}
+        expected_obj_type = UMAP
+        obj_attrs = {"n_neighbors": 5, "min_dist": 0.2}
+
     result, proj_obj = project_vectors(sample_data, method=method, **kwargs)
 
     # Check shape of projected data
@@ -174,10 +173,8 @@ def test_project_vectors_tsne_params(sample_data: np.ndarray) -> None:
 
 def test_project_vectors_umap_params(sample_data: np.ndarray) -> None:
     """Test UMAP with custom parameters."""
-    try:
-        import umap
-    except ImportError:
-        pytest.skip("umap-learn is not installed")
+    pytest.importorskip("umap")
+    from umap import UMAP
 
     result, umap_obj = project_vectors(
         sample_data,
@@ -188,7 +185,7 @@ def test_project_vectors_umap_params(sample_data: np.ndarray) -> None:
 
     # Check shape and object type
     assert result.shape == (100, 2)
-    assert isinstance(umap_obj, umap.UMAP)
+    assert isinstance(umap_obj, UMAP)
 
     # Check UMAP specific parameters
     assert umap_obj.n_neighbors == 10
@@ -228,11 +225,7 @@ def test_project_vectors_with_scaling(sample_data: np.ndarray) -> None:
 
 def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
     """Test reproducibility with fixed random state."""
-    # Skip if UMAP is not installed
-    try:
-        import umap  # noqa: F401
-    except ImportError:
-        pytest.skip("umap-learn is not installed")
+    pytest.importorskip("umap")
 
     # Run twice with same random state for UMAP
     result1, umap_obj1 = project_vectors(sample_data, method="umap", random_state=0)
@@ -322,9 +315,12 @@ def test_project_vectors_small_dataset() -> None:
     assert not np.any(np.isinf(result_tsne))
     assert np.std(result_tsne) == pytest.approx(1.0, rel=0.5)
 
+    pytest.importorskip("umap")
+    from umap import UMAP
+
     result_umap, umap_obj = project_vectors(xs, method="umap")
     assert result_umap.shape == (len(xs), 2)
-    assert isinstance(umap_obj, umap.UMAP)
+    assert isinstance(umap_obj, UMAP)
     assert umap_obj.n_neighbors == 15  # Default value
     assert not np.allclose(result_umap, 0, atol=1e-10)
     assert not np.any(np.isnan(result_umap))

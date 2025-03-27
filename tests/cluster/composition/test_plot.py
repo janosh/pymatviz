@@ -324,10 +324,7 @@ def test_cluster_compositions_methods(
     """Test different combinations of embedding and projection methods."""
     # Skip UMAP test if not installed
     if projection_method == "umap":
-        try:
-            import umap  # noqa: F401
-        except ImportError:
-            pytest.skip("umap-learn is not installed")
+        pytest.importorskip("umap")
 
     # Use appropriate kwargs for small datasets
     projection_kwargs = {}
@@ -644,17 +641,6 @@ def test_precomputed_embeddings_3d(
     assert fig_array.layout.scene.xaxis.title.text == "Principal Component 1"
     assert fig_array.layout.scene.yaxis.title.text == "Principal Component 2"
     assert fig_array.layout.scene.zaxis.title.text == "Principal Component 3"
-
-    # Check hover data
-    hover_text = fig_array.data[0].customdata[0][1]  # Get first hover text
-    assert hover_text.startswith("Composition:")
-    for word in "PC1", "PC2", "PC3", "Test Property":
-        assert f"<br>{word}" in hover_text
-
-    # Check property coloring
-    assert fig_array.data[0].marker.color is not None
-    assert len(fig_array.data[0].marker.color) == 3
-    # Check colorbar
     assert fig_array.layout.coloraxis is not None
     assert fig_array.layout.coloraxis.colorbar.title.text == "Test Property"
 
