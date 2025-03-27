@@ -81,7 +81,7 @@ def test_project_vectors_methods(
     sample_data: np.ndarray,
     method: ProjectionMethod,
     kwargs: dict[str, Any],
-    expected_obj_type: type | str,
+    expected_obj_type: type,
     obj_attrs: dict[str, Any],
 ) -> None:
     """Test different projection methods."""
