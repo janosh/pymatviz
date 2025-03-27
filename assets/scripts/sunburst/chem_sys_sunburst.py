@@ -62,9 +62,9 @@ fig.show()
 
 # %% Load the Ward metallic glasses https://pubs.acs.org/doi/10.1021/acs.chemmater.6b04153
 data_path = "ward_metallic_glasses/ward-metallic-glasses.csv.xz"
-df_mg = pd.read_csv(
-    f"{ROOT}/examples/dataset_exploration/{data_path}", na_values=()
-).query("comment.isna()")
+df_mg = pd.read_csv(f"{ROOT}/examples/{data_path}", na_values=()).query(
+    "comment.isna()"
+)
 
 fig = pmv.chem_sys_sunburst(
     df_mg[Key.composition],

@@ -25,7 +25,7 @@ with gzip.open(
     f"{module_dir}/20240214-MatPES-178070-r2SCAN.json.gz", mode="rt"
 ) as file:
     r2scan_data = json.load(file)
-# examples/dataset_exploration/matpes/20240214-MatPES-183027-PBE.json.gz
+# examples/matpes/20240214-MatPES-183027-PBE.json.gz
 with gzip.open(f"{module_dir}/20240214-MatPES-183027-PBE.json.gz", mode="rt") as file:
     pbe_data = json.load(file)
 
