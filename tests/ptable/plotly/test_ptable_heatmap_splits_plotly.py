@@ -177,7 +177,7 @@ def test_ptable_heatmap_splits_plotly_annotations() -> None:
     ]
 
     # There should be at least one custom annotation
-    assert len(custom_annotations) > 0, "No custom annotations found"
+    assert len(custom_annotations) > 0
 
     # Check that the custom annotations have the specified font properties
     for anno in custom_annotations:
@@ -198,16 +198,16 @@ def test_ptable_heatmap_splits_plotly_annotations() -> None:
     value_annotations = [
         anno
         for anno in fig.layout.annotations
-        if hasattr(anno, "text") and "Value:" in str(anno.text)
+        if hasattr(anno, "text") and "Value:" in anno.text
     ]
 
     # There should be at least one value annotation
-    assert len(value_annotations) == 4, "No value annotations found"
+    assert len(value_annotations) == 4
 
     # Check that the annotations have the expected values
     expected_values = ["Value: 1.5", "Value: 3.5", "Value: 1.0", "Value: 2.0"]
     for value in expected_values:
-        assert any(value in str(anno.text) for anno in value_annotations)
+        assert any(value in anno.text for anno in value_annotations)
 
 
 def test_ptable_heatmap_splits_plotly_error_cases() -> None:
@@ -411,9 +411,9 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
         for anno in fig.layout.annotations
         if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
     ]
-    assert len(hover_texts) > 0, "No hover texts found"
+    assert len(hover_texts) > 0
     split_texts = [text for text in hover_texts if "Split 1" in text]
-    assert len(split_texts) > 0, "No split texts found"
+    assert len(split_texts) > 0
     for text in split_texts:
         assert "Split 1" in text, "Default split name not in hover text"
         assert "Split 2" in text, "Default split name not in hover text"
@@ -431,9 +431,9 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
         for anno in fig.layout.annotations
         if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
     ]
-    assert len(hover_texts) > 0, "No hover texts found"
+    assert len(hover_texts) > 0
     split_texts = [text for text in hover_texts if "Split 1" in text]
-    assert len(split_texts) > 0, "No split texts found"
+    assert len(split_texts) > 0
     for text in split_texts:
         assert " - Split 1: 1" in text, f"Value format wrong in text: {text}"
         assert " - Split 2: 2" in text, f"Value format wrong in text: {text}"
@@ -451,9 +451,9 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
         for anno in fig.layout.annotations
         if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
     ]
-    assert len(hover_texts) > 0, "No hover texts found"
+    assert len(hover_texts) > 0
     split_texts = [text for text in hover_texts if "Split 1" in text]
-    assert len(split_texts) > 0, "No split texts found"
+    assert len(split_texts) > 0
     for text in split_texts:
         assert " - Split 1: 1.23" in text, (
             f"String format not applied correctly in text: {text}"
@@ -479,9 +479,9 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
         for anno in fig.layout.annotations
         if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
     ]
-    assert len(hover_texts) > 0, "No hover texts found"
+    assert len(hover_texts) > 0
     split_texts = [text for text in hover_texts if "Split 1" in text]
-    assert len(split_texts) > 0, "No split texts found"
+    assert len(split_texts) > 0
     for text in split_texts:
         assert " - Split 1: 1.2 (low)" in text, (
             f"Callable format not applied correctly in text: {text}"
@@ -503,9 +503,9 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
         for anno in fig.layout.annotations
         if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
     ]
-    assert len(hover_texts) > 0, "No hover texts found"
+    assert len(hover_texts) > 0
     split_texts = [text for text in hover_texts if "First Value" in text]
-    assert len(split_texts) > 0, "No split texts found"
+    assert len(split_texts) > 0
     for text in split_texts:
         assert "First Value" in text, "DataFrame column name not in hover text"
         assert "Second Value" in text, "DataFrame column name not in hover text"
@@ -522,9 +522,9 @@ def test_ptable_heatmap_splits_plotly_hover_tooltips() -> None:
         for anno in fig.layout.annotations
         if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
     ]
-    assert len(hover_texts) > 0, "No hover texts found"
+    assert len(hover_texts) > 0
     custom_texts = [text for text in hover_texts if "Custom data" in text]
-    assert len(custom_texts) > 0, "No custom hover data found"
+    assert len(custom_texts) > 0
     for text in custom_texts:
         assert "Custom data for" in text, "Custom hover data not in hover text"
 
@@ -547,11 +547,11 @@ def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
         for anno in fig.layout.annotations
         if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
     ]
-    assert len(hover_texts) > 0, "No hover texts found"
+    assert len(hover_texts) > 0
 
     # Check that column names are used as split labels in hover text
     fe_texts = [text for text in hover_texts if "Iron" in text]
-    assert len(fe_texts) > 0, "No hover text found for Iron"
+    assert len(fe_texts) > 0
     fe_hover_text = fe_texts[0]
     assert "Formation Energy: 1.23" in fe_hover_text, (
         "DataFrame column name 'Formation Energy' not used in hover text"
@@ -573,11 +573,11 @@ def test_ptable_heatmap_splits_plotly_dataframe_input() -> None:
         for anno in fig.layout.annotations
         if hasattr(anno, "hovertext") and isinstance(anno.hovertext, str)
     ]
-    assert len(hover_texts) > 0, "No hover texts found with custom template"
+    assert len(hover_texts) > 0
 
     # Check that column names are used with custom template
     fe_texts = [text for text in hover_texts if "Iron" in text]
-    assert len(fe_texts) > 0, "No hover text found for Iron"
+    assert len(fe_texts) > 0
     fe_hover_text = fe_texts[0]
     assert "Formation Energy = 1.23 eV" in fe_hover_text, (
         "Column name not used correctly with custom template"

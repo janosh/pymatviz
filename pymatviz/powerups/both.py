@@ -350,19 +350,19 @@ def add_best_fit_line(
         backend == PLOTLY
         and hasattr(fig.layout, "annotations")
         and fig.layout.annotations
-        and any("LS fit: y =" in str(ann.text) for ann in fig.layout.annotations)
+        and any("LS fit: y =" in anno.text for anno in fig.layout.annotations)
         and annotation_mode != "none"
     ):
         # Count existing annotations
         annotation_count = sum(
-            1 for ann in fig.layout.annotations if "LS fit: y =" in str(ann.text)
+            "LS fit: y =" in anno.text for anno in fig.layout.annotations
         )
         if annotation_mode == "combined":
             # Remove all existing annotations when in combined mode
             fig.layout.annotations = [
-                ann
-                for ann in fig.layout.annotations
-                if "LS fit: y =" not in str(ann.text)
+                anno
+                for anno in fig.layout.annotations
+                if "LS fit: y =" not in anno.text
             ]
 
     # Function to add best fit line with annotation

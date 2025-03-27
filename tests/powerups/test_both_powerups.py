@@ -160,7 +160,7 @@ def test_add_best_fit_line_faceted_plot(plotly_faceted_scatter: go.Figure) -> No
 
     # Check that the annotations include best fit line annotations
     best_fit_annotations = [
-        anno for anno in result.layout.annotations if "LS fit: y =" in str(anno.text)
+        anno for anno in result.layout.annotations if "LS fit: y =" in anno.text
     ]
 
     # Verify there's one annotation per subplot by checking xref

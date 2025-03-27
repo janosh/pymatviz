@@ -406,10 +406,7 @@ def _update_colorbar_for_log_density(
 
     # Update the colorbar with the correct tick positions and labels
     colorbar = fig.layout.coloraxis.colorbar
-    colorbar.update(
-        tickvals=tick_positions,
-        ticktext=tick_labels,
-    )
+    colorbar.update(tickvals=tick_positions, ticktext=tick_labels)
 
     # Apply hover formatting to all traces
     for trace in fig.data:
