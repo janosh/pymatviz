@@ -42,7 +42,7 @@ jobs:
         id: set-matrix
         run: |
           SCRIPTS=$(find assets/scripts -name "*.py" | jq -R -s -c 'split("\n")[:-1]')
-          echo "scripts=$SCRIPTS" >> $GITHUB_OUTPUT
+          echo "example_scripts=$SCRIPTS" >> $GITHUB_OUTPUT
 
   test-example-scripts:
     needs: find-example-scripts
