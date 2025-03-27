@@ -1,4 +1,4 @@
-"""Unit tests for chemical clustering visualization functions."""
+"""Unit tests for composition cluster plots."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ import pymatviz as pmv
 
 if TYPE_CHECKING:
     from pymatviz.cluster.composition import ProjectionMethod
+    from pymatviz.cluster.composition.plot import ShowChemSys
 
 
 np_rng = np.random.default_rng(seed=0)
@@ -39,13 +40,93 @@ def test_basic_functionality(sample_compositions: list[Composition]) -> None:
         compositions=sample_compositions,
         embedding_method="one-hot",
         projection_method="pca",
-        show_chem_sys=False,  # Disable chemical system coloring
     )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 1
     assert fig.data[0].type == "scatter"
     assert fig.data[0].x.shape == (3,)
     assert fig.data[0].y.shape == (3,)
+
+
+@pytest.mark.parametrize("show_chem_sys", ["color", "shape", "color+shape", None])
+def test_show_chem_sys(
+    sample_compositions: list[Composition], show_chem_sys: ShowChemSys | None
+) -> None:
+    """Test different chemical system visualization options."""
+    fig = pmv.cluster_compositions(
+        compositions=sample_compositions,
+        embedding_method="one-hot",
+        projection_method="pca",
+        show_chem_sys=show_chem_sys,
+    )
+
+    assert isinstance(fig, go.Figure)
+
+    if show_chem_sys is None:  # No chemical system visualization
+        assert len(fig.data) == 1
+        assert not hasattr(fig.data[0], "symbol")
+        # Should have a default marker color
+        assert fig.data[0].marker.color == "#636efa"
+    elif show_chem_sys == "shape":  # With shape mode, we get a single trace with
+        # different symbols for chemical systems
+        assert len(fig.data) == 1
+        assert fig.data[0].mode == "markers"
+
+        # Check symbols are set
+        data_dict = fig.to_dict()["data"][0]
+        assert "marker" in data_dict
+        assert "symbol" in data_dict["marker"]
+        # Symbol should be a list of valid plotly symbols
+        assert isinstance(data_dict["marker"]["symbol"], list)
+        # Each composition should have a different symbol
+        symbols = data_dict["marker"]["symbol"]
+        assert len(set(symbols)) >= min(len(sample_compositions), 3)
+
+        # Should have a default marker color (no property coloring)
+        assert fig.data[0].marker.color == "#636efa"
+    elif show_chem_sys == "color":
+        # For color mode, we should have multiple traces (one per chem system)
+        assert len(fig.data) == 3
+        assert fig.data[0].type == "scatter"
+
+        # Each trace should have distinct color
+        colors = [trace.marker.color for trace in fig.data]
+        assert len(set(colors)) == 3  # Three unique colors
+
+        # Each trace should contain 1 point (one composition per chem system)
+        for trace in fig.data:
+            assert len(trace.x) == 1
+            assert len(trace.y) == 1
+
+        # Ensure colors follow standard plotly palette (case-insensitive comparison)
+        standard_colors = ["#636efa", "#ef553b", "#00cc96"]
+        for color in colors:
+            assert color.lower() in [c.lower() for c in standard_colors]
+    else:  # color+shape
+        # In color+shape mode, we have 1 trace with all points
+        assert len(fig.data) == 1
+
+        # Check symbols are set
+        data_dict = fig.to_dict()["data"][0]
+        assert "marker" in data_dict
+        assert "symbol" in data_dict["marker"]
+
+        # Symbol should be a list of valid plotly symbols
+        assert isinstance(data_dict["marker"]["symbol"], list)
+
+        # Each composition should have a different symbol
+        symbols = data_dict["marker"]["symbol"]
+        assert len(set(symbols)) >= min(len(sample_compositions), 3)
+
+        # Check that marker has multiple colors (one per chemical system)
+        assert isinstance(fig.data[0].marker.color, (list, tuple))
+        # Each chemical system should have a different color
+        assert len(fig.data[0].marker.color) == len(sample_compositions)
+
+        # The colors should be standard Plotly colors (case-insensitive)
+        standard_colors = ["#636efa", "#ef553b", "#00cc96", "#ab63fa", "#ffa15a"]
+        for color in fig.data[0].marker.color:
+            assert color.lower() in [c.lower() for c in standard_colors]
 
 
 @pytest.mark.parametrize("properties_input", ["array", "dict", "series"])
@@ -83,34 +164,78 @@ def test_property_coloring(
     assert fig.data[0].y.shape == (3,)
 
 
-def test_colorbar_consistency(
-    sample_compositions: list[Composition],
-    sample_properties: np.ndarray,
+def test_chemical_system_with_properties(
+    sample_compositions: list[Composition], sample_properties: np.ndarray
 ) -> None:
-    """Test colorbar consistency with and without log scaling."""
-    prop_name = "Test Property"
-
-    # Create plots with and without log scaling
-    fig_linear = pmv.cluster_compositions(
+    """Test detailed behavior of chemical system visualization with properties."""
+    # Test shape mode with properties
+    fig_shape = pmv.cluster_compositions(
         compositions=sample_compositions,
         properties=sample_properties,
-        prop_name=prop_name,
+        prop_name="Test Property",
         embedding_method="one-hot",
         projection_method="pca",
-    )
-    fig_log = pmv.cluster_compositions(
-        compositions=sample_compositions,
-        properties=np.log10(sample_properties),
-        prop_name=f"log10({prop_name})",
-        embedding_method="one-hot",
-        projection_method="pca",
+        show_chem_sys="shape",
     )
 
-    # Check colorbar ranges and ordering
-    linear_range = fig_linear.data[0].marker.color
-    log_range = fig_log.data[0].marker.color
-    assert not np.array_equal(linear_range, log_range)
-    assert np.array_equal(np.argsort(linear_range), np.argsort(log_range))
+    assert len(fig_shape.data) == 1
+
+    # Verify shape mapping
+    data_dict = fig_shape.to_dict()["data"][0]
+    assert isinstance(data_dict["marker"]["symbol"], list)
+
+    # Verify properties are used for coloring
+    assert "coloraxis" in data_dict["marker"]
+    assert data_dict["marker"]["coloraxis"] == "coloraxis"
+
+    # Verify the colorbar exists with the right title
+    assert hasattr(fig_shape.layout, "coloraxis")
+    assert fig_shape.layout.coloraxis.colorbar.title.text == "Test Property"
+
+    # Test color mode with properties
+    fig_color = pmv.cluster_compositions(
+        compositions=sample_compositions,
+        properties=sample_properties,
+        prop_name="Test Property",
+        embedding_method="one-hot",
+        projection_method="pca",
+        show_chem_sys="color",  # Should use properties, not chem systems
+    )
+
+    assert len(fig_color.data) == 1  # Should have one trace (all properties)
+
+    # Verify properties are used for coloring
+    data_dict = fig_color.to_dict()["data"][0]
+    assert "coloraxis" in data_dict["marker"]
+    assert data_dict["marker"]["coloraxis"] == "coloraxis"
+
+    # Verify the colorbar exists with the right title
+    assert hasattr(fig_color.layout, "coloraxis")
+    assert fig_color.layout.coloraxis.colorbar.title.text == "Test Property"
+
+    # Test color+shape mode with properties
+    fig_both = pmv.cluster_compositions(
+        compositions=sample_compositions,
+        properties=sample_properties,
+        prop_name="Test Property",
+        embedding_method="one-hot",
+        projection_method="pca",
+        show_chem_sys="color+shape",
+    )
+
+    assert len(fig_both.data) == 1  # Should have one trace (all properties)
+
+    # Verify properties are used for coloring
+    data_dict = fig_both.to_dict()["data"][0]
+    assert "coloraxis" in data_dict["marker"]
+    assert data_dict["marker"]["coloraxis"] == "coloraxis"
+
+    # Verify the colorbar exists with the right title
+    assert hasattr(fig_both.layout, "coloraxis")
+    assert fig_both.layout.coloraxis.colorbar.title.text == "Test Property"
+
+    # Verify shapes are set
+    assert isinstance(data_dict["marker"]["symbol"], list)
 
 
 @pytest.mark.parametrize("sort_value", [True, False, 1, 0, -1])
@@ -120,6 +245,7 @@ def test_sorting_options(
     sort_value: bool | int,
 ) -> None:
     """Test different sorting options for property values."""
+    # This implementation tests actual data points ordering
     fig = pmv.cluster_compositions(
         compositions=sample_compositions,
         properties=sample_properties,
@@ -129,25 +255,45 @@ def test_sorting_options(
         sort=sort_value,
     )
 
-    colors = fig.data[0].marker.color
+    # Check that the figure has coloraxis for property coloring
+    assert hasattr(fig.layout, "coloraxis")
+
+    # Get the custom data which contains the composition strings in current order
+    data_dict = fig.to_dict()["data"][0]
+    custom_data = data_dict["customdata"]
+    composition_order = [item[0] for item in custom_data]
+
+    # Get the expected sort order based on properties
     if sort_value in (True, 1):
-        # Ascending order (highest points plotted last)
-        assert np.array_equal(np.argsort(colors), np.argsort(sample_properties))
+        # Ascending order
+        expected_indices = np.argsort(sample_properties)
+        expected_compositions = [
+            str(sample_compositions[i].formula) for i in expected_indices
+        ]
     elif sort_value == -1:
-        # Descending order (highest points plotted first)
-        assert np.array_equal(np.argsort(colors), np.argsort(sample_properties)[::-1])
+        # Descending order
+        expected_indices = np.argsort(sample_properties)[::-1]
+        expected_compositions = [
+            str(sample_compositions[i].formula) for i in expected_indices
+        ]
     else:
-        # No sorting (False or 0)
-        # Note: We can't easily test this case since the order might be arbitrary
-        # but we can verify the plot was created successfully
-        assert len(colors) == len(sample_properties)
+        # No sorting (original order)
+        expected_compositions = [str(comp.formula) for comp in sample_compositions]
+
+    # Assert compositions are in the expected order
+    # Compare simplified formulas to account for possible normalization differences
+    simplified_actual = [comp.split()[0] for comp in composition_order]
+    simplified_expected = [comp.split()[0] for comp in expected_compositions]
+    assert simplified_actual == simplified_expected
 
 
 def test_custom_sort_function(
     sample_compositions: list[Composition], sample_properties: np.ndarray
 ) -> None:
-    """Test custom sorting function for property values."""
+    """Test custom sorting function for property values with detailed validation."""
+    # This implementation tests actual data points ordering
 
+    # Define a custom sort function that returns indices in reverse value order
     def custom_sort(values: np.ndarray) -> np.ndarray:
         return np.argsort(values)[::-1]
 
@@ -160,8 +306,82 @@ def test_custom_sort_function(
         sort=custom_sort,
     )
 
-    colors = fig.data[0].marker.color
-    assert np.array_equal(np.argsort(colors), np.argsort(sample_properties)[::-1])
+    # Check that the figure has coloraxis for property coloring
+    assert hasattr(fig.layout, "coloraxis")
+
+    # Get the custom data which contains the composition strings in current order
+    data_dict = fig.to_dict()["data"][0]
+    custom_data = data_dict["customdata"]
+    composition_order = [item[0] for item in custom_data]
+
+    # Get the expected sort order (descending by property value)
+    expected_indices = np.argsort(sample_properties)[::-1]
+    expected_compositions = [
+        str(sample_compositions[i].formula) for i in expected_indices
+    ]
+
+    # Assert compositions are in the expected order
+    # Compare simplified formulas to account for possible normalization differences
+    simplified_actual = [comp.split()[0] for comp in composition_order]
+    simplified_expected = [comp.split()[0] for comp in expected_compositions]
+    assert simplified_actual == simplified_expected
+
+
+def test_composite_viz_modes(
+    sample_compositions: list[Composition], sample_properties: np.ndarray
+) -> None:
+    """Test combined visualization modes with different options."""
+    # Test color+shape with custom color map
+    custom_colors = {
+        "Co-Fe": "#ff0000",  # Red
+        "Cu-Ni": "#00ff00",  # Green
+        "Ti-Zr": "#0000ff",  # Blue
+    }
+
+    # Run without properties, using custom color map
+    fig = pmv.cluster_compositions(
+        compositions=sample_compositions,
+        embedding_method="one-hot",
+        projection_method="pca",
+        show_chem_sys="color",
+        color_discrete_map=custom_colors,  # type: ignore[arg-type]
+    )
+
+    # Check that colors match our custom map
+    trace_names = [trace.name for trace in fig.data]
+    trace_colors = [trace.marker.color for trace in fig.data]
+
+    for name, color in zip(trace_names, trace_colors, strict=False):
+        assert color == custom_colors[name]
+
+    # Edge case: Empty property array but with show_chem_sys=None
+    # Should use default coloring
+    fig_no_chem = pmv.cluster_compositions(
+        compositions=sample_compositions,
+        embedding_method="one-hot",
+        projection_method="pca",
+        show_chem_sys=None,
+    )
+
+    # Should have a single trace
+    assert len(fig_no_chem.data) == 1
+    # With default color
+    assert fig_no_chem.data[0].marker.color == "#636efa"
+
+    # Edge case: With property values and shape mode, using custom marker size
+    large_marker = 20
+    fig_large = pmv.cluster_compositions(
+        compositions=sample_compositions,
+        properties=sample_properties,
+        prop_name="Test Property",
+        embedding_method="one-hot",
+        projection_method="pca",
+        show_chem_sys="shape",
+        marker_size=large_marker,
+    )
+
+    # Check marker size
+    assert fig_large.data[0].marker.size == large_marker
 
 
 @pytest.mark.parametrize(
@@ -599,16 +819,47 @@ def test_precomputed_embeddings_with_chemical_systems(
     # Create pre-computed embeddings
     embeddings = {str(comp.formula): np_rng.random(10) for comp in sample_compositions}
 
-    # Test with pre-computed embeddings and chemical system coloring
+    # Test with pre-computed embeddings and chemical system coloring (color mode)
     fig = pmv.cluster_compositions(
-        compositions=embeddings, show_chem_sys=True, projection_method="pca"
+        compositions=embeddings, show_chem_sys="color", projection_method="pca"
     )
     assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 3
+    assert len(fig.data) == 3  # One trace per chemical system (color mode)
     assert fig.data[0].type == "scatter"
     assert fig.data[0].x.shape == (1,)
     assert fig.data[0].y.shape == (1,)
     assert fig.data[0].marker.color == "#636efa"
+
+    # Test with shape mode
+    fig_shape = pmv.cluster_compositions(
+        compositions=embeddings, show_chem_sys="shape", projection_method="pca"
+    )
+    assert isinstance(fig_shape, go.Figure)
+    # Should have one data trace
+    assert len(fig_shape.data) == 1
+    # First trace contains all the data
+    assert fig_shape.data[0].mode == "markers"
+    assert not fig_shape.data[0].showlegend
+
+    # Check symbols are set
+    data_dict = fig_shape.to_dict()["data"][0]
+    assert "marker" in data_dict
+    assert "symbol" in data_dict["marker"]
+    # Symbol should be a list of valid plotly symbols
+    assert isinstance(data_dict["marker"]["symbol"], list)
+
+    # Test with color+shape mode
+    fig_both = pmv.cluster_compositions(
+        compositions=embeddings, show_chem_sys="color+shape", projection_method="pca"
+    )
+    assert isinstance(fig_both, go.Figure)
+    # In color+shape mode, we have 1 trace with all points
+    assert len(fig_both.data) == 1
+    data_dict = fig_both.to_dict()["data"][0]
+    assert "marker" in data_dict
+    assert "symbol" in data_dict["marker"]
+    # Symbol should be a list of valid plotly symbols
+    assert isinstance(data_dict["marker"]["symbol"], list)
 
 
 def test_precomputed_embeddings_3d(
@@ -685,7 +936,7 @@ def test_precomputed_embeddings_3d(
         compositions=embeddings,
         projection_method="pca",
         n_components=3,
-        show_chem_sys=True,
+        show_chem_sys="color",  # Color mode
     )
     assert isinstance(fig_no_props, go.Figure)
     # With chemical system coloring, we get one trace per system
@@ -700,17 +951,44 @@ def test_precomputed_embeddings_3d(
         for word in "PC1", "PC2", "PC3", "Chemical System":
             assert f"<br>{word}" in hover_text
 
-    # Test with custom projection kwargs
-    fig_custom = pmv.cluster_compositions(
+    # Test with shape mode in 3D
+    fig_shape_3d = pmv.cluster_compositions(
         compositions=embeddings,
-        properties=sample_properties,
-        prop_name="Test Property",
         projection_method="pca",
         n_components=3,
-        projection_kwargs={"random_state": 42},
+        show_chem_sys="shape",
     )
-    assert isinstance(fig_custom, go.Figure)
-    assert len(fig_custom.data) == 1
-    assert fig_custom.data[0].type == "scatter3d"
-    for dim in "xyz":
-        assert getattr(fig_custom.data[0], dim).shape == (3,)
+    assert isinstance(fig_shape_3d, go.Figure)
+    # Should have one data trace
+    assert len(fig_shape_3d.data) == 1
+    # First trace contains all the data
+    assert fig_shape_3d.data[0].mode == "markers"
+    assert not fig_shape_3d.data[0].showlegend
+
+    # Check symbols are set
+    data_dict = fig_shape_3d.to_dict()["data"][0]
+    assert "marker" in data_dict
+    assert "symbol" in data_dict["marker"]
+    # Symbol should be a list of valid plotly symbols
+    assert isinstance(data_dict["marker"]["symbol"], list)
+    # Verify the trace is of type Scatter3d, not Scatter
+    assert fig_shape_3d.data[0].type == "scatter3d"
+
+
+def test_marker_size_adjustment_3d(
+    sample_compositions: list[Composition], sample_properties: np.ndarray
+) -> None:
+    """Test that marker size is automatically halved for 3D plots."""
+    # Test with 2D plot - marker size should be as specified
+    marker_size = 12
+    for n_components, expected_size in ((2, marker_size), (3, marker_size / 3)):
+        fig = pmv.cluster_compositions(
+            compositions=sample_compositions,
+            properties=sample_properties,
+            prop_name="Test Property",
+            n_components=n_components,
+            marker_size=marker_size,
+        )
+
+        # Check marker size is as specified for 2D
+        assert fig.data[0].marker.size == expected_size

@@ -121,10 +121,11 @@ def process_dataset(
         prop_name=target_label,
         projection_method=projection_method,
         n_components=n_components,
-        point_size=8,
+        marker_size=8,
         opacity=0.8,
         width=1000,
         height=600,
+        show_chem_sys="shape" if len(compositions) < 1000 else None,
     )
 
     # Update title and margins

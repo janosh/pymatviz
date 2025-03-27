@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.validators.scatter.marker import SymbolValidator
+from plotly.validators.scatter3d.marker import SymbolValidator as Symbol3dValidator
 from pymatgen.core import Composition
 
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
@@ -23,6 +26,7 @@ EmbeddingMethod = Literal[
     "one-hot", "magpie", "deml", "matminer", "matscholar_el", "megnet_el"
 ]
 ProjectionMethod = Literal["pca", "tsne", "umap", "isomap", "kernel_pca"]
+ShowChemSys = Literal["color", "shape", "color+shape"]
 
 
 def cluster_compositions(
@@ -44,9 +48,9 @@ def cluster_compositions(
     n_components: int = 2,
     hover_format: str = ".2f",
     heatmap_colorscale: str = "Viridis",
-    point_size: int = 8,
+    marker_size: int = 8,
     opacity: float = 0.8,
-    show_chem_sys: bool = True,
+    show_chem_sys: ShowChemSys | None = None,
     color_discrete_map: dict[str, ColorType] | None = None,
     embedding_kwargs: dict[str, Any] | None = None,
     projection_kwargs: dict[str, Any] | None = None,
@@ -98,10 +102,16 @@ def cluster_compositions(
         hover_format (str): Format string for hover data (default: ".2f")
         heatmap_colorscale (str): Colorscale for continuous property values
             (default: "Viridis")
-        point_size (int): Size of the scatter plot points (default: 8)
+        marker_size (int): Size of the scatter plot points (default: 8)
         opacity (float): Opacity of the scatter plot points (default: 0.8)
-        show_chem_sys (bool): If True and no properties provided, color by chemical
-            system (default: True)
+        show_chem_sys (ShowChemSys | None): How to visualize chemical systems:
+            - "color": Color points by chemical system (if no properties)
+            - None: Don't use chemical system visualization
+            - "shape": Use different marker shapes for different chemical systems
+              (works best with ≤10 different chemical systems)
+            - "color+shape": Use both colors and shapes to distinguish chemical systems
+              (works best with ≤10 different chemical systems)
+            (default: "color")
         color_discrete_map (dict[str, ColorType] | None): Optional mapping of chemical
             systems to colors (default: None)
         embedding_kwargs (dict[str, Any] | None): Additional keyword arguments for the
@@ -201,15 +211,46 @@ def cluster_compositions(
 
     # Extract chemical systems if needed
     chem_systems = None
-    if properties is None and show_chem_sys:
+    uniq_chem_sys = set()
+    valid_symbols = []
+
+    if show_chem_sys in ("shape", "color", "color+shape"):
         chem_systems = []
+        symbol_filter = (
+            lambda x: isinstance(x, str)
+            and not x.isdigit()
+            and not x.endswith("-dot")
+            and "-open" not in x
+        )
         for comp_str in comp_strs:
-            if isinstance(comp_str, str):
-                # Extract element symbols
+            if isinstance(comp_str, str):  # Extract element symbols
                 comp = Composition(comp_str)
                 chem_systems.append("-".join(sorted(comp.chemical_system.split("-"))))
             else:
                 raise TypeError(f"Expected str, got {type(comp_str)} for {comp_str}")
+
+        uniq_chem_sys = set(chem_systems)
+
+        # Get valid symbols for the current plot type
+        if n_components == 3:
+            # For 3D plots, we need to use a more limited set of markers
+            all_symbols = Symbol3dValidator("symbol", "scatter3d.marker").values  # noqa: PD011
+            valid_symbols = list(filter(symbol_filter, all_symbols))
+        else:
+            # For 2D plots, we can use the full set of markers
+            all_symbols = SymbolValidator("symbol", "scatter.marker").values  # noqa: PD011
+            valid_symbols = list(filter(symbol_filter, all_symbols))
+
+        # Check if we have more unique systems than available symbols
+        if "shape" in show_chem_sys and len(uniq_chem_sys) > len(valid_symbols):
+            warnings.warn(
+                f"Number of unique chemical systems ({len(uniq_chem_sys)}) exceeds "
+                f"available marker symbols ({len(valid_symbols)}). Some systems will "
+                "use duplicate symbols. Recommended to set "
+                "show_chem_sys='color+shape' | False.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     # Create a DataFrame for plotting
     df_plot = pd.DataFrame()
@@ -224,7 +265,11 @@ def cluster_compositions(
         df_plot["PC2"] = projected[:, 1]
         df_plot["PC3"] = projected[:, 2]
 
-    # Add properties or chemical systems
+    # Add chemical systems if needed
+    if chem_systems is not None:
+        df_plot["chem_system"] = chem_systems
+
+    # Add properties or configure chemical system coloring
     prop_values: list[float] | None = None
     if properties is not None:
         if isinstance(properties, dict):
@@ -253,8 +298,8 @@ def cluster_compositions(
 
         df_plot[prop_name] = prop_values
         color_column = prop_name
-    elif chem_systems is not None:
-        df_plot["chem_system"] = chem_systems
+    elif chem_systems is not None and show_chem_sys in ("color", "color+shape"):
+        # Only color by chem_system for "color" or "color+shape" modes
         color_column = "chem_system"
     else:
         color_column = None
@@ -382,14 +427,50 @@ def cluster_compositions(
     if n_components == 3:
         plot_kwargs["z"] = "PC3"
 
-    if color_column is not None:
+    # Define helper functions to reduce redundancy
+    def create_shape_dataframe() -> pd.DataFrame:
+        """Create a dataframe for shape-based visualization."""
+        df_shape = pd.DataFrame()
+        df_shape["composition"] = df_plot["composition"]
+        df_shape["PC1"] = df_plot["PC1"]
+        df_shape["PC2"] = df_plot["PC2"]
+        if n_components == 3:
+            df_shape["PC3"] = df_plot["PC3"]
+        df_shape["hover_text"] = df_plot["hover_text"]
+        if chem_systems is not None:
+            df_shape["chem_system"] = chem_systems
+        # Add properties for coloring if available
         if prop_values is not None:
-            # Continuous colorscale for property values
-            plot_kwargs.update(
-                color=color_column, color_continuous_scale=heatmap_colorscale
-            )
-            fig = plot_func(df_plot, **plot_kwargs)
-            color_bar = dict(  # Update colorbar position and size
+            df_shape[color_column] = prop_values
+        return df_shape
+
+    def get_symbol_mapping() -> dict[str, str]:
+        """Create a mapping of chemical systems to symbols."""
+        return {
+            system: valid_symbols[idx % len(valid_symbols)]
+            for idx, system in enumerate(sorted(uniq_chem_sys))
+        }
+
+    def apply_symbol_mapping(fig: go.Figure, symbol_map: dict[str, str]) -> None:
+        """Apply symbol mapping to the figure based on the visualization mode."""
+        if prop_values is not None or show_chem_sys == "shape":
+            # For property-colored plots or shape mode, we have one trace with
+            # different symbols
+            symbols = [symbol_map[cs] for cs in chem_systems]
+            fig.data[0].marker.symbol = symbols
+        elif show_chem_sys == "color":  # For chemically colored plots without
+            # properties, we have one trace per chemical system
+            for trace in fig.data:
+                if hasattr(trace, "name") and trace.name in symbol_map:
+                    fig.update_traces(
+                        selector=dict(name=trace.name),
+                        marker=dict(symbol=symbol_map[trace.name]),
+                    )
+
+    def configure_colorbar(fig: go.Figure) -> None:
+        """Configure the colorbar for property-colored plots."""
+        if prop_values is not None:
+            color_bar = dict(
                 orientation="h",
                 yanchor="bottom",
                 y=0,
@@ -401,17 +482,114 @@ def cluster_compositions(
                 title_side="top",
             )
             fig.update_layout(coloraxis_colorbar=color_bar)
-        else:
-            # Discrete colors for chemical systems
-            plot_kwargs.update(
-                color=color_column, color_discrete_map=color_discrete_map
-            )
-            fig = plot_func(df_plot, **plot_kwargs)
-    else:
+            # Ensure colorbar has a title
+            if fig.layout.coloraxis.colorbar is not None:
+                fig.layout.coloraxis.colorbar.title = {"text": prop_name}
+
+    # Set up color mapping
+    def configure_color_options(kwargs: dict[str, Any]) -> None:
+        """Configure color options based on properties and chemical systems."""
+        if prop_values is not None:
+            kwargs.update(color=color_column, color_continuous_scale=heatmap_colorscale)
+        elif color_column is not None:
+            kwargs.update(color=color_column, color_discrete_map=color_discrete_map)
+
+    # Handle different visualization modes
+    if show_chem_sys == "shape":
+        # Create dataframe for shape-based visualization
+        df_shape = create_shape_dataframe()
+
+        # Set up plot kwargs
+        shape_kwargs = plot_kwargs.copy()
+
+        # Configure color options
+        configure_color_options(shape_kwargs)
+
+        # Create the figure with a single trace
+        fig = plot_func(df_shape, **shape_kwargs)
+
+        # Apply symbols
+        symbol_map = get_symbol_mapping()
+        apply_symbol_mapping(fig, symbol_map)
+
+        # Configure colorbar
+        configure_colorbar(fig)
+
+    elif show_chem_sys == "color+shape":
+        # For color+shape mode, we need to ensure a single trace with both color and
+        # shape info
+        df_shape = create_shape_dataframe()
+
+        # Set up plot kwargs without using color for grouping
+        shape_kwargs = plot_kwargs.copy()
+
+        # If we have properties, use them for coloring
+        if prop_values is not None:
+            shape_kwargs["color"] = color_column
+            shape_kwargs["color_continuous_scale"] = heatmap_colorscale
+
+        # Create the figure with a single trace
+        # Do not group by chem_system to avoid multiple traces
+        fig = plot_func(df_shape, **shape_kwargs)
+
+        # Apply the symbols
+        symbol_map = get_symbol_mapping()
+        symbols = [symbol_map[cs] for cs in chem_systems]
+        fig.data[0].marker.symbol = symbols
+
+        # If we don't have properties to color by, but need to color by chem system in
+        # one trace. We need to manually set the colors
+        if prop_values is None:
+            # Create a color mapping
+            color_map = color_discrete_map or {}
+            chem_sys_colors = []
+            for cs in chem_systems:
+                if cs in color_map:
+                    chem_sys_colors.append(color_map[cs])
+                else:
+                    # Use Plotly default colors if no custom map provided
+                    idx = sorted(uniq_chem_sys).index(cs)
+                    default_colors = [
+                        "#636EFA",
+                        "#EF553B",
+                        "#00CC96",
+                        "#AB63FA",
+                        "#FFA15A",
+                    ]
+                    chem_sys_colors.append(default_colors[idx % len(default_colors)])
+
+            # Set marker colors directly
+            fig.data[0].marker.color = chem_sys_colors
+
+        # Configure colorbar
+        configure_colorbar(fig)
+
+    elif show_chem_sys == "color":
+        # For color mode, we create a plot with color by chemical system
+        # Update plot kwargs
+        plot_kwargs.update(hover_data={"chem_system": True})
+
+        # Configure color options
+        configure_color_options(plot_kwargs)
+
+        # Create the figure
         fig = plot_func(df_plot, **plot_kwargs)
 
-    # Update marker size
-    fig.update_traces(marker_size=point_size)
+        # Configure colorbar for property coloring
+        configure_colorbar(fig)
+
+    else:
+        # No chemical system visualization
+        # Configure color options
+        configure_color_options(plot_kwargs)
+
+        # Create the figure
+        fig = plot_func(df_plot, **plot_kwargs)
+
+        # Configure colorbar for property coloring
+        configure_colorbar(fig)
+
+    fig.update_traces(marker_size=marker_size / 3 if n_components == 3 else marker_size)
 
     # Update hover template
     fig.update_traces(hovertemplate="%{customdata[1]}<extra></extra>")
