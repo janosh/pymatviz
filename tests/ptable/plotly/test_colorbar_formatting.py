@@ -96,8 +96,8 @@ def test_ptable_heatmap_splits_colorbar_formatting() -> None:
     dataset2_colorbars = get_dataset_colorbar_traces(fig, "Dataset 2")
 
     # Verify we have colorbars for both datasets
-    assert len(dataset1_colorbars) > 0, "No colorbar found for Dataset 1"
-    assert len(dataset2_colorbars) > 0, "No colorbar found for Dataset 2"
+    assert len(dataset1_colorbars) > 0
+    assert len(dataset2_colorbars) > 0
 
     # Verify that all colorbars use SI suffixes
     for trace in dataset1_colorbars + dataset2_colorbars:
@@ -214,8 +214,8 @@ def test_ptable_heatmap_splits_colorbar_si_formatting() -> None:
     dataset2_colorbars = get_dataset_colorbar_traces(fig, "Dataset 2")
 
     # Verify we have colorbars for both datasets
-    assert len(dataset1_colorbars) > 0, "No colorbar found for Dataset 1"
-    assert len(dataset2_colorbars) > 0, "No colorbar found for Dataset 2"
+    assert len(dataset1_colorbars) > 0
+    assert len(dataset2_colorbars) > 0
 
     # Verify that all colorbars use SI suffixes
     for trace in dataset1_colorbars + dataset2_colorbars:
@@ -269,7 +269,7 @@ def test_ptable_hists_log_scale_formatting() -> None:
 
     # Check that at least one x-axis has the SI suffixes
     si_formatted_axes_count = count_si_formatted_axes(fig, "xaxis")
-    assert si_formatted_axes_count > 0, "No x-axes found with SI suffixes"
+    assert si_formatted_axes_count > 0
 
 
 def test_ptable_scatter_log_scale_formatting() -> None:

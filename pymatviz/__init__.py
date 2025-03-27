@@ -20,6 +20,7 @@ from pymatviz import (
     bar,
     brillouin,
     classify,
+    cluster,
     colors,
     coordination,
     data,
@@ -44,6 +45,7 @@ from pymatviz import (
 from pymatviz.brillouin import brillouin_zone_3d
 from pymatviz.classify import precision_recall_curve_plotly, roc_curve_plotly
 from pymatviz.classify.confusion_matrix import confusion_matrix
+from pymatviz.cluster.composition import cluster_compositions
 from pymatviz.coordination import coordination_hist, coordination_vs_cutoff_line
 from pymatviz.enums import Key, angstrom_per_atom, cubic_angstrom, eV
 from pymatviz.histogram import elements_hist, histogram, spacegroup_bar
