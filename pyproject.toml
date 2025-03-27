@@ -51,14 +51,15 @@ make-assets = [
 ]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 test = [
-    "phonopy>=2.31",                                                  # only needed if user passes in phonopy objects
-    "pymatviz[auto-text-pos,df-pdf-export,df-svg-export,pdf-export]",
+    "phonopy>=2.31",                                                              # only needed if user passes in phonopy objects
+    "pymatviz[auto-text-pos, df-pdf-export, df-svg-export, pdf-export, cluster]",
     "pytest-cov>=6",
     "pytest-split>=0.9",
     "pytest>=8",
 ]
 brillouin = ["seekpath>=2.1"]
-cluster = ["matminer>=0.9", "umap-learn>=0.5"]
+cluster = ["matminer>=0.9"]
+umap = ["umap-learn>=0.5"]
 
 [tool.setuptools.packages.find]
 include = ["pymatviz*"]

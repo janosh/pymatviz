@@ -111,11 +111,8 @@ def process_dataset(
 
         # Cache the embeddings
         with gzip.open(cache_file, mode="wt") as file:
-            json.dump(
-                embeddings_dict,
-                file,
-                default=lambda x: x.tolist() if hasattr(x, "tolist") else x,
-            )
+            default_handler = lambda x: x.tolist() if hasattr(x, "tolist") else x
+            json.dump(embeddings_dict, file, default=default_handler)
 
     # Create plot with pre-computed embeddings
     fig = pmv.cluster_compositions(

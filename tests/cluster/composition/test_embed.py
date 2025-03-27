@@ -59,26 +59,6 @@ def test_one_hot_encode(
     assert result_custom[h2o_idx, o_idx] > 0
 
 
-def test_one_hot_encode_log_transform() -> None:
-    """Test log transform option in one-hot encoding."""
-    compositions = ["H2O", "CO2", "NaCl"]
-
-    # Test with log transform (without normalization)
-    result_log = one_hot_encode(compositions, log_transform=True, normalize=False)
-
-    # Test without log transform (without normalization)
-    result_no_log = one_hot_encode(compositions, log_transform=False, normalize=False)
-
-    # Check that the two results are different
-    assert not np.allclose(result_log, result_no_log)
-
-    # Check that log transform values are smaller (since log(1+x) < x for x > 0)
-    assert np.all(result_log <= result_no_log)
-
-    # Check that log transform preserves zeros
-    assert np.all((result_no_log == 0) == (result_log == 0))
-
-
 def test_one_hot_encode_pandas_input() -> None:
     """Test one-hot encoding with pandas Series input."""
     compositions = pd.Series(["H2O", "CO2", "NaCl"])

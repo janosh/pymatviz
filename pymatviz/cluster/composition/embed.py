@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 import pandas as pd
 import sklearn.preprocessing
-from pymatgen.core import Composition
-
-from pymatviz.utils import df_ptable
+from pymatgen.core import Composition, Element
 
 
 if TYPE_CHECKING:
@@ -111,7 +109,6 @@ def one_hot_encode(
     compositions: Sequence[str] | Sequence[Composition] | pd.Series,
     *,
     normalize: bool = True,
-    log_transform: bool = False,
     elements: Sequence[str] | None = None,
 ) -> np.ndarray:
     """One-hot encode chemical formulas or compositions.
@@ -121,11 +118,8 @@ def one_hot_encode(
             formulas as strings or pymatgen Composition objects.
         normalize (bool): Whether to normalize the feature vectors to unit norm
             (default: True)
-        log_transform (bool): If True, apply log(1+x) transformation to element
-            fractions (default: False)
-        elements (Sequence[str] | None): List of elements to consider. If None, all
-            elements in the periodic table will be used. (default: None)
-            table will be used. (default: None)
+        elements (Sequence[str] | None): Elements to include in the one-hot encoding.
+            If None (default), all elements in the periodic table will be used.
 
     Returns:
         np.ndarray: Array of shape (n_compositions, n_elements) with one-hot encoded
@@ -134,7 +128,7 @@ def one_hot_encode(
     """
     if elements is None:
         # All elements in the periodic table
-        elements = df_ptable.index.tolist()
+        elements = list(map(str, Element))
 
     # Convert compositions to pymatgen Composition objects
     comp_objs = [try_composition(comp) for comp in compositions]
@@ -154,10 +148,6 @@ def one_hot_encode(
                 element_idx = elements.index(element)
                 # Use the fractional composition as features
                 features[idx, element_idx] = fraction
-
-    # Apply log transform if requested
-    if log_transform:
-        features = np.log1p(features)  # log(1+x) to handle zeros
 
     # Normalize vectors if requested
     if normalize:

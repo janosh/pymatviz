@@ -131,7 +131,7 @@ if __name__ == "__main__":
             atomic_numbers = [*range(1, 85)]
             # atomic_numbers = [*range(1, 85), *range(89, 95)]
         else:
-            raise ValueError(f"Unknown model: {model_name}")
+            raise ValueError(f"Unknown {model_name=}")
 
         kwargs = dict(
             calculator=calculator,
