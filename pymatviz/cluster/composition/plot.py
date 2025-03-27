@@ -394,9 +394,11 @@ def cluster_compositions(
                 yanchor="bottom",
                 y=0,
                 xanchor="right",
-                x=0.7 if n_components == 3 else 0.99,
-                len=0.3,  # 30% of figure width
-                thickness=20 if n_components == 3 else 12,
+                x=0.99,
+                thickness=12,
+                len=350,
+                lenmode="pixels",
+                title_side="top",
             )
             fig.update_layout(coloraxis_colorbar=color_bar)
         else:
