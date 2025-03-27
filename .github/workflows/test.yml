@@ -64,4 +64,4 @@ jobs:
         uses: astral-sh/setup-uv@v2
 
       - name: Run script
-        run: uv run --with .[make-assets] ${{ matrix.example_script }}
+        run: uv run --with-editable .[make-assets] ${{ matrix.example_script }}
