@@ -19,11 +19,15 @@ from ase.units import GPa
 from emmet.core.elasticity import ElasticityDoc
 from mace.calculators import mace_mp
 from matcalc.elasticity import ElasticityCalc
-from mp_api.client import MPRester
 from tqdm import tqdm
 
 import pymatviz as pmv
 
+
+try:
+    from mp_api.client import MPRester
+except ImportError:
+    raise SystemExit(0) from None
 
 pmv.set_plotly_template("pymatviz_white")
 checkpoint = "https://github.com/ACEsuit/mace-mp/releases/download/mace_matpes_0/MACE-matpes-pbe-omat-ft.model"

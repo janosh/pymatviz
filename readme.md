@@ -102,23 +102,6 @@ See [`examples/mlff_phonons.ipynb`](https://github.com/janosh/pymatviz/blob/main
 
 ### Composition Clustering
 
-Visualize 2D or 3D relationships between compositions and properties using multiple embedding and dimensionality reduction techniques:
-
-Embedding methods:
-
-- One-hot encoding of element fractions
-- Magpie features (elemental properties)
-- Matscholar element embeddings
-- MEGNet element embeddings
-
-Dimensionality reduction methods:
-
-- PCA (linear)
-- t-SNE (non-linear)
-- UMAP (non-linear)
-- Isomap (non-linear)
-- Kernel PCA (non-linear)
-
 | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](assets/scripts/cluster/composition/cluster_compositions_matbench.py) |
 | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                    ![matbench-perovskites-magpie-pca-2d]                                                                     |                                                                    ![matbench-perovskites-magpie-tsne-3d]                                                                    |
@@ -126,16 +109,21 @@ Dimensionality reduction methods:
 [matbench-perovskites-magpie-pca-2d]: assets/svg/matbench-perovskites-magpie-pca-2d.svg
 [matbench-perovskites-magpie-tsne-3d]: assets/svg/matbench-perovskites-magpie-tsne-3d.svg
 
+Visualize 2D or 3D relationships between compositions and properties using multiple embedding and dimensionality reduction techniques:
+
+Embedding methods: **One-hot** encoding of element fractions, **Magpie** features (elemental properties), **Matscholar** element embeddings, **MEGNet** element embeddings
+
+Dimensionality reduction methods: **PCA** (linear), **t-SNE** (non-linear), **UMAP** (non-linear), **Isomap** (non-linear), **Kernel PCA** (non-linear)
+
 Example usage:
 
-```python
+```py
 import pymatviz as pmv
 from pymatgen.core import Composition
 
-# Example compositions
 compositions = ("Fe2O3", "Al2O3", "SiO2", "TiO2")
 
-# Create embeddings (one-hot encoding)
+# Create embeddings
 embeddings = pmv.cluster.composition.one_hot_encode(compositions)
 comp_emb_map = dict(zip(compositions, embeddings, strict=True))
 
@@ -146,6 +134,7 @@ fig = pmv.cluster_compositions(
     prop_name="Property",  # Optional property label
     embedding_method="one-hot",  # or "magpie", "matscholar_el", "megnet_el", etc.
     projection_method="pca",  # or "tsne", "umap", "isomap", "kernel_pca", etc.
+    show_chem_sys="shape",  # works best for small number of compositions; "color" | "shape" | "color+shape" | None
     n_components=2,  # or 3 for 3D plots
 )
 fig.show()

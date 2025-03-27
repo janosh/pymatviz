@@ -4,7 +4,6 @@ from typing import cast
 
 import matplotlib.pyplot as plt
 from matminer.datasets import load_dataset
-from mp_api.client import MPRester
 from pymatgen.core import Structure
 
 import pymatviz as pmv
@@ -29,7 +28,7 @@ fig.suptitle(title, fontweight="bold", fontsize=20)
 fig.show()
 
 
-# %% Plot some disordered structures in 2D
+# %% 2D plots of disordered structures
 struct_mp_ids = ("mp-19017", "mp-12712")
 structure_dir = f"{TEST_FILES}/structures"
 
@@ -41,6 +40,7 @@ for mp_id in struct_mp_ids:
             raise FileNotFoundError(
                 f"structure for {mp_id} not found, run this script locally to fetch it."
             )
+        from mp_api.client import MPRester
 
         struct: Structure = MPRester().get_structure_by_material_id(
             mp_id, conventional_unit_cell=True

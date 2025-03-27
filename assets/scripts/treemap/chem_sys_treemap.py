@@ -35,7 +35,7 @@ for group_by in ("formula", "reduced_formula", "chem_sys"):
 
 
 # %% Load the Ward metallic glass dataset https://pubs.acs.org/doi/10.1021/acs.chemmater.6b04153
-csv_path = f"{ROOT}/examples/dataset_exploration/ward_metallic_glasses/ward-metallic-glasses.csv.xz"  # noqa: E501
+csv_path = f"{ROOT}/examples/ward_metallic_glasses/ward-metallic-glasses.csv.xz"
 df_mg = pd.read_csv(csv_path, na_values=()).query("comment.isna()")
 
 fig = pmv.chem_sys_treemap(
