@@ -326,7 +326,7 @@ def test_density_scatter_plotly_facet_best_fit_line() -> None:
 
     # Check there are annotations for the best fit lines
     best_fit_annotations = [
-        anno for anno in fig.layout.annotations if "LS fit: y =" in str(anno.text)
+        anno for anno in fig.layout.annotations if "LS fit: y =" in anno.text
     ]
     # Should have one annotation per facet
     assert len(best_fit_annotations) == 2
