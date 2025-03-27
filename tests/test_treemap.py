@@ -418,7 +418,7 @@ def test_chem_sys_treemap_other_entries_styling() -> None:
     ]
 
     # Verify that we have at least one "Other" entry
-    assert len(other_indices) > 0, "No 'Other' entries found with max_cells=3"
+    assert len(other_indices) > 0
 
     # Verify that marker.colors is set
     assert hasattr(fig.data[0], "marker"), "Figure data has no marker attribute"
