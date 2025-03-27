@@ -3,6 +3,13 @@
 Resulting plots are colored by target property of each dataset.
 """
 
+# /// script
+# dependencies = [
+#     "matminer>=0.9.1",
+#     "umap-learn>=0.5",
+# ]
+# ///
+
 from __future__ import annotations
 
 import gzip

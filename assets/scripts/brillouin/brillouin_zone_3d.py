@@ -1,3 +1,10 @@
+# /// script
+# dependencies = [
+#     "seekpath>=2.1",
+# ]
+# ///
+
+
 # %%
 from glob import glob
 

@@ -5,7 +5,7 @@ import pandas as pd
 import pymatviz as pmv
 
 
-pmv.set_plotly_template("pymatviz_dark")
+pmv.set_plotly_template("pymatviz_white")
 
 # Random classification data
 np_rng = np.random.default_rng(seed=0)

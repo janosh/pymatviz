@@ -44,11 +44,7 @@ df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
 # https://github.com/plotly/Kaleido/issues/176
 pdf-export = ["kaleido>=0.2.1"]
-make-assets = [
-    "matminer>=0.9",
-    "mp_api>=0.42",
-    "pymatviz[pdf-export, brillouin]",
-]
+make-assets = ["matminer>=0.9"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 test = [
     "phonopy>=2.31",                                                              # only needed if user passes in phonopy objects
@@ -59,6 +55,7 @@ test = [
 ]
 brillouin = ["seekpath>=2.1"]
 cluster = ["matminer>=0.9"]
+# umap-learn not included in cluster because its numba dep clashes with other packages
 umap = ["umap-learn>=0.5"]
 
 [tool.setuptools.packages.find]
