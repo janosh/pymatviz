@@ -412,7 +412,7 @@ def cluster_compositions(
         fig = plot_func(df_plot, **plot_kwargs)
 
     # Update marker size
-    fig.update_traces(marker=dict(size=point_size))
+    fig.update_traces(marker_size=point_size)
 
     # Update hover template
     fig.update_traces(hovertemplate="%{customdata[1]}<extra></extra>")
@@ -435,13 +435,9 @@ def cluster_compositions(
         fig.layout.xaxis.title = f"{method_label} 1"
         fig.layout.yaxis.title = f"{method_label} 2"
     else:
-        fig.update_layout(
-            scene=dict(
-                xaxis_title=f"{method_label} 1",
-                yaxis_title=f"{method_label} 2",
-                zaxis_title=f"{method_label} 3",
-            )
-        )
+        fig.layout.scene.xaxis.title = f"{method_label} 1"
+        fig.layout.scene.yaxis.title = f"{method_label} 2"
+        fig.layout.scene.zaxis.title = f"{method_label} 3"
 
     # Add projection stats annotation if available
     if projection_stats is not None:

@@ -270,13 +270,18 @@ def test_projection_stats_invalid_type(
 
 
 @pytest.mark.parametrize(
-    ("embedding_method", "projection_method", "expected_shape"),
+    ("embedding_method", "projection_method", "expected_shape", "expected_labels"),
     [
-        ("magpie", "pca", (3,)),
-        ("one-hot", "tsne", (3,)),
-        ("deml", "pca", (3,)),
-        ("matminer", "isomap", (3,)),
-        ("matscholar_el", "kernel_pca", (3,)),
+        ("magpie", "pca", (3,), ("Principal Component", "Principal Component")),
+        ("one-hot", "tsne", (3,), ("t-SNE Component", "t-SNE Component")),
+        ("deml", "pca", (3,), ("Principal Component", "Principal Component")),
+        ("matminer", "isomap", (3,), ("Isomap Component", "Isomap Component")),
+        (
+            "matscholar_el",
+            "kernel_pca",
+            (3,),
+            ("Kernel PCA Component", "Kernel PCA Component"),
+        ),
     ],
 )
 def test_cluster_compositions_methods(
@@ -285,6 +290,7 @@ def test_cluster_compositions_methods(
     embedding_method: str,
     projection_method: str,
     expected_shape: tuple[int, ...],
+    expected_labels: tuple[str, str],
 ) -> None:
     """Test different combinations of embedding and projection methods."""
     # Skip UMAP test if not installed
@@ -305,21 +311,51 @@ def test_cluster_compositions_methods(
     elif projection_method == "kernel_pca":
         projection_kwargs = {"kernel": "rbf", "gamma": 0.1}
 
-    fig = pmv.cluster_compositions(
+    # Test 2D projection
+    fig_2d = pmv.cluster_compositions(
         sample_compositions,
         properties=sample_properties,
         prop_name="property",
         embedding_method=embedding_method,  # type: ignore[arg-type]
         projection_method=projection_method,  # type: ignore[arg-type]
         projection_kwargs=projection_kwargs,
+        n_components=2,
     )
 
     # Check that we got a valid figure
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) == 1
-    assert fig.data[0].type == "scatter"
-    assert fig.data[0].x.shape == expected_shape
-    assert fig.data[0].y.shape == expected_shape
+    assert isinstance(fig_2d, go.Figure)
+    assert len(fig_2d.data) == 1
+    assert fig_2d.data[0].type == "scatter"
+    assert fig_2d.data[0].x.shape == expected_shape
+    assert fig_2d.data[0].y.shape == expected_shape
+
+    # Check axis labels
+    assert fig_2d.layout.xaxis.title.text == f"{expected_labels[0]} 1"
+    assert fig_2d.layout.yaxis.title.text == f"{expected_labels[1]} 2"
+
+    # Test 3D projection
+    fig_3d = pmv.cluster_compositions(
+        sample_compositions,
+        properties=sample_properties,
+        prop_name="property",
+        embedding_method=embedding_method,  # type: ignore[arg-type]
+        projection_method=projection_method,  # type: ignore[arg-type]
+        projection_kwargs=projection_kwargs,
+        n_components=3,
+    )
+
+    # Check that we got a valid figure
+    assert isinstance(fig_3d, go.Figure)
+    assert len(fig_3d.data) == 1
+    assert fig_3d.data[0].type == "scatter3d"
+    assert fig_3d.data[0].x.shape == expected_shape
+    assert fig_3d.data[0].y.shape == expected_shape
+    assert fig_3d.data[0].z.shape == expected_shape
+
+    # Check 3D axis labels
+    assert fig_3d.layout.scene.xaxis.title.text == f"{expected_labels[0]} 1"
+    assert fig_3d.layout.scene.yaxis.title.text == f"{expected_labels[1]} 2"
+    assert fig_3d.layout.scene.zaxis.title.text == f"{expected_labels[0]} 3"
 
 
 def test_cluster_compositions_custom_embedding(
@@ -547,3 +583,119 @@ def test_precomputed_embeddings_with_chemical_systems(
     assert fig.data[0].x.shape == (1,)
     assert fig.data[0].y.shape == (1,)
     assert fig.data[0].marker.color == "#636efa"
+
+
+def test_precomputed_embeddings_3d(
+    sample_compositions: list[Composition],
+    sample_properties: np.ndarray,
+) -> None:
+    """Test pre-computed embeddings with 3D projections and different property types."""
+    # Create pre-computed embeddings with 10 dimensions
+    embeddings = {str(comp.formula): np_rng.random(10) for comp in sample_compositions}
+
+    # Test with array properties
+    fig_array = pmv.cluster_compositions(
+        compositions=embeddings,
+        properties=sample_properties,
+        prop_name="Test Property",
+        projection_method="pca",
+        n_components=3,
+    )
+
+    # Basic figure checks
+    assert isinstance(fig_array, go.Figure)
+    assert len(fig_array.data) == 1
+    assert fig_array.data[0].type == "scatter3d"
+
+    # Check data shapes
+    for dim in "xyz":
+        assert getattr(fig_array.data[0], dim).shape == (3,)
+
+    # Check axis labels
+    assert fig_array.layout.scene.xaxis.title.text == "Principal Component 1"
+    assert fig_array.layout.scene.yaxis.title.text == "Principal Component 2"
+    assert fig_array.layout.scene.zaxis.title.text == "Principal Component 3"
+
+    # Check hover data
+    hover_text = fig_array.data[0].customdata[0][1]  # Get first hover text
+    assert hover_text.startswith("Composition:")
+    for word in "PC1", "PC2", "PC3", "Test Property":
+        assert f"<br>{word}" in hover_text
+
+    # Check property coloring
+    assert fig_array.data[0].marker.color is not None
+    assert len(fig_array.data[0].marker.color) == 3
+    # Check colorbar
+    assert fig_array.layout.coloraxis is not None
+    assert fig_array.layout.coloraxis.colorbar.title.text == "Test Property"
+
+    # Test with dictionary properties
+    properties_dict = {
+        str(comp.formula): val
+        for comp, val in zip(sample_compositions, sample_properties, strict=False)
+    }
+    fig_dict = pmv.cluster_compositions(
+        compositions=embeddings,
+        properties=properties_dict,
+        prop_name="Test Property",
+        projection_method="pca",
+        n_components=3,
+    )
+    assert isinstance(fig_dict, go.Figure)
+    assert len(fig_dict.data) == 1
+    assert fig_dict.data[0].type == "scatter3d"
+    for dim in "xyz":
+        assert getattr(fig_dict.data[0], dim).shape == (3,)
+
+    # Test with pandas Series properties
+    properties_series = pd.Series(
+        sample_properties,
+        index=[str(comp.formula) for comp in sample_compositions],
+    )
+    fig_series = pmv.cluster_compositions(
+        compositions=embeddings,
+        properties=properties_series,
+        prop_name="Test Property",
+        projection_method="pca",
+        n_components=3,
+    )
+    assert isinstance(fig_series, go.Figure)
+    assert len(fig_series.data) == 1
+    assert fig_series.data[0].type == "scatter3d"
+    for dim in "xyz":
+        assert getattr(fig_series.data[0], dim).shape == (3,)
+
+    # Test without properties (chemical system coloring)
+    fig_no_props = pmv.cluster_compositions(
+        compositions=embeddings,
+        projection_method="pca",
+        n_components=3,
+        show_chem_sys=True,
+    )
+    assert isinstance(fig_no_props, go.Figure)
+    # With chemical system coloring, we get one trace per system
+    assert len(fig_no_props.data) == 3
+    for trace in fig_no_props.data:
+        assert trace.type == "scatter3d"
+        for dim in "xyz":
+            assert getattr(trace, dim).shape == (1,)  # One point per chemical system
+        # Check hover data
+        hover_text = trace.customdata[0][1]
+        assert hover_text.startswith("Composition:")
+        for word in "PC1", "PC2", "PC3", "Chemical System":
+            assert f"<br>{word}" in hover_text
+
+    # Test with custom projection kwargs
+    fig_custom = pmv.cluster_compositions(
+        compositions=embeddings,
+        properties=sample_properties,
+        prop_name="Test Property",
+        projection_method="pca",
+        n_components=3,
+        projection_kwargs={"random_state": 42},
+    )
+    assert isinstance(fig_custom, go.Figure)
+    assert len(fig_custom.data) == 1
+    assert fig_custom.data[0].type == "scatter3d"
+    for dim in "xyz":
+        assert getattr(fig_custom.data[0], dim).shape == (3,)
