@@ -7,8 +7,13 @@ structural:
     label: Structure
   init_struct:
     label: Initial Structure
+    description: Initial (unrelaxed) structure of the material
+  initial_struct:
+    label: Initial Structure
+    description: Initial (unrelaxed) structure of the material
   final_struct:
     label: Final Structure
+    description: Final (relaxed) structure of the material
   cell:
     label: Cell
   lattice:
@@ -318,6 +323,16 @@ thermodynamic:
     label: Formation Energy
     symbol: E<sub>form</sub>/N<sub>atoms</sub>
     unit: eV/atom
+  formation_energy:
+    label: Formation Energy
+    symbol: E<sub>form</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+    description: Formation energy per atom relative to constituent element reference states
+  formation_energy_per_atom:
+    label: Formation Energy
+    symbol: E<sub>form</sub>/N<sub>atoms</sub>
+    unit: eV/atom
+    description: Formation energy per atom relative to constituent element reference states
   computed_structure_entry:
     label: Computed Structure Entry
     symbol: CSE
