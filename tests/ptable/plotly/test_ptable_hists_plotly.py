@@ -37,7 +37,7 @@ def test_ptable_hists_plotly_basic(
     )
     assert isinstance(fig, go.Figure)
     # Count only histogram traces (exclude colorbar trace)
-    n_hist_traces = sum(1 for trace in fig.data if isinstance(trace, go.Histogram))
+    n_hist_traces = sum(isinstance(trace, go.Histogram) for trace in fig.data)
     n_elements = len(elem_data if isinstance(elem_data, dict) else elem_data.columns)
     assert n_hist_traces == n_elements
 
