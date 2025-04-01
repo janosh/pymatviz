@@ -18,6 +18,9 @@ except ImportError:
     raise SystemExit(0) from None  # need atomate2 for MontyDecoder to load PhononDBDoc
 
 
+pmv.set_plotly_template("pymatviz_white")
+
+
 # %% Plot phonon bands and DOS
 for mp_id, formula in (
     ("mp-2758", "Sr4Se4"),

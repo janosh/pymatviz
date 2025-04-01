@@ -62,7 +62,7 @@ def process_dataset(
     target_col: str,
     target_label: str,
     embed_method: EmbeddingMethod,
-    projection_method: ProjectionMethod,
+    projection: ProjectionMethod,
     n_components: int,
 ) -> go.Figure:
     """Process a single dataset and create clustering visualizations.
@@ -72,7 +72,7 @@ def process_dataset(
         target_col (str): Name of the target property column
         target_label (str): Display label for the property
         embed_method (EmbeddingMethod): Method to convert compositions to vectors
-        projection_method (ProjectionMethod): Method to reduce dimensionality
+        projection (ProjectionMethod): Method to reduce dimensionality
         n_components (int): Number of dimensions for projection (2 or 3)
 
     Returns:
@@ -121,12 +121,18 @@ def process_dataset(
             default_handler = lambda x: x.tolist() if hasattr(x, "tolist") else x
             json.dump(embeddings_dict, file, default=default_handler)
 
-    # Create plot with pre-computed embeddings
+    df_plot = pd.DataFrame({"composition": compositions})
+    df_plot[target_label] = properties
+
+    if "embeddings" not in df_plot:
+        df_plot["embeddings"] = [embeddings_dict.get(comp) for comp in compositions]
+
     fig = pmv.cluster_compositions(
-        compositions=embeddings_dict,
-        properties=dict(zip(compositions, properties, strict=True)),
+        df=df_plot,
+        composition_col="composition",
         prop_name=target_label,
-        projection_method=projection_method,
+        embedding_method="embeddings",
+        projection=projection,
         n_components=n_components,
         marker_size=8,
         opacity=0.8,
@@ -136,7 +142,7 @@ def process_dataset(
     )
 
     # Update title and margins
-    title = f"{dataset_name} - {embed_method} + {projection_method} ({n_components}D)"
+    title = f"{dataset_name} - {embed_method} + {projection} ({n_components}D)"
     fig.layout.update(title=dict(text=title, x=0.5), margin_t=50)
     # format compositions and coordinates in hover tooltip
     custom_data = [
@@ -146,9 +152,9 @@ def process_dataset(
     fig.update_traces(
         hovertemplate=(
             "%{customdata[0]}<br>"  # Formatted composition
-            f"{projection_method} 1: %{{x:.2f}}<br>"  # First projection coordinate
-            f"{projection_method} 2: %{{y:.2f}}<br>"  # Second projection coordinate
-            + (f"{projection_method} 3: %{{z:.2f}}<br>" if n_components == 3 else "")
+            f"{projection} 1: %{{x:.2f}}<br>"  # First projection coordinate
+            f"{projection} 2: %{{y:.2f}}<br>"  # Second projection coordinate
+            + (f"{projection} 3: %{{z:.2f}}<br>" if n_components == 3 else "")
             + f"{target_label}: %{{marker.color:.2f}}"  # Property value
         ),
         customdata=custom_data,
@@ -203,7 +209,7 @@ for (
         target_col=target_col,
         target_label=target_label,
         embed_method=embed_method,
-        projection_method=proj_method,
+        projection=proj_method,
         n_components=n_components,
     )
     fig.update_layout(coloraxis_colorbar=cbar_args)
