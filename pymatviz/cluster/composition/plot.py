@@ -194,17 +194,13 @@ def _generate_colorbar_ticks(
             transform_func = lambda x: np.arcsinh(x / scale_factor) * scale_factor
 
         # Generate nice tick values based on data range
-        tick_vals = []
-        tick_text = []
-
+        tick_vals, tick_text = [], []
         # Create preferred tick vals: include +ve and -ve in 1,2,5 sequence
-        pos_ticks = []
-        neg_ticks = []
+        pos_ticks, neg_ticks = [], []
         zero_tick = False
 
         # Determine max exponent needed for both positive and negative sides
-        pos_exp_max = -float("inf")
-        neg_exp_max = -float("inf")
+        pos_exp_max = neg_exp_max = -float("inf")
 
         if max_val > 0:
             pos_exp_max = math.ceil(math.log10(max_val))
