@@ -433,10 +433,10 @@ def cluster_compositions(
 
     Returns:
         go.Figure: Plotly figure object with embeddings and projection object in
-            '_pymatviz_meta' attribute:
-            - fig._pymatviz_meta["projector"]: Fitted projection object
+            '_pymatviz' attribute:
+            - fig._pymatviz["projector"]: Fitted projection object
               (PCA, TSNE, etc.) or None for custom projection functions
-            - fig._pymatviz_meta["embeddings"]: Embeddings used for projection
+            - fig._pymatviz["embeddings"]: Embeddings used for projection
     """
     if n_components not in (2, 3):  # Validate inputs
         raise ValueError(f"{n_components=} must be 2 or 3")
@@ -1053,8 +1053,8 @@ def cluster_compositions(
 
     # Attach projector and embeddings as metadata dict
     # since Plotly doesn't allow arbitrary attributes on Figures
-    fig._pymatviz_meta = {"projector": projector}
+    fig._pymatviz = {"projector": projector}
     if embeddings is not None:
-        fig._pymatviz_meta["embeddings"] = embeddings
+        fig._pymatviz["embeddings"] = embeddings
 
     return fig
