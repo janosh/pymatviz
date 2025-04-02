@@ -179,19 +179,19 @@ def test_ptable_heatmap_log_scale_formatting() -> None:
     )
 
     # Verify that tick labels use SI suffixes
-    ticktext = colorbar_trace.colorbar.ticktext
+    tick_text = colorbar_trace.colorbar.ticktext
 
     # More specific assertions about the expected tick labels
-    assert "100" in ticktext, "Missing '100' in tick labels"
-    assert any(t.endswith("k") for t in ticktext), (
+    assert "100" in tick_text, "Missing '100' in tick labels"
+    assert any(tt.endswith("k") for tt in tick_text), (
         "No 'k' (kilo) prefix found in tick labels"
     )
-    assert any(t.endswith("M") for t in ticktext), (
+    assert any(tt.endswith("M") for tt in tick_text), (
         "No 'M' (mega) prefix found in tick labels"
     )
 
     # Verify no scientific notation in tick labels
-    assert not any("e+" in str(t) for t in ticktext), (
+    assert not any("e+" in str(tt) for tt in tick_text), (
         "Scientific notation found in tick labels"
     )
 

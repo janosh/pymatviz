@@ -150,13 +150,6 @@ def ptable_heatmap_plotly(
     Returns:
         Figure: Plotly Figure object.
     """
-    if "color_bar" in kwargs:
-        warnings.warn(
-            "color_bar is deprecated, use colorbar instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        kwargs["colorbar"] = kwargs.pop("color_bar")
     if log and heat_mode in ("fraction", "percent"):
         raise ValueError(
             "Combining log color scale and heat_mode='fraction'/'percent' unsupported"

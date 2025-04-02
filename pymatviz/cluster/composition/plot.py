@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 import warnings
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Final, Literal, get_args
 
 import numpy as np
@@ -27,6 +29,7 @@ EmbeddingMethod = Literal[
 ]
 ProjectionMethod = Literal["pca", "tsne", "umap", "isomap", "kernel_pca"]
 ShowChemSys = Literal["color", "shape", "color+shape"]
+ColorScale = Literal["linear", "log", "arcsinh"]
 # Method labels for hover tooltips and axis labels
 method_labels: Final[dict[ProjectionMethod, str]] = {
     "pca": "Principal Component",
@@ -35,6 +38,276 @@ method_labels: Final[dict[ProjectionMethod, str]] = {
     "isomap": "Isomap Component",
     "kernel_pca": "Kernel PCA Component",
 }
+
+
+def _generate_colorbar_ticks(
+    color_scale: ColorScale | dict[str, Any], df_plot: pd.DataFrame
+) -> tuple[list[float] | None, list[str] | None]:
+    """Generate custom tick values and text for color bars.
+
+    Args:
+        color_scale: The color scale type ("linear", "log", "arcsinh") or a dictionary
+            with custom scale configuration.
+        df_plot: DataFrame containing plot data with property values.
+
+    Returns:
+        tuple: (tick_vals, tick_text) - lists of tick values and their label texts.
+            Both can be None if no custom ticks are needed.
+    """
+    if color_scale in ("linear", "color"):
+        return None, None
+
+    # Create custom ticks that reflect the original data values
+    if color_scale == "log" or (
+        isinstance(color_scale, dict) and color_scale["type"] == "log"
+    ):
+        # For log scale, generate ticks at powers of 10
+        min_val = min(val for val in df_plot["original_property"] if val > 0)
+        max_val = max(val for val in df_plot["original_property"] if val > 0)
+
+        # Find appropriate powers of 10 for the range
+        min_exp = math.floor(math.log10(min_val))
+        max_exp = math.ceil(math.log10(max_val))
+
+        tick_vals = []
+        tick_text = []
+
+        # Create a list of preferred tick values (1, 2, 5 sequence)
+        preferred_ticks = []
+        for exp in range(min_exp - 1, max_exp + 2):  # Extend range slightly
+            preferred_ticks.extend([10**exp, 2 * 10**exp, 5 * 10**exp])
+
+        # Filter to values within or slightly outside our data range
+        preferred_ticks = [
+            val for val in preferred_ticks if min_val / 2 <= val <= max_val * 2
+        ]
+        preferred_ticks.sort()
+
+        # If we have fewer than 5 ticks, add intermediate values
+        if len(preferred_ticks) < 5:
+            extra_ticks = []
+            for exp in range(min_exp - 1, max_exp + 1):
+                extra_ticks += [
+                    1.5 * 10**exp,
+                    3 * 10**exp,
+                    4 * 10**exp,
+                    6 * 10**exp,
+                    7 * 10**exp,
+                    8 * 10**exp,
+                    9 * 10**exp,
+                ]
+
+            extra_ticks = [
+                val for val in extra_ticks if min_val / 2 <= val <= max_val * 2
+            ]
+
+            # Combine and sort all ticks
+            preferred_ticks = sorted(preferred_ticks + extra_ticks)
+
+        # If we still don't have enough ticks, include all values
+        if len(preferred_ticks) < 5:
+            # Add more values as needed
+            more_ticks = []
+            for exp in range(min_exp - 1, max_exp + 1):
+                more_ticks += [val * 10**exp for val in range(1, 10)]
+
+            more_ticks = [
+                val
+                for val in more_ticks
+                if min_val / 2 <= val <= max_val * 2 and val not in preferred_ticks
+            ]
+
+            preferred_ticks = sorted(preferred_ticks + more_ticks)
+
+        # If we have too many ticks, trim to a reasonable number
+        if len(preferred_ticks) > 10:
+            # Use a step size to reduce number of ticks
+            step = len(preferred_ticks) // 8  # Aim for around 8 ticks
+            preferred_ticks = preferred_ticks[::step]
+
+            # Make sure we include min and max values
+            if preferred_ticks[0] > min_val:
+                preferred_ticks.insert(0, min_val)
+            if preferred_ticks[-1] < max_val:
+                preferred_ticks.append(max_val)
+
+        # Create tick values and labels
+        for val in preferred_ticks:
+            tick_vals.append(math.log10(val))
+
+            # Format tick text nicely
+            if val >= 1e4 or val <= 1e-3:
+                # Use scientific notation for very large/small numbers
+                exp = math.floor(math.log10(val))
+                mantissa = val / 10**exp
+                if mantissa == 1:
+                    tick_text.append(f"10^{exp}")
+                else:
+                    tick_text.append(f"{mantissa:.1f}x10^{exp}")
+            # Use decimal notation for typical values
+            elif val >= 100:
+                # For whole numbers, use integer formatting
+                if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
+                    tick_text.append(f"{round(val)}")
+                else:
+                    tick_text.append(f"{val:.0f}")
+            elif val >= 10:
+                # For whole numbers, use integer formatting
+                if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
+                    tick_text.append(f"{round(val)}")
+                else:
+                    tick_text.append(f"{val:.1f}")
+            # For whole numbers, use integer formatting
+            elif math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
+                tick_text.append(f"{round(val)}")
+            else:
+                tick_text.append(f"{val:.2f}")
+
+        return tick_vals, tick_text
+
+    if color_scale == "arcsinh" or (
+        isinstance(color_scale, dict) and color_scale["type"] == "arcsinh"
+    ):
+        # For arcsinh scale, generate ticks that match the original data values
+        min_val = min(df_plot["original_property"])
+        max_val = max(df_plot["original_property"])
+
+        # Get arcsinh configuration
+        if isinstance(color_scale, dict):
+            scale_factor = color_scale.get("scale_factor", 2.0)
+            lin_thresh = color_scale.get("lin_thresh", None)
+            lin_scale = color_scale.get("lin_scale", None)
+
+            if lin_thresh is not None and lin_scale is not None:
+                # Custom arcsinh transformation function
+                transform_func = (
+                    lambda x: np.arcsinh((x * lin_scale) / lin_thresh)
+                    * lin_thresh
+                    / scale_factor
+                )
+            else:
+                # Simple arcsinh with scale factor
+                transform_func = lambda x: np.arcsinh(x / scale_factor) * scale_factor
+        else:
+            # Default arcsinh transformation
+            scale_factor = 2.0
+            transform_func = lambda x: np.arcsinh(x / scale_factor) * scale_factor
+
+        # Generate nice tick values based on data range
+        tick_vals, tick_text = [], []
+        # Create preferred tick vals: include +ve and -ve in 1,2,5 sequence
+        pos_ticks, neg_ticks = [], []
+        zero_tick = False
+
+        # Determine max exponent needed for both positive and negative sides
+        pos_exp_max = neg_exp_max = -float("inf")
+
+        if max_val > 0:
+            pos_exp_max = math.ceil(math.log10(max_val))
+        if min_val < 0:
+            neg_exp_max = math.ceil(math.log10(-min_val))
+
+        # Create all possible tick values in 1,2,5 sequence
+        exp_range = max(pos_exp_max, neg_exp_max) + 1
+
+        # Build positive ticks
+        if max_val > 0:  # Start from 0.001
+            for exp in range(-3, round(exp_range)):
+                for base in [1, 2, 5]:
+                    val = base * 10**exp
+                    if 0 < val <= max_val * 1.1:
+                        pos_ticks.append(val)
+
+        # Build negative ticks
+        if min_val < 0:  # Start from -0.001
+            for exp in range(-3, round(exp_range)):
+                for base in [1, 2, 5]:
+                    val = -base * 10**exp
+                    if min_val * 1.1 <= val < 0:
+                        neg_ticks.append(val)
+
+        # Include zero if the range crosses it
+        if min_val <= 0 <= max_val:
+            zero_tick = True
+
+        # Combine all ticks
+        all_ticks = sorted(neg_ticks + ([0] if zero_tick else []) + pos_ticks)
+
+        # If we have less than 5 ticks, add more intermediate values
+        if len(all_ticks) < 5:
+            extra_ticks = []
+
+            if max_val > 0:
+                for exp in range(-3, round(exp_range)):
+                    for base in (3, 4, 6, 7, 8, 9):
+                        val = base * 10**exp
+                        if 0 < val <= max_val * 1.1:
+                            extra_ticks.append(val)
+
+            if min_val < 0:
+                for exp in range(-3, round(exp_range)):
+                    for base in (3, 4, 6, 7, 8, 9):
+                        val = -base * 10**exp
+                        if min_val * 1.1 <= val < 0:
+                            extra_ticks.append(val)
+
+            all_ticks = sorted(all_ticks + extra_ticks)
+
+        # If we have too many ticks, reduce them
+        if len(all_ticks) > 10:
+            # Use a step size to reduce number of ticks
+            step = len(all_ticks) // 8  # Aim for around 8 ticks
+            reduced_ticks = all_ticks[::step]
+
+            # Make sure we include zero if in range
+            if min_val <= 0 <= max_val and 0 not in reduced_ticks:
+                # Find the index where 0 would be inserted to maintain order
+                for i, val in enumerate(reduced_ticks):
+                    if val > 0:
+                        reduced_ticks.insert(i, 0)
+                        break
+                else:
+                    reduced_ticks.append(0)
+
+            all_ticks = reduced_ticks
+
+        # Transform ticks and format labels
+        for val in all_ticks:
+            tick_vals.append(transform_func(val))
+
+            # Format tick text nicely
+            if val == 0:
+                tick_text.append("0")
+            elif abs(val) >= 1e4 or abs(val) <= 1e-3:
+                # Use scientific notation for very large/small numbers
+                sign = "-" if val < 0 else ""
+                abs_val = abs(val)
+                exp = math.floor(math.log10(abs_val))
+                mantissa = abs_val / 10**exp
+                tick_text.append(f"{sign}10^{exp}")
+            # Use decimal notation for typical values
+            elif abs(val) >= 100:
+                # For whole numbers, use integer formatting
+                if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
+                    tick_text.append(f"{round(val)}")
+                else:
+                    tick_text.append(f"{val:.0f}")
+            elif abs(val) >= 10:
+                # For whole numbers, use integer formatting
+                if math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
+                    tick_text.append(f"{round(val)}")
+                else:
+                    tick_text.append(f"{val:.1f}")
+            # For whole numbers, use integer formatting
+            elif math.isclose(val, round(val), rel_tol=1e-10, abs_tol=1e-10):
+                tick_text.append(f"{round(val)}")
+            else:
+                tick_text.append(f"{val:.2f}")
+
+        if tick_vals:
+            return tick_vals, tick_text
+
+    return None, None
 
 
 def cluster_compositions(
@@ -56,6 +329,7 @@ def cluster_compositions(
     projection_kwargs: dict[str, Any] | None = None,
     sort: bool | int | Callable[[np.ndarray], np.ndarray] = True,
     show_projection_stats: bool | dict[str, Any] = True,
+    color_scale: ColorScale | dict[str, Any] = "linear",
     **kwargs: Any,
 ) -> go.Figure:
     """Plot chemical composition clusters with optional property coloring.
@@ -139,14 +413,26 @@ def cluster_compositions(
             For UMAP, shows n_neighbors and min_dist
             For Isomap, shows n_neighbors and metric
             For Kernel PCA, shows kernel type and parameters
+        color_scale (str | dict): Method for scaling property values for coloring points
+            (default: "linear"):
+            - "linear": Linear scale (default)
+            - "log": Logarithmic scale for positive values
+            - "arcsinh": Inverse hyperbolic sine scale, handles both large positive
+              and negative values
+            - dict: Custom scale configuration with required "type" key:
+                - {"type": "arcsinh", "scale_factor": float}: Custom scale factor
+                  (default: 2)
+                - {"type": "arcsinh", "lin_thresh": float, "lin_scale": float}:
+                  Custom linearity threshold and scale (for fine-tuning the
+                  transition between linear and logarithmic regions)
         **kwargs: Passed to px.scatter or px.scatter_3d (depending on n_components)
 
     Returns:
         go.Figure: Plotly figure object with embeddings and projection object in
-            '_pymatviz_meta' attribute:
-            - fig._pymatviz_meta["projector"]: Fitted projection object
+            '_pymatviz' attribute:
+            - fig._pymatviz["projector"]: Fitted projection object
               (PCA, TSNE, etc.) or None for custom projection functions
-            - fig._pymatviz_meta["embeddings"]: Embeddings used for projection
+            - fig._pymatviz["embeddings"]: Embeddings used for projection
     """
     if n_components not in (2, 3):  # Validate inputs
         raise ValueError(f"{n_components=} must be 2 or 3")
@@ -168,6 +454,29 @@ def cluster_compositions(
         raise ValueError(
             "projection must be specified. Choose from: "
             f"{get_args(ProjectionMethod)} or provide a custom function or column name."
+        )
+
+    # Validate color_scale parameter
+    valid_scales = get_args(ColorScale)
+    if isinstance(color_scale, str):
+        if color_scale not in valid_scales:
+            raise ValueError(f"{color_scale=} must be one of {valid_scales} or dict")
+    elif isinstance(color_scale, dict):
+        if "type" not in color_scale:
+            raise ValueError("When color_scale is a dict, 'type' key must be provided")
+        scale_type = color_scale["type"]
+        if scale_type not in valid_scales:
+            raise ValueError(
+                f"color_scale dict 'type'='{scale_type}' must be one of {valid_scales}"
+            )
+        # Validate arcsinh parameters if provided
+        if scale_type == "arcsinh":
+            scale_factor = color_scale.get("scale_factor", 2.0)
+            if scale_factor <= 0:
+                raise ValueError(f"{scale_factor=} must be positive for arcsinh scale")
+    else:
+        raise TypeError(
+            f"color_scale must be a string or a dict, got {type(color_scale).__name__}"
         )
 
     # Check if projection is a column name in the DataFrame
@@ -347,9 +656,74 @@ def cluster_compositions(
 
     # Add properties or configure chemical system coloring
     prop_values: list[float] | None = None
+    colorbar_title = None  # Initialize to handle all code paths
+
     if properties is not None:
         prop_values = properties.tolist()
-        df_plot[prop_name] = prop_values
+
+        # Apply color scale transformations if needed
+        if color_scale != "linear" and prop_name is not None:
+            # Create a copy to avoid modifying the original data
+            original_prop_values = prop_values.copy()  # type: ignore[union-attr]
+
+            # Apply the selected transformation
+            if color_scale == "log" or (
+                isinstance(color_scale, dict) and color_scale["type"] == "log"
+            ):
+                # For log scale, replace negative or zero values with NaN
+                prop_values = [
+                    math.log10(val) if val > 0 else float("nan")
+                    for val in prop_values  # type: ignore[union-attr]
+                ]
+                colorbar_title = f"{prop_name} (log scale)"
+
+            elif color_scale == "arcsinh" or (
+                isinstance(color_scale, dict) and color_scale["type"] == "arcsinh"
+            ):
+                # Get arcsinh configuration
+                if isinstance(color_scale, dict):
+                    scale_factor = color_scale.get("scale_factor", 2.0)
+                    lin_thresh = color_scale.get("lin_thresh", None)
+                    lin_scale = color_scale.get("lin_scale", None)
+
+                    if lin_thresh is not None and lin_scale is not None:
+                        # Custom arcsinh with linearity threshold and scale
+                        prop_values = [
+                            np.arcsinh((val * lin_scale) / lin_thresh)
+                            * lin_thresh
+                            / scale_factor
+                            for val in prop_values  # type: ignore[union-attr]
+                        ]
+                        colorbar_title = f"{prop_name} (arcsinh scale)"
+                    else:
+                        # Custom arcsinh with just scale factor
+                        prop_values = [
+                            np.arcsinh(val / scale_factor) * scale_factor
+                            for val in prop_values  # type: ignore[union-attr]
+                        ]
+                        colorbar_title = f"{prop_name} (arcsinh scale)"
+                else:
+                    # Default arcsinh with scale_factor=2.0
+                    scale_factor = 2.0
+                    prop_values = [
+                        np.arcsinh(val / scale_factor) * scale_factor
+                        for val in prop_values  # type: ignore[union-attr]
+                    ]
+                    colorbar_title = f"{prop_name} (arcsinh scale)"
+            else:
+                # For linear scale, no transformation needed
+                colorbar_title = prop_name
+
+            # Update the DataFrame with transformed values for plotting
+            df_plot[prop_name] = prop_values
+
+            # Store original values for hover text
+            df_plot["original_property"] = original_prop_values
+        else:
+            # For linear scale, no transformation needed
+            df_plot[prop_name] = prop_values
+            colorbar_title = prop_name
+
         color_column = prop_name
     elif chem_systems is not None and show_chem_sys in ("color", "color+shape"):
         # Only color by chem_system for "color" or "color+shape" modes
@@ -433,8 +807,17 @@ def cluster_compositions(
                 if hover_format.startswith(".")
                 else hover_format
             )
-            try:
-                hover_text += f"{prop_name}: {prop_fmt.format(prop_values[idx])}"
+
+            try:  # Show the property value
+                if color_scale != "linear" and "original_property" in df_plot.columns:
+                    # For non-linear scales, show original value only
+                    original_val = df_plot["original_property"].iloc[idx]
+                    if not np.isnan(original_val):
+                        hover_text += f"{prop_name}: {prop_fmt.format(original_val)}"
+                    else:
+                        hover_text += f"{prop_name}: NaN"
+                else:  # For linear scale, just show the property value
+                    hover_text += f"{prop_name}: {prop_fmt.format(prop_values[idx])}"
             except Exception:  # noqa: BLE001
                 hover_text += f"{prop_name}: {prop_values[idx]}"
         elif chem_systems is not None:
@@ -442,6 +825,7 @@ def cluster_compositions(
 
         hover_template.append(hover_text)
 
+    # Store hover text in the dataframe
     df_plot["hover_text"] = hover_template
 
     # Calculate projection statistics
@@ -646,6 +1030,7 @@ def cluster_compositions(
         fig.add_annotation(**default_stats)
 
     if prop_values is not None:
+        tick_vals, tick_text = _generate_colorbar_ticks(color_scale, df_plot)
         color_bar = dict(
             orientation="h",
             yanchor="bottom",
@@ -655,14 +1040,17 @@ def cluster_compositions(
             thickness=12,
             len=350,
             lenmode="pixels",
-            title=dict(text=prop_name, side="top"),
+            title=dict(text=colorbar_title, side="top"),
+            tickvals=tick_vals,
+            ticktext=tick_text,
         )
+
         fig.update_layout(coloraxis_colorbar=color_bar)
 
     # Attach projector and embeddings as metadata dict
     # since Plotly doesn't allow arbitrary attributes on Figures
-    fig._pymatviz_meta = {"projector": projector}
+    fig._pymatviz = {"projector": projector}
     if embeddings is not None:
-        fig._pymatviz_meta["embeddings"] = embeddings
+        fig._pymatviz["embeddings"] = embeddings
 
     return fig
