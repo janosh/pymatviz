@@ -64,6 +64,7 @@ def process_dataset(
     embed_method: EmbeddingMethod,
     projection: ProjectionMethod,
     n_components: int,
+    **kwargs: Any,
 ) -> go.Figure:
     """Process a single dataset and create clustering visualizations.
 
@@ -74,6 +75,7 @@ def process_dataset(
         embed_method (EmbeddingMethod): Method to convert compositions to vectors
         projection (ProjectionMethod): Method to reduce dimensionality
         n_components (int): Number of dimensions for projection (2 or 3)
+        kwargs: Passed to cluster_compositions()
 
     Returns:
         fig: Plotly figure
@@ -139,6 +141,7 @@ def process_dataset(
         width=1000,
         height=600,
         show_chem_sys="shape" if len(compositions) < 1000 else None,
+        **kwargs,
     )
 
     # Update title and margins
@@ -211,6 +214,7 @@ for (
         embed_method=embed_method,
         projection=proj_method,
         n_components=n_components,
+        color_scale="log" if data_name == "matbench_dielectric" else "linear",
     )
     fig.update_layout(coloraxis_colorbar=cbar_args)
 
