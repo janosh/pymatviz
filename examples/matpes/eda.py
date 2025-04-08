@@ -18,15 +18,12 @@ pmv.set_plotly_template("pymatviz_dark")
 module_dir = os.path.dirname(__file__)
 
 
-# %% 20240214-MatPES-178070-r2SCAN generated in collaboration with Shyue Ping Ong's
-# group and Aaron Kaplan is unpublished data as of 2024-07-10, to be shared
-# MIT-licensed in late 2024 at the earliest
-with gzip.open(
-    f"{module_dir}/20240214-MatPES-178070-r2SCAN.json.gz", mode="rt"
-) as file:
+# %%
+r2scan_path = f"{module_dir}/20240214-MatPES-178070-r2SCAN.json.gz"
+pbe_path = f"{module_dir}/20240214-MatPES-183027-PBE.json.gz"
+with gzip.open(r2scan_path, mode="rt") as file:
     r2scan_data = json.load(file)
-# examples/matpes/20240214-MatPES-183027-PBE.json.gz
-with gzip.open(f"{module_dir}/20240214-MatPES-183027-PBE.json.gz", mode="rt") as file:
+with gzip.open(pbe_path, mode="rt") as file:
     pbe_data = json.load(file)
 
 n_r2scan, n_pbe = 178_070, 183_027
@@ -59,14 +56,12 @@ fig.layout.legend.update(x=0, y=1)
 fig.show()
 # pmv.save_fig(fig, "energy-hist.pdf")
 
-# @janosh 2024-05-15: initially surprised by the difference in r2scan/pbe energy distros
-# how could energy differences between two similar chemistries always be similar across
-# r2SCAN and PBE if the distribution for r2SCAN is so much wider
-
-
-# %% seems fine. parity plot reveals this nice collection of bands which looks like
-# within each chemical system, you indeed get consistent energy differences. just across
-# different systems, the zero-level energies differ wildly
+# @janosh 2024-05-15: initially surprised by the difference in r2SCAN and PBE energy
+# distributions. how could energy differences between two similar chemistries always be
+# similar across r2SCAN and PBE if the distribution for r2SCAN is much wider?
+# Update: Seems fine actually. Parity plot reveals this nice collection of bands which
+# looks like within each chemical system, you indeed get consistent energy differences.
+# just across different systems, the zero-level energies differ wildly
 fig = go.Figure()
 
 fig.add_scatter(
@@ -144,7 +139,7 @@ pbe_col = "PBE energy"
 df_per_elem[pbe_col] = (df_pbe_frac_comp * df_pbe[col_name].to_numpy()[:, None]).mean()
 
 
-# %% cohesive energies should (and do) look nearly identical between r2scan and pbe
+# %% cohesive energies should (and do) look nearly identical between r2SCAN and PBE
 per_elem_cohesive_energy = {
     key: list(dct.values()) for key, dct in df_per_elem.to_dict(orient="index").items()
 }
@@ -156,7 +151,7 @@ fig = pmv.ptable_heatmap_splits_plotly(
 fig.show()
 
 
-# %% which elements have a higher share of missing r2scan data
+# %% which elements have a higher share of missing r2SCAN data
 fig = pmv.ptable_heatmap_plotly(
     (pbe_elem_counts - r2scan_elem_counts) / pbe_elem_counts,
     colorbar=dict(
@@ -208,7 +203,7 @@ fig.show()
 # pmv.save_fig(fig, "r2scan-spacegroup-hist.pdf")
 
 
-# %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2scan calcs
+# %% most calcs missing r2SCAN results have 4 sites, almost all 2 or 3-site r2SCAN calcs
 # completed
 fig = go.Figure()
 

@@ -902,17 +902,6 @@ class Task(LabelEnum):
 
 
 @unique
-class Model(LabelEnum):
-    """Model names."""
-
-    # key, label, color
-    m3gnet_ms = "m3gnet", "M3GNet-MS", "blue"
-    chgnet_030 = "chgnet-v0.3.0", "CHGNet v0.3.0", "orange"
-    mace_mp = "mace-mp-0-medium", "MACE-MP", "green"
-    pbe = "pbe", "PBE", "gray"
-
-
-@unique
 class ElemCountMode(LabelEnum):
     """Mode of counting elements in a chemical formula."""
 
@@ -937,16 +926,6 @@ class ElemCountMode(LabelEnum):
         "Occurrence",
         "Count elements by occurrence in composition, ignoring their amount",
     )
-
-
-@unique
-class ElemColorMode(LabelEnum):
-    """Mode of coloring elements in structure visualizations or periodic table
-    plots.
-    """
-
-    # key, label, color
-    element_types = "element-types", "Element Types", "blue"
 
 
 @unique

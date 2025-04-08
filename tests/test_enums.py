@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from pymatviz.enums import Key, LabelEnum, Model, StrEnum
+from pymatviz.enums import Key, LabelEnum, StrEnum
 
 
 # ruff: noqa: RUF001
@@ -27,12 +27,6 @@ def test_str_enum() -> None:
     else:
         assert issubclass(StrEnum, str)
         assert StrEnum.__name__ == "StrEnum"
-
-
-def test_model_enum() -> None:
-    assert Model.mace_mp == "mace-mp-0-medium"
-    assert Model.mace_mp.label == "MACE-MP"
-    assert Model.mace_mp.description == "green"
 
 
 def test_key_enum() -> None:

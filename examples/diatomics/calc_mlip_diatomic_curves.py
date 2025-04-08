@@ -100,7 +100,7 @@ def calc_diatomic_curve(
 
 
 if __name__ == "__main__":
-    mace_chkpt_url = "https://github.com/ACEsuit/mace-mp/releases/download"
+    mace_chkpt_url = "https://github.com/ACEsuit/mace-foundations/releases/download"
     checkpoints = {
         # "mace-mpa-0-medium": f"{mace_chkpt_url}/mace_mpa_0/mace-mpa-0-medium.model",
         "mace-omat-0-medium": f"{mace_chkpt_url}/mace_omat_0/mace-omat-0-medium.model",

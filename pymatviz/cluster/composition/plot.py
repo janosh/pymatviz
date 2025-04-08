@@ -45,6 +45,9 @@ def _generate_colorbar_ticks(
 ) -> tuple[list[float] | None, list[str] | None]:
     """Generate custom tick values and text for color bars.
 
+    This function could become redundant if plotly ever adds native support for
+    arcsinh or symlog colorbar scales. Tracked in https://github.com/plotly/plotly.js/issues/221.
+
     Args:
         color_scale: The color scale type ("linear", "log", "arcsinh") or a dictionary
             with custom scale configuration.
