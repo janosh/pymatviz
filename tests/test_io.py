@@ -46,7 +46,7 @@ def test_save_fig(
 
     if any(var in os.environ for var in env_disable):
         # if CI env var is set, we should not save the figure
-        assert not os.path.exists(path)
+        assert not os.path.isfile(path)
         return
 
     assert os.path.isfile(path)

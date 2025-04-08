@@ -18,7 +18,7 @@ import plotly.express as px
 from ase.units import GPa
 from emmet.core.elasticity import ElasticityDoc
 from mace.calculators import mace_mp
-from matcalc.elasticity import ElasticityCalc
+from matcalc.benchmark import ElasticityCalc
 from tqdm import tqdm
 
 import pymatviz as pmv
@@ -30,7 +30,7 @@ except ImportError:
     raise SystemExit(0) from None
 
 pmv.set_plotly_template("pymatviz_white")
-checkpoint = "https://github.com/ACEsuit/mace-mp/releases/download/mace_matpes_0/MACE-matpes-pbe-omat-ft.model"
+checkpoint = "https://github.com/ACEsuit/mace-foundations/releases/download/mace_matpes_0/MACE-matpes-pbe-omat-ft.model"
 
 
 # %%

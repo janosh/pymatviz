@@ -24,7 +24,7 @@ propertyNames:
 additionalProperties:
   type: object
   propertyNames:
-    pattern: "^[a-z0-9_]+$" # Allow numbers in key names for r2scan etc.
+    pattern: "^[a-z0-9_]+$" # Allow numbers in key names for r2SCAN etc.
   additionalProperties:
     "$ref": "#/definitions/key_entry"
   minProperties: 1 # Each category must have at least one key
