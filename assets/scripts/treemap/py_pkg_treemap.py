@@ -16,7 +16,7 @@ pmv.set_plotly_template("plotly_white")
 
 
 # %% single package with default settings
-for package in ("pymatviz", "torch_sim", "pymatgen"):
+for package in ("pymatviz", "moyopy", "pymatgen"):
     fig = pmv.py_pkg_treemap(package)
     fig.layout.title.update(text=f"{package} Package Structure", font_size=20, x=0.5)
     fig.show()
@@ -24,9 +24,8 @@ for package in ("pymatviz", "torch_sim", "pymatgen"):
 
 
 # %% Compare multiple packages
-packages = ["pymatviz", "torch_sim", "pymatgen"]
 fig = pmv.py_pkg_treemap(
-    packages,
+    packages := ("pymatviz", "moyopy", "pymatgen"),
     show_counts="value+percent",
     min_lines=50,  # Only include files with at least 50 lines
 )
@@ -67,7 +66,7 @@ def custom_module_formatter(module: str, count: int, _total: int) -> str:
 
 
 fig = pmv.py_pkg_treemap(
-    ["torch_sim", "pymatviz"],
+    ("moyopy", "pymatviz"),
     show_module_counts=custom_module_formatter,
     color_discrete_sequence=px.colors.qualitative.Bold,
 )
