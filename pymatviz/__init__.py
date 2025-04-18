@@ -81,7 +81,7 @@ from pymatviz.templates import (
     pmv_white_template,
     set_plotly_template,
 )
-from pymatviz.treemap import chem_sys_treemap
+from pymatviz.treemap import chem_sys_treemap, py_pkg_treemap
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import PKG_DIR, ROOT, df_ptable, html_tag, si_fmt, si_fmt_int
 from pymatviz.xrd import xrd_pattern
@@ -97,8 +97,15 @@ except PackageNotFoundError:
 IS_IPYTHON = hasattr(builtins, "__IPYTHON__")
 
 # define a sensible order for crystal systems across plots
-crystal_sys_order = ["cubic", "hexagonal", "trigonal", "tetragonal", "orthorhombic"]
-crystal_sys_order += ["monoclinic", "triclinic"]
+crystal_sys_order = (
+    "cubic",
+    "hexagonal",
+    "trigonal",
+    "tetragonal",
+    "orthorhombic",
+    "monoclinic",
+    "triclinic",
+)
 
 px.defaults.labels |= {
     "gap expt": "Experimental band gap (eV)",

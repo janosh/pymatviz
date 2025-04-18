@@ -228,14 +228,18 @@ See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
 
 ## Treemap
 
-See [`pymatviz/treemap.py`](pymatviz/treemap.py).
+See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 
-| [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/treemap.py#L36) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...], group_by="formula")`](pymatviz/treemap.py#L36) |
-| :-------------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
-|                                                       ![chem-sys-treemap-formula]                                                       |                                   ![chem-sys-treemap-ward-bmg]                                    |
+| [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/treemap/chem_sys.py#L36) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...], group_by="formula")`](pymatviz/treemap/chem_sys.py#L36) |
+| :----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
+|                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
+|              [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |         [`py_pkg_treemap(["pymatviz", "torch_sim", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L36)          |
+|                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
 
 [chem-sys-treemap-formula]: assets/svg/chem-sys-treemap-formula.svg
 [chem-sys-treemap-ward-bmg]: assets/svg/chem-sys-treemap-ward-bmg.svg
+[py-pkg-treemap-pymatviz]: assets/svg/py-pkg-treemap-pymatviz.svg
+[py-pkg-treemap-multiple]: assets/svg/py-pkg-treemap-multiple.svg
 
 ## Rainclouds
 
