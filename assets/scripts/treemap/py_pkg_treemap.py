@@ -18,10 +18,9 @@ pmv.set_plotly_template("plotly_white")
 # %% single package with default settings
 for package in ("pymatviz", "torch_sim", "pymatgen"):
     fig = pmv.py_pkg_treemap(package)
-    fig.layout.title.update(text=f"{package} Package Structure", font_size=20)
+    fig.layout.title.update(text=f"{package} Package Structure", font_size=20, x=0.5)
     fig.show()
     pmv.io.save_and_compress_svg(fig, f"py-pkg-treemap-{package.replace('_', '-')}")
-    fig.write_html(f"py-pkg-treemap-{package.replace('_', '-')}.html")
 
 
 # %% Compare multiple packages
@@ -38,7 +37,7 @@ fig.update_traces(
     "%{percentRoot:.1%} of total<extra></extra>",
 )
 title = f"Comparing Package Structure: {', '.join(packages)}"
-fig.layout.title.update(text=title, x=0.5, y=0.85, font_size=20)
+fig.layout.title.update(text=title, x=0.5, font_size=20)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "py-pkg-treemap-multiple")
 
