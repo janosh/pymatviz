@@ -10,7 +10,7 @@ import pytest
 from pymatgen.core import Composition
 
 import pymatviz as pmv
-from pymatviz.treemap import ShowCounts
+from pymatviz.treemap.chem_sys import ShowCounts
 
 
 if TYPE_CHECKING:
