@@ -26,6 +26,7 @@ classifiers = [
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.10"
 dependencies = [
+    "kaleido==0.2.1",  # strict pin needed, see https://github.com/plotly/Kaleido/issues/292
     "matplotlib>=3.9",
     "numpy>=1.26",
     # output-formatting needed for pandas Stylers,
@@ -34,6 +35,7 @@ dependencies = [
     "pandas[output-formatting]>=2.2",
     "plotly>=5.23",
     "pymatgen>=2025.2.18",
+    "pyyaml>=6",
     "scikit-learn>=1.5",
     "scipy>=1.14",
 ]
@@ -42,13 +44,11 @@ dependencies = [
 auto-text-pos = ["adjustText>=0.8"]
 df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
-# https://github.com/plotly/Kaleido/issues/176
-pdf-export = ["kaleido>=0.2.1"]
 make-assets = ["matminer>=0.9"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 test = [
-    "phonopy>=2.31",                                                              # only needed if user passes in phonopy objects
-    "pymatviz[auto-text-pos, df-pdf-export, df-svg-export, pdf-export, cluster]",
+    "phonopy>=2.31",                                                  # only needed if user passes in phonopy objects
+    "pymatviz[auto-text-pos, df-pdf-export, df-svg-export, cluster]",
     "pytest-cov>=6",
     "pytest-split>=0.9",
     "pytest>=8",

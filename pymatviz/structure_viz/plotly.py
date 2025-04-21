@@ -294,7 +294,7 @@ def structure_2d_plotly(
     fig.layout.showlegend = False
     fig.layout.paper_bgcolor = "rgba(0,0,0,0)"
     fig.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    fig.layout.margin = dict(l=10, r=10, t=40, b=10)
+    fig.layout.margin = dict(l=0, r=0, t=30, b=0)
     common_kwargs = dict(
         showticklabels=False,
         showgrid=False,
@@ -579,6 +579,6 @@ def structure_3d_plotly(
     fig.layout.showlegend = False
     fig.layout.paper_bgcolor = "rgba(0,0,0,0)"  # Transparent background
     fig.layout.plot_bgcolor = "rgba(0,0,0,0)"  # Transparent background
-    fig.layout.margin = dict(l=0, r=0, t=0, b=0)  # Minimize margins
+    fig.layout.margin = dict(l=0, r=0, t=30, b=0)  # Minimize margins
 
     return fig
