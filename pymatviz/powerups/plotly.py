@@ -175,22 +175,16 @@ def add_ecdf_line(
             f"{xlabel}: %{{x}}<br>Percent: %{{y:.2%}}<extra></extra>"
         )
 
-        # Get trace color
-        target_color = _get_trace_color(target_trace, "#636efa")  # Default plotly blue
-
-        # For traces with default color, try to find a better match
-        if target_color == "#636efa":
-            # Try full figure development view for more properties
-            full_fig = fig.full_figure_for_development(warn=False)
-            if trace_idx < len(full_fig.data):
-                full_trace = full_fig.data[trace_idx]
-                target_color = _get_trace_color(full_trace, target_color)
-
-            # Check for colorway
-            if target_color == "#636efa" and hasattr(fig.layout, "colorway"):
-                colorway = fig.layout.colorway
-                if colorway:
-                    target_color = colorway[trace_idx % len(colorway)]
+        # Try full figure development view first for potentially resolved color
+        # Use try-except block for robustness if full_fig fails
+        full_fig = fig.full_figure_for_development(warn=False)
+        if trace_idx < len(full_fig.data):
+            full_trace = full_fig.data[trace_idx]
+            # Try getting color from full_trace, don't provide a default yet
+            target_color = _get_trace_color(full_trace)
+        else:
+            mod_trace_idx = trace_idx % len(px.colors.DEFAULT_PLOTLY_COLORS)
+            target_color = px.colors.DEFAULT_PLOTLY_COLORS[mod_trace_idx]
 
         # Set legendgroup
         legendgroup = str(trace_idx)
@@ -202,7 +196,7 @@ def add_ecdf_line(
         if not is_single_trace and getattr(target_trace, "name", None):
             trace_name = f"{base_name} ({target_trace.name})"
 
-        # Build the trace
+        # Build the trace using the determined target_color
         line_opts = {
             "color": target_color,
             "dash": trace_kwargs.get("line", {}).get("dash", "solid"),

@@ -31,12 +31,7 @@ A toolkit for visualizations in materials informatics.
 pip install pymatviz
 ```
 
-Available extras include:
-
-```sh
-pip install 'pymatviz[pdf-export]' # save figures to PDF
-pip install 'pymatviz[brillouin]' # render 3d Brillouin zones
-```
+See `pyproject.toml` for available extras like `pip install 'pymatviz[brillouin]'` to render 3d Brillouin zones.
 
 ## API Docs
 

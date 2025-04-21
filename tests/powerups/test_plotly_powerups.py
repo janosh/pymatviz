@@ -366,47 +366,91 @@ def test_multiple_powerups(plotly_scatter: go.Figure) -> None:
 
 
 def test_add_ecdf_line_color_matching() -> None:
-    """Test that ECDF line colors match their corresponding trace colors."""
-    # Create a figure with multiple traces of different colors
-    fig = go.Figure()
+    """Test that ECDF line colors match their corresponding trace colors.
 
-    # Create traces with explicit colors
-    trace_colors = ["red", "blue", "green", "purple"]
-    for idx, color in enumerate(trace_colors):
-        fig.add_bar(
+    Covers explicit colors, default colorway, and mixed cases.
+    """
+    # --- Case 1: Explicit Colors ---
+    fig_explicit = go.Figure()
+    explicit_colors = ("red", "blue", "green", "purple")
+    for idx, color in enumerate(explicit_colors):
+        fig_explicit.add_bar(
             x=[idx, idx + 1, idx + 2],
             y=[3, 5, 2],
             name=f"Trace {idx}",
             marker=dict(color=color),
         )
 
-    # Add ECDF lines
-    for idx in range(len(fig.data)):
-        fig = add_ecdf_line(fig, traces=idx)
+    # Add ECDF lines one by one (mimics adding to specific traces)
+    for idx in range(len(fig_explicit.data)):
+        fig_explicit = add_ecdf_line(fig_explicit, traces=idx)
 
-    # Check that ECDF lines have matching colors
-    for idx, color in enumerate(trace_colors):
-        ecdf_trace = fig.data[
-            idx + len(trace_colors)
-        ]  # ECDF traces come after original traces
-        assert ecdf_trace.line.color == color
+    assert len(fig_explicit.data) == 2 * len(explicit_colors)
 
-    # Test with traces that don't have explicit colors
-    fig2 = go.Figure()
-    for idx in range(3):
-        fig2.add_histogram(x=np_rng.normal(idx * 5, 1, 100), name=f"Hist {idx}")
+    # Check that ECDF lines have matching explicit colors
+    dev_fig_explicit = fig_explicit.full_figure_for_development(warn=False)
+    for idx, color in enumerate(explicit_colors):
+        ecdf_trace_dev = dev_fig_explicit.data[idx + len(explicit_colors)]
+        assert ecdf_trace_dev.line.color == color
+        assert fig_explicit.data[idx + len(explicit_colors)].legendgroup == str(idx)
 
-    # Add ECDF lines to all traces
-    fig2 = add_ecdf_line(fig2)
+    # --- Case 2: Default Colorway ---
+    fig_colorway = go.Figure()
+    n_traces_colorway = 3
+    for idx in range(n_traces_colorway):
+        # No explicit color set, should use default colorway
+        fig_colorway.add_histogram(x=np_rng.normal(idx * 5, 1, 100), name=f"Hist {idx}")
 
-    # Check that ECDF traces were added
-    assert len(fig2.data) == 6  # Exactly 3 original histograms + 3 ECDF lines
+    # Get the default colorway for comparison
+    default_colorway = px.colors.qualitative.Plotly
 
-    # Check that each ECDF trace has a properly formed name
-    for idx in range(3):
-        ecdf_trace = fig2.data[idx + 3]
-        assert f"Cumulative (Hist {idx})" == ecdf_trace.name
-        assert ecdf_trace.legendgroup == str(idx)
+    # Add ECDF lines using the default (all traces)
+    fig_colorway = add_ecdf_line(fig_colorway)
+
+    assert len(fig_colorway.data) == 2 * n_traces_colorway
+
+    dev_fig_colorway = fig_colorway.full_figure_for_development(warn=False)
+    for idx in range(n_traces_colorway):
+        expected_color = default_colorway[idx % len(default_colorway)]
+        ecdf_trace_dev = dev_fig_colorway.data[idx + n_traces_colorway]
+        original_trace_dev = dev_fig_colorway.data[idx]
+
+        # Check original trace color matches colorway
+        assert original_trace_dev.marker.color.casefold() == expected_color.casefold()
+        # Check ECDF line color matches original trace color
+        assert ecdf_trace_dev.line.color.casefold() == expected_color.casefold()
+        assert fig_colorway.data[idx + n_traces_colorway].legendgroup == str(idx)
+        assert f"Cumulative (Hist {idx})" == fig_colorway.data[idx + 3].name
+
+    # --- Case 3: Mixed Explicit and Colorway ---
+    fig_mixed = go.Figure()
+    mixed_colors = ("orange", None, "cyan", None)  # None should use colorway
+    expected_final_colors = [
+        "orange",
+        default_colorway[1],  # First None uses 2nd colorway color
+        "cyan",
+        default_colorway[3],  # Second None uses 4th colorway color
+    ]
+
+    for idx, mixed_color in enumerate(mixed_colors):
+        marker_dict = dict(color=mixed_color) if mixed_color else {}
+        fig_mixed.add_scatter(
+            x=[idx, idx + 1], y=[1, 2], name=f"Mixed {idx}", marker=marker_dict
+        )
+
+    # Add ECDF lines using the default (all traces)
+    fig_mixed = add_ecdf_line(fig_mixed)
+
+    assert len(fig_mixed.data) == 2 * len(mixed_colors)
+
+    dev_fig_mixed = fig_mixed.full_figure_for_development(warn=False)
+    for idx, expected_color in enumerate(expected_final_colors):
+        ecdf_trace_dev = dev_fig_mixed.data[idx + len(mixed_colors)]
+        assert ecdf_trace_dev.line.color.casefold() == expected_color.casefold()
+        assert fig_mixed.data[idx + len(mixed_colors)].legendgroup == str(idx)
+        assert (
+            f"Cumulative (Mixed {idx})" == fig_mixed.data[idx + len(mixed_colors)].name
+        )
 
 
 def test_add_ecdf_line_annotation_positioning() -> None:
