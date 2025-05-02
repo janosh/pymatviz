@@ -18,20 +18,16 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
 
-      - name: Reinsert image URL prefix in README
+      - name: Add readme image URL prefixes
+        # needed to make images render on PyPI
         run: |
           sed -i -e 's| assets/| https://github.com/janosh/pymatviz/raw/main/assets/|g' readme.md
 
-      - name: Build and upload dist
-        run: |
-          pip install build twine
-          python -m build
-          twine check dist/* --strict
+      - name: Build package with uv
+        run: uv build
 
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish package distributions to PyPI with uv
+        run: uv publish -t ${{ secrets.PYPI_TOKEN }}

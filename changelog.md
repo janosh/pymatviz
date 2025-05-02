@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.16.0](https://github.com/janosh/pymatviz/compare/v0.15.1...v0.16.0)
+
+> 2 May 2025
+
+- Add `py-pkg-treemap()` [`#290`](https://github.com/janosh/pymatviz/pull/290)
+- Add `color_scale` param to allow for linear, logarithmic, arcsinh scaling of property values in `cluster_compositions` [`#288`](https://github.com/janosh/pymatviz/pull/288)
+- refactor cluster_compositions to take DataFrame as 1st arg, not composition list [`#287`](https://github.com/janosh/pymatviz/pull/287)
+- Test example scripts with `uv run` in CI [`#286`](https://github.com/janosh/pymatviz/pull/286)
+- New `cluster` module with functions for embedding, projecting and scattering compositions [`#285`](https://github.com/janosh/pymatviz/pull/285)
+- spacegroup_sunburst and chem_sys_sunburst: add keywords max_slices and max_slices_mode: other | none [`#284`](https://github.com/janosh/pymatviz/pull/284)
+- Multi-trace `plotly` powerups [`#283`](https://github.com/janosh/pymatviz/pull/283)
+- `brillouin_zone_3d` now supports multiple structures/atoms in customizable grid layouts [`#282`](https://github.com/janosh/pymatviz/pull/282)
+- Add `max_cells: int | None` keyword to `chem_sys_treemap` [`#281`](https://github.com/janosh/pymatviz/pull/281)
+- `structure_(2|3)d_plotly` enable gradient-colored bonds [`#280`](https://github.com/janosh/pymatviz/pull/280)
+- Auto font color for high contrast of element symbols in `ptable_heatmap_splits_plotly` [`#279`](https://github.com/janosh/pymatviz/pull/279)
+- Update `luminance` calculation to use WCAG 2.0 standard coefficients [`#278`](https://github.com/janosh/pymatviz/pull/278)
+- Fix `structure_2d_plotly` `rotation` keyword not applying to unit cell [`#276`](https://github.com/janosh/pymatviz/pull/276)
+- `spglib` to `moyo` [`#275`](https://github.com/janosh/pymatviz/pull/275)
+- fix bond drawing in structure_3d_plotly with better image atom handling [`#274`](https://github.com/janosh/pymatviz/pull/274)
+- Use SI suffix number format in ptable colorbar tick labels [`#273`](https://github.com/janosh/pymatviz/pull/273)
+- fix error in docstring [`#271`](https://github.com/janosh/pymatviz/pull/271)
+- Remove `matplotlib`-based periodic table plotting functions [`#270`](https://github.com/janosh/pymatviz/pull/270)
+- Ward metallic glasses train/val/test splits [`#269`](https://github.com/janosh/pymatviz/pull/269)
+- Codecov [`#268`](https://github.com/janosh/pymatviz/pull/268)
+- Support per-split colorbars and colorscales in `ptable_heatmap_splits_plotly()` [`#267`](https://github.com/janosh/pymatviz/pull/267)
+- add `enhance_parity_plot()` powerup [`#266`](https://github.com/janosh/pymatviz/pull/266)
+- add treemap.py with new chem_sys_treemap plot function [`#265`](https://github.com/janosh/pymatviz/pull/265)
+- add chem_sys_sunburst() to pymatviz/sunburst.py to visualize chemical system distributions [`#264`](https://github.com/janosh/pymatviz/pull/264)
+- test metallic glass feature engineering and model evaluation [`f0c5174`](https://github.com/janosh/pymatviz/commit/f0c517419cfb6bd9fafc8d09387474b119cb875e)
+- better colorbar tick formatting and spacing in density_scatter_plotly [`d1d51b4`](https://github.com/janosh/pymatviz/commit/d1d51b47eeba7a3cc200d27f5b363447807ea720)
+- RDF plotting hide legend for single structure [`dc8a1a2`](https://github.com/janosh/pymatviz/commit/dc8a1a2d53050a374eb819706d9864f409585960)
+- fix confusion_matrix() mismatch of false-positive/negative counts and heatmap color [`ae5b629`](https://github.com/janosh/pymatviz/commit/ae5b629b74d0273d01a1851cec86f5ef1e0641e3)
+- `contrast_ratio()` in `pymatviz/utils/plotting.py` to calculate color contrast according to WCAG 2.0 [`b7c30cf`](https://github.com/janosh/pymatviz/commit/b7c30cf4699f97c6b67c6e6a01e86c0cccd8286c)
+- Add script to fetch and update papers citing pymatviz (#277) [`6a2b831`](https://github.com/janosh/pymatviz/commit/6a2b8317757858f9b599e6a2362c8e365339dfac)
+- add examples/mlip_phonons.py [`608a12f`](https://github.com/janosh/pymatviz/commit/608a12f0d06f4623de84973a102057166d2f00ef)
+- clean up examples/diatomics/calc_mlip_diatomic_curves.py and support multiple ML models [`d6fe3d9`](https://github.com/janosh/pymatviz/commit/d6fe3d926606a1f87d6f7314c0b6ffb6b8d5bd85)
+- add examples/compare_elastic_constants.py testing MACE vs MP PBE [`2861298`](https://github.com/janosh/pymatviz/commit/2861298ef3176f87885a1329fdee760e4ce300d0)
+- Refactor ROC and PR curve no-skill line plotting [`6d68cc1`](https://github.com/janosh/pymatviz/commit/6d68cc174e7aea49863d29ac7ac997b48d5d6136)
+- `readme.md` add links to source and example code for each plot function [`65ccb7c`](https://github.com/janosh/pymatviz/commit/65ccb7cb5bda434321f939345b83bb4fbc4d81bd)
+- add assets/scripts/key_enum_table.py to visualize Key enum attributes with Plotly [`0598bb5`](https://github.com/janosh/pymatviz/commit/0598bb50b0a1ebb682a1b17f7e380877792c7072)
+- delete unused enums Model + ElemColorMode [`ee296bc`](https://github.com/janosh/pymatviz/commit/ee296bc7a588a481c39204db7db1f156cc749fd9)
+- fix ptable_heatmap_splits_plotly() incorrectly handling hide_f_block keyword resulting in missing tiles for Rf 104 through Og 118 [`b9ccbf0`](https://github.com/janosh/pymatviz/commit/b9ccbf0ee3017b066e16640e6749845aff7979c0)
+- force LabelEnums to have labels, gives .label type str causing less mypy headache [`a6825ff`](https://github.com/janosh/pymatviz/commit/a6825ff780416aec660510c295a1b958f68010eb)
+
 #### [v0.15.1](https://github.com/janosh/pymatviz/compare/v0.15.0...v0.15.1)
 
 > 28 January 2025
