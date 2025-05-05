@@ -333,6 +333,7 @@ def cluster_compositions(
     sort: bool | int | Callable[[np.ndarray], np.ndarray] = True,
     show_projection_stats: bool | dict[str, Any] = True,
     color_scale: ColorScale | dict[str, Any] = "linear",
+    annotate_points: Callable[[pd.Series], str | dict[str, Any] | None] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot chemical composition clusters with optional property coloring.
@@ -428,6 +429,11 @@ def cluster_compositions(
                 - {"type": "arcsinh", "lin_thresh": float, "lin_scale": float}:
                   Custom linearity threshold and scale (for fine-tuning the
                   transition between linear and logarithmic regions)
+        annotate_points (Callable[[pd.Series], str | dict[str, Any] | None] | None):
+            Function to generate text annotations for each point. Takes a pandas Series
+            representing a row in the input DataFrame with added rows for the projected
+            coordinates (e.g., 'pca1', 'pca2'). Should return a string to use as label
+            or a dict with valid keys for fig.add_annotation().
         **kwargs: Passed to px.scatter or px.scatter_3d (depending on n_components)
 
     Returns:
@@ -637,7 +643,7 @@ def cluster_compositions(
                 stacklevel=2,
             )
 
-    df_plot = pd.DataFrame()
+    df_plot = pd.DataFrame(index=df.index)
     df_plot["composition"] = comp_strs
 
     # Determine label for projection columns
@@ -1049,6 +1055,43 @@ def cluster_compositions(
         )
 
         fig.update_layout(coloraxis_colorbar=color_bar)
+
+    # Add point annotations if function is provided
+    if callable(annotate_points):
+        df_plot[df.columns] = df
+        if n_components == 3:
+            annotations_3d = []
+            for _, row in df_plot.iterrows():
+                row_annotation = annotate_points(row)
+                if isinstance(row_annotation, str):
+                    row_annotation = {"text": row_annotation}
+                if row_annotation:
+                    annotation = {
+                        "x": row[x_name],
+                        "y": row[y_name],
+                        "z": row[z_name],
+                        "showarrow": False,
+                        "yshift": 10,  # Default vertical shift for 3D text
+                        "font": {"size": 10},
+                        **row_annotation,
+                    }
+                    annotations_3d.append(go.layout.scene.Annotation(annotation))
+            fig.update_layout(scene_annotations=annotations_3d)
+        else:  # Handle 2D annotations
+            for _, row in df_plot.iterrows():
+                row_annotation = annotate_points(row)
+                if isinstance(row_annotation, str):
+                    row_annotation = {"text": row_annotation}
+                if row_annotation:
+                    annotation = {
+                        "x": row[x_name],
+                        "y": row[y_name],
+                        "showarrow": False,
+                        "yshift": 10,  # Shift text slightly above the point
+                        "font": {"size": 10},
+                        **row_annotation,
+                    }
+                    fig.add_annotation(annotation)
 
     # Attach projector and embeddings as metadata dict
     # since Plotly doesn't allow arbitrary attributes on Figures

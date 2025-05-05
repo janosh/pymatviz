@@ -3068,3 +3068,249 @@ def test_whole_number_formatting_in_tick_labels() -> None:
                 f"Found {len(incorrect_formats)} incorrectly formatted whole numbers "
                 f"with decimal places: {incorrect_formats}"
             )
+
+
+@pytest.mark.parametrize("n_components", [2, 3])
+def test_annotate_points_basic(sample_df: pd.DataFrame, n_components: int) -> None:
+    """Test basic annotation functionality."""
+
+    def annotate_func(row: pd.Series) -> str:
+        """Simple annotation function returning composition."""
+        return f"Comp: {row['composition']}"
+
+    fig = pmv.cluster_compositions(
+        df=sample_df,
+        embedding_method="one-hot",
+        projection="pca",
+        n_components=n_components,
+        annotate_points=annotate_func,
+        show_projection_stats=False,  # Disable stats for simpler counting
+    )
+
+    expected_annotation_count = len(sample_df)
+    if n_components == 2:
+        point_annotations = fig.layout.annotations
+    else:  # 3D
+        point_annotations = fig.layout.scene.annotations
+
+    assert len(point_annotations) == expected_annotation_count
+
+    for idx, annotation in enumerate(point_annotations):
+        expected_text = f"Comp: {sample_df['composition'].iloc[idx]}"
+        assert annotation.text == expected_text
+
+
+@pytest.mark.parametrize("n_components", [2, 3])
+def test_annotate_points_dict(sample_df: pd.DataFrame, n_components: int) -> None:
+    """Test annotation using a dictionary to customize properties."""
+
+    def annotate_func(row: pd.Series) -> dict[str, Any]:
+        """Annotation function returning a dictionary."""
+        return {
+            "text": f"ID: {row.name}",
+            "font": {"color": "red", "size": 12},
+            "showarrow": True,
+            "arrowhead": 2,
+        }
+
+    fig = pmv.cluster_compositions(
+        df=sample_df,
+        embedding_method="one-hot",
+        projection="pca",
+        n_components=n_components,
+        annotate_points=annotate_func,
+        show_projection_stats=False,  # Disable stats for simpler counting
+    )
+
+    expected_annotation_count = len(sample_df)
+    if n_components == 2:
+        point_annotations = fig.layout.annotations
+    else:  # 3D
+        point_annotations = fig.layout.scene.annotations
+
+    assert len(point_annotations) == expected_annotation_count
+
+    for idx, annotation in enumerate(point_annotations):
+        assert annotation.text == f"ID: {sample_df.index[idx]}"
+        assert annotation.font.color == "red"
+        assert annotation.font.size == 12
+        assert annotation.showarrow is True
+        assert annotation.arrowhead == 2
+
+
+@pytest.mark.parametrize("n_components", [2, 3])
+def test_annotate_points_dict_override(
+    sample_df: pd.DataFrame, n_components: int
+) -> None:
+    """Test that returned dict overrides default annotation parameters."""
+
+    def annotate_func(row: pd.Series) -> dict[str, Any]:
+        """Return dict to override yshift and showarrow."""
+        return {
+            "text": f"Override {row.name}",
+            "yshift": 25,  # Override default 10
+            "showarrow": True,  # Override default False
+        }
+
+    fig = pmv.cluster_compositions(
+        df=sample_df,
+        embedding_method="one-hot",
+        projection="pca",
+        n_components=n_components,
+        annotate_points=annotate_func,
+        show_projection_stats=False,  # Disable stats for simpler counting
+    )
+
+    expected_annotation_count = len(sample_df)
+    if n_components == 2:
+        point_annotations = fig.layout.annotations
+    else:  # 3D
+        point_annotations = fig.layout.scene.annotations
+
+    assert len(point_annotations) == expected_annotation_count
+
+    for annotation in point_annotations:
+        assert annotation.yshift == 25
+        assert annotation.showarrow is True
+        assert annotation.font.size == 10  # Check default font size is retained
+
+
+@pytest.mark.parametrize("n_components", [2, 3])
+def test_annotate_points_conditional(
+    sample_df: pd.DataFrame, n_components: int
+) -> None:
+    """Test conditional annotation where some points are annotated."""
+    target_composition = sample_df["composition"].iloc[0]
+
+    def annotate_func(row: pd.Series) -> str | None:
+        """Annotate only the first composition."""
+        if row["composition"] == target_composition:
+            return f"Target: {row['composition']}"
+        return None
+
+    fig = pmv.cluster_compositions(
+        df=sample_df,
+        prop_name="property",
+        embedding_method="one-hot",
+        projection="pca",
+        n_components=n_components,
+        annotate_points=annotate_func,
+        show_projection_stats=False,  # Disable stats for simpler counting
+    )
+
+    expected_annotation_count = 1
+    if n_components == 2:
+        point_annotations = fig.layout.annotations
+    else:  # 3D
+        point_annotations = fig.layout.scene.annotations
+
+    assert len(point_annotations) == expected_annotation_count
+
+    annotation = point_annotations[0]
+    assert annotation.text == f"Target: {target_composition}"
+    # Check if annotation is placed near the correct point
+    point_x = fig.data[0].x[0]
+    point_y = fig.data[0].y[0]
+    assert abs(annotation.x - point_x) < 1e-6
+    assert abs(annotation.y - point_y) < 1e-6
+
+
+def test_annotate_points_with_coords(sample_df: pd.DataFrame) -> None:
+    """Test annotation when using pre-computed coordinates."""
+    # Create pre-computed coordinates
+    coords = np_rng.random((len(sample_df), 2))
+    df_coords = sample_df.copy()
+    df_coords["coords"] = list(coords)
+
+    def annotate_func(row: pd.Series) -> str:
+        """Simple annotation function."""
+        return f"Row {row.name}"
+
+    fig = pmv.cluster_compositions(
+        df=df_coords,
+        embedding_method="one-hot",
+        projection="coords",
+        annotate_points=annotate_func,
+    )
+
+    # For precomputed coords, no stats annotation is added by default
+    # so we expect exactly the number of points annotated.
+    expected_annotation_count = len(sample_df)
+    actual_annotations = fig.layout.annotations
+    assert len(actual_annotations) == expected_annotation_count
+
+    for idx, annotation in enumerate(actual_annotations):
+        assert annotation.text == f"Row {sample_df.index[idx]}"
+        # Check annotation position matches the precomputed coordinate
+        assert abs(annotation.x - coords[idx, 0]) < 1e-6
+        assert abs(annotation.y - coords[idx, 1]) < 1e-6
+
+
+def test_annotate_points_access_projected_coords(sample_df: pd.DataFrame) -> None:
+    """Test that the annotation function can access projected coordinates."""
+
+    def annotate_func(row: pd.Series) -> str:
+        """Annotation function using projected PCA coordinates."""
+        pca1 = row.get("pca1", float("nan"))
+        pca2 = row.get("pca2", float("nan"))
+        return f"PCA: ({pca1:.2f}, {pca2:.2f})"
+
+    fig = pmv.cluster_compositions(
+        df=sample_df,
+        embedding_method="one-hot",
+        projection="pca",
+        n_components=2,
+        annotate_points=annotate_func,
+    )
+
+    # Account for the optional projection stats annotation (2D only)
+    expected_annotation_count = len(sample_df)
+    actual_annotations = fig.layout.annotations
+
+    # Filter out the stats annotation if present
+    point_annotations = [
+        ann
+        for ann in actual_annotations
+        if not (ann.x == 0.02 and ann.y == 0.98)  # Heuristic for stats box
+    ]
+    assert len(point_annotations) == expected_annotation_count
+
+    for idx, annotation in enumerate(point_annotations):
+        point_x = fig.data[0].x[idx]
+        point_y = fig.data[0].y[idx]
+        expected_text = f"PCA: ({point_x:.2f}, {point_y:.2f})"
+        assert annotation.text == expected_text
+
+
+def test_annotate_points_access_original_columns(sample_df: pd.DataFrame) -> None:
+    """Test that the annotation function can access original DataFrame columns."""
+    # Add an extra column to the sample DataFrame
+    df_extra = sample_df.copy()
+    df_extra["extra_info"] = [f"info_{i}" for i in range(len(sample_df))]
+
+    def annotate_func(row: pd.Series) -> str:
+        """Annotation function using an original column."""
+        extra = row.get("extra_info", "N/A")
+        return f"Extra: {extra}"
+
+    fig = pmv.cluster_compositions(
+        df=df_extra,
+        embedding_method="one-hot",
+        projection="pca",
+        annotate_points=annotate_func,
+    )
+
+    # Account for the optional projection stats annotation (2D only)
+    # This test does not disable stats, so we keep the check
+    expected_annotation_count = len(df_extra)
+    actual_annotations = fig.layout.annotations
+
+    # Filter out the stats annotation if present
+    point_annotations = [
+        ann for ann in actual_annotations if not (ann.x == 0.02 and ann.y == 0.98)
+    ]
+    assert len(point_annotations) == expected_annotation_count
+
+    for idx, annotation in enumerate(point_annotations):
+        expected_text = f"Extra: info_{idx}"
+        assert annotation.text == expected_text
