@@ -9,6 +9,7 @@ Resulting plots are colored by target property of each dataset.
 #     "umap-learn>=0.5",
 # ]
 # ///
+# ruff: noqa: RUF001
 
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 from matminer.datasets import load_dataset
 from pymatgen.core import Composition
+from pymatgen.util.string import htmlify
 
 import pymatviz as pmv
 from pymatviz.cluster.composition import (
@@ -59,8 +61,9 @@ def format_composition(formula: str) -> str:
 
 def process_dataset(
     dataset_name: str,
-    target_col: str,
+    target_key: str,
     target_label: str,
+    target_symbol: str,
     embed_method: EmbeddingMethod,
     projection: ProjectionMethod,
     n_components: int,
@@ -70,8 +73,9 @@ def process_dataset(
 
     Args:
         dataset_name (str): Name of the MatBench dataset to load
-        target_col (str): Name of the target property column
+        target_key (str): Name of the target property column
         target_label (str): Display label for the property
+        target_symbol (str): Symbol for the property
         embed_method (EmbeddingMethod): Method to convert compositions to vectors
         projection (ProjectionMethod): Method to reduce dimensionality
         n_components (int): Number of dimensions for projection (2 or 3)
@@ -90,7 +94,7 @@ def process_dataset(
         # Extract formula from structure
         compositions = [struct.formula for struct in df_data[Key.structure]]
 
-    properties = df_data[target_col].tolist()
+    properties = df_data[target_key].tolist()
 
     # Create a DataFrame to align compositions and properties
     df_with_prop = pd.DataFrame(
@@ -126,6 +130,24 @@ def process_dataset(
     df_plot = pd.DataFrame({"composition": compositions})
     df_plot[target_label] = properties
 
+    # Prepare data for annotation: Find top 5 points by property value
+    top_indices = df_plot.nlargest(5, target_label).index
+
+    def annotate_top_points(row: pd.Series) -> dict[str, Any] | None:
+        """Annotate top 5 points concisely with composition and property value."""
+        # row.name is the original DataFrame index
+        if row.name not in top_indices:
+            return None
+        # Use raw composition string for brevity
+        comp_str = row["composition"]
+        if len(comp_str) > 20:  # if comp too long, use row ID/ material ID
+            comp_str = f"ID: {row.name}"
+        else:
+            comp_str = htmlify(comp_str).replace(" ", "")
+        prop_val = f"{target_symbol}={row[target_label]:.2f}"
+        text = f"{comp_str}<br>{prop_val}"
+        return dict(text=text, font_size=11, bgcolor="rgba(240, 240, 240, 0.5)")
+
     if "embeddings" not in df_plot:
         df_plot["embeddings"] = [embeddings_dict.get(comp) for comp in compositions]
 
@@ -141,6 +163,7 @@ def process_dataset(
         width=1000,
         height=600,
         show_chem_sys="shape" if len(compositions) < 1000 else None,
+        annotate_points=annotate_top_points,
         **kwargs,
     )
 
@@ -166,14 +189,44 @@ def process_dataset(
     return fig
 
 
-mb_jdft2d = ("matbench_jdft2d", "exfoliation_en", "Exfoliation Energy (meV/atom)")
-mb_steels = ("matbench_steels", "yield strength", "Yield Strength (MPa)")
-mb_dielectric = ("matbench_dielectric", "n", "Refractive index")
-mb_perovskites = ("matbench_perovskites", "e_form", "Formation energy (eV/atom)")
-mb_phonons = ("matbench_phonons", "last phdos peak", "Max Phonon Peak (cm⁻¹)")
-mb_bulk_modulus = ("matbench_log_kvrh", "log10(K_VRH)", "Bulk Modulus (GPa)")
+mb_jdft2d = (
+    "matbench_jdft2d",
+    "exfoliation_en",
+    "Exfoliation Energy (meV/atom)",
+    "E<sub>ex</sub>",
+)
+mb_steels = (
+    "matbench_steels",
+    "yield strength",
+    "Yield Strength (MPa)",
+    "σ",
+)
+mb_dielectric = (
+    "matbench_dielectric",
+    "n",
+    "Refractive index",
+    "n",
+)
+mb_perovskites = (
+    "matbench_perovskites",
+    "e_form",
+    "Formation energy (eV/atom)",
+    "E<sub>f</sub>",
+)
+mb_phonons = (
+    "matbench_phonons",
+    "last phdos peak",
+    "Max Phonon Peak (cm⁻¹)",
+    "ν<sub>max</sub>",
+)
+mb_bulk_modulus = (
+    "matbench_log_kvrh",
+    "log10(K_VRH)",
+    "Bulk Modulus (GPa)",
+    "K<sub>VRH</sub>",
+)
 plot_combinations: list[
-    tuple[str, str, str, EmbeddingMethod, ProjectionMethod, int, dict[str, Any]]
+    tuple[str, str, str, str, EmbeddingMethod, ProjectionMethod, int, dict[str, Any]]
 ] = [
     # 1. Steels with PCA (2D) - shows clear linear trends
     (*mb_steels, "magpie", "pca", 2, dict(x=0.01, xanchor="left")),
@@ -200,8 +253,9 @@ plot_combinations: list[
 
 for (
     data_name,
-    target_col,
+    target_key,
     target_label,
+    target_symbol,
     embed_method,
     proj_method,
     n_components,
@@ -209,8 +263,9 @@ for (
 ) in plot_combinations:
     fig = process_dataset(
         dataset_name=data_name,
-        target_col=target_col,
+        target_key=target_key,
         target_label=target_label,
+        target_symbol=target_symbol,
         embed_method=embed_method,
         projection=proj_method,
         n_components=n_components,
