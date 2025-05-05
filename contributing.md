@@ -34,4 +34,4 @@ git commit -m "commit message" # this will trigger the pre-commit hooks
 1. Open a Pull Request against the `main` branch of `janosh/pymatviz`.
 1. Your PR must pass all automated checks (tests, linting, code coverage) that run in our GitHub Actions workflows before it can be merged.
 
-By contributing, you agree that your contributions will be licensed under the same [MIT License](LICENSE) that covers the project. Thanks for contributing to `pymatviz`!
+By contributing, you agree that your contributions will be licensed under the same [MIT License](license) that covers the project. Thanks for contributing to `pymatviz`!
