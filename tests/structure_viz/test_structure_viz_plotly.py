@@ -231,29 +231,30 @@ def test_structure_2d_plotly_multiple() -> None:
 
     # Verify subplot titles
     for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
-        assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
+        expected_title = subplot_title(struct=struct, key=key)
+        assert fig.layout.annotations[idx - 1].text == expected_title
 
 
 def test_structure_2d_plotly_invalid_input() -> None:
     """Test that structure_2d_plotly raises errors for invalid inputs."""
-    with pytest.raises(
-        TypeError, match="Expected pymatgen Structure or Sequence of them"
-    ):
+    # Match the actual error message from normalize_structures
+    expected_err_msg = (
+        "Input must be a Pymatgen Structure, ASE Atoms object, a sequence"
+    )
+    with pytest.raises(TypeError, match=expected_err_msg):
         pmv.structure_2d_plotly("invalid input")
 
-    with pytest.raises(
-        TypeError, match="Expected pymatgen Structure or Sequence of them, got"
-    ):
+    with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
         pmv.structure_2d_plotly([])
 
     # Test with invalid rotation string
     struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    with pytest.raises(ValueError, match="could not convert string to float: "):
+    with pytest.raises(ValueError, match="could not convert string to float"):
         pmv.structure_2d_plotly(struct, rotation="invalid_rotation")
 
     # Test with invalid site_labels
-    with pytest.raises(ValueError, match="Invalid site_labels=123. Must be one of "):
+    with pytest.raises(ValueError, match="Invalid site_labels=123. Must be one of"):
         pmv.structure_2d_plotly(struct, site_labels=123)  # type: ignore[arg-type]
 
 
@@ -444,14 +445,21 @@ def test_structure_3d_plotly_multiple() -> None:
     assert len(fig.data) == expected_traces
     assert len(fig.layout.annotations) == 4
     for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
-        assert fig.layout.annotations[idx - 1].text == f"{key} - {struct.formula}"
+        expected_title = subplot_title(struct=struct, key=key)
+        assert fig.layout.annotations[idx - 1].text == expected_title
 
 
 def test_structure_3d_plotly_invalid_input() -> None:
-    with pytest.raises(
-        TypeError, match="Expected pymatgen Structure or Sequence of them"
-    ):
+    # Match the actual error message from normalize_structures
+    expected_err_msg = (
+        "Input must be a Pymatgen Structure, ASE Atoms object, a sequence"
+    )
+    with pytest.raises(TypeError, match=expected_err_msg):
         pmv.structure_3d_plotly("invalid input")
+
+    # Add similar tests for other invalid inputs if necessary, e.g. empty list
+    # with pytest.raises(ValueError, match="Cannot plot empty structure list/dict"):
+    #     pmv.structure_3d_plotly([])
 
 
 @pytest.mark.parametrize(

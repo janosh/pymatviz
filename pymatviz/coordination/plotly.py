@@ -22,7 +22,7 @@ from pymatviz.coordination.helpers import (
     normalize_get_neighbors,
 )
 from pymatviz.enums import ElemColorScheme
-from pymatviz.utils import normalize_to_dict
+from pymatviz.process_data import normalize_to_dict
 
 
 if TYPE_CHECKING:

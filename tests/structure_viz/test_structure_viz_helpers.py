@@ -23,7 +23,6 @@ from pymatviz.structure_viz.helpers import (
     get_first_matching_site_prop,
     get_image_sites,
     get_site_hover_text,
-    get_structures,
     get_subplot_title,
 )
 from pymatviz.typing import RgbColorType
@@ -59,27 +58,6 @@ def test_angles_to_rotation_matrix(
 def test_angles_to_rotation_matrix_invalid_input() -> None:
     with pytest.raises(ValueError, match="could not convert string to float: "):
         _angles_to_rotation_matrix("invalid_input")
-
-
-def test_get_structures(structures: list[Structure]) -> None:
-    # Test with single structure
-    result = get_structures(structures[0])
-    assert isinstance(result, dict)
-    assert len(result) == 1
-    assert isinstance(next(iter(result.values())), Structure)
-
-    # Test with list of structures
-    result = get_structures(structures)
-    assert isinstance(result, dict)
-    assert len(result) == len(structures)
-    assert all(isinstance(s, Structure) for s in result.values())
-
-    # Test with dict of structures
-    structs_dict = {f"struct{idx}": struct for idx, struct in enumerate(structures)}
-    result = get_structures(structs_dict)
-    assert isinstance(result, dict)
-    assert len(result) == len(structures)
-    assert all(isinstance(s, Structure) for s in result.values())
 
 
 @pytest.mark.parametrize(

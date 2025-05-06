@@ -11,7 +11,7 @@ from packaging import version
 from scipy.stats import norm
 
 import pymatviz as pmv
-from pymatviz.utils import df_to_arrays
+from pymatviz.process_data import df_to_arrays
 
 
 if TYPE_CHECKING:

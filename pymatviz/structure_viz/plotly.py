@@ -12,6 +12,7 @@ from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
+from pymatviz.process_data import normalize_structures
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     _angles_to_rotation_matrix,
@@ -23,7 +24,6 @@ from pymatviz.structure_viz.helpers import (
     get_elem_colors,
     get_first_matching_site_prop,
     get_image_sites,
-    get_structures,
     get_subplot_title,
 )
 
@@ -40,10 +40,7 @@ if TYPE_CHECKING:
 
 
 def structure_2d_plotly(
-    struct: Structure
-    | Sequence[Structure]
-    | ase.atoms.Atoms
-    | Sequence[ase.atoms.Atoms],
+    struct: Structure | Sequence[Structure] | ase.Atoms | Sequence[ase.Atoms],
     *,
     rotation: str = "10x,8y,3z",
     atomic_radii: float | dict[str, float] | None = None,
@@ -125,11 +122,11 @@ def structure_2d_plotly(
     Returns:
         go.Figure: Plotly figure showing the 2D structure(s).
     """
-    structures = get_structures(struct)
+    structures = normalize_structures(struct)
 
     n_structs = len(structures)
     n_cols = min(n_cols, n_structs)
-    n_rows = math.ceil(n_structs / n_cols)
+    n_rows = math.ceil(n_structs / (n_cols or 1))
 
     fig = make_subplots(
         rows=n_rows,
@@ -316,10 +313,7 @@ def structure_2d_plotly(
 
 
 def structure_3d_plotly(
-    struct: Structure
-    | Sequence[Structure]
-    | ase.atoms.Atoms
-    | Sequence[ase.atoms.Atoms],
+    struct: Structure | Sequence[Structure] | ase.Atoms | Sequence[ase.Atoms],
     *,
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 20,
@@ -400,7 +394,7 @@ def structure_3d_plotly(
     Returns:
         go.Figure: Plotly figure showing the 3D structure(s).
     """
-    structures = get_structures(struct)
+    structures = normalize_structures(struct)
 
     n_structs = len(structures)
     n_cols = min(n_cols, n_structs)

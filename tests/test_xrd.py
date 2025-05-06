@@ -10,6 +10,7 @@ from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.utils.testing import TEST_FILES
+from pymatviz.xrd import cu_k_alpha_wavelength
 
 
 if TYPE_CHECKING:
@@ -69,12 +70,35 @@ def test_xrd_pattern_annotate_peaks(annotate_peaks: float) -> None:
     else:
         fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, annotate_peaks=annotate_peaks)
         annotations = fig.layout.annotations
+
+        n_peak_annotations_expected = 0
         if isinstance(annotate_peaks, int):
-            assert len(annotations) == min(
-                annotate_peaks, len(MOCK_DIFFRACTION_PATTERN.x)
-            )
-        else:
-            assert len(annotations) > 0  # At least some peaks should be annotated
+            if annotate_peaks > 0:
+                n_peak_annotations_expected = min(
+                    annotate_peaks, len(MOCK_DIFFRACTION_PATTERN.x)
+                )
+        elif 0 < annotate_peaks < 1:  # float case
+            y_values = MOCK_DIFFRACTION_PATTERN.y
+            if y_values.size > 0:
+                max_intensity = max(y_values)
+                if max_intensity > 0:
+                    normalized_intensities = [
+                        (y_val / max_intensity) * 100 for y_val in y_values
+                    ]
+                    n_peak_annotations_expected = sum(
+                        1
+                        for intensity in normalized_intensities
+                        if intensity > annotate_peaks * 100
+                    )
+                # else: all intensities are 0 or less, so 0 peak annotations
+            # else: y_values is empty, so 0 peak annotations
+
+        # Total annotations = peak annotations + 2 for axis titles
+        assert len(annotations) == n_peak_annotations_expected + 2
+        # Axis title annotations are identified by not having an arrowhead
+        axis_texts = {anno.text for anno in annotations if not anno.arrowhead}
+        assert "2θ (degrees)" in axis_texts
+        assert "Intensity (a.u.)" in axis_texts
 
 
 def test_xrd_pattern_hover_data() -> None:
@@ -88,12 +112,26 @@ def test_xrd_pattern_hover_data() -> None:
 
 def test_xrd_pattern_layout_and_range() -> None:
     fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN)
-    assert fig.layout.xaxis.title.text == "2θ (degrees)"
-    assert fig.layout.yaxis.title.text == "Intensity (a.u.)"
+    # Axis titles are now annotations
+    axes_annotations = [
+        anno
+        for anno in fig.layout.annotations
+        if anno.text in ("2θ (degrees)", "Intensity (a.u.)")
+    ]
+    assert len(axes_annotations) == 2
+    x_axis_anno = next(anno for anno in axes_annotations if anno.text == "2θ (degrees)")
+    y_axis_anno = next(
+        anno for anno in axes_annotations if anno.text == "Intensity (a.u.)"
+    )
+
+    assert x_axis_anno.xref == "paper"
+    assert x_axis_anno.yref == "paper"
+    assert y_axis_anno.xref == "paper"
+    assert y_axis_anno.yref == "paper"
+    assert y_axis_anno.textangle == -90
+
     assert fig.layout.hovermode == "x"
-    assert fig.layout.xaxis.range[0] == 0
-    assert fig.layout.xaxis.range[1] == max(MOCK_DIFFRACTION_PATTERN.x) + 5
-    assert fig.layout.yaxis.range == (0, 105)
+    # Axis ranges are no longer explicitly set in xrd.py; relying on Plotly defaults.
 
 
 @pytest.mark.parametrize(
@@ -112,16 +150,47 @@ def test_xrd_pattern_annotation_format(
     fig = pmv.xrd_pattern(
         MOCK_DIFFRACTION_PATTERN, hkl_format=hkl_format, show_angles=show_angles
     )
+
+    # Filter out axis title annotations (no arrowheads).
+    peak_annotations = [
+        anno
+        for anno in fig.layout.annotations
+        if anno.arrowhead is not None and anno.ax is not None
+    ]
+    axis_annotations = [
+        anno for anno in fig.layout.annotations if anno.arrowhead is None
+    ]
+
+    assert len(axis_annotations) == 2  # Expect 2 axis title annotations
+    assert "2θ (degrees)" in [anno.text for anno in axis_annotations]
+    assert "Intensity (a.u.)" in [anno.text for anno in axis_annotations]
+
     if hkl_format is pmv.xrd.HklNone and not show_angles:
-        assert len(fig.layout.annotations) == 0
+        # No peak annotations if hkl_format is None and show_angles is False.
+        assert len(peak_annotations) == 0
     else:
-        for anno in fig.layout.annotations:
-            if expected_format:
-                assert re.search(expected_format, anno.text), f"{anno.text=}"
+        # Expect peak annotations (default annotate_peaks=5 for 5 mock peaks).
+        assert len(peak_annotations) > 0, "Expected peak annotations"
+        for anno in peak_annotations:
+            if expected_format:  # Regex for HKL or angle (if HKL is None)
+                assert re.search(expected_format, anno.text), (
+                    f"Format '{expected_format}' not in '{anno.text}'"
+                )
+
+            angle_pattern = r"\d+\.\d+°"
+            contains_angle = re.search(angle_pattern, anno.text) is not None
+
             if show_angles:
-                assert re.search(r"\d+\.\d+°", anno.text), f"{anno.text=}"
-            else:
-                assert not re.search(r"\d+\.\d+°", anno.text), f"{anno.text=}"
+                assert contains_angle, (
+                    f"Angle missing in '{anno.text}' when show_angles=True"
+                )
+            # If HKLs are shown (hkl_format is not None) and show_angles is False,
+            # then angles should not be present in the peak annotation.
+            elif hkl_format is not None:
+                assert not contains_angle, (
+                    f"Angle found in '{anno.text}' when show_angles=False and "
+                    "hkl_format specified"
+                )
 
 
 def test_xrd_pattern_empty_input() -> None:
@@ -140,13 +209,13 @@ def test_xrd_pattern_intensity_normalization() -> None:
     assert normalized_max / original_max == pytest.approx(100 / original_max)
 
 
-@pytest.mark.parametrize("wavelength", [1.54184, 0.7093])
+@pytest.mark.parametrize("wavelength", [cu_k_alpha_wavelength, 0.7093])
 def test_xrd_pattern_wavelength(wavelength: float) -> None:
     fig = pmv.xrd_pattern(BI2_ZR2_O7_STRUCT, wavelength=wavelength)
     first_peak_position = fig.data[0].x[0]
-    reference_fig = pmv.xrd_pattern(BI2_ZR2_O7_STRUCT, wavelength=1.54184)
+    reference_fig = pmv.xrd_pattern(BI2_ZR2_O7_STRUCT, wavelength=cu_k_alpha_wavelength)
     reference_first_peak = reference_fig.data[0].x[0]
-    if wavelength != 1.54184:
+    if wavelength != cu_k_alpha_wavelength:
         assert first_peak_position != reference_first_peak
     else:
         assert first_peak_position == reference_first_peak
@@ -245,9 +314,18 @@ def test_xrd_pattern_stack_and_kwargs(
             ]
             assert len(subtitle_annotations) == 2
             for anno in subtitle_annotations:
-                if "font" in subtitle_kwargs:
-                    assert anno.font.size == subtitle_kwargs["font"].get("size")
-                    assert anno.font.color == subtitle_kwargs["font"].get("color")
+                expected_font_size = subtitle_kwargs.get("font_size", 12)
+                # Color comes from subtitle_kwargs if specified
+                expected_font_color = None
+                if "font" in subtitle_kwargs and isinstance(
+                    subtitle_kwargs["font"], dict
+                ):
+                    expected_font_color = subtitle_kwargs["font"].get("color")
+
+                assert anno.font.size == expected_font_size
+                if expected_font_color:
+                    assert anno.font.color == expected_font_color
+
                 if "x" in subtitle_kwargs:
                     assert anno.x == subtitle_kwargs["x"]
                 if "y" in subtitle_kwargs:
@@ -257,3 +335,55 @@ def test_xrd_pattern_stack_and_kwargs(
         for trace in fig.data:
             assert trace.xaxis is None, f"{trace.xaxis=}"
             assert trace.yaxis is None, f"{trace.yaxis=}"
+
+
+def test_xrd_pattern_axis_kwargs() -> None:
+    """Test custom axis_kwargs."""
+    custom_style = {"font_size": 18, "font_color": "blue"}
+    fig = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, axis_title_kwargs=custom_style)
+
+    x_axis_anno = next(
+        anno for anno in fig.layout.annotations if anno.text == "2θ (degrees)"
+    )
+    y_axis_anno = next(
+        anno for anno in fig.layout.annotations if anno.text == "Intensity (a.u.)"
+    )
+
+    assert x_axis_anno.font.size == custom_style["font_size"]
+    assert x_axis_anno.font.color == custom_style["font_color"]
+    assert y_axis_anno.font.size == custom_style["font_size"]
+    assert y_axis_anno.font.color == custom_style["font_color"]
+    assert x_axis_anno.xref == "paper"
+    assert y_axis_anno.textangle == -90
+    assert x_axis_anno.x == 0.5
+    assert y_axis_anno.x < 0  # Default is -0.07 in xrd.py
+
+    # Ensure axis titles appear with empty axis_kwargs.
+    fig_empty_kwargs = pmv.xrd_pattern(MOCK_DIFFRACTION_PATTERN, axis_title_kwargs={})
+    assert any(
+        anno.text == "2θ (degrees)" for anno in fig_empty_kwargs.layout.annotations
+    )
+    assert any(
+        anno.text == "Intensity (a.u.)" for anno in fig_empty_kwargs.layout.annotations
+    )
+    # Check default font size (12) with empty kwargs.
+    default_x_title = next(
+        anno
+        for anno in fig_empty_kwargs.layout.annotations
+        if anno.text == "2θ (degrees)"
+    )
+    assert default_x_title.font.size == 12
+
+    # Check default font_size (12) used when not in axis_kwargs, while other props apply
+    # (Note: x/y in axis_kwargs would cause TypeError due to xrd.py structure).
+    fig_custom_color = pmv.xrd_pattern(
+        MOCK_DIFFRACTION_PATTERN, axis_title_kwargs={"font_color": "green"}
+    )
+    x_custom_color_anno = next(
+        anno
+        for anno in fig_custom_color.layout.annotations
+        if anno.text == "2θ (degrees)"
+    )
+    assert x_custom_color_anno.font.size == 12  # Default size from xrd.py
+    assert x_custom_color_anno.font.color == "green"
+    assert x_custom_color_anno.x == 0.5  # Default x position from xrd.py

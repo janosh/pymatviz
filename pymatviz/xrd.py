@@ -10,6 +10,8 @@ from plotly.subplots import make_subplots
 from pymatgen.analysis.diffraction.xrd import DiffractionPattern, XRDCalculator
 from pymatgen.core import Structure
 
+from pymatviz.process_data import is_ase_atoms
+
 
 if TYPE_CHECKING:
     from typing import Any, TypeAlias
@@ -18,6 +20,7 @@ if TYPE_CHECKING:
 PatternOrStruct: TypeAlias = DiffractionPattern | Structure
 HklFormat: TypeAlias = Literal["compact", "full", None]
 ValidHklFormats = HklCompact, HklFull, HklNone = get_args(HklFormat)
+cu_k_alpha_wavelength = 1.54184  # Angstroms
 
 
 def format_hkl(hkl: tuple[int, int, int], format_type: HklFormat) -> str:
@@ -47,10 +50,11 @@ def xrd_pattern(  # noqa: D417
     annotate_peaks: float = 5,
     hkl_format: HklFormat = HklCompact,
     show_angles: bool | None = None,
-    wavelength: float = 1.54184,  # Cu K-alpha wavelength
+    wavelength: float = cu_k_alpha_wavelength,
     stack: Literal["horizontal", "vertical"] | None = None,
     subplot_kwargs: dict[str, Any] | None = None,
     subtitle_kwargs: dict[str, Any] | None = None,
+    axis_title_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Create a plotly figure of XRD patterns from a pymatgen DiffractionPattern,
     from a pymatgen Structure, or a dictionary of either of them.
@@ -80,6 +84,8 @@ def xrd_pattern(  # noqa: D417
             control spacing between subplots, e.g. {'vertical_spacing': 0.02}.
         subtitle_kwargs (dict[str, Any] | None): Override default subplot title
             settings. E.g. dict(font_size=14). Default is None.
+        axis_title_kwargs (dict[str, Any] | None): Override default axis title
+            settings. E.g. dict(font_size=14). Default is None.
 
     Raises:
         ValueError: If annotate_peaks is not a positive int or a float in (0, 1).
@@ -98,7 +104,7 @@ def xrd_pattern(  # noqa: D417
         )
 
     # Convert single object to dict for uniform processing
-    if isinstance(patterns, DiffractionPattern | Structure):
+    if not isinstance(patterns, dict):
         patterns = {"XRD Pattern": patterns}
     elif not isinstance(patterns, dict):
         raise TypeError(
@@ -117,8 +123,8 @@ def xrd_pattern(  # noqa: D417
             cols=cols,
             shared_xaxes=True,
             shared_yaxes=True,
-            horizontal_spacing=0.05 / cols,
-            vertical_spacing=0.05 / rows,
+            horizontal_spacing=0.08 / cols,
+            vertical_spacing=0.08 / rows,
         )
         fig = make_subplots(**subplot_defaults | (subplot_kwargs or {}))
         # increase peak width for horizontal stacking
@@ -136,6 +142,11 @@ def xrd_pattern(  # noqa: D417
         else:
             pattern_or_struct, trace_kwargs = pattern_data, {}
 
+        if is_ase_atoms(pattern_or_struct):
+            from pymatgen.io.ase import AseAtomsAdaptor
+
+            pattern_or_struct = AseAtomsAdaptor().get_structure(pattern_or_struct)
+
         if isinstance(pattern_or_struct, Structure):
             xrd_calculator = XRDCalculator(wavelength=wavelength)
             diffraction_pattern = xrd_calculator.get_pattern(pattern_or_struct)
@@ -144,7 +155,8 @@ def xrd_pattern(  # noqa: D417
         else:
             value = pattern_or_struct
             raise TypeError(
-                f"{value=} should be a pymatgen Structure or DiffractionPattern"
+                "expecting a pymatgen Structure or DiffractionPattern, "
+                f"got {type(value).__name__}: {value}"
             )
 
         plotted_patterns.append(diffraction_pattern)
@@ -166,7 +178,12 @@ def xrd_pattern(  # noqa: D417
             for x, y, hkl, d in zip(two_theta, intensities, hkls, d_hkls, strict=True)
         ]
 
-        bar = go.Bar(
+        if stack:
+            row = trace_idx + 1 if stack == "vertical" else 1
+            col = trace_idx + 1 if stack == "horizontal" else 1
+            trace_kwargs.setdefault("row", row)
+            trace_kwargs.setdefault("col", col)
+        fig.add_bar(
             x=two_theta,
             y=intensities,
             width=peak_width,
@@ -175,13 +192,6 @@ def xrd_pattern(  # noqa: D417
             hoverinfo="text",
             **trace_kwargs,
         )
-
-        if stack:
-            row = trace_idx + 1 if stack == "vertical" else 1
-            col = trace_idx + 1 if stack == "horizontal" else 1
-            fig.add_trace(bar, row=row, col=col)
-        else:
-            fig.add_trace(bar)
 
     # Normalize intensities to 100 and add annotations
     for trace_idx, trace in enumerate(fig.data):
@@ -239,47 +249,40 @@ def xrd_pattern(  # noqa: D417
             if stack:
                 row = trace_idx + 1 if stack == "vertical" else 1
                 col = trace_idx + 1 if stack == "horizontal" else 1
-                fig.add_annotation(row=row, col=col, **anno_kwargs)
-            else:
-                fig.add_annotation(**anno_kwargs)
+                anno_kwargs.setdefault("row", row)
+                anno_kwargs.setdefault("col", col)
+            fig.add_annotation(**anno_kwargs)
 
         if stack:
             # Add trace name annotation at the top of each subplot
             row = trace_idx + 1 if stack == "vertical" else 1
             col = trace_idx + 1 if stack == "horizontal" else 1
             subtitle_defaults = dict(
-                x=0,
-                y=1,
-                showarrow=False,
-                font=dict(size=12),
-                xanchor="left",
-                yanchor="top",
+                x=1, y=1, showarrow=False, font_size=12, xanchor="right", yanchor="top"
             )
-
+            kwargs = subtitle_defaults | (subtitle_kwargs or {})
+            xref = f"x{trace_idx + 1} domain".replace("x1 ", "x ")
+            yref = f"y{trace_idx + 1} domain".replace("y1 ", "y ")
             fig.add_annotation(
-                text=trace.name,
-                xref=f"x{trace_idx + 1} domain".replace("x1 ", "x "),
-                yref=f"y{trace_idx + 1} domain".replace("y1 ", "y "),
-                row=row,
-                col=col,
-                **subtitle_defaults | (subtitle_kwargs or {}),
+                text=trace.name, xref=xref, yref=yref, row=row, col=col, **kwargs
             )
 
-    # Update layout
-    fig.update_layout(
-        xaxis=dict(
-            title="2θ (degrees)",
-            tickmode="linear",
-            tick0=0,
-            dtick=10,
-            range=[0, max_two_theta + 5],
-        ),
-        yaxis=dict(title="Intensity (a.u.)", range=[0, 105]),
-        hovermode="x",
-        barmode="overlay",
-        showlegend=stack is None,
-        legend=dict(x=1, y=1, xanchor="right", yanchor="top"),
+    # Add axis titles (not using plotly's built-in axis titles because they don't
+    # position correctly in stacked mode)
+    axis_title_kwargs = dict(
+        font_size=12, xref="paper", yref="paper", showarrow=False
+    ) | (axis_title_kwargs or {})
+    fig.add_annotation(  # X-axis title
+        text="2θ (degrees)", x=0.5, y=-0.12, **axis_title_kwargs
     )
+    fig.add_annotation(  # Y-axis title
+        text="Intensity (a.u.)", x=-0.07, y=0.5, textangle=-90, **axis_title_kwargs
+    )
+    fig.layout.margin.update(l=50, b=50)  # add bottom/left margin to fit axes titles
+
+    fig.layout.update(hovermode="x", barmode="overlay")
+    fig.layout.showlegend = stack is None and len(patterns) > 1
+    fig.layout.legend.update(x=1, y=1, xanchor="right", yanchor="top")
 
     # move tick marks inside
     fig.update_xaxes(ticks="inside")

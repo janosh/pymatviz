@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import plotly.graph_objects as go
 import pytest
@@ -7,41 +9,93 @@ from numpy.testing import assert_allclose
 from pymatgen.core import Lattice, Structure
 
 from pymatviz.rdf.plotly import element_pair_rdfs, full_rdf
+from tests.conftest import SI_ATOMS, SI_STRUCTS
 
 
 @pytest.mark.parametrize(
-    ("n_cols", "subplot_titles", "vertical_spacing"),
-    [(1, None, 0), (3, ["title1", "title2", "title3"], 0.1)],
+    ("n_cols", "subplot_titles_input", "vertical_spacing", "structs", "expected"),
+    [
+        (  # Case 1: 1 pmg Structure in list, no titles
+            1,
+            None,
+            0,
+            [SI_STRUCTS[0]],
+            dict(legend_visible=False, subplot_grid=(1, 1), annotations=[]),
+        ),
+        (  # Case 2: 2 pmg Structures in list, 3 titles
+            3,
+            ["t1", "t2", "t3"],
+            0.1,
+            SI_STRUCTS,
+            dict(
+                legend_visible=True, subplot_grid=(2, 3), annotations=["t1", "t2", "t3"]
+            ),
+        ),
+        (  # Case 3: 1 pmg Structure, 1 ASE Atoms in list, 3 titles
+            3,
+            ["t1", "t2", "t3"],
+            0.1,
+            [SI_STRUCTS[0], SI_ATOMS[1]],
+            dict(
+                legend_visible=True, subplot_grid=(2, 3), annotations=["t1", "t2", "t3"]
+            ),
+        ),
+        (  # Case 4: 1 pmg Structure, 1 ASE Atoms in dict, 3 titles
+            3,
+            ["t1", "t2", "t3"],
+            0.1,
+            {"A": SI_STRUCTS[0], "B": SI_ATOMS[1]},
+            dict(
+                legend_visible=True, subplot_grid=(2, 3), annotations=["t1", "t2", "t3"]
+            ),
+        ),
+        (  # Case 5: 2 ASE Atoms in dict, 3 titles
+            3,
+            ["t1", "t2", "t3"],
+            0.1,
+            {"A": SI_ATOMS[0], "B": SI_ATOMS[1]},
+            dict(
+                legend_visible=True, subplot_grid=(2, 3), annotations=["t1", "t2", "t3"]
+            ),
+        ),
+    ],
 )
-def test_element_pair_rdfs_basic(
-    structures: list[Structure],
+def test_element_pair_rdfs_layout_and_annotations(
+    structs: Any,
     n_cols: int,
-    subplot_titles: list[str] | None,
+    subplot_titles_input: list[str] | None,
     vertical_spacing: float,
+    expected: dict[str, Any],
 ) -> None:
-    for struct in structures:
-        subplot_kwargs = dict(
-            cols=n_cols,
-            subplot_titles=subplot_titles,
-            vertical_spacing=vertical_spacing,
-        )
-        fig = element_pair_rdfs(struct, subplot_kwargs=subplot_kwargs)
-        assert isinstance(fig, go.Figure)
-        assert fig.layout.title.text is None
-        assert fig.layout.showlegend is False
-        assert fig.layout.yaxis.title.text == "g(r)"
-        # check grid ref matches n_cols
-        actual_rows = len(fig._grid_ref)
-        actual_cols = len(fig._grid_ref[0])
-        n_elem_pairs = len(struct.chemical_system_set) ** 2
-        assert actual_cols == min(n_cols, n_elem_pairs)
-        assert actual_rows == (len(fig.data) + n_cols - 1) // n_cols
-        annotation_texts = [anno.text for anno in fig.layout.annotations]
-        assert (
-            annotation_texts == subplot_titles[: len(fig.data)]
-            if subplot_titles
-            else [""] * len(fig.data)
-        )
+    """Test element_pair_rdfs for legend, grid layout, annotations, and subplot titles
+    with various inputs."""
+    subplot_kwargs = dict(
+        cols=n_cols,
+        subplot_titles=subplot_titles_input,
+        vertical_spacing=vertical_spacing,
+    )
+    fig = element_pair_rdfs(structs, subplot_kwargs=subplot_kwargs)
+
+    assert isinstance(fig, go.Figure)
+    assert fig.layout.title.text is None  # Assuming no main title is set
+    assert fig.layout.yaxis.title.text == "g(r)"  # Common y-axis title
+
+    # Assert legend visibility
+    assert fig.layout.showlegend == expected["legend_visible"]
+
+    # Assert grid dimensions
+    actual_fig_rows = len(fig._grid_ref) if fig._grid_ref else 0
+    actual_fig_cols = len(fig._grid_ref[0]) if fig._grid_ref and fig._grid_ref[0] else 0
+
+    assert actual_fig_cols == expected["subplot_grid"][1]
+    assert actual_fig_rows == expected["subplot_grid"][0]
+
+    # Assert annotations (subplot titles)
+    annotations = fig.layout.annotations
+    current_annotation_texts = [anno.text for anno in annotations]
+
+    assert len(current_annotation_texts) == len(expected["annotations"])
+    assert current_annotation_texts == expected["annotations"]
 
 
 def test_element_pair_rdfs_empty_structure() -> None:
@@ -53,26 +107,23 @@ def test_element_pair_rdfs_empty_structure() -> None:
 
 
 def test_element_pair_rdfs_invalid_elements(structures: list[Structure]) -> None:
-    with pytest.raises(
-        ValueError,
-        match="Elements .* in element_pairs not present in any structure",
-    ):
-        element_pair_rdfs(
-            structures[0], element_pairs=[("Zn", "Zn")]
-        )  # Assuming Zn is not in the structure
+    err_msg = "Elements .* in element_pairs not present in any structure"
+    with pytest.raises(ValueError, match=err_msg):
+        # Assuming Zn is not in the structure
+        element_pair_rdfs(structures[0], element_pairs=[("Zn", "Zn")])
 
 
 def test_element_pair_rdfs_invalid_structure() -> None:
-    with pytest.raises(TypeError, match="Invalid inputs="):
+    err_msg = "Input must be a Pymatgen Structure, ASE Atoms object"
+    with pytest.raises(TypeError, match=err_msg):
         element_pair_rdfs("not a structure")
 
 
 def test_element_pair_rdfs_conflicting_bins_and_bin_size(
     structures: list[Structure],
 ) -> None:
-    with pytest.raises(
-        ValueError, match="Cannot specify both n_bins=.* and bin_size=.*"
-    ):
+    err_msg = "Cannot specify both n_bins=.* and bin_size=.*"
+    with pytest.raises(ValueError, match=err_msg):
         element_pair_rdfs(structures, n_bins=100, bin_size=0.1)
 
 
@@ -176,10 +227,10 @@ def test_element_pair_rdfs_list_dict_of_structures(
     assert labels == (
         set(structs)
         if isinstance(structs, dict)
-        else {structs.formula for structs in structs}
+        else {f"{idx + 1} {struct.formula}" for idx, struct in enumerate(structs)}
     )
     # Check that legend is shown for multiple structures
-    assert fig.layout.showlegend is None
+    assert fig.layout.showlegend is True
     assert sum(trace.showlegend for trace in fig.data) == len(structs)
 
 
@@ -242,9 +293,9 @@ def test_full_rdf_basic(structures: list[Structure]) -> None:
         assert fig.layout.xaxis.title.text == "r [Å]"
         assert fig.layout.yaxis.title.text == "g(r)"
         assert len(fig.data) == 1
-        assert fig.data[0].name == ""
+        assert fig.data[0].name == struct.formula
         assert fig.layout.title.text is None
-        assert fig.layout.showlegend is None or fig.layout.showlegend is False
+        assert fig.layout.showlegend is False or fig.layout.showlegend is None
         assert not fig.data[0].showlegend
 
 
@@ -257,7 +308,8 @@ def test_full_rdf_empty_structure() -> None:
 
 
 def test_full_rdf_invalid_structure() -> None:
-    with pytest.raises(TypeError, match="Invalid inputs="):
+    err_msg = "Input must be a Pymatgen Structure, ASE Atoms object"
+    with pytest.raises(TypeError, match=err_msg):
         full_rdf("not a structure")
 
 
@@ -325,7 +377,10 @@ def test_full_rdf_list_dict_of_structures(
     assert labels == (
         set(structs_dict_or_list)
         if isinstance(structs_dict_or_list, dict)
-        else {struct.formula for struct in structs_dict_or_list}
+        else {
+            f"{idx + 1} {struct.formula}"
+            for idx, struct in enumerate(structs_dict_or_list)
+        }
     )
 
 
@@ -363,4 +418,4 @@ def test_full_rdf_legend_position(structures: list[Structure]) -> None:
     assert fig_multiple.layout.legend.x == 0.5
     assert len(fig_multiple.data) == len(structures)
     for idx, trace in enumerate(fig_multiple.data):
-        assert trace.name == structures[idx].formula
+        assert trace.name == f"{idx + 1} {structures[idx].formula}"

@@ -149,7 +149,7 @@ def test_residual_vs_actual(df_or_arrays: DfOrArrays) -> None:
         (True, True, "custom count col", 1, {"color_continuous_scale": "Viridis"}),
         (
             True,
-            dict(prefix="test", x=1, y=1, font=dict(size=10)),
+            dict(prefix="test", x=1, y=1, font_size=10),
             None,
             10,
             {"color_continuous_scale": None},

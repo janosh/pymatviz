@@ -91,7 +91,7 @@ def sankey_from_2_df_cols(
                 xshift=(-1 if idx == 0 else 1) * xshift,
                 textangle=-90,
                 showarrow=False,
-                font=dict(size=20),
+                font_size=20,
             )
 
             fig.add_annotation(

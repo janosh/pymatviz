@@ -17,12 +17,9 @@ class ExperimentalWarning(Warning):
 
 from pymatviz.utils.data import (
     atomic_numbers,
-    bin_df_cols,
     df_ptable,
-    df_to_arrays,
     element_symbols,
     html_tag,
-    normalize_to_dict,
     patch_dict,
     si_fmt,
     si_fmt_int,

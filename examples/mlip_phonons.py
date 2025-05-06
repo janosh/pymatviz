@@ -97,15 +97,15 @@ for cubic, bulk_kwargs, (model_name, calc) in itertools.product(
 
     # Convert PhonopyAtoms back to ASE Atoms for force calculation
     ase_supercells = []
-    for ph_sc in phonopy_supercells:
-        ase_sc = Atoms(
-            symbols=ph_sc.symbols,
-            cell=ph_sc.cell,
-            scaled_positions=ph_sc.scaled_positions,
+    for ph_supercell in phonopy_supercells:
+        ase_supercell = Atoms(
+            symbols=ph_supercell.symbols,
+            cell=ph_supercell.cell,
+            scaled_positions=ph_supercell.scaled_positions,
             pbc=True,
         )
-        ase_sc.calc = calc
-        ase_supercells.append(ase_sc)
+        ase_supercell.calc = calc
+        ase_supercells.append(ase_supercell)
 
     # --- Force Calculation ---
     force_sets = [sc.get_forces() for sc in ase_supercells]

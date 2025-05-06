@@ -9,7 +9,6 @@ import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
 from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 
 from pymatviz.colors import ELEM_COLORS_ALLOY, ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
@@ -22,6 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from typing import Any, Literal
 
+    import pandas as pd
     import plotly.graph_objects as go
     from numpy.typing import ArrayLike
     from pymatgen.analysis.local_env import NearNeighbors
@@ -339,41 +339,6 @@ def draw_site(
         fig.add_scatter3d(**scatter_kwargs, scene=scene)
     else:
         fig.add_scatter(**scatter_kwargs, row=row, col=col)
-
-
-def get_structures(
-    struct: Structure | Sequence[Structure] | pd.Series | dict[Any, Structure],
-) -> dict[Any, Structure]:
-    """Convert pymatgen Structures or ASE Atoms or sequences of either to a dictionary
-    of pymatgen Structures.
-    """
-    if isinstance(struct, Structure):
-        return {0: struct}
-    if isinstance(struct, pd.Series):
-        return struct.to_dict()
-    if isinstance(next(iter(struct), None), Structure):
-        return dict(enumerate(struct))
-    if isinstance(struct, dict) and {*map(type, struct.values())} == {Structure}:
-        return struct
-
-    def is_ase_atoms(struct: Any) -> bool:
-        """Check if the input is an ASE Atoms object without importing ase."""
-        cls_name = f"{type(struct).__module__}.{type(struct).__qualname__}"
-        return cls_name in ("ase.atoms.Atoms", "pymatgen.io.ase.MSONAtoms")
-
-    if is_ase_atoms(struct):  # detect single ASE Atoms object
-        from pymatgen.io.ase import AseAtomsAdaptor
-
-        return {0: AseAtomsAdaptor().get_structure(struct)}
-    if is_ase_atoms(next(iter(struct), None)):  # detect sequence of ASE Atoms
-        from pymatgen.io.ase import AseAtomsAdaptor
-
-        return {
-            idx: AseAtomsAdaptor().get_structure(atoms)
-            for idx, atoms in enumerate(struct)
-        }
-
-    raise TypeError(f"Expected pymatgen Structure or Sequence of them, got {struct=}")
 
 
 def draw_unit_cell(
