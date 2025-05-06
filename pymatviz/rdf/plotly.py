@@ -18,8 +18,8 @@ import plotly
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from pymatviz.process_data import normalize_structures
 from pymatviz.rdf.helpers import calculate_rdf
-from pymatviz.utils import normalize_to_dict
 
 
 if TYPE_CHECKING:
@@ -28,10 +28,14 @@ if TYPE_CHECKING:
 
     import numpy as np
     from pymatgen.core import Structure
+    from pymatgen.io.ase import MSONAtoms
 
 
 def element_pair_rdfs(
-    structures: Structure | Sequence[Structure] | dict[str, Structure],
+    structures: Structure
+    | MSONAtoms
+    | Sequence[Structure | MSONAtoms]
+    | dict[str, Structure | MSONAtoms],
     cutoff: float | None = None,
     n_bins: int = 75,
     bin_size: float | None = None,
@@ -46,9 +50,10 @@ def element_pair_rdfs(
 
     Args:
         structures: Can be one of the following:
-            - single pymatgen Structure
-            - list of pymatgen Structures
-            - dictionary mapping labels to Structures
+            - single pymatgen Structure or ASE Atoms object
+            - sequence (list, tuple) of pymatgen Structures or ASE Atoms objects
+            - dictionary mapping labels to pymatgen Structures or ASE Atoms objects
+            - pandas Series of pymatgen Structures or ASE Atoms objects
         cutoff (float | None, optional): Maximum distance for RDF calculation.
             If None, defaults to twice the longest lattice vector length across all
             structures (up to 15A). If negative, its absolute value is used as a scaling
@@ -78,17 +83,20 @@ def element_pair_rdfs(
         ValueError: If no structures are provided, if structures have no sites,
             if invalid element pairs are provided, or if both n_bins and bin_size are
             specified.
+        TypeError: If input structures are not pymatgen Structures or ASE Atoms.
     """
-    structures = normalize_to_dict(structures)
+    # Ensure input is a dict[str, Structure | Atoms]
+    # and convert ASE Atoms to Pymatgen Structures if necessary
+    struct_dict = normalize_structures(structures)
 
-    for key, struct in structures.items():
+    for key, struct in struct_dict.items():
         if not struct.sites:
             raise ValueError(
                 f"input structure{f' {key}' if key else ''} contains no sites"
             )
 
     # Calculate dynamic cutoff if not specified or negative
-    max_cell_len = max(max(struct.lattice.abc) for struct in structures.values())
+    max_cell_len = max(max(struct.lattice.abc) for struct in struct_dict.values())
     if cutoff is None:
         cutoff = min(15, 2 * max_cell_len)
     elif cutoff < 0:
@@ -103,7 +111,7 @@ def element_pair_rdfs(
 
     # Determine all unique elements across all structures
     all_elements = set.union(
-        *(struct.chemical_system_set for struct in structures.values())
+        *(struct.chemical_system_set for struct in struct_dict.values())
     )
 
     # Determine element pairs to plot
@@ -128,7 +136,7 @@ def element_pair_rdfs(
     elem_pair_rdfs: dict[tuple[str, str], list[tuple[np.ndarray, np.ndarray]]] = {
         pair: [
             calculate_rdf(struct, *pair, cutoff=cutoff, n_bins=n_bins)
-            for struct in structures.values()
+            for struct in struct_dict.values()
         ]
         for pair in element_pairs
     }
@@ -159,7 +167,7 @@ def element_pair_rdfs(
         "dashdot",
         "longdashdot",
     )
-    labels = list(structures)
+    labels = list(struct_dict)
 
     # Add RDF traces to the figure
     for subplot_idx, (_elem_pair, rdfs) in enumerate(elem_pair_rdfs.items()):
@@ -177,7 +185,7 @@ def element_pair_rdfs(
                 line=dict(color=color, dash=line_style),
                 legendgroup=label,
                 # Only show legend for first subplot and if multiple structures
-                showlegend=subplot_idx == 0 and len(structures) > 1,
+                showlegend=subplot_idx == 0 and len(struct_dict) > 1,
                 row=row + 1,
                 col=col + 1,
                 hovertemplate=f"{label}<br>r = %{{x:.2f}} Å<br>g(r) = %{{y:.2f}}"
@@ -194,7 +202,8 @@ def element_pair_rdfs(
         fig.add_hline(y=1, **hline_defaults | reference_line)
 
     # show legend centered above subplots only if multiple structures were passed
-    if len(structures) > 1:
+    if len(struct_dict) > 1:
+        fig.layout.showlegend = True
         fig.layout.legend.update(
             orientation="h",
             xanchor="center",
@@ -247,9 +256,10 @@ def full_rdf(
             or if both n_bins and bin_size are specified.
     """
     # Normalize input to a dictionary of structures
-    structures = normalize_to_dict(structures)
+    # and convert ASE Atoms to Pymatgen Structures if necessary
+    struct_dict = normalize_structures(structures)
 
-    for key, struct in structures.items():
+    for key, struct in struct_dict.items():
         if not struct.sites:
             raise ValueError(
                 f"input structure{f' {key}' if key else ''} contains no sites"
@@ -266,7 +276,7 @@ def full_rdf(
 
     rdfs = {
         label: calculate_rdf(struct, cutoff=cutoff, n_bins=n_bins)
-        for label, struct in structures.items()
+        for label, struct in struct_dict.items()
     }
 
     fig = go.Figure()
@@ -301,10 +311,13 @@ def full_rdf(
         hline_defaults = dict(line_dash="dash", line_color="gray", opacity=0.7)
         fig.add_hline(y=1, **hline_defaults | reference_line)
 
-    # Show legend centered above the plot if multiple structures were passed
-    if len(structures) > 1:
+    # show legend centered above subplots only if multiple structures were passed
+    if len(struct_dict) > 1:
+        fig.layout.showlegend = True
         fig.layout.legend.update(
             orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5
         )
+    else:
+        fig.layout.showlegend = False
 
     return fig

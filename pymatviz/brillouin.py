@@ -13,10 +13,7 @@ from pymatgen.core import Structure
 
 
 def brillouin_zone_3d(
-    struct: Structure
-    | Sequence[Structure]
-    | ase.atoms.Atoms
-    | Sequence[ase.atoms.Atoms],
+    struct: Structure | Sequence[Structure] | ase.Atoms | Sequence[ase.Atoms],
     *,
     # Surface styling
     surface_kwargs: dict[str, Any] | None = None,
@@ -32,9 +29,7 @@ def brillouin_zone_3d(
     | None = None,
     # Grid layout
     n_cols: int = 3,
-    subplot_title: Callable[
-        [Structure | ase.atoms.Atoms, str | int], str | dict[str, Any]
-    ]
+    subplot_title: Callable[[Structure | ase.Atoms, str | int], str | dict[str, Any]]
     | None
     | Literal[False] = None,
 ) -> go.Figure:
@@ -57,7 +52,7 @@ def brillouin_zone_3d(
             shaft.len to control vector length. Set to False to disable axes plotting.
         # Grid layout
         n_cols (int): Number of columns for subplots. Defaults to 3.
-        subplot_title (Callable[[Structure | ase.atoms.Atoms, str | int], str | dict] | False, optional):
+        subplot_title (Callable[[Structure | ase.Atoms, str | int], str | dict] | False, optional):
             Function to generate subplot titles. Defaults to
             lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
             False to hide all subplot titles.
@@ -68,9 +63,10 @@ def brillouin_zone_3d(
     import scipy.spatial as sps
     import seekpath
 
-    from pymatviz.structure_viz.helpers import get_structures, get_subplot_title
+    from pymatviz.process_data import normalize_structures
+    from pymatviz.structure_viz.helpers import get_subplot_title
 
-    structures = get_structures(struct)
+    structures = normalize_structures(struct)
 
     n_structs = len(structures)
     n_cols = min(n_cols, n_structs)
@@ -299,9 +295,9 @@ def brillouin_zone_3d(
         if subplot_title is not False:
             title_func = subplot_title or get_subplot_title
             if title_func is get_subplot_title:
-                anno = title_func(structure, struct_key, idx, subplot_title)  # type: ignore[call-arg]
+                anno = title_func(structure, struct_key, idx, subplot_title)  # type: ignore[call-arg, arg-type]
             else:
-                anno = title_func(structure, struct_key)  # type: ignore[call-arg]
+                anno = title_func(structure, struct_key)  # type: ignore[call-arg, arg-type]
                 if not isinstance(anno, (str, dict)):
                     raise TypeError("Subplot title must be a string or dict")
                 if isinstance(anno, str):

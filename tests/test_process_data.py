@@ -1,17 +1,28 @@
 from __future__ import annotations
 
+import copy
 import re
 from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
-from pymatgen.core import Composition
+from pymatgen.core import Composition, Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemCountMode
+from pymatviz.process_data import (
+    bin_df_cols,
+    df_to_arrays,
+    is_ase_atoms,
+    normalize_structures,
+    normalize_to_dict,
+)
+from tests.conftest import SI_ATOMS, SI_STRUCTS, y_pred, y_true
 
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from pymatviz.typing import FormulaGroupBy
 
 
@@ -240,3 +251,288 @@ def test_count_formulas_mixed_input() -> None:
     assert len(df_out) == 1
     assert df_out["chem_sys"].iloc[0] == "Fe-O"
     assert df_out["count"].iloc[0] == 4
+
+
+PMG_FORMULA_0 = SI_STRUCTS[0].formula
+PMG_FORMULA_1 = SI_STRUCTS[1].formula
+PMG_EXPECTED_DICT = {
+    f"1 {PMG_FORMULA_0}": SI_STRUCTS[0],
+    f"2 {PMG_FORMULA_1}": SI_STRUCTS[1],
+}
+
+_test_cases_normalize_structures = [
+    # (test_case_name, input_to_normalize_structures, expected_dictionary_output)
+    ("single_pmg_structure", SI_STRUCTS[0], {PMG_FORMULA_0: SI_STRUCTS[0]}),
+    ("list_of_pmg_structures", SI_STRUCTS, PMG_EXPECTED_DICT),
+    (
+        "dict_of_pmg_structures",
+        {"s0_key": SI_STRUCTS[0], "s1_key": SI_STRUCTS[1]},
+        {"s0_key": SI_STRUCTS[0], "s1_key": SI_STRUCTS[1]},
+    ),
+    ("single_ase_atoms", SI_ATOMS[0], {PMG_FORMULA_0: SI_STRUCTS[0]}),
+    ("list_of_ase_atoms", SI_ATOMS, PMG_EXPECTED_DICT),
+    (
+        "dict_of_ase_atoms",
+        {"a0_key": SI_ATOMS[0], "a1_key": SI_ATOMS[1]},
+        {"a0_key": SI_STRUCTS[0], "a1_key": SI_STRUCTS[1]},
+    ),
+    # mixed list: Pymatgen Structure and ASE Atoms object
+    ("mixed_list_pmg_and_ase", [SI_STRUCTS[0], SI_ATOMS[1]], PMG_EXPECTED_DICT),
+    (
+        "mixed_dict_pmg_and_ase",
+        {"pmg_key": SI_STRUCTS[0], "ase_key": SI_ATOMS[1]},
+        {"pmg_key": SI_STRUCTS[0], "ase_key": SI_STRUCTS[1]},
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("test_case_name", "input_raw", "expected_output_dict"),
+    _test_cases_normalize_structures,
+    ids=[case[0] for case in _test_cases_normalize_structures],
+)
+def test_normalize_structures(
+    test_case_name: str,
+    input_raw: Any,
+    expected_output_dict: dict[Any, Structure],
+) -> None:
+    """Test normalize_structures function for various inputs including ASE Atoms."""
+    del test_case_name
+
+    result_dict = normalize_structures(input_raw)
+
+    assert result_dict == expected_output_dict
+
+
+# Mock classes for testing is_ase_atoms
+class MockAseAtoms:
+    """Mock ASE Atoms class for testing."""
+
+    __module__ = "ase.atoms"
+    __qualname__ = "Atoms"
+
+
+class MockMsonAtoms:
+    """Mock MSONAtoms class for testing."""
+
+    __module__ = "pymatgen.io.ase"
+    __qualname__ = "MSONAtoms"
+
+
+class NotAse:
+    """A mock class that is not an ASE Atoms object."""
+
+    __module__ = "some.other.module"
+    __qualname__ = "SomeClass"
+
+
+@pytest.mark.parametrize(
+    ("obj", "expected"),
+    [
+        (MockAseAtoms(), True),
+        (MockMsonAtoms(), True),
+        (Structure([[1, 0, 0], [0, 1, 0], [0, 0, 1]], ["Fe"], [[0, 0, 0]]), False),
+        (NotAse(), False),
+        ("string", False),
+        (123, False),
+        ([1, 2, 3], False),
+        ({"key": "value"}, False),
+        (None, False),
+    ],
+)
+def test_is_ase_atoms(obj: object, expected: bool) -> None:
+    """Test the is_ase_atoms function with various inputs."""
+    assert is_ase_atoms(obj) == expected
+
+
+class DummyClass:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.formula = name  # Add a formula attribute to mimic Structure
+
+
+@pytest.mark.parametrize("cls", [Structure, DummyClass, Lattice])
+def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
+    # Test with a single instance
+    single_instance = {
+        Structure: Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
+        DummyClass: DummyClass("dummy"),
+        Lattice: Lattice.cubic(5),
+    }[cls]
+    result = normalize_to_dict(single_instance, cls=cls)
+    assert isinstance(result, dict)
+    assert len(result) == 1
+    assert "" in result
+    assert isinstance(result[""], cls)
+
+    # Test with a list of instances
+    instance_list = [single_instance, single_instance]
+    result = normalize_to_dict(instance_list, cls=cls)
+    assert isinstance(result, dict)
+    assert len(result) == 2
+    assert all(isinstance(s, cls) for s in result.values())
+    expected_keys = {
+        Structure: {"Si1", "Si1 1"},
+        DummyClass: {"dummy", "dummy 1"},
+        Lattice: {"Lattice", "Lattice 1"},
+    }[cls]
+    assert set(result) == expected_keys
+
+    # Test with a dictionary of instances
+    instance_dict = {"item1": single_instance, "item2": single_instance}
+    result = normalize_to_dict(instance_dict, cls=cls)
+    assert result == instance_dict
+
+    # Test with invalid input
+    inputs, cls_name = "invalid input", cls.__name__
+    err_msg = f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
+    with pytest.raises(TypeError, match=err_msg):
+        normalize_to_dict(inputs, cls=cls)
+
+    # Test with mixed valid and invalid inputs in a list
+    inputs = [single_instance, "invalid"]  # type: ignore[assignment]
+    err_msg = re.escape(
+        f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
+    )
+    with pytest.raises(TypeError, match=err_msg):
+        normalize_to_dict(inputs, cls=cls)
+
+
+@pytest.mark.parametrize(
+    ("cls1", "cls2"),
+    [
+        (Structure, DummyClass),
+        (DummyClass, Lattice),
+        (Structure, Lattice),
+    ],
+)
+def test_normalize_to_dict_mixed_classes(
+    cls1: type[Structure | DummyClass], cls2: type[Structure | DummyClass]
+) -> None:
+    obj_map = {
+        Structure: Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]),
+        DummyClass: DummyClass("dummy1"),
+        Lattice: Lattice.cubic(5),
+    }
+    instance1 = obj_map[cls1]
+    instance2 = obj_map[cls2]
+
+    with pytest.raises(TypeError, match=r"Invalid inputs=\["):
+        normalize_to_dict([instance1, instance2], cls=cls1)
+
+
+def test_df_to_arrays() -> None:
+    df_regr = pd.DataFrame([y_true, y_pred]).T
+    x1, y1 = df_to_arrays(None, y_true, y_pred)
+    x_col, y_col = df_regr.columns[:2]
+    x2, y2 = df_to_arrays(df_regr, x_col, y_col)
+    assert x1 == pytest.approx(x2)
+    assert y1 == pytest.approx(y2)
+    assert x1 == pytest.approx(y_true)
+    assert y1 == pytest.approx(y_pred)
+
+    with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
+        df_to_arrays("foo", y_true, y_pred)
+
+    bad_col_name = "not-real-col-name"
+    with pytest.raises(KeyError) as exc:
+        df_to_arrays(df_regr, bad_col_name, df_regr.columns[0])
+
+    assert "not-real-col-name" in str(exc.value)
+
+
+def test_df_to_arrays_strict() -> None:
+    args = df_to_arrays(42, "foo", "bar", strict=False)
+    assert args == ("foo", "bar")
+
+    with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
+        df_to_arrays(42, "foo", "bar", strict=True)
+
+
+@pytest.mark.parametrize(
+    (
+        "bin_by_cols",
+        "group_by_cols",
+        "n_bins",
+        "expected_n_bins",
+        "verbose",
+        "density_col",
+        "expected_n_rows",
+    ),
+    [
+        (["A"], [], 2, [2], True, "", 2),
+        (["A", "B"], [], 2, [2, 2], True, "kde_bin_counts", 4),
+        (["A", "B"], [], [2, 3], [2, 3], False, "kde_bin_counts", 6),
+        (["A"], ["B"], 2, [2], False, "", 30),
+    ],
+)
+def test_bin_df_cols(
+    bin_by_cols: list[str],
+    group_by_cols: list[str],
+    n_bins: int | list[int],
+    expected_n_bins: list[int],
+    verbose: bool,
+    density_col: str,
+    expected_n_rows: int,
+    df_float: pd.DataFrame,
+) -> None:
+    idx_col = "index"
+    # don't move this below df_float.copy() line
+    df_float.index.name = idx_col
+
+    # keep copy of original DataFrame to assert it is not modified
+    # not using df.copy(deep=True) here for extra sensitivity, doc str says
+    # not as deep as deepcopy
+    df_float_orig = copy.deepcopy(df_float)
+
+    bin_counts_col = "bin_counts"
+    df_binned = bin_df_cols(
+        df_float,
+        bin_by_cols,
+        group_by_cols=group_by_cols,
+        n_bins=n_bins,
+        verbose=verbose,
+        bin_counts_col=bin_counts_col,
+        density_col=density_col,
+    )
+
+    assert len(df_binned) == expected_n_rows, f"{len(df_binned)=} {expected_n_rows=}"
+    assert len(df_binned) <= len(df_float), f"{len(df_binned)=} {len(df_float)=}"
+    assert df_binned.index.name == idx_col
+
+    # ensure binned DataFrame has a minimum set of expected columns
+    expected_cols = {bin_counts_col, *df_float, *(f"{col}_bins" for col in bin_by_cols)}
+    assert {*df_binned} >= expected_cols, (
+        f"{set(df_binned)=}\n{expected_cols=},\n{bin_by_cols=}\n{group_by_cols=}"
+    )
+
+    # validate the number of unique bins for each binned column
+    for col, n_bins_expec in zip(bin_by_cols, expected_n_bins, strict=True):
+        assert df_binned[f"{col}_bins"].nunique() == n_bins_expec
+
+    # ensure original DataFrame is not modified
+    pd.testing.assert_frame_equal(df_float, df_float_orig)
+
+    # Check that the index values of df_binned are a subset of df_float
+    assert set(df_binned.index).issubset(set(df_float.index))
+
+    # Check that bin_counts column exists and contains only integers
+    assert bin_counts_col in df_binned
+    assert df_binned[bin_counts_col].dtype in [int, "int64"]
+
+    # If density column is specified, check if it exists
+    if density_col:
+        assert density_col in df_binned
+    else:
+        assert density_col not in df_binned
+
+
+def test_bin_df_cols_raises() -> None:
+    df_dummy = pd.DataFrame({"col1": [1, 2, 3, 4], "col2": [2, 3, 4, 5]})
+    bin_by_cols = ["col1", "col2"]
+
+    # test error when passing n_bins as list but list has wrong length
+    with pytest.raises(
+        ValueError, match=re.escape("len(bin_by_cols)=2 != len(n_bins)=1")
+    ):
+        bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])

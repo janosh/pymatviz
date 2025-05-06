@@ -224,7 +224,7 @@ def confusion_matrix(
             showarrow=False,
             xanchor="center",
             yanchor="bottom",
-            font=dict(size=22),
+            font_size=22,
         ) | (metrics_kwargs or {})
         fig.add_annotation(**metrics_defaults)
         if metrics_defaults.get("y", 0) >= 1:  # type: ignore[operator]

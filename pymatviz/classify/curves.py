@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import sklearn.metrics as skm
 from numpy.typing import ArrayLike
 
-from pymatviz.utils import df_to_arrays
+from pymatviz.process_data import df_to_arrays
 
 
 Predictions: TypeAlias = ArrayLike | str | dict[str, ArrayLike | dict[str, Any]]

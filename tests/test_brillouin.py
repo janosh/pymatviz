@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from glob import glob
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,36 +10,73 @@ from pymatgen.core import Structure
 
 from pymatviz.brillouin import brillouin_zone_3d
 from pymatviz.utils.testing import TEST_FILES
+from tests.conftest import SI_ATOMS, SI_STRUCTS
+
+
+if TYPE_CHECKING:
+    import ase.atoms
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "expected_mode"),
+    ("struct_to_plot", "kwargs", "expected_mode", "n_expected_subplots"),
     [
-        ({}, None),
-        ({"point_kwargs": False}, None),
-        ({"axes_vectors": False}, None),
-        ({"point_kwargs": {"size": 10, "color": "red"}}, "markers+text"),
+        (SI_STRUCTS[0], {}, None, 1),
+        (SI_ATOMS[0], {"point_kwargs": False}, None, 1),
+        ({"s0": SI_STRUCTS[0], "s1": SI_STRUCTS[1]}, {"axes_vectors": False}, None, 2),
+        (
+            {"a0": SI_ATOMS[0], "a1": SI_ATOMS[1]},
+            {"point_kwargs": {"size": 10, "color": "red"}},
+            "markers+text",
+            2,
+        ),
+        ({"s0": SI_STRUCTS[0], "a1": SI_ATOMS[1]}, {}, None, 2),
+        (
+            SI_ATOMS[1],
+            {"point_kwargs": {"size": 5, "color": "blue"}},
+            "markers+text",
+            1,
+        ),
     ],
 )
 def test_brillouin_zone_3d_basic(
-    structures: list[Structure], kwargs: dict[str, Any], expected_mode: str | None
+    struct_to_plot: Structure | ase.Atoms | dict[str, Structure | ase.Atoms],
+    kwargs: dict[str, Any],
+    expected_mode: str | None,
+    n_expected_subplots: int,
 ) -> None:
-    """Test basic functionality and trace types of brillouin_zone_3d."""
-    fig = brillouin_zone_3d(structures[0], **kwargs)
-    assert isinstance(fig, go.Figure)
-    assert fig.layout.scene.aspectmode == "data"
+    """Test basic functionality and trace types of brillouin_zone_3d for various
+    inputs."""
 
-    # Check that the figure contains the expected traces
+    fig = brillouin_zone_3d(struct_to_plot, **kwargs)
+    assert isinstance(fig, go.Figure)
+
     trace_types = {trace["type"] for trace in fig.data}
     assert trace_types <= {"scatter3d", "cone", "mesh3d"}, f"{trace_types=}"
+    assert sum(1 for trace in fig.data if trace.type == "mesh3d") == n_expected_subplots
 
-    if expected_mode:
-        text_traces = [
-            trace
-            for trace in fig.data
-            if trace.type == "scatter3d" and trace.mode == expected_mode
-        ]
-        assert len(text_traces) == 1
+    if n_expected_subplots == 1:
+        assert fig.layout.scene.aspectmode == "data"
+        if expected_mode:
+            text_traces = [
+                trace
+                for trace in fig.data
+                if trace.type == "scatter3d" and trace.mode == expected_mode
+            ]
+            assert len(text_traces) == 1
+    else:  # Dictionary input, check subplot properties
+        assert len(fig.layout.annotations) == n_expected_subplots  # subplot titles
+        for idx_subplot in range(1, n_expected_subplots + 1):
+            scene = getattr(fig.layout, f"scene{idx_subplot}")
+            assert scene.aspectmode == "data"
+        if expected_mode:
+            # For dict inputs, high-symm points are plotted for each subplot
+            text_traces = [
+                trace
+                for trace in fig.data
+                if trace.type == "scatter3d" and trace.mode == expected_mode
+            ]
+            # Each subplot should have its own set of high-symm points if enabled
+            assert len(text_traces) == n_expected_subplots
 
 
 @pytest.mark.parametrize(
@@ -300,9 +337,10 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
 
     fig = brillouin_zone_3d(structures, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
-    for idx, (key, _struct) in enumerate(enumerate(structures)):
+    for idx, struct in enumerate(structures):
         anno = fig.layout.annotations[idx]
-        assert anno.text == f"Custom {key}"
+        expected_text = f"Custom {idx + 1} {struct.formula}"
+        assert anno.text == expected_text
         assert anno.font.size == 16
         assert anno.font.color == "blue"
         assert anno.yanchor == "bottom"
@@ -367,17 +405,14 @@ def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) ->
 
     # Test with dict return type for subplot titles
     def title_with_dict(_struct: Structure, key: str | int) -> dict[str, Any]:
-        return {
-            "text": f"Test {key}",
-            "font": {"size": 20, "color": "red"},
-            "x": 0.5,
-            "y": 0.9,
-        }
+        font = dict(size=20, color="red")
+        return dict(text=f"Test {key}", font=font, x=0.5, y=0.9)
 
     fig = brillouin_zone_3d(structures, subplot_title=title_with_dict)
     assert isinstance(fig, go.Figure)
     for idx, anno in enumerate(fig.layout.annotations):
-        assert anno.text == f"Test {idx}"
+        expected_text = f"Test {idx + 1} {structures[idx].formula}"
+        assert anno.text == expected_text
         assert anno.font.size == 20
         assert anno.font.color == "red"
         assert anno.x == 0.5
@@ -390,11 +425,10 @@ def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) ->
 
     # Test with custom string return type
     def title_with_string(struct: Structure, key: str | int) -> str:
-        return f"Structure {key} - {struct.formula}"
+        return f"Structure {key} ({len(struct)} atoms)"
 
     fig = brillouin_zone_3d(structures, subplot_title=title_with_string)
     assert isinstance(fig, go.Figure)
-    for idx, (key, struct) in enumerate(
-        zip(range(len(structures)), structures, strict=False)
-    ):
-        assert fig.layout.annotations[idx].text == f"Structure {key} - {struct.formula}"
+    for idx, struct in enumerate(structures):
+        expected_text = f"Structure {idx + 1} {struct.formula} ({len(struct)} atoms)"
+        assert fig.layout.annotations[idx].text == expected_text

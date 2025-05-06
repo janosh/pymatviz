@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import platform
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,7 @@ import plotly.graph_objects as go
 import pytest
 from plotly.subplots import make_subplots
 from pymatgen.core import Lattice, Structure
+from pymatgen.io.ase import AseAtomsAdaptor
 
 from pymatviz.utils.testing import TEST_FILES
 
@@ -18,6 +20,7 @@ from pymatviz.utils.testing import TEST_FILES
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    import ase
     from phonopy import Phonopy
 
 
@@ -73,25 +76,37 @@ def spg_symbols() -> list[str]:
     return symbols
 
 
-@pytest.fixture
-def structures() -> tuple[Structure, Structure]:
-    coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
-    lattice = [[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]]
-    si2_struct = Structure(lattice, ["Si4+", "Si4+"], coords)
+SI2_STRUCT = Structure(
+    lattice=[[3.8, 0, 0], [1.9, 3.3, 0], [0, -2.2, 3.1]],
+    species=["Si4+", "Si4+"],
+    coords=[[0, 0, 0], [0.75, 0.5, 0.75]],
+)
 
-    coords = [
+lattice = Lattice.tetragonal(4.192, 6.88)
+si2_ru2_pr2_struct = Structure(
+    lattice=Lattice.tetragonal(4.192, 6.88),
+    species=["Si", "Si", "Ru", "Ru", "Pr", "Pr"],
+    coords=[
         [0.25, 0.25, 0.173],
         [0.75, 0.75, 0.827],
         [0.75, 0.25, 0],
         [0.25, 0.75, 0],
         [0.25, 0.25, 0.676],
         [0.75, 0.75, 0.324],
-    ]
-    lattice = Lattice.tetragonal(4.192, 6.88)
-    si2_ru2_pr2_struct = Structure(
-        lattice, ("Si", "Si", "Ru", "Ru", "Pr", "Pr"), coords
-    )
-    return si2_struct, si2_ru2_pr2_struct
+    ],
+)
+SI_STRUCTS = (SI2_STRUCT, si2_ru2_pr2_struct)
+SI_ATOMS = tuple(map(AseAtomsAdaptor.get_atoms, SI_STRUCTS))
+
+
+@pytest.fixture
+def structures() -> tuple[Structure, Structure]:
+    return tuple(struct.copy() for struct in SI_STRUCTS)
+
+
+@pytest.fixture
+def ase_atoms() -> tuple[ase.Atoms, ase.Atoms]:
+    return tuple(copy.copy(atoms) for atoms in SI_ATOMS)
 
 
 @pytest.fixture

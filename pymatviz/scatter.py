@@ -15,7 +15,7 @@ import scipy.stats
 from matplotlib.colors import LogNorm
 
 import pymatviz as pmv
-from pymatviz.utils import bin_df_cols, df_to_arrays
+from pymatviz.process_data import bin_df_cols, df_to_arrays
 
 
 if TYPE_CHECKING:

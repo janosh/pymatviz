@@ -148,7 +148,7 @@ def spacegroup_bar(
             x1 = x0 + width
             anno = dict(
                 text=crys_sys,
-                font=dict(size=14),
+                font_size=14,
                 x=(x0 + x1) / 2,
                 textangle=90,
                 xanchor="center",
@@ -170,7 +170,7 @@ def spacegroup_bar(
                     # shift count up if bar is so narrow it overlaps with neighbors
                     yshift=16 if (width + prev_width < 15 and idx % 2 == 1) else 0,
                     showarrow=False,
-                    font=dict(size=12),
+                    font_size=12,
                     yref="paper",
                     yanchor="bottom",
                 )
