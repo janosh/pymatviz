@@ -679,7 +679,7 @@ def ptable_hists_plotly(
                 trace.marker.colorbar = cbar_settings
 
         if log:
-            fig.update_xaxes(tickformat=".1~s")
+            fig.update_xaxes(tickformat=".4s")
 
     return fig
 
@@ -700,7 +700,7 @@ def _add_colorbar_trace(
 
     # Ensure tickformat is included in colorbar settings
     if "tickformat" not in colorbar:
-        colorbar["tickformat"] = ".1~s"  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
+        colorbar["tickformat"] = ".4s"  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
 
     marker = dict(
         size=0,
@@ -741,7 +741,7 @@ def _get_colorbar_settings(
         lenmode="fraction",
         thickness=15,
         title_font_size=scale * 1.2 * (font_size or 12),
-        tickformat=".1~s",  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
+        tickformat="~s",  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
     ) | (colorbar or {})
 
     # Only apply orientation-specific defaults for values not set by user
@@ -760,7 +760,7 @@ def _get_colorbar_settings(
     if title := cbar_settings.get("title"):
         title_text = title.get("text", "") if isinstance(title, dict) else title
         if split_name:
-            title_text = f"{title_text} ({split_name})"
+            title_text = title_text or split_name
         cbar_settings["title"] = dict(text=title_text)
     elif split_name:
         cbar_settings["title"] = dict(text=split_name)
@@ -791,6 +791,7 @@ def ptable_heatmap_splits_plotly(
     # Hover tooltip
     hover_template: str | None = None,
     hover_fmt: str | Callable[[float], str] = ".3g",
+    split_value_fmt: str | Sequence[str] | None = ".3g",
     # Additional options
     nan_color: str = "#eff",
     zero_color: str = "#aaa",
@@ -819,12 +820,8 @@ def ptable_heatmap_splits_plotly(
             properties. If a single dict is provided, it will be used as a template for
             all colorbars. If a sequence is provided, each dict will be used for its
             corresponding split. Set to False to hide all colorbars. Defaults to
-            dict(orientation="v"). Each colorbar dict can include:
-            - v_offset (float): Vertical offset from default position. Defaults to 0 for
-              vertical colorbars and 0.05 for horizontal colorbars.
-            - h_offset (float): Horizontal offset from default position. Defaults to
-              0.05 for vertical colorbars and 0 for horizontal colorbars.
-            See https://plotly.com/python/reference#heatmap-colorbar for other options.
+            dict(orientation="v"). Each colorbar dict can include any subset of plotly
+            colorbar properties, see https://plotly.com/python/reference#heatmap-colorbar.
         on_empty ("hide" | "show"): Whether to show tiles for elements without data.
             Defaults to "hide".
         hide_f_block (bool | "auto"): Hide f-block (lanthanide and actinide series).
@@ -870,9 +867,15 @@ def ptable_heatmap_splits_plotly(
             element name, {symbol} for element symbol, {split_name} for split name,
             {value} for split value, and {hover_data} for custom hover data.
             Defaults to None, which shows element name, symbol and all split values.
-        hover_fmt (str | Callable[[float], str]): Format for values in hover tooltip.
-            Can be either a format string (e.g. ".3g", ".2f") or a callable that takes
-            a float value and returns a formatted string. Defaults to ".3g".
+        hover_fmt (str | Callable[[float], str]): Float format for values in hover
+            tooltip. Can be either a format string (e.g. ".3g", ".2f") or a callable
+            that takes a float value and returns a formatted string. Defaults to ".3g".
+        split_value_fmt (str | Sequence[str] | Literal[False] | None): Float format for
+            split values in the heatmap. Can be:
+            - str: Format string for all splits
+            - Sequence[str]: Format strings for each split
+            - None: Hide split values, i.e. no text labels on each tile split
+
 
         --- Additional options ---
         nan_color (str): Color for NaN values. Defaults to "#eff".
@@ -1047,8 +1050,8 @@ def ptable_heatmap_splits_plotly(
         # orientation == "diagonal"
         if n_splits == 2:
             return [
-                ([0, 1, 1, 0], [0, 0, 1, 0]),  # top-right triangle
-                ([0, 0, 1, 0], [0, 1, 1, 0]),  # bottom-left triangle
+                ([0, 0, 1, 0], [0, 1, 1, 0]),  # top-left triangle
+                ([0, 1, 1, 0], [0, 0, 1, 0]),  # bottom-right triangle
             ]
         mid = 0.5
         if n_splits == 3:
@@ -1153,6 +1156,115 @@ def ptable_heatmap_splits_plotly(
                 col=col + 1,
             )
 
+            # Add formatted split value annotation
+            if split_value_fmt is not None and not np.isnan(values[idx]):
+                current_fmt = (
+                    split_value_fmt[idx]
+                    if isinstance(split_value_fmt, Sequence)
+                    and not isinstance(split_value_fmt, str)
+                    else split_value_fmt
+                )
+                anno_text = f"{values[idx]:{current_fmt}}"
+
+                # Determine annotation position and anchors
+                pos_config = {  # Default centered, should be overridden
+                    "x": 0.5,
+                    "y": 0.5,
+                    "xanchor": "center",
+                    "yanchor": "middle",
+                }
+                n_s = len(values)  # Use actual n_splits for the element
+
+                if orientation == "diagonal":
+                    if n_s == 2:
+                        # idx map: 0 -> top-left, 1 -> bottom-right
+                        pos_config = {
+                            "x": (0, 1)[idx],
+                            "y": (1, 0)[idx],
+                            "xanchor": ("left", "right")[idx],
+                            "yanchor": ("top", "bottom")[idx],
+                        }
+                    elif n_s == 3:
+                        # idx map: 0 -> bottom, 1 -> top-left, 2 -> top-right
+                        pos_config = {
+                            "x": (0.5, 0.05, 0.95)[idx],
+                            "y": (0.05, 0.95, 0.95)[idx],
+                            "xanchor": ("center", "left", "right")[idx],
+                            "yanchor": ("bottom", "top", "top")[idx],
+                        }
+                    elif n_s == 4:  # Order: bottom, left, right, top
+                        # idx map: 0 -> bottom, 1 -> left, 2 -> right, 3 -> top
+                        pos_config = {
+                            "x": (0.5, 0.05, 0.95, 0.5)[idx],
+                            "y": (0.05, 0.5, 0.5, 0.95)[idx],
+                            "xanchor": ("center", "left", "right", "center")[idx],
+                            "yanchor": ("bottom", "middle", "middle", "top")[idx],
+                        }
+
+                elif orientation == "horizontal":
+                    # Sections are ordered from top to bottom in create_section_coords
+                    strip_height = 1 / n_s
+                    # Place at top-left of each strip
+                    pos_config = {
+                        "x": 0.05,
+                        "y": (1 - idx * strip_height) - 0.05,
+                        "xanchor": "left",
+                        "yanchor": "top",
+                    }
+
+                elif orientation == "vertical":
+                    # Sections are ordered from left to right
+                    strip_width = 1 / n_s
+                    # Place at top-left of each strip
+                    pos_config = {
+                        "x": (idx * strip_width) + 0.05,
+                        "y": 0.95,
+                        "xanchor": "left",
+                        "yanchor": "top",
+                    }
+
+                elif orientation == "grid":  # n_splits must be 4
+                    if idx == 0:  # Top-left
+                        pos_config = {
+                            "x": 0.05,
+                            "y": 0.95,
+                            "xanchor": "left",
+                            "yanchor": "top",
+                        }
+                    elif idx == 1:  # Top-right
+                        pos_config = {
+                            "x": 0.95,
+                            "y": 0.95,
+                            "xanchor": "right",
+                            "yanchor": "top",
+                        }
+                    elif idx == 2:  # Bottom-left
+                        pos_config = {
+                            "x": 0.05,
+                            "y": 0.05,
+                            "xanchor": "left",
+                            "yanchor": "bottom",
+                        }
+                    elif idx == 3:  # Bottom-right
+                        pos_config = {
+                            "x": 0.95,
+                            "y": 0.05,
+                            "xanchor": "right",
+                            "yanchor": "bottom",
+                        }
+
+                section_luminance = luminance(color)
+                anno_font_color = "black" if section_luminance > 0.55 else "white"
+                anno_font_size = (font_size or 8) * scale
+
+                fig.add_annotation(
+                    text=anno_text,
+                    font=dict(color=anno_font_color, size=anno_font_size),
+                    showarrow=False,
+                    **pos_config,  # Contains x, y, xanchor, yanchor
+                    **xy_ref,
+                )
+
         if element_symbol_map is not None:
             display_symbol = element_symbol_map.get(symbol, symbol)
         else:
@@ -1237,6 +1349,7 @@ def ptable_heatmap_splits_plotly(
                     # Convert string annotations to dict format
                     anno_dict = {"text": anno} if isinstance(anno, str) else anno
                     anno_defaults = {
+                        "font_size": (font_size or 8) * scale,
                         "x": 0.95,
                         "y": 0.95,
                         "showarrow": False,

@@ -15,6 +15,7 @@ import pymatviz.colors as pmv_colors
         (pmv_colors.ELEM_COLORS_JMOL_256, tuple, (0, 255)),  # 8-bit RGB
         (pmv_colors.ELEM_COLORS_VESTA_256, tuple, (0, 255)),
         (pmv_colors.ELEM_COLORS_ALLOY_256, tuple, (0, 255)),
+        (pmv_colors.ELEM_COLORS_PASTEL, tuple, (0, 255)),  # 8-bit RGB
         (pmv_colors.ELEM_COLORS_JMOL, tuple, (0, 1)),  # Normalized RGB
         (pmv_colors.ELEM_COLORS_VESTA, tuple, (0, 1)),
         (pmv_colors.ELEM_COLORS_ALLOY, tuple, (0, 1)),

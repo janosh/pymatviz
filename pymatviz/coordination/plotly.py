@@ -22,7 +22,7 @@ from pymatviz.coordination.helpers import (
     normalize_get_neighbors,
 )
 from pymatviz.enums import ElemColorScheme
-from pymatviz.process_data import normalize_to_dict
+from pymatviz.process_data import normalize_structures, normalize_to_dict
 
 
 if TYPE_CHECKING:
@@ -38,9 +38,10 @@ def coordination_hist(
     split_mode: CnSplitMode | str = CnSplitMode.by_element,
     bar_mode: Literal["group", "stack"] = "stack",
     hover_data: Sequence[str] | dict[str, str] | None = None,
-    element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.jmol,
+    element_color_scheme: ElemColorScheme | dict[str, str] = ElemColorScheme.pastel,
     annotate_bars: bool | dict[str, Any] = False,
     bar_kwargs: dict[str, Any] | None = None,
+    subplot_kwargs: dict[str, Any] | None = None,
 ) -> go.Figure:
     """Create a plotly histogram of coordination numbers for given structure(s).
 
@@ -75,11 +76,13 @@ def coordination_hist(
             for bar annotations, e.g. {"font_size": 12, "font_color": "red"}.
         bar_kwargs: Dictionary of keyword arguments to customize bar appearance.
             These will be passed to go.Bar().
+        subplot_kwargs (dict, optional): Additional keyword arguments to pass to
+            make_subplots().
 
     Returns:
         A plotly Figure object containing the histogram.
     """
-    structures = normalize_to_dict(structures)
+    structures = normalize_structures(structures)
 
     # coord_data: coordination numbers and hover data for each structure and element
     coord_data: dict[str, dict[str, Any]] = {}
@@ -127,18 +130,18 @@ def coordination_hist(
     n_cols = min(3, n_subplots)
     n_rows = math.ceil(n_subplots / n_cols)
 
+    subplot_kwargs = dict(
+        subplot_titles=(
+            elements if split_mode == CnSplitMode.by_element else list(coord_data)
+        ),
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.03,
+        vertical_spacing=0.08,
+    ) | (subplot_kwargs or {})
+
     if split_mode != CnSplitMode.none:
-        fig = make_subplots(
-            rows=n_rows,
-            cols=n_cols,
-            subplot_titles=(
-                elements if split_mode == CnSplitMode.by_element else list(coord_data)
-            ),
-            shared_xaxes=True,
-            shared_yaxes=True,
-            horizontal_spacing=0.03,
-            vertical_spacing=0.05,
-        )
+        fig = make_subplots(rows=n_rows, cols=n_cols, **subplot_kwargs)
     else:
         fig = go.Figure()
 
@@ -158,55 +161,60 @@ def coordination_hist(
     if annotate_bars is True:
         annotate_bars = {}
 
-    bar_kwargs = {"width": 0.8 if bar_mode == "stack" else 0.6} | (bar_kwargs or {})
+    bar_kwargs = dict(width=0.8 if bar_mode == "stack" else 0.6, opacity=0.95) | (
+        bar_kwargs or {}
+    )
+
+    # Keep track of elements already added to legend to not sure repeated legend items
+    # for same elements in different subplots (for different structures).
+    legend_elements_shown = set()
 
     for struct_key, struct_data in coord_data.items():
         if split_mode == CnSplitMode.by_element:
             for elem_symbol in elements:
-                if elem_symbol in struct_data:
-                    data = struct_data[elem_symbol]
-                    counts = Counter(data["cn"])
-                    y = [counts.get(idx, 0) for idx in x_range]
+                if elem_symbol not in struct_data:
+                    continue
+                data = struct_data[elem_symbol]
+                counts = Counter(data["cn"])
+                y = [counts.get(idx, 0) for idx in x_range]
 
-                    hover_text = [
-                        create_hover_text(
-                            struct_key,
-                            elem_symbol,
-                            cn,
-                            count,
-                            hover_data,
-                            data,
-                            is_single_structure,
-                        )
-                        for cn, count in zip(x_range, y, strict=False)
-                    ]
-
-                    bar_color = element_colors.get(elem_symbol)
-                    if isinstance(bar_color, tuple) and len(bar_color) == 3:
-                        bar_color = label_rgb(bar_color)
-
-                    trace = go.Bar(
-                        x=x_range,
-                        y=y,
-                        name=f"{struct_key} - {elem_symbol}",
-                        text=y,
-                        textposition="auto",
-                        hovertext=hover_text,
-                        hoverinfo="text",
-                        marker_color=bar_color,
-                        legendgroup=struct_key,
-                        legendgrouptitle_text=struct_key,
-                        **bar_kwargs,
+                hover_text = [
+                    create_hover_text(
+                        struct_key,
+                        elem_symbol,
+                        cn,
+                        count,
+                        hover_data,
+                        data,
+                        is_single_structure,
                     )
-                    subplot_idx = elements.index(elem_symbol) + 1
-                    row, col = (
-                        (subplot_idx - 1) // n_cols + 1,
-                        (subplot_idx - 1) % n_cols + 1,
-                    )
-                    if annotate_bars is not False:
-                        trace.update(text=elem_symbol, textfont=annotate_bars)
+                    for cn, count in zip(x_range, y, strict=False)
+                ]
 
-                    fig.add_trace(trace, row=row, col=col)
+                bar_color = element_colors.get(elem_symbol)
+                if isinstance(bar_color, tuple) and len(bar_color) == 3:
+                    bar_color = label_rgb(bar_color)
+
+                trace = go.Bar(
+                    x=x_range,
+                    y=y,
+                    name=f"{struct_key} - {elem_symbol}",
+                    text=y,
+                    textposition="auto",
+                    hovertext=hover_text,
+                    hoverinfo="text",
+                    marker_color=bar_color,
+                    legendgroup=struct_key,
+                    legendgrouptitle_text=struct_key,
+                    **bar_kwargs,
+                )
+                subplot_idx = elements.index(elem_symbol) + 1
+                row = (subplot_idx - 1) // n_cols + 1
+                col = (subplot_idx - 1) % n_cols + 1
+                if annotate_bars is not False:
+                    trace.update(text=elem_symbol, textfont=annotate_bars)
+
+                fig.add_trace(trace, row=row, col=col)
 
         elif split_mode == CnSplitMode.by_structure:
             all_cn = [
@@ -258,14 +266,19 @@ def coordination_hist(
                 trace = go.Bar(
                     x=x_range,
                     y=y,
-                    name=elem_symbol,
+                    name=elem_symbol,  # Name for the legend item
                     text=y,
                     textposition="auto",
                     hovertext=hover_text,
                     hoverinfo="text",
                     marker_color=bar_color,
+                    legendgroup=elem_symbol,  # Group by element symbol
+                    showlegend=elem_symbol not in legend_elements_shown,
+                    legendgrouptitle_text=None,
                     **bar_kwargs,
                 )
+
+                legend_elements_shown.add(elem_symbol)
 
                 if annotate_bars is not False:
                     trace.update(text=elem_symbol, textfont=annotate_bars)
@@ -314,22 +327,23 @@ def coordination_hist(
                 row += 1
 
     fig.update_layout(barmode=bar_mode, bargap=0.15, bargroupgap=0.1)
+    fig.layout.legend.tracegroupgap = 2  # reduce gap between legend groups
+
+    # Add figure-level axis titles using annotations
+    anno_kwargs = dict(font_size=15, xref="paper", yref="paper", showarrow=False)
+    fig.add_annotation(  # X-axis title
+        text="Coordination Number", x=0.5, y=-0.15, **anno_kwargs
+    )
+    fig.add_annotation(  # Y-axis title
+        text="Count", x=-0.1, y=0.5, textangle=-90, **anno_kwargs
+    )
+    # Adjust L/B for titles
+    fig.layout.margin.update(l=60, b=60, t=fig.layout.margin.t or 30)
 
     # start x-axis just below the smallest observed CN
-    fig.update_xaxes(tick0=int(min_cn), dtick=1, range=[min_cn - 0.5, max_cn + 0.5])
-    fig.update_yaxes(title="Count", rangemode="tozero")  # Ensure y_min=0, not <0
-
-    # Add title "Coordination Number" to x axes of the last n_cols subplots
-    for idx in range(n_subplots - n_cols + 1, n_subplots + 1):
-        fig.layout[f"xaxis{idx}"].update(title="Coordination Number")
-
-    # Remove axis labels for non-edge subplots
-    if split_mode != CnSplitMode.none:
-        for idx in range(1, n_rows * n_cols + 1):
-            if idx % n_cols != 1:  # Not in the first column
-                fig.update_yaxes(title_text="", row=idx // n_cols + 1, col=idx % n_cols)
-            if idx <= (n_rows - 1) * n_cols:  # Not in the last row
-                fig.update_xaxes(title_text="", row=idx // n_cols + 1, col=idx % n_cols)
+    if max_cn - min_cn < 20:
+        fig.update_xaxes(tick0=int(min_cn), dtick=1)
+    fig.update_yaxes(rangemode="tozero")  # Ensure y_min=0, not <0
 
     return fig
 

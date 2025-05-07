@@ -320,3 +320,74 @@ ELEM_COLORS_ALLOY: dict[str, RgbColorType] = {
     elem: (r / 255, g / 255, b / 255)
     for elem, (r, g, b) in ELEM_COLORS_ALLOY_256.items()
 }
+
+# Pastel color scheme aiming for high contrast between elements.
+# Note: This is a foundational set. For a comprehensive set covering all elements
+# with optimal contrast, further refinement and extension may be needed.
+ELEM_COLORS_PASTEL_256: dict[str, Rgb256ColorType] = {
+    "H": (255, 204, 204),  # Light Pinkish Red
+    "He": (224, 255, 255),  # Light Cyan
+    "Li": (255, 182, 193),  # Light Pink
+    "Be": (210, 245, 210),  # Pale Green
+    "B": (255, 223, 186),  # Peach
+    "C": (200, 200, 200),  # Light Grey
+    "N": (173, 216, 230),  # Light Blue
+    "O": (255, 179, 179),  # Light Red
+    "F": (180, 238, 180),  # Pale Mint Green
+    "Ne": (255, 210, 230),  # Pale Pink/Lavender
+    "Na": (255, 235, 150),  # Pale Yellow
+    "Mg": (190, 250, 190),  # Light Lime Green
+    "Al": (211, 211, 211),  # Light Silver/Grey
+    "Si": (240, 230, 140),  # Khaki/Pale Gold
+    "P": (255, 190, 120),  # Light Orange/Apricot
+    "S": (255, 255, 180),  # Pale Yellow
+    "Cl": (150, 245, 150),  # Light Sea Green
+    "Ar": (230, 230, 250),  # Lavender
+    "K": (255, 180, 220),  # Light Orchid
+    "Ca": (160, 240, 160),  # Light Pistachio
+    "Sc": (220, 220, 180),  # Pale Olive
+    "Ti": (190, 210, 220),  # Pale Blue-Grey
+    "V": (255, 200, 200),  # Pale Pink-Red
+    "Cr": (180, 220, 180),  # Pale Sage Green
+    "Mn": (230, 200, 230),  # Pale Lilac
+    "Fe": (220, 180, 140),  # Light Tan
+    "Co": (200, 200, 255),  # Pale Cornflower Blue
+    "Ni": (210, 225, 210),  # Very Pale Green-Grey
+    "Cu": (255, 200, 170),  # Light Copper/Salmon
+    "Zn": (200, 220, 230),  # Pale Bluish Grey
+    "Ga": (255, 210, 210),  # Pale Rosy Pink
+    "Ge": (210, 210, 190),  # Pale Beige
+    "As": (220, 190, 220),  # Pale Mauve
+    "Se": (180, 240, 210),  # Pale Aqua Green
+    "Br": (255, 190, 190),  # Light Coral
+    "Kr": (240, 220, 255),  # Pale Lavender Blue
+    "Rb": (255, 170, 210),  # Light Magenta Pink
+    "Sr": (170, 255, 170),  # Light Mint
+    "Y": (210, 255, 225),  # Very Pale Aqua
+    "Zr": (190, 230, 230),  # Pale Cyan-Grey
+    "Nb": (225, 225, 190),  # Pale Yellow-Beige
+    "Mo": (200, 230, 200),  # Pale Grey-Green
+    "Tc": (230, 210, 230),  # Pale Purple-Grey
+    "Ru": (215, 215, 240),  # Pale Periwinkle
+    "Rh": (240, 215, 215),  # Pale Pinkish Grey
+    "Pd": (220, 220, 220),  # Very Light Grey
+    "Ag": (230, 230, 230),  # Very Light Grey (Silver)
+    "Cd": (255, 240, 200),  # Pale Cream
+    "In": (200, 210, 220),  # Pale Blue Steel
+    "Sn": (210, 210, 210),  # Light Grey
+    "Sb": (220, 200, 210),  # Pale Pinkish Mauve
+    "Te": (190, 240, 190),  # Pale Yellow-Green
+    "I": (240, 190, 240),  # Pale Magenta
+    "Xe": (210, 240, 255),  # Very Pale Sky Blue
+    "Cs": (255, 160, 200),  # Light Deep Pink
+    "Ba": (150, 255, 150),  # Light Bright Green
+    "La": (190, 255, 210),  # Pale Celadon
+    "Au": (255, 240, 180),  # Pale Gold
+    "Pt": (220, 220, 230),  # Light Platinum Grey
+    # Add more elements as needed, ensuring colors are pastel and contrast well.
+}
+
+ELEM_COLORS_PASTEL: dict[str, RgbColorType] = {
+    elem: (r / 255, g / 255, b / 255)
+    for elem, (r, g, b) in ELEM_COLORS_PASTEL_256.items()
+}

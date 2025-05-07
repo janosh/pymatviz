@@ -942,6 +942,7 @@ class ElemColorScheme(LabelEnum):
     vesta = "vesta", "VESTA", "Visualization for Electronic Structural Analysis"
     # custom made for pymatviz
     alloy = "alloy", "Alloy", "High-contrast color scheme optimized for metal alloys"
+    pastel = "pastel", "Pastel", "Pastel color scheme"
 
     @property
     def color_map(self) -> dict[str, RgbColorType]:

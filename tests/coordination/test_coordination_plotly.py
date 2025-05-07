@@ -31,13 +31,14 @@ def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> 
     assert y_max == pytest.approx(expected_y_max, rel=0.1)
 
     # Test x-axis properties
-    assert fig.layout.xaxis.tick0 is not None
-    assert fig.layout.xaxis.dtick == 1
-    assert fig.layout.xaxis.range[0] < min(trace.x[0] for trace in fig.data)
+    assert dev_fig.layout.xaxis.tick0 is not None
+    assert dev_fig.layout.xaxis.dtick == 1
+    assert dev_fig.layout.xaxis.range[0] < min(trace.x[0] for trace in dev_fig.data)
 
     # Test y-axis properties
     assert dev_fig.layout.yaxis.range[0] == 0
-    assert fig.layout.yaxis.title.text == "Count"
+    # Y-axis title "Count" is added as an annotation
+    assert any(anno.text == "Count" for anno in dev_fig.layout.annotations)
 
 
 def test_coordination_hist_multiple_structures(structures: Sequence[Structure]) -> None:
@@ -150,7 +151,7 @@ def test_coordination_hist_invalid_input() -> None:
 
 def test_coordination_hist_empty() -> None:
     """Test coordination_hist with an empty structure."""
-    with pytest.raises(TypeError, match="Invalid inputs="):
+    with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
         coordination_hist(())
 
 
@@ -262,14 +263,16 @@ def test_coordination_hist_subplot_layout(structures: Sequence[Structure]) -> No
 
     # Test by_structure layout
     fig = coordination_hist(struct_dict, split_mode=CnSplitMode.by_structure)
-    assert len(fig.layout.annotations) == len(struct_dict)  # subplot titles
+    # subplot titles + axis titles
+    assert len(fig.layout.annotations) == len(struct_dict) + 2
 
     # Test by_element layout
     elements = {
         site.specie.symbol for struct in struct_dict.values() for site in struct
     }
     fig_elem = coordination_hist(struct_dict, split_mode=CnSplitMode.by_element)
-    assert len(fig_elem.layout.annotations) == len(elements)
+    # Account for x and y axis titles which are also annotations
+    assert len(fig_elem.layout.annotations) == len(elements) + 2
 
 
 def test_coordination_hist_bar_customization(structures: Sequence[Structure]) -> None:
