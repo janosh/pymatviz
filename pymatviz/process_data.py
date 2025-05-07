@@ -17,7 +17,7 @@ from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable
+    from collections.abc import Callable
 
     from numpy.typing import ArrayLike
 
@@ -262,12 +262,11 @@ def is_ase_atoms(struct: Any) -> bool:
 
 
 def normalize_structures(
-    systems: Structure | Sequence[Structure] | pd.Series | dict[Hashable, Structure],
-) -> dict[Hashable, Structure]:
+    systems: Structure | Sequence[Structure] | pd.Series | dict[str, Structure],
+) -> dict[str, Structure]:
     """Convert pymatgen Structures or ASE Atoms or sequences/dicts of them
     to a dictionary of pymatgen Structures.
     """
-    # Import AseAtomsAdaptor here to make it available to the nested function
     from pymatgen.io.ase import AseAtomsAdaptor
 
     def to_pmg_struct(item: Any) -> Structure:

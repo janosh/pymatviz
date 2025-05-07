@@ -359,9 +359,6 @@ def main(update_freq_days: int = 7) -> None:
 
     # Check if we need to update
     if should_update(data_file, update_freq_days):
-        # Still update readme with existing data
-        update_readme(scholar_papers)
-
         new_papers = fetch_scholar_papers()  # Fetch new papers
 
         # Merge papers, keeping the most recent citation counts

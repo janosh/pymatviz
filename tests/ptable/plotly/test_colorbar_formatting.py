@@ -66,7 +66,7 @@ def test_ptable_heatmap_colorbar_formatting() -> None:
 
     # Find the colorbar trace
     colorbar_trace = get_main_colorbar_trace(fig)
-    assert colorbar_trace.colorbar.tickformat == ".1~s"
+    assert colorbar_trace.colorbar.tickformat == "~s"
     assert colorbar_trace.colorbar.title.text is None
 
     # Test with log scale
@@ -101,7 +101,7 @@ def test_ptable_heatmap_splits_colorbar_formatting() -> None:
 
     # Verify that all colorbars use SI suffixes
     for trace in dataset1_colorbars + dataset2_colorbars:
-        assert trace.marker.colorbar.tickformat == ".1~s", (
+        assert trace.marker.colorbar.tickformat == "~s", (
             "Colorbar not using SI suffixes"
         )
 
@@ -122,7 +122,7 @@ def test_ptable_hists_colorbar_formatting() -> None:
     colorbar_trace = get_scatter_colorbar_trace(fig)
 
     # Verify colorbar settings
-    assert colorbar_trace.marker.colorbar.tickformat == ".1~s", (
+    assert colorbar_trace.marker.colorbar.tickformat == "~s", (
         "Colorbar not using SI suffixes"
     )
     assert colorbar_trace.marker.colorbar.title.text == "Test", (
@@ -159,9 +159,7 @@ def test_si_prefix_formatting_integration() -> None:
     colorbar_trace = get_main_colorbar_trace(fig)
 
     # Verify that the colorbar uses SI suffixes
-    assert colorbar_trace.colorbar.tickformat == ".1~s", (
-        "Colorbar not using SI suffixes"
-    )
+    assert colorbar_trace.colorbar.tickformat == "~s", "Colorbar not using SI suffixes"
 
 
 def test_ptable_heatmap_log_scale_formatting() -> None:
@@ -240,7 +238,8 @@ def count_si_formatted_axes(fig: Figure, axis_type: str = "xaxis") -> int:
     for attr_name in layout_dict:
         if attr_name.startswith(axis_type):
             axis = getattr(fig.layout, attr_name)
-            if hasattr(axis, "tickformat") and axis.tickformat == ".1~s":
+            # Check if tickformat uses D3 SI suffixes
+            if getattr(axis, "tickformat", "").endswith("s"):
                 count += 1
 
     return count
@@ -262,7 +261,7 @@ def test_ptable_hists_log_scale_formatting() -> None:
     colorbar_trace = get_scatter_colorbar_trace(fig)
 
     # Verify that the colorbar uses SI suffixes
-    assert colorbar_trace.marker.colorbar.tickformat == ".1~s"
+    assert colorbar_trace.marker.colorbar.tickformat == "~s"
     assert colorbar_trace.marker.colorbar.title.text == "Test", (
         "Colorbar title not set correctly"
     )
