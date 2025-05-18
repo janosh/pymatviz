@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
+import os
 import sys
-from enum import Enum, unique
+from enum import Enum, EnumType, _EnumDict, unique
 from typing import TYPE_CHECKING, Final
 
 import yaml
@@ -959,3 +960,97 @@ class SiteCoords(LabelEnum):
     cartesian = "cartesian", "Cartesian"
     fractional = "fractional", "Fractional"
     cartesian_fractional = "cartesian+fractional", "Cartesian and Fractional"
+
+
+class MetaFiles(EnumType):
+    """Metaclass of Files enum that adds base_dir class kwarg."""
+
+    _base_dir: str
+    _auto_download: bool
+
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[type, ...],
+        namespace: _EnumDict,
+        *,
+        base_dir: str = "",
+        auto_download: bool = False,
+        **kwargs: Any,
+    ) -> MetaFiles:
+        """Create new Files enum with given base directory."""
+        obj = super().__new__(cls, name, bases, namespace, **kwargs)
+        obj._base_dir = base_dir
+        obj._auto_download = auto_download
+        return obj
+
+
+class Files(StrEnum, metaclass=MetaFiles):
+    """Enum of data files with associated file directories and URLs."""
+
+    def __new__(
+        cls, file_path: str, url: str = "", label: str = "", desc: str = ""
+    ) -> Self:
+        """Create a new member of the FileUrls enum with a given URL where to load the
+        file from and directory where to save it to.
+        """
+        obj = str.__new__(cls)
+        obj._value_ = file_path
+        obj.__dict__ |= dict(file_path=file_path, url=url, label=label, desc=desc)
+        return obj
+
+    def __repr__(self) -> str:
+        """String representation of the file."""
+        return f"{type(self).__name__}.{self.name}"
+
+    def __str__(self) -> str:
+        """String representation of the file."""
+        return self.name
+
+    @property
+    def url(self) -> str:
+        """URL associated with the file."""
+        return self.__dict__["url"]
+
+    @property
+    def file_path(self) -> str:
+        """File path associated with the file."""
+        path = f"{type(self)._base_dir}/{self.__dict__['file_path']}"
+        if type(self)._auto_download and not os.path.isfile(path) and self.url:
+            print(f"Downloading {self.url} to {path}")  # noqa: T201
+            import requests
+
+            response = requests.get(self.url)  # noqa: S113
+            response.raise_for_status()
+            with open(path, mode="wb") as file:
+                file.write(response.content)
+        return path
+
+    @property
+    def label(self) -> str:
+        """Label associated with the file."""
+        return self.__dict__["label"]
+
+    @property
+    def description(self) -> str:
+        """Description associated with the file."""
+        return self.__dict__["desc"]
+
+    @property
+    def rel_path(self) -> str:
+        """Path of the file relative to the repo's ROOT directory."""
+        return self.__dict__["file_path"]
+
+    @classmethod
+    def from_label(cls, label: str) -> Self:
+        """Get enum member from pretty label."""
+        file = next((attr for attr in cls if attr.label == label), None)
+        if file is None:
+            import difflib
+
+            similar_labels = difflib.get_close_matches(label, [k.label for k in cls])
+            raise ValueError(
+                f"{label=} not found in {cls.__name__}. Did you mean one "
+                f"of {similar_labels}?"
+            )
+        return file
