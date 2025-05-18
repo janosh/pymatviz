@@ -67,7 +67,7 @@ def custom_module_formatter(module: str, count: int, _total: int) -> str:
 
 fig = pmv.py_pkg_treemap(
     ("numpy", "pymatviz"),
-    show_module_counts=custom_module_formatter,
+    cell_text_fn=custom_module_formatter,
     color_discrete_sequence=px.colors.qualitative.Bold,
 )
 fig.update_layout(
@@ -79,9 +79,7 @@ fig.show()
 # %% Custom cell sizing based on number of functions + classes
 fig_custom_size = pmv.py_pkg_treemap(
     "pymatviz",
-    cell_size_calculator=lambda cell: cell.n_functions
-    + cell.n_classes
-    + cell.n_methods,
+    cell_size_fn=lambda cell: cell.n_functions + cell.n_classes + cell.n_methods,
     show_counts="value",  # Show the custom calculated value
     min_lines=0,  # Include all files for this example
 )

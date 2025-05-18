@@ -257,8 +257,8 @@ def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
         assert mock_isdir.call_count == 3
 
 
-def test_py_pkg_treemap_show_module_counts() -> None:
-    """Test the show_module_counts parameter."""
+def test_py_pkg_treemap_cell_text_fn() -> None:
+    """Test the cell_text_fn parameter."""
     # Default (True) - uses default_module_formatter
     fig_true = pmv.py_pkg_treemap(["my_pkg", "another_pkg"])
     labels_true = fig_true.data[0].labels
@@ -268,7 +268,7 @@ def test_py_pkg_treemap_show_module_counts() -> None:
     assert any("%)" in lbl for lbl in labels_true)
 
     # False - no counts on package labels
-    fig_false = pmv.py_pkg_treemap(["my_pkg", "another_pkg"], show_module_counts=False)
+    fig_false = pmv.py_pkg_treemap(["my_pkg", "another_pkg"], cell_text_fn=False)
     labels_false = fig_false.data[0].labels
     assert "my_pkg" in labels_false
     assert "another_pkg" in labels_false
@@ -281,7 +281,7 @@ def test_py_pkg_treemap_show_module_counts() -> None:
         return f"PKG: {pkg} [{count}/{total}]"
 
     fig_custom = pmv.py_pkg_treemap(
-        ["my_pkg", "another_pkg"], show_module_counts=custom_mod_fmt
+        ["my_pkg", "another_pkg"], cell_text_fn=custom_mod_fmt
     )
     labels_custom = fig_custom.data[0].labels
     assert any(lbl.startswith("PKG: my_pkg [") for lbl in labels_custom)
@@ -868,8 +868,8 @@ def _calc_methods_x_10_plus_lines(metrics: pmv.treemap.py_pkg.ModuleStats) -> in
     ],
 )
 def test_py_pkg_treemap_cell_size_fn(
-    calculator: pmv.treemap.py_pkg.CellSizeCalculator | None,
-    expected_value_logic: pmv.treemap.py_pkg.CellSizeCalculator,
+    calculator: pmv.treemap.py_pkg.CellSizeFn | None,
+    expected_value_logic: pmv.treemap.py_pkg.CellSizeFn,
 ) -> None:
     """Test the cell_size_fn argument in py_pkg_treemap.
 

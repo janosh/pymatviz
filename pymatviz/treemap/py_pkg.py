@@ -47,7 +47,7 @@ class ModuleStats(NamedTuple):
     n_type_checking_imports: int
 
 
-CellSizeCalculator: TypeAlias = Callable[[ModuleStats], float | int]
+CellSizeFn: TypeAlias = Callable[[ModuleStats], float | int]
 
 
 def default_module_formatter(module: str, count: int, total: int) -> str:
@@ -301,12 +301,12 @@ def collect_package_modules(
 def py_pkg_treemap(
     packages: str | Sequence[str],
     *,
-    base_url: str | None = "auto",  # Default to 'auto'
+    base_url: str | None = "auto",
     show_counts: ShowCounts = "value+percent",
-    show_module_counts: ModuleFormatter | bool = default_module_formatter,
+    cell_text_fn: ModuleFormatter | bool = default_module_formatter,
     group_by: GroupBy = "module",
     min_lines: int = 0,
-    cell_size_fn: CellSizeCalculator | None = None,
+    cell_size_fn: CellSizeFn | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Generate a treemap plot showing the module structure of Python packages.
@@ -329,7 +329,7 @@ def py_pkg_treemap(
             - "percent": Show percentage of parent
             - "value+percent": Show both (default)
             - False: Don't show counts
-        show_module_counts: How to display top-level names and counts:
+        cell_text_fn: How to display top-level names and counts:
             - Function that takes name, count, total count and returns string
             - True: Use default_module_formatter
             - False: Don't add counts to top-level names
@@ -485,12 +485,12 @@ def py_pkg_treemap(
     ).fillna(0)
 
     # Format package labels *after* storing raw name and calculating totals
-    if show_module_counts is True:
-        show_module_counts = default_module_formatter
-    if show_module_counts is not False:
+    if cell_text_fn is True:
+        cell_text_fn = default_module_formatter
+    if cell_text_fn is not False:
         total_lines = package_totals.sum()
         df_treemap["package"] = df_treemap["package_name_raw"].map(
-            lambda pkg: show_module_counts(pkg, package_totals.get(pkg, 0), total_lines)
+            lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
         )
 
     # Calculate full file URLs for linking
