@@ -185,14 +185,11 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
     return counts
 
 
-def collect_package_modules(
-    package_names: Sequence[str], min_lines: int = 0
-) -> pd.DataFrame:
+def collect_package_modules(package_names: Sequence[str]) -> pd.DataFrame:
     """Collect information about all modules in the given packages.
 
     Args:
         package_names: Names of packages to analyze
-        min_lines: Minimum number of code lines for a module to be included
 
     Returns:
         DataFrame with package structure information
@@ -216,8 +213,6 @@ def collect_package_modules(
         for file_path in python_files:
             # Count lines in the file
             line_count = count_lines(file_path)
-            if line_count < min_lines:
-                continue
 
             # Convert file path to module info
             rel_path = os.path.relpath(file_path, os.path.dirname(pkg_path))
@@ -305,7 +300,6 @@ def py_pkg_treemap(
     show_counts: ShowCounts = "value+percent",
     cell_text_fn: ModuleFormatter | bool = default_module_formatter,
     group_by: GroupBy = "module",
-    min_lines: int = 0,
     cell_size_fn: CellSizeFn | None = None,
     **kwargs: Any,
 ) -> go.Figure:
@@ -337,12 +331,11 @@ def py_pkg_treemap(
             - "file": Group by filename
             - "directory": Group by top-level directory
             - "module": Group by top-level module (default)
-        min_lines: Minimum number of code lines for a file to be included.
-            Note: this filter is applied before `cell_size_fn`.
         cell_size_fn: A callable that takes a `ModuleStats` object
             (a NamedTuple with fields like line_count, n_classes, n_functions,
             n_methods) and returns a number (int or float) to be used for the
-            cell's size in the treemap.
+            cell's size in the treemap. If this function returns 0, the
+            corresponding module/file will be omitted from the treemap.
             If None (default), cell size is based on `line_count`.
         **kwargs: Additional keyword arguments passed to plotly.express.treemap
 
@@ -365,8 +358,13 @@ def py_pkg_treemap(
         >>> fig1 = pmv.py_pkg_treemap("pymatviz")
         >>> # Compare multiple packages
         >>> fig2 = pmv.py_pkg_treemap(["pymatviz", "pymatgen"])
-        >>> # Only show files with at least 50 lines of code
-        >>> fig3 = pmv.py_pkg_treemap("pymatviz", min_lines=50)
+        >>> # Only show files with at least 50 lines of code by using cell_size_fn
+        >>> fig3 = pmv.py_pkg_treemap(
+        ...     "pymatviz",
+        ...     cell_size_fn=lambda cell: cell.line_count
+        ...     if cell.line_count >= 50
+        ...     else 0,
+        ... )
         >>> # Group by top-level directory instead of module
         >>> fig4 = pmv.py_pkg_treemap("pymatviz", group_by="directory")
         >>> # Add source links for a GitHub repository
@@ -429,13 +427,12 @@ def py_pkg_treemap(
         processed_base_url = None  # Links explicitly disabled
 
     # Collect module information
-    df_modules = collect_package_modules(packages, min_lines)
+    df_modules = collect_package_modules(packages)
 
     if df_modules.empty:
         raise ValueError(f"No Python modules found in packages: {packages}")
 
-    # Define default cell size calculator if not provided
-    if cell_size_fn is None:
+    if cell_size_fn is None:  # set default cell size calculator if not provided
         cell_size_fn = lambda module: module.line_count
 
     # Apply cell_size_fn to get the value for treemap sizing
@@ -447,6 +444,15 @@ def py_pkg_treemap(
         ),
         axis=1,
     )
+
+    # Filter out cells where cell_value is 0
+    df_modules = df_modules[df_modules["cell_value"] > 0]
+
+    if df_modules.empty:
+        raise ValueError(
+            f"No Python modules found in {packages=} after filtering by "
+            "cell_size_fn(module) == 0."
+        )
 
     df_treemap = df_modules.copy()
 

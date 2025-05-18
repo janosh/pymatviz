@@ -290,8 +290,11 @@ def test_py_pkg_treemap_cell_text_fn() -> None:
 
 def test_py_pkg_treemap_empty() -> None:
     """Test treemap generation when no modules are found (e.g., high min_lines)."""
-    with pytest.raises(ValueError, match="No Python modules found"):
-        pmv.py_pkg_treemap("my_pkg", min_lines=100)
+    with pytest.raises(
+        ValueError,
+        match="No Python modules found .* after filtering by cell_size_fn",
+    ):
+        pmv.py_pkg_treemap("my_pkg", cell_size_fn=lambda _cell: 0)
 
 
 def test_py_pkg_treemap_invalid_show_counts() -> None:
@@ -526,23 +529,11 @@ def test_analyze_unicode_error(
     # Check that a warning was printed
     assert f"Warning: Could not analyze {bad_file_path}: 'utf-8' codec" in captured.out
 
-    # Check that the bad file node exists
-    assert any("bad_encoding" in id_val for id_val in fig.data[0].ids)
-
-    # Check customdata for the bad file node has 0 for analysis fields
-    ids = fig.data[0].ids
-    custom_data = fig.data[0].customdata
-    bad_file_idx = -1
-    for idx, id_val in enumerate(ids):
-        if id_val.endswith("/bad_encoding"):
-            bad_file_idx = idx
-            break
-    assert bad_file_idx != -1, "bad_encoding node not found"
-
-    # Analysis fields (indices 4-8) should be 0 due to fillna(0)
-    assert np.all(custom_data[bad_file_idx, 4:9].astype(float) == 0)
-    # Line count (value, not customdata) might also be 0 depending on error timing
-    # assert fig.data[0].values[bad_file_idx] == 0 # This might be fragile
+    # Check that the bad file node does NOT exist because its cell_value will be 0
+    for id_val in fig.data[0].ids:
+        assert "bad_encoding" not in id_val, (
+            f"bad_encoding.py with {id_val=} should be omitted due to zero cell_value"
+        )
 
 
 @pytest.mark.parametrize(
@@ -844,45 +835,92 @@ def _calc_methods_x_10_plus_lines(metrics: pmv.treemap.py_pkg.ModuleStats) -> in
     return metrics.n_methods * 10 + metrics.line_count
 
 
+def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
+    """Return 0 for 'module1' and 'main', otherwise line_count."""
+    if metrics.filename in {"module1", "main"}:
+        return 0
+    return metrics.line_count
+
+
 @pytest.mark.parametrize(
-    ("calculator", "expected_value_logic"),
+    ("calculator", "expected_value_logic", "expected_present_filenames", "test_id"),
     [
         (
-            None,  # Default behavior
+            None,  # Default behavior (line_count)
             lambda metrics: metrics.line_count,
+            {
+                "module1",
+                "module2",
+                "module3",
+                "module4_typed",
+                "main",
+                "internal_user",
+                "top_level_mod",
+            },
+            "default_line_count",
         ),
         (
             _calc_sum_functions_classes,
-            _calc_sum_functions_classes,  # Same function for expected logic
+            _calc_sum_functions_classes,
+            {
+                "module1",
+                "module2",
+                "module4_typed",
+                "internal_user",
+            },  # module3, main, top_level_mod, bad_encoding have 0
+            "sum_functions_classes",
         ),
         (
             _calc_methods_x_10_plus_lines,
-            _calc_methods_x_10_plus_lines,  # Same function for expected logic
+            _calc_methods_x_10_plus_lines,
+            {
+                "module1",
+                "module2",
+                "module3",
+                "module4_typed",
+                "main",
+                "internal_user",
+                "top_level_mod",
+            },
+            "methods_x_10_plus_lines",
         ),
         (
             lambda metrics: metrics.n_type_checking_imports
             + metrics.n_internal_imports,
             lambda metrics: metrics.n_type_checking_imports
             + metrics.n_internal_imports,
+            {
+                "module4_typed",
+                "internal_user",
+            },  # Only these have type or internal imports > 0
+            "type_plus_internal_imports",
+        ),
+        (
+            _sizer_omit_specific,  # omits module1 and main
+            _sizer_omit_specific,
+            {"module2", "module3", "module4_typed", "internal_user", "top_level_mod"},
+            "omit_module1_main",
         ),
     ],
 )
 def test_py_pkg_treemap_cell_size_fn(
     calculator: pmv.treemap.py_pkg.CellSizeFn | None,
     expected_value_logic: pmv.treemap.py_pkg.CellSizeFn,
+    expected_present_filenames: set[str],
+    test_id: str,  # For clarity in test output
 ) -> None:
     """Test the cell_size_fn argument in py_pkg_treemap.
 
     Verifies that the 'cell_value' column in the DataFrame passed to px.treemap
-    is correctly computed based on the provided calculator.
+    is correctly computed based on the provided calculator, and that modules
+    resulting in a cell_value of 0 are omitted.
     """
 
     with patch("plotly.express.treemap") as mock_px_treemap:
         pmv.py_pkg_treemap(
             ["my_pkg", "another_pkg"],  # Test with multiple packages
             cell_size_fn=calculator,
-            min_lines=0,
-            group_by="file",
+            group_by="file",  # Group by file for easier checking of filenames
         )
 
     mock_px_treemap.assert_called_once()
@@ -899,6 +937,13 @@ def test_py_pkg_treemap_cell_size_fn(
     df_passed_to_plotly: pd.DataFrame = positional_args[0]
 
     assert "cell_value" in df_passed_to_plotly.columns
+    assert "filename" in df_passed_to_plotly.columns
+
+    present_filenames = set(df_passed_to_plotly["filename"].unique())
+    assert present_filenames == expected_present_filenames, (
+        f"Test ID: {test_id} - Mismatch in expected present filenames. "
+        f"Expected: {expected_present_filenames}, Got: {present_filenames}"
+    )
 
     # Iterate through the DataFrame and check if cell_value matches expected logic
     for _idx, row in df_passed_to_plotly.iterrows():
@@ -936,10 +981,14 @@ def test_py_pkg_treemap_cell_size_fn(
                 ) from exc
             raise  # Re-raise if it's a different TypeError
 
-        expected_value = expected_value_logic(metrics_instance)
-        assert row["cell_value"] == expected_value, (
-            f"Mismatch for file {row.get('file_path', 'N/A')}. "
-            f"Expected: {expected_value}, Got: {row['cell_value']}"
+        expected_val = expected_value_logic(metrics_instance)
+        assert expected_val > 0, (
+            f"Test ID: {test_id} - Expected value logic should not result in 0 for a "
+            f"file that is supposed to be present. File: {row.get('filename')}"
+        )
+        assert row["cell_value"] == expected_val, (
+            f"Test ID: {test_id} - Mismatch for file {row.get('file_path', 'N/A')}. "
+            f"Expected: {expected_val}, Got: {row['cell_value']}"
         )
 
     # Also check that the 'values' argument to px.treemap was 'cell_value'
