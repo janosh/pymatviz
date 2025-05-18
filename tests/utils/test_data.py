@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
+import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 import pytest
@@ -318,8 +319,7 @@ def test_get_fig_xy_range(
         assert len(y_range) == 2
         assert x_range[0] < x_range[1]
         assert y_range[0] < y_range[1]
-        for val in (*x_range, *y_range):
-            assert isinstance(val, float)
+        assert {*map(type, (*x_range, *y_range))} <= {float, np.float64}
 
     # test invalid input
     # currently suboptimal behavior: fig must be passed as kwarg to trigger helpful

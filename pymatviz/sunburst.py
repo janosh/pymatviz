@@ -269,7 +269,7 @@ def chem_sys_sunburst(
     )
 
     sunburst_defaults = dict(
-        color_discrete_sequence=px.colors.qualitative.Set3,
+        color_discrete_sequence=px.colors.qualitative.Set2,
     )
 
     path = ["arity_name", Key.chem_sys]

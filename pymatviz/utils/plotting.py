@@ -349,8 +349,6 @@ def get_fig_xy_range(
         tuple[float, float, float, float]: The x and y range of the figure in the format
             (x_min, x_max, y_min, y_max).
     """
-    if fig is None:
-        fig = plt.gcf()
     if isinstance(fig, plt.Figure | plt.Axes):  # handle matplotlib
         ax = fig if isinstance(fig, plt.Axes) else fig.gca()
 
@@ -366,14 +364,14 @@ def get_fig_xy_range(
         x_axis_type = dev_fig.layout.xaxis.type
         y_axis_type = dev_fig.layout.yaxis.type
 
-        x_range = dev_fig.layout.xaxis.range
-        y_range = dev_fig.layout.yaxis.range
+        x_range: tuple[float, float] = dev_fig.layout.xaxis.range
+        y_range: tuple[float, float] = dev_fig.layout.yaxis.range
 
         # Convert log range to linear if necessary
         if x_axis_type == "log":
-            x_range = [10**val for val in x_range]
+            x_range = (10 ** x_range[0], 10 ** x_range[1])
         if y_axis_type == "log":
-            y_range = [10**val for val in y_range]
+            y_range = (10 ** y_range[0], 10 ** y_range[1])
 
     except ValueError:
         # Select a trace to use for determining the range
@@ -396,13 +394,13 @@ def get_fig_xy_range(
 
         # Determine ranges based on the type of axes
         if fig.layout.xaxis.type == "log":
-            x_range = [10**val for val in (min(df_xy.x), max(df_xy.x))]
+            x_range = (10 ** min(df_xy.x), 10 ** max(df_xy.x))
         else:
-            x_range = [min(df_xy.x), max(df_xy.x)]
+            x_range = (min(df_xy.x), max(df_xy.x))
 
         if fig.layout.yaxis.type == "log":
-            y_range = [10**val for val in (min(df_xy.y), max(df_xy.y))]
+            y_range = (10 ** min(df_xy.y), 10 ** max(df_xy.y))
         else:
-            y_range = [min(df_xy.y), max(df_xy.y)]
+            y_range = (min(df_xy.y), max(df_xy.y))
 
     return x_range, y_range
