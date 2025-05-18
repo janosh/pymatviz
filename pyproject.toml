@@ -58,15 +58,14 @@ cluster = ["matminer>=0.9"]
 # umap-learn not included in cluster because its numba dep clashes with other packages
 umap = ["umap-learn>=0.5"]
 
-[tool.setuptools.packages.find]
-include = ["pymatviz*"]
-
-[tool.setuptools.package-data]
-pymatviz = ["*.csv", "*.yml"]
-
 [build-system]
-requires = ["setuptools>=71"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.7.5"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "pymatviz"
+module-root = ""
+source-include = ["pymatviz/**/*.csv", "pymatviz/**/*.yml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
