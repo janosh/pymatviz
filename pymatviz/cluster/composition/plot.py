@@ -314,7 +314,7 @@ def _generate_colorbar_ticks(
 
 
 def cluster_compositions(
-    df: pd.DataFrame,
+    df_in: pd.DataFrame,
     composition_col: str = "composition",
     *,
     prop_name: str | None = None,
@@ -343,7 +343,7 @@ def cluster_compositions(
     between different materials.
 
     Args:
-        df (pd.DataFrame): DataFrame containing composition data and optionally
+        df_in (pd.DataFrame): DataFrame containing composition data and optionally
             properties and/or pre-computed embeddings.
         composition_col (str): Name of the column containing one of:
             - Chemical formulas (as strings)
@@ -449,14 +449,13 @@ def cluster_compositions(
     if not isinstance(show_projection_stats, (bool, dict)):
         raise TypeError(f"{show_projection_stats=} must be bool or dict")
 
-    if composition_col not in df.columns:
-        raise ValueError(
-            f"{composition_col=} not found in DataFrame columns: {df.columns.tolist()}"
-        )
+    if composition_col not in df_in:
+        columns = df_in.columns.tolist()
+        raise ValueError(f"{composition_col=} not found in DataFrame {columns=}")
 
-    if prop_name is not None and prop_name not in df.columns:
+    if prop_name is not None and prop_name not in df_in:
         raise ValueError(
-            f"{prop_name=} not found in DataFrame columns: {df.columns.tolist()}"
+            f"{prop_name=} not found in DataFrame columns: {df_in.columns.tolist()}"
         )
 
     if projection is None:
@@ -489,13 +488,13 @@ def cluster_compositions(
         )
 
     # Check if projection is a column name in the DataFrame
-    using_precomputed_coords = projection in df and projection not in get_args(
+    using_precomputed_coords = projection in df_in and projection not in get_args(
         ProjectionMethod
     )
 
     if using_precomputed_coords:
         # Validate the coordinates
-        first_coords = df[projection].iloc[0]
+        first_coords = df_in[projection].iloc[0]
         if not isinstance(first_coords, (list, np.ndarray)):
             raise ValueError(
                 f"Column {projection} must contain arrays or lists of coordinates"
@@ -509,13 +508,13 @@ def cluster_compositions(
     projection_kwargs = projection_kwargs or {}
 
     # Get compositions from DataFrame
-    compositions = df[composition_col]
-    properties = df[prop_name] if prop_name is not None else None
+    compositions = df_in[composition_col]
+    properties = df_in[prop_name] if prop_name is not None else None
 
     # Check if pre-computed coordinates are provided in a DataFrame column
     if using_precomputed_coords:
         # Use pre-computed coordinates from the specified column
-        projected = np.array([np.array(coords) for coords in df[projection]])
+        projected = np.array([np.array(coords) for coords in df_in[projection]])
         projector = None
         embeddings = None  # We don't need to calculate embeddings
 
@@ -534,9 +533,9 @@ def cluster_compositions(
 
         if isinstance(first_val, (list, np.ndarray)):
             # Direct pre-computed embeddings in composition_col
-            comp_strs = df.index.tolist()  # Use DataFrame index for compositions
+            comp_strs = df_in.index.tolist()  # Use DataFrame index for compositions
             embeddings = np.array([np.array(val) for val in compositions])
-        elif isinstance(embedding_method, str) and embedding_method in df.columns:
+        elif isinstance(embedding_method, str) and embedding_method in df_in:
             # Using a specified column for embeddings
             comp_strs = []
             for comp in compositions:
@@ -548,7 +547,7 @@ def cluster_compositions(
                     raise TypeError(f"Expected str or Composition, got {comp=}")
 
             # Get embeddings from the specified column
-            embeddings = np.array([np.array(val) for val in df[embedding_method]])
+            embeddings = np.array([np.array(val) for val in df_in[embedding_method]])
         else:
             # Convert compositions to strings for consistent handling
             comp_strs = []
@@ -643,7 +642,7 @@ def cluster_compositions(
                 stacklevel=2,
             )
 
-    df_plot = pd.DataFrame(index=df.index)
+    df_plot = pd.DataFrame(index=df_in.index)
     df_plot["composition"] = comp_strs
 
     # Determine label for projection columns
@@ -1058,7 +1057,7 @@ def cluster_compositions(
 
     # Add point annotations if function is provided
     if callable(annotate_points):
-        df_plot[df.columns] = df
+        df_plot[df_in.columns] = df_in
         if n_components == 3:
             annotations_3d = []
             for _, row in df_plot.iterrows():
