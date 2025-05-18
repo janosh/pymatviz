@@ -19,4 +19,8 @@
     place-content: center;
     gap: 6pt;
   }
+  :global(table) {
+    max-width: var(--max-main-width);
+    table-layout: fixed;
+  }
 </style>
