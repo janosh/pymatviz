@@ -1,3 +1,5 @@
+"""Normal probability plots."""
+
 # %%
 import pymatviz as pmv
 
@@ -12,7 +14,7 @@ ax = pmv.qq_gaussian(
     dummy_data.y_std,
     identity_line={"line_kwargs": {"color": "red"}},
 )
-pmv.io.save_and_compress_svg(ax, "normal-prob-plot")
+pmv.io.save_and_compress_svg(ax, "qq-gaussian")
 
 
 ax = pmv.qq_gaussian(
@@ -20,4 +22,4 @@ ax = pmv.qq_gaussian(
     dummy_data.y_true,
     {"over-confident": dummy_data.y_std, "under-confident": 1.5 * dummy_data.y_std},
 )
-pmv.io.save_and_compress_svg(ax, "normal-prob-plot-multiple")
+pmv.io.save_and_compress_svg(ax, "qq-gaussian-multiple")

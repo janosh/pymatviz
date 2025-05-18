@@ -1,3 +1,5 @@
+"""XRD pattern examples."""
+
 # %%
 from glob import glob
 

@@ -1,3 +1,5 @@
+"""Raincloud plots."""
+
 # %%
 import numpy as np
 

@@ -1,3 +1,5 @@
+"""Residual vs actual examples."""
+
 # %%
 from __future__ import annotations
 

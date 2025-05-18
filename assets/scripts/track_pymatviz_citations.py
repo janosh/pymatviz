@@ -23,7 +23,7 @@ import os
 import re
 import shutil
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import yaml
 from dotenv import load_dotenv
@@ -122,10 +122,8 @@ def should_update(filename: str, update_freq_days: int = 7) -> bool:
     """
     try:
         mtime = os.path.getmtime(filename)
-        last_modified = datetime.fromtimestamp(mtime, tz=timezone.utc)
-        return (datetime.now(tz=timezone.utc) - last_modified) > timedelta(
-            days=update_freq_days
-        )
+        last_modified = datetime.fromtimestamp(mtime, tz=UTC)
+        return (datetime.now(tz=UTC) - last_modified) > timedelta(days=update_freq_days)
     except FileNotFoundError:
         return True
 
@@ -143,7 +141,7 @@ def create_backup(filename: str) -> str | None:
         return None
 
     # Get last modified time and format for filename
-    mtime = datetime.fromtimestamp(os.path.getmtime(filename), tz=timezone.utc)
+    mtime = datetime.fromtimestamp(os.path.getmtime(filename), tz=UTC)
     timestamp = mtime.strftime("%Y%m%d-%H%M%S")
 
     # Create backup filename with timestamp
@@ -179,7 +177,7 @@ def fetch_scholar_papers(
         )
 
     papers: list[ScholarPaper] = []
-    today = f"{datetime.now(tz=timezone.utc):%Y-%m-%d}"
+    today = f"{datetime.now(tz=UTC):%Y-%m-%d}"
 
     for page in range(num_pages):
         params = {
@@ -305,7 +303,7 @@ def update_readme(
         content = re.sub(pattern, "", content, flags=re.DOTALL).rstrip()
 
     # Prepare the new section
-    today = f"{datetime.now(tz=timezone.utc):%Y-%m-%d}"
+    today = f"{datetime.now(tz=UTC):%Y-%m-%d}"
     papers_section = "\n\n## Papers using `pymatviz`\n\n"
     scholar_url = "https://scholar.google.com/scholar?q=pymatviz"
     edit_url = "https://github.com/janosh/pymatviz/edit/main/readme.md"

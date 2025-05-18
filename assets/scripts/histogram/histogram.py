@@ -1,3 +1,5 @@
+"""Histogram examples."""
+
 # %%
 import numpy as np
 

@@ -1,3 +1,5 @@
+"""Periodic table heatmap splits plotly examples."""
+
 # %%
 import itertools
 from collections.abc import Callable, Sequence

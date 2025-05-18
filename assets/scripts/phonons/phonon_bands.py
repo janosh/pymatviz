@@ -1,3 +1,5 @@
+"""Phonon bands examples."""
+
 # %%
 import json
 from glob import glob

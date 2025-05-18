@@ -2,6 +2,7 @@
   --night: #061e25;
   --blue: cornflowerblue;
   --text-color: rgb(208, 208, 208);
+  --max-main-width: 50em;
 
   --toc-mobile-bg: #0d1a1d;
   --toc-mobile-shadow: 0 0 1em 0 black;
@@ -41,7 +42,7 @@ main {
   margin: auto;
   box-sizing: border-box;
   width: 100%;
-  max-width: 50em;
+  max-width: var(--max-main-width);
 }
 button {
   color: var(--text-color);

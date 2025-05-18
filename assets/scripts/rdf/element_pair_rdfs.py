@@ -1,3 +1,5 @@
+"""Element-pair RDF examples."""
+
 # %%
 import numpy as np
 from matminer.datasets import load_dataset

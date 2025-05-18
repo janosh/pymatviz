@@ -1,3 +1,5 @@
+"""Periodic table heatmap plotly examples."""
+
 # %%
 import os
 

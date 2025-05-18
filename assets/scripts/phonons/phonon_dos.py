@@ -1,3 +1,5 @@
+"""Phonon DOS examples."""
+
 # %%
 import json
 from glob import glob

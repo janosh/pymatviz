@@ -1,6 +1,4 @@
 # %%
-import gzip
-import json
 import os
 
 import numpy as np
@@ -11,32 +9,33 @@ from pymatgen.core import Composition, Structure
 from tqdm import tqdm
 
 import pymatviz as pmv
-from pymatviz.enums import Key
+from pymatviz.enums import Files, Key
 
 
 pmv.set_plotly_template("pymatviz_dark")
 module_dir = os.path.dirname(__file__)
+AWS_URL = "https://s3.us-east-1.amazonaws.com/materialsproject-contribs/MatPES_2025_1"
+MATPES_DIR = f"{module_dir}/../../paper/data/matpes"
+N_R2SCAN, N_PBE = 387_897, 434_712
+
+if not os.path.isdir(MATPES_DIR):
+    raise FileNotFoundError(f"{MATPES_DIR=}")
+
+
+class DataFiles(Files, base_dir=MATPES_DIR, auto_download=True):
+    """MatPES file names and URLs."""
+
+    pbe = "MatPES-PBE-2025.1.json.gz", f"{AWS_URL}/MatPES-PBE-2025.1.json.gz"
+    r2scan = "MatPES-R2SCAN-2025.1.json.gz", f"{AWS_URL}/MatPES-R2SCAN-2025.1.json.gz"
 
 
 # %%
-r2scan_path = f"{module_dir}/20240214-MatPES-178070-r2SCAN.json.gz"
-pbe_path = f"{module_dir}/20240214-MatPES-183027-PBE.json.gz"
-with gzip.open(r2scan_path, mode="rt") as file:
-    r2scan_data = json.load(file)
-with gzip.open(pbe_path, mode="rt") as file:
-    pbe_data = json.load(file)
+df_r2scan = pd.read_json(DataFiles.r2scan.file_path)
+df_pbe = pd.read_json(DataFiles.pbe.file_path)
 
-n_r2scan, n_pbe = 178_070, 183_027
-for data, expected in ((r2scan_data, n_r2scan), (pbe_data, n_pbe)):
-    if len(data) != expected:
-        raise ValueError(f"{expected=}, {len(data)=}")
-
-
-# %%
-df_r2scan = pd.DataFrame(r2scan_data).T
-df_pbe = pd.DataFrame(pbe_data).T
-
-for df_data in (df_r2scan, df_pbe):
+for df_data, expected_rows in ((df_r2scan, N_R2SCAN), (df_pbe, N_PBE)):
+    if len(df_data) != expected_rows:
+        raise ValueError(f"{expected_rows=}, {len(df_data)=}")
     df_data.index.name = Key.mat_id
     df_data.rename(columns={"magmom": Key.magmoms}, inplace=True)  # noqa: PD002
     df_data[Key.structure] = df_data[Key.structure].map(Structure.from_dict)
@@ -189,7 +188,7 @@ for label, df_data in (
 
 # %% high-temperate MLMD frames are expected to have low symmetry (mostly triclinic)
 fig = pmv.spacegroup_sunburst(df_r2scan[Key.spg_num], show_counts="percent")
-fig.layout.title = dict(text=f"{n_r2scan:,} r2SCAN spacegroups", x=0.5, y=0.98)
+fig.layout.title = dict(text=f"{N_R2SCAN:,} r2SCAN spacegroups", x=0.5, y=0.98)
 fig.layout.margin = dict(l=0, r=0, b=0, t=30)
 fig.show()
 # pmv.save_fig(fig, "r2scan-spacegroup-sunburst.pdf")

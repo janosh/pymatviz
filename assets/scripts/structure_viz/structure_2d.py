@@ -1,3 +1,5 @@
+"""Matplotlib 2D structure examples."""
+
 # %%
 import os
 from typing import cast

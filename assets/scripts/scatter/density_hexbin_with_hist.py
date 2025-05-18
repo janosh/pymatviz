@@ -1,3 +1,5 @@
+"""Matplotlib density hexbin with histogram examples."""
+
 # %%
 from __future__ import annotations
 

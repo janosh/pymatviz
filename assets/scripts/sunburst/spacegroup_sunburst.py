@@ -1,3 +1,5 @@
+"""Spacegroup sunburst examples."""
+
 # %%
 from matminer.datasets import load_dataset
 from tqdm import tqdm

@@ -1,3 +1,5 @@
+"""Matplotlib density scatter examples."""
+
 # %%
 from __future__ import annotations
 

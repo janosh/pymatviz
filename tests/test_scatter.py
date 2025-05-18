@@ -131,13 +131,6 @@ def test_density_hexbin_with_hist(df_or_arrays: DfOrArrays) -> None:
     pmv.density_hexbin_with_hist(df=df, x=x, y=y)
 
 
-def test_scatter_with_err_bar(df_or_arrays: DfOrArrays) -> None:
-    df, x, y = df_or_arrays
-    err = abs(df[x] - df[y]) if df is not None else abs(x - y)  # type: ignore[operator]
-    pmv.scatter_with_err_bar(df=df, x=x, y=y, yerr=err)
-    pmv.scatter_with_err_bar(df=df, x=x, y=y, xerr=err)
-
-
 def test_residual_vs_actual(df_or_arrays: DfOrArrays) -> None:
     df, x, y = df_or_arrays
     pmv.residual_vs_actual(df=df, y_true=x, y_pred=y)
