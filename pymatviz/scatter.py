@@ -430,66 +430,6 @@ def _update_colorbar_for_log_density(
     colorbar.title = bin_counts_col.replace(" ", "<br>")
 
 
-def scatter_with_err_bar(
-    x: ArrayLike | str,
-    y: ArrayLike | str,
-    *,
-    df: pd.DataFrame | None = None,
-    xerr: ArrayLike | None = None,
-    yerr: ArrayLike | None = None,
-    ax: plt.Axes | None = None,
-    identity_line: bool | dict[str, Any] = True,
-    best_fit_line: bool | dict[str, Any] = True,
-    xlabel: str = "Actual",
-    ylabel: str = "Predicted",
-    title: str | None = None,
-    **kwargs: Any,
-) -> plt.Axes:
-    """Scatter plot with optional x- and/or y-error bars. Useful when passing model
-    uncertainties as yerr=y_std for checking if uncertainty correlates with error, i.e.
-    if points farther from the parity line have larger uncertainty.
-
-    Args:
-        x (array | str): x-values or dataframe column name
-        y (array | str): y-values or dataframe column name
-        df (pd.DataFrame, optional): DataFrame with x and y columns. Defaults to None.
-        xerr (array, optional): Horizontal error bars. Defaults to None.
-        yerr (array, optional): Vertical error bars. Defaults to None.
-        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        identity_line (bool | dict[str, Any], optional): Whether to add an parity line
-            (y = x). Defaults to True. Pass a dict to customize line properties.
-        best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
-            Defaults to True. Pass a dict to customize line properties.
-        xlabel (str, optional): x-axis label. Defaults to "Actual".
-        ylabel (str, optional): y-axis label. Defaults to "Predicted".
-        title (str, optional): Plot tile. Defaults to None.
-        **kwargs: Additional keyword arguments to pass to ax.errorbar().
-
-    Returns:
-        plt.Axes: matplotlib Axes object
-    """
-    xs, ys = df_to_arrays(df, x, y)
-    ax = ax or plt.gca()
-
-    styles = dict(markersize=6, fmt="o", ecolor="g", capthick=2, elinewidth=2)
-    ax.errorbar(xs, ys, xerr=xerr, yerr=yerr, **kwargs, **styles)
-
-    if identity_line:
-        pmv.powerups.add_identity_line(
-            ax, **(identity_line if isinstance(identity_line, dict) else {})
-        )
-    if best_fit_line:
-        pmv.powerups.add_best_fit_line(
-            ax, **(best_fit_line if isinstance(best_fit_line, dict) else {})
-        )
-
-    pmv.powerups.annotate_metrics(xs, ys, fig=ax)
-
-    ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
-
-    return ax
-
-
 def density_hexbin(
     x: ArrayLike | str,
     y: ArrayLike | str,
