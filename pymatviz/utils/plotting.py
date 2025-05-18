@@ -358,49 +358,52 @@ def get_fig_xy_range(
     # requires the kaleido package. Install with: pip install kaleido
     # If so, we resort to manually computing the xy data ranges which are usually are
     # close to but not the same as the axes limits.
-    try:
-        # https://stackoverflow.com/a/62042077
-        dev_fig = fig.full_figure_for_development(warn=False)
-        x_axis_type = dev_fig.layout.xaxis.type
-        y_axis_type = dev_fig.layout.yaxis.type
+    if isinstance(fig, go.Figure):
+        try:
+            # https://stackoverflow.com/a/62042077
+            dev_fig = fig.full_figure_for_development(warn=False)
+            x_axis_type = dev_fig.layout.xaxis.type
+            y_axis_type = dev_fig.layout.yaxis.type
 
-        x_range: tuple[float, float] = dev_fig.layout.xaxis.range
-        y_range: tuple[float, float] = dev_fig.layout.yaxis.range
+            x_range: tuple[float, float] = dev_fig.layout.xaxis.range
+            y_range: tuple[float, float] = dev_fig.layout.yaxis.range
 
-        # Convert log range to linear if necessary
-        if x_axis_type == "log":
-            x_range = (10 ** x_range[0], 10 ** x_range[1])
-        if y_axis_type == "log":
-            y_range = (10 ** y_range[0], 10 ** y_range[1])
+            # Convert log range to linear if necessary
+            if x_axis_type == "log":
+                x_range = (10 ** x_range[0], 10 ** x_range[1])
+            if y_axis_type == "log":
+                y_range = (10 ** y_range[0], 10 ** y_range[1])
 
-    except ValueError:
-        # Select a trace to use for determining the range
-        trace_index = 0
-        if isinstance(traces, int):
-            trace_index = traces
-        elif isinstance(traces, slice):
-            indices = list(range(*traces.indices(len(fig.data))))
-            trace_index = indices[0] if indices else 0
-        elif isinstance(traces, list):
-            trace_index = traces[0] if traces else 0
-        elif callable(traces):
-            for idx, trace in enumerate(fig.data):
-                if traces(trace):
-                    trace_index = idx
-                    break
+        except ValueError:
+            # Select a trace to use for determining the range
+            trace_index = 0
+            if isinstance(traces, int):
+                trace_index = traces
+            elif isinstance(traces, slice):
+                indices = list(range(*traces.indices(len(fig.data))))
+                trace_index = indices[0] if indices else 0
+            elif isinstance(traces, list):
+                trace_index = traces[0] if traces else 0
+            elif callable(traces):
+                for idx, trace in enumerate(fig.data):
+                    if traces(trace):
+                        trace_index = idx
+                        break
 
-        trace = fig.data[trace_index]
-        df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
+            trace = fig.data[trace_index]
+            df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
 
-        # Determine ranges based on the type of axes
-        if fig.layout.xaxis.type == "log":
-            x_range = (10 ** min(df_xy.x), 10 ** max(df_xy.x))
-        else:
-            x_range = (min(df_xy.x), max(df_xy.x))
+            # Determine ranges based on the type of axes
+            if fig.layout.xaxis.type == "log":
+                x_range = (10 ** min(df_xy.x), 10 ** max(df_xy.x))
+            else:
+                x_range = (min(df_xy.x), max(df_xy.x))
 
-        if fig.layout.yaxis.type == "log":
-            y_range = (10 ** min(df_xy.y), 10 ** max(df_xy.y))
-        else:
-            y_range = (min(df_xy.y), max(df_xy.y))
+            if fig.layout.yaxis.type == "log":
+                y_range = (10 ** min(df_xy.y), 10 ** max(df_xy.y))
+            else:
+                y_range = (min(df_xy.y), max(df_xy.y))
 
-    return x_range, y_range
+        return x_range, y_range
+
+    raise TypeError(f"{fig=} must be instance of {VALID_FIG_NAMES}")

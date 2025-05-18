@@ -867,7 +867,7 @@ def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
                 "module2",
                 "module4_typed",
                 "internal_user",
-            },  # module3, main, top_level_mod, bad_encoding have 0
+            },  # module3, main, top_level_mod have 0
             "sum_functions_classes",
         ),
         (
