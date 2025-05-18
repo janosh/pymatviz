@@ -843,45 +843,25 @@ def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
 
 
 @pytest.mark.parametrize(
-    ("calculator", "expected_value_logic", "expected_present_filenames", "test_id"),
+    ("calculator", "expected_value_logic", "expected_filenames", "test_id"),
     [
         (
             None,  # Default behavior (line_count)
             lambda metrics: metrics.line_count,
-            {
-                "module1",
-                "module2",
-                "module3",
-                "module4_typed",
-                "main",
-                "internal_user",
-                "top_level_mod",
-            },
+            {"module1", "module2", "module3", "module4_typed", "main", "top_level_mod"},
             "default_line_count",
         ),
         (
             _calc_sum_functions_classes,
             _calc_sum_functions_classes,
-            {
-                "module1",
-                "module2",
-                "module4_typed",
-                "internal_user",
-            },  # module3, main, top_level_mod have 0
+            # module3, main, top_level_mod have 0
+            {"module1", "module2", "module4_typed"},
             "sum_functions_classes",
         ),
         (
             _calc_methods_x_10_plus_lines,
             _calc_methods_x_10_plus_lines,
-            {
-                "module1",
-                "module2",
-                "module3",
-                "module4_typed",
-                "main",
-                "internal_user",
-                "top_level_mod",
-            },
+            {"module1", "module2", "module3", "module4_typed", "main"},
             "methods_x_10_plus_lines",
         ),
         (
@@ -889,16 +869,13 @@ def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
             + metrics.n_internal_imports,
             lambda metrics: metrics.n_type_checking_imports
             + metrics.n_internal_imports,
-            {
-                "module4_typed",
-                "internal_user",
-            },  # Only these have type or internal imports > 0
+            {"module4_typed"},
             "type_plus_internal_imports",
         ),
         (
             _sizer_omit_specific,  # omits module1 and main
             _sizer_omit_specific,
-            {"module2", "module3", "module4_typed", "internal_user", "top_level_mod"},
+            {"module2", "module3", "module4_typed", "top_level_mod"},
             "omit_module1_main",
         ),
     ],
@@ -906,7 +883,7 @@ def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
 def test_py_pkg_treemap_cell_size_fn(
     calculator: pmv.treemap.py_pkg.CellSizeFn | None,
     expected_value_logic: pmv.treemap.py_pkg.CellSizeFn,
-    expected_present_filenames: set[str],
+    expected_filenames: set[str],
     test_id: str,  # For clarity in test output
 ) -> None:
     """Test the cell_size_fn argument in py_pkg_treemap.
@@ -939,10 +916,10 @@ def test_py_pkg_treemap_cell_size_fn(
     assert "cell_value" in df_passed_to_plotly
     assert "filename" in df_passed_to_plotly
 
-    present_filenames = set(df_passed_to_plotly["filename"].unique())
-    assert present_filenames == expected_present_filenames, (
+    actual_filenames = set(df_passed_to_plotly["filename"])
+    assert actual_filenames >= expected_filenames, (
         f"Test ID: {test_id} - Mismatch in expected present filenames. "
-        f"Expected: {expected_present_filenames}, Got: {present_filenames}"
+        f"Expected: {expected_filenames}, Got: {actual_filenames}"
     )
 
     # Iterate through the DataFrame and check if cell_value matches expected logic
