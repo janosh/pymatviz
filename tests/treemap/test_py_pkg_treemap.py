@@ -936,8 +936,8 @@ def test_py_pkg_treemap_cell_size_fn(
     )
     df_passed_to_plotly: pd.DataFrame = positional_args[0]
 
-    assert "cell_value" in df_passed_to_plotly.columns
-    assert "filename" in df_passed_to_plotly.columns
+    assert "cell_value" in df_passed_to_plotly
+    assert "filename" in df_passed_to_plotly
 
     present_filenames = set(df_passed_to_plotly["filename"].unique())
     assert present_filenames == expected_present_filenames, (

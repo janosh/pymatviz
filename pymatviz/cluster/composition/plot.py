@@ -818,7 +818,7 @@ def cluster_compositions(
             )
 
             try:  # Show the property value
-                if color_scale != "linear" and "original_property" in df_plot.columns:
+                if color_scale != "linear" and "original_property" in df_plot:
                     # For non-linear scales, show original value only
                     original_val = df_plot["original_property"].iloc[idx]
                     if not np.isnan(original_val):
