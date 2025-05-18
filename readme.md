@@ -304,7 +304,7 @@ See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
 |             [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L27) [![fig-icon]](assets/scripts/uncertainty/qq_gaussian.py)              |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L27)        |
 | :---------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
-|                                                                  ![normal-prob-plot]                                                                  |                              ![normal-prob-plot-multiple]                              |
+|                                                                  ![qq-gaussian-plot]                                                                  |                              ![qq-gaussian-plot-multiple]                              |
 | [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L208) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L208) |
 |                                                              ![error-decay-with-uncert]                                                               |                          ![error-decay-with-uncert-multiple]                           |
 
@@ -329,8 +329,8 @@ See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 [error-decay-with-uncert-multiple]: assets/svg/error-decay-with-uncert-multiple.svg
 [error-decay-with-uncert]: assets/svg/error-decay-with-uncert.svg
 [elements-hist]: assets/svg/elements-hist.svg
-[normal-prob-plot-multiple]: assets/svg/normal-prob-plot-multiple.svg
-[normal-prob-plot]: assets/svg/normal-prob-plot.svg
+[qq-gaussian-plot-multiple]: assets/svg/qq-gaussian-plot-multiple.svg
+[qq-gaussian-plot]: assets/svg/qq-gaussian-plot.svg
 [struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: assets/svg/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
 [struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: assets/svg/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
 

@@ -1,3 +1,5 @@
+"""Scatter with error bar examples."""
+
 # %%
 from __future__ import annotations
 

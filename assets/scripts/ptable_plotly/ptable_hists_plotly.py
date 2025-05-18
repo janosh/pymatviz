@@ -1,3 +1,5 @@
+"""Periodic table histogram plotly examples."""
+
 # %%
 import numpy as np
 from pymatgen.core.periodic_table import Element

@@ -1,3 +1,5 @@
+"""Coordination vs cutoff line examples."""
+
 # %%
 from glob import glob
 

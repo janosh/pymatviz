@@ -1,3 +1,5 @@
+"""Elements histogram examples."""
+
 # %%
 from matminer.datasets import load_dataset
 
