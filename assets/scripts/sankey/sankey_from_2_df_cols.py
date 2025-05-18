@@ -1,3 +1,5 @@
+"""Sankey diagram of crystal systems and space groups."""
+
 # %%
 import pandas as pd
 from matminer.datasets import load_dataset

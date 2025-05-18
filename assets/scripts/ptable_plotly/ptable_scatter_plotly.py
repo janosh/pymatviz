@@ -1,3 +1,5 @@
+"""Periodic table scatter plotly examples."""
+
 # %%
 import numpy as np
 from pymatgen.core import Element

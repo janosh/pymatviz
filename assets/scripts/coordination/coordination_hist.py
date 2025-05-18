@@ -1,3 +1,5 @@
+"""Coordination histogram examples."""
+
 # %%
 from glob import glob
 

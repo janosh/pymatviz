@@ -18,13 +18,13 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "kaleido==0.2.1",  # strict pin needed, see https://github.com/plotly/Kaleido/issues/292
     "matplotlib>=3.9",
@@ -58,15 +58,14 @@ cluster = ["matminer>=0.9"]
 # umap-learn not included in cluster because its numba dep clashes with other packages
 umap = ["umap-learn>=0.5"]
 
-[tool.setuptools.packages.find]
-include = ["pymatviz*"]
-
-[tool.setuptools.package-data]
-pymatviz = ["*.csv", "*.yml"]
-
 [build-system]
-requires = ["setuptools>=71"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.7.5"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "pymatviz"
+module-root = ""
+source-include = ["pymatviz/**/*.csv", "pymatviz/**/*.yml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -83,7 +82,7 @@ show_error_codes = true
 no_implicit_optional = false
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 output-format = "concise"
 
 [tool.ruff.lint]
@@ -135,7 +134,6 @@ docstring-code-format = true
     "T201",   # print found
 ]
 "assets/scripts/*" = [
-    "D100",   # missing docstring in public module
     "INP001", # implicit-namespace-package
     "T201",   # print found
 ]

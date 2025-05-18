@@ -3,7 +3,7 @@
 #     "seekpath>=2.1",
 # ]
 # ///
-
+"""Brillouin zone 3D examples."""
 
 # %%
 from glob import glob

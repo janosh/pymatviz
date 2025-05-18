@@ -848,21 +848,20 @@ def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
         (
             None,  # Default behavior (line_count)
             lambda metrics: metrics.line_count,
-            {"module1", "module2", "module3", "module4_typed", "main", "top_level_mod"},
-            "default_line_count",
+            {"module1", "module2", "module3", "module4_typed", "main"},
+            "size by lines",
         ),
         (
             _calc_sum_functions_classes,
             _calc_sum_functions_classes,
-            # module3, main, top_level_mod have 0
             {"module1", "module2", "module4_typed"},
-            "sum_functions_classes",
+            "size by functions + classes",
         ),
         (
             _calc_methods_x_10_plus_lines,
             _calc_methods_x_10_plus_lines,
             {"module1", "module2", "module3", "module4_typed", "main"},
-            "methods_x_10_plus_lines",
+            "size by methods * 10 + lines",
         ),
         (
             lambda metrics: metrics.n_type_checking_imports
@@ -870,13 +869,13 @@ def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
             lambda metrics: metrics.n_type_checking_imports
             + metrics.n_internal_imports,
             {"module4_typed"},
-            "type_plus_internal_imports",
+            "size by internal + type imports",
         ),
         (
             _sizer_omit_specific,  # omits module1 and main
             _sizer_omit_specific,
-            {"module2", "module3", "module4_typed", "top_level_mod"},
-            "omit_module1_main",
+            {"module2", "module3", "module4_typed"},
+            "omit module1 and main",
         ),
     ],
 )

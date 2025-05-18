@@ -1,3 +1,5 @@
+"""Full RDF examples."""
+
 # %%
 import numpy as np
 from pymatgen.core import Lattice, Structure

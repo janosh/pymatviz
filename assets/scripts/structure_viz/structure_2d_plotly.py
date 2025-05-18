@@ -1,3 +1,5 @@
+"""Plotly 2D structure examples."""
+
 # %%
 from matminer.datasets import load_dataset
 

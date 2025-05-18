@@ -12,13 +12,12 @@ from pymatgen.util.string import htmlify
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Any, TypeAlias
+    from typing import Any, Self, TypeAlias
 
     import plotly.graph_objects as go
     from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
     from pymatgen.core import Structure
     from pymatgen.phonon.dos import PhononDos
-    from typing_extensions import Self
 
 AnyBandStructure: TypeAlias = BandStructureSymmLine | PhononBands
 YMin: TypeAlias = float | Literal["y_min"]

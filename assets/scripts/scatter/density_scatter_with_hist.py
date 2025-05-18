@@ -1,3 +1,5 @@
+"""Density scatter with histogram examples."""
+
 # %%
 from __future__ import annotations
 

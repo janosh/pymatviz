@@ -1,3 +1,5 @@
+"""Examples of error decay with uncertainty."""
+
 # %%
 import numpy as np
 

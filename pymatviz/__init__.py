@@ -68,7 +68,6 @@ from pymatviz.scatter import (
     density_scatter_plotly,
     density_scatter_with_hist,
     residual_vs_actual,
-    scatter_with_err_bar,
 )
 from pymatviz.structure_viz import (
     structure_2d,

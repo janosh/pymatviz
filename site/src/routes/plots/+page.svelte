@@ -3,13 +3,13 @@
     eager: true,
     query: `?url`,
     import: `default`,
-  })
+  }) as Record<string, string>
 </script>
 
 <h1>Figures</h1>
 
 <ul>
-  {#each Object.entries(figs) as [alt, src], idx}
+  {#each Object.entries(figs) as [alt, src], idx (alt)}
     {@const filename = alt.split(`/`).at(-1)?.split(`.`)[0]}
     <li>
       <span>{idx + 1}</span>

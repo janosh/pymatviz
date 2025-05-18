@@ -316,7 +316,6 @@ def validate_fig(func: Callable[P, R]) -> Callable[P, R]:
 
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        # TODO use typing.ParamSpec to type wrapper once py310 is oldest supported
         fig = kwargs.get("fig")
         if fig is not None and not isinstance(fig, plt.Axes | plt.Figure | go.Figure):
             raise TypeError(
