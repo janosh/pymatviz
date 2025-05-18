@@ -10,7 +10,7 @@ import importlib.metadata
 import importlib.util
 import os
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeAlias
 
 import pandas as pd
 import plotly.express as px
@@ -23,6 +23,31 @@ if TYPE_CHECKING:
 ShowCounts = Literal["value", "percent", "value+percent", False]
 ModuleFormatter = Callable[[str, int, int], str]
 GroupBy: TypeAlias = Literal["file", "directory", "module"]
+
+
+class ModuleStats(NamedTuple):
+    """NamedTuple for holding module metrics, providing attribute access."""
+
+    package: str
+    full_module: str
+    filename: str
+    directory: str
+    top_module: str
+    line_count: int
+    file_path: str
+    repo_path_segment: str
+    leaf_label: str
+    module_parts: list[str]
+    depth: int
+    n_classes: int
+    n_functions: int
+    n_methods: int
+    n_internal_imports: int
+    n_external_imports: int
+    n_type_checking_imports: int
+
+
+CellSizeCalculator: TypeAlias = Callable[[ModuleStats], float | int]
 
 
 def default_module_formatter(module: str, count: int, total: int) -> str:
@@ -104,6 +129,7 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
     counts = {
         "n_classes": 0,
         "n_functions": 0,
+        "n_methods": 0,
         "n_internal_imports": 0,
         "n_external_imports": 0,
         "n_type_checking_imports": 0,
@@ -134,6 +160,9 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
 
             if isinstance(node, ast.ClassDef):
                 counts["n_classes"] += 1
+                for item in node.body:
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        counts["n_methods"] += 1
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 counts["n_functions"] += 1
             elif isinstance(node, ast.Import):
@@ -277,12 +306,13 @@ def py_pkg_treemap(
     show_module_counts: ModuleFormatter | bool = default_module_formatter,
     group_by: GroupBy = "module",
     min_lines: int = 0,
+    cell_size_fn: CellSizeCalculator | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Generate a treemap plot showing the module structure of Python packages.
 
     The first level shows the distribution by package, and the second level
-    shows modules or files, with line counts indicating code size.
+    shows modules or files, with cell sizes typically indicating code size.
 
     Args:
         packages: Single package name or list of package names to analyze
@@ -295,7 +325,7 @@ def py_pkg_treemap(
             branch. Only works reliably for single-package plots.
             If set to None, no links will be generated.
         show_counts: How to display counts in treemap cells:
-            - "value": Show line counts
+            - "value": Show calculated cell size value
             - "percent": Show percentage of parent
             - "value+percent": Show both (default)
             - False: Don't show counts
@@ -307,7 +337,13 @@ def py_pkg_treemap(
             - "file": Group by filename
             - "directory": Group by top-level directory
             - "module": Group by top-level module (default)
-        min_lines: Minimum number of code lines for a file to be included
+        min_lines: Minimum number of code lines for a file to be included.
+            Note: this filter is applied before `cell_size_fn`.
+        cell_size_fn: A callable that takes a `ModuleStats` object
+            (a NamedTuple with fields like line_count, n_classes, n_functions,
+            n_methods) and returns a number (int or float) to be used for the
+            cell's size in the treemap.
+            If None (default), cell size is based on `line_count`.
         **kwargs: Additional keyword arguments passed to plotly.express.treemap
 
     Returns:
@@ -398,6 +434,20 @@ def py_pkg_treemap(
     if df_modules.empty:
         raise ValueError(f"No Python modules found in packages: {packages}")
 
+    # Define default cell size calculator if not provided
+    if cell_size_fn is None:
+        cell_size_fn = lambda module: module.line_count
+
+    # Apply cell_size_fn to get the value for treemap sizing
+    # Pass a dictionary representation of each row to the calculator
+    metrics_keys = ModuleStats._fields
+    df_modules["cell_value"] = df_modules.apply(
+        lambda row: cell_size_fn(
+            ModuleStats(**{k: row[k] for k in metrics_keys if k in row})
+        ),
+        axis=1,
+    )
+
     df_treemap = df_modules.copy()
 
     # Determine the maximum depth of the module hierarchy
@@ -422,12 +472,16 @@ def py_pkg_treemap(
 
     # Keep track of raw package names for percentage calculation in hover text
     df_treemap["package_name_raw"] = df_treemap["package"]
-    package_totals = df_treemap.groupby("package_name_raw")["line_count"].sum()
+    # Use 'cell_value' for package totals if it's the sizing metric
+    package_totals = df_treemap.groupby("package_name_raw")["cell_value"].sum()
 
     # Calculate percentage of package total for hover text
-    df_treemap["package_total"] = df_treemap["package_name_raw"].map(package_totals)
-    df_treemap["percent_of_package"] = (
-        df_treemap["line_count"] / df_treemap["package_total"]
+    # This percentage will be based on the 'cell_value'
+    df_treemap["package_total_cell_value"] = df_treemap["package_name_raw"].map(
+        package_totals
+    )
+    df_treemap["percent_of_package_cell_value"] = (
+        df_treemap["cell_value"] / df_treemap["package_total_cell_value"]
     ).fillna(0)
 
     # Format package labels *after* storing raw name and calculating totals
@@ -455,6 +509,7 @@ def py_pkg_treemap(
     analysis_cols = [
         "n_classes",
         "n_functions",
+        "n_methods",
         "n_internal_imports",
         "n_external_imports",
         "n_type_checking_imports",
@@ -464,8 +519,10 @@ def py_pkg_treemap(
         "repo_path_segment",  # 1
         "leaf_label",  # 2
         "file_url",  # 3
-        *analysis_cols,  # 4-8
-        "percent_of_package",  # 9
+        *analysis_cols,  # n_classes=4, n_functions=5, n_internal_imports=6,
+        # n_external_imports=7, n_type_checking_imports=8, n_methods=9
+        "percent_of_package_cell_value",  # 10
+        "line_count",  # 11
     ]
 
     # Fill NaNs in analysis columns with 0 for customdata
@@ -482,7 +539,7 @@ def py_pkg_treemap(
     fig = px.treemap(
         df_treemap,
         path=path_definition,
-        values="line_count",
+        values="cell_value",  # Use the new calculated cell_value
         custom_data=customdata,
         **treemap_defaults | kwargs,
     )
@@ -492,10 +549,13 @@ def py_pkg_treemap(
     hovertemplate = (
         "<b>%{customdata[2]}</b><br>"  # leaf_label
         "Path: %{customdata[1]}<br>"  # repo_path_segment
-        "Lines: %{value:,}<br>"  # line_count (from values)
-        "%{customdata[9]:.1%} of %{customdata[0]}<br>"  # percent_of_package
+        "Cell Value: %{value:,}<br>"  # This is cell_value
+        "Lines: %{customdata[11]:,}<br>"  # Actual line_count
+        # percent_of_package_cell_value
+        "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
         "Classes: %{customdata[4]:,}<br>"  # n_classes
         "Functions: %{customdata[5]:,}<br>"  # n_functions
+        "Methods: %{customdata[9]:,}<br>"  # n_methods
         "Internal Imports: %{customdata[6]:,}<br>"  # n_internal_imports
         "External Imports: %{customdata[7]:,}<br>"  # n_external_imports
         "Type Imports: %{customdata[8]:,}<br>"  # n_type_checking_imports
@@ -517,11 +577,12 @@ def py_pkg_treemap(
         if show_counts == "percent":
             fig.data[0].texttemplate = f"{link_part}<br>%{{percentEntry}}"
         elif show_counts == "value":
-            fig.data[0].texttemplate = f"{link_part}<br>%{{value:,}} lines"
+            # %{value} here refers to cell_value
+            fig.data[0].texttemplate = f"{link_part}<br>%{{value:,}}"
         elif show_counts == "value+percent":
             fig.data[
                 0
-            ].texttemplate = f"{link_part}<br>%{{value:,}} lines<br>%{{percentEntry}}"
+            ].texttemplate = f"{link_part}<br>%{{value:,}}<br>%{{percentEntry}}"
         elif show_counts is False:
             # Only show the linked label if counts are disabled
             fig.data[0].texttemplate = link_part
@@ -536,12 +597,12 @@ def py_pkg_treemap(
         fig.data[0].textinfo = "label+percent entry"
     elif show_counts == "value":
         fig.data[0].textinfo = "label+value"
-        fig.data[0].texttemplate = "%{{label}}<br>%{{value:,}} lines"
+        # %{value} here refers to cell_value
+        fig.data[0].texttemplate = "%{label}<br>%{value:,}"
     elif show_counts == "value+percent":
         fig.data[0].textinfo = "label+value+percent entry"
-        fig.data[
-            0
-        ].texttemplate = "%{{label}}<br>%{{value:,}} lines<br>%{{percentEntry}}"
+        # %{value} here refers to cell_value
+        fig.data[0].texttemplate = "%{label}<br>%{value:,}<br>%{percentEntry}"
     elif show_counts is False:
         # If counts are off and no URL, just show the label
         fig.data[0].textinfo = "label"

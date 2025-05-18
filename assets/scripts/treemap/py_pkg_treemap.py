@@ -74,3 +74,26 @@ fig.update_layout(
     title=dict(text="Custom Package Name Formatting", x=0.5, y=0.97, font_size=18),
 )
 fig.show()
+
+
+# %% Custom cell sizing based on number of functions + classes
+fig_custom_size = pmv.py_pkg_treemap(
+    "pymatviz",
+    cell_size_calculator=lambda cell: cell.n_functions
+    + cell.n_classes
+    + cell.n_methods,
+    show_counts="value",  # Show the custom calculated value
+    min_lines=0,  # Include all files for this example
+)
+title = "pymatviz: Cell size by (functions + classes + methods)"
+fig_custom_size.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
+fig_custom_size.update_traces(
+    hovertemplate="<b>%{label}</b><br>"  # Use label from path
+    "Classes: %{customdata[4]:,}<br>"  # n_classes is at customdata[4]
+    "Functions: %{customdata[5]:,}<br>"  # n_functions is at customdata[5]
+    "Methods: %{customdata[9]:,}<br>"  # n_methods is at customdata[9]
+    "Lines: %{customdata[11]:,}<br>"  # line_count is at customdata[11]
+    "Cell Value (Func+Class+Meth): %{value:,}<br>"  # value is the result of calculator
+    "<extra></extra>",
+)
+fig_custom_size.show()
