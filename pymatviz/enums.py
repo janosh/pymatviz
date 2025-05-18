@@ -4,8 +4,7 @@
 from __future__ import annotations
 
 import os
-import sys
-from enum import Enum, EnumType, _EnumDict, unique
+from enum import EnumType, StrEnum, _EnumDict, unique
 from typing import TYPE_CHECKING, Final
 
 import yaml
@@ -14,9 +13,7 @@ from pymatviz.utils import PKG_DIR, html_tag
 
 
 if TYPE_CHECKING:
-    from typing import Any
-
-    from typing_extensions import Self
+    from typing import Any, Self
 
     from pymatviz.typing import RgbColorType
 
@@ -29,55 +26,6 @@ with open(f"{PKG_DIR}/keys.yml", encoding="utf-8") as file:
 _keys: Final[dict[str, dict[str, str]]] = {}
 for category, keys in _key_data.items():
     _keys |= {key: {"category": category} | val for key, val in keys.items()}  # type: ignore[misc]
-
-
-# TODO: remove following definition of StrEnum once Python 3.11+
-if sys.version_info >= (3, 11):
-    from enum import StrEnum
-else:
-
-    class StrEnum(str, Enum):
-        """Enum where members are also (and must be) strings.
-
-        Copied from std lib due to being 3.11+.
-        """
-
-        def __new__(cls, *values: Any) -> Self:
-            """Values must already be str."""
-            if len(values) > 3:
-                raise TypeError(f"too many arguments for str(): {values!r}")
-            if len(values) == 1 and not isinstance(values[0], str):
-                # it must be a string
-                raise TypeError(f"{values[0]!r} is not a string")
-            if len(values) >= 2 and not isinstance(values[1], str):
-                # check that encoding argument is a string
-                raise TypeError(f"encoding must be a string, not {values[1]!r}")
-            if len(values) == 3 and not isinstance(values[2], str):
-                # check that errors argument is a string
-                raise TypeError(f"errors must be a string, not {values[2]!r}")
-            value = str(*values)
-            member = str.__new__(cls, value)
-            member._value_ = value
-            return member
-
-        def __str__(self) -> str:
-            """Return the lower-cased version of the member name."""
-            """
-            use enum_name instead of class.enum_name
-            """
-            if self._name_ is None:
-                cls_name = type(self).__name__
-                return f"{cls_name}({self._value_!r})"
-            return self._name_.lower()
-
-        def _generate_next_value_(  # type: ignore[override]
-            self,
-            start: int,  # noqa: ARG002
-            count: int,  # noqa: ARG002
-            last_values: list[str],  # noqa: ARG002
-        ) -> str:
-            """Return the lower-cased version of the member name."""
-            return self.lower()
 
 
 class LabelEnum(StrEnum):

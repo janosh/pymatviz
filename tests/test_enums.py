@@ -28,13 +28,9 @@ def test_str_enum() -> None:
     # ensure all pymatviz Enums classes are subclasses of StrEnum
     # either the standard library StrEnum if 3.11+ or our own StrEnum
     assert issubclass(StrEnum, str)
-    if sys.version_info >= (3, 11):
-        from enum import StrEnum as StdLibStrEnum
+    from enum import StrEnum as StdLibStrEnum
 
-        assert StrEnum is StdLibStrEnum
-    else:
-        assert issubclass(StrEnum, str)
-        assert StrEnum.__name__ == "StrEnum"
+    assert StrEnum is StdLibStrEnum
 
 
 def test_key_enum() -> None:

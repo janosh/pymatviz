@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
@@ -364,7 +364,7 @@ def test_annotate_metrics_prefix_suffix(plotly_scatter: go.Figure) -> None:
     assert anno_text.endswith(suffix)
 
 
-@pytest.mark.parametrize("metrics", [42, datetime.now(tz=timezone.utc)])
+@pytest.mark.parametrize("metrics", [42, datetime.now(tz=UTC)])
 def test_annotate_metrics_bad_metrics(metrics: Any) -> None:
     with pytest.raises(TypeError, match="metrics must be dict|list|tuple|set"):
         pmv.powerups.annotate_metrics(y_true, y_pred, metrics=metrics)

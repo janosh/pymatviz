@@ -18,13 +18,13 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "kaleido==0.2.1",  # strict pin needed, see https://github.com/plotly/Kaleido/issues/292
     "matplotlib>=3.9",
@@ -83,7 +83,7 @@ show_error_codes = true
 no_implicit_optional = false
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 output-format = "concise"
 
 [tool.ruff.lint]

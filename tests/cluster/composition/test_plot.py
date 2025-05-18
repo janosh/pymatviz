@@ -2922,7 +2922,7 @@ def test_colorscale_tick_generation(test_case: dict[str, Any]) -> None:
                     tick_values.append(float(str(tt).replace("e", "E")))
                 else:
                     tick_values.append(float(tt))
-            except (ValueError, AttributeError):  # noqa: PERF203
+            except (ValueError, AttributeError):
                 continue  # Skip non-numeric tick labels
 
         # Check for positive and negative ticks
