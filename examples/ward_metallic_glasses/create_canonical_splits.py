@@ -302,7 +302,7 @@ if __name__ == "__main__":
     print(f"\nSaved augmented dataset to {out_path}")
 
     # Print column names for verification
-    split_cols = [col for col in df_ward.columns if col.startswith("split_")]
+    split_cols = [col for col in df_ward if col.startswith("split_")]
     print("\nSplit columns in output dataset:")
     for col in split_cols:
         print(f"- {col}")

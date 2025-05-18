@@ -556,12 +556,12 @@ def test_draw_bonds(
 ) -> None:
     """Test basic bond drawing functionality with various parameters."""
     fig = go.Figure()
-    nn_strat = CrystalNN()
+    nn_strategy = CrystalNN()
 
     draw_bonds(
         fig=fig,
         structure=bond_test_structure,
-        nn=nn_strat,
+        nn=nn_strategy,
         is_3d=is_3d,
         bond_kwargs=bond_kwargs,
         visible_image_atoms=visible_image_atoms,
@@ -616,7 +616,7 @@ def test_draw_bonds_advanced(
 ) -> None:
     """Test advanced bond drawing scenarios with rotation and image atoms."""
     fig = go.Figure()
-    nn_strat = CrystalNN()
+    nn_strategy = CrystalNN()
 
     # Use extended structure for cases that need to check bonds to image atoms
     structure = (
@@ -648,7 +648,7 @@ def test_draw_bonds_advanced(
     draw_bonds(
         fig=fig,
         structure=structure,
-        nn=nn_strat,
+        nn=nn_strategy,
         is_3d=is_3d,
         rotation_matrix=rotation_matrix,
         visible_image_atoms=visible_image_atoms,

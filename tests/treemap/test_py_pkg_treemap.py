@@ -257,8 +257,8 @@ def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
         assert mock_isdir.call_count == 3
 
 
-def test_py_pkg_treemap_show_module_counts() -> None:
-    """Test the show_module_counts parameter."""
+def test_py_pkg_treemap_cell_text_fn() -> None:
+    """Test the cell_text_fn parameter."""
     # Default (True) - uses default_module_formatter
     fig_true = pmv.py_pkg_treemap(["my_pkg", "another_pkg"])
     labels_true = fig_true.data[0].labels
@@ -268,7 +268,7 @@ def test_py_pkg_treemap_show_module_counts() -> None:
     assert any("%)" in lbl for lbl in labels_true)
 
     # False - no counts on package labels
-    fig_false = pmv.py_pkg_treemap(["my_pkg", "another_pkg"], show_module_counts=False)
+    fig_false = pmv.py_pkg_treemap(["my_pkg", "another_pkg"], cell_text_fn=False)
     labels_false = fig_false.data[0].labels
     assert "my_pkg" in labels_false
     assert "another_pkg" in labels_false
@@ -281,7 +281,7 @@ def test_py_pkg_treemap_show_module_counts() -> None:
         return f"PKG: {pkg} [{count}/{total}]"
 
     fig_custom = pmv.py_pkg_treemap(
-        ["my_pkg", "another_pkg"], show_module_counts=custom_mod_fmt
+        ["my_pkg", "another_pkg"], cell_text_fn=custom_mod_fmt
     )
     labels_custom = fig_custom.data[0].labels
     assert any(lbl.startswith("PKG: my_pkg [") for lbl in labels_custom)
@@ -290,8 +290,11 @@ def test_py_pkg_treemap_show_module_counts() -> None:
 
 def test_py_pkg_treemap_empty() -> None:
     """Test treemap generation when no modules are found (e.g., high min_lines)."""
-    with pytest.raises(ValueError, match="No Python modules found"):
-        pmv.py_pkg_treemap("my_pkg", min_lines=100)
+    with pytest.raises(
+        ValueError,
+        match="No Python modules found .* after filtering by cell_size_fn",
+    ):
+        pmv.py_pkg_treemap("my_pkg", cell_size_fn=lambda _cell: 0)
 
 
 def test_py_pkg_treemap_invalid_show_counts() -> None:
@@ -307,13 +310,13 @@ def test_py_pkg_treemap_invalid_show_counts() -> None:
             "https://github.com/test/repo/blob/main",
             True,
             "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a><br>"
-            "%{value:,} lines<br>%{percentEntry}",
+            "%{value:,}<br>%{percentEntry}",
             "none",
         ),
         (
             None,
             False,
-            "%{{label}}<br>%{{value:,}} lines<br>%{{percentEntry}}",
+            "%{label}<br>%{value:,}<br>%{percentEntry}",
             "label+value+percent entry",
         ),
     ],
@@ -341,7 +344,7 @@ def test_py_pkg_treemap_base_url(
     assert custom_data is not None
     assert isinstance(custom_data, np.ndarray)
     assert custom_data.ndim == 2
-    expected_cols = 10
+    expected_cols = 12
     assert custom_data.shape[1] == expected_cols, (
         f"Expected {expected_cols} columns in customdata, got {custom_data.shape[1]}"
     )
@@ -373,8 +376,14 @@ def test_py_pkg_treemap_base_url(
     assert len(hovertemplate) > 0
     assert "<b>%{customdata[2]}</b>" in hovertemplate  # leaf_label
     assert "Path: %{customdata[1]}<br>" in hovertemplate  # repo_path_segment
-    assert "Lines: %{value:,}<br>" in hovertemplate  # line_count
+    assert (
+        "Lines: %{customdata[11]:,}<br>" in hovertemplate
+    )  # Correct: actual line_count from customdata
+    assert (
+        "Cell Value: %{value:,}<br>" in hovertemplate
+    )  # Check for Cell Value which is the sizing metric
     assert "Functions: %{customdata[5]:,}<br>" in hovertemplate  # n_functions
+    assert "Methods: %{customdata[9]:,}<br>" in hovertemplate  # n_methods
     assert (
         "Type Imports: %{customdata[8]:,}<br>" in hovertemplate
     )  # n_type_checking_imports
@@ -386,11 +395,12 @@ def test_py_pkg_treemap_analysis_failure() -> None:
 
     # Mock _analyze_py_file to simulate failure
     failed_analysis_result = {
-        "n_classes": None,
-        "n_functions": None,
-        "n_internal_imports": None,
-        "n_external_imports": None,
-        "n_type_checking_imports": None,
+        "n_classes": 0,
+        "n_functions": 0,
+        "n_methods": 0,
+        "n_internal_imports": 0,
+        "n_external_imports": 0,
+        "n_type_checking_imports": 0,
     }
     with patch(
         "pymatviz.treemap.py_pkg._analyze_py_file", return_value=failed_analysis_result
@@ -434,8 +444,15 @@ def test_internal_imports(dummy_pkg_path: Path) -> None:
     """Test counting of internal imports using AST analysis."""
     pkg_name = "my_pkg"
     # Add a file with internal imports
-    internal_import_content = """\nfrom .submodule import module2 # internal import from sibling dir\nfrom . import module1 # internal import from same dir\nimport os # external import\n
-class InternalUser:\n    pass\n"""  # noqa: E501
+    # Ensure no leading spaces on lines that matter for parsing
+    internal_import_content = (
+        "from .submodule import module2 # internal import from sibling dir\n"
+        "from . import module1 # internal import from same dir\n"
+        "import os # external import\n"
+        "\n"
+        "class InternalUser:\n"
+        "    pass\n"
+    )
     (dummy_pkg_path / pkg_name / "internal_user.py").write_text(internal_import_content)
 
     fig = pmv.py_pkg_treemap(pkg_name)
@@ -450,6 +467,7 @@ class InternalUser:\n    pass\n"""  # noqa: E501
     assert "External Imports: %{customdata[7]:,}<br>" in hovertemplate
     assert "Classes: %{customdata[4]:,}<br>" in hovertemplate
     assert "Functions: %{customdata[5]:,}<br>" in hovertemplate
+    assert "Methods: %{customdata[9]:,}<br>" in hovertemplate
 
     # Optional: Verify the actual data in customdata for the specific node
     ids = fig.data[0].ids
@@ -461,12 +479,14 @@ class InternalUser:\n    pass\n"""  # noqa: E501
             break
     assert internal_user_idx != -1, "internal_user node not found in ids"
 
-    # Customdata indices: 6=internal, 7=external, 4=classes, 5=functions
     # Cast customdata values to int before comparison
-    assert int(custom_data[internal_user_idx, 6]) == 2  # n_internal_imports
-    assert int(custom_data[internal_user_idx, 7]) == 1  # n_external_imports
+    assert int(custom_data[internal_user_idx, 7]) == 2  # n_internal_imports
+    assert int(custom_data[internal_user_idx, 8]) == 1  # n_external_imports
     assert int(custom_data[internal_user_idx, 4]) == 1  # n_classes
     assert int(custom_data[internal_user_idx, 5]) == 0  # n_functions
+    assert (
+        int(custom_data[internal_user_idx, 6]) == 0
+    )  # n_methods for InternalUser class
 
 
 def test_top_level_module(dummy_pkg_path: Path) -> None:
@@ -509,23 +529,11 @@ def test_analyze_unicode_error(
     # Check that a warning was printed
     assert f"Warning: Could not analyze {bad_file_path}: 'utf-8' codec" in captured.out
 
-    # Check that the bad file node exists
-    assert any("bad_encoding" in id_val for id_val in fig.data[0].ids)
-
-    # Check customdata for the bad file node has 0 for analysis fields
-    ids = fig.data[0].ids
-    custom_data = fig.data[0].customdata
-    bad_file_idx = -1
-    for idx, id_val in enumerate(ids):
-        if id_val.endswith("/bad_encoding"):
-            bad_file_idx = idx
-            break
-    assert bad_file_idx != -1, "bad_encoding node not found"
-
-    # Analysis fields (indices 4-8) should be 0 due to fillna(0)
-    assert np.all(custom_data[bad_file_idx, 4:9].astype(float) == 0)
-    # Line count (value, not customdata) might also be 0 depending on error timing
-    # assert fig.data[0].values[bad_file_idx] == 0 # This might be fragile
+    # Check that the bad file node does NOT exist because its cell_value will be 0
+    for id_val in fig.data[0].ids:
+        assert "bad_encoding" not in id_val, (
+            f"bad_encoding.py with {id_val=} should be omitted due to zero cell_value"
+        )
 
 
 @pytest.mark.parametrize(
@@ -586,7 +594,7 @@ def test_auto_base_url_metadata(
 
     if expected_url_in_customdata:
         assert custom_data is not None, "Customdata should exist when URL is found"
-        expected_cols = 10  # Updated expected columns
+        expected_cols = 12
         assert custom_data.shape[1] == expected_cols
         file_urls = custom_data[:, 3]  # Fourth column (index 3) is file_url
         # Check if at least one file URL (for a .py file) contains github.com/blob/main
@@ -598,7 +606,7 @@ def test_auto_base_url_metadata(
     else:
         assert (
             custom_data is None
-            or custom_data.shape[1] != 10
+            or custom_data.shape[1] != 12
             or not any(
                 url and "github.com" in url
                 for url in custom_data[:, 3]
@@ -635,7 +643,7 @@ def test_auto_base_url_metadata_exception(
 @pytest.mark.parametrize(
     ("show_counts_value", "expected_textinfo", "expected_template_part"),
     [
-        ("value", "label+value", "%{{label}}<br>%{{value:,}} lines"),
+        ("value", "label+value", "%{label}<br>%{value:,}"),
         ("percent", "label+percent entry", None),  # No specific template needed
         (False, "label", None),  # No specific template needed
     ],
@@ -688,17 +696,26 @@ def mock_pkg_data() -> pd.DataFrame:
         "n_internal_imports": [1, 0, 2, 3],
         "n_external_imports": [4, 1, 5, 6],
         "n_type_checking_imports": [0, 1, 0, 2],
+        "n_methods": [3, 1, 4, 5],  # Added n_methods to mock data
     }
     return pd.DataFrame(data)
 
 
 def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
     """Test that pmv.py_pkg_treemap generates correct customdata and hovertemplate."""
+    # Simulate the DataFrame as it would be *after* collect_package_modules
+    # but *before* cell_value calculation if we were testing that part directly.
+    # However, py_pkg_treemap calculates cell_value internally.
+    # Since this test uses default calculator, cell_value will equal line_count.
+    # The mock for collect_package_modules should provide the raw data.
+    # py_pkg_treemap will then add 'cell_value' and other derived columns.
+
+    # The DataFrame returned by the mocked collect_package_modules
+    mock_collect_df = mock_pkg_data.copy()
+
+    dot_path = "pymatviz.treemap.py_pkg.collect_package_modules"
     with (
-        patch(
-            "pymatviz.treemap.py_pkg.collect_package_modules",
-            return_value=mock_pkg_data,
-        ) as mock_collect,
+        patch(dot_path, return_value=mock_collect_df) as mock_collect,
         patch(
             "pymatviz.treemap.py_pkg.px.treemap", wraps=px.treemap
         ) as mock_px_treemap,
@@ -706,58 +723,82 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
         expected_hovertemplate = (
             "<b>%{customdata[2]}</b><br>"  # leaf_label
             "Path: %{customdata[1]}<br>"  # repo_path_segment
-            "Lines: %{value:,}<br>"  # line_count (from values)
-            "%{customdata[9]:.1%} of %{customdata[0]}<br>"  # percent_of_package
-            "Classes: %{customdata[4]:,}<br>"  # n_classes
-            "Functions: %{customdata[5]:,}<br>"  # n_functions
-            "Internal Imports: %{customdata[6]:,}<br>"  # n_internal_imports
-            "External Imports: %{customdata[7]:,}<br>"  # n_external_imports
-            "Type Imports: %{customdata[8]:,}<br>"  # n_type_checking_imports
+            "Cell Value: %{value:,}<br>"  # This is cell_value (new sizing metric)
+            "Lines: %{customdata[11]:,}<br>"  # Actual line_count (index 11)
+            # percent_of_package_cell_value (index 10)
+            "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
+            "Classes: %{customdata[4]:,}<br>"  # n_classes (index 4)
+            "Functions: %{customdata[5]:,}<br>"  # n_functions (index 5)
+            "Methods: %{customdata[9]:,}<br>"  # n_methods (index 9)
+            "Internal Imports: %{customdata[6]:,}<br>"  # n_internal_imports (index 6)
+            "External Imports: %{customdata[7]:,}<br>"  # n_external_imports (index 7)
+            "Type Imports: %{customdata[8]:,}<br>"  # n_type_checking_imports (index 8)
             "<extra></extra>"  # Remove Plotly trace info box
         )
         expected_custom_data_cols = [
-            "package_name_raw",
-            "repo_path_segment",
-            "leaf_label",
-            "file_url",
-            "n_classes",
-            "n_functions",
-            "n_internal_imports",
-            "n_external_imports",
-            "n_type_checking_imports",
-            "percent_of_package",
+            "package_name_raw",  # 0
+            "repo_path_segment",  # 1
+            "leaf_label",  # 2
+            "file_url",  # 3
+            "n_classes",  # 4
+            "n_functions",  # 5
+            "n_internal_imports",  # 6
+            "n_external_imports",  # 7
+            "n_type_checking_imports",  # 8
+            "n_methods",  # 9
+            "percent_of_package_cell_value",  # 10
+            "line_count",  # 11
         ]
 
         fig = pmv.py_pkg_treemap(packages=["pkg1", "pkg2"], base_url=None)
 
         mock_collect.assert_called_once()
         mock_px_treemap.assert_called_once()
-        call_args, call_kwargs = mock_px_treemap.call_args
-        passed_custom_data = call_kwargs["custom_data"]
+
+        passed_custom_data_arg = mock_px_treemap.call_args.kwargs["custom_data"]
 
         assert len(fig.data) == 1
         assert fig.data[0].hovertemplate == expected_hovertemplate
 
-        package_totals = mock_pkg_data.groupby("package_name_raw")["line_count"].sum()
+        # For constructing the expected custom_data, we need to simulate what
+        # py_pkg_treemap does with the data from collect_package_modules.
+        # It adds 'cell_value', 'package_total_cell_value',
+        # 'percent_of_package_cell_value', 'file_url', and formats 'package' labels.
+
+        # Start with the mocked collect_df and add expected derived columns
+        df_for_custom_data_calc = mock_collect_df.copy()
+        # Since default calculator is used, cell_value = line_count
+        df_for_custom_data_calc["cell_value"] = df_for_custom_data_calc["line_count"]
+        package_cell_value_totals = df_for_custom_data_calc.groupby("package_name_raw")[
+            "cell_value"
+        ].sum()
+        df_for_custom_data_calc["package_total_cell_value"] = df_for_custom_data_calc[
+            "package_name_raw"
+        ].map(package_cell_value_totals)
+        df_for_custom_data_calc["percent_of_package_cell_value"] = (
+            df_for_custom_data_calc["cell_value"]
+            / df_for_custom_data_calc["package_total_cell_value"]
+        ).fillna(0)
+        df_for_custom_data_calc["file_url"] = None  # base_url is None
+
         analysis_cols = [
             "n_classes",
             "n_functions",
             "n_internal_imports",
             "n_external_imports",
             "n_type_checking_imports",
+            "n_methods",
         ]
-        expected_leaf_customdata_df = mock_pkg_data.assign(
-            package_total=lambda df: df["package_name_raw"].map(package_totals),
-            percent_of_package=lambda df: (
-                df["line_count"] / df["package_total"]
-            ).fillna(0),
-            file_url=None,  # Since base_url=None
-            # Ensure analysis columns are filled with 0 if they were None/NaN
-            **{col: lambda df, c=col: df[c].fillna(0) for col in analysis_cols},
-        )[expected_custom_data_cols]
+        for col in analysis_cols:
+            if col in df_for_custom_data_calc:
+                df_for_custom_data_calc[col] = df_for_custom_data_calc[col].fillna(0)
+            else:  # Should not happen if mock_pkg_data is complete
+                df_for_custom_data_calc[col] = 0
+
+        expected_leaf_customdata_df = df_for_custom_data_calc[expected_custom_data_cols]
 
         generated_customdata_df = pd.DataFrame(
-            passed_custom_data, columns=expected_custom_data_cols
+            passed_custom_data_arg, columns=expected_custom_data_cols
         )
 
         # Sort for consistent comparison
@@ -779,6 +820,153 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
         # Sanity check a specific value
         pkg1_mod_a_percent_gen = generated_customdata_df_sorted[
             generated_customdata_df_sorted["leaf_label"] == "modA"
-        ]["percent_of_package"].iloc[0]
+        ]["percent_of_package_cell_value"].iloc[0]
         assert pkg1_mod_a_percent_gen == pytest.approx(100 / 300)
         assert generated_customdata_df_sorted["file_url"].isna().all()
+
+
+def _calc_sum_functions_classes(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
+    """Test calculator: sum of functions and classes."""
+    return metrics.n_functions + metrics.n_classes
+
+
+def _calc_methods_x_10_plus_lines(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
+    """Test calculator: methods * 10 + line_count."""
+    return metrics.n_methods * 10 + metrics.line_count
+
+
+def _sizer_omit_specific(metrics: pmv.treemap.py_pkg.ModuleStats) -> int:
+    """Return 0 for 'module1' and 'main', otherwise line_count."""
+    if metrics.filename in {"module1", "main"}:
+        return 0
+    return metrics.line_count
+
+
+@pytest.mark.parametrize(
+    ("calculator", "expected_value_logic", "expected_filenames", "test_id"),
+    [
+        (
+            None,  # Default behavior (line_count)
+            lambda metrics: metrics.line_count,
+            {"module1", "module2", "module3", "module4_typed", "main", "top_level_mod"},
+            "default_line_count",
+        ),
+        (
+            _calc_sum_functions_classes,
+            _calc_sum_functions_classes,
+            # module3, main, top_level_mod have 0
+            {"module1", "module2", "module4_typed"},
+            "sum_functions_classes",
+        ),
+        (
+            _calc_methods_x_10_plus_lines,
+            _calc_methods_x_10_plus_lines,
+            {"module1", "module2", "module3", "module4_typed", "main"},
+            "methods_x_10_plus_lines",
+        ),
+        (
+            lambda metrics: metrics.n_type_checking_imports
+            + metrics.n_internal_imports,
+            lambda metrics: metrics.n_type_checking_imports
+            + metrics.n_internal_imports,
+            {"module4_typed"},
+            "type_plus_internal_imports",
+        ),
+        (
+            _sizer_omit_specific,  # omits module1 and main
+            _sizer_omit_specific,
+            {"module2", "module3", "module4_typed", "top_level_mod"},
+            "omit_module1_main",
+        ),
+    ],
+)
+def test_py_pkg_treemap_cell_size_fn(
+    calculator: pmv.treemap.py_pkg.CellSizeFn | None,
+    expected_value_logic: pmv.treemap.py_pkg.CellSizeFn,
+    expected_filenames: set[str],
+    test_id: str,  # For clarity in test output
+) -> None:
+    """Test the cell_size_fn argument in py_pkg_treemap.
+
+    Verifies that the 'cell_value' column in the DataFrame passed to px.treemap
+    is correctly computed based on the provided calculator, and that modules
+    resulting in a cell_value of 0 are omitted.
+    """
+
+    with patch("plotly.express.treemap") as mock_px_treemap:
+        pmv.py_pkg_treemap(
+            ["my_pkg", "another_pkg"],  # Test with multiple packages
+            cell_size_fn=calculator,
+            group_by="file",  # Group by file for easier checking of filenames
+        )
+
+    mock_px_treemap.assert_called_once()
+    # Ensure we are accessing the args tuple correctly from the call object
+    call_object = mock_px_treemap.call_args
+    assert call_object is not None, "px.treemap was not called or call_args is None"
+    positional_args, keyword_args = (
+        call_object.args,
+        call_object.kwargs,
+    )  # Get both args and kwargs
+    assert len(positional_args) > 0, (
+        "px.treemap was called with no positional arguments"
+    )
+    df_passed_to_plotly: pd.DataFrame = positional_args[0]
+
+    assert "cell_value" in df_passed_to_plotly
+    assert "filename" in df_passed_to_plotly
+
+    actual_filenames = set(df_passed_to_plotly["filename"])
+    assert actual_filenames >= expected_filenames, (
+        f"Test ID: {test_id} - Mismatch in expected present filenames. "
+        f"Expected: {expected_filenames}, Got: {actual_filenames}"
+    )
+
+    # Iterate through the DataFrame and check if cell_value matches expected logic
+    for _idx, row in df_passed_to_plotly.iterrows():
+        # Construct ModuleStats from the row data
+        # Ensure all necessary fields for ModuleStats are present in the row
+        # collect_package_modules ensures this.
+        module_metrics_dict = row.to_dict()
+        # Filter dict to only include keys expected by ModuleStats constructor
+        # to prevent TypeError if df_passed_to_plotly has extra columns.
+        metrics_keys = pmv.treemap.py_pkg.ModuleStats._fields
+        filtered_metrics_dict = {
+            key: module_metrics_dict[key]
+            for key in metrics_keys
+            if key in module_metrics_dict
+        }
+        # Some metrics might be NaN if a file couldn't be analyzed, fill with 0
+        for key in [
+            "n_classes",
+            "n_functions",
+            "n_methods",
+            "n_internal_imports",
+            "n_external_imports",
+            "n_type_checking_imports",
+        ]:
+            if pd.isna(filtered_metrics_dict.get(key)):
+                filtered_metrics_dict[key] = 0
+
+        try:
+            metrics_instance = pmv.treemap.py_pkg.ModuleStats(**filtered_metrics_dict)
+        except TypeError as exc:
+            missing_keys = set(metrics_keys) - set(filtered_metrics_dict)
+            if missing_keys:
+                raise AssertionError(
+                    f"{missing_keys=} for ModuleStats in row: {row.to_dict()}"
+                ) from exc
+            raise  # Re-raise if it's a different TypeError
+
+        expected_val = expected_value_logic(metrics_instance)
+        assert expected_val > 0, (
+            f"Test ID: {test_id} - Expected value logic should not result in 0 for a "
+            f"file that is supposed to be present. File: {row.get('filename')}"
+        )
+        assert row["cell_value"] == expected_val, (
+            f"Test ID: {test_id} - Mismatch for file {row.get('file_path', 'N/A')}. "
+            f"Expected: {expected_val}, Got: {row['cell_value']}"
+        )
+
+    # Also check that the 'values' argument to px.treemap was 'cell_value'
+    assert keyword_args["values"] == "cell_value"
