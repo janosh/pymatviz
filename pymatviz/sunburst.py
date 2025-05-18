@@ -83,7 +83,7 @@ def _limit_slices(
                 )
 
                 # Add any additional columns from the original DataFrame
-                for col in df.columns:
+                for col in df:
                     if col not in (group_col, count_col):
                         if col in (Key.chem_sys, Key.formula):
                             other_slice[col] = [
@@ -269,7 +269,7 @@ def chem_sys_sunburst(
     )
 
     sunburst_defaults = dict(
-        color_discrete_sequence=px.colors.qualitative.Set3,
+        color_discrete_sequence=px.colors.qualitative.Set2,
     )
 
     path = ["arity_name", Key.chem_sys]

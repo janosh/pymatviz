@@ -12,7 +12,7 @@ from matplotlib.offsetbox import AnchoredText
 from sklearn.metrics import r2_score
 
 import pymatviz as pmv
-from pymatviz.typing import MATPLOTLIB, PLOTLY, Backend
+from pymatviz.typing import MATPLOTLIB, PLOTLY, VALID_FIG_NAMES, Backend
 from pymatviz.utils import pretty_label
 from tests.conftest import _extract_anno_from_fig, y_pred, y_true
 
@@ -284,14 +284,12 @@ def test_add_identity_matplotlib(
     assert line.get_color() == expected_line_color
 
 
-def test_add_identity_raises() -> None:
-    for fig in (None, "foo", 42.0):
-        with pytest.raises(
-            TypeError,
-            match=f"{fig=} must be instance of plotly.graph_objs._figure.Figure | "
-            f"matplotlib.figure.Figure | matplotlib.axes._axes.Axes",
-        ):
-            pmv.powerups.add_identity_line(fig)
+@pytest.mark.parametrize("fig", [None, "foo", 42.0])
+def test_add_identity_raises(fig: str | int | None) -> None:
+    with pytest.raises(
+        TypeError, match=f"{fig=} must be instance of {VALID_FIG_NAMES}"
+    ):
+        pmv.powerups.add_identity_line(fig)
 
 
 @pytest.mark.parametrize(

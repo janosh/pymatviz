@@ -49,7 +49,7 @@ def test_save_fig(
         assert not os.path.isfile(path)
         return
 
-    assert os.path.isfile(path)
+    assert os.path.isfile(path), f"{path=}, {ext=}, {plotly_config=}, {env_disable=}"
 
     if ext in ("svelte", "html"):
         with open(path) as file:

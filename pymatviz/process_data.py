@@ -217,8 +217,8 @@ def count_formulas(
                         formula = comp.reduced_formula
                     else:  # chem_sys
                         formula = None
-                except (ValueError, KeyError) as e:
-                    raise ValueError(f"Invalid formula: {item}") from e
+                except (ValueError, KeyError) as exc:
+                    raise ValueError(f"Invalid formula: {item}") from exc
         else:
             raise TypeError(
                 f"Expected str, Composition or Structure, got {type(item)} instead"

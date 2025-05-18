@@ -36,8 +36,6 @@ Detailed information about how each dataset was created and prepared for use is 
 | [`matbench_phonons`]       | `last phdos peak` (1/cm)     | 1265         | regression     | structure   | [download][matbench_phonons.json.gz]       |
 | [`matbench_steels`]        | `yield strength` (MPa)       | 312          | regression     | composition | [download][matbench_steels.json.gz]        |
 
-<!-- markdown-link-check-disable -->
-
 [ml.materialsproject.org]: https://ml.materialsproject.org
 [matbench_dielectric.json.gz]: https://ml.materialsproject.org/projects/matbench_dielectric.json.gz
 [`matbench_dielectric`]: https://ml.materialsproject.org/projects/matbench_dielectric
@@ -67,8 +65,6 @@ Detailed information about how each dataset was created and prepared for use is 
 [`matbench_steels`]: https://ml.materialsproject.org/projects/matbench_steels
 [carrier_transport]: https://contribs.materialsproject.org/projects/carrier_transport
 [carrier_transport.json.gz]: https://contribs.materialsproject.org/projects/carrier_transport.json.gz
-
-<!-- markdown-link-check-enable-->
 
 ### Leaderboard
 

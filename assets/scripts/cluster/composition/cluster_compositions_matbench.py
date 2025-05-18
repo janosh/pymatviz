@@ -152,7 +152,7 @@ def process_dataset(
         df_plot["embeddings"] = [embeddings_dict.get(comp) for comp in compositions]
 
     fig = pmv.cluster_compositions(
-        df=df_plot,
+        df_in=df_plot,
         composition_col="composition",
         prop_name=target_label,
         embedding_method="embeddings",

@@ -130,7 +130,7 @@ def df_color_scale() -> pd.DataFrame:
 def test_basic_functionality(sample_df: pd.DataFrame, prop_name: str | None) -> None:
     """Test cluster_compositions with and without property coloring."""
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection="pca",
         prop_name=prop_name,
@@ -173,7 +173,7 @@ def test_chemical_system_visualization(
 ) -> None:
     """Test different chemical system viz options with and without properties."""
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection="pca",
         show_chem_sys=show_chem_sys,
@@ -235,7 +235,7 @@ def test_chemical_system_with_properties(sample_df: pd.DataFrame) -> None:
     """Test detailed behavior of chemical system visualization with properties."""
     # Test shape mode with properties
     fig_shape = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -258,7 +258,7 @@ def test_chemical_system_with_properties(sample_df: pd.DataFrame) -> None:
 
     # Test color mode with properties
     fig_color = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -278,7 +278,7 @@ def test_chemical_system_with_properties(sample_df: pd.DataFrame) -> None:
 
     # Test color+shape mode with properties
     fig_both = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -319,7 +319,7 @@ def test_sorting_options(
 ) -> None:
     """Test different sorting options for property values."""
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -367,7 +367,7 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
 
     # Run without properties, using custom color map
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection="pca",
         show_chem_sys="color",
@@ -384,7 +384,7 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
     # Edge case: Empty property array but with show_chem_sys=None
     # Should use default coloring
     fig_no_chem = pmv.cluster_compositions(
-        df=sample_df[["composition"]],  # DataFrame without property column
+        df_in=sample_df[["composition"]],  # DataFrame without property column
         embedding_method="one-hot",
         projection="pca",
         show_chem_sys=None,
@@ -398,7 +398,7 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
     # Edge case: With property values and shape mode, using custom marker size
     large_marker = 20
     fig_large = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -454,7 +454,7 @@ def test_projection_stats(
     df_prop = request.getfixturevalue("df_prop")
 
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         embedding_method="one-hot",
         projection=projection,
         projection_kwargs=projection_kwargs,
@@ -513,7 +513,7 @@ def test_projection_stats_invalid_type(
         TypeError, match=re.escape(f"{show_projection_stats=} must be bool or dict")
     ):
         pmv.cluster_compositions(
-            df=sample_df,
+            df_in=sample_df,
             prop_name="property",
             embedding_method="one-hot",
             projection="pca",
@@ -548,7 +548,7 @@ def test_cluster_compositions_methods(
 
     # Test 2D projection
     fig_2d = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         composition_col="composition",
         prop_name="property",
         embedding_method=embedding_method,
@@ -580,7 +580,7 @@ def test_cluster_compositions_methods(
 
     # Test 3D projection
     fig_3d = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         composition_col="composition",
         prop_name="property",
         embedding_method=embedding_method,
@@ -645,7 +645,7 @@ def test_custom_embedding_projection(
 
     # Create the figure
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         prop_name="property",
         embedding_method=embedding_method,  # type: ignore[arg-type]
         projection=projection,
@@ -675,7 +675,7 @@ def test_precomputed_embeddings() -> None:
 
     # Test with pre-computed embeddings
     fig = pmv.cluster_compositions(
-        df=df_embed,
+        df_in=df_embed,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -697,7 +697,7 @@ def test_marker_size_adjustment_3d(sample_df: pd.DataFrame) -> None:
         (None, "color", "shape", "color+shape"), (2, 3)
     ):
         fig = pmv.cluster_compositions(
-            df=sample_df,
+            df_in=sample_df,
             prop_name="property",
             projection="pca",
             n_components=n_components,
@@ -762,7 +762,7 @@ def test_hover_text_alignment(
 
     # Create figure with the specified configuration
     fig = pmv.cluster_compositions(
-        df=df_data,
+        df_in=df_data,
         composition_col="composition",
         prop_name=prop_name,
         embedding_method=embedding_method,
@@ -846,7 +846,7 @@ def test_hover_format_with_color_scales() -> None:
                 continue
 
             fig = pmv.cluster_compositions(
-                df=df_test,
+                df_in=df_test,
                 composition_col="composition",
                 prop_name="property",
                 projection="pca",
@@ -919,7 +919,7 @@ def test_hover_text_formatting() -> None:
         for fmt in [".1f", ".2f", ".0f", ".2e", "g"]:
             # Create plot with this property and format
             fig = pmv.cluster_compositions(
-                df=df_test,
+                df_in=df_test,
                 composition_col="composition",
                 prop_name=prop_name,
                 projection="pca",
@@ -964,7 +964,7 @@ def test_hover_text_formatting() -> None:
     df_test["coords"] = list(coords_2d)
 
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property_numeric",
         projection="coords",  # Use pre-computed coordinates
@@ -985,7 +985,7 @@ def test_hover_text_formatting() -> None:
 
     # Test with custom hover format that has a specific prefix
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property_numeric",
         projection="pca",
@@ -1117,7 +1117,7 @@ def test_hover_formatting(
 
     # Generate the plot
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name=test_case["prop_name"],
         projection="pca",
@@ -1237,7 +1237,7 @@ def test_hover_formatting_with_coords() -> None:
 
     # Generate plot using the pre-computed coordinates
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property",
         projection="coords",  # Use pre-computed coordinates
@@ -1272,7 +1272,7 @@ def test_attached_projector_and_embeddings(
 ) -> None:
     """Test that projector and embeddings attributes are attached to the figure."""
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection=projection,
     )
@@ -1312,7 +1312,7 @@ def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
         return np_rng.random((data.shape[0], n_components))
 
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection=custom_projection_func,  # type: ignore[arg-type]
     )
@@ -1339,7 +1339,7 @@ def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
     df_with_embeddings["embedding"] = list(original_embeddings)
 
     fig = pmv.cluster_compositions(
-        df=df_with_embeddings,
+        df_in=df_with_embeddings,
         embedding_method="embedding",  # Use the column name containing embeddings
         projection="pca",
     )
@@ -1374,7 +1374,7 @@ def test_title_and_marker_size(
     """Test title, axis labels, marker sizes and coordinates in both 2D and 3D plots."""
     # Create the figure
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -1453,7 +1453,7 @@ def test_special_data_cases(
     df_data = pd.DataFrame({"composition": composition_data, prop_name: property_data})
 
     fig = pmv.cluster_compositions(
-        df=df_data,
+        df_in=df_data,
         composition_col="composition",
         prop_name=prop_name,
         embedding_method="one-hot",
@@ -1516,7 +1516,7 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
 
     # Use these coordinates directly via column name
     fig = pmv.cluster_compositions(
-        df=df_with_coords,
+        df_in=df_with_coords,
         prop_name="property",
         embedding_method="one-hot",  # Still need embeddings for hover info
         projection="coords",  # Use the coordinates from this column
@@ -1546,7 +1546,7 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     )  # 3D coords for 2D plot
     with pytest.raises(ValueError, match="must have length 2"):
         pmv.cluster_compositions(
-            df=df_wrong_shape,
+            df_in=df_wrong_shape,
             embedding_method="one-hot",
             projection="coords",
         )
@@ -1556,7 +1556,7 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     df_wrong_type["coords"] = ["not_array"] * len(sample_df)
     with pytest.raises(ValueError, match="must contain arrays or lists"):
         pmv.cluster_compositions(
-            df=df_wrong_type,
+            df_in=df_wrong_type,
             embedding_method="one-hot",
             projection="coords",
         )
@@ -1584,7 +1584,7 @@ def test_coordinates_priority(
 
     # Use both precomputed embeddings and direct coordinates via column
     fig = pmv.cluster_compositions(
-        df=df_with_embeddings_and_coords,
+        df_in=df_with_embeddings_and_coords,
         prop_name="property",
         embedding_method="my_embeddings",  # Use column from fixture
         projection="coords",  # Use coordinates from this column
@@ -1627,7 +1627,7 @@ def test_coordinates_with_categorical_property(
 
     # Create figure with custom coordinates
     fig = pmv.cluster_compositions(
-        df=df_with_coords,
+        df_in=df_with_coords,
         prop_name="property",
         embedding_method="one-hot",
         projection="coords",  # Use coordinates from this column
@@ -1671,7 +1671,7 @@ def test_coordinates_with_show_chem_sys(
 
     # Test with show_chem_sys='color'
     fig = pmv.cluster_compositions(
-        df=df_with_coords,
+        df_in=df_with_coords,
         embedding_method="one-hot",
         projection="coords",
         show_chem_sys="color",
@@ -1684,7 +1684,7 @@ def test_coordinates_with_show_chem_sys(
 
     # Test with show_chem_sys='shape'
     fig = pmv.cluster_compositions(
-        df=df_with_coords,
+        df_in=df_with_coords,
         embedding_method="one-hot",
         projection="coords",
         show_chem_sys="shape",
@@ -1699,7 +1699,7 @@ def test_coordinates_with_show_chem_sys(
 
     # Test with show_chem_sys='color+shape'
     fig = pmv.cluster_compositions(
-        df=df_with_coords,
+        df_in=df_with_coords,
         embedding_method="one-hot",
         projection="coords",
         show_chem_sys="color+shape",
@@ -1724,7 +1724,7 @@ def test_precomputed_embeddings_in_composition_col() -> None:
 
     # Use direct embeddings with PCA
     fig = pmv.cluster_compositions(
-        df=df_emb,
+        df_in=df_emb,
         prop_name="property",
         embedding_method="one-hot",  # This should be ignored since we have embeddings
         projection="pca",
@@ -1756,7 +1756,7 @@ def test_invalid_composition_type() -> None:
     # Should raise TypeError when using a column with embeddings
     with pytest.raises(TypeError, match="Expected str or Composition"):
         pmv.cluster_compositions(
-            df=df_bad,
+            df_in=df_bad,
             embedding_method="magpie",
             projection="pca",
         )
@@ -1781,7 +1781,7 @@ def test_invalid_n_components(df_comp: pd.DataFrame) -> None:
     """Test that invalid n_components raises ValueError."""
     with pytest.raises(ValueError, match="n_components=4 must be 2 or 3"):
         pmv.cluster_compositions(
-            df=df_comp,
+            df_in=df_comp,
             embedding_method="one-hot",
             projection="pca",
             n_components=4,
@@ -1792,7 +1792,7 @@ def test_invalid_show_projection_stats(df_comp: pd.DataFrame) -> None:
     """Test that invalid show_projection_stats raises TypeError."""
     with pytest.raises(TypeError, match="show_projection_stats="):
         pmv.cluster_compositions(
-            df=df_comp,
+            df_in=df_comp,
             embedding_method="one-hot",
             projection="pca",
             show_projection_stats="invalid",  # type: ignore[arg-type]
@@ -1803,7 +1803,7 @@ def test_invalid_embedding_method(df_comp: pd.DataFrame) -> None:
     """Test that invalid embedding_method raises ValueError."""
     with pytest.raises(ValueError, match="embedding_method="):
         pmv.cluster_compositions(
-            df=df_comp,
+            df_in=df_comp,
             embedding_method="invalid_method",
             projection="pca",
         )
@@ -1837,7 +1837,7 @@ def test_too_many_chem_systems() -> None:
         msg = "Number of unique chemical systems .* exceeds available marker symbols"
         with pytest.warns(UserWarning, match=msg):
             pmv.cluster_compositions(
-                df=df_chem_sys,
+                df_in=df_chem_sys,
                 embedding_method="one-hot",
                 projection="pca",
                 show_chem_sys="shape",
@@ -1856,7 +1856,7 @@ def test_custom_sort_function(sort_df: pd.DataFrame) -> None:
 
     # Create figure with custom sort function
     fig = pmv.cluster_compositions(
-        df=sort_df,
+        df_in=sort_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -1887,7 +1887,7 @@ def test_custom_hover_format(float_precision_df: pd.DataFrame) -> None:
     """Test custom hover_format for hover labels."""
     # Test with default format (.2f)
     fig_default = pmv.cluster_compositions(
-        df=float_precision_df,
+        df_in=float_precision_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -1899,7 +1899,7 @@ def test_custom_hover_format(float_precision_df: pd.DataFrame) -> None:
 
     # Test with custom format (.4f)
     fig_custom = pmv.cluster_compositions(
-        df=float_precision_df,
+        df_in=float_precision_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -1921,7 +1921,7 @@ def test_color_discrete_map(df_comp: pd.DataFrame) -> None:
         "Ag": "silver",
     }
     fig = pmv.cluster_compositions(
-        df=df_comp,
+        df_in=df_comp,
         embedding_method="one-hot",
         projection="pca",
         show_chem_sys="color",
@@ -1945,7 +1945,7 @@ def test_embeddings_from_column(df_with_embeddings: pd.DataFrame) -> None:
 
     # Use embeddings from the specified column
     fig = pmv.cluster_compositions(
-        df=df_with_embeddings,
+        df_in=df_with_embeddings,
         prop_name="property",
         embedding_method="my_embeddings",  # Use this column for embeddings
         projection="pca",
@@ -1983,7 +1983,7 @@ def test_custom_projection_function(
 
     # Use the custom projection function
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         prop_name="property",
         embedding_method="one-hot",
         projection=tracking_wrapper,  # type: ignore[arg-type]
@@ -2005,7 +2005,7 @@ def test_property_colorbar(df_prop: pd.DataFrame) -> None:
     """Test that a colorbar is added for properties."""
     # Create figure with property coloring
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -2020,7 +2020,7 @@ def test_property_colorbar(df_prop: pd.DataFrame) -> None:
 
     # Create figure without property coloring but with chemical system coloring
     fig_no_prop = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         embedding_method="one-hot",
         projection="pca",
         show_chem_sys="color",
@@ -2037,7 +2037,7 @@ def test_color_plus_shape_with_property(df_prop: pd.DataFrame) -> None:
     """Test color+shape mode with property coloring."""
     # Create figure with color+shape and property
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -2091,7 +2091,7 @@ def test_coordinates_with_labels(
 
     # Create figure with custom coordinates for 2D
     fig = pmv.cluster_compositions(
-        df=df_2d,
+        df_in=df_2d,
         prop_name="property",
         embedding_method="one-hot",
         projection=projection,
@@ -2106,7 +2106,7 @@ def test_coordinates_with_labels(
     if projection == "coords":
         # Test with 3D
         fig_3d = pmv.cluster_compositions(
-            df=df_3d,
+            df_in=df_3d,
             prop_name="property",
             embedding_method="one-hot",
             projection=projection,
@@ -2150,7 +2150,7 @@ def test_color_scale_options(
         pass  # Our test data is already positive
 
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -2220,7 +2220,7 @@ def test_color_scale_errors(
     """Test error handling for various invalid color scale configurations."""
     with pytest.raises(ValueError, match=re.escape(expected_error)):
         pmv.cluster_compositions(
-            df=sample_df,
+            df_in=sample_df,
             composition_col="composition",
             prop_name="property",
             projection="pca",
@@ -2264,7 +2264,7 @@ def test_colorbar_tick_count(
         pass
 
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -2330,7 +2330,7 @@ def test_varied_data_range_tick_formatting() -> None:
                 continue
 
             fig = pmv.cluster_compositions(
-                df=df_prop,
+                df_in=df_prop,
                 composition_col="composition",
                 prop_name="property",
                 projection="pca",
@@ -2373,7 +2373,7 @@ def test_log_scale_nice_tick_values() -> None:
     df_prop["property"] = [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]  # Nice round numbers
 
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -2415,7 +2415,7 @@ def test_arcsinh_scale_tick_formatting() -> None:
     df_prop = pd.DataFrame({"composition": comps, "property": props})
 
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -2478,7 +2478,7 @@ def test_scatter_colors_match_colorbar_values() -> None:
 
         # Create the plot
         fig = pmv.cluster_compositions(
-            df=df_prop,
+            df_in=df_prop,
             composition_col="composition",
             prop_name="property",
             projection="pca",
@@ -2529,7 +2529,7 @@ def test_arcsinh_colorbar_matches_data_values() -> None:
 
     # Create the plot with arcsinh scale
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         composition_col="composition",
         prop_name="refractive_index",
         projection="pca",
@@ -2580,7 +2580,7 @@ def test_hover_tooltip_shows_original_values() -> None:
     for scale_type in ["log", "arcsinh"]:
         # Create the plot with the specified scale
         fig = pmv.cluster_compositions(
-            df=df_prop,
+            df_in=df_prop,
             composition_col="composition",
             prop_name="property",
             projection="pca",
@@ -2614,7 +2614,7 @@ def test_hover_tooltip_shows_original_values() -> None:
         if scale_type == "arcsinh":
             # Test custom arcsinh configuration
             fig = pmv.cluster_compositions(
-                df=df_prop,
+                df_in=df_prop,
                 composition_col="composition",
                 prop_name="property",
                 projection="pca",
@@ -2644,7 +2644,7 @@ def test_log_scale_small_range() -> None:
     )
 
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -2691,7 +2691,7 @@ def test_arcsinh_zero_crossing_data() -> None:
     )
 
     fig = pmv.cluster_compositions(
-        df=df_prop,
+        df_in=df_prop,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -2749,7 +2749,7 @@ def test_arcsinh_custom_parameters() -> None:
 
     for config in custom_configs:
         fig = pmv.cluster_compositions(
-            df=df_prop,
+            df_in=df_prop,
             composition_col="composition",
             prop_name="property",
             projection="pca",
@@ -2884,7 +2884,7 @@ def test_colorscale_tick_generation(test_case: dict[str, Any]) -> None:
     assertions = test_case.get("assertions", {})
 
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -2941,7 +2941,7 @@ def test_log_scale_with_negative_values(sample_df: pd.DataFrame) -> None:
 
     # Should not raise an exception, even with negative values
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -2967,7 +2967,7 @@ def test_arcsinh_tick_count() -> None:
 
     # Create figure with arcsinh scale
     fig = pmv.cluster_compositions(
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -3009,7 +3009,7 @@ def test_log_tick_count() -> None:
     df_test["property"] = [0.1, 1.0, 10.0, 100.0, 1000.0]
 
     fig = pmv.cluster_compositions(  # Create figure with log scale
-        df=df_test,
+        df_in=df_test,
         composition_col="composition",
         prop_name="property",
         projection="pca",
@@ -3034,7 +3034,7 @@ def test_whole_number_formatting_in_tick_labels() -> None:
     # Test both log and arcsinh scales
     for color_scale in ["log", "arcsinh"]:
         fig = pmv.cluster_compositions(
-            df=df_test,
+            df_in=df_test,
             composition_col="composition",
             prop_name="property",
             projection="pca",
@@ -3079,7 +3079,7 @@ def test_annotate_points_basic(sample_df: pd.DataFrame, n_components: int) -> No
         return f"Comp: {row['composition']}"
 
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection="pca",
         n_components=n_components,
@@ -3114,7 +3114,7 @@ def test_annotate_points_dict(sample_df: pd.DataFrame, n_components: int) -> Non
         }
 
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection="pca",
         n_components=n_components,
@@ -3153,7 +3153,7 @@ def test_annotate_points_dict_override(
         }
 
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection="pca",
         n_components=n_components,
@@ -3189,7 +3189,7 @@ def test_annotate_points_conditional(
         return None
 
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         prop_name="property",
         embedding_method="one-hot",
         projection="pca",
@@ -3227,7 +3227,7 @@ def test_annotate_points_with_coords(sample_df: pd.DataFrame) -> None:
         return f"Row {row.name}"
 
     fig = pmv.cluster_compositions(
-        df=df_coords,
+        df_in=df_coords,
         embedding_method="one-hot",
         projection="coords",
         annotate_points=annotate_func,
@@ -3256,7 +3256,7 @@ def test_annotate_points_access_projected_coords(sample_df: pd.DataFrame) -> Non
         return f"PCA: ({pca1:.2f}, {pca2:.2f})"
 
     fig = pmv.cluster_compositions(
-        df=sample_df,
+        df_in=sample_df,
         embedding_method="one-hot",
         projection="pca",
         n_components=2,
@@ -3294,7 +3294,7 @@ def test_annotate_points_access_original_columns(sample_df: pd.DataFrame) -> Non
         return f"Extra: {extra}"
 
     fig = pmv.cluster_compositions(
-        df=df_extra,
+        df_in=df_extra,
         embedding_method="one-hot",
         projection="pca",
         annotate_points=annotate_func,
