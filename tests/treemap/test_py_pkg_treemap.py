@@ -1,4 +1,4 @@
-"""Unit tests for pymatviz.treemap.py_pkg.py"""
+"""Unit tests for pymatviz.treemap.py_pkg.py."""
 
 from __future__ import annotations
 
@@ -891,7 +891,6 @@ def test_py_pkg_treemap_cell_size_fn(
     is correctly computed based on the provided calculator, and that modules
     resulting in a cell_value of 0 are omitted.
     """
-
     with patch("plotly.express.treemap") as mock_px_treemap:
         pmv.py_pkg_treemap(
             ["my_pkg", "another_pkg"],  # Test with multiple packages

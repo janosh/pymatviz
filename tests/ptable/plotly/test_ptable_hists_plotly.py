@@ -216,7 +216,8 @@ def test_ptable_hists_plotly_colorbar(
     colorbar: dict[str, Any] | Literal[False] | None,
 ) -> None:
     """Test colorbar customization in pmv.ptable_hists_plotly including range and
-    visibility."""
+    visibility.
+    """
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     x_range = (-1, 5)  # Test custom range
     fig = pmv.ptable_hists_plotly(data, colorbar=colorbar, x_range=x_range)

@@ -1449,7 +1449,8 @@ def test_special_data_cases(
     test_id: str,
 ) -> None:
     """Test special data cases: categorical properties, NaN values, mixed
-    composition types."""
+    composition types.
+    """
     df_data = pd.DataFrame({"composition": composition_data, prop_name: property_data})
 
     fig = pmv.cluster_compositions(
@@ -2408,7 +2409,8 @@ def test_log_scale_nice_tick_values() -> None:
 
 def test_arcsinh_scale_tick_formatting() -> None:
     """Test that arcsinh scale colorbar has properly formatted tick labels for
-    positive, negative and near-zero values."""
+    positive, negative and near-zero values.
+    """
     # Create data with positive, negative and near-zero values
     comps = "Fe2O3 Al2O3 FeSiO3 CaTiO3 ZnO MgO SiO2 TiO2 ZnS".split()  # noqa: SIM905
     props = [-100.0, -10.0, -1.0, -0.1, 0, 0.1, 1.0, 10.0, 100.0]
@@ -2567,7 +2569,8 @@ def test_arcsinh_colorbar_matches_data_values() -> None:
 
 def test_hover_tooltip_shows_original_values() -> None:
     """Test that hover tooltips show original property values, not transformed
-    log/arcsinh values."""
+    log/arcsinh values.
+    """
     df_prop = pd.DataFrame(
         {
             "composition": ["Fe2O3", "Al2O3", "Cu", "SiO2", "TiO2"],

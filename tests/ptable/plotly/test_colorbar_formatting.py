@@ -164,7 +164,8 @@ def test_si_prefix_formatting_integration() -> None:
 
 def test_ptable_heatmap_log_scale_formatting() -> None:
     """Test that ptable_heatmap_plotly with log=True correctly formats tick labels with
-    SI suffixes."""
+    SI suffixes.
+    """
     # Test with a wide range of values spanning multiple orders of magnitude
     test_data = {"Fe": 100, "O": 1_000, "C": 10_000, "H": 100_000, "N": 1_000_000}
 

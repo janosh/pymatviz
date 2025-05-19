@@ -142,8 +142,9 @@ def matplotlib_scatter() -> plt.Figure:
 
 @pytest.fixture
 def glass_formulas() -> list[str]:
-    """First 20 materials in the MatBench glass dataset. Equivalent to:
+    """First 20 materials in the MatBench glass dataset.
 
+    Equivalent to:
     from matminer.datasets import load_dataset
 
     load_dataset("matbench_glass").composition.head(20)
@@ -191,7 +192,8 @@ def phonopy_nacl() -> Phonopy:
 @pytest.fixture
 def fe3co4_disordered() -> Structure:
     """Disordered Fe3C-O2 structure without site properties. This structure has
-    disordered sites with Fe:C ratio of 3:1."""
+    disordered sites with Fe:C ratio of 3:1.
+    """
     return Structure(
         lattice=np.eye(3) * 5,
         species=[{"Fe": 0.75, "C": 0.25}, "O"],

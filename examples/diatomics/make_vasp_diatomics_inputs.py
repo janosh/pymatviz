@@ -1,3 +1,5 @@
+"""Create VASP input files for all pairs of elements at different separations."""
+
 import os
 import warnings
 from collections.abc import Sequence

@@ -124,8 +124,19 @@ def density_scatter(
 
     xs, ys, cs = _hist_density(xs, ys, **(hist_density_kwargs or {}))
 
+    # if all density values are the same, LogNorm will error
+    norm = LogNorm() if log_density and np.std(cs) > 1e-9 else None
+    if log_density and norm is None and np.any(cs > 0):
+        # only warn if there are points
+        warnings.warn(
+            "color values have no variation, cannot use log scale. "
+            "Switching to linear scale.",
+            UserWarning,
+            stacklevel=2,
+        )
+
     # decrease marker size
-    scatter_defaults = dict(s=6, norm=LogNorm() if log_density else None)
+    scatter_defaults = dict(s=6, norm=norm)
     ax.scatter(xs, ys, c=cs, **scatter_defaults | kwargs)
 
     ax.set(xlabel=xlabel, ylabel=ylabel)

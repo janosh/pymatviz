@@ -50,7 +50,8 @@ def test_confusion_matrix_basic(sample_conf_mat: np.ndarray) -> None:
 def test_confusion_matrix_color_text_alignment(sample_conf_mat: np.ndarray) -> None:
     """Test that colors and text annotations are properly aligned in the confusion
     matrix. This test specifically checks that the cell colors (z values) match their
-    corresponding text annotations and hover text."""
+    corresponding text annotations and hover text.
+    """
     fig = confusion_matrix(
         sample_conf_mat,
         x_labels=("Negative", "Positive"),
@@ -368,7 +369,8 @@ def test_confusion_matrix_edge_cases() -> None:
 
 def test_confusion_matrix_label_order() -> None:
     """Test that confusion matrix maintains correct label order regardless of input
-    order."""
+    order.
+    """
     # Test with labels in different orders
     y_true = ["Positive", "Negative", "Positive", "Negative"]
     y_pred = ["Positive", "Negative", "Negative", "Positive"]

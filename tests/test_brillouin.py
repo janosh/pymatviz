@@ -45,8 +45,8 @@ def test_brillouin_zone_3d_basic(
     n_expected_subplots: int,
 ) -> None:
     """Test basic functionality and trace types of brillouin_zone_3d for various
-    inputs."""
-
+    inputs.
+    """
     fig = brillouin_zone_3d(struct_to_plot, **kwargs)
     assert isinstance(fig, go.Figure)
 

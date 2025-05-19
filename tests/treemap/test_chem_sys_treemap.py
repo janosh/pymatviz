@@ -402,7 +402,8 @@ def test_chem_sys_treemap_grouping_modes() -> None:
 
 def test_chem_sys_treemap_other_entries_styling() -> None:
     """Test that 'Other' entries have custom styling applied to make them visually
-    distinct."""
+    distinct.
+    """
     # Create a treemap with a small max_cells value to ensure we get "Other" entries
     max_cells = (
         3  # Small enough to create "Other" entries for both binary and ternary systems

@@ -432,7 +432,6 @@ def test_unit_formatting_consistency() -> None:
 
 def test_files_enum(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test error handling and base_dir in Files enum."""
-
     # The main Files enum from pymatviz.enums has "" as its _base_dir by default
     assert Files._base_dir == ""
 
@@ -521,7 +520,6 @@ def test_data_files_enum_urls(
     data_file: Files, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test that each URL in data-files.yml is a valid Figshare download URL."""
-
     name, url = data_file.name, data_file.url
 
     if not url:  # If no URL is defined, it passes this specific Figshare check.
@@ -550,7 +548,6 @@ def test_files_enum_auto_download(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     """Test auto-download behavior in Files class."""
-
     # This is the file path RELATIVE to base_dir
     test_file_rel_path = "test_data/actual_file.txt"
     test_file_url = "https://example.com/actual_file.txt"

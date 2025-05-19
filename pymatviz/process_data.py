@@ -383,8 +383,8 @@ def df_to_arrays(
     if df is None:
         if cols := [arg for arg in args if isinstance(arg, str)]:
             raise ValueError(f"got column names but no df to get data from: {cols}")
-        # pass through args as-is
-        return args  # type: ignore[return-value]
+        # Convert args to numpy arrays if they are not already
+        return list(map(np.asarray, args))
 
     if not isinstance(df, pd.DataFrame):
         if not strict:
