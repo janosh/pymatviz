@@ -486,3 +486,87 @@ def test_ptable_heatmap_plotly_colorbar() -> None:
     # Test disabling colorbar
     fig = pmv.ptable_heatmap_plotly(data, show_scale=False)
     assert not any(trace.showscale for trace in fig.data)
+
+
+def test_ptable_heatmap_plotly_value_formatting() -> None:
+    """Test float formatting of value labels in ptable_heatmap_plotly."""
+    # Test cases: (values, heat_mode, fmt, expected_labels)
+    test_cases = [
+        # Default fmt with heat_mode="value" (si_fmt with ".1f")
+        ({"Fe": 1.234, "O": 56.78}, "value", None, {"Fe": "1.2", "O": "56.8"}),
+        ({"H": 0.00123}, "value", None, {"H": "1.2m"}),  # milli
+        ({"He": 12345}, "value", None, {"He": "12.3k"}),  # kilo
+        # Custom fmt with heat_mode="value"
+        ({"Fe": 1.234, "O": 56.78}, "value", ".2e", {"Fe": "1.23e0", "O": "5.68e1"}),
+        ({"Li": 12345.67}, "value", ".1f", {"Li": "12.3k"}),
+        # Default fmt with heat_mode="percent" ('.1%')
+        (
+            {"Fe": 0.2512, "O": 0.7488},  # sum to 1 for easier percent calc
+            "percent",
+            None,
+            {"Fe": "25.1%", "O": "74.9%"},
+        ),
+        # Custom fmt with heat_mode="percent"
+        (
+            {"Fe": 0.25, "O": 0.75},
+            "percent",
+            ".2%",
+            {"Fe": "25.00%", "O": "75.00%"},
+        ),
+        # Integer values
+        ({"C": 12, "N": 14000}, "value", None, {"C": "12.0", "N": "14.0k"}),
+        ({"C": 1, "N": 3}, "percent", ".0%", {"C": "25%", "N": "75%"}),
+        # Callable fmt
+        (
+            {"Al": 15.678, "Si": 0.02},
+            "value",
+            lambda x: f"{x:.1f} kg",
+            {"Al": "15.7 kg", "Si": "0.0 kg"},
+        ),
+        (
+            {"H": 0.99, "He": 12345},
+            "value",
+            lambda val: f"Value is {val:g}",
+            {"H": "Value is 0.99", "He": "Value is 12345"},
+        ),
+        (
+            {"O": 0.555},
+            "percent",
+            lambda x: f"{x * 100:.0f} out of 100",
+            {"O": "100 out of 100"},
+        ),
+    ]
+
+    for values, heat_mode, fmt, expected_labels in test_cases:
+        fig = pmv.ptable_heatmap_plotly(
+            values,
+            heat_mode=heat_mode,  # type: ignore[arg-type]
+            fmt=fmt,
+            font_size=10,  # smaller font for stable span style
+        )
+        annotations = fig.layout.annotations
+        # Extract symbol and value from annotation text:
+        # "<span style='font-weight: bold; font-size: 15.0;'>SYM</span><br>VALUE"
+        # or "<span style='font-weight: bold; font-size: 15.0;'>SYM</span>" if no value
+        # Need to handle cases where value might be missing or excluded
+        found_labels = {}
+        for anno in annotations:
+            text = anno.text
+            if not text or "<br>" not in text:
+                continue  # Skip empty annotations or those without a value part
+
+            # Extract symbol and value label
+            match = re.match(
+                r"<span .*?>(?P<symbol>[A-Za-z0-9]+)</span><br>(?P<label>.*)", text
+            )
+            if match:
+                symbol = match.group("symbol")
+                label = match.group("label")
+                if symbol in expected_labels:  # Only check elements we provided
+                    found_labels[symbol] = label
+
+        for elem, expected_label in expected_labels.items():
+            assert found_labels.get(elem) == expected_label, (
+                f"Mismatch for {elem} with {values=}, {heat_mode=}, {fmt=}: "
+                f"expected '{expected_label}', got '{found_labels.get(elem)}'"
+            )

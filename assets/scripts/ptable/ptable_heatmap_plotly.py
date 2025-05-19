@@ -4,6 +4,7 @@
 import os
 
 import numpy as np
+import pandas as pd
 import yaml
 from matminer.datasets import load_dataset
 
@@ -166,3 +167,15 @@ fig.layout.title = dict(text=title, x=0.4, y=0.95)
 
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "ptable-heatmap-ratio-plotly")
+
+
+# %%
+df_price = pd.read_html("https://wikipedia.org/wiki/Prices_of_chemical_elements")[0]
+df_price.columns = df_price.columns.droplevel(0)
+df_price = df_price.set_index("Symbol")
+
+prices = pd.to_numeric(df_price["USD/kg"], errors="coerce")
+fig = pmv.ptable_heatmap_plotly(
+    prices, log=True, colorbar=dict(title="Cost of element per kg")
+)
+fig.show()

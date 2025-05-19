@@ -6,6 +6,17 @@ from __future__ import annotations
 
 import os
 
+from pymatviz.utils.plotting import (
+    annotate,
+    apply_matplotlib_template,
+    get_fig_xy_range,
+    get_font_color,
+    luminance,
+    pick_max_contrast_color,
+    pretty_label,
+    validate_fig,
+)
+
 
 PKG_DIR: str = os.path.dirname(os.path.dirname(__file__))
 ROOT: str = os.path.dirname(PKG_DIR)
@@ -25,15 +36,5 @@ from pymatviz.utils.data import (
     si_fmt_int,
     spg_num_to_from_symbol,
     spg_to_crystal_sys,
-)
-from pymatviz.utils.plotting import (
-    annotate,
-    apply_matplotlib_template,
-    get_fig_xy_range,
-    get_font_color,
-    luminance,
-    pick_max_contrast_color,
-    pretty_label,
-    validate_fig,
 )
 from pymatviz.utils.testing import TEST_FILES

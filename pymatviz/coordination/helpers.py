@@ -28,13 +28,14 @@ class CnSplitMode(LabelEnum):
 
 
 def create_hover_text(
+    *,
     struct_key: str,
     elem_symbol: str,
     cn: int,
     count: int,
     hover_data: dict[str, str],
     data: dict[str, Any],
-    is_single_structure: bool,  # noqa: FBT001
+    is_single_structure: bool,
 ) -> str:
     """Create hover text for a single bar in the histogram."""
     hover_text = f"Formula: {struct_key}<br>" if not is_single_structure else ""

@@ -180,13 +180,13 @@ def coordination_hist(
 
                 hover_text = [
                     create_hover_text(
-                        struct_key,
-                        elem_symbol,
-                        cn,
-                        count,
-                        hover_data,
-                        data,
-                        is_single_structure,
+                        struct_key=struct_key,
+                        elem_symbol=elem_symbol,
+                        cn=cn,
+                        count=count,
+                        hover_data=hover_data,
+                        data=data,
+                        is_single_structure=is_single_structure,
                     )
                     for cn, count in zip(x_range, y, strict=False)
                 ]
@@ -225,7 +225,13 @@ def coordination_hist(
 
             hover_text = [
                 create_hover_text(
-                    struct_key, "", cn, count, hover_data, {}, is_single_structure
+                    struct_key=struct_key,
+                    elem_symbol="",
+                    cn=cn,
+                    count=count,
+                    hover_data=hover_data,
+                    data={},
+                    is_single_structure=is_single_structure,
                 )
                 for cn, count in zip(x_range, y, strict=False)
             ]
@@ -248,13 +254,13 @@ def coordination_hist(
 
                 hover_text = [
                     create_hover_text(
-                        struct_key,
-                        elem_symbol,
-                        cn,
-                        count,
-                        hover_data,
-                        data,
-                        is_single_structure,
+                        struct_key=struct_key,
+                        elem_symbol=elem_symbol,
+                        cn=cn,
+                        count=count,
+                        hover_data=hover_data,
+                        data=data,
+                        is_single_structure=is_single_structure,
                     )
                     for cn, count in zip(x_range, y, strict=False)
                 ]
@@ -291,13 +297,13 @@ def coordination_hist(
 
                 hover_text = [
                     create_hover_text(
-                        struct_key,
-                        elem_symbol,
-                        cn,
-                        count,
-                        hover_data,
-                        data,
-                        is_single_structure,
+                        struct_key=struct_key,
+                        elem_symbol=elem_symbol,
+                        cn=cn,
+                        count=count,
+                        hover_data=hover_data,
+                        data=data,
+                        is_single_structure=is_single_structure,
                     )
                     for cn, count in zip(x_range, y, strict=False)
                 ]

@@ -8,16 +8,15 @@ license = { file = "license" }
 keywords = [
     "chemistry",
     "data visualization",
-    "materials discovery",
     "materials informatics",
+    "data analysis",
+    "crystallography",
     "matplotlib",
     "plotly",
-    "science",
 ]
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -32,7 +31,7 @@ dependencies = [
     # output-formatting needed for pandas Stylers,
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "moyopy[interface]>=0.4.1",
-    "pandas[output-formatting]>=2.2",
+    "pandas[output-formatting,xml]>=2.2",
     "plotly>=5.23",
     "pymatgen>=2025.2.18",
     "pyyaml>=6",
