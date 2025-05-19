@@ -1,12 +1,12 @@
+"""List all Matbench datasets available in Matminer."""
+
 # %%
 from matminer.datasets import get_available_datasets
 
 
-# %%
 matminer_datasets = get_available_datasets()
 
 matbench_datasets = [dset for dset in matminer_datasets if dset.startswith("matbench_")]
-
 
 print(f"total datasets = {len(matbench_datasets)}\n{matbench_datasets=}")
 # 13 datasets in Matbench v0.1 as of Mar 2021:

@@ -40,7 +40,8 @@ def test_ptable_heatmap_splits_plotly_basic() -> None:
 
 def test_ptable_heatmap_splits_plotly_f_block() -> None:
     """Test that f-block elements are only hidden in 'auto' mode when there's no data
-    for any f-block element."""
+    for any f-block element.
+    """
     # Data with no f-block elements
     data_no_f = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5]}
 

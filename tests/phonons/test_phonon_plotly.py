@@ -248,7 +248,6 @@ def test_phonon_bands_and_dos_path_mode_raises(
 @pytest.mark.importorskip("phonopy")
 def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
     """Test that phonon_dos works with phonopy TotalDos objects."""
-
     phonopy_nacl.run_mesh([5, 5, 5])
     phonopy_nacl.run_total_dos(freq_pitch=1, use_tetrahedron_method=False)
 

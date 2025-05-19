@@ -1,10 +1,3 @@
-# %%
-from matminer.datasets import load_dataset
-
-import pymatviz as pmv
-from pymatviz.enums import Key
-
-
 """Stats for the matbench_mp_e_form dataset.
 
 Input: Pymatgen Structure of the material.
@@ -17,6 +10,13 @@ Retrieved April 2, 2019.
 
 https://ml.materialsproject.org/projects/matbench_mp_e_form
 """
+
+# %%
+from matminer.datasets import load_dataset
+
+import pymatviz as pmv
+from pymatviz.enums import Key
+
 
 # %%
 df_e_form = load_dataset("matbench_mp_e_form")

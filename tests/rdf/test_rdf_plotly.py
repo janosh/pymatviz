@@ -68,7 +68,8 @@ def test_element_pair_rdfs_layout_and_annotations(
     expected: dict[str, Any],
 ) -> None:
     """Test element_pair_rdfs for legend, grid layout, annotations, and subplot titles
-    with various inputs."""
+    with various inputs.
+    """
     subplot_kwargs = dict(
         cols=n_cols,
         subplot_titles=subplot_titles_input,

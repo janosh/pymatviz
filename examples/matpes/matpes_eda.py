@@ -1,3 +1,9 @@
+"""Explore the MatPES dataset.
+
+- https://matpes.ai
+- https://arxiv.org/abs/2503.04070
+"""
+
 # %%
 import os
 

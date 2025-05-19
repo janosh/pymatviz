@@ -449,9 +449,8 @@ def test_colorbar_density_range_and_formatting() -> None:
     # Create a dataset with controlled point densities using clusters
     # We'll create 5 clusters with exponentially increasing point densities
     n_clusters = 5
-    points_per_cluster = np.logspace(0, 4, n_clusters).astype(
-        int
-    )  # 1, 10, 100, 1000, 10000 points
+    # 1, 10, 100, 1000, 10000 points
+    points_per_cluster = np.logspace(0, 4, n_clusters).astype(int)
 
     # Create empty arrays for x and y
     x_vals = []

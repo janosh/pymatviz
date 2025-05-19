@@ -1,6 +1,4 @@
-"""
-Test import time of core modules to avoid regression.
-"""
+"""Test import time of core modules to avoid regression."""
 
 # ruff: noqa: T201 (check for print statement)
 
@@ -58,7 +56,7 @@ def measure_import_time(module_name: str, repeats: int = 3) -> float:
 
     Args:
         module_name (str): name of the module to test.
-        count (int): Number of runs to average.
+        repeats (int): Number of runs to average.
 
     Returns:
         float: import time in milliseconds.
@@ -81,9 +79,9 @@ def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) ->
     """Test the import time of core modules to avoid regression in performance.
 
     Args:
-        grace_percentage (float): Maximum allowed percentage increase in import time
+        grace_percent (float): Maximum allowed percentage increase in import time
             before a warning is raised.
-        hard_percentage (float): Maximum allowed percentage increase in import time
+        hard_percent (float): Maximum allowed percentage increase in import time
             before the test fails.
     """
     for module_name, ref_time in REF_IMPORT_TIME.items():

@@ -5,7 +5,7 @@ and tweaks the output for
 
 It also converts all notebooks in the examples folder to HTML and adds a
 language class to the <pre> tag so that syntax highlighting works.
-"""
+"""  # noqa: INP001
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ route = "site/src/routes/api"
 for path in glob(f"{route}/*.md"):
     os.remove(path)
 
-subprocess.run(
+subprocess.run(  # noqa: S602
     f"lazydocs {pkg['name']} --output-path {route} "
     f"--no-watermark --src-base-url {pkg['repository']}/blob/main",
     shell=True,
@@ -53,7 +53,7 @@ if len(notebooks) == 0:
     raise FileNotFoundError(f"no notebooks found matching {pattern!r}")
 
 cmd = f"jupyter nbconvert --to html {pattern} --no-prompt --template basic"
-subprocess.run(cmd, shell=True, check=True)
+subprocess.run(cmd, shell=True, check=True)  # noqa: S602
 
 html_paths = glob("examples/*.html")
 if len(html_paths) != len(notebooks):
