@@ -43,7 +43,7 @@ def ptable_heatmap_plotly(
     show_scale: bool = True,
     show_values: bool = True,
     heat_mode: Literal["value", "fraction", "percent"] = "value",
-    fmt: str | None = None,
+    fmt: str | Callable[[float], str] | None = None,
     hover_props: Sequence[str] | dict[str, str] | None = None,
     hover_data: dict[str, str | int | float] | pd.Series | None = None,
     font_colors: Sequence[str] = (),
@@ -85,8 +85,8 @@ def ptable_heatmap_plotly(
             or not at all (None). Defaults to "value".
             "fraction" and "percent" can be used to make the colors in different
             periodic table heatmap plots comparable.
-        fmt (str): f-string format option for heat labels. Defaults to ".1%"
-            (1 decimal place) if heat_mode="percent" else ".3g".
+        fmt (str | Callable[[float], str] | None): f-string format option for heat
+            labels. Defaults to ".1%" if heat_mode="percent" else ".3g".
         hover_props (list[str] | dict[str, str]): Elemental properties to display in the
             hover tooltip. Can be a list of property names to display only the values
             themselves or a dict mapping names to what they should display as. E.g.
@@ -205,13 +205,12 @@ def ptable_heatmap_plotly(
             if symbol in exclude_elements:
                 label = "excl."
             elif heat_val := heat_value_element_map.get(symbol):
-                if heat_mode == "percent":
+                if callable(fmt):
+                    label = fmt(heat_val)
+                elif heat_mode == "percent":
                     label = f"{heat_val:{fmt or '.1%'}}"
                 else:
-                    default_prec = ".1f" if heat_val < 100 else ",.0f"
-                    if heat_val > 1e5:
-                        default_prec = ".2g"
-                    label = f"{heat_val:{fmt or default_prec}}".replace("e+0", "e")
+                    label = f"{si_fmt(heat_val, fmt=fmt or '.1f')}".replace("e+0", "e")
 
             if callable(label_map):
                 label = label_map(label)
