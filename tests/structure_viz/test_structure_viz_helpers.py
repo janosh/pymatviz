@@ -25,7 +25,7 @@ from pymatviz.structure_viz.helpers import (
     get_site_hover_text,
     get_subplot_title,
 )
-from pymatviz.typing import RgbColorType
+from pymatviz.typing import RgbColorType, Xyz
 
 
 @pytest.fixture
@@ -535,7 +535,7 @@ def bond_test_structure_extended() -> Structure:
 
 
 @pytest.mark.parametrize(
-    ("is_3d", "bond_kwargs", "visible_image_atoms"),
+    ("is_3d", "bond_kwargs", "plotted_sites_coords_param"),
     [
         (True, None, None),
         (True, {"color": "rgb(0, 0, 255)", "width": 0.2}, {(1, 1, 1)}),
@@ -552,7 +552,7 @@ def test_draw_bonds(
     bond_test_structure: Structure,
     is_3d: bool,
     bond_kwargs: dict[str, Any] | None,
-    visible_image_atoms: set[tuple[float, float, float]] | None,
+    plotted_sites_coords_param: set[Xyz] | None,
 ) -> None:
     """Test basic bond drawing functionality with various parameters."""
     fig = go.Figure()
@@ -564,7 +564,7 @@ def test_draw_bonds(
         nn=nn_strategy,
         is_3d=is_3d,
         bond_kwargs=bond_kwargs,
-        visible_image_atoms=visible_image_atoms,
+        plotted_sites_coords=plotted_sites_coords_param,
     )
 
     # Verify bonds were created with correct properties
@@ -572,14 +572,13 @@ def test_draw_bonds(
     expected_trace_type = go.Scatter3d if is_3d else go.Scatter
     assert all(isinstance(trace, expected_trace_type) for trace in fig.data)
 
-    # Check custom bond styling
-    if bond_kwargs:
+    if bond_kwargs:  # Check custom bond styling
         for trace in fig.data:
             for key, value in bond_kwargs.items():
                 assert getattr(trace.line, key) == value
 
     # Check bonds to image atoms
-    if visible_image_atoms:
+    if plotted_sites_coords_param:
         if is_3d:
             max_coords = max(
                 max(list(trace.x) + list(trace.y) + list(trace.z)) for trace in fig.data
@@ -589,8 +588,7 @@ def test_draw_bonds(
         assert max_coords >= 1.5
         assert len(fig.data) > 1  # More than just central bond
 
-    # Verify trace properties
-    for trace in fig.data:
+    for trace in fig.data:  # Verify trace properties
         assert trace.mode == "lines"
         assert trace.showlegend is False
         assert trace.hoverinfo == "skip"
@@ -611,7 +609,7 @@ def test_draw_bonds_advanced(
     test_case: str,
     is_3d: bool,
     rotation_angle: float | None,
-    image_coords: tuple[float, float, float] | None,
+    image_coords: Xyz | None,
     check_outside_cell: bool,
 ) -> None:
     """Test advanced bond drawing scenarios with rotation and image atoms."""
@@ -633,25 +631,24 @@ def test_draw_bonds_advanced(
         ]
 
     # Setup visible image atoms
-    visible_image_atoms = None
+    plotted_sites_coords = None
     if image_coords is not None:
         if rotation_matrix is not None and rotation_angle is not None:
             # Apply rotation to image coordinates
             rotated_coords = np.dot(np.array(image_coords), rotation_matrix)
-            visible_image_atoms = {tuple(rotated_coords)}
+            plotted_sites_coords = {tuple(rotated_coords)}
         else:
-            visible_image_atoms = {image_coords}
+            plotted_sites_coords = {image_coords}
     elif test_case == "no_image_atoms":
-        visible_image_atoms = set()  # Empty set
+        plotted_sites_coords = set()  # Empty set
 
-    # Draw bonds
     draw_bonds(
         fig=fig,
         structure=structure,
         nn=nn_strategy,
         is_3d=is_3d,
         rotation_matrix=rotation_matrix,
-        visible_image_atoms=visible_image_atoms,
+        plotted_sites_coords=plotted_sites_coords,
     )
 
     # Common assertions
