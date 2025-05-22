@@ -3,22 +3,20 @@
 from __future__ import annotations
 
 import math
-import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
-from pymatgen.core import PeriodicSite, Structure
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.process_data import normalize_structures
 from pymatviz.structure_viz.helpers import (
-    NO_SYM_MSG,
     _angles_to_rotation_matrix,
     _get_site_symbol,
+    _prep_augmented_structure_for_bonding,
+    _standardize_struct,
     draw_bonds,
     draw_site,
     draw_unit_cell,
@@ -39,65 +37,9 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     import ase.atoms
+    from pymatgen.core import PeriodicSite, Structure
 
-    from pymatviz.typing import ColorType, Xyz
-
-
-# Local helper function to standardize structure
-def _standardize_struct(
-    struct_i: Structure, standardize_struct_flag: bool | None
-) -> Structure:
-    """Standardize the structure if needed."""
-    if standardize_struct_flag is None:
-        standardize_struct_flag = any(any(site.frac_coords < 0) for site in struct_i)
-    if standardize_struct_flag:
-        try:
-            spg_analyzer = SpacegroupAnalyzer(struct_i)
-            return spg_analyzer.get_conventional_standard_structure()
-        except ValueError:
-            warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
-    return struct_i
-
-
-# Local helper function to prepare augmented structure for bonding
-def _prep_augmented_structure_for_bonding(
-    struct_i: Structure, show_image_sites_flag: bool | dict[str, Any]
-) -> Structure:
-    """Prepare an augmented structure including primary and optionally image sites."""
-    all_sites_for_bonding = [
-        PeriodicSite(
-            species=site_in_cell.species,
-            coords=site_in_cell.frac_coords,
-            lattice=struct_i.lattice,
-            properties=site_in_cell.properties.copy() | dict(is_image=False),
-            coords_are_cartesian=False,
-        )
-        for site_in_cell in struct_i
-    ]
-
-    if show_image_sites_flag:  # True or a dict implies true for this purpose
-        processed_image_coords: set[Xyz] = set()
-        for site_in_cell in struct_i:
-            image_cart_coords_arrays = get_image_sites(site_in_cell, struct_i.lattice)
-            for image_cart_coords_arr in image_cart_coords_arrays:
-                coord_tuple_key = tuple(np.round(image_cart_coords_arr, 5))
-                if coord_tuple_key not in processed_image_coords:
-                    image_frac_coords = struct_i.lattice.get_fractional_coords(
-                        image_cart_coords_arr
-                    )
-                    image_periodic_site = PeriodicSite(
-                        site_in_cell.species,
-                        image_frac_coords,
-                        struct_i.lattice,
-                        properties=site_in_cell.properties.copy() | dict(is_image=True),
-                        coords_are_cartesian=False,
-                    )
-                    all_sites_for_bonding.append(image_periodic_site)
-                    processed_image_coords.add(coord_tuple_key)
-
-    return Structure.from_sites(
-        all_sites_for_bonding, validate_proximity=False, to_unit_cell=False
-    )
+    from pymatviz.typing import ColorType
 
 
 def structure_2d_plotly(
