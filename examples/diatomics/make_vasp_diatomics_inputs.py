@@ -9,6 +9,7 @@ from pymatgen.core import Element, Lattice, Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.sets import BadInputSetWarning, MPStaticSet
 
+from pymatviz.typing import Xyz
 from pymatviz.utils import ROOT
 
 
@@ -19,7 +20,7 @@ warnings.filterwarnings("ignore", message="No Pauling electronegativity for")
 
 def create_diatomic_inputs(
     distances: Sequence[float] = (1, 10, 40),
-    box_size: tuple[float, float, float] = (10, 10, 20),
+    box_size: Xyz = (10, 10, 20),
     elements: Sequence[str] | set[str] = (),
     base_dir: str = "diatomic-calcs",
 ) -> None:

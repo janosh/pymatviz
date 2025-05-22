@@ -11,6 +11,8 @@ from pymatviz.utils.plotting import contrast_ratio
 if TYPE_CHECKING:
     from typing import Literal
 
+    from pymatviz.typing import RgbColorType
+
 
 @pytest.mark.parametrize(
     ("color", "expected"),
@@ -45,7 +47,7 @@ if TYPE_CHECKING:
         ("rgb(0, 0, 1)", 0.0722),  # Blue with values in [0,1] range
     ],
 )
-def test_luminance(color: tuple[float, float, float], expected: float) -> None:
+def test_luminance(color: RgbColorType, expected: float) -> None:
     assert pmv.utils.luminance(color) == pytest.approx(expected, 0.001), f"{color=}"
 
 
@@ -61,7 +63,7 @@ def test_luminance(color: tuple[float, float, float], expected: float) -> None:
     ],
 )
 def test_pick_max_contrast_color(
-    color: tuple[float, float, float],
+    color: RgbColorType,
     expected: Literal["black", "white"],
 ) -> None:
     assert pmv.utils.pick_max_contrast_color(color) == expected
