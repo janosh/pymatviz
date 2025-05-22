@@ -7,8 +7,10 @@ import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
+from pymatgen.core import PeriodicSite, Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
@@ -16,16 +18,20 @@ from pymatviz.process_data import normalize_structures
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     _angles_to_rotation_matrix,
+    _get_site_symbol,
     draw_bonds,
     draw_site,
     draw_unit_cell,
     draw_vector,
+    generate_site_label,
     get_atomic_radii,
     get_elem_colors,
     get_first_matching_site_prop,
     get_image_sites,
+    get_site_hover_text,
     get_subplot_title,
 )
+from pymatviz.utils import pick_max_contrast_color
 
 
 if TYPE_CHECKING:
@@ -33,14 +39,73 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     import ase.atoms
-    import plotly.graph_objects as go
-    from pymatgen.core import PeriodicSite, Structure
 
-    from pymatviz.typing import ColorType
+    from pymatviz.typing import ColorType, Xyz
+
+
+# Local helper function to standardize structure
+def _standardize_struct(
+    struct_i: Structure, standardize_struct_flag: bool | None
+) -> Structure:
+    """Standardize the structure if needed."""
+    if standardize_struct_flag is None:
+        standardize_struct_flag = any(any(site.frac_coords < 0) for site in struct_i)
+    if standardize_struct_flag:
+        try:
+            spg_analyzer = SpacegroupAnalyzer(struct_i)
+            return spg_analyzer.get_conventional_standard_structure()
+        except ValueError:
+            warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
+    return struct_i
+
+
+# Local helper function to prepare augmented structure for bonding
+def _prep_augmented_structure_for_bonding(
+    struct_i: Structure, show_image_sites_flag: bool | dict[str, Any]
+) -> Structure:
+    """Prepare an augmented structure including primary and optionally image sites."""
+    all_sites_for_bonding = [
+        PeriodicSite(
+            species=site_in_cell.species,
+            coords=site_in_cell.frac_coords,
+            lattice=struct_i.lattice,
+            properties=site_in_cell.properties.copy() | dict(is_image=False),
+            coords_are_cartesian=False,
+        )
+        for site_in_cell in struct_i
+    ]
+
+    if show_image_sites_flag:  # True or a dict implies true for this purpose
+        processed_image_coords: set[Xyz] = set()
+        for site_in_cell in struct_i:
+            image_cart_coords_arrays = get_image_sites(site_in_cell, struct_i.lattice)
+            for image_cart_coords_arr in image_cart_coords_arrays:
+                coord_tuple_key = tuple(np.round(image_cart_coords_arr, 5))
+                if coord_tuple_key not in processed_image_coords:
+                    image_frac_coords = struct_i.lattice.get_fractional_coords(
+                        image_cart_coords_arr
+                    )
+                    image_periodic_site = PeriodicSite(
+                        site_in_cell.species,
+                        image_frac_coords,
+                        struct_i.lattice,
+                        properties=site_in_cell.properties.copy() | dict(is_image=True),
+                        coords_are_cartesian=False,
+                    )
+                    all_sites_for_bonding.append(image_periodic_site)
+                    processed_image_coords.add(coord_tuple_key)
+
+    return Structure.from_sites(
+        all_sites_for_bonding, validate_proximity=False, to_unit_cell=False
+    )
 
 
 def structure_2d_plotly(
-    struct: Structure | Sequence[Structure] | ase.Atoms | Sequence[ase.Atoms],
+    struct: Structure
+    | Sequence[Structure]
+    | ase.Atoms
+    | Sequence[ase.Atoms]
+    | dict[str, Structure | ase.Atoms],
     *,
     rotation: str = "10x,8y,3z",
     atomic_radii: float | dict[str, float] | None = None,
@@ -131,7 +196,7 @@ def structure_2d_plotly(
     fig = make_subplots(
         rows=n_rows,
         cols=n_cols,
-        # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
+        # Avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
         subplot_titles=[" " for _ in range(n_structs)],
         vertical_spacing=0,
         horizontal_spacing=0,
@@ -149,121 +214,111 @@ def structure_2d_plotly(
         list(structures.values()),
         show_site_vectors,
         warn_if_none=show_site_vectors != ("force", "magmom"),
-        # check that value is actually a 3-component vector. needs to handle both
-        # (N, 3) and (3,) cases
         filter_callback=lambda _prop, value: (np.array(value).shape or [None])[-1] == 3,
     )
 
-    for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
+    for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
         row = (idx - 1) // n_cols + 1
         col = (idx - 1) % n_cols + 1
 
-        # Standardize structure if needed
-        if standardize_struct is None:
-            standardize_struct = any(any(site.frac_coords < 0) for site in struct_i)
-        if standardize_struct:
-            try:
-                spg_analyzer = SpacegroupAnalyzer(struct_i)
-                struct_i = spg_analyzer.get_conventional_standard_structure()  # noqa: PLW2901
-            except ValueError:
-                warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
+        struct_i = _standardize_struct(raw_struct_i, standardize_struct)
 
-        # Apply rotation
         rotation_matrix = _angles_to_rotation_matrix(rotation)
-        rotated_coords = np.dot(struct_i.cart_coords, rotation_matrix)
+        rotated_coords_all_sites = np.dot(struct_i.cart_coords, rotation_matrix)
 
-        visible_image_atoms: set[tuple[float, float, float]] = set()
-
-        # First, populate visible_image_atoms with all image sites that will be drawn
-        if show_image_sites and show_sites:
-            for site in struct_i:
-                image_atoms = get_image_sites(site, struct_i.lattice)
-                if len(image_atoms) > 0:
-                    for image_coords in image_atoms:
-                        # Apply the same rotation to image atoms as to regular atoms
-                        rotated_image_coords = np.dot(image_coords, rotation_matrix)
-                        visible_image_atoms.add(tuple(rotated_image_coords))
-
-        # Draw bonds
+        # For bonding, consider primary and image sites if show_image_sites is active
+        # The actual plotting of image sites is handled later by draw_site if show_sites
+        augmented_structure = _prep_augmented_structure_for_bonding(
+            struct_i, show_image_sites and show_sites
+        )
         if show_bonds:
             draw_bonds(
                 fig=fig,
-                structure=struct_i,
+                structure=augmented_structure,  # Pass augmented structure
                 nn=CrystalNN() if show_bonds is True else show_bonds,
                 is_3d=False,
                 bond_kwargs=bond_kwargs,
                 row=row,
                 col=col,
-                visible_image_atoms=visible_image_atoms,
                 rotation_matrix=rotation_matrix,
                 elem_colors=_elem_colors,
             )
 
-        # Plot atoms and vectors
-        if show_sites:
-            for site_idx, (site, coords) in enumerate(
-                zip(struct_i, rotated_coords, strict=False)
+        if show_sites:  # Plot atoms, vectors, and image sites
+            for site_idx_loop, (site, rotated_site_coords_3d) in enumerate(
+                zip(struct_i, rotated_coords_all_sites, strict=False)
             ):
-                draw_site(
-                    fig,
-                    site,
-                    coords,
-                    site_idx,
-                    site_labels,
-                    _elem_colors,
-                    _atomic_radii,
-                    atom_size,
-                    scale,
-                    {} if show_sites is True else show_sites,
-                    is_3d=False,
+                draw_site(  # Draw primary site
+                    fig=fig,
+                    site=site,
+                    coords=rotated_site_coords_3d,  # Pass 3D rotated coords
+                    site_idx=site_idx_loop,
+                    site_labels=site_labels,
+                    elem_colors=_elem_colors,
+                    atomic_radii=_atomic_radii,
+                    atom_size=atom_size,
+                    scale=scale,
+                    site_kwargs={} if show_sites is True else show_sites,
+                    is_3d=False,  # draw_site will project to 2D
                     row=row,
                     col=col,
-                    name=f"site{site_idx}",
+                    name=f"site-{struct_key}-{site_idx_loop}",
                     hover_text=hover_text,
                 )
 
-                # Add vector arrows
-                if vector_prop:
+                if vector_prop:  # Add vector arrows for the primary site
                     vector = None
                     if vector_prop in site.properties:
                         vector = np.array(site.properties[vector_prop])
-                    elif vector_prop in struct_i.properties:
-                        vector = struct_i.properties[vector_prop][site_idx]
+                    # Ensure site_idx_loop is valid for struct_i.properties[vector_prop]
+                    elif vector_prop in struct_i.properties and site_idx_loop < len(
+                        struct_i.properties[vector_prop]
+                    ):
+                        vector = struct_i.properties[vector_prop][site_idx_loop]
 
                     if vector is not None and np.any(vector):
+                        # Rotate the vector for 2D projection
+                        rotated_vector = np.dot(vector, rotation_matrix)
                         draw_vector(
                             fig,
-                            coords,
-                            vector,
+                            rotated_site_coords_3d,
+                            rotated_vector,
                             is_3d=False,
                             arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
                             row=row,
                             col=col,
-                            name=f"vector{site_idx}",
+                            name=f"vector-{struct_key}-{site_idx_loop}",
                         )
 
-                # Add image sites
+                # Add image sites for the current primary site
+                # This uses the global show_image_sites argument.
                 if show_image_sites:
-                    image_atoms = get_image_sites(site, struct_i.lattice)
-                    if len(image_atoms) > 0:
-                        rotated_image_atoms = np.dot(image_atoms, rotation_matrix)
-
-                        for image_coords in rotated_image_atoms:
+                    image_cart_coords_arrays = get_image_sites(site, struct_i.lattice)
+                    if len(image_cart_coords_arrays) > 0:
+                        rotated_image_atoms_coords_3d_list = np.dot(
+                            image_cart_coords_arrays, rotation_matrix
+                        )
+                        for image_idx, current_rotated_image_coords_3d in enumerate(
+                            rotated_image_atoms_coords_3d_list
+                        ):
                             draw_site(
-                                fig,
-                                site,
-                                image_coords,
-                                site_idx,
-                                site_labels,
-                                _elem_colors,
-                                _atomic_radii,
-                                atom_size,
-                                scale,
-                                {} if show_image_sites is True else show_image_sites,
+                                fig=fig,
+                                site=site,
+                                coords=current_rotated_image_coords_3d,
+                                site_idx=site_idx_loop,
+                                site_labels=site_labels,
+                                elem_colors=_elem_colors,
+                                atomic_radii=_atomic_radii,
+                                atom_size=atom_size,
+                                scale=scale,
+                                site_kwargs={}
+                                if show_image_sites is True
+                                else show_image_sites,
                                 is_image=True,
                                 is_3d=False,
                                 row=row,
                                 col=col,
+                                name=f"image-{struct_key}-{site_idx_loop}-{image_idx}",
                             )
 
         # Plot unit cell
@@ -313,7 +368,11 @@ def structure_2d_plotly(
 
 
 def structure_3d_plotly(
-    struct: Structure | Sequence[Structure] | ase.Atoms | Sequence[ase.Atoms],
+    struct: Structure
+    | Sequence[Structure]
+    | ase.Atoms
+    | Sequence[ase.Atoms]
+    | dict[str, Structure | ase.Atoms],
     *,
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 20,
@@ -404,7 +463,7 @@ def structure_3d_plotly(
         rows=n_rows,
         cols=n_cols,
         specs=[[{"type": "scene"} for _ in range(n_cols)] for _ in range(n_rows)],
-        # needed to avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
+        # Avoid IndexError on fig.layout.annotations[idx - 1].update(anno)
         subplot_titles=[" " for _ in range(n_structs)],
     )
 
@@ -420,104 +479,146 @@ def structure_3d_plotly(
         list(structures.values()),
         show_site_vectors,
         warn_if_none=show_site_vectors != ("force", "magmom"),
-        # check that value is actually a 3-component vector. needs to handle both
-        # (N, 3) and (3,) cases
         filter_callback=lambda _prop, value: (np.array(value).shape or [None])[-1] == 3,
     )
 
-    for idx, (struct_key, struct_i) in enumerate(structures.items(), start=1):
-        # Standardize structure if needed
-        if standardize_struct is None:
-            standardize_struct = any(any(site.frac_coords < 0) for site in struct_i)
-        if standardize_struct:
-            try:
-                spg_analyzer = SpacegroupAnalyzer(struct_i)
-                struct_i = spg_analyzer.get_conventional_standard_structure()  # noqa: PLW2901
-            except ValueError:
-                warnings.warn(NO_SYM_MSG, UserWarning, stacklevel=2)
+    for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
+        struct_i = _standardize_struct(raw_struct_i, standardize_struct)
 
-        visible_image_atoms: set[tuple[float, float, float]] = set()
+        # Prepare augmented structure: original + image sites for consistent processing
+        # This augmented_structure is used for collecting all site data for the single
+        # 3D trace and for bond calculations.
+        augmented_structure = _prep_augmented_structure_for_bonding(
+            struct_i, show_image_sites and show_sites
+        )
 
-        # First, populate visible_image_atoms with all image sites that will be drawn
-        if show_image_sites and show_sites:
-            for site in struct_i:
-                image_atoms = get_image_sites(site, struct_i.lattice)
-                if len(image_atoms) > 0:
-                    for image_coords in image_atoms:
-                        visible_image_atoms.add(tuple(image_coords))
-
-        # Draw bonds
-        if show_bonds:
-            draw_bonds(
-                fig=fig,
-                structure=struct_i,
-                nn=CrystalNN() if show_bonds is True else show_bonds,
-                is_3d=True,
-                bond_kwargs=bond_kwargs,
-                scene=f"scene{idx}",
-                visible_image_atoms=visible_image_atoms,
-                elem_colors=_elem_colors,
-            )
+        all_site_x, all_site_y, all_site_z = [], [], []
+        (
+            all_site_colors,
+            all_site_sizes,
+            all_site_hover_texts,
+            all_site_labels_list,
+        ) = [], [], [], []
+        all_site_textfont_colors = []
 
         # Plot atoms and vectors
         if show_sites:
-            for site_idx, site in enumerate(struct_i):
-                draw_site(
-                    fig,
-                    site,
-                    site.coords,
-                    site_idx,
-                    site_labels,
-                    _elem_colors,
-                    _atomic_radii,
-                    atom_size,
-                    scale,
-                    {} if show_sites is True else show_sites,
-                    is_3d=True,
-                    scene=f"scene{idx}",
-                    name=f"site{site_idx}",
-                    hover_text=hover_text,
+            # Iterate over all sites in the augmented_structure (primary + images)
+            for site_idx_loop, site in enumerate(augmented_structure.sites):
+                all_site_x.append(site.coords[0])
+                all_site_y.append(site.coords[1])
+                all_site_z.append(site.coords[2])
+
+                symbol = _get_site_symbol(site)
+                site_base_color = _elem_colors.get(symbol, "gray")
+
+                display_color_str: str
+                if (
+                    isinstance(site_base_color, tuple)
+                    and len(site_base_color) == 3
+                    and all(isinstance(c, (float, int)) for c in site_base_color)
+                ):
+                    r, g, b = (
+                        int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)
+                        for c in site_base_color
+                    )
+                    display_color_str = f"rgb({r},{g},{b})"
+                elif isinstance(site_base_color, str):
+                    display_color_str = site_base_color
+                else:
+                    display_color_str = "rgb(128,128,128)"
+
+                all_site_colors.append(display_color_str)
+                all_site_textfont_colors.append(
+                    pick_max_contrast_color(display_color_str)
                 )
 
-                # Add vector arrows
+                radius = _atomic_radii.get(symbol, 1) * scale
+                all_site_sizes.append(radius * atom_size)
+
+                # Use helper for hover text
+                all_site_hover_texts.append(
+                    get_site_hover_text(site, hover_text, site.species)
+                )
+
+                # Use helper for site label
+                all_site_labels_list.append(
+                    generate_site_label(site_labels, site_idx_loop, site)
+                )
+
+            site_kwargs = {} if show_sites is True else show_sites
+            marker_defaults = {
+                "size": all_site_sizes,
+                "color": all_site_colors,
+                "sizemode": "diameter",
+            }
+            if "marker" in site_kwargs:
+                site_kwargs["marker"].update(marker_defaults)
+            else:
+                site_kwargs["marker"] = marker_defaults
+
+            trace_3d = go.Scatter3d(
+                x=all_site_x,
+                y=all_site_y,
+                z=all_site_z,
+                mode="markers" + ("+text" if any(all_site_labels_list) else ""),
+                text=all_site_labels_list if any(all_site_labels_list) else None,
+                textposition="top center",
+                textfont={"color": all_site_textfont_colors},
+                hovertext=all_site_hover_texts,
+                hoverinfo="text",
+                name=f"site-{struct_key}",
+                **site_kwargs,
+            )
+            fig.add_trace(
+                trace_3d, row=(idx - 1) // n_cols + 1, col=(idx - 1) % n_cols + 1
+            )
+
+            for site_idx_loop, site_in_original_struct in enumerate(struct_i):
                 if vector_prop:
                     vector = None
-                    if vector_prop in site.properties:
-                        vector = np.array(site.properties[vector_prop])
-                    elif vector_prop in struct_i.properties:
-                        vector = struct_i.properties[vector_prop][site_idx]
+                    # Check properties on the original site object
+                    if vector_prop in site_in_original_struct.properties:
+                        vector = np.array(
+                            site_in_original_struct.properties[vector_prop]
+                        )
+                    # Check structure-level properties, using original site_idx_loop
+                    elif vector_prop in struct_i.properties and site_idx_loop < len(
+                        struct_i.properties[vector_prop]
+                    ):
+                        vector = struct_i.properties[vector_prop][site_idx_loop]
 
                     if vector is not None and np.any(vector):
                         draw_vector(
                             fig,
-                            site.coords,
+                            site_in_original_struct.coords,
                             vector,
                             is_3d=True,
                             arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
                             scene=f"scene{idx}",
-                            name=f"vector{site_idx}",
+                            name=f"vector{site_idx_loop}",
                         )
 
-                # Add image sites
-                if show_image_sites:
-                    image_atoms = get_image_sites(site, struct_i.lattice)
-                    if len(image_atoms) > 0:
-                        for image_coords in image_atoms:
-                            draw_site(
-                                fig,
-                                site,
-                                image_coords,
-                                site_idx,
-                                site_labels,
-                                _elem_colors,
-                                _atomic_radii,
-                                atom_size,
-                                scale,
-                                {} if show_image_sites is True else show_image_sites,
-                                is_image=True,
-                                is_3d=True,
-                                scene=f"scene{idx}",
-                            )
+        # Draw bonds using the augmented structure after sites are processed
+        if show_bonds:
+            plotted_sites_coords: set[tuple[float, float, float]] | None = None
+            if show_sites and all_site_x:  # Ensure all_site_x is populated
+                # Rounded to 5 decimal places for robust comparison
+                plotted_sites_coords = {
+                    tuple(np.round(coord, 5))
+                    for coord in zip(all_site_x, all_site_y, all_site_z, strict=False)
+                }
+
+            draw_bonds(
+                fig=fig,
+                structure=augmented_structure,  # Pass the augmented structure
+                nn=CrystalNN() if show_bonds is True else show_bonds,
+                is_3d=True,
+                bond_kwargs=bond_kwargs,
+                scene=f"scene{idx}",
+                elem_colors=_elem_colors,
+                plotted_sites_coords=plotted_sites_coords,
+            )
 
         # Plot unit cell
         if show_unit_cell:

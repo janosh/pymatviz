@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from typing import TypeAlias
 
 AxOrFig: TypeAlias = plt.Axes | plt.Figure | go.Figure
+Xyz: TypeAlias = tuple[float, float, float]
 
 Backend: TypeAlias = Literal["matplotlib", "plotly"]
 BACKENDS = MATPLOTLIB, PLOTLY = get_args(Backend)
