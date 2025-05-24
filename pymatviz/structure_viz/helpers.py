@@ -124,17 +124,20 @@ def _angles_to_rotation_matrix(
 
 
 def get_image_sites(
-    site: PeriodicSite, lattice: Lattice, tol: float = 0.03
+    site: PeriodicSite, lattice: Lattice, tol: float = 0.03, min_dist_dedup: float = 0.1
 ) -> np.ndarray:
     """Get images for a given site in a lattice.
 
-    Images are sites that are integer translations of the given site that are within a
-    tolerance of the unit cell edges.
+    Images are sites that are integer translations of the given site that are within
+    or near the unit cell boundaries.
 
     Args:
         site (PeriodicSite): The site to get images for.
         lattice (Lattice): The lattice to get images for.
-        tol (float): The tolerance for being on the unit cell edge. Defaults to 0.02.
+        tol (float): The tolerance for being near the unit cell edge. Defaults to 0.03.
+        min_dist_dedup (float): The min distance in Angstroms to any other site to avoid
+            finding image atoms that are duplicates of original basis sites. Defaults to
+            0.1.
 
     Returns:
         np.ndarray: Coordinates of all image sites.
@@ -148,13 +151,18 @@ def get_image_sites(
         new_frac = site.frac_coords + offset
         new_cart = lattice.get_cartesian_coords(new_frac)
 
-        is_within_cell = all(-tol <= coord <= 1 + tol for coord in new_frac)
-        is_on_edge = any(
-            np.isclose(new_frac, 0, atol=tol) | np.isclose(new_frac, 1, atol=tol)
-        )
+        # Check if the new fractional coordinates are within unit cell bounds
+        tol = max(tol, 0.13)  # Ensure we capture atoms at 0.125 -> 1.125, etc.
+        is_within_extended_cell = all(-tol <= coord <= 1 + tol for coord in new_frac)
 
-        if is_within_cell and is_on_edge:
-            coords_image_atoms += [new_cart]
+        # filter sites that are too close to the original to avoid duplicates
+        if is_within_extended_cell:
+            distance_from_original = np.linalg.norm(
+                new_cart - lattice.get_cartesian_coords(site.frac_coords)
+            )
+
+            if distance_from_original > min_dist_dedup:
+                coords_image_atoms += [new_cart]
 
     return np.array(coords_image_atoms)
 
@@ -223,11 +231,32 @@ def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str,
 
 
 def generate_site_label(
-    site_labels: Literal["symbol", "species", False] | dict[str, str] | Sequence[str],
+    site_labels: Literal["symbol", "species", "legend", False]
+    | dict[str, str]
+    | Sequence[str],
     site_idx: int,
     site: PeriodicSite,
-) -> str:
-    """Generate a label for a site based on the site_labels argument."""
+) -> str | None:
+    """Generate a label for a given site based on the site_labels strategy.
+
+    Args:
+        site_labels: The labeling strategy. If "legend", returns None.
+            Can be "symbol", "species", "legend", False, a dict mapping symbols
+            to custom labels, or a sequence of labels indexed by site position.
+        site_idx: The index of the site.
+        site: The site object.
+
+    Returns:
+        str | None: The generated label or None if no label should be shown.
+    """
+    if site_labels in (False, "legend"):
+        return None
+
+    if site_labels == "symbol":
+        return _get_site_symbol(site)
+    if site_labels == "species":
+        return site.species_string  # Use full species string for disordered
+
     label_text = ""
     symbol = _get_site_symbol(site)  # Majority element symbol of site
 
@@ -237,11 +266,6 @@ def generate_site_label(
         label_text = site_labels.get(symbol, symbol if site_labels else "")
     elif isinstance(site_labels, list):
         label_text = site_labels[site_idx] if site_idx < len(site_labels) else symbol
-    elif site_labels == "symbol":
-        label_text = symbol
-    elif site_labels == "species":
-        label_text = site.species_string  # Use full species string for disordered
-    # If site_labels is False, label_text remains "" (empty string)
 
     return label_text
 
@@ -282,13 +306,38 @@ def get_site_hover_text(
     site: PeriodicSite,
     hover_text: SiteCoords | Callable[[PeriodicSite], str],
     majority_species: Species,
+    float_fmt: str | Callable[[float], str] = ".4",
 ) -> str:
-    """Generate hover text for a site based on the hover template."""
+    """Generate hover text for a site based on the hover template.
+
+    Args:
+        site (PeriodicSite): The periodic site.
+        hover_text (SiteCoords | Callable[[PeriodicSite], str]): The hover text template
+            or a custom callable.
+        majority_species (Species): The majority species at the site.
+        float_fmt (str | Callable[[float], str]): Float formatting for coordinates. Can
+            be an f-string format like ".4" (default) or a callable that takes a float
+            and returns a string.
+
+    Returns:
+        str: The formatted hover text string.
+    """
     if callable(hover_text):
         return hover_text(site)
 
-    cart_text = f"({', '.join(f'{c:.3g}' for c in site.coords)})"
-    frac_text = f"[{', '.join(f'{c:.3g}' for c in site.frac_coords)}]"
+    def format_coord(coord_val: float) -> str:
+        """Format a coordinate value using the specified formatter."""
+        if callable(float_fmt):
+            return float_fmt(coord_val)
+        # Convert to float to handle int coordinates properly
+        formatted = f"{float(coord_val):{float_fmt}}"
+        # For ints, remove unnecessary decimal places
+        if coord_val == int(coord_val):
+            return str(int(coord_val))
+        return formatted
+
+    cart_text = f"({', '.join(format_coord(c) for c in site.coords)})"
+    frac_text = f"[{', '.join(format_coord(c) for c in site.frac_coords)}]"
     if hover_text == SiteCoords.cartesian:
         coords_text = cart_text
     elif hover_text == SiteCoords.fractional:
@@ -333,9 +382,32 @@ def draw_site(
     scene: str | None = None,
     hover_text: SiteCoords
     | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
+    float_fmt: str | Callable[[float], str] = ".4",
     **kwargs: Any,
 ) -> None:
-    """Add a site (regular or image) to the plot."""
+    """Add a site (regular or image) to the plot.
+
+    Args:
+        fig (go.Figure): The plotly figure to add the site to.
+        site (PeriodicSite): The periodic site to draw.
+        coords (np.ndarray): The coordinates of the site.
+        site_idx (int): The index of the site.
+        site_labels (str | dict | list): How to label the site.
+        elem_colors (dict[str, ColorType]): Element color mapping.
+        atomic_radii (dict[str, float]): Atomic radii mapping.
+        atom_size (float): Scaling factor for atom sizes.
+        scale (float): Overall scaling factor.
+        site_kwargs (dict[str, Any]): Additional keyword arguments for site styling.
+        is_image (bool): Whether this is an image site.
+        is_3d (bool): Whether this is a 3D plot.
+        row (int | None): Row for subplot.
+        col (int | None): Column for subplot.
+        scene (str | None): Scene name for 3D plots.
+        hover_text (SiteCoords | Callable[[PeriodicSite], str]): Hover text template.
+        float_fmt (str | Callable[[float], str]): Float formatting for hover
+            coordinates.
+        **kwargs: Additional keyword arguments.
+    """
     species = getattr(site, "specie", site.species)
     majority_species = (
         max(species, key=species.get) if isinstance(species, Composition) else species
@@ -360,7 +432,7 @@ def draw_site(
         # Fallback gray for unexpected color types
         atom_color = "rgb(128,128,128)"
 
-    site_hover_text = get_site_hover_text(site, hover_text, majority_species)
+    site_hover_text = get_site_hover_text(site, hover_text, majority_species, float_fmt)
 
     txt = generate_site_label(site_labels, site_idx, site)
 
