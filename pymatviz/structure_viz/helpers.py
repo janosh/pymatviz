@@ -14,9 +14,14 @@ from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 from pymatgen.core.periodic_table import Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pymatviz.colors import ELEM_COLORS_ALLOY, ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
+from pymatviz.colors import (
+    ELEM_COLORS_ALLOY,
+    ELEM_COLORS_JMOL,
+    ELEM_COLORS_PASTEL,
+    ELEM_COLORS_VESTA,
+)
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
-from pymatviz.typing import BOTTOM_RIGHT, VALID_CORNERS, Corner, Xyz
+from pymatviz.typing import Xyz
 from pymatviz.utils import df_ptable, pick_max_contrast_color
 
 
@@ -217,6 +222,8 @@ def get_elem_colors(
         return ELEM_COLORS_VESTA  # type: ignore[return-value]
     if str(elem_colors) == str(ElemColorScheme.alloy):
         return ELEM_COLORS_ALLOY  # type: ignore[return-value]
+    if str(elem_colors) == str(ElemColorScheme.pastel):
+        return ELEM_COLORS_PASTEL  # type: ignore[return-value]
     raise ValueError(
         f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
     )
@@ -383,6 +390,9 @@ def draw_site(
     hover_text: SiteCoords
     | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
     float_fmt: str | Callable[[float], str] = ".4",
+    legendgroup: str | None = None,
+    showlegend: bool = False,
+    legend: str = "legend",
     **kwargs: Any,
 ) -> None:
     """Add a site (regular or image) to the plot.
@@ -406,6 +416,11 @@ def draw_site(
         hover_text (SiteCoords | Callable[[PeriodicSite], str]): Hover text template.
         float_fmt (str | Callable[[float], str]): Float formatting for hover
             coordinates.
+        legendgroup (str | None): For interactive legend. If None (default), will be
+            set to the site's species symbol.
+        showlegend (bool): Whether to show this trace in the legend.
+        legend (str): The legend group for the site. If None (default), will be set to
+            the site's species symbol.
         **kwargs: Additional keyword arguments.
     """
     species = getattr(site, "specie", site.species)
@@ -440,7 +455,7 @@ def draw_site(
         size=site_radius * atom_size,
         color=atom_color,
         opacity=0.8 if is_image else 1,
-        line=dict(width=1, color="gray"),
+        line=dict(width=0),
     )
     marker_kwargs.update(site_kwargs)
 
@@ -461,7 +476,9 @@ def draw_site(
         hovertext=site_hover_text,
         hoverlabel=dict(namelength=-1),
         name=f"Image of {majority_species!s}" if is_image else str(majority_species),
-        showlegend=False,
+        showlegend=showlegend,
+        legendgroup=legendgroup,
+        legend=legend,
     )
     scatter_kwargs |= kwargs
 
@@ -529,6 +546,7 @@ def draw_unit_cell(
             line=edge_kwargs,
             hovertext=[None, hover_text, None],
             name=f"edge {idx}",
+            showlegend=False,
         )
 
     # Add corner spheres
@@ -560,6 +578,7 @@ def draw_unit_cell(
             marker=node_kwargs,
             hovertext=hover_text,
             name=f"node {idx}",
+            showlegend=False,
         )
 
     return fig
@@ -951,118 +970,3 @@ def _prep_augmented_structure_for_bonding(
     return Structure.from_sites(
         all_sites_for_bonding, validate_proximity=False, to_unit_cell=False
     )
-
-
-def _draw_element_legend(
-    fig: go.Figure,
-    struct_i: Structure,
-    _elem_colors: dict[str, ColorType],
-    subplot_idx: int,  # 1-based index
-    *,
-    is_3d: bool,
-    font_size: int,
-    box_size_px: int,
-    item_gap_px: int,
-    margin_frac: float,
-    corner: Corner = BOTTOM_RIGHT,
-) -> None:
-    """Helper function to draw an element color legend for a subplot."""
-    unique_symbols = sorted({_get_site_symbol(site) for site in struct_i})
-    if not unique_symbols:
-        return
-
-    subplot_idx_str = str(subplot_idx) if subplot_idx > 1 else ""
-
-    try:  # Get domain coordinates
-        if is_3d:
-            scene_name = f"scene{subplot_idx_str}"
-            if (
-                subplot_idx == 1
-                and "scene" in fig.layout
-                and "scene1" not in fig.layout
-            ):
-                scene_name = "scene"
-            scene_obj = fig.layout[scene_name]
-            if not hasattr(scene_obj, "domain"):
-                warnings.warn(
-                    f"{scene_name=} has no domain attribute (legend)", stacklevel=2
-                )
-                return
-            domain_x, domain_y = scene_obj.domain.x, scene_obj.domain.y
-        else:  # 2D
-            domain_x = fig.layout[f"xaxis{subplot_idx_str}"].domain
-            domain_y = fig.layout[f"yaxis{subplot_idx_str}"].domain
-    except (KeyError, TypeError):
-        plot_type = "Scene" if is_3d else "Axis"
-        warnings.warn(
-            f"{plot_type} domain needed for legend in {subplot_idx=} not found",
-            stacklevel=2,
-        )
-        return
-
-    # Calculate anchor point based on corner
-    if corner not in VALID_CORNERS:
-        raise ValueError(f"Invalid {corner=} must be one of {VALID_CORNERS}")
-
-    v_pos, h_pos = corner.split("-")
-    domain_width, domain_height = domain_x[1] - domain_x[0], domain_y[1] - domain_y[0]
-
-    # Calculate position with margin offset
-    if h_pos == "left":
-        anchor_x_paper = domain_x[0] + margin_frac * domain_width
-        x_anchor = "left"
-    else:  # right
-        anchor_x_paper = domain_x[1] - margin_frac * domain_width
-        x_anchor = "right"
-
-    if v_pos == "bottom":
-        anchor_y_paper = domain_y[0] + margin_frac * domain_height
-        y_anchor = "bottom"
-        y_direction = 1  # Items stack upwards
-    else:  # top
-        anchor_y_paper = domain_y[1] - margin_frac * domain_height
-        y_anchor = "top"
-        y_direction = -1  # Items stack downwards
-
-    fig_height = fig.layout.height or 400
-
-    for item_idx, symbol in enumerate(unique_symbols):
-        elem_color = _elem_colors.get(symbol, "gray")
-        if isinstance(elem_color, tuple) and [type(c) for c in elem_color] in (
-            [float, float, float],
-            [int, int, int],
-        ):
-            r, g, b = (
-                int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)  # type: ignore[arg-type]
-                for c in elem_color
-            )
-            elem_color_str = f"rgb({r},{g},{b})"
-        else:
-            elem_color_str = str(elem_color)
-
-        # Calculate position and get hover text
-        y_offset = item_idx * (box_size_px + item_gap_px) * y_direction / fig_height
-        try:
-            from pymatgen.core.periodic_table import Element
-
-            hover_text = Element(symbol).long_name
-        except (ValueError, ImportError):
-            hover_text = f"Element {symbol}"
-
-        fig.add_annotation(
-            text=symbol,
-            font=dict(size=font_size, color=pick_max_contrast_color(elem_color_str)),
-            bgcolor=elem_color_str,
-            borderwidth=0,
-            width=box_size_px,
-            height=box_size_px,
-            align="center",
-            x=anchor_x_paper,
-            y=anchor_y_paper + y_offset,
-            xref="paper",
-            yref="paper",
-            xanchor=x_anchor,
-            yanchor=y_anchor,
-            showarrow=False,
-            hovertext=hover_text,
-        )
