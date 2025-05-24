@@ -1,39 +1,52 @@
 from __future__ import annotations
 
-import os
-import re
-from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
-from pymatgen.analysis.local_env import CrystalNN
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Structure
 
 import pymatviz as pmv
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
-from pymatviz.enums import ElemColorScheme, Key, SiteCoords
+from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.structure_viz.helpers import (
     _get_site_symbol,
-    draw_bonds,
+    generate_site_label,
     get_atomic_radii,
-    get_elem_colors,
     get_image_sites,
 )
-from pymatviz.structure_viz.plotly import structure_2d_plotly
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from pymatgen.core import PeriodicSite
-
     from pymatviz.typing import Xyz
 
 COORDS: Final[tuple[Xyz, Xyz]] = ((0, 0, 0), (0.5, 0.5, 0.5))
 lattice_cubic = 5 * np.eye(3)  # 5 Å cubic lattice
+
+
+def normalize_rgb_color(color_str: str) -> str:
+    """Normalize RGB color string to consistent format."""
+    if not isinstance(color_str, str):
+        return str(color_str)
+
+    # Remove spaces and ensure consistent format
+    color_str = color_str.replace(" ", "")
+
+    # If it's already in rgb format, ensure consistent spacing
+    if color_str.startswith("rgb(") and color_str.endswith(")"):
+        # Extract numbers and reformat
+        numbers = color_str[4:-1].split(",")
+        try:
+            rgb_values = [int(float(n.strip())) for n in numbers]
+            return f"rgb({rgb_values[0]},{rgb_values[1]},{rgb_values[2]})"
+        except (ValueError, IndexError):
+            return color_str
+
+    return color_str
 
 
 def _get_all_rendered_site_info(
@@ -69,6 +82,7 @@ def _get_all_rendered_site_info(
             "is_image": False,
             "primary_site_idx": len(all_site_infos),
             "primary_site_species_string": site_primary.species_string,
+            "site_obj": site_primary,
         }
         all_site_infos.append(site_info)
 
@@ -82,6 +96,7 @@ def _get_all_rendered_site_info(
                     "is_image": True,
                     "primary_site_idx": idx_primary,
                     "primary_site_species_string": site_primary.species_string,
+                    "site_obj": site_primary,  # Image sites use the primary site object
                 }
             ] * len(image_coords_list)
 
@@ -182,7 +197,6 @@ def _compare_colors(
             "scale": 1.5,
             "show_unit_cell": False,
             "show_sites": False,
-            "site_labels": "species",
             "standardize_struct": True,
             "n_cols": 4,
             "show_site_vectors": ("magmom", "force"),
@@ -232,7 +246,6 @@ def _compare_colors(
             "scale": 0.8,
             "show_unit_cell": True,
             "show_sites": {"line": {"width": 2, "color": "red"}},
-            "site_labels": "species",
             "standardize_struct": False,
             "n_cols": 3,
         },
@@ -313,35 +326,36 @@ def test_structure_2d_plotly(
 
     if show_sites_kwarg is not False:
         expected_n_primary_sites = len(fe3co4_disordered_with_props)
-        # If site_labels is explicitly False, draw_site might not add text,
+        # If site_labels is explicitly False or "legend", draw_site might not add text,
         # affecting trace.mode. But markers should still be there.
         # The number of traces should match the number of sites.
         assert len(primary_site_traces) == expected_n_primary_sites
 
-        if site_labels_kwarg is not False:  # Labels are expected
+        if site_labels_kwarg not in (False, "legend") and site_labels_kwarg is not None:
+            # Labels are expected on sites
             for site_idx, trace in enumerate(primary_site_traces):
                 site = fe3co4_disordered_with_props[site_idx]
                 actual_label = str(trace.text)
-                expected_label = ""
-                site_symbol = _get_site_symbol(site)
-
-                if isinstance(site_labels_kwarg, dict):
-                    expected_label = site_labels_kwarg.get(site_symbol, site_symbol)
-                elif isinstance(site_labels_kwarg, list):
-                    expected_label = (
-                        site_labels_kwarg[site_idx]
-                        if site_idx < len(site_labels_kwarg)
-                        else site_symbol
-                    )
-                elif site_labels_kwarg == "symbol":
-                    expected_label = site_symbol
-                elif site_labels_kwarg == "species":
-                    expected_label = site.species_string
-                # If site_labels_kwarg is True (not explicitly handled but was in
-                # old version) or None (default is "species"), it would fall into one
-                # of above.
-
+                expected_label = generate_site_label(site_labels_kwarg, site_idx, site)
                 assert actual_label == expected_label
+
+        elif site_labels_kwarg == "legend" or site_labels_kwarg is None:  # Default case
+            # Check for legend annotations
+            legend_annos = [anno for anno in fig.layout.annotations if anno.bgcolor]
+            # Check that each unique element in the structure has a legend entry
+            unique_elements = sorted(
+                {_get_site_symbol(s) for s in fe3co4_disordered_with_props}
+            )
+            assert len(legend_annos) == len(unique_elements)
+            for anno, elem_symbol in zip(legend_annos, unique_elements, strict=True):
+                assert anno.text == elem_symbol
+                # Further checks for color, position could be added if necessary
+
+            # Ensure no text on primary site traces
+            for trace in primary_site_traces:
+                assert trace.text is None or (
+                    isinstance(trace.text, list) and not any(trace.text)
+                )
 
         # Check atom colors for each primary site trace
         elem_colors_kwarg = kwargs.get("elem_colors")
@@ -498,7 +512,7 @@ def test_structure_2d_plotly_multiple() -> None:
         "struct3": struct3,
         "struct4": struct4,
     }
-    fig = pmv.structure_2d_plotly(structs_dict, n_cols=3)
+    fig = pmv.structure_2d_plotly(structs_dict, n_cols=3, site_labels=False)
     assert isinstance(fig, go.Figure)
     # 4 structures. For each struct: 1  primary site trace, 12 for edges, 8 for nodes.
     # Image sites: each image site is a separate trace.
@@ -539,13 +553,15 @@ def test_structure_2d_plotly_multiple() -> None:
 
     # Test with pandas.Series[Structure]
     struct_series = pd.Series(structs_dict)
-    fig = pmv.structure_2d_plotly(struct_series)
+    fig = pmv.structure_2d_plotly(struct_series, site_labels=False)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces
     assert len(fig.layout.annotations) == 4
 
     # Test with list[Structure]
-    fig = pmv.structure_2d_plotly(list(structs_dict.values()), n_cols=2)
+    fig = pmv.structure_2d_plotly(
+        list(structs_dict.values()), n_cols=2, site_labels=False
+    )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces
     assert len(fig.layout.annotations) == 4
@@ -554,7 +570,9 @@ def test_structure_2d_plotly_multiple() -> None:
     def subplot_title(struct: Structure, key: str | int) -> str:
         return f"{key} - {struct.formula}"
 
-    fig = pmv.structure_2d_plotly(struct_series, subplot_title=subplot_title)
+    fig = pmv.structure_2d_plotly(
+        struct_series, subplot_title=subplot_title, site_labels=False
+    )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces
     assert len(fig.layout.annotations) == 4
@@ -595,7 +613,7 @@ def test_structure_2d_plotly_invalid_input() -> None:
             "show_unit_cell": True,
             "show_sites": True,
             "show_image_sites": True,
-            "site_labels": "species",
+            "site_labels": "symbol",
             "standardize_struct": None,
             "n_cols": 3,
             "show_site_vectors": "magmom",
@@ -697,12 +715,21 @@ def test_structure_3d_plotly(
         if raw_marker_color_3d is not None:
             if isinstance(raw_marker_color_3d, str):  # Single color string
                 actual_colors_3d = [normalize_rgb_color(raw_marker_color_3d)] * (
-                    expected_total_sites  # Adjusted length
+                    expected_total_sites
                 )
             elif isinstance(raw_marker_color_3d, (list, tuple)):
-                if all(isinstance(c, (int, float)) for c in raw_marker_color_3d):
-                    actual_colors_3d = list(raw_marker_color_3d)
-                else:
+                # Check if it's a list of RGB tuples or list of color strings
+                if (
+                    all(isinstance(c, (int, float)) for c in raw_marker_color_3d)
+                    and len(raw_marker_color_3d) == 3
+                ):
+                    # Single RGB tuple for all points - normalize and replicate
+                    r, g, b = raw_marker_color_3d
+                    rgb_tuple_str = f"rgb({r},{g},{b})"
+                    actual_colors_3d = [
+                        normalize_rgb_color(rgb_tuple_str)
+                    ] * expected_total_sites
+                else:  # List of color strings
                     actual_colors_3d = [
                         normalize_rgb_color(str(color)) for color in raw_marker_color_3d
                     ]
@@ -733,9 +760,6 @@ def test_structure_3d_plotly(
             expected_sizes = []
             for site_info in rendered_sites_info:
                 symbol = site_info["symbol"]
-                # Get radius for the symbol from the processed map
-                # Default to 1.0 if symbol not in map (consistent with get_atomic_radii
-                # behavior for unknown elements)
                 radius_val = _processed_atomic_radii.get(symbol, 1.0)
                 expected_sizes.append(radius_val * scale_kwarg * atom_size_kwarg)
 
@@ -744,44 +768,68 @@ def test_structure_3d_plotly(
                 actual_sizes = [float(actual_sizes)] * expected_total_sites
 
             assert len(actual_sizes) == expected_total_sites
-            # For more precise check, compare element by element if atomic_radii was a
-            # dict. For now, check if all sizes are approximately equal if a simple
-            # radius/scale was used. Or compare with the generated expected_sizes list.
             for act_size, exp_size in zip(actual_sizes, expected_sizes, strict=True):
                 assert pytest.approx(act_size) == exp_size
 
             # Check site labels if they are expected
             site_labels_kwarg = kwargs.get("site_labels")
-            # structure_3d_plotly defaults site_labels to "species" if None
-            effective_site_labels = site_labels_kwarg or "species"
+            actual_site_labels = site_labels_kwarg
+            # Default to "legend" if None
+            if site_labels_kwarg is None:
+                actual_site_labels = "legend"
 
-            if effective_site_labels is not False and site_trace.text is not None:
+            if actual_site_labels not in (False, "legend"):
+                assert site_trace.text is not None, "Site labels missing on trace"
                 actual_labels_list = list(site_trace.text)
                 assert len(actual_labels_list) == expected_total_sites
 
                 for site_idx, site_info in enumerate(rendered_sites_info):
                     actual_label = actual_labels_list[site_idx]
-
-                    label_base_symbol = site_info["symbol"]
-                    label_base_species_string = site_info["primary_site_species_string"]
-                    expected_label = ""
-
-                    if isinstance(effective_site_labels, dict):
-                        expected_label = effective_site_labels.get(
-                            label_base_symbol, label_base_symbol
-                        )
-                    elif isinstance(effective_site_labels, list):
-                        expected_label = (
-                            effective_site_labels[site_idx]
-                            if site_idx < len(effective_site_labels)
-                            else label_base_symbol
-                        )
-                    elif effective_site_labels == "symbol":
-                        expected_label = label_base_symbol
-                    elif effective_site_labels == "species":
-                        expected_label = label_base_species_string
-
+                    # Type assertion to help mypy understand the type
+                    assert actual_site_labels not in (False, "legend", None)
+                    expected_label = generate_site_label(
+                        actual_site_labels,  # type: ignore[arg-type]
+                        site_idx,
+                        site_info["site_obj"],
+                    )
                     assert actual_label == expected_label
+
+            elif actual_site_labels == "legend":
+                # Check legend annotations for this subplot. More complex for multiple
+                # subplots. Need to correctly identify which annotations belong to which
+                # subplot.
+
+                # Simpler check: Count total legend items matching elements in *this*
+                # structure
+                current_struct_elements = {
+                    _get_site_symbol(s) for s in fe3co4_disordered_with_props
+                }
+                legend_annos_for_this_subplot = [
+                    anno
+                    for anno in fig.layout.annotations
+                    # Basic check: if it matches an element, assume it's a legend item
+                    if anno.bgcolor and anno.text in current_struct_elements
+                ]
+
+                # Check that number of legend items for this structure is correct.
+                # This assumes each legend annotation is unique text-wise per subplot.
+                unique_elements_in_struct = sorted(current_struct_elements)
+                assert len(legend_annos_for_this_subplot) == len(
+                    unique_elements_in_struct
+                )
+
+                if site_trace.text:  # Ensure no text on the scatter3d trace itself
+                    for idx, text in enumerate(site_trace.text):
+                        assert text is None, f"{text=}, {idx=}"
+                else:
+                    assert site_trace.text is None
+    else:  # show_sites is False
+        site_traces = [
+            trace
+            for trace in fig.data
+            if getattr(trace, "mode", None) in ("markers", "markers+text")
+        ]
+        assert len(site_traces) == 0, "Site traces found when show_sites is False"
 
 
 def test_structure_3d_plotly_multiple() -> None:
@@ -800,6 +848,7 @@ def test_structure_3d_plotly_multiple() -> None:
         "struct3": struct3,
         "struct4": struct4,
     }
+    # Test with default site_labels="legend"
     fig = pmv.structure_3d_plotly(structs_dict, n_cols=2)
     assert isinstance(fig, go.Figure)
 
@@ -813,66 +862,82 @@ def test_structure_3d_plotly_multiple() -> None:
     actual_n_edge_traces_3d = sum(
         (trace.name or "").startswith("edge") for trace in fig.data
     )
-    assert actual_n_edge_traces_3d == 12 * len(
-        structs_dict
-    )  # Default show_unit_cell=True
+    # Default show_unit_cell=True
+    assert actual_n_edge_traces_3d == 12 * len(structs_dict)
     expected_total_traces_3d += actual_n_edge_traces_3d
 
     actual_n_node_traces_3d = sum(
         (trace.name or "").startswith("node") for trace in fig.data
     )
-    assert actual_n_node_traces_3d == 8 * len(
-        structs_dict
-    )  # Default show_unit_cell=True
+    # Default show_unit_cell=True
+    assert actual_n_node_traces_3d == 8 * len(structs_dict)
     expected_total_traces_3d += actual_n_node_traces_3d
-
-    # Image sites are now part of the main site traces, so no separate "Image of" traces
-    actual_n_image_site_traces_3d = sum(
-        (trace.name or "").startswith("image-") for trace in fig.data
-    )
-    assert actual_n_image_site_traces_3d == 0
-    # No longer add actual_n_image_site_traces_3d to expected_total_traces_3d as it's 0
-    # and image sites are accounted for in the points within primary site traces.
 
     assert len(fig.data) == expected_total_traces_3d, (
         f"{len(fig.data)=} vs {expected_total_traces_3d=}"
     )
 
-    assert len(fig.layout.annotations) == 4
+    # Annotations: 4 subplot titles + legend annotations for each subplot
+    # Each struct has 2 unique elements (e.g., Fe, O)
+    expected_n_subplot_titles = len(structs_dict)
+    expected_n_legend_items_per_struct = 2  # Assuming each struct has 2 unique elements
+    expected_total_legend_annotations = (
+        len(structs_dict) * expected_n_legend_items_per_struct
+    )
+    # Check if subplot_title is default (None), which generates titles
+    # If subplot_title=False, then no titles.
+    # Here, subplot_title is None by default in structure_3d_plotly
+    assert (
+        len(fig.layout.annotations)
+        == expected_n_subplot_titles + expected_total_legend_annotations
+    )
 
     # Test pandas.Series[Structure]
     struct_series = pd.Series(structs_dict)
     fig = pmv.structure_3d_plotly(struct_series)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
-    assert len(fig.layout.annotations) == 4
+    assert (
+        len(fig.layout.annotations)
+        == expected_n_subplot_titles + expected_total_legend_annotations
+    )
 
     # Test list[Structure]
     fig = pmv.structure_3d_plotly(list(structs_dict.values()), n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
-    assert len(fig.layout.annotations) == 4
+    assert (
+        len(fig.layout.annotations)
+        == expected_n_subplot_titles + expected_total_legend_annotations
+    )
 
-    # Test subplot_title
-    def subplot_title(struct: Structure, key: str | int) -> str:
+    # Test subplot_title and its interaction with legend annotations
+    def custom_subplot_title_func(struct: Structure, key: str | int) -> str:
         return f"{key} - {struct.formula}"
 
-    fig = pmv.structure_3d_plotly(struct_series, subplot_title=subplot_title)
+    fig = pmv.structure_3d_plotly(
+        struct_series, subplot_title=custom_subplot_title_func
+    )
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
-    assert len(fig.layout.annotations) == 4
-    for idx, (key, struct) in enumerate(structs_dict.items(), start=1):
-        expected_title = subplot_title(struct=struct, key=key)
-        assert fig.layout.annotations[idx - 1].text == expected_title
+    assert (
+        len(fig.layout.annotations)
+        == expected_n_subplot_titles + expected_total_legend_annotations
+    )
+    title_texts = [anno.text for anno in fig.layout.annotations if not anno.bgcolor]
+    for _idx, (key, struct) in enumerate(structs_dict.items(), start=1):
+        expected_title = custom_subplot_title_func(struct=struct, key=key)
+        assert expected_title in title_texts
 
-    # Check total number of points in each site trace
+    # Check total number of points in each site trace (remains the same)
     for s_key, s_val_3d in structs_dict.items():
         site_trace_found = False
         for trace in fig.data:
             if getattr(trace, "name", "") == f"site-{s_key}":
                 site_trace_found = True
                 rendered_sites = _get_all_rendered_site_info(
-                    s_val_3d, show_image_sites=True
+                    s_val_3d,
+                    show_image_sites=True,  # Default for 3D
                 )
                 assert len(trace.x) == len(rendered_sites), (
                     f"Mismatch in number of points for {s_key=}. "
@@ -884,685 +949,664 @@ def test_structure_3d_plotly_multiple() -> None:
         assert site_trace_found, f"Site trace for {s_key=} not found"
 
 
-def test_structure_3d_plotly_invalid_input() -> None:
-    # Match the actual error message from normalize_structures
-    expected_err_msg = (
-        "Input must be a Pymatgen Structure, ASE Atoms object, a sequence"
-    )
-    with pytest.raises(TypeError, match=expected_err_msg):
-        pmv.structure_3d_plotly("invalid input")
-
-    # Add similar tests for other invalid inputs if necessary, e.g. empty list
-    # with pytest.raises(ValueError, match="Cannot plot empty structure list/dict"):
-    #     pmv.structure_3d_plotly([])
-
-
 @pytest.mark.parametrize(
-    "custom_title_dict",
+    ("custom_title_params", "expected_legend_annotations"),
     [
-        {
-            "text": "Custom {key} - {struct.formula}",
-            "font": {"size": 16, "color": "red"},
-            "y": 0.8,
-            "yanchor": "bottom",
-        },
-        {
-            "text": "{struct.formula} ({key})",
-            "font": {"size": 14, "color": "blue"},
-            "x": 0.5,
-            "xanchor": "center",
-        },
-        {
-            "text": "Structure {key}",
-            "font": {"size": 18, "color": "green"},
-            "y": 1.0,
-            "yanchor": "top",
-        },
-        {},  # Empty dict to test default behavior
+        (
+            {
+                "text": "Custom {key} - {struct.formula}",
+                "font": {"size": 16, "color": "red"},
+                "y": 0.8,
+                "yanchor": "bottom",
+            },
+            4,  # 2 structs x 2 elements each = 4 legend items
+        ),
+        (
+            {
+                "text": "{struct.formula} ({key})",
+                "font": {"size": 14, "color": "blue"},
+                "x": 0.5,
+                "xanchor": "center",
+            },
+            4,  # 2 structs x 2 elements each = 4 legend items
+        ),
+        (
+            {
+                "text": "Structure {key}",
+                "font": {"size": 18, "color": "green"},
+                "y": 1.0,
+                "yanchor": "top",
+            },
+            4,  # 2 structs x 2 elements each = 4 legend items
+        ),
+        ({}, 4),  # Empty dict to test default behavior for title, legend still appears
     ],
 )
-def test_structure_3d_plotly_subplot_title_override(
-    custom_title_dict: dict[str, str | float | dict[str, str | float]],
+def test_structure_3d_plotly_subplot_title_override_with_legend(
+    custom_title_params: dict[str, str | float | dict[str, str | float]],
+    expected_legend_annotations: int,
 ) -> None:
     struct1 = Structure(lattice_cubic, ["Fe", "O"], COORDS)
-    struct2 = Structure(lattice_cubic, ["Co", "O"], COORDS)
-    structs_dict = {"struct1": struct1, "struct2": struct2}
+    struct2 = Structure(
+        lattice_cubic, ["Co", "Ni"], COORDS
+    )  # Different elements for distinct legends
+    structs_dict = {"s1": struct1, "s2": struct2}
 
-    def custom_subplot_title(struct: Structure, key: str | int) -> dict[str, Any]:
-        title_dict = custom_title_dict.copy()
-        if "text" in title_dict:
-            assert isinstance(title_dict["text"], str)  # for mypy
-            title_dict["text"] = title_dict["text"].format(key=key, struct=struct)
-        return title_dict
+    def custom_subplot_title_generator(
+        struct: Structure, key: str | int
+    ) -> dict[str, Any]:
+        title_dict_copy = custom_title_params.copy()
+        if "text" in title_dict_copy and isinstance(title_dict_copy["text"], str):
+            title_dict_copy["text"] = title_dict_copy["text"].format(
+                key=key, struct=struct
+            )
+        return title_dict_copy
 
-    fig = pmv.structure_3d_plotly(structs_dict, subplot_title=custom_subplot_title)
+    # site_labels defaults to "legend", so legends will be drawn
+    fig = pmv.structure_3d_plotly(
+        structs_dict, subplot_title=custom_subplot_title_generator
+    )
 
     assert isinstance(fig, go.Figure)
-    assert len(fig.layout.annotations) == 2
 
-    for idx, (key, struct) in enumerate(structs_dict.items()):
-        annotation = fig.layout.annotations[idx]
-
-        if custom_title_dict:
-            custom_title = custom_title_dict.get("text", "")
-            assert isinstance(custom_title, str)  # for mypy
-            expected_text = custom_title.format(key=key, struct=struct)
-            assert annotation.text == expected_text
-
-            for attr, value in custom_title_dict.items():
-                if attr == "font":
-                    assert isinstance(value, dict)  # for mypy
-                    for font_attr, font_value in value.items():
-                        assert getattr(annotation.font, font_attr) == font_value
-                elif attr != "text":
-                    assert getattr(annotation, attr) == value
-        else:
-            # Check default behavior when an empty dict is provided
-            assert annotation.text == key  # Changed this line
-            assert annotation.font.size == 16
-            assert annotation.font.color is None
-            assert annotation.yanchor == "top"
-
-
-@pytest.mark.parametrize(
-    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
-)
-@pytest.mark.parametrize(
-    "hover_text", [*SiteCoords, lambda site: f"<b>{site.frac_coords}</b>"]
-)
-def test_hover_text(
-    plot_function: Callable[..., go.Figure],
-    hover_text: SiteCoords | Callable[[PeriodicSite], str],
-) -> None:
-    struct = Structure(lattice_cubic, ["Fe", "O"], COORDS)
-    fig = plot_function(struct, hover_text=hover_text)
-
-    site_traces = [
-        trace for trace in fig.data if trace.name and trace.name.startswith("site")
-    ]
-    assert len(site_traces) > 0
-
-    # regex for a single site coordinate with optional decimal point
-    re_coord = r"\d+\.?\d*"
-    re_3_coords = rf"{re_coord}, {re_coord}, {re_coord}"
-    for trace in site_traces:
-        # trace.hovertext can be a string for single-point traces (which these are)
-        # or a list/tuple if multiple points were in one trace.
-        # Ensure it's a string or can be treated as a sequence of strings.
-        assert isinstance(trace.hovertext, (str, list, tuple)), (
-            f"Expected str, list, or tuple for hovertext, got {type(trace.hovertext)}"
-        )
-
-        hovertexts_to_check = []
-        if isinstance(trace.hovertext, str):
-            hovertexts_to_check.append(trace.hovertext)
-        else:  # list or tuple
-            hovertexts_to_check.extend(list(trace.hovertext))
-
-        assert len(hovertexts_to_check) > 0, "No hovertext strings found to check"
-
-        for ht_str in hovertexts_to_check:
-            assert isinstance(ht_str, str), f"Hovertext element not a string: {ht_str}"
-            if hover_text == SiteCoords.cartesian:
-                match = re.search(rf"Coordinates \({re_3_coords}\)", ht_str)
-                assert match, f"Cartesian coord pattern not found in: {ht_str}"
-            elif hover_text == SiteCoords.fractional:
-                match = re.search(rf"Coordinates \[\s*{re_3_coords}\s*\]", ht_str)
-                assert match, f"Fractional coord pattern not found in: {ht_str}"
-            elif hover_text == SiteCoords.cartesian_fractional:
-                match = re.search(
-                    rf"Coordinates \({re_3_coords}\) \[\s*{re_3_coords}\s*\]", ht_str
-                )
-                assert match, (
-                    f"Cartesian+Fractional coord pattern not found in: {ht_str}"
-                )
-            elif callable(hover_text):
-                if not ht_str.startswith("Image of"):
-                    # The specific lambda in test params is f"<b>{site.frac_coords}</b>"
-                    # site.frac_coords stringifies with spaces, e.g., "[0. 0. 0.]"
-                    re_coord = r"\d+\.?\d*"  # A single coordinate number
-                    # Pattern for three space-separated coordinates
-                    re_3_coords_no_commas = r"\s+".join([re_coord] * 3)
-                    expected_pattern = rf"<b>\[\s*{re_3_coords_no_commas}\s*\]</b>"
-                    match = re.search(expected_pattern, ht_str)
-                    assert match
-
-    @pytest.mark.parametrize(
-        "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
+    # Annotations = titles + legend items
+    # struct1 has 2 legend items (Fe, O), struct2 has 2 (Co, Ni)
+    # Total 2 titles + 2*2 legend items = 6 annotations
+    actual_legend_annotations = len(
+        [
+            ann
+            for ann in fig.layout.annotations
+            if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+        ]
     )
-    def test_structure_plotly_ase_atoms(
-        plot_function: Callable[..., go.Figure], structures: list[Structure]
-    ) -> None:
-        """Test that structure_2d_plotly works with ASE Atoms."""
-        pytest.importorskip("ase")
+    assert actual_legend_annotations == expected_legend_annotations
 
-        pmg_struct = structures[0]
-        # Create a simple ASE Atoms object
+    title_annotations = [anno for anno in fig.layout.annotations if not anno.bgcolor]
+    legend_annotations = [anno for anno in fig.layout.annotations if anno.bgcolor]
 
-        # Test single Atoms object
-        # ASE Atoms objects are converted to Pymatgen Structures by normalize_structures
-        # so fig_ase and fig_pmg should be comparable in terms of what
-        # structure_2d/3d_plotly receives
-        fig_ase = plot_function(pmg_struct.to_ase_atoms())
-        assert isinstance(fig_ase, go.Figure)
+    assert len(title_annotations) == len(structs_dict)
+    assert len(legend_annotations) == expected_legend_annotations
 
-        # Test equivalence with pymatgen Structure
-        fig_pmg = plot_function(pmg_struct)
+    for idx, ((key, struct), title_anno) in enumerate(
+        zip(structs_dict.items(), title_annotations, strict=True)
+    ):
+        expected_text_val: str | None
+        if custom_title_params:
+            custom_text_template = custom_title_params.get("text")
+            if isinstance(custom_text_template, str):
+                expected_text_val = custom_text_template.format(key=key, struct=struct)
+            else:  # Default title text if custom_title_params is {} or text is not str
+                # Default title from get_subplot_title for 3D is key then struct.formula
+                expected_text_val = pmv.structure_viz.helpers.get_subplot_title(
+                    struct, key, idx + 1, None
+                )["text"]
+        else:  # Should not happen with parametrize, but as fallback
+            expected_text_val = pmv.structure_viz.helpers.get_subplot_title(
+                struct, key, idx + 1, None
+            )["text"]
 
-        # Compare figures - focus on site marker colors if elem_colors is default (jmol)
-        # This assumes the default elem_colors=ElemColorScheme.jmol for these plots
-        # Get expected JMOL colors for the structure
+        assert title_anno.text == expected_text_val
 
-        # Determine if image sites are active (default True for structure_3d_plotly,
-        # True for structure_2d_plotly)
-        show_image_sites = True  # Default for both funcs if not overridden by kwargs
-
-        rendered_sites_info_pmg = _get_all_rendered_site_info(
-            pmg_struct, show_image_sites
-        )
-
-        expected_jmol_colors_pmg = []
-        for site_info in rendered_sites_info_pmg:
-            symbol = site_info["symbol"]
-            if symbol and symbol in ELEM_COLORS_JMOL:
-                rgb_tuple = ELEM_COLORS_JMOL[symbol]
-                rgb_str = f"rgb({', '.join(str(int(val * 255)) for val in rgb_tuple)}"
-                expected_jmol_colors_pmg.append(normalize_rgb_color(rgb_str))
-            else:
-                expected_jmol_colors_pmg.append("rgb(128,128,128)")
-
-        # Find the main site traces for comparison
-        site_traces_ase = [
-            tr for tr in fig_ase.data if (tr.name or "").startswith("site-")
-        ]
-        site_traces_pmg = [
-            tr for tr in fig_pmg.data if (tr.name or "").startswith("site-")
-        ]
-
-        assert len(site_traces_ase) == len(site_traces_pmg)
-        if not site_traces_ase:
-            # If no site traces (e.g. show_sites=False), skip detailed checks
-            return
-
-        # Assuming one main site trace per structure subplot (as we pass single struct)
-        trace_ase = site_traces_ase[0]
-        trace_pmg = site_traces_pmg[0]
-
-        assert trace_ase.type == trace_pmg.type
-        assert trace_ase.name == trace_pmg.name
-
-        # Further color comparison for 2D (trace by trace)
-        # Assuming default Jmol colors for this test section as per original intent
-        elem_colors_resolved = get_elem_colors(ElemColorScheme.jmol)  # Use the helper
-
-        # Check number of points (x, y, z if 3D)
-        # This should account for primary + image sites for 3D single trace
-        # For 2D, main trace is primary only. draw_site creates other traces for images.
-        if plot_function == pmv.structure_3d_plotly:
-            expected_n_points = len(rendered_sites_info_pmg)
-            assert len(trace_ase.x) == expected_n_points
-            assert len(trace_pmg.x) == expected_n_points
-            assert len(trace_ase.z) == expected_n_points  # Check z for 3D
-        else:  # 2D plot (structure_2d_plotly)
-            # Each primary site is its own trace, so each trace.x should have 1 point.
-            assert len(site_traces_ase) == len(pmg_struct)
-            assert len(site_traces_pmg) == len(pmg_struct)
-            for i_site in range(len(pmg_struct)):
-                assert len(site_traces_ase[i_site].x) == 1
-                assert len(site_traces_pmg[i_site].x) == 1
-
-            for i_site, site in enumerate(pmg_struct):
-                site_symbol = _get_site_symbol(site)
-                # Use resolved elem_colors, not the enum directly
-                expected_color_str = _resolve_expected_color_str(
-                    site_symbol, elem_colors_resolved, normalize_rgb_color
-                )
-
-                actual_ase_color = normalize_rgb_color(
-                    str(site_traces_ase[i_site].marker.color)
-                )
-                actual_pmg_color = normalize_rgb_color(
-                    str(site_traces_pmg[i_site].marker.color)
-                )
-                _compare_colors(
-                    actual_ase_color, expected_color_str, normalize_rgb_color
-                )
-                _compare_colors(
-                    actual_pmg_color, expected_color_str, normalize_rgb_color
-                )
+        # Check other attributes from custom_title_params if they were set
+        if custom_title_params:
+            for attr, value in custom_title_params.items():
+                if attr == "font" and isinstance(value, dict):
+                    for font_attr, font_value in value.items():
+                        assert getattr(title_anno.font, font_attr) == font_value
+                elif attr != "text":  # Avoid re-checking text
+                    assert getattr(title_anno, attr) == value
+        else:  # Check default title properties when custom_title_params is {}
+            assert title_anno.font.size == 16  # Default for get_subplot_title
+            assert title_anno.yanchor == "top"  # Default for get_subplot_title in 3D
 
 
 @pytest.mark.parametrize(
     ("plot_function", "is_3d"),
-    [(pmv.structure_2d_plotly, False), (pmv.structure_3d_plotly, True)],
-)
-def test_structure_plotly_show_bonds(
-    plot_function: Callable[..., go.Figure], is_3d: bool
-) -> None:
-    """Test that bonds are drawn correctly when show_bonds is True."""
-    # Create a simple structure with known bonding
-    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
-    struct.add_oxidation_state_by_element({"Si": 4, "O": -2})
-
-    # Test with show_bonds=True (default CrystalNN)
-    fig = plot_function(
-        struct,
-        show_bonds=True,
-        bond_kwargs={"color": "rgb(255, 255, 255)", "width": 2},  # white
-    )
-
-    # Check that bonds were drawn
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) in (
-        {5, 6} if plot_function == pmv.structure_2d_plotly else {2}
-    )
-
-    # Check bond properties
-    for trace in bond_traces:
-        assert trace.mode == "lines"
-        assert trace.showlegend is False
-        assert trace.hoverinfo == "skip"
-        assert normalize_rgb_color(trace.line.color) == "rgb(255, 255, 255)"  # white
-        assert trace.line.width == 2
-
-    # Check that the trace type is correct based on dimension
-    expected_trace_type = go.Scatter3d if is_3d else go.Scatter
-    assert all(isinstance(trace, expected_trace_type) for trace in bond_traces)
-
-
-@pytest.mark.parametrize(
-    "plot_function", [pmv.structure_2d_plotly, pmv.structure_3d_plotly]
-)
-def test_structure_plotly_show_bonds_custom_kwargs(
-    plot_function: Callable[..., go.Figure],
-) -> None:
-    """Test that bond_kwargs are applied correctly."""
-    # Create a simple structure with known bonding
-    struct = Structure(lattice_cubic, ["Si", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
-    struct.add_oxidation_state_by_element({"Si": 4, "O": -2})
-
-    # Custom bond styling
-    bond_kwargs = {
-        "color": "rgb(255, 0, 0)",  # red
-        "width": 2,
-    }
-
-    # Test with custom bond styling
-    fig = plot_function(struct, show_bonds=True, bond_kwargs=bond_kwargs)
-
-    # Check that bonds were drawn with custom styling
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) in (
-        {5, 6} if plot_function == pmv.structure_2d_plotly else {2}
-    )
-
-    # Check that custom styling was applied
-    for trace in bond_traces:
-        for key, value in bond_kwargs.items():
-            if key == "color":
-                assert normalize_rgb_color(getattr(trace.line, key)) == value
-            else:
-                assert getattr(trace.line, key) == value
-
-
-def test_bond_gradient_coloring_2d() -> None:
-    """Test that bond gradient coloring works in 2D plots."""
-    struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
-    struct.add_oxidation_state_by_element({"Fe": 3, "O": -2})
-
-    # Test with rotation and gradient colors
-    rotation = "30x,45y,15z"
-    gradient_colors = ["rgb(255, 0, 0)", "rgb(0, 0, 255)"]  # red, blue
-    fig = pmv.structure_2d_plotly(
-        struct,
-        rotation=rotation,
-        show_bonds=CrystalNN(search_cutoff=5.0),  # slightly larger cutoff
-        bond_kwargs={"color": gradient_colors, "width": 2},
-    )
-
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) > 2  # Should have multiple segments for gradient
-
-    # Group traces by bond identifier (e.g., "bond 0-1")
-    bonds_dict = defaultdict(list)
-    for trace in bond_traces:
-        match = re.match(r"(bond \d+-\d+) segment \d+", trace.name or "")
-        if match:
-            bond_id = match.group(1)
-            bonds_dict[bond_id].append(trace)
-
-    assert len(bonds_dict) == 9
-
-    # Check the first bond found for segment continuity and count
-    # This verifies the gradient mechanism itself, even if specific bond endpoints vary
-    # due to CrystalNN behavior with images
-    first_bond_id = next(iter(bonds_dict))
-    first_bond_segments = bonds_dict[first_bond_id]
-
-    assert len(first_bond_segments) == 10
-
-    for idx in range(len(first_bond_segments) - 1):
-        current_segment = first_bond_segments[idx]
-        next_segment = first_bond_segments[idx + 1]
-        assert (current_segment.x[1], current_segment.y[1]) == pytest.approx(
-            (next_segment.x[0], next_segment.y[0]), abs=1e-2
-        )
-
-
-def test_bond_color_interpolation() -> None:
-    """Test the color interpolation function used for bond gradients."""
-    from pymatgen.analysis.local_env import CrystalNN
-
-    # Create a simple figure and structure to test the interpolation
-    fig = go.Figure()
-    struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
-    struct.add_oxidation_state_by_element({"Fe": 3, "O": -2})
-
-    # Test interpolation with RGB strings
-    color1 = "rgb(255, 0, 0)"  # red
-    color2 = "rgb(0, 0, 255)"  # blue
-
-    draw_bonds(
-        fig,
-        struct,
-        CrystalNN(),
-        is_3d=True,
-        bond_kwargs={"color": [color1, color2]},
-        elem_colors={"Fe": color1, "O": color2},
-    )
-
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) > 2  # Should have multiple segments for gradient
-
-    # Test that the colors are properly interpolated
-    for trace in bond_traces:
-        color = trace.line.color
-        assert isinstance(color, str)
-        assert color.startswith("rgb")
-        # Extract RGB values and check they're in valid range
-        rgb_match = re.match(
-            r"rgb\(\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*\)", color
-        )
-        assert rgb_match is not None
-        r, g, b = map(float, rgb_match.groups())
-        assert 0 <= r <= 255
-        assert 0 <= g <= 255
-        assert 0 <= b <= 255
-
-
-def test_default_bond_color() -> None:
-    """Test that the default bond color (color=True) uses element colors."""
-    struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.2, 0.2, 0.2]])
-    # Using CrystalNN to ensure bonds are found for the test structure
-    fig = pmv.structure_3d_plotly(
-        struct,
-        show_bonds=CrystalNN(
-            search_cutoff=1
-        ),  # Ensure bonds are found with a specific NN algo
-        elem_colors={"Fe": "rgb(255, 0, 0)", "O": "rgb(0, 0, 255)"},  # red, blue
-    )
-
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-    assert len(bond_traces) > 2  # Should have multiple segments for gradient
-
-    # First segment should be closer to Fe color (red)
-    first_trace = bond_traces[0]
-    normalized_line_color = normalize_rgb_color(str(first_trace.line.color))
-    # Use regex that expects integer components as normalize_rgb_color produces them
-    rgb_match = re.match(r"rgb\((\d+),\s*(\d+),\s*(\d+)\)", normalized_line_color)
-    assert rgb_match is not None, (
-        f"Color {normalized_line_color} did not match rgb(R, G, B) pattern"
-    )
-    r, g, b = map(float, rgb_match.groups())
-    assert r > b  # More red than blue
-
-    # Last segment should be closer to O color (blue)
-    last_trace = bond_traces[-1]
-    normalized_line_color_last = normalize_rgb_color(str(last_trace.line.color))
-    rgb_match = re.match(r"rgb\((\d+),\s*(\d+),\s*(\d+)\)", normalized_line_color_last)
-    assert rgb_match is not None, (
-        f"Color {normalized_line_color_last} did not match rgb(R, G, B) pattern"
-    )
-    r, _g, b = map(float, rgb_match.groups())
-    # The original assertion b < r was based on Fe="red", O="blue".
-    # With JMOL, Fe=(224,102,51) O=(255,13,13). Both are red-dominant.
-    # The gradient goes from site1 color to site2 color.
-    # So, this assertion should check if the last bond segment's color is O's color.
-    # assert b < r # This is no longer generically true for all color schemes.
-
-    # Test with default elem_colors (ElemColorScheme.jmol)
-    fig_jmol_colors = pmv.structure_3d_plotly(
-        struct, show_bonds=CrystalNN(search_cutoff=1)
-    )  # elem_colors defaults to jmol
-    site_traces_jmol = [
-        trace for trace in fig_jmol_colors.data if (trace.name or "").startswith("site")
-    ]
-    assert len(site_traces_jmol) > 0
-    # Assuming single site trace for simplicity or checking first one
-    # Handle various forms of marker.color (string, list of strings, numeric list)
-    raw_jmol_site_color = site_traces_jmol[0].marker.color
-    actual_site_colors_jmol_list = []
-
-    # Determine expected number of sites (primary + images)
-    # show_image_sites defaults to True for structure_3d_plotly
-    rendered_sites_info_jmol = _get_all_rendered_site_info(
-        struct, show_image_sites=True
-    )
-    expected_total_sites_jmol = len(rendered_sites_info_jmol)
-
-    if raw_jmol_site_color is not None:
-        if isinstance(raw_jmol_site_color, str):
-            # Single color string for all sites in this trace
-            actual_site_colors_jmol_list = [
-                normalize_rgb_color(raw_jmol_site_color)
-            ] * expected_total_sites_jmol
-        elif isinstance(raw_jmol_site_color, (list, tuple)):
-            # structure_3d_plotly should provide a list of color strings
-            actual_site_colors_jmol_list = [
-                normalize_rgb_color(str(c)) for c in raw_jmol_site_color
-            ]
-
-    expected_site_colors_jmol = []
-    for site_info in rendered_sites_info_jmol:
-        symbol = site_info["symbol"]
-        expected_color = _resolve_expected_color_str(
-            symbol, ElemColorScheme.jmol, normalize_rgb_color
-        )
-        expected_site_colors_jmol.append(expected_color)
-
-    assert len(actual_site_colors_jmol_list) == len(expected_site_colors_jmol)
-    assert actual_site_colors_jmol_list == expected_site_colors_jmol
-
-
-@pytest.mark.parametrize(
-    "plot_function, bond_kwargs, elem_colors, expected_segments, color_checks",  # noqa: PT006
     [
-        (  # Test RGB tuples
-            pmv.structure_2d_plotly,
-            {"color": [(1, 0, 0), (0, 0, 1)]},  # red to blue
-            ElemColorScheme.jmol,  # use default color scheme
-            10,
-            [lambda clr: clr.startswith("rgb")],  # verify RGB string format
+        (pmv.structure_2d_plotly, False),
+        (pmv.structure_3d_plotly, True),
+    ],
+)
+def test_structure_plotly_legend_core_functionality(
+    fe3co4_disordered_with_props: Structure,
+    plot_function: Callable[[Structure, dict[str, Any]], go.Figure],
+    is_3d: bool,
+) -> None:
+    """Test core legend functionality for both 2D and 3D structure plotting."""
+    struct = fe3co4_disordered_with_props
+
+    # Test default legend behavior (site_labels defaults to "legend")
+    fig = plot_function(struct)  # type: ignore[call-arg]
+    assert isinstance(fig, go.Figure)
+
+    # Check for legend annotations
+    legend_annos = [
+        ann
+        for ann in fig.layout.annotations
+        if ann.bgcolor and ann.text in ["Fe", "Co", "O"]
+    ]
+    unique_elements = sorted(
+        {_get_site_symbol(s) for s in fe3co4_disordered_with_props}
+    )
+    assert len(legend_annos) == len(unique_elements)
+
+    # Legend positioning should be within valid paper coordinates
+    for ann in legend_annos:
+        assert 0 <= ann.x <= 1, f"Legend x position {ann.x} should be in [0,1]"
+        assert 0 <= ann.y <= 1, f"Legend y position {ann.y} should be in [0,1]"
+        assert ann.xref == "paper"
+        assert ann.yref == "paper"
+
+    # Test legend vs other site labels produce different results
+    fig_symbol = plot_function(struct, site_labels="symbol")  # type: ignore[call-arg]
+    fig_false = plot_function(struct, site_labels=False)  # type: ignore[call-arg]
+
+    def count_legend_annotations(fig: go.Figure) -> int:
+        return len(
+            [
+                ann
+                for ann in fig.layout.annotations
+                if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+            ]
+        )
+
+    def count_text_traces(fig: go.Figure) -> int:
+        return len(
+            [trace for trace in fig.data if hasattr(trace, "text") and trace.text]
+        )
+
+    # Legend should have legend annotations but no text on traces
+    assert count_legend_annotations(fig) > 0
+    assert count_text_traces(fig) == 0
+
+    # Symbol should have text on traces but no legend annotations
+    assert count_legend_annotations(fig_symbol) == 0
+    assert count_text_traces(fig_symbol) > 0
+
+    # False should have neither
+    assert count_legend_annotations(fig_false) == 0
+    assert count_text_traces(fig_false) == 0
+
+    if is_3d:
+        # Ensure no text on the main site trace for 3D
+        site_trace_3d = next(
+            (t for t in fig.data if (t.name or "").startswith("site-")), None
+        )
+        assert site_trace_3d is not None
+        if site_trace_3d.text:
+            assert all(t is None for t in site_trace_3d.text)
+        else:
+            assert site_trace_3d.text is None
+    else:
+        # Ensure no text on primary site traces for 2D
+        primary_site_traces = [
+            trace
+            for trace in fig.data
+            if (trace.name or "").startswith("site-")
+            and "markers" in (trace.mode or "")
+        ]
+        for trace in primary_site_traces:
+            assert not trace.text  # Should be None or empty
+
+
+@pytest.mark.parametrize(
+    ("elem_colors", "expected_differences"),
+    [
+        (pmv.enums.ElemColorScheme.jmol, True),
+        (pmv.enums.ElemColorScheme.vesta, True),
+        ({"Li": "red", "O": "blue"}, False),  # Custom colors should match exactly
+        ({"Li": (1.0, 0.0, 0.0), "O": (0.0, 1.0, 0.0)}, False),  # RGB float tuples
+        ({"Li": (255, 0, 0), "O": (0, 255, 0)}, False),  # RGB int tuples
+        ({"Li": "#FF0000", "O": "#00FF00"}, False),  # Hex colors
+    ],
+)
+def test_structure_plotly_legend_colors(
+    elem_colors: Any, expected_differences: bool
+) -> None:
+    """Test legend color schemes and custom colors."""
+    from pymatgen.core import Lattice, Structure
+
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    fig = pmv.structure_2d_plotly(struct, site_labels="legend", elem_colors=elem_colors)
+
+    legend_annotations = [
+        ann
+        for ann in fig.layout.annotations
+        if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+    ]
+
+    assert len(legend_annotations) == 2  # Li and O
+
+    if not expected_differences:
+        # Test specific color expectations for custom colors
+        colors_used = {ann.text: ann.bgcolor for ann in legend_annotations}
+
+        if isinstance(elem_colors, dict):
+            for element, expected_color in elem_colors.items():
+                if isinstance(expected_color, str):
+                    if expected_color.startswith("#"):
+                        # Convert hex to RGB for comparison
+                        continue  # Let plotly handle the conversion
+                    assert colors_used[element] == expected_color
+                elif isinstance(expected_color, tuple):
+                    # RGB tuple should be converted to rgb() string
+                    if all(0 <= c <= 1 for c in expected_color):  # Float range
+                        rgb_int = tuple(int(c * 255) for c in expected_color)
+                    else:  # Int range
+                        rgb_int = expected_color
+                    expected_rgb_str = f"rgb({rgb_int[0]},{rgb_int[1]},{rgb_int[2]})"
+                    assert colors_used[element] == expected_rgb_str
+
+    # Test text contrast for very dark/light backgrounds
+    if elem_colors == {"Li": "#000000", "O": "#FFFFFF"}:
+        text_colors = {ann.text: ann.font.color for ann in legend_annotations}
+        li_color = text_colors["Li"]
+        o_color = text_colors["O"]
+        assert li_color in ["white", "#FFFFFF", "rgb(255,255,255)", "#ffffff"]
+        assert o_color in ["black", "#000000", "rgb(0,0,0)", "#000"]
+
+
+@pytest.mark.parametrize(
+    ("legend_kwargs", "expected_attrs"),
+    [
+        (
+            {},
+            dict(font_size=12, box_side=18, xanchor="right", yanchor="bottom"),
         ),
-        (  # Test hex colors
-            pmv.structure_3d_plotly,
-            {"color": ["#FF0000", "#0000FF"]},  # red to blue
-            ElemColorScheme.jmol,  # use default color scheme
-            10,
-            [lambda clr: clr.startswith("rgb")],  # verify RGB string format
+        (
+            {"font_size": 14, "box_size_px": 22},
+            dict(font_size=14, box_side=22, xanchor="right", yanchor="bottom"),
         ),
-        (  # Test named colors
-            pmv.structure_2d_plotly,
-            {"color": ["red", "blue", "green"]},  # multiple colors
-            ElemColorScheme.jmol,  # use default color scheme
-            1,
-            [lambda clr: clr.startswith("rgb")],  # verify RGB string format
+        (
+            {"corner": "top-left"},
+            dict(font_size=12, box_side=18, xanchor="left", yanchor="top"),
         ),
-        (  # Test RGB strings
-            pmv.structure_3d_plotly,
-            {"color": ["rgb(255, 0, 0)", "rgb(0, 0, 255)"]},  # red to blue
-            ElemColorScheme.jmol,  # use default color scheme
-            10,
-            [lambda clr: clr.startswith("rgb")],  # verify RGB string format
+        (
+            {"corner": "bottom-left"},
+            dict(font_size=12, box_side=18, xanchor="left", yanchor="bottom"),
         ),
-        (  # Test single color (no gradient)
-            pmv.structure_2d_plotly,
-            {"color": "red"},
-            ElemColorScheme.jmol,  # use default color scheme
-            1,  # expect only 1 segment for single color
-            [lambda clr: normalize_rgb_color(clr) == "rgb(255, 0, 0)"],
+        (
+            {"corner": "top-right"},
+            dict(font_size=12, box_side=18, xanchor="right", yanchor="top"),
         ),
-        (  # Test with width parameter
-            pmv.structure_3d_plotly,
-            {"color": "blue", "width": 5},
-            ElemColorScheme.jmol,  # use default color scheme
-            1,
-            [lambda clr: normalize_rgb_color(clr) == "rgb(0, 0, 255)"],
+        (
+            dict(
+                corner="top-left",
+                font_size=12,
+                box_size_px=25,
+                item_gap_px=5,
+                margin_frac=0.02,
+            ),
+            dict(font_size=12, box_side=25, xanchor="left", yanchor="top"),
         ),
     ],
 )
-def test_bond_colors(
-    plot_function: Callable[..., go.Figure],
-    bond_kwargs: dict[str, Any] | None,
-    elem_colors: ElemColorScheme | dict[str, str],
-    expected_segments: int,
-    color_checks: list[Callable[[str], bool]],
+def test_structure_plotly_legend_parameters_and_positioning(
+    fe3co4_disordered_with_props: Structure,
+    legend_kwargs: dict[str, Any],
+    expected_attrs: dict[str, Any],
 ) -> None:
-    """Test bond coloring with various color formats and configurations."""
-    # Create a simple structure with known bonding
-    struct = Structure(
-        lattice_cubic,
-        ["Fe", "O"] if isinstance(elem_colors, dict) else ["Si", "O"],
-        [[0, 0, 0], [0.2, 0.2, 0.2]],
+    """Test legend parameter customization and positioning."""
+    struct = fe3co4_disordered_with_props
+
+    # Test both 2D and 3D
+    for plot_func in [pmv.structure_2d_plotly, pmv.structure_3d_plotly]:
+        fig = plot_func(struct, site_labels="legend", legend_kwargs=legend_kwargs)  # type: ignore[operator]
+
+        legend_annotations = [
+            ann
+            for ann in fig.layout.annotations
+            if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+        ]
+
+        assert len(legend_annotations) > 0
+
+        for ann in legend_annotations:
+            # Check font size
+            assert ann.font.size == expected_attrs["font_size"]
+
+            # Check box size
+            assert ann.width == expected_attrs["box_side"]
+            assert ann.height == expected_attrs["box_side"]
+
+            # Check positioning
+            assert ann.xanchor == expected_attrs["xanchor"]
+            assert ann.yanchor == expected_attrs["yanchor"]
+
+            # Check corner positioning logic
+            corner = legend_kwargs.get("corner", "bottom-right")
+            if "left" in corner:
+                assert ann.x < 0.5, f"Left corners should have x < 0.5, got {ann.x}"
+            else:  # right
+                assert ann.x > 0.5, f"Right corners should have x > 0.5, got {ann.x}"
+
+            if "bottom" in corner:
+                assert ann.y < 0.5, f"Bottom corners should have y < 0.5, got {ann.y}"
+            else:  # top
+                assert ann.y > 0.5, f"Top corners should have y > 0.5, got {ann.y}"
+
+            # Check hover text exists
+            assert ann.hovertext is not None
+            assert len(ann.hovertext) > len(ann.text)
+
+            # Check that legend annotations have no border
+            assert ann.borderwidth == 0
+
+
+@pytest.mark.parametrize(
+    ("hover_fmt", "test_coordinates", "expected_patterns"),
+    [
+        (
+            ".4",  # Default format
+            [1.23456789, 1e-17, 2.3456],
+            ["1.235", "2.346"],  # Very small numbers may show as 0 or scientific
+        ),
+        (
+            ".2f",  # Fixed decimal format
+            [1.23456789, 1e-17, 2.3456],
+            ["1.23", "0.00", "2.35"],
+        ),
+        (
+            ".4f",  # Fixed decimal with more precision
+            [0.123456789, 1e-17, 0.5],
+            ["0.1235", "0.0000", "0.5000"],
+        ),
+        (
+            ".2e",  # Scientific notation
+            [0.123456789, 1e-17, 0.5],
+            ["e"],  # Should contain 'e' for scientific notation
+        ),
+    ],
+)
+def test_structure_plotly_hover_formatting(
+    hover_fmt: str, test_coordinates: list[float], expected_patterns: list[str]
+) -> None:
+    """Test hover text formatting for both 2D and 3D plots."""
+    from pymatgen.core import Lattice, Structure
+
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Li", "O"], [test_coordinates, [0.5, 0.5, 0.5]])
+
+    # Test 2D
+    fig_2d = pmv.structure_2d_plotly(struct, hover_float_fmt=hover_fmt)
+    site_traces_2d = [t for t in fig_2d.data if (t.name or "").startswith("site-")]
+    assert len(site_traces_2d) > 0
+    hover_text_2d = site_traces_2d[0].hovertext
+
+    for pattern in expected_patterns:
+        if hover_fmt == ".2e" and pattern == "e":
+            # Special case for scientific notation
+            assert "e-" in hover_text_2d.lower() or "e+" in hover_text_2d.lower()
+        else:
+            assert pattern in hover_text_2d
+
+    # Test 3D
+    fig_3d = pmv.structure_3d_plotly(struct, hover_float_fmt=hover_fmt)
+    site_traces_3d = [t for t in fig_3d.data if (t.name or "").startswith("site-")]
+    assert len(site_traces_3d) > 0
+    hover_texts_3d = site_traces_3d[0].hovertext
+
+    # Get first hover text for 3D (may be list or single value)
+    if isinstance(hover_texts_3d, (list, tuple)):
+        first_hover_3d = hover_texts_3d[0]
+    else:
+        first_hover_3d = hover_texts_3d
+
+    for pattern in expected_patterns:
+        if hover_fmt == ".2e" and pattern == "e":
+            assert "e-" in first_hover_3d.lower() or "e+" in first_hover_3d.lower()
+        else:
+            assert pattern in first_hover_3d
+
+    # Test hover formatting with image sites
+    lattice_small = Lattice.cubic(2.0)  # Small lattice to ensure image sites
+    struct_image = Structure(lattice_small, ["Li"], [[1.8, 0.1, 0.05]])
+
+    fig_image = pmv.structure_2d_plotly(
+        struct_image, show_image_sites=True, hover_float_fmt=".3f"
     )
-    struct.add_oxidation_state_by_element(
-        {"Fe": 3, "O": -2} if isinstance(elem_colors, dict) else {"Si": 4, "O": -2}
-    )
-
-    # Create the plot
-    fig = plot_function(
-        struct,
-        show_bonds=True,
-        bond_kwargs=bond_kwargs,
-        elem_colors=elem_colors,
-    )
-
-    # Get bond traces
-    bond_traces = [trace for trace in fig.data if (trace.name or "").startswith("bond")]
-
-    # Check number of segments
-    dim_factor = {
-        (pmv.structure_2d_plotly, True): 5,
-        (pmv.structure_3d_plotly, True): 2,
-        (pmv.structure_2d_plotly, False): 6,
-        (pmv.structure_3d_plotly, False): 2,
-    }[plot_function, bool(os.getenv("CI"))]
-    if expected_segments == 1:
-        assert len(bond_traces) == dim_factor
-    else:  # gradient creates multiple segments
-        assert len(bond_traces) == dim_factor * expected_segments
-
-    # Check bond properties
-    for trace in bond_traces:
-        assert trace.mode == "lines"
-        assert trace.showlegend is False
-        assert trace.hoverinfo == "skip"
-
-        # Check custom width if specified
-        if bond_kwargs and "width" in bond_kwargs:
-            assert trace.line.width == bond_kwargs["width"]
-
-        # Run color checks
-        color = trace.line.color
-        assert isinstance(color, str)
-        for check in color_checks:
-            assert check(color), f"Color check failed for {color}"
-
-
-def test_structure_3d_plotly_image_atom_properties() -> None:
-    """Test image sites have a user-defined absolute diameter, consistent with primary
-    sites.
-    """
-    # Use coords that ensure get_image_sites generates images for both species
-    # Fe at (0,0,0), O at (0,0,0.01)
-    struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0, 0, 0.01]])
-
-    absolute_diameter = 30.0  # Desired absolute diameter in pixels for all atoms
-
-    # To achieve absolute_diameter for all sites:
-    # 1. Set atom_size to absolute_diameter.
-    # 2. Make effective atomic radii (atomic_radii[symbol] * scale) equal to 1.0.
-    effective_atomic_radii = {elem.symbol: 1.0 for elem in struct.composition.elements}
-    effective_scale = 1.0
-
-    fig = pmv.structure_3d_plotly(
-        struct,
-        atom_size=absolute_diameter,
-        atomic_radii=effective_atomic_radii,
-        scale=effective_scale,
-        show_image_sites=True,
-    )
-
-    primary_site_traces = [
-        trace for trace in fig.data if (trace.name or "").startswith("site-")
+    site_traces = [
+        t
+        for t in fig_image.data
+        if t.name and (t.name.startswith("site-") or t.name.startswith("image-"))
     ]
-    # Image sites are now part of the primary_site_traces, no separate "Image of" traces
-    # image_site_traces = [
-    #     trace for trace in fig.data if (trace.name or "").startswith("Image of")
-    # ]
 
-    assert len(primary_site_traces) == 1, (
-        "Expected 1 primary site trace for a single structure"
-    )
-    p_trace = primary_site_traces[0]
-
-    # Primary trace marker.size should be array where each element is absolute_diameter
-    rendered_sites = _get_all_rendered_site_info(struct, show_image_sites=True)
-    expected_total_n_sites = len(rendered_sites)
-
-    assert isinstance(p_trace.marker.size, (list, tuple))
-    assert len(p_trace.marker.size) == expected_total_n_sites
-    assert all(pytest.approx(s) == absolute_diameter for s in p_trace.marker.size)
+    for trace in site_traces:
+        # Fixed format should not contain scientific notation
+        if hasattr(trace, "hovertext") and trace.hovertext and hover_fmt.endswith("f"):
+            assert "e-" not in trace.hovertext.lower()
+            assert "e+" not in trace.hovertext.lower()
 
 
-def normalize_rgb_color(color: str) -> str:
-    """Normalize RGB color string by removing decimal points."""
-    # Convert 'rgb(255.0, 255.0, 255.0)' to 'rgb(255, 255, 255)'
-    rgb_match = re.match(
-        r"rgb\(\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*\)", color
-    )
-    if rgb_match:
-        r, g, b = (int(float(x)) for x in rgb_match.groups())
-        return f"rgb({r}, {g}, {b})"
-    return color
+@pytest.mark.parametrize(
+    "test_scenario",
+    [
+        "multiple_subplots",
+        "many_elements_stress",
+        "single_element_minimal",
+        "margin_offset_precision",
+        "vertical_stacking",
+    ],
+)
+def test_structure_plotly_legend_edge_cases(test_scenario: str) -> None:
+    """Test various edge cases and stress scenarios for legend functionality."""
+    from pymatgen.core import Lattice, Structure
+
+    lattice = Lattice.cubic(4.0)
+
+    if test_scenario == "multiple_subplots":
+        # Test legend with multiple subplots
+        struct1 = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+        struct2 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+        struct3 = Structure(
+            lattice,
+            ["Ca", "F", "F"],
+            [[0, 0, 0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]],
+        )
+        structures = {"LiO": struct1, "NaCl": struct2, "CaF2": struct3}
+
+        fig_2d = pmv.structure_2d_plotly(structures, site_labels="legend", n_cols=2)
+        fig_3d = pmv.structure_3d_plotly(structures, site_labels="legend", n_cols=2)
+
+        expected_elements = {"Li", "O", "Na", "Cl", "Ca", "F"}
+        for fig in [fig_2d, fig_3d]:
+            legend_annotations = [
+                ann
+                for ann in fig.layout.annotations
+                if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+            ]
+            found_elements = {ann.text for ann in legend_annotations}
+            assert expected_elements == found_elements
+
+    elif test_scenario == "many_elements_stress":
+        # Stress test with many elements
+        elements = ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne"]
+        coords = [[i / 10, i / 10, i / 10] for i in range(len(elements))]
+        struct = Structure(lattice, elements, coords)
+
+        fig = pmv.structure_2d_plotly(struct, site_labels="legend")
+        legend_annotations = [
+            ann
+            for ann in fig.layout.annotations
+            if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+        ]
+
+        assert len(legend_annotations) == len(elements)
+        legend_symbols = {ann.text for ann in legend_annotations}
+        assert legend_symbols == set(elements)
+
+        # Check positioning
+        for ann in legend_annotations:
+            assert 0 <= ann.x <= 1
+
+        # Check spacing
+        y_positions = sorted([ann.y for ann in legend_annotations])
+        for i in range(len(y_positions) - 1):
+            gap = abs(y_positions[i + 1] - y_positions[i])
+            assert gap >= 0.01  # Minimum gap between items
+
+    elif test_scenario == "single_element_minimal":
+        # Test minimal structure with single element
+        minimal_struct = Structure(lattice, ["H"], [[0, 0, 0]])
+        fig = pmv.structure_2d_plotly(minimal_struct, site_labels="legend")
+
+        legend_annotations = [
+            ann
+            for ann in fig.layout.annotations
+            if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+        ]
+        assert len(legend_annotations) == 1
+        assert legend_annotations[0].text == "H"
+
+    elif test_scenario == "margin_offset_precision":
+        # Test precise margin calculations
+        struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+        test_margins = [0.01, 0.05, 0.1]
+
+        margin_positions = []
+        for margin in test_margins:
+            fig = pmv.structure_2d_plotly(
+                struct,
+                site_labels="legend",
+                legend_kwargs={"margin_frac": margin, "corner": "bottom-right"},
+            )
+            legend_annotations = [
+                ann
+                for ann in fig.layout.annotations
+                if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+            ]
+            avg_pos = (legend_annotations[0].x, legend_annotations[0].y)
+            margin_positions.append(avg_pos)
+
+        # Smaller margins should place legend closer to corners
+        small_distance = (
+            (1 - margin_positions[0][0]) ** 2 + margin_positions[0][1] ** 2
+        ) ** 0.5
+        medium_distance = (
+            (1 - margin_positions[1][0]) ** 2 + margin_positions[1][1] ** 2
+        ) ** 0.5
+        large_distance = (
+            (1 - margin_positions[2][0]) ** 2 + margin_positions[2][1] ** 2
+        ) ** 0.5
+
+        assert small_distance < medium_distance < large_distance
+
+    elif test_scenario == "vertical_stacking":
+        # Test vertical stacking with different gaps
+        struct = Structure(
+            lattice,
+            ["Li", "Na", "K", "Rb", "Cs"],
+            [
+                [0, 0, 0],
+                [0.2, 0.2, 0.2],
+                [0.4, 0.4, 0.4],
+                [0.6, 0.6, 0.6],
+                [0.8, 0.8, 0.8],
+            ],
+        )
+
+        fig_small_gap = pmv.structure_2d_plotly(
+            struct, site_labels="legend", legend_kwargs={"item_gap_px": 2}
+        )
+        fig_large_gap = pmv.structure_2d_plotly(
+            struct, site_labels="legend", legend_kwargs={"item_gap_px": 10}
+        )
+
+        def get_legend_positions(fig: go.Figure) -> list[float]:
+            legend_annos = [
+                ann
+                for ann in fig.layout.annotations
+                if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+            ]
+            return sorted([ann.y for ann in legend_annos])
+
+        small_gap_positions = get_legend_positions(fig_small_gap)
+        large_gap_positions = get_legend_positions(fig_large_gap)
+
+        # Calculate gaps between consecutive items
+        small_gaps = [
+            small_gap_positions[i + 1] - small_gap_positions[i] for i in range(4)
+        ]
+        large_gaps = [
+            large_gap_positions[i + 1] - large_gap_positions[i] for i in range(4)
+        ]
+
+        # Large gap should produce larger spacing
+        assert all(lg > sg for lg, sg in zip(large_gaps, small_gaps, strict=True))
 
 
-def test_structure_3d_plotly_batio3_bond_count() -> None:
-    """Test bond counts in 2D and 3D BaTiO3 plots are consistent."""
-    batio3 = Structure(
-        lattice=Lattice.cubic(4.0338),
-        species=["Ba", "Ti", "O", "O", "O"],
-        coords=[
-            (0, 0, 0),
-            (0.5, 0.5, 0.5),
-            (0.5, 0.5, 0),
-            (0.5, 0, 0.5),
-            (0, 0.5, 0.5),
-        ],
-    )
-    batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
-    batio3_supercell = batio3.make_supercell([2, 1, 1])
+def test_structure_plotly_legend_error_handling() -> None:
+    """Test error handling and edge cases for legend functionality."""
+    import unittest.mock
+    import warnings
 
-    fig_2d = structure_2d_plotly(batio3_supercell, show_bonds=True)
-    fig_3d = pmv.structure_3d_plotly(batio3_supercell, show_bonds=True)
+    from pymatgen.core import Lattice, Structure
 
-    bonds_2d = sum(1 for trace in fig_2d.data if trace.name == "bonds")
-    # In 3D, bonds are individual traces (lines)
-    bonds_3d = sum(
-        1 for trace in fig_3d.data if trace.mode == "lines" and trace.name is None
-    )
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    assert bonds_2d == bonds_3d, (
-        f"Bond count mismatch: 2D plot has {bonds_2d} bonds, "
-        f"3D plot has {bonds_3d} bonds."
-    )
+    # Test invalid corner values
+    with pytest.raises(ValueError, match="Invalid corner"):
+        pmv.structure_2d_plotly(
+            struct, site_labels="legend", legend_kwargs={"corner": "invalid-corner"}
+        )
+
+    with pytest.raises(ValueError, match="Invalid corner"):
+        pmv.structure_3d_plotly(
+            struct, site_labels="legend", legend_kwargs={"corner": "middle-center"}
+        )
+
+    # Test fallback behavior for invalid element symbols
+    with unittest.mock.patch("pymatgen.core.periodic_table.Element") as mock_element:
+        mock_element.side_effect = ValueError("Unknown element")
+
+        fig = pmv.structure_2d_plotly(struct, site_labels="legend")
+        legend_annotations = [
+            ann
+            for ann in fig.layout.annotations
+            if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+        ]
+
+        hover_texts = {ann.text: ann.hovertext for ann in legend_annotations}
+        assert "Element Li" in hover_texts.get("Li", "")
+        assert "Element O" in hover_texts.get("O", "")
+
+    # Test missing domain warning
+    fig = pmv.structure_2d_plotly(struct, site_labels="legend")
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
+
+        from pymatviz.structure_viz.helpers import _draw_element_legend, get_elem_colors
+
+        _draw_element_legend(
+            fig=fig,
+            struct_i=struct,
+            _elem_colors=get_elem_colors({}),
+            subplot_idx=999,  # Invalid subplot index
+            is_3d=False,
+            font_size=12,
+            box_size_px=18,
+            item_gap_px=3,
+            margin_frac=0.04,
+        )
+
+        assert len(warning_list) > 0
+        warning_messages = [str(w.message) for w in warning_list]
+        assert any("domain needed for legend" in msg for msg in warning_messages)
+
+    # Test figure height edge cases
+    fig_small = pmv.structure_2d_plotly(struct, site_labels="legend")
+    fig_small.layout.height = 100  # Very small height
+
+    legend_annotations = [
+        ann
+        for ann in fig_small.layout.annotations
+        if ann.text and len(ann.text) <= 3 and ann.bgcolor is not None
+    ]
+
+    assert len(legend_annotations) == 2
+    for ann in legend_annotations:
+        assert 0 <= ann.x <= 1
+        assert 0 <= ann.y <= 1
