@@ -39,16 +39,7 @@ batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
 
 # Demonstrate custom legend positioning and sizing
 fig = pmv.structure_3d_plotly(
-    batio3,
-    show_unit_cell={"edge": dict(color="white", width=2)},
-    show_bonds=True,
-    legend_kwargs=dict(
-        corner="top-left",  # Place legend in top-left corner
-        margin_frac=0.02,  # Reduce offset from plot area corner
-        box_size_px=30,  # Increase size of each element tile
-        font_size=14,  # Increase font size for better readability
-        item_gap_px=10,  # Increase gap between legend items
-    ),
+    batio3, show_unit_cell={"edge": dict(color="white", width=2)}, show_bonds=True
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "bato3-structure-3d-plotly")
@@ -88,3 +79,85 @@ title = "Li0.8CoO2 with Li Vacancies"
 fig.layout.title = title
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "lco-structure-3d-plotly")
+
+
+# %% 2x2 Grid showcasing multiple customization options
+# Structure 1: Diamond cubic silicon with vdW color scheme
+si_diamond = Structure(
+    lattice=Lattice.cubic(5.43),
+    species=["Si"] * 8,
+    coords=[
+        (0, 0, 0),
+        (0.25, 0.25, 0.25),
+        (0.5, 0.5, 0),
+        (0.75, 0.75, 0.25),
+        (0.5, 0, 0.5),
+        (0.75, 0.25, 0.75),
+        (0, 0.5, 0.5),
+        (0.25, 0.75, 0.75),
+    ],
+)
+
+# Structure 2: Perovskite CaTiO3 with CPK colors
+catio3 = Structure(
+    lattice=Lattice.cubic(3.84),
+    species=["Ca", "Ti", "O", "O", "O"],
+    coords=[(0, 0, 0), (0.5, 0.5, 0.5), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
+)
+catio3.add_oxidation_state_by_element({"Ca": 2, "Ti": 4, "O": -2})
+
+# Structure 3: Zinc blende ZnS with VESTA colors
+zns = Structure(
+    lattice=Lattice.cubic(5.41),
+    species=["Zn", "S", "Zn", "S"],
+    coords=[(0, 0, 0), (0.25, 0.25, 0.25), (0.5, 0.5, 0), (0.75, 0.75, 0.25)],
+).make_supercell([2, 2, 1])
+
+# Structure 4: Layered MoS2 with accessible colors
+mos2_lattice = Lattice.hexagonal(3.16, 12.30)
+mos2 = Structure(
+    lattice=mos2_lattice,
+    species=["Mo", "S", "S"],
+    coords=[(0, 0, 0.5), (0.333, 0.667, 0.375), (0.333, 0.667, 0.625)],
+).make_supercell([2, 2, 2])
+
+structures_grid = {
+    "Si Diamond (Jmol colors)": si_diamond,
+    "CaTiO₃ Perovskite (VESTA colors)": catio3,
+    "ZnS Zinc Blende (Alloy colors)": zns,
+    "MoS₂ Layered (Pastel colors)": mos2,
+}
+
+fig = pmv.structure_3d_plotly(
+    structures_grid,
+    elem_colors={  # different color schemes to showcase variety
+        "Si Diamond (Jmol colors)": ElemColorScheme.jmol,
+        "CaTiO₃ Perovskite (VESTA colors)": ElemColorScheme.vesta,
+        "ZnS Zinc Blende (Alloy colors)": ElemColorScheme.alloy,
+        "MoS₂ Layered (Pastel colors)": ElemColorScheme.pastel,
+    },
+    # Show unit cells with different styling for each subplot
+    show_unit_cell={
+        "Si Diamond (Jmol colors)": {"edge": dict(color="red", width=2.5)},
+        "CaTiO₃ Perovskite (VESTA colors)": {"edge": dict(color="blue", width=2)},
+        "ZnS Zinc Blende (Alloy colors)": {"edge": dict(color="green", width=1.5)},
+        "MoS₂ Layered (Pastel colors)": {"edge": dict(color="purple", width=3)},
+    },
+    hover_text=SiteCoords.cartesian_fractional,
+    show_bonds={  # Show bonds for some structures but not others
+        "Si Diamond (Jmol colors)": True,
+        "CaTiO₃ Perovskite (VESTA colors)": True,
+        "ZnS Zinc Blende (Alloy colors)": False,
+        "MoS₂ Layered (Pastel colors)": True,
+    },
+)
+
+fig.update_layout(
+    title=dict(text="Kitchen Sink of Customization Options", x=0.5),
+    showlegend=True,
+    width=1200,
+    height=900,
+)
+
+fig.show()
+# pmv.io.save_and_compress_svg(fig, "structures-2x2-grid-comprehensive-options")
