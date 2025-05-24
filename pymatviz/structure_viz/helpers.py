@@ -1028,8 +1028,14 @@ def _draw_element_legend(
 
     for item_idx, symbol in enumerate(unique_symbols):
         elem_color = _elem_colors.get(symbol, "gray")
-        if isinstance(elem_color, tuple) and isinstance(elem_color[0], float):
-            r, g, b = (int(c * 255) if 0 <= c <= 1 else int(c) for c in elem_color)
+        if isinstance(elem_color, tuple) and [type(c) for c in elem_color] in (
+            [float, float, float],
+            [int, int, int],
+        ):
+            r, g, b = (
+                int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)  # type: ignore[arg-type]
+                for c in elem_color
+            )
             elem_color_str = f"rgb({r},{g},{b})"
         else:
             elem_color_str = str(elem_color)
