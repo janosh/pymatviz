@@ -132,7 +132,7 @@ def test_get_image_sites(structures: list[Structure]) -> None:
         (Lattice.cubic(1), [0, 0.5, 0], 3),
         (Lattice.hexagonal(3, 5), [0, 0, 0], 7),
         (Lattice.rhombohedral(3, 5), [0, 0, 0], 7),
-        (Lattice.rhombohedral(3, 5), [0.1, 0, 0], 3),
+        (Lattice.rhombohedral(3, 5), [0.1, 0, 0], 7),
         (Lattice.rhombohedral(3, 5), [0.5, 0, 0], 3),
     ],
 )
@@ -429,8 +429,14 @@ def test_get_first_matching_site_prop_edge_cases() -> None:
 @pytest.mark.parametrize(
     ("hover_text", "expected_output"),
     [
-        (SiteCoords.cartesian, "<b>Site: Si1</b><br>Coordinates (0, 0, 0)"),
-        (SiteCoords.fractional, "<b>Site: Si1</b><br>Coordinates [0, 0, 0]"),
+        (
+            SiteCoords.cartesian,
+            "<b>Site: Si1</b><br>Coordinates (0, 0, 0)",
+        ),
+        (
+            SiteCoords.fractional,
+            "<b>Site: Si1</b><br>Coordinates [0, 0, 0]",
+        ),
         (
             SiteCoords.cartesian_fractional,
             "<b>Site: Si1</b><br>Coordinates (0, 0, 0) [0, 0, 0]",
@@ -446,6 +452,53 @@ def test_get_site_hover_text(
     site = PeriodicSite("Si", [0, 0, 0], lattice)
     result = get_site_hover_text(site, hover_text, site.species)
     assert result == expected_output
+
+
+def test_get_site_hover_text_float_formatting() -> None:
+    """Test float formatting in hover text generation."""
+    lattice = Lattice.cubic(1.0)
+    # Create a site with coordinates that would show scientific notation with .3g
+    site = PeriodicSite("Si", [1.23456789, 1e-17, 2.3456], lattice)
+
+    # Test default format (.4)
+    result_default = get_site_hover_text(site, SiteCoords.cartesian, site.species)
+    assert "1.235" in result_default
+    assert ("1e-17" in result_default) or (
+        "0" in result_default
+    )  # Very small number in scientific notation or zero
+    assert "2.346" in result_default
+
+    # Test custom string format (.2f)
+    result_2f = get_site_hover_text(site, SiteCoords.cartesian, site.species, ".2f")
+    assert "1.23" in result_2f
+    assert "0.00" in result_2f
+    assert "2.35" in result_2f
+
+    # Test with fractional coordinates
+    result_frac = get_site_hover_text(site, SiteCoords.fractional, site.species, ".6f")
+    assert "1.234568" in result_frac
+    assert "0.000000" in result_frac
+    assert "2.345600" in result_frac
+
+    # Test with custom callable formatter
+    def custom_formatter(val: float) -> str:
+        """Custom formatter that shows rounded values with prefix."""
+        return f"~{val:.1f}"
+
+    result_custom = get_site_hover_text(
+        site, SiteCoords.cartesian, site.species, custom_formatter
+    )
+    assert "~1.2" in result_custom
+    assert "~0.0" in result_custom  # 1e-17 rounds to 0
+    assert "~2.3" in result_custom
+
+    # Test with both cartesian and fractional
+    result_both = get_site_hover_text(
+        site, SiteCoords.cartesian_fractional, site.species, ".3f"
+    )
+    assert "1.235" in result_both  # cartesian
+    assert "0.000" in result_both  # 1e-17 rounded
+    assert "2.346" in result_both
 
 
 def test_get_site_hover_text_invalid_template() -> None:

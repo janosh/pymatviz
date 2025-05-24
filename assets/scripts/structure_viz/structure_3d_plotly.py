@@ -37,10 +37,18 @@ batio3 = Structure(
 # Add oxidation states to help with bond determination
 batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
 
+# Demonstrate custom legend positioning and sizing
 fig = pmv.structure_3d_plotly(
     batio3,
     show_unit_cell={"edge": dict(color="white", width=2)},
     show_bonds=True,
+    legend_kwargs=dict(
+        corner="top-left",  # Place legend in top-left corner
+        margin_frac=0.02,  # Reduce offset from plot area corner
+        box_size_px=30,  # Increase size of each element tile
+        font_size=14,  # Increase font size for better readability
+        item_gap_px=10,  # Increase gap between legend items
+    ),
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "bato3-structure-3d-plotly")
@@ -75,7 +83,6 @@ fig = pmv.structure_3d_plotly(
     lco_supercell,
     show_unit_cell={"edge": dict(color="white", width=1.5)},
     elem_colors=ElemColorScheme.jmol,
-    site_labels="symbol",
 )
 title = "Li0.8CoO2 with Li Vacancies"
 fig.layout.title = title
