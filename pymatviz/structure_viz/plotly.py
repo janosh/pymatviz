@@ -731,7 +731,7 @@ def structure_3d_plotly(
             yaxis=no_axes_kwargs,
             zaxis=no_axes_kwargs,
             aspectmode="data",
-            bgcolor="rgba(90, 90, 90, 0.01)",  # Transparent background
+            bgcolor="rgba(80,80,80,0.01)",
         )
 
     # Calculate subplot positions with small gap
