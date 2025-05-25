@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from pymatgen.core import Lattice, Structure
+
+
+if "IPython" not in sys.modules:
+    # Mock IPython module to avoid import errors in CI
+    mock_ipython = MagicMock()
+    mock_ipython.display.publish_display_data = MagicMock()
+    # Set version_info to a high version to satisfy matplotlib's version check
+    mock_ipython.version_info = (8, 24, 0)  # >= (8, 24) to pass matplotlib check
+    sys.modules["IPython"] = mock_ipython
+    sys.modules["IPython.display"] = mock_ipython.display
 
 import pymatviz.notebook as pmv_notebook
 
