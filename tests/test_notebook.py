@@ -19,7 +19,8 @@ if "IPython" not in sys.modules:
     sys.modules["IPython"] = mock_ipython
     sys.modules["IPython.display"] = mock_ipython.display
 
-import pymatviz.notebook as pmv_notebook
+import pymatviz as pmv
+from pymatviz import notebook
 
 
 @pytest.fixture
@@ -99,7 +100,7 @@ def test_hide_plotly_toolbar() -> None:
             self.layout_updates.append(kwargs)
 
     fig = MockFig()
-    pmv_notebook._hide_plotly_toolbar(fig)
+    notebook._hide_plotly_toolbar(fig)
 
     # Check that update_layout was called with modebar config
     assert len(fig.layout_updates) == 1
@@ -123,13 +124,13 @@ def test_hide_plotly_toolbar() -> None:
 
 
 @pytest.mark.parametrize("enable", [True, False])
-def test_pymatviz_notebook_toggle(enable: bool) -> None:
+def test_notebook_mode_toggle(enable: bool) -> None:
     """Test enabling and disabling notebook integration."""
     # Start with opposite state
-    pmv_notebook.pymatviz_notebook(on=not enable)
+    pmv.notebook_mode(on=not enable)
 
     # Toggle to desired state
-    pmv_notebook.pymatviz_notebook(on=enable)
+    pmv.notebook_mode(on=enable)
 
     # Check Structure (always available)
     assert hasattr(Structure, "_ipython_display_") == enable
@@ -157,16 +158,12 @@ def test_pymatviz_notebook_toggle(enable: bool) -> None:
             pass  # Module not available
 
     # Clean up
-    pmv_notebook.pymatviz_notebook(on=False)
+    pmv.notebook_mode(on=False)
 
 
 @pytest.mark.parametrize(
     ("obj_name", "should_skip"),
-    [
-        ("structure", False),
-        ("ase_atoms", True),  # Skip if obj is None
-        ("diffraction_pattern", True),  # Skip if obj is None
-    ],
+    [("structure", False), ("ase_atoms", True), ("diffraction_pattern", True)],
 )
 def test_object_display_methods(
     test_objects: dict[str, Any],
@@ -180,7 +177,7 @@ def test_object_display_methods(
     if should_skip and obj is None:
         pytest.skip(f"{obj_name} not available")
 
-    pmv_notebook.pymatviz_notebook(on=True)
+    pmv.notebook_mode(on=True)
 
     # Mock publish_display_data to capture what gets published
     published_data = []
@@ -210,16 +207,12 @@ def test_object_display_methods(
             assert "layout" in plotly_json
 
     finally:
-        pmv_notebook.pymatviz_notebook(on=False)
+        pmv.notebook_mode(on=False)
 
 
 @pytest.mark.parametrize(
     ("obj_name", "should_skip"),
-    [
-        ("structure", False),
-        ("ase_atoms", True),  # Skip if obj is None
-        ("diffraction_pattern", True),  # Skip if obj is None
-    ],
+    [("structure", False), ("ase_atoms", True), ("diffraction_pattern", True)],
 )
 def test_object_repr_mimebundle(
     test_objects: dict[str, Any], obj_name: str, should_skip: bool
@@ -230,13 +223,11 @@ def test_object_repr_mimebundle(
     if should_skip and obj is None:
         pytest.skip(f"{obj_name} not available")
 
-    pmv_notebook.pymatviz_notebook(on=True)
+    pmv.notebook_mode(on=True)
 
     try:
-        # Call the method
         mime_bundle = obj._repr_mimebundle_()
 
-        # Check that it returns the expected MIME types
         assert isinstance(mime_bundle, dict)
         assert "text/plain" in mime_bundle
 
@@ -248,7 +239,7 @@ def test_object_repr_mimebundle(
             assert "layout" in plotly_json
 
     finally:
-        pmv_notebook.pymatviz_notebook(on=False)
+        pmv.notebook_mode(on=False)
 
 
 @pytest.mark.parametrize(
@@ -266,27 +257,24 @@ def test_repr_mimebundle_with_include_exclude_params(
     exclude: set[str] | None,
 ) -> None:
     """Test _repr_mimebundle_ with include and exclude parameters."""
-    pmv_notebook.pymatviz_notebook(on=True)
+    pmv.notebook_mode(on=True)
 
-    try:
-        # Call the method with parameters
+    try:  # Call the method with parameters
         mime_bundle = structures[0]._repr_mimebundle_(include=include, exclude=exclude)
 
-        # Check that it returns the expected MIME types
         assert isinstance(mime_bundle, dict)
         assert "application/vnd.plotly.v1+json" in mime_bundle
         assert "text/plain" in mime_bundle
 
     finally:
-        pmv_notebook.pymatviz_notebook(on=False)
+        pmv.notebook_mode(on=False)
 
 
 def test_structure_toolbar_hiding(structures: tuple[Structure, Structure]) -> None:
     """Test that plotly toolbar is properly hidden in structure display."""
-    pmv_notebook.pymatviz_notebook(on=True)
+    pmv.notebook_mode(on=True)
 
     try:
-        # Call the method
         mime_bundle = structures[0]._repr_mimebundle_()
 
         # Check that plotly JSON has toolbar configuration
@@ -303,7 +291,7 @@ def test_structure_toolbar_hiding(structures: tuple[Structure, Structure]) -> No
             assert "lasso" in removed_buttons
 
     finally:
-        pmv_notebook.pymatviz_notebook(on=False)
+        pmv.notebook_mode(on=False)
 
 
 def test_fallback_without_pymatviz(
@@ -330,10 +318,9 @@ def test_fallback_without_pymatviz(
         "IPython.display.publish_display_data", mock_publish_display_data
     )
 
-    pmv_notebook.pymatviz_notebook(on=True)
+    pmv.notebook_mode(on=True)
 
-    try:
-        # Test _ipython_display_ fallback
+    try:  # Test _ipython_display_ fallback
         structures[0]._ipython_display_()
         assert len(published_data) == 1
         display_data = published_data[0]
@@ -346,22 +333,21 @@ def test_fallback_without_pymatviz(
         assert "application/vnd.plotly.v1+json" not in mime_bundle
 
     finally:
-        pmv_notebook.pymatviz_notebook(on=False)
+        pmv.notebook_mode(on=False)
 
 
 def test_multiple_enable_disable_cycles() -> None:
     """Test that multiple enable/disable cycles work correctly."""
-    # Start with disabled state
-    pmv_notebook.pymatviz_notebook(on=False)
+    pmv.notebook_mode(on=False)  # Start with disabled state
     assert not hasattr(Structure, "_ipython_display_")
 
     # Enable -> Disable -> Enable -> Disable
     for _ in range(3):
-        pmv_notebook.pymatviz_notebook(on=True)
+        pmv.notebook_mode(on=True)
         assert hasattr(Structure, "_ipython_display_")
         assert hasattr(Structure, "_repr_mimebundle_")
 
-        pmv_notebook.pymatviz_notebook(on=False)
+        pmv.notebook_mode(on=False)
         assert not hasattr(Structure, "_ipython_display_")
         assert not hasattr(Structure, "_repr_mimebundle_")
 
@@ -380,7 +366,7 @@ def test_multiple_enable_disable_cycles() -> None:
 def test_import_error_handling(
     import_error_modules: list[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Test pymatviz_notebook function when various imports fail."""
+    """Test notebook_mode function when various imports fail."""
     original_import = __import__
 
     def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
@@ -391,8 +377,8 @@ def test_import_error_handling(
     monkeypatch.setattr("builtins.__import__", mock_import)
 
     # Test enabling and disabling with import failures
-    pmv_notebook.pymatviz_notebook(on=True)
-    pmv_notebook.pymatviz_notebook(on=False)
+    pmv.notebook_mode(on=True)
+    pmv.notebook_mode(on=False)
 
 
 def test_direct_function_calls_coverage() -> None:
@@ -401,23 +387,21 @@ def test_direct_function_calls_coverage() -> None:
     lattice = Lattice.cubic(4.0)
     structure = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    result = pmv_notebook._structure_repr_mimebundle_(structure)
+    result = notebook._structure_repr_mimebundle_(structure)
     assert isinstance(result, dict)
     assert "text/plain" in result
 
-    # Test ASE atoms functions if available
-    try:
+    try:  # Test ASE atoms functions if available
         from ase.build import bulk
 
         atoms = bulk("Si", "diamond", a=5.43)
-        result = pmv_notebook._ase_atoms_repr_mimebundle_(atoms)
+        result = notebook._ase_atoms_repr_mimebundle_(atoms)
         assert isinstance(result, dict)
         assert "text/plain" in result
     except ImportError:
         pass  # ASE not available
 
-    # Test diffraction pattern functions if available
-    try:
+    try:  # Test diffraction pattern functions if available
         from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 
         pattern = DiffractionPattern(
@@ -426,7 +410,7 @@ def test_direct_function_calls_coverage() -> None:
             hkls=[[{"hkl": (1, 0, 0)}], [{"hkl": (1, 1, 0)}], [{"hkl": (1, 1, 1)}]],
             d_hkls=[2.5, 2.0, 1.8],
         )
-        result = pmv_notebook._diffraction_pattern_repr_mimebundle_(pattern)
+        result = notebook._diffraction_pattern_repr_mimebundle_(pattern)
         assert isinstance(result, dict)
         assert "text/plain" in result
     except ImportError:
@@ -460,10 +444,10 @@ def test_phonon_display_functions(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # Test phonon bands functions
     try:
-        pmv_notebook._phonon_bands_ipython_display_(mock_bands)
+        notebook._phonon_bands_ipython_display_(mock_bands)
         assert len(published_data) >= 1
 
-        result = pmv_notebook._phonon_bands_repr_mimebundle_(mock_bands)
+        result = notebook._phonon_bands_repr_mimebundle_(mock_bands)
         assert isinstance(result, dict)
         assert "text/plain" in result
     except (TypeError, ImportError):
@@ -473,10 +457,10 @@ def test_phonon_display_functions(monkeypatch: pytest.MonkeyPatch) -> None:
     # Test phonon DOS functions
     try:
         published_data.clear()
-        pmv_notebook._phonon_dos_ipython_display_(mock_dos)
+        notebook._phonon_dos_ipython_display_(mock_dos)
         assert len(published_data) >= 1
 
-        result = pmv_notebook._phonon_dos_repr_mimebundle_(mock_dos)
+        result = notebook._phonon_dos_repr_mimebundle_(mock_dos)
         assert isinstance(result, dict)
         assert "text/plain" in result
     except (TypeError, ImportError):

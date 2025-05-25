@@ -99,12 +99,12 @@ structures["Tetragonal"]
 # %%
 # Manual control (optional) - New unified function
 nacl = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-pmv.pymatviz_notebook(on=False)  # Disable auto-rendering
+pmv.notebook_mode(on=False)  # Disable auto-rendering
 nacl  # Now displays as text
 
 
 # %%
-pmv.pymatviz_notebook(on=True)  # Re-enable auto-rendering
+pmv.notebook_mode(on=True)  # Re-enable auto-rendering
 nacl  # Auto-renders again
 
 
@@ -120,10 +120,10 @@ nacl_xrd  # Auto-renders as XRD pattern plot
 
 # %%
 # Additional examples with the unified API
-pmv.pymatviz_notebook(on=False)  # Disable auto-rendering
+pmv.notebook_mode(on=False)  # Disable auto-rendering
 nacl  # Now displays as text
 
 
 # %%
-pmv.pymatviz_notebook(on=True)  # Re-enable auto-rendering
+pmv.notebook_mode(on=True)  # Re-enable auto-rendering
 nacl  # Auto-renders again

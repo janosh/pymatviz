@@ -81,7 +81,7 @@ _phonon_dos_ipython_display_, _phonon_dos_repr_mimebundle_ = _create_display_met
 )
 
 
-def pymatviz_notebook(*, on: bool) -> None:
+def notebook_mode(*, on: bool) -> None:
     """Enable or disable pymatviz notebook display for pymatgen classes.
 
     This function adds or removes IPython display methods to/from various pymatgen
