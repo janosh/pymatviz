@@ -184,7 +184,7 @@ def _compare_colors(
                 "atom_size": 30,
                 "elem_colors": ElemColorScheme.jmol,
                 "scale": 1,
-                "show_unit_cell": True,
+                "show_cell": True,
                 "show_sites": True,
                 "site_labels": "symbol",
                 "standardize_struct": None,
@@ -200,7 +200,7 @@ def _compare_colors(
                 "atom_size": 50,
                 "elem_colors": ElemColorScheme.vesta,
                 "scale": 1.5,
-                "show_unit_cell": False,
+                "show_cell": False,
                 "show_sites": False,
                 "standardize_struct": True,
                 "n_cols": 4,
@@ -215,7 +215,7 @@ def _compare_colors(
                 "atom_size": 40,
                 "elem_colors": {"Fe": "red", "O": "blue"},
                 "scale": 1.2,
-                "show_unit_cell": {"color": "red", "width": 2},
+                "show_cell": {"color": "red", "width": 2},
                 "show_sites": {"line": {"width": 1, "color": "black"}},
                 "site_labels": {"Fe": "Iron"},
                 "standardize_struct": False,
@@ -231,7 +231,7 @@ def _compare_colors(
                 "atom_size": 35,
                 "elem_colors": ElemColorScheme.jmol,
                 "scale": 0.9,
-                "show_unit_cell": True,
+                "show_cell": True,
                 "show_sites": True,
                 "site_labels": "legend",
                 "standardize_struct": None,
@@ -239,14 +239,14 @@ def _compare_colors(
             },
         ),
         (
-            "no_labels_custom_unit_cell",
+            "no_labels_custom_cell",
             {
                 "rotation": "0x,20y,0z",
                 "atomic_radii": None,
                 "atom_size": 45,
                 "elem_colors": ElemColorScheme.vesta,
                 "scale": 1.1,
-                "show_unit_cell": {"color": "blue", "width": 1, "dash": "dot"},
+                "show_cell": {"color": "blue", "width": 1, "dash": "dot"},
                 "show_sites": True,
                 "site_labels": False,
                 "standardize_struct": True,
@@ -261,10 +261,51 @@ def _compare_colors(
                 "atom_size": 55,
                 "elem_colors": {"Fe": "green", "O": "yellow"},
                 "scale": 0.8,
-                "show_unit_cell": True,
+                "show_cell": True,
                 "show_sites": {"line": {"width": 2, "color": "red"}},
                 "standardize_struct": False,
                 "n_cols": 3,
+            },
+        ),
+        # New test scenarios for show_cell_faces
+        (
+            "cell_faces_default",
+            {
+                "rotation": "0x,0y,0z",
+                "show_cell": True,
+                "show_cell_faces": True,
+                "show_sites": True,
+                "site_labels": "symbol",
+            },
+        ),
+        (
+            "cell_faces_custom_color",
+            {
+                "rotation": "10x,10y,10z",
+                "show_cell": True,
+                "show_cell_faces": {"color": "rgba(255,0,0,0.2)"},
+                "show_sites": True,
+                "site_labels": "legend",
+            },
+        ),
+        (
+            "cell_faces_disabled",
+            {
+                "rotation": "5x,5y,5z",
+                "show_cell": True,
+                "show_cell_faces": False,
+                "show_sites": True,
+                "site_labels": "symbol",
+            },
+        ),
+        (
+            "no_cell_no_faces",
+            {
+                "rotation": "0x,0y,0z",
+                "show_cell": False,
+                "show_cell_faces": True,  # Should be ignored when show_cell=False
+                "show_sites": True,
+                "site_labels": "symbol",
             },
         ),
         # Coverage-specific scenarios
@@ -337,7 +378,9 @@ def _validate_2d_scenario_specifics(
     structure: Structure,
 ) -> None:
     """Validate scenario-specific aspects of 2D plots."""
-    show_sites_kwarg = kwargs.get("show_sites", True)
+    show_sites = kwargs.get("show_sites", True)
+    show_cell = kwargs.get("show_cell", True)
+    show_cell_faces = kwargs.get("show_cell_faces", True)
 
     if test_scenario == "vesta_colors_no_sites":
         # When show_sites=False, no site traces should exist
@@ -360,7 +403,7 @@ def _validate_2d_scenario_specifics(
     elif test_scenario == "custom_colors_dict":
         # Test custom color application
         elem_colors_kwarg = kwargs.get("elem_colors")
-        if show_sites_kwarg and isinstance(elem_colors_kwarg, dict):
+        if show_sites and isinstance(elem_colors_kwarg, dict):
             site_traces = [
                 trace
                 for trace in fig.data
@@ -375,17 +418,54 @@ def _validate_2d_scenario_specifics(
                     )
                     _compare_colors(actual_color, expected_color, normalize_rgb_color)
 
-    elif test_scenario == "no_labels_custom_unit_cell":
-        # Test custom unit cell styling
-        unit_cell_kwargs = kwargs.get("show_unit_cell")
-        if isinstance(unit_cell_kwargs, dict):
-            unit_cell_traces = [trace for trace in fig.data if trace.mode == "lines"]
-            assert len(unit_cell_traces) > 0
+    elif test_scenario == "no_labels_custom_cell":
+        # Test custom cell styling
+        cell_kwargs = kwargs.get("show_cell")
+        if isinstance(cell_kwargs, dict):
+            cell_traces = [trace for trace in fig.data if trace.mode == "lines"]
+            assert len(cell_traces) > 0
+
+    elif test_scenario == "cell_faces_default":
+        # Test default cell faces functionality
+        if show_cell and show_cell_faces:
+            # For 2D plots, cell faces are shown as filled polygons
+            surface_traces = [
+                trace
+                for trace in fig.data
+                if trace.name == "cell-face" and trace.fill == "toself"
+            ]
+            assert len(surface_traces) == 1, "Expected 1 cell face trace in 2D"
+
+    elif test_scenario == "cell_faces_custom_color":
+        # Test custom cell faces color
+        if show_cell and isinstance(show_cell_faces, dict):
+            surface_traces = [
+                trace
+                for trace in fig.data
+                if trace.name == "cell-face" and trace.fill == "toself"
+            ]
+            assert len(surface_traces) == 1
+            expected_color = show_cell_faces.get("color", "rgba(255,255,255,0.1)")
+            assert surface_traces[0].fillcolor == expected_color
+
+    elif test_scenario == "cell_faces_disabled":
+        # Test that no cell faces are shown when disabled
+        surface_traces = [trace for trace in fig.data if trace.name == "cell-face"]
+        assert len(surface_traces) == 0
+
+    elif test_scenario == "no_cell_no_faces":
+        # Test that no cell faces are shown when show_cell=False
+        surface_traces = [trace for trace in fig.data if trace.name == "cell-face"]
+        assert len(surface_traces) == 0
 
     # Skip validation for multi-structure scenarios as they have different trace counts
-    if show_sites_kwarg is not False and test_scenario not in (
+    if show_sites is not False and test_scenario not in (
         "struct_key_elem_colors",
         "site_vector_properties",
+        "cell_faces_default",
+        "cell_faces_custom_color",
+        "cell_faces_disabled",
+        "no_cell_no_faces",
     ):
         _validate_common_site_properties(kwargs, fig, structure)
 
@@ -624,7 +704,7 @@ def test_structure_plotly_site_vector_coverage() -> None:
             "atom_size": 20,
             "elem_colors": ElemColorScheme.jmol,
             "scale": 1,
-            "show_unit_cell": True,
+            "show_cell": True,
             "show_sites": True,
             "show_image_sites": True,
             "site_labels": "symbol",
@@ -637,7 +717,7 @@ def test_structure_plotly_site_vector_coverage() -> None:
             "atom_size": 30,
             "elem_colors": ElemColorScheme.vesta,
             "scale": 1.5,
-            "show_unit_cell": False,
+            "show_cell": False,
             "show_sites": False,
             "show_image_sites": False,
             "site_labels": "symbol",
@@ -650,7 +730,7 @@ def test_structure_plotly_site_vector_coverage() -> None:
             "atom_size": 25,
             "elem_colors": {"Fe": "red", "O": "blue"},
             "scale": 0.9,
-            "show_unit_cell": {"edge": {"color": "red", "width": 3}},
+            "show_cell": {"edge": {"color": "red", "width": 3}},
             "show_sites": {"line": {"width": 1, "color": "black"}},
             "show_image_sites": {"opacity": 0.3},
             "site_labels": {"Fe": "Iron", "O": "Oxygen"},
@@ -663,11 +743,61 @@ def test_structure_plotly_site_vector_coverage() -> None:
             "atom_size": 35,
             "elem_colors": ElemColorScheme.jmol,
             "scale": 1.1,
-            "show_unit_cell": True,
+            "show_cell": True,
             "show_sites": True,
             "show_image_sites": True,
             "site_labels": False,
             "standardize_struct": None,
+            "n_cols": 1,
+        },
+        # New test scenarios for show_cell_faces in 3D
+        {
+            "atomic_radii": None,
+            "atom_size": 20,
+            "elem_colors": ElemColorScheme.jmol,
+            "scale": 1,
+            "show_cell": True,
+            "show_cell_faces": True,
+            "show_sites": True,
+            "show_image_sites": False,  # Simplify validation
+            "site_labels": "symbol",
+            "standardize_struct": None,
+            "n_cols": 1,
+        },
+        {
+            "atomic_radii": 0.5,
+            "atom_size": 25,
+            "elem_colors": ElemColorScheme.vesta,
+            "scale": 1.2,
+            "show_cell": True,
+            "show_cell_faces": {"color": "rgba(0,255,0,0.15)", "showscale": False},
+            "show_sites": True,
+            "show_image_sites": False,  # Simplify validation
+            "site_labels": "legend",
+            "n_cols": 1,
+        },
+        {
+            "atomic_radii": 1.0,
+            "atom_size": 30,
+            "elem_colors": ElemColorScheme.jmol,
+            "scale": 1,
+            "show_cell": True,
+            "show_cell_faces": False,
+            "show_sites": True,
+            "show_image_sites": False,  # Simplify validation
+            "site_labels": "symbol",
+            "n_cols": 1,
+        },
+        {
+            "atomic_radii": None,
+            "atom_size": 20,
+            "elem_colors": ElemColorScheme.jmol,
+            "scale": 1,
+            "show_cell": False,
+            "show_cell_faces": True,  # Should be ignored when show_cell=False
+            "show_sites": True,
+            "show_image_sites": False,  # Simplify validation
+            "site_labels": "symbol",
             "n_cols": 1,
         },
         # Coverage-specific scenarios for 3D (simplified to avoid validation issues)
@@ -719,14 +849,53 @@ def test_structure_3d_plotly(
             assert fig.layout[scene].aspectmode == "data"
 
     # Additional checks based on specific kwargs
-    if isinstance(kwargs.get("show_unit_cell"), dict):
-        edge_kwargs = kwargs["show_unit_cell"].get("edge", {})
-        unit_cell_edge_trace = next(
+    if isinstance(kwargs.get("show_cell"), dict):
+        edge_kwargs = kwargs["show_cell"].get("edge", {})
+        cell_edge_trace = next(
             (trace for trace in fig.data if trace.mode == "lines"), None
         )
-        assert unit_cell_edge_trace is not None
+        assert cell_edge_trace is not None
         for key, value in edge_kwargs.items():
-            assert unit_cell_edge_trace.line[key] == value
+            assert cell_edge_trace.line[key] == value
+
+    # Check cell faces functionality for 3D plots
+    show_cell = kwargs.get("show_cell", True)
+    show_cell_faces = kwargs.get("show_cell_faces", True)
+
+    if show_cell and show_cell_faces:
+        # For 3D plots, cell faces are shown as mesh3d traces
+        surface_traces = [
+            trace
+            for trace in fig.data
+            if trace.type == "mesh3d" and trace.name.startswith("surface-face")
+        ]
+        if isinstance(show_cell_faces, dict):
+            # When custom styling is provided, check that surfaces exist
+            assert len(surface_traces) > 0
+            # Check custom color if specified
+            if "color" in show_cell_faces:
+                expected_color = show_cell_faces["color"]
+                for trace in surface_traces:
+                    assert trace.color == expected_color
+        elif show_cell_faces is True:
+            # When show_cell_faces=True, surfaces should exist
+            assert len(surface_traces) > 0
+    elif show_cell and show_cell_faces is False:
+        # When show_cell_faces=False, no surface traces should exist
+        surface_traces = [
+            trace
+            for trace in fig.data
+            if trace.type == "mesh3d" and trace.name.startswith("surface-face")
+        ]
+        assert len(surface_traces) == 0
+    elif not show_cell:  # When show_cell=False, no surface traces should exist
+        # regardless of show_cell_faces
+        surface_traces = [
+            trace
+            for trace in fig.data
+            if trace.type == "mesh3d" and trace.name.startswith("surface-face")
+        ]
+        assert len(surface_traces) == 0
 
     if kwargs.get("show_sites"):
         site_traces = [
@@ -793,16 +962,13 @@ def test_structure_3d_plotly(
                 element_trace = next(
                     (t for t in site_traces if t.name == element_symbol), None
                 )
-            else:  # For non-legend modes, find trace by checking if it contains sites
-                # of this element
-                for trace in site_traces:
-                    if hasattr(trace, "x") and len(trace.x) == len(element_sites):
-                        element_trace = trace
-                        break
+            else:  # For non-legend modes, match by name (most reliable, could
+                # additionally match by length)
+                element_trace = next(
+                    (t for t in site_traces if t.name == element_symbol), None
+                )
 
-            assert element_trace is not None, (
-                f"No trace found for element {element_symbol}"
-            )
+            assert element_trace is not None, f"No trace found for {element_symbol=}"
 
             # Check that the trace has the right number of sites
             assert len(element_trace.x) == len(element_sites)
@@ -887,23 +1053,25 @@ def test_structure_3d_plotly(
             # Each unique element should be represented in legend traces
             for elem_symbol in all_elements_in_struct:
                 assert elem_symbol in element_trace_names, (
-                    f"Element {elem_symbol} missing from legend traces in 3D plot"
+                    f"{elem_symbol=} missing from legend traces in 3D plot"
                 )
 
             # Check that each element trace has data points
             for trace in legend_traces:
                 if trace.showlegend and trace.name in all_elements_in_struct:
-                    # Count sites of this element in structure
+                    # Count sites of this element in structure (incl. image sites
+                    # if enabled)
+                    show_image_sites_kwarg = kwargs.get("show_image_sites", True)
+                    rendered_sites_info = _get_all_rendered_site_info(
+                        test_structure, show_image_sites_kwarg
+                    )
                     expected_points = sum(
                         1
-                        for site in test_structure
-                        if _get_site_symbol(site) == trace.name
+                        for site_info in rendered_sites_info
+                        if site_info["symbol"] == trace.name
                     )
                     actual_points = len(trace.x) if hasattr(trace, "x") else 0
-                    assert actual_points == expected_points, (
-                        f"3D Element {trace.name} trace has {actual_points} points, "
-                        f"expected {expected_points}"
-                    )
+                    assert actual_points == expected_points
 
             # Ensure no text on primary site traces
             for trace in legend_traces:
@@ -967,20 +1135,24 @@ def test_structure_3d_plotly_multiple() -> None:
     actual_n_edge_traces_3d = sum(
         (trace.name or "").startswith("edge") for trace in fig.data
     )
-    # Default show_unit_cell=True
+    # Default show_cell=True
     assert actual_n_edge_traces_3d == 12 * len(structs_dict)
     expected_total_traces_3d += actual_n_edge_traces_3d
 
     actual_n_node_traces_3d = sum(
         (trace.name or "").startswith("node") for trace in fig.data
     )
-    # Default show_unit_cell=True
+    # Default show_cell=True
     assert actual_n_node_traces_3d == 8 * len(structs_dict)
     expected_total_traces_3d += actual_n_node_traces_3d
 
-    assert len(fig.data) == expected_total_traces_3d, (
-        f"{len(fig.data)=} vs {expected_total_traces_3d=}"
+    actual_n_surface_traces_3d = sum(
+        (trace.name or "").startswith("surface-face") for trace in fig.data
     )
+    assert actual_n_surface_traces_3d == 12 * len(structs_dict)
+    expected_total_traces_3d += actual_n_surface_traces_3d
+
+    assert len(fig.data) == expected_total_traces_3d
 
     # For default site_labels="legend", Plotly's built-in legend is used
     # No legend annotations are created anymore
@@ -1100,3 +1272,142 @@ def test_structure_3d_plotly_subplot_title_coverage() -> None:
         {"struct1": struct1, "struct2": struct2}, subplot_title=False, n_cols=2
     )
     assert isinstance(fig_no_title, go.Figure)
+
+
+@pytest.mark.parametrize(
+    ("is_3d", "show_cell_faces", "expected_surface_traces"),
+    [
+        # 2D tests
+        (False, True, 1),  # 2D with faces enabled - should have 1 filled polygon
+        (False, False, 0),  # 2D with faces disabled - should have 0 surface traces
+        (False, {"color": "rgba(255,0,0,0.3)"}, 1),  # 2D with custom color
+        # 3D tests
+        (True, True, 12),  # 3D with faces enabled - should have 12 mesh3d
+        # traces (6 faces x 2 triangles each)
+        (True, False, 0),  # 3D with faces disabled - should have 0 surface traces
+        # 3D with custom styling
+        (True, {"color": "rgba(0,255,0,0.2)", "showscale": False}, 12),
+    ],
+)
+def test_structure_plotly_cell_faces(
+    is_3d: bool, show_cell_faces: bool | dict[str, Any], expected_surface_traces: int
+) -> None:
+    """Test cell faces functionality for both 2D and 3D structure plots."""
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d_plotly
+
+    fig = plot_func(
+        struct,
+        show_cell=True,
+        show_cell_faces=show_cell_faces,
+        show_sites=True,
+        site_labels="symbol",
+    )
+
+    assert isinstance(fig, go.Figure)
+
+    if is_3d:  # For 3D plots, check mesh3d traces with surface-face names
+        surface_traces = [
+            trace
+            for trace in fig.data
+            if trace.type == "mesh3d" and trace.name.startswith("surface-face")
+        ]
+    else:  # For 2D plots, check scatter traces with cell-face name and fill
+        surface_traces = [
+            trace
+            for trace in fig.data
+            if trace.name == "cell-face"
+            and hasattr(trace, "fill")
+            and trace.fill == "toself"
+        ]
+
+    assert len(surface_traces) == expected_surface_traces
+
+    # Test custom styling if provided
+    if (
+        isinstance(show_cell_faces, dict)
+        and expected_surface_traces > 0
+        and (expected_color := show_cell_faces.get("color"))
+    ):
+        for trace in surface_traces:
+            if is_3d:
+                assert trace.color == expected_color
+            else:
+                assert trace.fillcolor == expected_color
+
+
+def test_structure_plotly_cell_faces_no_cell() -> None:
+    """Test that cell faces are not shown when show_cell=False."""
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    # Test 2D
+    fig_2d = pmv.structure_2d_plotly(
+        struct,
+        show_cell=False,
+        show_cell_faces=True,  # Should be ignored
+        show_sites=True,
+    )
+
+    surface_traces_2d = [trace for trace in fig_2d.data if trace.name == "cell-face"]
+    assert len(surface_traces_2d) == 0
+
+    # Test 3D
+    fig_3d = pmv.structure_3d_plotly(
+        struct,
+        show_cell=False,
+        show_cell_faces=True,  # Should be ignored
+        show_sites=True,
+    )
+
+    surface_traces_3d = [
+        trace
+        for trace in fig_3d.data
+        if trace.type == "mesh3d"
+        and trace.name
+        and trace.name.startswith("surface-face")
+    ]
+    assert len(surface_traces_3d) == 0
+
+
+def test_structure_plotly_cell_faces_multiple_structures() -> None:
+    """Test cell faces with multiple structures."""
+    lattice = Lattice.cubic(4.0)
+    struct1 = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct2 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+
+    structs_dict = {"struct1": struct1, "struct2": struct2}
+
+    fig_2d = pmv.structure_2d_plotly(  # Test 2D with multiple structures
+        structs_dict,
+        show_cell=True,
+        show_cell_faces=True,
+        show_sites=True,
+        n_cols=2,
+    )
+    surface_traces_2d = [
+        trace
+        for trace in fig_2d.data
+        if trace.name == "cell-face"
+        and hasattr(trace, "fill")
+        and trace.fill == "toself"
+    ]
+    assert len(surface_traces_2d) == 2
+
+    fig_3d = pmv.structure_3d_plotly(  # Test 3D with multiple structures
+        structs_dict,
+        show_cell=True,
+        show_cell_faces=True,
+        show_sites=True,
+        n_cols=2,
+    )
+    surface_traces_3d = [
+        trace
+        for trace in fig_3d.data
+        if trace.type == "mesh3d"
+        and trace.name
+        and trace.name.startswith("surface-face")
+    ]
+    assert len(surface_traces_3d) == 24

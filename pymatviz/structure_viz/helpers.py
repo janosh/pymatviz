@@ -44,7 +44,7 @@ covalent_radii: pd.Series = df_ptable[Key.covalent_radius].fillna(
     missing_covalent_radius
 )
 NO_SYM_MSG = "Symmetry could not be determined, skipping standardization"
-UNIT_CELL_EDGES = (
+CELL_EDGES = (
     (0, 1),
     (0, 2),
     (0, 4),
@@ -134,12 +134,12 @@ def get_image_sites(
     """Get images for a given site in a lattice.
 
     Images are sites that are integer translations of the given site that are within
-    or near the unit cell boundaries.
+    or near the cell boundaries.
 
     Args:
         site (PeriodicSite): The site to get images for.
         lattice (Lattice): The lattice to get images for.
-        tol (float): The tolerance for being near the unit cell edge. Defaults to 0.03.
+        tol (float): The tolerance for being near the cell edge. Defaults to 0.03.
         min_dist_dedup (float): The min distance in Angstroms to any other site to avoid
             finding image atoms that are duplicates of original basis sites. Defaults to
             0.1.
@@ -156,7 +156,7 @@ def get_image_sites(
         new_frac = site.frac_coords + offset
         new_cart = lattice.get_cartesian_coords(new_frac)
 
-        # Check if the new fractional coordinates are within unit cell bounds
+        # Check if the new fractional coordinates are within cell bounds
         tol = max(tol, 0.13)  # Ensure we capture atoms at 0.125 -> 1.125, etc.
         is_within_extended_cell = all(-tol <= coord <= 1 + tol for coord in new_frac)
 
@@ -172,7 +172,7 @@ def get_image_sites(
     return np.array(coords_image_atoms)
 
 
-def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
+def cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """Convert lattice vectors to plot lines.
 
     Args:
@@ -182,7 +182,7 @@ def unit_cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike
         tuple[np.array, np.array, np.array]:
         - Lines
         - z-indices that sort plot elements into out-of-plane layers
-        - lines used to plot the unit cell
+        - lines used to plot the cell
     """
     n_lines = n1 = 0
     segments = []
@@ -455,11 +455,11 @@ def draw_site(
         size=site_radius * atom_size,
         color=atom_color,
         opacity=0.8 if is_image else 1,
-        line=dict(width=0),
+        line=dict(width=1, color="rgba(0,0,0,0.4)"),  # Dark border
     )
     marker_kwargs.update(site_kwargs)
 
-    # Calculate text color based on background color for maximum contrast
+    # Calculate text color based on background color for max contrast
     text_color = pick_max_contrast_color(atom_color)
     scatter_kwargs = dict(
         x=[coords[0]],
@@ -489,18 +489,37 @@ def draw_site(
         fig.add_scatter(**scatter_kwargs, row=row, col=col)
 
 
-def draw_unit_cell(
+def draw_cell(
     fig: go.Figure,
     structure: Structure,
-    unit_cell_kwargs: dict[str, Any],
+    cell_kwargs: dict[str, Any],
     *,
     is_3d: bool = True,
     row: int | None = None,
     col: int | None = None,
     scene: str | None = None,
     rotation_matrix: np.ndarray | None = None,
+    show_faces: bool | dict[str, Any] = False,
 ) -> go.Figure:
-    """Draw the unit cell of a structure in a 2D or 3D Plotly figure."""
+    """Draw the cell of a structure in a 2D or 3D Plotly figure.
+
+    Args:
+        fig (go.Figure): The plotly figure to add the cell to.
+        structure (Structure): The pymatgen structure.
+        cell_kwargs (dict[str, Any]): Keyword arguments for cell styling.
+        is_3d (bool): Whether this is a 3D plot. Defaults to True.
+        row (int | None): Row for subplot. Defaults to None.
+        col (int | None): Column for subplot. Defaults to None.
+        scene (str | None): Scene name for 3D plots. Defaults to None.
+        rotation_matrix (np.ndarray | None): Rotation matrix for 2D projections.
+            Defaults to None.
+        show_faces (bool | dict[str, Any]): Whether to show transparent cell
+            surfaces. If a dict, will be used to customize surface appearance.
+            Defaults to False.
+
+    Returns:
+        go.Figure: The updated plotly figure.
+    """
     corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
     cart_corners = structure.lattice.get_cartesian_coords(corners)
 
@@ -518,8 +537,8 @@ def draw_unit_cell(
 
     # Add edges
     edge_defaults = dict(color="black", width=1, dash="dash")
-    edge_kwargs = edge_defaults | unit_cell_kwargs.get("edge", {})
-    for idx, (start, end) in enumerate(UNIT_CELL_EDGES):
+    edge_kwargs = edge_defaults | cell_kwargs.get("edge", {})
+    for idx, (start, end) in enumerate(CELL_EDGES):
         start_point = cart_corners[start]
         end_point = cart_corners[end]
         mid_point = (start_point + end_point) / 2
@@ -551,7 +570,7 @@ def draw_unit_cell(
 
     # Add corner spheres
     node_defaults = dict(size=3, color="black")
-    node_kwargs = node_defaults | unit_cell_kwargs.get("node", {})
+    node_kwargs = node_defaults | cell_kwargs.get("node", {})
     for idx, (frac_coord, cart_coord) in enumerate(
         zip(corners, cart_corners, strict=True)
     ):
@@ -580,6 +599,71 @@ def draw_unit_cell(
             name=f"node {idx}",
             showlegend=False,
         )
+
+    if show_faces:  # Add cell faces if requested
+        surface_defaults = dict(color="rgba(255,255,255,0.1)", showscale=False)
+        surface_kwargs = surface_defaults | ({} if show_faces is True else show_faces)
+
+        if is_3d:
+            # Define the 6 faces of the cell cube
+            # Each face is defined by 4 corner indices
+            faces = [
+                [0, 1, 3, 2],  # bottom face (z=0)
+                [4, 5, 7, 6],  # top face (z=1)
+                [0, 1, 5, 4],  # front face (y=0)
+                [2, 3, 7, 6],  # back face (y=1)
+                [0, 2, 6, 4],  # left face (x=0)
+                [1, 3, 7, 5],  # right face (x=1)
+            ]
+
+            for face_idx, face in enumerate(faces):
+                face_corners = cart_corners[face]  # Get the 4 corners of this face
+
+                # Split each rectangular face into 2 triangles
+                triangles = [[0, 1, 2], [0, 2, 3]]
+
+                for tri_idx, triangle in enumerate(triangles):
+                    tri_corners = face_corners[triangle]
+                    fig.add_mesh3d(
+                        x=tri_corners[:, 0],
+                        y=tri_corners[:, 1],
+                        z=tri_corners[:, 2],
+                        i=[0],
+                        j=[1],
+                        k=[2],
+                        opacity=0.2,
+                        color=surface_kwargs.get("color", "rgba(255,255,255,0.01)"),
+                        showscale=surface_kwargs.get("showscale", False),
+                        hoverinfo="skip",
+                        name=f"surface-face{face_idx}-tri{tri_idx}",
+                        showlegend=False,
+                        scene=scene,
+                    )
+        else:  # For 2D, we can show projected outline of cell as filled polygon
+            # Get convex hull of projected corners to create the outline
+            from scipy.spatial import ConvexHull
+
+            points_2d = cart_corners[:, :2]  # Use only x,y coords for 2D projection
+            hull = ConvexHull(points_2d)
+            hull_points = points_2d[hull.vertices]
+
+            # Close the polygon by adding the first point at the end
+            hull_x = np.append(hull_points[:, 0], hull_points[0, 0])
+            hull_y = np.append(hull_points[:, 1], hull_points[0, 1])
+
+            fig.add_scatter(
+                x=hull_x,
+                y=hull_y,
+                mode="lines",
+                fill="toself",
+                fillcolor=surface_kwargs.get("color", "rgba(255,255,255,0.1)"),
+                line=dict(width=0),  # No outline
+                hoverinfo="skip",
+                name="cell-face",
+                showlegend=False,
+                row=row,
+                col=col,
+            )
 
     return fig
 

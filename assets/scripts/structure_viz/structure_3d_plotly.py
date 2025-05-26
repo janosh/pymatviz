@@ -20,7 +20,7 @@ supercells = {
 fig = pmv.structure_3d_plotly(
     supercells,
     elem_colors=ElemColorScheme.jmol,
-    # show_unit_cell={"edge": dict(color="white", width=1.5)},
+    # show_cell={"edge": dict(color="white", width=1.5)},
     hover_text=SiteCoords.cartesian_fractional,
     show_bonds=True,
 )
@@ -39,7 +39,7 @@ batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
 
 # Demonstrate custom legend positioning and sizing
 fig = pmv.structure_3d_plotly(
-    batio3, show_unit_cell={"edge": dict(color="white", width=2)}, show_bonds=True
+    batio3, show_cell={"edge": dict(color="white", width=2)}, show_bonds=True
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "bato3-structure-3d-plotly")
@@ -54,7 +54,7 @@ hea_structure = Structure(
 )
 fig = pmv.structure_3d_plotly(
     hea_structure.make_supercell([2, 3, 2], in_place=False),
-    show_unit_cell={"edge": dict(color="white", width=2)},
+    show_cell={"edge": dict(color="white", width=2)},
 )
 title = "CoCrFeNiMn High-Entropy Alloy"
 fig.layout.title = title
@@ -72,7 +72,7 @@ lco_supercell = Structure(
 
 fig = pmv.structure_3d_plotly(
     lco_supercell,
-    show_unit_cell={"edge": dict(color="white", width=1.5)},
+    show_cell={"edge": dict(color="white", width=1.5)},
     elem_colors=ElemColorScheme.jmol,
 )
 title = "Li0.8CoO2 with Li Vacancies"
@@ -136,8 +136,8 @@ fig = pmv.structure_3d_plotly(
         "ZnS Zinc Blende (Alloy colors)": ElemColorScheme.alloy,
         "MoS₂ Layered (Pastel colors)": ElemColorScheme.pastel,
     },
-    # Show unit cells with different styling for each subplot
-    show_unit_cell={
+    # Show cells with different styling for each subplot
+    show_cell={
         "Si Diamond (Jmol colors)": {"edge": dict(color="red", width=2.5)},
         "CaTiO₃ Perovskite (VESTA colors)": {"edge": dict(color="blue", width=2)},
         "ZnS Zinc Blende (Alloy colors)": {"edge": dict(color="green", width=1.5)},
