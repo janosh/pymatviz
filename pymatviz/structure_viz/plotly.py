@@ -18,8 +18,8 @@ from pymatviz.structure_viz.helpers import (
     _prep_augmented_structure_for_bonding,
     _standardize_struct,
     draw_bonds,
+    draw_cell,
     draw_site,
-    draw_unit_cell,
     draw_vector,
     generate_site_label,
     get_atomic_radii,
@@ -54,7 +54,8 @@ def structure_2d_plotly(
     atom_size: float = 30,
     elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
-    show_unit_cell: bool | dict[str, Any] = True,
+    show_cell: bool | dict[str, Any] = True,
+    show_cell_faces: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
     show_bonds: bool | NearNeighbors | dict[str, bool | NearNeighbors] = False,
@@ -83,13 +84,15 @@ def structure_2d_plotly(
         elem_colors (ElemColorScheme | dict[str, ColorType], optional): Element color
             scheme or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
-        show_unit_cell (bool | dict[str, Any], optional): Whether to plot unit cell. If
-            a dict, will be used to customize unit cell appearance. The dict should have
+        show_cell (bool | dict[str, Any], optional): Whether to render the cell. If
+            a dict, will be used to customize cell appearance. The dict should have
             a "node"/"edge" key to customize node/edge appearance. Defaults to True.
+        show_cell_faces (bool | dict[str, Any], optional): Whether to show transparent
+            cell faces. If a dict, will  customize surfaces style. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
             a dict, will be used to customize site marker appearance. Defaults to True.
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
-            on unit cell edges and surfaces. If a dict, will be used to customize how
+            on cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
         show_bonds (bool | NearNeighbors | dict[str, bool | NearNeighbors], optional):
             Whether to draw bonds between sites. If True, uses CrystalNN with a cutoff
@@ -333,16 +336,16 @@ def structure_2d_plotly(
                     plotted_sites_coords=plotted_sites_coords,
                 )
 
-        # Plot unit cell
-        if show_unit_cell:
-            draw_unit_cell(
+        if show_cell:
+            draw_cell(
                 fig,
                 struct_i,
-                unit_cell_kwargs={} if show_unit_cell is True else show_unit_cell,
+                cell_kwargs={} if show_cell is True else show_cell,
                 is_3d=False,
                 row=row,
                 col=col,
                 rotation_matrix=rotation_matrix,
+                show_faces=show_cell_faces,
             )
 
         # Set subplot titles
@@ -393,7 +396,8 @@ def structure_3d_plotly(
     atom_size: float = 20,
     elem_colors: ElemColorScheme | dict[str, ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
-    show_unit_cell: bool | dict[str, Any] = True,
+    show_cell: bool | dict[str, Any] = True,
+    show_cell_faces: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
     show_bonds: bool | NearNeighbors | dict[str, bool | NearNeighbors] = False,
@@ -422,13 +426,15 @@ def structure_3d_plotly(
         elem_colors (ElemColorScheme | dict[str, str], optional): Element color scheme
             or custom color map. Defaults to ElemColorScheme.jmol.
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
-        show_unit_cell (bool | dict[str, Any], optional): Whether to plot unit cell. If
-            a dict, will be used to customize unit cell appearance. The dict should have
+        show_cell (bool | dict[str, Any], optional): Whether to render cell. If
+            a dict, will be used to customize cell appearance. The dict should have
             a "node"/"edge" key to customize node/edge appearance. Defaults to True.
+        show_cell_faces (bool | dict[str, Any], optional): Whether to show transparent
+            cell faces. If a dict, will  customize surfaces style. Defaults to True.
         show_sites (bool | dict[str, Any], optional): Whether to plot atomic sites. If
             a dict, will be used to customize site marker appearance. Defaults to True.
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
-            on unit cell edges and surfaces. If a dict, will be used to customize how
+            on cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
         show_bonds (bool | NearNeighbors | dict[str, bool | NearNeighbors], optional):
             Whether to draw bonds between sites. If True, uses CrystalNN with a cutoff
@@ -617,7 +623,7 @@ def structure_3d_plotly(
                     "size": element_sizes,
                     "color": element_colors,
                     "sizemode": "diameter",
-                    "line": dict(width=0),  # Remove the white border around markers
+                    "line": dict(width=1, color="rgba(0,0,0,0.4)"),
                 }
                 if "marker" in site_kwargs:
                     site_kwargs["marker"].update(marker_defaults)
@@ -700,14 +706,14 @@ def structure_3d_plotly(
                     plotted_sites_coords=plotted_sites_coords,
                 )
 
-        # Plot unit cell
-        if show_unit_cell:
-            draw_unit_cell(
+        if show_cell:
+            draw_cell(
                 fig,
                 struct_i,
-                unit_cell_kwargs={} if show_unit_cell is True else show_unit_cell,
+                cell_kwargs={} if show_cell is True else show_cell,
                 is_3d=True,
                 scene=f"scene{idx}",
+                show_faces=show_cell_faces,
             )
 
         # Set subplot titles
@@ -732,6 +738,9 @@ def structure_3d_plotly(
             zaxis=no_axes_kwargs,
             aspectmode="data",
             bgcolor="rgba(80,80,80,0.01)",
+            camera=dict(
+                eye=dict(x=1.5, y=1.5, z=1.5),  # Camera position for better 3D view
+            ),
         )
 
     # Calculate subplot positions with small gap

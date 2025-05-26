@@ -271,7 +271,7 @@ for (
         n_components=n_components,
         color_scale="log" if data_name == "matbench_dielectric" else "linear",
     )
-    fig.update_layout(coloraxis_colorbar=cbar_args)
+    fig.layout.coloraxis.colorbar.update(**cbar_args)
 
     # Save as HTML and SVG
     img_name = f"{data_name}-{embed_method}-{proj_method}-{n_components}d".replace(

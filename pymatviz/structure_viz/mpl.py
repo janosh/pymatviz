@@ -1,6 +1,6 @@
 """2D plots of pymatgen structures with matplotlib.
 
-structure_2d() and its helpers get_rot_matrix() and unit_cell_to_lines() were
+structure_2d() and its helpers get_rot_matrix() and cell_to_lines() were
 inspired by ASE https://wiki.fysik.dtu.dk/ase/ase/visualize/visualize.html#matplotlib.
 """
 
@@ -24,7 +24,7 @@ from pymatviz.enums import ElemColorScheme, Key
 from pymatviz.structure_viz.helpers import (
     NO_SYM_MSG,
     _angles_to_rotation_matrix,
-    unit_cell_to_lines,
+    cell_to_lines,
 )
 from pymatviz.utils import ExperimentalWarning, df_ptable
 
@@ -52,7 +52,7 @@ def structure_2d(
     atomic_radii: float | dict[str, float] | None = None,
     elem_colors: ElemColorScheme | dict[str, str | ColorType] = ElemColorScheme.jmol,
     scale: float = 1,
-    show_unit_cell: bool = True,
+    show_cell: bool = True,
     show_bonds: bool | NearNeighbors = False,
     site_labels: Literal["symbol", "species", False]
     | dict[str, str]
@@ -119,7 +119,7 @@ def structure_2d(
             to colors, either a named color (str) or rgb(a) values like (0.2, 0.3, 0.6).
             Defaults to JMol colors (https://jmol.sourceforge.net/jscolors).
         scale (float, optional): Scaling of the plotted atoms and lines. Defaults to 1.
-        show_unit_cell (bool, optional): Whether to plot unit cell. Defaults to True.
+        show_cell (bool, optional): Whether to render cell. Defaults to True.
         show_bonds (bool | NearNeighbors, optional): Whether to plot bonds. If True, use
             pymatgen.analysis.local_env.CrystalNN to infer the structure's connectivity.
             If False, don't plot bonds. If a subclass of
@@ -143,7 +143,7 @@ def structure_2d(
         standardize_struct (bool, optional): Whether to standardize the structure using
             SpacegroupAnalyzer(struct).get_conventional_standard_structure() before
             plotting. Defaults to False unless any fractional coordinates are negative,
-            i.e. any crystal sites are outside the unit cell. Set this to False to
+            i.e. any crystal sites are outside the cell. Set this to False to
             disable this behavior which speeds up plotting for many structures.
         axis (bool | str, optional): Whether/how to show plot axes. Defaults to "off".
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.axis for
@@ -226,22 +226,22 @@ def structure_2d(
             [atomic_radii[el] for el in elements_at_sites]  # type: ignore[index]
         )
 
-        # Generate lines for unit cell
+        # Generate lines for cell
         rotation_matrix = _angles_to_rotation_matrix(rotation)
         unit_cell = struct.lattice.matrix
 
-        if show_unit_cell:
-            lines, z_indices, unit_cell_lines = unit_cell_to_lines(unit_cell)
+        if show_cell:
+            lines, z_indices, cell_lines = cell_to_lines(unit_cell)
             corners = np.array(list(product((0, 1), (0, 1), (0, 1))))
             cell_vertices = np.dot(corners, unit_cell)
             cell_vertices = np.dot(cell_vertices, rotation_matrix)
         else:
             lines = np.empty((0, 3))
             z_indices = None
-            unit_cell_lines = None
+            cell_lines = None
             cell_vertices = None
 
-        # Zip atoms and unit cell lines together
+        # Zip atoms and cell lines together
         n_atoms = len(struct)
         n_lines = len(lines)
 
@@ -250,9 +250,9 @@ def structure_2d(
         positions[:n_atoms] = site_coords
         positions[n_atoms:] = lines
 
-        # Determine which unit cell line should be hidden behind other objects
+        # Determine which cell line should be hidden behind other objects
         for idx in range(n_lines):
-            this_layer = unit_cell_lines[z_indices[idx]]
+            this_layer = cell_lines[z_indices[idx]]
 
             occluded_top = ((site_coords - lines[idx] + this_layer) ** 2).sum(
                 1
@@ -273,7 +273,7 @@ def structure_2d(
         min_coords = (rotated_site_coords - radii_at_sites[:, None]).min(0)
         max_coords = (rotated_site_coords + radii_at_sites[:, None]).max(0)
 
-        if show_unit_cell:
+        if show_cell:
             min_coords = np.minimum(min_coords, cell_vertices.min(0))
             max_coords = np.maximum(max_coords, cell_vertices.max(0))
 
@@ -284,9 +284,9 @@ def structure_2d(
         positions *= scale
         positions -= offset
 
-        # Rotate and scale unit cell lines
+        # Rotate and scale cell lines
         if n_lines > 0:
-            unit_cell_lines = np.dot(unit_cell_lines, rotation_matrix)[:, :2] * scale
+            cell_lines = np.dot(cell_lines, rotation_matrix)[:, :2] * scale
 
         special_site_labels = ("symbol", "species", False)
         # Sort positions by 3rd dim (out-of-plane) to plot back-to-front along z-axis
@@ -370,12 +370,11 @@ def structure_2d(
 
                     start += occupancy
 
-            # Plot unit cell
-            else:
+            else:  # Plot cell
                 cell_idx = idx - n_atoms
                 # Only plot lines not obstructed by an atom
                 if z_indices[cell_idx] != -1:
-                    hxy = unit_cell_lines[z_indices[cell_idx]]
+                    hxy = cell_lines[z_indices[cell_idx]]
                     path = PathPatch(Path((xy + hxy, xy - hxy)), zorder=zorder)
                     ax.add_patch(path)
 
@@ -472,7 +471,7 @@ def structure_2d(
                 atomic_radii=atomic_radii,
                 elem_colors=elem_colors,
                 scale=scale,
-                show_unit_cell=show_unit_cell,
+                show_cell=show_cell,
                 show_bonds=show_bonds,
                 site_labels=site_labels,
                 label_kwargs=label_kwargs,

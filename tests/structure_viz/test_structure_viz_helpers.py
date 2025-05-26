@@ -11,12 +11,12 @@ from pymatgen.core import Lattice, PeriodicSite, Structure
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure_viz.helpers import (
+    CELL_EDGES,
     NO_SYM_MSG,
-    UNIT_CELL_EDGES,
     _angles_to_rotation_matrix,
     draw_bonds,
+    draw_cell,
     draw_site,
-    draw_unit_cell,
     draw_vector,
     get_atomic_radii,
     get_elem_colors,
@@ -246,9 +246,9 @@ def test_get_subplot_title(
 def test_constants() -> None:
     assert isinstance(NO_SYM_MSG, str)
     assert NO_SYM_MSG.startswith("Symmetry could not be determined")
-    assert isinstance(UNIT_CELL_EDGES, tuple)
-    assert len(UNIT_CELL_EDGES) == 12
-    assert all(isinstance(edge, tuple) and len(edge) == 2 for edge in UNIT_CELL_EDGES)
+    assert isinstance(CELL_EDGES, tuple)
+    assert len(CELL_EDGES) == 12
+    assert all(isinstance(edge, tuple) and len(edge) == 2 for edge in CELL_EDGES)
 
 
 @pytest.mark.parametrize(
@@ -511,7 +511,7 @@ def test_get_site_hover_text_invalid_template() -> None:
 
 @pytest.mark.parametrize("is_3d", [True, False])
 @pytest.mark.parametrize(
-    "unit_cell_kwargs",
+    "cell_kwargs",
     [
         {},
         {"edge": {"color": "red", "width": 2, "dash": "solid"}},
@@ -522,14 +522,14 @@ def test_get_site_hover_text_invalid_template() -> None:
         },
     ],
 )
-def test_draw_unit_cell(
-    structures: list[Structure], is_3d: bool, unit_cell_kwargs: dict[str, Any]
+def test_draw_cell(
+    structures: list[Structure], is_3d: bool, cell_kwargs: dict[str, Any]
 ) -> None:
-    """Test unit cell drawing with various parameters."""
+    """Test cell drawing with various parameters."""
     structure = structures[0]
     fig = go.Figure()
 
-    draw_unit_cell(fig, structure, unit_cell_kwargs, is_3d=is_3d)
+    draw_cell(fig, structure, cell_kwargs, is_3d=is_3d)
 
     # Check trace count and types
     n_edge_traces, n_node_traces = 12, 8
@@ -544,22 +544,22 @@ def test_draw_unit_cell(
     assert all(trace.mode == "markers" for trace in node_traces)
 
     # Check if custom properties were applied
-    if "edge" in unit_cell_kwargs:
+    if "edge" in cell_kwargs:
         for trace in edge_traces:
-            for key, value in unit_cell_kwargs["edge"].items():
+            for key, value in cell_kwargs["edge"].items():
                 assert getattr(trace.line, key) == value
 
-    if "node" in unit_cell_kwargs:
+    if "node" in cell_kwargs:
         for trace in node_traces:
-            for key, value in unit_cell_kwargs["node"].items():
+            for key, value in cell_kwargs["node"].items():
                 assert getattr(trace.marker, key) == value
 
 
-def test_draw_unit_cell_hover_text(structures: list[Structure]) -> None:
-    """Test hover text for unit cell elements."""
+def test_draw_cell_hover_text(structures: list[Structure]) -> None:
+    """Test hover text for cell elements."""
     structure = structures[0]
     fig = go.Figure()
-    draw_unit_cell(fig, structure, {}, is_3d=True)
+    draw_cell(fig, structure, {}, is_3d=True)
 
     # Check hover text content
     edge_trace = fig.data[0]  # First edge
@@ -571,6 +571,64 @@ def test_draw_unit_cell_hover_text(structures: list[Structure]) -> None:
     assert "α =" in corner_trace.hovertext  # noqa: RUF001
     assert "β =" in corner_trace.hovertext
     assert "γ =" in corner_trace.hovertext  # noqa: RUF001
+
+
+@pytest.mark.parametrize("is_3d", [True, False])
+@pytest.mark.parametrize(
+    ("show_faces", "expected_surface_traces"),
+    [
+        (False, 0),  # No surfaces
+        (True, 12),  # Default surfaces for 3D (6 faces x 2 triangles), 1 for 2D
+        ({"color": "rgba(255,0,0,0.2)"}, 12),  # Custom surface styling for 3D, 1 for 2D
+        ({"color": "rgba(0,255,0,0.15)", "showscale": False}, 12),
+    ],
+)
+def test_draw_cell_faces(
+    structures: list[Structure],
+    is_3d: bool,
+    show_faces: bool | dict[str, Any],
+    expected_surface_traces: int,
+) -> None:
+    """Test cell face drawing with various parameters."""
+    structure = structures[0]
+    fig = go.Figure()
+
+    if not is_3d and show_faces:  # Adjust expected traces for 2D
+        expected_surface_traces = 1  # 2D only has 1 filled polygon
+
+    draw_cell(fig, structure, {}, is_3d=is_3d, show_faces=show_faces)
+
+    if is_3d:  # Count surface traces
+        surface_traces = [
+            trace
+            for trace in fig.data
+            if trace.type == "mesh3d"
+            and trace.name
+            and trace.name.startswith("surface-face")
+        ]
+    else:
+        surface_traces = [
+            trace
+            for trace in fig.data
+            if trace.name == "cell-face"
+            and hasattr(trace, "fill")
+            and trace.fill == "toself"
+        ]
+
+    assert len(surface_traces) == expected_surface_traces
+
+    # Test custom styling if provided
+    if isinstance(show_faces, dict) and expected_surface_traces > 0:
+        if expected_color := show_faces.get("color"):
+            for trace in surface_traces:
+                if is_3d:
+                    assert trace.color == expected_color
+                else:
+                    assert trace.fillcolor == expected_color
+
+        if is_3d and (showscale := show_faces.get("showscale")):
+            for trace in surface_traces:
+                assert trace.showscale == showscale
 
 
 @pytest.fixture
@@ -749,8 +807,7 @@ def test_draw_bonds_advanced(
                     for x, y in zip(trace.x, trace.y, strict=False)
                 )
 
-    elif test_case == "no_image_atoms":
-        # Check no bonds go outside unit cell
+    elif test_case == "no_image_atoms":  # Check no bonds go outside cell
         for trace in fig.data:
             assert max(trace.x) <= 3.1
             assert max(trace.y) <= 3.1

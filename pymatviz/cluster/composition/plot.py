@@ -1053,7 +1053,7 @@ def cluster_compositions(
             ticktext=tick_text,
         )
 
-        fig.update_layout(coloraxis_colorbar=color_bar)
+        fig.layout.coloraxis.colorbar.update(**color_bar)
 
     # Add point annotations if function is provided
     if callable(annotate_points):
