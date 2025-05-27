@@ -31,8 +31,7 @@ with MPRester() as mpr:
     )
 
 
-# %%
-# get a map from task ID to its structure
+# %% get a map from task ID to its structure
 struct_df = pd.DataFrame(structs).explode(task_ids_key).set_index(task_ids_key)
 
 df_carrier[struct_df.columns] = struct_df

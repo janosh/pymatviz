@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import plotly.graph_objects as go
 
-def _hide_plotly_toolbar(fig: Any) -> None:
+
+def _hide_plotly_toolbar(fig: go.Figure) -> None:
     """Configure plotly figure to hide toolbar by default for cleaner display."""
     modebar_remove = (
         "pan select lasso zoomIn zoomOut autoScale resetScale3d".split()  # noqa: SIM905
@@ -19,7 +21,7 @@ def _hide_plotly_toolbar(fig: Any) -> None:
 
 def _create_display_methods(
     plot_func_name: str,
-) -> tuple[Callable[..., Any], Callable[..., Any]]:
+) -> tuple[Callable[..., None], Callable[..., dict[str, str]]]:
     """Create IPython display and MIME bundle methods for a given plot function."""
 
     def ipython_display(self: Any) -> None:
@@ -43,8 +45,8 @@ def _create_display_methods(
 
     def repr_mimebundle(
         self: Any,
-        include: set[str] | None = None,  # noqa: ARG001
-        exclude: set[str] | None = None,  # noqa: ARG001
+        include: tuple[str, ...] = (),  # noqa: ARG001
+        exclude: tuple[str, ...] = (),  # noqa: ARG001
     ) -> dict[str, str]:
         """Generic MIME bundle method."""
         try:
@@ -101,8 +103,7 @@ def notebook_mode(*, on: bool) -> None:
     - PhononDos -> phonon_dos
     - DiffractionPattern -> xrd_pattern
     """
-    # Define class configurations: (import_func, class_obj, display_methods)
-    class_configs = [
+    class_configs = [  # Define (import_func, class_obj, display_methods)
         (
             lambda: __import__("pymatgen.core", fromlist=["Structure"]).Structure,
             _structure_ipython_display_,
@@ -143,8 +144,8 @@ def notebook_mode(*, on: bool) -> None:
                 cls._repr_mimebundle_ = repr_mimebundle
             else:
                 if hasattr(cls, "_ipython_display_"):
-                    delattr(cls, "_ipython_display_")
+                    del cls._ipython_display_
                 if hasattr(cls, "_repr_mimebundle_"):
-                    delattr(cls, "_repr_mimebundle_")
+                    del cls._repr_mimebundle_
         except ImportError:
             pass  # Module not available

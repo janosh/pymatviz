@@ -61,13 +61,8 @@ dos = doc.phonon_dos
 bands
 
 
-# %%
-# Phonon DOS auto-renders
+# %% Phonon DOS auto-renders
 dos
-
-
-# %% Combined phonon bands and DOS
-bands, dos
 
 
 # %% Multiple structures
@@ -96,8 +91,7 @@ structures["Hexagonal"]
 structures["Tetragonal"]
 
 
-# %%
-# Manual control (optional) - New unified function
+# %% Manual control (optional) - New unified function
 nacl = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 pmv.notebook_mode(on=False)  # Disable auto-rendering
 nacl  # Now displays as text
@@ -118,8 +112,7 @@ nacl_xrd = xrd_calc.get_pattern(nacl)
 nacl_xrd  # Auto-renders as XRD pattern plot
 
 
-# %%
-# Additional examples with the unified API
+# %% Additional examples with the unified API
 pmv.notebook_mode(on=False)  # Disable auto-rendering
 nacl  # Now displays as text
 
