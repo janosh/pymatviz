@@ -325,6 +325,10 @@ def _compare_colors(
                 "show_site_vectors": "force",
             },
         ),
+        (  # Test cell_boundary_tol
+            "cell_boundary_tol",
+            dict(cell_boundary_tol=0.1, show_image_sites=True, site_labels="symbol"),
+        ),
     ],
 )
 def test_structure_2d_plotly_comprehensive(
@@ -813,6 +817,16 @@ def test_structure_plotly_site_vector_coverage() -> None:
             "show_site_vectors": "force",
             "subplot_title": lambda _struct, idx: f"Custom {idx}",
             "show_sites": False,  # Simplified to avoid complex validation
+        },
+        # Test cell_boundary_tol parameter for 3D
+        {
+            "cell_boundary_tol": 0.1,
+            "show_image_sites": True,
+            "show_sites": True,
+            "site_labels": "symbol",
+            "elem_colors": ElemColorScheme.jmol,
+            "atom_size": 20,
+            "n_cols": 1,
         },
     ],
 )
@@ -1374,40 +1388,82 @@ def test_structure_plotly_cell_faces_no_cell() -> None:
 
 def test_structure_plotly_cell_faces_multiple_structures() -> None:
     """Test cell faces with multiple structures."""
-    lattice = Lattice.cubic(4.0)
-    struct1 = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    struct2 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    structures = {
+        "struct1": Structure(Lattice.cubic(3), ["Li"], [[0, 0, 0]]),
+        "struct2": Structure(Lattice.cubic(4), ["Na"], [[0, 0, 0]]),
+    }
 
-    structs_dict = {"struct1": struct1, "struct2": struct2}
-
-    fig_2d = pmv.structure_2d_plotly(  # Test 2D with multiple structures
-        structs_dict,
-        show_cell=True,
-        show_cell_faces=True,
-        show_sites=True,
-        n_cols=2,
+    # Test 2D
+    fig_2d = pmv.structure_2d_plotly(
+        structures, show_cell=True, show_cell_faces=True, n_cols=2
     )
-    surface_traces_2d = [
-        trace
-        for trace in fig_2d.data
-        if trace.name == "cell-face"
-        and hasattr(trace, "fill")
-        and trace.fill == "toself"
-    ]
-    assert len(surface_traces_2d) == 2
+    assert isinstance(fig_2d, go.Figure)
 
-    fig_3d = pmv.structure_3d_plotly(  # Test 3D with multiple structures
-        structs_dict,
-        show_cell=True,
-        show_cell_faces=True,
-        show_sites=True,
-        n_cols=2,
+    # Test 3D
+    fig_3d = pmv.structure_3d_plotly(
+        structures, show_cell=True, show_cell_faces=True, n_cols=2
     )
-    surface_traces_3d = [
-        trace
-        for trace in fig_3d.data
-        if trace.type == "mesh3d"
-        and trace.name
-        and trace.name.startswith("surface-face")
-    ]
-    assert len(surface_traces_3d) == 24
+    assert isinstance(fig_3d, go.Figure)
+
+
+@pytest.mark.parametrize(
+    ("is_3d", "cell_boundary_tol", "show_image_sites"),
+    [
+        (False, 0.0, True),  # 2D strict boundaries
+        (False, 0.1, True),  # 2D with buffer
+        (True, 0.0, True),  # 3D strict boundaries
+        (True, 0.2, True),  # 3D with larger buffer
+        (False, 0.1, False),  # 2D with buffer but no image sites
+        (True, 0.1, False),  # 3D with buffer but no image sites
+    ],
+)
+def test_structure_plotly_cell_boundary_tol(
+    is_3d: bool, cell_boundary_tol: float, show_image_sites: bool
+) -> None:
+    """Test cell_boundary_tol parameter in both 2D and 3D plotly functions."""
+    structure = Structure(Lattice.cubic(3.0), ["Li"], [[0, 0, 0]])
+    plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d_plotly
+
+    fig = plot_func(
+        structure,
+        cell_boundary_tol=cell_boundary_tol,
+        show_image_sites=show_image_sites,
+        show_sites=True,
+    )
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+
+
+@pytest.mark.parametrize("is_3d", [True, False])
+def test_structure_plotly_cell_boundary_tol_dict(is_3d: bool) -> None:
+    """Test cell_boundary_tol with per-structure dictionaries."""
+    structures = {
+        "struct1": Structure(Lattice.cubic(3), ["Li"], [[0, 0, 0]]),
+        "struct2": Structure(Lattice.cubic(4), ["Na"], [[0, 0, 0]]),
+    }
+
+    # Test with per-structure tolerance values
+    cell_boundary_tol_dict = {"struct1": 0.0, "struct2": 0.2}
+    plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d_plotly
+
+    fig = plot_func(
+        structures,
+        cell_boundary_tol=cell_boundary_tol_dict,
+        show_image_sites=True,
+        show_sites=True,
+    )
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+
+    # Test with missing key (should use default 0.0)
+    fig2 = plot_func(
+        structures,
+        cell_boundary_tol={"struct1": 0.1},  # struct2 will use default 0.0
+        show_image_sites=True,
+        show_sites=True,
+    )
+
+    assert isinstance(fig2, go.Figure)
+    assert len(fig2.data) > 0

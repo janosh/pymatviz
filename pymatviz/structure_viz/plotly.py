@@ -58,6 +58,7 @@ def structure_2d_plotly(
     show_cell_faces: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
+    cell_boundary_tol: float | dict[str, float] = 0.0,
     show_bonds: bool | NearNeighbors | dict[str, bool | NearNeighbors] = False,
     site_labels: Literal["symbol", "species", "legend", False]
     | dict[str, str]
@@ -94,6 +95,11 @@ def structure_2d_plotly(
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
             on cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
+        cell_boundary_tol (float | dict[str, float], optional): Buffer distance (in
+            fractional coordinates) beyond the unit cell boundaries to include image
+            atoms. Defaults to 0.0 for strict cell boundaries (only atoms with
+            0 <= coord <= 1). Higher values include atoms further outside the cell. If a
+            dict, will be used to customize cell boundary tolerance per structure.
         show_bonds (bool | NearNeighbors | dict[str, bool | NearNeighbors], optional):
             Whether to draw bonds between sites. If True, uses CrystalNN with a cutoff
             of 10 Å to determine nearest neighbors, including in neighboring cells.
@@ -198,13 +204,19 @@ def structure_2d_plotly(
 
         struct_i = _standardize_struct(raw_struct_i, standardize_struct)
 
+        # Handle per-structure cell_boundary_tol settings if it's a dict
+        if isinstance(cell_boundary_tol, dict):
+            cell_boundary_tol_i = cell_boundary_tol.get(struct_key, 0.0)
+        else:
+            cell_boundary_tol_i = cell_boundary_tol
+
         rotation_matrix = _angles_to_rotation_matrix(rotation)
         rotated_coords_all_sites = np.dot(struct_i.cart_coords, rotation_matrix)
 
         # For bonding, consider primary and image sites if show_image_sites is active
         # The actual plotting of image sites is handled later by draw_site if show_sites
         augmented_structure = _prep_augmented_structure_for_bonding(
-            struct_i, show_image_sites and show_sites
+            struct_i, show_image_sites and show_sites, cell_boundary_tol_i
         )
 
         # Collect plotted site coordinates for bond filtering
@@ -278,7 +290,11 @@ def structure_2d_plotly(
                 # Add image sites for the current primary site
                 # This uses the global show_image_sites argument.
                 if show_image_sites:
-                    image_cart_coords_arrays = get_image_sites(site, struct_i.lattice)
+                    image_cart_coords_arrays = get_image_sites(
+                        site,
+                        struct_i.lattice,
+                        cell_boundary_tol=cell_boundary_tol_i,
+                    )
                     if len(image_cart_coords_arrays) > 0:
                         rotated_image_atoms_coords_3d_list = np.dot(
                             image_cart_coords_arrays, rotation_matrix
@@ -400,6 +416,7 @@ def structure_3d_plotly(
     show_cell_faces: bool | dict[str, Any] = True,
     show_sites: bool | dict[str, Any] = True,
     show_image_sites: bool | dict[str, Any] = True,
+    cell_boundary_tol: float | dict[str, float] = 0.0,
     show_bonds: bool | NearNeighbors | dict[str, bool | NearNeighbors] = False,
     site_labels: Literal["symbol", "species", "legend", False]
     | dict[str, str]
@@ -436,6 +453,10 @@ def structure_3d_plotly(
         show_image_sites (bool | dict[str, Any], optional): Whether to show image sites
             on cell edges and surfaces. If a dict, will be used to customize how
             image sites are rendered. Defaults to True.
+        cell_boundary_tol (float | dict[str, float], optional): Buffer distance (in
+            fractional coordinates) beyond the unit cell boundaries to include image
+            atoms. Defaults to 0.0 for strict cell boundaries (only atoms with
+            0 <= coord <= 1). Higher values include atoms further outside the cell.
         show_bonds (bool | NearNeighbors | dict[str, bool | NearNeighbors], optional):
             Whether to draw bonds between sites. If True, uses CrystalNN with a cutoff
             of 10 Å to determine nearest neighbors, including in neighboring cells.
@@ -536,11 +557,17 @@ def structure_3d_plotly(
         # Initialize seen elements for this subplot
         seen_elements_per_subplot[idx] = set()
 
+        # Handle per-structure cell_boundary_tol settings if it's a dict
+        if isinstance(cell_boundary_tol, dict):
+            cell_boundary_tol_i = cell_boundary_tol.get(struct_key, 0.0)
+        else:
+            cell_boundary_tol_i = cell_boundary_tol
+
         # Prepare augmented structure: original + image sites for consistent processing
         # This augmented_structure is used for collecting all site data for the single
         # 3D trace and for bond calculations.
         augmented_structure = _prep_augmented_structure_for_bonding(
-            struct_i, show_image_sites and show_sites
+            struct_i, show_image_sites and show_sites, cell_boundary_tol_i
         )
 
         # Plot atoms and vectors
@@ -678,7 +705,7 @@ def structure_3d_plotly(
 
         # Draw bonds using the augmented structure after sites are processed
         if show_bonds:
-            # Handle per-structure show_bonds settings if it's a dictionary
+            # Handle per-structure show_bonds settings if it's a dict
             struct_show_bonds = show_bonds
             if isinstance(show_bonds, dict):
                 struct_show_bonds = show_bonds.get(struct_key, False)

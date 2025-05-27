@@ -161,3 +161,28 @@ fig.update_layout(
 
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "structures-2x2-grid-comprehensive-options")
+
+
+# %% Simple cubic structure to show effect of cell_boundary_tol
+LiF_cubic = Structure(
+    lattice=Lattice.cubic(3.0),
+    species=["Li", "F"],
+    coords=[(0, 0, 0), (0.5, 0.5, 0.5)],
+)
+
+# Show same structure with different cell_boundary_tol values
+cell_boundary_tols = {"Strict boundaries (tol=0)": 0, "Loose (tol=0.5)": 0.5}
+fig = pmv.structure_3d_plotly(
+    dict.fromkeys(cell_boundary_tols, LiF_cubic),
+    cell_boundary_tol=cell_boundary_tols,
+    show_image_sites=True,
+    show_sites=True,
+    site_labels="symbol",
+)
+
+title = "Effect of cell_boundary_tol on Image Site Rendering"
+subtitle = "Higher tolerance values include more atoms outside the unit cell"
+fig.layout.title = dict(text=f"{title}<br><sub>{subtitle}</sub>", x=0.5, font_size=16)
+fig.layout.update(height=600, width=800, margin_t=50)
+
+fig.show()
