@@ -146,6 +146,7 @@ def test_notebook_mode_toggle(enable: bool) -> None:
         ("pymatgen.analysis.diffraction.xrd", "DiffractionPattern"),
         ("pymatgen.phonon.bandstructure", "PhononBandStructureSymmLine"),
         ("pymatgen.phonon.dos", "PhononDos"),
+        ("phonopy.phonon.dos", "TotalDos"),
     ]
 
     for module_name, class_name in optional_classes:
@@ -360,6 +361,7 @@ def test_multiple_enable_disable_cycles() -> None:
         ["pymatgen.analysis.diffraction.xrd"],
         ["pymatgen.phonon.bandstructure"],
         ["pymatgen.phonon.dos"],
+        ["phonopy.phonon.dos"],
         ["ase.atoms", "pymatgen.phonon.dos"],
     ],
 )
@@ -466,3 +468,58 @@ def test_phonon_display_functions(monkeypatch: pytest.MonkeyPatch) -> None:
     except (TypeError, ImportError):
         # error expected if pymatviz functions fail with mock objects or pymatviz
         pass  # not available
+
+
+def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test phonopy TotalDos notebook integration."""
+    pytest.importorskip("phonopy", reason="phonopy not available")
+
+    from pymatviz.utils.testing import load_phonopy_nacl
+
+    # Load phonopy object and calculate DOS
+    phonopy_nacl = load_phonopy_nacl()
+    phonopy_nacl.run_mesh([10, 10, 10])
+    phonopy_nacl.run_total_dos()
+
+    pmv.notebook_mode(on=True)
+
+    published_data: list[dict[str, str]] = []  # capture what gets published
+
+    def mock_publish_display_data(data: dict[str, str]) -> None:
+        published_data.append(data)
+
+    monkeypatch.setattr(
+        "IPython.display.publish_display_data", mock_publish_display_data
+    )
+
+    try:  # Check that display methods were added
+        from phonopy.phonon.dos import TotalDos
+
+        assert hasattr(TotalDos, "_ipython_display_")
+        assert hasattr(TotalDos, "_repr_mimebundle_")
+        assert callable(TotalDos._ipython_display_)
+        assert callable(TotalDos._repr_mimebundle_)
+
+        # Test _ipython_display_ method
+        phonopy_nacl.total_dos._ipython_display_()
+
+        # Check that data was published
+        assert len(published_data) == 1
+        display_data = published_data[0]
+
+        # Check MIME types
+        assert "text/plain" in display_data
+        # Should have plotly data since we have a real DOS object
+        if "application/vnd.plotly.v1+json" in display_data:
+            plotly_json = display_data["application/vnd.plotly.v1+json"]
+            assert isinstance(plotly_json, dict)
+            assert "data" in plotly_json
+            assert "layout" in plotly_json
+
+        # Test _repr_mimebundle_ method
+        mime_bundle = phonopy_nacl.total_dos._repr_mimebundle_()
+        assert isinstance(mime_bundle, dict)
+        assert "text/plain" in mime_bundle
+
+    finally:  # Clean up
+        pmv.notebook_mode(on=False)

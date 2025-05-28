@@ -18,7 +18,7 @@ from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.phonons import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 
 
 # %% Crystal structures auto-render as 3D plots
@@ -63,6 +63,20 @@ bands
 
 # %% Phonon DOS auto-renders
 dos
+
+
+# %% Phonopy DOS objects also auto-render
+try:
+    phonopy_nacl = load_phonopy_nacl()
+    phonopy_nacl.run_mesh([10, 10, 10])
+    phonopy_nacl.run_total_dos()
+    phonopy_dos = phonopy_nacl.total_dos
+
+except ImportError:
+    print("phonopy not available - skipping phonopy DOS example")
+    phonopy_dos = None
+
+phonopy_dos  # Auto-renders as interactive DOS plot (if phonopy is available)
 
 
 # %% Multiple structures

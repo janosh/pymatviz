@@ -81,6 +81,9 @@ _phonon_bands_ipython_display_, _phonon_bands_repr_mimebundle_ = (
 _phonon_dos_ipython_display_, _phonon_dos_repr_mimebundle_ = _create_display_methods(
     "phonon_dos"
 )
+_phonopy_dos_ipython_display_, _phonopy_dos_repr_mimebundle_ = _create_display_methods(
+    "phonon_dos"
+)
 
 
 def notebook_mode(*, on: bool) -> None:
@@ -101,6 +104,7 @@ def notebook_mode(*, on: bool) -> None:
     - ASE Atoms -> structure_3d_plotly
     - PhononBandStructureSymmLine -> phonon_bands
     - PhononDos -> phonon_dos
+    - phonopy TotalDos -> phonon_dos
     - DiffractionPattern -> xrd_pattern
     """
     class_configs = [  # Define (import_func, class_obj, display_methods)
@@ -133,6 +137,11 @@ def notebook_mode(*, on: bool) -> None:
             lambda: __import__("pymatgen.phonon.dos", fromlist=["PhononDos"]).PhononDos,
             _phonon_dos_ipython_display_,
             _phonon_dos_repr_mimebundle_,
+        ),
+        (
+            lambda: __import__("phonopy.phonon.dos", fromlist=["TotalDos"]).TotalDos,
+            _phonopy_dos_ipython_display_,
+            _phonopy_dos_repr_mimebundle_,
         ),
     ]
 
