@@ -29,12 +29,56 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from typing import Any, Literal
 
+    import ase
     import pandas as pd
     import plotly.graph_objects as go
     from numpy.typing import ArrayLike
     from pymatgen.analysis.local_env import NearNeighbors
 
     from pymatviz.typing import ColorType, Xyz
+
+
+def get_struct_prop(
+    struct: Structure | ase.Atoms,
+    struct_key: str | int,
+    prop_name: str,
+    func_param: Any,
+) -> Any:
+    """Get a structure related value with standardized precedence handling.
+
+    Precedence order:
+    1. structure.properties[prop_name] or atoms.info[prop_name]
+    2. func_param (if dict, use struct_key; otherwise use directly)
+
+    Args:
+        struct: The pymatgen Structure or ASE Atoms object.
+        struct_key: Key identifying this structure in a collection.
+        prop_name: Name of the property to look for in structure.properties or
+            atoms.info.
+        func_param: Function parameter value (can be dict for per-structure values).
+
+    Returns:
+        Any: Resolved property value following precedence.
+    """
+    from pymatviz.process_data import is_ase_atoms
+
+    # Check structure/atoms properties first (highest precedence)
+    prop_value = None
+    if is_ase_atoms(struct):
+        prop_value = struct.info.get(prop_name)
+    elif hasattr(struct, "properties"):
+        prop_value = struct.properties.get(prop_name)
+
+    if prop_value is not None:
+        return prop_value
+
+    # Fall back to function param
+    if isinstance(func_param, dict):
+        # For dict params, use struct_key to get per-structure value
+        return func_param.get(struct_key, None)
+
+    # For non-dict params, use directly
+    return func_param
 
 
 # fallback value (in nanometers) for covalent radius of an element

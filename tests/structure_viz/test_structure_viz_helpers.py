@@ -23,6 +23,7 @@ from pymatviz.structure_viz.helpers import (
     get_first_matching_site_prop,
     get_image_sites,
     get_site_hover_text,
+    get_struct_prop,
     get_subplot_title,
 )
 from pymatviz.typing import RgbColorType, Xyz
@@ -873,3 +874,33 @@ def test_draw_bonds_advanced(
             assert max(trace.x) <= 3.1
             assert max(trace.y) <= 3.1
             assert max(trace.z) <= 3.1
+
+
+def test_get_struct_prop(fe3co4_disordered: Structure) -> None:
+    """Test the property precedence helper function."""
+    struct = fe3co4_disordered
+
+    # Test 1: Structure property takes precedence over function parameter
+    struct.properties["test_prop"] = "struct_value"
+    result = get_struct_prop(struct, "key1", "test_prop", "func_value")
+    assert result == "struct_value"
+
+    # Test 2: Function parameter used when structure property doesn't exist
+    result = get_struct_prop(struct, "key1", "missing_prop", "func_value")
+    assert result == "func_value"
+
+    # Test 3: Dict function parameter with matching key
+    result = get_struct_prop(
+        struct, "key1", "missing_prop", {"key1": "dict_value", "key2": "other"}
+    )
+    assert result == "dict_value"
+
+    # Test 4: Dict function parameter with missing key returns None
+    result = get_struct_prop(
+        struct, "missing_key", "missing_prop", {"key1": "dict_value"}
+    )
+    assert result is None
+
+    # Test 5: Structure property takes precedence over dict parameter
+    result = get_struct_prop(struct, "key1", "test_prop", {"key1": "dict_value"})
+    assert result == "struct_value"

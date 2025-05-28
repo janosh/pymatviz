@@ -1115,8 +1115,7 @@ def test_structure_3d_plotly_multiple() -> None:
     struct3.properties = {"ID": "struct3", "name": "nickel oxide"}
     struct4 = Structure(lattice_cubic, ["Cu", "O"], COORDS)
 
-    # Test dict[str, Structure]
-    structs_dict = {
+    structs_dict: dict[str, Structure] = {
         "struct1": struct1,
         "struct2": struct2,
         "struct3": struct3,
@@ -1407,49 +1406,84 @@ def test_structure_plotly_cell_faces_multiple_structures() -> None:
 
 
 @pytest.mark.parametrize("is_3d", [True, False])
-def test_structure_plotly_cell_boundary_tol_properties(is_3d: bool) -> None:
-    """Test cell_boundary_tol via structure.properties with highest precedence."""
+def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
+    """Test that multiple structure properties take precedence over function
+    params.
+    """
+    from pymatgen.core import Lattice, Structure
+
+    # Create two identical structures but with different properties
     lattice = Lattice.cubic(4.0)
-    struct_near_boundary = Structure(lattice, ["Na"], [[0.95, 0.95, 0.95]])
+    struct1 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct2 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    # Test basic precedence: structure property overrides function parameter
-    struct_with_prop = struct_near_boundary.copy()
-    struct_with_prop.properties["cell_boundary_tol"] = 0.3
+    # Set properties only on the first structure
+    struct1.properties |= {
+        "atom_size": 50,  # Should override function param of 20
+        "scale": 2.0,  # Should override function param of 1.0
+        "atomic_radii": {"Na": 1.5, "Cl": 1.8},  # Should override function param
+    }
+    # struct2 has no properties, so should use function params
 
-    plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d_plotly
+    func_kwargs: dict[str, Any] = {"atom_size": 20, "scale": 1.0, "atomic_radii": 0.8}
 
-    # Structure property should override function parameter
-    fig_override = plot_func(
-        struct_with_prop,
-        cell_boundary_tol=0.0,  # Should be ignored
-        show_image_sites=True,
-        site_labels="symbol",
-    )
+    # Test single structures to verify precedence works
+    if is_3d:
+        fig1 = pmv.structure_3d_plotly(struct1, **func_kwargs)
+        fig2 = pmv.structure_3d_plotly(struct2, **func_kwargs)
+    else:
+        fig1 = pmv.structure_2d_plotly(struct1, **func_kwargs)
+        fig2 = pmv.structure_2d_plotly(struct2, **func_kwargs)
 
-    # Compare with function parameter only (no structure property)
-    fig_func_param = plot_func(
-        struct_near_boundary,  # No property set
-        cell_boundary_tol=0.0,  # Strict boundaries
-        show_image_sites=True,
-        site_labels="symbol",
-    )
+    # Get site traces from both figures
+    def get_site_traces(fig: go.Figure) -> list[Any]:
+        return [
+            trace
+            for trace in fig.data
+            if hasattr(trace, "marker")
+            and trace.marker is not None
+            and hasattr(trace.marker, "size")
+            and trace.marker.size is not None
+            and not (trace.name and ("edge" in trace.name or "node" in trace.name))
+            and not (trace.name and "image-" in trace.name)  # Exclude image sites
+        ]
 
-    # Structure with property should have more traces (more permissive tolerance)
-    assert len(fig_override.data) >= len(fig_func_param.data)
+    def extract_size(marker_size: Any) -> float:
+        if isinstance(marker_size, (tuple, list)):
+            return float(marker_size[0]) if marker_size else 0.0
+        return float(marker_size) if marker_size is not None else 0.0
 
-    # Test with multiple structures and dict parameter
-    struct_no_prop = struct_near_boundary.copy()
-    structures = {"with_prop": struct_with_prop, "no_prop": struct_no_prop}
+    traces1 = get_site_traces(fig1)
+    traces2 = get_site_traces(fig2)
 
-    fig_mixed = plot_func(
-        structures,
-        cell_boundary_tol={
-            "with_prop": 0.0,
-            "no_prop": 0.1,
-        },  # Dict should be overridden for first struct
-        show_image_sites=True,
-        site_labels="symbol",
-    )
+    # Extract and compare marker sizes to verify precedence
+    sizes1 = [
+        extract_size(trace.marker.size)
+        for trace in traces1
+        if extract_size(trace.marker.size) > 0
+    ]
+    sizes2 = [
+        extract_size(trace.marker.size)
+        for trace in traces2
+        if extract_size(trace.marker.size) > 0
+    ]
 
-    assert isinstance(fig_mixed, go.Figure)
-    assert len(fig_mixed.data) > 0
+    # Calculate averages for comparison
+    avg_size1 = sum(sizes1) / len(sizes1)
+    avg_size2 = sum(sizes2) / len(sizes2)
+
+    # CORE PRECEDENCE TEST: struct1 has properties (atom_size=50, scale=2.0)
+    # vs struct2 using function params (atom_size=20, scale=1.0)
+    # So struct1 should have significantly larger markers
+    assert avg_size1 > avg_size2 * 2
+
+    # ATOMIC_RADII PRECEDENCE TEST: verify element-specific precedence
+    # struct1 has custom atomic_radii: Na=1.5, Cl=1.8
+    # struct2 uses atomic_radii=0.8 for both elements
+    na_trace1 = next(t for t in traces1 if t.name and "Na" in t.name)
+    cl_trace1 = next(t for t in traces1 if t.name and "Cl" in t.name)
+
+    na_size1 = extract_size(na_trace1.marker.size)
+    cl_size1 = extract_size(cl_trace1.marker.size)
+    # In struct1, Cl should be larger than Na (custom atomic_radii: 1.8 vs 1.5)
+    assert cl_size1 > na_size1

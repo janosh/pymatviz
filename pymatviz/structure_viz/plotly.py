@@ -27,6 +27,7 @@ from pymatviz.structure_viz.helpers import (
     get_first_matching_site_prop,
     get_image_sites,
     get_site_hover_text,
+    get_struct_prop,
     get_subplot_title,
 )
 from pymatviz.utils import pick_max_contrast_color
@@ -207,14 +208,32 @@ def structure_2d_plotly(
         struct_i = _standardize_struct(raw_struct_i, standardize_struct)
 
         # Handle cell_boundary_tol with precedence:
-        # 1. structure.properties["cell_boundary_tol"]
+        # 1. structure.properties["cell_boundary_tol"] or
+        #    atoms.info["cell_boundary_tol"]
         # 2. function arg cell_boundary_tol (dict or float)
-        if cell_boundary_tol_prop := struct_i.properties.get("cell_boundary_tol"):
-            cell_boundary_tol_i = cell_boundary_tol_prop
-        elif isinstance(cell_boundary_tol, dict):
-            cell_boundary_tol_i = cell_boundary_tol.get(struct_key, 0.0)
-        else:
-            cell_boundary_tol_i = cell_boundary_tol
+        cell_boundary_tol_i = (
+            get_struct_prop(
+                raw_struct_i, struct_key, "cell_boundary_tol", cell_boundary_tol
+            )
+            or 0.0
+        )
+
+        # Handle other parameters with precedence
+        atomic_radii_i = get_struct_prop(
+            raw_struct_i, struct_key, "atomic_radii", atomic_radii
+        )
+        if atomic_radii_i is None:
+            atomic_radii_i = atomic_radii
+
+        atom_size_i = (
+            get_struct_prop(raw_struct_i, struct_key, "atom_size", atom_size)
+            or atom_size
+        )
+
+        scale_i = get_struct_prop(raw_struct_i, struct_key, "scale", scale) or scale
+
+        # Process atomic_radii with per-structure precedence
+        _atomic_radii = get_atomic_radii(atomic_radii_i)
 
         rotation_matrix = _angles_to_rotation_matrix(rotation)
         rotated_coords_all_sites = np.dot(struct_i.cart_coords, rotation_matrix)
@@ -255,8 +274,8 @@ def structure_2d_plotly(
                     site_labels=site_labels,
                     elem_colors=_elem_colors,
                     atomic_radii=_atomic_radii,
-                    atom_size=atom_size,
-                    scale=scale,
+                    atom_size=atom_size_i,
+                    scale=scale_i,
                     site_kwargs={} if show_sites is True else show_sites,
                     is_3d=False,  # draw_site will project to 2D
                     row=row,
@@ -316,8 +335,8 @@ def structure_2d_plotly(
                                 site_labels=site_labels,
                                 elem_colors=_elem_colors,
                                 atomic_radii=_atomic_radii,
-                                atom_size=atom_size,
-                                scale=scale,
+                                atom_size=atom_size_i,
+                                scale=scale_i,
                                 site_kwargs={}
                                 if show_image_sites is True
                                 else show_image_sites,
@@ -568,12 +587,29 @@ def structure_3d_plotly(
         # Handle cell_boundary_tol with precedence:
         # 1. structure.properties["cell_boundary_tol"] (highest precedence)
         # 2. function parameter cell_boundary_tol (dict or float)
-        if cell_boundary_tol_prop := struct_i.properties.get("cell_boundary_tol"):
-            cell_boundary_tol_i = cell_boundary_tol_prop
-        elif isinstance(cell_boundary_tol, dict):
-            cell_boundary_tol_i = cell_boundary_tol.get(struct_key, 0.0)
-        else:
-            cell_boundary_tol_i = cell_boundary_tol
+        cell_boundary_tol_i = (
+            get_struct_prop(
+                raw_struct_i, struct_key, "cell_boundary_tol", cell_boundary_tol
+            )
+            or 0.0
+        )
+
+        # Handle other parameters with precedence
+        atomic_radii_i = get_struct_prop(
+            raw_struct_i, struct_key, "atomic_radii", atomic_radii
+        )
+        if atomic_radii_i is None:
+            atomic_radii_i = atomic_radii
+
+        atom_size_i = (
+            get_struct_prop(raw_struct_i, struct_key, "atom_size", atom_size)
+            or atom_size
+        )
+
+        scale_i = get_struct_prop(raw_struct_i, struct_key, "scale", scale) or scale
+
+        # Process atomic_radii with per-structure precedence
+        _atomic_radii = get_atomic_radii(atomic_radii_i)
 
         # Prepare augmented structure: original + image sites for consistent processing
         # This augmented_structure is used for collecting all site data for the single
@@ -630,8 +666,8 @@ def structure_3d_plotly(
                         pick_max_contrast_color(display_color_str)
                     )
 
-                    radius = _atomic_radii.get(symbol, 1) * scale
-                    element_sizes.append(radius * atom_size)
+                    radius = _atomic_radii.get(symbol, 1) * scale_i
+                    element_sizes.append(radius * atom_size_i)
 
                     # Use helper for hover text
                     element_hover_texts.append(
