@@ -23,6 +23,7 @@ from pymatviz.structure_viz.helpers import (
     get_first_matching_site_prop,
     get_image_sites,
     get_site_hover_text,
+    get_struct_prop,
     get_subplot_title,
 )
 from pymatviz.typing import RgbColorType, Xyz
@@ -118,7 +119,7 @@ def test_get_image_sites(structures: list[Structure]) -> None:
         assert image_atoms.shape[1] == 3  # Each image atom should have 3 coordinates
 
     # Test with custom tolerance
-    image_atoms = get_image_sites(site, lattice, tol=0.1)
+    image_atoms = get_image_sites(site, lattice, cell_boundary_tol=0.1)
     assert isinstance(image_atoms, np.ndarray)
     assert image_atoms.ndim in (1, 2)
     if image_atoms.size > 0:
@@ -132,7 +133,7 @@ def test_get_image_sites(structures: list[Structure]) -> None:
         (Lattice.cubic(1), [0, 0.5, 0], 3),
         (Lattice.hexagonal(3, 5), [0, 0, 0], 7),
         (Lattice.rhombohedral(3, 5), [0, 0, 0], 7),
-        (Lattice.rhombohedral(3, 5), [0.1, 0, 0], 7),
+        (Lattice.rhombohedral(3, 5), [0.1, 0, 0], 3),
         (Lattice.rhombohedral(3, 5), [0.5, 0, 0], 3),
     ],
 )
@@ -142,6 +143,67 @@ def test_get_image_sites_lattices(
     site = PeriodicSite("Si", site_coords, lattice)
     image_atoms = get_image_sites(site, lattice)
     assert len(image_atoms) == expected_images
+
+
+@pytest.mark.parametrize(
+    ("cell_boundary_tol", "site_coords", "expected_min_images", "expected_max_images"),
+    [
+        # Corner site - maximum image sites
+        (0.0, [0, 0, 0], 7, 7),  # Strict boundaries
+        (0.1, [0, 0, 0], 7, 15),  # Small buffer
+        (0.2, [0, 0, 0], 7, 20),  # Medium buffer
+        # Edge site - fewer images
+        (0.0, [0.5, 0, 0], 3, 3),  # Strict boundaries
+        (0.1, [0.5, 0, 0], 3, 8),  # Small buffer
+        # Center site - minimal images
+        (0.0, [0.5, 0.5, 0.5], 0, 0),  # Strict boundaries
+        (0.2, [0.5, 0.5, 0.5], 0, 6),  # Medium buffer
+    ],
+)
+def test_get_image_sites_cell_boundary_tol(
+    cell_boundary_tol: float,
+    site_coords: list[float],
+    expected_min_images: int,
+    expected_max_images: int,
+) -> None:
+    """Test cell_boundary_tol parameter controls image site inclusion correctly."""
+    lattice = Lattice.cubic(3.0)
+    site = PeriodicSite("Si", site_coords, lattice)
+
+    image_atoms = get_image_sites(site, lattice, cell_boundary_tol=cell_boundary_tol)
+
+    # Check expected number of image sites
+    n_images = len(image_atoms)
+    assert expected_min_images <= n_images <= expected_max_images, (
+        f"Expected {expected_min_images}-{expected_max_images} images for "
+        f"tol={cell_boundary_tol}, coords={site_coords}, got {n_images}"
+    )
+
+    # Verify all image sites are within tolerance bounds
+    if n_images > 0:
+        image_frac_coords = [
+            lattice.get_fractional_coords(img_cart) for img_cart in image_atoms
+        ]
+
+        for img_frac in image_frac_coords:
+            for coord in img_frac:
+                assert -cell_boundary_tol <= coord <= 1 + cell_boundary_tol, (
+                    f"Image site coordinate {coord} outside tolerance bounds"
+                )
+
+
+@pytest.mark.parametrize(("tol1", "tol2"), [(0.0, 0.1), (0.1, 0.2)])
+def test_get_image_sites_tolerance_ordering(tol1: float, tol2: float) -> None:
+    """Test that higher tolerances include at least as many sites as lower ones."""
+    lattice = Lattice.cubic(2.5)
+    site = PeriodicSite("Si", [0, 0, 0], lattice)  # Corner site for maximum effect
+
+    images_low_tol = get_image_sites(site, lattice, cell_boundary_tol=tol1)
+    images_high_tol = get_image_sites(site, lattice, cell_boundary_tol=tol2)
+
+    assert len(images_high_tol) >= len(images_low_tol), (
+        f"Higher tolerance {tol2} should include at least as many sites as {tol1}"
+    )
 
 
 @pytest.mark.parametrize("is_3d", [True, False])
@@ -812,3 +874,33 @@ def test_draw_bonds_advanced(
             assert max(trace.x) <= 3.1
             assert max(trace.y) <= 3.1
             assert max(trace.z) <= 3.1
+
+
+def test_get_struct_prop(fe3co4_disordered: Structure) -> None:
+    """Test the property precedence helper function."""
+    struct = fe3co4_disordered
+
+    # Test 1: Structure property takes precedence over function parameter
+    struct.properties["test_prop"] = "struct_value"
+    result = get_struct_prop(struct, "key1", "test_prop", "func_value")
+    assert result == "struct_value"
+
+    # Test 2: Function parameter used when structure property doesn't exist
+    result = get_struct_prop(struct, "key1", "missing_prop", "func_value")
+    assert result == "func_value"
+
+    # Test 3: Dict function parameter with matching key
+    result = get_struct_prop(
+        struct, "key1", "missing_prop", {"key1": "dict_value", "key2": "other"}
+    )
+    assert result == "dict_value"
+
+    # Test 4: Dict function parameter with missing key returns None
+    result = get_struct_prop(
+        struct, "missing_key", "missing_prop", {"key1": "dict_value"}
+    )
+    assert result is None
+
+    # Test 5: Structure property takes precedence over dict parameter
+    result = get_struct_prop(struct, "key1", "test_prop", {"key1": "dict_value"})
+    assert result == "struct_value"

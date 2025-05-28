@@ -10,7 +10,7 @@ from pymatgen.phonon.dos import PhononDos
 
 import pymatviz as pmv
 from pymatviz.phonons.helpers import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 
 
 try:
@@ -41,17 +41,15 @@ for mp_id, formula in (
 
 # %% plotting a phonopy TotalDos also works
 try:
-    import phonopy
+    import phonopy  # noqa: F401
 except ImportError:
     raise SystemExit(0) from None  # install phonopy to run this script
 
-phonopy_nacl = phonopy.load(
-    f"{TEST_FILES}/phonons/NaCl/phonopy_disp.yaml.xz",
-    force_sets_filename=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
-)
 
+phonopy_nacl = load_phonopy_nacl()
 phonopy_nacl.run_mesh([10, 10, 10])
 phonopy_nacl.run_total_dos()
+
 plt = phonopy_nacl.plot_total_dos()
 plt.title("NaCl DOS plotted by phonopy")
 

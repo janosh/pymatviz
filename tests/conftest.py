@@ -20,7 +20,7 @@ from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 
 
 if TYPE_CHECKING:
@@ -185,14 +185,7 @@ def _extract_anno_from_fig(fig: go.Figure | plt.Figure) -> str:
 @pytest.fixture(scope="session")
 def phonopy_nacl() -> Phonopy:
     """Return Phonopy class instance of NaCl 2x2x2 without symmetrizing fc2."""
-    import phonopy
-
-    return phonopy.load(
-        f"{TEST_FILES}/phonons/NaCl/phonopy_disp.yaml.xz",
-        force_sets_filename=f"{TEST_FILES}/phonons/NaCl/force_sets.dat",
-        symmetrize_fc=False,
-        produce_fc=True,
-    )
+    return load_phonopy_nacl()
 
 
 @pytest.fixture
