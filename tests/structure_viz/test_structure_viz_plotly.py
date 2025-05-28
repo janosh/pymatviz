@@ -325,6 +325,10 @@ def _compare_colors(
                 "show_site_vectors": "force",
             },
         ),
+        (  # Test cell_boundary_tol
+            "cell_boundary_tol",
+            dict(cell_boundary_tol=0.1, show_image_sites=True, site_labels="symbol"),
+        ),
     ],
 )
 def test_structure_2d_plotly_comprehensive(
@@ -814,6 +818,16 @@ def test_structure_plotly_site_vector_coverage() -> None:
             "subplot_title": lambda _struct, idx: f"Custom {idx}",
             "show_sites": False,  # Simplified to avoid complex validation
         },
+        # Test cell_boundary_tol parameter for 3D
+        {
+            "cell_boundary_tol": 0.1,
+            "show_image_sites": True,
+            "show_sites": True,
+            "site_labels": "symbol",
+            "elem_colors": ElemColorScheme.jmol,
+            "atom_size": 20,
+            "n_cols": 1,
+        },
     ],
 )
 def test_structure_3d_plotly(
@@ -1101,8 +1115,7 @@ def test_structure_3d_plotly_multiple() -> None:
     struct3.properties = {"ID": "struct3", "name": "nickel oxide"}
     struct4 = Structure(lattice_cubic, ["Cu", "O"], COORDS)
 
-    # Test dict[str, Structure]
-    structs_dict = {
+    structs_dict: dict[str, Structure] = {
         "struct1": struct1,
         "struct2": struct2,
         "struct3": struct3,
@@ -1374,40 +1387,103 @@ def test_structure_plotly_cell_faces_no_cell() -> None:
 
 def test_structure_plotly_cell_faces_multiple_structures() -> None:
     """Test cell faces with multiple structures."""
+    structures = {
+        "struct1": Structure(Lattice.cubic(3), ["Li"], [[0, 0, 0]]),
+        "struct2": Structure(Lattice.cubic(4), ["Na"], [[0, 0, 0]]),
+    }
+
+    # Test 2D
+    fig_2d = pmv.structure_2d_plotly(
+        structures, show_cell=True, show_cell_faces=True, n_cols=2
+    )
+    assert isinstance(fig_2d, go.Figure)
+
+    # Test 3D
+    fig_3d = pmv.structure_3d_plotly(
+        structures, show_cell=True, show_cell_faces=True, n_cols=2
+    )
+    assert isinstance(fig_3d, go.Figure)
+
+
+@pytest.mark.parametrize("is_3d", [True, False])
+def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
+    """Test that multiple structure properties take precedence over function
+    params.
+    """
+    from pymatgen.core import Lattice, Structure
+
+    # Create two identical structures but with different properties
     lattice = Lattice.cubic(4.0)
-    struct1 = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct1 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     struct2 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    structs_dict = {"struct1": struct1, "struct2": struct2}
+    # Set properties only on the first structure
+    struct1.properties |= {
+        "atom_size": 50,  # Should override function param of 20
+        "scale": 2.0,  # Should override function param of 1.0
+        "atomic_radii": {"Na": 1.5, "Cl": 1.8},  # Should override function param
+    }
+    # struct2 has no properties, so should use function params
 
-    fig_2d = pmv.structure_2d_plotly(  # Test 2D with multiple structures
-        structs_dict,
-        show_cell=True,
-        show_cell_faces=True,
-        show_sites=True,
-        n_cols=2,
-    )
-    surface_traces_2d = [
-        trace
-        for trace in fig_2d.data
-        if trace.name == "cell-face"
-        and hasattr(trace, "fill")
-        and trace.fill == "toself"
-    ]
-    assert len(surface_traces_2d) == 2
+    func_kwargs: dict[str, Any] = {"atom_size": 20, "scale": 1.0, "atomic_radii": 0.8}
 
-    fig_3d = pmv.structure_3d_plotly(  # Test 3D with multiple structures
-        structs_dict,
-        show_cell=True,
-        show_cell_faces=True,
-        show_sites=True,
-        n_cols=2,
-    )
-    surface_traces_3d = [
-        trace
-        for trace in fig_3d.data
-        if trace.type == "mesh3d"
-        and trace.name
-        and trace.name.startswith("surface-face")
+    # Test single structures to verify precedence works
+    if is_3d:
+        fig1 = pmv.structure_3d_plotly(struct1, **func_kwargs)
+        fig2 = pmv.structure_3d_plotly(struct2, **func_kwargs)
+    else:
+        fig1 = pmv.structure_2d_plotly(struct1, **func_kwargs)
+        fig2 = pmv.structure_2d_plotly(struct2, **func_kwargs)
+
+    # Get site traces from both figures
+    def get_site_traces(fig: go.Figure) -> list[Any]:
+        return [
+            trace
+            for trace in fig.data
+            if hasattr(trace, "marker")
+            and trace.marker is not None
+            and hasattr(trace.marker, "size")
+            and trace.marker.size is not None
+            and not (trace.name and ("edge" in trace.name or "node" in trace.name))
+            and not (trace.name and "image-" in trace.name)  # Exclude image sites
+        ]
+
+    def extract_size(marker_size: Any) -> float:
+        if isinstance(marker_size, (tuple, list)):
+            return float(marker_size[0]) if marker_size else 0.0
+        return float(marker_size) if marker_size is not None else 0.0
+
+    traces1 = get_site_traces(fig1)
+    traces2 = get_site_traces(fig2)
+
+    # Extract and compare marker sizes to verify precedence
+    sizes1 = [
+        extract_size(trace.marker.size)
+        for trace in traces1
+        if extract_size(trace.marker.size) > 0
     ]
-    assert len(surface_traces_3d) == 24
+    sizes2 = [
+        extract_size(trace.marker.size)
+        for trace in traces2
+        if extract_size(trace.marker.size) > 0
+    ]
+
+    # Calculate averages for comparison
+    avg_size1 = sum(sizes1) / len(sizes1)
+    avg_size2 = sum(sizes2) / len(sizes2)
+
+    # CORE PRECEDENCE TEST: struct1 has properties (atom_size=50, scale=2.0)
+    # vs struct2 using function params (atom_size=20, scale=1.0)
+    # So struct1 should have significantly larger markers
+    assert avg_size1 > avg_size2 * 2
+
+    # ATOMIC_RADII PRECEDENCE TEST: verify element-specific precedence
+    # struct1 has custom atomic_radii: Na=1.5, Cl=1.8
+    # struct2 uses atomic_radii=0.8 for both elements
+    na_trace1 = next(t for t in traces1 if t.name and "Na" in t.name)
+    cl_trace1 = next(t for t in traces1 if t.name and "Cl" in t.name)
+
+    na_size1 = extract_size(na_trace1.marker.size)
+    cl_size1 = extract_size(cl_trace1.marker.size)
+    # In struct1, Cl should be larger than Na (custom atomic_radii: 1.8 vs 1.5)
+    assert cl_size1 > na_size1

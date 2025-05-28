@@ -18,7 +18,7 @@ from pymatgen.core import Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.phonons import PhononDBDoc
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 
 
 # %% Crystal structures auto-render as 3D plots
@@ -61,13 +61,22 @@ dos = doc.phonon_dos
 bands
 
 
-# %%
-# Phonon DOS auto-renders
+# %% Phonon DOS auto-renders
 dos
 
 
-# %% Combined phonon bands and DOS
-bands, dos
+# %% Phonopy DOS objects also auto-render
+try:
+    phonopy_nacl = load_phonopy_nacl()
+    phonopy_nacl.run_mesh([10, 10, 10])
+    phonopy_nacl.run_total_dos()
+    phonopy_dos = phonopy_nacl.total_dos
+
+except ImportError:
+    print("phonopy not available - skipping phonopy DOS example")
+    phonopy_dos = None
+
+phonopy_dos  # Auto-renders as interactive DOS plot (if phonopy is available)
 
 
 # %% Multiple structures
@@ -96,8 +105,7 @@ structures["Hexagonal"]
 structures["Tetragonal"]
 
 
-# %%
-# Manual control (optional) - New unified function
+# %% Manual control (optional) - New unified function
 nacl = Structure(Lattice.cubic(4.0), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 pmv.notebook_mode(on=False)  # Disable auto-rendering
 nacl  # Now displays as text
@@ -118,8 +126,7 @@ nacl_xrd = xrd_calc.get_pattern(nacl)
 nacl_xrd  # Auto-renders as XRD pattern plot
 
 
-# %%
-# Additional examples with the unified API
+# %% Additional examples with the unified API
 pmv.notebook_mode(on=False)  # Disable auto-rendering
 nacl  # Now displays as text
 

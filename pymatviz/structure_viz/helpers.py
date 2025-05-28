@@ -29,12 +29,56 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from typing import Any, Literal
 
+    import ase
     import pandas as pd
     import plotly.graph_objects as go
     from numpy.typing import ArrayLike
     from pymatgen.analysis.local_env import NearNeighbors
 
     from pymatviz.typing import ColorType, Xyz
+
+
+def get_struct_prop(
+    struct: Structure | ase.Atoms,
+    struct_key: str | int,
+    prop_name: str,
+    func_param: Any,
+) -> Any:
+    """Get a structure related value with standardized precedence handling.
+
+    Precedence order:
+    1. structure.properties[prop_name] or atoms.info[prop_name]
+    2. func_param (if dict, use struct_key; otherwise use directly)
+
+    Args:
+        struct: The pymatgen Structure or ASE Atoms object.
+        struct_key: Key identifying this structure in a collection.
+        prop_name: Name of the property to look for in structure.properties or
+            atoms.info.
+        func_param: Function parameter value (can be dict for per-structure values).
+
+    Returns:
+        Any: Resolved property value following precedence.
+    """
+    from pymatviz.process_data import is_ase_atoms
+
+    # Check structure/atoms properties first (highest precedence)
+    prop_value = None
+    if is_ase_atoms(struct):
+        prop_value = struct.info.get(prop_name)
+    elif hasattr(struct, "properties"):
+        prop_value = struct.properties.get(prop_name)
+
+    if prop_value is not None:
+        return prop_value
+
+    # Fall back to function param
+    if isinstance(func_param, dict):
+        # For dict params, use struct_key to get per-structure value
+        return func_param.get(struct_key, None)
+
+    # For non-dict params, use directly
+    return func_param
 
 
 # fallback value (in nanometers) for covalent radius of an element
@@ -129,7 +173,10 @@ def _angles_to_rotation_matrix(
 
 
 def get_image_sites(
-    site: PeriodicSite, lattice: Lattice, tol: float = 0.03, min_dist_dedup: float = 0.1
+    site: PeriodicSite,
+    lattice: Lattice,
+    cell_boundary_tol: float = 0.0,
+    min_dist_dedup: float = 0.1,
 ) -> np.ndarray:
     """Get images for a given site in a lattice.
 
@@ -139,7 +186,10 @@ def get_image_sites(
     Args:
         site (PeriodicSite): The site to get images for.
         lattice (Lattice): The lattice to get images for.
-        tol (float): The tolerance for being near the cell edge. Defaults to 0.03.
+        cell_boundary_tol (float): Distance (in fractional coordinates) beyond the unit
+            cell boundaries to include image atoms. Defaults to 0 for strict cell
+            boundaries (only atoms with 0 <= coord <= 1). Higher values include atoms
+            further outside the cell.
         min_dist_dedup (float): The min distance in Angstroms to any other site to avoid
             finding image atoms that are duplicates of original basis sites. Defaults to
             0.1.
@@ -157,8 +207,11 @@ def get_image_sites(
         new_cart = lattice.get_cartesian_coords(new_frac)
 
         # Check if the new fractional coordinates are within cell bounds
-        tol = max(tol, 0.13)  # Ensure we capture atoms at 0.125 -> 1.125, etc.
-        is_within_extended_cell = all(-tol <= coord <= 1 + tol for coord in new_frac)
+        # Use cell_boundary_tol to control how far outside the cell atoms can be
+        is_within_extended_cell = all(
+            0 - cell_boundary_tol <= coord <= 1 + cell_boundary_tol
+            for coord in new_frac
+        )
 
         # filter sites that are too close to the original to avoid duplicates
         if is_within_extended_cell:
@@ -1015,10 +1068,18 @@ def _standardize_struct(
 
 
 def _prep_augmented_structure_for_bonding(
-    struct_i: Structure, show_image_sites_flag: bool | dict[str, Any]
+    struct_i: Structure,
+    show_image_sites_flag: bool | dict[str, Any],
+    cell_boundary_tol: float = 0.0,
 ) -> Structure:
     """Prepare an augmented structure including primary and optionally image sites for
     bonding.
+
+    Args:
+        struct_i (Structure): System to prepare.
+        show_image_sites_flag: Whether to include image sites.
+        cell_boundary_tol (float): Distance beyond unit cell boundaries within which
+            image atoms are included.
     """
     all_sites_for_bonding = [
         PeriodicSite(
@@ -1034,7 +1095,11 @@ def _prep_augmented_structure_for_bonding(
     if show_image_sites_flag:  # True or a dict implies true for this purpose
         processed_image_coords: set[Xyz] = set()
         for site_in_cell in struct_i:
-            image_cart_coords_arrays = get_image_sites(site_in_cell, struct_i.lattice)
+            image_cart_coords_arrays = get_image_sites(
+                site_in_cell,
+                struct_i.lattice,
+                cell_boundary_tol=cell_boundary_tol,
+            )
             for image_cart_coords_arr in image_cart_coords_arrays:
                 coord_tuple_key = tuple(np.round(image_cart_coords_arr, 5))
                 if coord_tuple_key not in processed_image_coords:
