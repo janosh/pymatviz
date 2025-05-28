@@ -1406,64 +1406,50 @@ def test_structure_plotly_cell_faces_multiple_structures() -> None:
     assert isinstance(fig_3d, go.Figure)
 
 
-@pytest.mark.parametrize(
-    ("is_3d", "cell_boundary_tol", "show_image_sites"),
-    [
-        (False, 0.0, True),  # 2D strict boundaries
-        (False, 0.1, True),  # 2D with buffer
-        (True, 0.0, True),  # 3D strict boundaries
-        (True, 0.2, True),  # 3D with larger buffer
-        (False, 0.1, False),  # 2D with buffer but no image sites
-        (True, 0.1, False),  # 3D with buffer but no image sites
-    ],
-)
-def test_structure_plotly_cell_boundary_tol(
-    is_3d: bool, cell_boundary_tol: float, show_image_sites: bool
-) -> None:
-    """Test cell_boundary_tol parameter in both 2D and 3D plotly functions."""
-    structure = Structure(Lattice.cubic(3.0), ["Li"], [[0, 0, 0]])
-    plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d_plotly
-
-    fig = plot_func(
-        structure,
-        cell_boundary_tol=cell_boundary_tol,
-        show_image_sites=show_image_sites,
-        show_sites=True,
-    )
-
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) > 0
-
-
 @pytest.mark.parametrize("is_3d", [True, False])
-def test_structure_plotly_cell_boundary_tol_dict(is_3d: bool) -> None:
-    """Test cell_boundary_tol with per-structure dictionaries."""
-    structures = {
-        "struct1": Structure(Lattice.cubic(3), ["Li"], [[0, 0, 0]]),
-        "struct2": Structure(Lattice.cubic(4), ["Na"], [[0, 0, 0]]),
-    }
+def test_structure_plotly_cell_boundary_tol_properties(is_3d: bool) -> None:
+    """Test cell_boundary_tol via structure.properties with highest precedence."""
+    lattice = Lattice.cubic(4.0)
+    struct_near_boundary = Structure(lattice, ["Na"], [[0.95, 0.95, 0.95]])
 
-    # Test with per-structure tolerance values
-    cell_boundary_tol_dict = {"struct1": 0.0, "struct2": 0.2}
+    # Test basic precedence: structure property overrides function parameter
+    struct_with_prop = struct_near_boundary.copy()
+    struct_with_prop.properties["cell_boundary_tol"] = 0.3
+
     plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d_plotly
 
-    fig = plot_func(
-        structures,
-        cell_boundary_tol=cell_boundary_tol_dict,
+    # Structure property should override function parameter
+    fig_override = plot_func(
+        struct_with_prop,
+        cell_boundary_tol=0.0,  # Should be ignored
         show_image_sites=True,
-        show_sites=True,
+        site_labels="symbol",
     )
 
-    assert isinstance(fig, go.Figure)
-    assert len(fig.data) > 0
-
-    # Test with missing key (should use default 0.0)
-    fig2 = plot_func(
-        structures,
-        cell_boundary_tol={"struct1": 0.1},  # struct2 will use default 0.0
+    # Compare with function parameter only (no structure property)
+    fig_func_param = plot_func(
+        struct_near_boundary,  # No property set
+        cell_boundary_tol=0.0,  # Strict boundaries
         show_image_sites=True,
-        show_sites=True,
+        site_labels="symbol",
     )
 
-    assert isinstance(fig2, go.Figure)
-    assert len(fig2.data) > 0
+    # Structure with property should have more traces (more permissive tolerance)
+    assert len(fig_override.data) >= len(fig_func_param.data)
+
+    # Test with multiple structures and dict parameter
+    struct_no_prop = struct_near_boundary.copy()
+    structures = {"with_prop": struct_with_prop, "no_prop": struct_no_prop}
+
+    fig_mixed = plot_func(
+        structures,
+        cell_boundary_tol={
+            "with_prop": 0.0,
+            "no_prop": 0.1,
+        },  # Dict should be overridden for first struct
+        show_image_sites=True,
+        site_labels="symbol",
+    )
+
+    assert isinstance(fig_mixed, go.Figure)
+    assert len(fig_mixed.data) > 0

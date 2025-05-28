@@ -173,7 +173,8 @@ LiF_cubic = Structure(
 # Show same structure with different cell_boundary_tol values
 cell_boundary_tols = {"Strict boundaries (tol=0)": 0, "Loose (tol=0.5)": 0.5}
 fig = pmv.structure_3d_plotly(
-    dict.fromkeys(cell_boundary_tols, LiF_cubic),
+    dict.fromkeys(cell_boundary_tols, LiF_cubic)
+    | {"Via properties": LiF_cubic.copy(properties={"cell_boundary_tol": 1})},
     cell_boundary_tol=cell_boundary_tols,
     show_image_sites=True,
     show_sites=True,

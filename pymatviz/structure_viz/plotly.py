@@ -100,6 +100,8 @@ def structure_2d_plotly(
             atoms. Defaults to 0.0 for strict cell boundaries (only atoms with
             0 <= coord <= 1). Higher values include atoms further outside the cell. If a
             dict, will be used to customize cell boundary tolerance per structure.
+            Can also be set per-structure via Structure.properties["cell_boundary_tol"]
+            or Atoms.info["cell_boundary_tol"] with highest precedence.
         show_bonds (bool | NearNeighbors | dict[str, bool | NearNeighbors], optional):
             Whether to draw bonds between sites. If True, uses CrystalNN with a cutoff
             of 10 Å to determine nearest neighbors, including in neighboring cells.
@@ -204,8 +206,12 @@ def structure_2d_plotly(
 
         struct_i = _standardize_struct(raw_struct_i, standardize_struct)
 
-        # Handle per-structure cell_boundary_tol settings if it's a dict
-        if isinstance(cell_boundary_tol, dict):
+        # Handle cell_boundary_tol with precedence:
+        # 1. structure.properties["cell_boundary_tol"]
+        # 2. function arg cell_boundary_tol (dict or float)
+        if cell_boundary_tol_prop := struct_i.properties.get("cell_boundary_tol"):
+            cell_boundary_tol_i = cell_boundary_tol_prop
+        elif isinstance(cell_boundary_tol, dict):
             cell_boundary_tol_i = cell_boundary_tol.get(struct_key, 0.0)
         else:
             cell_boundary_tol_i = cell_boundary_tol
@@ -457,6 +463,8 @@ def structure_3d_plotly(
             fractional coordinates) beyond the unit cell boundaries to include image
             atoms. Defaults to 0.0 for strict cell boundaries (only atoms with
             0 <= coord <= 1). Higher values include atoms further outside the cell.
+            Can also be set per-structure via Structure.properties["cell_boundary_tol"]
+            or Atoms.info["cell_boundary_tol"] with highest precedence.
         show_bonds (bool | NearNeighbors | dict[str, bool | NearNeighbors], optional):
             Whether to draw bonds between sites. If True, uses CrystalNN with a cutoff
             of 10 Å to determine nearest neighbors, including in neighboring cells.
@@ -557,8 +565,12 @@ def structure_3d_plotly(
         # Initialize seen elements for this subplot
         seen_elements_per_subplot[idx] = set()
 
-        # Handle per-structure cell_boundary_tol settings if it's a dict
-        if isinstance(cell_boundary_tol, dict):
+        # Handle cell_boundary_tol with precedence:
+        # 1. structure.properties["cell_boundary_tol"] (highest precedence)
+        # 2. function parameter cell_boundary_tol (dict or float)
+        if cell_boundary_tol_prop := struct_i.properties.get("cell_boundary_tol"):
+            cell_boundary_tol_i = cell_boundary_tol_prop
+        elif isinstance(cell_boundary_tol, dict):
             cell_boundary_tol_i = cell_boundary_tol.get(struct_key, 0.0)
         else:
             cell_boundary_tol_i = cell_boundary_tol
