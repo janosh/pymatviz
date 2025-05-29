@@ -14,6 +14,7 @@ from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.process_data import normalize_structures
 from pymatviz.structure_viz.helpers import (
     _angles_to_rotation_matrix,
+    _configure_legends,
     _get_site_symbol,
     _prep_augmented_structure_for_bonding,
     _standardize_struct,
@@ -844,46 +845,3 @@ def structure_3d_plotly(
     _configure_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig
-
-
-def _configure_legends(
-    fig: go.Figure,
-    site_labels: Literal["symbol", "species", "legend", False]
-    | dict[str, str]
-    | Sequence[str],
-    n_structs: int,
-    n_cols: int,
-    n_rows: int,
-) -> None:
-    """Configure legends for each subplot if site_labels is 'legend'."""
-    if site_labels == "legend":
-        for idx in range(1, n_structs + 1):
-            row = (idx - 1) // n_cols + 1
-            col = (idx - 1) % n_cols + 1
-
-            # Calculate position within each subplot (bottom right)
-            x_start = (col - 1) / n_cols
-            x_end = col / n_cols
-            y_start = 1 - row / n_rows
-            y_end = 1 - (row - 1) / n_rows
-
-            # Position legend much closer to bottom right of subplot
-            legend_x = x_start + 0.98 * (x_end - x_start)
-            legend_y = y_start + 0.02 * (y_end - y_start)
-
-            legend_key = "legend" if idx == 1 else f"legend{idx}"
-            legend_config = dict(
-                x=legend_x,
-                y=legend_y,
-                xref="paper",
-                yref="paper",
-                xanchor="right",
-                yanchor="bottom",
-                bgcolor="rgba(0,0,0,0)",  # Transparent background
-                borderwidth=0,  # Remove border
-                font=dict(size=12, weight="bold"),  # Larger and bold font
-                itemsizing="constant",  # Keep legend symbols same size
-                itemwidth=30,  # Min allowed
-                tracegroupgap=2,  # Reduce vertical space between legend items
-            )
-            fig.layout[legend_key] = legend_config
