@@ -8,7 +8,6 @@ import os
 
 from pymatviz.utils.plotting import (
     annotate,
-    apply_matplotlib_template,
     get_fig_xy_range,
     get_font_color,
     luminance,

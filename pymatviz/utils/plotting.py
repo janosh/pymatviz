@@ -2,7 +2,6 @@
 
 Available functions:
     - annotate: Annotate a matplotlib or plotly figure with text.
-    - apply_matplotlib_template: Set default matplotlib configurations for consistency.
     - get_font_color: Get the font color used in a Matplotlib or Plotly figure.
     - get_fig_xy_range: Get the x and y range of a plotly or matplotlib figure.
     - luminance: Compute the luminance of a color.
@@ -107,21 +106,6 @@ def annotate(text: str | Sequence[str], fig: AxOrFig, **kwargs: Any) -> AxOrFig:
         raise TypeError(f"Unexpected {fig=}")
 
     return fig
-
-
-def apply_matplotlib_template() -> None:
-    """Set default matplotlib configurations for consistency.
-    - Font size: 14 for readability.
-    - Savefig: Tight bounding box and 200 DPI for high-quality saved plots.
-    - Axes: Title size 16, bold weight for emphasis.
-    - Figure: DPI 200, title size 20, bold weight for better visibility.
-    - Layout: Enables constrained layout to reduce element overlap.
-    """
-    plt.rc("font", size=14)
-    plt.rc("savefig", bbox="tight", dpi=200)
-    plt.rc("axes", titlesize=16, titleweight="bold")
-    plt.rc("figure", dpi=200, titlesize=20, titleweight="bold")
-    plt.rcParams["figure.constrained_layout.use"] = True
 
 
 def _get_plotly_font_color(fig: go.Figure) -> str:

@@ -1402,7 +1402,6 @@
     "tests/utils/test_data.py::test_annotate_kwargs[kwargs1]": 0.0009563329949742183,
     "tests/utils/test_data.py::test_annotate_kwargs[kwargs2]": 0.0007810829993104562,
     "tests/utils/test_data.py::test_annotate_non_faceted_plotly_with_list_raises": 0.000665209001454059,
-    "tests/utils/test_data.py::test_apply_matplotlib_template": 0.000515250998432748,
     "tests/utils/test_data.py::test_bin_df_cols[bin_by_cols0-group_by_cols0-2-expected_n_bins0-True--2]": 0.0016964590031420812,
     "tests/utils/test_data.py::test_bin_df_cols[bin_by_cols1-group_by_cols1-2-expected_n_bins1-True-kde_bin_counts-4]": 0.0023931249961606227,
     "tests/utils/test_data.py::test_bin_df_cols[bin_by_cols2-group_by_cols2-n_bins2-expected_n_bins2-False-kde_bin_counts-6]": 0.0022561680016224273,
