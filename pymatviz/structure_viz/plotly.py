@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Element
@@ -13,7 +12,6 @@ from pymatgen.core import Element
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.process_data import normalize_structures
 from pymatviz.structure_viz import helpers
-from pymatviz.utils import pick_max_contrast_color
 
 
 if TYPE_CHECKING:
@@ -21,6 +19,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
     import ase.atoms
+    import plotly.graph_objects as go
     from pymatgen.core import PeriodicSite, Structure
 
     from pymatviz.typing import ColorType
@@ -607,111 +606,51 @@ def structure_3d_plotly(
 
         # Plot atoms and vectors
         if show_sites:
-            # Group sites by element type for separate traces
-            sites_by_element: dict[str, list[PeriodicSite]] = {}
-            for site in augmented_structure.sites:
+            # For 3D, need to handle disordered sites properly by drawing each site
+            # individually instead of grouping by element symbol
+            for site_idx_loop, site in enumerate(augmented_structure.sites):
+                # Determine if this is primary site (from orig structure) or image site
+                is_image_site = site_idx_loop >= len(struct_i)
+
+                # For primary sites, use original index; for image sites, use modulo
+                original_site_idx = (
+                    site_idx_loop
+                    if not is_image_site
+                    else site_idx_loop % len(struct_i)
+                )
+
                 symbol = helpers._get_site_symbol(site)
-                if symbol not in sites_by_element:
-                    sites_by_element[symbol] = []
-                sites_by_element[symbol].append(site)
 
-            # Create one trace per element type
-            for element_symbol, sites_list in sites_by_element.items():
-                element_x = [site.coords[0] for site in sites_list]
-                element_y = [site.coords[1] for site in sites_list]
-                element_z = [site.coords[2] for site in sites_list]
-
-                # Calculate properties for this element's sites
-                element_colors = []
-                element_sizes = []
-                element_hover_texts = []
-                element_labels_list: list[str | None] = []
-                element_textfont_colors = []
-
-                for site_idx_in_element, site in enumerate(sites_list):
-                    symbol = helpers._get_site_symbol(site)
-                    site_base_color = _elem_colors.get(symbol, "gray")
-
-                    # Convert color to string format
-                    if isinstance(site_base_color, tuple) and len(site_base_color) == 3:
-                        r, g, b = (
-                            int(c * 255)
-                            if isinstance(c, float) and 0 <= c <= 1
-                            else int(c)
-                            for c in site_base_color
-                        )
-                        display_color_str = f"rgb({r},{g},{b})"
-                    else:
-                        display_color_str = (
-                            str(site_base_color)
-                            if isinstance(site_base_color, str)
-                            else "rgb(128,128,128)"
-                        )
-
-                    element_colors.append(display_color_str)
-                    element_textfont_colors.append(
-                        pick_max_contrast_color(display_color_str)
-                    )
-
-                    radius = _atomic_radii.get(symbol, 1) * scale_i
-                    element_sizes.append(radius * atom_size_i)
-
-                    # Use helper for hover text
-                    element_hover_texts.append(
-                        helpers.get_site_hover_text(
-                            site, hover_text, site.species, hover_float_fmt
-                        )
-                    )
-
-                    # Use helper for site label
-                    if site_labels == "legend":
-                        element_labels_list.append(None)
-                    else:
-                        element_labels_list.append(
-                            helpers.generate_site_label(
-                                site_labels, site_idx_in_element, site
-                            )
-                        )
-
-                # Determine legend parameters
+                # Determine legend parameters for primary sites only
                 legendgroup = None
                 showlegend = False
-                if site_labels == "legend":
-                    legendgroup = f"{idx}-{element_symbol}"
-                    if element_symbol not in seen_elements_per_subplot[idx]:
+                if site_labels == "legend" and not is_image_site:
+                    legendgroup = f"{idx}-{symbol}"  # Unique per subplot
+                    if symbol not in seen_elements_per_subplot[idx]:
                         showlegend = True
-                        seen_elements_per_subplot[idx].add(element_symbol)
+                        seen_elements_per_subplot[idx].add(symbol)
 
-                site_kwargs = {} if show_sites is True else show_sites
-                marker_defaults = {
-                    "size": element_sizes,
-                    "color": element_colors,
-                    "sizemode": "diameter",
-                    "line": dict(width=1, color="rgba(0,0,0,0.4)"),
-                }
-                if "marker" in site_kwargs:
-                    site_kwargs["marker"].update(marker_defaults)
-                else:
-                    site_kwargs["marker"] = marker_defaults
-
-                trace_3d = go.Scatter3d(
-                    x=element_x,
-                    y=element_y,
-                    z=element_z,
-                    mode="markers" + ("+text" if any(element_labels_list) else ""),
-                    text=element_labels_list if any(element_labels_list) else None,
-                    textposition="top center",
-                    textfont={"color": element_textfont_colors},
-                    hovertext=element_hover_texts,
-                    hoverinfo="text",
-                    name=element_symbol,
+                # Use the new draw_site helper which handles disordered sites
+                helpers.draw_site(
+                    fig=fig,
+                    site=site,
+                    coords=site.coords,  # Use 3D coordinates directly
+                    site_idx=original_site_idx,
+                    site_labels=site_labels,
+                    elem_colors=_elem_colors,
+                    atomic_radii=_atomic_radii,
+                    atom_size=atom_size_i,
+                    scale=scale_i,
+                    site_kwargs={} if show_sites is True else show_sites,
+                    is_image=is_image_site,
+                    is_3d=True,
+                    scene=f"scene{idx}",
+                    hover_text=hover_text,
+                    float_fmt=hover_float_fmt,
                     legendgroup=legendgroup,
                     showlegend=showlegend,
                     legend=f"legend{idx}" if idx > 1 and n_structs > 1 else "legend",
-                    **site_kwargs,
-                )
-                fig.add_trace(
-                    trace_3d, row=(idx - 1) // n_cols + 1, col=(idx - 1) % n_cols + 1
+                    name=f"Image of {symbol}" if is_image_site else symbol,
                 )
 
             # Add vectors for primary sites only

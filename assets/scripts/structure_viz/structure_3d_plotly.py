@@ -3,7 +3,7 @@
 # %%
 from matminer.datasets import load_dataset
 from pymatgen.core import Lattice, Structure
-from pymatgen.core.periodic_table import Species
+from pymatgen.core.periodic_table import DummySpecies, Species
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
@@ -13,9 +13,10 @@ df_phonons = load_dataset("matbench_phonons")
 
 
 # %% 3d example
+n_structs = 6
 supercells = {
     key: struct.make_supercell(2, in_place=False)
-    for key, struct in df_phonons[Key.structure].head(6).items()
+    for key, struct in df_phonons[Key.structure].head(n_structs).items()
 }
 fig = pmv.structure_3d_plotly(
     supercells,
@@ -24,6 +25,7 @@ fig = pmv.structure_3d_plotly(
     hover_text=SiteCoords.cartesian_fractional,
     show_bonds=True,
 )
+fig.layout.title = f"{n_structs} Matbench phonon structures (3D supercells)"
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")
 
@@ -43,6 +45,102 @@ fig = pmv.structure_3d_plotly(
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "bato3-structure-3d-plotly")
+
+
+# %% Example: Disordered site rendering (multiple spheres in 3D)
+# Create structures with disordered sites to demonstrate multiple sphere rendering
+disordered_lattice = Lattice.cubic(4.0)
+disordered_struct = Structure(
+    lattice=disordered_lattice,
+    species=[
+        "Ba",  # Pure Ba site
+        {"Ti": 0.6, "Zr": 0.4},  # Disordered Ti/Zr site
+        "O",
+        "O",
+        "O",  # Pure O sites
+    ],
+    coords=[
+        (0, 0, 0),
+        (0.5, 0.5, 0.5),
+        (0.5, 0.5, 0),
+        (0.5, 0, 0.5),
+        (0, 0.5, 0.5),
+    ],
+)
+
+# Li-ion cathode with vacancy disorder
+lico2_disordered = Structure(
+    lattice=Lattice.hexagonal(2.82, 14.05),
+    species=[
+        {"Li": 0.75, DummySpecies("X"): 0.25},  # Li site with vacancies (X = vacancy)
+        "Co",
+        "O",
+        "O",
+    ],
+    coords=[
+        (0, 0, 0),
+        (0, 0, 0.5),
+        (0, 0, 0.25),
+        (0, 0, 0.75),
+    ],
+)
+
+# High-entropy alloy with ternary disorder (3 species on one site)
+hea_disordered = Structure(
+    lattice=Lattice.cubic(3.6),
+    species=[
+        {"Fe": 0.5, "Ni": 0.3, "Cr": 0.2},  # Ternary disordered site
+        "Al",  # Pure Al site
+    ],
+    coords=[
+        (0, 0, 0),
+        (0.5, 0.5, 0.5),
+    ],
+)
+
+# Complex multisite disorder - solid solution with multiple disordered sites
+solid_solution = Structure(
+    lattice=Lattice.cubic(5.0),
+    species=[
+        {"Ca": 0.6, "Sr": 0.4},  # Disordered A-site
+        {"Ti": 0.8, "Zr": 0.15, "Hf": 0.05},  # Ternary disordered B-site
+        "O",  # Pure O sites
+        "O",
+        "O",
+    ],
+    coords=[
+        (0, 0, 0),
+        (0.5, 0.5, 0.5),
+        (0.5, 0.5, 0),
+        (0.5, 0, 0.5),
+        (0, 0.5, 0.5),
+    ],
+)
+
+disordered_3d_structures = {
+    "BaTi₀.₆Zr₀.₄O₃": disordered_struct,
+    "Li₀.₇₅CoO₂ (with vacancies)": lico2_disordered,
+    "Fe₀.₅Ni₀.₃Cr₀.₂Al": hea_disordered,
+    "Ca₀.₆Sr₀.₄Ti₀.₈Zr₀.₁₅Hf₀.₀₅O₃": solid_solution,
+}
+
+fig = pmv.structure_3d_plotly(
+    disordered_3d_structures,
+    elem_colors=ElemColorScheme.jmol,
+    n_cols=2,
+    show_cell={"edge": dict(color="darkgray", width=2)},
+    site_labels="symbol",
+    hover_text=SiteCoords.cartesian_fractional,
+)
+
+fig.layout.title = dict(
+    text="3D Disordered Sites: Spherical Wedges Show Species Occupancy",
+    x=0.5,
+    font=dict(size=16),
+)
+# fig.layout.update(width=1200, height=800)
+fig.show()
+# pmv.io.save_and_compress_svg(fig, "disordered-sites-3d-plotly-spherical-wedges")
 
 
 # %% Create a high-entropy alloy structure CoCrFeNiMn with FCC structure

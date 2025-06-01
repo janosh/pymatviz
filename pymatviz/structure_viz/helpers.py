@@ -424,6 +424,30 @@ def get_site_hover_text(
     return out_text
 
 
+def _process_element_color(raw_color_from_map: ColorType) -> str:
+    """Process a color from the element color map into a consistent RGB string format.
+
+    Args:
+        raw_color_from_map: Color value from the element color map (tuple, string, etc.)
+
+    Returns:
+        str: Color in RGB format like "rgb(128,128,128)"
+    """
+    if (
+        isinstance(raw_color_from_map, tuple)
+        and len(raw_color_from_map) == 3
+        and all(isinstance(c, (float, int)) for c in raw_color_from_map)
+    ):
+        r, g, b = (
+            int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)
+            for c in raw_color_from_map
+        )
+        return f"rgb({r},{g},{b})"
+    if isinstance(raw_color_from_map, str):
+        return raw_color_from_map
+    return "rgb(128,128,128)"  # Fallback gray for unexpected color types
+
+
 def draw_site(
     fig: go.Figure,
     site: PeriodicSite,
@@ -478,6 +502,35 @@ def draw_site(
         **kwargs: Additional keyword arguments.
     """
     species = getattr(site, "specie", site.species)
+
+    # Check if this is a disordered site (multiple species)
+    if isinstance(species, Composition) and len(species) > 1:
+        draw_disordered_site(
+            fig=fig,
+            site=site,
+            coords=coords,
+            site_idx=site_idx,
+            site_labels=site_labels,
+            elem_colors=elem_colors,
+            atomic_radii=atomic_radii,
+            atom_size=atom_size,
+            scale=scale,
+            site_kwargs=site_kwargs,
+            is_image=is_image,
+            is_3d=is_3d,
+            row=row,
+            col=col,
+            scene=scene,
+            hover_text=hover_text,
+            float_fmt=float_fmt,
+            legendgroup=legendgroup,
+            showlegend=showlegend,
+            legend=legend,
+            **kwargs,
+        )
+        return
+
+    # Handle ordered sites (single species)
     majority_species = (
         max(species, key=species.get) if isinstance(species, Composition) else species
     )
@@ -485,21 +538,7 @@ def draw_site(
     raw_color_from_map = elem_colors.get(majority_species.symbol, "gray")
 
     # Process the color from the map into a string format
-    if (
-        isinstance(raw_color_from_map, tuple)
-        and len(raw_color_from_map) == 3
-        and all(isinstance(c, (float, int)) for c in raw_color_from_map)
-    ):
-        r, g, b = (
-            int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)
-            for c in raw_color_from_map
-        )
-        atom_color = f"rgb({r},{g},{b})"
-    elif isinstance(raw_color_from_map, str):
-        atom_color = raw_color_from_map
-    else:
-        # Fallback gray for unexpected color types
-        atom_color = "rgb(128,128,128)"
+    atom_color = _process_element_color(raw_color_from_map)
 
     site_hover_text = get_site_hover_text(site, hover_text, majority_species, float_fmt)
 
@@ -541,6 +580,424 @@ def draw_site(
         fig.add_scatter3d(**scatter_kwargs, scene=scene)
     else:
         fig.add_scatter(**scatter_kwargs, row=row, col=col)
+
+
+def _generate_spherical_wedge_mesh(
+    center: np.ndarray,
+    radius: float,
+    start_angle: float,
+    end_angle: float,
+    n_theta: int = 16,
+    n_phi: int = 24,
+) -> tuple[list[float], list[float], list[float], list[int], list[int], list[int]]:
+    """Generate a spherical wedge (orange slice) mesh for 3D pie charts.
+
+    Creates a wedge-shaped section of a sphere between two azimuthal angles,
+    like a slice of an orange.
+
+    Args:
+        center: Center coordinates (x, y, z) of the sphere
+        radius: Radius of the sphere
+        start_angle: Starting azimuthal angle in radians
+        end_angle: Ending azimuthal angle in radians
+        n_theta: Number of divisions in polar direction (from top to bottom)
+        n_phi: Number of divisions in azimuthal direction (around the wedge)
+
+    Returns:
+        tuple: (x_coords, y_coords, z_coords, i_indices, j_indices, k_indices)
+    """
+    x_coords, y_coords, z_coords = [], [], []
+
+    # Add center point
+    center_idx = 0
+    x_coords.append(center[0])
+    y_coords.append(center[1])
+    z_coords.append(center[2])
+
+    # Generate points on sphere surface within the angular wedge
+    vertex_map = {}  # Map (theta_idx, phi_idx) to vertex index
+
+    # Create grid of points on sphere surface
+    for theta_idx in range(n_theta + 1):  # Polar angle (0 to pi)
+        theta = np.pi * theta_idx / n_theta  # From 0 (north pole) to pi (south pole)
+
+        for phi_idx in range(n_phi + 1):  # Azimuthal angle within wedge
+            phi = start_angle + (end_angle - start_angle) * phi_idx / n_phi
+
+            # Spherical to cartesian coordinates
+            x = center[0] + radius * np.sin(theta) * np.cos(phi)
+            y = center[1] + radius * np.sin(theta) * np.sin(phi)
+            z = center[2] + radius * np.cos(theta)
+
+            vertex_idx = len(x_coords)
+            x_coords.append(x)
+            y_coords.append(y)
+            z_coords.append(z)
+
+            vertex_map[(theta_idx, phi_idx)] = vertex_idx
+
+    i_indices, j_indices, k_indices = [], [], []
+
+    # Create triangular faces
+
+    # 1. Curved surface triangles
+    for theta_idx in range(n_theta):
+        for phi_idx in range(n_phi):
+            # Get four corners of this surface quad
+            v00 = vertex_map[(theta_idx, phi_idx)]
+            v01 = vertex_map[(theta_idx, phi_idx + 1)]
+            v10 = vertex_map[(theta_idx + 1, phi_idx)]
+            v11 = vertex_map[(theta_idx + 1, phi_idx + 1)]
+
+            # Split quad into two triangles
+            # Triangle 1: v00, v01, v10
+            i_indices.append(v00)
+            j_indices.append(v01)
+            k_indices.append(v10)
+
+            # Triangle 2: v01, v11, v10
+            i_indices.append(v01)
+            j_indices.append(v11)
+            k_indices.append(v10)
+
+    # 2. Side faces connecting center to edges (if not a full sphere)
+    angle_span = end_angle - start_angle
+    if angle_span < 2 * np.pi - 0.1:  # Not a complete sphere
+        # Left side face (start_angle)
+        for theta_idx in range(n_theta):
+            v_top = vertex_map[(theta_idx, 0)]
+            v_bottom = vertex_map[(theta_idx + 1, 0)]
+
+            # Triangle: center, v_top, v_bottom
+            i_indices.append(center_idx)
+            j_indices.append(v_top)
+            k_indices.append(v_bottom)
+
+        # Right side face (end_angle)
+        for theta_idx in range(n_theta):
+            v_top = vertex_map[(theta_idx, n_phi)]
+            v_bottom = vertex_map[(theta_idx + 1, n_phi)]
+
+            # Triangle: center, v_bottom, v_top (opposite winding)
+            i_indices.append(center_idx)
+            j_indices.append(v_bottom)
+            k_indices.append(v_top)
+
+    return x_coords, y_coords, z_coords, i_indices, j_indices, k_indices
+
+
+# Constants for disordered site rendering
+LABEL_OFFSET_3D_FACTOR = 0.3  # Factor for 3D label offset from sphere surface
+LABEL_OFFSET_2D_FACTOR = 0.3  # Factor for 2D label offset from pie slice
+PIE_SLICE_COORD_SCALE = 0.01  # Scaling factor for pie slice coordinate units
+MIN_3D_WEDGE_RESOLUTION_THETA = 8  # Minimum theta resolution for 3D wedges
+MIN_3D_WEDGE_RESOLUTION_PHI = 6  # Minimum phi resolution for 3D wedges
+MAX_3D_WEDGE_RESOLUTION_THETA = 16  # Base theta resolution for 3D wedges
+MAX_3D_WEDGE_RESOLUTION_PHI = 24  # Base phi resolution for 3D wedges
+MIN_PIE_SLICE_POINTS = 3  # Minimum points for 2D pie slices
+MAX_PIE_SLICE_POINTS = 20  # Base points for 2D pie slices
+
+
+# TODO fix the unused function arg errors by using those args equivalently to how
+# draw_site uses them
+def draw_disordered_site(
+    fig: go.Figure,
+    site: PeriodicSite,
+    coords: np.ndarray,
+    site_labels: Any,
+    elem_colors: dict[str, ColorType],
+    atomic_radii: dict[str, float],
+    atom_size: float,
+    scale: float,
+    site_kwargs: dict[str, Any],  # noqa: ARG001
+    *,
+    is_image: bool = False,
+    is_3d: bool = False,
+    row: int | None = None,
+    col: int | None = None,
+    scene: str | None = None,
+    hover_text: SiteCoords  # noqa: ARG001
+    | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
+    float_fmt: str | Callable[[float], str] = ".4",  # noqa: ARG001
+    legendgroup: str | None = None,
+    showlegend: bool = False,
+    legend: str = "legend",  # noqa: ARG001
+    **kwargs: Any,  # noqa: ARG001
+) -> None:
+    """Draw a disordered site as pie slices (2D) or multiple spheres (3D).
+
+    For 2D plots, creates pie slices with different colors and radii.
+    For 3D plots, creates multiple spheres at the same position with different sizes.
+
+    Args:
+        fig (go.Figure): The plotly figure to add the site to.
+        site (PeriodicSite): The periodic site to draw (must be disordered).
+        coords (np.ndarray): The coordinates of the site.
+        site_labels (str | dict | list): How to label the site.
+        elem_colors (dict[str, ColorType]): Element color mapping.
+        atomic_radii (dict[str, float]): Atomic radii mapping.
+        atom_size (float): Scaling factor for atom sizes.
+        scale (float): Overall scaling factor.
+        site_kwargs (dict[str, Any]): Additional keyword arguments for site styling.
+        is_image (bool): Whether this is an image site.
+        is_3d (bool): Whether this is a 3D plot.
+        row (int | None): Row for subplot.
+        col (int | None): Column for subplot.
+        scene (str | None): Scene name for 3D plots.
+        hover_text (SiteCoords | Callable[[PeriodicSite], str]): Hover text template.
+        float_fmt (str | Callable[[float], str]): Float format for hover coordinates.
+        legendgroup (str | None): For interactive legend.
+        showlegend (bool): Whether to show this trace in the legend.
+        legend (str): The legend group for the site.
+        **kwargs: Unused extra keyword arguments.
+    """
+    species = getattr(site, "specie", site.species)
+
+    if not isinstance(species, Composition) or len(species) <= 1:
+        # Not a disordered site, should use regular draw_site
+        return
+
+    # Sort species by occupancy for consistent ordering
+    sorted_species = sorted(species.items(), key=lambda x: x[1], reverse=True)
+
+    # Determine if we should show labels (fixed redundant condition)
+    should_show_labels = site_labels not in ("legend", False)
+
+    if is_3d:
+        # For 3D: Create spherical wedges (3D pie slices) using meshes
+        # Calculate the total base radius to use for wedge sizing
+        base_radii = [
+            atomic_radii.get(elem_spec.symbol, missing_covalent_radius) * scale
+            for elem_spec, _ in sorted_species
+        ]
+        max_base_radius = max(base_radii)
+
+        # Track the current angular position
+        current_angle = 0.0
+
+        for element_species, occupancy in sorted_species:
+            elem_symbol = element_species.symbol
+            raw_color_from_map = elem_colors.get(elem_symbol, "gray")
+
+            atom_color = _process_element_color(raw_color_from_map)
+
+            # Calculate the angular span for this species based on occupancy
+            angle_span = 2 * np.pi * occupancy
+            end_angle = current_angle + angle_span
+
+            # Calculate radius for this wedge (proportional to occupancy)
+            wedge_radius = max_base_radius * np.sqrt(occupancy)
+
+            # Generate the spherical wedge mesh
+            x_coords, y_coords, z_coords, i_indices, j_indices, k_indices = (
+                _generate_spherical_wedge_mesh(
+                    center=coords,
+                    radius=wedge_radius,
+                    start_angle=current_angle,
+                    end_angle=end_angle,
+                    n_theta=max(
+                        MIN_3D_WEDGE_RESOLUTION_THETA,
+                        int(MAX_3D_WEDGE_RESOLUTION_THETA * occupancy),
+                    ),
+                    n_phi=max(
+                        MIN_3D_WEDGE_RESOLUTION_PHI,
+                        int(MAX_3D_WEDGE_RESOLUTION_PHI * occupancy),
+                    ),
+                )
+            )
+
+            # Add the spherical wedge
+            fig.add_mesh3d(
+                x=x_coords,
+                y=y_coords,
+                z=z_coords,
+                i=i_indices,
+                j=j_indices,
+                k=k_indices,
+                color=atom_color,
+                name=elem_symbol,
+                opacity=0.8,
+                showlegend=showlegend,
+                scene=scene,
+                showscale=False,
+                hoverinfo="text",
+                hovertext=(
+                    f"<b>Site: {elem_symbol}</b><br>Coordinates {coords} "
+                    f"[{site.frac_coords}]<br>Species: {elem_symbol} ({occupancy:.2f})"
+                ),
+            )
+
+            # Add text label if needed
+            if should_show_labels:
+                # Calculate the label position at the center of the wedge
+                label_angle = current_angle + angle_span / 2  # Middle of the wedge
+                label_offset = max_base_radius * LABEL_OFFSET_3D_FACTOR
+                label_radius = wedge_radius + label_offset
+
+                # Calculate label position in 3D space
+                label_x = coords[0] + label_radius * np.cos(label_angle)
+                label_y = coords[1] + label_radius * np.sin(label_angle)
+                label_z = coords[2]  # Keep at same Z level
+
+                # Get the text for this element
+                if isinstance(site_labels, dict):
+                    txt = site_labels.get(elem_symbol, elem_symbol)
+                elif site_labels == "species":
+                    txt = str(element_species)
+                else:  # site_labels == "symbol" or other modes
+                    txt = elem_symbol
+
+                text_color = pick_max_contrast_color(atom_color)
+                fig.add_scatter3d(
+                    x=[label_x],
+                    y=[label_y],
+                    z=[label_z],
+                    mode="text",
+                    text=txt,
+                    textposition="middle center",
+                    textfont=dict(
+                        color=text_color,
+                        size=np.clip(
+                            atom_size * max_base_radius * (0.8 if is_image else 1),
+                            8,
+                            16,
+                        ),
+                    ),
+                    hoverinfo="skip",
+                    showlegend=False,
+                    scene=scene,
+                )
+
+            # Update the angle for the next species
+            current_angle = end_angle
+
+    else:
+        # For 2D: Create pie slices using shapes
+        # Calculate the total base radius to use for pie sizing
+        base_radii = [
+            atomic_radii.get(elem_spec.symbol, missing_covalent_radius) * scale
+            for elem_spec, _ in sorted_species
+        ]
+        max_base_radius = max(base_radii)
+
+        # Track the current angular position for pie slices
+        current_angle = 0.0
+
+        for species_idx, (element_species, occupancy) in enumerate(sorted_species):
+            elem_symbol = element_species.symbol
+            raw_color_from_map = elem_colors.get(elem_symbol, "gray")
+
+            atom_color = _process_element_color(raw_color_from_map)
+
+            # Calculate the angular span for this species based on occupancy
+            angle_span = 2 * np.pi * occupancy
+            end_angle = current_angle + angle_span
+
+            # Calculate radius for this wedge
+            wedge_radius = max_base_radius * atom_size * PIE_SLICE_COORD_SCALE
+
+            # Generate pie slice coordinates
+            n_points = max(MIN_PIE_SLICE_POINTS, int(MAX_PIE_SLICE_POINTS * occupancy))
+
+            # Create angles for the arc
+            angles = np.linspace(current_angle, end_angle, n_points)
+
+            # Create coordinates for the pie slice
+            slice_x = [coords[0]]  # Start at center
+            slice_y = [coords[1]]
+
+            # Add arc points
+            for angle in angles:
+                slice_x.append(coords[0] + wedge_radius * np.cos(angle))
+                slice_y.append(coords[1] + wedge_radius * np.sin(angle))
+
+            # Close the slice back to center
+            slice_x.append(coords[0])
+            slice_y.append(coords[1])
+
+            # Create hover text for this species
+            species_hover = (
+                f"<b>Site: {elem_symbol}</b><br>Coordinates {coords} "
+                f"[{site.frac_coords}]<br>Species: {elem_symbol} ({occupancy:.2f})"
+            )
+
+            # Add the pie slice shape
+            fig.add_shape(
+                type="path",
+                path=f"M {slice_x[0]},{slice_y[0]} "
+                + " ".join(
+                    f"L {x},{y}" for x, y in zip(slice_x[1:], slice_y[1:], strict=False)
+                )
+                + " Z",
+                fillcolor=atom_color,
+                line=dict(color=atom_color, width=1),
+                opacity=0.8 if not is_image else 0.6,
+                row=row,
+                col=col,
+            )
+
+            # Add invisible scatter point for hover and legend
+            fig.add_scatter(
+                x=[coords[0]],
+                y=[coords[1]],
+                mode="markers",
+                marker=dict(
+                    color=atom_color,
+                    size=0.1,  # Nearly invisible
+                    opacity=0.01,
+                ),
+                hoverinfo="text",
+                hovertext=species_hover,
+                showlegend=showlegend
+                and species_idx == 0,  # Only show legend for first species
+                name=f"Image of {elem_symbol}" if is_image else elem_symbol,
+                legendgroup=legendgroup,
+                row=row,
+                col=col,
+            )
+
+            # Add text label if needed
+            if should_show_labels:
+                # Calculate the label position at the center of the slice
+                label_angle = current_angle + angle_span / 2  # Middle of the slice
+                label_offset = wedge_radius * LABEL_OFFSET_2D_FACTOR
+                label_radius = wedge_radius + label_offset
+
+                # Calculate label position
+                label_x = coords[0] + label_radius * np.cos(label_angle)
+                label_y = coords[1] + label_radius * np.sin(label_angle)
+
+                # Get the text for this element
+                if isinstance(site_labels, dict):
+                    txt = site_labels.get(elem_symbol, elem_symbol)
+                elif site_labels == "species":
+                    txt = str(element_species)
+                else:  # site_labels == "symbol" or other modes
+                    txt = elem_symbol
+
+                text_color = pick_max_contrast_color(atom_color)
+                fig.add_scatter(
+                    x=[label_x],
+                    y=[label_y],
+                    mode="text",
+                    text=txt,
+                    textposition="middle center",
+                    textfont=dict(
+                        color=text_color,
+                        size=np.clip(
+                            atom_size * max_base_radius * (0.8 if is_image else 1),
+                            8,
+                            16,
+                        ),
+                    ),
+                    hoverinfo="skip",
+                    showlegend=False,
+                    row=row,
+                    col=col,
+                )
+
+            # Update the angle for the next species
+            current_angle = end_angle
 
 
 def draw_cell(
@@ -917,13 +1374,13 @@ def draw_bonds(
                 isinstance(val, (int, float)) and 0 <= val <= 1 for val in color_val
             )
         ):
-            rgb_values = [int(255 * v) for v in color_val]
-            return f"rgb({rgb_values[0]},{rgb_values[1]},{rgb_values[2]})"
+            r, g, b = [int(255 * v) for v in color_val]
+            return f"rgb({r},{g},{b})"
         if isinstance(color_val, str):
             try:
                 rgb_tuple_float = to_rgb(color_val)  # Returns floats in 0-1 range
-                rgb_values = [int(255 * v) for v in rgb_tuple_float]
-                return f"rgb({rgb_values[0]},{rgb_values[1]},{rgb_values[2]})"
+                r, g, b = [int(255 * v) for v in rgb_tuple_float]
+                return f"rgb({r},{g},{b})"  # noqa: TRY300
             except ValueError:
                 pass  # Fallback if to_rgb fails (e.g. already "rgb(...)")
         return "rgb(128,128,128)"  # Fallback to gray if parsing fails
@@ -1142,6 +1599,10 @@ def _configure_legends(
             x_end = col / n_cols
             y_start = 1 - row / n_rows
             y_end = 1 - (row - 1) / n_rows
+
+            # Position legend much closer to bottom right of subplot
+            legend_x = x_start + 0.98 * (x_end - x_start)
+            legend_y = y_start + 0.02 * (y_end - y_start)
 
             # Position legend much closer to bottom right of subplot
             legend_x = x_start + 0.98 * (x_end - x_start)
