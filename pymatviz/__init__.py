@@ -69,7 +69,6 @@ from pymatviz.scatter import (
     density_scatter,
     density_scatter_plotly,
     density_scatter_with_hist,
-    residual_vs_actual,
 )
 from pymatviz.structure import structure_2d_plotly, structure_3d_plotly
 from pymatviz.sunburst import chem_sys_sunburst, spacegroup_sunburst

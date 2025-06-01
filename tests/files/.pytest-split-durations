@@ -1165,8 +1165,6 @@
     "tests/test_scatter.py::test_density_scatter_uses_series_name_as_label": 0.013926002000516746,
     "tests/test_scatter.py::test_density_scatter_with_hist[df_or_arrays0]": 0.06792854100058321,
     "tests/test_scatter.py::test_density_scatter_with_hist[df_or_arrays1]": 0.06689225000445731,
-    "tests/test_scatter.py::test_residual_vs_actual[df_or_arrays0]": 0.008749708002142143,
-    "tests/test_scatter.py::test_residual_vs_actual[df_or_arrays1]": 0.008651207994262222,
     "tests/test_sunburst.py::test_chem_sys_sunburst_basic": 0.01488091700593941,
     "tests/test_sunburst.py::test_chem_sys_sunburst_case_and_whitespace": 0.015513291000388563,
     "tests/test_sunburst.py::test_chem_sys_sunburst_complex_formulas": 0.0157314580064849,
