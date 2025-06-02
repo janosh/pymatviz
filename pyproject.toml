@@ -27,7 +27,7 @@ requires-python = ">=3.11"
 dependencies = [
     "kaleido==0.2.1",  # strict pin needed, see https://github.com/plotly/Kaleido/issues/292
     "matplotlib>=3.9",
-    "numpy>=1.26",
+    "numpy>=2",
     # output-formatting needed for pandas Stylers,
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "moyopy[interface]>=0.4.1",

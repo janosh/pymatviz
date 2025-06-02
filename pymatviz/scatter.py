@@ -1,4 +1,4 @@
-"""Parity, residual and density plots."""
+"""Parity and density plots."""
 
 from __future__ import annotations
 
@@ -549,48 +549,3 @@ def density_hexbin_with_hist(
     xs, ys = df_to_arrays(df, x, y)
     ax_scatter = pmv.powerups.with_marginal_hist(xs, ys, cell, bins)
     return density_hexbin(xs, ys, ax=ax_scatter, **kwargs)
-
-
-def residual_vs_actual(
-    y_true: ArrayLike | str,
-    y_pred: ArrayLike | str,
-    df: pd.DataFrame | None = None,
-    ax: plt.Axes | None = None,
-    xlabel: str = r"Actual value",
-    ylabel: str = r"Residual ($y_\mathrm{true} - y_\mathrm{pred}$)",
-    **kwargs: Any,
-) -> plt.Axes:
-    r"""Plot targets on the x-axis vs residuals (y_err = y_true - y_pred) on the y-axis.
-
-    Args:
-        y_true (array): Ground truth values
-        y_pred (array): Model predictions
-        df (pd.DataFrame, optional): DataFrame with y_true and y_pred columns.
-            Defaults to None.
-        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        xlabel (str, optional): x-axis label. Defaults to "Actual value".
-        ylabel (str, optional): y-axis label. Defaults to
-            `'Residual ($y_\mathrm{true} - y_\mathrm{pred}$)'`.
-        **kwargs: Additional keyword arguments passed to plt.plot()
-
-    Returns:
-        plt.Axes: matplotlib Axes object
-    """
-    y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    if not isinstance(y_true, np.ndarray):
-        raise TypeError(f"Expect y_true as np.ndarray, got {type(y_true).__name__}")
-    if not isinstance(y_pred, np.ndarray):
-        raise TypeError(f"Expect y_pred as np.ndarray, got {type(y_pred).__name__}")
-    ax = ax or plt.gca()
-
-    y_err = y_true - y_pred
-
-    ax.plot(y_true, y_err, "o", alpha=0.5, label=None, mew=1.2, ms=5.2, **kwargs)
-    ax.axline(
-        [1, 0], [2, 0], linestyle="dashed", color="black", alpha=0.5, label="ideal"
-    )
-
-    ax.set(xlabel=xlabel, ylabel=ylabel)
-    ax.legend(loc="lower right")
-
-    return ax

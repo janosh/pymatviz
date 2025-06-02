@@ -6,15 +6,17 @@ from __future__ import annotations
 import pymatviz as pmv
 
 
-dummy_data = pmv.data.regression()
-pmv.utils.apply_matplotlib_template()
+y_true, y_pred, _y_std = pmv.data.regression()
 
 
 # %% density hexbin
-ax = pmv.density_hexbin(
-    dummy_data.y_pred,
-    dummy_data.y_true,
-    best_fit_line={"annotate_params": {"loc": "lower center"}},
-    gridsize=40,
+best_fit_line = {"annotate_params": {"loc": "lower center"}}
+ax = pmv.density_hexbin(y_true, y_pred, best_fit_line=best_fit_line, gridsize=40)
+# pmv.io.save_and_compress_svg(ax, "density-scatter-hex")
+
+
+# %% density hexbin with hist
+ax = pmv.density_hexbin_with_hist(
+    y_true, y_pred, best_fit_line={"annotate_params": {"loc": "lower center"}}
 )
-pmv.io.save_and_compress_svg(ax, "density-scatter-hex")
+# pmv.io.save_and_compress_svg(ax, "density-scatter-hex-with-hist")

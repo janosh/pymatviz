@@ -22,8 +22,7 @@ from pymatviz.powerups.plotly import (
 pmv.set_plotly_template("pymatviz_white")
 
 
-# %% Configure matplotlib and load test data
-# Random regression data
+# %% Generate random regression data
 rand_regression_size = 500
 np_rng = np.random.default_rng(seed=0)
 gauss1 = np_rng.normal(5, 4, rand_regression_size)

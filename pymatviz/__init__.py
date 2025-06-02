@@ -1,12 +1,8 @@
 """pymatviz: A Python package for visualizing materials data.
 
-Importing this module has side-effects that apply sensible (often, not always) global
-defaults settings for plotly and matplotlib like increasing font size, prettier
-axis labels (plotly only) and higher figure resolution (matplotlib only).
-
-To use it, simply import this module before generating any plots:
-
-import pymatviz
+Importing this module has side-effects that apply (usually) sensible global
+defaults for plotly like increasing font size, prettier
+axis labels with sub/superscripts.
 """
 
 from __future__ import annotations
@@ -69,7 +65,6 @@ from pymatviz.scatter import (
     density_scatter,
     density_scatter_plotly,
     density_scatter_with_hist,
-    residual_vs_actual,
 )
 from pymatviz.structure import structure_2d_plotly, structure_3d_plotly
 from pymatviz.sunburst import chem_sys_sunburst, spacegroup_sunburst

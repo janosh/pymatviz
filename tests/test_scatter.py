@@ -131,11 +131,6 @@ def test_density_hexbin_with_hist(df_or_arrays: DfOrArrays) -> None:
     pmv.density_hexbin_with_hist(df=df, x=x, y=y)
 
 
-def test_residual_vs_actual(df_or_arrays: DfOrArrays) -> None:
-    df, x, y = df_or_arrays
-    pmv.residual_vs_actual(df=df, y_true=x, y_pred=y)
-
-
 @pytest.mark.parametrize(
     ("log_density", "stats", "bin_counts_col", "n_bins", "kwargs"),
     [

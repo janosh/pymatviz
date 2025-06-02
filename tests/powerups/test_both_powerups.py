@@ -440,11 +440,9 @@ def test_enhance_parity_plot(
     else:
         assert not best_fit_lines
 
-    # Check stats
-    if stats:
+    if stats:  # Check stats
         assert fig_plotly.layout.annotations
         anno_text = fig_plotly.layout.annotations[-1].text
-        # Use assertIn instead of assertEquals since exact metrics can vary
         assert "MAE =" in anno_text
         assert "R<sup>2</sup> =" in anno_text
         if isinstance(stats, dict) and stats.get("loc") == "upper left":

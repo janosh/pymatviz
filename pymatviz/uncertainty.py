@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from packaging import version
 from scipy.stats import norm
 
 import pymatviz as pmv
@@ -19,9 +18,6 @@ if TYPE_CHECKING:
     from typing import Any
 
     from numpy.typing import ArrayLike
-
-if version.parse(np.__version__) < version.parse("2.0.0"):
-    np.trapezoid = np.trapz  # noqa: NPY201
 
 
 def qq_gaussian(
