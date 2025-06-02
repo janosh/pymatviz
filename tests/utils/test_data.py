@@ -411,30 +411,6 @@ def test_get_matplotlib_font_color_from_rcparams() -> None:
         plt.rcParams["text.color"] = original_color  # Reset to original value
 
 
-def test_apply_matplotlib_template() -> None:
-    """Test that apply_matplotlib_template() correctly sets matplotlib parameters."""
-    # Store original values
-    orig_params = plt.rcParams.copy()
-
-    try:
-        # Apply the template
-        pmv.utils.apply_matplotlib_template()
-
-        # Check that parameters were set correctly
-        assert plt.rcParams["font.size"] == 14
-        assert plt.rcParams["savefig.bbox"] == "tight"
-        assert plt.rcParams["savefig.dpi"] == 200
-        assert plt.rcParams["axes.titlesize"] == 16
-        assert plt.rcParams["axes.titleweight"] == "bold"
-        assert plt.rcParams["figure.dpi"] == 200
-        assert plt.rcParams["figure.titlesize"] == 20
-        assert plt.rcParams["figure.titleweight"] == "bold"
-        assert plt.rcParams["figure.constrained_layout.use"] is True
-
-    finally:  # Restore original values
-        plt.rcParams.update(orig_params)
-
-
 def test_hm_symbol_to_spg_num_map() -> None:
     """Test the hm_symbol_to_spg_num_map dictionary properties."""
     from pymatviz.utils.data import hm_symbol_to_spg_num_map

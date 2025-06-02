@@ -672,7 +672,7 @@ def cluster_compositions(
         # Apply color scale transformations if needed
         if color_scale != "linear" and prop_name is not None:
             # Create a copy to avoid modifying the original data
-            original_prop_values = prop_values.copy()  # type: ignore[union-attr]
+            original_prop_values = prop_values.copy()
 
             # Apply the selected transformation
             if color_scale == "log" or (
@@ -680,8 +680,7 @@ def cluster_compositions(
             ):
                 # For log scale, replace negative or zero values with NaN
                 prop_values = [
-                    math.log10(val) if val > 0 else float("nan")
-                    for val in prop_values  # type: ignore[union-attr]
+                    math.log10(val) if val > 0 else float("nan") for val in prop_values
                 ]
                 colorbar_title = f"{prop_name} (log scale)"
 
@@ -700,14 +699,14 @@ def cluster_compositions(
                             np.arcsinh((val * lin_scale) / lin_thresh)
                             * lin_thresh
                             / scale_factor
-                            for val in prop_values  # type: ignore[union-attr]
+                            for val in prop_values
                         ]
                         colorbar_title = f"{prop_name} (arcsinh scale)"
                     else:
                         # Custom arcsinh with just scale factor
                         prop_values = [
                             np.arcsinh(val / scale_factor) * scale_factor
-                            for val in prop_values  # type: ignore[union-attr]
+                            for val in prop_values
                         ]
                         colorbar_title = f"{prop_name} (arcsinh scale)"
                 else:
@@ -715,7 +714,7 @@ def cluster_compositions(
                     scale_factor = 2.0
                     prop_values = [
                         np.arcsinh(val / scale_factor) * scale_factor
-                        for val in prop_values  # type: ignore[union-attr]
+                        for val in prop_values
                     ]
                     colorbar_title = f"{prop_name} (arcsinh scale)"
             else:
