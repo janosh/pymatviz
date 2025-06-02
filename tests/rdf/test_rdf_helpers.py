@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import IStructure, Lattice, Structure
 from pymatgen.core.composition import Composition
 
 from pymatviz.rdf.helpers import calculate_rdf
+from tests.conftest import SI_ATOMS, SI_STRUCTS
 
 
 def check_basic_rdf_properties(
@@ -27,14 +30,38 @@ def check_basic_rdf_properties(
     assert rdf[0] == 0, f"{rdf=} should start at 0{suffix}"
 
 
-def test_calculate_rdf(structures: list[Structure]) -> None:
-    """Test basic RDF calculation for various structures."""
-    for struct in structures:
-        elements = list({site.specie.symbol for site in struct})
-        for el1 in elements:
-            for el2 in elements:
-                radii, rdf = calculate_rdf(struct, el1, el2, 10, 100)
-                check_basic_rdf_properties(radii, rdf, 100)
+@pytest.mark.parametrize(
+    ("structure_name", "structure"),
+    [
+        ("pymatgen_structure", SI_STRUCTS[0]),
+        ("istructure", IStructure.from_sites(SI_STRUCTS[0].sites)),
+        ("ase_atoms", SI_ATOMS[0]),
+    ],
+)
+def test_calculate_rdf(structure_name: str, structure: Any) -> None:
+    """Test basic RDF calculation for various structure types."""
+    # Calculate RDF for the structure
+    radii, rdf = calculate_rdf(structure, cutoff=10, n_bins=100)
+    check_basic_rdf_properties(radii, rdf, 100, structure_name)
+
+    # Get unique elements in the structure
+    if hasattr(structure, "sites"):
+        # For pymatgen Structure/IStructure
+        elements = list({site.specie.symbol for site in structure})
+    else:
+        # For ASE Atoms
+        from pymatgen.io.ase import AseAtomsAdaptor
+
+        temp_struct = AseAtomsAdaptor.get_structure(structure)
+        elements = list({site.specie.symbol for site in temp_struct})
+
+    # Test partial RDFs for element pairs
+    for el1 in elements:
+        for el2 in elements:
+            radii_partial, rdf_partial = calculate_rdf(structure, el1, el2, 10, 100)
+            check_basic_rdf_properties(
+                radii_partial, rdf_partial, 100, f"{structure_name}_{el1}_{el2}"
+            )
 
 
 @pytest.mark.parametrize(
@@ -321,7 +348,7 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
         (  # invalid_structure_type
             {"structure": "not a structure", "cutoff": 10, "n_bins": 10},
             TypeError,
-            "Expected pymatgen Structure, got str",
+            "Input must be a Pymatgen Structure, ASE Atoms object, a sequence",
         ),
         (  # zero_cutoff
             {"cutoff": 0},
@@ -365,3 +392,16 @@ def test_calculate_rdf_input_validation(
     # Test for expected error
     with pytest.raises(expected_err_cls, match=error_msg):
         calculate_rdf(**params)
+
+
+def test_calculate_rdf_invalid_structure_type() -> None:
+    """Test that calculate_rdf raises appropriate error for invalid structure types."""
+    with pytest.raises(
+        TypeError, match="Input must be a Pymatgen Structure, ASE Atoms object, a "
+    ):
+        calculate_rdf("not a structure", cutoff=10, n_bins=10)
+
+    with pytest.raises(
+        TypeError, match="Input must be a Pymatgen Structure, ASE Atoms object, a "
+    ):
+        calculate_rdf(42, cutoff=10, n_bins=10)

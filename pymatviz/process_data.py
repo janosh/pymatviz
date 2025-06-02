@@ -288,7 +288,7 @@ def normalize_structures(
         # Use formula as key for single structure input
         return {systems.formula: systems}
 
-    if len(systems) == 0:
+    if hasattr(systems, "__len__") and len(systems) == 0:
         raise ValueError("Cannot plot empty set of structures")
 
     if isinstance(systems, dict):  # Process dict values, keep original keys
