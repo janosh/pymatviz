@@ -7,15 +7,17 @@ import plotly.graph_objects as go
 import pytest
 from numpy.testing import assert_allclose
 from pymatgen.analysis.local_env import CrystalNN
-from pymatgen.core import Lattice, PeriodicSite, Structure
+from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
-from pymatviz.structure_viz.helpers import (
+from pymatviz.structure.helpers import (
     CELL_EDGES,
     NO_SYM_MSG,
     _angles_to_rotation_matrix,
+    _create_disordered_site_legend_name,
     draw_bonds,
     draw_cell,
+    draw_disordered_site,
     draw_site,
     draw_vector,
     get_atomic_radii,
@@ -904,3 +906,107 @@ def test_get_struct_prop(fe3co4_disordered: Structure) -> None:
     # Test 5: Structure property takes precedence over dict parameter
     result = get_struct_prop(struct, "key1", "test_prop", {"key1": "dict_value"})
     assert result == "struct_value"
+
+
+def test_draw_disordered_site_legend_functionality() -> None:
+    """Test the draw_disordered_site function with legend mode functionality."""
+    # Create a structure with a disordered site
+    lattice = Lattice.cubic(5.0)
+    species = [Composition({"Fe": 0.75, "Ni": 0.25}), "O"]
+    coords = [[0, 0, 0], [0.5, 0.5, 0.5]]
+    structure = Structure(lattice, species, coords)
+
+    # Test 2D case
+    fig_2d = go.Figure()
+    disordered_site = structure[0]  # First site is disordered
+    coords_2d = [0, 0, 0]
+
+    elem_colors = get_elem_colors(ElemColorScheme.jmol)
+    atomic_radii = get_atomic_radii(None)
+
+    draw_disordered_site(
+        fig=fig_2d,
+        site=disordered_site,
+        coords=coords_2d,
+        site_idx=0,
+        site_labels="legend",
+        elem_colors=elem_colors,
+        atomic_radii=atomic_radii,
+        atom_size=30,
+        scale=1.0,
+        site_kwargs={},
+        is_image=False,
+        is_3d=False,
+        showlegend=True,
+        legend="legend",
+        legendgroup=None,
+    )
+
+    # Check that legend trace was created
+    legend_traces_2d = [trace for trace in fig_2d.data if trace.showlegend]
+    assert len(legend_traces_2d) > 0, "Should have legend traces"
+
+    # Check legend name format
+    legend_names = {trace.name for trace in legend_traces_2d}
+    assert "Fe₀.₇₅Ni₀.₂₅" in legend_names
+
+    # Test 3D case
+    fig_3d = go.Figure()
+    coords_3d = [0, 0, 0]
+
+    draw_disordered_site(
+        fig=fig_3d,
+        site=disordered_site,
+        coords=coords_3d,
+        site_idx=0,
+        site_labels="legend",
+        elem_colors=elem_colors,
+        atomic_radii=atomic_radii,
+        atom_size=30,
+        scale=1.0,
+        site_kwargs={},
+        is_image=False,
+        is_3d=True,
+        showlegend=True,
+        legend="legend",
+        legendgroup=None,
+    )
+
+    # Check that legend trace was created
+    legend_traces_3d = [trace for trace in fig_3d.data if trace.showlegend]
+    assert len(legend_traces_3d) > 0, "Should have legend traces"
+
+    # Check legend name format
+    legend_names_3d = {trace.name for trace in legend_traces_3d}
+    assert "Fe₀.₇₅Ni₀.₂₅" in legend_names_3d
+
+    # Check that traces have correct legendgroup
+    for trace in fig_3d.data:
+        if hasattr(trace, "legendgroup"):
+            assert trace.legendgroup == "disordered_site_0"
+
+
+def test_create_disordered_site_legend_name() -> None:
+    """Test the _create_disordered_site_legend_name helper function."""
+    # Test binary composition
+    sorted_species = [(Species("Fe"), 0.6), (Species("Ni"), 0.4)]
+    result = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    assert result == "Fe₀.₆Ni₀.₄"
+
+    # Test ternary composition
+    sorted_species = [(Species("Fe"), 0.5), (Species("Ni"), 0.3), (Species("Cr"), 0.2)]
+    result = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    assert result == "Fe₀.₅Ni₀.₃Cr₀.₂"
+
+    # Test image site (should have same format)
+    sorted_species = [(Species("Fe"), 0.8), (Species("Co"), 0.2)]
+    result = _create_disordered_site_legend_name(sorted_species, is_image=True)
+    assert result == "Image of Fe₀.₈Co₀.₂"  # Image sites have "Image of " prefix
+
+    # Test rounding behavior
+    sorted_species = [
+        (Species("Ni"), 0.666667),
+        (Species("Fe"), 0.333333),
+    ]  # Already sorted by occupancy
+    result = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    assert result == "Ni₀.₆₇Fe₀.₃₃"  # Should be sorted by occupancy and rounded

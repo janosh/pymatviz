@@ -7,15 +7,17 @@ from pymatgen.core.periodic_table import Species
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
+from pymatviz.structure import disordered_demo_structures
 
 
 df_phonons = load_dataset("matbench_phonons")
 
 
 # %% 3d example
+n_structs = 6
 supercells = {
     key: struct.make_supercell(2, in_place=False)
-    for key, struct in df_phonons[Key.structure].head(6).items()
+    for key, struct in df_phonons[Key.structure].head(n_structs).items()
 }
 fig = pmv.structure_3d_plotly(
     supercells,
@@ -24,6 +26,7 @@ fig = pmv.structure_3d_plotly(
     hover_text=SiteCoords.cartesian_fractional,
     show_bonds=True,
 )
+fig.layout.title = f"{n_structs} Matbench phonon structures (3D supercells)"
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")
 
@@ -43,6 +46,26 @@ fig = pmv.structure_3d_plotly(
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "bato3-structure-3d-plotly")
+
+
+# %% Example: Disordered site rendering (multiple spheres in 3D)
+fig = pmv.structure_3d_plotly(
+    disordered_demo_structures,
+    elem_colors=ElemColorScheme.jmol,
+    n_cols=2,
+    show_cell={"edge": dict(color="darkgray", width=2)},
+    site_labels="symbol",
+    hover_text=SiteCoords.cartesian_fractional,
+)
+
+fig.layout.title = dict(
+    text="3D Disordered Sites: Spherical Wedges Show Species Occupancy",
+    x=0.5,
+    font=dict(size=16),
+)
+# fig.layout.update(width=1200, height=800)
+fig.show()
+# pmv.io.save_and_compress_svg(fig, "disordered-sites-3d-plotly-spherical-wedges")
 
 
 # %% Create a high-entropy alloy structure CoCrFeNiMn with FCC structure

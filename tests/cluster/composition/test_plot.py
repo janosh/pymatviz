@@ -463,9 +463,7 @@ def test_projection_stats(
 
     # Check that all expected texts are present in at least one annotation
     for expected_text in expected_texts:
-        assert any(expected_text in ann.text for ann in fig.layout.annotations), (
-            f"Expected '{expected_text}' in annotations for {projection}"
-        )
+        assert any(expected_text in ann.text for ann in fig.layout.annotations)
 
     # For PCA, perform additional checks on variance percentages
     if projection == "pca":
@@ -485,8 +483,8 @@ def test_projection_stats(
                 assert match is not None, f"Could not parse PCA line: {line}"
                 pc_percentages.append((float(match[1]), float(match[2])))
 
-        # Check that we have the expected number of PCs
-        assert len(pc_percentages) == 2, f"Expected 2 PCs, got {len(pc_percentages)}"
+        # Check that we have expected number of principal components
+        assert len(pc_percentages) == 2
 
         # Check percentages are between 0 and 100 (since they're in percentage form)
         for pc, cum in pc_percentages:

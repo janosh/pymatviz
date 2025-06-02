@@ -7,10 +7,10 @@ readme = "readme.md"
 license = { file = "license" }
 keywords = [
     "chemistry",
+    "crystallography",
+    "data analysis",
     "data visualization",
     "materials informatics",
-    "data analysis",
-    "crystallography",
     "matplotlib",
     "plotly",
 ]
@@ -31,6 +31,7 @@ dependencies = [
     # output-formatting needed for pandas Stylers,
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "moyopy[interface]>=0.4.1",
+    "nbformat>=5.10",
     "pandas[output-formatting,xml]>=2.2",
     "plotly>=5.23",
     "pymatgen>=2025.2.18",
@@ -45,9 +46,9 @@ df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
 make-assets = ["matminer>=0.9"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
+phonons = ["phonopy>=2.31"] # only needed if user passes in phonopy objects
 test = [
-    "phonopy>=2.31",                                                  # only needed if user passes in phonopy objects
-    "pymatviz[auto-text-pos, df-pdf-export, df-svg-export, cluster]",
+    "pymatviz[auto-text-pos, df-pdf-export, df-svg-export, cluster, phonons]",
     "pytest-cov>=6",
     "pytest-split>=0.9",
     "pytest>=8",

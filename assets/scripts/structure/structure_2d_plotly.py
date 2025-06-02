@@ -7,24 +7,45 @@ from pymatgen.core.periodic_table import Species
 
 import pymatviz as pmv
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
+from pymatviz.structure import disordered_demo_structures
 
 
 df_phonons = load_dataset("matbench_phonons")
 
 
-# %% Plot Matbench phonon structures with plotly
+# %% Plot Matbench phonon structures with plotly (12 structures with bonds)
+n_structs = 12
 fig = pmv.structure_2d_plotly(
-    df_phonons[Key.structure].head(6).to_dict(),
-    # show_cell={"edge": dict(color="white", width=1.5)},
-    # show_sites=dict(line=None),
+    df_phonons[Key.structure].iloc[:n_structs].to_dict(),
+    show_bonds=True,
     elem_colors=ElemColorScheme.jmol,
-    n_cols=3,
+    n_cols=4,
     subplot_title=lambda _struct, _key: dict(font=dict(color="black")),
-    hover_text=lambda site: f"<b>{site.frac_coords}</b>",
+    hover_text=SiteCoords.cartesian_fractional,
 )
+fig.layout.title = f"{n_structs} Matbench phonon structures"
 fig.layout.paper_bgcolor = "rgba(255,255,255,0.4)"
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")
+
+
+# %% Example: Disordered site rendering (pie slices in 2D)
+fig = pmv.structure_2d_plotly(
+    disordered_demo_structures,
+    elem_colors=ElemColorScheme.jmol,
+    n_cols=2,
+    show_cell={"edge": dict(color="darkgray", width=2)},
+    hover_text=SiteCoords.cartesian_fractional,
+)
+
+fig.layout.title = dict(
+    text="Disordered Site Rendering: Pie Slices Show Species Occupancy",
+    x=0.5,
+    font=dict(size=16),
+)
+fig.layout.update(width=800, height=400)
+fig.show()
+# pmv.io.save_and_compress_svg(fig, "disordered-sites-2d-plotly-pie-slices")
 
 
 # %% 2d example with supercells

@@ -6,7 +6,8 @@ import functools
 import itertools
 import math
 import warnings
-from typing import TYPE_CHECKING, Any
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import plotly.graph_objects as go
@@ -423,6 +424,30 @@ def get_site_hover_text(
     return out_text
 
 
+def _process_element_color(raw_color_from_map: ColorType) -> str:
+    """Process a color from the element color map into a consistent RGB string format.
+
+    Args:
+        raw_color_from_map: Color value from the element color map (tuple, string, etc.)
+
+    Returns:
+        str: Color in RGB format like "rgb(128,128,128)"
+    """
+    if (
+        isinstance(raw_color_from_map, tuple)
+        and len(raw_color_from_map) == 3
+        and all(isinstance(c, (float, int)) for c in raw_color_from_map)
+    ):
+        r, g, b = (
+            int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)
+            for c in raw_color_from_map
+        )
+        return f"rgb({r},{g},{b})"
+    if isinstance(raw_color_from_map, str):
+        return raw_color_from_map
+    return "rgb(128,128,128)"  # Fallback gray for unexpected color types
+
+
 def draw_site(
     fig: go.Figure,
     site: PeriodicSite,
@@ -477,6 +502,35 @@ def draw_site(
         **kwargs: Additional keyword arguments.
     """
     species = getattr(site, "specie", site.species)
+
+    # Check if this is a disordered site (multiple species)
+    if isinstance(species, Composition) and len(species) > 1:
+        draw_disordered_site(
+            fig=fig,
+            site=site,
+            coords=coords,
+            site_idx=site_idx,
+            site_labels=site_labels,
+            elem_colors=elem_colors,
+            atomic_radii=atomic_radii,
+            atom_size=atom_size,
+            scale=scale,
+            site_kwargs=site_kwargs,
+            is_image=is_image,
+            is_3d=is_3d,
+            row=row,
+            col=col,
+            scene=scene,
+            hover_text=hover_text,
+            float_fmt=float_fmt,
+            legendgroup=legendgroup,
+            showlegend=showlegend,
+            legend=legend,
+            **kwargs,
+        )
+        return
+
+    # Handle ordered sites (single species)
     majority_species = (
         max(species, key=species.get) if isinstance(species, Composition) else species
     )
@@ -484,21 +538,7 @@ def draw_site(
     raw_color_from_map = elem_colors.get(majority_species.symbol, "gray")
 
     # Process the color from the map into a string format
-    if (
-        isinstance(raw_color_from_map, tuple)
-        and len(raw_color_from_map) == 3
-        and all(isinstance(c, (float, int)) for c in raw_color_from_map)
-    ):
-        r, g, b = (
-            int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)
-            for c in raw_color_from_map
-        )
-        atom_color = f"rgb({r},{g},{b})"
-    elif isinstance(raw_color_from_map, str):
-        atom_color = raw_color_from_map
-    else:
-        # Fallback gray for unexpected color types
-        atom_color = "rgb(128,128,128)"
+    atom_color = _process_element_color(raw_color_from_map)
 
     site_hover_text = get_site_hover_text(site, hover_text, majority_species, float_fmt)
 
@@ -540,6 +580,603 @@ def draw_site(
         fig.add_scatter3d(**scatter_kwargs, scene=scene)
     else:
         fig.add_scatter(**scatter_kwargs, row=row, col=col)
+
+
+def _create_disordered_site_legend_name(
+    sorted_species: list[tuple[Species, float]], *, is_image: bool = False
+) -> str:
+    """Create a legend name for a disordered site showing all elements with occupancies.
+
+    Args:
+        sorted_species: List of (Species, occupancy) tuples sorted by occupancy
+        is_image: Whether this is an image site
+
+    Returns:
+        str: Combined legend name like "Fe₀.₇₅Ni₀.₂₅" or "0.75Fe,0.25Ni"
+    """
+    # Format each species with its occupancy
+    species_parts = []
+    for element_species, occupancy in sorted_species:
+        elem_symbol = element_species.symbol
+        if occupancy == 1.0:
+            species_parts.append(elem_symbol)
+        else:
+            # Use subscript numbers for fractional occupancies
+            occupancy_str = f"{occupancy:.2f}".rstrip("0").rstrip(".")
+            # Convert to subscript if possible (for common fractions)
+            subscript_map = {
+                "0": "₀",
+                "1": "₁",
+                "2": "₂",
+                "3": "₃",
+                "4": "₄",
+                "5": "₅",
+                "6": "₆",
+                "7": "₇",
+                "8": "₈",
+                "9": "₉",
+                ".": ".",
+            }
+            try:
+                subscript_occupancy = "".join(
+                    subscript_map.get(c, c) for c in occupancy_str
+                )
+                species_parts.append(f"{elem_symbol}{subscript_occupancy}")
+            except KeyError:
+                # Fallback to prefix notation if subscript fails
+                species_parts.append(f"{occupancy_str}{elem_symbol}")
+
+    legend_name = "".join(species_parts)
+
+    if is_image:
+        legend_name = f"Image of {legend_name}"
+
+    return legend_name
+
+
+def draw_disordered_site(
+    fig: go.Figure,
+    site: PeriodicSite,
+    coords: np.ndarray,
+    site_idx: int,
+    site_labels: Any,
+    elem_colors: dict[str, ColorType],
+    atomic_radii: dict[str, float],
+    atom_size: float,
+    scale: float,
+    site_kwargs: dict[str, Any],
+    *,
+    is_image: bool = False,
+    is_3d: bool = False,
+    row: int | None = None,
+    col: int | None = None,
+    scene: str | None = None,
+    hover_text: SiteCoords
+    | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
+    float_fmt: str | Callable[[float], str] = ".4",
+    legendgroup: str | None = None,
+    showlegend: bool = False,
+    legend: str = "legend",
+    **kwargs: Any,  # noqa: ARG001
+) -> None:
+    """Draw a disordered site as pie slices (2D) or multiple spheres (3D).
+
+    For 2D plots, creates pie slices with different colors and radii.
+    For 3D plots, creates multiple spheres at the same position with different sizes.
+
+    Args:
+        fig (go.Figure): The plotly figure to add the site to.
+        site (PeriodicSite): The periodic site to draw (must be disordered).
+        coords (np.ndarray): The coordinates of the site.
+        site_idx (int): The index of the site.
+        site_labels (str | dict | list): How to label the site.
+        elem_colors (dict[str, ColorType]): Element color mapping.
+        atomic_radii (dict[str, float]): Atomic radii mapping.
+        atom_size (float): Scaling factor for atom sizes.
+        scale (float): Overall scaling factor.
+        site_kwargs (dict[str, Any]): Additional keyword arguments for site styling.
+        is_image (bool): Whether this is an image site.
+        is_3d (bool): Whether this is a 3D plot.
+        row (int | None): Row for subplot.
+        col (int | None): Column for subplot.
+        scene (str | None): Scene name for 3D plots.
+        hover_text (SiteCoords | Callable[[PeriodicSite], str]): Hover text template.
+        float_fmt (str | Callable[[float], str]): Float format for hover coordinates.
+        legendgroup (str | None): For interactive legend. If None, will be set to
+            site_idx for grouping all parts of this disordered site.
+        showlegend (bool): Whether to show this trace in the legend.
+        legend (str): The legend group for the site.
+        **kwargs: Unused extra keyword arguments.
+    """
+    species = getattr(site, "specie", site.species)
+
+    if not isinstance(species, Composition) or len(species) <= 1:
+        # Not a disordered site, should use regular draw_site
+        return
+
+    # Sort species by occupancy for consistent ordering
+    sorted_species = sorted(species.items(), key=lambda x: x[1], reverse=True)
+
+    # Create a combined legend name showing all elements with occupancies
+    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=is_image)
+
+    # Set up legendgroup - use site_idx if not provided to group all parts together
+    if legendgroup is None:
+        legendgroup = f"disordered_site_{site_idx}"
+
+    # Determine if we should show labels (fixed redundant condition)
+    should_show_labels = site_labels not in ("legend", False)
+
+    if is_3d:
+        # For 3D: Create spherical wedges (3D pie slices) using meshes
+        # Calculate the total base radius to use for wedge sizing
+        base_radii = [
+            atomic_radii.get(elem_spec.symbol, missing_covalent_radius) * scale
+            for elem_spec, _ in sorted_species
+        ]
+        max_base_radius = max(base_radii)
+
+        # Track the current angular position
+        current_angle = 0.0
+
+        for species_idx, (element_species, occupancy) in enumerate(sorted_species):
+            elem_symbol = element_species.symbol
+            raw_color_from_map = elem_colors.get(elem_symbol, "gray")
+
+            atom_color = _process_element_color(raw_color_from_map)
+
+            # Calculate the angular span for this species based on occupancy
+            angle_span = 2 * np.pi * occupancy
+            end_angle = current_angle + angle_span
+
+            # Calculate radius for this wedge (proportional to occupancy)
+            wedge_radius = max_base_radius * np.sqrt(occupancy)
+
+            # Generate the spherical wedge mesh
+            x_coords, y_coords, z_coords, i_indices, j_indices, k_indices = (
+                _generate_spherical_wedge_mesh(
+                    center=coords,
+                    radius=wedge_radius,
+                    start_angle=current_angle,
+                    end_angle=end_angle,
+                    n_theta=max(
+                        MIN_3D_WEDGE_RESOLUTION_THETA,
+                        int(MAX_3D_WEDGE_RESOLUTION_THETA * occupancy),
+                    ),
+                    n_phi=max(
+                        MIN_3D_WEDGE_RESOLUTION_PHI,
+                        int(MAX_3D_WEDGE_RESOLUTION_PHI * occupancy),
+                    ),
+                )
+            )
+
+            # Generate hover text for this species using the hover_text template
+            site_hover_text = get_site_hover_text(
+                site, hover_text, element_species, float_fmt
+            )
+            # Append species-specific information
+            site_hover_text += f"<br>Species: {elem_symbol} ({occupancy:.2f})"
+
+            # Add the spherical wedge
+            fig.add_mesh3d(
+                x=x_coords,
+                y=y_coords,
+                z=z_coords,
+                i=i_indices,
+                j=j_indices,
+                k=k_indices,
+                color=atom_color,
+                name=legend_name,  # Use combined legend name
+                opacity=0.8 if is_image else 1,
+                showlegend=showlegend
+                and species_idx == 0,  # Only first species shows in legend
+                legendgroup=legendgroup,  # Group all parts together
+                scene=scene,
+                showscale=False,
+                hoverinfo="text",
+                hovertext=site_hover_text,
+                legend=legend,
+            )
+
+            # Add text label if needed
+            if should_show_labels:
+                # Calculate the label position at the center of the wedge
+                label_angle = current_angle + angle_span / 2  # Middle of the wedge
+                label_offset = max_base_radius * LABEL_OFFSET_3D_FACTOR
+                label_radius = wedge_radius + label_offset
+
+                # Calculate label position in 3D space
+                label_x = coords[0] + label_radius * np.cos(label_angle)
+                label_y = coords[1] + label_radius * np.sin(label_angle)
+                label_z = coords[2]  # Keep at same Z level
+
+                # Get the text for this element
+                if isinstance(site_labels, dict):
+                    txt = site_labels.get(elem_symbol, elem_symbol)
+                elif site_labels == "species":
+                    txt = str(element_species)
+                else:  # site_labels == "symbol" or other modes
+                    txt = elem_symbol
+
+                text_color = pick_max_contrast_color(atom_color)
+
+                # Apply site_kwargs to text styling if relevant
+                text_kwargs = dict(
+                    x=[label_x],
+                    y=[label_y],
+                    z=[label_z],
+                    mode="text",
+                    text=txt,
+                    textposition="middle center",
+                    textfont=dict(
+                        color=text_color,
+                        size=np.clip(
+                            atom_size * max_base_radius * (0.8 if is_image else 1),
+                            8,
+                            16,
+                        ),
+                    ),
+                    hoverinfo="skip",
+                    showlegend=False,
+                    legendgroup=legendgroup,  # Group with the main traces
+                    scene=scene,
+                )
+                # Apply any text-specific styling from site_kwargs
+                if "textfont" in site_kwargs:
+                    text_kwargs["textfont"].update(site_kwargs["textfont"])
+
+                fig.add_scatter3d(**text_kwargs)
+
+            # Update the angle for the next species
+            current_angle = end_angle
+
+    else:
+        # For 2D: Create pie slices using scatter traces instead of shapes
+        # so they can be part of legendgroup for proper legend interaction
+        # Calculate the total base radius to use for pie sizing
+        base_radii = [
+            atomic_radii.get(elem_spec.symbol, missing_covalent_radius) * scale
+            for elem_spec, _ in sorted_species
+        ]
+        max_base_radius = max(base_radii)
+
+        # Track the current angular position for pie slices
+        current_angle = 0.0
+
+        for species_idx, (element_species, occupancy) in enumerate(sorted_species):
+            elem_symbol = element_species.symbol
+            raw_color_from_map = elem_colors.get(elem_symbol, "gray")
+            atom_color = _process_element_color(raw_color_from_map)
+
+            # Calculate angular width for this species based on occupancy
+            angular_width = 2 * math.pi * occupancy
+            end_angle = current_angle + angular_width
+
+            # Calculate radius for this pie slice
+            slice_radius = max_base_radius * atom_size * 0.01  # Use scaling factor
+
+            # Generate points for the pie slice
+            n_points = max(8, int(16 * occupancy))  # More points for larger slices
+            angles = np.linspace(current_angle, end_angle, n_points)
+
+            # Create pie slice coordinates (including center point)
+            slice_x = (
+                [coords[0]]
+                + [coords[0] + slice_radius * math.cos(angle) for angle in angles]
+                + [coords[0]]
+            )
+            slice_y = (
+                [coords[1]]
+                + [coords[1] + slice_radius * math.sin(angle) for angle in angles]
+                + [coords[1]]
+            )
+
+            # Generate hover text for this species using the hover_text template
+            site_hover_text = get_site_hover_text(
+                site, hover_text, element_species, float_fmt
+            )
+            # Append species-specific information
+            site_hover_text += f"<br>Species: {elem_symbol} ({occupancy:.2f})"
+
+            # Create a filled scatter trace for the pie slice
+            fig.add_scatter(
+                x=slice_x,
+                y=slice_y,
+                mode="lines",
+                fill="toself",
+                fillcolor=atom_color,
+                line=dict(color=atom_color, width=1),
+                opacity=0.8 if not is_image else 0.6,
+                hoverinfo="skip",  # Hover handled by separate invisible trace below
+                showlegend=False,  # Don't show in legend directly
+                # same legend item as other parts of this disordered site
+                legendgroup=legendgroup,
+                name=legend_name,  # Use combined legend name
+                row=row,
+                col=col,
+            )
+
+            # Add invisible scatter point for hover and legend control
+            # This point controls the entire disordered site in the legend
+            fig.add_scatter(
+                x=[coords[0]],
+                y=[coords[1]],
+                mode="markers",
+                marker=dict(
+                    size=0.1,  # Nearly invisible
+                    color=atom_color,
+                    opacity=0.01,  # Nearly transparent
+                ),
+                hoverinfo="text",
+                hovertext=site_hover_text,
+                showlegend=showlegend
+                and species_idx == 0,  # Only first species shows in legend
+                name=legend_name,  # Use combined legend name
+                # same legend item as other parts of this disordered site
+                legendgroup=legendgroup,
+                # add to correct sublegend when plotting multiple structures
+                legend=legend,
+                row=row,
+                col=col,
+            )
+
+            # Add text label if needed
+            if should_show_labels:
+                # Calculate the label position at the center of the slice
+                label_angle = current_angle + angular_width / 2  # Middle of the slice
+                label_offset = slice_radius * 0.3  # LABEL_OFFSET_2D_FACTOR
+                label_radius = slice_radius + label_offset
+
+                # Calculate label position
+                label_x = coords[0] + label_radius * math.cos(label_angle)
+                label_y = coords[1] + label_radius * math.sin(label_angle)
+
+                # Get the text for this element
+                if isinstance(site_labels, dict):
+                    txt = site_labels.get(elem_symbol, elem_symbol)
+                elif site_labels == "species":
+                    txt = str(element_species)
+                else:  # site_labels == "symbol" or other modes
+                    txt = elem_symbol
+
+                text_color = pick_max_contrast_color(atom_color)
+
+                # Apply site_kwargs to text styling if relevant
+                text_kwargs = dict(
+                    x=[label_x],
+                    y=[label_y],
+                    mode="text",
+                    text=txt,
+                    textposition="middle center",
+                    textfont=dict(
+                        color=text_color,
+                        size=np.clip(
+                            atom_size * max_base_radius * (0.8 if is_image else 1),
+                            8,
+                            16,
+                        ),
+                    ),
+                    hoverinfo="skip",
+                    showlegend=False,
+                    legendgroup=legendgroup,  # Group with the main traces
+                    row=row,
+                    col=col,
+                )
+                # Apply any text-specific styling from site_kwargs
+                if "textfont" in site_kwargs:
+                    text_kwargs["textfont"].update(site_kwargs["textfont"])
+
+                fig.add_scatter(**text_kwargs)
+
+            current_angle = end_angle
+
+
+# Constants for disordered site rendering
+LABEL_OFFSET_3D_FACTOR = 0.3  # Factor for 3D label offset from sphere surface
+LABEL_OFFSET_2D_FACTOR = 0.3  # Factor for 2D label offset from pie slice
+PIE_SLICE_COORD_SCALE = 0.01  # Scaling factor for pie slice coordinate units
+MIN_3D_WEDGE_RESOLUTION_THETA = 8  # Minimum theta resolution for 3D wedges
+MIN_3D_WEDGE_RESOLUTION_PHI = 6  # Minimum phi resolution for 3D wedges
+MAX_3D_WEDGE_RESOLUTION_THETA = 16  # Base theta resolution for 3D wedges
+MAX_3D_WEDGE_RESOLUTION_PHI = 24  # Base phi resolution for 3D wedges
+MIN_PIE_SLICE_POINTS = 3  # Minimum points for 2D pie slices
+MAX_PIE_SLICE_POINTS = 20  # Base points for 2D pie slices
+
+
+def _generate_spherical_wedge_mesh(
+    center: np.ndarray,
+    radius: float,
+    start_angle: float,
+    end_angle: float,
+    n_theta: int = 16,
+    n_phi: int = 24,
+) -> tuple[list[float], list[float], list[float], list[int], list[int], list[int]]:
+    """Generate a spherical wedge (orange slice) mesh for 3D pie charts.
+
+    Creates a wedge-shaped section of a sphere between two azimuthal angles,
+    like a slice of an orange.
+
+    Args:
+        center: Center coordinates (x, y, z) of the sphere
+        radius: Radius of the sphere
+        start_angle: Starting azimuthal angle in radians
+        end_angle: Ending azimuthal angle in radians
+        n_theta: Number of divisions in polar direction (from top to bottom)
+        n_phi: Number of divisions in azimuthal direction (around the wedge)
+
+    Returns:
+        tuple: (x_coords, y_coords, z_coords, i_indices, j_indices, k_indices)
+    """
+    x_coords, y_coords, z_coords = [], [], []
+
+    # Add center point
+    center_idx = 0
+    x_coords.append(center[0])
+    y_coords.append(center[1])
+    z_coords.append(center[2])
+
+    # Generate points on sphere surface within the angular wedge
+    vertex_map = {}  # Map (theta_idx, phi_idx) to vertex index
+
+    # Create grid of points on sphere surface
+    for theta_idx in range(n_theta + 1):  # Polar angle (0 to pi)
+        theta = np.pi * theta_idx / n_theta  # From 0 (north pole) to pi (south pole)
+
+        for phi_idx in range(n_phi + 1):  # Azimuthal angle within wedge
+            phi = start_angle + (end_angle - start_angle) * phi_idx / n_phi
+
+            # Spherical to cartesian coordinates
+            x = center[0] + radius * np.sin(theta) * np.cos(phi)
+            y = center[1] + radius * np.sin(theta) * np.sin(phi)
+            z = center[2] + radius * np.cos(theta)
+
+            vertex_idx = len(x_coords)
+            x_coords.append(x)
+            y_coords.append(y)
+            z_coords.append(z)
+
+            vertex_map[(theta_idx, phi_idx)] = vertex_idx
+
+    i_indices, j_indices, k_indices = [], [], []
+
+    # Create triangular faces
+
+    # 1. Curved surface triangles
+    for theta_idx in range(n_theta):
+        for phi_idx in range(n_phi):
+            # Get four corners of this surface quad
+            v00 = vertex_map[(theta_idx, phi_idx)]
+            v01 = vertex_map[(theta_idx, phi_idx + 1)]
+            v10 = vertex_map[(theta_idx + 1, phi_idx)]
+            v11 = vertex_map[(theta_idx + 1, phi_idx + 1)]
+
+            # Split quad into two triangles
+            # Triangle 1: v00, v01, v10
+            i_indices.append(v00)
+            j_indices.append(v01)
+            k_indices.append(v10)
+
+            # Triangle 2: v01, v11, v10
+            i_indices.append(v01)
+            j_indices.append(v11)
+            k_indices.append(v10)
+
+    # 2. Side faces connecting center to edges (if not a full sphere)
+    angle_span = end_angle - start_angle
+    if angle_span < 2 * np.pi - 0.1:  # Not a complete sphere
+        # Left side face (start_angle)
+        for theta_idx in range(n_theta):
+            v_top = vertex_map[(theta_idx, 0)]
+            v_bottom = vertex_map[(theta_idx + 1, 0)]
+
+            # Triangle: center, v_top, v_bottom
+            i_indices.append(center_idx)
+            j_indices.append(v_top)
+            k_indices.append(v_bottom)
+
+        # Right side face (end_angle)
+        for theta_idx in range(n_theta):
+            v_top = vertex_map[(theta_idx, n_phi)]
+            v_bottom = vertex_map[(theta_idx + 1, n_phi)]
+
+            # Triangle: center, v_bottom, v_top (opposite winding)
+            i_indices.append(center_idx)
+            j_indices.append(v_bottom)
+            k_indices.append(v_top)
+
+    return x_coords, y_coords, z_coords, i_indices, j_indices, k_indices
+
+
+def draw_vector(
+    fig: go.Figure,
+    start: np.ndarray,
+    vector: np.ndarray,
+    *,
+    is_3d: bool = False,
+    arrow_kwargs: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> None:
+    """Add an arrow to represent a vector quantity on a Plotly figure.
+
+    This function adds an arrow to a 2D or 3D Plotly figure to represent a vector
+    quantity. In 3D, it uses a cone for the arrowhead and a line for the shaft.
+    In 2D, it uses a scatter plot with an arrow marker.
+
+    Args:
+        fig (go.Figure): The Plotly figure to add the arrow to.
+        start (np.ndarray): The starting point of the arrow (shape: (3,) for 3D,
+            (2,) for 2D).
+        vector (np.ndarray): The vector to be represented by the arrow (shape: (3,) for
+            3D, (2,) for 2D).
+        is_3d (bool, optional): Whether to add a 3D arrow. Defaults to False.
+        arrow_kwargs (dict[str, Any] | None, optional): Additional keyword arguments
+            for arrow customization. Supported keys:
+            - color (str): Color of the arrow.
+            - width (float): Width of the arrow shaft.
+            - arrow_head_length (float): Length of the arrowhead (3D only).
+            - arrow_head_angle (float): Angle of the arrowhead in degrees (3D only).
+            - scale (float): Scaling factor for the vector length.
+        **kwargs: Additional keyword arguments passed to the Plotly trace.
+
+    Note:
+        For 3D arrows, this function adds two traces to the figure: a cone for the
+        arrowhead and a line for the shaft. For 2D arrows, it adds a single scatter
+        trace with an arrow marker.
+    """
+    default_arrow_kwargs = dict(
+        color="white",
+        width=5,
+        arrow_head_length=0.8,
+        arrow_head_angle=30,
+        scale=1.0,
+    )
+    arrow_kwargs = default_arrow_kwargs | (arrow_kwargs or {})
+
+    # Apply scaling to the vector
+    scaled_vector = vector * arrow_kwargs["scale"]
+    end = start + scaled_vector
+
+    if is_3d:
+        # Add the shaft (line) first
+        fig.add_scatter3d(
+            x=[start[0], end[0]],
+            y=[start[1], end[1]],
+            z=[start[2], end[2]],
+            mode="lines",
+            line=dict(color=arrow_kwargs["color"], width=arrow_kwargs["width"]),
+            showlegend=False,
+            **kwargs,
+        )
+        # Add the arrowhead (cone) at the end
+        fig.add_cone(
+            x=[end[0]],
+            y=[end[1]],
+            z=[end[2]],
+            u=[scaled_vector[0]],
+            v=[scaled_vector[1]],
+            w=[scaled_vector[2]],
+            colorscale=[[0, arrow_kwargs["color"]], [1, arrow_kwargs["color"]]],
+            sizemode="absolute",
+            sizeref=arrow_kwargs["arrow_head_length"],
+            showscale=False,
+            **kwargs,
+        )
+    else:
+        fig.add_scatter(
+            x=[start[0], end[0]],
+            y=[start[1], end[1]],
+            mode="lines+markers",
+            marker=dict(
+                symbol="arrow",
+                size=10,
+                color=arrow_kwargs["color"],
+                angle=np.arctan2(scaled_vector[1], scaled_vector[0]),
+                angleref="previous",
+            ),
+            line=dict(color=arrow_kwargs["color"], width=arrow_kwargs["width"]),
+            showlegend=False,
+            **kwargs,
+        )
 
 
 def draw_cell(
@@ -721,98 +1358,6 @@ def draw_cell(
     return fig
 
 
-def draw_vector(
-    fig: go.Figure,
-    start: np.ndarray,
-    vector: np.ndarray,
-    *,
-    is_3d: bool = False,
-    arrow_kwargs: dict[str, Any] | None = None,
-    **kwargs: Any,
-) -> None:
-    """Add an arrow to represent a vector quantity on a Plotly figure.
-
-    This function adds an arrow to a 2D or 3D Plotly figure to represent a vector
-    quantity. In 3D, it uses a cone for the arrowhead and a line for the shaft.
-    In 2D, it uses a scatter plot with an arrow marker.
-
-    Args:
-        fig (go.Figure): The Plotly figure to add the arrow to.
-        start (np.ndarray): The starting point of the arrow (shape: (3,) for 3D,
-            (2,) for 2D).
-        vector (np.ndarray): The vector to be represented by the arrow (shape: (3,) for
-            3D, (2,) for 2D).
-        is_3d (bool, optional): Whether to add a 3D arrow. Defaults to False.
-        arrow_kwargs (dict[str, Any] | None, optional): Additional keyword arguments
-            for arrow customization. Supported keys:
-            - color (str): Color of the arrow.
-            - width (float): Width of the arrow shaft.
-            - arrow_head_length (float): Length of the arrowhead (3D only).
-            - arrow_head_angle (float): Angle of the arrowhead in degrees (3D only).
-            - scale (float): Scaling factor for the vector length.
-        **kwargs: Additional keyword arguments passed to the Plotly trace.
-
-    Note:
-        For 3D arrows, this function adds two traces to the figure: a cone for the
-        arrowhead and a line for the shaft. For 2D arrows, it adds a single scatter
-        trace with an arrow marker.
-    """
-    default_arrow_kwargs = dict(
-        color="white",
-        width=5,
-        arrow_head_length=0.8,
-        arrow_head_angle=30,
-        scale=1.0,
-    )
-    arrow_kwargs = default_arrow_kwargs | (arrow_kwargs or {})
-
-    # Apply scaling to the vector
-    scaled_vector = vector * arrow_kwargs["scale"]
-    end = start + scaled_vector
-
-    if is_3d:
-        # Add the shaft (line) first
-        fig.add_scatter3d(
-            x=[start[0], end[0]],
-            y=[start[1], end[1]],
-            z=[start[2], end[2]],
-            mode="lines",
-            line=dict(color=arrow_kwargs["color"], width=arrow_kwargs["width"]),
-            showlegend=False,
-            **kwargs,
-        )
-        # Add the arrowhead (cone) at the end
-        fig.add_cone(
-            x=[end[0]],
-            y=[end[1]],
-            z=[end[2]],
-            u=[scaled_vector[0]],
-            v=[scaled_vector[1]],
-            w=[scaled_vector[2]],
-            colorscale=[[0, arrow_kwargs["color"]], [1, arrow_kwargs["color"]]],
-            sizemode="absolute",
-            sizeref=arrow_kwargs["arrow_head_length"],
-            showscale=False,
-            **kwargs,
-        )
-    else:
-        fig.add_scatter(
-            x=[start[0], end[0]],
-            y=[start[1], end[1]],
-            mode="lines+markers",
-            marker=dict(
-                symbol="arrow",
-                size=10,
-                color=arrow_kwargs["color"],
-                angle=np.arctan2(scaled_vector[1], scaled_vector[0]),
-                angleref="previous",
-            ),
-            line=dict(color=arrow_kwargs["color"], width=arrow_kwargs["width"]),
-            showlegend=False,
-            **kwargs,
-        )
-
-
 def get_first_matching_site_prop(
     structures: Sequence[Structure],
     prop_keys: Sequence[str],
@@ -916,13 +1461,13 @@ def draw_bonds(
                 isinstance(val, (int, float)) and 0 <= val <= 1 for val in color_val
             )
         ):
-            rgb_values = [int(255 * v) for v in color_val]
-            return f"rgb({rgb_values[0]},{rgb_values[1]},{rgb_values[2]})"
+            r, g, b = [int(255 * v) for v in color_val]
+            return f"rgb({r},{g},{b})"
         if isinstance(color_val, str):
             try:
                 rgb_tuple_float = to_rgb(color_val)  # Returns floats in 0-1 range
-                rgb_values = [int(255 * v) for v in rgb_tuple_float]
-                return f"rgb({rgb_values[0]},{rgb_values[1]},{rgb_values[2]})"
+                r, g, b = [int(255 * v) for v in rgb_tuple_float]
+                return f"rgb({r},{g},{b})"  # noqa: TRY300
             except ValueError:
                 pass  # Fallback if to_rgb fails (e.g. already "rgb(...)")
         return "rgb(128,128,128)"  # Fallback to gray if parsing fails
@@ -1119,3 +1664,50 @@ def _prep_augmented_structure_for_bonding(
     return Structure.from_sites(
         all_sites_for_bonding, validate_proximity=False, to_unit_cell=False
     )
+
+
+def _configure_legends(
+    fig: go.Figure,
+    site_labels: Literal["symbol", "species", "legend", False]
+    | dict[str, str]
+    | Sequence[str],
+    n_structs: int,
+    n_cols: int,
+    n_rows: int,
+) -> None:
+    """Configure legends for each subplot if site_labels is 'legend'."""
+    if site_labels == "legend":
+        for idx in range(1, n_structs + 1):
+            row = (idx - 1) // n_cols + 1
+            col = (idx - 1) % n_cols + 1
+
+            # Calculate position within each subplot (bottom right)
+            x_start = (col - 1) / n_cols
+            x_end = col / n_cols
+            y_start = 1 - row / n_rows
+            y_end = 1 - (row - 1) / n_rows
+
+            # Position legend much closer to bottom right of subplot
+            legend_x = x_start + 0.98 * (x_end - x_start)
+            legend_y = y_start + 0.02 * (y_end - y_start)
+
+            # Position legend much closer to bottom right of subplot
+            legend_x = x_start + 0.98 * (x_end - x_start)
+            legend_y = y_start + 0.02 * (y_end - y_start)
+
+            legend_key = "legend" if idx == 1 else f"legend{idx}"
+            legend_config = dict(
+                x=legend_x,
+                y=legend_y,
+                xref="paper",
+                yref="paper",
+                xanchor="right",
+                yanchor="bottom",
+                bgcolor="rgba(0,0,0,0)",  # Transparent background
+                borderwidth=0,  # Remove border
+                font=dict(size=12, weight="bold"),  # Larger and bold font
+                itemsizing="constant",  # Keep legend symbols same size
+                itemwidth=30,  # Min allowed
+                tracegroupgap=2,  # Reduce vertical space between legend items
+            )
+            fig.layout[legend_key] = legend_config

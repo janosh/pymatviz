@@ -5,16 +5,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pymatgen.core import Structure
 from pymatgen.optimization.neighbors import find_points_in_spheres
+
+from pymatviz.process_data import normalize_structures
 
 
 if TYPE_CHECKING:
+    import ase
+    from pymatgen.core import IStructure, Structure
     from pymatgen.util.typing import PbcLike
 
 
 def calculate_rdf(
-    structure: Structure,
+    structure: Structure | IStructure | ase.Atoms,
     center_species: str | None = None,
     neighbor_species: str | None = None,
     cutoff: float = 15,
@@ -27,7 +30,8 @@ def calculate_rdf(
     for the specified element pair. Otherwise, calculates the full RDF.
 
     Args:
-        structure (Structure): A pymatgen Structure object.
+        structure (Structure | IStructure | ase.Atoms): A pymatgen Structure/IStructure
+            object or ASE Atoms object.
         center_species (str, optional): Symbol of the central species. If None, all
             species are considered.
         neighbor_species (str, optional): Symbol of the neighbor species. If None, all
@@ -43,12 +47,12 @@ def calculate_rdf(
 
     Raises:
         ValueError: If cutoff or n_bins are not positive values.
+        TypeError: If structure is not a supported type.
     """
-    # Input validation
-    if not isinstance(structure, Structure):
-        raise TypeError(f"Expected pymatgen Structure, got {type(structure).__name__}")
+    struct = next(iter(normalize_structures(structure).values()))
+
     # Handle empty structure
-    if len(structure) == 0:
+    if len(struct) == 0:
         return np.linspace(cutoff / n_bins, cutoff, n_bins), np.zeros(n_bins)
     if cutoff <= 0:
         raise ValueError(f"{cutoff=} must be positive")
@@ -63,32 +67,32 @@ def calculate_rdf(
     if center_species:
         center_indices = [
             idx
-            for idx, site in enumerate(structure)
+            for idx, site in enumerate(struct)
             if site.specie.symbol == center_species
         ]
     else:
-        center_indices = list(range(len(structure)))
+        center_indices = list(range(len(struct)))
 
     if neighbor_species:
         neighbor_indices = [
             idx
-            for idx, site in enumerate(structure)
+            for idx, site in enumerate(struct)
             if site.specie.symbol == neighbor_species
         ]
     else:
-        neighbor_indices = list(range(len(structure)))
+        neighbor_indices = list(range(len(struct)))
 
     # If there are no center atoms or neighbor atoms, return an empty RDF
     if not center_indices or not neighbor_indices:
         return radii, rdf  # Return zeros if no centers or neighbors
 
     center_neighbors = find_points_in_spheres(
-        all_coords=structure.cart_coords,
-        center_coords=structure.cart_coords[center_indices],
+        all_coords=struct.cart_coords,
+        center_coords=struct.cart_coords[center_indices],
         r=cutoff,
         # Convert bools to ints (needed for cython code)
         pbc=np.array([*map(int, pbc)]),
-        lattice=structure.lattice.matrix,
+        lattice=struct.lattice.matrix,
     )
 
     # Filter distances for the specific neighbor species and bin them
@@ -112,6 +116,6 @@ def calculate_rdf(
     # Spherical shell volume = surface area (4πr²) times thickness (bin_size)
     rdf /= normalization
     shell_volumes = 4 * np.pi * radii**2 * bin_size
-    rdf /= shell_volumes / structure.volume
+    rdf /= shell_volumes / struct.volume
 
     return radii, rdf

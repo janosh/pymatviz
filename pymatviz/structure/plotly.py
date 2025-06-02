@@ -5,32 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pymatgen.analysis.local_env import CrystalNN, NearNeighbors
 from pymatgen.core import Element
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.process_data import normalize_structures
-from pymatviz.structure_viz.helpers import (
-    _angles_to_rotation_matrix,
-    _get_site_symbol,
-    _prep_augmented_structure_for_bonding,
-    _standardize_struct,
-    draw_bonds,
-    draw_cell,
-    draw_site,
-    draw_vector,
-    generate_site_label,
-    get_atomic_radii,
-    get_elem_colors,
-    get_first_matching_site_prop,
-    get_image_sites,
-    get_site_hover_text,
-    get_struct_prop,
-    get_subplot_title,
-)
-from pymatviz.utils import pick_max_contrast_color
+from pymatviz.structure import helpers
 
 
 if TYPE_CHECKING:
@@ -38,6 +19,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
     import ase.atoms
+    import plotly.graph_objects as go
     from pymatgen.core import PeriodicSite, Structure
 
     from pymatviz.typing import ColorType
@@ -163,16 +145,16 @@ def structure_2d_plotly(
         horizontal_spacing=0,
     )
 
-    # Don't call get_elem_colors here if elem_colors is a dict mapping structure
+    # Don't call helpers.get_elem_colors here if elem_colors is a dict mapping structure
     # keys to color schemes. Instead, handle per-structure color schemes in the loop
-    _atomic_radii = get_atomic_radii(atomic_radii)
+    _atomic_radii = helpers.get_atomic_radii(atomic_radii)
 
     if isinstance(show_site_vectors, str):
         show_site_vectors = [show_site_vectors]
 
     # Determine which vector property to plot (calling outside loop ensures we plot
     # the same prop for all sites in all structures)
-    vector_prop = get_first_matching_site_prop(
+    vector_prop = helpers.get_first_matching_site_prop(
         list(structures.values()),
         show_site_vectors,
         warn_if_none=show_site_vectors != ("force", "magmom"),
@@ -200,47 +182,49 @@ def structure_2d_plotly(
                     elem_colors.get(struct_key, ElemColorScheme.jmol),
                 )
 
-        _elem_colors = get_elem_colors(struct_elem_colors)
+        _elem_colors = helpers.get_elem_colors(struct_elem_colors)
 
         # Initialize seen elements for this subplot
         seen_elements_per_subplot[idx] = set()
 
-        struct_i = _standardize_struct(raw_struct_i, standardize_struct)
+        struct_i = helpers._standardize_struct(raw_struct_i, standardize_struct)
 
         # Handle cell_boundary_tol with precedence:
         # 1. structure.properties["cell_boundary_tol"] or
         #    atoms.info["cell_boundary_tol"]
         # 2. function arg cell_boundary_tol (dict or float)
         cell_boundary_tol_i = (
-            get_struct_prop(
+            helpers.get_struct_prop(
                 raw_struct_i, struct_key, "cell_boundary_tol", cell_boundary_tol
             )
             or 0.0
         )
 
         # Handle other parameters with precedence
-        atomic_radii_i = get_struct_prop(
+        atomic_radii_i = helpers.get_struct_prop(
             raw_struct_i, struct_key, "atomic_radii", atomic_radii
         )
         if atomic_radii_i is None:
             atomic_radii_i = atomic_radii
 
         atom_size_i = (
-            get_struct_prop(raw_struct_i, struct_key, "atom_size", atom_size)
+            helpers.get_struct_prop(raw_struct_i, struct_key, "atom_size", atom_size)
             or atom_size
         )
 
-        scale_i = get_struct_prop(raw_struct_i, struct_key, "scale", scale) or scale
+        scale_i = (
+            helpers.get_struct_prop(raw_struct_i, struct_key, "scale", scale) or scale
+        )
 
         # Process atomic_radii with per-structure precedence
-        _atomic_radii = get_atomic_radii(atomic_radii_i)
+        _atomic_radii = helpers.get_atomic_radii(atomic_radii_i)
 
-        rotation_matrix = _angles_to_rotation_matrix(rotation)
+        rotation_matrix = helpers._angles_to_rotation_matrix(rotation)
         rotated_coords_all_sites = np.dot(struct_i.cart_coords, rotation_matrix)
 
         # For bonding, consider primary and image sites if show_image_sites is active
         # The actual plotting of image sites is handled later by draw_site if show_sites
-        augmented_structure = _prep_augmented_structure_for_bonding(
+        augmented_structure = helpers._prep_augmented_structure_for_bonding(
             struct_i, show_image_sites and show_sites, cell_boundary_tol_i
         )
 
@@ -257,7 +241,7 @@ def structure_2d_plotly(
                 zip(struct_i, rotated_coords_all_sites, strict=False)
             ):
                 # Determine legend parameters for primary sites
-                symbol = _get_site_symbol(site)
+                symbol = helpers._get_site_symbol(site)
                 legendgroup = None
                 showlegend = False
                 if site_labels == "legend":
@@ -266,7 +250,7 @@ def structure_2d_plotly(
                         showlegend = True
                         seen_elements_per_subplot[idx].add(symbol)
 
-                draw_site(  # Draw primary site
+                helpers.draw_site(  # Draw primary site
                     fig=fig,
                     site=site,
                     coords=rotated_site_coords_3d,  # Pass 3D rotated coords
@@ -277,7 +261,7 @@ def structure_2d_plotly(
                     atom_size=atom_size_i,
                     scale=scale_i,
                     site_kwargs={} if show_sites is True else show_sites,
-                    is_3d=False,  # draw_site will project to 2D
+                    is_3d=False,  # helpers.draw_site will project to 2D
                     row=row,
                     col=col,
                     name=symbol if showlegend else f"site-{struct_key}-{site_idx_loop}",
@@ -301,7 +285,7 @@ def structure_2d_plotly(
                     if vector is not None and np.any(vector):
                         # Rotate the vector for 2D projection
                         rotated_vector = np.dot(vector, rotation_matrix)
-                        draw_vector(
+                        helpers.draw_vector(
                             fig,
                             rotated_site_coords_3d,
                             rotated_vector,
@@ -315,7 +299,7 @@ def structure_2d_plotly(
                 # Add image sites for the current primary site
                 # This uses the global show_image_sites argument.
                 if show_image_sites:
-                    image_cart_coords_arrays = get_image_sites(
+                    image_cart_coords_arrays = helpers.get_image_sites(
                         site,
                         struct_i.lattice,
                         cell_boundary_tol=cell_boundary_tol_i,
@@ -327,7 +311,7 @@ def structure_2d_plotly(
                         for image_idx, current_rotated_image_coords_3d in enumerate(
                             rotated_image_atoms_coords_3d_list
                         ):
-                            draw_site(
+                            helpers.draw_site(
                                 fig=fig,
                                 site=site,
                                 coords=current_rotated_image_coords_3d,
@@ -364,7 +348,7 @@ def structure_2d_plotly(
                 struct_show_bonds = show_bonds.get(struct_key, False)
 
             if struct_show_bonds:
-                draw_bonds(
+                helpers.draw_bonds(
                     fig=fig,
                     structure=augmented_structure,  # Pass augmented structure
                     nn=CrystalNN() if struct_show_bonds is True else struct_show_bonds,
@@ -378,7 +362,7 @@ def structure_2d_plotly(
                 )
 
         if show_cell:
-            draw_cell(
+            helpers.draw_cell(
                 fig,
                 struct_i,
                 cell_kwargs={} if show_cell is True else show_cell,
@@ -390,7 +374,7 @@ def structure_2d_plotly(
             )
 
         # Set subplot titles
-        anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
+        anno = helpers.get_subplot_title(struct_i, struct_key, idx, subplot_title)
         subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
         fig.layout.annotations[idx - 1].update(
             **dict(y=subtitle_y_pos, yanchor="top") | anno
@@ -421,7 +405,7 @@ def structure_2d_plotly(
         fig.layout[f"yaxis{key}"].scaleanchor = f"x{key}"
 
     # Configure legends for each subplot
-    _configure_legends(fig, site_labels, n_structs, n_cols, n_rows)
+    helpers._configure_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig
 
@@ -543,16 +527,16 @@ def structure_3d_plotly(
         subplot_titles=[" " for _ in range(n_structs)],
     )
 
-    # Don't call get_elem_colors here if elem_colors is a dict mapping structure
+    # Don't call helpers.get_elem_colors here if elem_colors is a dict mapping structure
     # keys to color schemes. Instead, handle per-structure color schemes in the loop
-    _atomic_radii = get_atomic_radii(atomic_radii)
+    _atomic_radii = helpers.get_atomic_radii(atomic_radii)
 
     if isinstance(show_site_vectors, str):
         show_site_vectors = [show_site_vectors]
 
     # Determine which vector property to plot (calling outside loop ensures we plot
     # the same prop for all sites in all structures)
-    vector_prop = get_first_matching_site_prop(
+    vector_prop = helpers.get_first_matching_site_prop(
         list(structures.values()),
         show_site_vectors,
         warn_if_none=show_site_vectors != ("force", "magmom"),
@@ -563,7 +547,7 @@ def structure_3d_plotly(
     seen_elements_per_subplot: dict[int, set[str]] = {}
 
     for idx, (struct_key, raw_struct_i) in enumerate(structures.items(), start=1):
-        struct_i = _standardize_struct(raw_struct_i, standardize_struct)
+        struct_i = helpers._standardize_struct(raw_struct_i, standardize_struct)
 
         # Handle per-structure elem_colors settings if it's a dict
         struct_elem_colors: ElemColorScheme | dict[str, ColorType] = elem_colors
@@ -579,7 +563,7 @@ def structure_3d_plotly(
                     elem_colors.get(struct_key, ElemColorScheme.jmol),
                 )
 
-        _elem_colors = get_elem_colors(struct_elem_colors)
+        _elem_colors = helpers.get_elem_colors(struct_elem_colors)
 
         # Initialize seen elements for this subplot
         seen_elements_per_subplot[idx] = set()
@@ -588,141 +572,85 @@ def structure_3d_plotly(
         # 1. structure.properties["cell_boundary_tol"] (highest precedence)
         # 2. function parameter cell_boundary_tol (dict or float)
         cell_boundary_tol_i = (
-            get_struct_prop(
+            helpers.get_struct_prop(
                 raw_struct_i, struct_key, "cell_boundary_tol", cell_boundary_tol
             )
             or 0.0
         )
 
         # Handle other parameters with precedence
-        atomic_radii_i = get_struct_prop(
+        atomic_radii_i = helpers.get_struct_prop(
             raw_struct_i, struct_key, "atomic_radii", atomic_radii
         )
         if atomic_radii_i is None:
             atomic_radii_i = atomic_radii
 
         atom_size_i = (
-            get_struct_prop(raw_struct_i, struct_key, "atom_size", atom_size)
+            helpers.get_struct_prop(raw_struct_i, struct_key, "atom_size", atom_size)
             or atom_size
         )
 
-        scale_i = get_struct_prop(raw_struct_i, struct_key, "scale", scale) or scale
+        scale_i = (
+            helpers.get_struct_prop(raw_struct_i, struct_key, "scale", scale) or scale
+        )
 
         # Process atomic_radii with per-structure precedence
-        _atomic_radii = get_atomic_radii(atomic_radii_i)
+        _atomic_radii = helpers.get_atomic_radii(atomic_radii_i)
 
         # Prepare augmented structure: original + image sites for consistent processing
         # This augmented_structure is used for collecting all site data for the single
         # 3D trace and for bond calculations.
-        augmented_structure = _prep_augmented_structure_for_bonding(
+        augmented_structure = helpers._prep_augmented_structure_for_bonding(
             struct_i, show_image_sites and show_sites, cell_boundary_tol_i
         )
 
         # Plot atoms and vectors
         if show_sites:
-            # Group sites by element type for separate traces
-            sites_by_element: dict[str, list[PeriodicSite]] = {}
-            for site in augmented_structure.sites:
-                symbol = _get_site_symbol(site)
-                if symbol not in sites_by_element:
-                    sites_by_element[symbol] = []
-                sites_by_element[symbol].append(site)
+            # For 3D, need to handle disordered sites properly by drawing each site
+            # individually instead of grouping by element symbol
+            for site_idx_loop, site in enumerate(augmented_structure.sites):
+                # Determine if this is primary site (from orig structure) or image site
+                is_image_site = site_idx_loop >= len(struct_i)
 
-            # Create one trace per element type
-            for element_symbol, sites_list in sites_by_element.items():
-                element_x = [site.coords[0] for site in sites_list]
-                element_y = [site.coords[1] for site in sites_list]
-                element_z = [site.coords[2] for site in sites_list]
+                # For primary sites, use original index; for image sites, use modulo
+                original_site_idx = (
+                    site_idx_loop
+                    if not is_image_site
+                    else site_idx_loop % len(struct_i)
+                )
 
-                # Calculate properties for this element's sites
-                element_colors = []
-                element_sizes = []
-                element_hover_texts = []
-                element_labels_list: list[str | None] = []
-                element_textfont_colors = []
+                symbol = helpers._get_site_symbol(site)
 
-                for site_idx_in_element, site in enumerate(sites_list):
-                    symbol = _get_site_symbol(site)
-                    site_base_color = _elem_colors.get(symbol, "gray")
-
-                    # Convert color to string format
-                    if isinstance(site_base_color, tuple) and len(site_base_color) == 3:
-                        r, g, b = (
-                            int(c * 255)
-                            if isinstance(c, float) and 0 <= c <= 1
-                            else int(c)
-                            for c in site_base_color
-                        )
-                        display_color_str = f"rgb({r},{g},{b})"
-                    else:
-                        display_color_str = (
-                            str(site_base_color)
-                            if isinstance(site_base_color, str)
-                            else "rgb(128,128,128)"
-                        )
-
-                    element_colors.append(display_color_str)
-                    element_textfont_colors.append(
-                        pick_max_contrast_color(display_color_str)
-                    )
-
-                    radius = _atomic_radii.get(symbol, 1) * scale_i
-                    element_sizes.append(radius * atom_size_i)
-
-                    # Use helper for hover text
-                    element_hover_texts.append(
-                        get_site_hover_text(
-                            site, hover_text, site.species, hover_float_fmt
-                        )
-                    )
-
-                    # Use helper for site label
-                    if site_labels == "legend":
-                        element_labels_list.append(None)
-                    else:
-                        element_labels_list.append(
-                            generate_site_label(site_labels, site_idx_in_element, site)
-                        )
-
-                # Determine legend parameters
+                # Determine legend parameters for primary sites only
                 legendgroup = None
                 showlegend = False
-                if site_labels == "legend":
-                    legendgroup = f"{idx}-{element_symbol}"
-                    if element_symbol not in seen_elements_per_subplot[idx]:
+                if site_labels == "legend" and not is_image_site:
+                    legendgroup = f"{idx}-{symbol}"  # Unique per subplot
+                    if symbol not in seen_elements_per_subplot[idx]:
                         showlegend = True
-                        seen_elements_per_subplot[idx].add(element_symbol)
+                        seen_elements_per_subplot[idx].add(symbol)
 
-                site_kwargs = {} if show_sites is True else show_sites
-                marker_defaults = {
-                    "size": element_sizes,
-                    "color": element_colors,
-                    "sizemode": "diameter",
-                    "line": dict(width=1, color="rgba(0,0,0,0.4)"),
-                }
-                if "marker" in site_kwargs:
-                    site_kwargs["marker"].update(marker_defaults)
-                else:
-                    site_kwargs["marker"] = marker_defaults
-
-                trace_3d = go.Scatter3d(
-                    x=element_x,
-                    y=element_y,
-                    z=element_z,
-                    mode="markers" + ("+text" if any(element_labels_list) else ""),
-                    text=element_labels_list if any(element_labels_list) else None,
-                    textposition="top center",
-                    textfont={"color": element_textfont_colors},
-                    hovertext=element_hover_texts,
-                    hoverinfo="text",
-                    name=element_symbol,
+                # Use the new draw_site helper which handles disordered sites
+                helpers.draw_site(
+                    fig=fig,
+                    site=site,
+                    coords=site.coords,  # Use 3D coordinates directly
+                    site_idx=original_site_idx,
+                    site_labels=site_labels,
+                    elem_colors=_elem_colors,
+                    atomic_radii=_atomic_radii,
+                    atom_size=atom_size_i,
+                    scale=scale_i,
+                    site_kwargs={} if show_sites is True else show_sites,
+                    is_image=is_image_site,
+                    is_3d=True,
+                    scene=f"scene{idx}",
+                    hover_text=hover_text,
+                    float_fmt=hover_float_fmt,
                     legendgroup=legendgroup,
                     showlegend=showlegend,
                     legend=f"legend{idx}" if idx > 1 and n_structs > 1 else "legend",
-                    **site_kwargs,
-                )
-                fig.add_trace(
-                    trace_3d, row=(idx - 1) // n_cols + 1, col=(idx - 1) % n_cols + 1
+                    name=f"Image of {symbol}" if is_image_site else symbol,
                 )
 
             # Add vectors for primary sites only
@@ -741,7 +669,7 @@ def structure_3d_plotly(
                         vector = struct_i.properties[vector_prop][site_idx_loop]
 
                     if vector is not None and np.any(vector):
-                        draw_vector(
+                        helpers.draw_vector(
                             fig,
                             site_in_original_struct.coords,
                             vector,
@@ -770,7 +698,7 @@ def structure_3d_plotly(
                     # If no sites are rendered, set empty set to filter out all bonds
                     plotted_sites_coords = set()
 
-                draw_bonds(
+                helpers.draw_bonds(
                     fig=fig,
                     structure=augmented_structure,  # Pass the augmented structure
                     nn=CrystalNN() if struct_show_bonds is True else struct_show_bonds,
@@ -782,7 +710,7 @@ def structure_3d_plotly(
                 )
 
         if show_cell:
-            draw_cell(
+            helpers.draw_cell(
                 fig,
                 struct_i,
                 cell_kwargs={} if show_cell is True else show_cell,
@@ -793,7 +721,7 @@ def structure_3d_plotly(
 
         # Set subplot titles
         if subplot_title is not False:
-            anno = get_subplot_title(struct_i, struct_key, idx, subplot_title)
+            anno = helpers.get_subplot_title(struct_i, struct_key, idx, subplot_title)
             if "y" not in anno:
                 row = (idx - 1) // n_cols + 1
                 subtitle_y_pos = 1 - (row - 1) / n_rows - 0.02
@@ -841,49 +769,6 @@ def structure_3d_plotly(
     fig.layout.margin = dict(l=0, r=0, t=30, b=0)  # Minimize margins
 
     # Configure legends for each subplot
-    _configure_legends(fig, site_labels, n_structs, n_cols, n_rows)
+    helpers._configure_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig
-
-
-def _configure_legends(
-    fig: go.Figure,
-    site_labels: Literal["symbol", "species", "legend", False]
-    | dict[str, str]
-    | Sequence[str],
-    n_structs: int,
-    n_cols: int,
-    n_rows: int,
-) -> None:
-    """Configure legends for each subplot if site_labels is 'legend'."""
-    if site_labels == "legend":
-        for idx in range(1, n_structs + 1):
-            row = (idx - 1) // n_cols + 1
-            col = (idx - 1) % n_cols + 1
-
-            # Calculate position within each subplot (bottom right)
-            x_start = (col - 1) / n_cols
-            x_end = col / n_cols
-            y_start = 1 - row / n_rows
-            y_end = 1 - (row - 1) / n_rows
-
-            # Position legend much closer to bottom right of subplot
-            legend_x = x_start + 0.98 * (x_end - x_start)
-            legend_y = y_start + 0.02 * (y_end - y_start)
-
-            legend_key = "legend" if idx == 1 else f"legend{idx}"
-            legend_config = dict(
-                x=legend_x,
-                y=legend_y,
-                xref="paper",
-                yref="paper",
-                xanchor="right",
-                yanchor="bottom",
-                bgcolor="rgba(0,0,0,0)",  # Transparent background
-                borderwidth=0,  # Remove border
-                font=dict(size=12, weight="bold"),  # Larger and bold font
-                itemsizing="constant",  # Keep legend symbols same size
-                itemwidth=30,  # Min allowed
-                tracegroupgap=2,  # Reduce vertical space between legend items
-            )
-            fig.layout[legend_key] = legend_config
