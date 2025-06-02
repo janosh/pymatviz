@@ -406,7 +406,7 @@ def test_get_matplotlib_font_color_from_rcparams() -> None:
         plt.close(fig)  # Close the figure to ensure changes are applied
 
         color = _get_matplotlib_font_color(ax)
-        assert color == "green", f"Expected 'green', but got '{color}'"
+        assert color == "green"
     finally:
         plt.rcParams["text.color"] = original_color  # Reset to original value
 

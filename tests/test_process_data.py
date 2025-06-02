@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
-from pymatgen.core import Composition, Lattice, Structure
+from pymatgen.core import Composition, IStructure, Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.enums import ElemCountMode
@@ -260,9 +260,12 @@ PMG_EXPECTED_DICT = {
     f"2 {PMG_FORMULA_1}": SI_STRUCTS[1],
 }
 
+SI_ISTRUCTURE_0 = IStructure.from_sites(SI_STRUCTS[0])
+
 _test_cases_normalize_structures = [
     # (test_case_name, input_to_normalize_structures, expected_dictionary_output)
     ("single_pmg_structure", SI_STRUCTS[0], {PMG_FORMULA_0: SI_STRUCTS[0]}),
+    ("single_istructure", SI_ISTRUCTURE_0, {PMG_FORMULA_0: SI_ISTRUCTURE_0}),
     ("list_of_pmg_structures", SI_STRUCTS, PMG_EXPECTED_DICT),
     (
         "dict_of_pmg_structures",

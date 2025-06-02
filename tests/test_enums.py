@@ -170,7 +170,7 @@ def test_key_symbol_none() -> None:
         Key.description,
     ]
     for key in keys_without_symbols:
-        assert key.symbol is None, f"Expected {key} to have no symbol"
+        assert key.symbol is None, f"Expected {key=} to have no symbol"
 
 
 def test_key_symbol_unit_category_desc() -> None:
@@ -258,7 +258,7 @@ def test_key_units_are_consistent() -> None:
         Key.curie_temperature,
     ]
     for key in temperature_keys:
-        assert key.unit == "K", f"Expected K unit for {key}, got {key.unit}"
+        assert key.unit == "K", f"Expected K unit for {key=}, got {key.unit}"
 
 
 def test_key_label_formatting() -> None:

@@ -267,12 +267,13 @@ def normalize_structures(
     """Convert pymatgen Structures or ASE Atoms or sequences/dicts of them
     to a dictionary of pymatgen Structures.
     """
+    from pymatgen.core import IStructure
     from pymatgen.io.ase import AseAtomsAdaptor
 
     def to_pmg_struct(item: Any) -> Structure:
         if is_ase_atoms(item):
             return AseAtomsAdaptor().get_structure(item)
-        if isinstance(item, Structure):
+        if isinstance(item, Structure | IStructure):
             return item
         raise TypeError(
             f"Item must be a Pymatgen Structure or ASE Atoms object, got {type(item)}"
@@ -281,10 +282,13 @@ def normalize_structures(
     if is_ase_atoms(systems):  # Handles single ASE Atoms object
         systems = to_pmg_struct(systems)
 
-    if isinstance(systems, Structure):  # Use formula as key for single structure input
+    # Check for single Structure/IStructure first, before checking for Sequence
+    # since they are Sequences but we don't want to iterate over sites
+    if isinstance(systems, Structure | IStructure):
+        # Use formula as key for single structure input
         return {systems.formula: systems}
 
-    if len(systems) == 0:
+    if hasattr(systems, "__len__") and len(systems) == 0:
         raise ValueError("Cannot plot empty set of structures")
 
     if isinstance(systems, dict):  # Process dict values, keep original keys

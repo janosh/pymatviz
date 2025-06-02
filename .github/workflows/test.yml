@@ -16,6 +16,7 @@ env:
 jobs:
   tests:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         split: [1, 2, 3, 4]
@@ -61,7 +62,7 @@ jobs:
           python-version: 3.11
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v2
+        uses: astral-sh/setup-uv@v6
 
       - name: Run script
         run: uv run --with-editable .[make-assets] ${{ matrix.example_script }}

@@ -34,7 +34,7 @@ from pymatviz import (
     rdf,
     sankey,
     scatter,
-    structure_viz,
+    structure,
     sunburst,
     templates,
     treemap,
@@ -71,11 +71,7 @@ from pymatviz.scatter import (
     density_scatter_with_hist,
     residual_vs_actual,
 )
-from pymatviz.structure_viz import (
-    structure_2d,
-    structure_2d_plotly,
-    structure_3d_plotly,
-)
+from pymatviz.structure import structure_2d_plotly, structure_3d_plotly
 from pymatviz.sunburst import chem_sys_sunburst, spacegroup_sunburst
 from pymatviz.templates import (
     pmv_dark_template,

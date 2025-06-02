@@ -64,7 +64,7 @@ def brillouin_zone_3d(
     import seekpath
 
     from pymatviz.process_data import normalize_structures
-    from pymatviz.structure_viz.helpers import get_subplot_title
+    from pymatviz.structure.helpers import get_subplot_title
 
     structures = normalize_structures(struct)
 
