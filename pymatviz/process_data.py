@@ -282,7 +282,10 @@ def normalize_structures(
     if is_ase_atoms(systems):  # Handles single ASE Atoms object
         systems = to_pmg_struct(systems)
 
-    if isinstance(systems, Structure):  # Use formula as key for single structure input
+    # Check for single Structure/IStructure first, before checking for Sequence
+    # since they are Sequences but we don't want to iterate over sites
+    if isinstance(systems, Structure | IStructure):
+        # Use formula as key for single structure input
         return {systems.formula: systems}
 
     if len(systems) == 0:
