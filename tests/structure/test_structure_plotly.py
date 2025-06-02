@@ -11,7 +11,7 @@ from pymatgen.core import Composition, Lattice, Structure
 import pymatviz as pmv
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
-from pymatviz.structure_viz.helpers import (
+from pymatviz.structure.helpers import (
     _generate_spherical_wedge_mesh,
     _get_site_symbol,
     _process_element_color,
@@ -21,7 +21,7 @@ from pymatviz.structure_viz.helpers import (
 
 # Import constants separately to avoid potential circular import issues
 try:
-    from pymatviz.structure_viz.helpers import (
+    from pymatviz.structure.helpers import (
         LABEL_OFFSET_2D_FACTOR,
         LABEL_OFFSET_3D_FACTOR,
         MAX_3D_WEDGE_RESOLUTION_PHI,

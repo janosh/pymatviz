@@ -11,7 +11,7 @@ from pymatgen.core import Element
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.process_data import normalize_structures
-from pymatviz.structure_viz import helpers
+from pymatviz.structure import helpers
 
 
 if TYPE_CHECKING:

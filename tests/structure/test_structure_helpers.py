@@ -10,7 +10,7 @@ from pymatgen.analysis.local_env import CrystalNN
 from pymatgen.core import Lattice, PeriodicSite, Structure
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
-from pymatviz.structure_viz.helpers import (
+from pymatviz.structure.helpers import (
     CELL_EDGES,
     NO_SYM_MSG,
     _angles_to_rotation_matrix,

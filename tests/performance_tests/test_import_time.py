@@ -27,7 +27,7 @@ REF_IMPORT_TIME: dict[str, float] = {
     "pymatviz.classify": 4126,
     "pymatviz.sankey": 4135,
     "pymatviz.scatter": 4087,
-    "pymatviz.structure_viz": 4105,
+    "pymatviz.structure": 4105,
     "pymatviz.sunburst": 4133,
     "pymatviz.uncertainty": 4179,
     "pymatviz.xrd": 4156,
