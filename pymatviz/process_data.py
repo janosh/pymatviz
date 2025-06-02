@@ -267,12 +267,13 @@ def normalize_structures(
     """Convert pymatgen Structures or ASE Atoms or sequences/dicts of them
     to a dictionary of pymatgen Structures.
     """
+    from pymatgen.core import IStructure
     from pymatgen.io.ase import AseAtomsAdaptor
 
     def to_pmg_struct(item: Any) -> Structure:
         if is_ase_atoms(item):
             return AseAtomsAdaptor().get_structure(item)
-        if isinstance(item, Structure):
+        if isinstance(item, Structure | IStructure):
             return item
         raise TypeError(
             f"Item must be a Pymatgen Structure or ASE Atoms object, got {type(item)}"

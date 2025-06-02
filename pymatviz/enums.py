@@ -28,6 +28,37 @@ for category, keys in _key_data.items():
     _keys |= {key: {"category": category} | val for key, val in keys.items()}  # type: ignore[misc]
 
 
+# Map Unicode characters to their ASCII equivalents
+SUPERSCRIPT_MAP: Final[dict[str, str]] = {
+    "⁰": "0",
+    "¹": "1",
+    "²": "2",
+    "³": "3",
+    "⁴": "4",
+    "⁵": "5",
+    "⁶": "6",
+    "⁷": "7",
+    "⁸": "8",
+    "⁹": "9",
+    "⁻": "-",
+    "½": "1/2",
+}
+SUBSCRIPT_MAP: Final[dict[str, str]] = {
+    "₀": "0",
+    "₁": "1",
+    "₂": "2",
+    "₃": "3",
+    "₄": "4",
+    "₅": "5",
+    "₆": "6",
+    "₇": "7",
+    "₈": "8",
+    "₉": "9",
+    "₋": "-",
+    "½": "1/2",
+}
+
+
 class LabelEnum(StrEnum):
     """StrEnum with optional label and description attributes plus dict() methods.
 
@@ -102,36 +133,6 @@ class Key(StrEnum):
         if not (unit := _keys[self.value].get("unit")):
             return None
 
-        # Map Unicode characters to their ASCII equivalents
-        superscript_map = {
-            "⁰": "0",
-            "¹": "1",
-            "²": "2",
-            "³": "3",
-            "⁴": "4",
-            "⁵": "5",
-            "⁶": "6",
-            "⁷": "7",
-            "⁸": "8",
-            "⁹": "9",
-            "⁻": "-",
-            "½": "1/2",
-        }
-        subscript_map = {
-            "₀": "0",
-            "₁": "1",
-            "₂": "2",
-            "₃": "3",
-            "₄": "4",
-            "₅": "5",
-            "₆": "6",
-            "₇": "7",
-            "₈": "8",
-            "₉": "9",
-            "₋": "-",
-            "½": "1/2",
-        }
-
         # Process character by character
         html_str = ""
         in_super = in_sub = False
@@ -141,13 +142,13 @@ class Key(StrEnum):
             char = unit[idx]
 
             # Check if character is superscript
-            if new_char := superscript_map.get(char):
+            if new_char := SUPERSCRIPT_MAP.get(char):
                 if not in_super:
                     html_str += "<sup>"
                     in_super = True
                 html_str += new_char
             # Check if character is subscript
-            elif new_char := subscript_map.get(char):
+            elif new_char := SUBSCRIPT_MAP.get(char):
                 if not in_sub:
                     html_str += "<sub>"
                     in_sub = True

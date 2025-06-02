@@ -289,9 +289,7 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
     total_structs = len(structures)
     for trace_type, count in trace_counts.items():
         expected = n_traces_per_struct[trace_type] * total_structs
-        assert count == expected, (
-            f"Expected {expected} {trace_type} traces, got {count}"
-        )
+        assert count == expected, f"{expected=} {trace_type} traces, got {count}"
 
 
 def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> None:

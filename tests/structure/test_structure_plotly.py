@@ -6,12 +6,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
-from pymatgen.core import Composition, Lattice, Structure
+from pymatgen.core import Composition, Lattice, Species, Structure
 
 import pymatviz as pmv
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.structure.helpers import (
+    _create_disordered_site_legend_name,
     _generate_spherical_wedge_mesh,
     _get_site_symbol,
     _process_element_color,
@@ -422,13 +423,30 @@ def _validate_2d_scenario_specifics(
         assert len(site_traces) == 0
 
     elif test_scenario == "legend_mode":
-        # Test legend functionality
+        # Test legend functionality - updated to handle disordered sites correctly
         assert fig.layout.showlegend is True
         legend_traces = [trace for trace in fig.data if trace.showlegend]
-        unique_elements = {_get_site_symbol(s) for s in structure}
-        legend_trace_names = [trace.name for trace in legend_traces]
-        for elem_symbol in unique_elements:
-            assert elem_symbol in legend_trace_names
+
+        # disordered sites have combined legend names, not individual elements
+        expected_legend_names = set()  # get expected legend names from structure
+        for site in structure:
+            species = getattr(site, "specie", site.species)
+            if isinstance(species, Composition) and len(species) > 1:
+                # This is a disordered site - should appear as combined name
+                sorted_species = sorted(
+                    species.items(), key=lambda x: x[1], reverse=True
+                )
+                legend_name = _create_disordered_site_legend_name(
+                    sorted_species, is_image=False
+                )
+                expected_legend_names.add(legend_name)
+            else:
+                # This is an ordered site - should appear as element symbol
+                expected_legend_names.add(_get_site_symbol(site))
+
+        legend_trace_names = {trace.name for trace in legend_traces}
+        for expected_name in expected_legend_names:
+            assert expected_name in legend_trace_names
 
     elif test_scenario == "custom_colors_dict":
         # Test custom color application
@@ -994,12 +1012,29 @@ def test_structure_3d_plotly(
         # For legend mode, we expect traces to have showlegend=True for unique elements
         if site_labels_kwarg == "legend":
             legend_traces = [trace for trace in site_traces if trace.showlegend]
-            unique_elements = {_get_site_symbol(s) for s in test_structure}
 
-            # Each unique element should be represented in legend
-            legend_trace_names = [trace.name for trace in legend_traces]
-            for elem_symbol in unique_elements:
-                assert elem_symbol in legend_trace_names
+            # disordered sites have combined legend names, not individual elements
+
+            expected_legend_names = set()  # Get expected legend names from structure
+            for site in test_structure:
+                species = getattr(site, "specie", site.species)
+                if isinstance(species, Composition) and len(species) > 1:
+                    # This is a disordered site - should appear as combined name
+                    sorted_species = sorted(
+                        species.items(), key=lambda x: x[1], reverse=True
+                    )
+                    legend_name = _create_disordered_site_legend_name(
+                        sorted_species, is_image=False
+                    )
+                    expected_legend_names.add(legend_name)
+                else:
+                    # This is an ordered site - should appear as element symbol
+                    expected_legend_names.add(_get_site_symbol(site))
+
+            # Each expected legend name should be represented in legend
+            legend_trace_names = {trace.name for trace in legend_traces}
+            for expected_name in expected_legend_names:
+                assert expected_name in legend_trace_names
 
         # Skip detailed trace counting for complex multi-structure scenarios
         # as they have different patterns
@@ -1738,3 +1773,130 @@ def test_disordered_site_hover_text_formatting(fe3co4_disordered: Structure) -> 
             if text
         )
         assert disordered_hover_found, "No disordered site hover text found"
+
+
+def test_disordered_site_legend_functionality(fe3co4_disordered: Structure) -> None:
+    """Test that disordered sites appear correctly in legends for both 2D and 3D plots.
+
+    This test verifies:
+    1. Disordered sites combine all elements into a single legend entry
+    2. The legend entry format shows fractional occupancies
+    3. Clicking the legend toggles all parts of the disordered site
+    4. Multiple structures place legends in correct subplots
+    """
+    # Test 2D plot
+    fig_2d = pmv.structure_2d_plotly(fe3co4_disordered, site_labels="legend")
+    assert isinstance(fig_2d, go.Figure)
+    assert fig_2d.layout.showlegend is True
+
+    # Find legend traces
+    legend_traces_2d = [trace for trace in fig_2d.data if trace.showlegend]
+    legend_names_2d = {trace.name for trace in legend_traces_2d}
+
+    # Should have "Fe₀.₇₅C₀.₂₅" (disordered) and "O" (ordered)
+    assert "Fe₀.₇₅C₀.₂₅" in legend_names_2d
+    assert "O" in legend_names_2d
+    assert len(legend_names_2d) == 2
+
+    # Check that disordered site traces share the same legendgroup
+    disordered_traces_2d = [
+        trace
+        for trace in fig_2d.data
+        if hasattr(trace, "legendgroup")
+        and trace.legendgroup == "1-Fe"  # Updated to actual format
+    ]
+    assert len(disordered_traces_2d) > 0
+
+    # Test 3D plot
+    fig_3d = pmv.structure_3d_plotly(fe3co4_disordered, site_labels="legend")
+    assert isinstance(fig_3d, go.Figure)
+    assert fig_3d.layout.showlegend is True
+
+    # Find legend traces
+    legend_traces_3d = [trace for trace in fig_3d.data if trace.showlegend]
+    legend_names_3d = {trace.name for trace in legend_traces_3d}
+
+    # Should have "Fe₀.₇₅C₀.₂₅" (disordered) and "O" (ordered)
+    assert "Fe₀.₇₅C₀.₂₅" in legend_names_3d
+    assert "O" in legend_names_3d
+    assert len(legend_names_3d) == 2
+
+    # Check that disordered site traces share the same legendgroup
+    disordered_traces_3d = [
+        trace
+        for trace in fig_3d.data
+        if hasattr(trace, "legendgroup")
+        and trace.legendgroup == "1-Fe"  # Updated to actual format
+    ]
+    assert len(disordered_traces_3d) > 0
+
+    # Test multiple structures (legend placement)
+    multi_structs = {
+        "struct1": fe3co4_disordered.copy(),
+        "struct2": fe3co4_disordered.copy(),
+    }
+
+    # Test 2D multi-structure
+    fig_2d_multi = pmv.structure_2d_plotly(
+        multi_structs, site_labels="legend", n_cols=2
+    )
+    legend_traces_multi_2d = [trace for trace in fig_2d_multi.data if trace.showlegend]
+
+    # Check that each structure has its own legend
+    legend1_traces = [
+        trace
+        for trace in legend_traces_multi_2d
+        if getattr(trace, "legend", "legend") == "legend"
+    ]
+    legend2_traces = [
+        trace
+        for trace in legend_traces_multi_2d
+        if getattr(trace, "legend", "legend") == "legend2"
+    ]
+
+    assert len(legend1_traces) > 0, "Should have traces in first legend"
+    assert len(legend2_traces) > 0, "Should have traces in second legend"
+
+    # Test 3D multi-structure
+    fig_3d_multi = pmv.structure_3d_plotly(
+        multi_structs, site_labels="legend", n_cols=2
+    )
+    legend_traces_multi_3d = [trace for trace in fig_3d_multi.data if trace.showlegend]
+
+    # Check that each structure has its own legend
+    legend1_traces_3d = [
+        trace
+        for trace in legend_traces_multi_3d
+        if getattr(trace, "legend", "legend") == "legend"
+    ]
+    legend2_traces_3d = [
+        trace
+        for trace in legend_traces_multi_3d
+        if getattr(trace, "legend", "legend") == "legend2"
+    ]
+
+    assert len(legend1_traces_3d) > 0, "Should have traces in first legend"
+    assert len(legend2_traces_3d) > 0, "Should have traces in second legend"
+
+
+def test_disordered_site_legend_name_formatting() -> None:
+    """Test that legend name formatting works correctly for different compositions."""
+    # Test simple binary disordered site
+    sorted_species = [(Species("Fe"), 0.75), (Species("C"), 0.25)]
+    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    assert legend_name == "Fe₀.₇₅C₀.₂₅"
+
+    # Test ternary disordered site
+    sorted_species = [(Species("Fe"), 0.6), (Species("Ni"), 0.3), (Species("Cr"), 0.1)]
+    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    assert legend_name == "Fe₀.₆Ni₀.₃Cr₀.₁"
+
+    # Test image site (should have same format)
+    sorted_species = [(Species("Fe"), 0.75), (Species("C"), 0.25)]
+    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=True)
+    assert legend_name == "Image of Fe₀.₇₅C₀.₂₅"  # Image sites have "Image of " prefix
+
+    # Test equal occupancies
+    sorted_species = [(Species("Fe"), 0.5), (Species("Ni"), 0.5)]
+    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    assert legend_name == "Fe₀.₅Ni₀.₅"

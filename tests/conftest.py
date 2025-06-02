@@ -193,11 +193,9 @@ def fe3co4_disordered() -> Structure:
     """Disordered Fe3C-O2 structure without site properties. This structure has
     disordered sites with Fe:C ratio of 3:1.
     """
-    return Structure(
-        lattice=np.eye(3) * 5,
-        species=[{"Fe": 0.75, "C": 0.25}, "O"],
-        coords=[[0, 0, 0], [0.5, 0.5, 0.5]],
-    )
+    from pymatviz.structure import fe3co4_disordered
+
+    return fe3co4_disordered
 
 
 @pytest.fixture
