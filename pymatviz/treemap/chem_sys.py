@@ -6,7 +6,7 @@ E.g. for chemical system distributions.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import plotly.express as px
@@ -22,9 +22,8 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
     from pymatgen.core import Composition, Structure
 
-    from pymatviz.typing import FormulaGroupBy
+    from pymatviz.typing import FormulaGroupBy, ShowCounts
 
-ShowCounts = Literal["value", "percent", "value+percent", False]
 ArityFormatter = Callable[[str, int, int], str]
 
 

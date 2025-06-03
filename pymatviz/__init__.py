@@ -67,7 +67,7 @@ from pymatviz.scatter import (
     density_scatter_with_hist,
 )
 from pymatviz.structure import structure_2d_plotly, structure_3d_plotly
-from pymatviz.sunburst import chem_sys_sunburst, spacegroup_sunburst
+from pymatviz.sunburst import chem_sys_sunburst, cn_ce_sunburst, spacegroup_sunburst
 from pymatviz.templates import (
     pmv_dark_template,
     pmv_white_template,
