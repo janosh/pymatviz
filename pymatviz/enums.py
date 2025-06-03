@@ -215,6 +215,7 @@ class Key(StrEnum):
     supercell = "supercell"
     atom_nums = "atom_nums"
     coord_num = "coord_num"
+    chem_env_symbol = "chem_env_symbol"
     bond_lens = "bond_lens"
     bond_angles = "bond_angles"
     packing_fraction = "packing_fraction"

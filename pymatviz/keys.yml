@@ -67,6 +67,11 @@ structural:
     symbol: N<sub>coord</sub>
     description: Number of nearest neighbor atoms surrounding each atom
     unit: dimensionless
+  chem_env_symbol:
+    label: Chemical Environment Symbol
+    symbol: C<sub>env</sub>
+    description: Symbol for the chemical environment of each atom
+    unit: dimensionless
   bond_lens:
     label: Bond Lengths
     unit: Å
