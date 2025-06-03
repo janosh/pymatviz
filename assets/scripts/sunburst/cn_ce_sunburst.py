@@ -92,45 +92,6 @@ fig_combined_limit.show()
 # pmv.io.save_and_compress_svg(fig_combined_limit, "cn-ce-sunburst-combined-limit")
 
 
-# %% Custom ChemEnv Settings
-# Example: Using a different set of angle/distance parameters for ChemEnv
-# This is a very basic example; refer to Pymatgen's ChemEnv documentation for details.
-custom_settings = {
-    "distance_cutoff": 1.4,  # Default is 1.3
-    "angle_cutoff": 0.3,  # Default is 0.3
-    # Add other LightStructureEnvironments parameters as needed
-}
-fig_custom_chemenv = pmv.cn_ce_sunburst(
-    structures, chemenv_settings=custom_settings, max_slices_ce=4
-)
-title = "<b>CN-CE Sunburst (Custom ChemEnv Settings)</b>"
-fig_custom_chemenv.layout.title = dict(text=title, x=0.5, y=0.96, font_size=18)
-fig_custom_chemenv.show()
-# pmv.io.save_and_compress_svg(fig_custom_chemenv, "cn-ce-sunburst-custom-chemenv")
-
-
-# %% Example with a large dataset (conceptual)
-# If you have a large list of structures, this function can be used similarly.
-# For demonstration, we'll just reuse the small set.
-# from matminer.datasets import load_dataset # Example of loading a dataset
-# df_large = load_dataset("matbench_steels") # Replace with your dataset
-# large_structures = df_large[Key.structure].tolist()
-
-# For a large dataset, you'd likely want to use max_slices options
-# and possibly normalize=True to make the plot interpretable.
-fig_large_data_sim = pmv.cn_ce_sunburst(
-    structures,  # Replace with actual large_structures if available
-    normalize=True,
-    max_slices_cn=5,
-    max_slices_ce=3,
-    max_slices_mode="other",
-)
-title = "<b>CN-CE Sunburst (Simulated Large Dataset)</b>"
-fig_large_data_sim.layout.title = dict(text=title, x=0.5, y=0.96, font_size=18)
-fig_large_data_sim.show()
-# pmv.io.save_and_compress_svg(fig_large_data_sim, "cn-ce-sunburst-large-data-sim")
-
-
 # %% CN-CE sunburst diagram for elemental carbon from Materials Project.
 json_path = f"{module_dir}/mp-carbon-structures.json.gz"
 
