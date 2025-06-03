@@ -27,7 +27,11 @@ structures = [
 # %% Basic CN-CE Sunburst Plot
 # Default behavior: absolute counts, no slice limits
 fig_basic = pmv.cn_ce_sunburst(structures[2])
-title = "<b>CN-CE Sunburst (Absolute Counts)</b>"
+spg_num = structures[2].get_space_group_info()[1]
+title = (
+    f"<b>CN-CE Sunburst of {structures[2].formula}</b><br>"
+    f"ID: {structures[2].properties[Key.mat_id]}, space group: {spg_num}"
+)
 fig_basic.layout.title = dict(text=title, x=0.5, y=0.96, font_size=18)
 fig_basic.show()
 # pmv.io.save_and_compress_svg(fig_basic, "cn-ce-sunburst-basic")

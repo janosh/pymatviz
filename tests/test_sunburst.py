@@ -491,7 +491,9 @@ def test_cn_ce_sunburst_no_chemenv_data() -> None:
     simple_structure = Structure(lattice, species, coords)
 
     # Mock LocalGeometryFinder to simulate ChemEnv failure
-    with patch("pymatviz.sunburst.LocalGeometryFinder") as mock_lgf:
+    with patch(
+        "pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder.LocalGeometryFinder"
+    ) as mock_lgf:
         mock_lgf_instance = MagicMock()
         mock_lgf.return_value = mock_lgf_instance
         mock_lgf_instance.compute_structure_environments.side_effect = ImportError(
@@ -715,10 +717,18 @@ def test_cn_ce_sunburst_m_colon_invalid_parsing() -> None:
     simple_structure = Structure(lattice, species, coords)
 
     with (
-        patch("pymatviz.sunburst.LocalGeometryFinder") as mock_lgf,
-        patch("pymatviz.sunburst.SimplestChemenvStrategy"),
-        patch("pymatviz.sunburst.LightStructureEnvironments") as mock_lse_class,
-        patch("pymatviz.sunburst.AllCoordinationGeometries") as mock_acg,
+        patch(
+            "pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder.LocalGeometryFinder"
+        ) as mock_lgf,
+        patch(
+            "pymatgen.analysis.chemenv.coordination_environments.chemenv_strategies.SimplestChemenvStrategy"
+        ),
+        patch(
+            "pymatgen.analysis.chemenv.coordination_environments.structure_environments.LightStructureEnvironments"
+        ) as mock_lse_class,
+        patch(
+            "pymatgen.analysis.chemenv.coordination_environments.coordination_geometries.AllCoordinationGeometries"
+        ) as mock_acg,
     ):
         mock_lgf_instance = MagicMock()
         mock_lgf.return_value = mock_lgf_instance

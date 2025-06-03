@@ -500,4 +500,6 @@ def cn_ce_sunburst(
         marker=dict(line=dict(color="white")),
     )
 
+    fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"
+
     return fig

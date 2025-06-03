@@ -217,9 +217,13 @@ See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
 | [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst.py#L111) [![fig-icon]](assets/scripts/sunburst/spacegroup_sunburst.py) | [`chem_sys_sunburst(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/sunburst.py#L206) [![fig-icon]](assets/scripts/sunburst/chem_sys_sunburst.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                          ![spg-num-sunburst]                                                          |                                                        ![chem-sys-sunburst-ward-bmg]                                                         |
+|                                     [`cn_ce_sunburst(single_struct)`](pymatviz/sunburst.py#L351)                                      |                                       [`cn_ce_sunburst(mulitple_structs)`](pymatviz/sunburst.py#L351)                                        |
+|                                                        ![cn-ce-sunburst-basic]                                                        |                                                         ![cn-ce-sunburst-mp-carbon]                                                          |
 
 [spg-num-sunburst]: assets/svg/spg-num-sunburst.svg
 [chem-sys-sunburst-ward-bmg]: assets/svg/chem-sys-sunburst-ward-bmg.svg
+[cn-ce-sunburst-basic]: assets/svg/cn-ce-sunburst-basic.svg
+[cn-ce-sunburst-mp-carbon]: assets/svg/cn-ce-sunburst-mp-carbon.svg
 
 ## Treemap
 
