@@ -62,3 +62,4 @@ ColorType: TypeAlias = RgbColorType | RgbAColorType
 FormulaGroupBy = Literal["formula", "reduced_formula", "chem_sys"]
 Corner: TypeAlias = Literal["top-left", "top-right", "bottom-left", "bottom-right"]
 VALID_CORNERS = TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT = get_args(Corner)
+ShowCounts = Literal["value", "percent", "value+percent", False]

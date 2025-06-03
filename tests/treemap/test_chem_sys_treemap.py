@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Final, Literal, get_args
+from typing import TYPE_CHECKING, Final, get_args
 
 import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Composition
 
 import pymatviz as pmv
-from pymatviz.treemap.chem_sys import ShowCounts
+from pymatviz.typing import ShowCounts
 
 
 if TYPE_CHECKING:
     from pymatgen.core import Structure
+
+    from pymatviz.typing import FormulaGroupBy
+
 
 # Type alias for arity formatter function
 ArityFormatter = Callable[[str, int, int], str]
@@ -322,9 +325,7 @@ def test_chem_sys_treemap_input_types_and_errors(structures: list[Structure]) ->
 def test_chem_sys_treemap_grouping_modes() -> None:
     """Test different grouping modes with strict verification."""
     # Test all three grouping modes
-    grouping_modes: Final[
-        dict[Literal["formula", "reduced_formula", "chem_sys"], dict[str, int]]
-    ] = {
+    grouping_modes: Final[dict[FormulaGroupBy, dict[str, int]]] = {
         "formula": {
             "Fe2O3": 1,
             "Fe4O6": 1,

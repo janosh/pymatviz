@@ -20,7 +20,8 @@ import plotly.graph_objects as go
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
-ShowCounts = Literal["value", "percent", "value+percent", False]
+    from pymatviz.typing import ShowCounts
+
 ModuleFormatter = Callable[[str, int, int], str]
 GroupBy: TypeAlias = Literal["file", "directory", "module"]
 
