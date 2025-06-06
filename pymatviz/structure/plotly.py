@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
@@ -765,3 +766,23 @@ def structure_3d(
     helpers._configure_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig
+
+
+def structure_3d_plotly(*args: Any, **kwargs: Any) -> go.Figure:
+    """Deprecated alias for structure_3d. Use structure_3d instead."""
+    msg = (
+        "structure_3d_plotly is deprecated and will be removed in a future version. "
+        "Use structure_3d instead."
+    )
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
+    return structure_3d(*args, **kwargs)
+
+
+def structure_2d_plotly(*args: Any, **kwargs: Any) -> go.Figure:
+    """Deprecated alias for structure_2d. Use structure_2d instead."""
+    msg = (
+        "structure_2d_plotly is deprecated and will be removed in a future version. "
+        "Use structure_2d instead."
+    )
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
+    return structure_2d(*args, **kwargs)

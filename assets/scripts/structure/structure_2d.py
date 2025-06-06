@@ -26,7 +26,7 @@ fig = pmv.structure_2d(
 fig.layout.title = f"{n_structs} Matbench phonon structures"
 fig.layout.paper_bgcolor = "rgba(255,255,255,0.4)"
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly")
+# pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d")
 
 
 # %% Example: Disordered site rendering (pie slices in 2D)
@@ -45,7 +45,7 @@ fig.layout.title = dict(
 )
 fig.layout.update(width=800, height=400)
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "disordered-sites-2d-plotly-pie-slices")
+# pmv.io.save_and_compress_svg(fig, "disordered-sites-2d-pie-slices")
 
 
 # %% 2d example with supercells
@@ -61,7 +61,7 @@ fig = pmv.structure_2d(
     show_bonds=True,
 )
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-plotly-supercells")
+# pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-2d-supercells")
 
 
 # %% BaTiO3 = https://materialsproject.org/materials/mp-5020
@@ -78,7 +78,7 @@ fig = pmv.structure_2d(
     batio3, show_cell={"edge": dict(color="white", width=2)}, show_bonds=True
 )
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "bato3-structure-2d-plotly")
+# pmv.io.save_and_compress_svg(fig, "bato3-structure-2d")
 
 
 # %% Create a high-entropy alloy structure CoCrFeNiMn with FCC structure
@@ -94,7 +94,7 @@ fig = pmv.structure_2d(
 )
 fig.layout.title = "CoCrFeNiMn High-Entropy Alloy"
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "hea-structure-2d-plotly")
+# pmv.io.save_and_compress_svg(fig, "hea-structure-2d")
 
 
 # %% Li-ion battery cathode material with Li vacancies: Li0.8CoO2
@@ -112,7 +112,7 @@ fig = pmv.structure_2d(
 )
 fig.layout.title = "Li0.8CoO2 with Li Vacancies"
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "lco-structure-2d-plotly")
+# pmv.io.save_and_compress_svg(fig, "lco-structure-2d")
 
 
 # %% 2x2 Grid showcasing multiple customization options

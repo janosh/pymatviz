@@ -28,7 +28,7 @@ fig = pmv.structure_3d(
 )
 fig.layout.title = f"{n_structs} Matbench phonon structures (3D supercells)"
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d-plotly")
+# pmv.io.save_and_compress_svg(fig, "matbench-phonons-structures-3d")
 
 
 # %% BaTiO3 = https://materialsproject.org/materials/mp-5020
@@ -45,7 +45,7 @@ fig = pmv.structure_3d(
     batio3, show_cell={"edge": dict(color="white", width=2)}, show_bonds=True
 )
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "bato3-structure-3d-plotly")
+# pmv.io.save_and_compress_svg(fig, "bato3-structure-3d")
 
 
 # %% Example: Disordered site rendering (multiple spheres in 3D)
@@ -65,7 +65,7 @@ fig.layout.title = dict(
 )
 # fig.layout.update(width=1200, height=800)
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "disordered-sites-3d-plotly-spherical-wedges")
+# pmv.io.save_and_compress_svg(fig, "disordered-sites-3d-spherical-wedges")
 
 
 # %% Create a high-entropy alloy structure CoCrFeNiMn with FCC structure
@@ -82,7 +82,7 @@ fig = pmv.structure_3d(
 title = "CoCrFeNiMn High-Entropy Alloy"
 fig.layout.title = title
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "hea-structure-3d-plotly")
+# pmv.io.save_and_compress_svg(fig, "hea-structure-3d")
 
 
 # %% Li-ion battery cathode material with Li vacancies: Li0.8CoO2
@@ -101,7 +101,7 @@ fig = pmv.structure_3d(
 title = "Li0.8CoO2 with Li Vacancies"
 fig.layout.title = title
 fig.show()
-# pmv.io.save_and_compress_svg(fig, "lco-structure-3d-plotly")
+# pmv.io.save_and_compress_svg(fig, "lco-structure-3d")
 
 
 # %% 2x2 Grid showcasing multiple customization options
