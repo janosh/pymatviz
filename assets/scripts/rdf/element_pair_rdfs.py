@@ -16,7 +16,7 @@ pmv.set_plotly_template("pymatviz_white")
 df_phonons = load_dataset("matbench_phonons")
 
 # get the 2 largest structures
-df_phonons[Key.n_sites] = df_phonons[Key.structure].apply(len)
+df_phonons[Key.n_sites] = df_phonons[Key.structure].map(len)
 
 # plot element-pair RDFs for each structure
 for struct in df_phonons.nlargest(2, Key.n_sites)[Key.structure]:

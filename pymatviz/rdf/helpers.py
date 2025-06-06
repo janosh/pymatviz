@@ -11,13 +11,13 @@ from pymatviz.process_data import normalize_structures
 
 
 if TYPE_CHECKING:
-    import ase
-    from pymatgen.core import IStructure, Structure
     from pymatgen.util.typing import PbcLike
+
+    from pymatviz.typing import AnyStructure
 
 
 def calculate_rdf(
-    structure: Structure | IStructure | ase.Atoms,
+    structure: AnyStructure,
     center_species: str | None = None,
     neighbor_species: str | None = None,
     cutoff: float = 15,
@@ -30,8 +30,8 @@ def calculate_rdf(
     for the specified element pair. Otherwise, calculates the full RDF.
 
     Args:
-        structure (Structure | IStructure | ase.Atoms): A pymatgen Structure/IStructure
-            object or ASE Atoms object.
+        structure (AnyStructure): A pymatgen Structure/IStructure object or ASE Atoms
+            object.
         center_species (str, optional): Symbol of the central species. If None, all
             species are considered.
         neighbor_species (str, optional): Symbol of the neighbor species. If None, all

@@ -94,21 +94,23 @@ def coordination_nums_in_structure(
     """Get coordination numbers (CN) for each element in a structure.
 
     Args:
-        structure: A pymatgen Structure object
-        strategy: Neighbor-finding strategy. Can be one of:
+        structure (Structure): A pymatgen Structure object
+        strategy (float | NearNeighbors | type[NearNeighbors]): Neighbor-finding
+            strategy. Can be one of:
             - float: Cutoff distance for neighbor search in Angstroms
             - NearNeighbors: An instance of a NearNeighbors subclass
             - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated)
             Defaults to 3.0 (Angstroms cutoff)
-        group_by: How to group the coordination numbers. Can be one of:
+        group_by ("element" | "specie" | "site"): How to group the coordination numbers.
+            Can be one of:
             - "element": Group by element symbol
             - "site": Group by site
             - "specie": Group by specie
 
     Returns:
         dict[str, list[int]]: Map of element symbols to lists of coordination numbers.
-        E.g. {"Si": [4, 4, 4], "O": [2, 2, 2, 2, 2, 2]} for SiO2.
-        Each number represents the CN of one atom of that element.
+            E.g. {"Si": [4, 4, 4], "O": [2, 2, 2, 2, 2, 2]} for SiO2. Each number
+            represents the CN of one atom of that element.
 
     Example:
         >>> from pymatgen.core import Structure

@@ -26,13 +26,14 @@ def _standardize_input(
     **trace_kwargs}}).
 
     Args:
-        targets: Ground truth binary labels
-        probs_positive: Either:
+        targets (ArrayLike | str): Ground truth binary labels
+        probs_positive (Predictions): Either:
             - Predicted probabilities for positive class, or
             - dict of form {"name": probabilities}, or
             - dict of form {"name": {"probs_positive": np.array, **trace_kwargs}}
-        df: Optional DataFrame containing targets and probs_positive columns
-        strict: If True, check that probabilities are in [0, 1].
+        df (pd.DataFrame | None): Optional DataFrame containing targets and
+            probs_positive columns
+        strict (bool): If True, check that probabilities are in [0, 1].
 
     Returns:
         tuple[ArrayLike, dict[str, dict[str, Any]]]: targets, curves_dict

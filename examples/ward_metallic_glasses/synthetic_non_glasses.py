@@ -122,17 +122,19 @@ def add_random_negative_examples(
     """Add random binary + ternary compositions as negative examples for classification.
 
     Args:
-        data_df: DataFrame with compositions and targets
-        df_feat: DataFrame with featurized compositions
-        n_binary_samples: Number of random binary compositions to add
-        n_ternary_samples: Number of random ternary compositions with similar atomic
-            radii to add
-        max_radius_diff_percent: Max allowed difference in atomic radii between any 2
-            elements in the ternary composition, as a percentage of the smaller radius
-        rng: Random number generator. If None, creates a new one with fixed seed
+        data_df (pd.DataFrame): Must have a 'composition' column.
+        df_feat (pd.DataFrame): Must have a 'composition' column.
+        n_binary_samples (int): Number of random binary compositions to add.
+        n_ternary_samples (int): Number of random ternary compositions with similar
+            atomic radii to add.
+        max_radius_diff_percent (float): Max allowed difference in atomic radii between
+            any 2 elements in the ternary composition, as a percentage of the smaller
+            radius.
+        rng (np.random.Generator | None): Random number generator. If None, creates a
+            new one with fixed seed.
 
     Returns:
-        Tuple of (augmented data_df, augmented df_feat)
+        tuple[pd.DataFrame, pd.DataFrame]: Augmented data_df and df_feat.
     """
     # Get list of elements present in the training set
     training_elements = []

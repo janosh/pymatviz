@@ -14,7 +14,7 @@ from tests.conftest import SI_ATOMS, SI_STRUCTS
 
 
 if TYPE_CHECKING:
-    import ase.atoms
+    from pymatviz.typing import AnyStructure
 
 
 @pytest.mark.parametrize(
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     ],
 )
 def test_brillouin_zone_3d_basic(
-    struct_to_plot: Structure | ase.Atoms | dict[str, Structure | ase.Atoms],
+    struct_to_plot: AnyStructure | dict[str, AnyStructure],
     kwargs: dict[str, Any],
     expected_mode: str | None,
     n_expected_subplots: int,
@@ -183,13 +183,6 @@ def test_brillouin_zone_3d_reciprocal_vectors(structures: list[Structure]) -> No
 def test_brillouin_zone_3d_trace_counts(material_id: str) -> None:
     """Test that brillouin_zone_3d produces the expected number of traces for each
     crystal system.
-
-    Args:
-        material_id: Materials Project ID
-        formula: Chemical formula
-        system: Crystal system
-        expected_counts: Tuple of expected trace counts:
-            (mesh3d, scatter3d, cone, lines, markers+text, text)
     """
     struct_path = glob(f"{TEST_FILES}/structures/{material_id}-*.json.gz")[0]
     struct = Structure.from_file(struct_path)

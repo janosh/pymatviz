@@ -49,13 +49,13 @@ def _generate_colorbar_ticks(
     arcsinh or symlog colorbar scales. Tracked in https://github.com/plotly/plotly.js/issues/221.
 
     Args:
-        color_scale: The color scale type ("linear", "log", "arcsinh") or a dictionary
-            with custom scale configuration.
-        df_plot: DataFrame containing plot data with property values.
+        color_scale (ColorScale | dict[str, Any]): The color scale type ("linear",
+            "log", "arcsinh") or a dictionary with custom scale configuration.
+        df_plot (pd.DataFrame): DataFrame containing plot data with property values.
 
     Returns:
-        tuple: (tick_vals, tick_text) - lists of tick values and their label texts.
-            Both can be None if no custom ticks are needed.
+        tuple[list[float] | None, list[str] | None]: Lists of tick values and their
+            label texts. Both can be None if no custom ticks are needed.
     """
     if color_scale in ("linear", "color"):
         return None, None

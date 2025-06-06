@@ -126,14 +126,15 @@ def _shaded_range(
     """Add shaded regions to a figure.
 
     Args:
-        fig: Plotly figure to add shaded regions to
-        shaded_ys: Configuration for shaded regions. Can be:
+        fig (go.Figure): Plotly figure to add shaded regions to
+        shaded_ys (dict[tuple[YMin | YMax, YMin | YMax], dict[str, Any]] | bool | None):
+            Configuration for shaded regions. Can be:
             - False: No shading
             - None or True: Default shading (0 to y_min, gray at 0.07 opacity)
             - dict: Keys are (y0, y1) tuples and values are kwargs for add_hrect()
 
     Returns:
-        plotly.graph_objects.Figure: Modified figure with shaded regions added
+        go.Figure: Modified figure with shaded regions added
     """
     if shaded_ys is False:
         return fig
@@ -164,10 +165,10 @@ def phonopy_to_pymatgen_bands(band_struct: PhonopyBandStructure) -> PhononBands:
     """Convert phonopy BandStructure to pymatgen PhononBandStructureSymmLine.
 
     Args:
-        band_struct: Phonopy band structure object
+        band_struct (PhonopyBandStructure): Phonopy band structure object
 
     Returns:
-        Converted pymatgen phonon band structure
+        PhononBands: Converted pymatgen phonon band structure
     """
     import tempfile
 

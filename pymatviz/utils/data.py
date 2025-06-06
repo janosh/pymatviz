@@ -84,7 +84,7 @@ def spg_num_to_from_symbol(spg: int | str) -> str | int:
     number or vice versa.
 
     Args:
-        spg: Either a space group number (int) or a Hermann-Mauguin symbol (str).
+        spg (int | str): A space group number (int) or a Hermann-Mauguin symbol (str).
 
     Returns:
         int | str: str if input was a number, int if input was a str.

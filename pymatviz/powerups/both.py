@@ -219,9 +219,10 @@ def _get_valid_traces(
     """Helper to get valid trace indices from a trace selector.
 
     Args:
-        fig: The figure containing traces to filter
-        traces: Trace selector (int, slice, sequence, or callable)
-        validate_trace: Optional function to validate if a trace is usable.
+        fig (go.Figure): The figure containing traces to filter
+        traces (TraceSelector): Trace selector (int, slice, sequence, or callable)
+        validate_trace (Callable[[go.Scatter], bool] | None): Optional function to
+            validate if a trace is usable.
             If not provided, requires both x and y data.
 
     Returns:

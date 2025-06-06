@@ -97,7 +97,7 @@ def notebook_mode(*, on: bool) -> None:
     and other notebook environments that support IPython display protocols.
 
     Args:
-        on: If True, enable automatic rendering. If False, disable it.
+        on (bool): If True, enable automatic rendering.
 
     Supported classes:
     - Structure -> structure_3d_plotly

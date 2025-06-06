@@ -57,9 +57,10 @@ def phonon_bands(
     electronic band structures.
 
     Args:
-        band_structs: Single BandStructureSymmLine, PhononBandStructureSymmLine, or
-            phonopy BandStructure object, or a dict with labels mapped to multiple such
-            objects.
+        band_structs (AnyBandStructure | dict[str, AnyBandStructure]): Single
+            BandStructureSymmLine, PhononBandStructureSymmLine, or phonopy
+            BandStructure object, or a dict with labels mapped to multiple such
+            objects. If a dict, the keys are used as labels for the band structures.
         line_kwargs (dict | dict[str, dict] | Callable): Line style configuration. Can
             be one of:
             - A single dict applied to all lines with Plotly line properties

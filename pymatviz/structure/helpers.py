@@ -30,20 +30,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from typing import Any, Literal
 
-    import ase
     import pandas as pd
     import plotly.graph_objects as go
     from numpy.typing import ArrayLike
     from pymatgen.analysis.local_env import NearNeighbors
 
-    from pymatviz.typing import ColorType, Xyz
+    from pymatviz.typing import AnyStructure, ColorType, Xyz
 
 
 def get_struct_prop(
-    struct: Structure | ase.Atoms,
-    struct_key: str | int,
-    prop_name: str,
-    func_param: Any,
+    struct: AnyStructure, struct_key: str | int, prop_name: str, func_param: Any
 ) -> Any:
     """Get a structure related value with standardized precedence handling.
 
@@ -52,11 +48,12 @@ def get_struct_prop(
     2. func_param (if dict, use struct_key; otherwise use directly)
 
     Args:
-        struct: The pymatgen Structure or ASE Atoms object.
-        struct_key: Key identifying this structure in a collection.
-        prop_name: Name of the property to look for in structure.properties or
+        struct (AnyStructure): The pymatgen Structure or ASE Atoms object.
+        struct_key (str | int): Key identifying this structure in a collection.
+        prop_name (str): Name of the property to look for in structure.properties or
             atoms.info.
-        func_param: Function parameter value (can be dict for per-structure values).
+        func_param (Any): Function parameter value (can be dict for per-structure
+            values).
 
     Returns:
         Any: Resolved property value following precedence.
@@ -301,10 +298,11 @@ def generate_site_label(
     """Generate a label for a given site based on the site_labels strategy.
 
     Args:
-        site_labels: The labeling strategy. If "legend", returns None.
-            Can be "symbol", "species", "legend", False, a dict mapping symbols
-            to custom labels, or a sequence of labels indexed by site position.
-        site_idx: The index of the site.
+        site_labels ("symbol" | "species" | "legend" | False] | dict[str, str]): The
+            labeling strategy. If "legend", returns None. Can be "symbol", "species",
+            "legend", False, a dict mapping symbols to custom labels, or a sequence of
+            labels indexed by site position.
+        site_idx (int): The index of the site.
         site: The site object.
 
     Returns:
@@ -428,7 +426,8 @@ def _process_element_color(raw_color_from_map: ColorType) -> str:
     """Process a color from the element color map into a consistent RGB string format.
 
     Args:
-        raw_color_from_map: Color value from the element color map (tuple, string, etc.)
+        raw_color_from_map (ColorType): Color value from the element color map (tuple
+            or string).
 
     Returns:
         str: Color in RGB format like "rgb(128,128,128)"
@@ -588,8 +587,9 @@ def _create_disordered_site_legend_name(
     """Create a legend name for a disordered site showing all elements with occupancies.
 
     Args:
-        sorted_species: List of (Species, occupancy) tuples sorted by occupancy
-        is_image: Whether this is an image site
+        sorted_species (list[tuple[Species, float]]): List of (Species, occupancy)
+            tuples sorted by occupancy
+        is_image (bool): Whether this is an image site
 
     Returns:
         str: Combined legend name like "Fe₀.₇₅Ni₀.₂₅" or "0.75Fe,0.25Ni"
@@ -997,12 +997,12 @@ def _generate_spherical_wedge_mesh(
     like a slice of an orange.
 
     Args:
-        center: Center coordinates (x, y, z) of the sphere
-        radius: Radius of the sphere
-        start_angle: Starting azimuthal angle in radians
-        end_angle: Ending azimuthal angle in radians
-        n_theta: Number of divisions in polar direction (from top to bottom)
-        n_phi: Number of divisions in azimuthal direction (around the wedge)
+        center (np.ndarray): Center coordinates (x, y, z) of the sphere
+        radius (float): Radius of the sphere
+        start_angle (float): Starting azimuthal angle in radians
+        end_angle (float): Ending azimuthal angle in radians
+        n_theta (int): Number of divisions in polar direction (from top to bottom)
+        n_phi (int): Number of divisions in azimuthal direction (around the wedge)
 
     Returns:
         tuple: (x_coords, y_coords, z_coords, i_indices, j_indices, k_indices)

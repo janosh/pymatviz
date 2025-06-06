@@ -5,15 +5,15 @@ import warnings
 from collections.abc import Callable, Sequence
 from typing import Any, Literal
 
-import ase.atoms
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pymatgen.core import Structure
+
+from pymatviz.typing import AnyStructure
 
 
 def brillouin_zone_3d(
-    struct: Structure | Sequence[Structure] | ase.Atoms | Sequence[ase.Atoms],
+    struct: AnyStructure | Sequence[AnyStructure],
     *,
     # Surface styling
     surface_kwargs: dict[str, Any] | None = None,
@@ -29,14 +29,14 @@ def brillouin_zone_3d(
     | None = None,
     # Grid layout
     n_cols: int = 3,
-    subplot_title: Callable[[Structure | ase.Atoms, str | int], str | dict[str, Any]]
+    subplot_title: Callable[[AnyStructure, str | int], str | dict[str, Any]]
     | None
     | Literal[False] = None,
 ) -> go.Figure:
     """Generate a 3D plotly figure of the first Brillouin zone for given structure(s).
 
     Args:
-        struct (Structure | Sequence[Structure]): Pymatgen Structure(s) to plot.
+        struct (AnyStructure | Sequence[AnyStructure]): Structure(s) to plot.
         # Surface styling
         surface_kwargs (dict): Styling for BZ surfaces.
         edge_kwargs (dict): Styling for BZ edges.
@@ -52,7 +52,7 @@ def brillouin_zone_3d(
             shaft.len to control vector length. Set to False to disable axes plotting.
         # Grid layout
         n_cols (int): Number of columns for subplots. Defaults to 3.
-        subplot_title (Callable[[Structure | ase.Atoms, str | int], str | dict] | False, optional):
+        subplot_title (Callable[[AnyStructure, str | int], str | dict] | False, optional):
             Function to generate subplot titles. Defaults to
             lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
             False to hide all subplot titles.

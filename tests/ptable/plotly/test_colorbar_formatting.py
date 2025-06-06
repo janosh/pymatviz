@@ -227,11 +227,11 @@ def count_si_formatted_axes(fig: Figure, axis_type: str = "xaxis") -> int:
     """Count the number of axes with SI suffixes.
 
     Args:
-        fig: The figure to check
-        axis_type: The type of axis to check ('xaxis' or 'yaxis')
+        fig (Figure): The figure to check
+        axis_type (str): The type of axis to check ('xaxis' or 'yaxis')
 
     Returns:
-        The number of axes with SI suffixes
+        int: The number of axes with SI suffixes
     """
     count = 0
     layout_dict = fig.layout._props

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import ArrayLike
 
-    from pymatviz.typing import ElemValues, FormulaGroupBy, T
+    from pymatviz.typing import AnyStructure, ElemValues, FormulaGroupBy, T
 
 
 def count_elements(
@@ -262,7 +262,10 @@ def is_ase_atoms(struct: Any) -> bool:
 
 
 def normalize_structures(
-    systems: Structure | Sequence[Structure] | pd.Series | dict[str, Structure],
+    systems: AnyStructure
+    | Sequence[AnyStructure]
+    | pd.Series
+    | dict[str, AnyStructure],
 ) -> dict[str, Structure]:
     """Convert pymatgen Structures or ASE Atoms or sequences/dicts of them
     to a dictionary of pymatgen Structures.
@@ -320,7 +323,8 @@ def normalize_to_dict(
     """Normalize any kind of object or dict/list/tuple of them into to a dictionary.
 
     Args:
-        inputs: A single object, a sequence of objects, or a dictionary of objects.
+        inputs (T | Sequence[T] | dict[str, T]): A single object, a sequence of objects,
+            or a dictionary of objects.
         cls (type[T], optional): The class of the objects to normalize. Defaults to
             pymatgen.core.Structure.
         key_gen (Callable[[T], str], optional): A function that generates a key for
@@ -328,7 +332,7 @@ def normalize_to_dict(
             are pymatgen.core.(Structure|Molecule).
 
     Returns:
-        A dictionary of objects with keys as object formulas or given keys.
+        dict[str, T]: Map of objects with keys as object formulas or given keys.
 
     Raises:
         TypeError: If the input format is invalid.

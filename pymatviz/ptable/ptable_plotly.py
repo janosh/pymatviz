@@ -1498,7 +1498,7 @@ def ptable_scatter_plotly(
     periodic table.
 
     Args:
-        data: Map from element symbols to either:
+        data (dict[str, ElemData]): Map from element symbols to either:
             1. (x, y) or (x, y, color) data points for a single line/scatter plot
                E.g. {"Fe": ([1, 2, 3], [4, 5, 6])} plots points (1,4), (2,5), (3,6)
             2. dict of (x, y) tuples for multiple lines per element
