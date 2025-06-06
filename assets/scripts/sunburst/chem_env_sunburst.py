@@ -59,7 +59,7 @@ fig_basic.layout.title = dict(text=title, x=0.5, y=0.96, font_size=18)
 fig_basic.show()
 # pmv.io.save_and_compress_svg(fig_basic, "chem-env-sunburst-basic-crystal-nn")
 
-fig_struct = pmv.structure_3d_plotly(structures[2], scale=0.5)
+fig_struct = pmv.structure_3d(structures[2], scale=0.5)
 struct_title = (
     f"<b>3D Structure: {structures[2].formula}</b><br>"
     f"ID: {mat_id_link}, space group: {spg_num}"
@@ -107,7 +107,7 @@ for idx in range(num_struct_show):
     structures_dict[key] = struct
 
 if structures_dict:
-    fig_struct_multi = pmv.structure_3d_plotly(structures_dict, scale=0.5)
+    fig_struct_multi = pmv.structure_3d(structures_dict, scale=0.5)
     title = "<b>3D Structures in Chem Env Analysis</b>"
     fig_struct_multi.layout.title = dict(text=title, x=0.5, y=0.95, font_size=16)
     fig_struct_multi.show()
@@ -309,7 +309,7 @@ for idx in range(num_carbon_show):
     carbon_structures_dict[key] = struct
 
 if carbon_structures_dict:
-    fig = pmv.structure_3d_plotly(carbon_structures_dict, scale=0.5)
+    fig = pmv.structure_3d(carbon_structures_dict, scale=0.5)
     fig.layout.title = dict(
         text="<b>3D Carbon Polymorphs from Materials Project</b>",
         x=0.5,

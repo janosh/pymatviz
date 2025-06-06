@@ -35,7 +35,7 @@ df_perov[Key.crystal_system] = df_perov[Key.spg_num].map(pmv.utils.spg_to_crysta
 
 
 # %%
-fig = pmv.structure_2d_plotly(df_perov[Key.structure].iloc[:12])
+fig = pmv.structure_2d(df_perov[Key.structure].iloc[:12])
 fig.layout.title.update(text="Perovskite structures in Matbench Perovskites dataset")
 fig.layout.paper_bgcolor = "white"
 fig.show()
