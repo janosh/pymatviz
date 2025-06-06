@@ -346,24 +346,19 @@ def _compare_colors(
                 "site_labels": "symbol",
             },
         ),
-        (
-            "site_vector_properties",
-            {
-                "show_site_vectors": "force",
-            },
-        ),
+        ("site_vector_properties", {"show_site_vectors": "force"}),
         (  # Test cell_boundary_tol
             "cell_boundary_tol",
             dict(cell_boundary_tol=0.1, show_image_sites=True, site_labels="symbol"),
         ),
     ],
 )
-def test_structure_2d_plotly_comprehensive(
+def test_structure_2d_comprehensive(
     test_scenario: str,
     kwargs: dict[str, Any],
     fe3co4_disordered_with_props: Structure,
 ) -> None:
-    """Test structure_2d_plotly with various parameter combos."""
+    """Test structure_2d with various parameter combos."""
     # Handle multi-structure scenarios for coverage
     if test_scenario in ("struct_key_elem_colors", "site_vector_properties"):
         struct1 = fe3co4_disordered_with_props.copy()
@@ -373,7 +368,7 @@ def test_structure_2d_plotly_comprehensive(
     else:
         structures_input = fe3co4_disordered_with_props
 
-    fig = pmv.structure_2d_plotly(structures_input, **kwargs)
+    fig = pmv.structure_2d(structures_input, **kwargs)
     assert isinstance(fig, go.Figure)
 
     # Check that all traces are Scatter (2D)
@@ -553,10 +548,10 @@ def _validate_common_site_properties(
     ("input_type", "n_cols", "expected_structures"),
     [("dict", 3, 4), ("pandas_series", 2, 4), ("list", 2, 4)],
 )
-def test_structure_2d_plotly_multiple_inputs(
+def test_structure_2d_multiple_inputs(
     input_type: str, n_cols: int, expected_structures: int
 ) -> None:
-    """Test structure_2d_plotly with different input types and multiple structures."""
+    """Test structure_2d with different input types and multiple structures."""
     struct1 = Structure(lattice_cubic, ["Fe", "O"], coords=COORDS)
     struct1.properties = {"id": "struct1"}
     struct2 = Structure(lattice_cubic, ["Co", "O"], coords=COORDS)
@@ -580,7 +575,7 @@ def test_structure_2d_plotly_multiple_inputs(
     else:  # list
         structures_input = list(structs_dict.values())
 
-    fig = pmv.structure_2d_plotly(structures_input, n_cols=n_cols, site_labels=False)
+    fig = pmv.structure_2d(structures_input, n_cols=n_cols, site_labels=False)
     assert isinstance(fig, go.Figure)
 
     # Validate trace counts
@@ -608,14 +603,14 @@ def test_structure_2d_plotly_multiple_inputs(
         (".2e", [0.123456789, 1e-17, 0.5], ["e"]),  # Scientific notation
     ],
 )
-def test_structure_2d_plotly_hover_formatting(
+def test_structure_2d_hover_formatting(
     hover_fmt: str, test_coordinates: list[float], expected_patterns: list[str]
 ) -> None:
     """Test hover text formatting for 2D plots."""
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Li", "O"], [test_coordinates, [0.5, 0.5, 0.5]])
 
-    fig = pmv.structure_2d_plotly(struct, hover_float_fmt=hover_fmt)
+    fig = pmv.structure_2d(struct, hover_float_fmt=hover_fmt)
 
     # Find site traces with hover text
     site_traces = [
@@ -642,7 +637,7 @@ def test_structure_2d_plotly_hover_formatting(
         ({"Li": "#FF0000", "O": "#00FF00"}, "legend", True),
     ],
 )
-def test_structure_2d_plotly_legend_and_colors(
+def test_structure_2d_legend_and_colors(
     elem_colors: Any,
     site_labels: Any,
     expected_legend: bool,
@@ -651,9 +646,7 @@ def test_structure_2d_plotly_legend_and_colors(
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    fig = pmv.structure_2d_plotly(
-        struct, site_labels=site_labels, elem_colors=elem_colors
-    )
+    fig = pmv.structure_2d(struct, site_labels=site_labels, elem_colors=elem_colors)
 
     assert fig.layout.showlegend is expected_legend
 
@@ -685,14 +678,14 @@ def test_structure_2d_plotly_legend_and_colors(
         (True, True, "variable"),  # Bonds may exist when both True
     ],
 )
-def test_structure_2d_plotly_bonds_and_sites(
+def test_structure_2d_bonds_and_sites(
     show_sites: bool, show_bonds: bool, expected_bond_traces: int | str
 ) -> None:
     """Test bond rendering behavior with different site visibility settings."""
     lattice = Lattice.cubic(3.0)
     struct = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    fig = pmv.structure_2d_plotly(
+    fig = pmv.structure_2d(
         struct,
         show_sites=show_sites,
         show_bonds=show_bonds,
@@ -709,21 +702,21 @@ def test_structure_2d_plotly_bonds_and_sites(
     # and that bonds are only present when sites are also present
 
 
-def test_structure_2d_plotly_invalid_input() -> None:
-    """Test that structure_2d_plotly raises errors for invalid inputs."""
+def test_structure_2d_invalid_input() -> None:
+    """Test that structure_2d raises errors for invalid inputs."""
     expected_err_msg = (
         "Input must be a Pymatgen Structure, ASE Atoms object, a sequence"
     )
     with pytest.raises(TypeError, match=expected_err_msg):
-        pmv.structure_2d_plotly("invalid input")
+        pmv.structure_2d("invalid input")
 
     with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
-        pmv.structure_2d_plotly([])
+        pmv.structure_2d([])
 
     # Test with invalid rotation string
     struct = Structure(lattice_cubic, ["Fe", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     with pytest.raises(ValueError, match="could not convert string to float"):
-        pmv.structure_2d_plotly(struct, rotation="invalid_rotation")
+        pmv.structure_2d(struct, rotation="invalid_rotation")
 
 
 def test_structure_plotly_site_vector_coverage() -> None:
@@ -736,7 +729,7 @@ def test_structure_plotly_site_vector_coverage() -> None:
     struct[1].properties["force"] = [0.2, 0.3, 0.4]
 
     # Test 2D with site-level vector properties
-    fig_2d = pmv.structure_2d_plotly(struct, show_site_vectors="force")
+    fig_2d = pmv.structure_2d(struct, show_site_vectors="force")
     assert isinstance(fig_2d, go.Figure)
 
     # Test 3D with site-level vector properties
@@ -874,7 +867,7 @@ def test_structure_plotly_site_vector_coverage() -> None:
         },
     ],
 )
-def test_structure_3d_plotly(
+def test_structure_3d(
     kwargs: dict[str, Any], fe3co4_disordered_with_props: Structure
 ) -> None:
     # Handle multi-structure scenarios for coverage
@@ -1061,7 +1054,7 @@ def test_structure_3d_plotly(
         assert len(site_traces) == 0, "Site traces found when show_sites is False"
 
 
-def test_structure_3d_plotly_multiple() -> None:
+def test_structure_3d_multiple() -> None:
     struct1 = Structure(lattice_cubic, ["Fe", "O"], COORDS)
     struct1.properties = {"id": "struct1"}
     struct2 = Structure(lattice_cubic, ["Co", "O"], COORDS)
@@ -1177,7 +1170,7 @@ def test_structure_plotly_coverage_improvements() -> None:
     struct[1].properties["force"] = [0.2, 0.3, 0.4]
 
     # Test 2D with site-level vector properties
-    fig_2d = pmv.structure_2d_plotly(struct, show_site_vectors="force")
+    fig_2d = pmv.structure_2d(struct, show_site_vectors="force")
     assert isinstance(fig_2d, go.Figure)
 
     # Test 3D with site-level vector properties
@@ -1186,7 +1179,7 @@ def test_structure_plotly_coverage_improvements() -> None:
 
     # Test bond drawing with dict show_bonds (line 320)
     struct_dict = {"struct1": struct, "struct2": struct.copy()}
-    fig_2d_bonds = pmv.structure_2d_plotly(
+    fig_2d_bonds = pmv.structure_2d(
         struct_dict, show_bonds={"struct1": True, "struct2": False}
     )
     assert isinstance(fig_2d_bonds, go.Figure)
@@ -1210,7 +1203,7 @@ def test_structure_plotly_bonds_coverage() -> None:
     struct = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
     # Test 2D bonds with dict show_bonds
-    fig_2d = pmv.structure_2d_plotly(
+    fig_2d = pmv.structure_2d(
         {"struct1": struct, "struct2": struct.copy()},
         show_bonds={"struct1": True, "struct2": False},
         show_sites=True,
@@ -1226,7 +1219,7 @@ def test_structure_plotly_bonds_coverage() -> None:
     assert isinstance(fig_3d, go.Figure)
 
 
-def test_structure_3d_plotly_subplot_title_coverage() -> None:
+def test_structure_3d_subplot_title_coverage() -> None:
     """Test 3D subplot title scenarios for coverage."""
     lattice = Lattice.cubic(4.0)
     struct1 = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
@@ -1273,7 +1266,7 @@ def test_structure_plotly_cell_faces(
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d_plotly
+    plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d
 
     fig = plot_func(
         struct,
@@ -1321,7 +1314,7 @@ def test_structure_plotly_cell_faces_no_cell() -> None:
     struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
     # Test 2D
-    fig_2d = pmv.structure_2d_plotly(
+    fig_2d = pmv.structure_2d(
         struct,
         show_cell=False,
         show_cell_faces=True,  # Should be ignored
@@ -1357,7 +1350,7 @@ def test_structure_plotly_cell_faces_multiple_structures() -> None:
     }
 
     # Test 2D
-    fig_2d = pmv.structure_2d_plotly(
+    fig_2d = pmv.structure_2d(
         structures, show_cell=True, show_cell_faces=True, n_cols=2
     )
     assert isinstance(fig_2d, go.Figure)
@@ -1396,8 +1389,8 @@ def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
         fig1 = pmv.structure_3d_plotly(struct1, **func_kwargs)
         fig2 = pmv.structure_3d_plotly(struct2, **func_kwargs)
     else:
-        fig1 = pmv.structure_2d_plotly(struct1, **func_kwargs)
-        fig2 = pmv.structure_2d_plotly(struct2, **func_kwargs)
+        fig1 = pmv.structure_2d(struct1, **func_kwargs)
+        fig2 = pmv.structure_2d(struct2, **func_kwargs)
 
     # Get site traces from both figures
     def get_site_traces(fig: go.Figure) -> list[Any]:
@@ -1504,7 +1497,7 @@ def test_disordered_site_labeling_behavior(
             atom_size=50,  # Large enough to see clearly
         )
     else:
-        fig = pmv.structure_2d_plotly(
+        fig = pmv.structure_2d(
             fe3co4_disordered,
             site_labels=site_labels,
             show_cell=False,
@@ -1615,7 +1608,7 @@ def test_disordered_site_edge_cases(fe3co4_disordered: Structure) -> None:
         coords=[(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5)],
     )
 
-    fig_2d = pmv.structure_2d_plotly(
+    fig_2d = pmv.structure_2d(
         minimal_disordered,
         site_labels="symbol",
         show_cell=False,
@@ -1723,7 +1716,7 @@ def test_structure_plotly_malformed_elem_colors(
 ) -> None:
     """Test that malformed element colors are handled gracefully."""
     # Should not crash with malformed colors
-    fig_2d = pmv.structure_2d_plotly(
+    fig_2d = pmv.structure_2d(
         fe3co4_disordered,
         elem_colors=malformed_elem_colors,
         show_cell=False,
@@ -1746,7 +1739,7 @@ def test_disordered_site_hover_text_formatting(fe3co4_disordered: Structure) -> 
     """Test that hover text is properly formatted for disordered sites."""
     # Test both 2D and 3D
     for is_3d in [False, True]:
-        plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d_plotly
+        plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d
         fig = plot_func(
             fe3co4_disordered,
             site_labels="symbol",
@@ -1785,7 +1778,7 @@ def test_disordered_site_legend_functionality(fe3co4_disordered: Structure) -> N
     4. Multiple structures place legends in correct subplots
     """
     # Test 2D plot
-    fig_2d = pmv.structure_2d_plotly(fe3co4_disordered, site_labels="legend")
+    fig_2d = pmv.structure_2d(fe3co4_disordered, site_labels="legend")
     assert isinstance(fig_2d, go.Figure)
     assert fig_2d.layout.showlegend is True
 
@@ -1837,9 +1830,7 @@ def test_disordered_site_legend_functionality(fe3co4_disordered: Structure) -> N
     }
 
     # Test 2D multi-structure
-    fig_2d_multi = pmv.structure_2d_plotly(
-        multi_structs, site_labels="legend", n_cols=2
-    )
+    fig_2d_multi = pmv.structure_2d(multi_structs, site_labels="legend", n_cols=2)
     legend_traces_multi_2d = [trace for trace in fig_2d_multi.data if trace.showlegend]
 
     # Check that each structure has its own legend

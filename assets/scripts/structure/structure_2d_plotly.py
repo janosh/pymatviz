@@ -15,7 +15,7 @@ df_phonons = load_dataset("matbench_phonons")
 
 # %% Plot Matbench phonon structures with plotly (12 structures with bonds)
 n_structs = 12
-fig = pmv.structure_2d_plotly(
+fig = pmv.structure_2d(
     df_phonons[Key.structure].iloc[:n_structs].to_dict(),
     show_bonds=True,
     elem_colors=ElemColorScheme.jmol,
@@ -30,7 +30,7 @@ fig.show()
 
 
 # %% Example: Disordered site rendering (pie slices in 2D)
-fig = pmv.structure_2d_plotly(
+fig = pmv.structure_2d(
     disordered_demo_structures,
     elem_colors=ElemColorScheme.jmol,
     n_cols=2,
@@ -53,7 +53,7 @@ supercells = {
     key: struct.make_supercell(2, in_place=False)
     for key, struct in df_phonons[Key.structure].head(6).items()
 }
-fig = pmv.structure_2d_plotly(
+fig = pmv.structure_2d(
     supercells,
     elem_colors=ElemColorScheme.jmol,
     # show_cell={"edge": dict(color="white", width=1.5)},
@@ -74,7 +74,7 @@ batio3 = Structure(
 batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
 
 # Demonstrate custom legend positioning and sizing
-fig = pmv.structure_2d_plotly(
+fig = pmv.structure_2d(
     batio3, show_cell={"edge": dict(color="white", width=2)}, show_bonds=True
 )
 fig.show()
@@ -88,7 +88,7 @@ hea_structure = Structure(
     species=["Co", "Cr", "Fe", "Ni", "Mn"],
     coords=[(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5), (0.5, 0.5, 0.5)],
 )
-fig = pmv.structure_2d_plotly(
+fig = pmv.structure_2d(
     hea_structure.make_supercell([2, 3, 2], in_place=False),
     show_cell={"edge": dict(color="white", width=2)},
 )
@@ -105,7 +105,7 @@ lco_supercell = Structure(
     coords=[(0, 0, 0), (0, 0, 0.5), (0, 0, 0.25), (0, 0, 0.75)],
 ).make_supercell([3, 3, 1])
 
-fig = pmv.structure_2d_plotly(
+fig = pmv.structure_2d(
     lco_supercell,
     show_cell={"edge": dict(color="white", width=1.5)},
     elem_colors=ElemColorScheme.jmol,
@@ -162,7 +162,7 @@ structures_grid = {
     "MoS₂ Layered (Pastel colors)": mos2,
 }
 
-fig = pmv.structure_2d_plotly(
+fig = pmv.structure_2d(
     structures_grid,
     n_cols=2,
     elem_colors={  # different color schemes to showcase variety

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from pymatviz.typing import AnyStructure, ColorType
 
 
-def structure_2d_plotly(
+def structure_2d(
     struct: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
     *,
     rotation: str = "10x,8y,3z",
