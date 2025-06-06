@@ -67,10 +67,10 @@ def _create_display_methods(
 
 # Create display methods for each object type
 _structure_ipython_display_, _structure_repr_mimebundle_ = _create_display_methods(
-    "structure_3d_plotly"
+    "structure_3d"
 )
 _ase_atoms_ipython_display_, _ase_atoms_repr_mimebundle_ = _create_display_methods(
-    "structure_3d_plotly"
+    "structure_3d"
 )
 _diffraction_pattern_ipython_display_, _diffraction_pattern_repr_mimebundle_ = (
     _create_display_methods("xrd_pattern")
@@ -100,8 +100,8 @@ def notebook_mode(*, on: bool) -> None:
         on (bool): If True, enable automatic rendering.
 
     Supported classes:
-    - Structure -> structure_3d_plotly
-    - ASE Atoms -> structure_3d_plotly
+    - Structure -> structure_3d
+    - ASE Atoms -> structure_3d
     - PhononBandStructureSymmLine -> phonon_bands
     - PhononDos -> phonon_dos
     - phonopy TotalDos -> phonon_dos

@@ -142,16 +142,16 @@ On the roadmap but no ETA yet.
 
 See [`pymatviz/structure/plotly.py`](pymatviz/structure/plotly.py).
 
-|                               [`structure_3d_plotly(hea_structure)`](pymatviz/structure/plotly.py#L318)                               | [`structure_3d_plotly(lco_supercell)`](pymatviz/structure/plotly.py#L318) [![fig-icon]](assets/scripts/structure/structure_3d_plotly.py) |
-| :-----------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------: |
-|                                                      ![hea-structure-3d-plotly]                                                       |                                                        ![lco-structure-3d-plotly]                                                        |
-| [`structure_2d_plotly(six_structs)`](pymatviz/structure/plotly.py#L42) [![fig-icon]](assets/scripts/structure/structure_2d_plotly.py) |  [`structure_3d_plotly(six_structs)`](pymatviz/structure/plotly.py#L318) [![fig-icon]](assets/scripts/structure/structure_3d_plotly.py)  |
-|                                               ![matbench-phonons-structures-2d-plotly]                                                |                                                 ![matbench-phonons-structures-3d-plotly]                                                 |
+|                           [`structure_3d(hea_structure)`](pymatviz/structure/plotly.py#L318)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/plotly.py#L318) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
+| :---------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------: |
+|                                                   ![hea-structure-3d]                                                   |                                                    ![lco-structure-3d]                                                     |
+| [`structure_2d(six_structs)`](pymatviz/structure/plotly.py#L42) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/plotly.py#L318) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
+|                                            ![matbench-phonons-structures-2d]                                            |                                             ![matbench-phonons-structures-3d]                                              |
 
-[matbench-phonons-structures-2d-plotly]: assets/svg/matbench-phonons-structures-2d-plotly.svg
-[matbench-phonons-structures-3d-plotly]: assets/svg/matbench-phonons-structures-3d-plotly.svg
-[hea-structure-3d-plotly]: assets/svg/hea-structure-3d-plotly.svg
-[lco-structure-3d-plotly]: assets/svg/lco-structure-3d-plotly.svg
+[matbench-phonons-structures-2d]: assets/svg/matbench-phonons-structures-2d.svg
+[matbench-phonons-structures-3d]: assets/svg/matbench-phonons-structures-3d.svg
+[hea-structure-3d]: assets/svg/hea-structure-3d.svg
+[lco-structure-3d]: assets/svg/lco-structure-3d.svg
 
 ## Brillouin Zone
 
