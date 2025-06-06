@@ -18,19 +18,14 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from typing import Literal
 
-    import ase.atoms
     import plotly.graph_objects as go
     from pymatgen.core import PeriodicSite, Structure
 
-    from pymatviz.typing import ColorType
+    from pymatviz.typing import AnyStructure, ColorType
 
 
 def structure_2d_plotly(
-    struct: Structure
-    | Sequence[Structure]
-    | ase.Atoms
-    | Sequence[ase.Atoms]
-    | dict[str, Structure | ase.Atoms],
+    struct: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
     *,
     rotation: str = "10x,8y,3z",
     atomic_radii: float | dict[str, float] | None = None,
@@ -59,7 +54,8 @@ def structure_2d_plotly(
     """Plot pymatgen structures in 2D with Plotly.
 
     Args:
-        struct (Structure | Sequence[Structure]): Pymatgen Structure(s) to plot.
+        struct (AnyStructure | Sequence[AnyStructure]): Pymatgen Structure(s) or ASE
+            Atoms to plot.
         rotation (str, optional): Rotation angles in degrees in the form '10x,20y,30z'
             from which to view the structure. Defaults to "10x,8y,3z".
         atomic_radii (float | dict[str, float], optional): Either a scaling factor for
@@ -411,11 +407,7 @@ def structure_2d_plotly(
 
 
 def structure_3d_plotly(
-    struct: Structure
-    | Sequence[Structure]
-    | ase.Atoms
-    | Sequence[ase.Atoms]
-    | dict[str, Structure | ase.Atoms],
+    struct: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
     *,
     atomic_radii: float | dict[str, float] | None = None,
     atom_size: float = 20,
@@ -445,7 +437,8 @@ def structure_3d_plotly(
     """Plot pymatgen structures in 3D with Plotly.
 
     Args:
-        struct (Structure | Sequence[Structure]): Pymatgen Structure(s) to plot.
+        struct (AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure]):
+            Structure(s) to plot.
         atomic_radii (float | dict[str, float], optional): Either a scaling factor for
             default radii or map from element symbol to atomic radii. Defaults to None.
         atom_size (float, optional): Scaling factor for atom sizes. Defaults to 20.

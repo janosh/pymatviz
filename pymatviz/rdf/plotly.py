@@ -27,15 +27,12 @@ if TYPE_CHECKING:
     from typing import Any
 
     import numpy as np
-    from pymatgen.core import Structure
-    from pymatgen.io.ase import MSONAtoms
+
+    from pymatviz.typing import AnyStructure
 
 
 def element_pair_rdfs(
-    structures: Structure
-    | MSONAtoms
-    | Sequence[Structure | MSONAtoms]
-    | dict[str, Structure | MSONAtoms],
+    structures: AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure],
     cutoff: float | None = None,
     n_bins: int = 75,
     bin_size: float | None = None,
@@ -49,7 +46,8 @@ def element_pair_rdfs(
     all (or a subset of) element pairs in one or multiple structures.
 
     Args:
-        structures: Can be one of the following:
+        structures (AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure]):
+            Can be one of the following:
             - single pymatgen Structure or ASE Atoms object
             - sequence (list, tuple) of pymatgen Structures or ASE Atoms objects
             - dictionary mapping labels to pymatgen Structures or ASE Atoms objects
@@ -85,8 +83,6 @@ def element_pair_rdfs(
             specified.
         TypeError: If input structures are not pymatgen Structures or ASE Atoms.
     """
-    # Ensure input is a dict[str, Structure | Atoms]
-    # and convert ASE Atoms to Pymatgen Structures if necessary
     struct_dict = normalize_structures(structures)
 
     for key, struct in struct_dict.items():
@@ -220,7 +216,7 @@ def element_pair_rdfs(
 
 
 def full_rdf(
-    structures: Structure | Sequence[Structure] | dict[str, Structure],
+    structures: AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure],
     cutoff: float = 15,
     n_bins: int = 75,
     bin_size: float | None = None,
@@ -232,10 +228,11 @@ def full_rdf(
     one or multiple structures.
 
     Args:
-        structures: Can be one of the following:
-            - single pymatgen Structure
-            - list of pymatgen Structures
-            - dictionary mapping labels to Structures
+        structures (AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure]):
+            Can be one of the following:
+            - single pymatgen Structure or ASE Atoms object
+            - list of pymatgen Structures or ASE Atoms objects
+            - dictionary mapping labels to pymatgen Structures or ASE Atoms objects.
         cutoff (float, optional): Maximum distance for RDF calculation. Default is 15 Å.
         n_bins (int, optional): Number of bins for RDF calculation. Default is 75.
         bin_size (float, optional): Size of bins for RDF calculation. If specified, it
@@ -255,8 +252,6 @@ def full_rdf(
         ValueError: If no structures are provided, if structures have no sites,
             or if both n_bins and bin_size are specified.
     """
-    # Normalize input to a dictionary of structures
-    # and convert ASE Atoms to Pymatgen Structures if necessary
     struct_dict = normalize_structures(structures)
 
     for key, struct in struct_dict.items():

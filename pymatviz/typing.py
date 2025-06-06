@@ -3,18 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, ParamSpec, TypeVar, get_args
+from typing import TYPE_CHECKING, Literal, ParamSpec, TypeVar, Union, get_args
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.graph_objects as go
+from pymatgen.core import IStructure, Structure
+from pymatgen.io.ase import MSONAtoms
 
 
 if TYPE_CHECKING:
     from typing import TypeAlias
 
+    from ase.atoms import Atoms as AseAtoms
+
 AxOrFig: TypeAlias = plt.Axes | plt.Figure | go.Figure
 Xyz: TypeAlias = tuple[float, float, float]
+AnyStructure: TypeAlias = Union[Structure, IStructure, MSONAtoms, "AseAtoms"]
 
 Backend: TypeAlias = Literal["matplotlib", "plotly"]
 BACKENDS = MATPLOTLIB, PLOTLY = get_args(Backend)

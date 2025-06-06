@@ -13,14 +13,12 @@ import plotly.graph_objects as go
 
 from pymatviz import chem_env
 from pymatviz.process_data import normalize_structures
-from pymatviz.typing import ShowCounts
+from pymatviz.typing import AnyStructure, ShowCounts
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
-
-    from pymatgen.core import Structure
 
 
 CnFormatter = Callable[[int | str, int, int], str] | Literal[False] | None
@@ -30,12 +28,12 @@ def default_cn_formatter(coord_num: int | str, count: float, total: float) -> st
     """Default formatter for coordination number with counts and percentages.
 
     Args:
-        coord_num: Coordination number
-        count: Count for this coordination number
-        total: Total count across all coordination numbers
+        coord_num (int | str): Coordination number
+        count (float): Count for this coordination number
+        total (float): Total count across all coordination numbers
 
     Returns:
-        Formatted string for display
+        str: Formatted string for display
     """
     # Format count to avoid long decimal trails
     if isinstance(count, float):
@@ -50,7 +48,7 @@ def default_cn_formatter(coord_num: int | str, count: float, total: float) -> st
 
 
 def chem_env_treemap(
-    structures: Structure | Sequence[Structure],
+    structures: AnyStructure | Sequence[AnyStructure],
     *,
     chem_env_settings: dict[str, Any] | Literal["chemenv", "crystal_nn"] = "crystal_nn",
     max_cells_cn: int | None = None,
@@ -78,7 +76,7 @@ def chem_env_treemap(
         better geometric accuracy.
 
     Args:
-        structures (Structure | Sequence[Structure]): Structures to analyze.
+        structures (AnyStructure | Sequence[AnyStructure]): Structures to analyze.
         chem_env_settings (dict[str, Any] | "chemenv" | "crystal_nn"):
             Analysis method.
             - "crystal_nn" (default): Use CrystalNN (faster)
@@ -152,7 +150,7 @@ def chem_env_treemap(
 
 
 def _chem_env_treemap_chem_env(
-    structures: Structure | Sequence[Structure],
+    structures: AnyStructure | Sequence[AnyStructure],
     *,
     chem_env_settings: dict[str, Any],
     max_cells_cn: int | None = None,
@@ -238,7 +236,7 @@ def _chem_env_treemap_chem_env(
 
 
 def _chem_env_treemap_crystal_nn(
-    structures: Structure | Sequence[Structure],
+    structures: AnyStructure | Sequence[AnyStructure],
     *,
     max_cells_cn: int | None = None,
     max_cells_ce: int | None = None,

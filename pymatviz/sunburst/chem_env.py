@@ -10,23 +10,20 @@ from typing import TYPE_CHECKING, Any, Literal, get_args
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from pymatgen.core import Structure
 
 from pymatviz import chem_env
 from pymatviz.process_data import normalize_structures
 from pymatviz.sunburst.helpers import _limit_slices
-from pymatviz.typing import ShowCounts
+from pymatviz.typing import AnyStructure, ShowCounts
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any
 
-    from pymatgen.core import Structure
-
 
 def chem_env_sunburst(
-    structures: Structure | Sequence[Structure],
+    structures: AnyStructure | Sequence[AnyStructure],
     *,
     chem_env_settings: dict[str, Any] | Literal["chemenv", "crystal_nn"] = "crystal_nn",
     max_slices_cn: int | None = None,
@@ -53,7 +50,7 @@ def chem_env_sunburst(
         better geometric accuracy.
 
     Args:
-        structures (Structure | Sequence[Structure]): Structures to analyze.
+        structures (AnyStructure | Sequence[AnyStructure]): Structures to analyze.
         chem_env_settings (dict[str, Any] | "chemenv" | "crystal_nn"): Analysis method.
             - "crystal_nn" (default): Use CrystalNN (faster)
             - "chemenv": Use ChemEnv module (slower)
@@ -98,7 +95,7 @@ def chem_env_sunburst(
 
 
 def _chem_env_sunburst_chem_env(
-    structures: Structure | Sequence[Structure],
+    structures: AnyStructure | Sequence[AnyStructure],
     *,
     chem_env_settings: dict[str, Any],
     max_slices_cn: int | None = None,
@@ -182,7 +179,7 @@ def _chem_env_sunburst_chem_env(
 
 
 def _chem_env_sunburst_crystal_nn(
-    structures: Structure | Sequence[Structure],
+    structures: AnyStructure | Sequence[AnyStructure],
     *,
     max_slices_cn: int | None = None,
     max_slices_ce: int | None = None,

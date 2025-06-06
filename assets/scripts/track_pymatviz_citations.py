@@ -68,8 +68,8 @@ def remove_duplicates(
     """Remove duplicate papers based on title similarity.
 
     Args:
-        papers: List of papers to deduplicate
-        similarity_threshold: Minimum similarity score to consider papers as duplicates
+        papers (list[ScholarPaper]): List of papers to deduplicate
+        similarity_threshold (float): Min similarity to consider papers as duplicates.
 
     Returns:
         list[ScholarPaper]: Deduplicated list of papers

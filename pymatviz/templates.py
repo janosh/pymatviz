@@ -73,7 +73,8 @@ def set_plotly_template(
     """Set the default plotly express and graph objects template.
 
     Args:
-        template: Usually "pymatviz_white" or "pymatviz_dark" but any plotly.io.template
+        template ("pymatviz_white" | "pymatviz_dark" | go.layout.Template):
+            Usually "pymatviz_white" or "pymatviz_dark" but any plotly.io.template
             name or the object itself is valid.
 
     Raises:

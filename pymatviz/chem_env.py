@@ -17,11 +17,11 @@ def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int
     """Extract coordination number from ChemEnv symbol.
 
     Args:
-        ce_symbol: ChemEnv symbol (e.g., 'T:4', 'O:6', 'M:8')
-        symbol_cn_mapping: Mapping from symbols to coordination numbers
+        ce_symbol (str): ChemEnv symbol (e.g., 'T:4', 'O:6', 'M:8')
+        symbol_cn_mapping (dict[str, int]): Mapping from symbols to coordination numbers
 
     Returns:
-        Coordination number as integer
+        int: Coordination number
     """
     if ce_symbol in symbol_cn_mapping:
         return symbol_cn_mapping[ce_symbol]
@@ -50,12 +50,12 @@ def classify_local_env_with_order_params(
     to calculate order parameters for different coordination geometries.
 
     Args:
-        structure: The crystal structure
-        site_idx: Index of the site to analyze
-        cn_val: Coordination number of the site
+        structure (Structure): The crystal structure
+        site_idx (int): Index of the site to analyze
+        cn_val (int): Coordination number of the site
 
     Returns:
-        String describing the coordination environment (e.g. "T:4", "O:6", "CN:8")
+        str: String describing the coordination environment (e.g. "T:4", "O:6", "CN:8")
     """
     from pymatgen.analysis import local_env
 

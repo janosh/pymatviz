@@ -28,11 +28,11 @@ from pymatviz.process_data import normalize_structures, normalize_to_dict
 if TYPE_CHECKING:
     from typing import Any, Literal
 
-    from pymatgen.core import Structure
+    from pymatviz.typing import AnyStructure
 
 
 def coordination_hist(
-    structures: Structure | dict[str, Structure] | Sequence[Structure],
+    structures: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
     *,
     strategy: float | NearNeighbors | type[NearNeighbors] = 3.0,
     split_mode: CnSplitMode | str = CnSplitMode.by_element,
@@ -46,13 +46,16 @@ def coordination_hist(
     """Create a plotly histogram of coordination numbers for given structure(s).
 
     Args:
-        structures: A single structure or a dictionary or sequence of structures.
-        strategy: Neighbor-finding strategy. Can be one of:
+        structures (AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure]):
+            A single structure or a dictionary or sequence of structures.
+        strategy (float | NearNeighbors | type[NearNeighbors]): Neighbor-finding
+            strategy. Can be one of:
             - float: Cutoff distance for neighbor search in Angstroms.
             - NearNeighbors: An instance of a NearNeighbors subclass.
             - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
             Defaults to 3.0 (Angstroms cutoff).
-        split_mode: How to split the data into subplots or color groups.
+        split_mode (CnSplitMode | str): How to split the data into subplots or color
+            groups. Can be one of:
             "none": Single plot with all data. All elements of all structures (if
                 multiple were passed) will be shown in the same plot.
             "by element": Split into subplots by element. Matching colors across
@@ -63,24 +66,29 @@ def coordination_hist(
                 in the same color.
             "by structure and element": Like "by structure", each structure gets its
                 own subplot, but elements are colored differently within each structure.
-        bar_mode: How to arrange bars at the same coordination number.
+        bar_mode ("group" | "stack"): How to arrange bars at the same
+            coordination number. Can be one of:
             "group": Bars are stacked and grouped side by side.
             "stack": Bars are stacked on top of each other.
-        hover_data: Sequence of keys or dict mapping keys to pretty labels for
-            additional data to be shown in the hover tooltip. The keys must exist in the
-            site properties or properties dict of the structure.
-        element_color_scheme: Color scheme for elements. Can be "jmol", "vesta", or a
+        hover_data (Sequence[str] | dict[str, str] | None): Sequence of keys or dict
+            mapping keys to pretty labels for additional data to be shown in the hover
+            tooltip. The keys must exist in the site properties or properties dict of
+            the structure.
+        element_color_scheme (ElemColorScheme | dict[str, str]): Color scheme for
+            elements. Can be "jmol", "vesta", or a
             custom dict.
-        annotate_bars: If True, annotate bars with element symbols when split_mode
-            is 'by_element' or 'by_structure_and_element'. If a dict, used as keywords
-            for bar annotations, e.g. {"font_size": 12, "font_color": "red"}.
-        bar_kwargs: Dictionary of keyword arguments to customize bar appearance.
+        annotate_bars (bool | dict[str, Any]): If True, annotate bars with element
+            symbols when split_mode is 'by_element' or 'by_structure_and_element'. If a
+            dict, used as keywords for bar annotations, e.g. {"font_size": 12,
+            "font_color": "red"}.
+        bar_kwargs (dict[str, Any] | None): Dictionary of keyword arguments to
+            customize bar appearance.
             These will be passed to go.Bar().
-        subplot_kwargs (dict, optional): Additional keyword arguments to pass to
+        subplot_kwargs (dict[str, Any] | None): Additional keyword arguments to pass to
             make_subplots().
 
     Returns:
-        A plotly Figure object containing the histogram.
+        go.Figure: A plotly Figure object containing the histogram.
     """
     structures = normalize_structures(structures)
 
@@ -355,7 +363,7 @@ def coordination_hist(
 
 
 def coordination_vs_cutoff_line(
-    structures: Structure | dict[str, Structure] | Sequence[Structure],
+    structures: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
     *,
     strategy: tuple[float, float] | NearNeighbors | type[NearNeighbors] = (1, 5),
     num_points: int = 50,
@@ -365,17 +373,20 @@ def coordination_vs_cutoff_line(
     """Create a plotly line plot of cumulative coordination numbers vs cutoff distance.
 
     Args:
-        structures: A single structure or a dictionary or sequence of structures.
-        strategy: Neighbor-finding strategy. Can be one of:
+        structures (AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure]): A
+            single structure or a dictionary or sequence of structures.
+        strategy (tuple[float, float] | NearNeighbors | type[NearNeighbors]):
+            Neighbor-finding strategy. Can be one of:
             - float: Single cutoff distance for neighbor search in Angstroms.
             - tuple[float, float]: (min_cutoff, max_cutoff) range in Angstroms.
             - NearNeighbors: An instance of a NearNeighbors subclass.
             - Type[NearNeighbors]: A NearNeighbors subclass (will be instantiated).
             Defaults to (1, 5) Angstrom range.
-        num_points: Number of points to calculate between min and max cutoff.
-        element_color_scheme: Color scheme for elements. Can be "jmol", "vesta", or a
-            custom dict.
-        subplot_kwargs: Additional keyword arguments to pass to make_subplots().
+        num_points (int): Number of points to calculate between min and max cutoff.
+        element_color_scheme (ElemColorScheme | dict[str, str]): Color scheme for
+            elements. Can be "jmol", "vesta", or a custom dict.
+        subplot_kwargs (dict[str, Any] | None): Additional keyword arguments to pass to
+            make_subplots().
 
     Returns:
         A plotly Figure object containing the line plot.

@@ -32,10 +32,10 @@ def drop_dupe_formulas(df_in: pd.DataFrame) -> pd.DataFrame:
     the least NaN values.
 
     Args:
-        df_in: Input DataFrame with a 'composition' column
+        df_in (pd.DataFrame): Must have a 'composition' column.
 
     Returns:
-        pd.DataFrame: with duplicate formulas removed.
+        pd.DataFrame: with duplicate formulas removed
     """
     df_out = df_in.copy()
     n_dupes = df_out[Key.composition].duplicated().sum()
@@ -99,12 +99,12 @@ def create_random_split(
     """Create random train/val/test split.
 
     Args:
-        df_in: Input DataFrame
-        train_size: Fraction of data to use for training. Default is 0.8.
-        kwargs: Passed to sklearn.model_selection.train_test_split
+        df_in (pd.DataFrame): Must have a 'composition' column.
+        train_size (float): Fraction of data to use for training. Default is 0.8.
+        kwargs (dict): Passed to sklearn.model_selection.train_test_split
 
     Returns:
-        Series with values "train"/"val"/"test" for each row
+        pd.Series: with values "train"/"val"/"test" for each row
     """
     # First split into train and temp (val + test)
     train_idx, temp_idx = train_test_split(df_in.index, train_size=train_size, **kwargs)
@@ -125,18 +125,18 @@ def create_element_split(
     """Create element-based train/val/test split.
 
     Args:
-        df_in: Input DataFrame
-        elements: List of elements to hold out
-        random_state: Random seed for reproducibility
+        df_in (pd.DataFrame): Must have a 'composition' column.
+        elements (list[str]): List of elements to hold out
+        random_state (int): Random seed for reproducibility
 
     Returns:
-        Series with values "train"/"val"/"test" for each row
+        pd.Series: with values "train"/"val"/"test" for each row
     """
     # Initialize all as train
     split = pd.Series("train", index=df_in.index)
 
     # Find compositions containing any of the held-out elements
-    holdout_mask = df_in[Key.composition].apply(
+    holdout_mask = df_in[Key.composition].map(
         lambda comp: any(el in Composition(comp).chemical_system_set for el in elements)
     )
     holdout_idx = df_in.index[holdout_mask]
@@ -158,18 +158,18 @@ def create_system_split(
     """Create system-based train/val/test split.
 
     Args:
-        df_in: Input DataFrame
-        systems: List of chemical systems to hold out
-        random_state: Random seed for reproducibility
+        df_in (pd.DataFrame): Must have a 'composition' column.
+        systems (list[str]): List of chemical systems to hold out
+        random_state (int): Random seed for reproducibility
 
     Returns:
-        Series with values "train"/"val"/"test" for each row
+        pd.Series: with values "train"/"val"/"test" for each row
     """
     # Initialize all as train
     split = pd.Series("train", index=df_in.index)
 
     # Find compositions matching any of the held-out systems
-    holdout_mask = df_in[Key.composition].apply(
+    holdout_mask = df_in[Key.composition].map(
         lambda x: "-".join(sorted(Composition(x).chemical_system_set)) in systems
     )
     holdout_idx = df_in.index[holdout_mask]

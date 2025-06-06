@@ -190,10 +190,10 @@ def collect_package_modules(package_names: Sequence[str]) -> pd.DataFrame:
     """Collect information about all modules in the given packages.
 
     Args:
-        package_names: Names of packages to analyze
+        package_names (Sequence[str]): Names of packages to analyze
 
     Returns:
-        DataFrame with package structure information
+        pd.DataFrame: with package structure info
     """
     all_modules = []
 
@@ -310,8 +310,8 @@ def py_pkg_treemap(
     shows modules or files, with cell sizes typically indicating code size.
 
     Args:
-        packages: Single package name or list of package names to analyze
-        base_url: Base URL for the source code repository (e.g., GitHub).
+        packages (str | Sequence[str]): Single or list of package names to analyze.
+        base_url (str | None): Base URL for the source code repository (e.g., GitHub).
             If provided, the label of each module/file cell is turned into a
             clickable link pointing to the corresponding source file. Example:
             'https://github.com/user/repo/blob/main'
@@ -319,29 +319,29 @@ def py_pkg_treemap(
             from package metadata (requires package to be installed). Assumes 'main'
             branch. Only works reliably for single-package plots.
             If set to None, no links will be generated.
-        show_counts: How to display counts in treemap cells:
+        show_counts (ShowCounts): How to display counts in treemap cells:
             - "value": Show calculated cell size value
             - "percent": Show percentage of parent
             - "value+percent": Show both (default)
             - False: Don't show counts
-        cell_text_fn: How to display top-level names and counts:
+        cell_text_fn (ModuleFormatter | bool): How to display top-level names + counts:
             - Function that takes name, count, total count and returns string
             - True: Use default_module_formatter
             - False: Don't add counts to top-level names
-        group_by: How to group the package modules:
+        group_by (GroupBy): How to group the package modules:
             - "file": Group by filename
             - "directory": Group by top-level directory
             - "module": Group by top-level module (default)
-        cell_size_fn: A callable that takes a `ModuleStats` object
+        cell_size_fn (CellSizeFn | None): A callable that takes a `ModuleStats` object
             (a NamedTuple with fields like line_count, n_classes, n_functions,
             n_methods) and returns a number (int or float) to be used for the
             cell's size in the treemap. If this function returns 0, the
             corresponding module/file will be omitted from the treemap.
             If None (default), cell size is based on `line_count`.
-        **kwargs: Additional keyword arguments passed to plotly.express.treemap
+        **kwargs (Any): Additional keyword arguments passed to plotly.express.treemap
 
     Returns:
-        Figure: The Plotly figure.
+        go.Figure: The Plotly figure.
 
     Tips and Customization:
     - rounded corners: fig.update_traces(marker=dict(cornerradius=5))
@@ -463,7 +463,7 @@ def py_pkg_treemap(
 
     # Create columns for each level of the hierarchy from 'module_parts'
     for level_idx, col_name in enumerate(level_columns):
-        df_treemap[col_name] = df_treemap["module_parts"].apply(
+        df_treemap[col_name] = df_treemap["module_parts"].map(
             lambda parts, current_idx=level_idx: parts[current_idx]
             if current_idx < len(parts)
             else None

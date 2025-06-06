@@ -32,13 +32,13 @@ def load_binary_liquidus_data(zip_path: str) -> dict[str, interp1d]:
     """Load binary liquidus temperature data from a ZIP archive of CSV files.
 
     Args:
-        zip_path: Path to ZIP archive containing binary liquidus temperature data.
+        zip_path (str): Path to ZIP archive containing binary liquidus temperature data.
             Each CSV file should be named after the chemical system (e.g., "Al-Cu.csv")
             and contain columns for composition and temperature.
 
     Returns:
-        Dictionary mapping chemical system (e.g., "Al-Cu") to interpolation function
-        that takes composition fraction and returns liquidus temperature.
+        dict[str, interp1d]: Map of chemical system (e.g., "Al-Cu") to interpolation
+            function that takes composition fraction and returns liquidus temperature.
     """
     from zipfile import ZipFile
 
@@ -120,10 +120,12 @@ def calc_reduced_binary_liquidus_temp(
     points.
 
     Args:
-        composition: The composition to calculate the reduced binary liquidus
-            temperature for. This composition should be expressed in %wt.
-        binary_interpolations: The binary liquidus temperature interpolations.
-        on_key_err ("raise" | "set-none"): How to handle missing binary systems.
+        composition (Composition): For which to calculate the reduced binary
+            liquidus temperature. This composition should be expressed in %wt.
+        binary_interpolations (dict[str, interp1d]): The binary liquidus temperature
+            interpolations.
+        on_key_err ("raise" | "set-none"): How to handle missing binary
+            systems.
             If "raise", raises KeyError. If "set-none", returns None.
             Defaults to "raise".
 
@@ -172,11 +174,11 @@ def calc_atomic_size_difference(composition: Composition) -> float:
     imaginary features if the mean radius deviation is negative.
 
     Args:
-        composition: The composition to calculate the atomic size difference
-            for. This composition should be expressed in %at.
+        composition (Composition): For which to calculate the atomic size difference.
+            This composition should be expressed in %at.
 
     Returns:
-        The atomic size difference.
+        float: The atomic size difference.
     """
     if composition.is_element:
         return 0
@@ -276,13 +278,13 @@ def liu_featurize(
     """Calculate Liu et al.'s (2023) features for a DataFrame of compositions.
 
     Args:
-        df_in: DataFrame containing a 'composition' column with chemical formulas
-        binary_liquidus_data: Dictionary mapping chemical system (e.g., "Al-Cu") to
-            interpolation function for liquidus temperature. If None, liquidus
-            temperature feature will not be calculated.
+        df_in (pd.DataFrame): Must have a 'composition' column with chemical formulas.
+        binary_liquidus_data (dict[str, interp1d]): Map of chemical system
+            (e.g. "Al-Cu") to interpolation function for liquidus temperature. If None,
+            liquidus temperature feature will not be calculated.
 
     Returns:
-        DataFrame with original columns plus Liu features
+        pd.DataFrame: with original columns plus Liu features
     """
     df_out = df_in.copy()
     df_out[Key.composition] = df_out[Key.composition].map(Composition)
@@ -311,10 +313,10 @@ def one_hot_encode(df_in: pd.DataFrame) -> pd.DataFrame:
     present in a composition get 0.0.
 
     Args:
-        df_in: DataFrame containing a 'composition' column with strings like 'Fe2O3'
+        df_in (pd.DataFrame): Must have a 'composition' column with strings like 'Fe2O3'
 
     Returns:
-        DataFrame with the original columns plus one column per element found across
+        pd.DataFrame: with the original columns plus one column per element found across
         all compositions. The element columns contain the fractional amounts.
     """
     comp_dicts = df_in[Key.composition].map(lambda comp: Composition(comp).as_dict())
