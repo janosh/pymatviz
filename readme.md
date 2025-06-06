@@ -217,13 +217,13 @@ See [`pymatviz/sunburst.py`](pymatviz/sunburst.py).
 | [`spacegroup_sunburst([65, 134, 225, ...])`](pymatviz/sunburst.py#L111) [![fig-icon]](assets/scripts/sunburst/spacegroup_sunburst.py) | [`chem_sys_sunburst(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/sunburst.py#L206) [![fig-icon]](assets/scripts/sunburst/chem_sys_sunburst.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                          ![spg-num-sunburst]                                                          |                                                        ![chem-sys-sunburst-ward-bmg]                                                         |
-|                                     [`cn_ce_sunburst(single_struct)`](pymatviz/sunburst.py#L351)                                      |                                       [`cn_ce_sunburst(mulitple_structs)`](pymatviz/sunburst.py#L351)                                        |
-|                                                        ![cn-ce-sunburst-basic]                                                        |                                                         ![cn-ce-sunburst-mp-carbon]                                                          |
+|                                    [`chem_env_sunburst(single_struct)`](pymatviz/sunburst.py#L351)                                    |                                      [`chem_env_sunburst(multiple_structs)`](pymatviz/sunburst.py#L351)                                      |
+|                                                      ![chem-env-sunburst-basic]                                                       |                                                        ![chem-env-sunburst-mp-carbon]                                                        |
 
 [spg-num-sunburst]: assets/svg/spg-num-sunburst.svg
 [chem-sys-sunburst-ward-bmg]: assets/svg/chem-sys-sunburst-ward-bmg.svg
-[cn-ce-sunburst-basic]: assets/svg/cn-ce-sunburst-basic.svg
-[cn-ce-sunburst-mp-carbon]: assets/svg/cn-ce-sunburst-mp-carbon.svg
+[chem-env-sunburst-basic]: assets/svg/chem-env-sunburst-basic.svg
+[chem-env-sunburst-mp-carbon]: assets/svg/chem-env-sunburst-mp-carbon.svg
 
 ## Treemap
 
@@ -232,6 +232,8 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 | [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/treemap/chem_sys.py#L36) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...], group_by="formula")`](pymatviz/treemap/chem_sys.py#L36) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
+|           [`chem_env_treemap(structures)`](pymatviz/treemap/chem_env.py#L36) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_cells_cn=3, max_cells_ce=4)`](pymatviz/treemap/chem_env.py#L36)     |
+|                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
 |              [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |         [`py_pkg_treemap(["pymatviz", "torch_sim", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L36)          |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
 
@@ -239,6 +241,8 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 [chem-sys-treemap-ward-bmg]: assets/svg/chem-sys-treemap-ward-bmg.svg
 [py-pkg-treemap-pymatviz]: assets/svg/py-pkg-treemap-pymatviz.svg
 [py-pkg-treemap-multiple]: assets/svg/py-pkg-treemap-multiple.svg
+[chem-env-treemap-large-dataset]: assets/svg/chem-env-treemap-large-dataset.svg
+[chem-env-treemap-basic]: assets/svg/chem-env-treemap-basic.svg
 
 ## Rainclouds
 
