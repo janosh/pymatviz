@@ -19,7 +19,7 @@ supercells = {
     key: struct.make_supercell(2, in_place=False)
     for key, struct in df_phonons[Key.structure].head(n_structs).items()
 }
-fig = pmv.structure_3d_plotly(
+fig = pmv.structure_3d(
     supercells,
     elem_colors=ElemColorScheme.jmol,
     # show_cell={"edge": dict(color="white", width=1.5)},
@@ -41,7 +41,7 @@ batio3 = Structure(
 batio3.add_oxidation_state_by_element({"Ba": 2, "Ti": 4, "O": -2})
 
 # Demonstrate custom legend positioning and sizing
-fig = pmv.structure_3d_plotly(
+fig = pmv.structure_3d(
     batio3, show_cell={"edge": dict(color="white", width=2)}, show_bonds=True
 )
 fig.show()
@@ -49,7 +49,7 @@ fig.show()
 
 
 # %% Example: Disordered site rendering (multiple spheres in 3D)
-fig = pmv.structure_3d_plotly(
+fig = pmv.structure_3d(
     disordered_demo_structures,
     elem_colors=ElemColorScheme.jmol,
     n_cols=2,
@@ -75,7 +75,7 @@ hea_structure = Structure(
     species=["Co", "Cr", "Fe", "Ni", "Mn"],
     coords=[(0, 0, 0), (0.5, 0.5, 0), (0.5, 0, 0.5), (0, 0.5, 0.5), (0.5, 0.5, 0.5)],
 )
-fig = pmv.structure_3d_plotly(
+fig = pmv.structure_3d(
     hea_structure.make_supercell([2, 3, 2], in_place=False),
     show_cell={"edge": dict(color="white", width=2)},
 )
@@ -93,7 +93,7 @@ lco_supercell = Structure(
     coords=[(0, 0, 0), (0, 0, 0.5), (0, 0, 0.25), (0, 0, 0.75)],
 ).make_supercell([3, 3, 1])
 
-fig = pmv.structure_3d_plotly(
+fig = pmv.structure_3d(
     lco_supercell,
     show_cell={"edge": dict(color="white", width=1.5)},
     elem_colors=ElemColorScheme.jmol,
@@ -151,7 +151,7 @@ structures_grid = {
     "MoS₂ Layered (Pastel colors)": mos2,
 }
 
-fig = pmv.structure_3d_plotly(
+fig = pmv.structure_3d(
     structures_grid,
     elem_colors={  # different color schemes to showcase variety
         "Si Diamond (Jmol colors)": ElemColorScheme.jmol,
@@ -195,7 +195,7 @@ LiF_cubic = Structure(
 
 # Show same structure with different cell_boundary_tol values
 cell_boundary_tols = {"Strict boundaries (tol=0)": 0, "Loose (tol=0.5)": 0.5}
-fig = pmv.structure_3d_plotly(
+fig = pmv.structure_3d(
     dict.fromkeys(cell_boundary_tols, LiF_cubic)
     | {"Via properties": LiF_cubic.copy(properties={"cell_boundary_tol": 1})},
     cell_boundary_tol=cell_boundary_tols,

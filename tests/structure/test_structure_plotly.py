@@ -733,7 +733,7 @@ def test_structure_plotly_site_vector_coverage() -> None:
     assert isinstance(fig_2d, go.Figure)
 
     # Test 3D with site-level vector properties
-    fig_3d = pmv.structure_3d_plotly(struct, show_site_vectors="force")
+    fig_3d = pmv.structure_3d(struct, show_site_vectors="force")
     assert isinstance(fig_3d, go.Figure)
 
 
@@ -881,7 +881,7 @@ def test_structure_3d(
     else:
         structures_input = fe3co4_disordered_with_props
 
-    fig = pmv.structure_3d_plotly(structures_input, **kwargs)
+    fig = pmv.structure_3d(structures_input, **kwargs)
     assert isinstance(fig, go.Figure)
 
     # Check if the layout properties are set correctly
@@ -1070,7 +1070,7 @@ def test_structure_3d_multiple() -> None:
         "struct4": struct4,
     }
     # Test with default site_labels="legend"
-    fig = pmv.structure_3d_plotly(structs_dict, n_cols=2)
+    fig = pmv.structure_3d(structs_dict, n_cols=2)
     assert isinstance(fig, go.Figure)
 
     expected_total_traces_3d = 0
@@ -1132,13 +1132,13 @@ def test_structure_3d_multiple() -> None:
 
     # Test pandas.Series[Structure]
     struct_series = pd.Series(structs_dict)
-    fig = pmv.structure_3d_plotly(struct_series)
+    fig = pmv.structure_3d(struct_series)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
     # Test list[Structure]
-    fig = pmv.structure_3d_plotly(list(structs_dict.values()), n_cols=3)
+    fig = pmv.structure_3d(list(structs_dict.values()), n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
@@ -1147,9 +1147,7 @@ def test_structure_3d_multiple() -> None:
     def custom_subplot_title_func(struct: Structure, key: str | int) -> str:
         return f"{key} - {struct.formula}"
 
-    fig = pmv.structure_3d_plotly(
-        struct_series, subplot_title=custom_subplot_title_func
-    )
+    fig = pmv.structure_3d(struct_series, subplot_title=custom_subplot_title_func)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
@@ -1174,7 +1172,7 @@ def test_structure_plotly_coverage_improvements() -> None:
     assert isinstance(fig_2d, go.Figure)
 
     # Test 3D with site-level vector properties
-    fig_3d = pmv.structure_3d_plotly(struct, show_site_vectors="force")
+    fig_3d = pmv.structure_3d(struct, show_site_vectors="force")
     assert isinstance(fig_3d, go.Figure)
 
     # Test bond drawing with dict show_bonds (line 320)
@@ -1185,14 +1183,14 @@ def test_structure_plotly_coverage_improvements() -> None:
     assert isinstance(fig_2d_bonds, go.Figure)
 
     # Test 3D subplot title handling when subplot_title is not False (lines 657-660)
-    fig_3d_title = pmv.structure_3d_plotly(
+    fig_3d_title = pmv.structure_3d(
         struct_dict,
         subplot_title=lambda _struct, idx: {"text": f"Custom {idx}", "x": 0.5},
     )
     assert isinstance(fig_3d_title, go.Figure)
 
     # Test legend configuration (lines 676-692)
-    fig_3d_legend = pmv.structure_3d_plotly(struct_dict, site_labels="legend", n_cols=2)
+    fig_3d_legend = pmv.structure_3d(struct_dict, site_labels="legend", n_cols=2)
     assert isinstance(fig_3d_legend, go.Figure)
     assert fig_3d_legend.layout.showlegend is True
 
@@ -1211,7 +1209,7 @@ def test_structure_plotly_bonds_coverage() -> None:
     assert isinstance(fig_2d, go.Figure)
 
     # Test 3D bonds with dict show_bonds
-    fig_3d = pmv.structure_3d_plotly(
+    fig_3d = pmv.structure_3d(
         {"struct1": struct, "struct2": struct.copy()},
         show_bonds={"struct1": True, "struct2": False},
         show_sites=True,
@@ -1229,7 +1227,7 @@ def test_structure_3d_subplot_title_coverage() -> None:
     def custom_title_with_position(_struct: Structure, k: str | int) -> dict[str, Any]:
         return {"text": f"Structure {k}", "x": 0.5, "y": 0.95, "yanchor": "top"}
 
-    fig = pmv.structure_3d_plotly(
+    fig = pmv.structure_3d(
         {"struct1": struct1, "struct2": struct2},
         subplot_title=custom_title_with_position,
         n_cols=2,
@@ -1238,7 +1236,7 @@ def test_structure_3d_subplot_title_coverage() -> None:
     assert len(fig.layout.annotations) == 2
 
     # Test with subplot_title=False to cover that branch
-    fig_no_title = pmv.structure_3d_plotly(
+    fig_no_title = pmv.structure_3d(
         {"struct1": struct1, "struct2": struct2}, subplot_title=False, n_cols=2
     )
     assert isinstance(fig_no_title, go.Figure)
@@ -1266,7 +1264,7 @@ def test_structure_plotly_cell_faces(
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
-    plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d
+    plot_func = pmv.structure_3d if is_3d else pmv.structure_2d
 
     fig = plot_func(
         struct,
@@ -1325,7 +1323,7 @@ def test_structure_plotly_cell_faces_no_cell() -> None:
     assert len(surface_traces_2d) == 0
 
     # Test 3D
-    fig_3d = pmv.structure_3d_plotly(
+    fig_3d = pmv.structure_3d(
         struct,
         show_cell=False,
         show_cell_faces=True,  # Should be ignored
@@ -1356,7 +1354,7 @@ def test_structure_plotly_cell_faces_multiple_structures() -> None:
     assert isinstance(fig_2d, go.Figure)
 
     # Test 3D
-    fig_3d = pmv.structure_3d_plotly(
+    fig_3d = pmv.structure_3d(
         structures, show_cell=True, show_cell_faces=True, n_cols=2
     )
     assert isinstance(fig_3d, go.Figure)
@@ -1386,8 +1384,8 @@ def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
 
     # Test single structures to verify precedence works
     if is_3d:
-        fig1 = pmv.structure_3d_plotly(struct1, **func_kwargs)
-        fig2 = pmv.structure_3d_plotly(struct2, **func_kwargs)
+        fig1 = pmv.structure_3d(struct1, **func_kwargs)
+        fig2 = pmv.structure_3d(struct2, **func_kwargs)
     else:
         fig1 = pmv.structure_2d(struct1, **func_kwargs)
         fig2 = pmv.structure_2d(struct2, **func_kwargs)
@@ -1489,7 +1487,7 @@ def test_disordered_site_labeling_behavior(
     """
     # Add the structure function based on dimensionality
     if is_3d:
-        fig = pmv.structure_3d_plotly(
+        fig = pmv.structure_3d(
             fe3co4_disordered,
             site_labels=site_labels,
             show_cell=False,
@@ -1617,7 +1615,7 @@ def test_disordered_site_edge_cases(fe3co4_disordered: Structure) -> None:
     assert fig_2d is not None
 
     # Test 3D with maximal occupancy
-    fig_3d = pmv.structure_3d_plotly(
+    fig_3d = pmv.structure_3d(
         minimal_disordered,
         site_labels="symbol",
         show_cell=False,
@@ -1725,7 +1723,7 @@ def test_structure_plotly_malformed_elem_colors(
     )
     assert fig_2d is not None
 
-    fig_3d = pmv.structure_3d_plotly(
+    fig_3d = pmv.structure_3d(
         fe3co4_disordered,
         elem_colors=malformed_elem_colors,
         show_cell=False,
@@ -1739,7 +1737,7 @@ def test_disordered_site_hover_text_formatting(fe3co4_disordered: Structure) -> 
     """Test that hover text is properly formatted for disordered sites."""
     # Test both 2D and 3D
     for is_3d in [False, True]:
-        plot_func = pmv.structure_3d_plotly if is_3d else pmv.structure_2d
+        plot_func = pmv.structure_3d if is_3d else pmv.structure_2d
         fig = plot_func(
             fe3co4_disordered,
             site_labels="symbol",
@@ -1801,7 +1799,7 @@ def test_disordered_site_legend_functionality(fe3co4_disordered: Structure) -> N
     assert len(disordered_traces_2d) > 0
 
     # Test 3D plot
-    fig_3d = pmv.structure_3d_plotly(fe3co4_disordered, site_labels="legend")
+    fig_3d = pmv.structure_3d(fe3co4_disordered, site_labels="legend")
     assert isinstance(fig_3d, go.Figure)
     assert fig_3d.layout.showlegend is True
 
@@ -1849,9 +1847,7 @@ def test_disordered_site_legend_functionality(fe3co4_disordered: Structure) -> N
     assert len(legend2_traces) > 0, "Should have traces in second legend"
 
     # Test 3D multi-structure
-    fig_3d_multi = pmv.structure_3d_plotly(
-        multi_structs, site_labels="legend", n_cols=2
-    )
+    fig_3d_multi = pmv.structure_3d(multi_structs, site_labels="legend", n_cols=2)
     legend_traces_multi_3d = [trace for trace in fig_3d_multi.data if trace.showlegend]
 
     # Check that each structure has its own legend

@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Update `luminance` calculation to use WCAG 2.0 standard coefficients [`#278`](https://github.com/janosh/pymatviz/pull/278)
 - Fix `structure_2d` `rotation` keyword not applying to unit cell [`#276`](https://github.com/janosh/pymatviz/pull/276)
 - `spglib` to `moyo` [`#275`](https://github.com/janosh/pymatviz/pull/275)
-- fix bond drawing in structure_3d_plotly with better image atom handling [`#274`](https://github.com/janosh/pymatviz/pull/274)
+- fix bond drawing in structure_3d with better image atom handling [`#274`](https://github.com/janosh/pymatviz/pull/274)
 - Use SI suffix number format in ptable colorbar tick labels [`#273`](https://github.com/janosh/pymatviz/pull/273)
 - fix error in docstring [`#271`](https://github.com/janosh/pymatviz/pull/271)
 - Remove `matplotlib`-based periodic table plotting functions [`#270`](https://github.com/janosh/pymatviz/pull/270)
@@ -51,7 +51,7 @@ All notable changes to this project will be documented in this file. Dates are d
 > 28 January 2025
 
 - Remove hard-coded `gridsize` in `density_hexbin` [`#263`](https://github.com/janosh/pymatviz/pull/263)
-- structure_2d and structure_3d_plotly now support ase.Atoms and sequences of them on top of pymatgen.Structure [`#262`](https://github.com/janosh/pymatviz/pull/262)
+- structure_2d and structure_3d now support ase.Atoms and sequences of them on top of pymatgen.Structure [`#262`](https://github.com/janosh/pymatviz/pull/262)
 - add molecular dynamics attributes to Key enum [`4b55a40`](https://github.com/janosh/pymatviz/commit/4b55a400e639b696c25dc752a0a70c0e472740df)
 - better Key.unit formatting: replace unicode sup/superscripts with &lt;sup&gt;/&lt;sub&gt;+ASCII [`eb12217`](https://github.com/janosh/pymatviz/commit/eb122173df12cfcbcff1070a1a6177a581de248b)
 - bump ruff to 0.9 and auto-fix [`6989ba5`](https://github.com/janosh/pymatviz/commit/6989ba5496dcf5f699f3a64ef38dd33f65f3ac28)
@@ -139,7 +139,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Render spheres with hover tooltip on unit cell corners in `pmv.structure_(2|3)d_plotly` [`#219`](https://github.com/janosh/pymatviz/pull/219)
 - `structure_(2|3)d_plotly` allow overriding subplot title's y position and anchor    [`#218`](https://github.com/janosh/pymatviz/pull/218)
 - pin kaleido==0.2.1 [`#217`](https://github.com/janosh/pymatviz/pull/217)
-- Add `structure_3d_plotly` [`#214`](https://github.com/janosh/pymatviz/pull/214)
+- Add `structure_3d` [`#214`](https://github.com/janosh/pymatviz/pull/214)
 - Clean up var names in unit tests, avoid MP API access in GitHub workflow [`#207`](https://github.com/janosh/pymatviz/pull/207)
 - Add `structure_2d` to `pymatviz/structure_viz.py` [`#213`](https://github.com/janosh/pymatviz/pull/213)
 - Fix `xrd_pattern` not allowing `annotate_peaks=0` to disable peak annotation [`#212`](https://github.com/janosh/pymatviz/pull/212)

@@ -406,7 +406,7 @@ def structure_2d(
     return fig
 
 
-def structure_3d_plotly(
+def structure_3d(
     struct: AnyStructure | dict[str, AnyStructure] | Sequence[AnyStructure],
     *,
     atomic_radii: float | dict[str, float] | None = None,
