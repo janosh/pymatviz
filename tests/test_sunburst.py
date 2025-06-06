@@ -696,7 +696,7 @@ def test_limit_slices_edge_cases() -> None:
     """Test edge cases in _limit_slices function."""
     import pandas as pd
 
-    from pymatviz.sunburst import _limit_slices
+    from pymatviz.sunburst.helpers import _limit_slices
 
     # Create test data with more items than limit
     df_test = pd.DataFrame(
@@ -730,7 +730,7 @@ def test_limit_slices_boundary_conditions(max_slices: int, expected_len: int) ->
     """Test boundary conditions in _limit_slices function."""
     import pandas as pd
 
-    from pymatviz.sunburst import _limit_slices
+    from pymatviz.sunburst.helpers import _limit_slices
 
     df_test = pd.DataFrame(
         [
@@ -756,7 +756,7 @@ def test_limit_slices_invalid_mode() -> None:
     """Test _limit_slices with invalid max_slices_mode."""
     import pandas as pd
 
-    from pymatviz.sunburst import _limit_slices
+    from pymatviz.sunburst.helpers import _limit_slices
 
     df_test = pd.DataFrame([{"group": "A", "count": 1}])
     with pytest.raises(ValueError, match="Invalid.*max_slices_mode"):
@@ -784,7 +784,7 @@ def test_limit_slices_child_col_exclusion(
     import pandas as pd
 
     from pymatviz.enums import Key
-    from pymatviz.sunburst import _limit_slices
+    from pymatviz.sunburst.helpers import _limit_slices
 
     df_test = pd.DataFrame(
         [
@@ -905,7 +905,7 @@ def test_sunburst_text_wrapping_functionality() -> None:
         {"coord_num": 5, "chem_env_symbol": "short", "count": 5},
     ]
 
-    from pymatviz.sunburst import _process_chem_env_data_sunburst
+    from pymatviz.sunburst.chem_env import _process_chem_env_data_sunburst
 
     fig = _process_chem_env_data_sunburst(
         chem_env_data=mock_data,
