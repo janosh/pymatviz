@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 
@@ -410,8 +411,8 @@ def test_chem_sys_sunburst_max_slices_mode_invalid() -> None:
 
 
 @pytest.mark.parametrize("show_counts", get_args(ShowCounts))
-def test_cn_ce_sunburst_show_counts(show_counts: ShowCounts) -> None:
-    """Test cn_ce_sunburst with different show_counts options using mocked data."""
+def test_chem_env_sunburst_show_counts(show_counts: ShowCounts) -> None:
+    """Test chem_env_sunburst with different show_counts options using mocked data."""
     from unittest.mock import patch
 
     from pymatgen.core import Lattice, Structure
@@ -422,17 +423,17 @@ def test_cn_ce_sunburst_show_counts(show_counts: ShowCounts) -> None:
     simple_structure = Structure(lattice, species, coords)
 
     # Mock the expensive ChemEnv computation to return test data
-    mock_cn_ce_data = [
+    mock_chem_env_data = [
         {"coord_num": 4, "chem_env_symbol": "T:4", "count": 2.0},
         {"coord_num": 6, "chem_env_symbol": "O:6", "count": 1.0},
     ]
 
-    with patch("pymatviz.sunburst.cn_ce_sunburst") as mock_func:
-        # Create a mock figure with the expected properties
+    with patch("pymatviz.sunburst.chem_env_sunburst") as mock_func:
+        # Create a mock figure with expected properties
         import pandas as pd
 
-        df_mock = pd.DataFrame(mock_cn_ce_data)
-        fig = pmv.sunburst.px.sunburst(
+        df_mock = pd.DataFrame(mock_chem_env_data)
+        fig = px.sunburst(
             df_mock, path=["coord_num", "chem_env_symbol"], values="count"
         )
 
@@ -466,7 +467,7 @@ def test_cn_ce_sunburst_show_counts(show_counts: ShowCounts) -> None:
 
 
 @pytest.mark.parametrize("invalid_show_counts", ["invalid", "bad_value", 123, True])
-def test_cn_ce_sunburst_invalid_show_counts(invalid_show_counts: Any) -> None:
+def test_chem_env_sunburst_invalid_show_counts(invalid_show_counts: Any) -> None:
     """Test that invalid show_counts values raise ValueError."""
     from pymatgen.core import Lattice, Structure
 
@@ -476,11 +477,11 @@ def test_cn_ce_sunburst_invalid_show_counts(invalid_show_counts: Any) -> None:
     simple_structure = Structure(lattice, species, coords)
 
     with pytest.raises(ValueError, match="Invalid.*show_counts"):
-        pmv.cn_ce_sunburst([simple_structure], show_counts=invalid_show_counts)
+        pmv.chem_env_sunburst([simple_structure], show_counts=invalid_show_counts)
 
 
-def test_cn_ce_sunburst_no_chemenv_data() -> None:
-    """Test cn_ce_sunburst when ChemEnv returns no data."""
+def test_chem_env_sunburst_no_data() -> None:
+    """Test chem_env_sunburst when ChemEnv returns no data."""
     from unittest.mock import MagicMock, patch
 
     from pymatgen.core import Lattice, Structure
@@ -500,7 +501,8 @@ def test_cn_ce_sunburst_no_chemenv_data() -> None:
             "ChemEnv failed"
         )
 
-        fig = pmv.cn_ce_sunburst([simple_structure])
+        # use ChemEnv method to test the failure case
+        fig = pmv.chem_env_sunburst([simple_structure], chem_env_settings="chemenv")
 
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 0  # Empty figure when no data
@@ -519,13 +521,13 @@ def test_cn_ce_sunburst_no_chemenv_data() -> None:
         (0, 0, "other", True),  # Zero limits (treated as None)
     ],
 )
-def test_cn_ce_sunburst_parameters(
+def test_chem_env_sunburst_parameters(
     max_slices_cn: int | None,
     max_slices_ce: int | None,
     max_slices_mode: Literal["other", "drop"],
     normalize: bool,
 ) -> None:
-    """Test cn_ce_sunburst with various parameter combinations."""
+    """Test chem_env_sunburst with various parameter combinations."""
     from pymatgen.core import Lattice, Structure
 
     lattice = Lattice.cubic(4.0)
@@ -534,7 +536,7 @@ def test_cn_ce_sunburst_parameters(
     simple_structure = Structure(lattice, species, coords)
 
     # Test that parameter combos don't crash
-    fig = pmv.cn_ce_sunburst(
+    fig = pmv.chem_env_sunburst(
         [simple_structure],
         max_slices_cn=max_slices_cn,
         max_slices_ce=max_slices_ce,
@@ -545,8 +547,8 @@ def test_cn_ce_sunburst_parameters(
     assert len(fig.data) == 1
 
 
-def test_cn_ce_sunburst_custom_chemenv_settings() -> None:
-    """Test cn_ce_sunburst with custom ChemEnv settings."""
+def test_chem_env_sunburst_custom_chem_env_settings() -> None:
+    """Test chem_env_sunburst with custom ChemEnv settings."""
     from pymatgen.core import Lattice, Structure
 
     lattice = Lattice.cubic(4.0)
@@ -559,8 +561,134 @@ def test_cn_ce_sunburst_custom_chemenv_settings() -> None:
     custom_settings: dict[str, Any] = {}
 
     # Test that custom settings don't crash
-    fig = pmv.cn_ce_sunburst([simple_structure], chemenv_settings=custom_settings)
+    fig = pmv.chem_env_sunburst([simple_structure], chem_env_settings=custom_settings)
     assert isinstance(fig, go.Figure)
+
+
+def test_chem_env_sunburst_crystal_nn_method() -> None:
+    """Test chem_env_sunburst with CrystalNN method (default)."""
+    from pymatgen.core import Lattice, Structure
+
+    lattice = Lattice.cubic(4.0)
+    coords = [[0.0, 0.0, 0.0]]
+    species = ["Fe"]
+    simple_structure = Structure(lattice, species, coords)
+
+    # Test that CrystalNN method works without crashing
+    fig = pmv.chem_env_sunburst([simple_structure], chem_env_settings="crystal_nn")
+
+    # Verify figure structure
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
+
+
+def test_chem_env_sunburst_explicit_mode() -> None:
+    """Test chem_env_sunburst with explicit ChemEnv method."""
+    from unittest.mock import MagicMock, patch
+
+    from pymatgen.core import Lattice, Structure
+
+    lattice = Lattice.cubic(4.0)
+    coords = [[0.0, 0.0, 0.0]]
+    species = ["Fe"]
+    simple_structure = Structure(lattice, species, coords)
+
+    with (
+        patch(
+            "pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder.LocalGeometryFinder"
+        ) as mock_lgf,
+        patch(
+            "pymatgen.analysis.chemenv.coordination_environments.coordination_geometries.AllCoordinationGeometries"
+        ) as mock_geoms,
+    ):
+        # Setup mocks
+        mock_lgf_instance = MagicMock()
+        mock_lgf.return_value = mock_lgf_instance
+
+        mock_structure_envs = MagicMock()
+        mock_lgf_instance.compute_structure_environments.return_value = (
+            mock_structure_envs
+        )
+
+        mock_lse = MagicMock()
+        mock_lse.coordination_environments = [[{"ce_symbol": "T:4"}]]
+
+        with patch(
+            "pymatgen.analysis.chemenv.coordination_environments.structure_environments.LightStructureEnvironments.from_structure_environments"
+        ) as mock_lse_factory:
+            mock_lse_factory.return_value = mock_lse
+
+            mock_geoms_instance = MagicMock()
+            mock_geoms.return_value = mock_geoms_instance
+            mock_geoms_instance.get_symbol_cn_mapping.return_value = {"T:4": 4}
+
+            fig = pmv.chem_env_sunburst([simple_structure], chem_env_settings="chemenv")
+
+            # Verify figure was created
+            assert isinstance(fig, go.Figure)
+            assert len(fig.data) == 1
+
+
+def test_chem_env_sunburst_invalid_chem_env_settings() -> None:
+    """Test chem_env_sunburst with invalid chem_env_settings."""
+    from pymatgen.core import Lattice, Structure
+
+    lattice = Lattice.cubic(4.0)
+    coords = [[0.0, 0.0, 0.0]]
+    species = ["Fe"]
+    simple_structure = Structure(lattice, species, coords)
+
+    # Invalid string should fall through to ChemEnv path and fail
+    # because ChemEnv expects a dictionary, not a string
+    with pytest.raises((ImportError, AttributeError, RuntimeError, TypeError)):
+        pmv.chem_env_sunburst([simple_structure], chem_env_settings="invalid_method")  # type: ignore[arg-type]
+
+
+def test_chem_env_sunburst_empty_coordination_environments() -> None:
+    """Test handling of empty coordination environments."""
+    from unittest.mock import MagicMock, patch
+
+    from pymatgen.core import Lattice, Structure
+
+    lattice = Lattice.cubic(4.0)
+    coords = [[0.0, 0.0, 0.0]]
+    species = ["Fe"]
+    simple_structure = Structure(lattice, species, coords)
+
+    with (
+        patch(
+            "pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder.LocalGeometryFinder"
+        ) as mock_lgf,
+        patch(
+            "pymatgen.analysis.chemenv.coordination_environments.coordination_geometries.AllCoordinationGeometries"
+        ) as mock_geoms,
+    ):
+        # Setup mocks with empty coordination environments
+        mock_lgf_instance = MagicMock()
+        mock_lgf.return_value = mock_lgf_instance
+
+        mock_structure_envs = MagicMock()
+        mock_lgf_instance.compute_structure_environments.return_value = (
+            mock_structure_envs
+        )
+
+        mock_lse = MagicMock()
+        mock_lse.coordination_environments = None  # Empty environments
+
+        with patch(
+            "pymatgen.analysis.chemenv.coordination_environments.structure_environments.LightStructureEnvironments.from_structure_environments"
+        ) as mock_lse_factory:
+            mock_lse_factory.return_value = mock_lse
+
+            mock_geoms_instance = MagicMock()
+            mock_geoms.return_value = mock_geoms_instance
+            mock_geoms_instance.get_symbol_cn_mapping.return_value = {}
+
+            fig = pmv.chem_env_sunburst([simple_structure], chem_env_settings="chemenv")
+
+            # Should return empty figure
+            assert isinstance(fig, go.Figure)
+            assert "No CN/CE data to display" in fig.layout.title.text
 
 
 # Tests for _limit_slices helper function
@@ -568,7 +696,7 @@ def test_limit_slices_edge_cases() -> None:
     """Test edge cases in _limit_slices function."""
     import pandas as pd
 
-    from pymatviz.sunburst import _limit_slices
+    from pymatviz.sunburst.helpers import _limit_slices
 
     # Create test data with more items than limit
     df_test = pd.DataFrame(
@@ -602,7 +730,7 @@ def test_limit_slices_boundary_conditions(max_slices: int, expected_len: int) ->
     """Test boundary conditions in _limit_slices function."""
     import pandas as pd
 
-    from pymatviz.sunburst import _limit_slices
+    from pymatviz.sunburst.helpers import _limit_slices
 
     df_test = pd.DataFrame(
         [
@@ -628,7 +756,7 @@ def test_limit_slices_invalid_mode() -> None:
     """Test _limit_slices with invalid max_slices_mode."""
     import pandas as pd
 
-    from pymatviz.sunburst import _limit_slices
+    from pymatviz.sunburst.helpers import _limit_slices
 
     df_test = pd.DataFrame([{"group": "A", "count": 1}])
     with pytest.raises(ValueError, match="Invalid.*max_slices_mode"):
@@ -656,7 +784,7 @@ def test_limit_slices_child_col_exclusion(
     import pandas as pd
 
     from pymatviz.enums import Key
-    from pymatviz.sunburst import _limit_slices
+    from pymatviz.sunburst.helpers import _limit_slices
 
     df_test = pd.DataFrame(
         [
@@ -705,7 +833,7 @@ def test_limit_slices_child_col_exclusion(
         assert other_row[col] == ""
 
 
-def test_cn_ce_sunburst_m_colon_invalid_parsing() -> None:
+def test_chem_env_sunburst_m_colon_invalid_parsing() -> None:
     """Test M: symbols with invalid CN parsing."""
     from unittest.mock import MagicMock, patch
 
@@ -747,7 +875,50 @@ def test_cn_ce_sunburst_m_colon_invalid_parsing() -> None:
         # Return empty mapping so M: symbols aren't found
         mock_acg_instance.get_symbol_cn_mapping.return_value = {}
 
-        fig = pmv.cn_ce_sunburst([simple_structure])
+        fig = pmv.chem_env_sunburst([simple_structure])
 
         assert isinstance(fig, go.Figure)
         # Should handle invalid M: symbols gracefully by assigning CN=0
+
+
+def test_sunburst_text_wrapping_functionality() -> None:
+    """Test that long chemical environment names are wrapped with line breaks."""
+    import textwrap
+
+    def wrap_text(text: str) -> str:
+        return "<br>".join(
+            textwrap.wrap(text, width=15, break_long_words=True, break_on_hyphens=True)
+        )
+
+    test_cases = [
+        ("short", "short"),
+        ("rectangular see-saw-like:4", "rectangular<br>see-saw-like:4"),
+        ("square-pyramidal:5", "square-<br>pyramidal:5"),
+    ]
+
+    for input_text, expected_output in test_cases:
+        result = wrap_text(input_text)
+        assert result == expected_output
+
+    mock_data = [
+        {"coord_num": 4, "chem_env_symbol": "rectangular see-saw-like:4", "count": 10},
+        {"coord_num": 5, "chem_env_symbol": "short", "count": 5},
+    ]
+
+    from pymatviz.sunburst.chem_env import _process_chem_env_data_sunburst
+
+    fig = _process_chem_env_data_sunburst(
+        chem_env_data=mock_data,
+        max_slices_cn=None,
+        max_slices_ce=None,
+        max_slices_mode="other",
+        show_counts="value",
+    )
+
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
+    assert fig.data[0].type == "sunburst"
+
+    labels = fig.data[0].labels
+    assert any("<br>" in str(label) for label in labels)
+    assert any("short" in str(label) and "<br>" not in str(label) for label in labels)
