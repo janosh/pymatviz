@@ -5,7 +5,6 @@ from __future__ import annotations
 from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -21,11 +20,6 @@ try:
 except PackageNotFoundError:
     pass  # package not installed
 
-
-plt.rc("font", size=16)
-plt.rc("savefig", bbox="tight", dpi=200)
-plt.rc("figure", dpi=200, titlesize=18)
-plt.rcParams["figure.constrained_layout.use"] = True
 
 # activate the pymatviz white/dark templates by setting
 # `pio.templates.default = "pymatviz_white|pymatviz_dark"`
