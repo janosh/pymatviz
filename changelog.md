@@ -133,7 +133,7 @@ All notable changes to this project will be documented in this file. Dates are d
 
 - use `pytest-split` in GitHub Action [`#224`](https://github.com/janosh/pymatviz/pull/224)
 - Vertically/horizontally stacked XRD plots [`#223`](https://github.com/janosh/pymatviz/pull/223)
-- add scaling_factor to pymatviz/ptable/ptable_plotly.py [`#210`](https://github.com/janosh/pymatviz/pull/210)
+- add scaling_factor to pymatviz/ptable/plotly.py [`#210`](https://github.com/janosh/pymatviz/pull/210)
 - Support plotting site vectors like forces/magmoms in `structure_(2|3)d_plotly` [`#220`](https://github.com/janosh/pymatviz/pull/220)
 - Add `add_annotation` functionality for ptable plotters [`#200`](https://github.com/janosh/pymatviz/pull/200)
 - Render spheres with hover tooltip on unit cell corners in `pmv.structure_(2|3)d_plotly` [`#219`](https://github.com/janosh/pymatviz/pull/219)
