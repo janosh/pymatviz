@@ -55,18 +55,18 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 ## Periodic Table
 
-See [`pymatviz/ptable/ptable_plotly.py`](pymatviz/ptable/ptable_plotly.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
+See [`pymatviz/ptable/plotly.py`](pymatviz/ptable/plotly.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
 > [!WARNING]
 > Version 0.16.0 of `pymatviz` dropped the matplotlib-based functions in `ptable_matplotlib.py` in https://github.com/janosh/pymatviz/pull/270. Please use the `plotly`-based functions shown below instead which have feature parity, interactivity and better test coverage.
 
-|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/ptable_plotly.py#L38)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/ptable_plotly.py#L38) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
-| :-----------------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                                           ![ptable-heatmap-plotly-more-hover-data]                                                            |                                                             ![ptable-heatmap-plotly-log]                                                              |
-|               [`ptable_hists_plotly(data)`](pymatviz/ptable/ptable_plotly.py#L398) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/ptable_plotly.py#L1359) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
-|                                                                    ![ptable-hists-plotly]                                                                     |                                                           ![ptable-scatter-plotly-markers]                                                            |
-| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/ptable_plotly.py#L778) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/ptable_plotly.py#L778)                                |
-|                                                               ![ptable-heatmap-splits-plotly-2]                                                               |                                                           ![ptable-heatmap-splits-plotly-3]                                                           |
+|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/plotly.py#L38)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/plotly.py#L38) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
+| :----------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------: |
+|                                                        ![ptable-heatmap-plotly-more-hover-data]                                                        |                                                          ![ptable-heatmap-plotly-log]                                                          |
+|               [`ptable_hists_plotly(data)`](pymatviz/ptable/plotly.py#L398) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/plotly.py#L1359) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
+|                                                                 ![ptable-hists-plotly]                                                                 |                                                        ![ptable-scatter-plotly-markers]                                                        |
+| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/plotly.py#L778) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/plotly.py#L778)                                |
+|                                                           ![ptable-heatmap-splits-plotly-2]                                                            |                                                       ![ptable-heatmap-splits-plotly-3]                                                        |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
 [ptable-heatmap-plotly-more-hover-data]: assets/svg/ptable-heatmap-plotly-more-hover-data.svg
@@ -270,9 +270,9 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 See [`pymatviz/bar.py`](pymatviz/bar.py).
 
-| [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](pymatviz/bar.py#L29) [![fig-icon]](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/bar.py#L29) |
-| :--------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
-|                                                       ![spg-num-hist-plotly]                                                       |                                 ![spg-symbol-hist-plotly]                                  |
+| [`spacegroup_bar([65, 134, 225, ...])`](pymatviz/bar.py#L29) [![fig-icon]](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/bar.py#L29) |
+| :--------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
+|                                              ![spg-num-hist-plotly]                                              |                        ![spg-symbol-hist-plotly]                         |
 
 [spg-symbol-hist-plotly]: assets/svg/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: assets/svg/spg-num-hist-plotly.svg

@@ -45,6 +45,11 @@ def regression(
     noise = np_rng.normal(loc=0, scale=1, size=n_samples)
     y_pred = pred_slope * y_true + pred_intercept + noise
 
-    y_std = (y_true - y_pred) * 10 * np_rng.normal(loc=0, scale=0.1, size=n_samples)
+    # Generate realistic positive uncertainties
+    # Base uncertainty that's correlated with absolute residuals but always positive
+    abs_residuals = np.abs(y_true - y_pred)
+    y_std = (
+        0.5 + 0.3 * abs_residuals + 0.8 * np_rng.exponential(scale=1, size=n_samples)
+    )
 
     return RegressionData(y_true=y_true, y_pred=y_pred, y_std=y_std)

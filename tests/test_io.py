@@ -4,14 +4,11 @@ import os
 import sys
 import urllib.request
 from pathlib import Path
-from shutil import which
 from typing import TYPE_CHECKING
 from unittest.mock import patch
-from xml.etree import ElementTree as ET
 
 import plotly.graph_objects as go
 import pytest
-from matplotlib import pyplot as plt
 
 import pymatviz as pmv
 
@@ -24,7 +21,6 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
-@pytest.mark.parametrize("fig", [go.Figure(), plt.figure()])
 @pytest.mark.parametrize("ext", ["html", "svelte", "png", "svg", "pdf"])
 @pytest.mark.parametrize(
     "plotly_config", [None, {"showTips": True}, {"scrollZoom": True}]
@@ -32,20 +28,18 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize("env_disable", [[], ["CI"]])
 @patch.dict(os.environ, {"CI": "1"})
 def test_save_fig(
-    fig: go.Figure | plt.Figure | plt.Axes,
     ext: str,
     tmp_path: Path,
     plotly_config: dict[str, Any] | None,
     env_disable: list[str],
 ) -> None:
-    if isinstance(fig, plt.Figure) and ext in ("svelte", "html"):
-        pytest.skip("saving to Svelte file not supported for matplotlib figures")
-
-    if isinstance(fig, go.Figure) and ext in ("png", "svg", "pdf"):
+    if ext in ("png", "svg", "pdf"):
         pytest.skip(
             "Kaleido seems broken in CI as of 2025-05-18, skipping Plotly image "
             "export test."
         )
+    fig = go.Figure()
+    fig.add_scatter(x=[1, 2], y=[3, 4])
 
     path = f"{tmp_path}/fig.{ext}"
     pmv.save_fig(fig, path, plotly_config=plotly_config, env_disable=env_disable)
@@ -312,6 +306,14 @@ def test_df_to_svg(
     width: int,
     height: int,
 ) -> None:
+    pytest.skip(
+        "df_to_svg unsupported since dropping matplotlib in https://github.com/janosh/pymatviz/pull/305"
+    )
+
+    from shutil import which
+    from unittest.mock import patch
+    from xml.etree import ElementTree as ET
+
     file_path = tmp_path / "test_df_to.svg"
 
     obj = df_float.style if use_styler else df_float

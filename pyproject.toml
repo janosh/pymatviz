@@ -11,7 +11,6 @@ keywords = [
     "data analysis",
     "data visualization",
     "materials informatics",
-    "matplotlib",
     "plotly",
 ]
 classifiers = [
@@ -25,8 +24,7 @@ classifiers = [
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.11"
 dependencies = [
-    "kaleido==0.2.1",  # strict pin needed, see https://github.com/plotly/Kaleido/issues/292
-    "matplotlib>=3.9",
+    "kaleido==0.2.1", # strict pin needed, see https://github.com/plotly/Kaleido/issues/292
     "numpy>=2",
     # output-formatting needed for pandas Stylers,
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml

@@ -11,13 +11,8 @@ from shutil import which
 from time import sleep
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
-from matplotlib import lines as mlines
-from matplotlib import patches as mpatches
-from matplotlib.backends.backend_agg import RendererAgg
-from matplotlib.figure import Figure
 from tqdm import tqdm
 
 import pymatviz as pmv
@@ -71,7 +66,7 @@ class TqdmDownload(tqdm):
 
 
 def save_fig(
-    fig: go.Figure | plt.Figure | plt.Axes,
+    fig: go.Figure,
     path: str,
     *,
     plotly_config: dict[str, Any] | None = None,
@@ -80,17 +75,15 @@ def save_fig(
     style: str = "",
     prec: int | None = None,  # Added round keyword argument
     template: str | None = None,
-    transparent_bg: bool = True,
     **kwargs: Any,
 ) -> None:
-    """Write a plotly or matplotlib figure to disk (as HTML/PDF/SVG/...).
+    """Write a plotly figure to disk (as HTML/PDF/SVG/...).
 
     If the file is has .svelte extension, insert `{...$$props}` into the figure's
     top-level div so it can be later styled and customized from Svelte code.
 
     Args:
-        fig (go.Figure | plt.Figure | plt.Axes): Plotly or matplotlib Figure or
-            matplotlib Axes object.
+        fig (go.Figure): Plotly Figure object.
         path (str): Path to image file that will be created.
         plotly_config (dict, optional): Configuration options for fig.write_html().
             Defaults to dict(showTips=False, responsive=True, modeBarButtonsToRemove=
@@ -100,8 +93,7 @@ def save_fig(
             variables are set. Defaults to ("CI",).
         pdf_sleep (float, optional): Minimum time in seconds to wait before writing a
             plotly figure to PDF file. Workaround for this plotly issue
-            https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6. Has no
-            effect on matplotlib figures.
+            https://github.com/plotly/plotly.py/issues/3469. Defaults to 0.6.
         style (str, optional): CSS style string to be inserted into the HTML file.
             Defaults to "". Only used if path ends with .svelte or .html.
         prec (int, optional): Number of significant digits to keep for any float
@@ -109,10 +101,7 @@ def save_fig(
             usually 4, 5, 6.
         template (str, optional): Temporary plotly to apply to the figure before
             saving. Will be reset to the original after. Defaults to "pymatviz_white" if
-            path ends with .pdf or .pdfa, else None. Set to None to disable. Only used
-            if fig is a plotly figure.
-        transparent_bg (bool): Whether to save matplotlib figures with transparent
-            background. Use False to show background colors.
+            path ends with .pdf or .pdfa, else None. Set to None to disable.
         **kwargs: Keyword arguments passed to fig.write_html().
     """
     is_pdf = path.lower().endswith((".pdf", ".pdfa"))
@@ -135,17 +124,9 @@ def save_fig(
                 ]
     if any(var in os.environ for var in env_disable):
         return
-    # handle matplotlib figures
-    if isinstance(fig, plt.Figure | plt.Axes):
-        if hasattr(fig, "figure"):
-            fig = fig.figure  # unwrap Axes
-        fig.savefig(path, **kwargs | dict(transparent=transparent_bg))
-        return
+
     if not isinstance(fig, go.Figure):
-        raise TypeError(
-            f"Unsupported figure type {type(fig)}, expected plotly or matplotlib Figure"
-            " or plt.Axes"
-        )
+        raise TypeError(f"Unsupported figure type {type(fig)}, expected plotly Figure")
     if path.lower().endswith((".svelte", ".html")):
         config = dict(
             showTips=False,
@@ -199,10 +180,8 @@ def save_fig(
 
 
 def save_and_compress_svg(
-    fig: go.Figure | plt.Figure | plt.Axes,
+    fig: go.Figure,
     filename: str,
-    *,
-    transparent_bg: bool = True,
 ) -> None:
     """Save Plotly figure as SVG and HTML to assets/ folder.
     Compresses SVG file with svgo CLI if available in PATH.
@@ -211,28 +190,21 @@ def save_and_compress_svg(
     relative to assets/ folder. This function is mostly meant for pymatviz internal use.
 
     Args:
-        fig (Figure): Plotly or matplotlib Figure/Axes instance.
+        fig (go.Figure): Plotly Figure instance.
         filename (str): Name of SVG file (w/o extension).
-        transparent_bg (bool): Whether to save matplotlib figures
-            with transparent background. Use False to show
-            background colors.
 
     Raises:
-        ValueError: If fig is None and plt.gcf() is empty.
+        ValueError: If fig is None.
     """
-    if isinstance(fig, plt.Axes):
-        fig = fig.figure
-
-    if isinstance(fig, plt.Figure) and not fig.axes:
-        raise ValueError("Passed fig contains no axes. Nothing to plot!")
+    if not isinstance(fig, go.Figure):
+        raise TypeError("fig must be a plotly Figure instance")
 
     if not filename.endswith(".svg") and not os.path.isabs(filename):
         filepath = f"{ROOT}/assets/svg/{filename}.svg"
     else:
         filepath = filename
 
-    pmv.save_fig(fig, filepath, transparent_bg=transparent_bg)
-    plt.close()
+    pmv.save_fig(fig, filepath)
 
     # Compress SVG if svgo is available
     if (svgo := which("svgo")) is not None:
@@ -479,11 +451,10 @@ def df_to_svg(
     font_size: int = 14,
     compress: bool = True,
     **kwargs: Any,
-) -> Figure:
+) -> None:
     """Export a pandas DataFrame or Styler to an SVG file and optionally compress it.
 
-    TODO The SVG output has annoying margins that proved hard to remove. The goal is for
-    this function to auto-crop the SVG viewBox to the content in the future.
+    Note: This function requires matplotlib for rendering.
 
     Args:
         obj (DataFrame | Styler): DataFrame or Styler object to save as SVG.
@@ -494,11 +465,20 @@ def df_to_svg(
         **kwargs: Passed to matplotlib.figure.Figure.savefig().
 
     Returns:
-        Figure: Matplotlib Figure conversion of the DataFrame or Styler.
+        None
 
     Raises:
+        ImportError: If matplotlib dependencies are not available.
         subprocess.CalledProcessError: If SVG compression fails.
     """
+    try:
+        from matplotlib import lines as mlines
+        from matplotlib import patches as mpatches
+        from matplotlib.backends.backend_agg import RendererAgg
+        from matplotlib.figure import Figure
+    except ImportError:
+        raise ImportError("df_to_svg requires matplotlib") from None
+
     import bs4
     import cssutils
     from pandas.io.formats.style import Styler
@@ -681,5 +661,3 @@ def df_to_svg(
             warnings.warn(
                 "svgo not found in PATH. SVG compression skipped.", stacklevel=2
             )
-
-    return fig

@@ -9,14 +9,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import pymatviz as pmv
-from pymatviz.powerups.plotly import (
-    add_ecdf_line,
-    select_colorscale,
-    select_marker_mode,
-    toggle_grid,
-    toggle_log_linear_x_axis,
-    toggle_log_linear_y_axis,
-)
+from pymatviz import powerups
 
 
 pmv.set_plotly_template("pymatviz_white")
@@ -31,7 +24,7 @@ gauss2 = np_rng.normal(10, 2, rand_regression_size)
 
 # %% ECDF line
 fig = pmv.histogram({"Gaussian 1": gauss1, "Gaussian 2": gauss2}, bins=200)
-add_ecdf_line(fig)
+powerups.add_ecdf_line(fig)
 fig.layout.title.update(text="Histogram with ECDF Lines", x=0.5)
 fig.layout.margin.t = 50
 fig.show()
@@ -43,7 +36,7 @@ y = np.exp(x / 100)
 fig = go.Figure(go.Scatter(x=x, y=y, mode="lines+markers"))
 fig.layout.title.update(text="Exponential Growth", x=0.5)
 fig.layout.margin.t = 50
-fig.layout.updatemenus = [toggle_log_linear_x_axis]
+fig.layout.updatemenus = [powerups.toggle_log_linear_x_axis]
 fig.show()
 
 
@@ -55,7 +48,7 @@ y = np.sin(t)
 fig = go.Figure(go.Scatter(x=x, y=y, mode="lines"))
 fig.layout.title.update(text="Parametric Curve (cos(t), sin(t))", x=0.5)
 fig.layout.margin.t = 50
-fig.layout.updatemenus = [toggle_grid]
+fig.layout.updatemenus = [powerups.toggle_grid]
 fig.show()
 
 
@@ -64,7 +57,7 @@ z = np.random.default_rng(seed=0).standard_normal((50, 50))
 fig = go.Figure(data=go.Heatmap(z=z))
 fig.layout.title.update(text="Random Heatmap with Colorscale Toggle", x=0.5)
 fig.layout.margin.t = 50
-fig.layout.updatemenus = [select_colorscale]
+fig.layout.updatemenus = [powerups.select_colorscale]
 fig.show()
 
 
@@ -74,7 +67,7 @@ y = np.sin(t)
 fig = go.Figure(go.Scatter(x=t, y=y))
 fig.layout.title.update(text="Sine Wave with Plot Type Toggle", x=0.5)
 fig.layout.margin.t = 50
-fig.layout.updatemenus = [select_marker_mode]
+fig.layout.updatemenus = [powerups.select_marker_mode]
 fig.show()
 
 
@@ -92,9 +85,11 @@ fig = px.scatter(
 fig.layout.title.update(text="Gapminder 2007: GDP per Capita vs Life Expectancy", x=0.5)
 fig.layout.margin.t = 50
 fig.layout.updatemenus = [
-    toggle_log_linear_x_axis | dict(x=1.2, y=0.12, xanchor="right", yanchor="bottom"),
-    toggle_log_linear_y_axis | dict(x=1.2, y=0.02, xanchor="right", yanchor="bottom"),
-    toggle_grid | dict(x=0.02, y=1, xanchor="left", yanchor="top"),
+    powerups.toggle_log_linear_x_axis
+    | dict(x=1.2, y=0.12, xanchor="right", yanchor="bottom"),
+    powerups.toggle_log_linear_y_axis
+    | dict(x=1.2, y=0.02, xanchor="right", yanchor="bottom"),
+    powerups.toggle_grid | dict(x=0.02, y=1, xanchor="left", yanchor="top"),
 ]
 fig.show()
 

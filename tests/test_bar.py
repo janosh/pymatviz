@@ -3,12 +3,10 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import pytest
 
 from pymatviz.bar import spacegroup_bar
-from pymatviz.typing import BACKENDS, MATPLOTLIB, PLOTLY
 
 
 if TYPE_CHECKING:
@@ -16,10 +14,7 @@ if TYPE_CHECKING:
 
     from pymatgen.core import Structure
 
-    from pymatviz.typing import Backend
 
-
-@pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize(
     ("xticks", "show_counts", "show_empty_bins", "log"),
     [
@@ -32,31 +27,26 @@ if TYPE_CHECKING:
 def test_spacegroup_bar(
     spg_symbols: list[str],
     structures: list[Structure],
-    backend: Backend,
     xticks: Literal["all", "crys_sys_edges", 1, 50],
     show_counts: bool,
     show_empty_bins: bool,
     log: bool,
 ) -> None:
+    """Test spacegroup_bar function with Plotly backend."""
     # test spacegroups as integers
     fig = spacegroup_bar(
         range(1, 231),
         xticks=xticks,
         show_counts=show_counts,
         show_empty_bins=show_empty_bins,
-        backend=backend,
         log=log,
     )
-    assert isinstance(fig, plt.Axes if backend == MATPLOTLIB else go.Figure)
-    y_min, y_max = fig.get_ylim() if backend == MATPLOTLIB else fig.layout.yaxis.range
+    assert isinstance(fig, go.Figure)
+    y_min, y_max = fig.layout.yaxis.range
     assert y_min == 0
     # next line randomly started failing in CI on 2024-07-06
     if "CI" not in os.environ:
-        assert y_max == pytest.approx(
-            0.02118929
-            if log and backend == PLOTLY
-            else (1.05 if backend == PLOTLY else 1.4774554)
-        ), f"{y_max=} {log=} {backend=}"
+        assert y_max == pytest.approx(0.02118929 if log else 1.05), f"{y_max=} {log=}"
 
     # test spacegroups as symbols
     fig = spacegroup_bar(
@@ -64,14 +54,14 @@ def test_spacegroup_bar(
         xticks=xticks,
         show_counts=show_counts,
         show_empty_bins=show_empty_bins,
-        backend=backend,
     )
+    assert isinstance(fig, go.Figure)
 
     # test spacegroups determined on-the-fly from structures
-    spacegroup_bar(
+    fig = spacegroup_bar(
         structures,
         xticks=xticks,
         show_counts=show_counts,
         show_empty_bins=show_empty_bins,
-        backend=backend,
     )
+    assert isinstance(fig, go.Figure)

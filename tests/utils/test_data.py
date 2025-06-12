@@ -4,20 +4,18 @@ import re
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
-import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 import pytest
-from matplotlib.offsetbox import TextArea
 
 import pymatviz as pmv
-from pymatviz.typing import MATPLOTLIB, PLOTLY, VALID_FIG_NAMES, CrystalSystem
-from pymatviz.utils.plotting import _get_matplotlib_font_color, _get_plotly_font_color
+from pymatviz.utils.plotting import _get_plotly_font_color
 
 
 if TYPE_CHECKING:
     from typing import Any
+
+    from pymatviz.typing import CrystalSystem
 
 
 @pytest.mark.parametrize(
@@ -185,22 +183,8 @@ def test_html_tag(text: str, tag: str, title: str, style: str) -> None:
     )
 
 
-def test_pretty_label() -> None:
-    assert pmv.utils.pretty_label("R2", MATPLOTLIB) == "$R^2$"
-    assert pmv.utils.pretty_label("R2", PLOTLY) == "R<sup>2</sup>"
-    assert pmv.utils.pretty_label("R2_adj", MATPLOTLIB) == "$R^2_{adj}$"
-    assert pmv.utils.pretty_label("R2_adj", PLOTLY) == "R<sup>2</sup><sub>adj</sub>"
-    assert pmv.utils.pretty_label("foo", MATPLOTLIB) == "foo"
-    assert pmv.utils.pretty_label("foo", PLOTLY) == "foo"
-
-    with pytest.raises(ValueError, match="Unexpected backend='foo'"):
-        pmv.utils.pretty_label("R2", "foo")  # type: ignore[arg-type]
-
-
 @pytest.mark.parametrize("color", ["red", "blue", "#FF0000"])
-def test_annotate(
-    color: str, plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
-) -> None:
+def test_annotate(color: str, plotly_scatter: go.Figure) -> None:
     text = "Test annotation"
 
     fig_plotly = pmv.utils.annotate(text, plotly_scatter, color=color)
@@ -208,20 +192,9 @@ def test_annotate(
     assert fig_plotly.layout.annotations[-1].text == text
     assert fig_plotly.layout.annotations[-1].font.color == color
 
-    fig_mpl = pmv.utils.annotate(text, matplotlib_scatter, color=color)
-    assert isinstance(fig_mpl, plt.Figure)
-    assert isinstance(fig_mpl.axes[0].artists[-1].txt, TextArea)
-    assert fig_mpl.axes[0].artists[-1].txt.get_text() == text
-    assert fig_mpl.axes[0].artists[-1].txt._text.get_color() == color
-
-    ax_mpl = pmv.utils.annotate(text, matplotlib_scatter.axes[0], color=color)
-    assert isinstance(ax_mpl, plt.Axes)
-    assert ax_mpl.artists[-1].txt.get_text() == text
-    assert ax_mpl.artists[-1].txt._text.get_color() == color
-
 
 def test_annotate_invalid_fig() -> None:
-    with pytest.raises(TypeError, match="Input must be .+ got type"):
+    with pytest.raises(TypeError, match="Expected plotly Figure"):
         pmv.utils.annotate("test", fig="invalid")
 
 
@@ -288,43 +261,19 @@ def test_annotate_kwargs(plotly_scatter: go.Figure, kwargs: dict[str, Any]) -> N
             assert getattr(fig.layout.annotations[-1], key) == val
 
 
-def test_validate_fig_decorator_raises(capsys: pytest.CaptureFixture[str]) -> None:
-    @pmv.utils.validate_fig
-    def generic_func(fig: Any = None, **kwargs: Any) -> Any:
-        return fig, kwargs
-
-    # check no error on valid fig types
-    for fig in (None, go.Figure(), plt.gcf(), plt.gca()):
-        generic_func(fig=fig)
-        stdout, stderr = capsys.readouterr()
-        assert stdout == ""
-        assert stderr == ""
-
-    # check TypeError on invalid fig types
-    for invalid in (42, "invalid"):
-        with pytest.raises(
-            TypeError, match=f"Unexpected type for fig: {type(invalid).__name__}"
-        ):
-            generic_func(fig=invalid)
-
-
-def test_get_fig_xy_range(
-    plotly_scatter: go.Figure, matplotlib_scatter: plt.Figure
-) -> None:
-    for fig in (plotly_scatter, matplotlib_scatter, matplotlib_scatter.axes[0]):
-        x_range, y_range = pmv.utils.get_fig_xy_range(fig)
-        assert isinstance(x_range, tuple)
-        assert isinstance(y_range, tuple)
-        assert len(x_range) == 2
-        assert len(y_range) == 2
-        assert x_range[0] < x_range[1]
-        assert y_range[0] < y_range[1]
-        assert {*map(type, (*x_range, *y_range))} <= {float, np.float64}
+def test_get_fig_xy_range(plotly_scatter: go.Figure) -> None:
+    x_range, y_range = pmv.utils.get_fig_xy_range(plotly_scatter)
+    assert isinstance(x_range, tuple)
+    assert isinstance(y_range, tuple)
+    assert len(x_range) == 2
+    assert len(y_range) == 2
+    assert x_range[0] < x_range[1]
+    assert y_range[0] < y_range[1]
 
     # test invalid input
     # currently suboptimal behavior: fig must be passed as kwarg to trigger helpful
     # error message
-    with pytest.raises(TypeError, match="Unexpected type for fig: str, must be one of"):
+    with pytest.raises(TypeError, match="Expected plotly Figure"):
         pmv.utils.get_fig_xy_range(fig="invalid")
 
 
@@ -332,15 +281,9 @@ def test_get_font_color() -> None:
     orig_template = pio.templates.default
     try:
         pio.templates.default = "plotly"
-        mpl_fig = plt.figure()
-        mpl_ax = mpl_fig.add_subplot(111)
-        for fig, expected_color in (
-            (go.Figure(), "#2a3f5f"),
-            (mpl_fig, "black"),
-            (mpl_ax, "black"),
-        ):
-            color = pmv.utils.get_font_color(fig)
-            assert color == expected_color, f"{fig=}, {color=}, {expected_color=}"
+        fig = go.Figure()
+        color = pmv.utils.get_font_color(fig)
+        assert color == "#2a3f5f"
     finally:
         pio.templates.default = orig_template
 
@@ -348,7 +291,7 @@ def test_get_font_color() -> None:
 def test_get_font_color_invalid_input() -> None:
     fig = "invalid input"
     with pytest.raises(
-        TypeError, match=re.escape(f"Input must be {VALID_FIG_NAMES}, got {type(fig)=}")
+        TypeError, match=re.escape(f"Input must be plotly Figure, got {type(fig)=}")
     ):
         pmv.utils.get_font_color(fig)
 
@@ -379,36 +322,6 @@ def test_get_plotly_font_color_from_template() -> None:
 def test_get_plotly_font_color(color: str) -> None:
     fig = go.Figure().update_layout(font_color=color)
     assert _get_plotly_font_color(fig) == color
-
-
-@pytest.mark.parametrize("color", ["red", "#00FF00", "blue"])
-def test_get_matplotlib_font_color(color: str) -> None:
-    color_result = _get_matplotlib_font_color(plt.figure())
-    assert color_result == "black"  # Default color
-
-    fig, ax = plt.subplots()
-    assert _get_matplotlib_font_color(fig) == _get_matplotlib_font_color(ax) == "black"
-
-    mpl_ax = plt.figure().add_subplot(111)
-    mpl_ax.xaxis.label.set_color(color)
-    assert _get_matplotlib_font_color(mpl_ax) == color
-
-
-def test_get_matplotlib_font_color_from_rcparams() -> None:
-    original_color = plt.rcParams["text.color"]
-    try:
-        plt.rcParams["text.color"] = "green"
-        fig, ax = plt.subplots()
-        ax.set_xlabel("X Label", color="green")
-        ax.set_ylabel("Y Label", color="green")
-        ax.set_title("Title", color="green")
-        ax.tick_params(colors="green")
-        plt.close(fig)  # Close the figure to ensure changes are applied
-
-        color = _get_matplotlib_font_color(ax)
-        assert color == "green"
-    finally:
-        plt.rcParams["text.color"] = original_color  # Reset to original value
 
 
 def test_hm_symbol_to_spg_num_map() -> None:
