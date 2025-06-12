@@ -19,18 +19,25 @@ if TYPE_CHECKING:
 
 
 def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
-    ax = elements_hist(glass_formulas)
-    assert isinstance(ax, plt.Axes)
-    plt.clf()
+    """Test elements histogram with various parameters."""
+    fig = elements_hist(glass_formulas)
+    assert isinstance(fig, go.Figure)
 
-    ax = elements_hist(glass_formulas, log=True)
-    plt.clf()
+    fig = elements_hist(glass_formulas, log_y=True)
+    assert isinstance(fig, go.Figure)
 
-    ax = elements_hist(glass_formulas, keep_top=10)
-    plt.clf()
+    fig = elements_hist(glass_formulas, keep_top=10)
+    assert isinstance(fig, go.Figure)
 
-    elements_hist(glass_formulas, keep_top=10, bar_values="count")
-    plt.clf()
+    fig = elements_hist(glass_formulas, keep_top=10, show_values="count")
+    assert isinstance(fig, go.Figure)
+
+    fig = elements_hist(glass_formulas, show_values=None)
+    assert isinstance(fig, go.Figure)
+
+    # Test with custom parameters
+    fig = elements_hist(glass_formulas, bar_width=0.5, opacity=0.9)
+    assert isinstance(fig, go.Figure)
 
 
 @pytest.mark.parametrize("log_y", [True, False])
