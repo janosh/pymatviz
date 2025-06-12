@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
 
-from pymatviz.bar import spacegroup_bar
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
 from pymatviz.typing import BACKENDS, MATPLOTLIB, PLOTLY, Backend
@@ -20,17 +18,6 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     from pymatviz.typing import ElemValues
-
-
-def spacegroup_hist(*args: Any, **kwargs: Any) -> plt.Axes | go.Figure:
-    """Alias for spacegroup_bar."""
-    warnings.warn(
-        "spacegroup_hist() is deprecated and will be removed in a future version. "
-        "use pymatviz.bar.spacegroup_bar() instead.",
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-    return spacegroup_bar(*args, **kwargs)
 
 
 def elements_hist(
