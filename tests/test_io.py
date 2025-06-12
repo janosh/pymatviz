@@ -306,7 +306,9 @@ def test_df_to_svg(
     width: int,
     height: int,
 ) -> None:
-    pytest.importorskip("matplotlib")
+    pytest.skip(
+        "df_to_svg unsupported since dropping matplotlib in https://github.com/janosh/pymatviz/pull/305"
+    )
 
     from shutil import which
     from unittest.mock import patch

@@ -27,7 +27,7 @@ if TYPE_CHECKING:
         ("#00FF00", 0.7152),  # Green
         ("#0000FF", 0.0722),  # Blue
         ("red", 0.2126),
-        ("green", 0.15438),  # Matplotlib's green
+        ("green", 0.7152),  # Web/CSS/Plotly green
         ("blue", 0.0722),
         # RGB color string tests
         ("rgb(255, 0, 0)", 0.2126),  # Red in RGB format
@@ -110,15 +110,15 @@ def test_luminance_with_edge_cases() -> None:
     assert abs(pmv.utils.luminance("white") - 1.0) < 0.01
     assert abs(pmv.utils.luminance("red") - 0.2126) < 0.01
 
-    # The actual value for "green" in matplotlib is different from pure green
+    # The actual value for 'green' in web/CSS/Plotly is 0.7152
     green_lum = pmv.utils.luminance("green")
-    assert 0.15 < green_lum < 0.16
+    assert abs(green_lum - 0.7152) < 0.01
 
     # Test with blue
     assert abs(pmv.utils.luminance("blue") - 0.0722) < 0.01
 
     # Test with invalid color
-    with pytest.raises(ValueError, match="Invalid RGBA argument: 'not_a_color'"):
+    with pytest.raises(ValueError, match="Unsupported color format: not_a_color"):
         pmv.utils.luminance("not_a_color")
 
 

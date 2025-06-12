@@ -46,17 +46,13 @@ def annotate(text: str | Sequence[str], fig: go.Figure, **kwargs: Any) -> go.Fig
     Raises:
         TypeError: If fig is not a Plotly figure.
     """
-    color = kwargs.pop("color", get_font_color(fig))
-
     if not isinstance(fig, go.Figure):
         raise TypeError(f"Expected plotly Figure, got {type(fig)}")
 
+    color = kwargs.pop("color", get_font_color(fig))
+
     text_defaults = dict(
-        x=0.02,
-        y=0.96,
-        showarrow=False,
-        font=dict(size=16, color=color),
-        align="left",
+        x=0.02, y=0.96, showarrow=False, font=dict(size=16, color=color), align="left"
     )
 
     # Annotate all subplots or main plot if not faceted
