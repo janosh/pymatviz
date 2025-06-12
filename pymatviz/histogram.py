@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
 
 from pymatviz.enums import ElemCountMode
 from pymatviz.process_data import count_elements
-from pymatviz.typing import BACKENDS, MATPLOTLIB, PLOTLY, Backend
 
 
 if TYPE_CHECKING:
@@ -96,22 +94,20 @@ def histogram(
     density: bool = False,
     bin_width: float = 1.2,
     log_y: bool = False,
-    backend: Backend = PLOTLY,
     fig_kwargs: dict[str, Any] | None = None,
     **kwargs: Any,
-) -> plt.Figure | go.Figure:
-    """Get a histogram with plotly (default) or matplotlib backend but using fast numpy
-    pre-processing before handing the data off to the plot function.
+) -> go.Figure:
+    """Get a histogram using Plotly with fast numpy pre-processing.
 
     Very common use case when dealing with large datasets so worth having a dedicated
-    function for it. Two advantages over the matplotlib/plotly native histograms are
+    function for it. Two advantages over the plotly native histograms are
     much faster and much smaller file sizes (when saving plotly figs as HTML since
     plotly saves a complete copy of the data to disk from which it recomputes the
     histogram on the fly to render the figure).
     Speedup example:
 
         gaussian = np.random.normal(0, 1, 1_000_000_000)
-        plot_histogram(gaussian)  # takes 17s
+        histogram(gaussian)  # takes 17s
         px.histogram(gaussian)  # ran for 3m45s before crashing the Jupyter kernel
 
     Args:
@@ -125,18 +121,12 @@ def histogram(
         bin_width (float, optional): The width of the histogram bins as a fraction of
             distance between bin edges. Defaults to 1.2 (20% overlap).
         log_y (bool, optional): Whether to log scale the y-axis. Defaults to False.
-        backend (str, optional): The plotting backend to use. Can be either 'matplotlib'
-            or 'plotly'. Defaults to 'plotly'.
-        fig_kwargs (dict, optional): Additional keyword arguments to pass to the figure
-            creation function (plt.figure for Matplotlib or go.Figure for Plotly).
-        **kwargs: Additional keyword arguments to pass to the plotting function
-            (plt.bar for Matplotlib or go.Figure.add_bar for Plotly).
+        fig_kwargs (dict, optional): Additional keywords passed to go.Figure().
+        **kwargs: Additional keyword arguments to pass to go.Figure.add_bar().
 
     Returns:
-        plt.Figure | go.Figure: The figure object containing the histogram.
+        go.Figure: The Plotly figure object containing the histogram.
     """
-    fig_kwargs = fig_kwargs or {}
-
     # if values was a Series, extract the name attribute to use as legend label
     x_axis_title = getattr(values, "name", "Value")
     data = values if isinstance(values, dict) else {x_axis_title: values}
@@ -159,45 +149,21 @@ def histogram(
     else:
         bin_edges = np.asarray(bins)
 
-    if backend == MATPLOTLIB:
-        fig = plt.figure(**fig_kwargs)
-        for label, vals in data.items():
-            hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
-            plt.bar(
-                bin_edges[:-1],
-                hist_vals,
-                label=label,
-                alpha=0.7,
-                width=bin_width * (bin_edges[1] - bin_edges[0]),
-                align="edge",
-                **kwargs,
-            )
+    fig = go.Figure(**fig_kwargs or {})
+    for label, vals in data.items():
+        hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
+        fig.add_bar(
+            x=bin_edges[:-1],
+            y=hist_vals,
+            name=label,
+            opacity=0.7,
+            width=bin_width * (bin_edges[1] - bin_edges[0]),
+            marker_line_width=0,
+            **kwargs,
+        )
 
-        plt.yscale("log" if log_y else "linear")
-        plt.ylabel("Density" if density else "Count")
-        plt.xlabel(x_axis_title)
-
-        if len(data) > 1:
-            plt.legend()
-
-    elif backend == PLOTLY:
-        fig = go.Figure(**fig_kwargs)
-        for label, vals in data.items():
-            hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
-            fig.add_bar(
-                x=bin_edges[:-1],
-                y=hist_vals,
-                name=label,
-                opacity=0.7,
-                width=bin_width * (bin_edges[1] - bin_edges[0]),
-                marker_line_width=0,
-            )
-
-        y_title = "Density" if density else "Count"
-        fig.update_yaxes(type="log" if log_y else "linear", title=y_title)
-        fig.update_xaxes(title=x_axis_title)
-
-    else:
-        raise ValueError(f"Unsupported {backend=}. Must be one of {BACKENDS}")
+    y_title = "Density" if density else "Count"
+    fig.update_yaxes(type="log" if log_y else "linear", title=y_title)
+    fig.update_xaxes(title=x_axis_title)
 
     return fig
