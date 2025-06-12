@@ -18,8 +18,13 @@ import os
 
 import pandas as pd
 import requests
+from pymatgen.core import Structure
 
 import pymatviz as pmv
+from pymatviz.enums import Key
+
+
+pmv.set_plotly_template("pymatviz_white")
 
 
 # %% Download data (if needed)
@@ -33,7 +38,7 @@ else:
     dataset_url = f"{url}/camd_data_to_release_{with_feat_str}features.json"
     data = requests.get(dataset_url, timeout=10).json()
     df_camd = pd.DataFrame(data)
-    df_camd = pd.to_csv(f"camd-2022-{with_feat_str}-features.csv.bz2")
+    df_camd = df_camd.to_csv(f"camd-2022-{with_feat_str}-features.csv.bz2")
 
 
 # %%
@@ -41,7 +46,9 @@ df_camd.hist(bins=50)
 
 
 # %%
-elem_counts = pmv.count_elements(df_camd.reduced_formula)
+df_camd[Key.structure] = df_camd[Key.structure].map(Structure.from_dict)
+df_camd[Key.formula] = [struct.reduced_formula for struct in df_camd[Key.structure]]
+elem_counts = pmv.count_elements(df_camd[Key.formula])
 fig = pmv.ptable_heatmap_plotly(elem_counts, log=True)
 fig.layout.title.update(text="<b>Elements in CAMD 2022 dataset</b>")
 fig.show()
@@ -49,8 +56,8 @@ fig.show()
 
 
 # %%
-ax = df_camd.data_source.value_counts().plot.bar(fontsize=18, rot=0)
-pmv.powerups.annotate_bars(ax, v_offset=3e3)
+fig = df_camd.data_source.value_counts().plot.bar(backend="plotly")
+fig.show()
 
 
 # %%

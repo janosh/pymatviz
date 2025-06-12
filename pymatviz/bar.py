@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from matplotlib import transforms
-from matplotlib.ticker import FixedLocator
 
 from pymatviz.enums import Key
-from pymatviz.typing import PLOTLY
 from pymatviz.utils import si_fmt_int, spg_to_crystal_sys
 
 
@@ -23,8 +19,6 @@ if TYPE_CHECKING:
 
     from pymatgen.core import Structure
 
-    from pymatviz.typing import Backend
-
 
 def spacegroup_bar(
     data: Sequence[int | str | Structure] | pd.Series,
@@ -32,13 +26,10 @@ def spacegroup_bar(
     show_counts: bool = True,
     xticks: Literal["all", "crys_sys_edges"] | int = 20,
     show_empty_bins: bool = False,
-    ax: plt.Axes | None = None,
-    backend: Backend = PLOTLY,
-    text_kwargs: dict[str, Any] | None = None,
     log: bool = False,
     **kwargs: Any,
-) -> plt.Axes | go.Figure:
-    """Plot a histogram of spacegroups shaded by crystal system.
+) -> go.Figure:
+    """Plot a histogram of spacegroups shaded by crystal system using Plotly.
 
     Args:
         data (list[int | str | Structure] | pd.Series): Space group strings or numbers
@@ -52,17 +43,11 @@ def spacegroup_bar(
         show_empty_bins (bool, optional): Whether to include a 0-height bar for missing
             space groups missing from the data. Currently only implemented for numbers,
             not symbols. Defaults to False.
-        ax (Axes, optional): matplotlib Axes on which to plot. Defaults to None.
-        backend ("matplotlib" | "plotly", optional): Which backend to use for plotting.
-            Defaults to "plotly".
-        text_kwargs (dict, optional): Keyword arguments passed to
-            matplotlib.Axes.text(). Defaults to None. Has no effect if backend is
-            "plotly".
         log (bool, optional): Whether to log scale the y-axis. Defaults to False.
-        kwargs: Keywords passed to pd.Series.plot.bar() or plotly.express.bar().
+        **kwargs: Keywords passed to plotly.express.bar().
 
     Returns:
-        plt.Axes | go.Figure: matplotlib Axes or plotly Figure depending on backend.
+        go.Figure: Plotly Figure object.
     """
     if type(next(iter(data))).__qualname__ in ("Structure", "Atoms"):
         # if 1st sequence item is pymatgen structure or ASE Atoms, assume all are
@@ -128,143 +113,69 @@ def spacegroup_bar(
     x_range = (0, len(df_data) - 1)
 
     fig_title = f"{count_col} per crystal system" if show_counts else None
-    if backend == PLOTLY:
-        df_plot = df_data if show_empty_bins else df_data.reset_index()
+    df_plot = df_data if show_empty_bins else df_data.reset_index()
 
-        fig = px.bar(
-            df_plot,
-            x=df_plot.index,
-            y=count_col,
-            color=df_data[Key.crystal_system],
-            color_discrete_map=crystal_sys_colors,
-            **kwargs,
-        )
-        # add vertical lines between crystal systems and fill area with color
-        x0 = x1 = 0
-        for idx, (crys_sys, count, width, color) in enumerate(
-            crys_sys_counts.itertuples()
-        ):
-            prev_width = x1 - x0 if idx > 0 else 0
-            x1 = x0 + width
-            anno = dict(
-                text=crys_sys,
-                font_size=14,
-                x=(x0 + x1) / 2,
-                textangle=90,
-                xanchor="center",
-            )
-            fig.add_vrect(
-                x0=x0,
-                x1=x1,
-                fillcolor=color,
-                opacity=0.15,
-                line=dict(width=1),
-                annotation=anno,
-            )
-            # add percent annotation
-            if show_counts:
-                fig.add_annotation(
-                    text=f"{si_fmt_int(count)} ({count / len(data):.0%})",
-                    x=(x0 + x1) / 2,
-                    y=1,
-                    # shift count up if bar is so narrow it overlaps with neighbors
-                    yshift=16 if (width + prev_width < 15 and idx % 2 == 1) else 0,
-                    showarrow=False,
-                    font_size=12,
-                    yref="paper",
-                    yanchor="bottom",
-                )
-            x0 += width
-
-        fig.layout.showlegend = False
-        fig.layout.title = dict(text=fig_title, x=0.5)
-        fig.layout.xaxis.update(showgrid=False, title=x_label, range=x_range)
-        count_max = df_data[count_col].max()
-        y_max = np.log10(count_max * 1.05) if log else count_max * 1.05
-        fig.layout.yaxis.update(range=(0, y_max), type="log" if log else None)
-        fig.layout.margin = dict(l=0, r=0, t=40, b=0)
-
-        if isinstance(xticks, int):
-            # get x_locs of n=xticks tallest bars
-            x_indices = df_data.reset_index()[count_col].nlargest(xticks).index
-            tick_text = df_data.iloc[x_indices].index
-        elif xticks == "crys_sys_edges":
-            # add x_locs of n=xticks tallest bars
-            x_indices = crys_sys_counts.width.cumsum()
-            tick_text = df_data.index[x_indices - 1]
-        elif xticks == "all":
-            x_indices = df_data.reset_index().index
-            tick_text = df_data.index
-        else:
-            raise ValueError(
-                f"Invalid {xticks=}, must be int, 'all' or 'crys_sys_edges'"
-            )
-
-        fig.update_xaxes(tickvals=x_indices, ticktext=tick_text, tickangle=90)
-
-        return fig
-
-    ax = ax or plt.gca()
-    # keep this above df.plot.bar()! order matters
-    ax.set(ylabel=count_col, xlim=x_range)
-
-    bar_defaults = dict(width=0.9)  # set default histogram bar width
-    df_data[count_col].plot.bar(figsize=[16, 4], ax=ax, **bar_defaults | kwargs)
-
-    ax.set_title(fig_title, fontdict={"fontsize": 18}, pad=30)
-    ax.set(xlabel=x_label)
-
-    # https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/fill_between_demo
-    transform = transforms.blended_transform_factory(ax.transData, ax.transAxes)
-
-    # add crystal system labels and dividers
-    x0 = 0
-    for crys_sys, count, width, color in crys_sys_counts.itertuples():
+    fig = px.bar(
+        df_plot,
+        x=df_plot.index,
+        y=count_col,
+        color=df_data[Key.crystal_system],
+        color_discrete_map=crystal_sys_colors,
+        **kwargs,
+    )
+    # add vertical lines between crystal systems and fill area with color
+    x0 = x1 = 0
+    for idx, (crys_sys, count, width, color) in enumerate(crys_sys_counts.itertuples()):
+        prev_width = x1 - x0 if idx > 0 else 0
         x1 = x0 + width
-
-        for patch in ax.patches[0 if x0 == 1 else x0 : x1 + 1]:
-            patch.set_facecolor(color)
-
-        text_kwargs = dict(transform=transform, horizontalalignment="center") | (
-            text_kwargs or {}
+        anno = dict(
+            text=crys_sys, font_size=14, x=(x0 + x1) / 2, textangle=90, xanchor="center"
         )
-        crys_sys_anno_kwargs = dict(
-            rotation=90, va="top", ha="right", fontdict={"fontsize": 14}
+        fig.add_vrect(
+            x0=x0,
+            x1=x1,
+            fillcolor=color,
+            opacity=0.15,
+            line=dict(width=1),
+            annotation=anno,
         )
-        ax.text(*[(x0 + x1) / 2, 0.95], crys_sys, **crys_sys_anno_kwargs | text_kwargs)
+        # add percent annotation
         if show_counts:
-            ax.text(
-                *[(x0 + x1) / 2, 1.02],
-                f"{si_fmt_int(count)} ({count / len(data):.0%})",
-                **dict(fontdict={"fontsize": 12}) | text_kwargs,
+            fig.add_annotation(
+                text=f"{si_fmt_int(count)} ({count / len(data):.0%})",
+                x=(x0 + x1) / 2,
+                y=1,
+                # shift count up if bar is so narrow it overlaps with neighbors
+                yshift=16 if (width + prev_width < 15 and idx % 2 == 1) else 0,
+                showarrow=False,
+                font_size=12,
+                yref="paper",
+                yanchor="bottom",
             )
-
-        ax.fill_between(
-            [x0 - 0.5, x1 - 0.5],
-            *[0, 1],
-            facecolor=color,
-            alpha=0.1,
-            transform=transform,
-            edgecolor="black",
-        )
         x0 += width
 
-    ax.yaxis.grid(visible=True)
-    ax.xaxis.grid(visible=False)
-    ax.set_ylim(0, None)
-    if log:
-        ax.set_yscale("log")
+    fig.layout.showlegend = False
+    fig.layout.title = dict(text=fig_title, x=0.5)
+    fig.layout.xaxis.update(showgrid=False, title=x_label, range=x_range)
+    count_max = df_data[count_col].max()
+    y_max = np.log10(count_max * 1.05) if log else count_max * 1.05
+    fig.layout.yaxis.update(range=(0, y_max), type="log" if log else None)
+    fig.layout.margin = dict(l=0, r=0, t=40, b=0)
 
-    if xticks == "crys_sys_edges" or isinstance(xticks, int):
-        if isinstance(xticks, int):
-            # get x_locs of n=xticks tallest bars
-            x_indices = df_data.reset_index().sort_values(count_col).tail(xticks).index
-        else:
-            # add x_locs of n=xticks tallest bars
-            x_indices = crys_sys_counts.width.cumsum()
+    if isinstance(xticks, int):
+        # get x_locs of n=xticks tallest bars
+        x_indices = df_data.reset_index()[count_col].nlargest(xticks).index
+        tick_text = df_data.iloc[x_indices].index
+    elif xticks == "crys_sys_edges":
+        # add x_locs of n=xticks tallest bars
+        x_indices = crys_sys_counts.width.cumsum()
+        tick_text = df_data.index[x_indices - 1]
+    elif xticks == "all":
+        x_indices = df_data.reset_index().index
+        tick_text = df_data.index
+    else:
+        raise ValueError(f"Invalid {xticks=}, must be int, 'all' or 'crys_sys_edges'")
 
-        major_loc = FixedLocator(x_indices)
+    fig.update_xaxes(tickvals=x_indices, ticktext=tick_text, tickangle=90)
 
-        ax.xaxis.set_major_locator(major_loc)
-    plt.xticks(rotation=90)
-    return ax
+    return fig

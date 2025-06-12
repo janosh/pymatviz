@@ -9,14 +9,7 @@ import pytest
 from plotly.graph_objs.layout import Updatemenu
 from plotly.subplots import make_subplots
 
-from pymatviz.powerups.plotly import (
-    add_ecdf_line,
-    select_colorscale,
-    select_marker_mode,
-    toggle_grid,
-    toggle_log_linear_x_axis,
-    toggle_log_linear_y_axis,
-)
+from pymatviz import powerups
 
 
 if TYPE_CHECKING:
@@ -41,7 +34,7 @@ def test_add_ecdf_line(
     expected_color: str,
     expected_dash: str,
 ) -> None:
-    fig = add_ecdf_line(plotly_scatter, trace_kwargs=trace_kwargs, traces=0)
+    fig = powerups.add_ecdf_line(plotly_scatter, trace_kwargs=trace_kwargs, traces=0)
     assert isinstance(fig, go.Figure)
 
     ecdf_trace = fig.data[-1]
@@ -69,7 +62,7 @@ def test_add_ecdf_line_stacked() -> None:
     fig.add_bar(x=x, y=y2, name="Group 2")
     fig.update_layout(barmode="stack")
 
-    fig = add_ecdf_line(fig, values=np.concatenate([y1, y2]))
+    fig = powerups.add_ecdf_line(fig, values=np.concatenate([y1, y2]))
 
     assert len(fig.data) == 3
     ecdf_trace = fig.data[-1]
@@ -94,7 +87,7 @@ def test_add_ecdf_line_faceted() -> None:
     assert n_orig_traces == 4
 
     # Use default behavior (all traces)
-    fig = add_ecdf_line(fig)
+    fig = powerups.add_ecdf_line(fig)
 
     # We should have exactly 8 traces: 4 original + 4 ECDF traces (1 per original trace)
     assert len(fig.data) == 2 * n_orig_traces
@@ -123,7 +116,7 @@ def test_add_ecdf_line_all_traces() -> None:
     fig.add_scatter(x=[4, 5, 6], y=[4, 5, 6], name="Trace 2")
 
     # Default behavior should now be all traces
-    fig = add_ecdf_line(fig)
+    fig = powerups.add_ecdf_line(fig)
 
     # Should have 2 original traces + 2 ECDF traces
     assert len(fig.data) == 4
@@ -143,7 +136,7 @@ def test_add_ecdf_line_all_traces() -> None:
 
 def test_add_ecdf_line_histogram() -> None:
     fig = go.Figure(go.Histogram(x=[1, 2, 2, 3, 3, 3, 4, 4, 4, 4]))
-    fig = add_ecdf_line(fig)
+    fig = powerups.add_ecdf_line(fig)
 
     assert len(fig.data) == 2
     ecdf_trace = fig.data[-1]
@@ -162,7 +155,7 @@ def test_add_ecdf_line_histogram() -> None:
 
 def test_add_ecdf_line_bar() -> None:
     fig = go.Figure(go.Bar(x=[1, 2, 3, 4], y=[1, 2, 3, 4]))
-    fig = add_ecdf_line(fig)
+    fig = powerups.add_ecdf_line(fig)
 
     assert len(fig.data) == 2
     ecdf_trace = fig.data[-1]
@@ -182,9 +175,9 @@ def test_add_ecdf_line_raises() -> None:
     for fig in (None, "foo", 42.0):
         with pytest.raises(
             TypeError,
-            match=f"{fig=} must be instance of plotly.graph_objs._figure.Figure",
+            match=f"{fig=} must be instance of go.Figure",
         ):
-            add_ecdf_line(fig)
+            powerups.add_ecdf_line(fig)
 
     # check ValueError when x-values cannot be auto-determined
     fig_violin = px.violin(x=[1, 2, 3], y=[4, 5, 6])
@@ -193,19 +186,19 @@ def test_add_ecdf_line_raises() -> None:
     with pytest.raises(
         TypeError, match=f"Cannot auto-determine x-values for ECDF from {qual_name}"
     ):
-        add_ecdf_line(fig_violin)
+        powerups.add_ecdf_line(fig_violin)
 
     # check ValueError disappears when passing x-values explicitly
-    fig_with_ecdf = add_ecdf_line(fig_violin, values=[1, 2, 3])
+    fig_with_ecdf = powerups.add_ecdf_line(fig_violin, values=[1, 2, 3])
     assert len(fig_with_ecdf.data) == 2
     assert fig_with_ecdf.data[1].name == "Cumulative"
 
 
 def test_toggle_log_linear_y_axis(plotly_scatter: go.Figure) -> None:
     fig = plotly_scatter
-    assert isinstance(toggle_log_linear_y_axis, dict)
+    assert isinstance(powerups.toggle_log_linear_y_axis, dict)
     assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [toggle_log_linear_y_axis]
+    fig.layout.updatemenus = [powerups.toggle_log_linear_y_axis]
 
     # check that figure now has "Log Y"/"Linear Y" toggle buttons
     buttons = fig.layout.updatemenus[0].buttons
@@ -227,9 +220,9 @@ def test_toggle_log_linear_y_axis(plotly_scatter: go.Figure) -> None:
 
 def test_toggle_log_linear_x_axis(plotly_scatter: go.Figure) -> None:
     fig = plotly_scatter
-    assert isinstance(toggle_log_linear_x_axis, dict)
+    assert isinstance(powerups.toggle_log_linear_x_axis, dict)
     assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [toggle_log_linear_x_axis]
+    fig.layout.updatemenus = [powerups.toggle_log_linear_x_axis]
 
     # check that figure now has "Log X"/"Linear X" toggle buttons
     buttons = fig.layout.updatemenus[0].buttons
@@ -251,9 +244,9 @@ def test_toggle_log_linear_x_axis(plotly_scatter: go.Figure) -> None:
 
 def test_toggle_grid(plotly_scatter: go.Figure) -> None:
     fig = plotly_scatter
-    assert isinstance(toggle_grid, dict)
+    assert isinstance(powerups.toggle_grid, dict)
     assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [toggle_grid]
+    fig.layout.updatemenus = [powerups.toggle_grid]
 
     # check that figure now has "Show Grid"/"Hide Grid" toggle buttons
     buttons = fig.layout.updatemenus[0].buttons
@@ -281,9 +274,9 @@ def test_toggle_grid(plotly_scatter: go.Figure) -> None:
 def test_select_colorscale() -> None:
     # make a dummy heatmap
     fig = go.Figure(go.Heatmap(z=[[1, 2], [3, 4]]))
-    assert isinstance(select_colorscale, dict)
+    assert isinstance(powerups.select_colorscale, dict)
     assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [select_colorscale]
+    fig.layout.updatemenus = [powerups.select_colorscale]
 
     # check that figure now has colorscale toggle buttons
     buttons = fig.layout.updatemenus[0].buttons
@@ -297,9 +290,9 @@ def test_select_colorscale() -> None:
 
 def test_select_marker_mode(plotly_scatter: go.Figure) -> None:
     fig = plotly_scatter
-    assert isinstance(select_marker_mode, dict)
+    assert isinstance(powerups.select_marker_mode, dict)
     assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [select_marker_mode]
+    fig.layout.updatemenus = [powerups.select_marker_mode]
 
     # check that figure now has plot type toggle buttons
     buttons = fig.layout.updatemenus[0].buttons
@@ -320,10 +313,10 @@ def test_select_marker_mode(plotly_scatter: go.Figure) -> None:
 @pytest.mark.parametrize(
     ("powerup", "expected_buttons", "expected_type"),
     [
-        (toggle_log_linear_x_axis, 2, "buttons"),
-        (toggle_grid, 2, "buttons"),
-        (select_colorscale, 4, "buttons"),
-        (select_marker_mode, 3, "buttons"),
+        (powerups.toggle_log_linear_x_axis, 2, "buttons"),
+        (powerups.toggle_grid, 2, "buttons"),
+        (powerups.select_colorscale, 4, "buttons"),
+        (powerups.select_marker_mode, 3, "buttons"),
     ],
 )
 def test_powerup_structure(
@@ -348,16 +341,16 @@ def test_multiple_powerups(plotly_scatter: go.Figure) -> None:
     fig = plotly_scatter
     assert fig.layout.updatemenus == ()
 
-    powerups = [
-        toggle_log_linear_x_axis,
-        toggle_grid,
-        select_colorscale,
-        select_marker_mode,
+    powerup_list = [
+        powerups.toggle_log_linear_x_axis,
+        powerups.toggle_grid,
+        powerups.select_colorscale,
+        powerups.select_marker_mode,
     ]
-    fig.layout.updatemenus = powerups
+    fig.layout.updatemenus = powerup_list
 
-    assert len(fig.layout.updatemenus) == len(powerups)
-    for idx, powerup in enumerate(powerups):
+    assert len(fig.layout.updatemenus) == len(powerup_list)
+    for idx, powerup in enumerate(powerup_list):
         muni_i: Updatemenu = fig.layout.updatemenus[idx]
         assert muni_i == Updatemenu(powerup), f"{idx=}"
         assert isinstance(muni_i, Updatemenu)
@@ -383,7 +376,7 @@ def test_add_ecdf_line_color_matching() -> None:
 
     # Add ECDF lines one by one (mimics adding to specific traces)
     for idx in range(len(fig_explicit.data)):
-        fig_explicit = add_ecdf_line(fig_explicit, traces=idx)
+        fig_explicit = powerups.add_ecdf_line(fig_explicit, traces=idx)
 
     assert len(fig_explicit.data) == 2 * len(explicit_colors)
 
@@ -405,7 +398,7 @@ def test_add_ecdf_line_color_matching() -> None:
     default_colorway = px.colors.qualitative.Plotly
 
     # Add ECDF lines using the default (all traces)
-    fig_colorway = add_ecdf_line(fig_colorway)
+    fig_colorway = powerups.add_ecdf_line(fig_colorway)
 
     assert len(fig_colorway.data) == 2 * n_traces_colorway
 
@@ -439,7 +432,7 @@ def test_add_ecdf_line_color_matching() -> None:
         )
 
     # Add ECDF lines using the default (all traces)
-    fig_mixed = add_ecdf_line(fig_mixed)
+    fig_mixed = powerups.add_ecdf_line(fig_mixed)
 
     assert len(fig_mixed.data) == 2 * len(mixed_colors)
 
@@ -462,11 +455,11 @@ def test_add_ecdf_line_annotation_positioning() -> None:
 
     # Add ECDF line with text annotation
     trace_kwargs = {"text": "Annotation 1"}
-    fig = add_ecdf_line(fig, traces=0, trace_kwargs=trace_kwargs)
+    fig = powerups.add_ecdf_line(fig, traces=0, trace_kwargs=trace_kwargs)
 
     # Add second ECDF line with text annotation
     trace_kwargs = {"text": "Annotation 2"}
-    fig = add_ecdf_line(fig, traces=1, trace_kwargs=trace_kwargs)
+    fig = powerups.add_ecdf_line(fig, traces=1, trace_kwargs=trace_kwargs)
 
     # Check that we have the right number of traces
     assert len(fig.data) == 4  # 2 original traces + 2 ECDF lines
@@ -483,7 +476,7 @@ def test_add_ecdf_line_annotation_positioning() -> None:
     fig.add_scatter(x=[1, 2, 3, 4, 5], y=[3, 3, 3, 3, 3], name="Trace 3")
 
     # Now add a third ECDF line
-    fig = add_ecdf_line(fig, traces=4, trace_kwargs={"text": "Annotation 3"})
+    fig = powerups.add_ecdf_line(fig, traces=4, trace_kwargs={"text": "Annotation 3"})
 
     # Check that the operation was successful
     assert len(fig.data) == 6  # 3 original traces + 3 ECDF lines

@@ -21,6 +21,9 @@ import pymatviz as pmv
 from pymatviz.enums import Key
 
 
+pmv.set_plotly_template("pymatviz_white")
+
+
 # %%
 df_perov = load_dataset("matbench_perovskites")
 
@@ -60,10 +63,8 @@ fig.show()
 
 
 # %%
-fig = df_perov[Key.crystal_system].value_counts().plot.bar(rot="horizontal")
+fig = df_perov[Key.crystal_system].value_counts().plot.bar(backend="plotly")
 fig.layout.title.update(text="Crystal systems in Matbench Perovskites")
-pmv.powerups.annotate_bars(fig, v_offset=250)
-
 fig.show()
 # pmv.save_fig(fig, "perovskites-crystal-system-counts.pdf")
 

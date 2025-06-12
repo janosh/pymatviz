@@ -1,15 +1,14 @@
-"""Visualizations for assessing the quality of model uncertainty estimates."""
+"""Uncertainty calibration visualizations."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from scipy.stats import norm
 
-import pymatviz as pmv
 from pymatviz.process_data import df_to_arrays
 
 
@@ -26,179 +25,99 @@ def qq_gaussian(
     y_std: ArrayLike | dict[str, ArrayLike] | str | Sequence[str],
     *,
     df: pd.DataFrame | None = None,
-    ax: plt.Axes | None = None,
+    fig: go.Figure | None = None,
     identity_line: bool | dict[str, Any] = True,
-) -> plt.Axes:
-    """Plot the Gaussian quantile-quantile (Q-Q) plot of one (passed as array) or
-    multiple (passed as dict) sets of uncertainty estimates for a single pair of ground
-    truth targets `y_true` and model predictions `y_pred`.
-
-    Overconfidence relative to a Gaussian distribution is visualized as shaded
-    areas below the parity line, underconfidence (oversized uncertainties) as
-    shaded areas above the parity line.
-
-    The measure of calibration is how well the uncertainty percentiles conform
-    to those of a normal distribution.
-
-    Inspired by https://git.io/JufOz.
-    Info on Q-Q plots: https://wikipedia.org/wiki/Q-Q_plot
+) -> go.Figure:
+    """Q-Q Gaussian plot for uncertainty calibration assessment.
 
     Args:
-        y_true (array | str): Ground truth targets
-        y_pred (array | str): Model predictions
-        y_std (array | dict[str, array] | str | list[str]): Model uncertainties either
-            as array(s) (single or dict with labels if you have multiple sources of
-            uncertainty) or column names in df.
-        df (pd.DataFrame, optional): DataFrame with y_true, y_pred and y_std columns.
-        ax (Axes): matplotlib Axes on which to plot. Defaults to None.
-        identity_line (bool | dict[str, Any], optional): Whether to add a parity line
-            (y = x). Defaults to True. Pass a dict to customize line properties.
+        y_true: Ground truth targets
+        y_pred: Model predictions
+        y_std: Uncertainties (single array or dict for multiple)
+        df: DataFrame containing data columns
+        fig: Existing plotly figure to add to
+        identity_line: Show perfect calibration line
 
     Returns:
-        plt.Axes: matplotlib Axes object
+        go.Figure: plotly Figure with Q-Q plot
     """
     if isinstance(y_std, str | pd.Index):
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    if not isinstance(y_true, np.ndarray):
-        raise TypeError(f"Expect y_true as np.ndarray, got {type(y_true).__name__}")
-    if not isinstance(y_pred, np.ndarray):
-        raise TypeError(f"Expect y_pred as np.ndarray, got {type(y_pred).__name__}")
-    ax = ax or plt.gca()
 
+    y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)  # Type narrowing
+
+    fig = fig or go.Figure()
     if not isinstance(y_std, dict):
         y_std = {"std": y_std}
 
-    res = np.abs(y_pred - y_true)
-    resolution = 100
+    # Calculate Q-Q data
+    res = y_pred - y_true  # Signed residuals
+    eps = 1e-10
+    exp_proportions = np.linspace(eps, 1 - eps, 100)
 
-    lines = []  # collect plotted lines to show second legend with miscalibration areas
+    if identity_line:
+        line_props = (
+            identity_line.get("line_kwargs", {})
+            if isinstance(identity_line, dict)
+            else {}
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[0, 1],
+                y=[0, 1],
+                mode="lines",
+                name="Perfect calibration",
+                line=dict(color=line_props.get("color", "red"), width=1, dash="dash"),
+                showlegend=False,
+            )
+        )
+
     for key, std in y_std.items():
-        z_scored = (np.array(res) / std).reshape(-1, 1)
+        z_scored = (res / std).reshape(-1, 1)
+        obs_proportions = np.mean(z_scored <= norm.ppf(exp_proportions), axis=0)
+        miscal_area = np.trapezoid(np.abs(obs_proportions - exp_proportions), dx=0.01)
 
-        exp_proportions = np.linspace(0, 1, resolution)
-        gaussian_upper_bound = norm.ppf(0.5 + exp_proportions / 2)
-        obs_proportions = np.mean(z_scored <= gaussian_upper_bound, axis=0)
-
-        [line] = ax.plot(
-            exp_proportions, obs_proportions, linewidth=2, alpha=0.8, label=key
-        )
-        ax.fill_between(
-            exp_proportions, y1=obs_proportions, y2=exp_proportions, alpha=0.2
-        )
-        miscal_area = np.trapezoid(
-            np.abs(obs_proportions - exp_proportions), dx=1 / resolution
-        )
-        lines.append([line, miscal_area])
-
-    if identity_line:  # guiding line for perfect calibration
-        pmv.powerups.add_identity_line(
-            ax, **(identity_line if isinstance(identity_line, dict) else {})
+        # Invisible reference line for fill
+        fig.add_trace(
+            go.Scatter(
+                x=exp_proportions,
+                y=exp_proportions,
+                mode="lines",
+                line=dict(width=0),
+                showlegend=False,
+                hoverinfo="skip",
+            )
         )
 
-    ax.set(xlim=(0, 1), ylim=(0, 1))
-    ax.set(xlabel="Theoretical Quantile", ylabel="Observed Quantile")
-
-    legend1 = ax.legend(loc="upper left", frameon=False)
-    # Multiple legends on the same axes:
-    # https://matplotlib.org/3.3.3/tutorials/intermediate/legend_guide.html#multiple-legends-on-the-same-axes
-    ax.add_artist(legend1)
-
-    lines, areas = zip(*lines, strict=True)  # type: ignore[assignment]
-
-    if len(lines) > 1:
-        legend2 = ax.legend(
-            lines,
-            [f"{area:.2f}" for area in areas],
-            title="Miscalibration areas",
-            loc="lower right",
-            ncol=2,
-            frameon=False,
-        )
-        # https://stackoverflow.com/a/44620643
-        legend2._legend_box.align = "left"
-    else:
-        ax.legend(
-            lines,
-            [f"Miscalibration area: {areas[0]:.2f}"],
-            loc="lower right",
-            frameon=False,
+        # Q-Q line with fill
+        fig.add_trace(
+            go.Scatter(
+                x=exp_proportions,
+                y=obs_proportions,
+                mode="lines",
+                name=f"{key} (miscal: {miscal_area:.2f})",
+                line=dict(width=2),
+                opacity=0.8,
+                fill="tonexty",
+                fillcolor="rgba(128,128,128,0.2)",
+            )
         )
 
-    return ax
-
-
-def get_err_decay(
-    y_true: ArrayLike, y_pred: ArrayLike, n_rand: int = 100
-) -> tuple[ArrayLike, ArrayLike]:
-    """Calculate the model's error curve as samples are excluded from the calculation
-    based on their absolute error.
-
-    Use in combination with get_std_decay to see what the error drop curve would look
-    like if model error and uncertainty were perfectly rank-correlated.
-
-    Args:
-        y_true (array): ground truth targets
-        y_pred (array): model predictions
-        n_rand (int, optional): Number of randomly ordered sample exclusions over which
-            to average to estimate dummy performance. Defaults to 100.
-
-    Returns:
-        Tuple[array, array]: Drop off in errors as data points are dropped based on
-            model uncertainties and randomly, respectively.
-    """
-    abs_err = np.abs(y_true - y_pred)
-    # increasing count of the number of samples in each element of cumsum()
-    n_inc = range(1, len(abs_err) + 1)
-
-    decay_by_err = np.sort(abs_err).cumsum() / n_inc
-
-    # error decay for random exclusion of samples
-    abs_err_tile = np.tile(abs_err, [n_rand, 1])
-
-    for row in abs_err_tile:
-        np.random.default_rng(seed=0).shuffle(row)  # shuffle rows of ae_tile in place
-
-    rand = abs_err_tile.cumsum(1) / n_inc
-
-    return decay_by_err, rand.std(0)
-
-
-def get_std_decay(y_true: ArrayLike, y_pred: ArrayLike, y_std: ArrayLike) -> ArrayLike:
-    """Calculate the drop in model error as samples are excluded from the calculation
-    based on the model's uncertainty.
-
-    For model's able to estimate their own uncertainty well, meaning predictions of
-    larger error are associated with larger uncertainty, the error curve should fall
-    off sharply at first as the highest-error points are discarded and slowly towards
-    the end where only small-error samples with little uncertainty remain.
-
-    Note that even perfect model uncertainties would not mean this error drop curve
-    coincides exactly with the one returned by get_err_decay as in some cases the model
-    may have made an accurate prediction purely by chance in which case the error is
-    small yet a good uncertainty estimate would still be large, leading the same sample
-    to be excluded at different x-axis locations and thus the get_std_decay curve to lie
-    higher.
-
-    Args:
-        y_true (array): ground truth targets
-        y_pred (array): model predictions
-        y_std (array): model's predicted uncertainties
-
-    Returns:
-        array: Error decay as data points are excluded by order of largest to smallest
-            model uncertainties.
-    """
-    abs_err = np.abs(y_true - y_pred)
-
-    # indices that sort y_std in ascending uncertainty
-    y_std_sort = np.argsort(y_std)
-
-    # increasing count of the number of samples in each element of cumsum()
-    n_inc = range(1, len(abs_err) + 1)
-
-    return abs_err[y_std_sort].cumsum() / n_inc
+    fig.update_layout(
+        xaxis=dict(title="Theoretical Quantile", range=[0, 1]),
+        yaxis=dict(title="Observed Quantile", range=[0, 1]),
+        legend=dict(
+            x=0.02,
+            y=0.98,
+            xanchor="left",
+            yanchor="top",
+            bgcolor="rgba(255,255,255,0.8)",
+            borderwidth=0,
+        ),
+    )
+    return fig
 
 
 def error_decay_with_uncert(
@@ -209,78 +128,100 @@ def error_decay_with_uncert(
     df: pd.DataFrame | None = None,
     n_rand: int = 100,
     percentiles: bool = True,
-    ax: plt.Axes | None = None,
-) -> plt.Axes:
-    """Plot for assessing the quality of uncertainty estimates. If a model's uncertainty
-    is well calibrated, i.e. strongly correlated with its error, removing the most
-    uncertain predictions should make the mean error decay similarly to how it decays
-    when removing the predictions of largest error.
+    fig: go.Figure | None = None,
+) -> go.Figure:
+    """Error decay plot as uncertain samples are excluded.
 
     Args:
-        y_true (array | str): Ground truth regression targets.
-        y_pred (array | str): Model predictions.
-        y_std (array | dict[str, ArrayLike] | str | list[str]): Model uncertainties.
-            Can be single or multiple uncertainties (e.g. aleatoric/epistemic/total
-            uncertainty) as dict.
-        n_rand (int, optional): Number of shuffles from which to compute std.dev.
-            of error decay by random ordering. Defaults to 100.
-        df (pd.DataFrame, optional): DataFrame with y_true, y_pred and y_std columns.
-        percentiles (bool, optional): Whether the x-axis shows percentiles or number
-            of remaining samples in the MAE calculation. Defaults to True.
-        ax (Axes): matplotlib Axes on which to plot. Defaults to None.
-
-    Note: If you're not happy with the default y_max of 1.1 * rand_mean, where rand_mean
-    is mean of random sample exclusion, use ax.set(ylim=[None, some_value *
-    ax.get_ylim()[1]]).
+        y_true: Ground truth targets
+        y_pred: Model predictions
+        y_std: Uncertainties (single array or dict for multiple)
+        df: DataFrame containing data columns
+        n_rand: Random shuffles for baseline
+        percentiles: Use percentiles vs sample count on x-axis
+        fig: Existing plotly figure to add to
 
     Returns:
-        plt.Axes: matplotlib Axes object with plotted model error drop curve based on
-            excluding data points by order of large to small model uncertainties.
+        Plotly figure with error decay plot
     """
     if isinstance(y_std, str | pd.Index):
         y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
     else:
         y_true, y_pred = df_to_arrays(df, y_true, y_pred)
-    if not isinstance(y_true, np.ndarray):
-        raise TypeError(f"Expect y_true as np.ndarray, got {type(y_true).__name__}")
-    if not isinstance(y_pred, np.ndarray):
-        raise TypeError(f"Expect y_pred as np.ndarray, got {type(y_pred).__name__}")
 
-    ax = ax or plt.gca()
+    y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)  # Type narrowing
 
-    xs = range(100 if percentiles else len(y_true), 0, -1)
-
+    fig = fig or go.Figure()
     if not isinstance(y_std, dict):
         y_std = {"std": y_std}
 
-    for key in y_std:
-        decay_by_std = get_std_decay(y_true, y_pred, y_std[key])
+    # Calculate error decay curves
+    abs_err = np.abs(y_true - y_pred)
+    n_samples = len(abs_err)
+    xs = list(range(100 if percentiles else n_samples, 0, -1))
 
+    # Add uncertainty-based decay lines
+    for key, std in y_std.items():
+        # Sort by uncertainty and calculate cumulative error
+        decay = abs_err[np.argsort(std)].cumsum() / np.arange(1, n_samples + 1)
         if percentiles:
-            decay_by_std = np.percentile(decay_by_std, xs[::-1])
+            decay = np.percentile(decay, xs[::-1])
+        fig.add_scatter(x=xs, y=decay, mode="lines", name=key)
 
-        ax.plot(xs, decay_by_std, label=key)
+    # Optimal error-based decay
+    decay_optimal = np.sort(abs_err).cumsum() / np.arange(1, n_samples + 1)
+    if percentiles:
+        decay_optimal = np.percentile(decay_optimal, xs[::-1])
+    fig.add_scatter(x=xs, y=decay_optimal, mode="lines", name="error")
 
-    decay_by_err, rand_std = get_err_decay(y_true, y_pred, n_rand)
+    # Add random baseline with confidence interval
+    rand_mean = abs_err.mean()
+    # Calculate random std dev
+    abs_err_tile = np.tile(abs_err, [n_rand, 1])
+    rng = np.random.default_rng(seed=0)
+    for row in abs_err_tile:
+        rng.shuffle(row)
+    rand_std = abs_err_tile.cumsum(1).std(0) / np.arange(1, n_samples + 1)
 
     if percentiles:
-        decay_by_err, rand_std = (
-            np.percentile(ys, xs[::-1]) for ys in [decay_by_err, rand_std]
-        )
+        rand_std = np.percentile(rand_std, xs[::-1])
 
-    rand_mean = np.abs(y_true - y_pred).mean()
-    rand_hi, rand_lo = rand_mean + rand_std, rand_mean - rand_std
+    x_range = [1, 100] if percentiles else [n_samples, 0]
+    x_fill = xs[::-1] if percentiles else xs
 
-    ax.plot(xs, decay_by_err, label="error")
-    ax.plot([1, 100] if percentiles else [len(xs), 0], [rand_mean, rand_mean])
-    ax.fill_between(
-        xs[::-1] if percentiles else xs, rand_hi, rand_lo, alpha=0.2, label="random"
+    # Random mean line
+    fig.add_scatter(
+        x=x_range,
+        y=[rand_mean, rand_mean],
+        mode="lines",
+        name="random (mean)",
+        line=dict(dash="dash"),
+        showlegend=False,
     )
-    ax.set(ylim=[0, rand_mean.mean() * 1.3], ylabel="MAE")
 
-    # n: Number of remaining points in error calculation after discarding the
-    # (len(y_true) - n) most uncertain/hightest-error points
-    ax.set(xlabel="Confidence percentiles" if percentiles else "Excluded samples")
-    ax.legend(loc="lower left")
+    # Random confidence interval
+    fig.add_scatter(
+        x=x_fill,
+        y=rand_mean + rand_std,
+        mode="lines",
+        line=dict(width=0),
+        showlegend=False,
+        hoverinfo="skip",
+    )
+    fig.add_scatter(
+        x=x_fill,
+        y=rand_mean - rand_std,
+        mode="lines",
+        fill="tonexty",
+        fillcolor="rgba(128,128,128,0.2)",
+        line=dict(width=0),
+        name="random",
+        hoverinfo="skip",
+    )
 
-    return ax
+    fig.layout.xaxis = dict(
+        title="Confidence percentiles" if percentiles else "Excluded samples"
+    )
+    fig.layout.yaxis = dict(title="MAE", range=[0, rand_mean * 1.3])
+
+    return fig
