@@ -40,6 +40,7 @@ from pymatviz import (
     utils,
     xrd,
 )
+from pymatviz.bar import spacegroup_bar
 from pymatviz.brillouin import brillouin_zone_3d
 from pymatviz.classify import precision_recall_curve_plotly, roc_curve_plotly
 from pymatviz.classify.confusion_matrix import confusion_matrix

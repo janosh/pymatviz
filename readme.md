@@ -270,9 +270,9 @@ See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
 See [`pymatviz/bar.py`](pymatviz/bar.py).
 
-| [`spacegroup_bar([65, 134, 225, ...], backend="plotly")`](pymatviz/bar.py#L29) [![fig-icon]](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...], backend="plotly")`](pymatviz/bar.py#L29) |
-| :--------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
-|                                                       ![spg-num-hist-plotly]                                                       |                                 ![spg-symbol-hist-plotly]                                  |
+| [`spacegroup_bar([65, 134, 225, ...])`](pymatviz/bar.py#L29) [![fig-icon]](assets/scripts/bar/spacegroup_bar.py) | [`spacegroup_bar(["C2/m", "P-43m", "Fm-3m", ...])`](pymatviz/bar.py#L29) |
+| :--------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
+|                                              ![spg-num-hist-plotly]                                              |                        ![spg-symbol-hist-plotly]                         |
 
 [spg-symbol-hist-plotly]: assets/svg/spg-symbol-hist-plotly.svg
 [spg-num-hist-plotly]: assets/svg/spg-num-hist-plotly.svg
