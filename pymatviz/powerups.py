@@ -12,14 +12,8 @@ import sklearn
 from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.metrics import r2_score
 
-from pymatviz.utils import (
-    annotate,
-    get_fig_xy_range,
-    get_font_color,
-    luminance,
-    pretty_label,
-    validate_fig,
-)
+from pymatviz.utils import annotate, get_fig_xy_range, get_font_color, luminance
+from pymatviz.utils.plotting import PRETTY_LABELS
 
 
 if TYPE_CHECKING:
@@ -30,7 +24,6 @@ TraceSelector = int | slice | Sequence[int] | TracePredicate
 AnnotationMode = Literal["per_trace", "combined", "none"]
 
 
-@validate_fig
 def annotate_metrics(
     xs: ArrayLike,
     ys: ArrayLike,
@@ -65,6 +58,8 @@ def annotate_metrics(
     """
     if isinstance(metrics, str):
         metrics = [metrics]
+    if not isinstance(fig, go.Figure):
+        raise TypeError(f"{fig=} must be instance of go.Figure")
     if not isinstance(metrics, (dict, list, tuple, set)):
         raise TypeError(
             f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
@@ -96,12 +91,12 @@ def annotate_metrics(
         text = prefix
         if isinstance(metrics, dict):
             for key, val in metrics.items():
-                label = pretty_label(key, "plotly")
+                label = PRETTY_LABELS.get(key, key)
                 text += f"{label} = {val:{fmt}}<br>"
         else:
             for key in metrics:
                 value = funcs[key](xs, ys)
-                label = pretty_label(key, "plotly")
+                label = str(PRETTY_LABELS.get(key, key))
                 text += f"{label} = {value:{fmt}}<br>"
         text += suffix
         return text

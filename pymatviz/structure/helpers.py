@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import plotly.graph_objects as go
+from plotly import colors as pcolors
 from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 from pymatgen.core.periodic_table import Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -1435,9 +1436,6 @@ def draw_bonds(
             sites that are actually plotted. If provided, bonds will only be drawn if
             both end points are in this set. Coordinates are expected to be rounded.
     """
-    from matplotlib.colors import to_rgb
-    from plotly.colors import find_intermediate_color
-
     default_bond_color: ColorType | tuple[ColorType, ColorType] | bool = True
     if bond_kwargs and bond_kwargs.get("color") is False:
         default_bond_color = "darkgray"
@@ -1452,25 +1450,11 @@ def draw_bonds(
 
     def parse_color(color_val: Any) -> str:
         """Convert various color formats to RGB string."""
-        if isinstance(color_val, str) and color_val.startswith("rgb"):
-            return color_val
-        if (
-            isinstance(color_val, tuple)
-            and len(color_val) == 3
-            and all(
-                isinstance(val, (int, float)) and 0 <= val <= 1 for val in color_val
-            )
-        ):
-            r, g, b = [int(255 * v) for v in color_val]
-            return f"rgb({r},{g},{b})"
-        if isinstance(color_val, str):
-            try:
-                rgb_tuple_float = to_rgb(color_val)  # Returns floats in 0-1 range
-                r, g, b = [int(255 * v) for v in rgb_tuple_float]
-                return f"rgb({r},{g},{b})"  # noqa: TRY300
-            except ValueError:
-                pass  # Fallback if to_rgb fails (e.g. already "rgb(...)")
-        return "rgb(128,128,128)"  # Fallback to gray if parsing fails
+        try:  # validate_colors returns a list of colors. We request 'rgb' type to get a
+            # string 'rgb(r,g,b)'
+            return pcolors.validate_colors([color_val], colortype="rgb")[0]
+        except (ValueError, IndexError):
+            return "rgb(128,128,128)"  # Fallback to gray if parsing fails
 
     for site_idx, site1 in enumerate(structure):
         try:
@@ -1548,7 +1532,7 @@ def draw_bonds(
                 segment_color_str: str
                 if isinstance(color_for_segment_calc, tuple):
                     # Gradient calculation
-                    segment_color_str = find_intermediate_color(
+                    segment_color_str = pcolors.find_intermediate_color(
                         color_for_segment_calc[0],
                         color_for_segment_calc[1],
                         (frac_start + frac_end) / 2,

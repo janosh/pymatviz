@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import copy
 import json
-import platform
 from glob import glob
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -24,19 +22,8 @@ from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
     import ase
     from phonopy import Phonopy
-
-
-# If platform is Windows, set matplotlib backend to "Agg" to fix:
-# "_tkinter.TclError: Can't find a usable init.tcl in the following directories"
-# See: https://github.com/orgs/community/discussions/26434
-if platform.system() == "Windows":
-    import matplotlib as mpl
-
-    mpl.use("Agg")
 
 
 # random regression data
@@ -61,18 +48,6 @@ def df_or_arrays(request: pytest.FixtureRequest) -> DfOrArrays:
 
 df_clf = pd.DataFrame(dict(y_binary=y_binary, y_proba=y_proba))
 df_x_y_clf = [(None, y_binary, y_proba), (df_clf, *df_clf.columns[:2])]
-
-
-@pytest.fixture(autouse=True)
-def _run_around_tests() -> Generator[None, None, None]:
-    """Ensure matplotlib plots are closed after each test
-    so as not to leak state between tests.
-    """
-    # runs before each test
-    yield
-
-    # runs after each test
-    plt.close()
 
 
 @pytest.fixture
@@ -139,14 +114,6 @@ def plotly_faceted_scatter() -> go.Figure:
 
 
 @pytest.fixture
-def matplotlib_scatter() -> plt.Figure:
-    fig, ax = plt.subplots()
-    ax.plot([1, 10, 100], np.array([10, 100, 1000]) + 1)
-    ax.plot([1, 10, 100], [1, 10, 100])
-    return fig
-
-
-@pytest.fixture
 def glass_formulas() -> list[str]:
     """First 20 materials in the MatBench glass dataset.
 
@@ -174,12 +141,6 @@ def df_mixed() -> pd.DataFrame:
     bools = np_rng.choice([True, False], size=30)
     strings = np_rng.choice([*"abcdef"], size=30)
     return pd.DataFrame(dict(floats=floats, bools=bools, strings=strings))
-
-
-def _extract_anno_from_fig(fig: go.Figure | plt.Figure) -> str:
-    if isinstance(fig, go.Figure):
-        return fig.layout.annotations[-1].text
-    return fig.axes[0].artists[-1].txt.get_text()
 
 
 @pytest.fixture(scope="session")
