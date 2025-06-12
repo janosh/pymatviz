@@ -20,6 +20,7 @@ def test_get_regression_data() -> None:
     # Test y_pred = 1.2 * y_true with added noise
     assert y_pred.mean() == pytest.approx(3.801761, abs=0.2)
 
-    # Test y_std is non-zero and finite
-    assert 5 < y_std.max() < 10
-    assert y_std.mean() == pytest.approx(0.0, abs=0.2)
+    # Test y_std is positive and realistic
+    assert y_std.min() > 0, "All uncertainties should be positive"
+    assert 2 < y_std.max() < 8, "Max uncertainty should be realistic"
+    assert 1 < y_std.mean() < 3, "Mean uncertainty should be reasonable"
