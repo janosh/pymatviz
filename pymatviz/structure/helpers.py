@@ -1582,12 +1582,12 @@ def draw_bonds(
 
 
 def _standardize_struct(
-    struct_i: Structure, standardize_struct_flag: bool | None
+    struct_i: Structure, *, standardize_struct: bool | None
 ) -> Structure:
     """Standardize the structure if needed."""
-    if standardize_struct_flag is None:
-        standardize_struct_flag = any(any(site.frac_coords < 0) for site in struct_i)
-    if standardize_struct_flag:
+    if standardize_struct is None:
+        standardize_struct = any(any(site.frac_coords < 0) for site in struct_i)
+    if standardize_struct:
         try:
             spg_analyzer = SpacegroupAnalyzer(struct_i)
             return spg_analyzer.get_conventional_standard_structure()
@@ -1598,15 +1598,16 @@ def _standardize_struct(
 
 def _prep_augmented_structure_for_bonding(
     struct_i: Structure,
-    show_image_sites_flag: bool | dict[str, Any],
-    cell_boundary_tol: float = 0.0,
+    *,
+    show_image_sites: bool | dict[str, Any],
+    cell_boundary_tol: float = 0,
 ) -> Structure:
     """Prepare an augmented structure including primary and optionally image sites for
     bonding.
 
     Args:
         struct_i (Structure): System to prepare.
-        show_image_sites_flag: Whether to include image sites.
+        show_image_sites: Whether to include image sites.
         cell_boundary_tol (float): Distance beyond unit cell boundaries within which
             image atoms are included.
     """
@@ -1621,7 +1622,7 @@ def _prep_augmented_structure_for_bonding(
         for site_in_cell in struct_i
     ]
 
-    if show_image_sites_flag:  # True or a dict implies true for this purpose
+    if show_image_sites:  # True or a dict implies true for this purpose
         processed_image_coords: set[Xyz] = set()
         for site_in_cell in struct_i:
             image_cart_coords_arrays = get_image_sites(

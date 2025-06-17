@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.13
+    rev: v0.12.0
     hooks:
       - id: ruff
         args: [--fix]
@@ -17,7 +17,7 @@ repos:
         types_or: [python, jupyter]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.0
+    rev: v1.16.1
     hooks:
       - id: mypy
         additional_dependencies: [types-requests, types-PyYAML]
@@ -67,7 +67,7 @@ repos:
         exclude: ^(site/src/figs/.+\.svelte|data/wbm/20.+\..+|site/src/(routes|figs).+\.(yaml|json)|changelog.md)$
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.28.0
+    rev: v9.29.0
     hooks:
       - id: eslint
         types: [file]
@@ -82,7 +82,7 @@ repos:
           - "@stylistic/eslint-plugin"
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.401
+    rev: v1.1.402
     hooks:
       - id: pyright
 

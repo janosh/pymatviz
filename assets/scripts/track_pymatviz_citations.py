@@ -6,7 +6,6 @@ Invoke with 64-character SERPAPI_KEY:
 SERPAPI_KEY=ccd7f7ea8... python assets/scripts/track_pymatviz_citations.py
 """
 
-# ruff: noqa: T201
 # /// script
 # dependencies = [
 #     "google-search-results>=2.4.2",
