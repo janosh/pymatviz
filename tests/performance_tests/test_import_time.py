@@ -75,7 +75,7 @@ def measure_import_time(module_name: str, repeats: int = 3) -> float:
     os.getenv("GITHUB_REF") != "refs/heads/main", reason="Only run on the main branch"
 )
 @pytest.mark.skipif(GEN_REF_TIME, reason="Generating reference import time.")
-def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) -> None:
+def test_import_time() -> None:
     """Test the import time of core modules to avoid regression in performance.
 
     Args:
@@ -84,6 +84,7 @@ def test_import_time(grace_percent: float = 0.20, hard_percent: float = 0.50) ->
         hard_percent (float): Maximum allowed percentage increase in import time
             before the test fails.
     """
+    grace_percent, hard_percent = 0.2, 0.5
     for module_name, ref_time in REF_IMPORT_TIME.items():
         current_time = measure_import_time(module_name)
 

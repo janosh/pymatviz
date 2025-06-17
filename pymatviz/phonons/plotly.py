@@ -36,6 +36,7 @@ def phonon_bands(
     band_structs: AnyBandStructure
     | PhonopyBandStructure
     | dict[str, AnyBandStructure | PhonopyBandStructure],
+    *,
     line_kwargs: (
         dict[str, Any]  # single dict for all lines
         # separate dicts for modes
@@ -374,7 +375,7 @@ def phonon_bands(
     # scale font size with figure size
     fig.layout.font.size = 16 * (fig.layout.width or 800) / 800
 
-    _shaded_range(fig, shaded_ys)
+    _shaded_range(fig, shaded_ys=shaded_ys)
 
     return fig
 
@@ -617,6 +618,6 @@ def phonon_bands_and_dos(
     # set y-axis range to match band structure
     fig.layout.yaxis.update(range=bands_fig.layout.yaxis.range)
 
-    _shaded_range(fig, shaded_ys)
+    _shaded_range(fig, shaded_ys=shaded_ys)
 
     return fig

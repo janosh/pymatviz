@@ -22,9 +22,6 @@ AxOrFig: TypeAlias = go.Figure
 Xyz: TypeAlias = tuple[float, float, float]
 AnyStructure: TypeAlias = Union[Structure, IStructure, MSONAtoms, "AseAtoms"]
 
-Backend: TypeAlias = Literal["matplotlib", "plotly"]
-BACKENDS = MATPLOTLIB, PLOTLY = get_args(Backend)
-
 ColorElemTypeStrategy: TypeAlias = Literal["symbol", "background", "both", "off"]
 VALID_COLOR_ELEM_STRATEGIES = get_args(ColorElemTypeStrategy)
 

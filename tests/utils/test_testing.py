@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 
 
-@pytest.mark.importorskip("phonopy")
 def test_load_phonopy_nacl() -> None:
     """Test load_phonopy_nacl utility function."""
+    pytest.importorskip("phonopy")
     from pymatviz.utils.testing import load_phonopy_nacl
 
     # Load phonopy object

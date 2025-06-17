@@ -1918,7 +1918,9 @@ def test_deprecated_aliases_warnings(
     struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
     # Test deprecated alias
-    with pytest.warns(DeprecationWarning) as warning_info:
+    with pytest.warns(
+        DeprecationWarning, match="will be removed in a future version"
+    ) as warning_info:
         fig_deprecated = deprecated_func(struct, show_cell=False, show_sites=True)
 
     assert isinstance(fig_deprecated, go.Figure)

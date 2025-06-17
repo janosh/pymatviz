@@ -3,15 +3,12 @@
 * atomic_numbers (dict[str, int]): Map elements to atomic numbers.
 * element_symbols (dict[int, str]): Map atomic numbers to elements.
 
-- bin_df_cols: Bin columns of a DataFrame.
 - spg_to_crystal_sys: Get the crystal system for an international
     space group number.
-- df_to_arrays: Convert DataFrame to arrays.
 - html_tag: Wrap text in a span with custom style.
-- normalize_to_dict: Normalize object or dict/list/tuple of them into to a dict.
 - patch_dict: Context manager to temporarily patch the specified keys in a
     dictionary and restore it to its original state on context exit.
-- si_fmt: Convert large numbers into human readable format using SI suffixes.
+- si_fmt/si_fmt_int: Convert large numbers into human readable format using SI suffixes.
 """
 
 from __future__ import annotations

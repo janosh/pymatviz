@@ -121,6 +121,7 @@ def get_band_xaxis_ticks(
 
 def _shaded_range(
     fig: go.Figure,
+    *,
     shaded_ys: dict[tuple[YMin | YMax, YMin | YMax], dict[str, Any]] | bool | None,
 ) -> go.Figure:
     """Add shaded regions to a figure.

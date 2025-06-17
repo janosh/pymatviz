@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import { repository } from '$site/package.json'
   import Icon from '@iconify/svelte'
   import { CmdPalette } from 'svelte-multiselect'
@@ -8,9 +8,14 @@
   import { GitHubCorner } from 'svelte-zoo'
   import '../app.css'
 
-  $: headingSelector = `main :is(${
-    $page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`
-  }):not(.toc-exclude)`
+  interface Props {
+    children?: Snippet
+  }
+  let { children }: Props = $props()
+
+  let headingSelector = $derived(
+    `main :is(${page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`}):not(.toc-exclude)`,
+  )
 
   const file_routes = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`))
     .filter((key) => !key.includes(`/[`))
@@ -38,19 +43,19 @@
 
 <Toc {headingSelector} breakpoint={1250} warnOnEmpty={false} />
 
-{#if $page.url.pathname !== `/`}
+{#if page.url.pathname !== `/`}
   <a href="/" aria-label="Back to index page">&laquo; home</a>
 {/if}
 
 <GitHubCorner href={repository} />
 
-<slot />
+{@render children?.()}
 
 <footer>
   <nav>
-    <a href="{repository}/issues"
-      ><Icon icon="octicon:mark-github" inline />&ensp;Issues</a
-    >
+    <a href="{repository}/issues">
+      <Icon icon="octicon:mark-github" inline />&ensp;Issues
+    </a>
     <a href="{repository}/discussion"><Icon icon="mdi:chat" inline />&ensp;Discussion</a>
   </nav>
   <img
