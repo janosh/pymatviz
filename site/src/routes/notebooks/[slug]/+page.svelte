@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores'
+  import { page } from '$app/state'
   import { PrevNext } from 'svelte-zoo'
 
   export let data
@@ -8,5 +8,5 @@
 <main>
   {@html data.html}
 
-  <PrevNext items={data.routes} current={$page.url.pathname} />
+  <PrevNext items={data.routes} current={page.url.pathname} />
 </main>
