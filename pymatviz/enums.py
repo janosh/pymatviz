@@ -1,5 +1,4 @@
 """Enums used as keys/accessors for dicts and dataframes across Matbench Discovery."""
-# ruff: noqa: RUF001 (allow greek letters in math symbols)
 
 from __future__ import annotations
 

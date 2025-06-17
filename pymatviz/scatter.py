@@ -169,7 +169,7 @@ def density_scatter(
         # Create column names for DataFrame
         x_col = xlabel if isinstance(xlabel, str) else "x"
         y_col = ylabel if isinstance(ylabel, str) else "y"
-        df = pd.DataFrame({x_col: xs, y_col: ys})  # noqa: PD901
+        df = pd.DataFrame({x_col: xs, y_col: ys})
         x, y = x_col, y_col
     elif xlabel is None or ylabel is None:
         auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)

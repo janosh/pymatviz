@@ -128,8 +128,9 @@ def test_chem_env_treemap_crystal_nn_analysis_error() -> None:
         # The function should catch the ImportError and return an empty figure
         with pytest.warns(UserWarning, match="CrystalNN analysis failed"):
             fig = chem_env_treemap(mock_structure, chem_env_settings="crystal_nn")
-            assert isinstance(fig, go.Figure)
-            assert "No CN/CE data to display" in fig.layout.title.text
+
+        assert isinstance(fig, go.Figure)
+        assert "No CN/CE data to display" in fig.layout.title.text
 
 
 def test_chem_env_treemap_crystal_nn_outer_try_catch() -> None:
@@ -153,9 +154,10 @@ def test_chem_env_treemap_crystal_nn_outer_try_catch() -> None:
         # The function should catch the RuntimeError and return an empty figure
         with pytest.warns(UserWarning, match="CrystalNN analysis failed for structure"):
             fig = chem_env_treemap(mock_structure, chem_env_settings="crystal_nn")
-            assert isinstance(fig, go.Figure)
-            assert fig.layout.title is not None
-            assert "No CN/CE data to display" in fig.layout.title.text
+
+        assert isinstance(fig, go.Figure)
+        assert fig.layout.title is not None
+        assert "No CN/CE data to display" in fig.layout.title.text
 
 
 def test_chem_env_treemap_max_cells_cn_logic() -> None:
