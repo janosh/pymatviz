@@ -30,8 +30,8 @@ ELEM_TYPE_COLORS: Final = {
     "Transactinide": "olive",
 }
 
-# The following element-based colors are copied from elementari:
-# https://github.com/janosh/elementari/blob/85a044cd/src/lib/colors.ts#L20-L242
+# The following element-based colors are copied from matterviz:
+# https://github.com/janosh/matterviz/blob/85a044cd/src/lib/colors.ts#L20-L242
 ELEM_COLORS_JMOL_256: dict[str, Rgb256ColorType] = {
     "H": (255, 255, 255),
     "He": (217, 255, 255),

@@ -5,7 +5,7 @@
 #     "mace-torch>=0.3.11",
 #     "orb-models>=0.5.2",
 #     "phonopy>=2.35",
-#     "pymatviz[export-figs]>=0.15.1",
+#     "pymatviz>=0.15.1",
 #     "seekpath",
 #     "ase",
 # ]
