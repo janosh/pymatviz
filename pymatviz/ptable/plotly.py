@@ -1039,9 +1039,7 @@ def ptable_heatmap_splits_plotly(
                     [ii * height, ii * height, (ii + 1) * height, (ii + 1) * height],
                 )
                 for ii in range(n_splits)
-            ][
-                ::-1
-            ]  # reverse to maintain top-to-bottom order
+            ][::-1]  # reverse to maintain top-to-bottom order
 
         if orientation == "vertical":
             # Split into equal vertical strips
@@ -1581,7 +1579,6 @@ def ptable_scatter_plotly(
     Returns:
         go.Figure: Plotly Figure object with line plots in a periodic table layout.
     """
-
     # Process data into a consistent format
     if isinstance(color_elem_strategy, dict):
         elem_type_colors = color_elem_strategy
@@ -1615,9 +1612,7 @@ def ptable_scatter_plotly(
         for elem_data in data.values():
             for x_vals, y_vals, *_ in (
                 # handle both single line and multiple lines per element cases
-                elem_data
-                if isinstance(elem_data, dict)
-                else {"": elem_data}  # type: ignore[dict-item]
+                elem_data if isinstance(elem_data, dict) else {"": elem_data}  # type: ignore[dict-item]
             ).values():
                 all_x_vals.extend(x_vals)
                 all_y_vals.extend(y_vals)
