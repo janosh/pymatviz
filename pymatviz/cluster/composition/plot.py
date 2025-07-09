@@ -17,6 +17,7 @@ from pymatgen.core import Composition
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
 
+
 symbolValidator = ValidatorCache.get_validator("scatter.marker", "symbol")
 symbol3dValidator = ValidatorCache.get_validator("scatter3d.marker", "symbol")
 
