@@ -893,8 +893,10 @@ def ptable_heatmap_splits_plotly(
         ValueError: If n_splits not in {2, 3, 4} or orientation="grid" with n_splits!=4
     """
     import plotly.colors
-    from plotly.validators.scatter.marker import ColorscaleValidator
+    from plotly.validator_cache import ValidatorCache
     from pymatgen.core import Element
+
+    colorscaleValidator = ValidatorCache.get_validator("scatter.marker", "colorscale")
 
     # Get split names if data is a DataFrame
     split_labels: list[str] = []
@@ -973,7 +975,7 @@ def ptable_heatmap_splits_plotly(
         colorbars = [colorbar or {}]  # type: ignore[list-item]
 
     # Validate colorscales
-    validator = ColorscaleValidator()
+    validator = colorscaleValidator
     for idx, cscale in enumerate(colorscales):
         if callable(cscale):
             continue
