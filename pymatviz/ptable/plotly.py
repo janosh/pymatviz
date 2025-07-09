@@ -896,7 +896,7 @@ def ptable_heatmap_splits_plotly(
     from plotly.validator_cache import ValidatorCache
     from pymatgen.core import Element
 
-    colorscaleValidator = ValidatorCache.get_validator("scatter.marker", "colorscale")
+    colorscale_validator = ValidatorCache.get_validator("scatter.marker", "colorscale")
 
     # Get split names if data is a DataFrame
     split_labels: list[str] = []
@@ -975,7 +975,7 @@ def ptable_heatmap_splits_plotly(
         colorbars = [colorbar or {}]  # type: ignore[list-item]
 
     # Validate colorscales
-    validator = colorscaleValidator
+    validator = colorscale_validator
     for idx, cscale in enumerate(colorscales):
         if callable(cscale):
             continue
