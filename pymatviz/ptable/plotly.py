@@ -1924,7 +1924,7 @@ def ptable_bars_plotly(
     *,
     colorscale: str = "RdBu",
     log: bool = False,
-    colorbar: dict[str, Any] | Literal[False] | None = None,
+    colorbar: dict[str, Any] | None = None,
     hide_f_block: bool | Literal["auto"] = False,
     font_size: int | None = None,
     scale: float = 1.0,
@@ -2058,13 +2058,21 @@ def ptable_bars_plotly(
             f"<b>{display_symbol}</b>"
             if display_symbol == symbol
             else f"<b>{display_symbol}</b> ({symbol})"
-        ) + "<br>Range: %{x}<br>Count: %{y}<extra></extra>"
+        ) + "<br>%{x}<br>Value: %{y}<extra></extra>"
 
         fig.add_trace(
             go.Bar(
                 x=x_vals,
                 y=y_vals,
-                marker_color=px.colors.sample_colorscale(colorscale, len(x_vals)),
+                marker=dict(
+                    color=y_vals,
+                    colorscale=colorscale,
+                    colorbar=_get_colorbar_settings(
+                        colorbar, font_size=font_size, scale=scale
+                    ),
+                    cmin=min(y_vals),
+                    cmax=max(y_vals),
+                ),
                 hovertemplate=hover_template,
                 showlegend=False,
             ),
