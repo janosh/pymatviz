@@ -107,4 +107,3 @@
 * make regex test strings smaller ([cd83220](https://github.com/gulpjs/glob-parent/commit/cd832208638f45169f986d80fcf66e401f35d233))
 
 ## 1.0.0 (2021-01-27)
-
