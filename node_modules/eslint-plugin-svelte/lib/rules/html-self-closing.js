@@ -1,0 +1,193 @@
+import { createRule } from '../utils/index.js';
+import { getNodeName, isVoidHtmlElement, isSvgElement, isMathMLElement } from '../utils/ast-utils.js';
+const TYPE_MESSAGES = {
+    normal: 'HTML elements',
+    void: 'HTML void elements',
+    svg: 'SVG elements',
+    math: 'MathML elements',
+    component: 'Svelte custom components',
+    svelte: 'Svelte special elements'
+};
+export default createRule('html-self-closing', {
+    meta: {
+        docs: {
+            description: 'enforce self-closing style',
+            category: 'Stylistic Issues',
+            recommended: false,
+            conflictWithPrettier: true
+        },
+        type: 'layout',
+        fixable: 'code',
+        messages: {
+            requireClosing: 'Require self-closing on {{type}}.',
+            disallowClosing: 'Disallow self-closing on {{type}}.'
+        },
+        schema: [
+            {
+                anyOf: [
+                    {
+                        properties: {
+                            void: {
+                                enum: ['never', 'always', 'ignore']
+                            },
+                            normal: {
+                                enum: ['never', 'always', 'ignore']
+                            },
+                            svg: {
+                                enum: ['never', 'always', 'ignore']
+                            },
+                            math: {
+                                enum: ['never', 'always', 'ignore']
+                            },
+                            component: {
+                                enum: ['never', 'always', 'ignore']
+                            },
+                            svelte: {
+                                enum: ['never', 'always', 'ignore']
+                            }
+                        },
+                        additionalProperties: false
+                    },
+                    {
+                        enum: ['all', 'html', 'none']
+                    }
+                ]
+            }
+        ]
+    },
+    create(context) {
+        // default
+        let options = {
+            void: 'always',
+            normal: 'never',
+            svg: 'always',
+            math: 'never',
+            component: 'always',
+            svelte: 'always'
+        };
+        const option = context.options?.[0];
+        switch (option) {
+            case 'all':
+                options = {
+                    void: 'always',
+                    normal: 'always',
+                    svg: 'always',
+                    math: 'always',
+                    component: 'always',
+                    svelte: 'always'
+                };
+                break;
+            case 'html':
+                options = {
+                    void: 'always',
+                    normal: 'never',
+                    svg: 'always',
+                    math: 'never',
+                    component: 'never',
+                    svelte: 'always'
+                };
+                break;
+            case 'none':
+                options = {
+                    void: 'never',
+                    normal: 'never',
+                    svg: 'never',
+                    math: 'never',
+                    component: 'never',
+                    svelte: 'never'
+                };
+                break;
+            default:
+                if (typeof option !== 'object' || option === null)
+                    break;
+                options = {
+                    ...options,
+                    ...option
+                };
+                break;
+        }
+        /**
+         * Get SvelteElement type.
+         * If element is custom component "component" is returned
+         * If element is svelte special element such as svelte:self "svelte" is returned
+         * If element is void element "void" is returned
+         * otherwise "normal" is returned
+         */
+        function getElementType(node) {
+            if (node.kind === 'component')
+                return 'component';
+            if (node.kind === 'special')
+                return 'svelte';
+            if (isVoidHtmlElement(node))
+                return 'void';
+            if (isSvgElement(node))
+                return 'svg';
+            if (isMathMLElement(node))
+                return 'math';
+            return 'normal';
+        }
+        /**
+         * Returns true if element has no children, or has only whitespace text
+         */
+        function isElementEmpty(node) {
+            if (node.children.length <= 0)
+                return true;
+            for (const child of node.children) {
+                if (child.type !== 'SvelteText')
+                    return false;
+                if (!/^\s*$/.test(child.value))
+                    return false;
+            }
+            return true;
+        }
+        /**
+         * Report
+         */
+        function report(node, shouldBeClosed) {
+            const elementType = getElementType(node);
+            context.report({
+                node,
+                loc: {
+                    start: context.sourceCode.getLocFromIndex(node.startTag.range[1] - (node.startTag.selfClosing ? 2 : 1)),
+                    end: node.loc.end
+                },
+                messageId: shouldBeClosed ? 'requireClosing' : 'disallowClosing',
+                data: {
+                    type: TYPE_MESSAGES[elementType]
+                },
+                *fix(fixer) {
+                    if (shouldBeClosed) {
+                        for (const child of node.children) {
+                            yield fixer.removeRange(child.range);
+                        }
+                        yield fixer.insertTextBeforeRange([node.startTag.range[1] - 1, node.startTag.range[1]], '/');
+                        if (node.endTag)
+                            yield fixer.removeRange(node.endTag.range);
+                    }
+                    else {
+                        yield fixer.removeRange([node.startTag.range[1] - 2, node.startTag.range[1] - 1]);
+                        if (!isVoidHtmlElement(node))
+                            yield fixer.insertTextAfter(node, `</${getNodeName(node)}>`);
+                    }
+                }
+            });
+        }
+        return {
+            SvelteElement(node) {
+                if (!isElementEmpty(node))
+                    return;
+                const elementType = getElementType(node);
+                const elementTypeOptions = options[elementType];
+                if (elementTypeOptions === 'ignore')
+                    return;
+                const shouldBeClosed = elementTypeOptions === 'always';
+                if (shouldBeClosed && !node.startTag.selfClosing) {
+                    report(node, true);
+                }
+                else if (!shouldBeClosed && node.startTag.selfClosing) {
+                    report(node, false);
+                }
+            }
+        };
+    }
+});
