@@ -11,13 +11,15 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.validators.scatter.marker import SymbolValidator
-from plotly.validators.scatter3d.marker import SymbolValidator as Symbol3dValidator
+from plotly.validator_cache import ValidatorCache
 from pymatgen.core import Composition
 
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
 
+
+symbol_validator = ValidatorCache.get_validator("scatter.marker", "symbol")
+symbol_3d_validator = ValidatorCache.get_validator("scatter3d.marker", "symbol")
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -624,11 +626,11 @@ def cluster_compositions(
         # Get valid symbols for the current plot type
         if n_components == 3:
             # For 3D plots, we need to use a more limited set of markers
-            all_symbols = Symbol3dValidator("symbol", "scatter3d.marker").values  # noqa: PD011
+            all_symbols = symbol_3d_validator.values  # noqa: PD011
             valid_symbols = list(filter(symbol_filter, all_symbols))
         else:
             # For 2D plots, we can use the full set of markers
-            all_symbols = SymbolValidator("symbol", "scatter.marker").values  # noqa: PD011
+            all_symbols = symbol_validator.values  # noqa: PD011
             valid_symbols = list(filter(symbol_filter, all_symbols))
 
         # Check if we have more unique systems than available symbols
