@@ -1818,9 +1818,11 @@ def test_too_many_chem_systems() -> None:
     df_chem_sys = pd.DataFrame({"composition": compositions})
 
     # First check how many valid symbols we have
-    from plotly.validators.scatter.marker import SymbolValidator
+    from plotly.validator_cache import ValidatorCache
 
-    all_symbols = SymbolValidator("symbol", "scatter.marker").values  # noqa: PD011
+    symbol_validator = ValidatorCache().get_validator("scatter.marker", "symbol")
+
+    all_symbols = symbol_validator.values  # noqa: PD011
     valid_symbols = [
         s
         for s in all_symbols
