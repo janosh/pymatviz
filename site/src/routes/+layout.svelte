@@ -3,9 +3,9 @@
   import { page } from '$app/state'
   import { repository } from '$site/package.json'
   import Icon from '@iconify/svelte'
-  import { CmdPalette } from 'svelte-multiselect'
+  import type { Snippet } from 'svelte'
+  import { CmdPalette, GitHubCorner } from 'svelte-multiselect'
   import Toc from 'svelte-toc'
-  import { GitHubCorner } from 'svelte-zoo'
   import '../app.css'
 
   interface Props {

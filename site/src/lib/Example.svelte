@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CopyButton } from 'svelte-zoo'
+  import { CopyButton } from 'svelte-multiselect'
 
   export let title: string
   export let file: string
