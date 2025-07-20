@@ -181,35 +181,13 @@ def test_widget_performance_and_large_structures(
     creation_time = time.perf_counter() - start_time
     assert creation_time < 1.0, "Widget creation too slow"
 
-    # Test large structure handling
-    large_structure = {
-        "sites": [
-            {
-                "species": [{"element": "Fe", "occu": 1.0}],
-                "abc": [idx * 0.1, idx * 0.1, idx * 0.1],
-                "xyz": [idx * 0.3, idx * 0.3, idx * 0.3],
-                "label": f"Fe{idx}",
-                "properties": {},
-            }
-            for idx in range(1000)  # 1000 atoms
-        ],
-        "lattice": {
-            "matrix": [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
-            "a": 10.0,
-            "b": 10.0,
-            "c": 10.0,
-            "alpha": 90.0,
-            "beta": 90.0,
-            "gamma": 90.0,
-            "volume": 1000.0,
-        },
-        "charge": 0,
-    }
+    # Test large structure handling (10x10x10 supercell with 2000 atoms)
+    large_structure = structures[0] * 10
 
     # Widget should handle large structure without crashing
     widget = StructureWidget(structure=large_structure)
     assert widget.structure is not None
-    assert len(widget.structure["sites"]) == 1000
+    assert len(widget.structure["sites"]) == 2000
 
 
 def test_widget_edge_cases_and_error_handling_structure(

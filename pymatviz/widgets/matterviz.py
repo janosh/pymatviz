@@ -101,7 +101,7 @@ class MatterVizWidget(AnyWidget):
             version_override (str | None): Override current version from pyproject.toml
             **kwargs: Additional arguments passed to AnyWidget
         """
-        type(self)._esm = fetch_widget_asset("matterviz.mjs", version_override)
-        type(self)._css = fetch_widget_asset("matterviz.css", version_override)
+        self._esm = fetch_widget_asset("matterviz.mjs", version_override)
+        self._css = fetch_widget_asset("matterviz.css", version_override)
 
         super().__init__(**kwargs)
