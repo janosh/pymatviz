@@ -11,8 +11,6 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 
 
 if TYPE_CHECKING:
-    from typing import Any
-
     from pymatgen.util.typing import CompositionLike
 
     from pymatviz.widgets import MattervizElementColorSchemes
@@ -62,5 +60,8 @@ class CompositionWidget(MatterVizWidget):
         comp_kwargs = dict(strict=True, allow_negative=True) | kwargs.pop(
             "pymatgen_kwargs", {}
         )
-        comp_dict = Composition(composition, **comp_kwargs).as_dict()
+        if composition is None:
+            comp_dict = None
+        else:
+            comp_dict = Composition(composition, **comp_kwargs).as_dict()
         super().__init__(composition=comp_dict, **kwargs)

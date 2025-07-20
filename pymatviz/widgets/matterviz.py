@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import tomllib
 import urllib.request
@@ -13,10 +14,10 @@ from anywidget import AnyWidget
 from pymatviz.utils import ROOT
 
 
-with open(f"{ROOT}/pyproject.toml", "rb") as pyproject:
-    data = tomllib.load(pyproject)
-    version = data["project"]["version"]
-    repo_url = data["project"]["urls"]["Homepage"]
+with open(f"{ROOT}/pyproject.toml", mode="rb") as file:
+    pyproject = tomllib.load(file)["project"]
+    PKG_VERSION = f"v{pyproject['version']}"
+    REPO_URL = pyproject["urls"]["Homepage"]
 
 
 def fetch_widget_asset(filename: str, version_override: str | None = None) -> str:
@@ -30,11 +31,12 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
         str: The contents of the asset file
     """
     # Use override version or default version
-    asset_version = version_override or version
+    asset_version = version_override or PKG_VERSION
 
     # Paths
     local_path = f"{os.path.dirname(__file__)}/build/{filename}"
     cache_dir = f"{os.path.expanduser('~/.cache/pymatviz/build')}/{asset_version}"
+    os.makedirs(cache_dir, exist_ok=True)
     cache_path = f"{cache_dir}/{filename}"
 
     # Check local development files first
@@ -47,10 +49,11 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
         with open(cache_path, encoding="utf-8") as file:
             return file.read()
 
-    # Download from GitHub releases
-    os.makedirs(cache_dir, exist_ok=True)
-    github_url = f"{repo_url}/releases/download/v{asset_version}/{filename}"
+    if not re.match(r"^v\d+\.\d+\.\d+$", asset_version):
+        raise ValueError(f"Invalid version format: {asset_version=}")
 
+    # Download from GitHub releases
+    github_url = f"{REPO_URL}/releases/download/{asset_version}/{filename}"
     try:
         urllib.request.urlretrieve(github_url, cache_path)  # noqa: S310
         with open(cache_path, encoding="utf-8") as file:
@@ -58,7 +61,7 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     except Exception as exc:
         raise FileNotFoundError(
             f"Could not load {filename} from GitHub releases for version "
-            f"v{asset_version}. Please check your internet connection."
+            f"{asset_version}. Please check your internet connection."
         ) from exc
 
 

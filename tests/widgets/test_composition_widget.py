@@ -137,10 +137,10 @@ def test_widget_performance_and_complex_compositions() -> None:
     """Test widget performance with complex compositions."""
     # Test creation performance
     simple_comp = Composition("Fe2O3")
-    start_time = time.time()
+    start_time = time.perf_counter()
     for _ in range(10):
         _widget = CompositionWidget(composition=simple_comp)
-    creation_time = time.time() - start_time
+    creation_time = time.perf_counter() - start_time
     assert creation_time < 1.0, "Widget creation too slow"
 
     # Test complex composition handling

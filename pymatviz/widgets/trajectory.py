@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import traitlets as tl
 
 from pymatviz.structure.helpers import add_vacuum_if_needed
 from pymatviz.widgets.matterviz import MatterVizWidget
-
-
-if TYPE_CHECKING:
-    from typing import Any as AnyType
 
 
 class TrajectoryWidget(MatterVizWidget):
@@ -118,9 +114,7 @@ class TrajectoryWidget(MatterVizWidget):
     )
 
     def __init__(
-        self,
-        trajectory: dict[str, Any] | list[Any] | AnyType | None = None,
-        **kwargs: Any,
+        self, trajectory: dict[str, Any] | list[Any] | Any | None = None, **kwargs: Any
     ) -> None:
         """Initialize the TrajectoryWidget.
 

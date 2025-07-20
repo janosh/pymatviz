@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import traitlets as tl
 
 from pymatviz.widgets.matterviz import MatterVizWidget
-
-
-if TYPE_CHECKING:
-    from typing import Any as AnyType
 
 
 class StructureWidget(MatterVizWidget):
@@ -78,7 +74,7 @@ class StructureWidget(MatterVizWidget):
     png_dpi = tl.Int(150).tag(sync=True)
 
     def __init__(
-        self, structure: dict[str, Any] | AnyType | None = None, **kwargs: Any
+        self, structure: dict[str, Any] | Any | None = None, **kwargs: Any
     ) -> None:
         """Initialize the StructureWidget.
 

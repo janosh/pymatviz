@@ -52,7 +52,11 @@ def test_widget_structure_inputs(
 
 @pytest.mark.parametrize(
     ("invalid_structure", "expected_error"),
-    [("invalid_structure", TypeError), (123, TypeError), (["invalid"], TypeError)],
+    [
+        ("invalid_structure", TypeError),  # String input
+        (123, TypeError),  # Integer input
+        (["invalid"], TypeError),  # List with invalid string
+    ],
 )
 def test_widget_invalid_structure_handling(
     invalid_structure: Any, expected_error: type[Exception]
@@ -68,8 +72,8 @@ def test_widget_invalid_structure_handling(
         ("atom_radius", [1.0, 1.5, 2.0]),
         ("show_bonds", [True, False]),
         ("color_scheme", ["Jmol", "CPK", "VESTA"]),
-        ("width", [0, 400, 600, 800]),
-        ("height", [0, 400, 500, 600]),
+        ("width", [None, 400, 600, 800]),
+        ("height", [None, 400, 500, 600]),
         ("show_controls", [True, False]),
         ("show_info", [True, False]),
     ],
@@ -171,10 +175,10 @@ def test_widget_performance_and_large_structures(
     structure_dict = structures[0].as_dict()
 
     # Test creation performance
-    start_time = time.time()
+    start_time = time.perf_counter()
     for _ in range(10):
         _widget = StructureWidget(structure=structure_dict)
-    creation_time = time.time() - start_time
+    creation_time = time.perf_counter() - start_time
     assert creation_time < 1.0, "Widget creation too slow"
 
     # Test large structure handling
