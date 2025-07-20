@@ -179,6 +179,11 @@ class TrajectoryWidget(MatterVizWidget):
 
                     # Use normalize_structures to handle conversion
                     normalized = normalize_structures(struct_i)
+                    if len(normalized) != 1:
+                        raise ValueError(
+                            f"Expected exactly one structure per frame, got "
+                            f"{len(normalized)}"
+                        )
                     struct_dict = next(iter(normalized.values())).as_dict()
 
                 # Create trajectory frame
@@ -213,6 +218,11 @@ class TrajectoryWidget(MatterVizWidget):
                 trajectory = add_vacuum_if_needed(trajectory)
 
                 normalized = normalize_structures(trajectory)
+                if len(normalized) != 1:
+                    raise ValueError(
+                        f"Expected exactly one structure per frame, got "
+                        f"{len(normalized)}"
+                    )
                 struct_dict = next(iter(normalized.values())).as_dict()
 
             frame = {"structure": struct_dict, "step": 0}

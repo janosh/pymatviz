@@ -25,9 +25,14 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: '3.11'
+      pre-install-cmd: |
+        # Setup Deno for widget builds
+        curl -fsSL https://deno.land/install.sh | sh
+        export DENO_INSTALL="$HOME/.deno"
+        export PATH="$DENO_INSTALL/bin:$PATH"
+        echo "$HOME/.deno/bin" >> $GITHUB_PATH
       install-cmd: |
         uv pip install -e '.[test,brillouin]'  --system
-        curl -fsSL https://deno.land/install.sh | sh
       # pytest-split distributes work load so parallel jobs finish in similar time
       # update durations file with `pytest --store-durations --durations-path tests/files/.pytest-split-durations`
       test-cmd: pytest --durations 20 --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
