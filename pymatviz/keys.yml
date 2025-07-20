@@ -425,7 +425,7 @@ mechanical:
   ductility:
     label: Ductility
     symbol: D
-    unit: "%"
+    unit: '%'
   fracture_toughness:
     label: Fracture Toughness
     symbol: K<sub>IC</sub>
@@ -477,7 +477,7 @@ mechanical:
   strain:
     label: Strain
     symbol: ε
-    unit: "%"
+    unit: '%'
   strain_rate:
     label: Strain Rate
     symbol: ε<sub>dot</sub>
@@ -698,7 +698,7 @@ chemical:
     label: Isotope Masses
   natural_abundance:
     label: Natural Abundance
-    symbol: "%"
+    symbol: '%'
   half_life:
     label: Half-life
     symbol: t<sub>1/2</sub>
@@ -934,7 +934,7 @@ optical: # Optical Properties
   quantum_efficiency:
     label: Quantum Efficiency
     symbol: η<sub>QE</sub>
-    unit: "%"
+    unit: '%'
     description: Ratio of collected charge carriers to incident photons
   oscillator_strength:
     label: Oscillator Strength
@@ -1268,7 +1268,7 @@ metrics:
   mape:
     label: Mean Absolute Percentage Error
     symbol: MAPE
-    unit: "%"
+    unit: '%'
   srme:
     label: Symmetric Relative Mean Error
     symbol: SRME
@@ -1286,12 +1286,12 @@ metrics:
   smpe:
     label: Symmetric Mean Percentage Error
     symbol: SMPE
-    unit: "%"
+    unit: '%'
   smape:
     label: Symmetric Mean Absolute Percentage Error
     symbol: SMAPE
     description: Percentage absolute error that treats over- and under-prediction symmetrically
-    unit: "%"
+    unit: '%'
   sse:
     label: Sum of Squared Errors
     symbol: SSE
@@ -1654,7 +1654,7 @@ performance_indicators:
   efficiency:
     label: Efficiency
     symbol: η
-    unit: "%"
+    unit: '%'
   capacity:
     label: Capacity
     symbol: C
@@ -1674,10 +1674,10 @@ performance_indicators:
     description: Ability to preferentially interact with specific species/molecules
   purity:
     label: Purity
-    unit: "%"
+    unit: '%'
   yield:
     label: Yield
-    unit: "%"
+    unit: '%'
   activity:
     label: Activity
     description: Rate or effectiveness of material in its intended function (catalysis, yield, etc.)

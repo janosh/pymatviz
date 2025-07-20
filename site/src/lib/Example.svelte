@@ -11,7 +11,7 @@
 
 <section>
   <div>
-    <CopyButton content={code} style="position: absolute; top: 1ex; right: 1ex;" />
+    <CopyButton content={code} style="position: absolute; top: 1ex; right: 1ex" />
     {@html highlighted}
   </div>
   <img src="/assets/{file}" alt={title} />

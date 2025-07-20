@@ -24,7 +24,7 @@ jobs:
     secrets: inherit
     with:
       os: ${{ matrix.os }}
-      python-version: "3.11"
+      python-version: '3.11'
       install-cmd: uv pip install -e '.[test,brillouin]'  --system
       # pytest-split distributes work load so parallel jobs finish in similar time
       # update durations file with `pytest --store-durations --durations-path tests/files/.pytest-split-durations`

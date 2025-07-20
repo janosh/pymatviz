@@ -6,7 +6,6 @@ import copy
 import os
 import subprocess
 import warnings
-from pathlib import Path
 from shutil import which
 from time import sleep
 from typing import TYPE_CHECKING

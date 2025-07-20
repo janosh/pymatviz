@@ -14,7 +14,9 @@
   let { children }: Props = $props()
 
   let headingSelector = $derived(
-    `main :is(${page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`}):not(.toc-exclude)`,
+    `main :is(${
+      page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`
+    }):not(.toc-exclude)`,
   )
 
   const file_routes = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`))

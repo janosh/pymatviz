@@ -153,6 +153,39 @@ See [`pymatviz/structure/plotly.py`](pymatviz/structure/plotly.py).
 [hea-structure-3d]: assets/svg/hea-structure-3d.svg
 [lco-structure-3d]: assets/svg/lco-structure-3d.svg
 
+## Interactive Widgets
+
+See [`pymatviz/widgets`](pymatviz/widgets). Interactive 3D structure, molecular dynamics trajectory and composition visualization widgets for [Jupyter](https://jupyter.org), [Marimo](https://marimo.io), and VSCode notebooks, powered by [anywidget](https://anywidget.dev) and [MatterViz](https://matterviz.janosh.dev) (https://github.com/janosh/matterviz). Supports pymatgen `Structure`, ASE `Atoms`, and `PhonopyAtoms`, as well as ASE, `pymatgen` and plain Python trajectory formats.
+
+```py
+from pymatviz import StructureWidget, CompositionWidget, TrajectoryWidget
+from pymatgen.core import Structure, Composition
+
+# Interactive 3D structure visualization
+structure = Structure.from_file("structure.cif")
+struct_widget = StructureWidget(structure=structure)
+
+# Interactive composition visualization
+composition = Composition("Fe2O3")
+comp_widget = CompositionWidget(composition=composition)
+
+# Interactive trajectory visualization
+trajectory1 = [struct1, struct2, struct3]  # List of structures
+traj_widget1 = TrajectoryWidget(trajectory=trajectory1)
+
+trajectory2 = [{"structure": struct1, "energy": 1.0}, {"structure": struct2, "energy": 2.0}, {"structure": struct3, "energy": 3.0}]  # dicts with "structure" and property values
+traj_widget2 = TrajectoryWidget(trajectory=trajectory2)
+```
+
+**Examples:**
+
+- [Jupyter notebook demo](examples/widgets/jupyter_demo.ipynb)
+- [Marimo demo](examples/widgets/marimo_demo.py)
+- [VSCode interactive demo](examples/widgets/vscode_interactive_demo.py)
+
+> [!TIP]
+> Checkout the **✅ MatterViz VSCode extension** for using the same viewers directly in VSCode/Cursor editor tabs for rendering local and remote files: [marketplace.visualstudio.com/items?itemName=janosh.matterviz](https://marketplace.visualstudio.com/items?itemName=janosh.matterviz)
+
 ## Brillouin Zone
 
 See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
@@ -339,8 +372,6 @@ See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 [elements-hist]: assets/svg/elements-hist.svg
 [qq-gaussian-multiple]: assets/svg/qq-gaussian-multiple.svg
 [qq-gaussian]: assets/svg/qq-gaussian.svg
-[struct-2d-mp-12712-Hf9Zr9Pd24-disordered]: assets/svg/struct-2d-mp-12712-Hf9Zr9Pd24-disordered.svg
-[struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered]: assets/svg/struct-2d-mp-19017-Li4Mn0.8Fe1.6P4C1.6O16-disordered.svg
 
 ## How to cite `pymatviz`
 

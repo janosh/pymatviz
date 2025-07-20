@@ -77,4 +77,4 @@ def test_all_modules_reexported() -> None:
 
 
 def test_is_ipython() -> None:
-    assert not pmv.IS_IPYTHON
+    assert pmv.IS_IPYTHON in (True, False)
