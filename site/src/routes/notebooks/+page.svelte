@@ -2,7 +2,16 @@
   <h1 class="toc-exclude">Examples</h1>
 
   <ol>
-    {#each Object.keys(import.meta.glob( `$root/examples/*.html`, { eager: true, query: `?url`, import: `default` }, )) as key (key)}
+    {#each Object.keys(
+        import.meta.glob(`$root/examples/*.html`, {
+          eager: true,
+          query: `?url`,
+          import: `default`,
+        }),
+      ) as
+      key
+      (key)
+    }
       {@const filename = key.split(`/`).at(-1)?.split(`.`)[0]}
       <li><a href="/notebooks/{filename}">{filename}.ipynb</a></li>
     {/each}

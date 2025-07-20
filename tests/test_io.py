@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import sys
 import urllib.request
-from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -79,8 +78,8 @@ def test_plotly_pdf_no_mathjax_loading(tmp_path: Path) -> None:
     pmv.save_fig(fig, path)
 
     # check PDF doesn't contain "Loading [MathJax]/extensions/MathMenu.js"
-    with open(path, "rb") as f:
-        pdf = PyPDF2.PdfReader(f)
+    with open(path, mode="rb") as file:
+        pdf = PyPDF2.PdfReader(file)
         assert len(pdf.pages) == 1
         text = pdf.pages[0].extract_text()
         assert "Loading [MathJax]/extensions/MathMenu.js" not in text

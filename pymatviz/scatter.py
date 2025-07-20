@@ -169,15 +169,17 @@ def density_scatter(
         # Create column names for DataFrame
         x_col = xlabel if isinstance(xlabel, str) else "x"
         y_col = ylabel if isinstance(ylabel, str) else "y"
-        df = pd.DataFrame({x_col: xs, y_col: ys})
+        df_data = pd.DataFrame({x_col: xs, y_col: ys})
         x, y = x_col, y_col
-    elif xlabel is None or ylabel is None:
+    else:
+        df_data = df
+    if xlabel is None or ylabel is None:
         auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)
         xlabel = xlabel or auto_xlabel
         ylabel = ylabel or auto_ylabel
 
     return density_scatter_plotly(
-        df,
+        df_data,
         x=x,
         y=y,
         density=density,

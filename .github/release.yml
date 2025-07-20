@@ -33,4 +33,4 @@ changelog:
     - title: 🧹 Linting
       labels: [linting]
     - title: 🤷‍♂️ Other Changes
-      labels: ["*"]
+      labels: ['*']

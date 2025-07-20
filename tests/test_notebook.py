@@ -20,7 +20,91 @@ if "IPython" not in sys.modules:
     sys.modules["IPython.display"] = mock_ipython.display
 
 import pymatviz as pmv
-from pymatviz import notebook
+from pymatviz import notebook, set_renderer, structure_3d
+
+
+@pytest.mark.parametrize(
+    "renderer_type",
+    [pmv.StructureWidget.__name__, lambda: pmv.StructureWidget, lambda: structure_3d],
+)
+def test_set_renderer_structure(renderer_type: str | Any) -> None:
+    """Test set_renderer for Structure with string, class, and function renderers."""
+    # Clear registry to start fresh
+    from pymatviz.notebook import _RENDERER_REGISTRY
+
+    _RENDERER_REGISTRY.clear()
+
+    prev = set_renderer(Structure, structure_3d)
+    assert prev is None
+    # Set renderer
+    renderer = renderer_type() if callable(renderer_type) else renderer_type
+    prev2 = set_renderer(Structure, renderer)
+    assert prev2 == structure_3d
+    # Switch back to string
+    prev3 = set_renderer(Structure, pmv.StructureWidget.__name__)
+    assert prev3 == renderer
+
+
+@pytest.mark.parametrize(
+    "renderer_type",
+    [pmv.StructureWidget.__name__, lambda: pmv.StructureWidget, lambda: structure_3d],
+)
+def test_set_renderer_ase_atoms(renderer_type: str | Any) -> None:
+    """Test set_renderer for ASE Atoms with string, class, and function renderers."""
+    pytest.importorskip("ase")
+    from ase.atoms import Atoms
+
+    # Clear registry to start fresh
+    from pymatviz.notebook import _RENDERER_REGISTRY
+
+    _RENDERER_REGISTRY.clear()
+
+    prev = set_renderer(Atoms, structure_3d)
+    assert prev is None
+    renderer = renderer_type() if callable(renderer_type) else renderer_type
+    prev2 = set_renderer(Atoms, renderer)
+    assert prev2 == structure_3d
+    prev3 = set_renderer(Atoms, pmv.StructureWidget.__name__)
+    assert prev3 == renderer
+
+
+def test_set_renderer_registry_isolation() -> None:
+    """Test that different classes have isolated renderer registry entries."""
+    from pymatviz.notebook import _RENDERER_REGISTRY
+
+    _RENDERER_REGISTRY.clear()
+    set_renderer(Structure, structure_3d)
+
+    class CustomStructure:
+        pass
+
+    def custom_renderer(obj: Any) -> Any:
+        return structure_3d(obj)
+
+    set_renderer(CustomStructure, custom_renderer)
+    assert Structure in _RENDERER_REGISTRY
+    assert CustomStructure in _RENDERER_REGISTRY
+    assert _RENDERER_REGISTRY[Structure] == structure_3d
+    assert _RENDERER_REGISTRY[CustomStructure] == custom_renderer
+
+
+def test_set_renderer_widget_and_string_equivalence() -> None:
+    """Test that both string and class renderers for StructureWidget
+    produce a widget MIME bundle.
+    """
+    pmv.notebook_mode(on=True)
+    struct = Structure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    for renderer in (pmv.StructureWidget.__name__, pmv.StructureWidget):
+        set_renderer(Structure, renderer)
+        mime = struct._repr_mimebundle_()
+        assert isinstance(mime, dict)
+        assert "application/vnd.jupyter.widget-view+json" in mime
+        assert "text/plain" in mime
+    pmv.notebook_mode(on=False)
+
+    # check type error for invalid renderer
+    with pytest.raises(TypeError, match="Unknown renderer=None"):
+        set_renderer(Structure, None)  # type: ignore[arg-type]
 
 
 @pytest.fixture
@@ -243,34 +327,6 @@ def test_object_repr_mimebundle(
         pmv.notebook_mode(on=False)
 
 
-@pytest.mark.parametrize(
-    ("include", "exclude"),
-    [
-        (None, None),
-        ({"application/vnd.plotly.v1+json"}, None),
-        (None, {"text/plain"}),
-        ({"application/vnd.plotly.v1+json", "text/plain"}, {"text/html"}),
-    ],
-)
-def test_repr_mimebundle_with_include_exclude_params(
-    structures: tuple[Structure, Structure],
-    include: set[str] | None,
-    exclude: set[str] | None,
-) -> None:
-    """Test _repr_mimebundle_ with include and exclude parameters."""
-    pmv.notebook_mode(on=True)
-
-    try:  # Call the method with parameters
-        mime_bundle = structures[0]._repr_mimebundle_(include=include, exclude=exclude)
-
-        assert isinstance(mime_bundle, dict)
-        assert "application/vnd.plotly.v1+json" in mime_bundle
-        assert "text/plain" in mime_bundle
-
-    finally:
-        pmv.notebook_mode(on=False)
-
-
 def test_structure_toolbar_hiding(structures: tuple[Structure, Structure]) -> None:
     """Test that plotly toolbar is properly hidden in structure display."""
     pmv.notebook_mode(on=True)
@@ -278,7 +334,7 @@ def test_structure_toolbar_hiding(structures: tuple[Structure, Structure]) -> No
     try:
         mime_bundle = structures[0]._repr_mimebundle_()
 
-        # Check that plotly JSON has toolbar configuration
+        # Check that plotly JSON has toolbar configuration (if using plotly renderer)
         if "application/vnd.plotly.v1+json" in mime_bundle:
             plotly_json = mime_bundle["application/vnd.plotly.v1+json"]
             layout = plotly_json["layout"]
@@ -492,7 +548,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
         "IPython.display.publish_display_data", mock_publish_display_data
     )
 
-    try:  # Check that display methods were added
+    try:  # Check that display methods were added to the class
         from phonopy.phonon.dos import TotalDos
 
         assert hasattr(TotalDos, "_ipython_display_")
@@ -500,7 +556,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
         assert callable(TotalDos._ipython_display_)
         assert callable(TotalDos._repr_mimebundle_)
 
-        # Test _ipython_display_ method
+        # Test _ipython_display_ method on the instance
         phonopy_nacl.total_dos._ipython_display_()
 
         # Check that data was published
@@ -516,7 +572,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
             assert "data" in plotly_json
             assert "layout" in plotly_json
 
-        # Test _repr_mimebundle_ method
+        # Test _repr_mimebundle_ method on the instance
         mime_bundle = phonopy_nacl.total_dos._repr_mimebundle_()
         assert isinstance(mime_bundle, dict)
         assert "text/plain" in mime_bundle

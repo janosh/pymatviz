@@ -115,7 +115,7 @@ def test_element_pair_rdfs_invalid_elements(structures: list[Structure]) -> None
 
 
 def test_element_pair_rdfs_invalid_structure() -> None:
-    err_msg = "Input must be a Pymatgen Structure, ASE Atoms object"
+    err_msg = "Input must be a Pymatgen Structure, ASE Atoms"
     with pytest.raises(TypeError, match=err_msg):
         element_pair_rdfs("not a structure")
 
@@ -309,7 +309,7 @@ def test_full_rdf_empty_structure() -> None:
 
 
 def test_full_rdf_invalid_structure() -> None:
-    err_msg = "Input must be a Pymatgen Structure, ASE Atoms object"
+    err_msg = "Input must be a Pymatgen Structure, ASE Atoms"
     with pytest.raises(TypeError, match=err_msg):
         full_rdf("not a structure")
 

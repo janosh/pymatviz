@@ -94,11 +94,11 @@ fig.show()
 # )
 
 # Show 3D structures for the first few structures in the dataset as subplots
-num_struct_show = min(3, len(structures))
-print(f"Showing 3D structures for {num_struct_show} structures in the analysis:")
+n_structs_to_show = min(3, len(structures))
+print(f"Showing 3D structures for {n_structs_to_show} structures in the analysis:")
 
 structures_dict = {}
-for idx in range(num_struct_show):
+for idx in range(n_structs_to_show):
     struct = structures[idx]
     spg = struct.get_space_group_info()[1]
     mat_id = struct.properties.get(Key.mat_id, f"struct-{idx + 1}")
@@ -295,11 +295,11 @@ fig.show()
 pmv.io.save_and_compress_svg(fig, "chem-env-sunburst-mp-carbon-crystal-nn")
 
 # Show 3D structures for a few representative carbon polymorphs as subplots
-num_carbon_show = min(3, len(docs))
-print(f"Showing 3D structures for {num_carbon_show} representative carbon structures:")
+n_carbon_to_show = min(3, len(docs))
+print(f"Showing 3D structures for {n_carbon_to_show} representative carbon structures:")
 
 carbon_structures_dict = {}
-for idx in range(num_carbon_show):
+for idx in range(n_carbon_to_show):
     doc = docs[idx]
     struct = doc["structure"]
     spg = struct.get_space_group_info()[1]

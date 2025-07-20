@@ -270,18 +270,18 @@ def test_py_pkg_treemap_errors(
 
 
 @pytest.mark.parametrize(
-    ("base_url", "expect_link"),
+    ("test_base_url", "expect_link"),
     [
         ("https://github.com/test/repo/blob/main", True),
         (None, False),
     ],
 )
-def test_py_pkg_treemap_base_url(base_url: str | None, expect_link: bool) -> None:
+def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -> None:
     """Test base_url handling for links and hover info."""
     pkg_name = "my_pkg"
     show_counts: Final = "value+percent"
 
-    fig = pmv.py_pkg_treemap(pkg_name, base_url=base_url, show_counts=show_counts)
+    fig = pmv.py_pkg_treemap(pkg_name, base_url=test_base_url, show_counts=show_counts)
     trace = fig.data[0]
 
     # Check texttemplate and textinfo
@@ -305,7 +305,7 @@ def test_py_pkg_treemap_base_url(base_url: str | None, expect_link: bool) -> Non
     if expect_link:
         file_node_indices = [i for i, id_val in enumerate(trace.ids) if ".py" in id_val]
         assert all(
-            str(base_url) in str(file_urls[i])
+            str(test_base_url) in str(file_urls[i])
             for i in file_node_indices
             if file_urls[i] is not None
         )

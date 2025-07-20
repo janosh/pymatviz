@@ -18,8 +18,8 @@
   --toc-active-bg: none;
   --toc-active-border-radius: 0;
 
-  --zoo-github-corner-color: var(--night);
-  --zoo-github-corner-bg: white;
+  --github-corner-color: var(--night);
+  --github-corner-bg: white;
 
   --sms-options-bg: rgb(50, 48, 66);
   --sms-active-color: cornflowerblue;

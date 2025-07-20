@@ -14,6 +14,7 @@ from pymatviz.process_data import (
     bin_df_cols,
     df_to_arrays,
     is_ase_atoms,
+    is_phonopy_atoms,
     normalize_structures,
     normalize_to_dict,
 )
@@ -346,6 +347,23 @@ class NotAse:
 def test_is_ase_atoms(obj: object, expected: bool) -> None:
     """Test the is_ase_atoms function with various inputs."""
     assert is_ase_atoms(obj) == expected
+
+
+def test_is_phonopy_atoms() -> None:
+    """Test the is_phonopy_atoms function with various inputs."""
+    pytest.importorskip("phonopy")
+    from phonopy.structure.atoms import PhonopyAtoms
+
+    phonopy_atoms = PhonopyAtoms(
+        symbols=["Si"], positions=[[0, 0, 0]], cell=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    )
+    assert is_phonopy_atoms(phonopy_atoms)
+    assert is_phonopy_atoms(Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])) is False
+    assert is_phonopy_atoms("string") is False
+    assert is_phonopy_atoms(123) is False
+    assert is_phonopy_atoms([1, 2, 3]) is False
+    assert is_phonopy_atoms({"key": "value"}) is False
+    assert is_phonopy_atoms(None) is False
 
 
 class DummyClass:

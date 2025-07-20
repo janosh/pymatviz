@@ -186,11 +186,15 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
     return counts
 
 
-def collect_package_modules(package_names: Sequence[str]) -> pd.DataFrame:
+def collect_package_modules(
+    package_names: Sequence[str],
+    ignored_dirs: tuple[str, ...] = (".venv", ".git", "node_modules"),
+) -> pd.DataFrame:
     """Collect information about all modules in the given packages.
 
     Args:
-        package_names (Sequence[str]): Names of packages to analyze
+        package_names (Sequence[str]): Names of packages to analyze.
+        ignored_dirs (tuple[str, ...]): Directories to ignore when scanning packages.
 
     Returns:
         pd.DataFrame: with package structure info
@@ -203,12 +207,13 @@ def collect_package_modules(package_names: Sequence[str]) -> pd.DataFrame:
             print(f"Warning: Could not find package path for {package_name}")  # noqa: T201
             continue
 
-        # Find all Python files in the package
         python_files = []
-        for root, _, files in os.walk(pkg_path):
-            for file in files:
-                if file.endswith(".py") and not file.startswith("_"):
-                    file_path = f"{root}/{file}"
+        for root, dirs, files in os.walk(pkg_path):
+            dirs[:] = [folder for folder in dirs if folder not in ignored_dirs]
+
+            for filename in files:
+                if filename.endswith(".py") and not filename.startswith("_"):
+                    file_path = f"{root}/{filename}"
                     python_files.append(file_path)
 
         for file_path in python_files:

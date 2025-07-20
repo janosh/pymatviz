@@ -28,6 +28,7 @@ dependencies = [
     "numpy>=2",
     # output-formatting needed for pandas Stylers,
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
+    "anywidget>=0.9.18",
     "moyopy[interface]>=0.4.1",
     "nbformat>=5.10",
     "pandas[output-formatting,xml]>=2.2",
@@ -64,6 +65,7 @@ build-backend = "uv_build"
 module-name = "pymatviz"
 module-root = ""
 source-include = ["pymatviz/**/*.csv", "pymatviz/**/*.yml"]
+source-exclude = [".venv", "web"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -119,7 +121,7 @@ docstring-code-format = true
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"] # unused-import
-"tests/*" = [
+"**/tests/*" = [
     "D100",    # missing-module-docstring
     "D101",    # missing-class-docstring
     "D103",    # missing-function-docstring

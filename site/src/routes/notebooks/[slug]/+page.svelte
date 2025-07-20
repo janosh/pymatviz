@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { PrevNext } from 'svelte-zoo'
+  import { PrevNext } from 'svelte-multiselect'
 
   export let data
 </script>

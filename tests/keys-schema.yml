@@ -1,4 +1,4 @@
-"$schema": http://json-schema.org/draft-07/schema#
+'$schema': http://json-schema.org/draft-07/schema#
 
 definitions:
   key_entry: # Schema for a single Key enum attribute
@@ -20,13 +20,13 @@ definitions:
 # Main schema
 type: object
 propertyNames:
-  pattern: "^[a-z_]+$" # Category names should be lowercase with underscores
+  pattern: '^[a-z_]+$' # Category names should be lowercase with underscores
 additionalProperties:
   type: object
   propertyNames:
-    pattern: "^[a-z0-9_]+$" # Allow numbers in key names for r2SCAN etc.
+    pattern: '^[a-z0-9_]+$' # Allow numbers in key names for r2SCAN etc.
   additionalProperties:
-    "$ref": "#/definitions/key_entry"
+    '$ref': '#/definitions/key_entry'
   minProperties: 1 # Each category must have at least one key
 
 required:

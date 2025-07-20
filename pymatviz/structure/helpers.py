@@ -1651,7 +1651,7 @@ def _prep_augmented_structure_for_bonding(
     )
 
 
-def _configure_legends(
+def configure_subplot_legends(
     fig: go.Figure,
     site_labels: Literal["symbol", "species", "legend", False]
     | dict[str, str]
@@ -1696,3 +1696,18 @@ def _configure_legends(
                 tracegroupgap=2,  # Reduce vertical space between legend items
             )
             fig.layout[legend_key] = legend_config
+
+
+def add_vacuum_if_needed(struct: Any) -> Any:
+    """Add vacuum to ASE Atoms if they lack a proper cell."""
+    from pymatviz.process_data import is_ase_atoms
+
+    if is_ase_atoms(struct) and (
+        not hasattr(struct, "cell")
+        or struct.cell is None
+        or (hasattr(struct.cell, "volume") and struct.cell.volume < 1e-6)
+    ):
+        # No proper cell - add vacuum for molecular systems
+        struct = struct.copy()
+        struct.center(vacuum=10.0)
+    return struct
