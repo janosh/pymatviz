@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -19,6 +17,8 @@ from tests.widgets.conftest import (
 
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pymatgen.core import Structure
 
 
@@ -60,22 +60,20 @@ def test_widget_notebook_integration() -> None:
     ],
 )
 def test_trajectory_file_loading_various_formats(
-    file_suffix: str, file_content: str | None, create_func: Any
+    file_suffix: str, file_content: str | None, create_func: Any, tmp_path: Path
 ) -> None:
     """Test loading various trajectory file formats via data_url."""
-    with tempfile.NamedTemporaryFile(suffix=file_suffix, delete=False) as temp_file:
-        if file_content:
-            temp_file.write(file_content.encode())
-        else:
-            create_func(temp_file)
-        temp_path = temp_file.name
+    temp_path = tmp_path / f"trajectory{file_suffix}"
 
-    try:
-        widget = TrajectoryWidget(data_url=temp_path)
-        assert widget.data_url == temp_path
-        assert widget.trajectory is None  # Frontend handles loading
-    finally:
-        os.unlink(temp_path)
+    if file_content:
+        temp_path.write_text(file_content)
+    else:
+        with open(temp_path, "wb") as temp_file:
+            create_func(temp_file)
+
+    widget = TrajectoryWidget(data_url=str(temp_path))
+    assert widget.data_url == str(temp_path)
+    assert widget.trajectory is None  # Frontend handles loading
 
 
 @pytest.mark.parametrize(
@@ -91,21 +89,17 @@ def test_trajectory_file_loading_various_formats(
     ],
 )
 def test_trajectory_file_loading_compressed_formats(
-    file_suffix: str, compression_func: Any
+    file_suffix: str, compression_func: Any, tmp_path: Path
 ) -> None:
     """Test loading compressed trajectory files via data_url."""
     xyz_content = "2\nStep 0\nH 0.0 0.0 0.0\nO 0.0 0.0 1.0"
 
-    with tempfile.NamedTemporaryFile(suffix=file_suffix, delete=False) as temp_file:
-        compression_func(temp_file.name, xyz_content)
-        temp_path = temp_file.name
+    temp_path = tmp_path / f"trajectory{file_suffix}"
+    compression_func(str(temp_path), xyz_content)
 
-    try:
-        widget = TrajectoryWidget(data_url=temp_path)
-        assert widget.data_url == temp_path
-        assert widget.trajectory is None
-    finally:
-        os.unlink(temp_path)
+    widget = TrajectoryWidget(data_url=str(temp_path))
+    assert widget.data_url == str(temp_path)
+    assert widget.trajectory is None
 
 
 @pytest.mark.parametrize(
@@ -123,7 +117,7 @@ def test_trajectory_file_path_handling(data_url: str) -> None:
     assert widget.trajectory is None
 
 
-def test_trajectory_file_loading_with_metadata() -> None:
+def test_trajectory_file_loading_with_metadata(tmp_path: Path) -> None:
     """Test loading trajectory files that include metadata via data_url."""
     from pymatgen.core import Lattice, Structure
 
@@ -135,18 +129,15 @@ def test_trajectory_file_loading_with_metadata() -> None:
 
     trajectory_data = [{"structure": simple_structure, "energy": 1.0, "step": 0}]
 
-    with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as temp_file:
-        import pickle
+    temp_path = tmp_path / "trajectory.pkl"
+    import pickle
 
+    with open(temp_path, "wb") as temp_file:
         pickle.dump(trajectory_data, temp_file)
-        temp_path = temp_file.name
 
-    try:
-        widget = TrajectoryWidget(data_url=temp_path)
-        assert widget.data_url == temp_path
-        assert widget.trajectory is None
-    finally:
-        os.unlink(temp_path)
+    widget = TrajectoryWidget(data_url=str(temp_path))
+    assert widget.data_url == str(temp_path)
+    assert widget.trajectory is None
 
 
 def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> None:

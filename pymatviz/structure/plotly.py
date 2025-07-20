@@ -406,7 +406,7 @@ def structure_2d(
         fig.layout[f"yaxis{key}"].scaleanchor = f"x{key}"
 
     # Configure legends for each subplot
-    helpers._configure_legends(fig, site_labels, n_structs, n_cols, n_rows)
+    helpers.configure_subplot_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig
 
@@ -771,7 +771,7 @@ def structure_3d(
     fig.layout.margin = dict(l=0, r=0, t=30, b=0)  # Minimize margins
 
     # Configure legends for each subplot
-    helpers._configure_legends(fig, site_labels, n_structs, n_cols, n_rows)
+    helpers.configure_subplot_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig
 

@@ -236,8 +236,8 @@ def test_widget_with_disordered_structure(
     widget2 = StructureWidget(structure=fe3co4_disordered_with_props)
     assert widget2.structure == fe3co4_disordered_with_props.as_dict()
 
-    # Verify site properties are preserved
-    site_props = widget2.structure["sites"][0].get("properties", {})
-    assert (
-        "magmom" in site_props or "force" in site_props
-    )  # Should have some properties
+    uniq_prop_keys = {  # Verify the specific properties are preserved
+        key for site in widget2.structure["sites"] for key in site.get("properties", {})
+    }
+
+    assert uniq_prop_keys == {"magmom", "force"}

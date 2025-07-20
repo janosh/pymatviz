@@ -33,7 +33,7 @@ def create_widget(obj: Any, widget_type: WidgetType | None = None) -> Any:
         else:
             raise ValueError(f"No widget type found for {obj=}")
 
-    if widget_type not in WIDGET_MAP:
+    if widget_type not in get_args(WidgetType):
         raise ValueError(
             f"Unknown {widget_type=}, must be one of {get_args(WidgetType)}"
         )

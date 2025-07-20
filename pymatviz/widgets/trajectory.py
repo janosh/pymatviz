@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import traitlets as tl
 
+from pymatviz.structure.helpers import add_vacuum_if_needed
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -151,7 +152,7 @@ class TrajectoryWidget(MatterVizWidget):
 
         # Handle list/sequence of structures or dicts with properties
         if isinstance(trajectory, (list, tuple)):
-            from pymatviz.process_data import is_ase_atoms, normalize_structures
+            from pymatviz.process_data import normalize_structures
 
             frames = []
             for step_idx, item in enumerate(trajectory):
@@ -174,17 +175,7 @@ class TrajectoryWidget(MatterVizWidget):
                     # Already a pymatgen object
                     struct_dict = struct_i.as_dict()
                 else:  # Handle ASE Atoms (that might not have a cell)
-                    if is_ase_atoms(struct_i) and (
-                        not hasattr(struct_i, "cell")
-                        or struct_i.cell is None
-                        or (
-                            hasattr(struct_i.cell, "volume")
-                            and struct_i.cell.volume < 1e-6
-                        )
-                    ):
-                        # No proper cell - add vacuum for molecular systems
-                        struct_i = struct_i.copy()
-                        struct_i.center(vacuum=10.0)
+                    struct_i = add_vacuum_if_needed(struct_i)
 
                     # Use normalize_structures to handle conversion
                     normalized = normalize_structures(struct_i)
@@ -214,22 +205,12 @@ class TrajectoryWidget(MatterVizWidget):
         if hasattr(trajectory, "as_dict") or hasattr(
             trajectory, "get_chemical_symbols"
         ):
-            from pymatviz.process_data import is_ase_atoms, normalize_structures
+            from pymatviz.process_data import normalize_structures
 
             if hasattr(trajectory, "as_dict"):
                 struct_dict = trajectory.as_dict()
             else:  # Handle ASE Atoms (that might not have a cell)
-                if is_ase_atoms(trajectory) and (
-                    not hasattr(trajectory, "cell")
-                    or trajectory.cell is None
-                    or (
-                        hasattr(trajectory.cell, "volume")
-                        and trajectory.cell.volume < 1e-6
-                    )
-                ):
-                    # No proper cell - add vacuum for molecular systems
-                    trajectory = trajectory.copy()
-                    trajectory.center(vacuum=10.0)
+                trajectory = add_vacuum_if_needed(trajectory)
 
                 normalized = normalize_structures(trajectory)
                 struct_dict = next(iter(normalized.values())).as_dict()

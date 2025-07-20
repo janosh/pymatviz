@@ -68,7 +68,7 @@ def test_set_renderer_ase_atoms(renderer_type: str | Any) -> None:
     assert prev3 == renderer
 
 
-def test_renderer_registry_isolation() -> None:
+def test_set_renderer_registry_isolation() -> None:
     """Test that different classes have isolated renderer registry entries."""
     from pymatviz.notebook import _RENDERER_REGISTRY
 
@@ -88,7 +88,7 @@ def test_renderer_registry_isolation() -> None:
     assert _RENDERER_REGISTRY[CustomStructure] == custom_renderer
 
 
-def test_renderer_widget_and_string_equivalence() -> None:
+def test_set_renderer_widget_and_string_equivalence() -> None:
     """Test that both string and class renderers for StructureWidget
     produce a widget MIME bundle.
     """
@@ -101,6 +101,10 @@ def test_renderer_widget_and_string_equivalence() -> None:
         assert "application/vnd.jupyter.widget-view+json" in mime
         assert "text/plain" in mime
     pmv.notebook_mode(on=False)
+
+    # check type error for invalid renderer
+    with pytest.raises(TypeError, match="Unknown renderer=None"):
+        set_renderer(Structure, None)  # type: ignore[arg-type]
 
 
 @pytest.fixture

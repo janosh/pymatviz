@@ -82,74 +82,72 @@ def test_fetch_widget_asset_local_file(tmp_path: Path) -> None:
 
     assert result == "local content"
 
-    def test_fetch_widget_asset_cached_file(tmp_path: Path) -> None:
-        """Test fetching widget asset from cache."""
-        # Create cache file in the correct path structure that the function constructs
-        cache_file = tmp_path / "build" / "1.0.0" / "test.mjs"
-        cache_file.parent.mkdir(parents=True)
-        cache_file.write_text("cached content")
 
+def test_fetch_widget_asset_cached_file(tmp_path: Path) -> None:
+    """Test fetching widget asset from cache."""
+    # Create cache file in the correct path structure that the function constructs
+    cache_file = tmp_path / "1.0.0" / "test.mjs"
+    cache_file.parent.mkdir(parents=True)
+    cache_file.write_text("cached content")
+
+    with (
+        patch("pymatviz.widgets.matterviz.os.path.dirname", return_value=str(tmp_path)),
+        patch(
+            "pymatviz.widgets.matterviz.os.path.expanduser",
+            return_value=str(tmp_path),
+        ),
+        patch("pymatviz.widgets.matterviz.os.path.isfile") as mock_isfile,
+    ):
+        # Return False for local file, True for cache file
+        def isfile_side_effect(path: str) -> bool:
+            # Return True only for the cache file path
+            return path == str(cache_file)
+
+        mock_isfile.side_effect = isfile_side_effect
         with (
-            patch(
-                "pymatviz.widgets.matterviz.os.path.dirname", return_value=str(tmp_path)
-            ),
-            patch(
-                "pymatviz.widgets.matterviz.os.path.expanduser",
-                return_value=str(tmp_path),
-            ),
-            patch("pymatviz.widgets.matterviz.os.path.isfile") as mock_isfile,
-        ):
-            # Return False for local file, True for cache file
-            def isfile_side_effect(path: str) -> bool:
-                # Return True only for the cache file path
-                return path == str(cache_file)
-
-            mock_isfile.side_effect = isfile_side_effect
-            with (
-                patch("pymatviz.widgets.matterviz.version", "1.0.0"),
-                patch(
-                    "pymatviz.widgets.matterviz.urllib.request.urlretrieve"
-                ) as mock_urlretrieve,
-            ):
-                result = fetch_widget_asset("test.mjs")
-
-        assert result == "cached content"
-        # Verify urlretrieve was not called since we found the cached file
-        mock_urlretrieve.assert_not_called()
-
-    def test_fetch_widget_asset_version_specific_caching(tmp_path: Path) -> None:
-        """Test that version override creates version-specific cache."""
-        with (
-            patch(
-                "pymatviz.widgets.matterviz.os.path.dirname", return_value=str(tmp_path)
-            ),
-            patch(
-                "pymatviz.widgets.matterviz.os.path.expanduser",
-                return_value=str(tmp_path),
-            ),
-            patch("pymatviz.widgets.matterviz.os.path.isfile", return_value=False),
+            patch("pymatviz.widgets.matterviz.version", "1.0.0"),
             patch(
                 "pymatviz.widgets.matterviz.urllib.request.urlretrieve"
             ) as mock_urlretrieve,
         ):
+            result = fetch_widget_asset("test.mjs")
 
-            def mock_urlretrieve_side_effect(_url: str, path: str) -> None:
-                # Create the file that would be downloaded
-                import os
+    assert result == "cached content"
+    # Verify urlretrieve was not called since we found the cached file
+    mock_urlretrieve.assert_not_called()
 
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, "w") as f:
-                    f.write("downloaded content")
 
-            mock_urlretrieve.side_effect = mock_urlretrieve_side_effect
-            with patch("pymatviz.widgets.matterviz.version", "1.0.0"):
-                result = fetch_widget_asset("test.mjs", version_override="2.0.0")
+def test_fetch_widget_asset_version_specific_caching(tmp_path: Path) -> None:
+    """Test that version override creates version-specific cache."""
+    with (
+        patch("pymatviz.widgets.matterviz.os.path.dirname", return_value=str(tmp_path)),
+        patch(
+            "pymatviz.widgets.matterviz.os.path.expanduser",
+            return_value=str(tmp_path),
+        ),
+        patch("pymatviz.widgets.matterviz.os.path.isfile", return_value=False),
+        patch(
+            "pymatviz.widgets.matterviz.urllib.request.urlretrieve"
+        ) as mock_urlretrieve,
+    ):
 
-        assert result == "downloaded content"
-        # Verify the file was created in the version-specific cache
-        cache_file = tmp_path / ".cache" / "pymatviz" / "build" / "2.0.0" / "test.mjs"
-        assert cache_file.exists()
-        assert cache_file.read_text() == "downloaded content"
+        def mock_urlretrieve_side_effect(_url: str, path: str) -> None:
+            # Create the file that would be downloaded
+            import os
+
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as f:
+                f.write("downloaded content")
+
+        mock_urlretrieve.side_effect = mock_urlretrieve_side_effect
+        with patch("pymatviz.widgets.matterviz.version", "1.0.0"):
+            result = fetch_widget_asset("test.mjs", version_override="2.0.0")
+
+    assert result == "downloaded content"
+    # Verify the file was created in the version-specific cache
+    cache_file = tmp_path / "2.0.0" / "test.mjs"
+    assert cache_file.exists()
+    assert cache_file.read_text() == "downloaded content"
 
 
 def test_fetch_widget_asset_downloads_correct_version(tmp_path: Path) -> None:

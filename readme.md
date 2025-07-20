@@ -186,6 +186,8 @@ traj_widget2 = TrajectoryWidget(trajectory=trajectory2)
 > [!TIP]
 > Checkout the **✅ MatterViz VSCode extension** for using the same viewers directly in VSCode/Cursor editor tabs for rendering local and remote files: [marketplace.visualstudio.com/items?itemName=janosh.matterviz](https://marketplace.visualstudio.com/items?itemName=janosh.matterviz)
 
+Importing `pymatviz` auto-registers all widgets for their respective sets of supported objects via `register_matterviz_widgets()`. To customize the registration, use [`set_renderer()`](pymatviz/notebook.py).
+
 ## Brillouin Zone
 
 See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).

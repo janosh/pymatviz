@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from pymatviz.widgets.mime import WIDGET_MAP
 
@@ -11,6 +11,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     import plotly.graph_objects as go
+
+_WIDGET_CLASS_TO_KEY: Final = {
+    cls_name: key for key, (_, cls_name, _) in WIDGET_MAP.items()
+}
 
 # Configuration for structure rendering mode
 _RENDERER_REGISTRY: dict[type, Callable[..., Any] | str] = {}
@@ -22,12 +26,22 @@ def set_renderer(
     """Set the renderer for a specific class.
 
     Args:
-        cls: The class to register a renderer for (e.g., Structure, Atoms, Composition)
-        renderer: The render function to use (e.g., structure_3d, StructureWidget)
+        cls: The class to register a renderer for (e.g. Structure, Atoms, Composition)
+        renderer: The render function to use (name or actual reference). E.g.
+            pmv.structure_3d, pmv.StructureWidget or "StructureWidget"
 
     Returns:
         The previous renderer for this class, or None if none was set
+
+    Raises:
+        TypeError: If renderer is not a callable nor a valid widget name.
     """
+    if renderer not in _WIDGET_CLASS_TO_KEY and not callable(renderer):
+        raise TypeError(
+            f"Unknown {renderer=}. Must be callable or a valid widget "
+            f"name: {list(_WIDGET_CLASS_TO_KEY)}"
+        )
+
     previous = _RENDERER_REGISTRY.get(cls)
     _RENDERER_REGISTRY[cls] = renderer
     return previous
@@ -50,17 +64,13 @@ def _create_display_methods(
 
     def _create_widget_mime_bundle(widget_type: str, obj: Any) -> dict[str, Any]:
         """Create MIME bundle for widget types."""
-        # Find the widget type by looking up the widget class name in WIDGET_MAP
-        widget_type = ""
-        for key, (_module_name, cls_name, _param_name) in WIDGET_MAP.items():
-            if cls_name == widget_type:
-                widget_type = key
-                break
+        # Find the widget key by looking up the widget class name in WIDGET_MAP
+        widget_key = _WIDGET_CLASS_TO_KEY.get(widget_type)
 
-        if widget_type == "":
+        if widget_key is None:
             return {"text/plain": repr(obj)}
 
-        module_name, cls_name, param_name = WIDGET_MAP[widget_type]  # type: ignore[index]
+        module_name, cls_name, param_name = WIDGET_MAP[widget_key]
         module = __import__(module_name, fromlist=[cls_name])
         widget_class = getattr(module, cls_name)
         widget = widget_class(**{param_name: obj})
