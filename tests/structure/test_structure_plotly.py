@@ -705,9 +705,7 @@ def test_structure_2d_bonds_and_sites(
 
 def test_structure_2d_invalid_input() -> None:
     """Test that structure_2d raises errors for invalid inputs."""
-    expected_err_msg = (
-        "Input must be a Pymatgen Structure, ASE Atoms object, a sequence"
-    )
+    expected_err_msg = "Input must be a Pymatgen Structure, ASE Atoms"
     with pytest.raises(TypeError, match=expected_err_msg):
         pmv.structure_2d("invalid input")
 

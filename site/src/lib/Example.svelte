@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CopyButton } from 'svelte-zoo'
+  import { CopyButton } from 'svelte-multiselect'
 
   export let title: string
   export let file: string
@@ -11,7 +11,7 @@
 
 <section>
   <div>
-    <CopyButton content={code} style="position: absolute; top: 1ex; right: 1ex;" />
+    <CopyButton content={code} style="position: absolute; top: 1ex; right: 1ex" />
     {@html highlighted}
   </div>
   <img src="/assets/{file}" alt={title} />

@@ -1,0 +1,57 @@
+{
+  "tasks": {
+    "dev": "deno run -A --node-modules-dir npm:vite dev",
+    "build": "rm -rf build && deno run -A --node-modules-dir npm:vite build",
+    "ext-install": "deno task build && find . -name 'matterviz-v*.vsix' -type f | head -1 | xargs -I {} code --install-extension {}"
+  },
+  "lock": false,
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "include": [
+        "ban-unused-ignore",
+        "default-param-last",
+        "eqeqeq",
+        "guard-for-in",
+        "jsx-key",
+        "jsx-no-duplicate-props",
+        "jsx-no-useless-fragment",
+        "no-async-promise-executor",
+        "no-await-in-loop",
+        "no-const-assign",
+        "no-eval",
+        "no-explicit-any",
+        "no-non-null-asserted-optional-chain",
+        "no-non-null-assertion",
+        "no-self-compare",
+        "no-sparse-arrays",
+        "no-sync-fn-in-async-fn",
+        "no-throw-literal",
+        "no-unused-vars",
+        "no-useless-rename",
+        "prefer-const",
+        "require-await",
+        "single-var-declarator"
+      ],
+      "exclude": ["no-sloppy-imports"]
+    }
+  },
+  "fmt": {
+    "indentWidth": 2,
+    "lineWidth": 90,
+    "semiColons": false,
+    "singleQuote": true,
+    "proseWrap": "preserve"
+  },
+  "unstable": ["fmt-component", "sloppy-imports"],
+  "compilerOptions": {
+    "lib": ["dom", "esnext"]
+  },
+  "imports": {
+    "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^6.0.0",
+    "anywidget": "npm:anywidget@^0.9.18",
+    "svelte": "npm:svelte@^5.35.6",
+    "matterviz": "npm:matterviz@^0.1.4"
+  },
+  "nodeModulesDir": "auto"
+}

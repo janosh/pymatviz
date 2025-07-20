@@ -137,7 +137,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Support plotting site vectors like forces/magmoms in `structure_(2|3)d_plotly` [`#220`](https://github.com/janosh/pymatviz/pull/220)
 - Add `add_annotation` functionality for ptable plotters [`#200`](https://github.com/janosh/pymatviz/pull/200)
 - Render spheres with hover tooltip on unit cell corners in `pmv.structure_(2|3)d_plotly` [`#219`](https://github.com/janosh/pymatviz/pull/219)
-- `structure_(2|3)d_plotly` allow overriding subplot title's y position and anchor    [`#218`](https://github.com/janosh/pymatviz/pull/218)
+- `structure_(2|3)d_plotly` allow overriding subplot title's y position and anchor [`#218`](https://github.com/janosh/pymatviz/pull/218)
 - pin kaleido==0.2.1 [`#217`](https://github.com/janosh/pymatviz/pull/217)
 - Add `structure_3d` [`#214`](https://github.com/janosh/pymatviz/pull/214)
 - Clean up var names in unit tests, avoid MP API access in GitHub workflow [`#207`](https://github.com/janosh/pymatviz/pull/207)
@@ -206,7 +206,7 @@ All notable changes to this project will be documented in this file. Dates are d
 
 - Split `powerups` module by `backend`: `matplotlib`/`plotly`/`both` [`#171`](https://github.com/janosh/pymatviz/pull/171)
 - Fix `count_elements` for series of `Composition` [`#170`](https://github.com/janosh/pymatviz/pull/170)
-- Fix and test `ptable_heatmap` text color logic  [`#169`](https://github.com/janosh/pymatviz/pull/169)
+- Fix and test `ptable_heatmap` text color logic [`#169`](https://github.com/janosh/pymatviz/pull/169)
 - `plot_xrd_pattern` accept `DiffractionPattern | Structure` as input [`#168`](https://github.com/janosh/pymatviz/pull/168)
 - Add `plot_xrd_pattern()` for creating interactive XRD patterns with plotly [`#167`](https://github.com/janosh/pymatviz/pull/167)
 - Fix `density_scatter_plotly` metric annotation [`#166`](https://github.com/janosh/pymatviz/pull/166)
@@ -236,7 +236,7 @@ All notable changes to this project will be documented in this file. Dates are d
 
 - Fix `PTableProjector.hide_f_block` property [`#154`](https://github.com/janosh/pymatviz/pull/154)
 - Handle missing value (NaN) and infinity for ptable data [`#152`](https://github.com/janosh/pymatviz/pull/152)
-- [Enhancement/Breaking] Refactor `ptable_hists`  [`#149`](https://github.com/janosh/pymatviz/pull/149)
+- [Enhancement/Breaking] Refactor `ptable_hists` [`#149`](https://github.com/janosh/pymatviz/pull/149)
 - Add keyword `log: bool = False` to `spacegroup_hist` to log scale y-axis [`#148`](https://github.com/janosh/pymatviz/pull/148)
 - MatPES EDA script [`#147`](https://github.com/janosh/pymatviz/pull/147)
 - Fix `ptable_heatmap_splits` `TypeErrors` [`#146`](https://github.com/janosh/pymatviz/pull/146)
@@ -343,7 +343,7 @@ All notable changes to this project will be documented in this file. Dates are d
 
 > 24 July 2023
 
-- Fix "Loading [MathJax]/extensions/MathMenu.js" in Plotly figures exported to PDF  [`#83`](https://github.com/janosh/pymatviz/pull/83)
+- Fix "Loading [MathJax]/extensions/MathMenu.js" in Plotly figures exported to PDF [`#83`](https://github.com/janosh/pymatviz/pull/83)
 - Tiny doc update in ptable.py [`#82`](https://github.com/janosh/pymatviz/pull/82)
 - Better type errors [`#80`](https://github.com/janosh/pymatviz/pull/80)
 - `ruff` enable more rule sets [`#79`](https://github.com/janosh/pymatviz/pull/79)
@@ -389,7 +389,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Add Ruff pre-commit hook [`#68`](https://github.com/janosh/pymatviz/pull/68)
 - scatter_density() use x, y args as axis labels if strings [`0f2386a`](https://github.com/janosh/pymatviz/commit/0f2386a826855f6a961e1ad356bcc567ba2c2c88)
 - fix util save_and_compress_svg() and update plot_structure_2d() assets [`e0020aa`](https://github.com/janosh/pymatviz/commit/e0020aa25f45ad7dbcad4c8c2cfc8eb5542266d9)
-- use redirect in layout.ts instead of ugly DOM href surgery to forward readme links to GH  repo [`7da3c0c`](https://github.com/janosh/pymatviz/commit/7da3c0c51ea43871a1a8ee6d9886506d16a5f601)
+- use redirect in layout.ts instead of ugly DOM href surgery to forward readme links to GH repo [`7da3c0c`](https://github.com/janosh/pymatviz/commit/7da3c0c51ea43871a1a8ee6d9886506d16a5f601)
 - rename add_mae_r2_box() to annotate_mae_r2() [`c550332`](https://github.com/janosh/pymatviz/commit/c550332700ed630ce1aa375fa5c2ba45022ccb10)
 
 #### [v0.5.2](https://github.com/janosh/pymatviz/compare/v0.5.1...v0.5.2)

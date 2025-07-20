@@ -3,9 +3,9 @@
   import { page } from '$app/state'
   import { repository } from '$site/package.json'
   import Icon from '@iconify/svelte'
-  import { CmdPalette } from 'svelte-multiselect'
+  import type { Snippet } from 'svelte'
+  import { CmdPalette, GitHubCorner } from 'svelte-multiselect'
   import Toc from 'svelte-toc'
-  import { GitHubCorner } from 'svelte-zoo'
   import '../app.css'
 
   interface Props {
@@ -14,7 +14,9 @@
   let { children }: Props = $props()
 
   let headingSelector = $derived(
-    `main :is(${page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`}):not(.toc-exclude)`,
+    `main :is(${
+      page.url.pathname === `/api` ? `h1, h2, h3, h4` : `h2`
+    }):not(.toc-exclude)`,
   )
 
   const file_routes = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`))

@@ -177,13 +177,13 @@ def rainclouds(
 
             if hover_data is not None:
                 if isinstance(hover_data, dict):
-                    columns_to_show = hover_data.get(label, [])
+                    cols_to_show = hover_data.get(label, [])
                 else:
-                    columns_to_show = hover_data
+                    cols_to_show = hover_data
 
                 if isinstance(data_itm, tuple):
                     df_i, col = data_itm
-                    for col in columns_to_show:
+                    for col in cols_to_show:
                         if col in df_i:
                             for val_idx, val in enumerate(df_i[col]):
                                 hover_text[val_idx] += f"<br>{col}: {val}"

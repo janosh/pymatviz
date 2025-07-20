@@ -29,14 +29,14 @@ structures = [
 test_structure = structures[2]
 
 # Time ChemEnv method
-start_time = time.time()
+start_time = time.perf_counter()
 fig_chem_env = pmv.chem_env_treemap(test_structure, chem_env_settings="chemenv")
-chem_env_time = time.time() - start_time
+chem_env_time = time.perf_counter() - start_time
 
 # Time CrystalNN method
-start_time = time.time()
+start_time = time.perf_counter()
 fig_crystal_nn = pmv.chem_env_treemap(test_structure, chem_env_settings="crystal_nn")
-crystal_nn_time = time.time() - start_time
+crystal_nn_time = time.perf_counter() - start_time
 
 print(f"ChemEnv time: {chem_env_time:.3f} seconds")
 print(f"CrystalNN time: {crystal_nn_time:.3f} seconds")

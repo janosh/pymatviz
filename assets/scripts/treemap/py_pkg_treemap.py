@@ -16,7 +16,7 @@ pmv.set_plotly_template("plotly_white")
 
 
 # %% single package with default settings
-for package in ("pymatviz", "numpy", "pymatgen"):
+for package in ("pymatviz", "numpy"):
     fig = pmv.py_pkg_treemap(package)
     fig.layout.title.update(text=f"{package} Package Structure", font_size=20, x=0.5)
     fig.show()
@@ -25,7 +25,7 @@ for package in ("pymatviz", "numpy", "pymatgen"):
 
 # %% Compare multiple packages
 fig = pmv.py_pkg_treemap(
-    packages := ("pymatviz", "numpy", "pymatgen"),
+    packages := ("pymatviz", "numpy"),
     show_counts="value+percent",
     # Only include files with at least 50 lines
     cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 50 else 0,

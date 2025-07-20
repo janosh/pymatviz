@@ -595,7 +595,7 @@ def test_files_enum_auto_download(
     monkeypatch.setattr(sys, "stdin", MockStdin())
 
     # Test 1: Auto-download enabled, file does NOT exist. Download should happen.
-    if os.path.exists(expected_abs_path):
+    if os.path.isfile(expected_abs_path):
         os.remove(expected_abs_path)
     monkeypatch.setattr(TestFileEnum, "_auto_download", True)
 
@@ -621,7 +621,7 @@ def test_files_enum_auto_download(
         assert "Downloading" not in stdout_exists
 
     # Test 3: Auto-download disabled, file does NOT exist. No download attempt.
-    if os.path.exists(expected_abs_path):
+    if os.path.isfile(expected_abs_path):
         os.remove(expected_abs_path)
     monkeypatch.setattr(TestFileEnum, "_auto_download", False)
 
@@ -640,7 +640,7 @@ def test_files_enum_auto_download(
     file_no_url = TestFileNoUrl.no_url_file
     path_no_url = f"{tmp_path}/{file_no_url.value}"  # Construct path from enum value
     os.makedirs(os.path.dirname(path_no_url), exist_ok=True)
-    if os.path.exists(path_no_url):
+    if os.path.isfile(path_no_url):
         os.remove(path_no_url)
 
     with patch("requests.get") as mock_get_no_url:
@@ -664,7 +664,7 @@ def test_files_enum_auto_download(
     path_fail_dl = f"{tmp_path}/{file_fail_dl.value}"  # Construct path from enum value
     url_fail_dl = file_fail_dl.url  # Get URL from enum member
     os.makedirs(os.path.dirname(path_fail_dl), exist_ok=True)
-    if os.path.exists(path_fail_dl):
+    if os.path.isfile(path_fail_dl):
         os.remove(path_fail_dl)
 
     with patch("requests.get", return_value=MockFailedResponse()) as mock_get_fail:
