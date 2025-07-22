@@ -15,10 +15,7 @@ from time import perf_counter
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from matbench_discovery.structure.prototype import (
-    count_wyckoff_positions,
-    get_protostructure_label,
-)
+from matbench_discovery.structure import prototype
 from matminer.datasets import load_dataset
 from pymatgen.core import Structure
 from tqdm import tqdm
@@ -37,7 +34,7 @@ df_sym = pd.DataFrame(
 )
 df_sym[Key.crystal_system] = df_sym["number"].map(pmv.utils.spg_to_crystal_sys)
 df_grvh[Key.protostructure] = [
-    get_protostructure_label(struct)
+    prototype.get_protostructure_label(struct)
     for struct in tqdm(df_grvh[Key.structure], desc="matbench_log_gvrh Wyckoff strings")
 ]
 df_kvrh[Key.protostructure] = df_grvh[Key.protostructure]
@@ -46,7 +43,9 @@ for df in (df_grvh, df_kvrh):
     df[[Key.spg_num, Key.wyckoff_symbols]] = df_sym[["number", "wyckoffs"]]
     df[Key.crystal_system] = df_sym[Key.crystal_system]
 
-    df[Key.n_wyckoff_pos] = df[Key.protostructure].map(count_wyckoff_positions)
+    df[Key.n_wyckoff_pos] = df[Key.protostructure].map(
+        prototype.count_wyckoff_positions
+    )
     df[Key.formula] = [x.formula for x in df[Key.structure]]
 
 

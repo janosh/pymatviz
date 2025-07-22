@@ -13,38 +13,21 @@ import pymatviz as pmv
 from pymatviz.colors import ELEM_COLORS_JMOL, ELEM_COLORS_VESTA
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.structure.helpers import (
-    _create_disordered_site_legend_name,
-    _generate_spherical_wedge_mesh,
-    _get_site_symbol,
-    _process_element_color,
+    LABEL_OFFSET_2D_FACTOR,
+    LABEL_OFFSET_3D_FACTOR,
+    MAX_3D_WEDGE_RESOLUTION_PHI,
+    MAX_3D_WEDGE_RESOLUTION_THETA,
+    MAX_PIE_SLICE_POINTS,
+    MIN_3D_WEDGE_RESOLUTION_PHI,
+    MIN_3D_WEDGE_RESOLUTION_THETA,
+    MIN_PIE_SLICE_POINTS,
+    PIE_SLICE_COORD_SCALE,
+    get_disordered_site_legend_name,
     get_image_sites,
+    get_site_symbol,
+    get_spherical_wedge_mesh,
+    normalize_elem_color,
 )
-
-
-# Import constants separately to avoid potential circular import issues
-try:
-    from pymatviz.structure.helpers import (
-        LABEL_OFFSET_2D_FACTOR,
-        LABEL_OFFSET_3D_FACTOR,
-        MAX_3D_WEDGE_RESOLUTION_PHI,
-        MAX_3D_WEDGE_RESOLUTION_THETA,
-        MAX_PIE_SLICE_POINTS,
-        MIN_3D_WEDGE_RESOLUTION_PHI,
-        MIN_3D_WEDGE_RESOLUTION_THETA,
-        MIN_PIE_SLICE_POINTS,
-        PIE_SLICE_COORD_SCALE,
-    )
-except ImportError:
-    # Fallback values if constants aren't available
-    LABEL_OFFSET_3D_FACTOR = 0.3
-    LABEL_OFFSET_2D_FACTOR = 0.3
-    PIE_SLICE_COORD_SCALE = 0.01
-    MIN_3D_WEDGE_RESOLUTION_THETA = 8
-    MIN_3D_WEDGE_RESOLUTION_PHI = 6
-    MAX_3D_WEDGE_RESOLUTION_THETA = 16
-    MAX_3D_WEDGE_RESOLUTION_PHI = 24
-    MIN_PIE_SLICE_POINTS = 3
-    MAX_PIE_SLICE_POINTS = 20
 
 
 if TYPE_CHECKING:
@@ -432,13 +415,13 @@ def _validate_2d_scenario_specifics(
                 sorted_species = sorted(
                     species.items(), key=lambda x: x[1], reverse=True
                 )
-                legend_name = _create_disordered_site_legend_name(
+                legend_name = get_disordered_site_legend_name(
                     sorted_species, is_image=False
                 )
                 expected_legend_names.add(legend_name)
             else:
                 # This is an ordered site - should appear as element symbol
-                expected_legend_names.add(_get_site_symbol(site))
+                expected_legend_names.add(get_site_symbol(site))
 
         legend_trace_names = {trace.name for trace in legend_traces}
         for expected_name in expected_legend_names:
@@ -523,14 +506,14 @@ def _validate_common_site_properties(
     if site_labels_kwarg == "legend":
         # Check legend traces
         legend_traces = [trace for trace in fig.data if trace.showlegend]
-        unique_elements = {_get_site_symbol(s) for s in structure}
+        unique_elements = {get_site_symbol(s) for s in structure}
         assert len(legend_traces) == len(unique_elements)
 
         # Verify each element has correct number of points
         for trace in legend_traces:
             if trace.showlegend and trace.name in unique_elements:
                 expected_points = sum(
-                    1 for site in structure if _get_site_symbol(site) == trace.name
+                    1 for site in structure if get_site_symbol(site) == trace.name
                 )
                 actual_points = len(trace.x) if hasattr(trace, "x") else 0
                 assert actual_points == expected_points
@@ -992,7 +975,7 @@ def test_structure_3d(
 
         # Ordered sites: one scatter3d trace per unique element
         if ordered_sites:
-            ordered_elements = {_get_site_symbol(site) for site in ordered_sites}
+            ordered_elements = {get_site_symbol(site) for site in ordered_sites}
             expected_trace_count += len(ordered_elements)
 
         # Disordered sites: one mesh3d trace per species in each disordered site
@@ -1015,13 +998,13 @@ def test_structure_3d(
                     sorted_species = sorted(
                         species.items(), key=lambda x: x[1], reverse=True
                     )
-                    legend_name = _create_disordered_site_legend_name(
+                    legend_name = get_disordered_site_legend_name(
                         sorted_species, is_image=False
                     )
                     expected_legend_names.add(legend_name)
                 else:
                     # This is an ordered site - should appear as element symbol
-                    expected_legend_names.add(_get_site_symbol(site))
+                    expected_legend_names.add(get_site_symbol(site))
 
             # Each expected legend name should be represented in legend
             legend_trace_names = {trace.name for trace in legend_traces}
@@ -1032,7 +1015,7 @@ def test_structure_3d(
         # as they have different patterns
         if not isinstance(structures_input, dict):
             # For single structure, do basic validation
-            unique_elements = {_get_site_symbol(s) for s in test_structure}
+            unique_elements = {get_site_symbol(s) for s in test_structure}
             assert len(site_traces) >= len(unique_elements)
 
     else:  # show_sites is False
@@ -1639,7 +1622,7 @@ def test_color_processing_edge_cases() -> None:
     ]
 
     for input_color, expected in test_cases:
-        result = _process_element_color(input_color)  # type: ignore[arg-type]
+        result = normalize_elem_color(input_color)  # type: ignore[arg-type]
         assert result == expected
 
 
@@ -1667,7 +1650,7 @@ def test_spherical_wedge_mesh_generation() -> None:
     end_angle = np.pi / 2  # Quarter circle
 
     x_coords, y_coords, z_coords, i_indices, j_indices, k_indices = (
-        _generate_spherical_wedge_mesh(
+        get_spherical_wedge_mesh(
             center=center,
             radius=radius,
             start_angle=start_angle,
@@ -1869,22 +1852,22 @@ def test_disordered_site_legend_name_formatting() -> None:
     """Test that legend name formatting works correctly for different compositions."""
     # Test simple binary disordered site
     sorted_species = [(Species("Fe"), 0.75), (Species("C"), 0.25)]
-    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    legend_name = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert legend_name == "Fe₀.₇₅C₀.₂₅"
 
     # Test ternary disordered site
     sorted_species = [(Species("Fe"), 0.6), (Species("Ni"), 0.3), (Species("Cr"), 0.1)]
-    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    legend_name = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert legend_name == "Fe₀.₆Ni₀.₃Cr₀.₁"
 
     # Test image site (should have same format)
     sorted_species = [(Species("Fe"), 0.75), (Species("C"), 0.25)]
-    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=True)
+    legend_name = get_disordered_site_legend_name(sorted_species, is_image=True)
     assert legend_name == "Image of Fe₀.₇₅C₀.₂₅"  # Image sites have "Image of " prefix
 
     # Test equal occupancies
     sorted_species = [(Species("Fe"), 0.5), (Species("Ni"), 0.5)]
-    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    legend_name = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert legend_name == "Fe₀.₅Ni₀.₅"
 
 

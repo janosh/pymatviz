@@ -14,10 +14,7 @@ https://ml.materialsproject.org/projects/matbench_dielectric
 
 # %%
 import plotly.express as px
-from matbench_discovery.structure.prototype import (
-    count_wyckoff_positions,
-    get_protostructure_label,
-)
+from matbench_discovery.structure import prototype
 from matminer.datasets import load_dataset
 from tqdm import tqdm
 
@@ -36,10 +33,12 @@ df_diel[[Key.spg_symbol, Key.spg_num]] = [
 proto_label_key = f"{Key.protostructure}_moyo"
 n_wyckoff_pos_key = f"{Key.n_wyckoff_pos}_moyo"
 df_diel[proto_label_key] = [
-    get_protostructure_label(struct)
+    prototype.get_protostructure_label(struct)
     for struct in tqdm(df_diel[Key.structure], desc="Getting Wyckoff strings")
 ]
-df_diel[n_wyckoff_pos_key] = df_diel[proto_label_key].map(count_wyckoff_positions)
+df_diel[n_wyckoff_pos_key] = df_diel[proto_label_key].map(
+    prototype.count_wyckoff_positions
+)
 
 df_diel[Key.crystal_system] = df_diel[Key.spg_num].map(pmv.utils.spg_to_crystal_sys)
 

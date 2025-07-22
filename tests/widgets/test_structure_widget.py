@@ -52,11 +52,7 @@ def test_widget_structure_inputs(
 
 @pytest.mark.parametrize(
     ("invalid_structure", "expected_error"),
-    [
-        ("invalid_structure", TypeError),  # String input
-        (123, TypeError),  # Integer input
-        (["invalid"], TypeError),  # List with invalid string
-    ],
+    [("invalid_structure", TypeError), (123, TypeError), (["invalid"], TypeError)],
 )
 def test_widget_invalid_structure_handling(
     invalid_structure: Any, expected_error: type[Exception]

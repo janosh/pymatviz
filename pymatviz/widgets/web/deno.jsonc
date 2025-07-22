@@ -1,8 +1,7 @@
 {
   "tasks": {
     "dev": "deno run -A --node-modules-dir npm:vite dev",
-    "build": "rm -rf build && deno run -A --node-modules-dir npm:vite build",
-    "ext-install": "deno task build && find . -name 'matterviz-v*.vsix' -type f | head -1 | xargs -I {} code --install-extension {}"
+    "build": "rm -rf build && deno run -A --node-modules-dir npm:vite build"
   },
   "lock": false,
   "lint": {

@@ -34,7 +34,7 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     asset_version = version_override or PKG_VERSION
 
     # Paths
-    local_path = f"{os.path.dirname(__file__)}/build/{filename}"
+    local_path = f"{os.path.dirname(__file__)}/web/build/{filename}"
     cache_dir = f"{os.path.expanduser('~/.cache/pymatviz/build')}/{asset_version}"
     os.makedirs(cache_dir, exist_ok=True)
     cache_path = f"{cache_dir}/{filename}"

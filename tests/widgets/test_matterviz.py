@@ -9,12 +9,7 @@ from unittest.mock import patch
 import pytest
 import traitlets
 
-from pymatviz.widgets.matterviz import (
-    MatterVizWidget,
-    build_widget_assets,
-    clear_widget_cache,
-    fetch_widget_asset,
-)
+from pymatviz.widgets import matterviz
 
 
 if TYPE_CHECKING:
@@ -32,7 +27,7 @@ def test_clear_widget_cache(cache_exists: bool, tmp_path: Path) -> None:
         (cache_dir / "test.txt").write_text("test")
 
     with patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)):
-        clear_widget_cache()
+        matterviz.clear_widget_cache()
 
     assert not cache_dir.exists()
 
@@ -53,7 +48,7 @@ def test_clear_widget_cache_version_specific(
     (build_dir / "2.0.0" / "test.txt").write_text("test")
 
     with patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)):
-        clear_widget_cache(version_override)
+        matterviz.clear_widget_cache(version_override)
 
     if version_override:
         # Only the specific version should be deleted
@@ -75,7 +70,7 @@ def test_fetch_widget_asset_local_file(tmp_path: Path) -> None:
     local_file.write_text("local content")
 
     with patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)):
-        result = fetch_widget_asset("test.mjs")
+        result = matterviz.fetch_widget_asset("test.mjs")
 
     assert result == "local content"
 
@@ -105,7 +100,7 @@ def test_fetch_widget_asset_cached_file(tmp_path: Path) -> None:
             patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"),
             patch(f"{DOTTED_PATH}.urllib.request.urlretrieve") as mock_urlretrieve,
         ):
-            result = fetch_widget_asset("test.mjs")
+            result = matterviz.fetch_widget_asset("test.mjs")
 
     assert result == "cached content"
     # Verify urlretrieve was not called since we found the cached file
@@ -132,7 +127,7 @@ def test_fetch_widget_asset_version_specific_caching(tmp_path: Path) -> None:
 
         mock_urlretrieve.side_effect = mock_urlretrieve_side_effect
         with patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"):
-            result = fetch_widget_asset("test.mjs", version_override="v2.0.0")
+            result = matterviz.fetch_widget_asset("test.mjs", version_override="v2.0.0")
 
     assert result == "downloaded content"
     # Verify the file was created in the version-specific cache
@@ -163,7 +158,7 @@ def test_fetch_widget_asset_downloads_correct_version(tmp_path: Path) -> None:
             patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"),
             patch(f"{DOTTED_PATH}.REPO_URL", repo_url),
         ):
-            fetch_widget_asset("test.mjs", version_override="v2.0.0")
+            matterviz.fetch_widget_asset("test.mjs", version_override="v2.0.0")
 
     # Verify the correct URL was called
     mock_urlretrieve.assert_called_once()
@@ -191,7 +186,7 @@ def test_fetch_widget_asset_creates_version_specific_cache(tmp_path: Path) -> No
 
         mock_urlretrieve.side_effect = mock_urlretrieve_side_effect
         with patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"):
-            fetch_widget_asset("test.mjs", version_override="v3.0.0")
+            matterviz.fetch_widget_asset("test.mjs", version_override="v3.0.0")
 
         # Verify the version-specific cache directory was created
         # The function constructs: {expanduser('~/.cache/pymatviz/build')}/{version}
@@ -220,7 +215,7 @@ def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:
             match="Could not load test.mjs from GitHub releases for version v1.0.0",
         ),
     ):
-        fetch_widget_asset("test.mjs")
+        matterviz.fetch_widget_asset("test.mjs")
 
 
 def test_build_widget_assets(tmp_path: Path) -> None:
@@ -229,7 +224,7 @@ def test_build_widget_assets(tmp_path: Path) -> None:
         patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
         patch(f"{DOTTED_PATH}.subprocess.run") as mock_run,
     ):
-        build_widget_assets()
+        matterviz.build_widget_assets()
 
     mock_run.assert_called_once_with(
         ["deno", "task", "build"], cwd=str(tmp_path), check=True
@@ -241,7 +236,7 @@ def test_lazy_matterviz_widget(tmp_path: Path) -> None:
     with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
         mock_fetch.return_value = "widget content"
         with patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)):
-            widget = MatterVizWidget()
+            widget = matterviz.MatterVizWidget()
 
     assert mock_fetch.call_count == 2  # Called for both .mjs and .css files
     assert widget._esm == "widget content"
@@ -253,7 +248,7 @@ def test_lazy_matterviz_widget_version_override(tmp_path: Path) -> None:
     with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
         mock_fetch.return_value = "widget content"
         with patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)):
-            widget = MatterVizWidget(version_override="v2.0.0")
+            widget = matterviz.MatterVizWidget(version_override="v2.0.0")
 
     # Verify fetch_widget_asset was called with version_override
     calls = mock_fetch.call_args_list
@@ -270,5 +265,5 @@ def test_lazy_matterviz_widget_version_override(tmp_path: Path) -> None:
 
 def test_matterviz_widget_inheritance() -> None:
     """Test that MatterVizWidget inherits from AnyWidget."""
-    widget = MatterVizWidget()
+    widget = matterviz.MatterVizWidget()
     assert isinstance(widget, traitlets.HasTraits)

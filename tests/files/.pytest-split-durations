@@ -489,7 +489,7 @@
     "tests/structure/test_structure_helpers.py::test_angles_to_rotation_matrix[30x,45y,60z-expected_shape1]": 0.00016524898819625378,
     "tests/structure/test_structure_helpers.py::test_angles_to_rotation_matrix_invalid_input": 0.00013866700464859605,
     "tests/structure/test_structure_helpers.py::test_constants": 9.791701450012624e-05,
-    "tests/structure/test_structure_helpers.py::test_create_disordered_site_legend_name": 0.00012099897139705718,
+    "tests/structure/test_structure_helpers.py::test_get_disordered_site_legend_name": 0.00012099897139705718,
     "tests/structure/test_structure_helpers.py::test_draw_bonds[False-bond_kwargs2-plotted_sites_coords_param2-0]": 0.0062469589756801724,
     "tests/structure/test_structure_helpers.py::test_draw_bonds[False-bond_kwargs4-None-16]": 0.008371708041522652,
     "tests/structure/test_structure_helpers.py::test_draw_bonds[True-None-None-160]": 0.026459541986696422,

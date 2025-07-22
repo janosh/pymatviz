@@ -14,13 +14,13 @@ from pymatviz.structure.helpers import (
     CELL_EDGES,
     NO_SYM_MSG,
     _angles_to_rotation_matrix,
-    _create_disordered_site_legend_name,
     draw_bonds,
     draw_cell,
     draw_disordered_site,
     draw_site,
     draw_vector,
     get_atomic_radii,
+    get_disordered_site_legend_name,
     get_elem_colors,
     get_first_matching_site_prop,
     get_image_sites,
@@ -986,21 +986,21 @@ def test_draw_disordered_site_legend_functionality() -> None:
             assert trace.legendgroup == "disordered_site_0"
 
 
-def test_create_disordered_site_legend_name() -> None:
-    """Test the _create_disordered_site_legend_name helper function."""
+def testget_disordered_site_legend_name() -> None:
+    """Test the get_disordered_site_legend_name helper function."""
     # Test binary composition
     sorted_species = [(Species("Fe"), 0.6), (Species("Ni"), 0.4)]
-    result = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    result = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert result == "Fe₀.₆Ni₀.₄"
 
     # Test ternary composition
     sorted_species = [(Species("Fe"), 0.5), (Species("Ni"), 0.3), (Species("Cr"), 0.2)]
-    result = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    result = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert result == "Fe₀.₅Ni₀.₃Cr₀.₂"
 
     # Test image site (should have same format)
     sorted_species = [(Species("Fe"), 0.8), (Species("Co"), 0.2)]
-    result = _create_disordered_site_legend_name(sorted_species, is_image=True)
+    result = get_disordered_site_legend_name(sorted_species, is_image=True)
     assert result == "Image of Fe₀.₈Co₀.₂"  # Image sites have "Image of " prefix
 
     # Test rounding behavior
@@ -1008,5 +1008,5 @@ def test_create_disordered_site_legend_name() -> None:
         (Species("Ni"), 0.666667),
         (Species("Fe"), 0.333333),
     ]  # Already sorted by occupancy
-    result = _create_disordered_site_legend_name(sorted_species, is_image=False)
+    result = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert result == "Ni₀.₆₇Fe₀.₃₃"  # Should be sorted by occupancy and rounded
