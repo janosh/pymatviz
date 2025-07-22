@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version to upload assets for (e.g. v0.16.0)
+        description: Version to upload assets for (e.g. v0.1.0)
         required: true
         type: string
 
@@ -25,7 +25,7 @@ jobs:
 
       - name: Build web files
         run: |
-          cd pymatviz/widgets
+          cd pymatviz/widgets/web
           deno task build
 
       - name: Get version

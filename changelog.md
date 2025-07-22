@@ -1,8 +1,43 @@
-### Changelog
+# Changelog
 
-All notable changes to this project will be documented in this file. Dates are displayed in UTC.
+## [v0.17.0](https://github.com/janosh/pymatviz/compare/v0.16.0...v0.17.0)
 
-#### [v0.16.0](https://github.com/janosh/pymatviz/compare/v0.15.1...v0.16.0)
+> 22 July 2025
+
+### 🎉 New Features
+
+- MatterViz widgets by @janosh in https://github.com/janosh/pymatviz/pull/311
+- Sunburst of coordination numbers and environments by @janosh in https://github.com/janosh/pymatviz/pull/295
+
+### 💥 Breaking Changes
+
+- Add `cell_size_fn: Callable[[ModuleStats], float]` keyword to `py_pkg_treemap` by @janosh in https://github.com/janosh/pymatviz/pull/293
+- Support disordered site rendering in `structure_(2|3)d_plotly()` by @janosh in https://github.com/janosh/pymatviz/pull/301
+- Remove `residual_vs_actual()` by @janosh in https://github.com/janosh/pymatviz/pull/302
+- `chem_env_treemap` by @janosh in https://github.com/janosh/pymatviz/pull/303
+- Drop `matplotlib` dependency, refactor few remaining `matplotlib` functions to `plotly` by @janosh in https://github.com/janosh/pymatviz/pull/305
+
+### 🛠 Enhancements
+
+- `cluster_compositions` add `annotate_points` keyword by @janosh in https://github.com/janosh/pymatviz/pull/291
+- Add element color legend to plotly 2d and 3d structure visualizations by @janosh in https://github.com/janosh/pymatviz/pull/298
+- Auto-render pymatgen/ASE objects when returned from notebook cells by @janosh in https://github.com/janosh/pymatviz/pull/299
+- `structure_(2|3)d_plotly` add `cell_boundary_tol: float | dict[str, float]` by @janosh in https://github.com/janosh/pymatviz/pull/300
+
+### 🐛 Bug Fixes
+
+- Fix plotly validators by @bmaranville in https://github.com/janosh/pymatviz/pull/310
+
+### 🧹 House-Keeping
+
+- Rename `structure_(2|3)d_plotly` to `structure_(2|3)d` by @janosh in https://github.com/janosh/pymatviz/pull/304
+- Update `pytest-split` durations by @janosh in https://github.com/janosh/pymatviz/pull/306
+
+### New Contributors
+
+- @bmaranville made their first contribution in https://github.com/janosh/pymatviz/pull/310
+
+## [v0.16.0](https://github.com/janosh/pymatviz/compare/v0.15.1...v0.16.0)
 
 > 2 May 2025
 
@@ -46,7 +81,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - fix ptable_heatmap_splits_plotly() incorrectly handling hide_f_block keyword resulting in missing tiles for Rf 104 through Og 118 [`b9ccbf0`](https://github.com/janosh/pymatviz/commit/b9ccbf0ee3017b066e16640e6749845aff7979c0)
 - force LabelEnums to have labels, gives .label type str causing less mypy headache [`a6825ff`](https://github.com/janosh/pymatviz/commit/a6825ff780416aec660510c295a1b958f68010eb)
 
-#### [v0.15.1](https://github.com/janosh/pymatviz/compare/v0.15.0...v0.15.1)
+## [v0.15.1](https://github.com/janosh/pymatviz/compare/v0.15.0...v0.15.1)
 
 > 28 January 2025
 
@@ -57,7 +92,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - bump ruff to 0.9 and auto-fix [`6989ba5`](https://github.com/janosh/pymatviz/commit/6989ba5496dcf5f699f3a64ef38dd33f65f3ac28)
 - calculate MACE-MPA-0 diatomic curves [`4dc5f1e`](https://github.com/janosh/pymatviz/commit/4dc5f1ee095d398089443a543519a386532d49c5)
 
-#### [v0.15.0](https://github.com/janosh/pymatviz/compare/v0.14.0...v0.15.0)
+## [v0.15.0](https://github.com/janosh/pymatviz/compare/v0.14.0...v0.15.0)
 
 > 21 December 2024
 
@@ -77,7 +112,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - breaking: rename Key.cse to computed_structure_entry [`ab691bb`](https://github.com/janosh/pymatviz/commit/ab691bbfa9f42151a42bcc3a6b2e0a261820b8b6)
 - test_brillouin_zone_3d_trace_counts [`44353aa`](https://github.com/janosh/pymatviz/commit/44353aa5c02259ab82b1d42e1ac3ac9e02ef5a18)
 
-#### [v0.14.0](https://github.com/janosh/pymatviz/compare/v0.13.2...v0.14.0)
+## [v0.14.0](https://github.com/janosh/pymatviz/compare/v0.13.2...v0.14.0)
 
 > 21 November 2024
 
@@ -94,7 +129,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - sankey_from_2_df_cols add kwarg annotate_columns: bool | dict = True [`eed306a`](https://github.com/janosh/pymatviz/commit/eed306a621e32584064f62be37aa7a1cd2db50a4)
 - new/renamed Key attributes n_structs, n_materials, n_molecules, n_samples, n_configs [`786a666`](https://github.com/janosh/pymatviz/commit/786a6667585b40b583e816bae7b857294418a735)
 
-#### [v0.13.2](https://github.com/janosh/pymatviz/compare/v0.13.1...v0.13.2)
+## [v0.13.2](https://github.com/janosh/pymatviz/compare/v0.13.1...v0.13.2)
 
 > 3 November 2024
 
@@ -105,13 +140,13 @@ All notable changes to this project will be documented in this file. Dates are d
 - new Key enum attributes for DFT/experimental settings and paper/code metadata [`8426bc2`](https://github.com/janosh/pymatviz/commit/8426bc2bd45f9ea5ff7a521ee3da3d7f8039293a)
 - dynamic element_pair_rdfs cutoff, defaults to 2x max_cell_len, allow negative values interpreted as scaling factor to max_cell_len (instead of absolute length in Angstrom) [`d6b1b01`](https://github.com/janosh/pymatviz/commit/d6b1b0153e90cff2c6a32bbb2db8ac76aae30ae0)
 
-#### [v0.13.1](https://github.com/janosh/pymatviz/compare/v0.13.0...v0.13.1)
+## [v0.13.1](https://github.com/janosh/pymatviz/compare/v0.13.0...v0.13.1)
 
 > 18 October 2024
 
 - fix ImportError: cannot import pymatgen.symmetry.analyzer.SymmetryUndeterminedError [`298c49a`](https://github.com/janosh/pymatviz/commit/298c49a60a308ced2da54bc2d17ce997694c4ed6)
 
-#### [v0.13.0](https://github.com/janosh/pymatviz/compare/v0.12.0...v0.13.0)
+## [v0.13.0](https://github.com/janosh/pymatviz/compare/v0.12.0...v0.13.0)
 
 > 17 October 2024
 
@@ -127,7 +162,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - replace "sankey-crystal-sys-to-spg-symbol" with "sankey-spglib-vs-aflow-spacegroups" [`3d818a1`](https://github.com/janosh/pymatviz/commit/3d818a15c08d0396b99a12a469ce772f2b716f6d)
 - more Key enum attributes for various errors and number of steps properties [`701a445`](https://github.com/janosh/pymatviz/commit/701a44583e81673e34b077e2429582e91dcbd6da)
 
-#### [v0.12.0](https://github.com/janosh/pymatviz/compare/v0.11.0...v0.12.0)
+## [v0.12.0](https://github.com/janosh/pymatviz/compare/v0.11.0...v0.12.0)
 
 > 7 October 2024
 
@@ -152,14 +187,14 @@ All notable changes to this project will be documented in this file. Dates are d
 - ruff fixes [`#196`](https://github.com/janosh/pymatviz/pull/196)
 - breaking: rename &lt;xyz&gt;_kwds -&gt; &lt;xyz&gt;_kwargs for consistency [`24261ca`](https://github.com/janosh/pymatviz/commit/24261caea8af69ab9698308ce6034bd8ca67b3c1)
 
-#### [v0.11.0](https://github.com/janosh/pymatviz/compare/v0.10.1...v0.11.0)
+## [v0.11.0](https://github.com/janosh/pymatviz/compare/v0.10.1...v0.11.0)
 
 > 1 September 2024
 
 - Bump min supported Python to 3.10 [`#195`](https://github.com/janosh/pymatviz/pull/195)
 - fix ptable_heatmap return type plt.axes-&gt;plt.Axes [`1de350a`](https://github.com/janosh/pymatviz/commit/1de350a146b53ae03f343ff9a78454ba7c976186)
 
-#### [v0.10.1](https://github.com/janosh/pymatviz/compare/v0.10.0...v0.10.1)
+## [v0.10.1](https://github.com/janosh/pymatviz/compare/v0.10.0...v0.10.1)
 
 > 18 August 2024
 
@@ -170,7 +205,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Re-export all submodules/subpackages from `pymatviz.__init__.py` [`#191`](https://github.com/janosh/pymatviz/pull/191)
 - fix missing jinja2 dep at import time [`fb6c9df`](https://github.com/janosh/pymatviz/commit/fb6c9df42e4d40cccca305ca406f8a9975a27a78)
 
-#### [v0.10.0](https://github.com/janosh/pymatviz/compare/v0.9.3...v0.10.0)
+## [v0.10.0](https://github.com/janosh/pymatviz/compare/v0.9.3...v0.10.0)
 
 > 31 July 2024
 
@@ -180,7 +215,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Update the function names for wren utils given breaking changes in Aviary [`#182`](https://github.com/janosh/pymatviz/pull/182)
 - [Breaking] Refactor ptable heatmap plotter [`#157`](https://github.com/janosh/pymatviz/pull/157)
 
-#### [v0.9.3](https://github.com/janosh/pymatviz/compare/v0.9.2...v0.9.3)
+## [v0.9.3](https://github.com/janosh/pymatviz/compare/v0.9.2...v0.9.3)
 
 > 18 July 2024
 
@@ -192,7 +227,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Better `density_scatter_plotly` [`#175`](https://github.com/janosh/pymatviz/pull/175)
 - new ML model, metrics and computational details related enum keys [`b6cdca3`](https://github.com/janosh/pymatviz/commit/b6cdca34a3643aa9dc04070bb92470bb20e7ad3e)
 
-#### [v0.9.2](https://github.com/janosh/pymatviz/compare/v0.9.1...v0.9.2)
+## [v0.9.2](https://github.com/janosh/pymatviz/compare/v0.9.1...v0.9.2)
 
 > 7 July 2024
 
@@ -200,7 +235,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Fix missing keys `Te` + `Nd` in `ELEM_COLORS_VESTA` and support it in `plot_structure_2d` [`#173`](https://github.com/janosh/pymatviz/pull/173)
 - Fix `log_density` in `density_scatter_plotly` [`#172`](https://github.com/janosh/pymatviz/pull/172)
 
-#### [v0.9.1](https://github.com/janosh/pymatviz/compare/v0.9.0...v0.9.1)
+## [v0.9.1](https://github.com/janosh/pymatviz/compare/v0.9.0...v0.9.1)
 
 > 4 July 2024
 
@@ -215,7 +250,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - refactor to explicit ax passing instead of relying on plt.gca() in example scripts [`7912ec0`](https://github.com/janosh/pymatviz/commit/7912ec004cf2201a372cec896998448beac594ba)
 - add_ecdf_line improve adapting trace_defaults from target_trace [`4b451a3`](https://github.com/janosh/pymatviz/commit/4b451a38d77c34565004487eccadf7cfb0cc9140)
 
-#### [v0.9.0](https://github.com/janosh/pymatviz/compare/v0.8.3...v0.9.0)
+## [v0.9.0](https://github.com/janosh/pymatviz/compare/v0.8.3...v0.9.0)
 
 > 21 June 2024
 
@@ -230,7 +265,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - import std lib StrEnum from enum if sys.version_info &gt;= (3, 11) [`510452a`](https://github.com/janosh/pymatviz/commit/510452aeb9a57e33283a8bedd530ddf77a6fe4ce)
 - add plot_structure_2d() keyword subplot_title: Callable[[Structure, str | int], str] | None = None [`523101b`](https://github.com/janosh/pymatviz/commit/523101bc6af2e0b9168a1775cd9c95dd09c3ec4b)
 
-#### [v0.8.3](https://github.com/janosh/pymatviz/compare/v0.8.2...v0.8.3)
+## [v0.8.3](https://github.com/janosh/pymatviz/compare/v0.8.2...v0.8.3)
 
 > 30 May 2024
 
@@ -245,7 +280,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - show ptable-heatmap-splits-3 in readme [`1be63ea`](https://github.com/janosh/pymatviz/commit/1be63eadd824fb726d507ff13bbfaf73538e9c98)
 - fix docs build: ParseError: Unexpected character '“' [`fbb2c8f`](https://github.com/janosh/pymatviz/commit/fbb2c8f67d483b48d6adfd768f80717c98e74061)
 
-#### [v0.8.2](https://github.com/janosh/pymatviz/compare/v0.8.1...v0.8.2)
+## [v0.8.2](https://github.com/janosh/pymatviz/compare/v0.8.1...v0.8.2)
 
 > 11 May 2024
 
@@ -264,7 +299,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - fix docs build error and address bullet point 3 in #138 [`492cd53`](https://github.com/janosh/pymatviz/commit/492cd5301f9b241291a49f24a4d8adbbd50ae5c6)
 - update bibtex citation author list [`aa132d9`](https://github.com/janosh/pymatviz/commit/aa132d92f28ec76a22b7bfe180dc97317592dd37)
 
-#### [v0.8.1](https://github.com/janosh/pymatviz/compare/v0.8.0...v0.8.1)
+## [v0.8.1](https://github.com/janosh/pymatviz/compare/v0.8.0...v0.8.1)
 
 > 11 February 2024
 
@@ -285,7 +320,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - breaking: remove residual_hist() from pymatviz/histograms.py [`7780f68`](https://github.com/janosh/pymatviz/commit/7780f68d593dcdabe750a6b2b868f3bddfea7476)
 - mv dataset_exploration examples [`8bfa4b8`](https://github.com/janosh/pymatviz/commit/8bfa4b8c958db1fd7f3877ad7c8d2a2864ba6936)
 
-#### [v0.8.0](https://github.com/janosh/pymatviz/compare/v0.7.3...v0.8.0)
+## [v0.8.0](https://github.com/janosh/pymatviz/compare/v0.7.3...v0.8.0)
 
 > 15 December 2023
 
@@ -305,21 +340,21 @@ All notable changes to this project will be documented in this file. Dates are d
 - fix add_identity_line for log-scaled matplotlib Axes: TypeError: 'slope' cannot be used with non-linear scales [`ead0ce9`](https://github.com/janosh/pymatviz/commit/ead0ce916f2a30b602a0310b14d7edd99cde52aa)
 - add and test si_fmt_int in pymatviz/utils.py [`fc40cd7`](https://github.com/janosh/pymatviz/commit/fc40cd7ec93af1a81cd9081b68f96f43be9a8fea)
 
-#### [v0.7.3](https://github.com/janosh/pymatviz/compare/v0.7.2...v0.7.3)
+## [v0.7.3](https://github.com/janosh/pymatviz/compare/v0.7.2...v0.7.3)
 
 > 4 November 2023
 
 - Add `styled_html_tag()` in `utils.py` [`#99`](https://github.com/janosh/pymatviz/pull/99)
 - Add `si_fmt()` for formatting large numbers in human-readable format [`#98`](https://github.com/janosh/pymatviz/pull/98)
 
-#### [v0.7.2](https://github.com/janosh/pymatviz/compare/v0.7.1...v0.7.2)
+## [v0.7.2](https://github.com/janosh/pymatviz/compare/v0.7.1...v0.7.2)
 
 > 30 October 2023
 
 - Fix and rename `df_to_(svelte-&gt;html)_table` [`#97`](https://github.com/janosh/pymatviz/pull/97)
 - Add keyword `default_styles: bool = True` to `df_to_pdf` [`#96`](https://github.com/janosh/pymatviz/pull/96)
 
-#### [v0.7.1](https://github.com/janosh/pymatviz/compare/v0.7.0...v0.7.1)
+## [v0.7.1](https://github.com/janosh/pymatviz/compare/v0.7.0...v0.7.1)
 
 > 22 October 2023
 
@@ -328,7 +363,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Add `df_to_svelte_table` [`#93`](https://github.com/janosh/pymatviz/pull/93)
 - fix invalid count_mode ValueError err msg [`ae77997`](https://github.com/janosh/pymatviz/commit/ae779970e210e382006b7a730175ac025b026285)
 
-#### [v0.7.0](https://github.com/janosh/pymatviz/compare/v0.6.3...v0.7.0)
+## [v0.7.0](https://github.com/janosh/pymatviz/compare/v0.6.3...v0.7.0)
 
 > 9 October 2023
 
@@ -339,7 +374,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Breaking: rename `ptable_heatmap` and `annotate_metrics` float precision kwargs to `fmt` [`#87`](https://github.com/janosh/pymatviz/pull/87)
 - Rename `ptable_heatmap(_plotly)` 1st arg: `elem_values-&gt;values` [`#86`](https://github.com/janosh/pymatviz/pull/86)
 
-#### [v0.6.3](https://github.com/janosh/pymatviz/compare/v0.6.2...v0.6.3)
+## [v0.6.3](https://github.com/janosh/pymatviz/compare/v0.6.2...v0.6.3)
 
 > 24 July 2023
 
@@ -353,7 +388,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - add ptable_heatmap_plotly kwarg label_map: dict[str, str] | False | None = None [`ef40171`](https://github.com/janosh/pymatviz/commit/ef401718a2903bbc1f64364e686d15b9ae614988)
 - migrate site to eslint-plugin-svelte [`91d7909`](https://github.com/janosh/pymatviz/commit/91d7909362dab8739d0b84579e6134766b205bce)
 
-#### [v0.6.2](https://github.com/janosh/pymatviz/compare/v0.6.1...v0.6.2)
+## [v0.6.2](https://github.com/janosh/pymatviz/compare/v0.6.1...v0.6.2)
 
 > 29 April 2023
 
@@ -362,7 +397,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - DRY workflows [`#74`](https://github.com/janosh/pymatviz/pull/74)
 - More flexible `annotate_metrics` util [`#73`](https://github.com/janosh/pymatviz/pull/73)
 
-#### [v0.6.1](https://github.com/janosh/pymatviz/compare/v0.6.0...v0.6.1)
+## [v0.6.1](https://github.com/janosh/pymatviz/compare/v0.6.0...v0.6.1)
 
 > 21 March 2023
 
@@ -375,13 +410,13 @@ All notable changes to this project will be documented in this file. Dates are d
 - refactor ptable_heatmap()'s tick_fmt() and add test for cbar_precision kwarg [`3427e1f`](https://github.com/janosh/pymatviz/commit/3427e1fce2ccd13aacf7b2043d9c10c6375027af)
 - plot_structure_2d() in site /api docs [`fcf75de`](https://github.com/janosh/pymatviz/commit/fcf75de255cb3a3fb1555b2b1f7595e0be66043d)
 
-#### [v0.6.0](https://github.com/janosh/pymatviz/compare/v0.5.3...v0.6.0)
+## [v0.6.0](https://github.com/janosh/pymatviz/compare/v0.5.3...v0.6.0)
 
 > 21 February 2023
 
 - Pyproject [`#69`](https://github.com/janosh/pymatviz/pull/69)
 
-#### [v0.5.3](https://github.com/janosh/pymatviz/compare/v0.5.2...v0.5.3)
+## [v0.5.3](https://github.com/janosh/pymatviz/compare/v0.5.2...v0.5.3)
 
 > 20 February 2023
 
@@ -392,7 +427,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - use redirect in layout.ts instead of ugly DOM href surgery to forward readme links to GH repo [`7da3c0c`](https://github.com/janosh/pymatviz/commit/7da3c0c51ea43871a1a8ee6d9886506d16a5f601)
 - rename add_mae_r2_box() to annotate_mae_r2() [`c550332`](https://github.com/janosh/pymatviz/commit/c550332700ed630ce1aa375fa5c2ba45022ccb10)
 
-#### [v0.5.2](https://github.com/janosh/pymatviz/compare/v0.5.1...v0.5.2)
+## [v0.5.2](https://github.com/janosh/pymatviz/compare/v0.5.1...v0.5.2)
 
 > 13 January 2023
 
@@ -415,7 +450,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - add citation.cff [`531133c`](https://github.com/janosh/pymatviz/commit/531133c3a8ab20251101b42cbc1f6f190b76c546)
 - residual_hist() remove args y_true, y_pred, now takes y_res directly [`5c8ccbe`](https://github.com/janosh/pymatviz/commit/5c8ccbe193963b9b56d3773c2f3881ddd9d9d0af)
 
-#### [v0.5.1](https://github.com/janosh/pymatviz/compare/v0.5.0...v0.5.1)
+## [v0.5.1](https://github.com/janosh/pymatviz/compare/v0.5.0...v0.5.1)
 
 > 8 October 2022
 
@@ -423,7 +458,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - move plot_defaults.py into pymatviz pkg [`#23973`](https://github.com/matplotlib/matplotlib/issues/23973)
 - add kwarg y_max_headroom=float to annotate_bars() [`d613d99`](https://github.com/janosh/pymatviz/commit/d613d999174da7f9750ebfffecffd5418e92a8e8)
 
-#### [v0.5.0](https://github.com/janosh/pymatviz/compare/v0.4.4...v0.5.0)
+## [v0.5.0](https://github.com/janosh/pymatviz/compare/v0.4.4...v0.5.0)
 
 > 21 September 2022
 
@@ -448,7 +483,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - add standardize_struct kwarg to plot_structure_2d() [`21d1264`](https://github.com/janosh/pymatviz/commit/21d1264a3d443ebd7176955a1aef1891b93e98f1)
 - add pre-commit hook <https://github.com/jendrikseipp/vulture> [`9dfb806`](https://github.com/janosh/pymatviz/commit/9dfb806e5b929b80f60dd684a764fd71d890df77)
 
-#### [v0.4.4](https://github.com/janosh/pymatviz/compare/v0.4.3...v0.4.4)
+## [v0.4.4](https://github.com/janosh/pymatviz/compare/v0.4.3...v0.4.4)
 
 > 9 July 2022
 
@@ -461,7 +496,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - move codespell and pydocstyle commit hook args to setup.cfg [`7338173`](https://github.com/janosh/pymatviz/commit/7338173df9df9947bf01b5905a08e086e60f2400)
 - [pre-commit.ci] pre-commit autoupdate [`a0b5195`](https://github.com/janosh/pymatviz/commit/a0b5195809bb8af36de3f9fb15355fb155efb01f)
 
-#### [v0.4.3](https://github.com/janosh/pymatviz/compare/v0.4.2...v0.4.3)
+## [v0.4.3](https://github.com/janosh/pymatviz/compare/v0.4.2...v0.4.3)
 
 > 2 June 2022
 
@@ -471,7 +506,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - corrections to element property data in pymatviz/elements.csv (thanks @robertwb) + origin link [`444f9ba`](https://github.com/janosh/pymatviz/commit/444f9ba13b92dd28b7b280e19b6df01164dacd81)
 - fix add_identity_line() if plotly trace data contains NaNs [`c31ac55`](https://github.com/janosh/pymatviz/commit/c31ac55366e02b65f4614595380589feb4855de6)
 
-#### [v0.4.2](https://github.com/janosh/pymatviz/compare/v0.4.1...v0.4.2)
+## [v0.4.2](https://github.com/janosh/pymatviz/compare/v0.4.1...v0.4.2)
 
 > 16 May 2022
 
@@ -484,7 +519,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - add add_identity_line() in tests/test_utils.py [`faa6a52`](https://github.com/janosh/pymatviz/commit/faa6a5275145075ee8d47446e8f5c9eed3075cb9)
 - readme remove ml-matrics to pymatviz migration cmd [`0d123d4`](https://github.com/janosh/pymatviz/commit/0d123d4952e96684ee24e02905249867b16ce69f)
 
-#### [v0.4.1](https://github.com/janosh/pymatviz/compare/v0.4.0...v0.4.1)
+## [v0.4.1](https://github.com/janosh/pymatviz/compare/v0.4.0...v0.4.1)
 
 > 20 March 2022
 
@@ -498,13 +533,13 @@ All notable changes to this project will be documented in this file. Dates are d
 - fix plt.tight_layout() throwing AttributeError on density_hexbin plots (<https://github.com/matplotlib/matplotlib/issues/22576>) [`e5599a6`](https://github.com/janosh/pymatviz/commit/e5599a64d1dbf7f3308cc083f4841932b15c2db6)
 - compress new SVG assets [`fe88271`](https://github.com/janosh/pymatviz/commit/fe882719dadbd57ee8bfb567b9d850ee4d38baef)
 
-#### [v0.4.0](https://github.com/janosh/pymatviz/compare/v0.3.0...v0.4.0)
+## [v0.4.0](https://github.com/janosh/pymatviz/compare/v0.3.0...v0.4.0)
 
 > 1 March 2022
 
 - Rename package to pymatviz (formerly ml-matrics) [`#23`](https://github.com/janosh/pymatviz/pull/23)
 
-#### [v0.3.0](https://github.com/janosh/pymatviz/compare/v0.2.6...v0.3.0)
+## [v0.3.0](https://github.com/janosh/pymatviz/compare/v0.2.6...v0.3.0)
 
 > 28 February 2022
 
@@ -515,7 +550,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - better handling of atomic numbers in count_elements() when outside range [1, 118] [`e46b2c4`](https://github.com/janosh/pymatviz/commit/e46b2c44b97719013aab9339e7e557d8dc2da0b1)
 - python-requires>=3.8 [`e0560af`](https://github.com/janosh/pymatviz/commit/e0560af810b12cae3a34dd818d628360de2d96e5)
 
-#### [v0.2.6](https://github.com/janosh/pymatviz/compare/v0.2.5...v0.2.6)
+## [v0.2.6](https://github.com/janosh/pymatviz/compare/v0.2.5...v0.2.6)
 
 > 6 February 2022
 
@@ -528,7 +563,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - gha test.yml add pytest-cov [`16c92ab`](https://github.com/janosh/pymatviz/commit/16c92abc121d3aea8279e36172d2da15cf72a9e4)
 - readme remove asset compression note, rename scripts [`41d5b6c`](https://github.com/janosh/pymatviz/commit/41d5b6c9c2d392540b39192241b0afabb91f9816)
 
-#### [v0.2.5](https://github.com/janosh/pymatviz/compare/v0.2.4...v0.2.5)
+## [v0.2.5](https://github.com/janosh/pymatviz/compare/v0.2.4...v0.2.5)
 
 > 26 November 2021
 
@@ -537,27 +572,27 @@ All notable changes to this project will be documented in this file. Dates are d
 - add new plotly fig spacegroup_sunburst [`871c42a`](https://github.com/janosh/pymatviz/commit/871c42a6a5217015288e01bcc9ce83b680a9370a)
 - some tweaks to ptable_heatmap_plotly, delete unused softmax + one_hot utils [`3e931f2`](https://github.com/janosh/pymatviz/commit/3e931f2a2a3ef64a0a9529e4a1484479f5efdc68)
 
-#### [v0.2.4](https://github.com/janosh/pymatviz/compare/v0.2.3...v0.2.4)
+## [v0.2.4](https://github.com/janosh/pymatviz/compare/v0.2.3...v0.2.4)
 
 > 2 November 2021
 
 - ptable_heatmap add label precision kwarg, change text color to white on dark tiles, spacegroup_hist better label fontsizes, doc string improvements all around, pre-commit enforce all assets are SVGs [`d45511f`](https://github.com/janosh/pymatviz/commit/d45511f006f03a3054e6daa922a9954e73528080)
 
-#### [v0.2.3](https://github.com/janosh/pymatviz/compare/v0.2.2...v0.2.3)
+## [v0.2.3](https://github.com/janosh/pymatviz/compare/v0.2.2...v0.2.3)
 
 > 18 October 2021
 
 - refactor ptable_heatmap to plot arbitrary data, not just elemental prevalence, add element properties to elements.csv [`57ceb4d`](https://github.com/janosh/pymatviz/commit/57ceb4d547cf7a500b320d8b62440579d64de88b)
 - ptable_heatmap add heat_labels kwarg for fraction, percent or None heat labels, make ptable_heatmap_ratio colors and legend customizable [`c3210bf`](https://github.com/janosh/pymatviz/commit/c3210bf9363e927b5a1de6a2e1053284e541353c)
 
-#### [v0.2.2](https://github.com/janosh/pymatviz/compare/v0.2.1...v0.2.2)
+## [v0.2.2](https://github.com/janosh/pymatviz/compare/v0.2.1...v0.2.2)
 
 > 14 October 2021
 
 - add typing_extensions as py37 dep and dynamically import Literal [`e69face`](https://github.com/janosh/pymatviz/commit/e69face983b71dc0c0ec0c4db298ea0161a38022)
 - add codespell pre-commit hook + fix typos [`58bfa75`](https://github.com/janosh/pymatviz/commit/58bfa7513dcf6d75e9bba3a3dac4fc8a1a54cd6e)
 
-#### [v0.2.1](https://github.com/janosh/pymatviz/compare/v0.2.0...v0.2.1)
+## [v0.2.1](https://github.com/janosh/pymatviz/compare/v0.2.0...v0.2.1)
 
 > 7 October 2021
 
@@ -565,7 +600,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - spacegroup_hist() add crystal system counts [`693307e`](https://github.com/janosh/pymatviz/commit/693307efe3a0d2eccd908a8dd702d67eb1cc33b8)
 - [pre-commit.ci] pre-commit autoupdate [`d6227dd`](https://github.com/janosh/pymatviz/commit/d6227dd606c171116b742a3a4726d2b09a52e096)
 
-#### [v0.2.0](https://github.com/janosh/pymatviz/compare/v0.1.9...v0.2.0)
+## [v0.2.0](https://github.com/janosh/pymatviz/compare/v0.1.9...v0.2.0)
 
 > 4 October 2021
 
@@ -576,13 +611,13 @@ All notable changes to this project will be documented in this file. Dates are d
 - handle nan values in add_mae_r2_box [`be0acf1`](https://github.com/janosh/pymatviz/commit/be0acf1cc66e249afb5e740c24ff5c9c7525157d)
 - fix on.paths in CI workflows [`f9e9ba2`](https://github.com/janosh/pymatviz/commit/f9e9ba27fa45bb1516455fa1c0ed2f332005684b)
 
-#### [v0.1.9](https://github.com/janosh/pymatviz/compare/v0.1.8...v0.1.9)
+## [v0.1.9](https://github.com/janosh/pymatviz/compare/v0.1.8...v0.1.9)
 
 > 26 August 2021
 
 - remove ml_matrics.utils.add_identity, use plt.axline instead <https://git.io/JERaj> [`d30a29f`](https://github.com/janosh/pymatviz/commit/d30a29fce537c187bbaf7d447553abb5a7a06af1)
 
-#### [v0.1.8](https://github.com/janosh/pymatviz/compare/v0.1.7...v0.1.8)
+## [v0.1.8](https://github.com/janosh/pymatviz/compare/v0.1.7...v0.1.8)
 
 > 25 August 2021
 
@@ -590,26 +625,26 @@ All notable changes to this project will be documented in this file. Dates are d
 - use numpy.typing.NDArray for type hints [`c99062c`](https://github.com/janosh/pymatviz/commit/c99062c307d7a3fbdb3ae8033e148f8327ff7b38)
 - add some more pre-commit-hooks [`dfb93e4`](https://github.com/janosh/pymatviz/commit/dfb93e4300c51e439b58033d363b40512a79d877)
 
-#### [v0.1.7](https://github.com/janosh/pymatviz/compare/v0.1.6...v0.1.7)
+## [v0.1.7](https://github.com/janosh/pymatviz/compare/v0.1.6...v0.1.7)
 
 > 3 July 2021
 
 - fully type annotate all functions and fix mypy errors [`b5729e3`](https://github.com/janosh/pymatviz/commit/b5729e363c1c7c30417dd9d1a01616732a06eb36)
 
-#### [v0.1.6](https://github.com/janosh/pymatviz/compare/v0.1.5...v0.1.6)
+## [v0.1.6](https://github.com/janosh/pymatviz/compare/v0.1.5...v0.1.6)
 
 > 2 July 2021
 
 - fix ptable_elemental_prevalence cbar_max kwarg [`9c92e7c`](https://github.com/janosh/pymatviz/commit/9c92e7c49601bec0d93f9ed3350ff69d0c795959)
 
-#### [v0.1.5](https://github.com/janosh/pymatviz/compare/v0.1.4...v0.1.5)
+## [v0.1.5](https://github.com/janosh/pymatviz/compare/v0.1.4...v0.1.5)
 
 > 12 May 2021
 
 - [pre-commit.ci] pre-commit autoupdate [`#11`](https://github.com/janosh/pymatviz/pull/11)
 - ptable_elemental_prevalence change color map as black text on dark green (high prevalence) elements was unreadable [`8bc17b5`](https://github.com/janosh/pymatviz/commit/8bc17b5c77b56760151bfb8522ba7766680920ea)
 
-#### [v0.1.4](https://github.com/janosh/pymatviz/compare/v0.1.3...v0.1.4)
+## [v0.1.4](https://github.com/janosh/pymatviz/compare/v0.1.3...v0.1.4)
 
 > 6 May 2021
 
@@ -617,13 +652,13 @@ All notable changes to this project will be documented in this file. Dates are d
 - add format-ipy-cells pre-commit hook [`7f83ce3`](https://github.com/janosh/pymatviz/commit/7f83ce3dab3259559cfb5d00d6bd8399c699a5fb)
 - [pre-commit.ci] pre-commit autoupdate [`70a5695`](https://github.com/janosh/pymatviz/commit/70a5695d7f48e857f4684dff199f3f7b88ba5c31)
 
-#### [v0.1.3](https://github.com/janosh/pymatviz/compare/v0.1.2...v0.1.3)
+## [v0.1.3](https://github.com/janosh/pymatviz/compare/v0.1.2...v0.1.3)
 
 > 10 April 2021
 
 - ptable_elemental_prevalence add cbar_max kwarg [`829f762`](https://github.com/janosh/pymatviz/commit/829f762eaed18d50b116d5205a2ee9c46ba088d0)
 
-#### [v0.1.2](https://github.com/janosh/pymatviz/compare/v0.1.1...v0.1.2)
+## [v0.1.2](https://github.com/janosh/pymatviz/compare/v0.1.1...v0.1.2)
 
 > 6 April 2021
 
@@ -635,14 +670,14 @@ All notable changes to this project will be documented in this file. Dates are d
 - rename branch master -> main [`50d73c6`](https://github.com/janosh/pymatviz/commit/50d73c6c43e0e04bd3e0639ff5bc25e0e5e393ea)
 - fix setup.cfg to not pollute top level namespace in site-packages with generic data folder [`10c8589`](https://github.com/janosh/pymatviz/commit/10c8589b2c07799f05cbe7986d2dea2c527e7598)
 
-#### [v0.1.1](https://github.com/janosh/pymatviz/compare/v0.1.0...v0.1.1)
+## [v0.1.1](https://github.com/janosh/pymatviz/compare/v0.1.0...v0.1.1)
 
 > 6 April 2021
 
 - fix setup.cfg to not pollute top level namespace in site-packages with generic data folder [`68a84b2`](https://github.com/janosh/pymatviz/commit/68a84b2fa2afbdf6afe21873bbe48b1465e9c20f)
 - [pre-commit.ci] pre-commit autoupdate [`49caa7f`](https://github.com/janosh/pymatviz/commit/49caa7fe7a34002b0bfa5d1edb0b31d36bc8639a)
 
-#### v0.1.0
+## v0.1.0
 
 > 5 April 2021
 
