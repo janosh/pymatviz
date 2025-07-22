@@ -24,11 +24,7 @@ from pymatgen.core import Composition
 from pymatgen.util.string import htmlify
 
 import pymatviz as pmv
-from pymatviz.cluster.composition import (
-    EmbeddingMethod,
-    matminer_featurize,
-    one_hot_encode,
-)
+import pymatviz.cluster.composition as pcc
 from pymatviz.enums import Key
 
 
@@ -64,7 +60,7 @@ def process_dataset(
     target_key: str,
     target_label: str,
     target_symbol: str,
-    embed_method: EmbeddingMethod,
+    embed_method: pcc.EmbeddingMethod,
     projection: ProjectionMethod,
     n_components: int,
     **kwargs: Any,
@@ -113,9 +109,9 @@ def process_dataset(
     if embeddings_dict is None:
         # Create embeddings
         if embed_method == "one-hot":
-            embeddings = one_hot_encode(compositions)
+            embeddings = pcc.one_hot_encode(compositions)
         elif embed_method in ["magpie", "matscholar_el"]:
-            embeddings = matminer_featurize(compositions, preset=embed_method)
+            embeddings = pcc.matminer_featurize(compositions, preset=embed_method)
         else:
             raise ValueError(f"Unknown {embed_method=}")
 
@@ -226,7 +222,9 @@ mb_bulk_modulus = (
     "K<sub>VRH</sub>",
 )
 plot_combinations: list[
-    tuple[str, str, str, str, EmbeddingMethod, ProjectionMethod, int, dict[str, Any]]
+    tuple[
+        str, str, str, str, pcc.EmbeddingMethod, ProjectionMethod, int, dict[str, Any]
+    ]
 ] = [
     # 1. Steels with PCA (2D) - shows clear linear trends
     (*mb_steels, "magpie", "pca", 2, dict(x=0.01, xanchor="left")),

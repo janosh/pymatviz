@@ -16,12 +16,7 @@ from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 from pymatgen.core.periodic_table import Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pymatviz.colors import (
-    ELEM_COLORS_ALLOY,
-    ELEM_COLORS_JMOL,
-    ELEM_COLORS_PASTEL,
-    ELEM_COLORS_VESTA,
-)
+from pymatviz import colors
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.typing import Xyz
 from pymatviz.utils import df_ptable, pick_max_contrast_color
@@ -103,7 +98,7 @@ CELL_EDGES = (
 )
 
 
-def _get_site_symbol(site: PeriodicSite) -> str:
+def get_site_symbol(site: PeriodicSite) -> str:
     """Get a single element symbol for a site.
 
     Handles disordered sites by picking the element with the highest fraction.
@@ -268,14 +263,8 @@ def get_elem_colors(
     """Get element colors based on the provided scheme or custom dictionary."""
     if isinstance(elem_colors, dict):
         return elem_colors
-    if str(elem_colors) == str(ElemColorScheme.jmol):
-        return ELEM_COLORS_JMOL  # type: ignore[return-value]
-    if str(elem_colors) == str(ElemColorScheme.vesta):
-        return ELEM_COLORS_VESTA  # type: ignore[return-value]
-    if str(elem_colors) == str(ElemColorScheme.alloy):
-        return ELEM_COLORS_ALLOY  # type: ignore[return-value]
-    if str(elem_colors) == str(ElemColorScheme.pastel):
-        return ELEM_COLORS_PASTEL  # type: ignore[return-value]
+    if color_dict := getattr(colors, f"ELEM_COLORS_{str(elem_colors).upper()}", None):
+        return color_dict
     raise ValueError(
         f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
     )
@@ -313,12 +302,12 @@ def generate_site_label(
         return None
 
     if site_labels == "symbol":
-        return _get_site_symbol(site)
+        return get_site_symbol(site)
     if site_labels == "species":
         return site.species_string  # Use full species string for disordered
 
     label_text = ""
-    symbol = _get_site_symbol(site)  # Majority element symbol of site
+    symbol = get_site_symbol(site)  # Majority element symbol of site
 
     if isinstance(site_labels, dict):
         # Use provided label for symbol, else symbol itself, or empty if not found &
@@ -423,7 +412,7 @@ def get_site_hover_text(
     return out_text
 
 
-def _process_element_color(raw_color_from_map: ColorType) -> str:
+def normalize_elem_color(raw_color_from_map: ColorType) -> str:
     """Process a color from the element color map into a consistent RGB string format.
 
     Args:
@@ -538,7 +527,7 @@ def draw_site(
     raw_color_from_map = elem_colors.get(majority_species.symbol, "gray")
 
     # Process the color from the map into a string format
-    atom_color = _process_element_color(raw_color_from_map)
+    atom_color = normalize_elem_color(raw_color_from_map)
 
     site_hover_text = get_site_hover_text(site, hover_text, majority_species, float_fmt)
 
@@ -582,7 +571,7 @@ def draw_site(
         fig.add_scatter(**scatter_kwargs, row=row, col=col)
 
 
-def _create_disordered_site_legend_name(
+def get_disordered_site_legend_name(
     sorted_species: list[tuple[Species, float]], *, is_image: bool = False
 ) -> str:
     """Create a legend name for a disordered site showing all elements with occupancies.
@@ -699,7 +688,7 @@ def draw_disordered_site(
     sorted_species = sorted(species.items(), key=lambda x: x[1], reverse=True)
 
     # Create a combined legend name showing all elements with occupancies
-    legend_name = _create_disordered_site_legend_name(sorted_species, is_image=is_image)
+    legend_name = get_disordered_site_legend_name(sorted_species, is_image=is_image)
 
     # Set up legendgroup - use site_idx if not provided to group all parts together
     if legendgroup is None:
@@ -724,7 +713,7 @@ def draw_disordered_site(
             elem_symbol = element_species.symbol
             raw_color_from_map = elem_colors.get(elem_symbol, "gray")
 
-            atom_color = _process_element_color(raw_color_from_map)
+            atom_color = normalize_elem_color(raw_color_from_map)
 
             # Calculate the angular span for this species based on occupancy
             angle_span = 2 * np.pi * occupancy
@@ -735,7 +724,7 @@ def draw_disordered_site(
 
             # Generate the spherical wedge mesh
             x_coords, y_coords, z_coords, i_indices, j_indices, k_indices = (
-                _generate_spherical_wedge_mesh(
+                get_spherical_wedge_mesh(
                     center=coords,
                     radius=wedge_radius,
                     start_angle=current_angle,
@@ -847,7 +836,7 @@ def draw_disordered_site(
         for species_idx, (element_species, occupancy) in enumerate(sorted_species):
             elem_symbol = element_species.symbol
             raw_color_from_map = elem_colors.get(elem_symbol, "gray")
-            atom_color = _process_element_color(raw_color_from_map)
+            atom_color = normalize_elem_color(raw_color_from_map)
 
             # Calculate angular width for this species based on occupancy
             angular_width = 2 * math.pi * occupancy
@@ -984,7 +973,7 @@ MIN_PIE_SLICE_POINTS = 3  # Minimum points for 2D pie slices
 MAX_PIE_SLICE_POINTS = 20  # Base points for 2D pie slices
 
 
-def _generate_spherical_wedge_mesh(
+def get_spherical_wedge_mesh(
     center: np.ndarray,
     radius: float,
     start_angle: float,
@@ -1496,8 +1485,8 @@ def draw_bonds(
 
             if current_bond_color_setting is True:
                 # Default gradient: use element colors of bonded sites
-                elem1_symbol = _get_site_symbol(site1)
-                elem2_symbol = _get_site_symbol(site2)
+                elem1_symbol = get_site_symbol(site1)
+                elem2_symbol = get_site_symbol(site2)
                 color1_rgb_str = parse_color(_elem_colors.get(elem1_symbol, "gray"))
                 color2_rgb_str = parse_color(_elem_colors.get(elem2_symbol, "gray"))
                 color_for_segment_calc = (color1_rgb_str, color2_rgb_str)

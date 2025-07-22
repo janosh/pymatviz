@@ -9,15 +9,8 @@ import pytest
 from pymatgen.core import Composition, IStructure, Lattice, Structure
 
 import pymatviz as pmv
+from pymatviz import process_data as pmv_pd
 from pymatviz.enums import ElemCountMode
-from pymatviz.process_data import (
-    bin_df_cols,
-    df_to_arrays,
-    is_ase_atoms,
-    is_phonopy_atoms,
-    normalize_structures,
-    normalize_to_dict,
-)
 from tests.conftest import SI_ATOMS, SI_STRUCTS, y_pred, y_true
 
 
@@ -37,7 +30,7 @@ if TYPE_CHECKING:
     ],
 )
 def test_count_elements(count_mode: ElemCountMode, counts: dict[str, float]) -> None:
-    series = pmv.count_elements(
+    series = pmv_pd.count_elements(
         ["Fe2 O3"] * 5 + ["Fe4 P4 O16"] * 3, count_mode=count_mode
     )
     expected = pd.Series(counts, index=pmv.df_ptable.index, name="count")
@@ -46,7 +39,7 @@ def test_count_elements(count_mode: ElemCountMode, counts: dict[str, float]) -> 
 
 def test_count_elements_by_atomic_nums() -> None:
     series_in = pd.Series(1, index=range(1, 119))
-    el_cts = pmv.count_elements(series_in)
+    el_cts = pmv_pd.count_elements(series_in)
     expected = pd.Series(1, index=pmv.df_ptable.index, name="count")
 
     pd.testing.assert_series_equal(expected, el_cts)
@@ -55,16 +48,16 @@ def test_count_elements_by_atomic_nums() -> None:
 @pytest.mark.parametrize("range_limits", [(-1, 10), (100, 200)])
 def test_count_elements_bad_atomic_nums(range_limits: tuple[int, int]) -> None:
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
-        pmv.count_elements(dict.fromkeys(range(*range_limits), 0))
+        pmv_pd.count_elements(dict.fromkeys(range(*range_limits), 0))
 
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
         # string and integer keys for atomic numbers should be handled equally
-        pmv.count_elements({str(idx): 0 for idx in range(*range_limits)})
+        pmv_pd.count_elements({str(idx): 0 for idx in range(*range_limits)})
 
 
 def test_count_elements_composition_objects() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv.count_elements(compositions, count_mode=ElemCountMode.composition)
+    series = pmv_pd.count_elements(compositions, count_mode=ElemCountMode.composition)
     expected = pd.Series(
         {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
     )
@@ -73,7 +66,7 @@ def test_count_elements_composition_objects() -> None:
 
 def test_count_elements_composition_objects_fractional() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv.count_elements(
+    series = pmv_pd.count_elements(
         compositions, count_mode=ElemCountMode.fractional_composition
     )
     expected = pd.Series(
@@ -84,7 +77,7 @@ def test_count_elements_composition_objects_fractional() -> None:
 
 def test_count_elements_composition_objects_reduced() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv.count_elements(
+    series = pmv_pd.count_elements(
         compositions, count_mode=ElemCountMode.reduced_composition
     )
     expected = pd.Series(
@@ -95,7 +88,7 @@ def test_count_elements_composition_objects_reduced() -> None:
 
 def test_count_elements_composition_objects_occurrence() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv.count_elements(compositions, count_mode=ElemCountMode.occurrence)
+    series = pmv_pd.count_elements(compositions, count_mode=ElemCountMode.occurrence)
     expected = pd.Series(
         {"Fe": 8, "O": 8, "P": 3}, index=pmv.df_ptable.index, name="count"
     )
@@ -104,7 +97,7 @@ def test_count_elements_composition_objects_occurrence() -> None:
 
 def test_count_elements_mixed_input() -> None:
     mixed_input = ["Fe2O3", Composition("Fe4P4O16"), "LiCoO2", Composition("NaCl")]
-    series = pmv.count_elements(mixed_input, count_mode=ElemCountMode.composition)
+    series = pmv_pd.count_elements(mixed_input, count_mode=ElemCountMode.composition)
     expected = pd.Series(
         {"Fe": 6, "O": 21, "P": 4, "Li": 1, "Co": 1, "Na": 1, "Cl": 1},
         index=pmv.df_ptable.index,
@@ -115,7 +108,7 @@ def test_count_elements_mixed_input() -> None:
 
 def test_count_elements_exclude_elements() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv.count_elements(
+    series = pmv_pd.count_elements(
         compositions, count_mode=ElemCountMode.composition, exclude_elements=["Fe", "P"]
     )
     expected = pd.Series(
@@ -131,7 +124,7 @@ def test_count_elements_exclude_invalid_elements() -> None:
         ValueError,
         match=re.escape(f"Unexpected symbol(s) Zz in {exclude_elements=}"),
     ):
-        pmv.count_elements(
+        pmv_pd.count_elements(
             compositions,
             count_mode=ElemCountMode.composition,
             exclude_elements=exclude_elements,
@@ -140,7 +133,7 @@ def test_count_elements_exclude_invalid_elements() -> None:
 
 def test_count_elements_fill_value() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv.count_elements(compositions, count_mode=ElemCountMode.composition)
+    series = pmv_pd.count_elements(compositions, count_mode=ElemCountMode.composition)
     expected = pd.Series(
         {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
     )
@@ -148,7 +141,7 @@ def test_count_elements_fill_value() -> None:
 
     # Test previous default value (fill_value = 0)
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv.count_elements(
+    series = pmv_pd.count_elements(
         compositions, count_mode=ElemCountMode.composition, fill_value=0
     )
     expected = pd.Series(
@@ -160,7 +153,7 @@ def test_count_elements_fill_value() -> None:
 def test_count_formulas_basic() -> None:
     """Test basic functionality with formula strings."""
     data = ["Fe2O3", "Fe4O6", "FeO", "Li2O", "LiFeO2"]
-    df_out = pmv.count_formulas(data)
+    df_out = pmv_pd.count_formulas(data)
 
     # Test DataFrame structure
     assert set(df_out.columns) == {"arity_name", "chem_sys", "count"}
@@ -175,13 +168,13 @@ def test_count_formulas_basic() -> None:
 def test_count_formulas_empty() -> None:
     """Test handling of empty input."""
     with pytest.raises(ValueError, match="Empty input: data sequence is empty"):
-        pmv.count_formulas([])
+        pmv_pd.count_formulas([])
 
 
 def test_count_formulas_invalid_formula() -> None:
     """Test handling of invalid formulas."""
     with pytest.raises(ValueError, match="Invalid formula"):
-        pmv.count_formulas(["Fe2O3", "NotAFormula"])
+        pmv_pd.count_formulas(["Fe2O3", "NotAFormula"])
 
 
 def test_count_formulas_composition_objects() -> None:
@@ -192,7 +185,7 @@ def test_count_formulas_composition_objects() -> None:
         Composition("FeO"),
         Composition("Li2O"),
     ]
-    df_out = pmv.count_formulas(data, group_by="reduced_formula")
+    df_out = pmv_pd.count_formulas(data, group_by="reduced_formula")
 
     # Should have 3 unique reduced formulas: Fe2O3 (2 entries), FeO, Li2O
     assert len(df_out) == 3
@@ -229,7 +222,7 @@ def test_count_formulas_grouping_modes(
 ) -> None:
     """Test different grouping modes."""
     data = ["Fe2O3", "Fe4O6", "FeO"]
-    df_out = pmv.count_formulas(data, group_by=group_by)
+    df_out = pmv_pd.count_formulas(data, group_by=group_by)
 
     if group_by == "chem_sys":
         assert list(df_out["chem_sys"]) == expected_formulas
@@ -246,7 +239,7 @@ def test_count_formulas_mixed_input() -> None:
         "Fe-O",  # chemical system string
         Composition("FeO"),
     ]
-    df_out = pmv.count_formulas(data, group_by="chem_sys")
+    df_out = pmv_pd.count_formulas(data, group_by="chem_sys")
 
     # All should be grouped into Fe-O system
     assert len(df_out) == 1
@@ -303,7 +296,7 @@ def test_normalize_structures(
     """Test normalize_structures function for various inputs including ASE Atoms."""
     del test_case_name
 
-    result_dict = normalize_structures(input_raw)
+    result_dict = pmv_pd.normalize_structures(input_raw)
 
     assert result_dict == expected_output_dict
 
@@ -346,7 +339,7 @@ class NotAse:
 )
 def test_is_ase_atoms(obj: object, expected: bool) -> None:
     """Test the is_ase_atoms function with various inputs."""
-    assert is_ase_atoms(obj) == expected
+    assert pmv_pd.is_ase_atoms(obj) == expected
 
 
 def test_is_phonopy_atoms() -> None:
@@ -357,13 +350,16 @@ def test_is_phonopy_atoms() -> None:
     phonopy_atoms = PhonopyAtoms(
         symbols=["Si"], positions=[[0, 0, 0]], cell=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]
     )
-    assert is_phonopy_atoms(phonopy_atoms)
-    assert is_phonopy_atoms(Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])) is False
-    assert is_phonopy_atoms("string") is False
-    assert is_phonopy_atoms(123) is False
-    assert is_phonopy_atoms([1, 2, 3]) is False
-    assert is_phonopy_atoms({"key": "value"}) is False
-    assert is_phonopy_atoms(None) is False
+    assert pmv_pd.is_phonopy_atoms(phonopy_atoms)
+    assert (
+        pmv_pd.is_phonopy_atoms(Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]))
+        is False
+    )
+    assert pmv_pd.is_phonopy_atoms("string") is False
+    assert pmv_pd.is_phonopy_atoms(123) is False
+    assert pmv_pd.is_phonopy_atoms([1, 2, 3]) is False
+    assert pmv_pd.is_phonopy_atoms({"key": "value"}) is False
+    assert pmv_pd.is_phonopy_atoms(None) is False
 
 
 class DummyClass:
@@ -380,7 +376,7 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
         DummyClass: DummyClass("dummy"),
         Lattice: Lattice.cubic(5),
     }[cls]
-    result = normalize_to_dict(single_instance, cls=cls)
+    result = pmv_pd.normalize_to_dict(single_instance, cls=cls)
     assert isinstance(result, dict)
     assert len(result) == 1
     assert "" in result
@@ -388,7 +384,7 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
 
     # Test with a list of instances
     instance_list = [single_instance, single_instance]
-    result = normalize_to_dict(instance_list, cls=cls)
+    result = pmv_pd.normalize_to_dict(instance_list, cls=cls)
     assert isinstance(result, dict)
     assert len(result) == 2
     assert all(isinstance(s, cls) for s in result.values())
@@ -401,14 +397,14 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
 
     # Test with a dictionary of instances
     instance_dict = {"item1": single_instance, "item2": single_instance}
-    result = normalize_to_dict(instance_dict, cls=cls)
+    result = pmv_pd.normalize_to_dict(instance_dict, cls=cls)
     assert result == instance_dict
 
     # Test with invalid input
     inputs, cls_name = "invalid input", cls.__name__
     err_msg = f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
     with pytest.raises(TypeError, match=err_msg):
-        normalize_to_dict(inputs, cls=cls)
+        pmv_pd.normalize_to_dict(inputs, cls=cls)
 
     # Test with mixed valid and invalid inputs in a list
     inputs = [single_instance, "invalid"]  # type: ignore[assignment]
@@ -416,7 +412,7 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
         f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
     )
     with pytest.raises(TypeError, match=err_msg):
-        normalize_to_dict(inputs, cls=cls)
+        pmv_pd.normalize_to_dict(inputs, cls=cls)
 
 
 @pytest.mark.parametrize(
@@ -439,35 +435,35 @@ def test_normalize_to_dict_mixed_classes(
     instance2 = obj_map[cls2]
 
     with pytest.raises(TypeError, match=r"Invalid inputs=\["):
-        normalize_to_dict([instance1, instance2], cls=cls1)
+        pmv_pd.normalize_to_dict([instance1, instance2], cls=cls1)
 
 
 def test_df_to_arrays() -> None:
     df_regr = pd.DataFrame([y_true, y_pred]).T
-    x1, y1 = df_to_arrays(None, y_true, y_pred)
+    x1, y1 = pmv_pd.df_to_arrays(None, y_true, y_pred)
     x_col, y_col = df_regr.columns[:2]
-    x2, y2 = df_to_arrays(df_regr, x_col, y_col)
+    x2, y2 = pmv_pd.df_to_arrays(df_regr, x_col, y_col)
     assert x1 == pytest.approx(x2)
     assert y1 == pytest.approx(y2)
     assert x1 == pytest.approx(y_true)
     assert y1 == pytest.approx(y_pred)
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        df_to_arrays("foo", y_true, y_pred)
+        pmv_pd.df_to_arrays("foo", y_true, y_pred)
 
     bad_col_name = "not-real-col-name"
     with pytest.raises(KeyError) as exc:
-        df_to_arrays(df_regr, bad_col_name, df_regr.columns[0])
+        pmv_pd.df_to_arrays(df_regr, bad_col_name, df_regr.columns[0])
 
     assert "not-real-col-name" in str(exc.value)
 
 
 def test_df_to_arrays_strict() -> None:
-    args = df_to_arrays(42, "foo", "bar", strict=False)
+    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)
     assert args == ("foo", "bar")
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        df_to_arrays(42, "foo", "bar", strict=True)
+        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)
 
 
 @pytest.mark.parametrize(
@@ -507,7 +503,7 @@ def test_bin_df_cols(
     df_float_orig = copy.deepcopy(df_float)
 
     bin_counts_col = "bin_counts"
-    df_binned = bin_df_cols(
+    df_binned = pmv_pd.bin_df_cols(
         df_float,
         bin_by_cols,
         group_by_cols=group_by_cols,
@@ -556,4 +552,4 @@ def test_bin_df_cols_raises() -> None:
     with pytest.raises(
         ValueError, match=re.escape("len(bin_by_cols)=2 != len(n_bins)=1")
     ):
-        bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])
+        pmv_pd.bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])

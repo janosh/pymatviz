@@ -89,13 +89,9 @@ def _register_renderers() -> None:
 
 def register_matterviz_widgets() -> None:
     """Register widgets for automatic display."""
-    from pymatviz.process_data import (
-        is_composition_like,
-        is_structure_like,
-        is_trajectory_like,
-    )
+    from pymatviz import process_data as pd
 
-    WIDGET_REGISTRY[is_trajectory_like] = "trajectory"
-    WIDGET_REGISTRY[is_composition_like] = "composition"
-    WIDGET_REGISTRY[is_structure_like] = "structure"
+    WIDGET_REGISTRY[pd.is_trajectory_like] = StructureType
+    WIDGET_REGISTRY[pd.is_composition_like] = CompositionType
+    WIDGET_REGISTRY[pd.is_structure_like] = StructureType
     _register_renderers()

@@ -242,7 +242,7 @@ def structure_2d(
                 zip(struct_i, rotated_coords_all_sites, strict=False)
             ):
                 # Determine legend parameters for primary sites
-                symbol = helpers._get_site_symbol(site)
+                symbol = helpers.get_site_symbol(site)
                 legendgroup = None
                 showlegend = False
                 if site_labels == "legend":
@@ -621,7 +621,7 @@ def structure_3d(
                     else site_idx_loop % len(struct_i)
                 )
 
-                symbol = helpers._get_site_symbol(site)
+                symbol = helpers.get_site_symbol(site)
 
                 # Determine legend parameters for primary sites only
                 legendgroup = None

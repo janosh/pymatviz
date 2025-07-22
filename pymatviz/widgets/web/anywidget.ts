@@ -32,6 +32,23 @@ function inject_app_css(theme_type?: ThemeType): void {
       background-color: transparent !important;
     }
 
+    /* Dark mode input styling for Jupyter notebooks and interactive windows in VSCode  */
+    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea, select) {
+      background-color: #2d2d2d;
+      color: #ffffff;
+      border: 1px solid #555555;
+      border-radius: 4px;
+      padding: 6px 8px;
+    }
+    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea, select):focus {
+      outline: none;
+      border-color: #007acc;
+      box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+    }
+    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea)::placeholder {
+      color: #888888;
+    }
+
     /* scope global styles to matterviz widgets to prevent site styles leaking into notebook styles */
     /* this is brittle, will break should component CSS classes in matterviz change, try to find better solution */
     div:is(.structure, .trajectory, .composition) {
