@@ -64,9 +64,9 @@ def test_clear_widget_cache_version_specific(
 def test_fetch_widget_asset_local_file(tmp_path: Path) -> None:
     """Test fetching widget asset from local file."""
     # Create the local file in the correct path structure
-    build_dir = tmp_path / "build"
-    build_dir.mkdir()
-    local_file = build_dir / "test.mjs"
+    web_build_dir = tmp_path / "web" / "build"
+    web_build_dir.mkdir(parents=True)
+    local_file = web_build_dir / "test.mjs"
     local_file.write_text("local content")
 
     with patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)):

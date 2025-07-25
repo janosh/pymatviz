@@ -5,19 +5,10 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-import tomllib
 import urllib.request
 from typing import Any
 
 from anywidget import AnyWidget
-
-from pymatviz.utils import ROOT
-
-
-with open(f"{ROOT}/pyproject.toml", mode="rb") as file:
-    pyproject = tomllib.load(file)["project"]
-    PKG_VERSION = f"v{pyproject['version']}"
-    REPO_URL = pyproject["urls"]["Homepage"]
 
 
 def fetch_widget_asset(filename: str, version_override: str | None = None) -> str:
@@ -25,13 +16,15 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
 
     Args:
         filename (str): Name of the asset file to fetch
-        version_override (str): Override current version from pyproject.toml
+        version_override (str): Override current version from package metadata
 
     Returns:
         str: The contents of the asset file
     """
-    # Use override version or default version
-    asset_version = version_override or PKG_VERSION
+    from pymatviz import __version__
+
+    asset_version = version_override or __version__  # fallback to installed version
+    repo_url = "https://github.com/janosh/pymatviz"
 
     # Paths
     local_path = f"{os.path.dirname(__file__)}/web/build/{filename}"
@@ -53,7 +46,7 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
         raise ValueError(f"Invalid version format: {asset_version=}")
 
     # Download from GitHub releases
-    github_url = f"{REPO_URL}/releases/download/{asset_version}/{filename}"
+    github_url = f"{repo_url}/releases/download/{asset_version}/{filename}"
     try:
         urllib.request.urlretrieve(github_url, cache_path)  # noqa: S310
         with open(cache_path, encoding="utf-8") as file:
@@ -98,7 +91,9 @@ class MatterVizWidget(AnyWidget):
         """Initialize the widget with lazy loading of widget assets.
 
         Args:
-            version_override (str | None): Override current version from pyproject.toml
+            version_override (str | None): Override which asset versions to fetch.
+                Defaults to currently installed package version and should only be
+                used with good reason since different JS assets may be incompatible.
             **kwargs: Additional arguments passed to AnyWidget
         """
         self._esm = fetch_widget_asset("matterviz.mjs", version_override)
