@@ -28,5 +28,5 @@ repository-code: https://github.com/janosh/pymatviz
 type: software
 url: https://github.com/janosh/pymatviz
 doi: 10.5281/zenodo.7486816
-version: 0.8.2 # replace with whatever version you use
-date-released: 2022-10-08
+version: 0.17.0 # replace with whatever version you use
+date-released: 2025-07-22
