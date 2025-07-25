@@ -1,0 +1,54 @@
+import { ReferenceTracker } from '@eslint-community/eslint-utils';
+import { createRule } from '../utils/index.js';
+import { getLangValue } from '../utils/ast-utils.js';
+export default createRule('require-event-dispatcher-types', {
+    meta: {
+        docs: {
+            description: 'require type parameters for `createEventDispatcher`',
+            category: 'Best Practices',
+            recommended: true
+        },
+        schema: [],
+        messages: {
+            missingTypeParameter: `Type parameters missing for the \`createEventDispatcher\` function call.`
+        },
+        type: 'suggestion',
+        conditions: [
+            {
+                svelteVersions: ['3/4']
+            }
+        ]
+    },
+    create(context) {
+        let isTs = false;
+        return {
+            SvelteScriptElement(node) {
+                const lang = getLangValue(node)?.toLowerCase();
+                if (lang === 'ts' || lang === 'typescript') {
+                    isTs = true;
+                }
+            },
+            'Program:exit'() {
+                if (!isTs) {
+                    return;
+                }
+                const referenceTracker = new ReferenceTracker(context.sourceCode.scopeManager.globalScope);
+                for (const { node: n } of referenceTracker.iterateEsmReferences({
+                    svelte: {
+                        [ReferenceTracker.ESM]: true,
+                        createEventDispatcher: {
+                            [ReferenceTracker.CALL]: true
+                        }
+                    }
+                })) {
+                    const node = n;
+                    if ((node.typeArguments ??
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Support old typescript-eslint
+                        node.typeParameters) === undefined) {
+                        context.report({ node, messageId: 'missingTypeParameter' });
+                    }
+                }
+            }
+        };
+    }
+});

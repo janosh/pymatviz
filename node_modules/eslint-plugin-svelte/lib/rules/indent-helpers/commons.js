@@ -1,0 +1,65 @@
+import { isOpeningParenToken, isClosingParenToken } from '@eslint-community/eslint-utils';
+import { isNotWhitespace, isWhitespace } from './ast.js';
+/**
+ * Get the first and last tokens of the given node.
+ * If the node is parenthesized, this gets the outermost parentheses.
+ * If the node have whitespace at the start and the end, they will be skipped.
+ */
+export function getFirstAndLastTokens(sourceCode, node, borderOffset = 0) {
+    let firstToken = sourceCode.getFirstToken(node);
+    let lastToken = sourceCode.getLastToken(node);
+    // Get the outermost left parenthesis if it's parenthesized.
+    let left, right;
+    while ((left = sourceCode.getTokenBefore(firstToken)) != null &&
+        (right = sourceCode.getTokenAfter(lastToken)) != null &&
+        isOpeningParenToken(left) &&
+        isClosingParenToken(right) &&
+        borderOffset <= left.range[0]) {
+        firstToken = left;
+        lastToken = right;
+    }
+    while (isWhitespace(firstToken) && firstToken.range[0] < lastToken.range[0]) {
+        firstToken = sourceCode.getTokenAfter(firstToken);
+    }
+    while (isWhitespace(lastToken) && firstToken.range[0] < lastToken.range[0]) {
+        lastToken = sourceCode.getTokenBefore(lastToken);
+    }
+    return { firstToken, lastToken };
+}
+/**
+ * Check whether the given node or token is the beginning of a line.
+ */
+export function isBeginningOfLine(sourceCode, node) {
+    const prevToken = sourceCode.getTokenBefore(node, {
+        includeComments: false,
+        filter: isNotWhitespace
+    });
+    return !prevToken || prevToken.loc.end.line < node.loc.start.line;
+}
+/**
+ * Check whether the given node is the beginning of element.
+ */
+export function isBeginningOfElement(node) {
+    if (node.parent.type === 'SvelteElement' ||
+        node.parent.type === 'SvelteAwaitCatchBlock' ||
+        node.parent.type === 'SvelteAwaitPendingBlock' ||
+        node.parent.type === 'SvelteAwaitThenBlock' ||
+        node.parent.type === 'SvelteEachBlock' ||
+        node.parent.type === 'SvelteElseBlock' ||
+        node.parent.type === 'SvelteIfBlock' ||
+        node.parent.type === 'SvelteKeyBlock' ||
+        node.parent.type === 'SvelteSnippetBlock' ||
+        node.parent.type === 'SvelteStyleElement') {
+        return node.parent.children[0] === node;
+    }
+    if (node.parent.type === 'Program') {
+        return node.parent.body[0] === node;
+    }
+    return assertNever(node.parent);
+}
+/**
+ * Throws an error when invoked.
+ */
+function assertNever(value) {
+    throw new Error(`This part of the code should never be reached but ${value} made it through.`);
+}
