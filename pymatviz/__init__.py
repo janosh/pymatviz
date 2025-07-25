@@ -88,7 +88,7 @@ PKG_NAME = "pymatviz"
 try:
     __version__ = version(PKG_NAME)
 except PackageNotFoundError:
-    pass  # package not installed
+    __version__ = "n/a"  # package not correctly installed
 
 
 IS_IPYTHON = hasattr(builtins, "__IPYTHON__")
