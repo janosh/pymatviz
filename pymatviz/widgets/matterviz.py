@@ -23,7 +23,8 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     """
     from pymatviz import __version__
 
-    asset_version = version_override or __version__  # fallback to installed version
+    # fallback to installed version
+    asset_version = version_override or f"v{__version__}"
     repo_url = "https://github.com/janosh/pymatviz"
 
     # Paths

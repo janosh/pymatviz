@@ -9,19 +9,20 @@ from unittest.mock import patch
 import pytest
 import traitlets
 
+from pymatviz import PKG_NAME
 from pymatviz.widgets import matterviz
 
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-DOTTED_PATH = "pymatviz.widgets.matterviz"
+DOTTED_PATH = f"{PKG_NAME}.widgets.matterviz"
 
 
 @pytest.mark.parametrize("cache_exists", [True, False])
 def test_clear_widget_cache(cache_exists: bool, tmp_path: Path) -> None:
     """Test clearing widget cache."""
-    cache_dir = tmp_path / ".cache" / "pymatviz"
+    cache_dir = tmp_path / ".cache" / PKG_NAME
     if cache_exists:
         cache_dir.mkdir(parents=True)
         (cache_dir / "test.txt").write_text("test")
@@ -58,7 +59,7 @@ def test_clear_widget_cache_version_specific(
         assert (build_dir / other_version).exists()
     else:
         # Entire cache should be deleted
-        assert not (tmp_path / ".cache" / "pymatviz").exists()
+        assert not (tmp_path / ".cache" / PKG_NAME).exists()
 
 
 def test_fetch_widget_asset_local_file(tmp_path: Path) -> None:
@@ -97,7 +98,7 @@ def test_fetch_widget_asset_cached_file(tmp_path: Path) -> None:
 
         mock_isfile.side_effect = isfile_side_effect
         with (
-            patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"),
+            patch(f"{PKG_NAME}.__version__", "1.0.0"),
             patch(f"{DOTTED_PATH}.urllib.request.urlretrieve") as mock_urlretrieve,
         ):
             result = matterviz.fetch_widget_asset("test.mjs")
@@ -126,7 +127,7 @@ def test_fetch_widget_asset_version_specific_caching(tmp_path: Path) -> None:
                 file.write("downloaded content")
 
         mock_urlretrieve.side_effect = mock_urlretrieve_side_effect
-        with patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"):
+        with patch(f"{PKG_NAME}.__version__", "1.0.0"):
             result = matterviz.fetch_widget_asset("test.mjs", version_override="v2.0.0")
 
     assert result == "downloaded content"
@@ -153,17 +154,16 @@ def test_fetch_widget_asset_downloads_correct_version(tmp_path: Path) -> None:
                 file.write("downloaded content")
 
         mock_urlretrieve.side_effect = mock_urlretrieve_side_effect
-        repo_url = "https://github.com/test/repo"
-        with (
-            patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"),
-            patch(f"{DOTTED_PATH}.REPO_URL", repo_url),
-        ):
+        with patch(f"{PKG_NAME}.__version__", "1.0.0"):
             matterviz.fetch_widget_asset("test.mjs", version_override="v2.0.0")
 
     # Verify the correct URL was called
     mock_urlretrieve.assert_called_once()
     call_args = mock_urlretrieve.call_args[0]
-    assert call_args[0] == f"{repo_url}/releases/download/v2.0.0/test.mjs"
+    expected_url = (
+        "https://github.com/janosh/pymatviz/releases/download/v2.0.0/test.mjs"
+    )
+    assert call_args[0] == expected_url
 
 
 def test_fetch_widget_asset_creates_version_specific_cache(tmp_path: Path) -> None:
@@ -172,7 +172,7 @@ def test_fetch_widget_asset_creates_version_specific_cache(tmp_path: Path) -> No
         patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
         patch(
             f"{DOTTED_PATH}.os.path.expanduser",
-            return_value=f"{tmp_path}/.cache/pymatviz/build",
+            return_value=f"{tmp_path}/.cache/{PKG_NAME}/build",
         ),
         patch(f"{DOTTED_PATH}.os.path.isfile", return_value=False),
         patch(f"{DOTTED_PATH}.urllib.request.urlretrieve") as mock_urlretrieve,
@@ -185,13 +185,13 @@ def test_fetch_widget_asset_creates_version_specific_cache(tmp_path: Path) -> No
                 file.write("downloaded content")
 
         mock_urlretrieve.side_effect = mock_urlretrieve_side_effect
-        with patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"):
+        with patch(f"{PKG_NAME}.__version__", "1.0.0"):
             matterviz.fetch_widget_asset("test.mjs", version_override="v3.0.0")
 
         # Verify the version-specific cache directory was created
         # The function constructs: {expanduser('~/.cache/pymatviz/build')}/{version}
         # With our mock: {tmp_path}/.cache/pymatviz/build/{version}
-        cache_dir = tmp_path / ".cache" / "pymatviz" / "build" / "v3.0.0"
+        cache_dir = tmp_path / ".cache" / PKG_NAME / "build" / "v3.0.0"
         assert cache_dir.exists()
         # Verify the file was created in the cache
         cache_file = cache_dir / "test.mjs"
@@ -209,7 +209,7 @@ def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:
             f"{DOTTED_PATH}.urllib.request.urlretrieve",
             side_effect=Exception("Network error"),
         ),
-        patch(f"{DOTTED_PATH}.PKG_VERSION", "v1.0.0"),
+        patch(f"{PKG_NAME}.__version__", "1.0.0"),
         pytest.raises(
             FileNotFoundError,
             match="Could not load test.mjs from GitHub releases for version v1.0.0",
