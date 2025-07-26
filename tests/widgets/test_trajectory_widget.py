@@ -512,7 +512,7 @@ def test_trajectory_widget_with_ase_atoms_with_cell() -> None:
 
     # Create ASE Atoms with cell
     atoms = Atoms("Fe2", positions=[[0, 0, 0], [0.5, 0.5, 0.5]], cell=[3, 3, 3])
-    atoms.properties = {"energy": -2.0}
+    atoms.info = {"energy": -2.0}
 
     widget = TrajectoryWidget(trajectory=atoms)
 

@@ -66,10 +66,11 @@ def test_phonon_dos(
 
 
 def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
+    """Test phonon_dos raises appropriate errors."""
     with pytest.raises(
         TypeError, match=f"Only {PhononDos.__name__} or dict supported, got str"
     ):
-        pmv.phonon_dos("invalid input")
+        pmv.phonon_dos("invalid input")  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Empty DOS dict"):
         pmv.phonon_dos({})
@@ -253,7 +254,7 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
 
     # Test single TotalDos
     fig = pmv.phonon_dos(
-        phonopy_nacl.total_dos, stack=False, sigma=0.1, normalize="max", units="THz"
+        phonopy_nacl.total_dos, stack=False, sigma=0.1, normalize="max", units="THz"  # type: ignore[arg-type]
     )
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Frequency (THz)"
@@ -261,7 +262,7 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
 
     # Test dictionary of TotalDos objects
     dos_dict = {"DFT": phonopy_nacl.total_dos, "ML": phonopy_nacl.total_dos}
-    fig = pmv.phonon_dos(dos_dict, stack=True, sigma=0.1, normalize="max", units="THz")
+    fig = pmv.phonon_dos(dos_dict, stack=True, sigma=0.1, normalize="max", units="THz")  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     assert {trace.name for trace in fig.data} == {"DFT", "ML"}
 
