@@ -34,7 +34,7 @@ def check_basic_rdf_properties(
     ("structure_name", "structure"),
     [
         ("pymatgen_structure", SI_STRUCTS[0]),
-        ("istructure", IStructure.from_sites(SI_STRUCTS[0].sites)),
+        ("istructure", IStructure.from_sites(list(SI_STRUCTS[0].sites))),
         ("ase_atoms", SI_ATOMS[0]),
     ],
 )
@@ -391,7 +391,8 @@ def test_calculate_rdf_input_validation(
 
     # Test for expected error
     with pytest.raises(expected_err_cls, match=error_msg):
-        calculate_rdf(**params)
+        structure_param = params.pop("structure")
+        calculate_rdf(structure_param, **params)
 
 
 def test_calculate_rdf_invalid_structure_type() -> None:

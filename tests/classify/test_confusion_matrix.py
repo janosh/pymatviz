@@ -30,7 +30,7 @@ def multi_class_conf_mat() -> np.ndarray:
 def test_confusion_matrix_basic(sample_conf_mat: np.ndarray) -> None:
     """Test basic functionality with pre-computed confusion matrix."""
     fig = confusion_matrix(
-        sample_conf_mat,
+        sample_conf_mat,  # type: ignore[arg-type]
         x_labels=("Negative", "Positive"),
         y_labels=("Negative", "Positive"),
     )
@@ -53,7 +53,7 @@ def test_confusion_matrix_color_text_alignment(sample_conf_mat: np.ndarray) -> N
     corresponding text annotations and hover text.
     """
     fig = confusion_matrix(
-        sample_conf_mat,
+        sample_conf_mat,  # type: ignore[arg-type]
         x_labels=("Negative", "Positive"),
         y_labels=("Negative", "Positive"),
         normalize=True,  # use normalization to get percentages
@@ -144,7 +144,7 @@ def test_confusion_matrix_display_options(
 ) -> None:
     """Test various display options."""
     fig = confusion_matrix(
-        sample_conf_mat,
+        sample_conf_mat,  # type: ignore[arg-type]
         x_labels=("Negative", "Positive"),
         normalize=normalize,
         colorscale=colorscale,
@@ -189,7 +189,7 @@ def test_confusion_matrix_metrics(
 ) -> None:
     """Test metrics display options."""
     fig = confusion_matrix(
-        sample_conf_mat,
+        sample_conf_mat,  # type: ignore[arg-type]
         x_labels=("Negative", "Positive"),
         metrics=metrics,
         metrics_kwargs=metrics_kwargs,
@@ -218,7 +218,7 @@ def test_confusion_matrix_multi_class(multi_class_conf_mat: np.ndarray) -> None:
     """Test handling of multi-class confusion matrices."""
     labels = ("Class A", "Class B", "Class C")
     fig = confusion_matrix(
-        multi_class_conf_mat,
+        multi_class_conf_mat,  # type: ignore[arg-type]
         x_labels=labels,
         y_labels=labels,
         metrics={"Acc"},  # only Acc available for multi-class
@@ -231,14 +231,19 @@ def test_confusion_matrix_multi_class(multi_class_conf_mat: np.ndarray) -> None:
 
     with pytest.raises(ValueError, match="Unknown metric='Prec'"):
         confusion_matrix(
-            multi_class_conf_mat, x_labels=labels, y_labels=labels, metrics={"Prec"}
+            multi_class_conf_mat,
+            x_labels=labels,
+            y_labels=labels,
+            metrics={"Prec"},  # type: ignore[arg-type]
         )
 
 
 def test_confusion_matrix_hover_text(sample_conf_mat: np.ndarray) -> None:
     """Test hover text formatting."""
     fig = confusion_matrix(
-        sample_conf_mat, x_labels=("Negative", "Positive"), normalize=True
+        sample_conf_mat,
+        x_labels=("Negative", "Positive"),
+        normalize=True,  # type: ignore[arg-type]
     )
 
     hover_text = fig.data[0].text.flatten()
@@ -261,12 +266,12 @@ def test_confusion_matrix_error_cases() -> None:
 
     # Test missing labels for pre-computed matrix
     with pytest.raises(ValueError, match="Must provide x_labels"):
-        confusion_matrix(np.array([[1, 2], [3, 4]]))
+        confusion_matrix(np.array([[1, 2], [3, 4]]))  # type: ignore[arg-type]
 
     # Test unknown metric
     with pytest.raises(ValueError, match="Unknown metric='invalid'"):
         confusion_matrix(
-            np.array([[1, 2], [3, 4]]),
+            np.array([[1, 2], [3, 4]]),  # type: ignore[arg-type]
             x_labels=("A", "B"),
             metrics={"invalid": None},
         )
@@ -276,7 +281,7 @@ def test_confusion_matrix_custom_annotations(sample_conf_mat: np.ndarray) -> Non
     """Test custom cell annotations."""
     custom_annotations = [["tile 11", "tile 12"], ["tile 21", "tile 22"]]
     fig = confusion_matrix(
-        sample_conf_mat,
+        sample_conf_mat,  # type: ignore[arg-type]
         x_labels=("Negative", "Positive"),
         annotations=custom_annotations,
     )
@@ -297,7 +302,7 @@ def test_confusion_matrix_heatmap_kwargs(sample_conf_mat: np.ndarray) -> None:
         "ygap": 5,
     }
     fig = confusion_matrix(
-        sample_conf_mat,
+        sample_conf_mat,  # type: ignore[arg-type]
         x_labels=("Negative", "Positive"),
         heatmap_kwargs=heatmap_kwargs,
     )
@@ -313,7 +318,7 @@ def test_confusion_matrix_heatmap_kwargs(sample_conf_mat: np.ndarray) -> None:
 def test_confusion_matrix_long_labels(sample_conf_mat: np.ndarray) -> None:
     """Test handling of long labels."""
     long_labels = ("Very Long Negative Label", "Very Long Positive Label")
-    fig = confusion_matrix(sample_conf_mat, x_labels=long_labels, y_labels=long_labels)
+    fig = confusion_matrix(sample_conf_mat, x_labels=long_labels, y_labels=long_labels)  # type: ignore[arg-type]
 
     y_labels = [anno.y for anno in fig.layout.annotations]
     x_labels = [anno.x for anno in fig.layout.annotations]

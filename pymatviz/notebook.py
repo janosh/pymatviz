@@ -94,8 +94,10 @@ def _create_display_methods(
                     display_data = {"text/plain": repr(self)}
                 elif isinstance(renderer, str) and renderer.endswith("Widget"):
                     display_data = _create_widget_mime_bundle(renderer, self)
-                elif hasattr(renderer, "__name__") and renderer.__name__.endswith(
-                    "Widget"
+                elif (
+                    hasattr(renderer, "__name__")
+                    and isinstance(renderer.__name__, str)
+                    and renderer.__name__.endswith("Widget")
                 ):
                     display_data = _create_widget_mime_bundle(renderer.__name__, self)
                 else:
@@ -135,8 +137,10 @@ def _create_display_methods(
                     return {"text/plain": repr(self)}
                 if isinstance(renderer, str) and renderer.endswith("Widget"):
                     return _create_widget_mime_bundle(renderer, self)
-                if hasattr(renderer, "__name__") and renderer.__name__.endswith(
-                    "Widget"
+                if (
+                    hasattr(renderer, "__name__")
+                    and isinstance(renderer.__name__, str)
+                    and renderer.__name__.endswith("Widget")
                 ):
                     return _create_widget_mime_bundle(renderer.__name__, self)
                 fig = renderer(self)  # type: ignore[operator]
@@ -203,31 +207,31 @@ def notebook_mode(*, on: bool) -> None:
     """
     class_configs = [  # Define (import_func, class_obj, display_methods)
         (
-            lambda: __import__("pymatgen.core", fromlist=["Structure"]).Structure,
+            lambda: __import__("pymatgen.core", fromlist=["Structure"]).Structure,  # type: ignore[attr-defined]
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
-            lambda: __import__("ase.atoms", fromlist=["Atoms"]).Atoms,
+            lambda: __import__("ase.atoms", fromlist=["Atoms"]).Atoms,  # type: ignore[attr-defined]
             _ase_atoms_ipython_display_,
             _ase_atoms_repr_mimebundle_,
         ),
         (
             lambda: __import__(
                 "phonopy.structure.atoms", fromlist=["PhonopyAtoms"]
-            ).PhonopyAtoms,
+            ).PhonopyAtoms,  # type: ignore[attr-defined]
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
-            lambda: __import__("pymatgen.core", fromlist=["Composition"]).Composition,
+            lambda: __import__("pymatgen.core", fromlist=["Composition"]).Composition,  # type: ignore[attr-defined]
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
             lambda: __import__(
                 "pymatgen.analysis.diffraction.xrd", fromlist=["DiffractionPattern"]
-            ).DiffractionPattern,
+            ).DiffractionPattern,  # type: ignore[attr-defined]
             _diffraction_pattern_ipython_display_,
             _diffraction_pattern_repr_mimebundle_,
         ),
@@ -235,17 +239,17 @@ def notebook_mode(*, on: bool) -> None:
             lambda: __import__(
                 "pymatgen.phonon.bandstructure",
                 fromlist=["PhononBandStructureSymmLine"],
-            ).PhononBandStructureSymmLine,
+            ).PhononBandStructureSymmLine,  # type: ignore[attr-defined]
             _phonon_bands_ipython_display_,
             _phonon_bands_repr_mimebundle_,
         ),
         (
-            lambda: __import__("pymatgen.phonon.dos", fromlist=["PhononDos"]).PhononDos,
+            lambda: __import__("pymatgen.phonon.dos", fromlist=["PhononDos"]).PhononDos,  # type: ignore[attr-defined]
             _phonon_dos_ipython_display_,
             _phonon_dos_repr_mimebundle_,
         ),
         (
-            lambda: __import__("phonopy.phonon.dos", fromlist=["TotalDos"]).TotalDos,
+            lambda: __import__("phonopy.phonon.dos", fromlist=["TotalDos"]).TotalDos,  # type: ignore[attr-defined]
             _phonopy_dos_ipython_display_,
             _phonopy_dos_repr_mimebundle_,
         ),

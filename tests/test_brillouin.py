@@ -232,6 +232,7 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
     fig = brillouin_zone_3d(structures, n_cols=2)
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == len(structures)  # subplot titles
+    assert fig._grid_ref is not None
     assert len(fig._grid_ref) == (len(structures) + 1) // 2  # number of rows
     assert len(fig._grid_ref[0]) == 2  # number of columns
 
@@ -240,6 +241,7 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
     fig = brillouin_zone_3d(struct_dict, n_cols=1)
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == len(struct_dict)
+    assert fig._grid_ref is not None
     assert len(fig._grid_ref) == len(struct_dict)  # number of rows
     assert len(fig._grid_ref[0]) == 1  # number of columns
 
@@ -298,6 +300,7 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
         fig = brillouin_zone_3d(structures, n_cols=n_cols)
         assert isinstance(fig, go.Figure)
         expected_rows = (n_structs - 1) // n_cols + 1
+        assert fig._grid_ref is not None
         assert len(fig._grid_ref) == expected_rows
         assert len(fig._grid_ref[0]) == min(n_cols, n_structs)
         assert fig.layout.height == 400 * expected_rows

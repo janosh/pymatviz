@@ -210,7 +210,8 @@ def ptable_heatmap_plotly(
                 elif heat_mode == "percent":
                     label = f"{heat_val:{fmt or '.1%'}}"
                 else:
-                    label = f"{si_fmt(heat_val, fmt=fmt or '.1f')}".replace("e+0", "e")
+                    fmt_str = fmt if isinstance(fmt, str) else ".1f"
+                    label = f"{si_fmt(heat_val, fmt=fmt_str)}".replace("e+0", "e")
 
             if callable(label_map):
                 label = label_map(label)
@@ -554,12 +555,16 @@ def ptable_hists_plotly(
             else f"<b>{display_symbol}</b> ({symbol})"
         ) + "<br>Range: %{x}<br>Count: %{y}<extra></extra>"
 
+        # Ensure bins_range values are not None for arithmetic operations
+        start_val = bins_range[0] if bins_range[0] is not None else 0.0
+        end_val = bins_range[1] if bins_range[1] is not None else 1.0
+
         fig.add_histogram(
             x=values,
             xbins=dict(
-                start=bins_range[0],
-                end=bins_range[1],
-                size=(bins_range[1] - bins_range[0]) / bins,
+                start=start_val,
+                end=end_val,
+                size=(end_val - start_val) / bins,
             ),
             marker_color=px.colors.sample_colorscale(colorscale, bins),
             showlegend=False,
@@ -593,9 +598,11 @@ def ptable_hists_plotly(
             if callable(annotations):
                 # Pass the element's values to the callable
                 annotation = annotations(values)
-            else:
+            elif isinstance(annotations, dict):
                 # Use dictionary lookup
                 annotation = annotations.get(symbol, "")
+            else:
+                annotation = ""
 
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling
@@ -618,11 +625,15 @@ def ptable_hists_plotly(
         cbar_settings = _get_colorbar_settings(
             colorbar, font_size=font_size, scale=scale
         )
+        # Ensure bins_range values are not None for colorbar
+        cmin = bins_range[0] if bins_range[0] is not None else 0.0
+        cmax = bins_range[1] if bins_range[1] is not None else 1.0
+
         _add_colorbar_trace(
             fig,
             colorscale,
-            bins_range[0],
-            bins_range[1],
+            cmin,
+            cmax,
             cbar_settings,
             row=n_rows,
             col=n_cols,
@@ -719,7 +730,9 @@ def _add_colorbar_trace(
         hoverinfo="none",
     )
     if row is not None and col is not None:
-        scatter_kwargs.update(row=row, col=col)
+        # Add row and col to scatter_kwargs as strings to match expected type
+        scatter_kwargs["row"] = str(row)
+        scatter_kwargs["col"] = str(col)
         # Hide the axes for the invisible scatter trace
         fig.update_xaxes(visible=False, row=row, col=col)
         fig.update_yaxes(visible=False, row=row, col=col)
@@ -1338,9 +1351,11 @@ def ptable_heatmap_splits_plotly(
             if callable(annotations):
                 # Pass the element's values to the callable
                 annotation = annotations(values)
-            else:
+            elif isinstance(annotations, dict):
                 # Use dictionary lookup
                 annotation = annotations.get(symbol, "")
+            else:
+                annotation = ""
 
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling
@@ -1794,8 +1809,10 @@ def ptable_scatter_plotly(
             if callable(annotations):
                 # Pass the element's values to the callable
                 annotation = annotations(data[symbol])
-            else:
+            elif isinstance(annotations, dict):
                 annotation = annotations.get(symbol, "")
+            else:
+                annotation = ""
 
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling

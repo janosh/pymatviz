@@ -34,17 +34,23 @@ def get_dataset_colorbar_traces(fig: Figure, dataset_name: str) -> list[go.Heatm
 
     This finds traces with colorbars that have the dataset name in their title.
     """
-    return [
-        trace
-        for trace in fig.data
-        if (
-            hasattr(trace, "marker")
-            and hasattr(trace.marker, "colorbar")
-            and hasattr(trace.marker.colorbar, "title")
-            and hasattr(trace.marker.colorbar.title, "text")
-            and dataset_name in trace.marker.colorbar.title.text
-        )
-    ]
+    traces = []
+    for trace in fig.data:
+        # Handle Heatmap traces (colorbar is directly on trace)
+        if hasattr(trace, "colorbar") and hasattr(trace.colorbar, "title"):
+            if (
+                hasattr(trace.colorbar.title, "text")
+                and dataset_name in trace.colorbar.title.text
+            ):
+                traces.append(trace)
+        # Handle Scatter traces (colorbar is on marker)
+        elif hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
+            if hasattr(trace.marker.colorbar, "title") and hasattr(
+                trace.marker.colorbar.title, "text"
+            ):
+                if dataset_name in trace.marker.colorbar.title.text:
+                    traces.append(trace)
+    return traces
 
 
 def get_scatter_colorbar_trace(fig: Figure) -> go.Scatter:
@@ -101,9 +107,14 @@ def test_ptable_heatmap_splits_colorbar_formatting() -> None:
 
     # Verify that all colorbars use SI suffixes
     for trace in dataset1_colorbars + dataset2_colorbars:
-        assert trace.marker.colorbar.tickformat == "~s", (
-            "Colorbar not using SI suffixes"
-        )
+        # Handle Heatmap traces (colorbar is directly on trace)
+        if hasattr(trace, "colorbar"):
+            assert trace.colorbar.tickformat == "~s", "Colorbar not using SI suffixes"
+        # Handle Scatter traces (colorbar is on marker)
+        elif hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
+            assert trace.marker.colorbar.tickformat == "~s", (
+                "Colorbar not using SI suffixes"
+            )
 
 
 def test_ptable_hists_colorbar_formatting() -> None:
@@ -218,9 +229,14 @@ def test_ptable_heatmap_splits_colorbar_si_formatting() -> None:
 
     # Verify that all colorbars use SI suffixes
     for trace in dataset1_colorbars + dataset2_colorbars:
-        assert trace.marker.colorbar.tickformat == ".1~s", (
-            "Colorbar not using SI suffixes"
-        )
+        # Handle Heatmap traces (colorbar is directly on trace)
+        if hasattr(trace, "colorbar"):
+            assert trace.colorbar.tickformat == ".1~s", "Colorbar not using SI suffixes"
+        # Handle Scatter traces (colorbar is on marker)
+        elif hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
+            assert trace.marker.colorbar.tickformat == ".1~s", (
+                "Colorbar not using SI suffixes"
+            )
 
 
 def count_si_formatted_axes(fig: Figure, axis_type: str = "xaxis") -> int:

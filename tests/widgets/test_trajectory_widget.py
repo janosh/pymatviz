@@ -365,7 +365,7 @@ def test_trajectory_widget_property_extraction(
     [([], 0), (["struct1"], 1), (["struct1", "struct2", "struct3"], 3)],
 )
 def test_trajectory_widget_backward_compatibility(
-    trajectory_input: list[dict[str, Any]], expected_frames: int
+    trajectory_input: list[str], expected_frames: int
 ) -> None:
     """Test TrajectoryWidget handles list of structures."""
     from pymatgen.core import Lattice, Structure
@@ -397,7 +397,7 @@ def test_trajectory_widget_backward_compatibility(
     ("trajectory_input", "expected_result"),
     [
         (None, None),
-        ([], {"frames": [], "metadata": {}}),  # type: ignore[dict-item]
+        ([], {"frames": [], "metadata": {}}),
         (
             {"frames": [{"structure": "test", "step": 0}]},
             {"frames": [{"structure": "test", "step": 0}]},

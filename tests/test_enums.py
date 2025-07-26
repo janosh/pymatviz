@@ -585,7 +585,7 @@ def test_files_enum_auto_download(
         content = b"not found"
 
         def raise_for_status(self) -> None:
-            raise requests.exceptions.HTTPError(f"HTTP Error: {self.status_code}")
+            raise requests.exceptions.HTTPError(f"HTTP Error: {self.status_code}")  # type: ignore[attr-defined]
 
     # Mock stdin (though not used by current Files enum)
     class MockStdin:
@@ -669,7 +669,7 @@ def test_files_enum_auto_download(
 
     with patch("requests.get", return_value=MockFailedResponse()) as mock_get_fail:
         # _auto_download is True from class definition
-        with pytest.raises(requests.exceptions.HTTPError, match="HTTP Error: 404"):
+        with pytest.raises(requests.exceptions.HTTPError, match="HTTP Error: 404"):  # type: ignore[attr-defined]
             _ = file_fail_dl.file_path  # This will trigger download attempt & fail
         mock_get_fail.assert_called_once_with(url_fail_dl)
         assert not os.path.isfile(path_fail_dl)

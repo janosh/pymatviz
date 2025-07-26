@@ -254,7 +254,11 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
 
     # Test single TotalDos
     fig = pmv.phonon_dos(
-        phonopy_nacl.total_dos, stack=False, sigma=0.1, normalize="max", units="THz"  # type: ignore[arg-type]
+        phonopy_nacl.total_dos,
+        stack=False,
+        sigma=0.1,
+        normalize="max",
+        units="THz",  # type: ignore[arg-type]
     )
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Frequency (THz)"

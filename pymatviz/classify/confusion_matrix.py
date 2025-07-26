@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 
 
 def confusion_matrix(
-    conf_mat: Sequence[Sequence[int]] | None = None,
+    conf_mat: Sequence[Sequence[int]] | np.ndarray | None = None,
     *,
     y_true: Sequence[str | int] | None = None,
     y_pred: Sequence[str | int] | None = None,
@@ -162,7 +162,9 @@ def confusion_matrix(
         hoverinfo="text",
         text=np.rot90(hover_text),
     )
-    fig = ff.create_annotated_heatmap(**heatmap_defaults | (heatmap_kwargs or {}))
+    fig = ff.create_annotated_heatmap(
+        z=conf_mat_arr, **heatmap_defaults | (heatmap_kwargs or {})
+    )
 
     # Calculate accuracy and other metrics
     acc = conf_mat_arr.diagonal().sum() / conf_mat_arr.sum()

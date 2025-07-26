@@ -184,7 +184,7 @@ def test_hide_plotly_toolbar() -> None:
             self.layout_updates.append(kwargs)
 
     fig = MockFig()
-    notebook._hide_plotly_toolbar(fig)
+    notebook._hide_plotly_toolbar(fig)  # type: ignore[arg-type]
 
     # Check that update_layout was called with modebar config
     assert len(fig.layout_updates) == 1
@@ -557,7 +557,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
         assert callable(TotalDos._repr_mimebundle_)
 
         # Test _ipython_display_ method on the instance
-        phonopy_nacl.total_dos._ipython_display_()
+        phonopy_nacl.total_dos._ipython_display_()  # type: ignore[attr-defined]
 
         # Check that data was published
         assert len(published_data) == 1
@@ -573,7 +573,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
             assert "layout" in plotly_json
 
         # Test _repr_mimebundle_ method on the instance
-        mime_bundle = phonopy_nacl.total_dos._repr_mimebundle_()
+        mime_bundle = phonopy_nacl.total_dos._repr_mimebundle_()  # type: ignore[attr-defined]
         assert isinstance(mime_bundle, dict)
         assert "text/plain" in mime_bundle
 

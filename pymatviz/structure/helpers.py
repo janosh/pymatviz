@@ -274,8 +274,9 @@ def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str,
     """Get atomic radii based on the provided input."""
     if atomic_radii is None or isinstance(atomic_radii, float):
         scale = atomic_radii or 1
-        return {elem: radius * scale for elem, radius in covalent_radii.items()}
-    return atomic_radii
+        return {elem: float(radius * scale) for elem, radius in covalent_radii.items()}
+    assert isinstance(atomic_radii, dict), f"Expected dict, got {type(atomic_radii)}"
+    return {k: float(v) for k, v in atomic_radii.items()}
 
 
 def generate_site_label(
@@ -341,7 +342,14 @@ def get_subplot_title(
 
     if not title_dict.get("text"):
         if isinstance(struct_key, int):
-            spg_num = struct_i.get_symmetry_dataset()["number"]
+            spg_dataset = struct_i.get_symmetry_dataset()
+            # Handle different dataset types
+            if hasattr(spg_dataset, "number"):
+                spg_num = spg_dataset.number
+            elif isinstance(spg_dataset, dict) and "number" in spg_dataset:
+                spg_num = spg_dataset["number"]
+            else:
+                spg_num = 1  # Fallback
             title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
         elif isinstance(struct_key, str):
             title_dict["text"] = str(struct_key)
@@ -523,6 +531,23 @@ def draw_site(
     majority_species = (
         max(species, key=species.get) if isinstance(species, Composition) else species
     )
+
+    # Ensure majority_species is a Species object for type safety
+    if isinstance(majority_species, Composition):
+        # Get the most abundant element from composition
+        majority_element = max(majority_species, key=majority_species.get)
+        majority_species = Species(majority_element)
+    elif hasattr(majority_species, "symbol"):
+        # If it's already a Species or Element with a symbol attribute, use it directly
+        pass
+    else:
+        # Convert to Species if needed
+        majority_species = Species(majority_species)
+
+    # Ensure majority_species is a Species object for type safety
+    if not isinstance(majority_species, Species):
+        majority_species = Species(majority_species)
+
     site_radius = atomic_radii[majority_species.symbol] * scale
     raw_color_from_map = elem_colors.get(majority_species.symbol, "gray")
 
@@ -812,8 +837,9 @@ def draw_disordered_site(
                     scene=scene,
                 )
                 # Apply any text-specific styling from site_kwargs
-                if "textfont" in site_kwargs:
-                    text_kwargs["textfont"].update(site_kwargs["textfont"])
+                textfont = text_kwargs.get("textfont")
+                if "textfont" in site_kwargs and isinstance(textfont, dict):
+                    textfont.update(site_kwargs["textfont"])
 
                 fig.add_scatter3d(**text_kwargs)
 
@@ -953,8 +979,9 @@ def draw_disordered_site(
                     col=col,
                 )
                 # Apply any text-specific styling from site_kwargs
-                if "textfont" in site_kwargs:
-                    text_kwargs["textfont"].update(site_kwargs["textfont"])
+                textfont = text_kwargs.get("textfont")
+                if "textfont" in site_kwargs and isinstance(textfont, dict):
+                    textfont.update(site_kwargs["textfont"])
 
                 fig.add_scatter(**text_kwargs)
 
@@ -1499,8 +1526,8 @@ def draw_bonds(
                 color2_rgb_str = parse_color(current_bond_color_setting[1])
                 color_for_segment_calc = (color1_rgb_str, color2_rgb_str)
             else:
-                # Solid color: user-defined string, or False
-                color_for_segment_calc = parse_color(current_bond_color_setting)
+                # Solid color
+                color_for_segment_calc = str(current_bond_color_setting)
 
             n_segments = 1
             if isinstance(color_for_segment_calc, tuple):
@@ -1529,7 +1556,7 @@ def draw_bonds(
                     )
                 else:
                     # Solid color
-                    segment_color_str = color_for_segment_calc
+                    segment_color_str = str(color_for_segment_calc)
 
                 name = f"bond {site_idx}-{con_dict['site_index']} segment {segment_idx}"
                 trace_kwargs = dict(

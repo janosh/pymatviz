@@ -112,11 +112,11 @@ def test_df_to_pdf(
     try:
         import weasyprint
     except ImportError:
-        weasyprint = None
+        weasyprint = None  # type: ignore[assignment]
     try:
         import pdfCropMargins
     except ImportError:
-        pdfCropMargins = None  # noqa: N806
+        pdfCropMargins = None  # type: ignore[assignment] # noqa: N806
 
     file_path = tmp_path / "test_df_to.pdf"
 
@@ -132,15 +132,15 @@ def test_df_to_pdf(
     # check we're raising helpful error messages on missing deps
     if weasyprint is None:
         with pytest.raises(ImportError, match="weasyprint not installed\n"):
-            pmv.io.df_to_pdf(**kwds)
+            pmv.io.df_to_pdf(**kwds)  # type: ignore[call-arg]
         return
 
     if pdfCropMargins is None:
         with pytest.raises(ImportError, match="cropPdfMargins not installed\n"):
-            pmv.io.df_to_pdf(**kwds)
+            pmv.io.df_to_pdf(**kwds)  # type: ignore[call-arg]
         return
 
-    pmv.io.df_to_pdf(**kwds)
+    pmv.io.df_to_pdf(**kwds)  # type: ignore[call-arg]
 
     # Check if the file is created
     assert file_path.is_file()
@@ -157,7 +157,7 @@ def test_df_to_pdf(
 
     # Test file overwrite behavior
     file_size_before = file_path.stat().st_size  # ~7000 bytes
-    pmv.io.df_to_pdf(**kwds)
+    pmv.io.df_to_pdf(**kwds)  # type: ignore[call-arg]
     file_size_after = file_path.stat().st_size  # ~7000 bytes
 
     # file size should be the same since content is unchanged

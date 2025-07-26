@@ -686,7 +686,27 @@ def test_py_pkg_treemap_cell_size_fn(
             if pd.isna(filtered_metrics_dict.get(key)):
                 filtered_metrics_dict[key] = 0
 
-        metrics_instance = pmv.treemap.py_pkg.ModuleStats(**filtered_metrics_dict)
+        metrics_instance = pmv.treemap.py_pkg.ModuleStats(
+            package=filtered_metrics_dict.get("package", ""),
+            full_module=filtered_metrics_dict.get("full_module", ""),
+            filename=filtered_metrics_dict.get("filename", ""),
+            directory=filtered_metrics_dict.get("directory", ""),
+            top_module=filtered_metrics_dict.get("top_module", ""),
+            line_count=filtered_metrics_dict.get("line_count", 0),
+            file_path=filtered_metrics_dict.get("file_path", ""),
+            repo_path_segment=filtered_metrics_dict.get("repo_path_segment", ""),
+            leaf_label=filtered_metrics_dict.get("leaf_label", ""),
+            module_parts=filtered_metrics_dict.get("module_parts", []),
+            depth=filtered_metrics_dict.get("depth", 0),
+            n_classes=filtered_metrics_dict.get("n_classes", 0),
+            n_functions=filtered_metrics_dict.get("n_functions", 0),
+            n_methods=filtered_metrics_dict.get("n_methods", 0),
+            n_internal_imports=filtered_metrics_dict.get("n_internal_imports", 0),
+            n_external_imports=filtered_metrics_dict.get("n_external_imports", 0),
+            n_type_checking_imports=filtered_metrics_dict.get(
+                "n_type_checking_imports", 0
+            ),
+        )
 
         if calculator is None:
             expected_val = metrics_instance.line_count

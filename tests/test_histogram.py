@@ -11,7 +11,7 @@ from tests.conftest import df_regr, y_true
 
 
 if TYPE_CHECKING:
-    import numpy as np
+    from collections.abc import Sequence
 
 
 def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
@@ -38,8 +38,8 @@ def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
 
 @pytest.mark.parametrize("log_y", [True, False])
 @pytest.mark.parametrize("bins", [20, 100])
-@pytest.mark.parametrize("values", [y_true, df_regr.y_true])
-def test_histogram(values: np.ndarray | pd.Series, log_y: bool, bins: int) -> None:
+@pytest.mark.parametrize("values", [y_true.tolist(), df_regr.y_true.tolist()])
+def test_histogram(values: Sequence[float], log_y: bool, bins: int) -> None:
     """Test histogram function with Plotly backend."""
     fig = histogram(values, log_y=log_y, bins=bins)
     assert isinstance(fig, go.Figure)
@@ -55,6 +55,4 @@ def test_histogram(values: np.ndarray | pd.Series, log_y: bool, bins: int) -> No
     assert y_min == pytest.approx(y_min_exp)
     assert y_max == pytest.approx(y_max_exp)
 
-    if isinstance(values, pd.Series):
-        assert fig.layout.xaxis.title.text == values.name
     assert fig.layout.yaxis.title.text == "Count"

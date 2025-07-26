@@ -4,6 +4,7 @@ import copy
 import re
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
 import pytest
 from pymatgen.core import Composition, IStructure, Lattice, Structure
@@ -11,7 +12,7 @@ from pymatgen.core import Composition, IStructure, Lattice, Structure
 import pymatviz as pmv
 from pymatviz import process_data as pmv_pd
 from pymatviz.enums import ElemCountMode
-from tests.conftest import SI_ATOMS, SI_STRUCTS, y_pred, y_true
+from tests.conftest import SI_ATOMS, SI_STRUCTS, df_regr, y_pred, y_true
 
 
 if TYPE_CHECKING:
@@ -439,17 +440,18 @@ def test_normalize_to_dict_mixed_classes(
 
 
 def test_df_to_arrays() -> None:
-    df_regr = pd.DataFrame([y_true, y_pred]).T
-    x1, y1 = pmv_pd.df_to_arrays(None, y_true, y_pred)
-    x_col, y_col = df_regr.columns[:2]
-    x2, y2 = pmv_pd.df_to_arrays(df_regr, x_col, y_col)
-    assert x1 == pytest.approx(x2)
-    assert y1 == pytest.approx(y2)
-    assert x1 == pytest.approx(y_true)
-    assert y1 == pytest.approx(y_pred)
+    # Test with DataFrame
+    args = pmv_pd.df_to_arrays(df_regr, "y_true", "y_pred")
+    assert len(args) == 2
+    assert all(isinstance(arg, np.ndarray) for arg in args)
 
+    # Test with None DataFrame
+    args = pmv_pd.df_to_arrays(None, y_true, y_pred)
+    assert args == (y_true, y_pred)
+
+    # Test with invalid DataFrame type
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays("foo", y_true, y_pred)
+        pmv_pd.df_to_arrays("foo", y_true, y_pred)  # type: ignore[arg-type]
 
     bad_col_name = "not-real-col-name"
     with pytest.raises(KeyError) as exc:
@@ -459,11 +461,11 @@ def test_df_to_arrays() -> None:
 
 
 def test_df_to_arrays_strict() -> None:
-    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)
+    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)  # type: ignore[arg-type]
     assert args == ("foo", "bar")
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)
+        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(

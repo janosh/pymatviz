@@ -633,7 +633,16 @@ def density_scatter_with_hist(
     Returns:
         go.Figure: Plotly Figure with marginal histograms.
     """
-    xs, ys = df_to_arrays(df, x, y)
+    arrays = df_to_arrays(df, x, y)
+    xs, ys = arrays[0], arrays[1]
+    # Ensure we have numpy arrays
+    if isinstance(xs, dict):
+        xs = list(xs.values())[0]
+    if isinstance(ys, dict):
+        ys = list(ys.values())[0]
+    # Convert to numpy arrays
+    xs = np.asarray(xs)
+    ys = np.asarray(ys)
     xlabel, ylabel = _get_axis_labels(x, y, df)
 
     # Create the main density scatter plot
@@ -691,7 +700,16 @@ def density_hexbin_with_hist(
     Returns:
         go.Figure: Plotly Figure with marginal histograms.
     """
-    xs, ys = df_to_arrays(df, x, y)
+    arrays = df_to_arrays(df, x, y)
+    xs, ys = arrays[0], arrays[1]
+    # Ensure we have numpy arrays
+    if isinstance(xs, dict):
+        xs = list(xs.values())[0]
+    if isinstance(ys, dict):
+        ys = list(ys.values())[0]
+    # Convert to numpy arrays
+    xs = np.asarray(xs)
+    ys = np.asarray(ys)
     xlabel, ylabel = _get_axis_labels(x, y, df)
 
     # Create the main hexbin plot
