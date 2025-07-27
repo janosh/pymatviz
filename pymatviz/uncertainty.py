@@ -42,7 +42,7 @@ def qq_gaussian(
         go.Figure: plotly Figure with Q-Q plot
     """
     if isinstance(y_std, str | pd.Index):
-        arrays = df_to_arrays(df, y_true, y_pred, y_std)  # type: ignore[arg-type]
+        arrays = df_to_arrays(df, y_true, y_pred, y_std)
         y_true, y_pred, y_std = arrays[0], arrays[1], arrays[2]
     else:
         arrays = df_to_arrays(df, y_true, y_pred)
@@ -147,7 +147,7 @@ def error_decay_with_uncert(
         Plotly figure with error decay plot
     """
     if isinstance(y_std, str | pd.Index):
-        arrays = df_to_arrays(df, y_true, y_pred, y_std)  # type: ignore[arg-type]
+        arrays = df_to_arrays(df, y_true, y_pred, y_std)
         y_true, y_pred, y_std = arrays[0], arrays[1], arrays[2]
     else:
         arrays = df_to_arrays(df, y_true, y_pred)

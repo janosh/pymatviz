@@ -342,7 +342,7 @@ def normalize_structures(
     # since they are Sequences but we don't want to iterate over sites
     if isinstance(systems, Structure | IStructure):
         # Use formula as key for single structure input
-        return {systems.formula: systems}  # type: ignore[attr-defined]
+        return {systems.formula: systems}
 
     if hasattr(systems, "__len__") and len(systems) == 0:
         raise ValueError("Cannot plot empty set of structures")

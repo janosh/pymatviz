@@ -391,12 +391,12 @@ def py_pkg_treemap(
                 metadata = importlib.metadata.metadata(package)
 
                 # Try getting Home-page first
-                homepage = metadata.get("Home-page")  # type: ignore[attr-defined]
+                homepage = metadata.get("Home-page")
                 if homepage and "github.com" in homepage:
                     github_url_found = homepage
                 else:
                     # Fallback: check Project-URL entries
-                    project_urls = metadata.get_all("Project-URL")  # type: ignore[attr-defined]
+                    project_urls = metadata.get_all("Project-URL")
                     if project_urls:
                         for url_entry in project_urls:
                             url_parts = url_entry.split(",", 1)

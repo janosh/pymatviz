@@ -74,7 +74,7 @@ def annotate_metrics(
         "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
     }
     for key in set(metrics) - set(funcs):
-        if func := getattr(sklearn.metrics, key, None):  # type: ignore[attr-defined]
+        if func := getattr(sklearn.metrics, key, None):
             funcs[key] = func
     if bad_keys := set(metrics) - set(funcs):
         raise ValueError(f"Unrecognized metrics: {bad_keys}")
@@ -513,7 +513,7 @@ def enhance_parity_plot(
 
     # Early return if no stats or best-fit line needed and manual data not provided
     if not stats and best_fit_line is not True and len(xs) == 0 and len(ys) == 0:
-        return fig  # type: ignore[return-value]
+        return fig
 
     # Case 1: Data provided directly
     if len(xs) > 0 and len(ys) > 0:
@@ -534,7 +534,7 @@ def enhance_parity_plot(
             direct_stats_kwargs = {} if isinstance(stats, bool) else stats
             annotate_metrics(xs, ys, fig=fig, **direct_stats_kwargs)
 
-        return fig  # type: ignore[return-value]
+        return fig
 
     # Case 2: Need to extract data from figure
     if not isinstance(fig, go.Figure):
@@ -568,7 +568,7 @@ def enhance_parity_plot(
             combined_stats_kwargs = {} if isinstance(stats, bool) else stats
             annotate_metrics(all_xs, all_ys, fig=fig, **combined_stats_kwargs)
 
-        return fig  # type: ignore[return-value]
+        return fig
 
     if annotation_mode == "per_trace":
         all_traced_processed: set[int] = (
@@ -614,14 +614,14 @@ def enhance_parity_plot(
                 per_trace_stats_kwargs = {} if isinstance(stats, bool) else stats
                 annotate_metrics(trace_xs, trace_ys, fig=fig, **per_trace_stats_kwargs)
 
-        return fig  # type: ignore[return-value]
+        return fig
 
     if annotation_mode != "none":
         raise ValueError(
             f"Unknown {annotation_mode=}. Must be one of {get_args(AnnotationMode)}"
         )
 
-    return fig  # type: ignore[return-value]
+    return fig
 
 
 def add_ecdf_line(

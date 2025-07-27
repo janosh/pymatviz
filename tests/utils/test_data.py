@@ -195,7 +195,7 @@ def test_annotate(color: str, plotly_scatter: go.Figure) -> None:
 
 def test_annotate_invalid_fig() -> None:
     with pytest.raises(TypeError, match="Expected plotly Figure"):
-        pmv.utils.annotate("test", fig="invalid")  # type: ignore[arg-type]
+        pmv.utils.annotate("test", fig="invalid")
 
 
 def test_annotate_faceted_plotly(plotly_faceted_scatter: go.Figure) -> None:
@@ -274,7 +274,7 @@ def test_get_fig_xy_range(plotly_scatter: go.Figure) -> None:
     # currently suboptimal behavior: fig must be passed as kwarg to trigger helpful
     # error message
     with pytest.raises(TypeError, match="Expected plotly Figure"):
-        pmv.utils.get_fig_xy_range(fig="invalid")  # type: ignore[arg-type]
+        pmv.utils.get_fig_xy_range(fig="invalid")
 
 
 def test_get_font_color() -> None:
@@ -293,7 +293,7 @@ def test_get_font_color_invalid_input() -> None:
     with pytest.raises(
         TypeError, match=re.escape(f"Input must be plotly Figure, got {type(fig)=}")
     ):
-        pmv.utils.get_font_color(fig)  # type: ignore[arg-type]
+        pmv.utils.get_font_color(fig)
 
 
 def test_get_plotly_font_color_default() -> None:
