@@ -55,7 +55,7 @@ test = [
 brillouin = ["seekpath>=2.1"]
 cluster = ["matminer>=0.9"]
 # umap-learn not included in cluster because its numba dep clashes with other packages
-umap = ["umap-learn>=0.5"]
+umap = ["umap-learn>=0.5; python_version < '3.13'"]
 
 [build-system]
 requires = ["uv_build>=0.7.5"]
