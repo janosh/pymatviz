@@ -275,7 +275,8 @@ def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str,
     if atomic_radii is None or isinstance(atomic_radii, float):
         scale = atomic_radii or 1
         return {elem: float(radius * scale) for elem, radius in covalent_radii.items()}
-    assert isinstance(atomic_radii, dict), f"Expected dict, got {type(atomic_radii)}"
+    if not isinstance(atomic_radii, dict):
+        raise TypeError(f"Expected dict, got {type(atomic_radii)}")
     return {k: float(v) for k, v in atomic_radii.items()}
 
 

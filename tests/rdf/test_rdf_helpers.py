@@ -390,8 +390,8 @@ def test_calculate_rdf_input_validation(
     params = {"structure": structure, "cutoff": 10, "n_bins": 10} | test_input
 
     # Test for expected error
+    structure_param = params.pop("structure")
     with pytest.raises(expected_err_cls, match=error_msg):
-        structure_param = params.pop("structure")
         calculate_rdf(structure_param, **params)
 
 

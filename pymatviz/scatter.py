@@ -637,9 +637,9 @@ def density_scatter_with_hist(
     xs, ys = arrays[0], arrays[1]
     # Ensure we have numpy arrays
     if isinstance(xs, dict):
-        xs = list(xs.values())[0]
+        xs = next(iter(xs.values()))
     if isinstance(ys, dict):
-        ys = list(ys.values())[0]
+        ys = next(iter(ys.values()))
     # Convert to numpy arrays
     xs = np.asarray(xs)
     ys = np.asarray(ys)
@@ -704,9 +704,9 @@ def density_hexbin_with_hist(
     xs, ys = arrays[0], arrays[1]
     # Ensure we have numpy arrays
     if isinstance(xs, dict):
-        xs = list(xs.values())[0]
+        xs = next(iter(xs.values()))
     if isinstance(ys, dict):
-        ys = list(ys.values())[0]
+        ys = next(iter(ys.values()))
     # Convert to numpy arrays
     xs = np.asarray(xs)
     ys = np.asarray(ys)

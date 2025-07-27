@@ -12,6 +12,7 @@ from pymatviz.typing import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Any, Literal
 
 
@@ -110,7 +111,7 @@ def test_ptable_hists_plotly_annotations() -> None:
     assert "O" in anno_texts
 
     # Test with callable annotations returning multiple annotations
-    def annotation_func(value: list[float]) -> list[dict[str, Any]]:
+    def annotation_func(value: Sequence[float]) -> list[dict[str, Any]]:
         mean_val = np.mean(value)
         return [
             {"text": f"Mean: {mean_val:.1f}"},

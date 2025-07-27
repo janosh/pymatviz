@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -18,6 +18,7 @@ from tests.widgets.conftest import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import Any
 
     from pymatgen.core import Structure
 
@@ -406,7 +407,7 @@ def test_trajectory_widget_backward_compatibility(
 )
 def test_trajectory_widget_edge_cases(
     trajectory_input: Any,
-    expected_result: dict[str, list[dict[str, Any]]] | None,
+    expected_result: dict[str, list[dict[str, Any]] | dict[str, Any]] | None,
 ) -> None:
     """Test TrajectoryWidget handles edge cases correctly."""
     result = TrajectoryWidget(trajectory=trajectory_input).trajectory

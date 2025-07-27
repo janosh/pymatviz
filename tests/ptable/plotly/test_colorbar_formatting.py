@@ -44,12 +44,14 @@ def get_dataset_colorbar_traces(fig: Figure, dataset_name: str) -> list[go.Heatm
             ):
                 traces.append(trace)
         # Handle Scatter traces (colorbar is on marker)
-        elif hasattr(trace, "marker") and hasattr(trace.marker, "colorbar"):
-            if hasattr(trace.marker.colorbar, "title") and hasattr(
-                trace.marker.colorbar.title, "text"
-            ):
-                if dataset_name in trace.marker.colorbar.title.text:
-                    traces.append(trace)
+        elif (
+            hasattr(trace, "marker")
+            and hasattr(trace.marker, "colorbar")
+            and hasattr(trace.marker.colorbar, "title")
+            and hasattr(trace.marker.colorbar.title, "text")
+            and dataset_name in trace.marker.colorbar.title.text
+        ):
+            traces.append(trace)
     return traces
 
 

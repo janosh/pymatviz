@@ -356,9 +356,8 @@ def structure_2d(
                     nn_obj = struct_show_bonds
 
                 # Ensure nn_obj is a NearNeighbors object
-                assert isinstance(nn_obj, NearNeighbors), (
-                    f"Expected NearNeighbors, got {type(nn_obj)}"
-                )
+                if not isinstance(nn_obj, NearNeighbors):
+                    raise TypeError(f"Expected NearNeighbors, got {type(nn_obj)}")
 
                 helpers.draw_bonds(
                     fig=fig,
@@ -718,9 +717,8 @@ def structure_3d(
                     nn_obj = struct_show_bonds
 
                 # Ensure nn_obj is a NearNeighbors object
-                assert isinstance(nn_obj, NearNeighbors), (
-                    f"Expected NearNeighbors, got {type(nn_obj)}"
-                )
+                if not isinstance(nn_obj, NearNeighbors):
+                    raise TypeError(f"Expected NearNeighbors, got {type(nn_obj)}")
 
                 helpers.draw_bonds(
                     fig=fig,
