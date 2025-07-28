@@ -474,7 +474,7 @@ def enhance_parity_plot(
     stats: bool | dict[str, Any] | None = True,
     traces: TraceSelector = lambda _: True,
     annotation_mode: AnnotationMode = "combined",
-) -> go.Figure:
+) -> go.Figure | None:
     """Add parity plot powerups to a plotly figure, including
     identity line (y=x), best-fit line, and pred vs ref statistics (MAE, R², ...).
 

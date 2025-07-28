@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pymatgen.optimization.neighbors import (
-    find_points_in_spheres,  # type: ignore[unresolved-import]
+from pymatgen.optimization.neighbors import (  # type: ignore[unresolved-import]
+    find_points_in_spheres,
 )
 
 from pymatviz.process_data import normalize_structures
