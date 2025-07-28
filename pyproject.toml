@@ -145,6 +145,11 @@ typeCheckingMode = "off"
 reportPossiblyUnboundVariable = true
 reportUnboundVariable = true
 
+[tool.ty.rules]
+# unresolved-import = "warn"
+# TODO: Unable to resolve submodules: https://github.com/astral-sh/ty/issues/445
+unresolved-attribute = "warn"
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.2.0",

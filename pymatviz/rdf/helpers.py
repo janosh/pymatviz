@@ -5,14 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from pymatgen.optimization.neighbors import find_points_in_spheres
+from pymatgen.optimization.neighbors import (
+    find_points_in_spheres,  # type: ignore[unresolved-import]
+)
 
 from pymatviz.process_data import normalize_structures
 
 
 if TYPE_CHECKING:
-    from pymatgen.util.typing import PbcLike
-
     from pymatviz.typing import AnyStructure
 
 
@@ -22,7 +22,7 @@ def calculate_rdf(
     neighbor_species: str | None = None,
     cutoff: float = 15,
     n_bins: int = 75,
-    pbc: PbcLike = (True, True, True),
+    pbc: tuple[bool, bool, bool] = (True, True, True),
 ) -> tuple[np.ndarray, np.ndarray]:
     """Calculate the radial distribution function (RDF) for a given structure.
 
