@@ -68,8 +68,7 @@ def test_widget_invalid_structure_handling(
         ("atom_radius", [1.0, 1.5, 2.0]),
         ("show_bonds", [True, False]),
         ("color_scheme", ["Jmol", "CPK", "VESTA"]),
-        ("width", [None, 400, 600, 800]),
-        ("height", [None, 400, 500, 600]),
+        ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("show_controls", [True, False]),
         ("show_info", [True, False]),
     ],
@@ -131,8 +130,7 @@ def test_widget_complete_lifecycle(structures: tuple[Structure, Structure]) -> N
         atom_radius=1.5,
         show_bonds=True,
         color_scheme="Jmol",
-        width=800,
-        height=600,
+        style="width: 800px; height: 600px",
         show_controls=False,
     )
 
@@ -141,8 +139,7 @@ def test_widget_complete_lifecycle(structures: tuple[Structure, Structure]) -> N
     assert widget.atom_radius == 1.5
     assert widget.show_bonds is True
     assert widget.color_scheme == "Jmol"
-    assert widget.width == 800
-    assert widget.height == 600
+    assert widget.style == "width: 800px; height: 600px"
     assert widget.show_controls is False
 
     # Test state persistence
@@ -151,8 +148,7 @@ def test_widget_complete_lifecycle(structures: tuple[Structure, Structure]) -> N
         "atom_radius": widget.atom_radius,
         "show_bonds": widget.show_bonds,
         "color_scheme": widget.color_scheme,
-        "width": widget.width,
-        "height": widget.height,
+        "style": widget.style,
         "show_controls": widget.show_controls,
     }
 
