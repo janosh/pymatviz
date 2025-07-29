@@ -136,6 +136,7 @@ ase_traj_widget = pmv.TrajectoryWidget(
     force_vector_color="#ff4444",
     show_bonds=True,
     bonding_strategy="nearest_neighbor",
+    style="height: 600px;",
 )
 display(ase_traj_widget)
 
@@ -146,7 +147,7 @@ torch_sim_widget = pmv.TrajectoryWidget(
     display_mode="structure+scatter",
     show_force_vectors=False,
     auto_rotate=0.5,
-    style="min-height: 800px",
+    style="height: 600px",
 )
 
 display(torch_sim_widget)
@@ -163,7 +164,9 @@ modes = ("pie", "bar", "bubble")
 size = 100
 children = [
     pmv.CompositionWidget(
-        composition=comp, mode=mode, width=(1 + (mode == "bar")) * size, height=size
+        composition=comp,
+        mode=mode,
+        style=f"width: {(1 + (mode == 'bar')) * size}px; height: {size}px;",
     )
     for comp, mode in itertools.product(comps, modes)
 ]
