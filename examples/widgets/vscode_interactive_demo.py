@@ -147,7 +147,7 @@ torch_sim_widget = pmv.TrajectoryWidget(
     display_mode="structure+scatter",
     show_force_vectors=False,
     auto_rotate=0.5,
-    style="height: 600px",
+    style="height: 600px;",
 )
 
 display(torch_sim_widget)

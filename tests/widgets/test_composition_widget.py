@@ -61,8 +61,7 @@ def test_widget_invalid_composition_handling(
     [
         ("show_percentages", [False, True]),
         ("color_scheme", ["Jmol", "CPK", "VESTA"]),
-        ("width", [400, 600, 800]),
-        ("height", [400, 500, 600]),
+        ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("mode", ["pie", "bar", "bubble"]),
     ],
 )
@@ -99,8 +98,7 @@ def test_widget_complete_lifecycle() -> None:
         show_percentages=True,
         color_scheme="CPK",
         mode="bar",
-        width=800,
-        height=600,
+        style="width: 800px; height: 600px",
     )
 
     # Test initial state
@@ -108,8 +106,7 @@ def test_widget_complete_lifecycle() -> None:
     assert widget.show_percentages is True
     assert widget.color_scheme == "CPK"
     assert widget.mode == "bar"
-    assert widget.width == 800
-    assert widget.height == 600
+    assert widget.style == "width: 800px; height: 600px"
 
     # Test state persistence
     state = {
@@ -117,8 +114,7 @@ def test_widget_complete_lifecycle() -> None:
         "show_percentages": widget.show_percentages,
         "color_scheme": widget.color_scheme,
         "mode": widget.mode,
-        "width": widget.width,
-        "height": widget.height,
+        "style": widget.style,
     }
 
     # Create new widget from state

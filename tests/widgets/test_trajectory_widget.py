@@ -208,8 +208,7 @@ def test_widget_complete_lifecycle(
     # Create widget with custom settings
     widget = TrajectoryWidget(
         trajectory=multi_frame_trajectory,
-        width=800,
-        height=600,
+        style="width: 800px; height: 600px",
         show_controls=False,
         layout="horizontal",
         display_mode="structure",
@@ -218,8 +217,7 @@ def test_widget_complete_lifecycle(
     # Test initial state
     assert widget.trajectory == multi_frame_trajectory
     assert widget.current_step_idx == 0
-    assert widget.width == 800
-    assert widget.height == 600
+    assert widget.style == "width: 800px; height: 600px"
     assert widget.show_controls is False
     assert widget.layout == "horizontal"
     assert widget.display_mode == "structure"
@@ -237,8 +235,7 @@ def test_widget_complete_lifecycle(
     state = {
         "trajectory": widget.trajectory,
         "current_step_idx": widget.current_step_idx,
-        "width": widget.width,
-        "height": widget.height,
+        "style": widget.style,
         "show_controls": widget.show_controls,
         "layout": widget.layout,
         "display_mode": widget.display_mode,
