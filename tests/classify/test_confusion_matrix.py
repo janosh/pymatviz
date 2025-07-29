@@ -231,14 +231,19 @@ def test_confusion_matrix_multi_class(multi_class_conf_mat: np.ndarray) -> None:
 
     with pytest.raises(ValueError, match="Unknown metric='Prec'"):
         confusion_matrix(
-            multi_class_conf_mat, x_labels=labels, y_labels=labels, metrics={"Prec"}
+            multi_class_conf_mat,
+            x_labels=labels,
+            y_labels=labels,
+            metrics={"Prec"},
         )
 
 
 def test_confusion_matrix_hover_text(sample_conf_mat: np.ndarray) -> None:
     """Test hover text formatting."""
     fig = confusion_matrix(
-        sample_conf_mat, x_labels=("Negative", "Positive"), normalize=True
+        sample_conf_mat,
+        x_labels=("Negative", "Positive"),
+        normalize=True,
     )
 
     hover_text = fig.data[0].text.flatten()

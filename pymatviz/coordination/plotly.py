@@ -408,7 +408,18 @@ def coordination_vs_cutoff_line(
         if hasattr(nn_instance, "cutoff"):
             max_cutoff = nn_instance.cutoff
         elif hasattr(nn_instance, "distance_cutoffs"):
-            max_cutoff = nn_instance.distance_cutoffs[1]
+            distance_cutoffs = nn_instance.distance_cutoffs
+            if (
+                isinstance(distance_cutoffs, (list, tuple))
+                and len(distance_cutoffs) > 1
+            ):
+                max_cutoff = distance_cutoffs[1]
+            else:
+                max_cutoff = (
+                    distance_cutoffs
+                    if isinstance(distance_cutoffs, (int, float))
+                    else 5.0
+                )
         else:
             raise AttributeError(f"Could not determine cutoff for {nn_instance=}")
         cutoff_range = (0, max_cutoff)

@@ -499,7 +499,7 @@ def py_pkg_treemap(
     # Format package labels *after* storing raw name and calculating totals
     if cell_text_fn is True:
         cell_text_fn = default_module_formatter
-    if cell_text_fn is not False:
+    if callable(cell_text_fn):
         total_lines = package_totals.sum()
         df_treemap["package"] = df_treemap["package_name_raw"].map(
             lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)

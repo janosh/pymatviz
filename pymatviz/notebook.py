@@ -94,8 +94,10 @@ def _create_display_methods(
                     display_data = {"text/plain": repr(self)}
                 elif isinstance(renderer, str) and renderer.endswith("Widget"):
                     display_data = _create_widget_mime_bundle(renderer, self)
-                elif hasattr(renderer, "__name__") and renderer.__name__.endswith(
-                    "Widget"
+                elif (
+                    hasattr(renderer, "__name__")
+                    and isinstance(renderer.__name__, str)
+                    and renderer.__name__.endswith("Widget")
                 ):
                     display_data = _create_widget_mime_bundle(renderer.__name__, self)
                 else:
@@ -135,8 +137,10 @@ def _create_display_methods(
                     return {"text/plain": repr(self)}
                 if isinstance(renderer, str) and renderer.endswith("Widget"):
                     return _create_widget_mime_bundle(renderer, self)
-                if hasattr(renderer, "__name__") and renderer.__name__.endswith(
-                    "Widget"
+                if (
+                    hasattr(renderer, "__name__")
+                    and isinstance(renderer.__name__, str)
+                    and renderer.__name__.endswith("Widget")
                 ):
                     return _create_widget_mime_bundle(renderer.__name__, self)
                 fig = renderer(self)  # type: ignore[operator]

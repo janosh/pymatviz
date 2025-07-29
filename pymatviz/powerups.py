@@ -474,7 +474,7 @@ def enhance_parity_plot(
     stats: bool | dict[str, Any] | None = True,
     traces: TraceSelector = lambda _: True,
     annotation_mode: AnnotationMode = "combined",
-) -> go.Figure:
+) -> go.Figure | None:
     """Add parity plot powerups to a plotly figure, including
     identity line (y=x), best-fit line, and pred vs ref statistics (MAE, R², ...).
 
@@ -708,7 +708,8 @@ def add_ecdf_line(
             showgrid=False,
         )
 
-        if color := current_trace_kwargs.get("line", {}).get("color"):
+        line_dict = current_trace_kwargs.get("line", {})
+        if isinstance(line_dict, dict) and (color := line_dict.get("color")):
             yaxis_defaults["color"] = color
 
         # Set up yaxis2 properly

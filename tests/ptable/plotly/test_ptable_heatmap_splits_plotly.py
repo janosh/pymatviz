@@ -49,6 +49,7 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
 
     for hide_f_block, expected_n_rows in rows_per_mode.items():
         fig = pmv.ptable_heatmap_splits_plotly(data_no_f, hide_f_block=hide_f_block)
+        assert fig._grid_ref is not None
         n_rows = len(fig._grid_ref)
         assert n_rows == expected_n_rows, f"{n_rows=}, {hide_f_block=}"
 
@@ -58,6 +59,7 @@ def test_ptable_heatmap_splits_plotly_f_block() -> None:
     rows_per_mode["auto"] = 10
     for hide_f_block, expected_n_rows in rows_per_mode.items():
         fig = pmv.ptable_heatmap_splits_plotly(data_with_f, hide_f_block=hide_f_block)
+        assert fig._grid_ref is not None
         n_rows = len(fig._grid_ref)
         assert n_rows == expected_n_rows, f"{n_rows=}, {hide_f_block=}"
 

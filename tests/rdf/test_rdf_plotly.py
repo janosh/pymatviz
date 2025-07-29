@@ -250,6 +250,7 @@ def test_element_pair_rdfs_custom_colors_and_styles(
 def test_element_pair_rdfs_reference_line(structures: list[Structure]) -> None:
     ref_line_kwargs = {"line_color": "teal", "line_width": 2}
     fig = element_pair_rdfs(structures, reference_line=ref_line_kwargs)
+    assert fig._grid_ref is not None
     n_subplots = len(fig._grid_ref) * len(fig._grid_ref[0])
     assert (
         sum(

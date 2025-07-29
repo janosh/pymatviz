@@ -1852,7 +1852,7 @@ def test_custom_sort_function(sort_df: pd.DataFrame) -> None:
     """Test using a custom sort function with cluster_compositions."""
 
     # Define a custom sort function that sorts by odd/even property values
-    def custom_sort(prop_values: list[float]) -> np.ndarray:
+    def custom_sort(prop_values: np.ndarray) -> np.ndarray:
         return np.argsort([p % 2 for p in prop_values])
 
     # Create figure with custom sort function
@@ -1999,7 +1999,9 @@ def test_custom_projection_function(
 
     # Verify metadata
     assert "projector" in fig._pymatviz
-    assert fig._pymatviz["projector"] is None  # Custom projectors store None
+    assert (
+        fig._pymatviz["projector"] is None
+    )  # Custom projectors store None  # type: ignore[attr-defined]
 
 
 def test_property_colorbar(df_prop: pd.DataFrame) -> None:

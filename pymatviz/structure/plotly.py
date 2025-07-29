@@ -349,10 +349,20 @@ def structure_2d(
                 struct_show_bonds = show_bonds.get(struct_key, False)
 
             if struct_show_bonds:
+                # Determine the NearNeighbors object to use
+                if struct_show_bonds is True:
+                    nn_obj = cast("NearNeighbors", CrystalNN())
+                else:
+                    nn_obj = struct_show_bonds
+
+                # Ensure nn_obj is a NearNeighbors object
+                if not isinstance(nn_obj, NearNeighbors):
+                    raise TypeError(f"Expected NearNeighbors, got {type(nn_obj)}")
+
                 helpers.draw_bonds(
                     fig=fig,
                     structure=augmented_structure,  # Pass augmented structure
-                    nn=CrystalNN() if struct_show_bonds is True else struct_show_bonds,
+                    nn=nn_obj,
                     is_3d=False,
                     bond_kwargs=bond_kwargs,
                     row=row,
@@ -700,10 +710,20 @@ def structure_3d(
                     # If no sites are rendered, set empty set to filter out all bonds
                     plotted_sites_coords = set()
 
+                # Determine the NearNeighbors object to use
+                if struct_show_bonds is True:
+                    nn_obj = cast("NearNeighbors", CrystalNN())
+                else:
+                    nn_obj = struct_show_bonds
+
+                # Ensure nn_obj is a NearNeighbors object
+                if not isinstance(nn_obj, NearNeighbors):
+                    raise TypeError(f"Expected NearNeighbors, got {type(nn_obj)}")
+
                 helpers.draw_bonds(
                     fig=fig,
                     structure=augmented_structure,  # Pass the augmented structure
-                    nn=CrystalNN() if struct_show_bonds is True else struct_show_bonds,
+                    nn=nn_obj,
                     is_3d=True,
                     bond_kwargs=bond_kwargs,
                     scene=f"scene{idx}",

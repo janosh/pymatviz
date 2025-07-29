@@ -102,7 +102,8 @@ def brillouin_zone_3d(
         k_space_cell = np.linalg.inv(real_space_cell).T * 2 * np.pi
 
         # Generate points for Voronoi construction
-        px, py, pz = np.tensordot(k_space_cell, np.mgrid[-1:2, -1:2, -1:2], axes=[0, 0])
+        mgrid_array = np.mgrid[-1:2, -1:2, -1:2]
+        px, py, pz = np.tensordot(k_space_cell, mgrid_array, axes=(0, 0))
         points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
 
         voronoi = sps.Voronoi(points)  # Create Voronoi cell

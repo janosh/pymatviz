@@ -42,9 +42,11 @@ def qq_gaussian(
         go.Figure: plotly Figure with Q-Q plot
     """
     if isinstance(y_std, str | pd.Index):
-        y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
+        arrays = df_to_arrays(df, y_true, y_pred, y_std)
+        y_true, y_pred, y_std = arrays[0], arrays[1], arrays[2]
     else:
-        y_true, y_pred = df_to_arrays(df, y_true, y_pred)
+        arrays = df_to_arrays(df, y_true, y_pred)
+        y_true, y_pred = arrays[0], arrays[1]
 
     y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)  # Type narrowing
 
@@ -145,9 +147,11 @@ def error_decay_with_uncert(
         Plotly figure with error decay plot
     """
     if isinstance(y_std, str | pd.Index):
-        y_true, y_pred, y_std = df_to_arrays(df, y_true, y_pred, y_std)
+        arrays = df_to_arrays(df, y_true, y_pred, y_std)
+        y_true, y_pred, y_std = arrays[0], arrays[1], arrays[2]
     else:
-        y_true, y_pred = df_to_arrays(df, y_true, y_pred)
+        arrays = df_to_arrays(df, y_true, y_pred)
+        y_true, y_pred = arrays[0], arrays[1]
 
     y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)  # Type narrowing
 

@@ -466,8 +466,9 @@ def df_to_svg(
         style = soup.find("style")
         sheet = cssutils.parseString(style.text) if style else []
 
-        def get_style_prop(element: bs4.element.Tag, prop_name: str) -> str | None:
-            style = element.get("style", "").lower()
+        def get_style_prop(element: bs4.Tag, prop_name: str) -> str | None:
+            style_attr = element.get("style", "")
+            style = style_attr.lower() if style_attr is not None else ""
             if prop_name in style:
                 return style.split(f"{prop_name}:")[1].split(";")[0].strip()
             if "id" in element.attrs:

@@ -634,7 +634,11 @@ def cluster_compositions(
             valid_symbols = list(filter(symbol_filter, all_symbols))
 
         # Check if we have more unique systems than available symbols
-        if "shape" in show_chem_sys and len(uniq_chem_sys) > len(valid_symbols):
+        if (
+            show_chem_sys is not None
+            and "shape" in show_chem_sys
+            and len(uniq_chem_sys) > len(valid_symbols)
+        ):
             warnings.warn(
                 f"Number of unique chemical systems ({len(uniq_chem_sys)}) exceeds "
                 f"available marker symbols ({len(valid_symbols)}). Some systems will "
@@ -652,7 +656,7 @@ def cluster_compositions(
         # If using pre-computed coordinates from df column, use generic name
         # If using built-in projection method, use that name
         proj_name = "coordinates" if using_precomputed_coords else projection
-    else:  # For custom projection functions, use generic name
+    else:  # For custom projection funcs, use generic name
         proj_name = "coordinates"
 
     df_plot[(x_name := f"{proj_name}1")] = projected[:, 0]
@@ -840,18 +844,26 @@ def cluster_compositions(
     # Calculate projection statistics
     projection_stats: str | None = None
     if show_projection_stats and not using_precomputed_coords:
-        if projection == "pca" and projector is not None:
+        if (
+            projection == "pca"
+            and projector is not None
+            and hasattr(projector, "explained_variance_ratio_")
+        ):
             # Get explained variance ratios from PCA object
-            var_explained_ratio = projector.explained_variance_ratio_[:n_components]
-            cum_var_explained = np.cumsum(var_explained_ratio)
+            explained_variance_ratio = projector.explained_variance_ratio_
+            if hasattr(explained_variance_ratio, "__getitem__"):
+                var_explained_ratio = explained_variance_ratio[:n_components]
+                cum_var_explained = np.cumsum(var_explained_ratio)
 
-            # Create variance stats text
-            stats_text: list[str] = []
-            for idx, (var, cum_var) in enumerate(
-                zip(var_explained_ratio, cum_var_explained, strict=True)
-            ):
-                stats_text.append(f"PC{idx + 1}: {var:.1%} (cumulative: {cum_var:.1%})")
-            projection_stats = "<br>".join(stats_text)
+                # Create variance stats text
+                stats_text: list[str] = []
+                for idx, (var, cum_var) in enumerate(
+                    zip(var_explained_ratio, cum_var_explained, strict=True)
+                ):
+                    stats_text.append(
+                        f"PC{idx + 1}: {var:.1%} (cumulative: {cum_var:.1%})"
+                    )
+                projection_stats = "<br>".join(stats_text)
         elif projection == "tsne":
             # For t-SNE, show perplexity and learning rate
             perplexity = projection_kwargs.get("perplexity", 30)
@@ -906,6 +918,9 @@ def cluster_compositions(
 
     def apply_symbol_mapping(fig: go.Figure, symbol_map: dict[str, str]) -> None:
         """Apply symbol mapping to the figure based on the visualization mode."""
+        if chem_systems is None:
+            return
+
         if prop_values is not None or show_chem_sys == "shape":
             # For property-colored plots or shape mode, we have one trace with
             # different symbols
@@ -964,12 +979,13 @@ def cluster_compositions(
         fig = plot_func(df_shape, **shape_kwargs | kwargs)
 
         # Apply the symbols
-        symbols = [symbol_map[cs] for cs in chem_systems]
-        fig.data[0].marker.symbol = symbols
+        if chem_systems is not None:
+            symbols = [symbol_map[cs] for cs in chem_systems]
+            fig.data[0].marker.symbol = symbols
 
         # If we don't have properties to color by, but need to color by chemical system
         # we need to manually set the colors
-        if prop_values is None:
+        if prop_values is None and chem_systems is not None:
             # Create a color mapping
             color_map = color_discrete_map or {}
             chem_sys_colors = []
@@ -1097,6 +1113,8 @@ def cluster_compositions(
     # since Plotly doesn't allow arbitrary attributes on Figures
     fig._pymatviz = {"projector": projector}
     if embeddings is not None:
-        fig._pymatviz["embeddings"] = embeddings
+        pymatviz_data = getattr(fig, "_pymatviz", {})
+        pymatviz_data["embeddings"] = embeddings
+        fig._pymatviz = pymatviz_data
 
     return fig

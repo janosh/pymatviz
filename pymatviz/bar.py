@@ -54,8 +54,17 @@ def spacegroup_bar(
         from moyopy import MoyoDataset
         from moyopy.interface import MoyoAdapter
 
+        # Filter to only include Structure/Atoms objects for MoyoAdapter
+        struct_data = [
+            struct
+            for struct in data
+            if hasattr(struct, "__qualname__")
+            and struct.__qualname__ in ("Structure", "Atoms")
+        ]
+
         series = pd.Series(
-            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
+            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number
+            for struct in struct_data
         )
     else:
         series = pd.Series(data)
