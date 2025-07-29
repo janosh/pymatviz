@@ -12,55 +12,57 @@ import {
   setup_theme_watchers,
 } from './theme-detection'
 
-function inject_app_css(theme_type?: ThemeType): void {
+function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): void {
   const style_id = `matterviz-widget-styles`
+  const detected_theme = theme_type || detect_parent_theme(target_element)
 
-  document.getElementById(style_id)?.remove() // Remove existing styles
+  // Determine if we're in Shadow DOM (used by marimo cells) and get the appropriate root node
+  const root_node = target_element?.getRootNode() || document
+  const is_shadow_dom = root_node !== document && root_node instanceof ShadowRoot
+  const target_root = is_shadow_dom ? root_node : document
 
-  const style = document.createElement(`style`)
-  style.id = style_id
+  // Remove existing styles
+  const existing_style = is_shadow_dom
+    ? target_root.querySelector(`#${style_id}`)
+    : document.getElementById(style_id)
+  existing_style?.remove()
 
-  // Use provided theme or detect parent theme
-  const detected_theme = theme_type || detect_parent_theme()
-
-  style.textContent = `
-    ${get_theme_css(detected_theme)}
-
-    /* something adds an annoying white background, remove it */
-    .cell-output-ipywidget-background {
-      background: transparent !important;
-      background-color: transparent !important;
-    }
-
-    /* Dark mode input styling for Jupyter notebooks and interactive windows in VSCode  */
+  // Create style content
+  const style_content = `
+    ${get_theme_css(detected_theme, is_shadow_dom)}
+    .cell-output-ipywidget-background { background: transparent !important; }
     :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea, select) {
-      background-color: #2d2d2d;
-      color: #ffffff;
-      border: 1px solid #555555;
-      border-radius: 4px;
-      padding: 6px 8px;
+      background-color: #2d2d2d; color: #ffffff; border: 1px solid #555555; border-radius: 4px; padding: 6px 8px;
     }
     :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea, select):focus {
-      outline: none;
-      border-color: #007acc;
-      box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+      outline: none; border-color: #007acc; box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
     }
-    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea)::placeholder {
-      color: #888888;
-    }
-
-    /* scope global styles to matterviz widgets to prevent site styles leaking into notebook styles */
-    /* this is brittle, will break should component CSS classes in matterviz change, try to find better solution */
-    div:is(.structure, .trajectory, .composition) {
-      ${app_css}
-    }
+    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea)::placeholder { color: #888888; }
+    ${
+    is_shadow_dom
+      ? app_css
+      : `div:is(.structure, .trajectory, .composition) { ${app_css} }`
+  }
   `
-  document.head.appendChild(style)
+
+  // Apply styles
+  if (is_shadow_dom && `adoptedStyleSheets` in target_root) {
+    const sheet = new CSSStyleSheet()
+    sheet.replaceSync(style_content)
+    target_root.adoptedStyleSheets = [...target_root.adoptedStyleSheets, sheet]
+    return
+  }
+
+  // Fallback: create style element
+  const style = document.createElement(`style`)
+  style.id = style_id
+  style.textContent = style_content
+  if (is_shadow_dom) target_root.appendChild(style)
+  else document.head.appendChild(style)
 }
 
 const instances = new Map<HTMLElement, ReturnType<typeof mount>>()
 
-// Detect widget type and render
 const get_prop = (model: AnyModel, key: string) => {
   try {
     return model.get(key) ?? undefined
@@ -69,13 +71,14 @@ const get_prop = (model: AnyModel, key: string) => {
   }
 }
 
+// Detect widget type and render
 const render: Render = (props) => {
   const { model, el } = props
-  inject_app_css()
-  setup_theme_watchers()
+  inject_app_css(undefined, el)
+  setup_theme_watchers(el)
 
   // Register theme change callback to update CSS when theme changes
-  on_theme_change(inject_app_css)
+  on_theme_change((theme_type) => inject_app_css(theme_type, el))
 
   // Clean up existing instance
   const existing = instances.get(el)
@@ -135,14 +138,12 @@ const render_structure: Render = ({ model, el }) => {
       cell_line_width: get_prop(model, `cell_line_width`),
       show_vectors: get_prop(model, `show_vectors`),
     },
-
     // Display options
     show_site_labels: get_prop(model, `show_site_labels`),
     show_image_atoms: get_prop(model, `show_image_atoms`),
     color_scheme: get_prop(model, `color_scheme`),
     background_color: get_prop(model, `background_color`),
     background_opacity: get_prop(model, `background_opacity`),
-
     // Widget configuration
     show_controls: get_prop(model, `show_controls`),
     enable_info_panel: get_prop(model, `show_info`),
@@ -158,18 +159,15 @@ const render_structure: Render = ({ model, el }) => {
 
 const render_trajectory: Render = ({ model, el }) => {
   const props = {
-    // Core trajectory data
     trajectory: get_prop(model, `trajectory`),
     data_url: get_prop(model, `data_url`),
     current_step_idx: get_prop(model, `current_step_idx`),
-
     // Layout and display
     layout: get_prop(model, `layout`),
     display_mode: get_prop(model, `display_mode`),
     show_controls: get_prop(model, `show_controls`),
     show_fullscreen_button: get_prop(model, `show_fullscreen_button`),
     auto_play: get_prop(model, `auto_play`),
-
     // Widget configuration
     allow_file_drop: false, // Disable file drop in notebook context
     structure_props: {
