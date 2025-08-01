@@ -582,9 +582,23 @@ def py_pkg_treemap(
 
                     # Try matching by filename (for cases where paths differ)
                     filename = os.path.basename(file_path)
+                    matches = []
                     for coverage_path, coverage_value in coverage_map.items():
                         if os.path.basename(coverage_path) == filename:
-                            return coverage_value
+                            matches.append((coverage_path, coverage_value))
+
+                    if len(matches) == 1:
+                        return matches[0][1]
+                    if len(matches) > 1:
+                        # Log warning about ambiguous match
+                        paths_str = [path for path, _ in matches]
+                        warning_msg = (
+                            f"Warning: Multiple coverage matches for "
+                            f"{filename}: {paths_str}"
+                        )
+                        print(warning_msg)  # noqa: T201
+                        # Return first match (could be improved to use path similarity)
+                        return matches[0][1]
 
                     # Try matching by relative path structure
                     # Extract the package-relative path (e.g., "core.py" from

@@ -804,10 +804,22 @@ def test_collect_coverage_data(
             {"color_by": {}, "color_continuous_scale": "Viridis"},
             {"has_colors": True, "use_custom_dict": True},
         ),
+        (
+            {"color_by": "coverage", "color_continuous_scale": "RdYlGn"},
+            {
+                "has_colors": True,
+                "customdata_cols": 13,
+                "colorbar_title": "Coverage (%)",
+                "test_ambiguous_filename": True,
+            },
+        ),
     ],
 )
 def test_py_pkg_treemap_coverage_scenarios(
-    mock_coverage_data: Path, kwargs: dict[str, Any], expectations: dict[str, Any]
+    mock_coverage_data: Path,
+    kwargs: dict[str, Any],
+    expectations: dict[str, Any],
+    capsys: pytest.CaptureFixture,
 ) -> None:
     """Test py_pkg_treemap with various coverage scenarios."""
     # Setup custom color dict if needed
@@ -820,8 +832,23 @@ def test_py_pkg_treemap_coverage_scenarios(
             }
             kwargs["color_by"] = custom_colors
 
-    # Add coverage data file for coverage tests
-    if kwargs.get("color_by") == "coverage":
+    # Handle ambiguous filename test case
+    if expectations.get("test_ambiguous_filename"):
+        # Create coverage data with multiple files having the same basename
+        coverage_with_ambiguous = {
+            "files": {
+                "different/path/module1.py": {"summary": {"percent_covered": 75.0}},
+                "another/different/path/module1.py": {
+                    "summary": {"percent_covered": 90.0}
+                },
+                "some/other/path/module2.py": {"summary": {"percent_covered": 80.0}},
+            }
+        }
+        coverage_file = mock_coverage_data.parent / "coverage_ambiguous.json"
+        coverage_file.write_text(json.dumps(coverage_with_ambiguous))
+        kwargs["coverage_data_file"] = str(coverage_file)
+    elif kwargs.get("color_by") == "coverage":
+        # Add coverage data file for coverage tests
         kwargs["coverage_data_file"] = str(mock_coverage_data)
 
     fig = pmv.py_pkg_treemap("my_pkg", **kwargs)
@@ -853,6 +880,14 @@ def test_py_pkg_treemap_coverage_scenarios(
         coloraxis = fig.layout.coloraxis
         if hasattr(coloraxis, "colorbar") and coloraxis.colorbar is not None:
             assert coloraxis.colorbar.title.text == expectations["colorbar_title"]
+
+    # Check for ambiguous filename warning
+    if expectations.get("test_ambiguous_filename"):
+        captured = capsys.readouterr()
+        warning_msg = "Warning: Multiple coverage matches for module1.py"
+        assert warning_msg in captured.out
+        assert "different/path/module1.py" in captured.out
+        assert "another/different/path/module1.py" in captured.out
 
 
 def test_py_pkg_treemap_coverage_path_matching(tmp_path: Path) -> None:
