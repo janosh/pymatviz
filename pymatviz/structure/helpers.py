@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from typing import Any, Literal
 
     import pandas as pd
-    import plotly.graph_objects as go
     from numpy.typing import ArrayLike
     from pymatgen.analysis.local_env import NearNeighbors
 
