@@ -200,7 +200,7 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
             raises FileNotFoundError instead of auto-generating.
 
     Returns:
-        dict[str, float]: Mapping from absolute file paths to coverage percentages.
+        dict[str, float]: Mapping from file paths to coverage percentages.
     """
     coverage_map: dict[str, float] = {}
 
@@ -208,13 +208,13 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
         with open(coverage_data_file, encoding="utf-8") as file_handle:
             coverage_data = json.load(file_handle)
 
-        if "files" in coverage_data:
-            coverage_dir = os.path.dirname(os.path.abspath(coverage_data_file))
-            for file_path, file_data in coverage_data["files"].items():
-                summary = file_data.get("summary", {})
-                if "percent_covered" in summary:
-                    abs_path = os.path.normpath(f"{coverage_dir}/{file_path}")
-                    coverage_map[abs_path] = summary["percent_covered"]
+        coverage_dir = os.path.dirname(os.path.abspath(coverage_data_file))
+        for file_path, file_data in coverage_data.get("files", {}).items():
+            summary = file_data.get("summary", {})
+            if "percent_covered" in summary:
+                # Convert relative paths to absolute paths
+                abs_path = os.path.normpath(f"{coverage_dir}/{file_path}")
+                coverage_map[abs_path] = summary["percent_covered"]
     else:
         try:  # Try to collect coverage on the fly
             with tempfile.NamedTemporaryFile(
@@ -235,8 +235,7 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
                     for file_path, file_data in data.get("files", {}).items():
                         summary = file_data.get("summary", {})
                         if "percent_covered" in summary:
-                            abs_path = os.path.normpath(file_path)
-                            coverage_map[abs_path] = summary["percent_covered"]
+                            coverage_map[file_path] = summary["percent_covered"]
             else:
                 print(f"Warning: Coverage command failed: {result.stderr}")  # noqa: T201
 
@@ -361,6 +360,70 @@ def collect_package_modules(
     return pd.DataFrame(all_modules)
 
 
+def _match_coverage_path(
+    file_path: str,
+    coverage_map: dict[str, float],
+    df_modules: pd.DataFrame,
+    package_names: list[str],
+) -> float:
+    """Match a file path to coverage data using simple strategies.
+
+    Args:
+        file_path: Path to the file to match
+        coverage_map: Mapping from file paths to coverage percentages
+        df_modules: DataFrame with module data including repo_path_segment
+        package_names: List of package names to match against
+
+    Returns:
+        float: Coverage percentage for the file, or NaN if no match found
+    """
+    if file_path in coverage_map:  # Try exact match first
+        return coverage_map[file_path]
+
+    row_data = df_modules[df_modules["file_path"] == file_path]
+    if row_data.empty:
+        return float("nan")
+
+    row = row_data.iloc[0]
+    repo_path_segment = row["repo_path_segment"]
+
+    # Try matching by repo_path_segment
+    for cov_path, cov_value in coverage_map.items():
+        cov_path_unix = cov_path.replace(os.sep, "/")
+        for pkg_name in package_names:
+            if pkg_name in cov_path_unix:
+                pkg_idx = cov_path_unix.find(pkg_name)
+                if pkg_idx != -1:
+                    cov_rel_path = cov_path_unix[pkg_idx:]
+                    # Direct match or with src/ prefix
+                    if cov_rel_path in (repo_path_segment, f"src/{repo_path_segment}"):
+                        return cov_value
+
+    # Fallback: match by filename
+    filename = os.path.basename(file_path)
+    matches = [
+        (file_path, cov_val)
+        for file_path, cov_val in coverage_map.items()
+        if os.path.basename(file_path) == filename
+    ]
+
+    if len(matches) == 1:
+        return matches[0][1]
+    if len(matches) > 1:
+        # Find best match by path similarity
+        def path_similarity(match_path: str) -> int:
+            """Calculate path similarity."""
+            try:
+                return len(os.path.commonpath([file_path, match_path]))
+            except ValueError:
+                return len(os.path.basename(match_path))
+
+        best_match = max(matches, key=lambda x: path_similarity(x[0]))
+        return best_match[1]
+
+    return float("nan")
+
+
 def py_pkg_treemap(
     packages: str | ModuleType | Sequence[str | ModuleType],
     *,
@@ -372,6 +435,7 @@ def py_pkg_treemap(
     color_by: str | dict[str, float] | None = None,
     coverage_data_file: str | None = None,
     color_range: tuple[float, float] | None = None,
+    cell_border: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Generate a treemap plot showing the module structure of Python packages.
@@ -420,6 +484,9 @@ def py_pkg_treemap(
             (min, max). Useful for consistent color mapping across plots or to
             ensure specific values (e.g., 0% coverage) map to specific colors.
             If None, uses the actual min/max values from the data.
+        cell_border (dict[str, Any] | None): Cell border styling. If None, defaults to
+            white borders with width 1 in coverage mode, no borders otherwise.
+            Example: dict(color="black", width=2) for thick black borders.
         **kwargs (Any): Additional keyword arguments passed to plotly.express.treemap
 
     Returns:
@@ -569,69 +636,10 @@ def py_pkg_treemap(
         elif isinstance(color_by, dict) or color_by == "coverage":
             # Map file paths to color values, defaulting to 0.0 for missing values
             if color_by == "coverage":
-                # For coverage data, we need to handle path matching more intelligently
-                # since coverage data might have different path structures than
-                # installed packages
-                def match_coverage_path(
-                    file_path: str, coverage_map: dict[str, float]
-                ) -> float:
-                    """Match a file path to coverage data using multiple strategies."""
-                    # First try exact match
-                    if file_path in coverage_map:
-                        return coverage_map[file_path]
-
-                    # Try matching by filename (for cases where paths differ)
-                    filename = os.path.basename(file_path)
-                    matches = []
-                    for coverage_path, coverage_value in coverage_map.items():
-                        if os.path.basename(coverage_path) == filename:
-                            matches.append((coverage_path, coverage_value))
-
-                    if len(matches) == 1:
-                        return matches[0][1]
-                    if len(matches) > 1:
-                        # Log warning about ambiguous match
-                        paths_str = [path for path, _ in matches]
-                        warning_msg = (
-                            f"Warning: Multiple coverage matches for "
-                            f"{filename}: {paths_str}"
-                        )
-                        print(warning_msg)  # noqa: T201
-                        # Return first match (could be improved to use path similarity)
-                        return matches[0][1]
-
-                    # Try matching by relative path structure
-                    # Extract the package-relative path (e.g., "core.py" from
-                    # "/path/to/pkg/core.py")
-                    for coverage_path, coverage_value in coverage_map.items():
-                        # Get the relative part of the coverage path (e.g.,
-                        # "src/pkg/core.py" -> "pkg/core.py")
-                        coverage_rel = coverage_path
-                        if "src/" in coverage_path:
-                            coverage_rel = coverage_path.split("src/", 1)[1]
-
-                        # Get the relative part of the file path
-                        file_rel = file_path
-                        for pkg_name in package_names:
-                            if pkg_name in file_path:
-                                # Extract the part after the package name
-                                pkg_idx = file_path.find(pkg_name)
-                                if pkg_idx != -1:
-                                    file_rel = file_path[
-                                        pkg_idx + len(pkg_name) + 1 :
-                                    ]  # +1 for the separator
-                                    break
-
-                        # Compare the relative paths
-                        if coverage_rel.endswith(file_rel) or file_rel.endswith(
-                            coverage_rel
-                        ):
-                            return coverage_value
-
-                    return 0.0
-
                 df_modules["color_value"] = df_modules["file_path"].apply(
-                    lambda path: match_coverage_path(path, color_values)
+                    lambda path: _match_coverage_path(
+                        path, color_values, df_modules, package_names
+                    )
                 )
             else:
                 # For custom dict, use direct mapping
@@ -687,9 +695,39 @@ def py_pkg_treemap(
         cell_text_fn = default_module_formatter
     if cell_text_fn is not False:
         total_lines = package_totals.sum()
-        df_treemap["package"] = df_treemap["package_name_raw"].map(
-            lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
-        )
+
+        # When in coverage mode, show coverage percentage instead of line percentage
+        if color_by == "coverage" and has_color_mode:
+            # Calculate package-level coverage as weighted average
+            package_coverage = {}
+            for pkg_name in package_names:
+                pkg_rows = df_treemap[df_treemap["package_name_raw"] == pkg_name]
+                if not pkg_rows.empty and "color_value" in pkg_rows.columns:
+                    total_pkg_lines = pkg_rows["line_count"].sum()
+                    if total_pkg_lines > 0:
+                        weighted_coverage = (
+                            pkg_rows["color_value"] * pkg_rows["line_count"]
+                        ).sum() / total_pkg_lines
+                        package_coverage[pkg_name] = weighted_coverage
+                    else:
+                        package_coverage[pkg_name] = 0.0
+                else:
+                    package_coverage[pkg_name] = 0.0
+
+            # Custom formatter for coverage mode
+            def coverage_formatter(pkg: str, lines: int, _total: int) -> str:
+                coverage = package_coverage.get(pkg, 0.0)
+                return f"{pkg} ({lines:,} lines, {coverage:.1f}% cov)"
+
+            df_treemap["package"] = df_treemap["package_name_raw"].map(
+                lambda pkg: coverage_formatter(
+                    pkg, package_totals.get(pkg, 0), total_lines
+                )
+            )
+        else:
+            df_treemap["package"] = df_treemap["package_name_raw"].map(
+                lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
+            )
 
     # Calculate full file URLs for linking
     def _get_file_url(row: pd.Series) -> str | None:
@@ -767,46 +805,67 @@ def py_pkg_treemap(
     # Create the treemap using the DataFrame and level columns
     fig = px.treemap(**treemap_params)
 
-    # For coverage heatmaps, fix parent node colors to show weighted averages
+    # Fix parent node colors for coverage heatmaps (weighted averages)
     if has_color_mode and color_by == "coverage":
-        # Calculate weighted average coverage for parent nodes
         trace = fig.data[0]
+        labels, parents, values = trace.labels, trace.parents, trace.values  # noqa: PD011
 
-        # Get the leaf (module) data for calculating weighted averages
-        leaf_data = df_treemap
+        # Create a mapping from treemap labels to DataFrame rows
+        label_to_row = {}
+        for _, row in df_treemap.iterrows():
+            # Try to match by various criteria
+            for label in labels:
+                if (
+                    # Match by exact line count and module name
+                    (
+                        abs(values[list(labels).index(label)] - row["line_count"]) < 1
+                        and row["leaf_label"] in label
+                    )
+                    or
+                    # Match by package name for root nodes
+                    (row["package_name_raw"] in label and "lines" in label)
+                    or
+                    # Match by full module path
+                    (row["full_module"] in label)
+                ):
+                    label_to_row[label] = row
+                    break
 
-        # Calculate package-level weighted average coverage
-        package_coverage = {}
-        for package in leaf_data["package_name_raw"].unique():
-            pkg_modules = leaf_data[leaf_data["package_name_raw"] == package]
-            total_lines = pkg_modules["line_count"].sum()
-            if total_lines > 0:
-                weighted_coverage = (
-                    pkg_modules["color_value"] * pkg_modules["line_count"]
-                ).sum() / total_lines
-                package_coverage[package] = weighted_coverage
+        # Map leaf nodes to their coverage values
+        node_coverage = {}
+        for label, row in label_to_row.items():
+            if "color_value" in row:
+                node_coverage[label] = row["color_value"]
 
-        # Update the trace colors for parent nodes
-        updated_colors = list(trace.marker.colors)
-        labels = list(trace.labels)
-        parents = list(trace.parents)
+        # Calculate weighted averages for parent nodes
+        colors = list(trace.marker.colors)
+        parent_children: dict[str, list[tuple[str, float]]] = {}
+        for i, parent in enumerate(parents):
+            if parent:
+                parent_children.setdefault(parent, []).append(labels[i])
 
-        # Create a mapping from label to its index
-        label_to_idx = {label: i for i, label in enumerate(labels)}
+        # Process parent nodes to calculate weighted averages
+        for i, label in enumerate(labels):
+            if label not in node_coverage and label in parent_children:
+                children_data = []
+                for child in parent_children[label]:
+                    if child in node_coverage:
+                        child_idx = list(labels).index(child)
+                        child_weight = values[child_idx]
+                        child_coverage = node_coverage[child]
+                        children_data.append((child_coverage, child_weight))
 
-        # Iterate over all nodes to update parent colors
-        for i, parent_label in enumerate(parents):
-            if parent_label in label_to_idx:
-                # This is a child of another node, continue
-                continue
+                if children_data:
+                    total_weight = sum(weight for _, weight in children_data)
+                    if total_weight > 0:
+                        weighted_avg = (
+                            sum(cov * weight for cov, weight in children_data)
+                            / total_weight
+                        )
+                        node_coverage[label] = weighted_avg
+                        colors[i] = weighted_avg
 
-            # This is a package-level node (or other root)
-            package_name = labels[i].split(" (")[0]
-            if package_name in package_coverage:
-                updated_colors[i] = package_coverage[package_name]
-
-        # Update the trace with corrected colors
-        fig.data[0].marker.colors = tuple(updated_colors)
+        fig.data[0].marker.colors = tuple(colors)
 
     # Configure colorbar for heatmap mode
     if has_color_mode and df_treemap["color_value"].notna().any():
@@ -828,23 +887,15 @@ def py_pkg_treemap(
         if color_range is not None:
             # Use manually specified range
             min_val, max_val = color_range
-            fig.update_layout(
-                coloraxis=dict(
-                    cmin=min_val,
-                    cmax=max_val,
-                    cmid=(min_val + max_val) / 2,
-                )
+            fig.layout.coloraxis.update(
+                cmin=min_val, cmax=max_val, cmid=(min_val + max_val) / 2
             )
         elif color_by == "coverage":
             # For coverage, use data range by default
-            min_coverage = df_treemap["color_value"].min()
-            max_coverage = df_treemap["color_value"].max()
-            fig.update_layout(
-                coloraxis=dict(
-                    cmin=min_coverage,
-                    cmax=max_coverage,
-                    cmid=(min_coverage + max_coverage) / 2,
-                )
+            min_cov = df_treemap["color_value"].min()
+            max_cov = df_treemap["color_value"].max()
+            fig.layout.coloraxis.update(
+                cmin=min_cov, cmax=max_cov, cmid=(min_cov + max_cov) / 2
             )
         elif has_color_mode:
             # For other color modes, let Plotly auto-scale unless manually specified
@@ -863,7 +914,8 @@ def py_pkg_treemap(
     if has_color_mode and not df_treemap["color_value"].isna().all():
         color_label = "Coverage" if color_by == "coverage" else "Color Value"
         color_format = ":.1f%" if color_by == "coverage" else ":,.2f"
-        color_value_index = len(custom_data_cols) - 1  # Last column when in color mode
+        # Last column when in color mode
+        color_value_index = len(custom_data_cols) - 1
         base_hovertemplate += (
             f"{color_label}: %{{customdata[{color_value_index}]{color_format}}}<br>"
         )
@@ -956,8 +1008,17 @@ def py_pkg_treemap(
     if texttemplate:
         fig.data[0].texttemplate = texttemplate
 
+    # Default to white borders in coverage mode, leave None else
+    if has_color_mode and cell_border is None:
+        cell_border = dict(color="white", width=1)
+    if cell_border is not None:
+        fig.update_traces(marker=dict(line=cell_border))
+
     # Adjust margins for better appearance
     fig.layout.margin = dict(l=0, r=0, b=0, t=40, pad=0)
     fig.layout.paper_bgcolor = "rgba(0, 0, 0, 0)"
+
+    # Ensure figure auto-sizes to parent container by setting width/height to None
+    fig.update_layout(width=None, height=None)
 
     return fig

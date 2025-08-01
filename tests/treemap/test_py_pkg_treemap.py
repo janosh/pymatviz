@@ -819,7 +819,6 @@ def test_py_pkg_treemap_coverage_scenarios(
     mock_coverage_data: Path,
     kwargs: dict[str, Any],
     expectations: dict[str, Any],
-    capsys: pytest.CaptureFixture,
 ) -> None:
     """Test py_pkg_treemap with various coverage scenarios."""
     # Setup custom color dict if needed
@@ -880,14 +879,6 @@ def test_py_pkg_treemap_coverage_scenarios(
         coloraxis = fig.layout.coloraxis
         if hasattr(coloraxis, "colorbar") and coloraxis.colorbar is not None:
             assert coloraxis.colorbar.title.text == expectations["colorbar_title"]
-
-    # Check for ambiguous filename warning
-    if expectations.get("test_ambiguous_filename"):
-        captured = capsys.readouterr()
-        warning_msg = "Warning: Multiple coverage matches for module1.py"
-        assert warning_msg in captured.out
-        assert "different/path/module1.py" in captured.out
-        assert "another/different/path/module1.py" in captured.out
 
 
 def test_py_pkg_treemap_coverage_path_matching(tmp_path: Path) -> None:
@@ -1044,3 +1035,213 @@ def test_py_pkg_treemap_coverage_edge_cases(
         coloraxis = fig.layout.coloraxis
         if hasattr(coloraxis, "colorbar") and coloraxis.colorbar is not None:
             assert coloraxis.colorbar.title.text == colorbar_title
+
+
+def test_py_pkg_treemap_submodule_coverage_weighted_averages(
+    dummy_pkg_path: Path,
+) -> None:
+    """Test that submodule coverage shows weighted averages of child modules."""
+    # Use the existing dummy package structure
+    pkg_dir = dummy_pkg_path / "my_pkg"
+
+    # Create coverage data for the existing modules
+    coverage_data = {
+        "files": {
+            str(pkg_dir / "module1.py"): {"summary": {"percent_covered": 80.0}},
+            str(pkg_dir / "submodule" / "module2.py"): {
+                "summary": {"percent_covered": 70.0}
+            },
+            str(pkg_dir / "submodule" / "module3.py"): {
+                "summary": {"percent_covered": 90.0}
+            },
+        }
+    }
+    coverage_file = dummy_pkg_path / "coverage.json"
+    coverage_file.write_text(json.dumps(coverage_data))
+
+    # Create the treemap with coverage
+    fig = pmv.py_pkg_treemap(
+        "my_pkg", color_by="coverage", coverage_data_file=str(coverage_file)
+    )
+
+    assert isinstance(fig, go.Figure)
+    trace = fig.data[0]
+
+    # Check that we have colors
+    assert hasattr(trace.marker, "colors")
+    assert trace.marker.colors is not None
+
+    colors = list(trace.marker.colors)
+    labels = list(trace.labels)
+
+    # Regression prevention: verify the fix works
+    # 1. Check that we have some non-zero coverage values
+    non_zero_coverage = [c for c in colors if isinstance(c, (int, float)) and c > 0]
+    assert len(non_zero_coverage) > 0, "Should have some non-zero coverage values"
+
+    # 2. Check that parent nodes have weighted averages (not all same value)
+    parent_nodes = [i for i, label in enumerate(labels) if "(" in str(label)]
+    if len(parent_nodes) > 1:
+        parent_coverage_values = [colors[i] for i in parent_nodes]
+        unique_parent_values = set(parent_coverage_values)
+        assert len(unique_parent_values) > 1, (
+            f"Parent nodes should have different weighted averages, "
+            f"got all same: {parent_coverage_values[0]}"
+        )
+
+    # 3. Check that the main package node has reasonable coverage
+    pkg_node_idx = None
+    for i, label in enumerate(labels):
+        if "my_pkg" in str(label) and "(" in str(label):  # Parent node
+            pkg_node_idx = i
+            break
+
+        if pkg_node_idx is not None:
+            pkg_coverage = colors[pkg_node_idx]
+            # Expected weighted average (may include modules without coverage)
+            assert 0.0 <= pkg_coverage <= 100.0, (
+                f"Expected coverage between 0-100, got {pkg_coverage}"
+            )
+
+
+def test_py_pkg_treemap_coverage_regression_prevention(tmp_path: Path) -> None:
+    """Test to prevent regression where all submodules show same coverage value."""
+    # Create coverage data that would cause the bug if not fixed
+    coverage_data = {
+        "files": {
+            "pymatgen/io/vasp/input.py": {"summary": {"percent_covered": 75.0}},
+            "pymatgen/io/vasp/output.py": {"summary": {"percent_covered": 85.0}},
+            "pymatgen/io/cp2k/input.py": {"summary": {"percent_covered": 95.0}},
+            "pymatgen/io/qchem/input.py": {"summary": {"percent_covered": 65.0}},
+            "pymatgen/analysis/local_env.py": {"summary": {"percent_covered": 55.0}},
+            "pymatgen/analysis/phase_diagram.py": {
+                "summary": {"percent_covered": 45.0}
+            },
+        }
+    }
+    coverage_file = tmp_path / "regression_coverage.json"
+    coverage_file.write_text(json.dumps(coverage_data))
+
+    # Create package structure
+    pkg_dir = tmp_path / "pymatgen"
+    pkg_dir.mkdir(parents=True)
+    (pkg_dir / "__init__.py").touch()
+
+    # Create io submodules with different line counts
+    io_dir = pkg_dir / "io"
+    io_dir.mkdir()
+    (io_dir / "__init__.py").touch()
+
+    vasp_dir = io_dir / "vasp"
+    vasp_dir.mkdir()
+    (vasp_dir / "__init__.py").touch()
+    (vasp_dir / "input.py").write_text("def func1(): pass\n" * 5)  # 5 lines
+    (vasp_dir / "output.py").write_text("def func2(): pass\n" * 15)  # 15 lines
+
+    cp2k_dir = io_dir / "cp2k"
+    cp2k_dir.mkdir()
+    (cp2k_dir / "__init__.py").touch()
+    (cp2k_dir / "input.py").write_text("def func3(): pass\n" * 10)  # 10 lines
+
+    qchem_dir = io_dir / "qchem"
+    qchem_dir.mkdir()
+    (qchem_dir / "__init__.py").touch()
+    (qchem_dir / "input.py").write_text("def func4(): pass\n" * 20)  # 20 lines
+
+    # Create analysis submodules
+    analysis_dir = pkg_dir / "analysis"
+    analysis_dir.mkdir()
+    (analysis_dir / "__init__.py").touch()
+    (analysis_dir / "local_env.py").write_text("def func5(): pass\n" * 8)  # 8 lines
+    (analysis_dir / "phase_diagram.py").write_text(
+        "def func6(): pass\n" * 12
+    )  # 12 lines
+
+    # Create the treemap
+    fig = pmv.py_pkg_treemap(
+        "pymatgen", color_by="coverage", coverage_data_file=str(coverage_file)
+    )
+
+    assert isinstance(fig, go.Figure)
+    trace = fig.data[0]
+    colors = list(trace.marker.colors)
+    labels = list(trace.labels)
+
+    # Critical regression check: verify parent nodes have different coverage values
+    parent_nodes = [i for i, label in enumerate(labels) if "(" in str(label)]
+
+    # Verify we have at least one parent node
+    assert len(parent_nodes) > 0, "Should have at least one parent node present"
+
+    # If we have multiple parent nodes, they should have different coverage values
+    if len(parent_nodes) > 1:
+        parent_coverage_values = [colors[i] for i in parent_nodes]
+        unique_values = set(parent_coverage_values)
+        assert len(unique_values) > 1, (
+            f"Different parent nodes should have different coverage values, "
+            f"got all same: {parent_coverage_values[0]}"
+        )
+
+    # Verify the coverage values are reasonable
+    for i in parent_nodes:
+        coverage_value = colors[i]
+        assert 0.0 <= coverage_value <= 100.0
+
+    # Verify leaf nodes maintain their original values
+    leaf_expected = {
+        "input.py": 75.0,
+        "output.py": 85.0,
+        "cp2k/input.py": 95.0,
+        "qchem/input.py": 65.0,
+        "local_env.py": 55.0,
+        "phase_diagram.py": 45.0,
+    }
+
+    for i, label in enumerate(labels):
+        for leaf_name, expected in leaf_expected.items():
+            if leaf_name in str(label) and "(" not in str(label):
+                assert colors[i] == expected, (
+                    f"Leaf {label} should have coverage {expected}, got {colors[i]}"
+                )
+
+
+def test_py_pkg_treemap_cell_border() -> None:
+    """Test cell_border parameter functionality."""
+    # Test default behavior (no borders in non-coverage mode)
+    fig1 = pmv.py_pkg_treemap("my_pkg")
+    assert isinstance(fig1, go.Figure)
+    # Check that no borders are applied by default in non-coverage mode
+    # Plotly creates a Line object but with no properties set
+    assert fig1.data[0].marker.line.color is None
+
+    # Test custom border in non-coverage mode
+    fig2 = pmv.py_pkg_treemap("my_pkg", cell_border={"color": "black", "width": 2})
+    assert isinstance(fig2, go.Figure)
+    assert fig2.data[0].marker.line.color == "black"
+    assert fig2.data[0].marker.line.width == 2
+
+    # Test empty border (no borders) in non-coverage mode
+    fig3 = pmv.py_pkg_treemap("my_pkg", cell_border={})
+    assert isinstance(fig3, go.Figure)
+    # Should have no borders - empty dict means no color/width properties
+    assert fig3.data[0].marker.line.color is None
+
+    # Test coverage mode with default borders (white, width 1)
+    fig4 = pmv.py_pkg_treemap("my_pkg", color_by="coverage")
+    assert isinstance(fig4, go.Figure)
+    assert fig4.data[0].marker.line.color == "white"
+    assert fig4.data[0].marker.line.width == 1
+
+    # Test coverage mode with custom borders
+    fig5 = pmv.py_pkg_treemap(
+        "my_pkg", color_by="coverage", cell_border={"color": "red", "width": 3}
+    )
+    assert isinstance(fig5, go.Figure)
+    assert fig5.data[0].marker.line.color == "red"
+    assert fig5.data[0].marker.line.width == 3
+
+    # Test coverage mode with no borders
+    fig6 = pmv.py_pkg_treemap("my_pkg", color_by="coverage", cell_border={})
+    assert isinstance(fig6, go.Figure)
+    # Should have no borders even in coverage mode when explicitly set to empty
+    assert fig6.data[0].marker.line.color is None

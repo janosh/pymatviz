@@ -102,7 +102,7 @@ fig_custom_size.update_traces(
 fig_custom_size.show()
 
 
-# %% Coverage heatmap for pymatviz package (cell size by lines, color by test coverage)
+# %% pymatviz treemap with coverage heatmap (cell size by lines, color by test coverage)
 fig_coverage = pmv.py_pkg_treemap(
     "pymatviz",
     color_by="coverage",
@@ -113,20 +113,11 @@ fig_coverage = pmv.py_pkg_treemap(
 )
 title = "pymatviz: Coverage Heatmap (Cell size by lines, Color by test coverage)"
 fig_coverage.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
-fig_coverage.update_traces(
-    hovertemplate="<b>%{label}</b><br>"
-    "Path: %{customdata[1]}<br>"
-    "Lines: %{customdata[11]:,} @ %{customdata[12]:,.1f}%<br>"
-    "Classes: %{customdata[4]:,}<br>"
-    "Functions: %{customdata[5]:,}<br>"
-    "Methods: %{customdata[9]:,}<br>"
-    "<extra></extra>",
-)
 fig_coverage.show()
 pmv.io.save_and_compress_svg(fig_coverage, "py-pkg-treemap-pymatviz-coverage")
 
 
-# %% Coverage heatmap with manual color range (0-100%) for pymatgen package
+# %% pymatgen treemap with coverage heatmap and manual color range (0-100%)
 coverage_data_file = f"{pmv.ROOT}/tmp/2025-07-31-pymatgen-coverage.json"
 
 fig_coverage_range = pmv.py_pkg_treemap(
@@ -140,14 +131,5 @@ fig_coverage_range = pmv.py_pkg_treemap(
 )
 title_range = "pymatgen: Coverage Heatmap with Manual Range (0-100%)"
 fig_coverage_range.layout.title.update(text=title_range, x=0.5, y=0.97, font_size=18)
-fig_coverage_range.update_traces(
-    hovertemplate="<b>%{label}</b><br>"
-    "Path: %{customdata[1]}<br>"
-    "Lines: %{customdata[11]:,} @ %{customdata[12]:,.1f}%<br>"
-    "Classes: %{customdata[4]:,}<br>"
-    "Functions: %{customdata[5]:,}<br>"
-    "Methods: %{customdata[9]:,}<br>"
-    "<extra></extra>",
-)
 fig_coverage_range.show()
 pmv.io.save_and_compress_svg(fig_coverage_range, "py-pkg-treemap-pymatgen-coverage")
