@@ -301,7 +301,9 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
 
     file_urls = custom_data[:, 3]  # Index 3 is file_url
     if expect_link:
-        file_node_indices = [i for i, id_val in enumerate(trace.ids) if ".py" in id_val]
+        file_node_indices = [
+            idx for idx, id_val in enumerate(trace.ids) if ".py" in id_val
+        ]
         assert all(
             str(test_base_url) in str(file_urls[i])
             for i in file_node_indices
@@ -1080,7 +1082,7 @@ def test_py_pkg_treemap_submodule_coverage_weighted_averages(
     assert len(non_zero_coverage) > 0, "Should have some non-zero coverage values"
 
     # 2. Check that parent nodes have weighted averages (not all same value)
-    parent_nodes = [i for i, label in enumerate(labels) if "(" in str(label)]
+    parent_nodes = [idx for idx, label in enumerate(labels) if "(" in str(label)]
     if len(parent_nodes) > 1:
         parent_coverage_values = [colors[i] for i in parent_nodes]
         unique_parent_values = set(parent_coverage_values)
@@ -1091,9 +1093,9 @@ def test_py_pkg_treemap_submodule_coverage_weighted_averages(
 
     # 3. Check that the main package node has reasonable coverage
     pkg_node_idx = None
-    for i, label in enumerate(labels):
+    for idx, label in enumerate(labels):
         if "my_pkg" in str(label) and "(" in str(label):  # Parent node
-            pkg_node_idx = i
+            pkg_node_idx = idx
             break
 
         if pkg_node_idx is not None:
@@ -1168,14 +1170,14 @@ def test_py_pkg_treemap_coverage_regression_prevention(tmp_path: Path) -> None:
     labels = list(trace.labels)
 
     # Critical regression check: verify parent nodes have different coverage values
-    parent_nodes = [i for i, label in enumerate(labels) if "(" in str(label)]
+    parent_nodes = [idx for idx, label in enumerate(labels) if "(" in str(label)]
 
     # Verify we have at least one parent node
     assert len(parent_nodes) > 0, "Should have at least one parent node present"
 
     # If we have multiple parent nodes, they should have different coverage values
     if len(parent_nodes) > 1:
-        parent_coverage_values = [colors[i] for i in parent_nodes]
+        parent_coverage_values = [colors[idx] for idx in parent_nodes]
         unique_values = set(parent_coverage_values)
         assert len(unique_values) > 1, (
             f"Different parent nodes should have different coverage values, "
@@ -1183,8 +1185,8 @@ def test_py_pkg_treemap_coverage_regression_prevention(tmp_path: Path) -> None:
         )
 
     # Verify the coverage values are reasonable
-    for i in parent_nodes:
-        coverage_value = colors[i]
+    for idx in parent_nodes:
+        coverage_value = colors[idx]
         assert 0.0 <= coverage_value <= 100.0
 
     # Verify leaf nodes maintain their original values
@@ -1197,11 +1199,11 @@ def test_py_pkg_treemap_coverage_regression_prevention(tmp_path: Path) -> None:
         "phase_diagram.py": 45.0,
     }
 
-    for i, label in enumerate(labels):
+    for idx, label in enumerate(labels):
         for leaf_name, expected in leaf_expected.items():
             if leaf_name in str(label) and "(" not in str(label):
-                assert colors[i] == expected, (
-                    f"Leaf {label} should have coverage {expected}, got {colors[i]}"
+                assert colors[idx] == expected, (
+                    f"Leaf {label} should have coverage {expected}, got {colors[idx]}"
                 )
 
 
