@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import urllib.request
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeAlias
 
@@ -195,9 +196,14 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
 def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, float]:
     """Collect coverage data for packages.
 
+    When coverage_data_file is not provided, this function attempts to run the
+    'coverage' command to generate coverage data on the fly. This requires the coverage
+    tool to be available in system PATH.
+
     Args:
-        coverage_data_file: Path to coverage JSON file. If provided and not found,
-            raises FileNotFoundError instead of auto-generating.
+        coverage_data_file: Path to coverage JSON file or URL. If provided as a local
+            file and not found, raises FileNotFoundError instead of auto-generating.
+            If provided as a URL, fetches the coverage data from the remote location.
 
     Returns:
         dict[str, float]: Mapping from file paths to coverage percentages.
@@ -205,16 +211,35 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
     coverage_map: dict[str, float] = {}
 
     if coverage_data_file:
-        with open(coverage_data_file, encoding="utf-8") as file_handle:
-            coverage_data = json.load(file_handle)
+        # Check if the input is a URL
+        is_url = coverage_data_file.startswith("https://")
 
-        coverage_dir = os.path.dirname(os.path.abspath(coverage_data_file))
+        try:
+            if is_url:
+                # Security: Only HTTPS URLs allowed to prevent file:// and other schemes
+                with urllib.request.urlopen(coverage_data_file) as response:  # noqa: S310
+                    coverage_data = json.load(response)
+            else:
+                with open(coverage_data_file, encoding="utf-8") as file_handle:
+                    coverage_data = json.load(file_handle)
+        except (urllib.error.URLError, Exception) as exc:
+            if is_url:
+                raise ValueError(
+                    f"Failed to fetch coverage data from URL: {exc}"
+                ) from exc
+            raise  # Re-raise the original exception for local files
+
+        # Process coverage data
         for file_path, file_data in coverage_data.get("files", {}).items():
             summary = file_data.get("summary", {})
             if "percent_covered" in summary:
-                # Convert relative paths to absolute paths
-                abs_path = os.path.normpath(f"{coverage_dir}/{file_path}")
-                coverage_map[abs_path] = summary["percent_covered"]
+                if is_url:
+                    coverage_map[file_path] = summary["percent_covered"]
+                else:
+                    # Convert relative paths to absolute paths for local files
+                    coverage_dir = os.path.dirname(os.path.abspath(coverage_data_file))
+                    abs_path = os.path.normpath(f"{coverage_dir}/{file_path}")
+                    coverage_map[abs_path] = summary["percent_covered"]
     else:
         try:  # Try to collect coverage on the fly
             with tempfile.NamedTemporaryFile(
@@ -222,6 +247,7 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
             ) as tmp_cov_file:
                 tmp_csv_path = tmp_cov_file.name
 
+            # hardcoded command with trusted coverage tool, seems safe
             result = subprocess.run(  # noqa: S603
                 ["coverage", "json", "-o", tmp_csv_path],  # noqa: S607
                 capture_output=True,
@@ -477,15 +503,16 @@ def py_pkg_treemap(
             - str: Name of a column in the module data to use for coloring
             - dict: Mapping from absolute file paths to numeric values for coloring
             - None: No heatmap coloring (default)
-        coverage_data_file (str | None): Path to a coverage JSON file (e.g., from
+        coverage_data_file (str | None): Path to a coverage JSON file or URL (e.g., from
             `coverage json`). Used when `color_by` is "coverage". If None and
-            `color_by="coverage"`, coverage will be collected on the fly.
+            `color_by="coverage"`, coverage will be collected on the fly. URLs must
+            start with "https://".
         color_range (tuple[float, float] | None): Manual range for the color scale
             (min, max). Useful for consistent color mapping across plots or to
             ensure specific values (e.g., 0% coverage) map to specific colors.
             If None, uses the actual min/max values from the data.
         cell_border (dict[str, Any] | None): Cell border styling. If None, defaults to
-            white borders with width 1 in coverage mode, no borders otherwise.
+            white borders with width 0.5 in coverage mode, no borders otherwise.
             Example: dict(color="black", width=2) for thick black borders.
         **kwargs (Any): Additional keyword arguments passed to plotly.express.treemap
 
@@ -880,7 +907,9 @@ def py_pkg_treemap(
             )
         )
         fig.update_layout(
-            coloraxis_colorbar=dict(title=colorbar_title, title_side="right")
+            coloraxis_colorbar=dict(
+                title=colorbar_title, title_side="right", thickness=12
+            )
         )
 
         # Set color range for heatmap mode
@@ -938,6 +967,14 @@ def py_pkg_treemap(
     # Configure text display: use texttemplate for links if base_url is provided
     def _build_text_template() -> tuple[str, str]:
         """Build text template and textinfo based on configuration."""
+
+        def _get_coverage_text() -> str:
+            """Get coverage text for display."""
+            if color_by == "coverage" and has_color_mode:
+                color_value_index = len(custom_data_cols) - 1
+                return f"<br>%{{customdata[{color_value_index}]:,.1f}}% cov"
+            return ""
+
         # Validate show_counts first
         valid_show_counts = ("percent", "value", "value+percent", False)
         if show_counts not in valid_show_counts:
@@ -946,12 +983,7 @@ def py_pkg_treemap(
             )
 
         # Add coverage information if in coverage heatmap mode
-        coverage_text = ""
-        if color_by == "coverage" and has_color_mode:
-            color_value_index = (
-                len(custom_data_cols) - 1
-            )  # Last column when in color mode
-            coverage_text = f"<br>%{{customdata[{color_value_index}]:,.1f}}% cov"
+        coverage_text = _get_coverage_text()
 
         # Define template components based on show_counts
         count_templates = {
@@ -1010,7 +1042,7 @@ def py_pkg_treemap(
 
     # Default to white borders in coverage mode, leave None else
     if has_color_mode and cell_border is None:
-        cell_border = dict(color="white", width=1)
+        cell_border = dict(color="white", width=0.5)
     if cell_border is not None:
         fig.update_traces(marker=dict(line=cell_border))
 

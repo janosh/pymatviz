@@ -1245,3 +1245,19 @@ def test_py_pkg_treemap_cell_border() -> None:
     assert isinstance(fig6, go.Figure)
     # Should have no borders even in coverage mode when explicitly set to empty
     assert fig6.data[0].marker.line.color is None
+
+
+def test_collect_coverage_data_from_url() -> None:
+    """Test collecting coverage data from the provided GitHub URL."""
+    url = "https://github.com/user-attachments/files/21545088/2025-07-31-pymatviz-coverage.json"
+
+    coverage_map = pmv.treemap.py_pkg.collect_coverage_data(url)
+
+    assert len(coverage_map) > 0  # Verify we got some coverage data
+
+    # Verify all values are floats between 0 and 100
+    for file_path, coverage in coverage_map.items():
+        assert isinstance(coverage, float)
+        assert 0 <= coverage <= 100
+        assert isinstance(file_path, str)
+        assert len(file_path) > 0

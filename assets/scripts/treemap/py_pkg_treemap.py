@@ -103,10 +103,13 @@ fig_custom_size.show()
 
 
 # %% pymatviz treemap with coverage heatmap (cell size by lines, color by test coverage)
+# coverage_data_file=f"{pmv.ROOT}/tmp/2025-07-31-pymatviz-coverage.json"
+coverage_data_file = "https://github.com/user-attachments/files/21545088/2025-07-31-pymatviz-coverage.json"
+
 fig_coverage = pmv.py_pkg_treemap(
     "pymatviz",
     color_by="coverage",
-    coverage_data_file=f"{pmv.ROOT}/tmp/2025-07-31-pymatviz-coverage.json",
+    coverage_data_file=coverage_data_file,
     cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
     show_counts="value",
     color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
@@ -118,7 +121,8 @@ pmv.io.save_and_compress_svg(fig_coverage, "py-pkg-treemap-pymatviz-coverage")
 
 
 # %% pymatgen treemap with coverage heatmap and manual color range (0-100%)
-coverage_data_file = f"{pmv.ROOT}/tmp/2025-07-31-pymatgen-coverage.json"
+coverage_data_file = "https://github.com/user-attachments/files/21545087/2025-07-31-pymatgen-coverage.json"
+# coverage_data_file = f"{pmv.ROOT}/tmp/2025-07-31-pymatgen-coverage.json"
 
 fig_coverage_range = pmv.py_pkg_treemap(
     pymatgen,
