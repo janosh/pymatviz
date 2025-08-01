@@ -211,7 +211,6 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
     coverage_map: dict[str, float] = {}
 
     if coverage_data_file:
-        # Check if the input is a URL
         is_url = coverage_data_file.startswith("https://")
 
         try:
@@ -227,7 +226,7 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
                 raise ValueError(
                     f"Failed to fetch coverage data from URL: {exc}"
                 ) from exc
-            raise  # Re-raise the original exception for local files
+            raise  # Re-raise original exception for local files
 
         # Process coverage data
         for file_path, file_data in coverage_data.get("files", {}).items():

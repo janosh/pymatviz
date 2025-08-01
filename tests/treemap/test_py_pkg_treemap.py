@@ -1230,7 +1230,7 @@ def test_py_pkg_treemap_cell_border() -> None:
     fig4 = pmv.py_pkg_treemap("my_pkg", color_by="coverage")
     assert isinstance(fig4, go.Figure)
     assert fig4.data[0].marker.line.color == "white"
-    assert fig4.data[0].marker.line.width == 1
+    assert fig4.data[0].marker.line.width == 0.5
 
     # Test coverage mode with custom borders
     fig5 = pmv.py_pkg_treemap(
