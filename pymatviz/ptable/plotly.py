@@ -2104,7 +2104,7 @@ def ptable_bars_plotly(
 
         if annotations is not None:
             anno = (
-                annotations(symbol)
+                annotations(y_vals)
                 if callable(annotations)
                 else annotations.get(symbol, "")
             )
