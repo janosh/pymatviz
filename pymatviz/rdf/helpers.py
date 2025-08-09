@@ -13,6 +13,8 @@ from pymatviz.process_data import normalize_structures
 
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     from pymatviz.typing import AnyStructure
 
 
@@ -22,7 +24,7 @@ def calculate_rdf(
     neighbor_species: str | None = None,
     cutoff: float = 15,
     n_bins: int = 75,
-    pbc: tuple[bool, bool, bool] = (True, True, True),
+    pbc: tuple[Literal[0, 1], Literal[0, 1], Literal[0, 1]] = (1, 1, 1),
 ) -> tuple[np.ndarray, np.ndarray]:
     """Calculate the radial distribution function (RDF) for a given structure.
 

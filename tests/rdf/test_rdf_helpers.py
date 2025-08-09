@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -10,6 +10,10 @@ from pymatgen.core.composition import Composition
 
 from pymatviz.rdf.helpers import calculate_rdf
 from tests.conftest import SI_ATOMS, SI_STRUCTS
+
+
+if TYPE_CHECKING:
+    from typing import Any, Literal
 
 
 def check_basic_rdf_properties(
@@ -105,7 +109,8 @@ def test_calculate_rdf_normalization(composition: list[str], n_atoms: int) -> No
     ],
 )
 def test_calculate_rdf_pbc_settings(
-    pbc: tuple[int, int, int], expected_peak: tuple[float, float] | None
+    pbc: tuple[Literal[0, 1], Literal[0, 1], Literal[0, 1]],
+    expected_peak: tuple[float, float] | None,
 ) -> None:
     """Test RDF calculation with different PBC settings."""
     structure = Structure(Lattice.cubic(5), ["Si"] * 2, [[0] * 3, [0.5] * 3])
@@ -144,9 +149,9 @@ def test_calculate_rdf_pbc_consistency() -> None:
             neighbor_species="Si",
             cutoff=cutoff,
             n_bins=n_bins,
-            pbc=[pbc] * 3,
+            pbc=pbc,
         )
-        for pbc in (True, False)
+        for pbc in ((1, 1, 1), (0, 0, 0))
     )
 
     assert np.sum(rdf_full_pbc > 0) > 0, "Full PBC should have non-zero values"

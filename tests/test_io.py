@@ -132,15 +132,15 @@ def test_df_to_pdf(
     # check we're raising helpful error messages on missing deps
     if weasyprint is None:
         with pytest.raises(ImportError, match="weasyprint not installed\n"):
-            pmv.io.df_to_pdf(**kwds)
+            pmv.io.df_to_pdf(**kwds)  # type: ignore[missing-argument]
         return
 
     if pdfCropMargins is None:
         with pytest.raises(ImportError, match="cropPdfMargins not installed\n"):
-            pmv.io.df_to_pdf(**kwds)
+            pmv.io.df_to_pdf(**kwds)  # type: ignore[missing-argument]
         return
 
-    pmv.io.df_to_pdf(**kwds)
+    pmv.io.df_to_pdf(**kwds)  # type: ignore[missing-argument]
 
     # Check if the file is created
     assert file_path.is_file()
@@ -157,7 +157,7 @@ def test_df_to_pdf(
 
     # Test file overwrite behavior
     file_size_before = file_path.stat().st_size  # ~7000 bytes
-    pmv.io.df_to_pdf(**kwds)
+    pmv.io.df_to_pdf(**kwds)  # type: ignore[missing-argument]
     file_size_after = file_path.stat().st_size  # ~7000 bytes
 
     # file size should be the same since content is unchanged
