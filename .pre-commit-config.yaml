@@ -16,12 +16,6 @@ repos:
       - id: ruff-format
         types_or: [python, jupyter]
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-requests, types-PyYAML]
-
   - repo: https://github.com/janosh/format-ipy-cells
     rev: v0.1.11
     hooks:
