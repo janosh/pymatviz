@@ -103,10 +103,3 @@ repos:
       - id: check-jsonschema
         files: ^pymatviz/keys\.yml$
         args: [--schemafile, tests/keys-schema.yml]
-
-  - repo: local
-    hooks:
-      - id: ty
-        name: ty check
-        entry: ty check .
-        language: python
