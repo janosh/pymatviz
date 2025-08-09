@@ -52,7 +52,7 @@ def _hide_plotly_toolbar(fig: go.Figure) -> None:
     modebar_remove = (
         "pan select lasso zoomIn zoomOut autoScale resetScale3d".split()  # noqa: SIM905
     )
-    fig.update_layout(modebar=dict(remove=modebar_remove))
+    fig.update_layout(modebar={"remove": modebar_remove})
 
 
 def _create_display_methods(

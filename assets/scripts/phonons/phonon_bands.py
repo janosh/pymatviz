@@ -46,8 +46,8 @@ for mp_id, formula in (
         key: doc.phonon_bandstructure for key, doc in docs.items()
     }
 
-    acoustic_lines: dict[str, str | float] = dict(width=1.5)
-    optical_lines: dict[str, str | float] = dict(width=1)
+    acoustic_lines: dict[str, str | float] = {"width": 1.5}
+    optical_lines: dict[str, str | float] = {"width": 1}
     if len(ph_bands) == 1:
         acoustic_lines |= dict(dash="dash", color="red", name="Acoustic")
         optical_lines |= dict(dash="dot", color="blue", name="Optical")
