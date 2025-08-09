@@ -151,6 +151,8 @@ unresolved-import = "ignore"
 unresolved-attribute = "ignore"
 # TODO: Unable to narrow callable types: https://github.com/astral-sh/ty/issues/117
 call-non-callable = "ignore"
+# TODO: Unable to work with **kwargs: https://github.com/astral-sh/ty/issues/247
+missing-argument = "ignore"
 
 [dependency-groups]
 dev = [
