@@ -1,6 +1,6 @@
 ci:
   autoupdate_schedule: quarterly
-  skip: [pyright, eslint, deno-fmt, deno-lint]
+  skip: [pyright, eslint, deno-fmt, deno-lint, ty]
 
 default_stages: [pre-commit]
 
@@ -15,6 +15,13 @@ repos:
         types_or: [python, jupyter]
       - id: ruff-format
         types_or: [python, jupyter]
+
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty check
+        entry: ty check .
+        language: python
 
   - repo: https://github.com/janosh/format-ipy-cells
     rev: v0.1.11
@@ -96,3 +103,10 @@ repos:
       - id: check-jsonschema
         files: ^pymatviz/keys\.yml$
         args: [--schemafile, tests/keys-schema.yml]
+
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty check
+        entry: ty check .
+        language: python

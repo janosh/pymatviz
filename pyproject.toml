@@ -146,7 +146,7 @@ reportPossiblyUnboundVariable = true
 reportUnboundVariable = true
 
 [tool.ty.rules]
-# unresolved-import = "warn"
+unresolved-import = "ignore"
 # TODO: Unable to resolve submodules: https://github.com/astral-sh/ty/issues/445
 unresolved-attribute = "ignore"
 # TODO: Unable to narrow callable types: https://github.com/astral-sh/ty/issues/117
