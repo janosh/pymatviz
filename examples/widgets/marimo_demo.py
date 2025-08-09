@@ -153,6 +153,7 @@ def _(Final, pmv):
         force_vector_color="#ff4444",
         show_bonds=True,
         bonding_strategy="nearest_neighbor",
+        style="height: 600px;",
     )
     ase_traj_widget
     return (githack_traj_dir_url,)
@@ -165,7 +166,7 @@ def _(githack_traj_dir_url, pmv):
         display_mode="structure+scatter",
         show_force_vectors=False,
         auto_rotate=0.5,
-        style="min-height: 800px",
+        style="height: 600px;",
     )
     _torch_sim_widget
 
@@ -213,8 +214,7 @@ def _(dynamic_trajectory, pmv):
         display_mode="structure+scatter",
         show_controls=True,
         auto_rotate=0.3,
-        width=600,
-        height=400,
+        style="height: 600px;",
     )
     dynamic_trajectory_widget
     return dynamic_trajectory_widget
@@ -239,8 +239,7 @@ def _(Composition, mo, pmv):
                 pmv.CompositionWidget(
                     composition=comp,
                     mode=mode,
-                    width=(1 + (mode == "bar")) * size,
-                    height=size,
+                    style=f"width: {(1 + (mode == 'bar')) * size}px; height: {size}px;",
                 )
                 for mode in modes
             ]

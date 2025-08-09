@@ -1,6 +1,6 @@
 [project]
 name = "pymatviz"
-version = "0.17.0"
+version = "0.17.1"
 description = "A toolkit for visualizations in materials informatics"
 authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
@@ -24,7 +24,7 @@ classifiers = [
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.11"
 dependencies = [
-    "kaleido==0.2.1", # strict pin needed, see https://github.com/plotly/Kaleido/issues/292
+    "kaleido>=1.0.0",
     "numpy>=2",
     # output-formatting needed for pandas Stylers,
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml

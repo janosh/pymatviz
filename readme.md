@@ -271,11 +271,17 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
 |              [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |         [`py_pkg_treemap(["pymatviz", "torch_sim", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L36)          |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
+|   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)    | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L36)  |
+|                                                       ![py-pkg-treemap-pymatviz-coverage]                                                        |                                    ![py-pkg-treemap-pymatgen-coverage]                                     |
+
+> **Note:** For `color_by="coverage"` the package must have coverage data (e.g. run `pytest --cov=<pkg> --cov-report=xml` and pass the resulting `.coverage` file to `coverage_data_file`).
 
 [chem-sys-treemap-formula]: assets/svg/chem-sys-treemap-formula.svg
 [chem-sys-treemap-ward-bmg]: assets/svg/chem-sys-treemap-ward-bmg.svg
 [py-pkg-treemap-pymatviz]: assets/svg/py-pkg-treemap-pymatviz.svg
 [py-pkg-treemap-multiple]: assets/svg/py-pkg-treemap-multiple.svg
+[py-pkg-treemap-pymatgen-coverage]: assets/svg/py-pkg-treemap-pymatgen-coverage.svg
+[py-pkg-treemap-pymatviz-coverage]: assets/svg/py-pkg-treemap-pymatviz-coverage.svg
 [chem-env-treemap-large-dataset]: assets/svg/chem-env-treemap-large-dataset.svg
 [chem-env-treemap-basic]: assets/svg/chem-env-treemap-basic.svg
 

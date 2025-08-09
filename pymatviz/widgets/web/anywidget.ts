@@ -1,6 +1,6 @@
 // MatterViz AnyWidget Entry Point
 
-import type { AnyModel } from 'anywidget/types'
+import type { AnyModel, Render } from 'anywidget/types'
 import { Composition, Structure, Trajectory } from 'matterviz'
 import app_css from 'matterviz/app.css?raw'
 import type { ThemeType } from 'matterviz/theme'
@@ -12,60 +12,73 @@ import {
   setup_theme_watchers,
 } from './theme-detection'
 
-function inject_app_css(theme_type?: ThemeType): void {
+function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): void {
   const style_id = `matterviz-widget-styles`
+  const detected_theme = theme_type || detect_parent_theme(target_element)
 
-  document.getElementById(style_id)?.remove() // Remove existing styles
+  // Determine if we're in Shadow DOM (used by marimo cells) and get the appropriate root node
+  const root_node = target_element?.getRootNode() || document
+  const is_shadow_dom = root_node !== document && root_node instanceof ShadowRoot
+  const target_root = is_shadow_dom ? root_node : document
 
-  const style = document.createElement(`style`)
-  style.id = style_id
+  // Remove existing styles
+  const existing_style = is_shadow_dom
+    ? target_root.querySelector(`#${style_id}`)
+    : document.getElementById(style_id)
+  existing_style?.remove()
 
-  // Use provided theme or detect parent theme
-  const detected_theme = theme_type || detect_parent_theme()
-
-  style.textContent = `
-    ${get_theme_css(detected_theme)}
-
-    /* something adds an annoying white background, remove it */
-    .cell-output-ipywidget-background {
-      background: transparent !important;
-      background-color: transparent !important;
-    }
-
-    /* Dark mode input styling for Jupyter notebooks and interactive windows in VSCode  */
+  // Create style content
+  const style_content = `
+    ${get_theme_css(detected_theme, is_shadow_dom)}
+    .cell-output-ipywidget-background { background: transparent !important; }
     :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea, select) {
-      background-color: #2d2d2d;
-      color: #ffffff;
-      border: 1px solid #555555;
-      border-radius: 4px;
-      padding: 6px 8px;
+      background-color: #2d2d2d; color: #ffffff; border: 1px solid #555555; border-radius: 4px; padding: 6px 8px;
     }
     :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea, select):focus {
-      outline: none;
-      border-color: #007acc;
-      box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+      outline: none; border-color: #007acc; box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
     }
-    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea)::placeholder {
-      color: #888888;
-    }
-
-    /* scope global styles to matterviz widgets to prevent site styles leaking into notebook styles */
-    /* this is brittle, will break should component CSS classes in matterviz change, try to find better solution */
-    div:is(.structure, .trajectory, .composition) {
-      ${app_css}
-    }
+    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea)::placeholder { color: #888888; }
+    ${
+    is_shadow_dom
+      ? app_css
+      : `div:is(.structure, .trajectory, .composition) { ${app_css} }`
+  }
   `
-  document.head.appendChild(style)
+
+  // Apply styles
+  if (is_shadow_dom && `adoptedStyleSheets` in target_root) {
+    const sheet = new CSSStyleSheet()
+    sheet.replaceSync(style_content)
+    target_root.adoptedStyleSheets = [...target_root.adoptedStyleSheets, sheet]
+    return
+  }
+
+  // Fallback: create style element
+  const style = document.createElement(`style`)
+  style.id = style_id
+  style.textContent = style_content
+  if (is_shadow_dom) target_root.appendChild(style)
+  else document.head.appendChild(style)
 }
 
 const instances = new Map<HTMLElement, ReturnType<typeof mount>>()
 
-function render({ model, el }: { model: AnyModel; el: HTMLElement }): void {
-  inject_app_css()
-  setup_theme_watchers()
+const get_prop = (model: AnyModel, key: string) => {
+  try {
+    return model.get(key) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+// Detect widget type and render
+const render: Render = (props) => {
+  const { model, el } = props
+  inject_app_css(undefined, el)
+  setup_theme_watchers(el)
 
   // Register theme change callback to update CSS when theme changes
-  on_theme_change(inject_app_css)
+  on_theme_change((theme_type) => inject_app_css(theme_type, el))
 
   // Clean up existing instance
   const existing = instances.get(el)
@@ -74,142 +87,122 @@ function render({ model, el }: { model: AnyModel; el: HTMLElement }): void {
     instances.delete(el)
   }
 
-  // Detect widget type and render
-  const get_prop = (key: string) => {
-    try {
-      return model.get(key) ?? null
-    } catch {
-      return null
-    }
-  }
+  const has_trajectory = get_prop(model, `trajectory`) !== undefined
+  const has_structure = get_prop(model, `structure`) !== undefined
+  const has_composition = get_prop(model, `composition`) !== undefined
+  const has_data_url = get_prop(model, `data_url`) !== undefined
 
-  const has_trajectory = get_prop(`trajectory`) !== null
-  const has_structure = get_prop(`structure`) !== null
-  const has_composition = get_prop(`composition`) !== null
-  const has_data_url = get_prop(`data_url`) !== null
-
-  if (has_trajectory) render_trajectory({ model, el })
-  else if (has_structure) render_structure({ model, el })
-  else if (has_composition) render_composition({ model, el })
+  if (has_trajectory) render_trajectory(props)
+  else if (has_structure) render_structure(props)
+  else if (has_composition) render_composition(props)
   // TODO both Structure and Trajectory can be rendered from data_urls, need to find a way to distinguish between them (currently just opting for Trajectory)
-  else if (has_data_url) render_trajectory({ model, el })
+  else if (has_data_url) render_trajectory(props)
   else throw new Error(`No valid input found for widget`)
 }
 
-function render_composition(
-  { model, el }: { model: AnyModel; el: HTMLElement },
-): void {
+const render_composition: Render = ({ model, el }) => {
   const props = {
-    composition: model.get(`composition`),
-    mode: model.get(`mode`),
-    show_percentages: model.get(`show_percentages`),
-    color_scheme: model.get(`color_scheme`),
-    width: model.get(`width`),
-    height: model.get(`height`),
+    composition: get_prop(model, `composition`),
+    mode: get_prop(model, `mode`),
+    show_percentages: get_prop(model, `show_percentages`),
+    color_scheme: get_prop(model, `color_scheme`),
+    style: get_prop(model, `style`),
   }
 
   const component = mount(Composition, { target: el, props })
   instances.set(el, component)
 }
 
-function render_structure(
-  { model, el }: { model: AnyModel; el: HTMLElement },
-): void {
+const render_structure: Render = ({ model, el }) => {
   const props = {
-    structure: model.get(`structure`),
-    data_url: model.get(`data_url`),
+    structure: get_prop(model, `structure`),
+    data_url: get_prop(model, `data_url`),
     scene_props: {
-      atom_radius: model.get(`atom_radius`),
-      show_atoms: model.get(`show_atoms`),
-      auto_rotate: model.get(`auto_rotate`),
-      same_size_atoms: model.get(`same_size_atoms`),
-      show_bonds: model.get(`show_bonds`),
-      show_force_vectors: model.get(`show_force_vectors`),
-      force_vector_scale: model.get(`force_vector_scale`),
-      force_vector_color: model.get(`force_vector_color`),
-      bond_thickness: model.get(`bond_thickness`),
-      bond_color: model.get(`bond_color`),
-      bonding_strategy: model.get(`bonding_strategy`),
+      atom_radius: get_prop(model, `atom_radius`),
+      show_atoms: get_prop(model, `show_atoms`),
+      auto_rotate: get_prop(model, `auto_rotate`),
+      same_size_atoms: get_prop(model, `same_size_atoms`),
+      show_bonds: get_prop(model, `show_bonds`),
+      show_force_vectors: get_prop(model, `show_force_vectors`),
+      force_vector_scale: get_prop(model, `force_vector_scale`),
+      force_vector_color: get_prop(model, `force_vector_color`),
+      bond_thickness: get_prop(model, `bond_thickness`),
+      bond_color: get_prop(model, `bond_color`),
+      bonding_strategy: get_prop(model, `bonding_strategy`),
     },
     lattice_props: {
-      cell_edge_opacity: model.get(`cell_edge_opacity`),
-      cell_surface_opacity: model.get(`cell_surface_opacity`),
-      cell_edge_color: model.get(`cell_edge_color`),
-      cell_surface_color: model.get(`cell_surface_color`),
-      cell_line_width: model.get(`cell_line_width`),
-      show_vectors: model.get(`show_vectors`),
+      cell_edge_opacity: get_prop(model, `cell_edge_opacity`),
+      cell_surface_opacity: get_prop(model, `cell_surface_opacity`),
+      cell_edge_color: get_prop(model, `cell_edge_color`),
+      cell_surface_color: get_prop(model, `cell_surface_color`),
+      cell_line_width: get_prop(model, `cell_line_width`),
+      show_vectors: get_prop(model, `show_vectors`),
     },
-
     // Display options
-    show_site_labels: model.get(`show_site_labels`),
-    show_image_atoms: model.get(`show_image_atoms`),
-    color_scheme: model.get(`color_scheme`),
-    background_color: model.get(`background_color`),
-    background_opacity: model.get(`background_opacity`),
-
+    show_site_labels: get_prop(model, `show_site_labels`),
+    show_image_atoms: get_prop(model, `show_image_atoms`),
+    color_scheme: get_prop(model, `color_scheme`),
+    background_color: get_prop(model, `background_color`),
+    background_opacity: get_prop(model, `background_opacity`),
     // Widget configuration
-    width: model.get(`width`),
-    height: model.get(`height`),
-    show_buttons: model.get(`show_controls`),
-    enable_info_panel: model.get(`show_info`),
-    fullscreen_toggle: model.get(`show_fullscreen_button`),
+    show_controls: get_prop(model, `show_controls`),
+    enable_info_panel: get_prop(model, `show_info`),
+    fullscreen_toggle: get_prop(model, `show_fullscreen_button`),
     allow_file_drop: false, // Disable file drop in notebook context
-    png_dpi: model.get(`png_dpi`),
+    png_dpi: get_prop(model, `png_dpi`),
+    style: get_prop(model, `style`),
   }
 
   const component = mount(Structure, { target: el, props })
   instances.set(el, component)
 }
 
-function render_trajectory(
-  { model, el }: { model: AnyModel; el: HTMLElement },
-): void {
+const render_trajectory: Render = ({ model, el }) => {
   const props = {
-    // Core trajectory data
-    trajectory: model.get(`trajectory`),
-    data_url: model.get(`data_url`),
-    current_step_idx: model.get(`current_step_idx`),
-
+    trajectory: get_prop(model, `trajectory`),
+    data_url: get_prop(model, `data_url`),
+    current_step_idx: get_prop(model, `current_step_idx`),
     // Layout and display
-    layout: model.get(`layout`),
-    display_mode: model.get(`display_mode`),
-    show_controls: model.get(`show_controls`),
-    show_fullscreen_button: model.get(`show_fullscreen_button`),
-
+    layout: get_prop(model, `layout`),
+    display_mode: get_prop(model, `display_mode`),
+    show_controls: get_prop(model, `show_controls`),
+    show_fullscreen_button: get_prop(model, `show_fullscreen_button`),
+    auto_play: get_prop(model, `auto_play`),
     // Widget configuration
-    width: model.get(`width`),
-    height: model.get(`height`),
     allow_file_drop: false, // Disable file drop in notebook context
     structure_props: {
       scene_props: {
-        atom_radius: model.get(`atom_radius`),
-        show_atoms: model.get(`show_atoms`),
-        auto_rotate: model.get(`auto_rotate`),
-        same_size_atoms: model.get(`same_size_atoms`),
-        show_bonds: model.get(`show_bonds`),
-        show_force_vectors: model.get(`show_force_vectors`),
-        force_vector_scale: model.get(`force_vector_scale`),
-        force_vector_color: model.get(`force_vector_color`),
-        bond_thickness: model.get(`bond_thickness`),
-        bond_color: model.get(`bond_color`),
-        bonding_strategy: model.get(`bonding_strategy`),
+        atom_radius: get_prop(model, `atom_radius`),
+        show_atoms: get_prop(model, `show_atoms`),
+        auto_rotate: get_prop(model, `auto_rotate`),
+        same_size_atoms: get_prop(model, `same_size_atoms`),
+        show_bonds: get_prop(model, `show_bonds`),
+        show_force_vectors: get_prop(model, `show_force_vectors`),
+        force_vector_scale: get_prop(model, `force_vector_scale`),
+        force_vector_color: get_prop(model, `force_vector_color`),
+        bond_thickness: get_prop(model, `bond_thickness`),
+        bond_color: get_prop(model, `bond_color`),
+        bonding_strategy: get_prop(model, `bonding_strategy`),
       },
       lattice_props: {
-        cell_edge_opacity: model.get(`cell_edge_opacity`),
-        cell_surface_opacity: model.get(`cell_surface_opacity`),
-        cell_edge_color: model.get(`cell_edge_color`),
-        cell_surface_color: model.get(`cell_surface_color`),
-        cell_line_width: model.get(`cell_line_width`),
-        show_vectors: model.get(`show_vectors`),
+        cell_edge_opacity: get_prop(model, `cell_edge_opacity`),
+        cell_surface_opacity: get_prop(model, `cell_surface_opacity`),
+        cell_edge_color: get_prop(model, `cell_edge_color`),
+        cell_surface_color: get_prop(model, `cell_surface_color`),
+        cell_line_width: get_prop(model, `cell_line_width`),
+        show_vectors: get_prop(model, `show_vectors`),
       },
-      show_site_labels: model.get(`show_site_labels`),
-      show_image_atoms: model.get(`show_image_atoms`),
-      color_scheme: model.get(`color_scheme`),
-      background_color: model.get(`background_color`),
-      background_opacity: model.get(`background_opacity`),
+      show_site_labels: get_prop(model, `show_site_labels`),
+      show_image_atoms: get_prop(model, `show_image_atoms`),
+      color_scheme: get_prop(model, `color_scheme`),
+      background_color: get_prop(model, `background_color`),
+      background_opacity: get_prop(model, `background_opacity`),
       fullscreen_toggle: false,
     },
-    step_labels: model.get(`step_labels`),
+    step_labels: get_prop(model, `step_labels`),
+    property_labels: get_prop(model, `property_labels`),
+    units: get_prop(model, `units`),
+    style: get_prop(model, `style`),
   }
 
   const component = mount(Trajectory, { target: el, props })

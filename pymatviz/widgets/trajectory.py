@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import traitlets as tl
 
@@ -48,6 +48,8 @@ class TrajectoryWidget(MatterVizWidget):
         ...     display_mode="structure+scatter",
         ...     layout="horizontal",
         ...     show_controls=True,
+        ...     auto_play=True,
+        ...     style="height: 600px; border: 2px solid blue;",
         ... )
 
         With local file path (automatically detected and loaded):
@@ -59,59 +61,61 @@ class TrajectoryWidget(MatterVizWidget):
     data_url = tl.Unicode(allow_none=True).tag(sync=True)
     current_step_idx = tl.Int(0).tag(sync=True)
 
-    # Display
-    layout = tl.Unicode("auto").tag(sync=True)
-    display_mode = tl.Unicode("structure+scatter").tag(sync=True)
+    # Layout
+    layout: Literal["auto", "horizontal", "vertical"] = tl.Unicode("auto").tag(
+        sync=True
+    )
+    display_mode: Literal[
+        "structure+scatter", "structure", "scatter", "histogram", "structure+histogram"
+    ] = tl.Unicode("structure+scatter").tag(sync=True)
     show_controls = tl.Bool(default_value=True).tag(sync=True)
-    show_fullscreen_button = tl.Bool(default_value=False).tag(sync=True)
+    show_fullscreen_button = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
-    # Dimensions
-    width = tl.Int(allow_none=True).tag(sync=True)
-    height = tl.Int(allow_none=True).tag(sync=True)
-
-    # Structure viewer props
-    structure_props = tl.Dict(default_value={"fullscreen_toggle": False}).tag(sync=True)
+    # Styling
+    style = tl.Unicode(allow_none=True).tag(sync=True)  # Custom CSS styles
 
     # Structure visualization
-    atom_radius = tl.Float(1.0).tag(sync=True)
+    atom_radius = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     show_atoms = tl.Bool(default_value=True).tag(sync=True)
-    show_bonds = tl.Bool(default_value=False).tag(sync=True)
-    show_site_labels = tl.Bool(default_value=False).tag(sync=True)
-    show_image_atoms = tl.Bool(default_value=False).tag(sync=True)
-    show_force_vectors = tl.Bool(default_value=False).tag(sync=True)
-    same_size_atoms = tl.Bool(default_value=False).tag(sync=True)
-    auto_rotate = tl.Float(0.0).tag(sync=True)
+    show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_image_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_force_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     color_scheme = tl.Unicode("Vesta").tag(sync=True)
 
     # Force vectors
-    force_vector_scale = tl.Float(1.0).tag(sync=True)
-    force_vector_color = tl.Unicode("#ff6b6b").tag(sync=True)
+    force_vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    force_vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
 
     # Bonds
-    bond_thickness = tl.Float(0.1).tag(sync=True)
-    bond_color = tl.Unicode("#666666").tag(sync=True)
+    bond_thickness = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    bond_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     bonding_strategy = tl.Unicode("nearest_neighbor").tag(sync=True)
 
     # Cell
-    cell_edge_opacity = tl.Float(0.8).tag(sync=True)
-    cell_surface_opacity = tl.Float(0.1).tag(sync=True)
-    cell_edge_color = tl.Unicode("#333333").tag(sync=True)
-    cell_surface_color = tl.Unicode("#333333").tag(sync=True)
-    cell_line_width = tl.Float(2.0).tag(sync=True)
-    show_vectors = tl.Bool(default_value=True).tag(sync=True)
+    cell_edge_opacity = tl.Float(0.1).tag(sync=True)
+    cell_surface_opacity = tl.Float(0.05).tag(sync=True)
+    cell_edge_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    cell_surface_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    cell_line_width = tl.Float(1.5).tag(sync=True)
+    show_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
-    # Styling
+    # Appearance
     background_color = tl.Unicode(allow_none=True).tag(sync=True)
-    background_opacity = tl.Float(0.1).tag(sync=True)
+    background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
-    # UI
+    # UI controls
     show_info = tl.Bool(default_value=True).tag(sync=True)
-    png_dpi = tl.Int(150).tag(sync=True)
+    png_dpi = tl.Int(allow_none=True, default_value=None).tag(sync=True)
 
     # Plot
-    step_labels = tl.Union([tl.Int(), tl.List()], allow_none=True, default_value=5).tag(
-        sync=True
-    )
+    step_labels = tl.Union(
+        [tl.Int(), tl.List()], allow_none=True, default_value=None
+    ).tag(sync=True)
+    property_labels = tl.Dict(allow_none=True).tag(sync=True)
+    units = tl.Dict(allow_none=True).tag(sync=True)
 
     def __init__(
         self, trajectory: dict[str, Any] | list[Any] | Any | None = None, **kwargs: Any
@@ -129,9 +133,6 @@ class TrajectoryWidget(MatterVizWidget):
         """
         if trajectory is not None:  # Convert trajectory objects if needed
             trajectory = self._normalize_trajectory(trajectory)
-
-        # hide structure fullscreen button by default
-        kwargs.setdefault("structure_props", {}).setdefault("fullscreen_toggle", False)
 
         super().__init__(trajectory=trajectory, **kwargs)
 

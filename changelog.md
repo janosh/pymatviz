@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.17.1](https://github.com/janosh/pymatviz/compare/v0.17.0...v0.17.1)
+
+> 29 July 2025
+
+### 🛠 Enhancements
+
+- Bump `matterviz` by @janosh in https://github.com/janosh/pymatviz/pull/315
+
+### 🐛 Bug Fixes
+
+- Fix `FileNotFoundError` `pyproject.toml` in 0.17.0 by @janosh in https://github.com/janosh/pymatviz/pull/313
+
 ## [v0.17.0](https://github.com/janosh/pymatviz/compare/v0.16.0...v0.17.0)
 
 > 22 July 2025

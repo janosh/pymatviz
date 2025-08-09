@@ -1,13 +1,15 @@
 """Demonstrate treemap visualizations of Python package structures.
 
 This script shows how to create interactive treemaps visualizing module
-structures of Python packages using the py_pkg_treemap function.
+structures of Python packages using the pmv.py_pkg_treemap function.
 """
 
 # %%
 from __future__ import annotations
 
+import numpy as np
 import plotly.express as px
+import pymatgen
 
 import pymatviz as pmv
 
@@ -15,17 +17,18 @@ import pymatviz as pmv
 pmv.set_plotly_template("plotly_white")
 
 
-# %% single package with default settings
-for package in ("pymatviz", "numpy"):
-    fig = pmv.py_pkg_treemap(package)
-    fig.layout.title.update(text=f"{package} Package Structure", font_size=20, x=0.5)
+# %% Single packages with default settings
+for pkg in ("pymatviz", np):  # Mix strings and module objects
+    fig = pmv.py_pkg_treemap(pkg)
+    pkg_name = getattr(pkg, "__name__", pkg)
+    fig.layout.title.update(text=f"{pkg_name} Package Structure", font_size=20, x=0.5)
     fig.show()
-    pmv.io.save_and_compress_svg(fig, f"py-pkg-treemap-{package.replace('_', '-')}")
+    pmv.io.save_and_compress_svg(fig, f"py-pkg-treemap-{pkg_name.replace('_', '-')}")
 
 
-# %% Compare multiple packages
+# %% Compare multiple packages (with file/module filtering via cell_size_fn)
 fig = pmv.py_pkg_treemap(
-    packages := ("pymatviz", "numpy"),
+    packages := ("pymatviz", np),
     show_counts="value+percent",
     # Only include files with at least 50 lines
     cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 50 else 0,
@@ -36,7 +39,8 @@ fig.update_traces(
     hovertemplate="<b>%{label}</b><br>Lines: %{value}<br>Percentage: "
     "%{percentRoot:.1%} of total<extra></extra>",
 )
-title = f"Comparing Package Structure: {', '.join(packages)}"
+pkg_names = [getattr(pkg, "__name__", pkg) for pkg in packages]
+title = f"Comparing Package Structure: {', '.join(pkg_names)}"
 fig.layout.title.update(text=title, x=0.5, font_size=20)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "py-pkg-treemap-multiple")
@@ -78,7 +82,7 @@ fig.update_layout(
 fig.show()
 
 
-# %% Custom cell sizing based on number of functions + classes
+# %% Custom cell sizing by functions, classes, and methods
 fig_custom_size = pmv.py_pkg_treemap(
     "pymatviz",
     cell_size_fn=lambda cell: cell.n_functions + cell.n_classes + cell.n_methods,
@@ -96,3 +100,40 @@ fig_custom_size.update_traces(
     "<extra></extra>",
 )
 fig_custom_size.show()
+
+
+# %% pymatviz treemap with coverage heatmap (cell size by lines, color by test coverage)
+# coverage_data_file=f"{pmv.ROOT}/tmp/2025-07-31-pymatviz-coverage.json"
+coverage_data_file = "https://github.com/user-attachments/files/21545088/2025-07-31-pymatviz-coverage.json"
+
+fig_coverage = pmv.py_pkg_treemap(
+    "pymatviz",
+    color_by="coverage",
+    coverage_data_file=coverage_data_file,
+    cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
+    show_counts="value",
+    color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
+)
+title = "pymatviz: Coverage Heatmap (Cell size by lines, Color by test coverage)"
+fig_coverage.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
+fig_coverage.show()
+pmv.io.save_and_compress_svg(fig_coverage, "py-pkg-treemap-pymatviz-coverage")
+
+
+# %% pymatgen treemap with coverage heatmap and manual color range (0-100%)
+coverage_data_file = "https://github.com/user-attachments/files/21545087/2025-07-31-pymatgen-coverage.json"
+# coverage_data_file = f"{pmv.ROOT}/tmp/2025-07-31-pymatgen-coverage.json"
+
+fig_coverage_range = pmv.py_pkg_treemap(
+    pymatgen,
+    color_by="coverage",
+    coverage_data_file=coverage_data_file,  # Use existing coverage data
+    color_range=(0, 100),  # Manual range: 0% (red) to 100% (green)
+    cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
+    show_counts="value",
+    color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
+)
+title_range = "pymatgen: Coverage Heatmap with Manual Range (0-100%)"
+fig_coverage_range.layout.title.update(text=title_range, x=0.5, y=0.97, font_size=18)
+fig_coverage_range.show()
+pmv.io.save_and_compress_svg(fig_coverage_range, "py-pkg-treemap-pymatgen-coverage")
