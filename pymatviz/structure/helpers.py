@@ -542,11 +542,11 @@ def draw_site(
         pass
     else:
         # Convert to Species if needed
-        majority_species = Species(majority_species)
+        majority_species = Species(str(majority_species))
 
     # Ensure majority_species is a Species object for type safety
     if not isinstance(majority_species, Species):
-        majority_species = Species(majority_species)
+        majority_species = Species(str(majority_species))
 
     site_radius = atomic_radii[majority_species.symbol] * scale
     raw_color_from_map = elem_colors.get(majority_species.symbol, "gray")

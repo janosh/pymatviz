@@ -41,8 +41,10 @@ def test_ptable_hists_plotly_basic(
     n_hist_traces = sum(isinstance(trace, go.Histogram) for trace in fig.data)
     if isinstance(elem_data, dict):
         n_elements = len(elem_data)
-    else:
+    elif isinstance(elem_data, pd.DataFrame):
         n_elements = len(elem_data.columns)
+    else:
+        raise TypeError(f"unexpected {type(elem_data)=}")
     assert n_hist_traces == n_elements
 
 

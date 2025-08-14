@@ -451,7 +451,7 @@ def test_df_to_arrays() -> None:
 
     # Test with invalid DataFrame type
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays("foo", y_true, y_pred)
+        pmv_pd.df_to_arrays("foo", y_true, y_pred)  # type: ignore[arg-type]
 
     bad_col_name = "not-real-col-name"
     with pytest.raises(KeyError) as exc:
@@ -461,11 +461,11 @@ def test_df_to_arrays() -> None:
 
 
 def test_df_to_arrays_strict() -> None:
-    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)
+    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)  # type: ignore[arg-type]
     assert args == ("foo", "bar")
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)
+        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(

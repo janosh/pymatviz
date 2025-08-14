@@ -6,6 +6,7 @@ import sys
 from typing import Any
 from unittest.mock import MagicMock
 
+import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Lattice, Structure
 
@@ -176,7 +177,7 @@ def test_objects(
 def test_hide_plotly_toolbar() -> None:
     """Test the _hide_plotly_toolbar function."""
 
-    class MockFig:
+    class MockFig(go.Figure):
         def __init__(self) -> None:
             self.layout_updates: list[dict[str, Any]] = []
 

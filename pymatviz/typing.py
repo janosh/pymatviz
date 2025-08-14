@@ -7,8 +7,10 @@ from typing import TYPE_CHECKING, Literal, ParamSpec, TypeVar, Union, get_args
 
 import pandas as pd
 import plotly.graph_objects as go
+from phonopy.phonon.dos import TotalDos
 from pymatgen.core import IStructure, Structure
 from pymatgen.io.ase import MSONAtoms
+from pymatgen.phonon.dos import PhononDos
 
 
 if TYPE_CHECKING:
@@ -16,11 +18,11 @@ if TYPE_CHECKING:
 
     from ase.atoms import Atoms as AseAtoms
 
-
 # Since we're moving to Plotly-only, AxOrFig is now just go.Figure
 AxOrFig: TypeAlias = go.Figure
 Xyz: TypeAlias = tuple[float, float, float]
 AnyStructure: TypeAlias = Union[Structure, IStructure, MSONAtoms, "AseAtoms"]
+AnyDos: TypeAlias = PhononDos | TotalDos
 
 ColorElemTypeStrategy: TypeAlias = Literal["symbol", "background", "both", "off"]
 VALID_COLOR_ELEM_STRATEGIES = get_args(ColorElemTypeStrategy)

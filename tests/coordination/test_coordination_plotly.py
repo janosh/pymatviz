@@ -167,7 +167,7 @@ def test_coordination_hist_empty() -> None:
 )
 def test_coordination_vs_cutoff_line(
     structures: Sequence[Structure],
-    strategy: float | tuple[float, float] | NearNeighbors | type[NearNeighbors],
+    strategy: tuple[int | float, int | float] | NearNeighbors | type[NearNeighbors],
 ) -> None:
     """Test coordination_vs_cutoff_line function with different strategies."""
     # Test with a single structure
@@ -240,7 +240,7 @@ def test_coordination_vs_cutoff_line_invalid_strategy() -> None:
     """Test coordination_vs_cutoff_line with invalid strategy."""
     structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
     with pytest.raises(TypeError, match="Invalid strategy="):
-        coordination_vs_cutoff_line(structure, strategy="invalid")
+        coordination_vs_cutoff_line(structure, strategy="invalid")  # type: ignore[arg-type]
 
 
 def test_coordination_hist_hover_text_formatting(

@@ -283,7 +283,7 @@ def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
     }
 
     # Run band structure calculation
-    phonopy_nacl.run_band_structure(paths=bands.values())
+    phonopy_nacl.run_band_structure(paths=list(bands.values()))
 
     # Test single band structure
     fig = pmv.phonon_bands(phonopy_nacl.band_structure)

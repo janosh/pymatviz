@@ -109,14 +109,7 @@ def test_df_to_pdf(
     capsys: pytest.CaptureFixture[str],
     df_float: pd.DataFrame,
 ) -> None:
-    try:
-        import weasyprint
-    except ImportError:
-        weasyprint = None
-    try:
-        import pdfCropMargins
-    except ImportError:
-        pdfCropMargins = None  # noqa: N806
+    from importlib.util import find_spec
 
     file_path = tmp_path / "test_df_to.pdf"
 
@@ -130,13 +123,12 @@ def test_df_to_pdf(
     )
 
     # check we're raising helpful error messages on missing deps
-    if weasyprint is None:
+    if find_spec("weasyprint") is None:
         with pytest.raises(ImportError, match="weasyprint not installed\n"):
             pmv.io.df_to_pdf(**kwds)
         return
-
-    if pdfCropMargins is None:
-        with pytest.raises(ImportError, match="cropPdfMargins not installed\n"):
+    if find_spec("pdfCropMargins") is None:
+        with pytest.raises(ImportError, match="pdfCropMargins not installed\n"):
             pmv.io.df_to_pdf(**kwds)
         return
 

@@ -104,9 +104,9 @@ fig = pmv.ptable_heatmap_splits_plotly(
         dict(title="JMOL Colors", orientation="v"),
         dict(title="VESTA Colors", orientation="v"),
     ],
-    hover_data=dict.fromkeys(
-        map(str, Element), "top left: JMOL<br>top right: VESTA, bottom: ALLOY"
-    ),
+    hover_data={
+        el.symbol: "top left: JMOL<br>top right: VESTA, bottom: ALLOY" for el in Element
+    },
 )
 title = (
     "<b>Element color schemes</b><br>top left: JMOL, top right: VESTA, bottom: ALLOY"
@@ -128,7 +128,7 @@ fig = pmv.ptable_heatmap_splits_plotly(
         dict(title="VESTA Colors", orientation="h"),
         dict(title="ALLOY Colors", orientation="h"),
     ],
-    hover_data=dict.fromkeys(map(str, Element), "left: VESTA<br>right: ALLOY"),
+    hover_data={el.symbol: "left: VESTA<br>right: ALLOY" for el in Element},
 )
 title = "<b>Element color schemes</b><br>left: VESTA, right: ALLOY"
 fig.layout.title.update(text=title, x=0.4, y=0.8)
@@ -138,7 +138,7 @@ fig.show()
 
 # %% Example 6: Mixed colorbar orientations
 # Create data with 4 splits
-data_dict = {elem.symbol: np_rng.integers(0, 100, size=4) for elem in Element}
+data_dict = {el.symbol: np_rng.integers(0, 100, size=4) for el in Element}
 
 # Use grid orientation with 4 different colorscales and mixed colorbar orientations
 fig = pmv.ptable_heatmap_splits_plotly(

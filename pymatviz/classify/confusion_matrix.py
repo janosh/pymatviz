@@ -162,9 +162,7 @@ def confusion_matrix(
         hoverinfo="text",
         text=np.rot90(hover_text),
     )
-    fig = ff.create_annotated_heatmap(
-        z=conf_mat_arr, **heatmap_defaults | (heatmap_kwargs or {})
-    )
+    fig = ff.create_annotated_heatmap(**heatmap_defaults | (heatmap_kwargs or {}))
 
     # Calculate accuracy and other metrics
     acc = conf_mat_arr.diagonal().sum() / conf_mat_arr.sum()

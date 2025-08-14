@@ -79,7 +79,7 @@ bands = {
     "K -> Γ": np.linspace([1 / 2, 1 / 2, 0], [0, 0, 0], 51),
     "Γ -> W": np.linspace([0, 0, 0], [1 / 3, 1 / 3, 1 / 2], 51),
 }
-phonopy_nacl.run_band_structure(paths=bands.values())
+phonopy_nacl.run_band_structure(paths=list(bands.values()))
 
 fig = pmv.phonon_bands({"NaCl (phonopy)": phonopy_nacl.band_structure})
 fig.show()
