@@ -46,8 +46,8 @@ for mp_id, formula in (
         key: doc.phonon_bandstructure for key, doc in docs.items()
     }
 
-    acoustic_lines: dict[str, str | float] = dict(width=1.5)
-    optical_lines: dict[str, str | float] = dict(width=1)
+    acoustic_lines: dict[str, str | float] = {"width": 1.5}
+    optical_lines: dict[str, str | float] = {"width": 1}
     if len(ph_bands) == 1:
         acoustic_lines |= dict(dash="dash", color="red", name="Acoustic")
         optical_lines |= dict(dash="dot", color="blue", name="Optical")
@@ -79,7 +79,7 @@ bands = {
     "K -> Γ": np.linspace([1 / 2, 1 / 2, 0], [0, 0, 0], 51),
     "Γ -> W": np.linspace([0, 0, 0], [1 / 3, 1 / 3, 1 / 2], 51),
 }
-phonopy_nacl.run_band_structure(paths=bands.values())
+phonopy_nacl.run_band_structure(paths=list(bands.values()))
 
 fig = pmv.phonon_bands({"NaCl (phonopy)": phonopy_nacl.band_structure})
 fig.show()

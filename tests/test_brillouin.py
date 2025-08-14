@@ -14,6 +14,8 @@ from tests.conftest import SI_ATOMS, SI_STRUCTS
 
 
 if TYPE_CHECKING:
+    from collections.abc import Hashable
+
     from pymatviz.typing import AnyStructure
 
 
@@ -232,6 +234,7 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
     fig = brillouin_zone_3d(structures, n_cols=2)
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == len(structures)  # subplot titles
+    assert fig._grid_ref is not None
     assert len(fig._grid_ref) == (len(structures) + 1) // 2  # number of rows
     assert len(fig._grid_ref[0]) == 2  # number of columns
 
@@ -240,11 +243,12 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
     fig = brillouin_zone_3d(struct_dict, n_cols=1)
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.annotations) == len(struct_dict)
+    assert fig._grid_ref is not None
     assert len(fig._grid_ref) == len(struct_dict)  # number of rows
     assert len(fig._grid_ref[0]) == 1  # number of columns
 
     # Test custom subplot titles
-    def subplot_title(struct: Structure, key: str | int) -> str:
+    def subplot_title(struct: Structure, key: Hashable) -> str:
         return f"Custom {key} - {struct.formula}"
 
     fig = brillouin_zone_3d(struct_dict, subplot_title=subplot_title)
@@ -298,6 +302,7 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
         fig = brillouin_zone_3d(structures, n_cols=n_cols)
         assert isinstance(fig, go.Figure)
         expected_rows = (n_structs - 1) // n_cols + 1
+        assert fig._grid_ref is not None
         assert len(fig._grid_ref) == expected_rows
         assert len(fig._grid_ref[0]) == min(n_cols, n_structs)
         assert fig.layout.height == 400 * expected_rows
@@ -321,7 +326,7 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
         assert scene.domain.y == pytest.approx([y_start, y_end], abs=1e-10)
 
     # Test custom subplot title with dict return
-    def subplot_title(_struct: Structure, key: str | int) -> dict[str, Any]:
+    def subplot_title(_struct: Structure, key: Hashable) -> dict[str, Any]:
         return dict(
             text=f"Custom {key}", font=dict(size=16, color="blue"), yanchor="bottom"
         )
@@ -395,7 +400,7 @@ def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) ->
     """Test different subplot title configurations."""
 
     # Test with dict return type for subplot titles
-    def title_with_dict(_struct: Structure, key: str | int) -> dict[str, Any]:
+    def title_with_dict(_struct: Structure, key: Hashable) -> dict[str, Any]:
         font = dict(size=20, color="red")
         return dict(text=f"Test {key}", font=font, x=0.5, y=0.9)
 
@@ -415,7 +420,7 @@ def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) ->
     assert all(anno.text == " " for anno in fig.layout.annotations)
 
     # Test with custom string return type
-    def title_with_string(struct: Structure, key: str | int) -> str:
+    def title_with_string(struct: Structure, key: Hashable) -> str:
         return f"Structure {key} ({len(struct)} atoms)"
 
     fig = brillouin_zone_3d(structures, subplot_title=title_with_string)

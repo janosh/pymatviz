@@ -692,7 +692,7 @@ def py_pkg_treemap(
     # Apply cell_size_fn to get treemap sizing values
     metrics_keys = ModuleStats._fields
     df_modules["cell_value"] = df_modules.apply(
-        lambda row: cell_size_fn(
+        lambda row: cell_size_fn(  # type: ignore[call-non-callable]
             ModuleStats(**{k: row[k] for k in metrics_keys if k in row})
         ),
         axis=1,
@@ -767,7 +767,7 @@ def py_pkg_treemap(
     # Format package labels after storing raw name and calculating totals
     if cell_text_fn is True:
         cell_text_fn = default_module_formatter
-    if cell_text_fn is not False:
+    if callable(cell_text_fn):
         total_lines = package_totals.sum()
 
         # When in coverage mode, show coverage percentage instead of line percentage
@@ -800,7 +800,7 @@ def py_pkg_treemap(
             )
         else:
             df_treemap["package"] = df_treemap["package_name_raw"].map(
-                lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)
+                lambda pkg: cell_text_fn(pkg, package_totals.get(pkg, 0), total_lines)  # type: ignore[call-non-callable]
             )
 
     # Calculate full file URLs for linking

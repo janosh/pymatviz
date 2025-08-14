@@ -66,6 +66,7 @@ def test_phonon_dos(
 
 
 def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
+    """Test phonon_dos raises appropriate errors."""
     with pytest.raises(
         TypeError, match=f"Only {PhononDos.__name__} or dict supported, got str"
     ):
@@ -253,7 +254,11 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
 
     # Test single TotalDos
     fig = pmv.phonon_dos(
-        phonopy_nacl.total_dos, stack=False, sigma=0.1, normalize="max", units="THz"
+        phonopy_nacl.total_dos,
+        stack=False,
+        sigma=0.1,
+        normalize="max",
+        units="THz",
     )
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == "Frequency (THz)"
@@ -278,7 +283,7 @@ def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
     }
 
     # Run band structure calculation
-    phonopy_nacl.run_band_structure(paths=bands.values())
+    phonopy_nacl.run_band_structure(paths=list(bands.values()))
 
     # Test single band structure
     fig = pmv.phonon_bands(phonopy_nacl.band_structure)

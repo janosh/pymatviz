@@ -13,6 +13,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.validator_cache import ValidatorCache
 from pymatgen.core import Composition
+from sklearn.decomposition import PCA
 
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
@@ -59,7 +60,7 @@ def _generate_colorbar_ticks(
         tuple[list[float] | None, list[str] | None]: Lists of tick values and their
             label texts. Both can be None if no custom ticks are needed.
     """
-    if color_scale in ("linear", "color"):
+    if color_scale == "linear":
         return None, None
 
     # Create custom ticks that reflect the original data values
@@ -634,7 +635,11 @@ def cluster_compositions(
             valid_symbols = list(filter(symbol_filter, all_symbols))
 
         # Check if we have more unique systems than available symbols
-        if "shape" in show_chem_sys and len(uniq_chem_sys) > len(valid_symbols):
+        if (
+            show_chem_sys is not None
+            and "shape" in show_chem_sys
+            and len(uniq_chem_sys) > len(valid_symbols)
+        ):
             warnings.warn(
                 f"Number of unique chemical systems ({len(uniq_chem_sys)}) exceeds "
                 f"available marker symbols ({len(valid_symbols)}). Some systems will "
@@ -790,7 +795,8 @@ def cluster_compositions(
     elif isinstance(projection, str):
         # For built-in projection methods, use standardized labels
         method_label = method_labels.get(projection, "Component")  # type: ignore[call-overload]
-    else:  # For custom projection funcs, use func name or generic fallback if unnamed
+    else:  # For custom projection functions, use func.__name__
+        # or generic fallback if unnamed
         method_label = getattr(projection, "__name__", "Component")
         if method_label in ("<lambda>", "lambda", "", " ", None):
             method_label = "Component"
@@ -840,7 +846,7 @@ def cluster_compositions(
     # Calculate projection statistics
     projection_stats: str | None = None
     if show_projection_stats and not using_precomputed_coords:
-        if projection == "pca" and projector is not None:
+        if projection == "pca" and isinstance(projector, PCA):
             # Get explained variance ratios from PCA object
             var_explained_ratio = projector.explained_variance_ratio_[:n_components]
             cum_var_explained = np.cumsum(var_explained_ratio)
@@ -906,6 +912,9 @@ def cluster_compositions(
 
     def apply_symbol_mapping(fig: go.Figure, symbol_map: dict[str, str]) -> None:
         """Apply symbol mapping to the figure based on the visualization mode."""
+        if chem_systems is None:
+            return
+
         if prop_values is not None or show_chem_sys == "shape":
             # For property-colored plots or shape mode, we have one trace with
             # different symbols
@@ -964,12 +973,13 @@ def cluster_compositions(
         fig = plot_func(df_shape, **shape_kwargs | kwargs)
 
         # Apply the symbols
-        symbols = [symbol_map[cs] for cs in chem_systems]
-        fig.data[0].marker.symbol = symbols
+        if chem_systems is not None:
+            symbols = [symbol_map[cs] for cs in chem_systems]
+            fig.data[0].marker.symbol = symbols
 
         # If we don't have properties to color by, but need to color by chemical system
         # we need to manually set the colors
-        if prop_values is None:
+        if prop_values is None and chem_systems is not None:
             # Create a color mapping
             color_map = color_discrete_map or {}
             chem_sys_colors = []

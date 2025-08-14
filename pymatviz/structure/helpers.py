@@ -271,10 +271,10 @@ def get_elem_colors(
 
 def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str, float]:
     """Get atomic radii based on the provided input."""
-    if atomic_radii is None or isinstance(atomic_radii, float):
-        scale = atomic_radii or 1
-        return {elem: radius * scale for elem, radius in covalent_radii.items()}
-    return atomic_radii
+    if isinstance(atomic_radii, dict):
+        return atomic_radii
+    scale: float = 1.0 if atomic_radii is None else float(atomic_radii)
+    return {elem: radius * scale for elem, radius in covalent_radii.items()}
 
 
 def generate_site_label(
@@ -340,7 +340,10 @@ def get_subplot_title(
 
     if not title_dict.get("text"):
         if isinstance(struct_key, int):
-            spg_num = struct_i.get_symmetry_dataset()["number"]
+            from moyopy import MoyoDataset
+            from moyopy.interface import MoyoAdapter
+
+            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number
             title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
         elif isinstance(struct_key, str):
             title_dict["text"] = str(struct_key)
@@ -522,6 +525,11 @@ def draw_site(
     majority_species = (
         max(species, key=species.get) if isinstance(species, Composition) else species
     )
+    if not isinstance(majority_species, Species):
+        majority_species = Species(str(majority_species))
+        # could add Species(get_site_symbol(site)) fallback for
+        # unexpected/placeholder Species(symbol)
+
     site_radius = atomic_radii[majority_species.symbol] * scale
     raw_color_from_map = elem_colors.get(majority_species.symbol, "gray")
 
@@ -811,8 +819,10 @@ def draw_disordered_site(
                     scene=scene,
                 )
                 # Apply any text-specific styling from site_kwargs
-                if "textfont" in site_kwargs:
-                    text_kwargs["textfont"].update(site_kwargs["textfont"])
+                if isinstance(text_kwargs["textfont"], dict) and isinstance(
+                    site_kwargs.get("textfont"), dict
+                ):
+                    text_kwargs["textfont"] |= site_kwargs["textfont"]
 
                 fig.add_scatter3d(**text_kwargs)
 
@@ -952,8 +962,10 @@ def draw_disordered_site(
                     col=col,
                 )
                 # Apply any text-specific styling from site_kwargs
-                if "textfont" in site_kwargs:
-                    text_kwargs["textfont"].update(site_kwargs["textfont"])
+                if isinstance(text_kwargs["textfont"], dict) and isinstance(
+                    site_kwargs.get("textfont"), dict
+                ):
+                    text_kwargs["textfont"] |= site_kwargs["textfont"]
 
                 fig.add_scatter(**text_kwargs)
 
@@ -1497,8 +1509,7 @@ def draw_bonds(
                 color1_rgb_str = parse_color(current_bond_color_setting[0])
                 color2_rgb_str = parse_color(current_bond_color_setting[1])
                 color_for_segment_calc = (color1_rgb_str, color2_rgb_str)
-            else:
-                # Solid color: user-defined string, or False
+            else:  # Solid color
                 color_for_segment_calc = parse_color(current_bond_color_setting)
 
             n_segments = 1
@@ -1526,9 +1537,8 @@ def draw_bonds(
                         (frac_start + frac_end) / 2,
                         colortype="rgb",
                     )
-                else:
-                    # Solid color
-                    segment_color_str = color_for_segment_calc
+                else:  # Solid color
+                    segment_color_str = parse_color(color_for_segment_calc)
 
                 name = f"bond {site_idx}-{con_dict['site_index']} segment {segment_idx}"
                 trace_kwargs = dict(

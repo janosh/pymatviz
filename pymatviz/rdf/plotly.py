@@ -131,7 +131,7 @@ def element_pair_rdfs(
 
     elem_pair_rdfs: dict[tuple[str, str], list[tuple[np.ndarray, np.ndarray]]] = {
         pair: [
-            calculate_rdf(struct, *pair, cutoff=cutoff, n_bins=n_bins)
+            calculate_rdf(struct, pair[0], pair[1], cutoff=cutoff, n_bins=n_bins)
             for struct in struct_dict.values()
         ]
         for pair in element_pairs

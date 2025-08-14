@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -18,6 +18,7 @@ from tests.widgets.conftest import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import Any
 
     from pymatgen.core import Structure
 
@@ -146,9 +147,7 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
 
     # Test that widget has proper attributes for anywidget
     assert hasattr(widget, "trajectory"), "Widget missing trajectory attribute"
-    assert hasattr(widget, "current_step_idx"), (
-        "Widget missing current_step_idx attribute"
-    )
+    assert hasattr(widget, "current_step_idx")
     assert hasattr(widget, "layout"), "Widget missing layout attribute"
     assert hasattr(widget, "display_mode"), "Widget missing display_mode attribute"
     assert hasattr(widget, "show_controls"), "Widget missing show_controls attribute"
@@ -362,7 +361,7 @@ def test_trajectory_widget_property_extraction(
     [([], 0), (["struct1"], 1), (["struct1", "struct2", "struct3"], 3)],
 )
 def test_trajectory_widget_backward_compatibility(
-    trajectory_input: list[dict[str, Any]], expected_frames: int
+    trajectory_input: list[str], expected_frames: int
 ) -> None:
     """Test TrajectoryWidget handles list of structures."""
     from pymatgen.core import Lattice, Structure
@@ -394,7 +393,7 @@ def test_trajectory_widget_backward_compatibility(
     ("trajectory_input", "expected_result"),
     [
         (None, None),
-        ([], {"frames": [], "metadata": {}}),  # type: ignore[dict-item]
+        ([], {"frames": [], "metadata": {}}),
         (
             {"frames": [{"structure": "test", "step": 0}]},
             {"frames": [{"structure": "test", "step": 0}]},
@@ -403,7 +402,7 @@ def test_trajectory_widget_backward_compatibility(
 )
 def test_trajectory_widget_edge_cases(
     trajectory_input: Any,
-    expected_result: dict[str, list[dict[str, Any]]] | None,
+    expected_result: dict[str, list[dict[str, Any]] | dict[str, Any]] | None,
 ) -> None:
     """Test TrajectoryWidget handles edge cases correctly."""
     result = TrajectoryWidget(trajectory=trajectory_input).trajectory
@@ -509,7 +508,7 @@ def test_trajectory_widget_with_ase_atoms_with_cell() -> None:
 
     # Create ASE Atoms with cell
     atoms = Atoms("Fe2", positions=[[0, 0, 0], [0.5, 0.5, 0.5]], cell=[3, 3, 3])
-    atoms.properties = {"energy": -2.0}
+    atoms.info = {"energy": -2.0}
 
     widget = TrajectoryWidget(trajectory=atoms)
 

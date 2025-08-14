@@ -2,7 +2,7 @@
 
 import re
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from typing import Any, Literal
 
 import numpy as np
@@ -29,9 +29,9 @@ def brillouin_zone_3d(
     | None = None,
     # Grid layout
     n_cols: int = 3,
-    subplot_title: Callable[[AnyStructure, str | int], str | dict[str, Any]]
-    | None
-    | Literal[False] = None,
+    subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]]
+    | Literal[False]
+    | None = None,
 ) -> go.Figure:
     """Generate a 3D plotly figure of the first Brillouin zone for given structure(s).
 
@@ -52,7 +52,7 @@ def brillouin_zone_3d(
             shaft.len to control vector length. Set to False to disable axes plotting.
         # Grid layout
         n_cols (int): Number of columns for subplots. Defaults to 3.
-        subplot_title (Callable[[AnyStructure, str | int], str | dict] | False, optional):
+        subplot_title (Callable[[AnyStructure, Hashable], str | dict] | False, optional):
             Function to generate subplot titles. Defaults to
             lambda struct_i, idx: f"{idx}. {struct_i.formula} (spg={spg_num})". Set to
             False to hide all subplot titles.
@@ -102,7 +102,8 @@ def brillouin_zone_3d(
         k_space_cell = np.linalg.inv(real_space_cell).T * 2 * np.pi
 
         # Generate points for Voronoi construction
-        px, py, pz = np.tensordot(k_space_cell, np.mgrid[-1:2, -1:2, -1:2], axes=[0, 0])
+        mgrid_array = np.mgrid[-1:2, -1:2, -1:2]
+        px, py, pz = np.tensordot(k_space_cell, mgrid_array, axes=(0, 0))
         points = np.c_[px.ravel(), py.ravel(), pz.ravel()]
 
         voronoi = sps.Voronoi(points)  # Create Voronoi cell

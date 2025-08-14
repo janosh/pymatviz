@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 
 
 def confusion_matrix(
-    conf_mat: Sequence[Sequence[int]] | None = None,
+    conf_mat: Sequence[Sequence[int]] | np.ndarray | None = None,
     *,
     y_true: Sequence[str | int] | None = None,
     y_pred: Sequence[str | int] | None = None,

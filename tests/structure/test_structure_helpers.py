@@ -834,7 +834,9 @@ def test_draw_bonds_advanced(
         structure=structure,
         nn=nn_strategy,
         is_3d=is_3d,
-        rotation_matrix=rotation_matrix,
+        rotation_matrix=np.array(rotation_matrix)
+        if rotation_matrix is not None
+        else None,
         plotted_sites_coords=plotted_sites_coords,
     )
 
@@ -927,7 +929,7 @@ def test_draw_disordered_site_legend_functionality() -> None:
     draw_disordered_site(
         fig=fig_2d,
         site=disordered_site,
-        coords=coords_2d,
+        coords=np.array(coords_2d),
         site_idx=0,
         site_labels="legend",
         elem_colors=elem_colors,
@@ -957,7 +959,7 @@ def test_draw_disordered_site_legend_functionality() -> None:
     draw_disordered_site(
         fig=fig_3d,
         site=disordered_site,
-        coords=coords_3d,
+        coords=np.array(coords_3d),
         site_idx=0,
         site_labels="legend",
         elem_colors=elem_colors,

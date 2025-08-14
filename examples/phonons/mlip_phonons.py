@@ -15,6 +15,7 @@ import itertools
 import os
 import warnings
 from collections import defaultdict
+from collections.abc import Sequence
 
 import numpy as np
 import torch
@@ -64,9 +65,9 @@ models_to_run: dict[str, Calculator] = {
 results: dict[str, dict[str, Phonopy]] = defaultdict(
     dict
 )  # bulk_kwargs -> model_name -> Phonopy
-q_pts: list[np.ndarray] | None = None
-connections: list[np.ndarray] | None = None
-labels: list[str] | None = None
+q_pts: Sequence[np.ndarray] = ()
+connections: Sequence[bool] | None = None
+labels: Sequence[str] | None = None
 systems = (
     dict(name="Si", crystalstructure="diamond", a=5.431),
     dict(name="Al", crystalstructure="fcc", a=4.11),
@@ -94,6 +95,8 @@ for cubic, bulk_kwargs, (model_name, calc) in itertools.product(
     # Generate FC2 displacements
     ph.generate_displacements(distance=displacement)
     phonopy_supercells = ph.supercells_with_displacements
+    if phonopy_supercells is None:
+        raise ValueError("Supercells with displacements is None")
 
     # Convert PhonopyAtoms back to ASE Atoms for force calculation
     ase_supercells = []
@@ -123,10 +126,13 @@ for cubic, bulk_kwargs, (model_name, calc) in itertools.product(
         # Use auto_band_structure on the first run to get path info
         ph.auto_band_structure(plot=False, write_yaml=False)
         bands_data = ph.get_band_structure_dict()
+        ph_bands = ph.band_structure
+        if ph_bands is None:
+            raise ValueError("Band structure is None")
         # Extract path details from the BandStructure object for subsequent runs
-        q_pts = ph.band_structure.qpoints
-        connections = ph.band_structure.path_connections
-        labels = ph.band_structure.labels  # Extract labels
+        q_pts = ph_bands.qpoints
+        connections = ph_bands.path_connections
+        labels = ph_bands.labels  # Extract labels
         first_run = False
     else:  # For subsequent runs, use the stored q_pts and connections
         ph.run_band_structure(

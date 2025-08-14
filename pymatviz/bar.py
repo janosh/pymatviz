@@ -55,7 +55,8 @@ def spacegroup_bar(
         from moyopy.interface import MoyoAdapter
 
         series = pd.Series(
-            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
+            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number  # type: ignore[arg-type]
+            for struct in data
         )
     else:
         series = pd.Series(data)

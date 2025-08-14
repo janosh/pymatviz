@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -14,11 +14,12 @@ from scipy import stats
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
+    from typing import Literal
 
 
 def rainclouds(
-    data: dict[str, Sequence[float] | tuple[pd.DataFrame, str]],
+    data: Mapping[str, Sequence[float] | tuple[pd.DataFrame, str]],
     *,
     orientation: Literal["h", "v"] = "h",
     alpha: float = 0.7,
