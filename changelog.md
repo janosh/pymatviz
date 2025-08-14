@@ -1,5 +1,21 @@
 # Changelog
 
+## [v0.17.2](https://github.com/janosh/pymatviz/compare/v0.17.1...v0.17.2)
+
+> 14 August 2025
+
+### 🛠 Enhancements
+
+- `py_pkg_treemap()` add heatmap mode to color by module stats such as coverage by @janosh in https://github.com/janosh/pymatviz/pull/317
+
+### 🐛 Bug Fixes
+
+- Upgrade `uv_build>=0.8.10` to fix wheel permissions issue by @janosh in https://github.com/janosh/pymatviz/pull/320
+
+### 🏷️ Type Hints
+
+- Replace `mypy` with `ty` in `pre-commit` by @DanielYang59 in https://github.com/janosh/pymatviz/pull/314
+
 ## [v0.17.1](https://github.com/janosh/pymatviz/compare/v0.17.0...v0.17.1)
 
 > 29 July 2025
