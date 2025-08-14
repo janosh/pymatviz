@@ -128,6 +128,7 @@ def test_project_vectors_components(sample_data: np.ndarray, n_components: int) 
 
     # Check shape matches requested components
     assert result.shape == (100, n_components)
+    assert isinstance(proj_obj, PCA)
     assert proj_obj.n_components_ == n_components
 
     # Check that result is not degenerate
@@ -291,6 +292,9 @@ def test_project_vectors_pca_consistency(sample_data: np.ndarray) -> None:
     assert np.std(result1) == pytest.approx(1.0, rel=0.5)
     assert np.mean(result1) == pytest.approx(0.0, abs=1e-10)
 
+    assert isinstance(pca_obj1, PCA)
+    assert isinstance(pca_obj2, PCA)
+    assert isinstance(pca_obj3, PCA)
     # Check that all PCA objects have the same explained variance ratios
     assert np.allclose(
         pca_obj1.explained_variance_ratio_, pca_obj2.explained_variance_ratio_

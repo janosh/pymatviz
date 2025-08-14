@@ -1276,20 +1276,13 @@ def test_attached_projector_and_embeddings(
     )
 
     # Check that _pymatviz attribute exists and has the correct keys
-    assert hasattr(fig, "_pymatviz"), "Figure missing _pymatviz attribute"
-    assert "projector" in fig._pymatviz, "Missing projector in _pymatviz"
-    assert "embeddings" in fig._pymatviz, "Missing embeddings in _pymatviz"
-
-    # Check projector type
+    assert isinstance(fig._pymatviz, dict)
     assert isinstance(fig._pymatviz["projector"], expected_projector_type)
-
-    # Check embeddings shape
     assert isinstance(fig._pymatviz["embeddings"], np.ndarray)
     assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)
 
     # For PCA, also check that projector can transform data back and forth
     if projection == "pca":
-        # Check that projector can transform new data correctly
         projector = fig._pymatviz["projector"]
         assert isinstance(projector, PCA)
         transformed = projector.transform(fig._pymatviz["embeddings"])
@@ -1316,9 +1309,7 @@ def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
     )
 
     # Check that _pymatviz attribute exists and has the correct keys
-    assert hasattr(fig, "_pymatviz"), "Figure missing _pymatviz attribute"
-    assert "projector" in fig._pymatviz, "Missing projector in _pymatviz"
-    assert "embeddings" in fig._pymatviz, "Missing embeddings in _pymatviz"
+    assert isinstance(fig._pymatviz, dict)
 
     # Check embeddings shape
     assert isinstance(fig._pymatviz["embeddings"], np.ndarray)
@@ -1343,9 +1334,7 @@ def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
     )
 
     # Check that _pymatviz attribute exists and has the correct keys
-    assert hasattr(fig, "_pymatviz"), "Figure missing _pymatviz attribute"
-    assert "projector" in fig._pymatviz, "Missing projector in _pymatviz"
-    assert "embeddings" in fig._pymatviz, "Missing embeddings in _pymatviz"
+    assert isinstance(fig._pymatviz, dict)
 
     # Check that embeddings match the original embeddings
     assert np.allclose(fig._pymatviz["embeddings"], original_embeddings)
@@ -1532,7 +1521,7 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     assert np.allclose(fig_coords, precomputed_coords)
 
     # Check metadata: when coordinates provided, only projector should be in metadata
-    assert hasattr(fig, "_pymatviz")
+    assert isinstance(fig._pymatviz, dict)
     assert "projector" in fig._pymatviz
     assert fig._pymatviz["projector"] is None
     # Embeddings should not be calculated since coordinates were provided
@@ -1602,7 +1591,7 @@ def test_coordinates_priority(
     assert custom_coords_set == fig_coords_set
 
     # Check that metadata is correctly set
-    assert hasattr(fig, "_pymatviz")
+    assert isinstance(fig._pymatviz, dict)
     assert "projector" in fig._pymatviz
     assert fig._pymatviz["projector"] is None
     # Embeddings should not be calculated or attached since coordinates were provided
@@ -1852,7 +1841,7 @@ def test_custom_sort_function(sort_df: pd.DataFrame) -> None:
     """Test using a custom sort function with cluster_compositions."""
 
     # Define a custom sort function that sorts by odd/even property values
-    def custom_sort(prop_values: list[float]) -> np.ndarray:
+    def custom_sort(prop_values: np.ndarray) -> np.ndarray:
         return np.argsort([p % 2 for p in prop_values])
 
     # Create figure with custom sort function
@@ -1999,7 +1988,9 @@ def test_custom_projection_function(
 
     # Verify metadata
     assert "projector" in fig._pymatviz
-    assert fig._pymatviz["projector"] is None  # Custom projectors store None
+    assert (
+        fig._pymatviz["projector"] is None
+    )  # Custom projectors store None  # type: ignore[attr-defined]
 
 
 def test_property_colorbar(df_prop: pd.DataFrame) -> None:

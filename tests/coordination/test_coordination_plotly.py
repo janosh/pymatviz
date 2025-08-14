@@ -167,7 +167,7 @@ def test_coordination_hist_empty() -> None:
 )
 def test_coordination_vs_cutoff_line(
     structures: Sequence[Structure],
-    strategy: float | tuple[float, float] | NearNeighbors | type[NearNeighbors],
+    strategy: tuple[int | float, int | float] | NearNeighbors | type[NearNeighbors],
 ) -> None:
     """Test coordination_vs_cutoff_line function with different strategies."""
     # Test with a single structure
@@ -181,7 +181,9 @@ def test_coordination_vs_cutoff_line(
 
     # Test with custom number of points
     fig_custom_points = coordination_vs_cutoff_line(
-        structures[0], strategy=strategy, num_points=100
+        structures[0],
+        strategy=strategy,
+        num_points=100,
     )
     assert fig_custom_points.data
     assert len(fig_custom_points.data[0].x) == 100
@@ -189,7 +191,9 @@ def test_coordination_vs_cutoff_line(
     # Test with custom element color scheme
     custom_colors = {"Si": "red", "O": "blue"}
     fig_custom_colors = coordination_vs_cutoff_line(
-        structures[0], strategy=strategy, element_color_scheme=custom_colors
+        structures[0],
+        strategy=strategy,
+        element_color_scheme=custom_colors,
     )
     assert fig_custom_colors.data
     for trace in fig_custom_colors.data:
@@ -201,7 +205,9 @@ def test_coordination_vs_cutoff_line(
     # Test with built-in color schemes
     for color_scheme in ElemColorScheme:
         fig_color_scheme = coordination_vs_cutoff_line(
-            structures[0], strategy=strategy, element_color_scheme=color_scheme
+            structures[0],
+            strategy=strategy,
+            element_color_scheme=color_scheme,
         )
         assert fig_color_scheme.data
 
@@ -210,11 +216,12 @@ def test_coordination_vs_cutoff_line(
 
     # Test with custom subplot_kwargs
     custom_subplot_kwargs = {
-        "vertical_spacing": 0.1,
         "subplot_titles": ["Custom Title 1", "Custom Title 2"],
     }
     fig_custom_subplot = coordination_vs_cutoff_line(
-        structures[:2], strategy=strategy, subplot_kwargs=custom_subplot_kwargs
+        structures[:2],
+        strategy=strategy,
+        subplot_kwargs=custom_subplot_kwargs,
     )
     assert fig_custom_subplot.data
     assert fig_custom_subplot.layout.annotations[0].text == "Custom Title 1"
@@ -233,7 +240,7 @@ def test_coordination_vs_cutoff_line_invalid_strategy() -> None:
     """Test coordination_vs_cutoff_line with invalid strategy."""
     structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
     with pytest.raises(TypeError, match="Invalid strategy="):
-        coordination_vs_cutoff_line(structure, strategy="invalid")
+        coordination_vs_cutoff_line(structure, strategy="invalid")  # type: ignore[arg-type]
 
 
 def test_coordination_hist_hover_text_formatting(

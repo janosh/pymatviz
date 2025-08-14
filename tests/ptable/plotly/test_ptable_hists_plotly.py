@@ -12,6 +12,7 @@ from pymatviz.typing import VALID_COLOR_ELEM_STRATEGIES, ColorElemTypeStrategy
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Any, Literal
 
 
@@ -38,7 +39,12 @@ def test_ptable_hists_plotly_basic(
     assert isinstance(fig, go.Figure)
     # Count only histogram traces (exclude colorbar trace)
     n_hist_traces = sum(isinstance(trace, go.Histogram) for trace in fig.data)
-    n_elements = len(elem_data if isinstance(elem_data, dict) else elem_data.columns)
+    if isinstance(elem_data, dict):
+        n_elements = len(elem_data)
+    elif isinstance(elem_data, pd.DataFrame):
+        n_elements = len(elem_data.columns)
+    else:
+        raise TypeError(f"unexpected {type(elem_data)=}")
     assert n_hist_traces == n_elements
 
 
@@ -107,7 +113,7 @@ def test_ptable_hists_plotly_annotations() -> None:
     assert "O" in anno_texts
 
     # Test with callable annotations returning multiple annotations
-    def annotation_func(value: list[float] | np.ndarray) -> list[dict[str, Any]]:
+    def annotation_func(value: Sequence[float]) -> list[dict[str, Any]]:
         mean_val = np.mean(value)
         return [
             {"text": f"Mean: {mean_val:.1f}"},

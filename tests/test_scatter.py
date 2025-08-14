@@ -152,7 +152,7 @@ def test_density_scatter_plotly(
     kwargs: dict[str, Any],
 ) -> None:
     df, x, y = df_or_arrays
-    if df is None:
+    if df is None or not isinstance(x, str) or not isinstance(y, str):
         return
     fig = pmv.density_scatter_plotly(
         df=df,
@@ -165,8 +165,8 @@ def test_density_scatter_plotly(
         **kwargs,
     )
     assert isinstance(fig, go.Figure)
-    assert fig.layout.xaxis.title.text == (x if isinstance(x, str) else "Actual")
-    assert fig.layout.yaxis.title.text == (y if isinstance(y, str) else "Predicted")
+    assert fig.layout.xaxis.title.text == x
+    assert fig.layout.yaxis.title.text == y
     bin_counts_col = bin_counts_col or "Point Density"
     colorbar = fig.layout.coloraxis.colorbar
     assert colorbar.title.text.replace("<br>", " ") == bin_counts_col

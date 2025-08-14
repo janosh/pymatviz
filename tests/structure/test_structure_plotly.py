@@ -378,7 +378,8 @@ def test_structure_2d_comprehensive(
         structure = next(iter(structures_input.values()))
     else:
         structure = structures_input
-    _validate_2d_scenario_specifics(test_scenario, kwargs, fig, structure)
+    if isinstance(structure, Structure):
+        _validate_2d_scenario_specifics(test_scenario, kwargs, fig, structure)
 
 
 def _validate_2d_scenario_specifics(

@@ -121,6 +121,6 @@ if os.environ.get("CI"):  # Configure Plotly to be silent in CI
 
     # Replace fig.show() method with a noop version for CI environments to avoid
     # spamming logs with huge HTML strings
-    go.Figure.show = lambda *_args, **_kwargs: None
+    go.Figure.show = lambda *_args, **_kwargs: None  # type: ignore[assignment]
 
 notebook_mode(on=IS_IPYTHON)

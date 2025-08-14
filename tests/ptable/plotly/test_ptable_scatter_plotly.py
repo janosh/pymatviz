@@ -112,7 +112,7 @@ def test_plot_modes(
     expected_width: float | None,
 ) -> None:
     """Test different plot modes with their styling."""
-    line_kwargs: dict[str, Any] = dict(color=expected_color)
+    line_kwargs: dict[str, Any] = {"color": expected_color}
     if expected_width is not None:
         line_kwargs["width"] = expected_width
 

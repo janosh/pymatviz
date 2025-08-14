@@ -55,7 +55,8 @@ test = [
 brillouin = ["seekpath>=2.1"]
 cluster = ["matminer>=0.9"]
 # umap-learn not included in cluster because its numba dep clashes with other packages
-umap = ["umap-learn>=0.5"]
+# <3.13 pin pending new llvmlite wheels https://github.com/lmcinnes/umap/issues/1163
+umap = ["umap-learn>=0.5; python_version < '3.13'"]
 
 [build-system]
 requires = ["uv_build>=0.7.5"]
@@ -70,16 +71,6 @@ source-exclude = [".venv", "web"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p no:warnings"
-
-[tool.mypy]
-check_untyped_defs = true
-disallow_any_generics = true
-disallow_incomplete_defs = true
-disallow_untyped_defs = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-show_error_codes = true
-no_implicit_optional = false
 
 [tool.ruff]
 target-version = "py311"
@@ -140,7 +131,12 @@ docstring-code-format = true
     "T201",   # print found
 ]
 
-[tool.pyright]
-typeCheckingMode = "off"
-reportPossiblyUnboundVariable = true
-reportUnboundVariable = true
+[tool.ty.rules]
+unresolved-import = "ignore"
+# TODO: Unable to resolve submodules: https://github.com/astral-sh/ty/issues/445
+unresolved-attribute = "ignore"
+# TODO: Unable to work with **kwargs: https://github.com/astral-sh/ty/issues/247
+missing-argument = "ignore"
+
+[dependency-groups]
+dev = ["pre-commit>=4.3.0", "ty>=0.0.1a17"]

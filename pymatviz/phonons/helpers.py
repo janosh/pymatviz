@@ -151,12 +151,12 @@ def _shaded_range(
     elif not isinstance(shaded_ys, dict):
         raise TypeError(f"expect shaded_ys as dict, got {type(shaded_ys).__name__}")
 
-    for (y0, y1), kwds in shaded_ys.items():
+    for (y0, y1), kwargs in shaded_ys.items():
         for y_val in (y0, y1):
             if isinstance(y_val, str) and y_val not in y_lim:
                 raise ValueError(f"Invalid {y_val=}, must be one of {[*y_lim]}")
         fig.add_hrect(
-            y0=y_lim.get(y0, y0), y1=y_lim.get(y1, y1), **shade_defaults | kwds
+            y0=y_lim.get(y0, y0), y1=y_lim.get(y1, y1), **shade_defaults | kwargs
         )
 
     return fig

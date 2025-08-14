@@ -20,7 +20,7 @@ pmv.set_plotly_template("plotly_white")
 # %% Single packages with default settings
 for pkg in ("pymatviz", np):  # Mix strings and module objects
     fig = pmv.py_pkg_treemap(pkg)
-    pkg_name = getattr(pkg, "__name__", pkg)
+    pkg_name = str(getattr(pkg, "__name__", pkg))
     fig.layout.title.update(text=f"{pkg_name} Package Structure", font_size=20, x=0.5)
     fig.show()
     pmv.io.save_and_compress_svg(fig, f"py-pkg-treemap-{pkg_name.replace('_', '-')}")

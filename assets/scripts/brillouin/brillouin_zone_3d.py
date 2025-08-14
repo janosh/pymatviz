@@ -6,6 +6,7 @@
 """Brillouin zone 3D examples."""
 
 # %%
+from collections.abc import Hashable
 from glob import glob
 
 import numpy as np
@@ -41,11 +42,15 @@ def volume_subplot_title(struct: Structure, key: tuple[str, str, str]) -> str:
     )
 
 
-def spacegroup_subplot_title(struct: Structure, key: tuple[str, str, str]) -> str:
+def spacegroup_subplot_title(struct: Structure, key: Hashable) -> str:
     """Custom subplot title function showing spacegroup information."""
-    _mat_id, formula, system = key
+    if isinstance(key, tuple):
+        _mat_id, formula, system = key
+    else:
+        raise TypeError(f"Invalid {type(key)=}")
     sym_data = struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True)
-    return f"{formula} {system.title()}<br>Space group: {sym_data.number}"
+    spg_num = getattr(sym_data, "number", "N/A")
+    return f"{formula} {system.title()}<br>Space group: {spg_num}"
 
 
 # %% render example Brillouin zone for each crystal system individually
@@ -94,7 +99,7 @@ fig.show()
 fig = pmv.brillouin_zone_3d(
     structures,
     n_cols=2,
-    subplot_title=spacegroup_subplot_title,  # type: ignore[arg-type]
+    subplot_title=spacegroup_subplot_title,
     surface_kwargs=dict(opacity=0.4),
 )
 fig.layout.title = dict(

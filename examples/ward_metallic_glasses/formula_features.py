@@ -187,7 +187,9 @@ def calc_atomic_size_difference(composition: Composition) -> float:
     radii = np.array([el.atomic_radius for el in composition.elements])
     mean_radius = np.average(radii, weights=amounts)
 
-    return ((np.average((1 - radii / mean_radius) ** 2, weights=amounts)) ** 0.5) * 100
+    return float(
+        ((np.average((1 - radii / mean_radius) ** 2, weights=amounts)) ** 0.5) * 100
+    )
 
 
 def calc_miedema_maximum_heat_of_mixing(composition: Composition) -> float | None:

@@ -17,12 +17,12 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def sample_data() -> dict[str, np.ndarray]:
+def sample_data() -> dict[str, Sequence[float]]:
     rng = np.random.default_rng(seed=0)
     return {
-        "A": rng.normal(0, 1, 100),
-        "B": rng.normal(2, 1.5, 80),
-        "C": rng.normal(-1, 0.5, 120),
+        "A": rng.normal(0, 1, 100).tolist(),
+        "B": rng.normal(2, 1.5, 80).tolist(),
+        "C": rng.normal(-1, 0.5, 120).tolist(),
     }
 
 
@@ -50,7 +50,7 @@ def sample_dataframe() -> pd.DataFrame:
     ],
 )
 def test_rainclouds_basic(
-    sample_data: dict[str, np.ndarray], kwargs: dict[str, Any]
+    sample_data: dict[str, Sequence[float]], kwargs: dict[str, Any]
 ) -> None:
     fig = pmv.rainclouds(sample_data, **kwargs)
     assert isinstance(fig, go.Figure)
@@ -72,16 +72,16 @@ def test_rainclouds_data_shapes(
         with pytest.raises(
             ValueError, match="`dataset` input should have multiple elements"
         ):
-            pmv.rainclouds(data_input)  # type: ignore[arg-type]
+            pmv.rainclouds(data_input)
     else:
-        fig = pmv.rainclouds(data_input)  # type: ignore[arg-type]
+        fig = pmv.rainclouds(data_input)
         assert len(fig.data) == expected_traces
 
 
 def test_rainclouds_with_dataframe(sample_dataframe: pd.DataFrame) -> None:
     data = {
         "X": (sample_dataframe, "value"),
-        "Y": sample_dataframe[sample_dataframe["category"] == "Y"]["value"],
+        "Y": sample_dataframe[sample_dataframe["category"] == "Y"]["value"].tolist(),
     }
     fig = pmv.rainclouds(data, hover_data=["category", "extra"])
     assert isinstance(fig, go.Figure)
@@ -92,7 +92,7 @@ def test_rainclouds_with_dataframe(sample_dataframe: pd.DataFrame) -> None:
     ("orientation", "expected_axis"), [("h", "yaxis"), ("v", "xaxis")]
 )
 def test_rainclouds_orientation(
-    sample_data: dict[str, np.ndarray],
+    sample_data: dict[str, Sequence[float]],
     orientation: Literal["h", "v"],
     expected_axis: str,
 ) -> None:
@@ -109,7 +109,7 @@ def test_rainclouds_orientation(
     ],
 )
 def test_rainclouds_scale(
-    sample_data: dict[str, np.ndarray],
+    sample_data: dict[str, Sequence[float]],
     scale: Literal["area", "count", "width"],
     expected_range: tuple[float, float] | None,
 ) -> None:
@@ -139,7 +139,7 @@ def test_rainclouds_hover_data(
     expected_columns: Sequence[str],
 ) -> None:
     data = {"Group": (sample_dataframe, "value")}
-    fig = pmv.rainclouds(data, hover_data=hover_data)  # type: ignore[arg-type]
+    fig = pmv.rainclouds(data, hover_data=hover_data)
     scatter_trace = next(
         trace for trace in fig.data if getattr(trace, "mode", None) == "markers"
     )
@@ -167,7 +167,7 @@ def test_rainclouds_invalid_input(
         pmv.rainclouds(data_input)
 
 
-def test_rainclouds_long_labels(sample_data: dict[str, np.ndarray]) -> None:
+def test_rainclouds_long_labels(sample_data: dict[str, Sequence[float]]) -> None:
     long_labels = {
         f"Very long label {idx}": data
         for idx, (_, data) in enumerate(sample_data.items())
@@ -190,7 +190,7 @@ def test_rainclouds_long_labels(sample_data: dict[str, np.ndarray]) -> None:
     ],
 )
 def test_rainclouds_trace_visibility(
-    sample_data: dict[str, np.ndarray],
+    sample_data: dict[str, Sequence[float]],
     show_violin: bool,
     show_box: bool,
     show_points: bool,

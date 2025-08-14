@@ -6,7 +6,6 @@ from collections.abc import Sequence
 
 import numpy as np
 from pymatgen.core import Element, Lattice, Structure
-from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.sets import BadInputSetWarning, MPStaticSet
 
 from pymatviz.typing import Xyz
@@ -45,7 +44,8 @@ def create_diatomic_inputs(
     ):
         min_dist, max_dist, n_points = distances
         distances = np.logspace(np.log10(min_dist), np.log10(max_dist), n_points)
-    box = Lattice.orthorhombic(*box_size)
+    a, b, c = box_size
+    box = Lattice.orthorhombic(a, b, c)
 
     if elements == ():
         # skip superheavy elements (most have no POTCARs and are radioactive)
@@ -84,9 +84,9 @@ def create_diatomic_inputs(
                 # Generate VASP input files
                 vasp_input_set = MPStaticSet(
                     dimer,
-                    user_kpoints_settings=Kpoints(),  # sample a single k-point at Gamma
+                    user_kpoints_settings={},  # sample a single k-point at Gamma
                     # disable symmetry since spglib in VASP sometimes detects false
-                    # symmetries in dimers and fails
+                    # symmetries in dimers and fails (used to be Kpoints() before {})
                     user_incar_settings={"ISYM": 0, "LH5": True},
                 )
                 vasp_input_set.write_input(dist_dir)

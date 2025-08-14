@@ -430,9 +430,11 @@ def _process_chem_env_data_treemap(
     )
 
     # Create the treemap
-    treemap_kwargs = dict(
-        path=["coord_num_display", "chem_env_symbol"], values="count", **kwargs
-    )
+    treemap_kwargs = {
+        "path": ["coord_num_display", "chem_env_symbol"],
+        "values": "count",
+        **kwargs,
+    }
 
     # Handle show_counts parameter
     if show_counts == "value":

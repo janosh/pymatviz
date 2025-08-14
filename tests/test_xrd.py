@@ -293,6 +293,7 @@ def test_xrd_pattern_stack_and_kwargs(
     assert len(fig.data) == 2
 
     if stack:
+        assert fig._grid_ref is not None
         actual_rows = len(fig._grid_ref)
         actual_cols = len(fig._grid_ref[0])
         assert actual_rows == expected_rows

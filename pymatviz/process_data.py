@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition, Structure
+from pymatgen.core import Composition, SiteCollection, Structure
 from pymatgen.io.phonopy import get_pmg_structure
 
 from pymatviz.enums import ElemCountMode, Key
@@ -319,13 +319,12 @@ def normalize_structures(
     """Convert pymatgen Structures, ASE Atoms, or PhonopyAtoms or sequences/dicts of
     them to a dictionary of pymatgen Structures.
     """
-    from pymatgen.core import IStructure
     from pymatgen.io.ase import AseAtomsAdaptor
 
-    def to_pmg_struct(item: Any) -> Structure:
+    def to_pmg_struct(item: Any) -> SiteCollection:
         if is_ase_atoms(item):
             return AseAtomsAdaptor().get_structure(item)
-        if isinstance(item, Structure | IStructure):
+        if isinstance(item, SiteCollection):
             return item
         if is_phonopy_atoms(item):  # convert PhonopyAtoms to pymatgen Structure
             return get_pmg_structure(item)
@@ -340,7 +339,7 @@ def normalize_structures(
 
     # Check for single Structure/IStructure first, before checking for Sequence
     # since they are Sequences but we don't want to iterate over sites
-    if isinstance(systems, Structure | IStructure):
+    if isinstance(systems, SiteCollection):
         # Use formula as key for single structure input
         return {systems.formula: systems}
 
@@ -420,7 +419,7 @@ def normalize_to_dict(
 
 def df_to_arrays(
     df: pd.DataFrame | None,
-    *args: str | Sequence[str] | Sequence[ArrayLike],
+    *args: str | ArrayLike,
     strict: bool = True,
 ) -> list[ArrayLike | dict[str, ArrayLike]]:
     """If df is None, this is a no-op: args are returned as-is. If df is a

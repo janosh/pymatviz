@@ -177,7 +177,7 @@ def test_add_ecdf_line_raises() -> None:
             TypeError,
             match=f"{fig=} must be instance of go.Figure",
         ):
-            powerups.add_ecdf_line(fig)
+            powerups.add_ecdf_line(fig)  # type: ignore[arg-type]
 
     # check ValueError when x-values cannot be auto-determined
     fig_violin = px.violin(x=[1, 2, 3], y=[4, 5, 6])
@@ -186,7 +186,7 @@ def test_add_ecdf_line_raises() -> None:
     with pytest.raises(
         TypeError, match=f"Cannot auto-determine x-values for ECDF from {qual_name}"
     ):
-        powerups.add_ecdf_line(fig_violin)
+        powerups.add_ecdf_line(fig_violin)  # type: ignore[arg-type]
 
     # check ValueError disappears when passing x-values explicitly
     fig_with_ecdf = powerups.add_ecdf_line(fig_violin, values=[1, 2, 3])
