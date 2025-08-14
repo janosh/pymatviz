@@ -359,20 +359,12 @@ def test_unit_html_consistency() -> None:
 
         # Check proper HTML tag nesting
         if "<sup>" in unit:
-            assert unit.count("<sup>") == unit.count("</sup>"), (
-                f"Mismatched sup tags in {unit}"
-            )
-            assert "</sup>" not in unit[: unit.index("<sup>")], (
-                f"Improper sup tag nesting in {unit}"
-            )
+            assert unit.count("<sup>") == unit.count("</sup>")
+            assert "</sup>" not in unit[: unit.index("<sup>")]
 
         if "<sub>" in unit:
-            assert unit.count("<sub>") == unit.count("</sub>"), (
-                f"Mismatched sub tags in {unit}"
-            )
-            assert "</sub>" not in unit[: unit.index("<sub>")], (
-                f"Improper sub tag nesting in {unit}"
-            )
+            assert unit.count("<sub>") == unit.count("</sub>")
+            assert "</sub>" not in unit[: unit.index("<sub>")]
 
         # Check no nested tags
         if "<sup>" in unit and "<sub>" in unit:

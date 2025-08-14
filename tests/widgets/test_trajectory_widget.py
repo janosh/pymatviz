@@ -147,9 +147,7 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
 
     # Test that widget has proper attributes for anywidget
     assert hasattr(widget, "trajectory"), "Widget missing trajectory attribute"
-    assert hasattr(widget, "current_step_idx"), (
-        "Widget missing current_step_idx attribute"
-    )
+    assert hasattr(widget, "current_step_idx")
     assert hasattr(widget, "layout"), "Widget missing layout attribute"
     assert hasattr(widget, "display_mode"), "Widget missing display_mode attribute"
     assert hasattr(widget, "show_controls"), "Widget missing show_controls attribute"

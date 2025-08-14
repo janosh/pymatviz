@@ -60,7 +60,7 @@ def _generate_colorbar_ticks(
         tuple[list[float] | None, list[str] | None]: Lists of tick values and their
             label texts. Both can be None if no custom ticks are needed.
     """
-    if color_scale in ("linear", "color"):
+    if color_scale == "linear":
         return None, None
 
     # Create custom ticks that reflect the original data values

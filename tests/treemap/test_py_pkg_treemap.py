@@ -713,9 +713,7 @@ def test_py_pkg_treemap_cell_size_fn(
         else:
             expected_val = calculator(metrics_instance)  # type: ignore[assignment]
 
-        assert expected_val > 0, (
-            f"Expected value > 0 for present file: {row.get('filename')}"
-        )
+        assert expected_val > 0
         assert int(row["cell_value"]) == expected_val
 
 

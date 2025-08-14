@@ -1508,7 +1508,7 @@ def draw_bonds(
                 color2_rgb_str = parse_color(current_bond_color_setting[1])
                 color_for_segment_calc = (color1_rgb_str, color2_rgb_str)
             else:  # Solid color
-                color_for_segment_calc = str(current_bond_color_setting)
+                color_for_segment_calc = parse_color(current_bond_color_setting)
 
             n_segments = 1
             if isinstance(color_for_segment_calc, tuple):
@@ -1535,9 +1535,8 @@ def draw_bonds(
                         (frac_start + frac_end) / 2,
                         colortype="rgb",
                     )
-                else:
-                    # Solid color
-                    segment_color_str = str(color_for_segment_calc)
+                else:  # Solid color
+                    segment_color_str = parse_color(color_for_segment_calc)
 
                 name = f"bond {site_idx}-{con_dict['site_index']} segment {segment_idx}"
                 trace_kwargs = dict(

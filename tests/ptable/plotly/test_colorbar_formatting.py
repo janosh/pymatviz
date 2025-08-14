@@ -218,9 +218,7 @@ def test_ptable_heatmap_splits_colorbar_si_formatting() -> None:
 
     # Verify that all colorbars use SI suffixes
     for trace in dataset1_colorbars + dataset2_colorbars:
-        assert trace.marker.colorbar.tickformat == ".1~s", (
-            "Colorbar not using SI suffixes"
-        )
+        assert trace.marker.colorbar.tickformat == ".1~s"
 
 
 def count_si_formatted_axes(fig: Figure, axis_type: str = "xaxis") -> int:
