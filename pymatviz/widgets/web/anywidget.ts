@@ -120,7 +120,7 @@ const render_structure: Render = ({ model, el }) => {
     scene_props: {
       atom_radius: get_prop(model, `atom_radius`),
       show_atoms: get_prop(model, `show_atoms`),
-      auto_rotate: get_prop(model, `auto_rotate`),
+      auto_rotate: get_prop(model, `auto_rotate`) ?? 0.2,
       same_size_atoms: get_prop(model, `same_size_atoms`),
       show_bonds: get_prop(model, `show_bonds`),
       show_force_vectors: get_prop(model, `show_force_vectors`),
@@ -174,7 +174,7 @@ const render_trajectory: Render = ({ model, el }) => {
       scene_props: {
         atom_radius: get_prop(model, `atom_radius`),
         show_atoms: get_prop(model, `show_atoms`),
-        auto_rotate: get_prop(model, `auto_rotate`),
+        auto_rotate: get_prop(model, `auto_rotate`) ?? 0.2,
         same_size_atoms: get_prop(model, `same_size_atoms`),
         show_bonds: get_prop(model, `show_bonds`),
         show_force_vectors: get_prop(model, `show_force_vectors`),

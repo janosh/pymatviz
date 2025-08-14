@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.5
+    rev: v0.12.8
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -30,7 +30,7 @@ repos:
       - id: format-ipy-cells
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-case-conflict
       - id: check-symlinks
@@ -59,7 +59,7 @@ repos:
 
   - repo: local
     hooks:
-      - id: deno-fmt
+      - id: deno-fmt # pinned to 2.3.7 due to https://github.com/denoland/deno/issues/29968
         name: Deno format
         entry: deno fmt
         types_or: [file]
@@ -67,7 +67,7 @@ repos:
         args: [--config, pymatviz/widgets/web/deno.jsonc, --permit-no-files]
         exclude_types: [jupyter]
         exclude: ^readme.md$ # deno fmt doesn't support ![fig-icon] syntax
-      - id: deno-lint
+      - id: deno-lint # pinned to 2.3.7 due to https://github.com/pngwn/MDsveX/issues/743
         name: Deno lint
         entry: deno lint
         types_or: [file]
@@ -79,7 +79,7 @@ repos:
           - --fix
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.31.0
+    rev: v9.33.0
     hooks:
       - id: eslint
         types: [file]
