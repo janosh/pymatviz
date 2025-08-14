@@ -134,7 +134,6 @@ def _(Final, os, pmv):
         data_url=f"tmp/{_file_name}",
         display_mode="structure+scatter",
         show_force_vectors=False,
-        auto_rotate=0.5,
     )
     _torch_sim_widget
 
@@ -165,7 +164,6 @@ def _(githack_traj_dir_url, pmv):
         data_url=f"{githack_traj_dir_url}/torch-sim-gold-cluster-55-atoms.h5",
         display_mode="structure+scatter",
         show_force_vectors=False,
-        auto_rotate=0.5,
         style="height: 600px;",
     )
     _torch_sim_widget
@@ -213,7 +211,6 @@ def _(dynamic_trajectory, pmv):
         trajectory=dynamic_trajectory,
         display_mode="structure+scatter",
         show_controls=True,
-        auto_rotate=0.3,
         style="height: 600px;",
     )
     dynamic_trajectory_widget

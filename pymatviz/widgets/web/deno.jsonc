@@ -50,7 +50,7 @@
     "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^6.1.0",
     "anywidget": "npm:anywidget@^0.9.18",
     "svelte": "npm:svelte@^5.37.0",
-    "matterviz": "npm:matterviz@^0.1.6"
+    "matterviz": "npm:matterviz@^0.1.7"
   },
   "nodeModulesDir": "auto"
 }

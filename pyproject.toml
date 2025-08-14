@@ -59,7 +59,7 @@ cluster = ["matminer>=0.9"]
 umap = ["umap-learn>=0.5; python_version < '3.13'"]
 
 [build-system]
-requires = ["uv_build>=0.7.5"]
+requires = ["uv_build>=0.8.10"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]

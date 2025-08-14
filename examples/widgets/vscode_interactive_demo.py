@@ -118,7 +118,6 @@ torch_sim_widget = pmv.TrajectoryWidget(
     data_url=f"{os.path.dirname(__file__)}/tmp/{file_name}",
     display_mode="structure+scatter",
     show_force_vectors=False,
-    auto_rotate=0.5,
 )
 display(torch_sim_widget)
 
@@ -146,7 +145,6 @@ torch_sim_widget = pmv.TrajectoryWidget(
     data_url=f"{githack_traj_dir_url}/torch-sim-gold-cluster-55-atoms.h5",
     display_mode="structure+scatter",
     show_force_vectors=False,
-    auto_rotate=0.5,
     style="height: 600px;",
 )
 
