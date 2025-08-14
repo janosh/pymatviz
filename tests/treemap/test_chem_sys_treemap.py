@@ -288,8 +288,7 @@ def test_chem_sys_treemap_grouping_modes(
 
     # Verify each expected count
     for system, count in expected_fe_counts.items():
-        if system in actual_counts:
-            assert actual_counts[system] == count
+        assert actual_counts[system] == count
 
 
 def test_chem_sys_treemap_other_entries_styling() -> None:

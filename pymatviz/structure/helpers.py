@@ -273,7 +273,7 @@ def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str,
     """Get atomic radii based on the provided input."""
     if isinstance(atomic_radii, dict):
         return atomic_radii
-    scale = atomic_radii or 1
+    scale: float = 1.0 if atomic_radii is None else float(atomic_radii)
     return {elem: radius * scale for elem, radius in covalent_radii.items()}
 
 
@@ -527,6 +527,8 @@ def draw_site(
     )
     if not isinstance(majority_species, Species):
         majority_species = Species(str(majority_species))
+        # could add Species(get_site_symbol(site)) fallback for
+        # unexpected/placeholder Species(symbol)
 
     site_radius = atomic_radii[majority_species.symbol] * scale
     raw_color_from_map = elem_colors.get(majority_species.symbol, "gray")
