@@ -13,6 +13,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.validator_cache import ValidatorCache
 from pymatgen.core import Composition
+from sklearn.decomposition import PCA
 
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
@@ -656,7 +657,7 @@ def cluster_compositions(
         # If using pre-computed coordinates from df column, use generic name
         # If using built-in projection method, use that name
         proj_name = "coordinates" if using_precomputed_coords else projection
-    else:  # For custom projection funcs, use generic name
+    else:  # For custom projection functions, use generic name
         proj_name = "coordinates"
 
     df_plot[(x_name := f"{proj_name}1")] = projected[:, 0]
@@ -794,7 +795,8 @@ def cluster_compositions(
     elif isinstance(projection, str):
         # For built-in projection methods, use standardized labels
         method_label = method_labels.get(projection, "Component")  # type: ignore[call-overload]
-    else:  # For custom projection funcs, use func name or generic fallback if unnamed
+    else:  # For custom projection functions, use func.__name__
+        # or generic fallback if unnamed
         method_label = getattr(projection, "__name__", "Component")
         if method_label in ("<lambda>", "lambda", "", " ", None):
             method_label = "Component"
@@ -844,26 +846,18 @@ def cluster_compositions(
     # Calculate projection statistics
     projection_stats: str | None = None
     if show_projection_stats and not using_precomputed_coords:
-        if (
-            projection == "pca"
-            and projector is not None
-            and hasattr(projector, "explained_variance_ratio_")
-        ):
+        if projection == "pca" and isinstance(projector, PCA):
             # Get explained variance ratios from PCA object
-            explained_variance_ratio = projector.explained_variance_ratio_
-            if hasattr(explained_variance_ratio, "__getitem__"):
-                var_explained_ratio = explained_variance_ratio[:n_components]
-                cum_var_explained = np.cumsum(var_explained_ratio)
+            var_explained_ratio = projector.explained_variance_ratio_[:n_components]
+            cum_var_explained = np.cumsum(var_explained_ratio)
 
-                # Create variance stats text
-                stats_text: list[str] = []
-                for idx, (var, cum_var) in enumerate(
-                    zip(var_explained_ratio, cum_var_explained, strict=True)
-                ):
-                    stats_text.append(
-                        f"PC{idx + 1}: {var:.1%} (cumulative: {cum_var:.1%})"
-                    )
-                projection_stats = "<br>".join(stats_text)
+            # Create variance stats text
+            stats_text: list[str] = []
+            for idx, (var, cum_var) in enumerate(
+                zip(var_explained_ratio, cum_var_explained, strict=True)
+            ):
+                stats_text.append(f"PC{idx + 1}: {var:.1%} (cumulative: {cum_var:.1%})")
+            projection_stats = "<br>".join(stats_text)
         elif projection == "tsne":
             # For t-SNE, show perplexity and learning rate
             perplexity = projection_kwargs.get("perplexity", 30)
@@ -1113,8 +1107,6 @@ def cluster_compositions(
     # since Plotly doesn't allow arbitrary attributes on Figures
     fig._pymatviz = {"projector": projector}
     if embeddings is not None:
-        pymatviz_data = getattr(fig, "_pymatviz", {})
-        pymatviz_data["embeddings"] = embeddings
-        fig._pymatviz = pymatviz_data
+        fig._pymatviz["embeddings"] = embeddings
 
     return fig
