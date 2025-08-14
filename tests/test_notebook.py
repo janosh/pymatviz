@@ -6,7 +6,6 @@ import sys
 from typing import Any
 from unittest.mock import MagicMock
 
-import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Lattice, Structure
 
@@ -176,25 +175,20 @@ def test_objects(
 
 def test_hide_plotly_toolbar() -> None:
     """Test the _hide_plotly_toolbar function."""
+    from unittest.mock import MagicMock
 
-    class MockFig(go.Figure):
-        def __init__(self) -> None:
-            self.layout_updates: list[dict[str, Any]] = []
-
-        def update_layout(self, **kwargs: Any) -> None:
-            self.layout_updates.append(kwargs)
-
-    fig = MockFig()
+    # Mock the Plotly Figure class
+    fig = MagicMock(spec=["update_layout"])
     notebook._hide_plotly_toolbar(fig)
 
     # Check that update_layout was called with modebar config
-    assert len(fig.layout_updates) == 1
-    update = fig.layout_updates[0]
-    assert "modebar" in update
-    assert "remove" in update["modebar"]
+    fig.update_layout.assert_called_once()
+    call_args = fig.update_layout.call_args[1]  # Get kwargs
+    assert "modebar" in call_args
+    assert "remove" in call_args["modebar"]
 
     # Check that expected buttons are removed
-    removed_buttons = update["modebar"]["remove"]
+    removed_buttons = call_args["modebar"]["remove"]
     expected_buttons = [
         "pan",
         "select",

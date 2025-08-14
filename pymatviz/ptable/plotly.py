@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Mapping, Sequence
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -27,7 +27,7 @@ from pymatviz.utils.plotting import luminance
 
 
 if TYPE_CHECKING:
-    from typing import Any, Literal
+    from typing import Literal
 
 
 ColorScale: TypeAlias = (
@@ -555,17 +555,13 @@ def ptable_hists_plotly(
             else f"<b>{display_symbol}</b> ({symbol})"
         ) + "<br>Range: %{x}<br>Count: %{y}<extra></extra>"
 
-        # Ensure bins_range values are not None for arithmetic operations
-        start_val = bins_range[0] if bins_range[0] is not None else 0.0
-        end_val = bins_range[1] if bins_range[1] is not None else 1.0
+        start, end = 0, 1
+        if bins_range and len(bins_range) == 2:
+            start, end = bins_range[0] or 0, bins_range[1] or 1
 
         fig.add_histogram(
             x=values,
-            xbins=dict(
-                start=start_val,
-                end=end_val,
-                size=(end_val - start_val) / bins,
-            ),
+            xbins=dict(start=start, end=end, size=(end - start) / bins),
             marker_color=px.colors.sample_colorscale(colorscale, bins),
             showlegend=False,
             hovertemplate=hover_template,
@@ -625,16 +621,15 @@ def ptable_hists_plotly(
         cbar_settings = _get_colorbar_settings(
             colorbar, font_size=font_size, scale=scale
         )
-        # Ensure bins_range values are not None for colorbar
-        cmin = bins_range[0] if bins_range[0] is not None else 0.0
-        cmax = bins_range[1] if bins_range[1] is not None else 1.0
-
+        cmin, cmax = 0, 1
+        if bins_range and len(bins_range) == 2:
+            cmin, cmax = bins_range[0] or 0, bins_range[1] or 1
         _add_colorbar_trace(
             fig,
             colorscale,
-            cmin,
-            cmax,
-            cbar_settings,
+            cmin=cmin,
+            cmax=cmax,
+            colorbar=cbar_settings,
             row=n_rows,
             col=n_cols,
         )
@@ -712,7 +707,7 @@ def _add_colorbar_trace(
     if "tickformat" not in colorbar:
         colorbar["tickformat"] = ".4s"  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
 
-    marker = dict(
+    marker = dict[str, Any](
         size=0,
         color=[cmin, cmax],
         colorscale=colorscale,
@@ -721,7 +716,7 @@ def _add_colorbar_trace(
         cmax=cmax,
         colorbar=colorbar,
     )
-    scatter_kwargs = dict(
+    scatter_kwargs = dict[str, Any](
         x=[None],
         y=[None],
         mode="markers",
@@ -730,9 +725,7 @@ def _add_colorbar_trace(
         hoverinfo="none",
     )
     if row is not None and col is not None:
-        # Add row and col to scatter_kwargs as strings to match expected type
-        scatter_kwargs["row"] = str(row)
-        scatter_kwargs["col"] = str(col)
+        scatter_kwargs.update(row=row, col=col)
         # Hide the axes for the invisible scatter trace
         fig.update_xaxes(visible=False, row=row, col=col)
         fig.update_yaxes(visible=False, row=row, col=col)
