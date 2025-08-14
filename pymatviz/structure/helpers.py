@@ -817,10 +817,10 @@ def draw_disordered_site(
                     scene=scene,
                 )
                 # Apply any text-specific styling from site_kwargs
-                if (text_font := site_kwargs.get("textfont")) and isinstance(
-                    text_font, dict
+                if isinstance(text_kwargs["textfont"], dict) and isinstance(
+                    site_kwargs.get("textfont"), dict
                 ):
-                    text_font.update(text_font)
+                    text_kwargs["textfont"] |= site_kwargs["textfont"]
 
                 fig.add_scatter3d(**text_kwargs)
 
@@ -960,10 +960,10 @@ def draw_disordered_site(
                     col=col,
                 )
                 # Apply any text-specific styling from site_kwargs
-                if (text_font := site_kwargs.get("textfont")) and isinstance(
-                    text_font, dict
+                if isinstance(text_kwargs["textfont"], dict) and isinstance(
+                    site_kwargs.get("textfont"), dict
                 ):
-                    text_font.update(text_font)
+                    text_kwargs["textfont"] |= site_kwargs["textfont"]
 
                 fig.add_scatter(**text_kwargs)
 

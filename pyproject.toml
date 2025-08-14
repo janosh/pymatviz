@@ -55,6 +55,7 @@ test = [
 brillouin = ["seekpath>=2.1"]
 cluster = ["matminer>=0.9"]
 # umap-learn not included in cluster because its numba dep clashes with other packages
+# <3.13 pin pending new llvmlite wheels https://github.com/lmcinnes/umap/issues/1163
 umap = ["umap-learn>=0.5; python_version < '3.13'"]
 
 [build-system]
@@ -134,8 +135,6 @@ docstring-code-format = true
 unresolved-import = "ignore"
 # TODO: Unable to resolve submodules: https://github.com/astral-sh/ty/issues/445
 unresolved-attribute = "ignore"
-# TODO: Unable to narrow callable types: https://github.com/astral-sh/ty/issues/117
-call-non-callable = "ignore"
 # TODO: Unable to work with **kwargs: https://github.com/astral-sh/ty/issues/247
 missing-argument = "ignore"
 
