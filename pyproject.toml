@@ -130,11 +130,6 @@ docstring-code-format = true
     "T201",   # print found
 ]
 
-[tool.pyright]
-typeCheckingMode = "off"
-reportPossiblyUnboundVariable = true
-reportUnboundVariable = true
-
 [tool.ty.rules]
 unresolved-import = "ignore"
 # TODO: Unable to resolve submodules: https://github.com/astral-sh/ty/issues/445
@@ -145,7 +140,4 @@ call-non-callable = "ignore"
 missing-argument = "ignore"
 
 [dependency-groups]
-dev = [
-    "pre-commit>=4.2.0",
-    "ty>=0.0.1a17",
-]
+dev = ["pre-commit>=4.3.0", "ty>=0.0.1a17"]

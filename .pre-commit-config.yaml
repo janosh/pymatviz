@@ -1,6 +1,6 @@
 ci:
   autoupdate_schedule: quarterly
-  skip: [pyright, eslint, deno-fmt, deno-lint, ty]
+  skip: [eslint, deno-fmt, deno-lint]
 
 default_stages: [pre-commit]
 
@@ -20,8 +20,9 @@ repos:
     hooks:
       - id: ty
         name: ty check
-        entry: ty check .
+        entry: ty check
         language: python
+        additional_dependencies: [ty]
 
   - repo: https://github.com/janosh/format-ipy-cells
     rev: v0.1.11
@@ -91,11 +92,6 @@ repos:
           - typescript
           - typescript-eslint
           - '@stylistic/eslint-plugin'
-
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.403
-    hooks:
-      - id: pyright
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.33.2
