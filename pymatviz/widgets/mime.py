@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import TYPE_CHECKING, Any, Final, Literal, get_args
 
 from pymatgen.core import Composition
@@ -47,8 +48,9 @@ def create_widget(obj: Any, widget_type: WidgetType | None = None) -> Any:
         )
 
     module_name, class_name, param_name = WIDGET_MAP[widget_type]
-    module = __import__(module_name, fromlist=[class_name])
-    widget_class = getattr(module, class_name)
+
+    widget_module = import_module(name=f"{module_name}.widgets.{widget_type}")
+    widget_class = getattr(widget_module, class_name)
     return widget_class(**{param_name: obj})
 
 
@@ -99,9 +101,9 @@ def _register_renderers() -> None:
 
     for cls in classes:  # Register for Marimo
         if not hasattr(cls, "_display_"):
-            cls._display_ = lambda self: create_widget(obj=self)
+            cls._display_ = create_widget
     if not hasattr(Composition, "_display_"):
-        Composition._display_ = lambda self: create_widget(obj=self)
+        Composition._display_ = create_widget
 
 
 def register_matterviz_widgets() -> None:

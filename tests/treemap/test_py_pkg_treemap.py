@@ -441,8 +441,9 @@ def test_auto_base_url_metadata(
     mock_metadata.get_all.side_effect = lambda key, default=None: metadata_dict.get(
         key, default or []
     )
-    mock_metadata.__contains__ = lambda _self, key: key in metadata_dict
-    mock_metadata.__getitem__ = lambda _self, key: metadata_dict[key]
+    # Ensure membership and indexing mirror dict semantics
+    mock_metadata.__contains__.side_effect = metadata_dict.__contains__
+    mock_metadata.__getitem__.side_effect = metadata_dict.__getitem__
 
     monkeypatch.setattr("importlib.metadata.metadata", lambda _: mock_metadata)
 

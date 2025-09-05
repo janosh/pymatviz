@@ -20,7 +20,8 @@ if "IPython" not in sys.modules:
     sys.modules["IPython.display"] = mock_ipython.display
 
 import pymatviz as pmv
-from pymatviz import notebook, set_renderer, structure_3d
+from pymatviz import notebook, structure_3d
+from pymatviz.widgets.mime import set_renderer
 
 
 @pytest.mark.parametrize(

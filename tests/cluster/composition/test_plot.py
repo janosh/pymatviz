@@ -339,8 +339,13 @@ def test_sorting_options(
         # Ascending order
         expected_indices = np.argsort(sample_df["property"])
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
-    elif sort_value == -1 or callable(sort_value):
-        # Descending order (or custom function that does the same)
+    elif callable(sort_value):
+        # Use the provided custom sorter directly for expected order
+        expected_indices = np.asarray(sort_value(np.array(sample_df["property"])))
+        assert expected_indices.shape == (len(sample_df),)
+        expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
+    elif sort_value == -1:
+        # Descending order
         expected_indices = np.argsort(sample_df["property"])[::-1]
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
     else:
@@ -1721,8 +1726,9 @@ def test_precomputed_embeddings_in_composition_col() -> None:
     assert fig.embeddings.shape == embeddings.shape
 
     # Verify embeddings are the same, though possibly reordered
-    embeddings_set = {tuple(emb) for emb in embeddings}
-    fig_embeddings_set = {tuple(emb) for emb in fig.embeddings}
+    # Compare with tolerance to avoid float hashing pitfalls
+    embeddings_set = {tuple(np.round(emb, 12)) for emb in embeddings}
+    fig_embeddings_set = {tuple(np.round(emb, 12)) for emb in fig.embeddings}
     assert embeddings_set == fig_embeddings_set
 
 
