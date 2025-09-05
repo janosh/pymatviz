@@ -47,10 +47,10 @@
     "lib": ["dom", "esnext"]
   },
   "imports": {
-    "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^6.1.0",
+    "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^6.1.4",
     "anywidget": "npm:anywidget@^0.9.18",
-    "svelte": "npm:svelte@^5.37.0",
-    "matterviz": "npm:matterviz@^0.1.7"
+    "svelte": "npm:svelte@^5.38.7",
+    "matterviz": "npm:matterviz@^0.1.9-beta.1"
   },
   "nodeModulesDir": "auto"
 }
