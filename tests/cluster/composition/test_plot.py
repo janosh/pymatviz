@@ -9,13 +9,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import pytest
 from pymatgen.core import Composition
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.manifold import TSNE, Isomap
 
 import pymatviz as pmv
+from pymatviz.cluster.composition.plot import ClusterFigure
 from tests.conftest import np_rng
 
 
@@ -135,7 +135,7 @@ def test_basic_functionality(sample_df: pd.DataFrame, prop_name: str | None) -> 
         projection="pca",
         prop_name=prop_name,
     )
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == 1
     assert fig.data[0].type == "scatter"
     assert fig.data[0].x.shape == (3,)
@@ -180,7 +180,7 @@ def test_chemical_system_visualization(
         prop_name=prop_name,
     )
 
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == expected_traces
 
     # Get data dictionary for the first trace
@@ -555,7 +555,7 @@ def test_cluster_compositions_methods(
     )
 
     # Check that we got a valid figure
-    assert isinstance(fig_2d, go.Figure)
+    assert isinstance(fig_2d, ClusterFigure)
     assert len(fig_2d.data) == 1
     assert fig_2d.data[0].type == "scatter"
     assert fig_2d.data[0].x.shape == expected_shape
@@ -587,7 +587,7 @@ def test_cluster_compositions_methods(
     )
 
     # Check that we got a valid figure
-    assert isinstance(fig_3d, go.Figure)
+    assert isinstance(fig_3d, ClusterFigure)
     assert len(fig_3d.data) == 1
     assert fig_3d.data[0].type == "scatter3d"
     assert fig_3d.data[0].x.shape == expected_shape
@@ -652,7 +652,7 @@ def test_custom_embedding_projection(
     )
 
     # Check that we got a valid figure
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == 1
     assert fig.data[0].type == "scatter"
     assert fig.data[0].x.shape == (3,)
@@ -679,7 +679,7 @@ def test_precomputed_embeddings() -> None:
         projection="pca",
     )
 
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == 1
     assert fig.data[0].type == "scatter"
     assert fig.data[0].x.shape == (3,)
@@ -1275,22 +1275,22 @@ def test_attached_projector_and_embeddings(
         projection=projection,
     )
 
-    # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
-    assert isinstance(fig._pymatviz["projector"], expected_projector_type)  # type: ignore[attr-defined]
-    assert isinstance(fig._pymatviz["embeddings"], np.ndarray)  # type: ignore[attr-defined]
-    assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)  # type: ignore[attr-defined]
+    # Check that figure has the correct metadata properties
+    assert isinstance(fig, ClusterFigure)
+    assert isinstance(fig.projector, expected_projector_type)
+    assert isinstance(fig.embeddings, np.ndarray)
+    assert fig.embeddings.shape[0] == len(sample_df)
 
     # For PCA, also check that projector can transform data back and forth
     if projection == "pca":
-        projector = fig._pymatviz["projector"]  # type: ignore[attr-defined]
+        projector = fig.projector
         assert isinstance(projector, PCA)
-        transformed = projector.transform(fig._pymatviz["embeddings"])  # type: ignore[attr-defined]
+        transformed = projector.transform(fig.embeddings)
         assert transformed.shape == (len(sample_df), 2)
 
         # Try reconstructing the original data from the projection
         reconstructed = projector.inverse_transform(transformed)
-        assert reconstructed.shape == fig._pymatviz["embeddings"].shape  # type: ignore[attr-defined]
+        assert reconstructed.shape == fig.embeddings.shape
 
 
 def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
@@ -1308,15 +1308,15 @@ def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
         projection=custom_projection_func,  # type: ignore[arg-type]
     )
 
-    # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
+    # Check that figure has the correct metadata properties
+    assert isinstance(fig, ClusterFigure)
 
     # Check embeddings shape
-    assert isinstance(fig._pymatviz["embeddings"], np.ndarray)  # type: ignore[attr-defined]
-    assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)  # type: ignore[attr-defined]
+    assert isinstance(fig.embeddings, np.ndarray)
+    assert fig.embeddings.shape[0] == len(sample_df)
 
     # For custom projection function, projector should be None
-    assert fig._pymatviz["projector"] is None  # type: ignore[attr-defined]
+    assert fig.projector is None
 
 
 def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
@@ -1333,14 +1333,14 @@ def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
         projection="pca",
     )
 
-    # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
+    # Check that figure has the correct metadata properties
+    assert isinstance(fig, ClusterFigure)
 
     # Check that embeddings match the original embeddings
-    assert np.allclose(fig._pymatviz["embeddings"], original_embeddings)  # type: ignore[attr-defined]
+    assert np.allclose(fig.embeddings, original_embeddings)
 
     # Check that projector is the correct type
-    assert isinstance(fig._pymatviz["projector"], PCA)  # type: ignore[attr-defined]
+    assert isinstance(fig.projector, PCA)
 
 
 @pytest.mark.parametrize(
@@ -1371,7 +1371,7 @@ def test_title_and_marker_size(
     )
 
     # Check figure type
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     expected_trace_type = "scatter3d" if n_components == 3 else "scatter"
     assert fig.data[0].type == expected_trace_type
 
@@ -1449,7 +1449,7 @@ def test_special_data_cases(
     )
 
     # Check number of traces
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == expected_traces
 
     # For categorical data, check that each category has its own trace
@@ -1511,7 +1511,7 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     )
 
     # Check that the figure was created correctly
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == 1
 
     # Extract the x,y coordinates from the figure
@@ -1520,12 +1520,11 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     # Verify the coordinates match what we provided
     assert np.allclose(fig_coords, precomputed_coords)
 
-    # Check metadata: when coordinates provided, only projector should be in metadata
-    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
-    assert "projector" in fig._pymatviz  # type: ignore[attr-defined]
-    assert fig._pymatviz["projector"] is None  # type: ignore[attr-defined]
+    # Check metadata: when coords provided, projector should be None and no embeddings
+    assert isinstance(fig, ClusterFigure)
+    assert fig.projector is None
     # Embeddings should not be calculated since coordinates were provided
-    assert "embeddings" not in fig._pymatviz  # type: ignore[attr-defined]
+    assert fig.embeddings is None
 
     # Test with invalid coordinates shape (wrong number of components)
     df_wrong_shape = sample_df.copy()
@@ -1589,11 +1588,10 @@ def test_coordinates_priority(
     assert custom_coords_set == fig_coords_set
 
     # Check that metadata is correctly set
-    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
-    assert "projector" in fig._pymatviz  # type: ignore[attr-defined]
-    assert fig._pymatviz["projector"] is None  # type: ignore[attr-defined]
+    assert isinstance(fig, ClusterFigure)
+    assert fig.projector is None
     # Embeddings should not be calculated or attached since coordinates were provided
-    assert "embeddings" not in fig._pymatviz  # type: ignore[attr-defined]
+    assert fig.embeddings is None
 
 
 @pytest.mark.parametrize("categorical", [True, False])
@@ -1620,7 +1618,7 @@ def test_coordinates_with_categorical_property(
     )
 
     # Check that figure was created correctly
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
 
     # For categorical data, we should have one trace per category
     if categorical:
@@ -1644,7 +1642,7 @@ def test_coordinates_with_categorical_property(
         assert len(fig.data[0].x) == len(df_cat)
 
     # Verify embeddings are not calculated
-    assert "embeddings" not in fig._pymatviz  # type: ignore[attr-defined]
+    assert fig.embeddings is None
 
 
 def test_coordinates_with_show_chem_sys(
@@ -1721,12 +1719,12 @@ def test_precomputed_embeddings_in_composition_col() -> None:
     assert len(fig.data[0].x) == len(df_emb)
 
     # Verify metadata
-    assert "embeddings" in fig._pymatviz  # type: ignore[attr-defined]
-    assert fig._pymatviz["embeddings"].shape == embeddings.shape  # type: ignore[attr-defined]
+    assert fig.embeddings is not None
+    assert fig.embeddings.shape == embeddings.shape
 
     # Verify embeddings are the same, though possibly reordered
     embeddings_set = {tuple(emb) for emb in embeddings}
-    fig_embeddings_set = {tuple(emb) for emb in fig._pymatviz["embeddings"]}  # type: ignore[attr-defined]
+    fig_embeddings_set = {tuple(emb) for emb in fig.embeddings}
     assert embeddings_set == fig_embeddings_set
 
 
@@ -1944,7 +1942,8 @@ def test_embeddings_from_column(df_with_embeddings: pd.DataFrame) -> None:
     assert len(fig.data[0].x) == len(df_with_embeddings)
 
     # Verify metadata
-    fig_embeddings = fig._pymatviz["embeddings"]  # type: ignore[attr-defined]
+    fig_embeddings = fig.embeddings
+    assert fig_embeddings is not None
     assert fig_embeddings.shape == embeddings.shape
     # Convert embeddings to a form we can compare (tuples for hashability)
     embeddings_set = {tuple(row) for row in embeddings}
@@ -1985,9 +1984,9 @@ def test_custom_projection_function(
     assert original_func.called  # type: ignore[attr-defined]
 
     # Verify metadata
-    assert "projector" in fig._pymatviz  # type: ignore[attr-defined]
+    assert isinstance(fig, ClusterFigure)
     # Custom projectors store None
-    assert fig._pymatviz["projector"] is None  # type: ignore[attr-defined]
+    assert fig.projector is None
 
 
 def test_property_colorbar(df_prop: pd.DataFrame) -> None:
@@ -2108,7 +2107,7 @@ def test_coordinates_with_labels(
         assert fig_3d.layout.scene.zaxis.title.text == f"{component_label} 3"
 
         # Verify embeddings are not calculated when using column
-        assert "embeddings" not in fig_3d._pymatviz  # type: ignore[attr-defined]
+        assert fig_3d.embeddings is None
 
 
 @pytest.mark.parametrize(
@@ -2940,7 +2939,7 @@ def test_log_scale_with_negative_values(sample_df: pd.DataFrame) -> None:
     )
 
     # Verify the figure was created successfully
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
 
     # Verify we have a colorbar (should have fallen back to not using log scale)
     assert hasattr(fig.layout.coloraxis, "colorbar")

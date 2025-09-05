@@ -75,7 +75,7 @@ def _register_renderers() -> None:
     try:  # Register for Marimo
         for cls in classes:
             if not hasattr(cls, "_display_"):
-                cls._display_ = lambda self: create_widget(self)  # type: ignore[attr-defined]
+                cls._display_ = lambda self: create_widget(self)
         try:
             from pymatgen.core import Composition
 

@@ -19,13 +19,32 @@ from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encod
 from pymatviz.cluster.composition.project import project_vectors
 
 
-symbol_validator = ValidatorCache.get_validator("scatter.marker", "symbol")
-symbol_3d_validator = ValidatorCache.get_validator("scatter3d.marker", "symbol")
-
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+    from sklearn.decomposition import KernelPCA
+    from sklearn.manifold import TSNE, Isomap
+
     from pymatviz.typing import ColorType
+
+symbol_validator = ValidatorCache.get_validator("scatter.marker", "symbol")
+symbol_3d_validator = ValidatorCache.get_validator("scatter3d.marker", "symbol")
+
+
+class ClusterFigure(go.Figure):
+    """A Plotly Figure with typed metadata for clustering visualizations."""
+
+    # Declare attributes for type checker
+    projector: PCA | TSNE | Isomap | KernelPCA | None
+    embeddings: np.ndarray | None
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the figure with optional metadata."""
+        super().__init__(*args, **kwargs)
+        # Use object.__setattr__ to bypass Plotly's attribute validation
+        object.__setattr__(self, "projector", None)
+        object.__setattr__(self, "embeddings", None)
+
 
 EmbeddingMethod = Literal[
     "one-hot", "magpie", "deml", "matminer", "matscholar_el", "megnet_el"
@@ -338,7 +357,7 @@ def cluster_compositions(
     color_scale: ColorScale | dict[str, Any] = "linear",
     annotate_points: Callable[[pd.Series], str | dict[str, Any] | None] | None = None,
     **kwargs: Any,
-) -> go.Figure:
+) -> ClusterFigure:
     """Plot chemical composition clusters with optional property coloring.
 
     Gives a 2D or 3D scatter plot of chemical compositions, using various
@@ -440,11 +459,10 @@ def cluster_compositions(
         **kwargs: Passed to px.scatter or px.scatter_3d (depending on n_components)
 
     Returns:
-        go.Figure: Plotly figure object with embeddings and projection object in
-            '_pymatviz' attribute:
-            - fig._pymatviz["projector"]: Fitted projection object
-              (PCA, TSNE, etc.) or None for custom projection functions
-            - fig._pymatviz["embeddings"]: Embeddings used for projection
+        ClusterFigure: Plotly figure object with typed metadata attributes:
+            - fig.projector: Fitted projection object (PCA, TSNE, etc.) or None
+              for custom projection functions
+            - fig.embeddings: Embeddings used for projection
     """
     if n_components not in (2, 3):  # Validate inputs
         raise ValueError(f"{n_components=} must be 2 or 3")
@@ -1103,10 +1121,10 @@ def cluster_compositions(
                     }
                     fig.add_annotation(annotation)
 
-    # Attach projector and embeddings as metadata dict
-    # since Plotly doesn't allow arbitrary attributes on Figures
-    fig._pymatviz = {"projector": projector}
+    # Convert to ClusterFigure and attach metadata
+    cluster_fig = ClusterFigure(fig)
+    object.__setattr__(cluster_fig, "projector", projector)
     if embeddings is not None:
-        fig._pymatviz["embeddings"] = embeddings  # type: ignore[attr-defined]
+        object.__setattr__(cluster_fig, "embeddings", embeddings)
 
-    return fig
+    return cluster_fig
