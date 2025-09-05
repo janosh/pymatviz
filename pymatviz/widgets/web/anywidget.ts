@@ -135,8 +135,8 @@ const render_structure: Render = ({ model, el }) => {
       cell_surface_opacity: get_prop(model, `cell_surface_opacity`),
       cell_edge_color: get_prop(model, `cell_edge_color`),
       cell_surface_color: get_prop(model, `cell_surface_color`),
-      cell_line_width: get_prop(model, `cell_line_width`),
-      show_vectors: get_prop(model, `show_vectors`),
+      cell_edge_width: get_prop(model, `cell_edge_width`),
+      show_cell_vectors: get_prop(model, `show_cell_vectors`),
     },
     // Display options
     show_site_labels: get_prop(model, `show_site_labels`),
@@ -146,8 +146,8 @@ const render_structure: Render = ({ model, el }) => {
     background_opacity: get_prop(model, `background_opacity`),
     // Widget configuration
     show_controls: get_prop(model, `show_controls`),
-    enable_info_panel: get_prop(model, `show_info`),
-    fullscreen_toggle: get_prop(model, `show_fullscreen_button`),
+    enable_info_pane: get_prop(model, `enable_info_pane`),
+    fullscreen_toggle: get_prop(model, `fullscreen_toggle`),
     allow_file_drop: false, // Disable file drop in notebook context
     png_dpi: get_prop(model, `png_dpi`),
     style: get_prop(model, `style`),
@@ -166,7 +166,7 @@ const render_trajectory: Render = ({ model, el }) => {
     layout: get_prop(model, `layout`),
     display_mode: get_prop(model, `display_mode`),
     show_controls: get_prop(model, `show_controls`),
-    show_fullscreen_button: get_prop(model, `show_fullscreen_button`),
+    fullscreen_toggle: get_prop(model, `fullscreen_toggle`),
     auto_play: get_prop(model, `auto_play`),
     // Widget configuration
     allow_file_drop: false, // Disable file drop in notebook context
@@ -189,8 +189,8 @@ const render_trajectory: Render = ({ model, el }) => {
         cell_surface_opacity: get_prop(model, `cell_surface_opacity`),
         cell_edge_color: get_prop(model, `cell_edge_color`),
         cell_surface_color: get_prop(model, `cell_surface_color`),
-        cell_line_width: get_prop(model, `cell_line_width`),
-        show_vectors: get_prop(model, `show_vectors`),
+        cell_edge_width: get_prop(model, `cell_edge_width`),
+        show_cell_vectors: get_prop(model, `show_cell_vectors`),
       },
       show_site_labels: get_prop(model, `show_site_labels`),
       show_image_atoms: get_prop(model, `show_image_atoms`),

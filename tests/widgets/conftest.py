@@ -65,23 +65,57 @@ def assert_widget_build_files(
 def assert_widget_notebook_integration(
     widget: CompositionWidget | StructureWidget | TrajectoryWidget,
 ) -> None:
-    """Test that widget integrates with notebook environments."""
-    # Test Jupyter display functionality
-    with patch("IPython.display.display") as mock_display:
-        try:
+    """Validate that a widget renders correctly in notebook environments."""
+    # MIME bundle (accept dict or (data, metadata))
+    mime = widget._repr_mimebundle_()
+    if isinstance(mime, tuple):
+        assert len(mime) == 2
+        mime_data, metadata = mime
+        assert isinstance(metadata, dict)
+    else:
+        mime_data = mime
+    assert isinstance(mime_data, dict)
+
+    view_key = "application/vnd.jupyter.widget-view+json"
+    assert view_key in mime_data
+    assert "text/plain" in mime_data
+    view = mime_data[view_key]
+    assert isinstance(view, dict)
+    assert isinstance(view.get("model_id"), str)
+    assert bool(view["model_id"]) is True
+    assert isinstance(view.get("version_major"), int)
+    assert type(widget).__name__ in str(mime_data["text/plain"])
+
+    for attr_name in ("_model_name", "_view_name", "_model_module", "_view_module"):
+        assert hasattr(widget, attr_name)
+
+    # IPython display path (validate if present)
+    try:
+        with (
+            patch("IPython.display.publish_display_data") as pub,
+            patch("IPython.display.display") as disp,
+        ):
             from IPython.display import display
 
             display(widget)
-            mock_display.assert_called_once_with(widget)
-        except ImportError:
-            # IPython not available in test environment
-            pass
+            assert disp.call_count == 1
+            if pub.call_count:
+                data = pub.call_args[0][0]
+                assert view_key in data
+                assert "text/plain" in data
+                pub_view = data[view_key]
+                assert isinstance(pub_view, dict)
+                assert pub_view.get("model_id") == view.get("model_id")
+                assert isinstance(pub_view.get("version_major"), int)
+    except ImportError:
+        pass
 
-    # Test Marimo anywidget interface
-    widget_interface = {"esm": widget._esm, "css": widget._css, "model": widget}
-    assert len(widget_interface["esm"]) > 1000
-    assert len(widget_interface["css"]) > 100
-    assert widget_interface["model"] == widget
+    # Anywidget ESM/CSS sanity
+    esm, css = widget._esm, widget._css
+    assert len(esm) > 1000
+    assert len(css) > 100
+    assert "export default" in esm or " as default" in esm
+    assert "render" in esm
 
 
 def assert_widget_property_sync(

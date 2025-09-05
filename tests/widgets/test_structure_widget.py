@@ -70,7 +70,7 @@ def test_widget_invalid_structure_handling(
         ("color_scheme", ["Jmol", "CPK", "VESTA"]),
         ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("show_controls", [True, False]),
-        ("show_info", [True, False]),
+        ("enable_info_pane", [True, False]),
     ],
 )
 def test_widget_property_sync_structure(
@@ -79,8 +79,7 @@ def test_widget_property_sync_structure(
     test_values: list[Any],
 ) -> None:
     """Widget properties must sync with frontend and handle various values."""
-    structure_dict = structures[0].as_dict()
-    widget = StructureWidget(structure=structure_dict)
+    widget = StructureWidget(structure=structures[0])
 
     for test_value in test_values:
         assert_widget_property_sync(widget, property_name, test_value)
@@ -96,28 +95,8 @@ def test_widget_notebook_integration_structure(
     structures: tuple[Structure, Structure],
 ) -> None:
     """Widget must integrate properly with notebook environments."""
-    structure_dict = structures[0].as_dict()
-    widget = StructureWidget(structure=structure_dict)
+    widget = StructureWidget(structure=structures[0])
     assert_widget_notebook_integration(widget)
-
-
-def test_widget_structure_updates(structures: tuple[Structure, Structure]) -> None:
-    """Widget must handle structure updates correctly."""
-    structure1_dict = structures[0].as_dict()
-    structure2_dict = structures[1].as_dict()
-
-    widget = StructureWidget()
-
-    # Test initial None structure
-    assert widget.structure is None
-
-    # Test structure assignment
-    widget.structure = structure1_dict
-    assert widget.structure == structure1_dict
-
-    # Test structure update
-    widget.structure = structure2_dict
-    assert widget.structure == structure2_dict
 
 
 def test_widget_complete_lifecycle(structures: tuple[Structure, Structure]) -> None:
@@ -164,17 +143,16 @@ def test_widget_performance_and_large_structures(
     structures: tuple[Structure, Structure],
 ) -> None:
     """Test widget performance with large structures."""
-    structure_dict = structures[0].as_dict()
-
     # Test creation performance
     start_time = time.perf_counter()
     for _ in range(10):
-        _widget = StructureWidget(structure=structure_dict)
+        StructureWidget(structure=structures[0])
     creation_time = time.perf_counter() - start_time
-    assert creation_time < 1.0, "Widget creation too slow"
+    assert creation_time < 0.1
 
     # Test large structure handling (10x10x10 supercell with 2000 atoms)
     large_structure = structures[0] * 10
+    assert len(large_structure) == 2_000
 
     # Widget should handle large structure without crashing
     widget = StructureWidget(structure=large_structure)
