@@ -93,9 +93,9 @@ def _register_renderers() -> None:
         except ImportError:
             continue
 
+    set_renderer(Composition, CompositionWidget.__name__)
     for cls in classes:
         set_renderer(cls, StructureWidget.__name__)
-        set_renderer(Composition, CompositionWidget.__name__)
 
     for cls in classes:  # Register for Marimo
         if not hasattr(cls, "_display_"):
@@ -108,7 +108,7 @@ def register_matterviz_widgets() -> None:
     """Register widgets for automatic display."""
     from pymatviz import process_data as pd
 
-    WIDGET_REGISTRY[pd.is_trajectory_like] = StructureType
+    WIDGET_REGISTRY[pd.is_trajectory_like] = TrajectoryType
     WIDGET_REGISTRY[pd.is_composition_like] = CompositionType
     WIDGET_REGISTRY[pd.is_structure_like] = StructureType
     _register_renderers()

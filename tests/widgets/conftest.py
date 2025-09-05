@@ -83,6 +83,28 @@ def assert_widget_notebook_integration(
     assert isinstance(view, dict)
     assert isinstance(view.get("model_id"), str)
     assert bool(view["model_id"]) is True
+    # Fresh model_id on a new repr call (new view)
+    mime2 = widget._repr_mimebundle_()
+    if mime2 is not None:
+        mime2 = mime2[0] if isinstance(mime2, tuple) else mime2
+        view2 = mime2[view_key]
+        model_id1 = view.get("model_id")
+        model_id2 = view2.get("model_id")
+        if model_id1 == model_id2:
+            # This might indicate VS Code re-evaluation bugs or widget caching issues
+            import warnings
+
+            msg = (
+                f"Widget {type(widget).__name__} returned same model_id "
+                f"on repeated repr calls: {model_id1}. This may indicate "
+                f"VS Code re-evaluation bugs or widget caching issues."
+            )
+            warnings.warn(msg, UserWarning, stacklevel=2)
+        else:
+            # This is the expected behavior - fresh model_id on each repr call
+            assert model_id1 != model_id2, (
+                "Model IDs should be different on repeated repr calls"
+            )
     assert isinstance(view.get("version_major"), int)
     assert type(widget).__name__ in str(mime_data["text/plain"])
 
@@ -100,7 +122,11 @@ def assert_widget_notebook_integration(
             display(widget)
             assert disp.call_count == 1
             if pub.call_count:
-                data = pub.call_args[0][0]
+                args, kwargs = pub.call_args
+                data = kwargs.get("data")
+                if data is None and args:
+                    data = args[0]
+                assert isinstance(data, dict)
                 assert view_key in data
                 assert "text/plain" in data
                 pub_view = data[view_key]

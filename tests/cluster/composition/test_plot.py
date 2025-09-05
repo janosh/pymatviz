@@ -339,9 +339,7 @@ def test_sorting_options(
         # Ascending order
         expected_indices = np.argsort(sample_df["property"])
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
-    elif sort_value == -1 or (
-        callable(sort_value) and isinstance(sort_value, type(lambda: None))
-    ):
+    elif sort_value == -1 or callable(sort_value):
         # Descending order (or custom function that does the same)
         expected_indices = np.argsort(sample_df["property"])[::-1]
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
