@@ -29,7 +29,9 @@ def get_main_colorbar_trace(fig: Figure) -> go.Heatmap:
     )
 
 
-def get_colorbar_traces_by_title(fig: Figure, dataset_name: str) -> list[go.Scatter]:
+def get_colorbar_traces_by_title(
+    fig: Figure, dataset_name: str
+) -> list[go.Scatter | go.Heatmap]:
     """Get colorbar traces for a specific dataset from a figure.
 
     This finds traces with colorbars that have the dataset name in their title.

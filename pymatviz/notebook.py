@@ -2,49 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any
 
-from pymatviz.widgets.mime import WIDGET_MAP
+from pymatviz.widgets.mime import _RENDERER_REGISTRY, _WIDGET_CLASS_TO_KEY, WIDGET_MAP
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     import plotly.graph_objects as go
-
-_WIDGET_CLASS_TO_KEY: Final = {
-    cls_name: key for key, (_, cls_name, _) in WIDGET_MAP.items()
-}
-
-# Configuration for structure rendering mode
-_RENDERER_REGISTRY: dict[type, Callable[..., Any] | str] = {}
-
-
-def set_renderer(
-    cls: type, renderer: Callable[..., Any] | str
-) -> Callable[..., Any] | str | None:
-    """Set the renderer for a specific class.
-
-    Args:
-        cls: The class to register a renderer for (e.g. Structure, Atoms, Composition)
-        renderer: The render function to use (name or actual reference). E.g.
-            pmv.structure_3d, pmv.StructureWidget or "StructureWidget"
-
-    Returns:
-        The previous renderer for this class, or None if none was set
-
-    Raises:
-        TypeError: If renderer is not a callable nor a valid widget name.
-    """
-    if renderer not in _WIDGET_CLASS_TO_KEY and not callable(renderer):
-        raise TypeError(
-            f"Unknown {renderer=}. Must be callable or a valid widget "
-            f"name: {list(_WIDGET_CLASS_TO_KEY)}"
-        )
-
-    previous = _RENDERER_REGISTRY.get(cls)
-    _RENDERER_REGISTRY[cls] = renderer
-    return previous
 
 
 def _hide_plotly_toolbar(fig: go.Figure) -> None:

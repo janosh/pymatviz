@@ -217,17 +217,17 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
         try:
             if is_url:
                 # Security: Only HTTPS URLs allowed to prevent file:// and other schemes
-                with urllib.request.urlopen(coverage_data_file) as response:  # noqa: S310
+                with urllib.request.urlopen(coverage_data_file, timeout=15) as response:  # noqa: S310
                     coverage_data = json.load(response)
             else:
                 with open(coverage_data_file, encoding="utf-8") as file_handle:
                     coverage_data = json.load(file_handle)
-        except (urllib.error.URLError, Exception) as exc:
+        except (urllib.error.URLError, json.JSONDecodeError) as exc:
             if is_url:
-                raise ValueError(
-                    f"Failed to fetch coverage data from URL: {exc}"
-                ) from exc
-            raise  # Re-raise original exception for local files
+                exc.add_note(
+                    f"Failed to fetch coverage data from URL: {coverage_data_file}"
+                )
+            raise
 
         # Process coverage data
         for file_path, file_data in coverage_data.get("files", {}).items():
@@ -450,6 +450,7 @@ def _apply_coverage_weighted_averages(fig: go.Figure, df_treemap: pd.DataFrame) 
     """Apply weighted average coverage calculations to parent nodes in treemap."""
     trace = fig.data[0]
     labels, parents, values = trace.labels, trace.parents, trace.values  # noqa: PD011
+    label_index = {label: idx for idx, label in enumerate(labels)}
 
     # Create a mapping from treemap labels to DataFrame rows
     label_to_row = {}
@@ -459,7 +460,7 @@ def _apply_coverage_weighted_averages(fig: go.Figure, df_treemap: pd.DataFrame) 
             if (
                 # Match by exact line count and module name
                 (
-                    abs(values[list(labels).index(label)] - row["line_count"]) < 1
+                    abs(values[label_index[label]] - row["line_count"]) < 1
                     and row["leaf_label"] in label
                 )
                 or
@@ -491,7 +492,7 @@ def _apply_coverage_weighted_averages(fig: go.Figure, df_treemap: pd.DataFrame) 
             children_data = []
             for child in parent_children[label]:
                 if child in node_coverage:
-                    child_idx = list(labels).index(child)
+                    child_idx = label_index[child]
                     child_weight = values[child_idx]
                     child_coverage = node_coverage[child]
                     children_data.append((child_coverage, child_weight))

@@ -59,7 +59,7 @@ def assert_widget_build_files(
     # Test widget has required display attributes
     required_attrs = ["_model_name", "_view_name", "_model_module", "_view_module"]
     for attr in required_attrs:
-        assert hasattr(widget, attr), f"Widget missing {attr}"
+        assert hasattr(widget, attr)
 
 
 def assert_widget_notebook_integration(
