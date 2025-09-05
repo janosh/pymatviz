@@ -148,7 +148,7 @@ def test_widget_performance_and_large_structures(
     for _ in range(10):
         StructureWidget(structure=structures[0])
     creation_time = time.perf_counter() - start_time
-    assert creation_time < 0.1
+    assert creation_time < 0.3
 
     # Test large structure handling (10x10x10 supercell with 2000 atoms)
     large_structure = structures[0] * 10

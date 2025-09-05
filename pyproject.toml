@@ -100,7 +100,7 @@ ignore = [
     "SIM105",  # Use contextlib.suppress instead of try-except-pass
     "SLF001",  # Access private class members
     "TD",      # TODO related
-    "TRY003",  # raise-vanilla-args
+    "TRY003",  # Avoid specifying long messages outside exception class
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
@@ -133,10 +133,8 @@ docstring-code-format = true
 
 [tool.ty.rules]
 unresolved-import = "ignore"
-# TODO: Unable to resolve submodules: https://github.com/astral-sh/ty/issues/445
-unresolved-attribute = "ignore"
 # TODO: Unable to work with **kwargs: https://github.com/astral-sh/ty/issues/247
 missing-argument = "ignore"
 
 [dependency-groups]
-dev = ["pre-commit>=4.3.0", "ty>=0.0.1a17"]
+dev = ["pre-commit>=4.3.0", "ty>=0.0.1a20"]

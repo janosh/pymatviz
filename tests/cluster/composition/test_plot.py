@@ -340,7 +340,7 @@ def test_sorting_options(
         expected_indices = np.argsort(sample_df["property"])
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
     elif sort_value == -1 or (
-        callable(sort_value) and sort_value.__name__ == "<lambda>"
+        callable(sort_value) and getattr(sort_value, "__name__", "") == "<lambda>"
     ):
         # Descending order (or custom function that does the same)
         expected_indices = np.argsort(sample_df["property"])[::-1]
@@ -1276,21 +1276,21 @@ def test_attached_projector_and_embeddings(
     )
 
     # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)
-    assert isinstance(fig._pymatviz["projector"], expected_projector_type)
-    assert isinstance(fig._pymatviz["embeddings"], np.ndarray)
-    assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)
+    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
+    assert isinstance(fig._pymatviz["projector"], expected_projector_type)  # type: ignore[attr-defined]
+    assert isinstance(fig._pymatviz["embeddings"], np.ndarray)  # type: ignore[attr-defined]
+    assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)  # type: ignore[attr-defined]
 
     # For PCA, also check that projector can transform data back and forth
     if projection == "pca":
-        projector = fig._pymatviz["projector"]
+        projector = fig._pymatviz["projector"]  # type: ignore[attr-defined]
         assert isinstance(projector, PCA)
-        transformed = projector.transform(fig._pymatviz["embeddings"])
+        transformed = projector.transform(fig._pymatviz["embeddings"])  # type: ignore[attr-defined]
         assert transformed.shape == (len(sample_df), 2)
 
         # Try reconstructing the original data from the projection
         reconstructed = projector.inverse_transform(transformed)
-        assert reconstructed.shape == fig._pymatviz["embeddings"].shape
+        assert reconstructed.shape == fig._pymatviz["embeddings"].shape  # type: ignore[attr-defined]
 
 
 def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
@@ -1309,14 +1309,14 @@ def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
     )
 
     # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)
+    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
 
     # Check embeddings shape
-    assert isinstance(fig._pymatviz["embeddings"], np.ndarray)
-    assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)
+    assert isinstance(fig._pymatviz["embeddings"], np.ndarray)  # type: ignore[attr-defined]
+    assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)  # type: ignore[attr-defined]
 
     # For custom projection function, projector should be None
-    assert fig._pymatviz["projector"] is None
+    assert fig._pymatviz["projector"] is None  # type: ignore[attr-defined]
 
 
 def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
@@ -1334,13 +1334,13 @@ def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
     )
 
     # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)
+    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
 
     # Check that embeddings match the original embeddings
-    assert np.allclose(fig._pymatviz["embeddings"], original_embeddings)
+    assert np.allclose(fig._pymatviz["embeddings"], original_embeddings)  # type: ignore[attr-defined]
 
     # Check that projector is the correct type
-    assert isinstance(fig._pymatviz["projector"], PCA)
+    assert isinstance(fig._pymatviz["projector"], PCA)  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize(
@@ -1491,7 +1491,7 @@ def test_special_data_cases(
 def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     """Test using pre-computed coordinates with cluster_compositions."""
     # Create some embeddings and get projected coordinates
-    one_hot_embeddings = pmv.cluster.composition.embed.one_hot_encode(
+    one_hot_embeddings = pmv.cluster.composition.one_hot_encode(
         sample_df["composition"]
     )
     # Project using PCA to get coordinates
@@ -1521,11 +1521,11 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     assert np.allclose(fig_coords, precomputed_coords)
 
     # Check metadata: when coordinates provided, only projector should be in metadata
-    assert isinstance(fig._pymatviz, dict)
-    assert "projector" in fig._pymatviz
-    assert fig._pymatviz["projector"] is None
+    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
+    assert "projector" in fig._pymatviz  # type: ignore[attr-defined]
+    assert fig._pymatviz["projector"] is None  # type: ignore[attr-defined]
     # Embeddings should not be calculated since coordinates were provided
-    assert "embeddings" not in fig._pymatviz
+    assert "embeddings" not in fig._pymatviz  # type: ignore[attr-defined]
 
     # Test with invalid coordinates shape (wrong number of components)
     df_wrong_shape = sample_df.copy()
@@ -1556,9 +1556,7 @@ def test_coordinates_priority(
 ) -> None:
     """Test that provided coordinates take priority over embedding calculations."""
     # Create some embeddings and get projected coordinates using PCA using property_df
-    one_hot_embeddings = pmv.cluster.composition.embed.one_hot_encode(
-        df_prop["composition"]
-    )
+    one_hot_embeddings = pmv.cluster.composition.one_hot_encode(df_prop["composition"])
     pca = PCA(n_components=n_components, random_state=42)
     pca_coords = pca.fit_transform(one_hot_embeddings)
     assert pca_coords.shape == (len(df_prop), n_components)
@@ -1591,11 +1589,11 @@ def test_coordinates_priority(
     assert custom_coords_set == fig_coords_set
 
     # Check that metadata is correctly set
-    assert isinstance(fig._pymatviz, dict)
-    assert "projector" in fig._pymatviz
-    assert fig._pymatviz["projector"] is None
+    assert isinstance(fig._pymatviz, dict)  # type: ignore[attr-defined]
+    assert "projector" in fig._pymatviz  # type: ignore[attr-defined]
+    assert fig._pymatviz["projector"] is None  # type: ignore[attr-defined]
     # Embeddings should not be calculated or attached since coordinates were provided
-    assert "embeddings" not in fig._pymatviz
+    assert "embeddings" not in fig._pymatviz  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize("categorical", [True, False])
@@ -1646,7 +1644,7 @@ def test_coordinates_with_categorical_property(
         assert len(fig.data[0].x) == len(df_cat)
 
     # Verify embeddings are not calculated
-    assert "embeddings" not in fig._pymatviz
+    assert "embeddings" not in fig._pymatviz  # type: ignore[attr-defined]
 
 
 def test_coordinates_with_show_chem_sys(
@@ -1723,12 +1721,12 @@ def test_precomputed_embeddings_in_composition_col() -> None:
     assert len(fig.data[0].x) == len(df_emb)
 
     # Verify metadata
-    assert "embeddings" in fig._pymatviz
-    assert fig._pymatviz["embeddings"].shape == embeddings.shape
+    assert "embeddings" in fig._pymatviz  # type: ignore[attr-defined]
+    assert fig._pymatviz["embeddings"].shape == embeddings.shape  # type: ignore[attr-defined]
 
     # Verify embeddings are the same, though possibly reordered
     embeddings_set = {tuple(emb) for emb in embeddings}
-    fig_embeddings_set = {tuple(emb) for emb in fig._pymatviz["embeddings"]}
+    fig_embeddings_set = {tuple(emb) for emb in fig._pymatviz["embeddings"]}  # type: ignore[attr-defined]
     assert embeddings_set == fig_embeddings_set
 
 
@@ -1946,7 +1944,7 @@ def test_embeddings_from_column(df_with_embeddings: pd.DataFrame) -> None:
     assert len(fig.data[0].x) == len(df_with_embeddings)
 
     # Verify metadata
-    fig_embeddings = fig._pymatviz["embeddings"]
+    fig_embeddings = fig._pymatviz["embeddings"]  # type: ignore[attr-defined]
     assert fig_embeddings.shape == embeddings.shape
     # Convert embeddings to a form we can compare (tuples for hashability)
     embeddings_set = {tuple(row) for row in embeddings}
@@ -1976,7 +1974,7 @@ def test_custom_projection_function(
         df_in=df_prop,
         prop_name="property",
         embedding_method="one-hot",
-        projection=tracking_wrapper,  # type: ignore[arg-type]
+        projection=tracking_wrapper,
     )
 
     # Check that the figure was created successfully
@@ -1987,10 +1985,9 @@ def test_custom_projection_function(
     assert original_func.called  # type: ignore[attr-defined]
 
     # Verify metadata
-    assert "projector" in fig._pymatviz
-    assert (
-        fig._pymatviz["projector"] is None
-    )  # Custom projectors store None  # type: ignore[attr-defined]
+    assert "projector" in fig._pymatviz  # type: ignore[attr-defined]
+    # Custom projectors store None
+    assert fig._pymatviz["projector"] is None  # type: ignore[attr-defined]
 
 
 def test_property_colorbar(df_prop: pd.DataFrame) -> None:
@@ -2111,7 +2108,7 @@ def test_coordinates_with_labels(
         assert fig_3d.layout.scene.zaxis.title.text == f"{component_label} 3"
 
         # Verify embeddings are not calculated when using column
-        assert "embeddings" not in fig_3d._pymatviz
+        assert "embeddings" not in fig_3d._pymatviz  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize(

@@ -1107,6 +1107,6 @@ def cluster_compositions(
     # since Plotly doesn't allow arbitrary attributes on Figures
     fig._pymatviz = {"projector": projector}
     if embeddings is not None:
-        fig._pymatviz["embeddings"] = embeddings
+        fig._pymatviz["embeddings"] = embeddings  # type: ignore[attr-defined]
 
     return fig

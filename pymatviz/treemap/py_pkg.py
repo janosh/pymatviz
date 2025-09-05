@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import ast
 import importlib.metadata
-import importlib.util
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeAlias
@@ -635,7 +635,7 @@ def py_pkg_treemap(
                 metadata = importlib.metadata.metadata(package)
 
                 # Try Home-page first, then Project-URL entries
-                homepage = metadata.get("Home-page")
+                homepage = metadata.get("Home-page")  # type: ignore[attr-defined] https://github.com/astral-sh/ty/issues/1134
                 if homepage and "github.com" in homepage:
                     github_url_found = homepage
                 else:

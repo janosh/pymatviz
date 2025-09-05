@@ -207,31 +207,31 @@ def notebook_mode(*, on: bool) -> None:
     """
     class_configs = [  # Define (import_func, class_obj, display_methods)
         (
-            lambda: __import__("pymatgen.core", fromlist=["Structure"]).Structure,
+            lambda: __import__("pymatgen.core", fromlist=["Structure"]).Structure,  # type: ignore[unresolved-attribute]
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
-            lambda: __import__("ase.atoms", fromlist=["Atoms"]).Atoms,
+            lambda: __import__("ase.atoms", fromlist=["Atoms"]).Atoms,  # type: ignore[unresolved-attribute]
             _ase_atoms_ipython_display_,
             _ase_atoms_repr_mimebundle_,
         ),
         (
             lambda: __import__(
                 "phonopy.structure.atoms", fromlist=["PhonopyAtoms"]
-            ).PhonopyAtoms,
+            ).PhonopyAtoms,  # type: ignore[unresolved-attribute]
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
-            lambda: __import__("pymatgen.core", fromlist=["Composition"]).Composition,
+            lambda: __import__("pymatgen.core", fromlist=["Composition"]).Composition,  # type: ignore[unresolved-attribute]
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
             lambda: __import__(
                 "pymatgen.analysis.diffraction.xrd", fromlist=["DiffractionPattern"]
-            ).DiffractionPattern,
+            ).DiffractionPattern,  # type: ignore[unresolved-attribute]
             _diffraction_pattern_ipython_display_,
             _diffraction_pattern_repr_mimebundle_,
         ),
@@ -239,17 +239,17 @@ def notebook_mode(*, on: bool) -> None:
             lambda: __import__(
                 "pymatgen.phonon.bandstructure",
                 fromlist=["PhononBandStructureSymmLine"],
-            ).PhononBandStructureSymmLine,
+            ).PhononBandStructureSymmLine,  # type: ignore[unresolved-attribute]
             _phonon_bands_ipython_display_,
             _phonon_bands_repr_mimebundle_,
         ),
         (
-            lambda: __import__("pymatgen.phonon.dos", fromlist=["PhononDos"]).PhononDos,
+            lambda: __import__("pymatgen.phonon.dos", fromlist=["PhononDos"]).PhononDos,  # type: ignore[unresolved-attribute]
             _phonon_dos_ipython_display_,
             _phonon_dos_repr_mimebundle_,
         ),
         (
-            lambda: __import__("phonopy.phonon.dos", fromlist=["TotalDos"]).TotalDos,
+            lambda: __import__("phonopy.phonon.dos", fromlist=["TotalDos"]).TotalDos,  # type: ignore[unresolved-attribute]
             _phonopy_dos_ipython_display_,
             _phonopy_dos_repr_mimebundle_,
         ),
