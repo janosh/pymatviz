@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import itertools
 import re
-import sys
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import pytest
 from pymatgen.core import Composition
 from sklearn.decomposition import PCA, KernelPCA
@@ -214,9 +214,8 @@ def test_chemical_system_visualization(
             assert len(trace.y) == 1
 
         # Ensure colors follow standard plotly palette (case-insensitive)
-        standard_colors = ["#636efa", "#ef553b", "#00cc96"]
         for color in colors:
-            assert color.lower() in [c.lower() for c in standard_colors]
+            assert color.upper() in px.colors.qualitative.Plotly[:3]
 
     # Check for color+shape mode without properties
     if show_chem_sys == "color+shape" and not prop_name:
@@ -226,9 +225,8 @@ def test_chemical_system_visualization(
         assert len(fig.data[0].marker.color) == len(sample_df)
 
         # The colors should be standard Plotly colors (case-insensitive)
-        standard_colors = ["#636efa", "#ef553b", "#00cc96", "#ab63fa", "#ffa15a"]
         for color in fig.data[0].marker.color:
-            assert color.lower() in [c.lower() for c in standard_colors]
+            assert color in px.colors.qualitative.Plotly[:5]
 
 
 def test_chemical_system_with_properties(sample_df: pd.DataFrame) -> None:
@@ -419,11 +417,7 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
 @pytest.mark.parametrize(
     ("projection", "projection_kwargs", "expected_texts"),
     [
-        (
-            "pca",
-            {},
-            ["PC1", "cumulative"],
-        ),
+        ("pca", {}, ["PC1", "cumulative"]),
         (
             "tsne",
             {"perplexity": 1.0, "learning_rate": "auto"},
@@ -434,19 +428,8 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
             {"n_neighbors": 2, "metric": "euclidean"},
             ["n_neighbors", "metric"],
         ),
-        (
-            "kernel_pca",
-            {"kernel": "rbf", "gamma": 0.1},
-            ["kernel", "gamma"],
-        ),
-        pytest.param(
-            "umap",
-            {"n_neighbors": 15, "min_dist": 0.1},
-            ["n_neighbors", "min_dist"],
-            marks=pytest.mark.skipif(
-                "umap" not in sys.modules, reason="umap not installed"
-            ),
-        ),
+        ("kernel_pca", {"kernel": "rbf", "gamma": 0.1}, ["kernel", "gamma"]),
+        ("umap", {"n_neighbors": 15, "min_dist": 0.1}, ["n_neighbors", "min_dist"]),
     ],
 )
 def test_projection_stats(
@@ -456,6 +439,8 @@ def test_projection_stats(
     expected_texts: list[str],
 ) -> None:
     """Test projection statistics display for different methods."""
+    if projection == "umap":
+        pytest.importorskip("umap-learn")
     # Get the dataframe from fixture
     df_prop = request.getfixturevalue("df_prop")
 
