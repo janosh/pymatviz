@@ -133,11 +133,7 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown {model_name=}")
 
-        kwargs = {
-            "calculator": calculator,
-            "model_name": model_name,
-            "distances": distances,
-        }
+        kwargs = dict(calculator=calculator, model_name=model_name, distances=distances)
         # Generate homo-nuclear pairs (same element with itself)
         homo_pairs = [(z, z) for z in atomic_numbers]
         calc_diatomic_curve(pairs=homo_pairs, **kwargs, results=results[homo_nuc])

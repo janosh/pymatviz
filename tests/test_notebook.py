@@ -20,7 +20,8 @@ if "IPython" not in sys.modules:
     sys.modules["IPython.display"] = mock_ipython.display
 
 import pymatviz as pmv
-from pymatviz import notebook, set_renderer, structure_3d
+from pymatviz import notebook, structure_3d
+from pymatviz.widgets.mime import set_renderer
 
 
 @pytest.mark.parametrize(
@@ -552,7 +553,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
         assert callable(TotalDos._repr_mimebundle_)
 
         # Test _ipython_display_ method on the instance
-        phonopy_nacl.total_dos._ipython_display_()
+        phonopy_nacl.total_dos._ipython_display_()  # type: ignore[attr-defined]
 
         # Check that data was published
         assert len(published_data) == 1
@@ -568,7 +569,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
             assert "layout" in plotly_json
 
         # Test _repr_mimebundle_ method on the instance
-        mime_bundle = phonopy_nacl.total_dos._repr_mimebundle_()
+        mime_bundle = phonopy_nacl.total_dos._repr_mimebundle_()  # type: ignore[attr-defined]
         assert isinstance(mime_bundle, dict)
         assert "text/plain" in mime_bundle
 

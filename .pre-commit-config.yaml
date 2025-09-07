@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.8
+    rev: v0.12.12
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -65,7 +65,7 @@ repos:
         types_or: [file]
         language: system
         args: [--config, pymatviz/widgets/web/deno.jsonc, --permit-no-files]
-        exclude_types: [jupyter]
+        exclude_types: [jupyter, json]
         exclude: ^readme.md$ # deno fmt doesn't support ![fig-icon] syntax
       - id: deno-lint # pinned to 2.3.7 due to https://github.com/pngwn/MDsveX/issues/743
         name: Deno lint
@@ -79,7 +79,7 @@ repos:
           - --fix
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.33.0
+    rev: v9.35.0
     hooks:
       - id: eslint
         types: [file]
@@ -94,7 +94,7 @@ repos:
           - '@stylistic/eslint-plugin'
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.33.2
+    rev: 0.33.3
     hooks:
       - id: check-jsonschema
         files: ^pymatviz/keys\.yml$
