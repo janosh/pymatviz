@@ -343,6 +343,9 @@ def test_sorting_options(
         # Use the provided custom sorter directly for expected order
         expected_indices = np.asarray(sort_value(np.array(sample_df["property"])))
         assert expected_indices.shape == (len(sample_df),)
+        # permutation sanity checks
+        assert expected_indices.dtype.kind in "iu"
+        assert np.array_equal(np.sort(expected_indices), np.arange(len(sample_df)))
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
     elif sort_value == -1:
         # Descending order
@@ -1281,6 +1284,9 @@ def test_attached_projector_and_embeddings(
     # Check that figure has the correct metadata properties
     assert isinstance(fig, ClusterFigure)
     assert isinstance(fig.projector, expected_projector_type)
+    # when present, ensure 2D projection
+    if n_components := getattr(fig.projector, "n_components", None):
+        assert n_components == 2
     assert isinstance(fig.embeddings, np.ndarray)
     assert fig.embeddings.shape[0] == len(sample_df)
 
@@ -1989,6 +1995,9 @@ def test_custom_projection_function(
 
     # Verify metadata
     assert isinstance(fig, ClusterFigure)
+    # embeddings should still be available
+    assert isinstance(fig.embeddings, np.ndarray)
+    assert fig.embeddings.shape[0] == len(df_prop)
     # Custom projectors store None
     assert fig.projector is None
 
