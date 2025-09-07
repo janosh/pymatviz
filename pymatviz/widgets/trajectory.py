@@ -69,7 +69,7 @@ class TrajectoryWidget(MatterVizWidget):
         "structure+scatter", "structure", "scatter", "histogram", "structure+histogram"
     ] = tl.Unicode("structure+scatter").tag(sync=True)
     show_controls = tl.Bool(default_value=True).tag(sync=True)
-    show_fullscreen_button = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
     # Styling
@@ -99,16 +99,12 @@ class TrajectoryWidget(MatterVizWidget):
     cell_surface_opacity = tl.Float(0.05).tag(sync=True)
     cell_edge_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     cell_surface_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
-    cell_line_width = tl.Float(1.5).tag(sync=True)
-    show_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    cell_edge_width = tl.Float(1.5).tag(sync=True)
+    show_cell_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
     # Appearance
     background_color = tl.Unicode(allow_none=True).tag(sync=True)
     background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-
-    # UI controls
-    show_info = tl.Bool(default_value=True).tag(sync=True)
-    png_dpi = tl.Int(allow_none=True, default_value=None).tag(sync=True)
 
     # Plot
     step_labels = tl.Union(

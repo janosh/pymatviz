@@ -78,26 +78,26 @@ def classify_local_env_with_order_params(
             params.append(tmp)
 
         # Create LocalStructOrderParams instance
-        lost_ops = local_env.LocalStructOrderParams(types, parameters=params)
+        local_ops = local_env.LocalStructOrderParams(types, parameters=params)
 
         # Get neighboring sites using CrystalNN
         crystal_nn = local_env.CrystalNN()
-        nn_info = crystal_nn.get_nn_info(structure, site_idx)
+        nn_info = crystal_nn.get_nn_info(structure=structure, n=site_idx)
 
         # Create sites list: central site + neighbors
         sites = [structure[site_idx]] + [info["site"] for info in nn_info]
 
         # Calculate order parameters
         neighbor_indices = list(range(1, len(sites)))
-        lost_op_vals = lost_ops.get_order_parameters(
-            sites, 0, indices_neighs=neighbor_indices
+        local_order_params = local_ops.get_order_parameters(
+            structure=structure, n=0, indices_neighs=neighbor_indices
         )
 
         # Find the geometry with the highest order parameter
         best_match_idx = 0
         best_value = 0.0
 
-        for idx, op_val in enumerate(lost_op_vals):
+        for idx, op_val in enumerate(local_order_params):
             if op_val is not None and op_val > best_value:
                 best_value = op_val
                 best_match_idx = idx

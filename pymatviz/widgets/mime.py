@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from importlib import import_module
+from typing import TYPE_CHECKING, Any, Final, Literal, get_args
+
+from pymatgen.core import Composition
 
 from pymatviz.widgets.composition import CompositionWidget
 from pymatviz.widgets.structure import StructureWidget
@@ -21,6 +24,12 @@ WIDGET_MAP: dict[WidgetType, tuple[str, str, WidgetType]] = {
     TrajectoryType: ("pymatviz", TrajectoryWidget.__name__, TrajectoryType),
     CompositionType: ("pymatviz", CompositionWidget.__name__, CompositionType),
 }
+_WIDGET_CLASS_TO_KEY: Final = {
+    cls_name: key for key, (_, cls_name, _) in WIDGET_MAP.items()
+}
+
+# Configuration for structure rendering mode
+_RENDERER_REGISTRY: dict[type, Callable[..., Any] | str] = {}
 
 
 def create_widget(obj: Any, widget_type: WidgetType | None = None) -> Any:
@@ -39,9 +48,37 @@ def create_widget(obj: Any, widget_type: WidgetType | None = None) -> Any:
         )
 
     module_name, class_name, param_name = WIDGET_MAP[widget_type]
-    module = __import__(module_name, fromlist=[class_name])
-    widget_class = getattr(module, class_name)
+
+    widget_module = import_module(name=f"{module_name}.widgets.{widget_type}")
+    widget_class = getattr(widget_module, class_name)
     return widget_class(**{param_name: obj})
+
+
+def set_renderer(
+    cls: type, renderer: Callable[..., Any] | str
+) -> Callable[..., Any] | str | None:
+    """Set the renderer for a specific class.
+
+    Args:
+        cls: The class to register a renderer for (e.g. Structure, Atoms, Composition)
+        renderer: The render function to use (name or actual reference). E.g.
+            pmv.structure_3d, pmv.StructureWidget or "StructureWidget"
+
+    Returns:
+        The previous renderer for this class, or None if none was set
+
+    Raises:
+        TypeError: If renderer is not a callable nor a valid widget name.
+    """
+    if renderer not in _WIDGET_CLASS_TO_KEY and not callable(renderer):
+        raise TypeError(
+            f"Unknown {renderer=}. Must be callable or a valid widget "
+            f"name: {list(_WIDGET_CLASS_TO_KEY)}"
+        )
+
+    previous = _RENDERER_REGISTRY.get(cls)
+    _RENDERER_REGISTRY[cls] = renderer
+    return previous
 
 
 def _register_renderers() -> None:
@@ -58,40 +95,22 @@ def _register_renderers() -> None:
         except ImportError:
             continue
 
-    try:  # Register for Jupyter using notebook.py system
-        from pymatviz.notebook import set_renderer
+    set_renderer(Composition, CompositionWidget.__name__)
+    for cls in classes:
+        set_renderer(cls, StructureWidget.__name__)
 
-        for cls in classes:
-            set_renderer(cls, StructureWidget.__name__)
-        try:
-            from pymatgen.core import Composition
-
-            set_renderer(Composition, CompositionWidget.__name__)
-        except ImportError:
-            pass
-    except ImportError:
-        pass
-
-    try:  # Register for Marimo
-        for cls in classes:
-            if not hasattr(cls, "_display_"):
-                cls._display_ = lambda self: create_widget(self)  # type: ignore[attr-defined]
-        try:
-            from pymatgen.core import Composition
-
-            if not hasattr(Composition, "_display_"):
-                Composition._display_ = lambda self: create_widget(self)
-        except ImportError:
-            pass
-    except ImportError:
-        pass
+    for cls in classes:  # Register for Marimo
+        if not hasattr(cls, "_display_"):
+            cls._display_ = create_widget
+    if not hasattr(Composition, "_display_"):
+        Composition._display_ = create_widget
 
 
 def register_matterviz_widgets() -> None:
     """Register widgets for automatic display."""
     from pymatviz import process_data as pd
 
-    WIDGET_REGISTRY[pd.is_trajectory_like] = StructureType
+    WIDGET_REGISTRY[pd.is_trajectory_like] = TrajectoryType
     WIDGET_REGISTRY[pd.is_composition_like] = CompositionType
     WIDGET_REGISTRY[pd.is_structure_like] = StructureType
     _register_renderers()

@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import itertools
 import re
-import sys
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.express as px
 import pytest
 from pymatgen.core import Composition
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.manifold import TSNE, Isomap
 
 import pymatviz as pmv
+from pymatviz.cluster.composition.plot import ClusterFigure
 from tests.conftest import np_rng
 
 
@@ -135,7 +135,7 @@ def test_basic_functionality(sample_df: pd.DataFrame, prop_name: str | None) -> 
         projection="pca",
         prop_name=prop_name,
     )
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == 1
     assert fig.data[0].type == "scatter"
     assert fig.data[0].x.shape == (3,)
@@ -180,7 +180,7 @@ def test_chemical_system_visualization(
         prop_name=prop_name,
     )
 
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == expected_traces
 
     # Get data dictionary for the first trace
@@ -214,9 +214,8 @@ def test_chemical_system_visualization(
             assert len(trace.y) == 1
 
         # Ensure colors follow standard plotly palette (case-insensitive)
-        standard_colors = ["#636efa", "#ef553b", "#00cc96"]
         for color in colors:
-            assert color.lower() in [c.lower() for c in standard_colors]
+            assert color.upper() in px.colors.qualitative.Plotly[:3]
 
     # Check for color+shape mode without properties
     if show_chem_sys == "color+shape" and not prop_name:
@@ -226,9 +225,8 @@ def test_chemical_system_visualization(
         assert len(fig.data[0].marker.color) == len(sample_df)
 
         # The colors should be standard Plotly colors (case-insensitive)
-        standard_colors = ["#636efa", "#ef553b", "#00cc96", "#ab63fa", "#ffa15a"]
         for color in fig.data[0].marker.color:
-            assert color.lower() in [c.lower() for c in standard_colors]
+            assert color in px.colors.qualitative.Plotly[:5]
 
 
 def test_chemical_system_with_properties(sample_df: pd.DataFrame) -> None:
@@ -339,10 +337,16 @@ def test_sorting_options(
         # Ascending order
         expected_indices = np.argsort(sample_df["property"])
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
-    elif sort_value == -1 or (
-        callable(sort_value) and sort_value.__name__ == "<lambda>"
-    ):
-        # Descending order (or custom function that does the same)
+    elif callable(sort_value):
+        # Use the provided custom sorter directly for expected order
+        expected_indices = np.asarray(sort_value(np.array(sample_df["property"])))
+        assert expected_indices.shape == (len(sample_df),)
+        # permutation sanity checks
+        assert expected_indices.dtype.kind in "iu"
+        assert np.array_equal(np.sort(expected_indices), np.arange(len(sample_df)))
+        expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
+    elif sort_value == -1:
+        # Descending order
         expected_indices = np.argsort(sample_df["property"])[::-1]
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
     else:
@@ -413,11 +417,7 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
 @pytest.mark.parametrize(
     ("projection", "projection_kwargs", "expected_texts"),
     [
-        (
-            "pca",
-            {},
-            ["PC1", "cumulative"],
-        ),
+        ("pca", {}, ["PC1", "cumulative"]),
         (
             "tsne",
             {"perplexity": 1.0, "learning_rate": "auto"},
@@ -428,19 +428,8 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
             {"n_neighbors": 2, "metric": "euclidean"},
             ["n_neighbors", "metric"],
         ),
-        (
-            "kernel_pca",
-            {"kernel": "rbf", "gamma": 0.1},
-            ["kernel", "gamma"],
-        ),
-        pytest.param(
-            "umap",
-            {"n_neighbors": 15, "min_dist": 0.1},
-            ["n_neighbors", "min_dist"],
-            marks=pytest.mark.skipif(
-                "umap" not in sys.modules, reason="umap not installed"
-            ),
-        ),
+        ("kernel_pca", {"kernel": "rbf", "gamma": 0.1}, ["kernel", "gamma"]),
+        ("umap", {"n_neighbors": 15, "min_dist": 0.1}, ["n_neighbors", "min_dist"]),
     ],
 )
 def test_projection_stats(
@@ -450,6 +439,8 @@ def test_projection_stats(
     expected_texts: list[str],
 ) -> None:
     """Test projection statistics display for different methods."""
+    if projection == "umap":
+        pytest.importorskip("umap-learn")
     # Get the dataframe from fixture
     df_prop = request.getfixturevalue("df_prop")
 
@@ -555,7 +546,7 @@ def test_cluster_compositions_methods(
     )
 
     # Check that we got a valid figure
-    assert isinstance(fig_2d, go.Figure)
+    assert isinstance(fig_2d, ClusterFigure)
     assert len(fig_2d.data) == 1
     assert fig_2d.data[0].type == "scatter"
     assert fig_2d.data[0].x.shape == expected_shape
@@ -587,7 +578,7 @@ def test_cluster_compositions_methods(
     )
 
     # Check that we got a valid figure
-    assert isinstance(fig_3d, go.Figure)
+    assert isinstance(fig_3d, ClusterFigure)
     assert len(fig_3d.data) == 1
     assert fig_3d.data[0].type == "scatter3d"
     assert fig_3d.data[0].x.shape == expected_shape
@@ -652,7 +643,7 @@ def test_custom_embedding_projection(
     )
 
     # Check that we got a valid figure
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == 1
     assert fig.data[0].type == "scatter"
     assert fig.data[0].x.shape == (3,)
@@ -679,7 +670,7 @@ def test_precomputed_embeddings() -> None:
         projection="pca",
     )
 
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == 1
     assert fig.data[0].type == "scatter"
     assert fig.data[0].x.shape == (3,)
@@ -1275,22 +1266,25 @@ def test_attached_projector_and_embeddings(
         projection=projection,
     )
 
-    # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)
-    assert isinstance(fig._pymatviz["projector"], expected_projector_type)
-    assert isinstance(fig._pymatviz["embeddings"], np.ndarray)
-    assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)
+    # Check that figure has the correct metadata properties
+    assert isinstance(fig, ClusterFigure)
+    assert isinstance(fig.projector, expected_projector_type)
+    # when present, ensure 2D projection
+    if n_components := getattr(fig.projector, "n_components", None):
+        assert n_components == 2
+    assert isinstance(fig.embeddings, np.ndarray)
+    assert fig.embeddings.shape[0] == len(sample_df)
 
     # For PCA, also check that projector can transform data back and forth
     if projection == "pca":
-        projector = fig._pymatviz["projector"]
+        projector = fig.projector
         assert isinstance(projector, PCA)
-        transformed = projector.transform(fig._pymatviz["embeddings"])
+        transformed = projector.transform(fig.embeddings)
         assert transformed.shape == (len(sample_df), 2)
 
         # Try reconstructing the original data from the projection
         reconstructed = projector.inverse_transform(transformed)
-        assert reconstructed.shape == fig._pymatviz["embeddings"].shape
+        assert reconstructed.shape == fig.embeddings.shape
 
 
 def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
@@ -1308,15 +1302,15 @@ def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
         projection=custom_projection_func,  # type: ignore[arg-type]
     )
 
-    # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)
+    # Check that figure has the correct metadata properties
+    assert isinstance(fig, ClusterFigure)
 
     # Check embeddings shape
-    assert isinstance(fig._pymatviz["embeddings"], np.ndarray)
-    assert fig._pymatviz["embeddings"].shape[0] == len(sample_df)
+    assert isinstance(fig.embeddings, np.ndarray)
+    assert fig.embeddings.shape[0] == len(sample_df)
 
     # For custom projection function, projector should be None
-    assert fig._pymatviz["projector"] is None
+    assert fig.projector is None
 
 
 def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
@@ -1333,14 +1327,14 @@ def test_precomputed_embeddings_attributes(sample_df: pd.DataFrame) -> None:
         projection="pca",
     )
 
-    # Check that _pymatviz attribute exists and has the correct keys
-    assert isinstance(fig._pymatviz, dict)
+    # Check that figure has the correct metadata properties
+    assert isinstance(fig, ClusterFigure)
 
     # Check that embeddings match the original embeddings
-    assert np.allclose(fig._pymatviz["embeddings"], original_embeddings)
+    assert np.allclose(fig.embeddings, original_embeddings)
 
     # Check that projector is the correct type
-    assert isinstance(fig._pymatviz["projector"], PCA)
+    assert isinstance(fig.projector, PCA)
 
 
 @pytest.mark.parametrize(
@@ -1371,7 +1365,7 @@ def test_title_and_marker_size(
     )
 
     # Check figure type
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     expected_trace_type = "scatter3d" if n_components == 3 else "scatter"
     assert fig.data[0].type == expected_trace_type
 
@@ -1449,7 +1443,7 @@ def test_special_data_cases(
     )
 
     # Check number of traces
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == expected_traces
 
     # For categorical data, check that each category has its own trace
@@ -1491,7 +1485,7 @@ def test_special_data_cases(
 def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     """Test using pre-computed coordinates with cluster_compositions."""
     # Create some embeddings and get projected coordinates
-    one_hot_embeddings = pmv.cluster.composition.embed.one_hot_encode(
+    one_hot_embeddings = pmv.cluster.composition.one_hot_encode(
         sample_df["composition"]
     )
     # Project using PCA to get coordinates
@@ -1511,7 +1505,7 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     )
 
     # Check that the figure was created correctly
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
     assert len(fig.data) == 1
 
     # Extract the x,y coordinates from the figure
@@ -1520,12 +1514,11 @@ def test_precomputed_coordinates(sample_df: pd.DataFrame) -> None:
     # Verify the coordinates match what we provided
     assert np.allclose(fig_coords, precomputed_coords)
 
-    # Check metadata: when coordinates provided, only projector should be in metadata
-    assert isinstance(fig._pymatviz, dict)
-    assert "projector" in fig._pymatviz
-    assert fig._pymatviz["projector"] is None
+    # Check metadata: when coords provided, projector should be None and no embeddings
+    assert isinstance(fig, ClusterFigure)
+    assert fig.projector is None
     # Embeddings should not be calculated since coordinates were provided
-    assert "embeddings" not in fig._pymatviz
+    assert fig.embeddings is None
 
     # Test with invalid coordinates shape (wrong number of components)
     df_wrong_shape = sample_df.copy()
@@ -1556,9 +1549,7 @@ def test_coordinates_priority(
 ) -> None:
     """Test that provided coordinates take priority over embedding calculations."""
     # Create some embeddings and get projected coordinates using PCA using property_df
-    one_hot_embeddings = pmv.cluster.composition.embed.one_hot_encode(
-        df_prop["composition"]
-    )
+    one_hot_embeddings = pmv.cluster.composition.one_hot_encode(df_prop["composition"])
     pca = PCA(n_components=n_components, random_state=42)
     pca_coords = pca.fit_transform(one_hot_embeddings)
     assert pca_coords.shape == (len(df_prop), n_components)
@@ -1591,11 +1582,10 @@ def test_coordinates_priority(
     assert custom_coords_set == fig_coords_set
 
     # Check that metadata is correctly set
-    assert isinstance(fig._pymatviz, dict)
-    assert "projector" in fig._pymatviz
-    assert fig._pymatviz["projector"] is None
+    assert isinstance(fig, ClusterFigure)
+    assert fig.projector is None
     # Embeddings should not be calculated or attached since coordinates were provided
-    assert "embeddings" not in fig._pymatviz
+    assert fig.embeddings is None
 
 
 @pytest.mark.parametrize("categorical", [True, False])
@@ -1622,7 +1612,7 @@ def test_coordinates_with_categorical_property(
     )
 
     # Check that figure was created correctly
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
 
     # For categorical data, we should have one trace per category
     if categorical:
@@ -1646,7 +1636,7 @@ def test_coordinates_with_categorical_property(
         assert len(fig.data[0].x) == len(df_cat)
 
     # Verify embeddings are not calculated
-    assert "embeddings" not in fig._pymatviz
+    assert fig.embeddings is None
 
 
 def test_coordinates_with_show_chem_sys(
@@ -1723,12 +1713,13 @@ def test_precomputed_embeddings_in_composition_col() -> None:
     assert len(fig.data[0].x) == len(df_emb)
 
     # Verify metadata
-    assert "embeddings" in fig._pymatviz
-    assert fig._pymatviz["embeddings"].shape == embeddings.shape
+    assert fig.embeddings is not None
+    assert fig.embeddings.shape == embeddings.shape
 
     # Verify embeddings are the same, though possibly reordered
-    embeddings_set = {tuple(emb) for emb in embeddings}
-    fig_embeddings_set = {tuple(emb) for emb in fig._pymatviz["embeddings"]}
+    # Compare with tolerance to avoid float hashing pitfalls
+    embeddings_set = {tuple(np.round(emb, 12)) for emb in embeddings}
+    fig_embeddings_set = {tuple(np.round(emb, 12)) for emb in fig.embeddings}
     assert embeddings_set == fig_embeddings_set
 
 
@@ -1946,7 +1937,8 @@ def test_embeddings_from_column(df_with_embeddings: pd.DataFrame) -> None:
     assert len(fig.data[0].x) == len(df_with_embeddings)
 
     # Verify metadata
-    fig_embeddings = fig._pymatviz["embeddings"]
+    fig_embeddings = fig.embeddings
+    assert fig_embeddings is not None
     assert fig_embeddings.shape == embeddings.shape
     # Convert embeddings to a form we can compare (tuples for hashability)
     embeddings_set = {tuple(row) for row in embeddings}
@@ -1976,7 +1968,7 @@ def test_custom_projection_function(
         df_in=df_prop,
         prop_name="property",
         embedding_method="one-hot",
-        projection=tracking_wrapper,  # type: ignore[arg-type]
+        projection=tracking_wrapper,
     )
 
     # Check that the figure was created successfully
@@ -1987,10 +1979,12 @@ def test_custom_projection_function(
     assert original_func.called  # type: ignore[attr-defined]
 
     # Verify metadata
-    assert "projector" in fig._pymatviz
-    assert (
-        fig._pymatviz["projector"] is None
-    )  # Custom projectors store None  # type: ignore[attr-defined]
+    assert isinstance(fig, ClusterFigure)
+    # embeddings should still be available
+    assert isinstance(fig.embeddings, np.ndarray)
+    assert fig.embeddings.shape[0] == len(df_prop)
+    # Custom projectors store None
+    assert fig.projector is None
 
 
 def test_property_colorbar(df_prop: pd.DataFrame) -> None:
@@ -2111,7 +2105,7 @@ def test_coordinates_with_labels(
         assert fig_3d.layout.scene.zaxis.title.text == f"{component_label} 3"
 
         # Verify embeddings are not calculated when using column
-        assert "embeddings" not in fig_3d._pymatviz
+        assert fig_3d.embeddings is None
 
 
 @pytest.mark.parametrize(
@@ -2943,7 +2937,7 @@ def test_log_scale_with_negative_values(sample_df: pd.DataFrame) -> None:
     )
 
     # Verify the figure was created successfully
-    assert isinstance(fig, go.Figure)
+    assert isinstance(fig, ClusterFigure)
 
     # Verify we have a colorbar (should have fallen back to not using log scale)
     assert hasattr(fig.layout.coloraxis, "colorbar")

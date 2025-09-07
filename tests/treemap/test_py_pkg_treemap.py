@@ -441,6 +441,9 @@ def test_auto_base_url_metadata(
     mock_metadata.get_all.side_effect = lambda key, default=None: metadata_dict.get(
         key, default or []
     )
+    # Ensure membership and indexing mirror dict semantics
+    mock_metadata.__contains__.side_effect = metadata_dict.__contains__
+    mock_metadata.__getitem__.side_effect = metadata_dict.__getitem__
 
     monkeypatch.setattr("importlib.metadata.metadata", lambda _: mock_metadata)
 
@@ -455,7 +458,7 @@ def test_auto_base_url_metadata(
             url and "github.com/user/" in url and "/blob/main/" in url
             for url in file_urls
             if isinstance(url, str)
-        )
+        ), f"{file_urls=} did not contain a GitHub URL"
     elif custom_data is not None:
         assert not any(
             url and "github.com" in url
