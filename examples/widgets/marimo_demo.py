@@ -122,7 +122,7 @@ def _(Final, os, pmv):
     matterviz_traj_dir_url: Final = (
         "https://github.com/janosh/matterviz/raw/33aa595dc/src/site/trajectories"
     )
-    _file_name = "torch-sim-gold-cluster-55-atoms.h5"
+    _file_name = "flame-gold-cluster-55-atoms.h5"
     if not os.path.isfile(f"tmp/{_file_name}"):
         import urllib.request
 
@@ -161,7 +161,7 @@ def _(Final, pmv):
 @app.cell
 def _(githack_traj_dir_url, pmv):
     _torch_sim_widget = pmv.TrajectoryWidget(
-        data_url=f"{githack_traj_dir_url}/torch-sim-gold-cluster-55-atoms.h5",
+        data_url=f"{githack_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
         display_mode="structure+scatter",
         show_force_vectors=False,
         style="height: 600px;",

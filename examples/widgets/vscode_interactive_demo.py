@@ -99,11 +99,11 @@ phonopy_atoms = PhonopyAtoms(symbols=symbols, positions=positions, cell=lattice)
 display(phonopy_atoms)
 
 
-# %% Render local torch-sim HDF5 trajectory file
+# %% Render local flame HDF5 trajectory file
 matterviz_traj_dir_url: Final = (
     "https://github.com/janosh/matterviz/raw/33aa595dc/src/site/trajectories"
 )
-file_name = "torch-sim-gold-cluster-55-atoms.h5"
+file_name = "flame-gold-cluster-55-atoms.h5"
 
 if not os.path.isfile(f"tmp/{file_name}"):
     import urllib.request
@@ -140,9 +140,9 @@ ase_traj_widget = pmv.TrajectoryWidget(
 display(ase_traj_widget)
 
 
-# %% Render remote torch-sim HDF5 trajectory file
+# %% Render remote flame HDF5 trajectory file
 torch_sim_widget = pmv.TrajectoryWidget(
-    data_url=f"{githack_traj_dir_url}/torch-sim-gold-cluster-55-atoms.h5",
+    data_url=f"{githack_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
     display_mode="structure+scatter",
     show_force_vectors=False,
     style="height: 600px;",
