@@ -2,6 +2,7 @@
 
 # %%
 import os
+from urllib.error import HTTPError, URLError
 
 import numpy as np
 import pandas as pd
@@ -10,6 +11,9 @@ from matminer.datasets import load_dataset
 
 import pymatviz as pmv
 from pymatviz.enums import ElemCountMode, Key
+
+
+rng = np.random.default_rng(seed=0)
 
 
 # %%
@@ -81,9 +85,7 @@ fig.show()
 
 
 # %% ex 3: Fictional Data with Percent Mode and Custom Color Scale
-rand_data = {
-    elem: np.random.default_rng(seed=0).random() * 100 for elem in pmv.df_ptable.index
-}
+rand_data = {elem: rng.random() * 100 for elem in pmv.df_ptable.index}
 custom_colorscale = [
     (0, "rgb(0,0,255)"),
     (0.25, "rgb(0,255,255)"),
@@ -170,11 +172,16 @@ fig.show()
 
 
 # %%
-df_price = pd.read_html("https://wikipedia.org/wiki/Prices_of_chemical_elements")[0]
-df_price.columns = df_price.columns.droplevel(0)
-df_price = df_price.set_index("Symbol")
+try:
+    df_price = pd.read_html(
+        "https://en.wikipedia.org/wiki/Prices_of_chemical_elements"
+    )[0]
+    df_price.columns = df_price.columns.droplevel(0)
+    df_price = df_price.set_index("Symbol")
+    prices = pd.to_numeric(df_price["USD/kg"], errors="coerce")
+except (HTTPError, URLError):
+    prices = {elem: rng.lognormal(2, 1) * 1000 for elem in pmv.df_ptable.index}
 
-prices = pd.to_numeric(df_price["USD/kg"], errors="coerce")
 fig = pmv.ptable_heatmap_plotly(
     prices, log=True, colorbar=dict(title="Cost of element per kg")
 )
