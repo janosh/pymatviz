@@ -210,7 +210,10 @@ def density_scatter(
     color_vals = df_plot[bin_counts_col]
 
     if log_density is None:
-        log_density = np.log10(color_vals.max()) - np.log10(color_vals.min()) > 2
+        positive = color_vals[color_vals > 0]
+        log_density = positive.size > 0 and (
+            np.log10(positive.max()) - np.log10(positive.min()) > 2
+        )
 
     if log_density:
         color_vals = np.log10(color_vals + 1)
@@ -275,21 +278,21 @@ def _bin_and_calculate_density(
     # Handle empty dataframes
     if len(df) == 0:
         df_empty = df.copy()
-        df_empty[bin_counts_col] = []
+        df_empty[bin_counts_col] = pd.Series(dtype=float, index=df_empty.index)
         return df_empty
 
     if n_bins:
-        density_col = "bin_counts_kde" if density == "kde" else ""
+        density_col = "bin_counts_kde" if density == "kde" else None
         df_plot = bin_df_cols(
             df,
             bin_by_cols=[x, y],
             n_bins=n_bins,
             bin_counts_col=bin_counts_col,
-            density_col=density_col,
+            density_col=density_col or "",
         ).sort_values(bin_counts_col)
         # sort by counts so densest points are plotted last
 
-        if density_col in df_plot:
+        if density_col and density_col in df_plot:
             df_plot[bin_counts_col] = df_plot[density_col]
         elif density != "empirical":
             raise ValueError(f"Unknown {density=}")
@@ -498,7 +501,7 @@ def density_hexbin(
             size=marker_size,
             color=z_plot,
             colorscale="Viridis",
-            colorbar=dict(title="Density"),
+            colorbar=dict(title="Point<br>Density"),
             symbol="hexagon",
             line=dict(width=0),  # Remove marker borders to eliminate gaps
         ),

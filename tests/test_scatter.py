@@ -494,9 +494,43 @@ def test_density_scatter_stats_annotation_faceted() -> None:
     fig = pmv.density_scatter(
         df=DF_TIPS, x="total_bill", y="tip", facet_col="time", stats=True, n_bins=10
     )
+
+    # Verify faceting and stats annotations
+    assert "xaxis2" in fig.layout  # Multiple subplots
+    assert len(fig.data) >= 2  # Multiple data traces
+
     stats_annotations = [
         ann
         for ann in fig.layout.annotations
-        if any(metric in ann.text for metric in ("MAE", "RMSE", "R<sup>2</sup>"))
+        if any(metric in ann.text for metric in ("MAE", "R<sup>2</sup>"))
     ]
     assert len(stats_annotations) >= 1
+
+    # Verify annotation quality
+    for ann in stats_annotations:
+        assert 0 <= ann.x <= 1  # Positioned in plot area
+        assert 0 <= ann.y <= 1
+        assert isinstance(ann.text, str)
+        assert len(ann.text) > 0  # Proper formatting
+
+
+def test_density_scatter_zero_handling_log_density() -> None:
+    """Test log density auto-detection handles zeros without warnings."""
+    df_zero = pd.DataFrame({"x": [0, 1, 2], "y": [0, 1, 2]})
+    fig = pmv.density_scatter(df=df_zero, x="x", y="y", log_density=None, n_bins=3)
+    assert isinstance(fig, go.Figure)
+    assert fig.layout.coloraxis.colorbar.tickvals is None  # No log scaling
+
+
+def test_density_scatter_empty_dataframe_handling() -> None:
+    """Test empty DataFrames raise appropriate error."""
+    empty_df = pd.DataFrame({"x": [], "y": []})
+    with pytest.raises(ValueError, match="No valid traces with required data found"):
+        pmv.density_scatter(df=empty_df, x="x", y="y", n_bins=5)
+
+
+def test_density_scatter_density_column_handling() -> None:
+    """Test density column handling with None values."""
+    df = pd.DataFrame({"x": [1, 2, 3, 4], "y": [1.1, 2.2, 2.9, 4.1]})
+    fig = pmv.density_scatter(df=df, x="x", y="y", density="empirical", n_bins=3)
+    assert isinstance(fig, go.Figure)
