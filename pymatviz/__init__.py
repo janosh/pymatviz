@@ -67,7 +67,6 @@ from pymatviz.scatter import (
     density_hexbin,
     density_hexbin_with_hist,
     density_scatter,
-    density_scatter_plotly,
     density_scatter_with_hist,
 )
 from pymatviz.structure import structure_2d, structure_3d

@@ -332,16 +332,12 @@ See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
 See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
-|                  [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py#L149)                   | [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py#L149) [![fig-icon]](assets/scripts/scatter/density_scatter_plotly.py) |
-| :----------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                             ![density-scatter-plotly]                                              |                                                         ![density-scatter-plotly-blobs]                                                         |
-| [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py#L71) [![fig-icon]](assets/scripts/scatter/density_scatter.py) |          [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py#L570) [![fig-icon]](assets/scripts/scatter/density_scatter.py)          |
-|                                                 ![density-scatter]                                                 |                                                          ![density-scatter-with-hist]                                                           |
-| [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py#L493) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |           [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py#L587) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)           |
-|                                                 ![density-hexbin]                                                  |                                                           ![density-hexbin-with-hist]                                                           |
+| [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py#L106) [![fig-icon]](assets/scripts/scatter/density_scatter.py) | [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py#L530) [![fig-icon]](assets/scripts/scatter/density_scatter.py) |
+| :-----------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------: |
+|                                                 ![density-scatter]                                                  |                                                 ![density-scatter-with-hist]                                                  |
+|  [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py#L419) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |  [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py#L599) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |
+|                                                  ![density-hexbin]                                                  |                                                  ![density-hexbin-with-hist]                                                  |
 
-[density-scatter-plotly]: assets/svg/density-scatter-plotly.svg
-[density-scatter-plotly-blobs]: assets/svg/density-scatter-plotly-blobs.svg
 [density-hexbin-with-hist]: assets/svg/density-hexbin-with-hist.svg
 [density-hexbin]: assets/svg/density-hexbin.svg
 [density-scatter-with-hist]: assets/svg/density-scatter-with-hist.svg

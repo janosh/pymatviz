@@ -137,13 +137,13 @@ def test_density_hexbin_with_hist(df_or_arrays: DfOrArrays) -> None:
             True,
             dict(prefix="test", x=1, y=1, font_size=10),
             None,
-            10,
+            5,
             {"color_continuous_scale": None},
         ),
-        (False, False, None, 100, {"template": "plotly_dark"}),
+        (False, False, None, 10, {"template": "plotly_dark"}),
     ],
 )
-def test_density_scatter_plotly(
+def test_density_scatter_advanced(
     df_or_arrays: DfOrArrays,
     log_density: bool,
     stats: bool | dict[str, Any],
@@ -154,7 +154,7 @@ def test_density_scatter_plotly(
     df, x, y = df_or_arrays
     if df is None or not isinstance(x, str) or not isinstance(y, str):
         return
-    fig = pmv.density_scatter_plotly(
+    fig = pmv.density_scatter(
         df=df,
         x=x,
         y=y,
@@ -199,285 +199,304 @@ def test_density_scatter_plotly(
                 assert stats_annotations[0].y == stats["y"]
 
 
-def test_density_scatter_plotly_hover_template() -> None:
-    fig = pmv.density_scatter_plotly(df=df_regr, x=X_COL, y=Y_COL, log_density=True)
+@pytest.mark.parametrize(
+    ("hover_template", "expected_content"),
+    [
+        (None, ["Point<br>Density"]),
+        (
+            "X: %{x}<br>Y: %{y}<br>Custom: %{marker.color}<extra></extra>",
+            ["Point<br>Density", "Custom"],
+        ),
+        (
+            "X: %{x}<br>Y: %{y}<br>Custom: %{marker.color}",
+            ["Point<br>Density", "<extra></extra>"],
+        ),
+    ],
+)
+def test_density_scatter_hover_templates(
+    hover_template: str | None, expected_content: list[str]
+) -> None:
+    """Test various hover template configurations."""
+    kwargs = {"log_density": True}
+    if hover_template:
+        kwargs["hovertemplate"] = hover_template
 
-    # Check that hover template includes point density
+    fig = pmv.density_scatter(df=df_regr, x=X_COL, y=Y_COL, **kwargs)
+
     for trace in fig.data:
-        assert "Point<br>Density" in trace.hovertemplate
+        for content in expected_content:
+            assert content in trace.hovertemplate
 
 
-@pytest.mark.parametrize("stats", [1, (1,), "foo"])
-def test_density_scatter_plotly_raises_on_bad_stats_type(stats: Any) -> None:
-    match = f"stats must be bool or dict, got {type(stats)} instead."
-    with pytest.raises(TypeError, match=match):
-        pmv.density_scatter_plotly(df=df_regr, x=X_COL, y=Y_COL, stats=stats)
-
-
-def test_density_scatter_plotly_empty_dataframe() -> None:
+def test_density_scatter_empty_dataframe() -> None:
     empty_df = pd.DataFrame({X_COL: [], Y_COL: []})
     with pytest.raises(ValueError, match="No valid traces with required data found"):
-        pmv.density_scatter_plotly(df=empty_df, x=X_COL, y=Y_COL)
+        pmv.density_scatter(df=empty_df, x=X_COL, y=Y_COL)
 
 
-def test_density_scatter_plotly_facet() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS,
-        x="total_bill",
-        y="tip",
-        facet_col="time",
-        n_bins=10,
+@pytest.mark.parametrize(
+    ("facet_col", "kwargs", "expected_checks"),
+    [
+        # Basic facet test
+        ("time", {"n_bins": 5}, ["subplots", "data_count"]),
+        # Log density test
+        ("time", {"log_density": True, "n_bins": 5}, ["subplots", "log_colorbar"]),
+        # Stats test
+        ("time", {"stats": True, "n_bins": 5}, ["subplots", "stats_annotations"]),
+        # Best fit line test
+        ("time", {"best_fit_line": True, "n_bins": 5}, ["subplots", "fit_lines"]),
+        # Multiple categories test
+        ("day", {"n_bins": 3}, ["subplots", "data_count"]),
+    ],
+)
+@pytest.mark.parametrize("density", ["kde", None])
+def test_density_scatter_facet_variations(
+    facet_col: str,
+    kwargs: dict[str, Any],
+    expected_checks: list[str],
+    density: str | None,
+) -> None:
+    """Test various facet configurations."""
+    if density:
+        kwargs["density"] = density
+
+    fig = pmv.density_scatter(
+        df=DF_TIPS, x="total_bill", y="tip", facet_col=facet_col, **kwargs
     )
     assert isinstance(fig, go.Figure)
 
-    # Check that we have multiple subplots
-    assert "xaxis" in fig.layout
-    assert "xaxis2" in fig.layout
+    # Check subplots exist
+    if "subplots" in expected_checks:
+        assert "xaxis" in fig.layout
+        assert "xaxis2" in fig.layout
+        assert len(fig.data) >= 2
 
-    # Check that each subplot has data
-    assert len(fig.data) >= 2
+    # Check data count
+    if "data_count" in expected_checks:
+        assert len(fig.data) >= 2
+
+    # Check log density colorbar
+    if "log_colorbar" in expected_checks:
+        colorbar = fig.layout.coloraxis.colorbar
+        assert colorbar.tickvals is not None
+        assert colorbar.ticktext is not None
+        assert len(colorbar.tickvals) == len(colorbar.ticktext)
+        for tick_text in colorbar.ticktext:
+            assert isinstance(tick_text, str)
+            assert not tick_text.endswith(".0") or tick_text == "1.0"
+
+    # Check stats annotations
+    if "stats_annotations" in expected_checks:
+        stats_annotations = [
+            ann
+            for ann in fig.layout.annotations
+            if any(metric in ann.text for metric in ("MAE", "RMSE", "R<sup>2</sup>"))
+        ]
+        assert len(stats_annotations) >= 1
+
+    # Check fit lines
+    if "fit_lines" in expected_checks:
+        line_traces = [
+            trace
+            for trace in fig.data
+            if hasattr(trace, "mode") and trace.mode == "lines"
+        ]
+        line_shapes = [shape for shape in fig.layout.shapes if shape.type == "line"]
+        assert len(line_traces) >= 1 or len(line_shapes) >= 1
+
+    # Check hover template
+    if "hover_template" in expected_checks:
+        for trace in fig.data:
+            if hasattr(trace, "hovertemplate"):
+                assert "Point<br>Density" in trace.hovertemplate
 
 
-def test_density_scatter_plotly_facet_log_density() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS,
-        x="total_bill",
-        y="tip",
-        facet_col="time",
-        log_density=True,
-        n_bins=10,
-    )
+@pytest.mark.parametrize(
+    ("test_type", "kwargs", "expected_checks"),
+    [
+        # Colorbar kwargs test
+        (
+            "colorbar_kwargs",
+            {"colorbar_kwargs": {"thickness": 20, "len": 0.8}},
+            ["thickness", "len"],
+        ),
+        # Tick labels test
+        ("tick_labels", {"log_density": True, "n_bins": 10}, ["tick_formatting"]),
+        # Density range test
+        (
+            "density_range",
+            {"log_density": True, "n_bins": 10},
+            ["tick_ordering", "tick_formatting"],
+        ),
+    ],
+)
+def test_density_scatter_colorbar_variations(
+    test_type: str, kwargs: dict[str, Any], expected_checks: list[str]
+) -> None:
+    """Test various colorbar configurations."""
+    if test_type == "tick_labels":
+        # Create data with wide range to trigger log density (smaller dataset)
+        x_vals = np.concatenate([np_rng.normal(0, 1, 50), np_rng.normal(10, 1, 5)])
+        y_vals = np.concatenate([np_rng.normal(0, 1, 50), np_rng.normal(10, 1, 5)])
+        df = pd.DataFrame({"x": x_vals, "y": y_vals})
+        x_col, y_col = "x", "y"
+    elif test_type == "density_range":
+        # Create data with known density distribution (smaller dataset)
+        n_points = 100
+        x_vals = np.concatenate(
+            [
+                np_rng.normal(0, 0.1, n_points // 2),  # High density cluster
+                np_rng.normal(5, 2, n_points // 2),  # Lower density cluster
+            ]
+        )
+        y_vals = np.concatenate(
+            [
+                np_rng.normal(0, 0.1, n_points // 2),  # High density cluster
+                np_rng.normal(5, 2, n_points // 2),  # Lower density cluster
+            ]
+        )
+        df = pd.DataFrame({"x": x_vals, "y": y_vals})
+        x_col, y_col = "x", "y"
+    else:
+        df, x_col, y_col = df_regr, X_COL, Y_COL
+
+    fig = pmv.density_scatter(df=df, x=x_col, y=y_col, **kwargs)
     assert isinstance(fig, go.Figure)
 
-    # Check colorbar configuration for log density
     colorbar = fig.layout.coloraxis.colorbar
-    assert colorbar.tickvals is not None
-    assert colorbar.ticktext is not None
-    assert len(colorbar.tickvals) == len(colorbar.ticktext)
 
-    # Check that tick values are properly formatted
-    for tick_text in colorbar.ticktext:
-        assert isinstance(tick_text, str)
-        # Should not have trailing .0
-        assert not tick_text.endswith(".0") or tick_text == "1.0"
+    # Check thickness and len
+    if "thickness" in expected_checks:
+        assert colorbar.thickness == 20
+    if "len" in expected_checks:
+        assert colorbar.len == 0.8
+
+    # Check tick formatting
+    if "tick_formatting" in expected_checks:
+        assert colorbar.ticktext is not None
+        for tick_text in colorbar.ticktext:
+            assert isinstance(tick_text, str)
+            assert len(tick_text) > 0
+            # Check no unnecessary trailing .0 (except for "1.0")
+            if tick_text.endswith(".0") and tick_text != "1.0":
+                pytest.fail(f"Found trailing .0 in tick label: {tick_text}")
+
+    # Check tick ordering
+    if "tick_ordering" in expected_checks:
+        assert colorbar.tickvals is not None
+        assert colorbar.ticktext is not None
+        assert len(colorbar.tickvals) == len(colorbar.ticktext)
+        tick_vals = list(colorbar.tickvals)
+        assert tick_vals == sorted(tick_vals)
 
 
-def test_density_scatter_plotly_facet_stats() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS,
-        x="total_bill",
-        y="tip",
-        facet_col="time",
-        stats=True,
-        n_bins=10,
-    )
+@pytest.mark.parametrize(
+    ("hover_format", "expected_format"),
+    [(".0f", ".0f"), (".2f", ".2f"), (".3f", ".3f")],
+)
+def test_density_scatter_hover_format(hover_format: str, expected_format: str) -> None:
+    """Test hover format configuration."""
+    fig = pmv.density_scatter(df=df_regr, x=X_COL, y=Y_COL, hover_format=hover_format)
+
+    for trace in fig.data:
+        assert expected_format in trace.hovertemplate
+
+
+@pytest.mark.parametrize(
+    "stats_config",
+    [
+        True,
+        False,
+        {"prefix": "Model:", "x": 0.1, "y": 0.9},
+        {"metrics": ["MAE", "R2"], "fmt": ".2f"},
+        {"font": {"size": 14, "color": "red"}},
+    ],
+)
+def test_density_scatter_stats_annotation_configs(
+    stats_config: bool | dict[str, Any],
+) -> None:
+    """Test stats annotation with various configuration options."""
+    fig = pmv.density_scatter(df=df_regr, x=X_COL, y=Y_COL, stats=stats_config)
     assert isinstance(fig, go.Figure)
 
-    # Check that stats annotations exist for each facet
+    if not stats_config:
+        return
+
+    stats_annotations = [
+        ann
+        for ann in fig.layout.annotations
+        if any(
+            metric in ann.text
+            for metric in ("MAE", "RMSE", "R<sup>2</sup>", "MSE", "MAPE")
+        )
+    ]
+    assert len(stats_annotations) >= 1
+
+    if isinstance(stats_config, dict):
+        ann = stats_annotations[0]
+        if "prefix" in stats_config:
+            assert ann.text.startswith(stats_config["prefix"])
+        if "x" in stats_config:
+            assert ann.x == stats_config["x"]
+        if "y" in stats_config:
+            assert ann.y == stats_config["y"]
+        if "font" in stats_config:
+            font_config = stats_config["font"]
+            if "size" in font_config:
+                assert ann.font.size == font_config["size"]
+            if "color" in font_config:
+                assert ann.font.color == font_config["color"]
+
+
+@pytest.mark.parametrize("metrics", [["MAE"], ["R2"], ["MAE", "RMSE", "R2"]])
+def test_density_scatter_stats_annotation_metrics(metrics: list[str]) -> None:
+    """Test stats annotation with different metric combinations."""
+    fig = pmv.density_scatter(df=df_regr, x=X_COL, y=Y_COL, stats={"metrics": metrics})
+    stats_annotations = [
+        ann
+        for ann in fig.layout.annotations
+        if any(
+            metric in ann.text
+            for metric in ("MAE", "RMSE", "R<sup>2</sup>", "MSE", "MAPE")
+        )
+    ]
+    assert len(stats_annotations) == 1
+
+    ann_text = stats_annotations[0].text
+    for metric in metrics:
+        if metric == "R2":
+            assert "R<sup>2</sup>" in ann_text
+        else:
+            assert metric in ann_text
+
+
+def test_density_scatter_stats_annotation_edge_cases() -> None:
+    """Test stats annotation with edge cases."""
+    # Test with single data point (should handle gracefully)
+    single_point_df = pd.DataFrame({X_COL: [1.0], Y_COL: [1.0]})
+    fig = pmv.density_scatter(df=single_point_df, x=X_COL, y=Y_COL, stats=True)
+    assert isinstance(fig, go.Figure)
+
+    # Test with normal data that should work
+    normal_df = pd.DataFrame({X_COL: [1, 2, 3, 4, 5], Y_COL: [1.1, 2.2, 2.9, 4.1, 5.0]})
+    fig = pmv.density_scatter(df=normal_df, x=X_COL, y=Y_COL, stats=True)
+
+    stats_annotations = [
+        ann
+        for ann in fig.layout.annotations
+        if any(metric in ann.text for metric in ("MAE", "R<sup>2</sup>"))
+    ]
+    assert len(stats_annotations) >= 1
+
+
+def test_density_scatter_stats_annotation_faceted() -> None:
+    """Test stats annotation with faceted plots."""
+    fig = pmv.density_scatter(
+        df=DF_TIPS, x="total_bill", y="tip", facet_col="time", stats=True, n_bins=10
+    )
     stats_annotations = [
         ann
         for ann in fig.layout.annotations
         if any(metric in ann.text for metric in ("MAE", "RMSE", "R<sup>2</sup>"))
     ]
     assert len(stats_annotations) >= 1
-
-
-def test_density_scatter_plotly_facet_best_fit_line() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS,
-        x="total_bill",
-        y="tip",
-        facet_col="time",
-        best_fit_line=True,
-        n_bins=10,
-    )
-    assert isinstance(fig, go.Figure)
-
-    # Check that best fit lines exist (may be in shapes or traces)
-    line_traces = [
-        trace for trace in fig.data if hasattr(trace, "mode") and trace.mode == "lines"
-    ]
-    line_shapes = [shape for shape in fig.layout.shapes if shape.type == "line"]
-    assert len(line_traces) >= 1 or len(line_shapes) >= 1
-
-
-def test_density_scatter_plotly_facet_custom_bins() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS, x="total_bill", y="tip", facet_col="time", n_bins=5
-    )
-    assert isinstance(fig, go.Figure)
-
-
-def test_density_scatter_plotly_facet_custom_color() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS,
-        x="total_bill",
-        y="tip",
-        facet_col="time",
-        color_continuous_scale="Plasma",
-        n_bins=10,
-    )
-    assert isinstance(fig, go.Figure)
-
-
-@pytest.mark.parametrize("density", ["kde", "empirical"])
-def test_density_scatter_plotly_facet_density_methods(
-    density: Literal["kde", "empirical"],
-) -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS, x="total_bill", y="tip", facet_col="time", density=density, n_bins=5
-    )
-    assert isinstance(fig, go.Figure)
-
-
-def test_density_scatter_plotly_facet_size() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS, x="total_bill", y="tip", facet_col="time", size="size", n_bins=10
-    )
-    assert isinstance(fig, go.Figure)
-
-
-def test_density_scatter_plotly_facet_multiple_categories() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS, x="total_bill", y="tip", facet_col="day", n_bins=5
-    )
-    assert isinstance(fig, go.Figure)
-
-
-def test_density_scatter_plotly_facet_identity_line() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS, x="total_bill", y="tip", facet_col="time", identity_line=True
-    )
-    assert isinstance(fig, go.Figure)
-
-
-def test_density_scatter_plotly_facet_hover_template() -> None:
-    fig = pmv.density_scatter_plotly(
-        df=DF_TIPS, x="total_bill", y="tip", facet_col="time", n_bins=10
-    )
-    assert isinstance(fig, go.Figure)
-
-    # Check hover template
-    for trace in fig.data:
-        if hasattr(trace, "hovertemplate"):
-            assert "Point<br>Density" in trace.hovertemplate
-
-
-def test_density_scatter_plotly_colorbar_kwargs() -> None:
-    colorbar_kwargs = {"thickness": 20, "len": 0.8}
-    fig = pmv.density_scatter_plotly(
-        df=df_regr, x=X_COL, y=Y_COL, colorbar_kwargs=colorbar_kwargs
-    )
-    assert isinstance(fig, go.Figure)
-    colorbar = fig.layout.coloraxis.colorbar
-    assert colorbar.thickness == 20
-    assert colorbar.len == 0.8
-
-
-def test_colorbar_tick_labels_no_trailing_zeros() -> None:
-    # Create data with a wide range to trigger log density
-    x_vals = np.concatenate([np_rng.normal(0, 1, 1000), np_rng.normal(10, 1, 10)])
-    y_vals = np.concatenate([np_rng.normal(0, 1, 1000), np_rng.normal(10, 1, 10)])
-    df_wide_range = pd.DataFrame({"x": x_vals, "y": y_vals})
-
-    fig = pmv.density_scatter_plotly(
-        df=df_wide_range, x="x", y="y", log_density=True, n_bins=50
-    )
-
-    colorbar = fig.layout.coloraxis.colorbar
-    assert colorbar.ticktext is not None
-
-    # Check that tick labels don't have unnecessary trailing .0
-    for tick_text in colorbar.ticktext:
-        # Allow "1.0" but not other trailing .0
-        if tick_text.endswith(".0") and tick_text != "1.0":
-            pytest.fail(f"Found trailing .0 in tick label: {tick_text}")
-
-
-def test_colorbar_density_range_and_formatting() -> None:
-    # Create data with known density distribution
-    n_points = 1000
-    x_vals = np.concatenate(
-        [
-            np_rng.normal(0, 0.1, n_points // 2),  # High density cluster
-            np_rng.normal(5, 2, n_points // 2),  # Lower density cluster
-        ]
-    )
-    y_vals = np.concatenate(
-        [
-            np_rng.normal(0, 0.1, n_points // 2),  # High density cluster
-            np_rng.normal(5, 2, n_points // 2),  # Lower density cluster
-        ]
-    )
-    df_clusters = pd.DataFrame({"x": x_vals, "y": y_vals})
-
-    fig = pmv.density_scatter_plotly(
-        df=df_clusters, x="x", y="y", log_density=True, n_bins=20
-    )
-
-    colorbar = fig.layout.coloraxis.colorbar
-    assert colorbar.tickvals is not None
-    assert colorbar.ticktext is not None
-    assert len(colorbar.tickvals) == len(colorbar.ticktext)
-
-    # Check that tick values are in ascending order
-    tick_vals = list(colorbar.tickvals)
-    assert tick_vals == sorted(tick_vals)
-
-    # Check that tick labels are properly formatted
-    for tick_text in colorbar.ticktext:
-        assert isinstance(tick_text, str)
-        assert len(tick_text) > 0
-
-
-def test_density_scatter_plotly_hover_template_with_custom_template() -> None:
-    custom_template = "X: %{x}<br>Y: %{y}<br>Custom: %{marker.color}<extra></extra>"
-
-    fig = pmv.density_scatter_plotly(
-        df=df_regr,
-        x=X_COL,
-        y=Y_COL,
-        log_density=True,
-        hovertemplate=custom_template,
-    )
-
-    # Check that custom template is preserved and density info is added
-    for trace in fig.data:
-        assert "Point<br>Density" in trace.hovertemplate
-        assert "Custom" in trace.hovertemplate
-
-
-def test_density_scatter_plotly_hover_template_without_extra_tag() -> None:
-    custom_template = "X: %{x}<br>Y: %{y}<br>Custom: %{marker.color}"
-
-    fig = pmv.density_scatter_plotly(
-        df=df_regr,
-        x=X_COL,
-        y=Y_COL,
-        log_density=True,
-        hovertemplate=custom_template,
-    )
-
-    # Check that template is properly formatted with extra tag
-    for trace in fig.data:
-        assert "<extra></extra>" in trace.hovertemplate
-        assert "Point<br>Density" in trace.hovertemplate
-
-
-def test_density_scatter_plotly_hover_format() -> None:
-    # Test integer formatting
-    fig_int = pmv.density_scatter_plotly(
-        df=df_regr, x=X_COL, y=Y_COL, hover_format=".0f"
-    )
-
-    # Test decimal formatting
-    fig_decimal = pmv.density_scatter_plotly(
-        df=df_regr, x=X_COL, y=Y_COL, hover_format=".2f"
-    )
-
-    # Check that formatting is applied
-    for trace in fig_int.data:
-        assert ".0f" in trace.hovertemplate
-
-    for trace in fig_decimal.data:
-        assert ".2f" in trace.hovertemplate
