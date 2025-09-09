@@ -114,12 +114,12 @@ if not os.path.isfile(f"tmp/{file_name}"):
         f"{matterviz_traj_dir_url}/{file_name}", f"tmp/{file_name}"
     )
 
-torch_sim_widget = pmv.TrajectoryWidget(
+traj_widget = pmv.TrajectoryWidget(
     data_url=f"{os.path.dirname(__file__)}/tmp/{file_name}",
     display_mode="structure+scatter",
     show_force_vectors=False,
 )
-display(torch_sim_widget)
+display(traj_widget)
 
 
 # %% Render remote ASE trajectory file
@@ -141,14 +141,13 @@ display(ase_traj_widget)
 
 
 # %% Render remote flame HDF5 trajectory file
-torch_sim_widget = pmv.TrajectoryWidget(
+gold_cluster_traj = pmv.TrajectoryWidget(
     data_url=f"{githack_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
     display_mode="structure+scatter",
     show_force_vectors=False,
     style="height: 600px;",
 )
-
-display(torch_sim_widget)
+display(gold_cluster_traj)
 
 
 # %% Test Composition Widget

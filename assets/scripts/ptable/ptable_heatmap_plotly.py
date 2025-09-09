@@ -2,6 +2,7 @@
 
 # %%
 import os
+import urllib.error
 
 import numpy as np
 import pandas as pd
@@ -170,11 +171,19 @@ fig.show()
 
 
 # %%
-df_price = pd.read_html("https://wikipedia.org/wiki/Prices_of_chemical_elements")[0]
-df_price.columns = df_price.columns.droplevel(0)
-df_price = df_price.set_index("Symbol")
+try:
+    df_price = pd.read_html(
+        "https://en.wikipedia.org/wiki/Prices_of_chemical_elements"
+    )[0]
+    df_price.columns = df_price.columns.droplevel(0)
+    df_price = df_price.set_index("Symbol")
+    prices = pd.to_numeric(df_price["USD/kg"], errors="coerce")
+except urllib.error.HTTPError:
+    prices = {
+        elem: np.random.default_rng(seed=42).lognormal(2, 1) * 1000
+        for elem in pmv.df_ptable.index
+    }
 
-prices = pd.to_numeric(df_price["USD/kg"], errors="coerce")
 fig = pmv.ptable_heatmap_plotly(
     prices, log=True, colorbar=dict(title="Cost of element per kg")
 )

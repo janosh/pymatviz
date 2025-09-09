@@ -189,8 +189,7 @@ def density_scatter(
 
     density = density or ("empirical" if n_bins else "kde")
 
-    if facet_col:
-        # Group the dataframe based on the facet column
+    if facet_col:  # Group the dataframe based on the facet column
         grouped = df_data.groupby(facet_col)
         binned_dfs = []
 
@@ -255,8 +254,8 @@ def density_scatter(
 
     pmv.powerups.enhance_parity_plot(
         fig,
-        xs=df_plot[x],
-        ys=df_plot[y],
+        xs=df_data[x],
+        ys=df_data[y],
         identity_line=identity_line,
         best_fit_line=best_fit_line,
         stats=stats,

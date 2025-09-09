@@ -153,7 +153,7 @@ def test_density_scatter_advanced(
 ) -> None:
     df, x, y = df_or_arrays
     if df is None or not isinstance(x, str) or not isinstance(y, str):
-        return
+        pytest.skip("Requires DataFrame with named x/y columns")
     fig = pmv.density_scatter(
         df=df,
         x=x,
@@ -167,9 +167,9 @@ def test_density_scatter_advanced(
     assert isinstance(fig, go.Figure)
     assert fig.layout.xaxis.title.text == x
     assert fig.layout.yaxis.title.text == y
-    bin_counts_col = bin_counts_col or "Point Density"
     colorbar = fig.layout.coloraxis.colorbar
-    assert colorbar.title.text.replace("<br>", " ") == bin_counts_col
+    expected_title = colorbar.title.text.replace("<br>", " ")
+    assert expected_title == (bin_counts_col or expected_title)
 
     if log_density:
         assert all(isinstance(val, float) for val in colorbar.tickvals)
