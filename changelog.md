@@ -94,7 +94,7 @@
 - add treemap.py with new chem_sys_treemap plot function [`#265`](https://github.com/janosh/pymatviz/pull/265)
 - add chem_sys_sunburst() to pymatviz/sunburst.py to visualize chemical system distributions [`#264`](https://github.com/janosh/pymatviz/pull/264)
 - test metallic glass feature engineering and model evaluation [`f0c5174`](https://github.com/janosh/pymatviz/commit/f0c517419cfb6bd9fafc8d09387474b119cb875e)
-- better colorbar tick formatting and spacing in density_scatter_plotly [`d1d51b4`](https://github.com/janosh/pymatviz/commit/d1d51b47eeba7a3cc200d27f5b363447807ea720)
+- better colorbar tick formatting and spacing in density_scatter [`d1d51b4`](https://github.com/janosh/pymatviz/commit/d1d51b47eeba7a3cc200d27f5b363447807ea720)
 - RDF plotting hide legend for single structure [`dc8a1a2`](https://github.com/janosh/pymatviz/commit/dc8a1a2d53050a374eb819706d9864f409585960)
 - fix confusion_matrix() mismatch of false-positive/negative counts and heatmap color [`ae5b629`](https://github.com/janosh/pymatviz/commit/ae5b629b74d0273d01a1851cec86f5ef1e0641e3)
 - `contrast_ratio()` in `pymatviz/utils/plotting.py` to calculate color contrast according to WCAG 2.0 [`b7c30cf`](https://github.com/janosh/pymatviz/commit/b7c30cf4699f97c6b67c6e6a01e86c0cccd8286c)
@@ -228,7 +228,7 @@
 
 - Self-import refactor [`#194`](https://github.com/janosh/pymatviz/pull/194)
 - Fix `svgo` workflow for ptable scatter plots [`#187`](https://github.com/janosh/pymatviz/pull/187)
-- `density_scatter_plotly` add kwarg `facet_col: str | None = None` [`#193`](https://github.com/janosh/pymatviz/pull/193)
+- `density_scatter` add kwarg `facet_col: str | None = None` [`#193`](https://github.com/janosh/pymatviz/pull/193)
 - `bin_df_cols` leave input df unchanged [`#192`](https://github.com/janosh/pymatviz/pull/192)
 - Re-export all submodules/subpackages from `pymatviz.__init__.py` [`#191`](https://github.com/janosh/pymatviz/pull/191)
 - fix missing jinja2 dep at import time [`fb6c9df`](https://github.com/janosh/pymatviz/commit/fb6c9df42e4d40cccca305ca406f8a9975a27a78)
@@ -237,7 +237,7 @@
 
 > 31 July 2024
 
-- `density_scatter_plotly` QoL tweaks [`#190`](https://github.com/janosh/pymatviz/pull/190)
+- `density_scatter` QoL tweaks [`#190`](https://github.com/janosh/pymatviz/pull/190)
 - Breaking: drop `plot_` prefix from multiple functions [`#189`](https://github.com/janosh/pymatviz/pull/189)
 - Add protostructure terminology to enum [`#185`](https://github.com/janosh/pymatviz/pull/185)
 - Update the function names for wren utils given breaking changes in Aviary [`#182`](https://github.com/janosh/pymatviz/pull/182)
@@ -252,7 +252,7 @@
 - Better default `ptable_heatmap_plotly` tooltips [`#178`](https://github.com/janosh/pymatviz/pull/178)
 - remove skip tag for tests [`#177`](https://github.com/janosh/pymatviz/pull/177)
 - Moving enums may have broken end users pickle's, reduce to str when pickling to be more backwards compatible going forward. [`#176`](https://github.com/janosh/pymatviz/pull/176)
-- Better `density_scatter_plotly` [`#175`](https://github.com/janosh/pymatviz/pull/175)
+- Better `density_scatter` [`#175`](https://github.com/janosh/pymatviz/pull/175)
 - new ML model, metrics and computational details related enum keys [`b6cdca3`](https://github.com/janosh/pymatviz/commit/b6cdca34a3643aa9dc04070bb92470bb20e7ad3e)
 
 ## [v0.9.2](https://github.com/janosh/pymatviz/compare/v0.9.1...v0.9.2)
@@ -261,7 +261,7 @@
 
 - Fix `ptable_heatmap_plotly` for `log=True` [`#174`](https://github.com/janosh/pymatviz/pull/174)
 - Fix missing keys `Te` + `Nd` in `ELEM_COLORS_VESTA` and support it in `plot_structure_2d` [`#173`](https://github.com/janosh/pymatviz/pull/173)
-- Fix `log_density` in `density_scatter_plotly` [`#172`](https://github.com/janosh/pymatviz/pull/172)
+- Fix `log_density` in `density_scatter` [`#172`](https://github.com/janosh/pymatviz/pull/172)
 
 ## [v0.9.1](https://github.com/janosh/pymatviz/compare/v0.9.0...v0.9.1)
 
@@ -272,7 +272,7 @@
 - Fix and test `ptable_heatmap` text color logic [`#169`](https://github.com/janosh/pymatviz/pull/169)
 - `plot_xrd_pattern` accept `DiffractionPattern | Structure` as input [`#168`](https://github.com/janosh/pymatviz/pull/168)
 - Add `plot_xrd_pattern()` for creating interactive XRD patterns with plotly [`#167`](https://github.com/janosh/pymatviz/pull/167)
-- Fix `density_scatter_plotly` metric annotation [`#166`](https://github.com/janosh/pymatviz/pull/166)
+- Fix `density_scatter` metric annotation [`#166`](https://github.com/janosh/pymatviz/pull/166)
 - Add `toggle_log_linear_y_axis` powerup [`#165`](https://github.com/janosh/pymatviz/pull/165)
 - Fix bad NPY002 migration [`#163`](https://github.com/janosh/pymatviz/pull/163)
 - refactor to explicit ax passing instead of relying on plt.gca() in example scripts [`7912ec0`](https://github.com/janosh/pymatviz/commit/7912ec004cf2201a372cec896998448beac594ba)
@@ -283,12 +283,12 @@
 > 21 June 2024
 
 - Fix `ruff` `NPY002` [`#162`](https://github.com/janosh/pymatviz/pull/162)
-- `density_scatter_plotly()` [`#161`](https://github.com/janosh/pymatviz/pull/161)
+- `density_scatter()` [`#161`](https://github.com/janosh/pymatviz/pull/161)
 - Add `pymatviz.histogram.plot_histogram` [`#159`](https://github.com/janosh/pymatviz/pull/159)
 - Fix `ptable_heatmap_ratio` legend [`#158`](https://github.com/janosh/pymatviz/pull/158)
 - `ptable_scatters` allow 3rd data dimension for colormap [`#155`](https://github.com/janosh/pymatviz/pull/155)
 - Support passing sequence of structures to `plot_structure_2d()` to be plotted in grid [`#156`](https://github.com/janosh/pymatviz/pull/156)
-- `density_scatter_plotly()` (#161) [`#160`](https://github.com/janosh/pymatviz/issues/160)
+- `density_scatter()` (#161) [`#160`](https://github.com/janosh/pymatviz/issues/160)
 - when passed a series, plot_histogram now use series name as x-axis title [`e9697fc`](https://github.com/janosh/pymatviz/commit/e9697fcbca24c6b10d11069ac6a969b5d9507fe1)
 - import std lib StrEnum from enum if sys.version_info &gt;= (3, 11) [`510452a`](https://github.com/janosh/pymatviz/commit/510452aeb9a57e33283a8bedd530ddf77a6fe4ce)
 - add plot_structure_2d() keyword subplot_title: Callable[[Structure, str | int], str] | None = None [`523101b`](https://github.com/janosh/pymatviz/commit/523101bc6af2e0b9168a1775cd9c95dd09c3ec4b)

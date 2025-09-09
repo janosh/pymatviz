@@ -99,11 +99,11 @@ phonopy_atoms = PhonopyAtoms(symbols=symbols, positions=positions, cell=lattice)
 display(phonopy_atoms)
 
 
-# %% Render local torch-sim HDF5 trajectory file
+# %% Render local flame HDF5 trajectory file
 matterviz_traj_dir_url: Final = (
-    "https://github.com/janosh/matterviz/raw/33aa595dc/src/site/trajectories"
+    "https://github.com/janosh/matterviz/raw/36c265e125/src/site/trajectories"
 )
-file_name = "torch-sim-gold-cluster-55-atoms.h5"
+file_name = "flame-gold-cluster-55-atoms.h5"
 
 if not os.path.isfile(f"tmp/{file_name}"):
     import urllib.request
@@ -114,17 +114,17 @@ if not os.path.isfile(f"tmp/{file_name}"):
         f"{matterviz_traj_dir_url}/{file_name}", f"tmp/{file_name}"
     )
 
-torch_sim_widget = pmv.TrajectoryWidget(
+traj_widget = pmv.TrajectoryWidget(
     data_url=f"{os.path.dirname(__file__)}/tmp/{file_name}",
     display_mode="structure+scatter",
     show_force_vectors=False,
 )
-display(torch_sim_widget)
+display(traj_widget)
 
 
 # %% Render remote ASE trajectory file
 githack_traj_dir_url: Final = (
-    "https://raw.githack.com/janosh/matterviz/33aa595dc/src/site/trajectories"
+    "https://raw.githack.com/janosh/matterviz/36c265e125/src/site/trajectories"
 )
 file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
 ase_traj_widget = pmv.TrajectoryWidget(
@@ -140,15 +140,14 @@ ase_traj_widget = pmv.TrajectoryWidget(
 display(ase_traj_widget)
 
 
-# %% Render remote torch-sim HDF5 trajectory file
-torch_sim_widget = pmv.TrajectoryWidget(
-    data_url=f"{githack_traj_dir_url}/torch-sim-gold-cluster-55-atoms.h5",
+# %% Render remote flame HDF5 trajectory file
+gold_cluster_traj = pmv.TrajectoryWidget(
+    data_url=f"{githack_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
     display_mode="structure+scatter",
     show_force_vectors=False,
     style="height: 600px;",
 )
-
-display(torch_sim_widget)
+display(gold_cluster_traj)
 
 
 # %% Test Composition Widget

@@ -269,7 +269,7 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
 |           [`chem_env_treemap(structures)`](pymatviz/treemap/chem_env.py#L36) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_cells_cn=3, max_cells_ce=4)`](pymatviz/treemap/chem_env.py#L36)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
-|              [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |         [`py_pkg_treemap(["pymatviz", "torch_sim", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L36)          |
+|              [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L36)            |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
 |   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)    | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L36)  |
 |                                                       ![py-pkg-treemap-pymatviz-coverage]                                                        |                                    ![py-pkg-treemap-pymatgen-coverage]                                     |
@@ -332,16 +332,12 @@ See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
 See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
-|                  [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py#L149)                   | [`density_scatter_plotly(df, x=x_col, y=y_col, ...)`](pymatviz/scatter.py#L149) [![fig-icon]](assets/scripts/scatter/density_scatter_plotly.py) |
-| :----------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                             ![density-scatter-plotly]                                              |                                                         ![density-scatter-plotly-blobs]                                                         |
-| [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py#L71) [![fig-icon]](assets/scripts/scatter/density_scatter.py) |          [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py#L570) [![fig-icon]](assets/scripts/scatter/density_scatter.py)          |
-|                                                 ![density-scatter]                                                 |                                                          ![density-scatter-with-hist]                                                           |
-| [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py#L493) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |           [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py#L587) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)           |
-|                                                 ![density-hexbin]                                                  |                                                           ![density-hexbin-with-hist]                                                           |
+| [`density_scatter(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_scatter.py) | [`density_scatter_with_hist(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_scatter.py) |
+| :------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------: |
+|                                               ![density-scatter]                                               |                                               ![density-scatter-with-hist]                                               |
+|  [`density_hexbin(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |  [`density_hexbin_with_hist(xs, ys, ...)`](pymatviz/scatter.py) [![fig-icon]](assets/scripts/scatter/density_hexbin.py)  |
+|                                               ![density-hexbin]                                                |                                               ![density-hexbin-with-hist]                                                |
 
-[density-scatter-plotly]: assets/svg/density-scatter-plotly.svg
-[density-scatter-plotly-blobs]: assets/svg/density-scatter-plotly-blobs.svg
 [density-hexbin-with-hist]: assets/svg/density-hexbin-with-hist.svg
 [density-hexbin]: assets/svg/density-hexbin.svg
 [density-scatter-with-hist]: assets/svg/density-scatter-with-hist.svg

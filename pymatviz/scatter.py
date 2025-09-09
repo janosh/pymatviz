@@ -119,6 +119,7 @@ def density_scatter(
     stats: bool | dict[str, Any] = True,
     colorbar_kwargs: dict[str, Any] | None = None,
     hover_format: str = ".3f",
+    facet_col: str | None = None,
     **kwargs: Any,
 ) -> go.Figure:
     """Scatter plot colored by density using Plotly.
@@ -150,6 +151,9 @@ def density_scatter(
             and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
         colorbar_kwargs (dict, optional): Passed to fig.layout.coloraxis.colorbar.
         hover_format (str, optional): Format specifier for the point density values.
+        facet_col (str | None, optional): Column name to use for creating faceted
+            subplots. If provided, the plot will be split into multiple subplots based
+            on unique values in this column. Defaults to None.
         **kwargs: Passed to px.scatter().
 
     Returns:
@@ -178,99 +182,15 @@ def density_scatter(
         xlabel = xlabel or auto_xlabel
         ylabel = ylabel or auto_ylabel
 
-    return density_scatter_plotly(
-        df_data,
-        x=x,
-        y=y,
-        density=density,
-        log_density=log_density,
-        identity_line=identity_line,
-        best_fit_line=best_fit_line,
-        stats=stats,
-        n_bins=n_bins,
-        bin_counts_col=bin_counts_col,
-        colorbar_kwargs=colorbar_kwargs,
-        hover_format=hover_format,
-        **kwargs,
-    )
-
-
-def density_scatter_plotly(
-    df: pd.DataFrame,
-    *,
-    x: str,
-    y: str,
-    density: Literal["kde", "empirical"] | None = None,
-    log_density: bool | None = None,
-    identity_line: bool | dict[str, Any] = True,
-    best_fit_line: bool | dict[str, Any] | None = None,
-    stats: bool | dict[str, Any] = True,
-    n_bins: int | None | Literal[False] = None,
-    bin_counts_col: str | None = None,
-    facet_col: str | None = None,
-    colorbar_kwargs: dict[str, Any] | None = None,
-    hover_format: str = ".3f",
-    **kwargs: Any,
-) -> go.Figure:
-    """Scatter plot colored by density using plotly backend.
-
-    This function uses binning as implemented in bin_df_cols() to reduce the number of
-    points plotted which enables plotting millions of data points and reduced file size
-    for interactive plots. All outlier points will be plotted as is but overlapping
-    points (tolerance for overlap determined by n_bins) will be merged into a single
-    point with a new column bin_counts_col counting the number of points in that bin.
-
-    Args:
-        x (str): x-values dataframe column name.
-        y (str): y-values dataframe column name.
-        df (pd.DataFrame): DataFrame with x and y columns.
-        density ('kde' | 'interpolate' | 'empirical'): Determines the method for
-            calculating and displaying density. Default is 'empirical' when n_bins
-            is provided, else 'kde' for kernel density estimation.
-        log_density (bool | None): Whether to apply logarithmic scaling to density.
-            If None, automatically set based on density range.
-        identity_line (bool | dict[str, Any], optional): Whether to add a parity line
-            (y = x). Defaults to True. Pass a dict to customize line properties.
-        best_fit_line (bool | dict[str, Any], optional): Whether to add a best-fit line.
-            Defaults to True. Pass a dict to customize line properties.
-        stats (bool | dict[str, Any], optional): Whether to display a text box with MAE
-            and R^2. Defaults to True. Can be dict to pass kwargs to annotate_metrics().
-            E.g. stats=dict(loc="upper left", prefix="Title", font=dict(size=16)).
-        n_bins (int | None | False, optional): Number of bins for histogram.
-            If None, automatically enables binning mode if the number of datapoints
-            exceeds 1000, else defaults to False (no binning).
-            If int, uses that number of bins.
-            If False, performs no binning. Defaults to None.
-        bin_counts_col (str, optional): Column name for bin counts. Defaults to
-            "Point<br>Density". Will be used as color bar title.
-        facet_col (str | None, optional): Column name to use for creating faceted
-            subplots. If provided, the plot will be split into multiple subplots based
-            on unique values in this column. Defaults to None.
-        colorbar_kwargs (dict, optional): Passed to fig.layout.coloraxis.colorbar.
-            E.g. dict(thickness=15) to make colorbar thinner.
-        hover_format (str, optional): Format specifier for the point density values in
-            the hover tooltip. Defaults to ".3f" (3 decimal places). Can be any valid
-            Python format specifier, e.g. ".2e" for scientific notation, ".0f" for
-            integers, etc. See https://docs.python.org/3/library/string.html#format-specification-mini-language
-            for more options.
-        **kwargs: Passed to px.scatter().
-
-    Returns:
-        go.Figure: The plot object.
-    """
     bin_counts_col = bin_counts_col or "Point<br>Density"
 
-    if not isinstance(stats, bool | dict):
-        raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
-
     if n_bins is None:  # auto-enable binning depending on data size
-        n_bins = 200 if len(df) > 1000 else False
+        n_bins = 200 if len(df_data) > 1000 else False
 
     density = density or ("empirical" if n_bins else "kde")
 
-    if facet_col:
-        # Group the dataframe based on the facet column
-        grouped = df.groupby(facet_col)
+    if facet_col:  # Group the dataframe based on the facet column
+        grouped = df_data.groupby(facet_col)
         binned_dfs = []
 
         for group_name, group_df in grouped:
@@ -283,12 +203,17 @@ def density_scatter_plotly(
         # Merge all binned dataframes
         df_plot = pd.concat(binned_dfs, ignore_index=True)
     else:
-        df_plot = _bin_and_calculate_density(df, x, y, density, n_bins, bin_counts_col)
+        df_plot = _bin_and_calculate_density(
+            df_data, x, y, density, n_bins, bin_counts_col
+        )
 
     color_vals = df_plot[bin_counts_col]
 
     if log_density is None:
-        log_density = np.log10(color_vals.max()) - np.log10(color_vals.min()) > 2
+        positive = color_vals[color_vals > 0]
+        log_density = positive.size > 0 and (
+            np.log10(positive.max()) - np.log10(positive.min()) > 2
+        )
 
     if log_density:
         color_vals = np.log10(color_vals + 1)
@@ -331,7 +256,12 @@ def density_scatter_plotly(
         )
 
     pmv.powerups.enhance_parity_plot(
-        fig, identity_line=identity_line, best_fit_line=best_fit_line, stats=stats
+        fig,
+        xs=df_data[x],
+        ys=df_data[y],
+        identity_line=identity_line,
+        best_fit_line=best_fit_line,
+        stats=stats,
     )
     return fig
 
@@ -348,21 +278,21 @@ def _bin_and_calculate_density(
     # Handle empty dataframes
     if len(df) == 0:
         df_empty = df.copy()
-        df_empty[bin_counts_col] = []
+        df_empty[bin_counts_col] = pd.Series(dtype=float, index=df_empty.index)
         return df_empty
 
     if n_bins:
-        density_col = "bin_counts_kde" if density == "kde" else ""
+        density_col = "bin_counts_kde" if density == "kde" else None
         df_plot = bin_df_cols(
             df,
             bin_by_cols=[x, y],
             n_bins=n_bins,
             bin_counts_col=bin_counts_col,
-            density_col=density_col,
+            density_col=density_col or "",
         ).sort_values(bin_counts_col)
         # sort by counts so densest points are plotted last
 
-        if density_col in df_plot:
+        if density_col and density_col in df_plot:
             df_plot[bin_counts_col] = df_plot[density_col]
         elif density != "empirical":
             raise ValueError(f"Unknown {density=}")
@@ -571,7 +501,7 @@ def density_hexbin(
             size=marker_size,
             color=z_plot,
             colorscale="Viridis",
-            colorbar=dict(title="Density"),
+            colorbar=dict(title="Point<br>Density"),
             symbol="hexagon",
             line=dict(width=0),  # Remove marker borders to eliminate gaps
         ),
@@ -579,21 +509,13 @@ def density_hexbin(
         f"%{{marker.color}}<extra></extra>",
     )
 
-    fig.add_scatter(
-        x=x_plot,
-        y=y_plot,
-        **scatter_defaults | kwargs,
-    )
+    fig.add_scatter(x=x_plot, y=y_plot, **scatter_defaults | kwargs)
 
     # Update colorbar if custom kwargs provided
     if colorbar_kwargs:
         fig.update_traces(marker_colorbar=colorbar_kwargs)
 
-    fig.update_layout(
-        xaxis_title=xlabel,
-        yaxis_title=ylabel,
-        showlegend=False,
-    )
+    fig.update_layout(xaxis_title=xlabel, yaxis_title=ylabel, showlegend=False)
 
     pmv.powerups.enhance_parity_plot(
         fig,

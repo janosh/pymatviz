@@ -22,7 +22,7 @@ class TrajectoryWidget(MatterVizWidget):
     Supported file formats:
     - XYZ files (.xyz, .xyz.gz, .xyz.bz2, .xyz.xz, .extxyz, .extxyz.gz, ...)
     - ASE ULM binary trajectory files (.traj)
-    - torch-sim HDF5 files (.h5, .hdf5)
+    - flame HDF5 files (.h5, .hdf5)
     - NumPy compressed arrays (.npz)
     - Pickle files (.pkl)
     - Generic data files (.dat)
