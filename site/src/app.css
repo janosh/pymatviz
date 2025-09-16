@@ -30,11 +30,7 @@ body {
   color: var(--text-color);
   line-height: 1.5;
   margin: 0;
-}
-body > div {
-  display: flex;
   min-height: 100vh;
-  flex-direction: column;
 }
 main {
   padding: calc(1ex + 2vw);

@@ -1,6 +1,6 @@
 """Sunburst plot of crystal systems."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable
 from typing import Any, Literal
 
 import pandas as pd
@@ -14,7 +14,7 @@ from pymatviz.typing import ShowCounts
 
 
 def spacegroup_sunburst(
-    data: Sequence[int | str] | pd.Series,
+    data: Iterable[int | str] | pd.Series,
     *,
     show_counts: ShowCounts = "value",
     max_slices: int | None = None,

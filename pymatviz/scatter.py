@@ -474,12 +474,12 @@ def density_hexbin(
     hex_x, hex_y, hex_counts = [], [], []
     hex_width = x_edges[1] - x_edges[0]
 
-    for i, x_center in enumerate(x_centers):
-        for j, y_center in enumerate(y_centers):
-            count = hist[i, j]
+    for ii, x_center in enumerate(x_centers):
+        for jj, y_center in enumerate(y_centers):
+            count = hist[ii, jj]
             if count > 0:
                 # Apply hexagonal offset for alternating rows
-                x_offset = hex_width / 2 if j % 2 == 1 else 0
+                x_offset = hex_width / 2 if jj % 2 == 1 else 0
                 hex_x.append(x_center + x_offset)
                 hex_y.append(y_center)
                 hex_counts.append(count)

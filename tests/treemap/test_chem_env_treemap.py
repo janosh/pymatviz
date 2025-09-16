@@ -468,7 +468,7 @@ def test_chem_env_treemap_invalid_show_counts(mock_structure: MagicMock) -> None
     """Test invalid show_counts parameter."""
     with patch("pymatviz.treemap.chem_env.normalize_structures") as mock_norm:
         mock_norm.return_value.values.return_value = [mock_structure]
-        with pytest.raises(ValueError, match="Invalid.*show_counts"):
+        with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
             chem_env_treemap(
                 mock_structure,
                 show_counts="invalid",  # type: ignore[arg-type]

@@ -106,7 +106,7 @@ def remove_duplicates(
                     to_remove.add(ii)
 
     # Return papers that weren't marked for removal
-    return [paper for i, paper in enumerate(papers) if i not in to_remove]
+    return [paper for idx, paper in enumerate(papers) if idx not in to_remove]
 
 
 def should_update(filename: str, update_freq_days: int = 7) -> bool:

@@ -317,7 +317,7 @@ def test_full_rdf_invalid_structure() -> None:
 
 def test_full_rdf_conflicting_bins_and_bin_size(structures: list[Structure]) -> None:
     with pytest.raises(
-        ValueError, match="Cannot specify both n_bins=.* and bin_size=.*"
+        ValueError, match=r"Cannot specify both n_bins=.* and bin_size=.*"
     ):
         full_rdf(structures, n_bins=100, bin_size=0.1)
 

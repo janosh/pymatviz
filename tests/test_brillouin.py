@@ -132,8 +132,8 @@ def test_brillouin_zone_3d_different_lattices(structures: list[Structure]) -> No
 
     volumes = [get_volume(fig) for fig in figs]
     # Volumes should differ by more than 1%
-    for i, j in [(0, 1), (1, 0)]:
-        assert abs(volumes[i] - volumes[j]) / max(volumes) > 0.01
+    for ii, jj in [(0, 1), (1, 0)]:
+        assert abs(volumes[ii] - volumes[jj]) / max(volumes) > 0.01
 
 
 def test_brillouin_zone_3d_reciprocal_vectors(structures: list[Structure]) -> None:

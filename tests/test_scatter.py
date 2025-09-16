@@ -69,10 +69,10 @@ def test_density_scatter(
 @pytest.mark.parametrize("stats", [1, (1,), "foo"])
 def test_density_scatter_raises_on_bad_stats_type(stats: Any) -> None:
     """Test that density_scatter raises TypeError for invalid stats type."""
-    match = f"stats must be bool or dict, got {type(stats)} instead."
+    err_msg = f"stats must be bool or dict, got {type(stats)} instead."
 
     vals = [1, 2, 3]
-    with pytest.raises(TypeError, match=match):
+    with pytest.raises(TypeError, match=err_msg):
         pmv.density_scatter(x=vals, y=vals, stats=stats)
 
 

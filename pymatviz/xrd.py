@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 
 PatternOrStruct: TypeAlias = DiffractionPattern | Structure
-HklFormat: TypeAlias = Literal["compact", "full", None]
-ValidHklFormats = HklCompact, HklFull, HklNone = get_args(HklFormat)
+HklFormat: TypeAlias = Literal["compact", "full"] | None
+ValidHklFormats = HklCompact, HklFull = get_args(get_args(HklFormat)[0])
 cu_k_alpha_wavelength = 1.54184  # Angstroms
 
 
@@ -33,9 +33,9 @@ def format_hkl(hkl: tuple[int, int, int], format_type: HklFormat) -> str:
     Raises:
         ValueError: If format_type is not one of 'compact', 'full', or None.
     """
-    if format_type == "compact":
+    if format_type == HklCompact:
         return "".join(map(str, hkl))
-    if format_type == "full":
+    if format_type == HklFull:
         return f"({', '.join(map(str, hkl))})"
     if format_type is None:
         return ""
