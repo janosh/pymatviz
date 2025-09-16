@@ -235,14 +235,14 @@ def test_ptable_heatmap_splits_plotly_error_cases() -> None:
 
     # Test invalid scale
     with pytest.raises(
-        ValueError, match="received for the 'size' property of layout.annotation.font"
+        ValueError, match=r"received for the 'size' property of layout.annotation.font"
     ):
         pmv.ptable_heatmap_splits_plotly(data, scale=-1.0)
 
     # Test invalid colorscale
     with pytest.raises(
         ValueError,
-        match="Invalid value of type 'builtins.str' received for the "
+        match=r"Invalid value of type 'builtins.str' received for the "
         "'colorscale' property of scatter.marker",
     ):
         pmv.ptable_heatmap_splits_plotly(data, colorscale="invalid_colorscale")
@@ -295,7 +295,7 @@ def test_ptable_heatmap_splits_plotly_colorscales() -> None:
         )
 
     # Test mismatched colorscales and data splits
-    with pytest.raises(ValueError, match="Number of colorscales .* must match"):
+    with pytest.raises(ValueError, match=r"Number of colorscales .* must match"):
         pmv.ptable_heatmap_splits_plotly(
             data=data,  # 2 splits
             orientation="diagonal",
@@ -358,7 +358,7 @@ def test_ptable_heatmap_splits_plotly_colorbars() -> None:
     assert colorbar_traces[-1].marker.colorbar.orientation == "v"
 
     # Test mismatched colorbars and splits
-    with pytest.raises(ValueError, match="Number of colorbars .* must match"):
+    with pytest.raises(ValueError, match=r"Number of colorbars .* must match"):
         pmv.ptable_heatmap_splits_plotly(
             data=data,  # 2 splits
             orientation="diagonal",

@@ -316,7 +316,7 @@ def test_coordination_hist_color_schemes(structures: Sequence[Structure]) -> Non
 
 def test_coordination_hist_invalid_elem_colors(structures: Sequence[Structure]) -> None:
     """Test invalid color scheme handling."""
-    with pytest.raises(TypeError, match="Invalid.*element_color_scheme"):
+    with pytest.raises(TypeError, match=r"Invalid.*element_color_scheme"):
         coordination_hist(structures[0], element_color_scheme="invalid")  # type: ignore[arg-type]
 
 

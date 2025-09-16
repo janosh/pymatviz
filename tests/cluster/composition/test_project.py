@@ -227,17 +227,22 @@ def test_project_vectors_with_scaling(sample_data: np.ndarray) -> None:
 def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
     """Test reproducibility with fixed random state."""
     pytest.importorskip("umap")
+    from umap import UMAP
 
     # Run twice with same random state for UMAP
     result1, umap_obj1 = project_vectors(sample_data, method="umap", random_state=0)
     result2, umap_obj2 = project_vectors(sample_data, method="umap", random_state=0)
+    assert isinstance(umap_obj1, UMAP)
+    assert umap_obj1.random_state == 0
+    assert umap_obj1 is not umap_obj2
 
     # Results should be identical with same random state
     assert np.allclose(result1, result2, atol=1e-10)
 
     # Run with different random state for UMAP
     result3, umap_obj3 = project_vectors(sample_data, method="umap", random_state=1)
-
+    assert isinstance(umap_obj3, UMAP)
+    assert umap_obj3.random_state == 1
     # Results should be different with different random states
     assert not np.allclose(result1, result3, atol=1e-10)
 

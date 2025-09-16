@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -201,6 +202,9 @@ def test_fetch_widget_asset_creates_version_specific_cache(tmp_path: Path) -> No
 
 def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:
     """Test handling of download errors."""
+    err_msg = re.escape(
+        "Could not load test.mjs from GitHub releases for version v1.0.0"
+    )
     with (
         patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
         patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)),
@@ -210,10 +214,7 @@ def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:
             side_effect=Exception("Network error"),
         ),
         patch(f"{PKG_NAME}.__version__", "1.0.0"),
-        pytest.raises(
-            FileNotFoundError,
-            match="Could not load test.mjs from GitHub releases for version v1.0.0",
-        ),
+        pytest.raises(FileNotFoundError, match=err_msg),
     ):
         matterviz.fetch_widget_asset("test.mjs")
 

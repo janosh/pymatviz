@@ -45,7 +45,7 @@ def test_spacegroup_sunburst(show_counts: ShowCounts) -> None:
 
 def test_spacegroup_sunburst_invalid_show_counts() -> None:
     """Test that invalid show_counts values raise ValueError."""
-    with pytest.raises(ValueError, match="Invalid.*show_counts"):
+    with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
         spacegroup_sunburst([1], show_counts="invalid")  # type: ignore[arg-type]
 
 
@@ -208,7 +208,7 @@ def test_chem_sys_sunburst_empty_level() -> None:
 @pytest.mark.parametrize("invalid_show_counts", ["invalid", "bad_value", 123, True])
 def test_chem_sys_sunburst_invalid_show_counts(invalid_show_counts: Any) -> None:
     """Test that invalid show_counts values raise ValueError."""
-    with pytest.raises(ValueError, match="Invalid.*show_counts"):
+    with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
         pmv.chem_sys_sunburst(["Fe-O"], show_counts=invalid_show_counts)
 
 
@@ -476,7 +476,7 @@ def test_chem_env_sunburst_invalid_show_counts(invalid_show_counts: Any) -> None
     species = ["Fe"]
     simple_structure = Structure(lattice, species, coords)
 
-    with pytest.raises(ValueError, match="Invalid.*show_counts"):
+    with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
         pmv.chem_env_sunburst([simple_structure], show_counts=invalid_show_counts)
 
 
@@ -759,7 +759,7 @@ def test_limit_slices_invalid_mode() -> None:
     from pymatviz.sunburst.helpers import _limit_slices
 
     df_test = pd.DataFrame([{"group": "A", "count": 1}])
-    with pytest.raises(ValueError, match="Invalid.*max_slices_mode"):
+    with pytest.raises(ValueError, match=r"Invalid.*max_slices_mode"):
         _limit_slices(
             df_test,
             group_col="group",

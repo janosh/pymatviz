@@ -65,15 +65,13 @@ def qq_gaussian(
             if isinstance(identity_line, dict)
             else {}
         )
-        fig.add_trace(
-            go.Scatter(
-                x=[0, 1],
-                y=[0, 1],
-                mode="lines",
-                name="Perfect calibration",
-                line=dict(color=line_props.get("color", "red"), width=1, dash="dash"),
-                showlegend=False,
-            )
+        fig.add_scatter(
+            x=[0, 1],
+            y=[0, 1],
+            mode="lines",
+            name="Perfect calibration",
+            line=dict(color=line_props.get("color", "red"), width=1, dash="dash"),
+            showlegend=False,
         )
 
     for key, std in y_std.items():
@@ -82,29 +80,25 @@ def qq_gaussian(
         miscal_area = np.trapezoid(np.abs(obs_proportions - exp_proportions), dx=0.01)
 
         # Invisible reference line for fill
-        fig.add_trace(
-            go.Scatter(
-                x=exp_proportions,
-                y=exp_proportions,
-                mode="lines",
-                line=dict(width=0),
-                showlegend=False,
-                hoverinfo="skip",
-            )
+        fig.add_scatter(
+            x=exp_proportions,
+            y=exp_proportions,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
         )
 
         # Q-Q line with fill
-        fig.add_trace(
-            go.Scatter(
-                x=exp_proportions,
-                y=obs_proportions,
-                mode="lines",
-                name=f"{key} (miscal: {miscal_area:.2f})",
-                line=dict(width=2),
-                opacity=0.8,
-                fill="tonexty",
-                fillcolor="rgba(128,128,128,0.2)",
-            )
+        fig.add_scatter(
+            x=exp_proportions,
+            y=obs_proportions,
+            mode="lines",
+            name=f"{key} (miscal: {miscal_area:.2f})",
+            line=dict(width=2),
+            opacity=0.8,
+            fill="tonexty",
+            fillcolor="rgba(128,128,128,0.2)",
         )
 
     fig.update_layout(

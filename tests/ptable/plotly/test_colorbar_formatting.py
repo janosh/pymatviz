@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 
 import pymatviz as pmv
 
 
 if TYPE_CHECKING:
-    import plotly.graph_objects as go
     from plotly.graph_objects import Figure
 
 
@@ -103,6 +103,7 @@ def test_ptable_heatmap_splits_colorbar_formatting() -> None:
 
     # Verify that all colorbars use SI suffixes
     for trace in dataset1_colorbars + dataset2_colorbars:
+        assert isinstance(trace, go.Scatter)
         assert trace.marker.colorbar.tickformat == "~s", (
             "Colorbar not using SI suffixes"
         )
@@ -220,6 +221,7 @@ def test_ptable_heatmap_splits_colorbar_si_formatting() -> None:
 
     # Verify that all colorbars use SI suffixes
     for trace in dataset1_colorbars + dataset2_colorbars:
+        assert isinstance(trace, go.Scatter)
         assert trace.marker.colorbar.tickformat == ".1~s"
 
 

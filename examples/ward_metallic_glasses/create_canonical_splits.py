@@ -107,7 +107,9 @@ def create_random_split(
         pd.Series: with values "train"/"val"/"test" for each row
     """
     # First split into train and temp (val + test)
-    train_idx, temp_idx = train_test_split(df_in.index, train_size=train_size, **kwargs)
+    _train_idx, temp_idx = train_test_split(
+        df_in.index, train_size=train_size, **kwargs
+    )
 
     # Split temp into val and test (50/50)
     val_idx, test_idx = train_test_split(temp_idx, test_size=0.5, **kwargs)

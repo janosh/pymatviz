@@ -287,9 +287,9 @@ def _generate_colorbar_ticks(
             # Make sure we include zero if in range
             if min_val <= 0 <= max_val and 0 not in reduced_ticks:
                 # Find the index where 0 would be inserted to maintain order
-                for i, val in enumerate(reduced_ticks):
+                for idx, val in enumerate(reduced_ticks):
                     if val > 0:
-                        reduced_ticks.insert(i, 0)
+                        reduced_ticks.insert(idx, 0)
                         break
                 else:
                     reduced_ticks.append(0)
