@@ -208,4 +208,6 @@ def notebook_mode(*, on: bool) -> None:
                 if hasattr(cls, "_repr_mimebundle_"):
                     del cls._repr_mimebundle_
         except (ImportError, AttributeError):
-            pass  # Module not available; when using crystal_toolkit, _ipython_display_ is monkey patching to MSONable
+            pass  # ImportError: Module not available
+            # AttributeError: when using crystal_toolkit, _ipython_display_ is monkey
+            # patched to MSONable

@@ -522,6 +522,32 @@ def test_phonon_display_functions(monkeypatch: pytest.MonkeyPatch) -> None:
         pass  # not available
 
 
+def test_inherited_attribute_deletion() -> None:
+    """Test notebook_mode handles inherited display attributes (Crystal Toolkit)."""
+    from monty.json import MSONable
+    from pymatgen.core import Structure
+
+    # Ensure clean state first
+    pmv.notebook_mode(on=False)
+
+    # Monkey-patch MSONable (simulating Crystal Toolkit)
+    MSONable._ipython_display_ = lambda _: None  # type: ignore[attr-defined]
+    MSONable._repr_mimebundle_ = lambda _: {"text/plain": "test"}  # type: ignore[attr-defined]
+
+    try:
+        # Verify Structure inherits but doesn't own the attributes
+        assert hasattr(Structure, "_ipython_display_")
+        assert "_ipython_display_" not in Structure.__dict__
+
+        # This should not raise AttributeError (would fail without our fix)
+        pmv.notebook_mode(on=True)
+        pmv.notebook_mode(on=False)
+    finally:  # Clean up
+        for attr in ("_ipython_display_", "_repr_mimebundle_"):
+            if hasattr(MSONable, attr):
+                delattr(MSONable, attr)
+
+
 def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test phonopy TotalDos notebook integration."""
     pytest.importorskip("phonopy", reason="phonopy not available")
