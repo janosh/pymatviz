@@ -263,8 +263,9 @@ def get_elem_colors(
         return dict(elem_colors)
     if isinstance(elem_colors, ElemColorScheme):
         return elem_colors.color_map
-    allowed = ", ".join(ecs for ecs in ElemColorScheme)
-    raise ValueError(f"colors must be a mapping or one of ({allowed})")
+    raise ValueError(
+        f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
+    )
 
 
 def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str, float]:

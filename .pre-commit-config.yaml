@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.0
+    rev: v0.13.1
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -79,7 +79,7 @@ repos:
           - --fix
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.35.0
+    rev: v9.36.0
     hooks:
       - id: eslint
         types: [file]
@@ -94,7 +94,7 @@ repos:
           - '@stylistic/eslint-plugin'
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.33.3
+    rev: 0.34.0
     hooks:
       - id: check-jsonschema
         files: ^pymatviz/keys\.yml$
