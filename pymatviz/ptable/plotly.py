@@ -216,7 +216,7 @@ def ptable_heatmap_plotly(
             if callable(label_map):
                 label = label_map(label)
             elif isinstance(label_map, dict):
-                label = label_map.get(label, label)
+                label = label_map.get(label, label)  # type: ignore[arg-type]
         # Apply custom element symbol if provided
         display_symbol = (element_symbol_map or {}).get(symbol, symbol)
 
@@ -603,10 +603,10 @@ def ptable_hists_plotly(
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling
                 for anno in (
-                    [annotation] if isinstance(annotation, str | dict) else annotation
+                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
                 ):
                     # Convert string annotations to dict format
-                    anno_dict = {"text": anno} if isinstance(anno, str) else anno
+                    anno_dict = anno if isinstance(anno, dict) else {"text": anno}
                     anno_defaults = {
                         "font_size": (font_size or 8) * scale,
                         "x": 0.95,
@@ -910,9 +910,9 @@ def ptable_heatmap_splits_plotly(
         split_labels = list(data.columns)
         # Propagate column names to colorbar titles if not explicitly set
         if isinstance(colorbar, dict):
-            colorbar = colorbar.copy()
-            if "title" not in colorbar:
-                colorbar["title"] = split_labels[0] if len(split_labels) == 1 else None
+            colorbar = colorbar.copy()  # type: ignore[arg-type]
+            if "title" not in colorbar:  # type: ignore[arg-type]
+                colorbar["title"] = split_labels[0] if len(split_labels) == 1 else None  # type: ignore[arg-type]
         elif isinstance(colorbar, Sequence):
             colorbar = list(colorbar)  # Convert to list to allow modification
             for idx, (cbar, label) in enumerate(
@@ -1353,10 +1353,10 @@ def ptable_heatmap_splits_plotly(
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling
                 for anno in (
-                    [annotation] if isinstance(annotation, str | dict) else annotation
+                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
                 ):
                     # Convert string annotations to dict format
-                    anno_dict = {"text": anno} if isinstance(anno, str) else anno
+                    anno_dict = anno if isinstance(anno, dict) else {"text": anno}
                     anno_defaults = {
                         "font_size": (font_size or 8) * scale,
                         "x": 0.95,
@@ -1430,7 +1430,7 @@ def ptable_heatmap_splits_plotly(
 
             # Get colorbar settings with consistent positioning
             cbar_settings = _get_colorbar_settings(
-                cbar,
+                cbar,  # type: ignore[arg-type]
                 split_idx=split_idx,
                 n_splits=n_splits if use_multiple_cbar else 1,
                 split_name=split_name if use_multiple_cbar else None,
@@ -1446,13 +1446,13 @@ def ptable_heatmap_splits_plotly(
                 # Get the appropriate colorbar settings for this split
                 split_idx = idx % n_splits
                 split_name = split_labels[split_idx] if split_labels else None
-                cb = (
+                cbar = (
                     colorbars[split_idx]
                     if isinstance(colorbar, Sequence)
                     else colorbars[0]
                 )
                 cbar_settings = _get_colorbar_settings(
-                    cb,
+                    cbar,  # type: ignore[arg-type]
                     split_idx=split_idx,
                     n_splits=n_splits,
                     split_name=split_name,
@@ -1810,10 +1810,10 @@ def ptable_scatter_plotly(
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling
                 for anno in (
-                    [annotation] if isinstance(annotation, str | dict) else annotation
+                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
                 ):
                     # Convert string annotations to dict format
-                    anno_dict = {"text": anno} if isinstance(anno, str) else anno
+                    anno_dict = anno if isinstance(anno, dict) else {"text": anno}
                     anno_defaults = {
                         "font_size": (font_size or 8) * scale,
                         "x": 0.95,

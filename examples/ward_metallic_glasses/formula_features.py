@@ -224,17 +224,16 @@ def calc_miedema_maximum_heat_of_mixing(composition: Composition) -> float | Non
 
 
 def calc_liu_features(
-    formulas: str | Composition | Sequence[str | Composition],
+    formulas: Sequence[str | Composition],
     include: Sequence[str] = (),
     binary_liquidus_data: dict[str, interp1d] | None = None,
 ) -> dict[str, dict[str, float | None]]:
     """Calculate Liu et al.'s (2023) compositional features for metallic glasses.
 
     Args:
-        formulas (Sequence[str] | Composition | Sequence[Composition]):
-            Chemical formulas or pymatgen Compositions to calculate features for.
-            If strings, they should be valid chemical formulas like "Fe2O3" or
-            "LiPO4".
+        formulas (Sequence[str | Composition]): Chemical formulas or pymatgen
+            Compositions to calculate features for. If strings, they should be valid
+            chemical formulas like "Fe2O3" or "LiPO4".
         include (tuple[str, ...]): The features to include. If empty, all features
             are included.
         binary_liquidus_data: Dictionary mapping chemical system (e.g., "Al-Cu") to
@@ -248,13 +247,10 @@ def calc_liu_features(
         - "liquidus_temp": Reduced binary liquidus temperature (dimensionless)
 
     Example:
-        >>> calc_liu_features("Fe2O3")
+        >>> calc_liu_features(["Fe2O3"])
         {'Fe2O3': {'atomic_size_diff': 23.45, 'mixing_enthalpy': -12.34,
                    'liquidus_temp': 0.89}}
     """
-    if isinstance(formulas, str | Composition):
-        formulas = [formulas]
-
     results = {}
     feature_funcs: dict[str, Callable[[Any], float | None]] = {
         "mixing_enthalpy": calc_miedema_maximum_heat_of_mixing,
@@ -340,7 +336,9 @@ if __name__ == "__main__":
 
     # Test with a simple binary composition
     test_comp = Composition("Pt50P50")
-    features = calc_liu_features(test_comp, binary_liquidus_data=binary_interpolations)
+    features = calc_liu_features(
+        [test_comp], binary_liquidus_data=binary_interpolations
+    )
     print("\nFeatures for Pt50P50:")
     for feature, values in features.items():
         print(f"{feature}: {values[test_comp]:.2f}")
@@ -348,7 +346,7 @@ if __name__ == "__main__":
     # Test with a more complex composition
     test_comp2 = "Zr6.2Ti45.8Cu39.9Ni5.1Sn3"
     features2 = calc_liu_features(
-        test_comp2, binary_liquidus_data=binary_interpolations
+        [test_comp2], binary_liquidus_data=binary_interpolations
     )
     print(f"\nFeatures for {test_comp2}:")
     for feature, values in features2.items():

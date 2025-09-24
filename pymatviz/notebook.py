@@ -207,5 +207,7 @@ def notebook_mode(*, on: bool) -> None:
                     del cls._ipython_display_
                 if hasattr(cls, "_repr_mimebundle_"):
                     del cls._repr_mimebundle_
-        except ImportError:
-            pass  # Module not available
+        except (ImportError, AttributeError):
+            pass  # ImportError: Module not available
+            # AttributeError: when using crystal_toolkit, _ipython_display_ is monkey
+            # patched to MSONable (https://github.com/janosh/pymatviz/pull/324)
