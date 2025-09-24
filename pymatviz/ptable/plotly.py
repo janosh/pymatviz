@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 import numpy as np
@@ -603,7 +603,7 @@ def ptable_hists_plotly(
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling
                 for anno in (
-                    annotation if isinstance(annotation, Iterable) else [annotation]
+                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
                 ):
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}
@@ -1353,7 +1353,7 @@ def ptable_heatmap_splits_plotly(
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling
                 for anno in (
-                    annotation if isinstance(annotation, Iterable) else [annotation]
+                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
                 ):
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}
@@ -1810,7 +1810,7 @@ def ptable_scatter_plotly(
             if annotation:  # Only add annotation if we have text
                 # Convert single annotation to list for uniform handling
                 for anno in (
-                    annotation if isinstance(annotation, Iterable) else [annotation]
+                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
                 ):
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}

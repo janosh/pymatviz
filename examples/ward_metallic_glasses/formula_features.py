@@ -231,10 +231,9 @@ def calc_liu_features(
     """Calculate Liu et al.'s (2023) compositional features for metallic glasses.
 
     Args:
-        formulas (Sequence[str] | Composition | Sequence[Composition]):
-            Chemical formulas or pymatgen Compositions to calculate features for.
-            If strings, they should be valid chemical formulas like "Fe2O3" or
-            "LiPO4".
+        formulas (Sequence[str | Composition]): Chemical formulas or pymatgen
+            Compositions to calculate features for. If strings, they should be valid
+            chemical formulas like "Fe2O3" or "LiPO4".
         include (tuple[str, ...]): The features to include. If empty, all features
             are included.
         binary_liquidus_data: Dictionary mapping chemical system (e.g., "Al-Cu") to

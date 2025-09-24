@@ -6,7 +6,7 @@ import functools
 import itertools
 import math
 import warnings
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -16,7 +16,6 @@ from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
 from pymatgen.core.periodic_table import Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pymatviz import colors
 from pymatviz.enums import ElemColorScheme, Key, SiteCoords
 from pymatviz.typing import Xyz
 from pymatviz.utils import df_ptable, pick_max_contrast_color
@@ -257,16 +256,15 @@ def cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
 
 
 def get_elem_colors(
-    elem_colors: ElemColorScheme | dict[str, ColorType],
+    elem_colors: ElemColorScheme | Mapping[str, ColorType],
 ) -> dict[str, ColorType]:
     """Get element colors based on the provided scheme or custom dictionary."""
-    if isinstance(elem_colors, dict):
-        return elem_colors
-    if color_dict := getattr(colors, f"ELEM_COLORS_{str(elem_colors).upper()}", None):
-        return color_dict
-    raise ValueError(
-        f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
-    )
+    if isinstance(elem_colors, Mapping):
+        return dict(elem_colors)
+    if isinstance(elem_colors, ElemColorScheme):
+        return elem_colors.color_map
+    allowed = ", ".join(ecs for ecs in ElemColorScheme)
+    raise ValueError(f"colors must be a mapping or one of ({allowed})")
 
 
 def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str, float]:
@@ -312,7 +310,9 @@ def generate_site_label(
         # Use provided label for symbol, else symbol itself, or empty if not found &
         # not True-like
         label_text = site_labels.get(symbol, symbol if site_labels else "")
-    elif isinstance(site_labels, (list, tuple)):
+    elif isinstance(site_labels, Sequence) and not isinstance(
+        site_labels, (str, bytes, Mapping)
+    ):
         label_text = site_labels[site_idx] if site_idx < len(site_labels) else symbol
 
     return label_text
