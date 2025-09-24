@@ -23,7 +23,7 @@ from pymatviz.utils import df_ptable, pick_max_contrast_color
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
+    from collections.abc import Callable
     from typing import Any, Literal
 
     import pandas as pd
@@ -257,7 +257,7 @@ def cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
 
 
 def get_elem_colors(
-    elem_colors: ElemColorScheme | Mapping[str, ColorType],
+    elem_colors: ElemColorScheme | dict[str, ColorType],
 ) -> dict[str, ColorType]:
     """Get element colors based on the provided scheme or custom dictionary."""
     if isinstance(elem_colors, dict):
@@ -308,11 +308,11 @@ def generate_site_label(
     label_text = ""
     symbol = get_site_symbol(site)  # Majority element symbol of site
 
-    if isinstance(site_labels, dict):
+    if isinstance(site_labels, dict) and not isinstance(site_labels, Sequence):
         # Use provided label for symbol, else symbol itself, or empty if not found &
         # not True-like
         label_text = site_labels.get(symbol, symbol if site_labels else "")
-    elif isinstance(site_labels, list):
+    elif isinstance(site_labels, (list, tuple)):
         label_text = site_labels[site_idx] if site_idx < len(site_labels) else symbol
 
     return label_text

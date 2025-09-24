@@ -109,7 +109,7 @@ def phonon_bands(
     converted_band_structs: dict[str, AnyBandStructure] = {}
     for key, bands in band_structs.items():
         if type(bands).__module__.startswith("phonopy"):
-            converted_band_structs[key] = phonopy_to_pymatgen_bands(bands)
+            converted_band_structs[key] = phonopy_to_pymatgen_bands(bands)  # type: ignore[arg-type]
         elif isinstance(bands, PhononBands):
             converted_band_structs[key] = bands
         else:

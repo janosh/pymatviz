@@ -221,7 +221,7 @@ mb_bulk_modulus = (
     "Bulk Modulus (GPa)",
     "K<sub>VRH</sub>",
 )
-plot_combinations: list[
+plot_combinations: list[  # type: ignore[invalid-assignment]
     tuple[
         str, str, str, str, pcc.EmbeddingMethod, ProjectionMethod, int, dict[str, Any]
     ]

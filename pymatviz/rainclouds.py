@@ -111,7 +111,7 @@ def rainclouds(
                 and label in hover_data
                 and col not in hover_data[label]
             ):
-                hover_data[label] = [col, *hover_data[label]]
+                hover_data[label] = [col, *hover_data[label]]  # type: ignore[invalid-assignment]
         else:
             values = data_itm
 
@@ -182,7 +182,9 @@ def rainclouds(
                 else:
                     cols_to_show = hover_data
 
-                if isinstance(data_itm, tuple):
+                if isinstance(data_itm, tuple) and isinstance(
+                    cols_to_show, (list, tuple)
+                ):
                     df_i, col = data_itm
                     for col in cols_to_show:
                         if col in df_i:
