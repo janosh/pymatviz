@@ -50,7 +50,7 @@ def spacegroup_subplot_title(struct: Structure, key: Hashable) -> str:
         raise TypeError(f"Invalid {type(key)=}")
     sym_data = struct.get_symmetry_dataset(backend="moyopy", return_raw_dataset=True)
     spg_num = getattr(sym_data, "number", "N/A")
-    return f"{formula} {system.title()}<br>Space group: {spg_num}"
+    return f"{formula} {str(system).title()}<br>Space group: {spg_num}"
 
 
 # %% render example Brillouin zone for each crystal system individually

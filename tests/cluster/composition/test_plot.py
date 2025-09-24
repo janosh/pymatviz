@@ -1393,7 +1393,7 @@ def test_title_and_marker_size(
         assert fig.data[0].z.shape == (len(sample_df),)
         # Check that z values are valid numbers (not None or NaN)
         n_nans = np.isnan(fig.data[0].z).sum()
-        assert n_nans == 0, f"{n_nans=}"
+        assert n_nans == 0
 
 
 @pytest.mark.parametrize(

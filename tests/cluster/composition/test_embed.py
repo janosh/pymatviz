@@ -72,10 +72,10 @@ def test_one_hot_encode_pandas_input() -> None:
 def test_one_hot_encode_invalid_input() -> None:
     """Test one-hot encoding with invalid input."""
     with pytest.raises(ValueError, match="Invalid composition="):
-        one_hot_encode([1, 2, 3])
+        one_hot_encode([1, 2, 3])  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Invalid composition="):
-        one_hot_encode([["H2O"]])
+        one_hot_encode([["H2O"]])  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -124,10 +124,10 @@ def test_matminer_featurize_invalid_input() -> None:
     """Test matminer featurization with invalid input."""
     pytest.importorskip("matminer")
     with pytest.raises(ValueError, match="Invalid composition="):
-        matminer_featurize([1, 2, 3])
+        matminer_featurize([1, 2, 3])  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Invalid composition="):
-        matminer_featurize([["H2O"]])
+        matminer_featurize([["H2O"]])  # type: ignore[arg-type]
 
 
 def test_matminer_featurize_invalid_feature_subset() -> None:

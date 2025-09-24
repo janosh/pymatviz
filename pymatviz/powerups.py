@@ -91,7 +91,7 @@ def annotate_metrics(
         text = prefix
         if isinstance(metrics, dict):
             for key, val in metrics.items():
-                label = PRETTY_LABELS.get(key, key)
+                label = PRETTY_LABELS.get(key, key)  # type: ignore[arg-type]
                 text += f"{label} = {val:{fmt}}<br>"
         else:
             for key in metrics:

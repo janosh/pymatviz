@@ -299,7 +299,7 @@ def test_ptable_heatmap_plotly_custom_label_map() -> None:
         for anno in fig.layout.annotations
         if anno.text.endswith(("High", "Low"))
     ]
-    assert len(annos) == 2, f"{len(annos)=}"
+    assert len(annos) == 2
 
 
 def test_ptable_heatmap_plotly_error_cases() -> None:

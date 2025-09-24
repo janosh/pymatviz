@@ -137,4 +137,4 @@ unresolved-import = "ignore"
 missing-argument = "ignore"
 
 [dependency-groups]
-dev = ["pre-commit>=4.3.0", "ty>=0.0.1a20"]
+dev = ["pre-commit>=4.3.0", "ty>=0.0.1a21"]

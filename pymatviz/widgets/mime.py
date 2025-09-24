@@ -101,7 +101,7 @@ def _register_renderers() -> None:
 
     for cls in classes:  # Register for Marimo
         if not hasattr(cls, "_display_"):
-            cls._display_ = create_widget
+            cls._display_ = create_widget  # type: ignore[attr-defined]
     if not hasattr(Composition, "_display_"):
         Composition._display_ = create_widget
 
