@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal
 from pymatgen.analysis.local_env import NearNeighbors
 
 from pymatviz.enums import LabelEnum
+from pymatviz.structure import helpers
 
 
 if TYPE_CHECKING:
@@ -80,8 +81,21 @@ def calculate_average_cn(
     element: str,
     get_neighbors: Callable[[PeriodicSite, Structure], list[dict[str, Any]]],
 ) -> float:
-    """Calculate the average coordination number for a given element in a structure."""
-    element_sites = [site for site in structure if site.specie.symbol == element]
+    """Calculate the average coordination number for a given element in a structure.
+
+    Args:
+        structure (Structure): A pymatgen Structure object.
+        element (str): Element symbol to calculate average CN for.
+        get_neighbors (Callable[[PeriodicSite, Structure], list[dict[str, Any]]]):
+            Function to get neighbors for a site.
+
+    Returns:
+        Average coordination number for the given element. Returns 0 if element is not
+        present in the structure.
+    """
+    element_sites = [
+        site for site in structure if element in helpers.get_site_elements(site)
+    ]
     cn_sum = sum(len(get_neighbors(site, structure)) for site in element_sites)
     return cn_sum / len(element_sites) if element_sites else 0
 
@@ -126,10 +140,11 @@ def coordination_nums_in_structure(
 
     # Calculate CNs for all sites in the structure
     for idx, site in enumerate(structure, start=1):
+        site_species = helpers.get_site_species(site)
         key = {
-            "element": site.specie.symbol,
+            "element": helpers.get_site_symbol(site),
             "site": str(idx),
-            "specie": str(site.specie),
+            "specie": str(site_species),  # Preserve oxidation state for specie mode
         }[group_by]
         cn = len(get_neighbors(site, structure))
         cns[key] += [cn]

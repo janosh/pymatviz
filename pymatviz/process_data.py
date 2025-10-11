@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, cast
 
 import numpy as np
 import pandas as pd
@@ -367,7 +367,7 @@ def normalize_structures(
 
 def normalize_to_dict(
     inputs: T | Sequence[T] | dict[str, T],
-    cls: type[T] = Structure,
+    cls: type[T] = SiteCollection,
     key_gen: Callable[[T], str] = lambda obj: getattr(
         obj, "formula", type(obj).__name__
     ),
@@ -378,10 +378,10 @@ def normalize_to_dict(
         inputs (T | Sequence[T] | dict[str, T]): A single object, a sequence of objects,
             or a dictionary of objects.
         cls (type[T], optional): The class of the objects to normalize. Defaults to
-            pymatgen.core.Structure.
+            pymatgen.core.SiteCollection.
         key_gen (Callable[[T], str], optional): A function that generates a key for
-            each object. Defaults to using the object's formula, assuming the objects
-            are pymatgen.core.(Structure|Molecule).
+            each object. Defaults to using the object's formula attribute, if present
+            (as is the case for pymatgen.core.SiteCollection).
 
     Returns:
         dict[str, T]: Map of objects with keys as object formulas or given keys.
@@ -390,7 +390,7 @@ def normalize_to_dict(
         TypeError: If the input format is invalid.
     """
     if isinstance(inputs, cls):
-        return {"": inputs}
+        return cast("dict[str, T]", {"": inputs})
 
     if (
         isinstance(inputs, list | tuple)
@@ -413,7 +413,7 @@ def normalize_to_dict(
 
     cls_name = cls.__name__
     raise TypeError(
-        f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
+        f"Invalid inputs, expected {cls_name} or dict/list/tuple of {cls_name}"
     )
 
 

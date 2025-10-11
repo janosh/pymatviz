@@ -397,7 +397,7 @@ def test_calculate_rdf_input_validation(
     # Test for expected error
     structure_param = params.pop("structure")
     with pytest.raises(expected_err_cls, match=error_msg):
-        calculate_rdf(structure_param, **params)
+        calculate_rdf(structure_param, **params)  # type: ignore[arg-type]
 
 
 def test_calculate_rdf_invalid_structure_type() -> None:

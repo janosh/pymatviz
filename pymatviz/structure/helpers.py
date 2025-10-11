@@ -96,34 +96,44 @@ CELL_EDGES = (
 )
 
 
-def get_site_symbol(site: PeriodicSite) -> str:
-    """Get a single element symbol for a site.
+def get_site_species(site: PeriodicSite) -> Composition | Species | Element:
+    """Get species/composition from a site (handles ordered and disordered sites)."""
+    from typing import cast
 
-    Handles disordered sites by picking the element with the highest fraction.
-    Handles Specie objects (e.g. Fe2+) by getting the element symbol.
-    """
-    if hasattr(site.species, "elements"):  # Likely Composition for disordered site
-        # Element amounts in a disordered site (Composition)
-        el_amt_dict = site.species.get_el_amt_dict()
+    return cast(
+        "Composition | Species | Element", getattr(site, "specie", site.species)
+    )
+
+
+def get_site_elements(site: PeriodicSite) -> set[str]:
+    """Get element symbols from a site (handles ordered and disordered sites)."""
+    species = get_site_species(site)
+    if isinstance(species, Composition):
+        return {getattr(sp, "symbol", str(sp)) for sp in species}
+    return {getattr(species, "symbol", str(species))}
+
+
+def get_site_symbol(site: PeriodicSite) -> str:
+    """Get single element symbol for a site (picks highest occupancy for disordered)."""
+    species = get_site_species(site)
+
+    if isinstance(species, Composition):
+        el_amt_dict = species.get_el_amt_dict()
         if el_amt_dict:
-            # Get element with max amount
             return max(el_amt_dict, key=el_amt_dict.get)
-        # Fallback for empty Composition or if get_el_amt_dict is not definitive
-        if site.species.elements:
-            return site.species.elements[0].symbol
-        return "X"  # Should not happen for valid Compositions
-    if hasattr(site.species, "symbol"):  # Element object
-        return site.species.symbol
-    if hasattr(site.species, "element"):  # Specie object (e.g. Fe2+)
-        # Assuming site.species is a Pymatgen Specie object
-        specie_obj = site.species
-        if hasattr(specie_obj, "element") and isinstance(specie_obj.element, Element):
-            return specie_obj.element.symbol
-    # Fallback if it's just a string or other unknown type
+        if species.elements:
+            return species.elements[0].symbol
+        return "X"
+
+    if hasattr(species, "symbol"):
+        return species.symbol
+    if hasattr(species, "element") and isinstance(species.element, Element):
+        return species.element.symbol
+
     try:
-        return site.species_string  # Last resort, might include oxidation state
+        return site.species_string
     except AttributeError:
-        return "X"  # Placeholder for unknown species type
+        return "X"
 
 
 def _angles_to_rotation_matrix(
@@ -493,7 +503,7 @@ def draw_site(
             the site's species symbol.
         **kwargs: Additional keyword arguments.
     """
-    species = getattr(site, "specie", site.species)
+    species = get_site_species(site)
 
     # Check if this is a disordered site (multiple species)
     if isinstance(species, Composition) and len(species) > 1:
@@ -686,7 +696,7 @@ def draw_disordered_site(
         legend (str): The legend group for the site.
         **kwargs: Unused extra keyword arguments.
     """
-    species = getattr(site, "specie", site.species)
+    species = get_site_species(site)
 
     if not isinstance(species, Composition) or len(species) <= 1:
         # Not a disordered site, should use regular draw_site

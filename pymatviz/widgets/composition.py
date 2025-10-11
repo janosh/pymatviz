@@ -13,7 +13,9 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 if TYPE_CHECKING:
     from pymatgen.util.typing import CompositionLike
 
-    from pymatviz.widgets import MattervizElementColorSchemes
+    from pymatviz.typing import MattervizElementColorSchemes
+
+CompositionMode = Literal["pie", "bar", "bubble"]
 
 
 class CompositionWidget(MatterVizWidget):
@@ -40,7 +42,7 @@ class CompositionWidget(MatterVizWidget):
     composition = tl.Dict(allow_none=True).tag(sync=True)
 
     # Visualization options
-    mode: Literal["pie", "bar", "bubble"] = tl.Unicode("pie").tag(sync=True)
+    mode: CompositionMode = tl.Unicode("pie").tag(sync=True)
     show_percentages = tl.Bool(default_value=False).tag(sync=True)
     color_scheme: MattervizElementColorSchemes = tl.Unicode("Jmol").tag(sync=True)
 
