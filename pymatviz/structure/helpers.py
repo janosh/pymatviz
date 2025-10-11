@@ -1017,7 +1017,14 @@ def get_spherical_wedge_mesh(
         n_phi (int): Number of divisions in azimuthal direction (around the wedge)
 
     Returns:
-        tuple: (x_coords, y_coords, z_coords, i_indices, j_indices, k_indices)
+        tuple[list[float], list[float], list[float], list[int], list[int], list[int]]:
+            A 6-tuple containing:
+            - x_coords: x-coordinates for all mesh vertices
+            - y_coords: y-coordinates for all mesh vertices
+            - z_coords: z-coordinates for all mesh vertices
+            - i_indices: first vertex indices for triangular faces
+            - j_indices: second vertex indices for triangular faces
+            - k_indices: third vertex indices for triangular faces
     """
     x_coords, y_coords, z_coords = [], [], []
 

@@ -344,11 +344,11 @@ def structure_2d(
         # Draw bonds after sites are processed to ensure proper filtering
         if show_bonds:
             # Handle per-structure show_bonds settings if it's a dict
-            struct_show_bonds: (
-                bool | NearNeighbors | dict[str, bool | NearNeighbors]
-            ) = show_bonds
+            struct_show_bonds: bool | NearNeighbors
             if isinstance(show_bonds, dict):
                 struct_show_bonds = show_bonds.get(struct_key, False)  # type: ignore[assignment]
+            else:
+                struct_show_bonds = show_bonds
 
             if struct_show_bonds:
                 # Determine the NearNeighbors object to use
@@ -696,11 +696,11 @@ def structure_3d(
         # Draw bonds using the augmented structure after sites are processed
         if show_bonds:
             # Handle per-structure show_bonds settings if it's a dict
-            struct_show_bonds: (
-                bool | NearNeighbors | dict[str, bool | NearNeighbors]
-            ) = show_bonds
+            struct_show_bonds: bool | NearNeighbors
             if isinstance(show_bonds, dict):
                 struct_show_bonds = show_bonds.get(struct_key, False)  # type: ignore[assignment]
+            else:
+                struct_show_bonds = show_bonds
 
             if struct_show_bonds:
                 plotted_sites_coords: set[tuple[float, float, float]] | None = None
