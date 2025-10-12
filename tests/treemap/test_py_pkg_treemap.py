@@ -270,7 +270,7 @@ def test_py_pkg_treemap_errors(
 @pytest.mark.parametrize(
     ("test_base_url", "expect_link"),
     [
-        ("https://github.com/test/repo/blob/main", True),
+        ("https://github.com/janosh/pymatviz/blob/main", True),
         (None, False),
     ],
 )
@@ -419,11 +419,11 @@ def test_analyze_unicode_error(
         ({}, False),  # No URLs
         ({"Home-page": "https://example.com"}, False),  # Non-GitHub
         # Non-GitHub
-        ({"Project-URL": ["Source Code, https://gitlab.com/user/repo"]}, False),
+        ({"Project-URL": ["Source Code, https://gitlab.com/ase/ase"]}, False),
         # GitHub homepage
-        ({"Home-page": "https://github.com/user/repo"}, True),
+        ({"Home-page": "https://github.com/janosh/pymatviz"}, True),
         # GitHub project URL
-        ({"Project-URL": ["Repository, https://github.com/user/repo2"]}, True),
+        ({"Project-URL": ["Repository, https://github.com/janosh/matterviz"]}, True),
     ],
 )
 def test_auto_base_url_metadata(
@@ -455,7 +455,7 @@ def test_auto_base_url_metadata(
         assert custom_data.shape[1] == 12
         file_urls = custom_data[:, 3]
         assert any(
-            url and "github.com/user/" in url and "/blob/main/" in url
+            url and "github.com/" in url and "/blob/main/" in url
             for url in file_urls
             if isinstance(url, str)
         ), f"{file_urls=} did not contain a GitHub URL"

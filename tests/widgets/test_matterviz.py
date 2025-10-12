@@ -156,13 +156,13 @@ def test_fetch_widget_asset_downloads_correct_version(tmp_path: Path) -> None:
 
         mock_urlretrieve.side_effect = mock_urlretrieve_side_effect
         with patch(f"{PKG_NAME}.__version__", "1.0.0"):
-            matterviz.fetch_widget_asset("test.mjs", version_override="v2.0.0")
+            matterviz.fetch_widget_asset("matterviz.mjs", version_override="v0.17.0")
 
     # Verify the correct URL was called
     mock_urlretrieve.assert_called_once()
     call_args = mock_urlretrieve.call_args[0]
     expected_url = (
-        "https://github.com/janosh/pymatviz/releases/download/v2.0.0/test.mjs"
+        "https://github.com/janosh/pymatviz/releases/download/v0.17.0/matterviz.mjs"
     )
     assert call_args[0] == expected_url
 

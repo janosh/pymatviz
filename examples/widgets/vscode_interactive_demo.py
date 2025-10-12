@@ -101,7 +101,7 @@ display(phonopy_atoms)
 
 # %% Render local flame HDF5 trajectory file
 matterviz_traj_dir_url: Final = (
-    "https://github.com/janosh/matterviz/raw/36c265e125/src/site/trajectories"
+    "https://github.com/janosh/matterviz/raw/6288721042/src/site/trajectories"
 )
 file_name = "flame-gold-cluster-55-atoms.h5"
 
@@ -123,12 +123,9 @@ display(traj_widget)
 
 
 # %% Render remote ASE trajectory file
-githack_traj_dir_url: Final = (
-    "https://raw.githack.com/janosh/matterviz/36c265e125/src/site/trajectories"
-)
 file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
 ase_traj_widget = pmv.TrajectoryWidget(
-    data_url=f"{githack_traj_dir_url}/{file_name}",
+    data_url=f"{matterviz_traj_dir_url}/{file_name}",
     display_mode="structure+scatter",
     show_force_vectors=True,
     force_vector_scale=0.5,
@@ -142,7 +139,7 @@ display(ase_traj_widget)
 
 # %% Render remote flame HDF5 trajectory file
 gold_cluster_traj = pmv.TrajectoryWidget(
-    data_url=f"{githack_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
+    data_url=f"{matterviz_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
     display_mode="structure+scatter",
     show_force_vectors=False,
     style="height: 600px;",

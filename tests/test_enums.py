@@ -464,7 +464,7 @@ def test_data_files_enum(tmp_path: Path) -> None:
     class TestDataFiles(Files, base_dir=str(tmp_path), auto_download=False):
         mp_energies = (
             "mp/2025-02-01-mp-energies.csv.gz",
-            "https://figshare.com/files/123456",  # Example URL
+            "https://figshare.com/files/789012",  # Example URL
             "MP Energies Test",
             "Test description for MP energies",
         )
@@ -484,21 +484,21 @@ def test_data_files_enum(tmp_path: Path) -> None:
         == f"{tmp_path}/mp/2025-02-01-mp-energies.csv.gz"
     )
     assert TestDataFiles.mp_energies.name == "mp_energies"
-    assert TestDataFiles.mp_energies.url.startswith("https://figshare.com/files/")
+    assert TestDataFiles.mp_energies.url == "https://figshare.com/files/789012"
 
     assert TestDataFiles.wbm_summary.rel_path == "wbm/2023-12-13-wbm-summary.csv.gz"
     assert (
         TestDataFiles.wbm_summary.file_path
         == f"{tmp_path}/wbm/2023-12-13-wbm-summary.csv.gz"
     )
-    assert TestDataFiles.wbm_summary.url.startswith("https://figshare.com/files/")
+    assert TestDataFiles.wbm_summary.url == "https://figshare.com/files/789012"
 
 
 # Define a local enum for URL testing to avoid dependency on global Files state
 class LocalTestFilesForUrls(Files):
     file1_figshare_url = (
         "path1/file1.txt",
-        "https://figshare.com/files/111111",
+        "https://figshare.com/files/789012",
         "File 1 Figshare",
     )
     file2_empty_url = ("path2/file2.txt", "", "File 2 Empty URL")

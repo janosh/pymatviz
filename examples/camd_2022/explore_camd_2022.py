@@ -33,9 +33,9 @@ if os.path.isfile("camd-2022-wo-features.csv.bz2"):
     df_camd = pd.read_csv("camd-2022-wo-features.csv.bz2")
 else:
     print("Fetching data from AWS...")
-    url = "https://s3.amazonaws.com/publications.matr.io/7/deployment/data/files"
+    base_url = "https://s3.amazonaws.com/publications.matr.io/7/deployment/data/files"
     with_feat_str = "w" if (with_feat := False) else "wo"
-    dataset_url = f"{url}/camd_data_to_release_{with_feat_str}features.json"
+    dataset_url = f"{base_url}/camd_data_to_release_{with_feat_str}features.json"
     data = requests.get(dataset_url, timeout=10).json()
     df_camd = pd.DataFrame(data)
     df_camd = df_camd.to_csv(f"camd-2022-{with_feat_str}-features.csv.bz2")
