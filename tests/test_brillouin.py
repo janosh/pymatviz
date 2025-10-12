@@ -393,7 +393,7 @@ def test_brillouin_zone_3d_edge_cases(structures: list[Structure]) -> None:
 
     # Test with invalid axes_vectors dict
     with pytest.raises(KeyError, match="axes_vectors must contain 'shaft' and 'cone'"):
-        brillouin_zone_3d(structures[0], axes_vectors={"shaft": {}})
+        brillouin_zone_3d(structures[0], axes_vectors={"shaft": {}})  # type: ignore[arg-type]
 
 
 def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) -> None:

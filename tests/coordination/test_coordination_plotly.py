@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,7 +14,6 @@ from pymatviz.enums import ElemColorScheme
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Any
 
 
 def test_coordination_hist_single_structure(structures: Sequence[Structure]) -> None:
@@ -230,9 +228,17 @@ def test_coordination_vs_cutoff_line(
 
 def test_coordination_vs_cutoff_line_invalid_input() -> None:
     """Test coordination_vs_cutoff_line with invalid input."""
-    inputs: Any
-    for inputs in ([], (), "invalid input", None):
-        with pytest.raises(TypeError, match=re.escape(f"Invalid {inputs=}")):
+    # Test empty sequences
+    for inputs in ([], ()):
+        with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
+            coordination_vs_cutoff_line(inputs)
+
+    # Test invalid types
+    for inputs in ("invalid input", None):
+        with pytest.raises(
+            TypeError,
+            match="Input must be a Pymatgen Structure, ASE Atoms, or PhonopyAtoms",
+        ):
             coordination_vs_cutoff_line(inputs)
 
 
@@ -346,3 +352,38 @@ def test_coordination_hist_bar_annotations(structures: Sequence[Structure]) -> N
         trace.textfont.size == 14 and trace.textfont.color == "red"
         for trace in fig.data
     )
+
+
+def test_coordination_vs_cutoff_line_disordered_structure() -> None:
+    """Test coordination_vs_cutoff_line with a disordered structure."""
+    from pymatviz.structure import fe3co4_disordered
+
+    # Test with a single disordered structure
+    fig = coordination_vs_cutoff_line(fe3co4_disordered, strategy=(1, 5))
+    assert len(fig.data) == 3
+
+    # Disordered structure has one site with Fe:C (75:25) and one O site
+    # For the disordered site, we should see both Fe and C contributions
+    # The function uses specie.symbol which should handle disordered sites
+    assert len(fig.data) >= 1, "Should have traces for disordered structure elements"
+
+    # Check that traces have valid data
+    for trace in fig.data:
+        assert len(trace.x) == 50, "Default num_points=50"
+        assert len(trace.y) == 50, "Should have 50 y-values"
+        assert all(y_val >= 0 for y_val in trace.y), "CNs should be non-negative"
+        assert trace.name, "Each trace should have a name"
+
+    # Test with different strategies
+    for strategy in [(2, 6), CrystalNN, VoronoiNN()]:
+        fig_strat = coordination_vs_cutoff_line(fe3co4_disordered, strategy=strategy)
+        assert fig_strat.data, f"Should work with {strategy=}"
+
+    # Test with multiple disordered structures
+    struct_dict = {
+        "struct1": fe3co4_disordered,
+        "struct2": fe3co4_disordered.copy(),
+    }
+    fig_multi = coordination_vs_cutoff_line(struct_dict, strategy=(1, 5))
+    assert fig_multi.data
+    assert len(fig_multi.data) >= len(fig.data)

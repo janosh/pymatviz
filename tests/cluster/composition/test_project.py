@@ -92,7 +92,7 @@ def test_project_vectors_methods(
         expected_obj_type = UMAP
         obj_attrs = {"n_neighbors": 5, "min_dist": 0.2}
 
-    result, proj_obj = project_vectors(sample_data, method=method, **kwargs)
+    result, proj_obj = project_vectors(sample_data, method=method, **kwargs)  # type: ignore[arg-type]
 
     # Check shape of projected data
     assert result.shape == (100, 2)
