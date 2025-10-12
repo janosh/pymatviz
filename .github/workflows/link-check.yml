@@ -7,13 +7,21 @@ on:
     branches: [main]
 
 jobs:
-  markdown-link-check:
+  link-check:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Run markdown link check
-        uses: gaurav-nelson/github-action-markdown-link-check@v1
+      - name: Discover broken links
+        uses: lycheeverse/lychee-action@v2
         with:
-          config-file: .github/workflows/link-check-config.json
+          # increase max-redirects needed for some journal links
+          args: >-
+            --accept 100..=103,200..=299,403,429,500,503 --max-redirects 10
+            --exclude-path tmp/
+            --exclude-all-private --exclude '\{.*\}'
+            --exclude https://s3.us-east-1.amazonaws.com/materialsproject-contribs/MatPES_2025_1
+            --exclude https://github.com/ACEsuit/mace-foundations/releases/download
+            --exclude https://s3.amazonaws.com/publications.matr.io/7/deployment/data/files
+            -- ./**/*.{py,md,svelte,ts,yml,yaml}

@@ -1,4 +1,0 @@
-{
-  "aliveStatusCodes": [200, 403, 429],
-  "ignorePatterns": ["https://github.com/janosh/pymatviz/pull/\\d+"]
-}

@@ -237,8 +237,8 @@ def df_to_pdf(
             Defaults to True. Be careful to set size correctly (not much too large as
             is the default) if you set crop=False.
         size (str): Page size. Defaults to "4cm * n_cols x 2cm * n_rows"
-            (width x height). See https://developer.mozilla.org/@page for 'landscape'
-            and other special values.
+            (width x height). See https://developer.mozilla.org/docs/Web/CSS/@page for
+            'landscape' and other special values.
         style (str): CSS style string to be inserted into the HTML file.
             Defaults to "".
         styler_css (bool | dict[str, str]): Whether to apply some sensible default CSS

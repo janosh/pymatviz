@@ -120,7 +120,7 @@ def _(PhonopyAtoms):
 @app.cell
 def _(Final, os, pmv):
     matterviz_traj_dir_url: Final = (
-        "https://github.com/janosh/matterviz/raw/36c265e125/src/site/trajectories"
+        "https://github.com/janosh/matterviz/raw/6288721042/src/site/trajectories"
     )
     _file_name = "flame-gold-cluster-55-atoms.h5"
     if not os.path.isfile(f"tmp/{_file_name}"):
@@ -136,16 +136,14 @@ def _(Final, os, pmv):
         show_force_vectors=False,
     )
     _gold_cluster_traj
+    return (matterviz_traj_dir_url,)
 
 
 @app.cell
-def _(Final, pmv):
-    githack_traj_dir_url: Final = (
-        "https://raw.githack.com/janosh/matterviz/36c265e125/src/site/trajectories"
-    )
+def _(matterviz_traj_dir_url, pmv):
     _file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
     ase_traj_widget = pmv.TrajectoryWidget(
-        data_url=f"{githack_traj_dir_url}/{_file_name}",
+        data_url=f"{matterviz_traj_dir_url}/{_file_name}",
         display_mode="structure+scatter",
         show_force_vectors=True,
         force_vector_scale=0.5,
@@ -155,13 +153,12 @@ def _(Final, pmv):
         style="height: 600px;",
     )
     ase_traj_widget
-    return (githack_traj_dir_url,)
 
 
 @app.cell
-def _(githack_traj_dir_url, pmv):
+def _(matterviz_traj_dir_url, pmv):
     _gold_cluster_traj = pmv.TrajectoryWidget(
-        data_url=f"{githack_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
+        data_url=f"{matterviz_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
         display_mode="structure+scatter",
         show_force_vectors=False,
         style="height: 600px;",

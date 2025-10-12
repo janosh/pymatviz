@@ -1,7 +1,8 @@
 """Script to track papers that use pymatviz by fetching citations from Google Scholar
 and Zotero.
 
-Invoke with 64-character SERPAPI_KEY:
+Invoke with 64-character SERPAPI_KEY from https://serpapi.com/dashboard (login with
+GitHub account):
 
 SERPAPI_KEY=ccd7f7ea8... python assets/scripts/track_pymatviz_citations.py
 """
@@ -46,13 +47,13 @@ class ScholarPaper(TypedDict):
 
     title: str
     link: str
-    result_id: str
     authors: list[str]
-    summary: str | None
     year: int | None
     citations: int
-    fetch_date: str
     # Additional metadata fields
+    result_id: NotRequired[str]
+    summary: NotRequired[str | None]
+    fetch_date: NotRequired[str]
     snippet: NotRequired[str]  # Paper abstract/description
     resources: NotRequired[list[dict[str, str]]]  # Additional links (PDF, HTML, etc.)
     publication_info: NotRequired[dict[str, str]]  # Full publication metadata
@@ -75,79 +76,54 @@ def remove_duplicates(
     """
     # Sort papers by source (Zotero first) and citations (higher first)
     papers.sort(key=lambda x: (x.get("source") != "zotero", -x.get("citations", 0)))
+    papers_to_remove: set[int] = set()
 
-    # Keep track of papers to remove
-    to_remove: set[int] = set()
-
-    # Compare each paper with every other paper
     for ii, paper1 in enumerate(papers):
-        if ii in to_remove:
+        if ii in papers_to_remove:
             continue
-
         for jj, paper2 in enumerate(papers[ii + 1 :], start=ii + 1):
-            if jj in to_remove:
+            if jj in papers_to_remove:
                 continue
 
-            # Calculate title similarity using difflib
             norm1 = " ".join(paper1["title"].lower().split())
             norm2 = " ".join(paper2["title"].lower().split())
             similarity = difflib.SequenceMatcher(None, norm1, norm2).ratio()
 
             if similarity >= similarity_threshold:
-                # Keep the manually added paper from Zotero if available, otherwise
-                # keep the one with more citations
                 if paper1.get("source") == "zotero":
-                    to_remove.add(jj)
+                    papers_to_remove.add(jj)
                 elif paper2.get("source") == "zotero":
-                    to_remove.add(ii)
+                    papers_to_remove.add(ii)
                 elif paper1.get("citations", 0) >= paper2.get("citations", 0):
-                    to_remove.add(jj)
+                    papers_to_remove.add(jj)
                 else:
-                    to_remove.add(ii)
+                    papers_to_remove.add(ii)
 
-    # Return papers that weren't marked for removal
-    return [paper for idx, paper in enumerate(papers) if idx not in to_remove]
+    return [paper for idx, paper in enumerate(papers) if idx not in papers_to_remove]
 
 
 def should_update(filename: str, update_freq_days: int = 7) -> bool:
-    """Check if the file should be updated based on its last modified time.
-
-    Args:
-        filename (str): Path to the file to check.
-        update_freq_days (int): Number of days to wait between updates.
-
-    Returns:
-        bool: True if file doesn't exist or is older than update_freq_days.
-    """
+    """Check if file should be updated (missing or older than update_freq_days)."""
     try:
         mtime = os.path.getmtime(filename)
         last_modified = datetime.fromtimestamp(mtime, tz=UTC)
-        return (datetime.now(tz=UTC) - last_modified) > timedelta(days=update_freq_days)
+        delta = datetime.now(tz=UTC) - last_modified
+        return delta > timedelta(days=update_freq_days)
     except FileNotFoundError:
         return True
 
 
 def create_backup(filename: str) -> str | None:
-    """Backup the specified file with timestamp in new name.
-
-    Args:
-        filename (str): Path to the file to backup.
-
-    Returns:
-        str | None: Path to the backup file if created, None if source doesn't exist.
-    """
+    """Backup file with timestamp. Returns backup path or None if file doesn't exist."""
     if not os.path.isfile(filename):
         return None
 
-    # Get last modified time and format for filename
     mtime = datetime.fromtimestamp(os.path.getmtime(filename), tz=UTC)
     timestamp = mtime.strftime("%Y%m%d-%H%M%S")
-
-    # Create backup filename with timestamp
     base = filename.removesuffix(".yaml.gz")
     backup_path = f"{base}-{timestamp}.yaml.gz"
-    shutil.copy2(filename, backup_path)  # copy2 preserves metadata
-    return str(backup_path)
+    shutil.copy2(filename, backup_path)
+    return backup_path
 
 
 def fetch_scholar_papers(
@@ -168,8 +144,7 @@ def fetch_scholar_papers(
     """
     from serpapi import GoogleSearch
 
-    if api_key is None:
-        api_key = os.getenv("SERPAPI_KEY")
+    api_key = api_key or os.getenv("SERPAPI_KEY")
     if not api_key:
         raise ValueError(
             "No API key provided. Either pass as argument or set SERPAPI_KEY env var."
@@ -187,21 +162,18 @@ def fetch_scholar_papers(
             "start": page * 10,  # Google Scholar uses 10 results per page
         }
 
-        search = GoogleSearch(params)
-        results = search.get_dict()
+        results = GoogleSearch(params).get_dict()
 
         if "error" in results:
             print(f"Error on page {page + 1}: {results['error']}", file=sys.stderr)
             continue
-
         if "organic_results" not in results:
             print(f"No results found on page {page + 1}", file=sys.stderr)
             break
 
         for idx, result in enumerate(results["organic_results"], start=1):
-            # Skip if no title or link
             if not result.get("title") or not result.get("link"):
-                continue
+                continue  # Skip if no title or link
 
             # Extract year from publication info if available
             year = None
@@ -211,7 +183,6 @@ def fetch_scholar_papers(
             ):
                 year = int(year_match.group())
 
-            # Extract authors from publication info
             authors = []
             if isinstance(pub_info, dict) and "authors" in pub_info:
                 authors = [
@@ -234,21 +205,14 @@ def fetch_scholar_papers(
                 .get("total", 0),
                 "summary": pub_info.get("summary", ""),
             }
-            if not paper.get("authors"):
-                continue  # don't add papers without authors to YAML file
-            papers.append(paper)
+            if paper.get("authors"):
+                papers.append(paper)
 
     return papers
 
 
 def save_papers(papers: list[ScholarPaper], filename: str) -> None:
-    """Save papers to a gzipped YAML file.
-
-    Args:
-        papers (list[ScholarPaper]): List of papers to save.
-        filename (str): Name of the output file.
-    """
-    # Load existing papers for diff if file exists
+    """Save papers to gzipped YAML file with backup and diff."""
     old_papers: list[ScholarPaper] = []
     if os.path.isfile(filename):
         with gzip.open(filename, mode="rt", encoding="utf-8") as file:
@@ -258,7 +222,6 @@ def save_papers(papers: list[ScholarPaper], filename: str) -> None:
         print(f"No need to update {filename}, already contains {len(papers)} papers")
         return
 
-    # Create backup of existing file
     if backup_path := create_backup(filename):
         print(f"\nCreated backup at {backup_path}")
         # Print diff if we have old data
@@ -272,36 +235,24 @@ def save_papers(papers: list[ScholarPaper], filename: str) -> None:
 def update_readme(
     papers: list[ScholarPaper], readme_path: str = f"{ROOT}/readme.md"
 ) -> None:
-    """Update the readme with a list of papers sorted by citations and year.
-
-    Args:
-        papers (list[ScholarPaper]): List of papers to add to readme.
-        readme_path (str): Path to the readme file.
-    """
-    # Sort papers by citations (highest first) and year (newest first)
+    """Update readme with papers sorted by citations and year."""
     sorted_papers = sorted(
         papers,
         key=lambda p: (-p["citations"], -p.get("year") or float("inf")),  # type: ignore[operator]
     )
 
-    # Read current readme
     with open(readme_path, encoding="utf-8") as file:
         content = file.read()
-
     # Update paper count in the "how to cite" section
-    paper_count = len(sorted_papers)
     content = re.sub(
         r"Check out \[(\d+) existing papers",
-        f"Check out [{paper_count} existing papers",
+        f"Check out [{len(sorted_papers)} existing papers",
         content,
     )
 
-    # Remove existing papers section if it exists
     if "## Papers using" in content:
-        pattern = r"## Papers using.*?$"
-        content = re.sub(pattern, "", content, flags=re.DOTALL).rstrip()
+        content = re.sub(r"## Papers using.*?$", "", content, flags=re.DOTALL).rstrip()
 
-    # Prepare the new section
     today = f"{datetime.now(tz=UTC):%Y-%m-%d}"
     papers_section = "\n\n## Papers using `pymatviz`\n\n"
     scholar_url = "https://scholar.google.com/scholar?q=pymatviz"
@@ -322,28 +273,59 @@ def update_readme(
 
         year_str = f" ({paper['year']})" if paper["year"] else ""
         cite_str = f" (cited by {paper['citations']})" if paper["citations"] else ""
-
         papers_section += (
             f"1. {authors_str}{year_str}. [{paper['title']}]({paper['link']})"
             f"{cite_str}\n"
         )
 
-    # Add papers section at the very end of the readme
-    content = content.rstrip() + papers_section
-
-    # Write updated content
     with open(readme_path, mode="w", encoding="utf-8") as file:
-        file.write(content)
+        file.write(content.rstrip() + papers_section)
 
     print(f"Wrote {len(sorted_papers)} papers to {readme_path}")
 
 
-def main(update_freq_days: int = 7) -> None:
-    """Main function to fetch papers and update readme.
+def convert_zotero_paper(zotero_paper: dict) -> ScholarPaper | None:
+    """Convert Zotero paper to ScholarPaper format."""
+    try:
+        if not (title := zotero_paper.get("title", "")):
+            print(f"Skipping paper with no title: {zotero_paper.get('id', 'unknown')}")
+            return None
 
-    Args:
-        update_freq_days (int): Number of days to wait between updates.
-    """
+        # Extract year (handles both list and dict formats)
+        issued = zotero_paper.get("issued")
+        year = (issued[0] if isinstance(issued, list) and issued else issued or {}).get(
+            "year"
+        )
+
+        # Build link from URL or DOI
+        link = zotero_paper.get("URL")
+        if not link and (doi := zotero_paper.get("DOI")):
+            link = doi if doi.startswith("http") else f"https://doi.org/{doi}"
+        if not link:
+            print(f"Skipping paper without URL or DOI: {title}")
+            return None
+
+        authors = [
+            f"{auth.get('given', '')} {auth.get('family', '')}".strip()
+            for auth in zotero_paper.get("author", [])
+            if auth.get("given") or auth.get("family")
+        ]
+
+        return {  # noqa: TRY300
+            "title": title,
+            "authors": authors,
+            "year": year,
+            "link": link,
+            "citations": 0,
+            "source": "zotero",
+        }
+    except (KeyError, TypeError, ValueError) as exc:
+        print(f"Error converting paper {zotero_paper.get('title', 'Unknown')}: {exc}")
+        return None
+
+
+def main(update_freq_days: int = 7) -> None:
+    """Fetch papers from Scholar and Zotero, merge, and update readme."""
     module_dir = os.path.dirname(__file__)
     data_file = f"{module_dir}/pmv-used-by-list-google-scholar.yaml.gz"
 
@@ -371,27 +353,16 @@ def main(update_freq_days: int = 7) -> None:
             f"{data_file=} is less than {update_freq_days} days old, skipping update."
         )
 
-    # load assets/scripts/pmv-used-by-list-zotero.yaml
     with open(f"{module_dir}/pmv-used-by-list-zotero.yaml", encoding="utf-8") as file:
         zotero_papers = yaml.safe_load(file)["references"]
 
-    converted_zotero_papers = [  # convert zotero_papers to common format
-        {
-            "title": paper["title"],
-            "authors": [
-                f"{auth['given']} {auth['family']}" for auth in paper["author"]
-            ],
-            "year": paper["issued"][0]["year"],
-            "link": paper["URL"],
-            "citations": 0,
-            "source": "zotero",  # Mark papers from Zotero
-        }
+    converted_zotero_papers = [
+        converted
         for paper in zotero_papers
+        if (converted := convert_zotero_paper(paper)) is not None
     ]
 
-    # Combine papers and remove duplicates
     all_papers = remove_duplicates(scholar_papers + converted_zotero_papers)
-
     update_readme(all_papers)
 
 
