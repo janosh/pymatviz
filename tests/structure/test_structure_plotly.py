@@ -1363,15 +1363,13 @@ def test_structure_plotly_multiple_properties_precedence(is_3d: bool) -> None:
     }
     # struct2 has no properties, so should use function params
 
-    func_kwargs: dict[str, Any] = {"atom_size": 20, "scale": 1.0, "atomic_radii": 0.8}
-
     # Test single structures to verify precedence works
     if is_3d:
-        fig1 = pmv.structure_3d(struct1, **func_kwargs)
-        fig2 = pmv.structure_3d(struct2, **func_kwargs)
+        fig1 = pmv.structure_3d(struct1, atom_size=20, scale=1.0, atomic_radii=0.8)
+        fig2 = pmv.structure_3d(struct2, atom_size=20, scale=1.0, atomic_radii=0.8)
     else:
-        fig1 = pmv.structure_2d(struct1, **func_kwargs)
-        fig2 = pmv.structure_2d(struct2, **func_kwargs)
+        fig1 = pmv.structure_2d(struct1, atom_size=20, scale=1.0, atomic_radii=0.8)
+        fig2 = pmv.structure_2d(struct2, atom_size=20, scale=1.0, atomic_radii=0.8)
 
     # Get site traces from both figures
     def get_site_traces(fig: go.Figure) -> list[Any]:

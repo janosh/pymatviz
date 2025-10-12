@@ -401,18 +401,14 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
     assert result == instance_dict
 
     # Test with invalid input
-    inputs, cls_name = "invalid input", cls.__name__
-    err_msg = f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
+    cls_name = cls.__name__
+    err_msg = f"Invalid inputs, expected {cls_name} or dict/list/tuple of {cls_name}"
     with pytest.raises(TypeError, match=err_msg):
-        pmv_pd.normalize_to_dict(inputs, cls=cls)
+        pmv_pd.normalize_to_dict("invalid input", cls=cls)
 
     # Test with mixed valid and invalid inputs in a list
-    inputs = [single_instance, "invalid"]  # type: ignore[assignment]
-    err_msg = re.escape(
-        f"Invalid {inputs=}, expected {cls_name} or dict/list/tuple of {cls_name}"
-    )
     with pytest.raises(TypeError, match=err_msg):
-        pmv_pd.normalize_to_dict(inputs, cls=cls)
+        pmv_pd.normalize_to_dict([single_instance, "invalid"], cls=cls)  # type: ignore[assignment]
 
 
 @pytest.mark.parametrize(
@@ -433,8 +429,12 @@ def test_normalize_to_dict_mixed_classes(
     }
     instance1 = obj_map[cls1]
     instance2 = obj_map[cls2]
+    cls_name = cls1.__name__
 
-    with pytest.raises(TypeError, match=r"Invalid inputs=\["):
+    with pytest.raises(
+        TypeError,
+        match=f"Invalid inputs, expected {cls_name} or dict/list/tuple of {cls_name}",
+    ):
         pmv_pd.normalize_to_dict([instance1, instance2], cls=cls1)
 
 

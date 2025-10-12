@@ -7,7 +7,14 @@ import plotly.graph_objects as go
 import pytest
 from numpy.testing import assert_allclose
 from pymatgen.analysis.local_env import CrystalNN
-from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
+from pymatgen.core import (
+    Composition,
+    Element,
+    Lattice,
+    PeriodicSite,
+    Species,
+    Structure,
+)
 
 from pymatviz.enums import ElemColorScheme, SiteCoords
 from pymatviz.structure.helpers import (
@@ -24,7 +31,9 @@ from pymatviz.structure.helpers import (
     get_elem_colors,
     get_first_matching_site_prop,
     get_image_sites,
+    get_site_elements,
     get_site_hover_text,
+    get_site_species,
     get_struct_prop,
     get_subplot_title,
 )
@@ -44,6 +53,43 @@ def mock_figure() -> Any:
             self.last_trace_kwargs = kwargs
 
     return MockFigure()
+
+
+@pytest.mark.parametrize(
+    ("species_input", "expected_type", "expected_elements"),
+    [
+        ("Si", Element, {"Si"}),
+        (Element("O"), Element, {"O"}),
+        (Species("Fe", 2), Species, {"Fe"}),
+        (Composition({"Fe": 0.75, "Co": 0.25}), Composition, {"Fe", "Co"}),
+        (
+            Composition({"Fe": 0.5, "Co": 0.3, "Ni": 0.2}),
+            Composition,
+            {"Fe", "Co", "Ni"},
+        ),
+    ],
+)
+def test_get_site_species_and_elements(
+    species_input: Any, expected_type: type, expected_elements: set[str]
+) -> None:
+    """Test get_site_species and get_site_elements for all site types."""
+    lattice = Lattice.cubic(3.0)
+    site = PeriodicSite(species_input, [0, 0, 0], lattice)
+
+    species_result = get_site_species(site)
+    assert isinstance(species_result, expected_type)
+
+    elements_result = get_site_elements(site)
+    assert elements_result == expected_elements
+
+
+def test_get_site_elements_on_disordered_struct(fe3co4_disordered: Structure) -> None:
+    """Test get_site_elements returns valid symbols for disordered structure."""
+    for site in fe3co4_disordered:
+        elements = get_site_elements(site)
+        assert isinstance(elements, set)
+        assert len(elements) >= 1
+        assert all(isinstance(e, str) and e[0].isupper() for e in elements)
 
 
 @pytest.mark.parametrize(

@@ -217,11 +217,13 @@ def test_density_scatter_hover_templates(
     hover_template: str | None, expected_content: list[str]
 ) -> None:
     """Test various hover template configurations."""
-    kwargs = {"log_density": True}
-    if hover_template:
-        kwargs["hovertemplate"] = hover_template
-
-    fig = pmv.density_scatter(df=df_regr, x=X_COL, y=Y_COL, **kwargs)
+    fig = pmv.density_scatter(
+        df=df_regr,
+        x=X_COL,
+        y=Y_COL,
+        log_density=True,
+        hovertemplate=hover_template,
+    )
 
     for trace in fig.data:
         for content in expected_content:

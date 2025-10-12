@@ -8,6 +8,7 @@ https://arxiv.org/abs/2401.00096 (see fig. 56).
 # %%
 from __future__ import annotations
 
+import functools
 import json
 import lzma
 import os
@@ -121,22 +122,18 @@ if __name__ == "__main__":
         if model_name.startswith("mace"):
             calculator = mace_mp(model=checkpoint, default_dtype="float64")
             atomic_numbers = calculator.z_table.zs
-
-        elif model_name.startswith("GN-"):
-            from fairchem.experimental.umlipv1.calculator import RadCalculator
-
-            calculator = RadCalculator(
-                checkpoint_path=checkpoint, cpu=True, dtype="float64", seed=0
-            )
-            atomic_numbers = [*range(1, 85)]
-            # atomic_numbers = [*range(1, 85), *range(89, 95)]
         else:
             raise ValueError(f"Unknown {model_name=}")
 
-        kwargs = dict(calculator=calculator, model_name=model_name, distances=distances)
+        calc_pair_curve = functools.partial(
+            calc_diatomic_curve,
+            calculator=calculator,
+            model_name=model_name,
+            distances=distances,
+        )
         # Generate homo-nuclear pairs (same element with itself)
         homo_pairs = [(z, z) for z in atomic_numbers]
-        calc_diatomic_curve(pairs=homo_pairs, **kwargs, results=results[homo_nuc])
+        calc_pair_curve(pairs=homo_pairs, results=results[homo_nuc])
 
         # write results in case run is killed
         with lzma.open(out_path, mode="wt") as file:
@@ -146,9 +143,7 @@ if __name__ == "__main__":
         # Generate all hetero-nuclear pairs (different elements)
         for z1 in calculator.z_table.zs:
             hetero_pairs = [(z1, z2) for z2 in atomic_numbers if z2 != z1]
-            calc_diatomic_curve(
-                pairs=hetero_pairs, **kwargs, results=results[hetero_nuc]
-            )
+            calc_pair_curve(pairs=hetero_pairs, results=results[hetero_nuc])
 
             # write results in case run is killed
             with lzma.open(out_path, mode="wt") as file:

@@ -8,6 +8,7 @@ from typing import Any, Literal
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pymatgen.core import Element
 
 from pymatviz.typing import AnyStructure
 
@@ -81,11 +82,14 @@ def brillouin_zone_3d(
     )
 
     for idx, (struct_key, structure) in enumerate(structures.items(), start=1):
+        from pymatviz.structure.helpers import get_site_symbol
+
         # Convert pymatgen Structure to seekpath input format
         spglib_atoms = (
             structure.lattice.matrix,  # cell
             structure.frac_coords,  # positions
-            [site.specie.number for site in structure],  # atomic numbers
+            # Get atomic number from element symbol (handling disordered sites)
+            [Element(get_site_symbol(site)).number for site in structure],
         )
         # Get primitive structure and symmetry info using seekpath
         with warnings.catch_warnings():

@@ -396,6 +396,8 @@ def df_to_html(
             [dict(selector=sel, props=val) for sel, val in styler_css.items()]
         )
     html = styler.to_html(**kwargs)
+    if html is None:
+        raise ValueError("Styler.to_html() returned None, don't pass buf kwarg")
     if pre_table:
         html = html.replace("<table", pre_table)
 

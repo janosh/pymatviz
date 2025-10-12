@@ -178,7 +178,7 @@ def rainclouds(
 
             if hover_data is not None:
                 if isinstance(hover_data, dict):
-                    cols_to_show = hover_data.get(label, [])
+                    cols_to_show: Sequence[str] = hover_data.get(label, [])  # type: ignore[assignment]
                 else:
                     cols_to_show = hover_data
 

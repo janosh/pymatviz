@@ -113,26 +113,38 @@ def test_df_to_pdf(
 
     file_path = tmp_path / "test_df_to.pdf"
 
-    kwargs = dict(
-        styler=df_float.style,
-        file_path=file_path,
+    # check we're raising helpful error messages on missing deps
+    if find_spec("weasyprint") is None:
+        with pytest.raises(ImportError, match="weasyprint not installed\n"):
+            pmv.io.df_to_pdf(
+                df_float.style,
+                file_path,
+                crop=crop,
+                size=size,
+                style=style,
+                styler_css=styler_css,
+            )
+        return
+    if find_spec("pdfCropMargins") is None:
+        with pytest.raises(ImportError, match="pdfCropMargins not installed\n"):
+            pmv.io.df_to_pdf(
+                df_float.style,
+                file_path,
+                crop=crop,
+                size=size,
+                style=style,
+                styler_css=styler_css,
+            )
+        return
+
+    pmv.io.df_to_pdf(
+        df_float.style,
+        file_path,
         crop=crop,
         size=size,
         style=style,
         styler_css=styler_css,
     )
-
-    # check we're raising helpful error messages on missing deps
-    if find_spec("weasyprint") is None:
-        with pytest.raises(ImportError, match="weasyprint not installed\n"):
-            pmv.io.df_to_pdf(**kwargs)
-        return
-    if find_spec("pdfCropMargins") is None:
-        with pytest.raises(ImportError, match="pdfCropMargins not installed\n"):
-            pmv.io.df_to_pdf(**kwargs)
-        return
-
-    pmv.io.df_to_pdf(**kwargs)
 
     # Check if the file is created
     assert file_path.is_file()
@@ -149,7 +161,14 @@ def test_df_to_pdf(
 
     # Test file overwrite behavior
     file_size_before = file_path.stat().st_size  # ~7000 bytes
-    pmv.io.df_to_pdf(**kwargs)
+    pmv.io.df_to_pdf(
+        df_float.style,
+        file_path,
+        crop=crop,
+        size=size,
+        style=style,
+        styler_css=styler_css,
+    )
     file_size_after = file_path.stat().st_size  # ~7000 bytes
 
     # file size should be the same since content is unchanged

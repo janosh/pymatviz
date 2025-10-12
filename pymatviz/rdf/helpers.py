@@ -65,12 +65,15 @@ def calculate_rdf(
     radii = np.linspace(0, cutoff, n_bins + 1)[1:]
     rdf = np.zeros_like(radii)
 
+    # Import here to avoid circular import
+    from pymatviz.structure.helpers import get_site_elements
+
     # Get indices of center and neighbor species
     if center_species:
         center_indices = [
             idx
             for idx, site in enumerate(struct)
-            if site.specie.symbol == center_species
+            if center_species in get_site_elements(site)
         ]
     else:
         center_indices = list(range(len(struct)))
@@ -79,7 +82,7 @@ def calculate_rdf(
         neighbor_indices = [
             idx
             for idx, site in enumerate(struct)
-            if site.specie.symbol == neighbor_species
+            if neighbor_species in get_site_elements(site)
         ]
     else:
         neighbor_indices = list(range(len(struct)))

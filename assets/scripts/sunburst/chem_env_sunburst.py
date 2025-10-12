@@ -36,7 +36,7 @@ structures = [
 # %% Basic chem env Sunburst Plot - ChemEnv vs CrystalNN Comparison
 # Default behavior: absolute counts, no slice limits
 spg_num = structures[2].get_space_group_info()[1]
-mat_id = structures[2].properties[Key.mat_id]
+mat_id = structures[2].properties.get(Key.mat_id, "unknown")
 mat_id_link = linkify_mp_id(mat_id)
 
 # ChemEnv method (comprehensive but slow)
