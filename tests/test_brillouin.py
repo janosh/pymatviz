@@ -124,7 +124,7 @@ def test_brillouin_zone_3d_different_lattices(structures: list[Structure]) -> No
         for trace in fig.data:
             if trace.type == "mesh3d":
                 x, y, z = trace.x, trace.y, trace.z
-                return abs(
+                return np.abs(
                     np.mean([x.max() - x.min(), y.max() - y.min(), z.max() - z.min()])
                     ** 3
                 )

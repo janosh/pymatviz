@@ -8,7 +8,7 @@ import pytest
 from numpy.testing import assert_allclose
 from pymatgen.core import Lattice, Structure
 
-from pymatviz.rdf.plotly import element_pair_rdfs, full_rdf
+from pymatviz.rdf.figures import element_pair_rdfs, full_rdf
 from tests.conftest import SI_ATOMS, SI_STRUCTS
 
 
