@@ -61,7 +61,7 @@ from pymatviz.ptable import (
     ptable_scatter_plotly,
 )
 from pymatviz.rainclouds import rainclouds
-from pymatviz.rdf.plotly import element_pair_rdfs, full_rdf
+from pymatviz.rdf.figures import element_pair_rdfs, full_rdf
 from pymatviz.sankey import sankey_from_2_df_cols
 from pymatviz.scatter import (
     density_hexbin,
@@ -70,7 +70,7 @@ from pymatviz.scatter import (
     density_scatter_with_hist,
 )
 from pymatviz.structure import structure_2d, structure_3d
-from pymatviz.structure.plotly import structure_2d_plotly, structure_3d_plotly
+from pymatviz.structure.figures import structure_2d_plotly, structure_3d_plotly
 from pymatviz.sunburst import chem_env_sunburst, chem_sys_sunburst, spacegroup_sunburst
 from pymatviz.templates import (
     pmv_dark_template,

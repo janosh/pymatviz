@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pymatviz.ptable.plotly import (
+from pymatviz.ptable.figures import (
     ptable_heatmap_plotly,
     ptable_heatmap_splits_plotly,
     ptable_hists_plotly,
