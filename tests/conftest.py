@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from glob import glob
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -15,8 +15,6 @@ from monty.json import MontyDecoder, MSONable
 from plotly.subplots import make_subplots
 from pymatgen.core import Lattice, Structure
 from pymatgen.io.ase import AseAtomsAdaptor
-from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
-from pymatgen.phonon.dos import PhononDos
 
 from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 
@@ -24,6 +22,8 @@ from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 if TYPE_CHECKING:
     import ase
     from phonopy import Phonopy
+    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
+    from pymatgen.phonon.dos import PhononDos
 
 
 # random regression data
@@ -171,7 +171,13 @@ def fe3co4_disordered_with_props(fe3co4_disordered: Structure) -> Structure:
     return fe3co4_disordered.copy(site_properties=site_props)
 
 
-BandsDoses = dict[str, dict[str, PhononBands | PhononDos]]
+class BandsDoses(TypedDict):
+    """Type for phonon bands and DOS data."""
+
+    bands: dict[str, PhononBands]
+    doses: dict[str, PhononDos]
+
+
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
 # enable loading PhononDBDocParsed with @module set to uninstalled ffonons.dbs.phonondb
 # by changing to identical dataclass in pymatviz.phonons module

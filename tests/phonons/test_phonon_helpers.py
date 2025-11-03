@@ -16,8 +16,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from pymatviz.typing import SetMode
-
-    from .conftest import BandsDoses
+    from tests.conftest import BandsDoses
 
 
 @pytest.mark.parametrize(

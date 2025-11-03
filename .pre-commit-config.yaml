@@ -8,7 +8,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.2
+    rev: v0.14.3
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -22,6 +22,7 @@ repos:
         name: ty check
         entry: ty check
         language: python
+        args: [--ignore, unresolved-import]
         additional_dependencies: [ty]
 
   - repo: https://github.com/janosh/format-ipy-cells
@@ -79,7 +80,7 @@ repos:
           - --fix
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.38.0
+    rev: v9.39.0
     hooks:
       - id: eslint
         types: [file]

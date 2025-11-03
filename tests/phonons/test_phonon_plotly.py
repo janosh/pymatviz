@@ -19,8 +19,7 @@ if TYPE_CHECKING:
     from phonopy import Phonopy
 
     from pymatviz.typing import SetMode
-
-    from .conftest import BandsDoses
+    from tests.conftest import BandsDoses
 
 
 @pytest.mark.parametrize(
