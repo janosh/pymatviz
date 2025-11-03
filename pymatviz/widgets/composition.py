@@ -13,7 +13,7 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 if TYPE_CHECKING:
     from pymatgen.util.typing import CompositionLike
 
-    from pymatviz.typing import MattervizElementColorSchemes
+    from pymatviz.widgets import MattervizElementColorSchemes
 
 CompositionMode = Literal["pie", "bar", "bubble"]
 

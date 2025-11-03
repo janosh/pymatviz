@@ -24,14 +24,13 @@ classifiers = [
 urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.11"
 dependencies = [
-    "kaleido>=1.0.0",
-    "numpy>=2",
-    # output-formatting needed for pandas Stylers,
-    # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "anywidget>=0.9.18",
-    "moyopy[interface]>=0.4.1",
+    "kaleido>=1.0.0",
+    "moyopy[interface]>=0.7.1",
     "nbformat>=5.10",
-    "pandas[output-formatting,xml]>=2.2",
+    "numpy>=2",
+    "pandas[output-formatting,xml]>=2.2", # output-formatting needed for pandas Stylers,
+    # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
     "plotly>=6",
     "pymatgen>=2025.2.18",
     "pyyaml>=6",
@@ -40,14 +39,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-auto-text-pos = ["adjustText>=0.8"]
 df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
 df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
 make-assets = ["matminer>=0.9"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 phonons = ["phonopy>=2.31"] # only needed if user passes in phonopy objects
 test = [
-    "pymatviz[auto-text-pos, df-pdf-export, df-svg-export, cluster, phonons]",
+    "pymatviz[df-pdf-export, df-svg-export, cluster, phonons]",
     "pytest-cov>=6",
     "pytest-split>=0.9",
     "pytest>=8",
@@ -130,11 +128,6 @@ docstring-code-format = true
     "INP001", # implicit-namespace-package
     "T201",   # print found
 ]
-
-[tool.ty.rules]
-unresolved-import = "ignore"
-# TODO: Unable to work with **kwargs: https://github.com/astral-sh/ty/issues/247
-missing-argument = "ignore"
 
 [dependency-groups]
 dev = ["pre-commit>=4.3.0", "ty>=0.0.1a21"]

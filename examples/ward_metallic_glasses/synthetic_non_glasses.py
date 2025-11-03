@@ -5,9 +5,9 @@ to turn the Ward et al. dataset into a more balanced classification task.
 import numpy as np
 import pandas as pd
 from pymatgen.core import Composition
-from ward_metallic_glasses import formula_features
 
 import pymatviz as pmv
+from examples.ward_metallic_glasses import formula_features
 from pymatviz.enums import Key
 
 
