@@ -110,7 +110,7 @@ def process_dataset(
         # Create embeddings
         if embed_method == "one-hot":
             embeddings = pcc.one_hot_encode(compositions)
-        elif embed_method in ["magpie", "matscholar_el"]:
+        elif embed_method in (Embed.magpie, Embed.matscholar_el):
             embeddings = pcc.matminer_featurize(compositions, preset=embed_method)
         else:
             raise ValueError(f"Unknown {embed_method=}")
@@ -144,14 +144,15 @@ def process_dataset(
         text = f"{comp_str}<br>{prop_val}"
         return dict(text=text, font_size=11, bgcolor="rgba(240, 240, 240, 0.5)")
 
-    if "embeddings" not in df_plot:
-        df_plot["embeddings"] = [embeddings_dict.get(comp) for comp in compositions]
+    embed_col = "embeddings"
+    if embed_col not in df_plot:
+        df_plot[embed_col] = [embeddings_dict.get(comp) for comp in compositions]
 
     fig = pmv.cluster_compositions(
         df_in=df_plot,
         composition_col="composition",
         prop_name=target_label,
-        embedding_method="embeddings",
+        embedding_method=embed_col,
         projection=projection,
         n_components=n_components,
         marker_size=8,
@@ -230,7 +231,7 @@ plot_combinations: list[  # type: ignore[invalid-assignment]
     (*mb_steels, Embed.magpie, Project.tsne, 2, dict(x=0.01, xanchor="left")),
     # TODO umap-learn seemingly not installed by uv run in CI, fix later
     # 3. JDFT2D with UMAP (2D) - shows modern non-linear projection
-    # (*mb_jdft2d, "magpie", "umap", 2, dict(x=0.01, xanchor="left")),
+    # (*mb_jdft2d, Embed.magpie, Project.umap, 2, dict(x=0.01, xanchor="left")),
     # 4. JDFT2D with one-hot encoding and PCA (3D) - shows raw element relationships
     (*mb_jdft2d, Embed.one_hot, Project.pca, 3, dict()),
     # 5. Steels with Matscholar embedding and t-SNE (3D) - shows advanced embedding

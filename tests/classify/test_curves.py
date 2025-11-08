@@ -215,3 +215,20 @@ def test_no_skill_line() -> None:
     assert isinstance(fig_roc_custom, go.Figure)
     assert len(fig_roc_custom.data) == 2  # 1 model trace + 1 no-skill line
     assert fig_roc_custom.data[1].line.color == "red"  # Custom color
+
+
+@pytest.mark.parametrize(
+    "curve_func", [precision_recall_curve_plotly, roc_curve_plotly]
+)
+def test_dict_with_dataframe_raises_error(
+    curve_func: Callable[..., go.Figure],
+) -> None:
+    """Test that passing a dict with a DataFrame raises a clear TypeError."""
+    df_clf = pd.DataFrame({"target": [0, 1, 0, 1], "probs": [0.1, 0.9, 0.2, 0.8]})
+    probs_dict = {"Model A": np.array([0.1, 0.9, 0.2, 0.8])}
+
+    with pytest.raises(
+        TypeError,
+        match="when passing a DataFrame, probs_positive must be a column name",
+    ):
+        curve_func("target", probs_dict, df=df_clf)

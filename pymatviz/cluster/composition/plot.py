@@ -360,9 +360,9 @@ def cluster_compositions(
     composition_col: str = "composition",
     *,
     prop_name: str | None = None,
-    embedding_method: EmbeddingMethod
-    | Callable[[Sequence[str], Any], np.ndarray]
-    | str = "magpie",
+    embedding_method: str
+    | EmbeddingMethod
+    | Callable[[Sequence[str], Any], np.ndarray] = EmbeddingMethod.magpie,
     projection: ProjectionMethod | ProjectionCallable | str,
     n_components: int = 2,
     hover_format: str = ".2f",
@@ -395,7 +395,7 @@ def cluster_compositions(
         prop_name (str | None): Name of the column to use for coloring points.
             If provided, the values in this column will be used to color the points.
             (default: None)
-        embedding_method (str | EmbedMethod | Callable[[list[str], Any], np.ndarray]):
+        embedding_method (str | EmbeddingMethod | Callable[[list[str], Any], ndarray]):
             Method to convert compositions to vectors (default: "magpie"). Options:
             - "one-hot": One-hot encoding of element fractions
             - "magpie": Matminer's MagPie featurization (for backward compatibility)
@@ -626,7 +626,7 @@ def cluster_compositions(
                 **projection_kwargs,
             )
             projector = None
-        elif projection in ProjectionMethod:
+        elif projection in list(ProjectionMethod):
             # Use built-in projection methods
             projected, projector = project_vectors(
                 embeddings,
