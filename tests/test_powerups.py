@@ -186,7 +186,7 @@ def test_add_ecdf_line_raises() -> None:
     with pytest.raises(
         TypeError, match=f"Cannot auto-determine x-values for ECDF from {qual_name}"
     ):
-        powerups.add_ecdf_line(fig_violin)  # type: ignore[arg-type]
+        powerups.add_ecdf_line(fig_violin)
 
     # check ValueError disappears when passing x-values explicitly
     fig_with_ecdf = powerups.add_ecdf_line(fig_violin, values=[1, 2, 3])

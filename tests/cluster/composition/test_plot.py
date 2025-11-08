@@ -15,7 +15,7 @@ from sklearn.decomposition import PCA, KernelPCA
 from sklearn.manifold import TSNE, Isomap
 
 import pymatviz as pmv
-from pymatviz.cluster.composition.plot import ClusterFigure
+from pymatviz.cluster.composition.plot import ClusterFigure, ProjectionCallable
 from tests.conftest import np_rng
 
 
@@ -93,7 +93,7 @@ def df_with_embeddings(hover_alignment_df: pd.DataFrame) -> pd.DataFrame:
 
 
 @pytest.fixture
-def custom_projection_func() -> Callable[[np.ndarray, int, Any], np.ndarray]:
+def custom_projection_func() -> ProjectionCallable:
     """Custom projection function for testing."""
 
     def projector(
@@ -102,7 +102,7 @@ def custom_projection_func() -> Callable[[np.ndarray, int, Any], np.ndarray]:
         """Custom projection that returns the first n_components features."""
         return embeddings[:, :n_components]
 
-    return projector  # type: ignore[return-value]
+    return projector
 
 
 @pytest.fixture
@@ -375,7 +375,7 @@ def test_composite_viz_modes(sample_df: pd.DataFrame) -> None:
         embedding_method="one-hot",
         projection="pca",
         show_chem_sys="color",
-        color_discrete_map=custom_colors,  # type: ignore[arg-type]
+        color_discrete_map=custom_colors,
     )
 
     # Check that colors match our custom map
@@ -619,10 +619,11 @@ def test_custom_embedding_projection(
         return np_rng.random((len(compositions), 10)) * scale
 
     def custom_projection_func(
-        data: np.ndarray, n_components: int = 2, scale: float = 1.0, **_kwargs: Any
+        embeddings: np.ndarray, n_components: int, **kwargs: Any
     ) -> np.ndarray:
         """Custom projection that just scales random values."""
-        return np_rng.random((data.shape[0], n_components)) * scale
+        scale = kwargs.get("scale", 1.0)
+        return np_rng.random((embeddings.shape[0], n_components)) * scale
 
     # Set up the kwargs if requested
     embedding_kwargs = {"scale": 2.0} if with_kwargs else {}
@@ -691,7 +692,7 @@ def test_marker_size_adjustment_3d(sample_df: pd.DataFrame) -> None:
             projection="pca",
             n_components=n_components,
             marker_size=marker_size,
-            show_chem_sys=show_chem_sys,  # type: ignore[arg-type]
+            show_chem_sys=show_chem_sys,
         )
         expected_size = marker_size / (3 if n_components == 3 else 1)
         for trace in fig.data:
@@ -831,7 +832,7 @@ def test_hover_format_with_color_scales() -> None:
     for fmt in hover_formats:
         for scale in color_scales:
             # Skip log scale with negative values
-            if scale == "log" and any(v <= 0 for v in df_test["property"]):
+            if scale == "log" and any(val <= 0 for val in df_test["property"]):
                 continue
 
             fig = pmv.cluster_compositions(
@@ -839,7 +840,7 @@ def test_hover_format_with_color_scales() -> None:
                 composition_col="composition",
                 prop_name="property",
                 projection="pca",
-                color_scale=scale,  # type: ignore[arg-type]
+                color_scale=scale,
                 hover_format=fmt,  # Pass as string, not dict
             )
 
@@ -1291,15 +1292,15 @@ def test_custom_projection_function_attributes(sample_df: pd.DataFrame) -> None:
     """Test projector and embeddings are attached when using custom projection func."""
 
     def custom_projection_func(  # For custom projection funcs, projector will be None
-        data: np.ndarray, n_components: int = 2, **_kwargs: Any
+        embeddings: np.ndarray, n_components: int, **_kwargs: Any
     ) -> np.ndarray:
         """Custom projection function that returns only projected data."""
-        return np_rng.random((data.shape[0], n_components))
+        return np_rng.random((embeddings.shape[0], n_components))
 
     fig = pmv.cluster_compositions(
         df_in=sample_df,
         embedding_method="one-hot",
-        projection=custom_projection_func,  # type: ignore[arg-type]
+        projection=custom_projection_func,
     )
 
     # Check that figure has the correct metadata properties
@@ -1718,8 +1719,8 @@ def test_precomputed_embeddings_in_composition_col() -> None:
 
     # Verify embeddings are the same, though possibly reordered
     # Compare with tolerance to avoid float hashing pitfalls
-    embeddings_set = {tuple(np.round(emb, 12)) for emb in embeddings}
-    fig_embeddings_set = {tuple(np.round(emb, 12)) for emb in fig.embeddings}
+    embeddings_set = {tuple(np.round(emb, 12)) for emb in embeddings}  # type: ignore[arg-type]
+    fig_embeddings_set = {tuple(np.round(emb, 12)) for emb in fig.embeddings}  # type: ignore[arg-type]
     assert embeddings_set == fig_embeddings_set
 
 
@@ -1739,21 +1740,6 @@ def test_invalid_composition_type() -> None:
             embedding_method="magpie",
             projection="pca",
         )
-
-
-def test_method_labels_constant() -> None:
-    """Test the method_labels constant has expected values."""
-    from pymatviz.cluster.composition.plot import method_labels
-
-    # Check that method_labels is a Final dictionary
-    assert isinstance(method_labels, dict)
-
-    # Check specific values in method_labels
-    assert method_labels["pca"] == "Principal Component"
-    assert method_labels["tsne"] == "t-SNE Component"
-    assert method_labels["umap"] == "UMAP Component"
-    assert method_labels["isomap"] == "Isomap Component"
-    assert method_labels["kernel_pca"] == "Kernel PCA Component"
 
 
 def test_invalid_n_components(df_comp: pd.DataFrame) -> None:
@@ -1906,7 +1892,7 @@ def test_color_discrete_map(df_comp: pd.DataFrame) -> None:
         embedding_method="one-hot",
         projection="pca",
         show_chem_sys="color",
-        color_discrete_map=color_map,  # type: ignore[arg-type]
+        color_discrete_map=color_map,
     )
 
     # For "color" mode, there should be multiple traces with the custom colors
@@ -2062,7 +2048,7 @@ def test_coordinates_with_labels(
     df_prop: pd.DataFrame,
     custom_coords_2d: np.ndarray,
     custom_coords_3d: np.ndarray,
-    projection: str | Callable[[np.ndarray, int, Any], np.ndarray],
+    projection: ProjectionMethod | ProjectionCallable,
     component_label: str,
 ) -> None:
     """Test that axis labels are set correctly when using precomputed coordinates."""
@@ -2140,7 +2126,7 @@ def test_color_scale_options(
         composition_col="composition",
         prop_name="property",
         projection="pca",
-        color_scale=color_scale,  # type: ignore[arg-type]
+        color_scale=color_scale,
     )
 
     # Verify colorbar title contains the expected text
@@ -2254,7 +2240,7 @@ def test_colorbar_tick_count(
         composition_col="composition",
         prop_name="property",
         projection="pca",
-        color_scale=color_scale,  # type: ignore[arg-type]
+        color_scale=color_scale,
     )
 
     # Verify colorbar has tick properties
@@ -2469,7 +2455,7 @@ def test_scatter_colors_match_colorbar_values() -> None:
             composition_col="composition",
             prop_name="property",
             projection="pca",
-            color_scale=scale_type,  # type: ignore[arg-type]
+            color_scale=scale_type,
         )
 
         # Get the scatter trace with the color mapping
@@ -2572,7 +2558,7 @@ def test_hover_tooltip_shows_original_values() -> None:
             composition_col="composition",
             prop_name="property",
             projection="pca",
-            color_scale=scale_type,  # type: ignore[arg-type]
+            color_scale=scale_type,
         )
 
         # Extract hover text from customdata
@@ -3026,7 +3012,7 @@ def test_whole_number_formatting_in_tick_labels() -> None:
             composition_col="composition",
             prop_name="property",
             projection="pca",
-            color_scale=color_scale,  # type: ignore[arg-type]
+            color_scale=color_scale,
         )
 
         # Check that tick values are formatted without decimal places

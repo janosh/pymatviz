@@ -46,7 +46,7 @@ def test_spacegroup_sunburst(show_counts: ShowCounts) -> None:
 def test_spacegroup_sunburst_invalid_show_counts() -> None:
     """Test that invalid show_counts values raise ValueError."""
     with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
-        spacegroup_sunburst([1], show_counts="invalid")  # type: ignore[arg-type]
+        spacegroup_sunburst([1], show_counts="invalid")
 
 
 def test_spacegroup_sunburst_single_item() -> None:

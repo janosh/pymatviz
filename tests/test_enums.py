@@ -63,11 +63,11 @@ def test_label_enum_new() -> None:
     assert DummyEnum.TEST1.label == "Test Label 1"
     with pytest.raises(AttributeError):
         # ignore mypy error from label attribute being read-only
-        DummyEnum.TEST1.label = "New Label"  # type: ignore[misc]
+        DummyEnum.TEST1.label = "New Label"
 
     assert DummyEnum.TEST1.description == "Test Description 1"
     with pytest.raises(AttributeError):
-        DummyEnum.TEST1.description = "New Description"  # type: ignore[misc]
+        DummyEnum.TEST1.description = "New Description"
 
 
 def test_label_enum_repr() -> None:

@@ -1500,8 +1500,8 @@ def draw_bonds(
 
             # If plotted_sites_coords is provided, check if both bond ends are plotted
             if plotted_sites_coords is not None:
-                coords_from_rounded = tuple(np.round(coords_from, 5))
-                cart_coords_to_rounded = tuple(np.round(cart_coords_to, 5))
+                coords_from_rounded = tuple(np.round(coords_from, 5))  # type: ignore[arg-type]
+                cart_coords_to_rounded = tuple(np.round(cart_coords_to, 5))  # type: ignore[arg-type]
 
                 if (
                     coords_from_rounded not in plotted_sites_coords
@@ -1647,7 +1647,7 @@ def _prep_augmented_structure_for_bonding(
                 cell_boundary_tol=cell_boundary_tol,
             )
             for image_cart_coords_arr in image_cart_coords_arrays:
-                coord_tuple_key = tuple(np.round(image_cart_coords_arr, 5))
+                coord_tuple_key = tuple(np.round(image_cart_coords_arr, 5))  # type: ignore[arg-type]
                 if coord_tuple_key not in processed_image_coords:
                     image_frac_coords = struct_i.lattice.get_fractional_coords(
                         image_cart_coords_arr

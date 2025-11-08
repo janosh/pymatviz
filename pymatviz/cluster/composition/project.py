@@ -8,7 +8,7 @@ techniques.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sklearn.decomposition import PCA, KernelPCA
@@ -16,28 +16,27 @@ from sklearn.manifold import TSNE, Isomap
 
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
-
+    from pymatviz.cluster.composition.plot import ProjectionMethod
 
 # Suppress sparse matrix efficiency warnings from scikit-learn
 warnings.filterwarnings("ignore", category=UserWarning, module="scipy.sparse._index")
 
 
 def project_vectors(
-    data: NDArray,
+    data: np.ndarray,
     *,
-    method: Literal["pca", "tsne", "umap", "isomap", "kernel_pca"] = "pca",
+    method: ProjectionMethod | None = None,
     n_components: int = 2,
     random_state: int | None = 42,
     scale_data: bool = True,
     **kwargs: Any,
-) -> tuple[NDArray, PCA | TSNE | Isomap | KernelPCA | Any]:
+) -> tuple[np.ndarray, PCA | TSNE | Isomap | KernelPCA | Any]:
     """Project high-dimensional data to lower dimensions using various methods.
 
     Args:
         data (NDArray): Input data array of shape (n_samples, n_features)
         method ("pca" | "tsne" | "umap" | "isomap" | "kernel_pca"): Projection
-            method to use
+            method to use (see ProjectionMethod enum)
         n_components (int): Projection dimensions (2 or 3) (default: 2)
         random_state (int | None): Random seed for reproducibility
         scale_data (bool): Whether to scale data before projection
@@ -52,6 +51,11 @@ def project_vectors(
         ValueError: If method is invalid or n_components is too small
         ImportError: If UMAP is requested but not installed
     """
+    from pymatviz.cluster.composition.plot import ProjectionMethod
+
+    if method is None:
+        method = ProjectionMethod.pca
+
     if n_components < 2:
         raise ValueError("n_components must be at least 2")
 

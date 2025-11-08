@@ -174,7 +174,7 @@ def test_ptable_heatmap_splits_plotly_annotations() -> None:
         "O": {"text": "Oxygen", "font": {"size": 14, "color": "blue"}},
     }
 
-    fig = pmv.ptable_heatmap_splits_plotly(data, annotations=annotations)  # type: ignore[arg-type]
+    fig = pmv.ptable_heatmap_splits_plotly(data, annotations=annotations)
     assert isinstance(fig, go.Figure)
 
     # Check for annotations with custom text

@@ -112,7 +112,7 @@ def chem_sys_treemap(
         arity_totals = df_counts.groupby("arity_name")[Key.count].sum()
         total_count = arity_totals.sum()
         df_counts["arity_name"] = df_counts["arity_name"].map(
-            lambda x: show_arity_counts(x, arity_totals[x], total_count)  # type: ignore[call-non-callable]
+            lambda x: show_arity_counts(x, arity_totals[x], total_count)
         )
 
     # Limit the number of systems per arity if requested

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Final, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, Protocol, get_args
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,7 @@ from sklearn.decomposition import PCA
 
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.project import project_vectors
+from pymatviz.enums import LabelEnum
 
 
 if TYPE_CHECKING:
@@ -46,20 +47,39 @@ class ClusterFigure(go.Figure):
         object.__setattr__(self, "embeddings", None)
 
 
-EmbeddingMethod = Literal[
-    "one-hot", "magpie", "deml", "matminer", "matscholar_el", "megnet_el"
-]
-ProjectionMethod = Literal["pca", "tsne", "umap", "isomap", "kernel_pca"]
+class ProjectionCallable(Protocol):
+    """Protocol for custom projection functions."""
+
+    def __call__(
+        self, embeddings: np.ndarray, n_components: int, **kwargs: Any
+    ) -> np.ndarray:
+        """Project embeddings to lower dimensions."""
+        ...
+
+
+class EmbeddingMethod(LabelEnum):
+    """Supported embedding methods for composition vectorization."""
+
+    one_hot = "one-hot", "One-hot Encoding"
+    magpie = "magpie", "Matminer MagPie"
+    deml = "deml", "Matminer DEML"
+    matminer = "matminer", "Matminer ElementProperty"
+    matscholar_el = "matscholar_el", "Matminer Matscholar Element"
+    megnet_el = "megnet_el", "Matminer MEGNet Element"
+
+
+class ProjectionMethod(LabelEnum):
+    """Supported projection methods for dimensionality reduction."""
+
+    pca = "pca", "Principal Component"
+    tsne = "tsne", "t-SNE Component"
+    umap = "umap", "UMAP Component"
+    isomap = "isomap", "Isomap Component"
+    kernel_pca = "kernel_pca", "Kernel PCA Component"
+
+
 ShowChemSys = Literal["color", "shape", "color+shape"]
 ColorScale = Literal["linear", "log", "arcsinh"]
-# Method labels for hover tooltips and axis labels
-method_labels: Final[dict[ProjectionMethod, str]] = {
-    "pca": "Principal Component",
-    "tsne": "t-SNE Component",
-    "umap": "UMAP Component",
-    "isomap": "Isomap Component",
-    "kernel_pca": "Kernel PCA Component",
-}
 
 
 def _generate_colorbar_ticks(
@@ -340,10 +360,10 @@ def cluster_compositions(
     composition_col: str = "composition",
     *,
     prop_name: str | None = None,
-    embedding_method: EmbeddingMethod
-    | Callable[[Sequence[str], Any], np.ndarray]
-    | str = "magpie",
-    projection: ProjectionMethod | Callable[[np.ndarray, int, Any], np.ndarray] | str,
+    embedding_method: str
+    | EmbeddingMethod
+    | Callable[[Sequence[str], Any], np.ndarray] = EmbeddingMethod.magpie,
+    projection: ProjectionMethod | ProjectionCallable | str,
     n_components: int = 2,
     hover_format: str = ".2f",
     heatmap_colorscale: str = "Viridis",
@@ -375,7 +395,7 @@ def cluster_compositions(
         prop_name (str | None): Name of the column to use for coloring points.
             If provided, the values in this column will be used to color the points.
             (default: None)
-        embedding_method (str | EmbedMethod | Callable[[list[str], Any], np.ndarray]):
+        embedding_method (str | EmbeddingMethod | Callable[[list[str], Any], ndarray]):
             Method to convert compositions to vectors (default: "magpie"). Options:
             - "one-hot": One-hot encoding of element fractions
             - "magpie": Matminer's MagPie featurization (for backward compatibility)
@@ -482,7 +502,7 @@ def cluster_compositions(
     if projection is None:
         raise ValueError(
             "projection must be specified. Choose from: "
-            f"{get_args(ProjectionMethod)} or provide a custom function or column name."
+            f"{list(ProjectionMethod)} or provide a custom function or column name."
         )
 
     # Validate color_scale parameter
@@ -509,7 +529,7 @@ def cluster_compositions(
         )
 
     # Check if projection is a column name in the DataFrame
-    using_precomputed_coords = projection in df_in and projection not in get_args(
+    using_precomputed_coords = projection in df_in and projection not in list(
         ProjectionMethod
     )
 
@@ -587,14 +607,16 @@ def cluster_compositions(
             # Use built-in embedding methods
             elif embedding_method == "one-hot":
                 embeddings = one_hot_encode(compositions, **(embedding_kwargs or {}))
-            elif embedding_method in get_args(EmbeddingMethod):
-                embeddings = matminer_featurize(
-                    compositions, preset=embedding_method, **(embedding_kwargs or {})
-                )
             else:
-                raise ValueError(
-                    f"{embedding_method=} must be in {get_args(EmbeddingMethod)}, "
-                    f"a callable, or a valid column name in the DataFrame"
+                try:
+                    preset = EmbeddingMethod(embedding_method)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        f"{embedding_method=} must be in {list(EmbeddingMethod)}, "
+                        "a callable, or a valid column name in the DataFrame"
+                    ) from exc
+                embeddings = matminer_featurize(
+                    compositions, preset=preset.value, **(embedding_kwargs or {})
                 )
 
         # Project embeddings
@@ -603,10 +625,10 @@ def cluster_compositions(
             projected = projection(
                 embeddings,
                 n_components=n_components,
-                **projection_kwargs,  # type: ignore[call-arg]
+                **projection_kwargs,
             )
             projector = None
-        elif projection in get_args(ProjectionMethod):
+        elif projection in list(ProjectionMethod):
             # Use built-in projection methods
             projected, projector = project_vectors(
                 embeddings,
@@ -616,7 +638,7 @@ def cluster_compositions(
             )
         else:
             raise ValueError(
-                f"{projection=} must be in {get_args(ProjectionMethod)}, "
+                f"{projection=} must be in {list(ProjectionMethod)}, "
                 f"a callable, or column name in the DataFrame"
             )
 
@@ -810,9 +832,9 @@ def cluster_compositions(
     # Determine the method label for hover text
     if using_precomputed_coords:  # For pre-computed coordinates, use generic label
         method_label = "Component"
-    elif isinstance(projection, str):
+    elif projection in list(ProjectionMethod):
         # For built-in projection methods, use standardized labels
-        method_label = method_labels.get(projection, "Component")  # type: ignore[call-overload]
+        method_label = ProjectionMethod(projection).label
     else:  # For custom projection functions, use func.__name__
         # or generic fallback if unnamed
         method_label = getattr(projection, "__name__", "Component")

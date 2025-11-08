@@ -701,7 +701,7 @@ def _add_colorbar_trace(
     """Add an invisible scatter trace with a colorbar to the figure."""
     # For callable colorscales, sample at endpoints to create a 2-point colorscale
     if callable(colorscale):
-        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]  # type: ignore[assignment]
+        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]
 
     # Ensure tickformat is included in colorbar settings
     if "tickformat" not in colorbar:
@@ -977,8 +977,8 @@ def ptable_heatmap_splits_plotly(
             )
     else:
         # Single colorscale/colorbar mode (default)
-        colorscales = [colorscale] * n_splits  # type: ignore[assignment]
-        colorbars = [colorbar or {}]  # type: ignore[list-item]
+        colorscales = [colorscale] * n_splits
+        colorbars = [colorbar or {}]
 
     # Validate colorscales
     validator = colorscale_validator
@@ -1140,7 +1140,7 @@ def ptable_heatmap_splits_plotly(
                     cscale = [
                         [idx / (n_colors - 1), color]
                         for idx, color in enumerate(cscale)
-                    ]  # type: ignore[assignment]
+                    ]
                 elif not isinstance(cscale, list | tuple):
                     raise ValueError(
                         f"Invalid colorscale type: {type(cscale)}. Must be string, "
@@ -1437,7 +1437,7 @@ def ptable_heatmap_splits_plotly(
                 font_size=font_size,
                 scale=scale,
             )
-            _add_colorbar_trace(fig, cscale, cmin, cmax, cbar_settings)  # type: ignore[arg-type]
+            _add_colorbar_trace(fig, cscale, cmin, cmax, cbar_settings)
 
     # Apply SI suffixes to all colorbars
     if colorbar is not False:
@@ -1613,7 +1613,7 @@ def ptable_scatter_plotly(
         for elem_data in data.values():
             for x_vals, y_vals, *_ in (
                 # handle both single line and multiple lines per element cases
-                elem_data if isinstance(elem_data, dict) else {"": elem_data}  # type: ignore[dict-item]
+                elem_data if isinstance(elem_data, dict) else {"": elem_data}
             ).values():
                 all_x_vals.extend(x_vals)
                 all_y_vals.extend(y_vals)
@@ -1633,7 +1633,7 @@ def ptable_scatter_plotly(
     cbar_min, cbar_max = float("inf"), float("-inf")
     for elem_values in data.values():
         for elem_data in (
-            elem_values if isinstance(elem_values, dict) else {"": elem_values}  # type: ignore[dict-item]
+            elem_values if isinstance(elem_values, dict) else {"": elem_values}
         ).values():
             if len(elem_data) > 2:  # Has color data
                 color_vals = elem_data[2]
@@ -1701,9 +1701,9 @@ def ptable_scatter_plotly(
 
         # Add line plot if data exists for this element
         elem_data = (
-            data[symbol] if isinstance(data[symbol], dict) else {"": data[symbol]}  # type: ignore[dict-item]
+            data[symbol] if isinstance(data[symbol], dict) else {"": data[symbol]}
         )
-        for line_name, elem_vals in elem_data.items():  # type: ignore[union-attr]
+        for line_name, elem_vals in elem_data.items():
             x_vals, y_vals, *rest = elem_vals
             color_vals = rest[0] if rest else None  # if 3-tuple, first entry is color
 

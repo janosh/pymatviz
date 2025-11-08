@@ -54,7 +54,7 @@ for group_by, clr_scheme in {
 }.items():
     fig = pmv.py_pkg_treemap(
         "pymatviz",
-        group_by=group_by,  # type: ignore[arg-type]
+        group_by=group_by,
         show_counts="value",
         color_discrete_sequence=clr_scheme,
         # Only include files with at least 20 lines
@@ -124,7 +124,7 @@ pmv.io.save_and_compress_svg(fig_coverage, "py-pkg-treemap-pymatviz-coverage")
 coverage_data_file = "https://github.com/user-attachments/files/21545087/2025-07-31-pymatgen-coverage.json"
 # coverage_data_file = f"{pmv.ROOT}/tmp/2025-07-31-pymatgen-coverage.json"
 
-fig_coverage_range = pmv.py_pkg_treemap(
+fig_cvrg_range = pmv.py_pkg_treemap(
     pymatgen,
     color_by="coverage",
     coverage_data_file=coverage_data_file,  # Use existing coverage data
@@ -133,7 +133,8 @@ fig_coverage_range = pmv.py_pkg_treemap(
     show_counts="value",
     color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
 )
-title_range = "pymatgen: Coverage Heatmap with Manual Range (0-100%)"
-fig_coverage_range.layout.title.update(text=title_range, x=0.5, y=0.97, font_size=18)
-fig_coverage_range.show()
-pmv.io.save_and_compress_svg(fig_coverage_range, "py-pkg-treemap-pymatgen-coverage")
+# title_range = "pymatgen: Coverage Heatmap with Manual Range (0-100%)"
+# fig_cvrg_range.layout.title.update(text=title_range, x=0.5, y=0.97, font_size=18)
+fig_cvrg_range.layout.margin = dict(l=0, r=0, b=0, t=0)
+fig_cvrg_range.show()
+pmv.io.save_and_compress_svg(fig_cvrg_range, "py-pkg-treemap-pymatgen-coverage")

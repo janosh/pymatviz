@@ -300,9 +300,9 @@ def brillouin_zone_3d(
         if subplot_title is not False:
             title_func = subplot_title or get_subplot_title
             if title_func is get_subplot_title:
-                anno = title_func(structure, struct_key, idx, subplot_title)  # type: ignore[call-arg]
+                anno = title_func(structure, struct_key, idx, subplot_title)
             else:
-                anno = title_func(structure, struct_key)  # type: ignore[call-arg]
+                anno = title_func(structure, struct_key)
                 if not isinstance(anno, (str, dict)):
                     raise TypeError("Subplot title must be a string or dict")
                 if isinstance(anno, str):

@@ -84,7 +84,7 @@ def test_project_vectors_methods(
     obj_attrs: dict[str, Any],
 ) -> None:
     """Test different projection methods."""
-    if method == "umap":
+    if method == ProjectionMethod.umap:
         pytest.importorskip("umap")
         from umap import UMAP
 
@@ -92,7 +92,7 @@ def test_project_vectors_methods(
         expected_obj_type = UMAP
         obj_attrs = {"n_neighbors": 5, "min_dist": 0.2}
 
-    result, proj_obj = project_vectors(sample_data, method=method, **kwargs)  # type: ignore[arg-type]
+    result, proj_obj = project_vectors(sample_data, method=method, **kwargs)
 
     # Check shape of projected data
     assert result.shape == (100, 2)
@@ -148,7 +148,7 @@ def test_project_vectors_tsne_params(sample_data: np.ndarray) -> None:
     """Test t-SNE with custom parameters."""
     result, tsne_obj = project_vectors(
         sample_data,
-        method="tsne",
+        method=ProjectionMethod.tsne,
         perplexity=10.0,
         learning_rate=100.0,
         max_iter=500,
@@ -179,7 +179,7 @@ def test_project_vectors_umap_params(sample_data: np.ndarray) -> None:
 
     result, umap_obj = project_vectors(
         sample_data,
-        method="umap",
+        method=ProjectionMethod.umap,
         n_neighbors=10,
         min_dist=0.05,
     )
@@ -230,8 +230,12 @@ def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
     from umap import UMAP
 
     # Run twice with same random state for UMAP
-    result1, umap_obj1 = project_vectors(sample_data, method="umap", random_state=0)
-    result2, umap_obj2 = project_vectors(sample_data, method="umap", random_state=0)
+    result1, umap_obj1 = project_vectors(
+        sample_data, method=ProjectionMethod.umap, random_state=0
+    )
+    result2, umap_obj2 = project_vectors(
+        sample_data, method=ProjectionMethod.umap, random_state=0
+    )
     assert isinstance(umap_obj1, UMAP)
     assert umap_obj1.random_state == 0
     assert umap_obj1 is not umap_obj2
@@ -240,7 +244,9 @@ def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
     assert np.allclose(result1, result2, atol=1e-10)
 
     # Run with different random state for UMAP
-    result3, umap_obj3 = project_vectors(sample_data, method="umap", random_state=1)
+    result3, umap_obj3 = project_vectors(
+        sample_data, method=ProjectionMethod.umap, random_state=1
+    )
     assert isinstance(umap_obj3, UMAP)
     assert umap_obj3.random_state == 1
     # Results should be different with different random states
@@ -278,19 +284,25 @@ def test_project_vectors_tsne_max_components(sample_data: np.ndarray) -> None:
     with pytest.raises(
         ValueError, match="t-SNE visualization typically uses 2 or 3 components"
     ):
-        project_vectors(sample_data, method="tsne", n_components=4)
+        project_vectors(sample_data, method=ProjectionMethod.tsne, n_components=4)
 
 
 def test_project_vectors_pca_consistency(sample_data: np.ndarray) -> None:
     """Test PCA projection consistency with same random state."""
-    result1, pca_obj1 = project_vectors(sample_data, method="pca", random_state=0)
-    result2, pca_obj2 = project_vectors(sample_data, method="pca", random_state=0)
+    result1, pca_obj1 = project_vectors(
+        sample_data, method=ProjectionMethod.pca, random_state=0
+    )
+    result2, pca_obj2 = project_vectors(
+        sample_data, method=ProjectionMethod.pca, random_state=0
+    )
 
     # PCA should be deterministic with same random state
     assert np.allclose(result1, result2, atol=1e-10)
 
     # Also check with different random state (should still be the same for PCA)
-    result3, pca_obj3 = project_vectors(sample_data, method="pca", random_state=1)
+    result3, pca_obj3 = project_vectors(
+        sample_data, method=ProjectionMethod.pca, random_state=1
+    )
     assert np.allclose(result1, result3, atol=1e-10)
 
     # Check that results have reasonable scale
@@ -315,7 +327,7 @@ def test_project_vectors_small_dataset() -> None:
     xs, _ = make_blobs(n_samples=20, n_features=5, centers=2, random_state=0)
 
     # Test with t-SNE (should adjust perplexity)
-    result_tsne, tsne_obj = project_vectors(xs, method="tsne")
+    result_tsne, tsne_obj = project_vectors(xs, method=ProjectionMethod.tsne)
     assert result_tsne.shape == (len(xs), 2)
     assert isinstance(tsne_obj, TSNE)
     assert tsne_obj.perplexity == pytest.approx(min(30, len(xs) / 3))
@@ -327,7 +339,7 @@ def test_project_vectors_small_dataset() -> None:
     pytest.importorskip("umap")
     from umap import UMAP
 
-    result_umap, umap_obj = project_vectors(xs, method="umap")
+    result_umap, umap_obj = project_vectors(xs, method=ProjectionMethod.umap)
     assert result_umap.shape == (len(xs), 2)
     assert isinstance(umap_obj, UMAP)
     assert umap_obj.n_neighbors == 15  # Default value

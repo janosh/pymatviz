@@ -10,8 +10,8 @@ import plotly.graph_objects as go
 def confusion_matrix(
     conf_mat: Sequence[Sequence[int]] | np.ndarray | None = None,
     *,
-    y_true: Sequence[str | int] | None = None,
-    y_pred: Sequence[str | int] | None = None,
+    y_true: Sequence[str | int] | np.ndarray | None = None,
+    y_pred: Sequence[str | int] | np.ndarray | None = None,
     x_labels: tuple[str, ...] | None = None,
     y_labels: tuple[str, ...] | None = None,
     annotations: Sequence[Sequence[str]]
@@ -227,9 +227,9 @@ def confusion_matrix(
             font_size=22,
         ) | (metrics_kwargs or {})
         fig.add_annotation(**metrics_defaults)
-        if metrics_defaults.get("y", 0) >= 1:  # type: ignore[operator]
+        if metrics_defaults.get("y", 0) >= 1:
             fig.layout.margin.t = 60
-        if metrics_defaults.get("y", 0) <= 0:  # type: ignore[operator]
+        if metrics_defaults.get("y", 0) <= 0:
             fig.layout.margin.b = 60
 
     # Update axes formatting
