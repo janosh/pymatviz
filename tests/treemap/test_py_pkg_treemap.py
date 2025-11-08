@@ -714,7 +714,7 @@ def test_py_pkg_treemap_cell_size_fn(
         if calculator is None:
             expected_val = metrics_instance.line_count
         else:
-            expected_val = calculator(metrics_instance)  # type: ignore[assignment]
+            expected_val = calculator(metrics_instance)
 
         assert expected_val > 0
         assert int(row["cell_value"]) == expected_val

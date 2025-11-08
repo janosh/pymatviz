@@ -8,11 +8,13 @@ techniques.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.manifold import TSNE, Isomap
+
+from pymatviz.cluster.composition.plot import ProjectionMethod
 
 
 if TYPE_CHECKING:
@@ -26,7 +28,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="scipy.sparse._in
 def project_vectors(
     data: NDArray,
     *,
-    method: Literal["pca", "tsne", "umap", "isomap", "kernel_pca"] = "pca",
+    method: ProjectionMethod = ProjectionMethod.pca,
     n_components: int = 2,
     random_state: int | None = 42,
     scale_data: bool = True,
@@ -37,7 +39,7 @@ def project_vectors(
     Args:
         data (NDArray): Input data array of shape (n_samples, n_features)
         method ("pca" | "tsne" | "umap" | "isomap" | "kernel_pca"): Projection
-            method to use
+            method to use (see ProjectionMethod enum)
         n_components (int): Projection dimensions (2 or 3) (default: 2)
         random_state (int | None): Random seed for reproducibility
         scale_data (bool): Whether to scale data before projection

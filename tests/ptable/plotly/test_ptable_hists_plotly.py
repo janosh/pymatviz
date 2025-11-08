@@ -136,7 +136,7 @@ def test_ptable_hists_plotly_error_cases() -> None:
     with pytest.raises(
         ValueError, match="color_elem_strategy='invalid' must be one of"
     ):
-        pmv.ptable_hists_plotly(data, color_elem_strategy="invalid")  # type: ignore[arg-type]
+        pmv.ptable_hists_plotly(data, color_elem_strategy="invalid")
 
     # Test invalid scale
     with pytest.raises(ValueError, match="Invalid value of type ") as exc:

@@ -44,7 +44,7 @@ def _standardize_input(
                 f"when passing a DataFrame, targets must be a column name, got "
                 f"{type(targets).__name__}"
             )
-        targets, probs_positive = df_to_arrays(df, targets, probs_positive)  # type: ignore[arg-type]
+        targets, probs_positive = df_to_arrays(df, targets, probs_positive)
 
     if isinstance(probs_positive, dict):
         # Convert array values to dicts if needed

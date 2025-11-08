@@ -292,7 +292,7 @@ def test_ptable_heatmap_plotly_hover_props() -> None:
 
 def test_ptable_heatmap_plotly_custom_label_map() -> None:
     values = {"Fe": 2, "O": 3, "H": np.nan}
-    label_map = lambda label: {2: "High", 3: "Low"}.get(float(label), label)  # type: ignore[call-overload]
+    label_map = lambda label: {2: "High", 3: "Low"}.get(float(label), label)
     fig = pmv.ptable_heatmap_plotly(values, label_map=label_map)
     annos = [
         anno.text
@@ -365,7 +365,7 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
     int_values = {"Fe": 2, "O": 3, "H": 1}
 
     for heat_mode in ("value", "fraction", "percent"):
-        fig = pmv.ptable_heatmap_plotly(int_values, heat_mode=heat_mode)  # type: ignore[arg-type]
+        fig = pmv.ptable_heatmap_plotly(int_values, heat_mode=heat_mode)
         hover_texts = fig.data[-1].text.flat
 
         for elem_symb, value in int_values.items():

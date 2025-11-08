@@ -238,7 +238,7 @@ def update_readme(
     """Update readme with papers sorted by citations and year."""
     sorted_papers = sorted(
         papers,
-        key=lambda p: (-p["citations"], -p.get("year") or float("inf")),  # type: ignore[operator]
+        key=lambda p: (-p["citations"], -p.get("year") or float("inf")),
     )
 
     with open(readme_path, encoding="utf-8") as file:

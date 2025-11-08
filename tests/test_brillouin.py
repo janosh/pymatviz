@@ -389,11 +389,11 @@ def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
 def test_brillouin_zone_3d_edge_cases(structures: list[Structure]) -> None:
     """Test edge cases and error handling."""
     with pytest.raises(TypeError, match="Subplot title must be a string or dict"):
-        brillouin_zone_3d(structures, subplot_title=lambda *_args: 42)  # type: ignore[arg-type]
+        brillouin_zone_3d(structures, subplot_title=lambda *_args: 42)
 
     # Test with invalid axes_vectors dict
     with pytest.raises(KeyError, match="axes_vectors must contain 'shaft' and 'cone'"):
-        brillouin_zone_3d(structures[0], axes_vectors={"shaft": {}})  # type: ignore[arg-type]
+        brillouin_zone_3d(structures[0], axes_vectors={"shaft": {}})
 
 
 def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) -> None:

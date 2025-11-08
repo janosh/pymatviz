@@ -408,7 +408,7 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
 
     # Test with mixed valid and invalid inputs in a list
     with pytest.raises(TypeError, match=err_msg):
-        pmv_pd.normalize_to_dict([single_instance, "invalid"], cls=cls)  # type: ignore[assignment]
+        pmv_pd.normalize_to_dict([single_instance, "invalid"], cls=cls)
 
 
 @pytest.mark.parametrize(

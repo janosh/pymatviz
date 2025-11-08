@@ -810,7 +810,7 @@ class Key(StrEnum):
     corrosion_resistance = "corrosion_resistance"
     viscosity = "viscosity"
     activation_energy = "activation_energy"
-    count = "count"  # type: ignore[assignment]
+    count = "count"
     heat_val = "heat_val"
     piezoelectric_tensor = "piezoelectric_tensor"
     dielectric_tensor = "dielectric_tensor"

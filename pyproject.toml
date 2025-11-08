@@ -129,5 +129,8 @@ docstring-code-format = true
     "T201",   # print found
 ]
 
+[tool.ty.rules]
+unused-ignore-comment = "warn"
+
 [dependency-groups]
 dev = ["pre-commit>=4.3.0", "ty>=0.0.1a21"]

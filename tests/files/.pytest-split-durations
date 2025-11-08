@@ -171,7 +171,6 @@
     "tests/cluster/composition/test_plot.py::test_log_scale_with_negative_values": 0.027270416961982846,
     "tests/cluster/composition/test_plot.py::test_log_tick_count": 0.02836791699519381,
     "tests/cluster/composition/test_plot.py::test_marker_size_adjustment_3d": 0.23230079203494824,
-    "tests/cluster/composition/test_plot.py::test_method_labels_constant": 8.795803296379745e-05,
     "tests/cluster/composition/test_plot.py::test_precomputed_coordinates": 0.012964875000761822,
     "tests/cluster/composition/test_plot.py::test_precomputed_embeddings": 0.030163958988850936,
     "tests/cluster/composition/test_plot.py::test_precomputed_embeddings_attributes": 0.009690834005596116,
