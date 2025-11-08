@@ -31,7 +31,7 @@ for idx, (n_splits, orientation) in enumerate(
     cbar_title = f"Periodic Table Heatmap with {n_splits}-fold split"
     fig = pmv.ptable_heatmap_splits_plotly(
         data=data_dict,
-        orientation=orientation,  # type: ignore[arg-type]
+        orientation=orientation,
         colorscale="RdYlBu",  # Single colorscale will be used for all splits
         colorbar=dict(title=cbar_title),
     )
@@ -44,7 +44,7 @@ for idx, (n_splits, orientation) in enumerate(
     ]
     fig = pmv.ptable_heatmap_splits_plotly(
         data=data_dict,
-        orientation=orientation,  # type: ignore[arg-type]
+        orientation=orientation,
         colorscale=colorscales,
         colorbar=colorbars,
     )
@@ -63,7 +63,7 @@ for idx, (n_splits, orientation) in enumerate(
     ]
     fig = pmv.ptable_heatmap_splits_plotly(
         data=data_dict,
-        orientation=orientation,  # type: ignore[arg-type]
+        orientation=orientation,
         colorscale=sequential_colors,
         colorbar=colorbars,
     )

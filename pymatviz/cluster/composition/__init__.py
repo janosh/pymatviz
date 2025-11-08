@@ -7,6 +7,7 @@ chemical composition.
 from pymatviz.cluster.composition.embed import matminer_featurize, one_hot_encode
 from pymatviz.cluster.composition.plot import (
     EmbeddingMethod,
+    ProjectionCallable,
     ProjectionMethod,
     cluster_compositions,
 )

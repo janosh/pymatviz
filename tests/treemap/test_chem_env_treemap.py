@@ -471,7 +471,7 @@ def test_chem_env_treemap_invalid_show_counts(mock_structure: MagicMock) -> None
         with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
             chem_env_treemap(
                 mock_structure,
-                show_counts="invalid",  # type: ignore[arg-type]
+                show_counts="invalid",
                 chem_env_settings="chemenv",
             )
 

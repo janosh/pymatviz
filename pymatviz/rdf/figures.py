@@ -86,7 +86,7 @@ def element_pair_rdfs(
     struct_dict = normalize_structures(structures)
 
     for key, struct in struct_dict.items():
-        if not struct.sites:
+        if len(struct) == 0:
             raise ValueError(
                 f"input structure{f' {key}' if key else ''} contains no sites"
             )
@@ -255,7 +255,7 @@ def full_rdf(
     struct_dict = normalize_structures(structures)
 
     for key, struct in struct_dict.items():
-        if not struct.sites:
+        if len(struct) == 0:
             raise ValueError(
                 f"input structure{f' {key}' if key else ''} contains no sites"
             )

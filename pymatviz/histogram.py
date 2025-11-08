@@ -87,7 +87,7 @@ def elements_hist(
 
 
 def histogram(
-    values: Sequence[float] | dict[str, Sequence[float]],
+    values: Sequence[float] | dict[str, Sequence[float] | np.ndarray],
     *,
     bins: int | Sequence[float] | str = 200,
     x_range: tuple[float | None, float | None] | None = None,
@@ -111,8 +111,9 @@ def histogram(
         px.histogram(gaussian)  # ran for 3m45s before crashing the Jupyter kernel
 
     Args:
-        values (Sequence[float] or dict[str, Sequence[float]]): The values to plot as a
-            histogram. If a dict is provided, the keys are used as legend labels.
+        values (Sequence[float] or dict[str, Sequence[float] | np.ndarray]): The values
+            to plot as a histogram. If a dict is provided, the keys are used as legend
+            labels.
         bins (int or sequence, optional): The number of bins or the bin edges to use for
             the histogram. If not provided, a default value will be used.
         x_range (tuple, optional): The range of values to include in the histogram. If

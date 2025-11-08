@@ -164,7 +164,7 @@ def test_phonon_bands_raises(
     with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
-            path_mode="invalid",  # type: ignore[arg-type]
+            path_mode="invalid",
         )
 
     with pytest.raises(ValueError, match="Empty band structure dict"):
@@ -180,7 +180,7 @@ def test_phonon_bands_raises(
     with pytest.raises(ValueError, match="Invalid y_val='invalid', must be one of"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
-            shaded_ys={(0, "invalid"): dict(fillcolor="red")},  # type: ignore[dict-item]
+            shaded_ys={(0, "invalid"): dict(fillcolor="red")},
         )
 
 

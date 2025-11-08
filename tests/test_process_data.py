@@ -408,7 +408,7 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
 
     # Test with mixed valid and invalid inputs in a list
     with pytest.raises(TypeError, match=err_msg):
-        pmv_pd.normalize_to_dict([single_instance, "invalid"], cls=cls)  # type: ignore[assignment]
+        pmv_pd.normalize_to_dict([single_instance, "invalid"], cls=cls)
 
 
 @pytest.mark.parametrize(
@@ -460,7 +460,7 @@ def test_df_to_arrays() -> None:
 
 def test_df_to_arrays_strict() -> None:
     args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)  # type: ignore[arg-type]
-    assert args == ("foo", "bar")
+    assert args == ["foo", "bar"]
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
         pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)  # type: ignore[arg-type]

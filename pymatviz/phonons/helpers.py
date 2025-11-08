@@ -49,12 +49,12 @@ class PhononDBDoc:
     def __new__(cls, **kwargs: Any) -> Self:
         """Ignore unexpected and initialize dataclass with known kwargs."""
         try:
-            cls_init = cls.__initializer  # type: ignore[has-type]
+            cls_init = cls.__initializer
         except AttributeError:
             # store original init on the class in a different place
             cls.__initializer = cls_init = cls.__init__
             # replace init with noop to avoid raising on unexpected kwargs
-            cls.__init__ = lambda *args, **kwargs: None  # type: ignore[method-assign] # noqa: ARG005
+            cls.__init__ = lambda *args, **kwargs: None  # noqa: ARG005
 
         ret = object.__new__(cls)
         known_kwargs = {

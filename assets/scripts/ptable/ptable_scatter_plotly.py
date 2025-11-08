@@ -70,10 +70,10 @@ for mode, line_kwargs, marker_kwargs, symbol_kwargs, elem_data_dict, color_strat
     ),
 ]:
     fig = pmv.ptable_scatter_plotly(
-        elem_data_dict,  # type: ignore[arg-type]
+        elem_data_dict,
         mode=mode,  # type: ignore[arg-type]
-        line_kwargs=line_kwargs,  # type: ignore[arg-type]
-        color_elem_strategy=color_strategy,  # type: ignore[arg-type]
+        line_kwargs=line_kwargs,
+        color_elem_strategy=color_strategy,
         scale=1.2,
         marker_kwargs=marker_kwargs,
         symbol_kwargs=symbol_kwargs,

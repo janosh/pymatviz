@@ -158,7 +158,7 @@ def test_annotations(
     expected_count: int,
 ) -> None:
     """Test different types of annotations."""
-    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)
 
     if callable(annotations):
         # For callable annotations, check format
@@ -365,7 +365,7 @@ def test_ptable_scatter_plotly_multi_line() -> None:
         "Co": {"line1": ([1, 2, 3], [5, 6, 7]), "line2": ([1, 2, 3], [8, 9, 10])},
     }
 
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")
 
     # Check that legend is shown
     assert fig.layout.showlegend is True
@@ -403,7 +403,7 @@ def test_ptable_scatter_plotly_hover_text() -> None:
     """Test that hover text is correctly formatted for multi-line plots."""
     data = {"Fe": {"line1": ([1], [4]), "line2": ([1], [7])}}
 
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")
 
     # Check hover text format
     for trace in fig.data:
@@ -421,7 +421,7 @@ def test_mixed_length_lines() -> None:
             "long": ([1, 2, 3, 4], [5, 6, 7, 8]),
         }
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")
 
     # Check that both lines are plotted correctly
     assert len(fig.data) == 2
@@ -435,7 +435,7 @@ def test_empty_element_data() -> None:
         "Fe": {"line1": ([], [])},  # Empty sequences
         "Cu": {"line1": ([1, 2], [3, 4])},  # Normal data
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")
 
     # Check that empty element is skipped
     assert len(fig.data) == 2, "H should not have a trace"
@@ -451,7 +451,7 @@ def test_single_point_lines() -> None:
             "multi": ([1, 2, 3], [4, 5, 6]),
         }
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")
 
     # Both should be plotted even though one has a single point
     assert len(fig.data) == 2
@@ -463,7 +463,7 @@ def test_duplicate_line_names() -> None:
         "Fe": {"common": ([1, 2], [3, 4])},
         "Cu": {"common": ([1, 2], [5, 6])},
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")
 
     # Check that lines with same name have same color
     colors = {trace.line.color for trace in fig.data if trace.name == "common"}

@@ -191,7 +191,7 @@ def test_phonon_bands_path_mode_raises(phonon_bands_doses_mp_2758: BandsDoses) -
     with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
-            path_mode="invalid",  # type: ignore[arg-type]
+            path_mode="invalid",
         )
 
 
@@ -241,7 +241,7 @@ def test_phonon_bands_and_dos_path_mode_raises(
         pmv.phonon_bands_and_dos(
             phonon_bands_doses_mp_2758["bands"],
             phonon_bands_doses_mp_2758["doses"],
-            path_mode="invalid",  # type: ignore[arg-type]
+            path_mode="invalid",
         )
 
 

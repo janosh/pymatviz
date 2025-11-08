@@ -1621,7 +1621,7 @@ def test_color_processing_edge_cases() -> None:
     ]
 
     for input_color, expected in test_cases:
-        result = normalize_elem_color(input_color)  # type: ignore[arg-type]
+        result = normalize_elem_color(input_color)
         assert result == expected
 
 
