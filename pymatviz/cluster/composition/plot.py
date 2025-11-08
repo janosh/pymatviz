@@ -529,8 +529,8 @@ def cluster_compositions(
         )
 
     # Check if projection is a column name in the DataFrame
-    using_precomputed_coords = (
-        projection in df_in and projection not in ProjectionMethod
+    using_precomputed_coords = projection in df_in and projection not in list(
+        ProjectionMethod
     )
 
     if using_precomputed_coords:
@@ -607,14 +607,16 @@ def cluster_compositions(
             # Use built-in embedding methods
             elif embedding_method == "one-hot":
                 embeddings = one_hot_encode(compositions, **(embedding_kwargs or {}))
-            elif embedding_method in EmbeddingMethod:
-                embeddings = matminer_featurize(
-                    compositions, preset=embedding_method, **(embedding_kwargs or {})
-                )
             else:
-                raise ValueError(
-                    f"{embedding_method=} must be in {list(EmbeddingMethod)}, "
-                    f"a callable, or a valid column name in the DataFrame"
+                try:
+                    preset = EmbeddingMethod(embedding_method)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        f"{embedding_method=} must be in {list(EmbeddingMethod)}, "
+                        "a callable, or a valid column name in the DataFrame"
+                    ) from exc
+                embeddings = matminer_featurize(
+                    compositions, preset=preset.value, **(embedding_kwargs or {})
                 )
 
         # Project embeddings
@@ -830,7 +832,7 @@ def cluster_compositions(
     # Determine the method label for hover text
     if using_precomputed_coords:  # For pre-computed coordinates, use generic label
         method_label = "Component"
-    elif projection in ProjectionMethod:
+    elif projection in list(ProjectionMethod):
         # For built-in projection methods, use standardized labels
         method_label = ProjectionMethod(projection).label
     else:  # For custom projection functions, use func.__name__
