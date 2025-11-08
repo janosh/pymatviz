@@ -87,7 +87,7 @@ def elements_hist(
 
 
 def histogram(
-    values: Sequence[float] | dict[str, Sequence[float]],
+    values: Sequence[float] | dict[str, Sequence[float] | np.ndarray],
     *,
     bins: int | Sequence[float] | str = 200,
     x_range: tuple[float | None, float | None] | None = None,

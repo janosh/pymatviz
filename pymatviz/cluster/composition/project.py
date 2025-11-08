@@ -8,7 +8,7 @@ techniques.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 from sklearn.decomposition import PCA, KernelPCA
@@ -17,23 +17,19 @@ from sklearn.manifold import TSNE, Isomap
 from pymatviz.cluster.composition.plot import ProjectionMethod
 
 
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
-
-
 # Suppress sparse matrix efficiency warnings from scikit-learn
 warnings.filterwarnings("ignore", category=UserWarning, module="scipy.sparse._index")
 
 
 def project_vectors(
-    data: NDArray,
+    data: np.ndarray,
     *,
     method: ProjectionMethod = ProjectionMethod.pca,
     n_components: int = 2,
     random_state: int | None = 42,
     scale_data: bool = True,
     **kwargs: Any,
-) -> tuple[NDArray, PCA | TSNE | Isomap | KernelPCA | Any]:
+) -> tuple[np.ndarray, PCA | TSNE | Isomap | KernelPCA | Any]:
     """Project high-dimensional data to lower dimensions using various methods.
 
     Args:

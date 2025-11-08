@@ -832,7 +832,7 @@ def test_hover_format_with_color_scales() -> None:
     for fmt in hover_formats:
         for scale in color_scales:
             # Skip log scale with negative values
-            if scale == "log" and any(v <= 0 for v in df_test["property"]):
+            if scale == "log" and any(val <= 0 for val in df_test["property"]):
                 continue
 
             fig = pmv.cluster_compositions(
@@ -1719,8 +1719,8 @@ def test_precomputed_embeddings_in_composition_col() -> None:
 
     # Verify embeddings are the same, though possibly reordered
     # Compare with tolerance to avoid float hashing pitfalls
-    embeddings_set = {tuple(np.round(emb, 12)) for emb in embeddings}
-    fig_embeddings_set = {tuple(np.round(emb, 12)) for emb in fig.embeddings}
+    embeddings_set = {tuple(np.round(emb, 12)) for emb in embeddings}  # type: ignore[arg-type]
+    fig_embeddings_set = {tuple(np.round(emb, 12)) for emb in fig.embeddings}  # type: ignore[arg-type]
     assert embeddings_set == fig_embeddings_set
 
 

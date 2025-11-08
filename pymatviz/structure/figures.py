@@ -235,7 +235,8 @@ def structure_2d(
         if show_sites:  # Plot atoms, vectors, and image sites
             # Initialize set to collect coordinates of rendered sites
             plotted_sites_coords = {
-                tuple(np.round(site.coords, 5)) for site in augmented_structure.sites
+                tuple(np.round(site.coords, 5))  # type: ignore[arg-type]
+                for site in augmented_structure
             }
 
             for site_idx_loop, (site, rotated_site_coords_3d) in enumerate(
@@ -622,7 +623,7 @@ def structure_3d(
         if show_sites:
             # For 3D, need to handle disordered sites properly by drawing each site
             # individually instead of grouping by element symbol
-            for site_idx_loop, site in enumerate(augmented_structure.sites):
+            for site_idx_loop, site in enumerate(augmented_structure):
                 # Determine if this is primary site (from orig structure) or image site
                 is_image_site = site_idx_loop >= len(struct_i)
 
@@ -707,8 +708,8 @@ def structure_3d(
                 if show_sites:  # Only consider plotted sites for bonds
                     # Get all plotted site coordinates from the augmented structure
                     plotted_sites_coords = {
-                        tuple(np.round(site.coords, 5))
-                        for site in augmented_structure.sites
+                        tuple(np.round(site.coords, 5))  # type: ignore[arg-type]
+                        for site in augmented_structure
                     }
                 else:
                     # If no sites are rendered, set empty set to filter out all bonds
