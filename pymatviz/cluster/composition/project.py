@@ -8,14 +8,15 @@ techniques.
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.manifold import TSNE, Isomap
 
-from pymatviz.cluster.composition.plot import ProjectionMethod
 
+if TYPE_CHECKING:
+    from pymatviz.cluster.composition.plot import ProjectionMethod
 
 # Suppress sparse matrix efficiency warnings from scikit-learn
 warnings.filterwarnings("ignore", category=UserWarning, module="scipy.sparse._index")
@@ -24,7 +25,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="scipy.sparse._in
 def project_vectors(
     data: np.ndarray,
     *,
-    method: ProjectionMethod = ProjectionMethod.pca,
+    method: ProjectionMethod | None = None,
     n_components: int = 2,
     random_state: int | None = 42,
     scale_data: bool = True,
@@ -50,6 +51,11 @@ def project_vectors(
         ValueError: If method is invalid or n_components is too small
         ImportError: If UMAP is requested but not installed
     """
+    from pymatviz.cluster.composition.plot import ProjectionMethod
+
+    if method is None:
+        method = ProjectionMethod.pca
+
     if n_components < 2:
         raise ValueError("n_components must be at least 2")
 

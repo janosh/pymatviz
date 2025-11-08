@@ -448,7 +448,7 @@ def df_to_arrays(
 
     if not isinstance(df, pd.DataFrame):
         if not strict:
-            return args
+            return list(args)  # type: ignore[return-value]
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
 
     if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
