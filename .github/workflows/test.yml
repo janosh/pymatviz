@@ -31,6 +31,10 @@ jobs:
         export DENO_INSTALL="$HOME/.deno"
         export PATH="$DENO_INSTALL/bin:$PATH"
         echo "$HOME/.deno/bin" >> $GITHUB_PATH
+        # Build widget assets
+        cd pymatviz/widgets/web
+        deno task build
+        cd ../../..
       install-cmd: |
         uv pip install -e '.[test,brillouin]'  --system
       # pytest-split distributes work load so parallel jobs finish in similar time

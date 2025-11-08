@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.17.3](https://github.com/janosh/pymatviz/compare/v0.17.2...v0.17.3)
+
+> 7 November 2025
+
+### 💥 Breaking Changes
+
+- Remove `density_scatter` alias `density_scatter_plotly` by @janosh in https://github.com/janosh/pymatviz/pull/323
+
+### 🐛 Bug Fixes
+
+- Fix widget arg names by @janosh in https://github.com/janosh/pymatviz/pull/322
+- Handle disordered structures in `coordination_vs_cutoff_line` by @janosh in https://github.com/janosh/pymatviz/pull/326
+
+### 🏷️ Type Hints
+
+- Remove unused type ignores by @janosh in https://github.com/janosh/pymatviz/pull/328
+
 ## [v0.17.2](https://github.com/janosh/pymatviz/compare/v0.17.1...v0.17.2)
 
 > 14 August 2025
