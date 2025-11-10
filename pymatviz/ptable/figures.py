@@ -1047,7 +1047,9 @@ def ptable_heatmap_splits_plotly(
                     [ii * height, ii * height, (ii + 1) * height, (ii + 1) * height],
                 )
                 for ii in range(n_splits)
-            ][::-1]  # reverse to maintain top-to-bottom order
+            ][
+                ::-1
+            ]  # reverse to maintain top-to-bottom order
 
         if orientation == "vertical":
             # Split into equal vertical strips
@@ -1622,7 +1624,9 @@ def ptable_scatter_plotly(
         for elem_data in data.values():
             for x_vals, y_vals, *_ in (
                 # handle both single line and multiple lines per element cases
-                elem_data if isinstance(elem_data, dict) else {"": elem_data}  # type: ignore[dict-item]
+                elem_data
+                if isinstance(elem_data, dict)
+                else {"": elem_data}  # type: ignore[dict-item]
             ).values():
                 all_x_vals.extend(x_vals)
                 all_y_vals.extend(y_vals)
@@ -1961,7 +1965,7 @@ def ptable_bars_plotly(
         log (bool): Whether to log scale y-axis of each histogram. Defaults to False.
         colorscale (str): Color scale for histogram bars. Defaults to "RdBu" (red to
             blue). See plotly.com/python/builtin-colorscales for other options.
-        colorbar (dict[str, Any] | None): Plotly colorbar properties. Defaults to
+        colorbar (dict[str, Any] | Literal[False] | None): Plotly colorbar properties. Defaults to
             dict(orientation="h"). See https://plotly.com/python/reference#heatmap-colorbar
             for available options. Set to False to hide the colorbar.
         hide_f_block (bool | "auto"): Whether to hide the F-block elements. If "auto",
@@ -1976,8 +1980,9 @@ def ptable_bars_plotly(
         element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
             to custom strings. If provided, these custom strings will be displayed
             instead of the standard element symbols. Defaults to None.
-        symbol_kwargs (dict): Additional keyword arguments for element symbol text.
-        annotations (dict[str, str] | Callable[[np.ndarray], str] | None): Annotation to
+        symbol_kwargs (dict[str, Any]): Additional keyword arguments for element symbol text.
+        annotations (dict[str, str | dict[str, Any]] | Callable[[Sequence[float]], str | dict[str, Any]
+            | list[dict[str, Any]]] | None): Annotation to
             display for each element tile. Can be either:
             - dict mapping element symbols to annotation strings
             - callable that takes histogram values and returns annotation string
@@ -2051,7 +2056,7 @@ def ptable_bars_plotly(
                 line_width=0,
                 layer="below",
                 **xy_ref,
-                opacity=0.05,
+                opacity=0.02,
             )
 
         if symbol not in data:
@@ -2072,19 +2077,26 @@ def ptable_bars_plotly(
             else f"<b>{display_symbol}</b> ({symbol})"
         ) + "<br>%{x}<br>Value: %{y}<extra></extra>"
 
+        # Build marker dict based on colorbar setting
+        marker_dict = dict(
+            color=y_vals,
+            colorscale=colorscale,
+            cmin=min(y_vals),
+            cmax=max(y_vals),
+        )
+
+        if colorbar is False:
+            marker_dict["showscale"] = False
+        else:
+            marker_dict["colorbar"] = _get_colorbar_settings(
+                colorbar, font_size=font_size, scale=scale
+            )
+
         fig.add_trace(
             go.Bar(
                 x=x_vals,
                 y=y_vals,
-                marker=dict(
-                    color=y_vals,
-                    colorscale=colorscale,
-                    colorbar=_get_colorbar_settings(
-                        colorbar, font_size=font_size, scale=scale
-                    ),
-                    cmin=min(y_vals),
-                    cmax=max(y_vals),
-                ),
+                marker=marker_dict,
                 hovertemplate=hover_template,
                 showlegend=False,
             ),
@@ -2103,7 +2115,7 @@ def ptable_bars_plotly(
                 if color_elem_strategy in {"symbol", "both"}
                 else font_color
             ),
-            "x": 0,
+            "x": -0.1,
             "y": 1,
         } | (symbol_kwargs or {})
 
@@ -2157,16 +2169,16 @@ def ptable_bars_plotly(
 
     x_axis_kwargs = dict(
         showgrid=False,
-        showline=True,
+        showline=False,
         linecolor=template_line_color,
         zeroline=False,
-        ticklen=4,
-        ticks="inside",
+        ticklen=0,
+        ticks="",
         mirror=False,
-        tickwidth=1,
+        tickwidth=0,
         tickcolor=template_line_color,
         tickmode="auto",
-        showticklabels=True,
+        showticklabels=False,
         nticks=3,
         tickformat=".2g",
         tickfont=dict(size=9 * scale),
