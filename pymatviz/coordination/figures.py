@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Hashable, Sequence
 from inspect import isclass
 from typing import TYPE_CHECKING
 
@@ -94,7 +94,7 @@ def coordination_hist(
     structures = normalize_structures(structures)
 
     # coord_data: coordination numbers and hover data for each structure and element
-    coord_data: dict[str, dict[str, Any]] = {}
+    coord_data: dict[Hashable, dict[str, Any]] = {}
     min_cn, max_cn = float("inf"), 0  # will be updated in the loop below
 
     # Process hover_data

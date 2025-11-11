@@ -6,7 +6,7 @@ import functools
 import itertools
 import math
 import warnings
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 def get_struct_prop(
-    struct: AnyStructure, struct_key: str | int, prop_name: str, func_param: Any
+    struct: AnyStructure, struct_key: Hashable, prop_name: str, func_param: Any
 ) -> Any:
     """Get a structure related value with standardized precedence handling.
 
@@ -43,7 +43,7 @@ def get_struct_prop(
 
     Args:
         struct (AnyStructure): The pymatgen Structure or ASE Atoms object.
-        struct_key (str | int): Key identifying this structure in a collection.
+        struct_key (Hashable): Key identifying this structure in a collection.
         prop_name (str): Name of the property to look for in structure.properties or
             atoms.info.
         func_param (Any): Function parameter value (can be dict for per-structure
@@ -283,7 +283,7 @@ def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str,
     if isinstance(atomic_radii, dict):
         return atomic_radii
     scale: float = 1.0 if atomic_radii is None else float(atomic_radii)
-    return {elem: radius * scale for elem, radius in covalent_radii.items()}
+    return {str(elem): float(radius) * scale for elem, radius in covalent_radii.items()}
 
 
 def generate_site_label(
@@ -331,9 +331,9 @@ def generate_site_label(
 
 def get_subplot_title(
     struct_i: Structure,
-    struct_key: Any,
+    struct_key: Hashable,
     idx: int,
-    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
+    subplot_title: Callable[[Structure, Hashable], str | dict[str, Any]] | None,
 ) -> dict[str, Any]:
     """Generate a subplot title based on the provided function or default logic."""
     title_dict: dict[str, str | float | dict[str, str | float]] = {}
@@ -356,10 +356,8 @@ def get_subplot_title(
 
             spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number
             title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
-        elif isinstance(struct_key, str):
+        else:  # For str or any other Hashable type, convert to string
             title_dict["text"] = str(struct_key)
-        else:
-            raise TypeError(f"Invalid {struct_key=}. Must be an int or str.")
 
     return title_dict
 

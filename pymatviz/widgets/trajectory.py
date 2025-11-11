@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 import traitlets as tl
 
 from pymatviz.structure.helpers import add_vacuum_if_needed
 from pymatviz.widgets.matterviz import MatterVizWidget
-
-
-TrajLayout = Literal["auto", "horizontal", "vertical"]
-TrajDisplayMode = Literal[
-    "structure+scatter", "structure", "scatter", "histogram", "structure+histogram"
-]
 
 
 class TrajectoryWidget(MatterVizWidget):
@@ -68,8 +62,19 @@ class TrajectoryWidget(MatterVizWidget):
     current_step_idx = tl.Int(0).tag(sync=True)
 
     # Layout
-    layout: TrajLayout = tl.Unicode("auto").tag(sync=True)
-    display_mode: TrajDisplayMode = tl.Unicode("structure+scatter").tag(sync=True)
+    layout = tl.CaselessStrEnum(
+        ["auto", "horizontal", "vertical"], default_value="auto"
+    ).tag(sync=True)
+    display_mode = tl.CaselessStrEnum(
+        [
+            "structure+scatter",
+            "structure",
+            "scatter",
+            "histogram",
+            "structure+histogram",
+        ],
+        default_value="structure+scatter",
+    ).tag(sync=True)
     show_controls = tl.Bool(default_value=True).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)

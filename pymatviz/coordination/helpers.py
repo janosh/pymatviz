@@ -13,7 +13,7 @@ from pymatviz.structure import helpers
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Hashable
     from typing import Any
 
     from pymatgen.core import PeriodicSite, Structure
@@ -30,7 +30,7 @@ class CnSplitMode(LabelEnum):
 
 def create_hover_text(
     *,
-    struct_key: str,
+    struct_key: Hashable,
     elem_symbol: str,
     cn: int,
     count: int,

@@ -31,7 +31,7 @@ from pymatviz.structure.helpers import (
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Hashable
 
     from pymatviz.typing import Xyz
 
@@ -689,7 +689,7 @@ def test_structure_2d_bonds_and_sites(
 
 def test_structure_2d_invalid_input() -> None:
     """Test that structure_2d raises errors for invalid inputs."""
-    expected_err_msg = "Input must be a Pymatgen Structure, ASE Atoms"
+    expected_err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
     with pytest.raises(TypeError, match=expected_err_msg):
         pmv.structure_2d("invalid input")
 
@@ -1127,7 +1127,7 @@ def test_structure_3d_multiple() -> None:
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
     # Test subplot_title and its interaction with legend annotations
-    def custom_subplot_title_func(struct: Structure, key: str | int) -> str:
+    def custom_subplot_title_func(struct: Structure, key: Hashable) -> str:
         return f"{key} - {struct.formula}"
 
     fig = pmv.structure_3d(struct_series, subplot_title=custom_subplot_title_func)
@@ -1207,7 +1207,7 @@ def test_structure_3d_subplot_title_coverage() -> None:
     struct2 = Structure(lattice, ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
 
     # Test with custom subplot_title function that returns dict with y and yanchor
-    def custom_title_with_position(_struct: Structure, k: str | int) -> dict[str, Any]:
+    def custom_title_with_position(_struct: Structure, k: Hashable) -> dict[str, Any]:
         return {"text": f"Structure {k}", "x": 0.5, "y": 0.95, "yanchor": "top"}
 
     fig = pmv.structure_3d(

@@ -16,7 +16,7 @@ from pymatviz.structure import helpers
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Hashable, Sequence
     from typing import Literal
 
     import plotly.graph_objects as go
@@ -44,7 +44,7 @@ def structure_2d(
     | Sequence[str] = "legend",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
-    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None = None,
+    subplot_title: Callable[[Structure, Hashable], str | dict[str, Any]] | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
     hover_text: SiteCoords
@@ -174,10 +174,7 @@ def structure_2d(
             )
 
             if is_struct_key_mapping:  # is map of structure keys to color schemes
-                struct_elem_colors = cast(
-                    "ElemColorScheme | dict[str, ColorType]",
-                    elem_colors.get(struct_key, ElemColorScheme.jmol),
-                )
+                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # type: ignore[arg-type]
 
         _elem_colors = helpers.get_elem_colors(struct_elem_colors)
 
@@ -442,7 +439,7 @@ def structure_3d(
     | Sequence[str] = "legend",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
-    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]]
+    subplot_title: Callable[[Structure, Hashable], str | dict[str, Any]]
     | None
     | Literal[False] = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
@@ -571,10 +568,7 @@ def structure_3d(
             )
 
             if is_struct_key_mapping:  # is map of structure keys to color schemes
-                struct_elem_colors = cast(
-                    "ElemColorScheme | dict[str, ColorType]",
-                    elem_colors.get(struct_key, ElemColorScheme.jmol),
-                )
+                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # type: ignore[arg-type]
 
         _elem_colors = helpers.get_elem_colors(struct_elem_colors)
 

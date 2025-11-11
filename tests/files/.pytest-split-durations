@@ -430,7 +430,7 @@
     "tests/rdf/test_rdf_helpers.py::test_calculate_rdf_extreme_parameters[cutoff-0.1-0.1-10-all_zeros]": 0.0002359160571359098,
     "tests/rdf/test_rdf_helpers.py::test_calculate_rdf_extreme_parameters[n_bins-1000-10-1000-has_nonzero]": 0.0003896660346072167,
     "tests/rdf/test_rdf_helpers.py::test_calculate_rdf_extreme_parameters[n_bins-20-5-20-has_variation]": 0.0002411670284345746,
-    "tests/rdf/test_rdf_helpers.py::test_calculate_rdf_input_validation[test_input0-TypeError-Input must be a Pymatgen Structure, ASE Atoms object, a sequence]": 0.00021937396377325058,
+    "tests/rdf/test_rdf_helpers.py::test_calculate_rdf_input_validation[test_input0-TypeError-Input must be a pymatgen Structure, IStructure, Molecule, IMolecule, ASE Atoms, or PhonopyAtoms object, a sequence]": 0.00021937396377325058,
     "tests/rdf/test_rdf_helpers.py::test_calculate_rdf_input_validation[test_input1-ValueError-cutoff=0 must be positive]": 0.0001642499992158264,
     "tests/rdf/test_rdf_helpers.py::test_calculate_rdf_input_validation[test_input2-ValueError-cutoff=-5 must be positive]": 0.00016679102554917336,
     "tests/rdf/test_rdf_helpers.py::test_calculate_rdf_input_validation[test_input3-ValueError-n_bins=0 must be positive]": 0.00016133399913087487,
