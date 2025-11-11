@@ -291,7 +291,7 @@ _test_cases_normalize_structures = [
 def test_normalize_structures(
     test_case_name: str,
     input_raw: Any,
-    expected_output_dict: dict[Any, Structure],
+    expected_output_dict: dict[Any, Structure | IStructure],
 ) -> None:
     """Test normalize_structures function for various inputs including ASE Atoms."""
     del test_case_name

@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from pymatgen.core import Composition, SiteCollection, Structure
+from pymatgen.core import Composition, IStructure, SiteCollection, Structure
 from pymatgen.io.phonopy import get_pmg_structure
 
 from pymatviz.enums import ElemCountMode, Key
@@ -315,19 +315,20 @@ def normalize_structures(
     | Sequence[AnyStructure]
     | pd.Series
     | dict[str, AnyStructure],
-) -> dict[Hashable, SiteCollection]:
-    """Convert pymatgen Structures, ASE Atoms, or PhonopyAtoms or sequences/dicts of
-    them to a dictionary mapping hashable keys to pymatgen Structures.
+) -> dict[Hashable, Structure | IStructure]:
+    """Convert pymatgen Structures/IStructures, ASE Atoms, or PhonopyAtoms or
+    sequences/dicts of them to a dictionary mapping hashable keys to pymatgen
+    Structure-likes (Structure, IStructure, Molecule, and IMolecule).
 
     Keys are derived from formulas for single structures, indices for sequences,
     or preserved from input dicts/Series.
     """
     from pymatgen.io.ase import AseAtomsAdaptor
 
-    def to_pmg_struct(item: Any) -> SiteCollection:
+    def to_pmg_struct(item: Any) -> Structure | IStructure:
         if is_ase_atoms(item):
             return AseAtomsAdaptor().get_structure(item)
-        if isinstance(item, SiteCollection):
+        if isinstance(item, (Structure, IStructure)):
             return item
         if is_phonopy_atoms(item):  # convert PhonopyAtoms to pymatgen Structure
             return get_pmg_structure(item)
@@ -342,7 +343,7 @@ def normalize_structures(
 
     # Check for single Structure/IStructure first, before checking for Sequence
     # since they are Sequences but we don't want to iterate over sites
-    if isinstance(systems, SiteCollection):
+    if isinstance(systems, (Structure, IStructure)):
         # Use formula as key for single structure input
         return {systems.formula: systems}
 
@@ -358,7 +359,7 @@ def normalize_structures(
     if isinstance(systems, (Sequence, pd.Series)) and not isinstance(systems, str):
         iterable_struct = list(systems) if isinstance(systems, pd.Series) else systems
         return {
-            f"{idx} {(systems := to_pmg_struct(item)).formula}": systems
+            f"{idx} {(struct := to_pmg_struct(item)).formula}": struct
             for idx, item in enumerate(iterable_struct, start=1)
         }
 

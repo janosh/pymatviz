@@ -60,7 +60,7 @@ def test_widget_invalid_composition_handling(
     ("property_name", "test_values"),
     [
         ("show_percentages", [False, True]),
-        ("color_scheme", ["Jmol", "CPK", "VESTA"]),
+        ("color_scheme", ["Jmol", "CPK", "Vesta"]),
         ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("mode", ["pie", "bar", "bubble"]),
     ],
