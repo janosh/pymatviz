@@ -40,18 +40,18 @@ fig.update_traces(
     "%{percentRoot:.1%} of total<extra></extra>",
 )
 pkg_names = [getattr(pkg, "__name__", pkg) for pkg in packages]
-title = f"Comparing Package Structure: {', '.join(pkg_names)}"
+title = f"Comparing Package Structure: {', '.join(map(str, pkg_names))}"
 fig.layout.title.update(text=title, x=0.5, font_size=20)
 fig.show()
 pmv.io.save_and_compress_svg(fig, "py-pkg-treemap-multiple")
 
 
 # %% Different ways to group packages
-for group_by, clr_scheme in {
-    "file": px.colors.qualitative.Set2,
-    "directory": px.colors.qualitative.Pastel1,
-    "module": px.colors.qualitative.Set3,
-}.items():
+for group_by, clr_scheme in (
+    ("file", px.colors.qualitative.Set2),
+    ("directory", px.colors.qualitative.Pastel1),
+    ("module", px.colors.qualitative.Set3),
+):
     fig = pmv.py_pkg_treemap(
         "pymatviz",
         group_by=group_by,

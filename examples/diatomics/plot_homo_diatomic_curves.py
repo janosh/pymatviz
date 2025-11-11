@@ -46,7 +46,7 @@ for symbol in homo_nuc_diatomics:
 
 
 fig = pmv.ptable_scatter_plotly(
-    diatomic_curves,
+    diatomic_curves,  # type: ignore[arg-type]
     mode="lines",
     x_axis_kwargs=dict(range=[0, 6]),
     y_axis_kwargs=dict(range=[-8, 15]),

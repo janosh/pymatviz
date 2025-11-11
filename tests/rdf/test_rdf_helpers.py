@@ -353,7 +353,7 @@ def test_calculate_rdf_with_no_atoms_of_requested_species(
         (  # invalid_structure_type
             {"structure": "not a structure", "cutoff": 10, "n_bins": 10},
             TypeError,
-            "Input must be a Pymatgen Structure, ASE Atoms",
+            "Input must be a pymatgen Structure, IStructure, Molecule, IMolecule,",
         ),
         (  # zero_cutoff
             {"cutoff": 0},
@@ -403,11 +403,11 @@ def test_calculate_rdf_input_validation(
 def test_calculate_rdf_invalid_structure_type() -> None:
     """Test that calculate_rdf raises appropriate error for invalid structure types."""
     with pytest.raises(
-        TypeError, match="Input must be a Pymatgen Structure, ASE Atoms"
+        TypeError, match="Input must be a pymatgen Structure, IStructure, Molecule"
     ):
         calculate_rdf("not a structure", cutoff=10, n_bins=10)
 
     with pytest.raises(
-        TypeError, match="Input must be a Pymatgen Structure, ASE Atoms"
+        TypeError, match="Input must be a pymatgen Structure, IStructure, Molecule"
     ):
         calculate_rdf(42, cutoff=10, n_bins=10)

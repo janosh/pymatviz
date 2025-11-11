@@ -237,7 +237,8 @@ def test_coordination_vs_cutoff_line_invalid_input() -> None:
     for inputs in ("invalid input", None):
         with pytest.raises(
             TypeError,
-            match="Input must be a Pymatgen Structure, ASE Atoms, or PhonopyAtoms",
+            match="Input must be a pymatgen Structure, IStructure, Molecule, "
+            "IMolecule, ASE Atoms, or PhonopyAtoms object",
         ):
             coordination_vs_cutoff_line(inputs)
 

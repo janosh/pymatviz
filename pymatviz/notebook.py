@@ -29,7 +29,7 @@ def _create_widget_mime_bundle(widget_cls_name: str, obj: Any) -> dict[str, Any]
     if widget_key is None:
         return {"text/plain": repr(obj)}
 
-    module_name, cls_name, param_name = WIDGET_MAP[widget_key]
+    module_name, cls_name, param_name = WIDGET_MAP[widget_key]  # type: ignore[index]
     from importlib import import_module
 
     module = import_module(module_name)

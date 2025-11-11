@@ -12,8 +12,4 @@ from pymatviz.widgets.structure import StructureWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 
 
-MattervizElementColorSchemes = Literal[
-    "Jmol", "Vesta", "Pastel", "Alloy", "Muted", "Dark Mode"
-]
-
 register_matterviz_widgets()  # Auto-register in all supported environments

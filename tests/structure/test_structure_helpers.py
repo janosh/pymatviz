@@ -1,5 +1,5 @@
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from typing import Any
 
 import numpy as np
@@ -337,7 +337,7 @@ def test_draw_site(
 def test_get_subplot_title(
     structures: list[Structure],
     struct_key: Any,
-    subplot_title: Callable[[Structure, str | int], str | dict[str, Any]] | None,
+    subplot_title: Callable[[Structure, Hashable], str | dict[str, Any]] | None,
     expected_text: str,
 ) -> None:
     structure = structures[0]

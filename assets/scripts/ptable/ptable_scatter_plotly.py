@@ -21,22 +21,22 @@ for elem in Element:
 
 
 rand_parity_data = {  # random parity data with y = x + noise
-    elem.symbol: [
+    elem.symbol: (
         np.arange(10) + np_rng.normal(0, 1, 10),
         np.arange(10) + np_rng.normal(0, 1, 10),
         np.arange(10) + np_rng.normal(0, 3, 10),
-    ]
+    )
     for elem in Element
 }
 
 
 # Generate parabola data with y = x^2 + noise
 rand_parabola_data = {
-    elem.symbol: [
+    elem.symbol: (
         np.arange(10),
         (np.arange(10) - 4) ** 2 + np_rng.normal(0, 1, 10),
         np.arange(10) + np_rng.normal(0, 10, 10),
-    ]
+    )
     for elem in Element
 }
 

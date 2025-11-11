@@ -8,10 +8,7 @@
   import Toc from 'svelte-toc'
   import '../app.css'
 
-  interface Props {
-    children?: Snippet
-  }
-  let { children }: Props = $props()
+  let { children }: { children?: Snippet } = $props()
 
   let headingSelector = $derived(
     `main :is(${

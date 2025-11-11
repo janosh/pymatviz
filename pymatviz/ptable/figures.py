@@ -707,7 +707,7 @@ def _add_colorbar_trace(
     if "tickformat" not in colorbar:
         colorbar["tickformat"] = ".4s"  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
 
-    marker = dict[str, Any](
+    marker: dict[str, Any] = dict(
         size=0,
         color=[cmin, cmax],
         colorscale=colorscale,
@@ -716,7 +716,7 @@ def _add_colorbar_trace(
         cmax=cmax,
         colorbar=colorbar,
     )
-    scatter_kwargs = dict[str, Any](
+    scatter_kwargs: dict[str, Any] = dict(
         x=[None],
         y=[None],
         mode="markers",
@@ -725,7 +725,7 @@ def _add_colorbar_trace(
         hoverinfo="none",
     )
     if row is not None and col is not None:
-        scatter_kwargs.update(row=row, col=col)
+        scatter_kwargs.update(row=row, col=col)  # type: ignore[invalid-argument-type]
         # Hide the axes for the invisible scatter trace
         fig.update_xaxes(visible=False, row=row, col=col)
         fig.update_yaxes(visible=False, row=row, col=col)
@@ -924,12 +924,14 @@ def ptable_heatmap_splits_plotly(
         elif colorbar is None:
             # Create colorbar settings with column names as titles
             colorbar = [dict(title=label) for label in split_labels]
-        data = {idx: row.tolist() for idx, row in data.iterrows()}
+        data = {idx: row.tolist() for idx, row in data.iterrows()}  # type: ignore[misc]
     elif isinstance(data, pd.Series):
-        data = data.to_dict()
+        data = data.to_dict()  # type: ignore[assignment]
 
     # Calculate split ranges early if using multiple colorscales
-    n_splits = len(next(iter(data.values())))
+    if not data:
+        raise ValueError(f"ptable_heatmap_splits_plotly: {data=} must not be empty")
+    n_splits = len(next(iter(data.values())))  # type: ignore[arg-type]
 
     if not split_labels:  # if not DataFrame or empty columns
         split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
@@ -943,7 +945,7 @@ def ptable_heatmap_splits_plotly(
     for split_idx in range(n_splits):
         split_values = [
             values[split_idx]
-            for values in data.values()
+            for values in data.values()  # type: ignore[union-attr]
             if len(values) > split_idx
             and not np.isnan(values[split_idx])
             and values[split_idx] != 0
@@ -1124,7 +1126,8 @@ def ptable_heatmap_splits_plotly(
                 cmin, cmax = split_ranges[idx]
 
                 # Calculate normalized position in colorscale
-                scale_pos = (values[idx] - cmin) / (cmax - cmin)
+                denom = cmax - cmin
+                scale_pos = 0.5 if denom == 0 else (values[idx] - cmin) / denom
                 # Clamp scale_pos to [0, 1] to handle values outside the range
                 scale_pos = max(0, min(1, scale_pos))
 
@@ -1636,7 +1639,7 @@ def ptable_scatter_plotly(
             elem_values if isinstance(elem_values, dict) else {"": elem_values}
         ).values():
             if len(elem_data) > 2:  # Has color data
-                color_vals = elem_data[2]
+                color_vals = elem_data[2]  # type: ignore[index]
                 if all(isinstance(val, int | float) for val in color_vals):
                     cbar_min = min(cbar_min, *color_vals)
                     cbar_max = max(cbar_max, *color_vals)
@@ -1699,10 +1702,9 @@ def ptable_scatter_plotly(
                 opacity=0.05,
             )
 
+        symbol_data = data[symbol]
         # Add line plot if data exists for this element
-        elem_data = (
-            data[symbol] if isinstance(data[symbol], dict) else {"": data[symbol]}
-        )
+        elem_data = symbol_data if isinstance(symbol_data, dict) else {"": symbol_data}
         for line_name, elem_vals in elem_data.items():
             x_vals, y_vals, *rest = elem_vals
             color_vals = rest[0] if rest else None  # if 3-tuple, first entry is color
@@ -1801,7 +1803,7 @@ def ptable_scatter_plotly(
         if annotations is not None:
             if callable(annotations):
                 # Pass the element's values to the callable
-                annotation = annotations(data[symbol])
+                annotation = annotations(symbol_data)
             elif isinstance(annotations, dict):
                 annotation = annotations.get(symbol, "")
             else:

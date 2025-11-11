@@ -6,7 +6,14 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
-from pymatgen.core import Composition, IStructure, Lattice, Structure
+from pymatgen.core import (
+    Composition,
+    IMolecule,
+    IStructure,
+    Lattice,
+    Molecule,
+    Structure,
+)
 
 import pymatviz as pmv
 from pymatviz import process_data as pmv_pd
@@ -15,6 +22,7 @@ from tests.conftest import SI_ATOMS, SI_STRUCTS, y_pred, y_true
 
 
 if TYPE_CHECKING:
+    from collections.abc import Hashable
     from typing import Any
 
     from pymatviz.typing import FormulaGroupBy
@@ -256,6 +264,12 @@ PMG_EXPECTED_DICT = {
 
 SI_ISTRUCTURE_0 = IStructure.from_sites(SI_STRUCTS[0])
 
+# Molecule and IMolecule test fixtures
+H2O_MOL = Molecule(["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]])
+CO2_MOL = Molecule(["C", "O", "O"], [[0, 0, 0], [0, 0, 1.2], [0, 0, -1.2]])
+H2O_IMOL = IMolecule(["H", "H", "O"], [[0, 0, 0], [0, 0, 1.5], [0, 0, 0.75]])
+CO2_IMOL = IMolecule(["C", "O", "O"], [[0, 0, 0], [0, 0, 1.2], [0, 0, -1.2]])
+
 _test_cases_normalize_structures = [
     # (test_case_name, input_to_normalize_structures, expected_dictionary_output)
     ("single_pmg_structure", SI_STRUCTS[0], {PMG_FORMULA_0: SI_STRUCTS[0]}),
@@ -280,6 +294,56 @@ _test_cases_normalize_structures = [
         {"pmg_key": SI_STRUCTS[0], "ase_key": SI_ATOMS[1]},
         {"pmg_key": SI_STRUCTS[0], "ase_key": SI_STRUCTS[1]},
     ),
+    # Molecule/IMolecule tests (single, list, dict, mixed)
+    ("single_molecule", H2O_MOL, {H2O_MOL.composition.formula: H2O_MOL}),
+    ("single_imolecule", H2O_IMOL, {H2O_IMOL.composition.formula: H2O_IMOL}),
+    (
+        "list_molecules",
+        [H2O_MOL, CO2_MOL],
+        {
+            f"1 {H2O_MOL.composition.formula}": H2O_MOL,
+            f"2 {CO2_MOL.composition.formula}": CO2_MOL,
+        },
+    ),
+    (
+        "list_imolecules",
+        [H2O_IMOL, CO2_IMOL],
+        {
+            f"1 {H2O_IMOL.composition.formula}": H2O_IMOL,
+            f"2 {CO2_IMOL.composition.formula}": CO2_IMOL,
+        },
+    ),
+    (
+        "dict_molecules",
+        {"h2o": H2O_MOL, "co2": CO2_MOL},
+        {"h2o": H2O_MOL, "co2": CO2_MOL},
+    ),
+    (
+        "dict_imolecules",
+        {"h2o": H2O_IMOL, "co2": CO2_IMOL},
+        {"h2o": H2O_IMOL, "co2": CO2_IMOL},
+    ),
+    (
+        "mixed_struct_mol",
+        [SI_STRUCTS[0], H2O_MOL],
+        {
+            f"1 {SI_STRUCTS[0].formula}": SI_STRUCTS[0],
+            f"2 {H2O_MOL.composition.formula}": H2O_MOL,
+        },
+    ),
+    (
+        "mixed_dict_struct_mol",
+        {"s": SI_STRUCTS[0], "m": H2O_MOL},
+        {"s": SI_STRUCTS[0], "m": H2O_MOL},
+    ),
+    (
+        "mixed_istruct_imol",
+        [SI_ISTRUCTURE_0, H2O_IMOL],
+        {
+            f"1 {SI_ISTRUCTURE_0.formula}": SI_ISTRUCTURE_0,
+            f"2 {H2O_IMOL.composition.formula}": H2O_IMOL,
+        },
+    ),
 ]
 
 
@@ -291,14 +355,53 @@ _test_cases_normalize_structures = [
 def test_normalize_structures(
     test_case_name: str,
     input_raw: Any,
-    expected_output_dict: dict[Any, Structure],
+    expected_output_dict: dict[Hashable, Structure | IStructure | Molecule | IMolecule],
 ) -> None:
-    """Test normalize_structures function for various inputs including ASE Atoms."""
+    """Test normalize_structures with various inputs including Molecules."""
     del test_case_name
 
     result_dict = pmv_pd.normalize_structures(input_raw)
 
     assert result_dict == expected_output_dict
+
+
+@pytest.mark.parametrize(
+    ("invalid_input", "error_match"),
+    [
+        ("not a structure", "Input must be a pymatgen Structure"),
+        (12345, "Input must be a pymatgen Structure"),
+        ([SI_STRUCTS[0], "invalid"], "Item must be a pymatgen Structure"),
+    ],
+)
+def test_normalize_structures_errors(invalid_input: Any, error_match: str) -> None:
+    """Test error messages include Molecule and IMolecule types."""
+    with pytest.raises(TypeError, match=error_match):
+        pmv_pd.normalize_structures(invalid_input)
+
+
+@pytest.mark.parametrize(
+    ("series_input", "expected_keys"),
+    [
+        (pd.Series([SI_STRUCTS[0], SI_STRUCTS[1]], index=["s1", "s2"]), {"s1", "s2"}),
+        (pd.Series([H2O_MOL, CO2_MOL], index=["h2o", "co2"]), {"h2o", "co2"}),
+        (pd.Series([SI_STRUCTS[0], H2O_MOL], index=["s", "m"]), {"s", "m"}),
+    ],
+)
+def test_normalize_structures_pandas_series(
+    series_input: pd.Series, expected_keys: set[str]
+) -> None:
+    """Test normalize_structures with pandas Series (Structures and Molecules)."""
+    result = pmv_pd.normalize_structures(series_input)
+    assert set(result.keys()) == expected_keys
+    for key in expected_keys:
+        assert result[key] == series_input[key]
+
+
+@pytest.mark.parametrize("empty_input", [[], {}])
+def test_normalize_structures_empty(empty_input: list | dict) -> None:
+    """Test normalize_structures raises error on empty inputs."""
+    with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
+        pmv_pd.normalize_structures(empty_input)
 
 
 # Mock classes for testing is_ase_atoms

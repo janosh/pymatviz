@@ -222,6 +222,12 @@ def test_ptable_heatmap_splits_plotly_error_cases() -> None:
     """Test error cases for ptable_heatmap_splits_plotly."""
     data = {"Fe": [1, 2], "O": [3, 4]}
 
+    # Test empty data
+    with pytest.raises(
+        ValueError, match=r"ptable_heatmap_splits_plotly: data={} must not be empty"
+    ):
+        pmv.ptable_heatmap_splits_plotly({})
+
     # Test invalid n_splits
     with pytest.raises(ValueError, match="Number of splits 1 must be 2, 3, or 4"):
         pmv.ptable_heatmap_splits_plotly({"Fe": [1]})
