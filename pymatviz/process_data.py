@@ -317,7 +317,10 @@ def normalize_structures(
     | dict[str, AnyStructure],
 ) -> dict[Hashable, SiteCollection]:
     """Convert pymatgen Structures, ASE Atoms, or PhonopyAtoms or sequences/dicts of
-    them to a dictionary of pymatgen Structures.
+    them to a dictionary mapping hashable keys to pymatgen Structures.
+
+    Keys are derived from formulas for single structures, indices for sequences,
+    or preserved from input dicts/Series.
     """
     from pymatgen.io.ase import AseAtomsAdaptor
 

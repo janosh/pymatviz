@@ -2141,21 +2141,24 @@ def test_color_scale_options(
         verify_ticks
         and getattr(fig.layout.coloraxis.colorbar, "ticktext", None) is not None
     ):
-        tick_text_values = [
-            float(t)
-            for t in fig.layout.coloraxis.colorbar.ticktext
-            if (isinstance(t, str) and t.replace(".", "").replace("-", "").isdigit())
-            or isinstance(t, (int, float))
-        ]
+        tick_texts = []
+        for tick in fig.layout.coloraxis.colorbar.ticktext:
+            if isinstance(tick, (int, float)):
+                tick_texts.append(float(tick))
+            elif isinstance(tick, str):
+                try:
+                    tick_texts.append(float(tick))
+                except ValueError:
+                    pass  # Skip non-numeric strings (e.g., "10^2", labels with units)
 
         # Verify that min and max values are covered by the colorbar ticks
-        if tick_text_values:
+        if tick_texts:
             if color_scale == "log" or (
                 isinstance(color_scale, dict) and color_scale.get("type") == "log"
             ):
                 # Log scale omits values <= 0, so we only check that maximum is covered
-                assert max(tick_text_values) >= 100.0, (
-                    f"Max tick value {max(tick_text_values)} doesn't cover "
+                assert max(tick_texts) >= 100.0, (
+                    f"Max tick value {max(tick_texts)} doesn't cover "
                     f"data range [0.1, 1000.0]"
                 )
             elif color_scale == "arcsinh" or (
@@ -2163,7 +2166,7 @@ def test_color_scale_options(
             ):
                 # arcsinh scales can handle negative values, but our test data is +ve
                 # We still check that maximum is covered
-                assert max(tick_text_values) >= 100
+                assert max(tick_texts) >= 100
 
 
 @pytest.mark.parametrize(

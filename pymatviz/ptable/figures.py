@@ -707,7 +707,7 @@ def _add_colorbar_trace(
     if "tickformat" not in colorbar:
         colorbar["tickformat"] = ".4s"  # SI suffix (k=1000, M=1e6, G=1e9, etc.)
 
-    marker = dict[str, Any](
+    marker: dict[str, Any] = dict(
         size=0,
         color=[cmin, cmax],
         colorscale=colorscale,
@@ -716,7 +716,7 @@ def _add_colorbar_trace(
         cmax=cmax,
         colorbar=colorbar,
     )
-    scatter_kwargs = dict[str, Any](
+    scatter_kwargs: dict[str, Any] = dict(
         x=[None],
         y=[None],
         mode="markers",
@@ -725,7 +725,7 @@ def _add_colorbar_trace(
         hoverinfo="none",
     )
     if row is not None and col is not None:
-        scatter_kwargs.update(row=row, col=col)
+        scatter_kwargs.update(row=row, col=col)  # type: ignore[invalid-argument-type]
         # Hide the axes for the invisible scatter trace
         fig.update_xaxes(visible=False, row=row, col=col)
         fig.update_yaxes(visible=False, row=row, col=col)
@@ -929,6 +929,8 @@ def ptable_heatmap_splits_plotly(
         data = data.to_dict()  # type: ignore[assignment]
 
     # Calculate split ranges early if using multiple colorscales
+    if not data:
+        raise ValueError(f"ptable_heatmap_splits_plotly: {data=} must not be empty")
     n_splits = len(next(iter(data.values())))  # type: ignore[arg-type]
 
     if not split_labels:  # if not DataFrame or empty columns
@@ -1124,7 +1126,8 @@ def ptable_heatmap_splits_plotly(
                 cmin, cmax = split_ranges[idx]
 
                 # Calculate normalized position in colorscale
-                scale_pos = (values[idx] - cmin) / (cmax - cmin)
+                denom = cmax - cmin
+                scale_pos = 0.5 if denom == 0 else (values[idx] - cmin) / denom
                 # Clamp scale_pos to [0, 1] to handle values outside the range
                 scale_pos = max(0, min(1, scale_pos))
 

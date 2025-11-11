@@ -62,8 +62,19 @@ class TrajectoryWidget(MatterVizWidget):
     current_step_idx = tl.Int(0).tag(sync=True)
 
     # Layout
-    layout = tl.Unicode("auto").tag(sync=True)
-    display_mode = tl.Unicode("structure+scatter").tag(sync=True)
+    layout = tl.CaselessStrEnum(
+        ["auto", "horizontal", "vertical"], default_value="auto"
+    ).tag(sync=True)
+    display_mode = tl.CaselessStrEnum(
+        [
+            "structure+scatter",
+            "structure",
+            "scatter",
+            "histogram",
+            "structure+histogram",
+        ],
+        default_value="structure+scatter",
+    ).tag(sync=True)
     show_controls = tl.Bool(default_value=True).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)

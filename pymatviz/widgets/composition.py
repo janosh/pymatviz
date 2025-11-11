@@ -38,9 +38,14 @@ class CompositionWidget(MatterVizWidget):
     composition = tl.Dict(allow_none=True).tag(sync=True)
 
     # Visualization options
-    mode = tl.Unicode("pie").tag(sync=True)
+    mode = tl.CaselessStrEnum(["pie", "bar", "bubble"], default_value="pie").tag(
+        sync=True
+    )
     show_percentages = tl.Bool(default_value=False).tag(sync=True)
-    color_scheme = tl.Unicode("Jmol").tag(sync=True)
+    color_scheme = tl.CaselessStrEnum(
+        ["Jmol", "CPK", "Vesta", "Alloy", "Pastel", "Muted", "Dark Mode"],
+        default_value="Jmol",
+    ).tag(sync=True)
 
     # Widget styling
     style = tl.Unicode(allow_none=True).tag(sync=True)  # Custom CSS styles
