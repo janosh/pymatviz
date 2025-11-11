@@ -1,9 +1,3 @@
-ci:
-  autoupdate_schedule: quarterly
-  skip: [eslint, deno-fmt, deno-lint]
-
-default_stages: [pre-commit]
-
 default_install_hook_types: [pre-commit, commit-msg]
 
 repos:

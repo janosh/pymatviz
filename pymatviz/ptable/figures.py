@@ -924,12 +924,12 @@ def ptable_heatmap_splits_plotly(
         elif colorbar is None:
             # Create colorbar settings with column names as titles
             colorbar = [dict(title=label) for label in split_labels]
-        data = {idx: row.tolist() for idx, row in data.iterrows()}
+        data = {idx: row.tolist() for idx, row in data.iterrows()}  # type: ignore[misc]
     elif isinstance(data, pd.Series):
-        data = data.to_dict()
+        data = data.to_dict()  # type: ignore[assignment]
 
     # Calculate split ranges early if using multiple colorscales
-    n_splits = len(next(iter(data.values())))
+    n_splits = len(next(iter(data.values())))  # type: ignore[arg-type]
 
     if not split_labels:  # if not DataFrame or empty columns
         split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
@@ -943,7 +943,7 @@ def ptable_heatmap_splits_plotly(
     for split_idx in range(n_splits):
         split_values = [
             values[split_idx]
-            for values in data.values()
+            for values in data.values()  # type: ignore[union-attr]
             if len(values) > split_idx
             and not np.isnan(values[split_idx])
             and values[split_idx] != 0
@@ -1636,7 +1636,7 @@ def ptable_scatter_plotly(
             elem_values if isinstance(elem_values, dict) else {"": elem_values}
         ).values():
             if len(elem_data) > 2:  # Has color data
-                color_vals = elem_data[2]
+                color_vals = elem_data[2]  # type: ignore[index]
                 if all(isinstance(val, int | float) for val in color_vals):
                     cbar_min = min(cbar_min, *color_vals)
                     cbar_max = max(cbar_max, *color_vals)
@@ -1699,10 +1699,9 @@ def ptable_scatter_plotly(
                 opacity=0.05,
             )
 
+        symbol_data = data[symbol]
         # Add line plot if data exists for this element
-        elem_data = (
-            data[symbol] if isinstance(data[symbol], dict) else {"": data[symbol]}
-        )
+        elem_data = symbol_data if isinstance(symbol_data, dict) else {"": symbol_data}
         for line_name, elem_vals in elem_data.items():
             x_vals, y_vals, *rest = elem_vals
             color_vals = rest[0] if rest else None  # if 3-tuple, first entry is color
@@ -1801,7 +1800,7 @@ def ptable_scatter_plotly(
         if annotations is not None:
             if callable(annotations):
                 # Pass the element's values to the callable
-                annotation = annotations(data[symbol])
+                annotation = annotations(symbol_data)
             elif isinstance(annotations, dict):
                 annotation = annotations.get(symbol, "")
             else:

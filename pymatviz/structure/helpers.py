@@ -6,7 +6,7 @@ import functools
 import itertools
 import math
 import warnings
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 def get_struct_prop(
-    struct: AnyStructure, struct_key: str | int, prop_name: str, func_param: Any
+    struct: AnyStructure, struct_key: Hashable, prop_name: str, func_param: Any
 ) -> Any:
     """Get a structure related value with standardized precedence handling.
 
@@ -43,7 +43,7 @@ def get_struct_prop(
 
     Args:
         struct (AnyStructure): The pymatgen Structure or ASE Atoms object.
-        struct_key (str | int): Key identifying this structure in a collection.
+        struct_key (Hashable): Key identifying this structure in a collection.
         prop_name (str): Name of the property to look for in structure.properties or
             atoms.info.
         func_param (Any): Function parameter value (can be dict for per-structure
@@ -283,7 +283,7 @@ def get_atomic_radii(atomic_radii: float | dict[str, float] | None) -> dict[str,
     if isinstance(atomic_radii, dict):
         return atomic_radii
     scale: float = 1.0 if atomic_radii is None else float(atomic_radii)
-    return {elem: radius * scale for elem, radius in covalent_radii.items()}
+    return {elem: radius * scale for elem, radius in covalent_radii.items()}  # type: ignore[misc]
 
 
 def generate_site_label(

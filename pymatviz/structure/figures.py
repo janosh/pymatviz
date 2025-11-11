@@ -174,10 +174,7 @@ def structure_2d(
             )
 
             if is_struct_key_mapping:  # is map of structure keys to color schemes
-                struct_elem_colors = cast(
-                    "ElemColorScheme | dict[str, ColorType]",
-                    elem_colors.get(struct_key, ElemColorScheme.jmol),
-                )
+                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # type: ignore[arg-type]
 
         _elem_colors = helpers.get_elem_colors(struct_elem_colors)
 
@@ -571,10 +568,7 @@ def structure_3d(
             )
 
             if is_struct_key_mapping:  # is map of structure keys to color schemes
-                struct_elem_colors = cast(
-                    "ElemColorScheme | dict[str, ColorType]",
-                    elem_colors.get(struct_key, ElemColorScheme.jmol),
-                )
+                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # type: ignore[arg-type]
 
         _elem_colors = helpers.get_elem_colors(struct_elem_colors)
 

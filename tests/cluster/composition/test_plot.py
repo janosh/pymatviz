@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import itertools
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, get_args
 
 import numpy as np
 import pandas as pd
@@ -15,14 +15,14 @@ from sklearn.decomposition import PCA, KernelPCA
 from sklearn.manifold import TSNE, Isomap
 
 import pymatviz as pmv
-from pymatviz.cluster.composition.plot import ClusterFigure, ProjectionCallable
+from pymatviz.cluster.composition.plot import ClusterFigure, ColorScale
 from tests.conftest import np_rng
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from pymatviz.cluster.composition import ProjectionMethod
+    from pymatviz.cluster.composition import ProjectionCallable, ProjectionMethod
     from pymatviz.cluster.composition.plot import ShowChemSys
 
 
@@ -815,7 +815,8 @@ def test_hover_text_alignment(
             assert abs(prop - expected_prop) < 1e-6
 
 
-def test_hover_format_with_color_scales() -> None:
+@pytest.mark.parametrize("color_scale", ["linear", "log", "arcsinh"])
+def test_hover_format_with_color_scales(color_scale: ColorScale) -> None:
     """Test hover format interacts correctly with different color scales."""
     # Create data with varied values for testing
     df_test = pd.DataFrame(
@@ -827,62 +828,60 @@ def test_hover_format_with_color_scales() -> None:
 
     # Test different combinations of hover format and color scales
     hover_formats = [".1f", ".2f", ".3f", ".1e"]
-    color_scales = ["linear", "log", "arcsinh"]
 
     for fmt in hover_formats:
-        for scale in color_scales:
-            # Skip log scale with negative values
-            if scale == "log" and any(val <= 0 for val in df_test["property"]):
-                continue
+        # Skip log scale with negative values
+        if color_scale == "log" and any(val <= 0 for val in df_test["property"]):
+            continue
 
-            fig = pmv.cluster_compositions(
-                df_in=df_test,
-                composition_col="composition",
-                prop_name="property",
-                projection="pca",
-                color_scale=scale,
-                hover_format=fmt,  # Pass as string, not dict
+        fig = pmv.cluster_compositions(
+            df_in=df_test,
+            composition_col="composition",
+            prop_name="property",
+            projection="pca",
+            color_scale=color_scale,
+            hover_format=fmt,  # Pass as string, not dict
+        )
+
+        # Extract hover text from customdata
+        custom_data = fig.data[0].customdata
+        hover_texts = [item[1] for item in custom_data]
+
+        # Verify format string is applied correctly for each value
+        for i, orig_val in enumerate(df_test["property"]):
+            hover_text = hover_texts[i]
+
+            # Extract formatted value from hover text
+            match = re.search(r"property: ([\d.-]+(?:e[+-]\d+)?)", hover_text)
+            assert match is not None, (
+                f"Couldn't find property value in hover text: {hover_text}"
             )
 
-            # Extract hover text from customdata
-            custom_data = fig.data[0].customdata
-            hover_texts = [item[1] for item in custom_data]
+            formatted_val = match.group(1)
 
-            # Verify format string is applied correctly for each value
-            for i, orig_val in enumerate(df_test["property"]):
-                hover_text = hover_texts[i]
-
-                # Extract formatted value from hover text
-                match = re.search(r"property: ([\d.-]+(?:e[+-]\d+)?)", hover_text)
-                assert match is not None, (
-                    f"Couldn't find property value in hover text: {hover_text}"
-                )
-
-                formatted_val = match.group(1)
-
-                # Compare with expected format
-                # Just check length and general format matches
-                if fmt == ".1f":
-                    if orig_val < 10:
-                        assert "." in formatted_val
-                        assert len(formatted_val.split(".")[1]) <= 1
-                    else:
-                        assert "." in formatted_val or "e" in formatted_val.lower()
-                elif fmt == ".2f":
-                    if orig_val < 100:
-                        assert "." in formatted_val
-                        assert len(formatted_val.split(".")[1]) <= 2
-                    else:
-                        assert "." in formatted_val or "e" in formatted_val.lower()
-                elif fmt == ".3f":
-                    if orig_val < 1000:
-                        assert "." in formatted_val
-                        assert len(formatted_val.split(".")[1]) <= 3
-                    else:
-                        assert "." in formatted_val or "e" in formatted_val.lower()
-                elif fmt == ".1e":
-                    # Scientific notation should have e or E
-                    assert "e" in formatted_val.lower() or "E" in formatted_val
+            # Compare with expected format
+            # Just check length and general format matches
+            if fmt == ".1f":
+                if orig_val < 10:
+                    assert "." in formatted_val
+                    assert len(formatted_val.split(".")[1]) <= 1
+                else:
+                    assert "." in formatted_val or "e" in formatted_val.lower()
+            elif fmt == ".2f":
+                if orig_val < 100:
+                    assert "." in formatted_val
+                    assert len(formatted_val.split(".")[1]) <= 2
+                else:
+                    assert "." in formatted_val or "e" in formatted_val.lower()
+            elif fmt == ".3f":
+                if orig_val < 1000:
+                    assert "." in formatted_val
+                    assert len(formatted_val.split(".")[1]) <= 3
+                else:
+                    assert "." in formatted_val or "e" in formatted_val.lower()
+            elif fmt == ".1e":
+                # Scientific notation should have e or E
+                assert "e" in formatted_val.lower() or "E" in formatted_val
 
 
 def test_hover_text_formatting() -> None:
@@ -2106,7 +2105,7 @@ def test_coordinates_with_labels(
 )
 def test_color_scale_options(
     sample_df: pd.DataFrame,
-    color_scale: str | dict[str, Any],
+    color_scale: ColorScale | dict[str, Any],
     expected_title: str,
     verify_ticks: bool,
 ) -> None:
@@ -2217,7 +2216,7 @@ def test_color_scale_errors(
     ],
 )
 def test_colorbar_tick_count(
-    color_scale: str | dict[str, Any], min_expected_ticks: int
+    color_scale: ColorScale | dict[str, Any], min_expected_ticks: int
 ) -> None:
     """Test that colorbars have at least the minimum number of tick labels."""
     # Create data with wide range of values spanning several orders of magnitude
@@ -2232,8 +2231,7 @@ def test_colorbar_tick_count(
     if color_scale == "log" or (
         isinstance(color_scale, dict) and color_scale.get("type") == "log"
     ):
-        # Our test data already has only positive values
-        pass
+        pass  # Our test data already has only positive values
 
     fig = pmv.cluster_compositions(
         df_in=df_test,
@@ -2250,17 +2248,17 @@ def test_colorbar_tick_count(
     # Check that we have a sufficient number of tick labels
     if hasattr(fig.layout.coloraxis.colorbar, "ticktext"):
         # Get actual ticktext values
-        ticktext = fig.layout.coloraxis.colorbar.ticktext
+        tick_text = fig.layout.coloraxis.colorbar.ticktext
 
         # Handle case where ticktext might be None
-        if ticktext is None:  # check if there are tickvals instead
+        if tick_text is None:  # check if there are tickvals instead
             assert hasattr(fig.layout.coloraxis.colorbar, "tickvals")
-            tickvals = fig.layout.coloraxis.colorbar.tickvals
-            if tickvals is not None:
-                tick_count = len(tickvals)
+            tick_vals = fig.layout.coloraxis.colorbar.tickvals
+            if tick_vals is not None:
+                tick_count = len(tick_vals)
                 assert tick_count >= min_expected_ticks
         else:
-            tick_count = len(ticktext)
+            tick_count = len(tick_text)
             assert tick_count >= min_expected_ticks
 
 
@@ -2429,7 +2427,8 @@ def test_arcsinh_scale_tick_formatting() -> None:
         assert has_nice_values >= 3
 
 
-def test_scatter_colors_match_colorbar_values() -> None:
+@pytest.mark.parametrize("scale_type", ["linear", "arcsinh"])
+def test_scatter_colors_match_colorbar_values(scale_type: ColorScale) -> None:
     """Test that scatter point colors match the colorbar values and ticks.
 
     This test verifies that a point with a certain property value gets the correct
@@ -2443,47 +2442,41 @@ def test_scatter_colors_match_colorbar_values() -> None:
         }
     )
 
-    # Test each color scale type
-    for scale_type in ["linear", "arcsinh"]:
-        # Skip log scale for this test to simplify
-        if scale_type == "log":
-            continue
+    # Create the plot
+    fig = pmv.cluster_compositions(
+        df_in=df_prop,
+        composition_col="composition",
+        prop_name="property",
+        projection="pca",
+        color_scale=scale_type,
+    )
 
-        # Create the plot
-        fig = pmv.cluster_compositions(
-            df_in=df_prop,
-            composition_col="composition",
-            prop_name="property",
-            projection="pca",
-            color_scale=scale_type,
-        )
+    # Get the scatter trace with the color mapping
+    scatter_trace = fig.data[0]
 
-        # Get the scatter trace with the color mapping
-        scatter_trace = fig.data[0]
+    # Extract the color values (z-values) for each point
+    point_values = scatter_trace.marker.color
 
-        # Extract the color values (z-values) for each point
-        point_values = scatter_trace.marker.color
+    # Extract coloraxis information from the layout
+    if hasattr(fig.layout, "coloraxis"):
+        # Verify that coloraxis exists and has cmin/cmax set
+        if (
+            getattr(fig.layout.coloraxis, "cmin", None) is not None
+            and getattr(fig.layout.coloraxis, "cmax", None) is not None
+        ):
+            # Simply verify that color values are within the colorbar range
+            assert min(point_values) >= fig.layout.coloraxis.cmin - 1e-6
+            assert max(point_values) <= fig.layout.coloraxis.cmax + 1e-6
 
-        # Extract coloraxis information from the layout
-        if hasattr(fig.layout, "coloraxis"):
-            # Verify that coloraxis exists and has cmin/cmax set
-            if (
-                getattr(fig.layout.coloraxis, "cmin", None) is not None
-                and getattr(fig.layout.coloraxis, "cmax", None) is not None
-            ):
-                # Simply verify that color values are within the colorbar range
-                assert min(point_values) >= fig.layout.coloraxis.cmin - 1e-6
-                assert max(point_values) <= fig.layout.coloraxis.cmax + 1e-6
+        # Now verify points with different property values have different colors
+        # This ensures the color mapping is monotonic
+        sorted_indices = np.argsort(df_prop["property"])
+        sorted_colors = [point_values[i] for i in sorted_indices]
 
-            # Now verify points with different property values have different colors
-            # This ensures the color mapping is monotonic
-            sorted_indices = np.argsort(df_prop["property"])
-            sorted_colors = [point_values[i] for i in sorted_indices]
-
-            # Check that colors increase monotonically with property values
-            for idx in range(len(sorted_colors) - 1):
-                # Allow for a small tolerance in floating point comparison
-                assert sorted_colors[idx] <= sorted_colors[idx + 1] + 1e-6
+        # Check that colors increase monotonically with property values
+        for idx in range(len(sorted_colors) - 1):
+            # Allow for a small tolerance in floating point comparison
+            assert sorted_colors[idx] <= sorted_colors[idx + 1] + 1e-6
 
 
 def test_arcsinh_colorbar_matches_data_values() -> None:
@@ -2538,7 +2531,8 @@ def test_arcsinh_colorbar_matches_data_values() -> None:
     )
 
 
-def test_hover_tooltip_shows_original_values() -> None:
+@pytest.mark.parametrize("scale_type", ["log", "arcsinh"])
+def test_hover_tooltip_shows_original_values(scale_type: ColorScale) -> None:
     """Test that hover tooltips show original property values, not transformed
     log/arcsinh values.
     """
@@ -2550,64 +2544,62 @@ def test_hover_tooltip_shows_original_values() -> None:
         }
     )
 
-    # Test each scale type
-    for scale_type in ["log", "arcsinh"]:
-        # Create the plot with the specified scale
+    # Create the plot with the specified scale
+    fig = pmv.cluster_compositions(
+        df_in=df_prop,
+        composition_col="composition",
+        prop_name="property",
+        projection="pca",
+        color_scale=scale_type,
+    )
+
+    # Extract hover text from customdata
+    custom_data = fig.data[0].customdata
+    hover_texts = [item[1] for item in custom_data]
+
+    # For each data point, verify the hover text shows the original property value
+    for i, orig_val in enumerate(df_prop["property"]):
+        # Extract property value from hover text
+        hover_text = hover_texts[i]
+        match = re.search(r"property: ([\d.-]+)", hover_text)
+        assert match is not None, (
+            f"Couldn't find property value in hover text: {hover_text}"
+        )
+
+        hover_val = float(match.group(1))
+
+        # Verify the hover value is close to the original, not the transformed value
+        assert abs(hover_val - orig_val) < 1e-6
+
+        # Specifically make sure it's NOT showing the transformed value
+        if scale_type == "log":
+            transformed_val = np.log10(orig_val)
+            assert abs(hover_val - transformed_val) > 0.1
+
+    # Also test with a custom configuration
+    if scale_type == "arcsinh":
+        # Test custom arcsinh configuration
         fig = pmv.cluster_compositions(
             df_in=df_prop,
             composition_col="composition",
             prop_name="property",
             projection="pca",
-            color_scale=scale_type,
+            color_scale={"type": "arcsinh", "scale_factor": 1.5},
         )
 
-        # Extract hover text from customdata
+        # Extract hover text again
         custom_data = fig.data[0].customdata
         hover_texts = [item[1] for item in custom_data]
 
-        # For each data point, verify the hover text shows the original property value
+        # Verify values again
         for i, orig_val in enumerate(df_prop["property"]):
-            # Extract property value from hover text
             hover_text = hover_texts[i]
             match = re.search(r"property: ([\d.-]+)", hover_text)
-            assert match is not None, (
-                f"Couldn't find property value in hover text: {hover_text}"
-            )
-
+            assert match is not None
             hover_val = float(match.group(1))
 
-            # Verify the hover value is close to the original, not the transformed value
+            # Should match original value
             assert abs(hover_val - orig_val) < 1e-6
-
-            # Specifically make sure it's NOT showing the transformed value
-            if scale_type == "log":
-                transformed_val = np.log10(orig_val)
-                assert abs(hover_val - transformed_val) > 0.1
-
-        # Also test with a custom configuration
-        if scale_type == "arcsinh":
-            # Test custom arcsinh configuration
-            fig = pmv.cluster_compositions(
-                df_in=df_prop,
-                composition_col="composition",
-                prop_name="property",
-                projection="pca",
-                color_scale={"type": "arcsinh", "scale_factor": 1.5},
-            )
-
-            # Extract hover text again
-            custom_data = fig.data[0].customdata
-            hover_texts = [item[1] for item in custom_data]
-
-            # Verify values again
-            for i, orig_val in enumerate(df_prop["property"]):
-                hover_text = hover_texts[i]
-                match = re.search(r"property: ([\d.-]+)", hover_text)
-                assert match is not None
-                hover_val = float(match.group(1))
-
-                # Should match original value
-                assert abs(hover_val - orig_val) < 1e-6
 
 
 def test_log_scale_small_range() -> None:
@@ -2995,7 +2987,8 @@ def test_log_tick_count() -> None:
     assert len(fig.layout.coloraxis.colorbar.ticktext) >= 5
 
 
-def test_whole_number_formatting_in_tick_labels() -> None:
+@pytest.mark.parametrize("color_scale", get_args(ColorScale))
+def test_whole_number_formatting_in_tick_labels(color_scale: ColorScale) -> None:
     """Test that whole numbers in colorbar tick labels don't have decimal places."""
     # Create data with whole numbers
     df_test = pd.DataFrame(
@@ -3005,43 +2998,38 @@ def test_whole_number_formatting_in_tick_labels() -> None:
         }
     )
 
-    # Test both log and arcsinh scales
-    for color_scale in ["log", "arcsinh"]:
-        fig = pmv.cluster_compositions(
-            df_in=df_test,
-            composition_col="composition",
-            prop_name="property",
-            projection="pca",
-            color_scale=color_scale,
-        )
+    fig = pmv.cluster_compositions(
+        df_in=df_test,
+        composition_col="composition",
+        prop_name="property",
+        projection="pca",
+        color_scale=color_scale,
+    )
 
-        # Check that tick values are formatted without decimal places
-        if hasattr(fig.layout.coloraxis.colorbar, "ticktext"):
-            ticktext = fig.layout.coloraxis.colorbar.ticktext
+    # Check that tick values are formatted without decimal places
+    if hasattr(fig.layout.coloraxis.colorbar, "ticktext"):
+        ticktext = fig.layout.coloraxis.colorbar.ticktext
 
-            # Handle case where ticktext might be None
-            if ticktext is None:
-                pytest.skip(f"No ticktext available to check for {color_scale} scale")
+        # Handle case where ticktext might be None
+        if ticktext is None:
+            pytest.skip(f"No ticktext available to check for {color_scale} scale")
 
-            # Check for whole numbers in the tick labels
-            whole_numbers = ["1", "5", "10", "50", "100", "1000"]
+        # Check for whole numbers in the tick labels
+        whole_numbers = ("1", "5", "10", "50", "100", "1000")
 
-            # Look for any values that have incorrect formatting
-            incorrect_formats = [
-                tick
-                for num in whole_numbers
-                for tick in ticktext
-                if (
-                    isinstance(tick, str)
-                    and f"{num}." in tick
-                    and not any(c in tick for c in "x^")
-                )
-            ]
-
-            assert len(incorrect_formats) == 0, (
-                f"Found {len(incorrect_formats)} incorrectly formatted whole numbers "
-                f"with decimal places: {incorrect_formats}"
+        # Look for any values that have incorrect formatting
+        incorrect_formats = [
+            tick
+            for num in whole_numbers
+            for tick in ticktext
+            if (
+                isinstance(tick, str)
+                and f"{num}." in tick
+                and not any(c in tick for c in "x^")
             )
+        ]
+
+        assert len(incorrect_formats) == 0
 
 
 @pytest.mark.parametrize("n_components", [2, 3])

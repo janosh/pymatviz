@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Sequence
+from collections.abc import Hashable, Sequence
 from typing import TYPE_CHECKING, Any, Final, cast
 
 import numpy as np
@@ -315,7 +315,7 @@ def normalize_structures(
     | Sequence[AnyStructure]
     | pd.Series
     | dict[str, AnyStructure],
-) -> dict[str, Structure]:
+) -> dict[Hashable, SiteCollection]:
     """Convert pymatgen Structures, ASE Atoms, or PhonopyAtoms or sequences/dicts of
     them to a dictionary of pymatgen Structures.
     """
