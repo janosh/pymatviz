@@ -566,9 +566,9 @@ def phonon_bands_and_dos(
     Raises:
         ValueError: If band_structs and doses keys don't match.
     """
-    if not isinstance(band_structs, Mapping):  # normalize input to Mapping
+    if not isinstance(band_structs, Mapping):  # wrap single input in dict
         band_structs = {"": band_structs}
-    if not isinstance(doses, Mapping):  # normalize input to Mapping
+    if not isinstance(doses, Mapping):  # wrap single input in dict
         doses = {"": doses}
     if (band_keys := set(band_structs)) != (dos_keys := set(doses)):
         raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
