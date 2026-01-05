@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import plotly.express as px
@@ -420,13 +420,14 @@ def phonon_dos(
     for key, dos in input_doses.items():
         cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
         if cls_name == "phonopy.phonon.dos.TotalDos":
-            # convert phonopy TotalDos to pymatgen PhononDos
-            dos_dict[key] = PhononDos(  # type: ignore[index]
-                frequencies=dos.frequency_points,  # type: ignore[union-attr]
-                densities=dos.dos,  # type: ignore[union-attr]
+            # Cast to Any to access phonopy TotalDos attributes
+            phonopy_dos = cast("Any", dos)
+            dos_dict[key] = PhononDos(
+                frequencies=phonopy_dos.frequency_points,
+                densities=phonopy_dos.dos,
             )
         elif isinstance(dos, PhononDos):
-            dos_dict[key] = dos  # type: ignore[index]
+            dos_dict[key] = dos
         else:
             raise TypeError(
                 f"Only {PhononDos.__name__} or dict supported, got {type(dos).__name__}"
