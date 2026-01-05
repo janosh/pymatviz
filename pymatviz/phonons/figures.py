@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -33,7 +34,7 @@ from pymatviz.typing import (
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable, Mapping, Sequence
+    from collections.abc import Callable, Hashable, Sequence
     from typing import Any
 
     from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
@@ -102,7 +103,7 @@ def phonon_bands(
             BandStructure or dict of these.
     """
     # Convert input to dict if single band structure
-    if isinstance(band_structs, dict):
+    if isinstance(band_structs, Mapping):
         input_dict = band_structs
     else:
         input_dict: dict[Hashable, AnyBandStructure | PhonopyBandStructure] = {
@@ -297,11 +298,8 @@ def phonon_bands(
                 elif isinstance(line_kwargs, dict):
                     # check for custom line styles for one or both modes
                     if {"acoustic", "optical"} <= set(line_kwargs):
-                        # use bracket access for ty compatibility with dict.get
-                        if mode_type in line_kwargs:
-                            mode_styles = line_kwargs[mode_type]
-                        else:
-                            mode_styles = {}
+                        # mode_type guaranteed to be "acoustic" or "optical"
+                        mode_styles = line_kwargs[mode_type]
                         # use custom trace name if provided (needs to be popped before
                         # passed to line kwargs)
                         if mode_name := mode_styles.pop("name", None):
@@ -418,7 +416,7 @@ def phonon_dos(
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
 
-    input_doses = doses if isinstance(doses, dict) else {"": doses}
+    input_doses = doses if isinstance(doses, Mapping) else {"": doses}
     dos_dict: dict[str, PhononDos] = {}
     for key, dos in input_doses.items():
         cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
@@ -568,9 +566,9 @@ def phonon_bands_and_dos(
     Raises:
         ValueError: If band_structs and doses keys don't match.
     """
-    if not isinstance(band_structs, dict):  # normalize input to dictionary
+    if not isinstance(band_structs, Mapping):  # normalize input to Mapping
         band_structs = {"": band_structs}
-    if not isinstance(doses, dict):  # normalize input to dictionary
+    if not isinstance(doses, Mapping):  # normalize input to Mapping
         doses = {"": doses}
     if (band_keys := set(band_structs)) != (dos_keys := set(doses)):
         raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")
