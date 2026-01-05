@@ -1,10 +1,14 @@
 """Confusion matrix plotting functions."""
 
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import plotly.graph_objects as go
+
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 def confusion_matrix(
@@ -125,7 +129,7 @@ def confusion_matrix(
     ).T
 
     # Process annotations into a numpy array for the heatmap
-    processed_annotations: np.ndarray[tuple[int, int], np.dtype[np.str_]]
+    processed_annotations: NDArray[np.str_]
     if annotations is None:
         processed_annotations = fmt_tile_vals
     elif callable(annotations):  # If annotations is a callable, apply it to each cell
@@ -160,6 +164,8 @@ def confusion_matrix(
         processed_annotations = np.char.add(anno_arr, "<br>")
         processed_annotations = np.char.add(processed_annotations, fmt_tile_vals)
 
+    # rot90 rotates data to match Plotly's bottom-left origin convention
+    # processed_annotations.T undoes earlier transpose (line 125/151) before rotation
     heatmap_defaults = dict(
         z=np.rot90(conf_mat_arr),
         x=formatted_labels["x"],
