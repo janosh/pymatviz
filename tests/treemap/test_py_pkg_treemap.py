@@ -581,7 +581,7 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
 
         # Test specific percentage calculation
         generated_customdata_df = pd.DataFrame(
-            passed_custom_data_arg,
+            data=passed_custom_data_arg,
             columns=[
                 "package_name_raw",
                 "repo_path_segment",

@@ -82,7 +82,7 @@ SI_ATOMS = tuple(map(AseAtomsAdaptor.get_atoms, SI_STRUCTS))
 
 @pytest.fixture
 def structures() -> tuple[Structure, Structure]:
-    return tuple(struct.copy() for struct in SI_STRUCTS)
+    return SI_STRUCTS[0].copy(), SI_STRUCTS[1].copy()
 
 
 @pytest.fixture
