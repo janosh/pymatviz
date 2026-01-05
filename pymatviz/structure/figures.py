@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
     import plotly.graph_objects as go
-    from pymatgen.core import PeriodicSite, Structure
+    from pymatgen.core import IMolecule, IStructure, PeriodicSite, Structure
 
     from pymatviz.typing import AnyStructure, ColorType
 
@@ -44,7 +44,10 @@ def structure_2d(
     | Sequence[str] = "legend",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
-    subplot_title: Callable[[Structure, Hashable], str | dict[str, Any]] | None = None,
+    subplot_title: Callable[
+        [Structure | IStructure | IMolecule, Hashable], str | dict[str, Any]
+    ]
+    | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
     hover_text: SiteCoords
@@ -232,8 +235,7 @@ def structure_2d(
         if show_sites:  # Plot atoms, vectors, and image sites
             # Initialize set to collect coordinates of rendered sites
             plotted_sites_coords = {
-                tuple(np.round(site.coords, 5))  # type: ignore[arg-type]
-                for site in augmented_structure
+                tuple(np.round(site.coords, 5)) for site in augmented_structure
             }
 
             for site_idx_loop, (site, rotated_site_coords_3d) in enumerate(
@@ -439,7 +441,9 @@ def structure_3d(
     | Sequence[str] = "legend",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
-    subplot_title: Callable[[Structure, Hashable], str | dict[str, Any]]
+    subplot_title: Callable[
+        [Structure | IStructure | IMolecule, Hashable], str | dict[str, Any]
+    ]
     | None
     | Literal[False] = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
@@ -703,8 +707,7 @@ def structure_3d(
                 if show_sites:  # Only consider plotted sites for bonds
                     # Get all plotted site coordinates from the augmented structure
                     plotted_sites_coords = {
-                        tuple(np.round(site.coords, 5))  # type: ignore[arg-type]
-                        for site in augmented_structure
+                        tuple(np.round(site.coords, 5)) for site in augmented_structure
                     }
                 else:
                     # If no sites are rendered, set empty set to filter out all bonds

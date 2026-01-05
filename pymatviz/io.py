@@ -255,7 +255,7 @@ def df_to_pdf(
     if styler_css:
         styler_css = DEFAULT_DF_STYLES if styler_css is True else styler_css
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in styler_css.items()],  # type: ignore[arg-type]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()],
             overwrite=False,
         )
 
@@ -393,7 +393,7 @@ def df_to_html(
     if styler_css:
         styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in styler_css.items()]  # type: ignore[arg-type]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
         )
     html = styler.to_html(**kwargs)
     if html is None:

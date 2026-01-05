@@ -458,7 +458,7 @@ def df_to_arrays(
 
     if not isinstance(df, pd.DataFrame):
         if not strict:
-            return list(args)  # type: ignore[return-value]
+            return list(args)
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
 
     if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
@@ -483,7 +483,7 @@ def df_to_arrays(
             args[idx] = df_no_nan[col_name].to_numpy()  # type: ignore[index]
         else:
             col_data = df_no_nan[[*col_name]].to_numpy().T
-            args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index]
+            args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index,arg-type]
 
     return args  # type: ignore[return-value]
 

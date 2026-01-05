@@ -27,11 +27,11 @@ def _get_axis_labels(
 ) -> tuple[str, str]:
     """Extract axis labels from data or column names."""
     if df is not None:
-        xlabel = getattr(df[x], "name", x)
-        ylabel = getattr(df[y], "name", y)
+        xlabel = str(getattr(df[x], "name", x))
+        ylabel = str(getattr(df[y], "name", y))
     else:
-        xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
-        ylabel = getattr(y, "name", y if isinstance(y, str) else "Predicted")
+        xlabel = str(getattr(x, "name", x if isinstance(x, str) else "Actual"))
+        ylabel = str(getattr(y, "name", y if isinstance(y, str) else "Predicted"))
     return xlabel, ylabel
 
 
@@ -163,6 +163,9 @@ def density_scatter(
         raise TypeError(f"stats must be bool or dict, got {type(stats)} instead.")
 
     # Convert arrays to DataFrame if needed
+    # After processing, x_col and y_col will always be string column names
+    x_col: str
+    y_col: str
     if df is None:
         xs, ys = df_to_arrays(df, x, y)
         if xlabel is None or ylabel is None:
@@ -174,9 +177,11 @@ def density_scatter(
         x_col = xlabel if isinstance(xlabel, str) else "x"
         y_col = ylabel if isinstance(ylabel, str) else "y"
         df_data = pd.DataFrame({x_col: xs, y_col: ys})
-        x, y = x_col, y_col
     else:
         df_data = df
+        # x and y must be column names when df is provided
+        x_col = str(x)
+        y_col = str(y)
     if xlabel is None or ylabel is None:
         auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)
         xlabel = xlabel or auto_xlabel
@@ -195,7 +200,7 @@ def density_scatter(
 
         for group_name, group_df in grouped:
             binned_df = _bin_and_calculate_density(
-                group_df, x, y, density, n_bins, bin_counts_col
+                group_df, x_col, y_col, density, n_bins, bin_counts_col
             )
             binned_df[facet_col] = group_name  # Add the facet column back
             binned_dfs += [binned_df]
@@ -204,7 +209,7 @@ def density_scatter(
         df_plot = pd.concat(binned_dfs, ignore_index=True)
     else:
         df_plot = _bin_and_calculate_density(
-            df_data, x, y, density, n_bins, bin_counts_col
+            df_data, x_col, y_col, density, n_bins, bin_counts_col
         )
 
     color_vals = df_plot[bin_counts_col]
@@ -246,19 +251,25 @@ def density_scatter(
         for trace in fig.data:
             # Create a custom hover template with formatted point density
             trace.hovertemplate = (
-                f"{x}: %{{x}}<br>{y}: %{{y}}<br>{bin_counts_col}: "
+                f"{x_col}: %{{x}}<br>{y_col}: %{{y}}<br>{bin_counts_col}: "
                 f"%{{customdata[0]:{hover_format}}}<extra></extra>"
             )
 
     if log_density:
         _update_colorbar_for_log_density(
-            fig, color_vals, bin_counts_col, x, y, hover_format, custom_hovertemplate
+            fig,
+            color_vals,
+            bin_counts_col,
+            x_col,
+            y_col,
+            hover_format,
+            custom_hovertemplate,
         )
 
     pmv.powerups.enhance_parity_plot(
         fig,
-        xs=df_data[x],
-        ys=df_data[y],
+        xs=df_data[x_col],
+        ys=df_data[y_col],
         identity_line=identity_line,
         best_fit_line=best_fit_line,
         stats=stats,

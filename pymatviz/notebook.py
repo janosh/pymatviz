@@ -29,7 +29,7 @@ def _create_widget_mime_bundle(widget_cls_name: str, obj: Any) -> dict[str, Any]
     if widget_key is None:
         return {"text/plain": repr(obj)}
 
-    module_name, cls_name, param_name = WIDGET_MAP[widget_key]  # type: ignore[index]
+    module_name, cls_name, param_name = WIDGET_MAP[widget_key]
     from importlib import import_module
 
     module = import_module(module_name)
@@ -146,51 +146,56 @@ def notebook_mode(*, on: bool) -> None:
     - phonopy TotalDos -> phonon_dos
     - DiffractionPattern -> xrd_pattern
     """
+
+    def _get_class(module_path: str, class_name: str) -> type:
+        """Import a class from a module path using getattr for type checker compat."""
+        from importlib import import_module
+
+        module = import_module(module_path)
+        return getattr(module, class_name)
+
     class_configs = [  # Define (import_func, class_obj, display_methods)
         (
-            lambda: __import__("pymatgen.core", fromlist=["Structure"]).Structure,  # type: ignore[unresolved-attribute]
+            lambda: _get_class("pymatgen.core", "Structure"),
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
-            lambda: __import__("ase.atoms", fromlist=["Atoms"]).Atoms,  # type: ignore[unresolved-attribute]
+            lambda: _get_class("ase.atoms", "Atoms"),
             _ase_atoms_ipython_display_,
             _ase_atoms_repr_mimebundle_,
         ),
         (
-            lambda: __import__(
-                "phonopy.structure.atoms", fromlist=["PhonopyAtoms"]
-            ).PhonopyAtoms,  # type: ignore[unresolved-attribute]
+            lambda: _get_class("phonopy.structure.atoms", "PhonopyAtoms"),
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
-            lambda: __import__("pymatgen.core", fromlist=["Composition"]).Composition,  # type: ignore[unresolved-attribute]
+            lambda: _get_class("pymatgen.core", "Composition"),
             _structure_ipython_display_,
             _structure_repr_mimebundle_,
         ),
         (
-            lambda: __import__(
-                "pymatgen.analysis.diffraction.xrd", fromlist=["DiffractionPattern"]
-            ).DiffractionPattern,  # type: ignore[unresolved-attribute]
+            lambda: _get_class(
+                "pymatgen.analysis.diffraction.xrd", "DiffractionPattern"
+            ),
             _diffraction_pattern_ipython_display_,
             _diffraction_pattern_repr_mimebundle_,
         ),
         (
-            lambda: __import__(
-                "pymatgen.phonon.bandstructure",
-                fromlist=["PhononBandStructureSymmLine"],
-            ).PhononBandStructureSymmLine,  # type: ignore[unresolved-attribute]
+            lambda: _get_class(
+                "pymatgen.phonon.bandstructure", "PhononBandStructureSymmLine"
+            ),
             _phonon_bands_ipython_display_,
             _phonon_bands_repr_mimebundle_,
         ),
         (
-            lambda: __import__("pymatgen.phonon.dos", fromlist=["PhononDos"]).PhononDos,  # type: ignore[unresolved-attribute]
+            lambda: _get_class("pymatgen.phonon.dos", "PhononDos"),
             _phonon_dos_ipython_display_,
             _phonon_dos_repr_mimebundle_,
         ),
         (
-            lambda: __import__("phonopy.phonon.dos", fromlist=["TotalDos"]).TotalDos,  # type: ignore[unresolved-attribute]
+            lambda: _get_class("phonopy.phonon.dos", "TotalDos"),
             _phonopy_dos_ipython_display_,
             _phonopy_dos_repr_mimebundle_,
         ),

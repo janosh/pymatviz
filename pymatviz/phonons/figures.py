@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -33,7 +34,7 @@ from pymatviz.typing import (
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable, Sequence
+    from collections.abc import Callable, Hashable, Mapping, Sequence
     from typing import Any
 
     from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
@@ -42,7 +43,7 @@ if TYPE_CHECKING:
 def phonon_bands(
     band_structs: AnyBandStructure
     | PhonopyBandStructure
-    | dict[str, AnyBandStructure | PhonopyBandStructure],
+    | Mapping[str, AnyBandStructure | PhonopyBandStructure],
     *,
     line_kwargs: (
         dict[str, Any]  # single dict for all lines
@@ -102,16 +103,20 @@ def phonon_bands(
             BandStructure or dict of these.
     """
     # Convert input to dict if single band structure
-    if not isinstance(band_structs, dict):
-        band_structs = {"": band_structs}
+    if isinstance(band_structs, dict):
+        input_dict = band_structs
+    else:
+        input_dict: dict[Hashable, AnyBandStructure | PhonopyBandStructure] = {
+            "": band_structs
+        }
 
     # Convert phonopy band structures to pymatgen format
-    converted_band_structs: dict[Hashable, AnyBandStructure] = {}
-    for key, bands in band_structs.items():
+    bs_dict: dict[Hashable, PhononBands] = {}
+    for key, bands in input_dict.items():
         if type(bands).__module__.startswith("phonopy"):
-            converted_band_structs[key] = phonopy_to_pymatgen_bands(bands)  # type: ignore[arg-type]
+            bs_dict[key] = phonopy_to_pymatgen_bands(bands)
         elif isinstance(bands, PhononBands):
-            converted_band_structs[key] = bands
+            bs_dict[key] = bands
         else:
             cls_name = PhononBands.__name__
             raise TypeError(
@@ -119,8 +124,8 @@ def phonon_bands(
                 f"got {type(bands).__name__}"
             )
 
-    # use reassignment to avoid modifying original input band_structs
-    band_structs = converted_band_structs
+    if len(bs_dict) == 0:
+        raise ValueError("Empty band structure dict")
 
     fig = go.Figure()
     line_kwargs = line_kwargs or {}
@@ -128,20 +133,12 @@ def phonon_bands(
     if isinstance(branches, str):
         branches = [branches]
 
-    if type(band_structs) not in {PhononBands, dict}:
-        cls_name = PhononBands.__name__
-        raise TypeError(
-            f"Only {cls_name} or dict supported, got {type(band_structs).__name__}"
-        )
-    if isinstance(band_structs, dict) and len(band_structs) == 0:
-        raise ValueError("Empty band structure dict")
-
     # First, collect all unique path segments and their endpoints across all structures
-    all_segments: dict[tuple[str | None, str | None], list[tuple[str, PhononBands]]] = (
-        defaultdict(list)
-    )
+    all_segments: dict[
+        tuple[str | None, str | None], list[tuple[Hashable, PhononBands]]
+    ] = defaultdict(list)
 
-    for label, band_struct in band_structs.items():
+    for label, band_struct in bs_dict.items():
         for branch in band_struct.branches:
             start_idx = branch["start_index"]
             end_idx = branch["end_index"]
@@ -156,21 +153,18 @@ def phonon_bands(
     # Now we have all_segments, determine which segments to plot based on path_mode
     if path_mode == SET_STRICT:
         # Check if all band structures have exactly the same segments
+        first_bs = next(iter(bs_dict.values()))
         first_segments = {
             (start, end)
-            for branch in next(iter(band_structs.values())).branches
+            for branch in first_bs.branches
             for start, end in [
                 (
-                    band_structs[next(iter(band_structs))]
-                    .qpoints[branch["start_index"]]
-                    .label,
-                    band_structs[next(iter(band_structs))]
-                    .qpoints[branch["end_index"]]
-                    .label,
+                    first_bs.qpoints[branch["start_index"]].label,
+                    first_bs.qpoints[branch["end_index"]].label,
                 )
             ]
         }
-        for band_struct in band_structs.values():
+        for band_struct in bs_dict.values():
             these_segments = {
                 (start, end)
                 for branch in band_struct.branches
@@ -193,7 +187,7 @@ def phonon_bands(
         segment_counts = {
             segment: len(structs) for segment, structs in all_segments.items()
         }
-        n_structures = len(band_structs)
+        n_structures = len(bs_dict)
 
         if path_mode == SET_INTERSECTION:
             # Only keep segments present in all band structures
@@ -215,7 +209,7 @@ def phonon_bands(
     # find common branches by normalized branch names
     if branches:
         common_branches: set[str] = set()
-        for idx, band_struct in enumerate(band_structs.values()):
+        for idx, band_struct in enumerate(bs_dict.values()):
             bs_branches = {branch["name"] for branch in band_struct.branches}
             common_branches = (
                 bs_branches
@@ -260,7 +254,7 @@ def phonon_bands(
     colors = px.colors.qualitative.Plotly
     line_styles = ("solid", "dot", "dash", "longdash", "dashdot", "longdashdot")
 
-    for bs_idx, (label, band_struct) in enumerate(band_structs.items()):
+    for bs_idx, (label, band_struct) in enumerate(bs_dict.items()):
         color = colors[bs_idx % len(colors)]
         line_style = line_styles[bs_idx % len(line_styles)]
 
@@ -304,7 +298,11 @@ def phonon_bands(
                 elif isinstance(line_kwargs, dict):
                     # check for custom line styles for one or both modes
                     if {"acoustic", "optical"} <= set(line_kwargs):
-                        mode_styles = line_kwargs.get(mode_type, {})  # type: ignore[call-overload]
+                        # use bracket access for ty compatibility with dict.get
+                        if mode_type in line_kwargs:
+                            mode_styles = line_kwargs[mode_type]
+                        else:
+                            mode_styles = {}
                         # use custom trace name if provided (needs to be popped before
                         # passed to line kwargs)
                         if mode_name := mode_styles.pop("name", None):
@@ -356,8 +354,8 @@ def phonon_bands(
     fig.layout.margin = dict(t=5, b=5, l=5, r=5)
 
     # get y-axis range from all band structures
-    y_min = min(min(bs.bands.ravel()) for bs in band_structs.values())
-    y_max = max(max(bs.bands.ravel()) for bs in band_structs.values())
+    y_min = min(min(bs.bands.ravel()) for bs in bs_dict.values())
+    y_max = max(max(bs.bands.ravel()) for bs in bs_dict.values())
 
     if y_min < -0.1:  # no need for y=0 line if y_min = 0
         fig.add_hline(y=0, line=dict(color="black", width=1))
@@ -388,7 +386,7 @@ def phonon_bands(
 
 
 def phonon_dos(
-    doses: AnyDos | dict[str, AnyDos],
+    doses: AnyDos | Mapping[str, AnyDos],
     *,
     stack: bool = False,
     sigma: float = 0,
@@ -421,19 +419,23 @@ def phonon_dos(
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
 
-    doses = doses if isinstance(doses, dict) else {"": doses}
-    for key, dos in doses.items():
+    input_doses = doses if isinstance(doses, dict) else {"": doses}
+    dos_dict: dict[str, PhononDos] = {}
+    for key, dos in input_doses.items():
         cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
         if cls_name == "phonopy.phonon.dos.TotalDos":
             # convert phonopy TotalDos to pymatgen PhononDos
-            dos = PhononDos(frequencies=dos.frequency_points, densities=dos.dos)  # noqa: PLW2901
-            doses[key] = dos
-
-        if not isinstance(dos, PhononDos):
+            dos_dict[key] = PhononDos(
+                frequencies=dos.frequency_points,  # type: ignore[union-attr]
+                densities=dos.dos,  # type: ignore[union-attr]
+            )
+        elif isinstance(dos, PhononDos):
+            dos_dict[key] = dos
+        else:
             raise TypeError(
                 f"Only {PhononDos.__name__} or dict supported, got {type(dos).__name__}"
             )
-    if isinstance(doses, dict) and len(doses) == 0:
+    if len(dos_dict) == 0:
         raise ValueError("Empty DOS dict")
 
     if last_peak_anno == "":
@@ -441,11 +443,7 @@ def phonon_dos(
 
     fig = go.Figure()
 
-    for key, dos in doses.items():
-        if not isinstance(dos, PhononDos):
-            raise TypeError(
-                f"Only PhononDos objects supported, got {type(dos).__name__}"
-            )
+    for key, dos in dos_dict.items():
         frequencies = dos.frequencies
         densities = dos.get_smeared_densities(sigma)
 
@@ -479,7 +477,7 @@ def phonon_dos(
 
     if last_peak_anno:
         qual_colors = px.colors.qualitative.Plotly
-        for idx, (key, dos) in enumerate(doses.items()):
+        for idx, (key, dos) in enumerate(dos_dict.items()):
             last_peak = dos.get_last_peak()
             color = (
                 fig.data[idx].line.color
@@ -535,8 +533,8 @@ def convert_frequencies(
 
 
 def phonon_bands_and_dos(
-    band_structs: PhononBands | dict[str, PhononBands],
-    doses: PhononDos | dict[str, PhononDos],
+    band_structs: PhononBands | Mapping[str, PhononBands],
+    doses: PhononDos | Mapping[str, PhononDos],
     bands_kwargs: dict[str, Any] | None = None,
     dos_kwargs: dict[str, Any] | None = None,
     subplot_kwargs: dict[str, Any] | None = None,

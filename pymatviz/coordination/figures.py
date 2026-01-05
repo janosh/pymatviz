@@ -91,7 +91,7 @@ def coordination_hist(
     Returns:
         go.Figure: A plotly Figure object containing the histogram.
     """
-    structures = normalize_structures(structures)
+    struct_dict = normalize_structures(structures)
 
     # coord_data: coordination numbers and hover data for each structure and element
     coord_data: dict[Hashable, dict[str, Any]] = {}
@@ -107,7 +107,7 @@ def coordination_hist(
 
     get_neighbors = normalize_get_neighbors(strategy)
 
-    for struct_key, structure in structures.items():
+    for struct_key, structure in struct_dict.items():
         coord_data[struct_key] = {}
         for idx, site in enumerate(structure):
             cn = len(get_neighbors(site, structure))
@@ -392,7 +392,7 @@ def coordination_vs_cutoff_line(
     Returns:
         A plotly Figure object containing the line plot.
     """
-    structures = normalize_structures(structures)
+    struct_dict = normalize_structures(structures)
 
     # Determine cutoff range based on strategy
     if (
@@ -454,7 +454,7 @@ def coordination_vs_cutoff_line(
     ) | (subplot_kwargs or {})
     fig = make_subplots(**subplot_kwargs)
 
-    for idx, (struct_name, structure) in enumerate(structures.items(), start=1):
+    for idx, (struct_name, structure) in enumerate(struct_dict.items(), start=1):
         elements = sorted(
             {
                 elem_symbol
