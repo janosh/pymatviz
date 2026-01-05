@@ -600,16 +600,7 @@ def ptable_hists_plotly(
             else:
                 annotation = ""
 
-            if annotation:  # Only add annotation if we have text
-                # Convert single annotation to list for uniform handling
-                if isinstance(annotation, str):
-                    anno_list: list[str | dict[str, Any]] = [annotation]
-                elif isinstance(annotation, dict):
-                    anno_list = [annotation]
-                elif isinstance(annotation, list):
-                    anno_list = annotation
-                else:
-                    continue  # Skip unknown annotation types
+            if annotation and (anno_list := _normalize_annotation(annotation)):
                 for anno in anno_list:
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}
@@ -693,6 +684,26 @@ def ptable_hists_plotly(
             fig.update_xaxes(tickformat=".4s")
 
     return fig
+
+
+def _normalize_annotation(
+    annotation: Any,
+) -> list[str | dict[str, Any]] | None:
+    """Normalize annotation input to a list of annotation dicts/strings.
+
+    Args:
+        annotation: Single annotation string, dict, or list of these.
+
+    Returns:
+        List of annotations, or None if input is not a recognized type.
+    """
+    if isinstance(annotation, str):
+        return [annotation]
+    if isinstance(annotation, dict):
+        return [annotation]
+    if isinstance(annotation, list):
+        return annotation
+    return None
 
 
 def _add_colorbar_trace(
@@ -1360,16 +1371,7 @@ def ptable_heatmap_splits_plotly(
             else:
                 annotation = ""
 
-            if annotation:  # Only add annotation if we have text
-                # Convert single annotation to list for uniform handling
-                if isinstance(annotation, str):
-                    anno_list: list[str | dict[str, Any]] = [annotation]
-                elif isinstance(annotation, dict):
-                    anno_list = [annotation]
-                elif isinstance(annotation, list):
-                    anno_list = annotation
-                else:
-                    continue  # Skip unknown annotation types
+            if annotation and (anno_list := _normalize_annotation(annotation)):
                 for anno in anno_list:
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}
@@ -1822,16 +1824,7 @@ def ptable_scatter_plotly(
             else:
                 annotation = ""
 
-            if annotation:  # Only add annotation if we have text
-                # Convert single annotation to list for uniform handling
-                if isinstance(annotation, str):
-                    anno_list: list[str | dict[str, Any]] = [annotation]
-                elif isinstance(annotation, dict):
-                    anno_list = [annotation]
-                elif isinstance(annotation, list):
-                    anno_list = annotation
-                else:
-                    continue  # Skip unknown annotation types
+            if annotation and (anno_list := _normalize_annotation(annotation)):
                 for anno in anno_list:
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}

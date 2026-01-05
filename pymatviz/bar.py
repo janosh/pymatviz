@@ -48,7 +48,13 @@ def spacegroup_bar(
 
     Returns:
         go.Figure: Plotly Figure object.
+
+    Raises:
+        ValueError: If data is empty.
     """
+    if len(data) == 0:
+        raise ValueError("spacegroup_bar requires non-empty data")
+
     if type(next(iter(data))).__qualname__ in ("Structure", "Atoms"):
         # if 1st sequence item is pymatgen structure or ASE Atoms, assume all are
         from moyopy import MoyoDataset

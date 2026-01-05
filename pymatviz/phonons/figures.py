@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
