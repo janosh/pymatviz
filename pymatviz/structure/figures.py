@@ -379,7 +379,7 @@ def structure_2d(
                 is_3d=False,
                 row=row,
                 col=col,
-                rotation_matrix=rotation_matrix,  # type: ignore[arg-type]
+                rotation_matrix=rotation_matrix,
                 show_faces=show_cell_faces,
             )
 

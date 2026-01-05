@@ -598,8 +598,8 @@ def test_get_site_hover_text_float_formatting() -> None:
     result_custom = get_site_hover_text(
         site,
         SiteCoords.cartesian,
-        site.species,
-        custom_formatter,  # type: ignore[arg-type]
+        site.species,  # type: ignore[arg-type]
+        custom_formatter,
     )
     assert "~1.2" in result_custom
     assert "~0.0" in result_custom  # 1e-17 rounds to 0
@@ -609,8 +609,8 @@ def test_get_site_hover_text_float_formatting() -> None:
     result_both = get_site_hover_text(
         site,
         SiteCoords.cartesian_fractional,
-        site.species,
-        ".3f",  # type: ignore[arg-type]
+        site.species,  # type: ignore[arg-type]
+        ".3f",
     )
     assert "1.235" in result_both  # cartesian
     assert "0.000" in result_both  # 1e-17 rounded

@@ -153,9 +153,9 @@ def _angles_to_rotation_matrix(
 
     Args:
         angles (str): Euler angles (in degrees) formatted as '-10y,50x,120z'
-        rotation (np.ndarray, optional): Initial rotation matrix. Use this if you already
-            have a rotation and want to combine it with the rotation defined by angles.
-            Defaults to identity matrix np.eye(3).
+        rotation (np.ndarray, optional): Initial rotation matrix. Use this if you
+            already have a rotation and want to combine it with the rotation defined
+            by angles. Defaults to identity matrix np.eye(3).
 
     Returns:
         np.ndarray: 3d rotation matrix.

@@ -104,7 +104,7 @@ def phonon_bands(
     """
     # Convert input to dict if single band structure
     if isinstance(band_structs, Mapping):
-        input_dict: dict[Hashable, AnyBandStructure | PhonopyBandStructure] = dict(
+        input_dict: dict[Hashable, AnyBandStructure | PhonopyBandStructure] = dict(  # type: ignore[no-matching-overload]
             band_structs
         )
     else:

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from pymatgen.core import Structure
+    from pymatgen.core import IStructure, Structure
 
 
 def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int:
@@ -42,7 +42,7 @@ def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int
 
 
 def classify_local_env_with_order_params(
-    structure: Structure, site_idx: int, cn_val: int
+    structure: Structure | IStructure, site_idx: int, cn_val: int
 ) -> str:
     """Classify local coordination environment using LocalStructOrderParams.
 
@@ -50,7 +50,7 @@ def classify_local_env_with_order_params(
     to calculate order parameters for different coordination geometries.
 
     Args:
-        structure (Structure): The crystal structure
+        structure (Structure | IStructure): The crystal structure
         site_idx (int): Index of the site to analyze
         cn_val (int): Coordination number of the site
 
@@ -82,7 +82,7 @@ def classify_local_env_with_order_params(
 
         # Get neighboring sites using CrystalNN
         crystal_nn = local_env.CrystalNN()
-        nn_info = crystal_nn.get_nn_info(structure=structure, n=site_idx)
+        nn_info = crystal_nn.get_nn_info(structure=structure, n=site_idx)  # type: ignore[arg-type]
 
         # Create sites list: central site + neighbors
         sites = [structure[site_idx]] + [info["site"] for info in nn_info]
@@ -90,7 +90,9 @@ def classify_local_env_with_order_params(
         # Calculate order parameters
         neighbor_indices = list(range(1, len(sites)))
         local_order_params = local_ops.get_order_parameters(
-            structure=structure, n=0, indices_neighs=neighbor_indices
+            structure=structure,  # type: ignore[arg-type]
+            n=0,
+            indices_neighs=neighbor_indices,
         )
 
         # Find the geometry with the highest order parameter
