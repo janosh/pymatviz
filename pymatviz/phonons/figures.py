@@ -103,15 +103,14 @@ def phonon_bands(
             BandStructure or dict of these.
     """
     # Convert input to dict if single band structure
+    input_dict: dict[str, AnyBandStructure | PhonopyBandStructure]
     if isinstance(band_structs, Mapping):
-        input_dict: dict[Hashable, AnyBandStructure | PhonopyBandStructure] = dict(  # type: ignore[no-matching-overload]
-            band_structs
-        )
+        input_dict = dict(band_structs)  # type: ignore[assignment]
     else:
         input_dict = {"": band_structs}
 
     # Convert phonopy band structures to pymatgen format
-    bs_dict: dict[Hashable, PhononBands] = {}
+    bs_dict: dict[str, PhononBands] = {}
     for key, bands in input_dict.items():
         if type(bands).__module__.startswith("phonopy"):
             bs_dict[key] = phonopy_to_pymatgen_bands(bands)  # type: ignore[arg-type]
