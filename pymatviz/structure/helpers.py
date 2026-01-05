@@ -146,26 +146,25 @@ def get_site_symbol(site: PeriodicSite) -> str:
 
 def _angles_to_rotation_matrix(
     angles: str, rotation: ArrayLike | None = None
-) -> ArrayLike:
+) -> np.ndarray:
     """Convert Euler angles to a rotation matrix.
 
     Note the order of angles matters. 50x,40z != 40z,50x.
 
     Args:
         angles (str): Euler angles (in degrees) formatted as '-10y,50x,120z'
-        rotation (np.array, optional): Initial rotation matrix. Use this if you already
+        rotation (np.ndarray, optional): Initial rotation matrix. Use this if you already
             have a rotation and want to combine it with the rotation defined by angles.
             Defaults to identity matrix np.eye(3).
 
     Returns:
-        np.array: 3d rotation matrix.
+        np.ndarray: 3d rotation matrix.
     """
-    if rotation is None:
-        rotation = np.eye(3)
+    rot_matrix: np.ndarray = np.eye(3) if rotation is None else np.asarray(rotation)
 
     # Return initial rotation matrix if no angles
     if not angles:
-        return rotation.copy()
+        return rot_matrix.copy()
 
     for angle in angles.split(","):
         radians = math.radians(float(angle[:-1]))
@@ -174,12 +173,12 @@ def _angles_to_rotation_matrix(
         sin = math.sin(radians)
         cos = math.cos(radians)
         if dim == 0:
-            rotation = np.dot(rotation, [(1, 0, 0), (0, cos, sin), (0, -sin, cos)])
+            rot_matrix = np.dot(rot_matrix, [(1, 0, 0), (0, cos, sin), (0, -sin, cos)])
         elif dim == 1:
-            rotation = np.dot(rotation, [(cos, 0, -sin), (0, 1, 0), (sin, 0, cos)])
+            rot_matrix = np.dot(rot_matrix, [(cos, 0, -sin), (0, 1, 0), (sin, 0, cos)])
         else:
-            rotation = np.dot(rotation, [(cos, sin, 0), (-sin, cos, 0), (0, 0, 1)])
-    return rotation
+            rot_matrix = np.dot(rot_matrix, [(cos, sin, 0), (-sin, cos, 0), (0, 0, 1)])
+    return rot_matrix
 
 
 def get_image_sites(

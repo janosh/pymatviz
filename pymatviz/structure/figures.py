@@ -366,7 +366,7 @@ def structure_2d(
                     bond_kwargs=bond_kwargs,
                     row=row,
                     col=col,
-                    rotation_matrix=rotation_matrix,  # type: ignore[arg-type]
+                    rotation_matrix=rotation_matrix,
                     elem_colors=_elem_colors,
                     plotted_sites_coords=plotted_sites_coords,
                 )

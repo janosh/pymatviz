@@ -431,7 +431,7 @@ def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | ArrayLike,
     strict: bool = True,
-) -> list[ArrayLike | dict[str, ArrayLike]]:
+) -> list[str | ArrayLike | dict[str, ArrayLike]]:
     """If df is None, this is a no-op: args are returned as-is. If df is a
     dataframe, all following args are used as column names and the column data
     returned as arrays (after dropping rows with NaNs in any column).
@@ -447,8 +447,9 @@ def df_to_arrays(
         TypeError: If df is not pd.DataFrame and not None.
 
     Returns:
-        list[ArrayLike | dict[str, ArrayLike]]: Array data for each column name or
-            dictionary of column names and array data.
+        list[str | ArrayLike | dict[str, ArrayLike]]: Array data for each column name,
+            dictionary of column names and array data, or original string args when
+            strict=False and df is not a DataFrame.
     """
     if df is None:
         if cols := [arg for arg in args if isinstance(arg, str)]:

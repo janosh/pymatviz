@@ -55,7 +55,7 @@ def spacegroup_bar(
     if len(data) == 0:
         raise ValueError("spacegroup_bar requires non-empty data")
 
-    if type(next(iter(data))).__qualname__ in ("Structure", "Atoms"):
+    if type(data[0]).__qualname__ in ("Structure", "Atoms"):
         # if 1st sequence item is pymatgen structure or ASE Atoms, assume all are
         from moyopy import MoyoDataset
         from moyopy.interface import MoyoAdapter

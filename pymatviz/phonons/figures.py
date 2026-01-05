@@ -104,11 +104,11 @@ def phonon_bands(
     """
     # Convert input to dict if single band structure
     if isinstance(band_structs, Mapping):
-        input_dict = band_structs
+        input_dict: dict[Hashable, AnyBandStructure | PhonopyBandStructure] = dict(
+            band_structs
+        )
     else:
-        input_dict: dict[Hashable, AnyBandStructure | PhonopyBandStructure] = {
-            "": band_structs
-        }
+        input_dict = {"": band_structs}
 
     # Convert phonopy band structures to pymatgen format
     bs_dict: dict[Hashable, PhononBands] = {}
