@@ -702,6 +702,9 @@ def _normalize_annotation(
     if isinstance(annotation, dict):
         return [annotation]
     if isinstance(annotation, list):
+        # Validate list elements are str or dict
+        if not all(isinstance(item, str | dict) for item in annotation):
+            return None
         return annotation
     return None
 
