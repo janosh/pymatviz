@@ -443,14 +443,14 @@ def coordination_vs_cutoff_line(
             "or a custom dict."
         )
 
-    n_cols = min(3, len(structures))
-    n_rows = math.ceil(len(structures) / n_cols)
+    n_cols = min(3, len(struct_dict))
+    n_rows = math.ceil(len(struct_dict) / n_cols)
     subplot_kwargs = dict(
         cols=n_cols,
         rows=n_rows,
         shared_xaxes=True,
         vertical_spacing=0.05,
-        subplot_titles=list(structures),
+        subplot_titles=[str(key) for key in struct_dict],
     ) | (subplot_kwargs or {})
     fig = make_subplots(**subplot_kwargs)
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
     import plotly.graph_objects as go
-    from pymatgen.core import IMolecule, IStructure, PeriodicSite, Structure
+    from pymatgen.core import PeriodicSite
 
     from pymatviz.typing import AnyStructure, ColorType
 
@@ -44,9 +43,7 @@ def structure_2d(
     | Sequence[str] = "legend",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
-    subplot_title: Callable[
-        [Structure | IStructure | IMolecule, Hashable], str | dict[str, Any]
-    ]
+    subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]]
     | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
@@ -441,9 +438,7 @@ def structure_3d(
     | Sequence[str] = "legend",
     standardize_struct: bool | None = None,
     n_cols: int = 3,
-    subplot_title: Callable[
-        [Structure | IStructure | IMolecule, Hashable], str | dict[str, Any]
-    ]
+    subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]]
     | None
     | Literal[False] = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
@@ -798,23 +793,3 @@ def structure_3d(
     helpers.configure_subplot_legends(fig, site_labels, n_structs, n_cols, n_rows)
 
     return fig
-
-
-def structure_3d_plotly(*args: Any, **kwargs: Any) -> go.Figure:
-    """Deprecated alias for structure_3d. Use structure_3d instead."""
-    msg = (
-        "structure_3d_plotly is deprecated and will be removed in a future version. "
-        "Use structure_3d instead."
-    )
-    warnings.warn(msg, DeprecationWarning, stacklevel=2)
-    return structure_3d(*args, **kwargs)
-
-
-def structure_2d_plotly(*args: Any, **kwargs: Any) -> go.Figure:
-    """Deprecated alias for structure_2d. Use structure_2d instead."""
-    msg = (
-        "structure_2d_plotly is deprecated and will be removed in a future version. "
-        "Use structure_2d instead."
-    )
-    warnings.warn(msg, DeprecationWarning, stacklevel=2)
-    return structure_2d(*args, **kwargs)

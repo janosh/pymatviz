@@ -340,13 +340,10 @@ def generate_site_label(
 
 
 def get_subplot_title(
-    struct_i: Structure | IStructure | IMolecule,
+    struct_i: AnyStructure,
     struct_key: Hashable,
     idx: int,
-    subplot_title: Callable[
-        [Structure | IStructure | IMolecule, Hashable], str | dict[str, Any]
-    ]
-    | None,
+    subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]] | None,
 ) -> dict[str, Any]:
     """Generate a subplot title based on the provided function or default logic."""
     title_dict: dict[str, str | float | dict[str, str | float]] = {}

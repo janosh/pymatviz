@@ -31,7 +31,15 @@ from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
+    from typing import TypeAlias
+
     import plotly.graph_objects as go
+
+    # (dataset_name, target_key, target_label, target_symbol, embed_method,
+    #  proj_method, n_components, colorbar_kwargs)
+    PlotConfig: TypeAlias = tuple[
+        str, str, str, str, Embed, Project, int, dict[str, Any]
+    ]
 
 
 pmv.set_plotly_template("pymatviz_white")
@@ -222,7 +230,8 @@ mb_bulk_modulus: tuple[str, str, str, str] = (
     "Bulk Modulus (GPa)",
     "K<sub>VRH</sub>",
 )
-plot_combinations = [
+# ty can't infer tuple types from starred expressions, so we need type: ignore
+plot_combinations: list[PlotConfig] = [  # type: ignore[list-item]
     # 1. Steels with PCA (2D) - shows clear linear trends
     (*mb_steels, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
     # 2. Steels with t-SNE (2D) - shows non-linear clustering
@@ -252,7 +261,7 @@ plot_combinations = [
     (*mb_perovskites, Embed.magpie, Project.tsne, 3, {}),
 ]
 
-for (  # type: ignore[invalid-assignment]  # ty can't handle tuple unpacking in list
+for (
     data_name,
     target_key,
     target_label,

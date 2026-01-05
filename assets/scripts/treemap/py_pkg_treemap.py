@@ -138,4 +138,3 @@ fig_cov_range = pmv.py_pkg_treemap(
 fig_cov_range.layout.margin = dict(l=0, r=0, b=0, t=0)
 fig_cov_range.show()
 pmv.io.save_and_compress_svg(fig_cov_range, "py-pkg-treemap-pymatgen-coverage")
-fig_cov_range.write_image(f"{pmv.ROOT}/tmp/py-pkg-treemap-pymatgen-coverage.pdf")

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
@@ -1868,52 +1867,3 @@ def test_disordered_site_legend_name_formatting() -> None:
     sorted_species = [(Species("Fe"), 0.5), (Species("Ni"), 0.5)]
     legend_name = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert legend_name == "Fe₀.₅Ni₀.₅"
-
-
-@pytest.mark.parametrize(
-    ("deprecated_func", "original_func", "func_name"),
-    [
-        (pmv.structure_3d_plotly, pmv.structure_3d, "structure_3d_plotly"),
-        (pmv.structure_2d_plotly, pmv.structure_2d, "structure_2d_plotly"),
-    ],
-)
-def test_deprecated_aliases_warnings(
-    deprecated_func: Callable[..., go.Figure],
-    original_func: Callable[..., go.Figure],
-    func_name: str,
-) -> None:
-    """Test that deprecated aliases issue proper deprecation warnings."""
-    # Check if the deprecation deadline has passed (1 year from 2024-12-19)
-    deadline = datetime(2025, 12, 31, tzinfo=UTC)
-    if datetime.now(tz=UTC) >= deadline:
-        msg = (
-            f"Deprecation deadline reached on {deadline}! "
-            "Remove the deprecated aliases structure_(2|3)d_plotly "
-            "from pymatviz/structure/plotly.py and pymatviz/__init__.py, "
-            "and remove this test."
-        )
-        raise RuntimeError(msg)
-
-    lattice = Lattice.cubic(4.0)
-    struct = Structure(lattice, ["Li", "O"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-
-    # Test deprecated alias
-    with pytest.warns(
-        DeprecationWarning, match="will be removed in a future version"
-    ) as warning_info:
-        fig_deprecated = deprecated_func(struct, show_cell=False, show_sites=True)
-
-    assert isinstance(fig_deprecated, go.Figure)
-    assert len(warning_info) == 1
-    expected_msg = (
-        f"{func_name} is deprecated and will be removed in a future version. "
-        f"Use {func_name.replace('_plotly', '')} instead."
-    )
-    assert str(warning_info[0].message) == expected_msg
-    assert warning_info[0].category is DeprecationWarning
-
-    # Verify that the alias produces the same output as the original function
-    fig_original = original_func(struct, show_cell=False, show_sites=True)
-
-    # Compare basic properties to ensure alias works correctly
-    assert len(fig_deprecated.data) == len(fig_original.data)

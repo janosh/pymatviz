@@ -146,13 +146,11 @@ def notebook_mode(*, on: bool) -> None:
     - phonopy TotalDos -> phonon_dos
     - DiffractionPattern -> xrd_pattern
     """
+    from importlib import import_module
 
     def _get_class(module_path: str, class_name: str) -> type:
-        """Import a class from a module path using getattr for type checker compat."""
-        from importlib import import_module
-
-        module = import_module(module_path)
-        return getattr(module, class_name)
+        """Import a class from a module path."""
+        return getattr(import_module(module_path), class_name)
 
     class_configs = [  # Define (import_func, class_obj, display_methods)
         (
