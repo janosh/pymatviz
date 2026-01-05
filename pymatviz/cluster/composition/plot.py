@@ -603,7 +603,9 @@ def cluster_compositions(
             # Create embeddings
             if callable(embedding_method):
                 # Use custom embedding function
-                embeddings = embedding_method(compositions, **(embedding_kwargs or {}))
+                embeddings = embedding_method(  # type: ignore[call-arg]
+                    compositions, **(embedding_kwargs or {})
+                )
             # Use built-in embedding methods
             elif embedding_method == "one-hot":
                 embeddings = one_hot_encode(compositions, **(embedding_kwargs or {}))

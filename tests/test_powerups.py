@@ -177,7 +177,7 @@ def test_add_ecdf_line_raises() -> None:
             TypeError,
             match=f"{fig=} must be instance of go.Figure",
         ):
-            powerups.add_ecdf_line(fig)
+            powerups.add_ecdf_line(fig)  # type: ignore[arg-type]
 
     # check ValueError when x-values cannot be auto-determined
     fig_violin = px.violin(x=[1, 2, 3], y=[4, 5, 6])

@@ -65,9 +65,9 @@ def get_struct_prop(
     # Check structure/atoms properties first (highest precedence)
     prop_value = None
     if is_ase_atoms(struct):
-        prop_value = struct.info.get(prop_name)
+        prop_value = struct.info.get(prop_name)  # type: ignore[union-attr]
     elif hasattr(struct, "properties"):
-        prop_value = struct.properties.get(prop_name)
+        prop_value = struct.properties.get(prop_name)  # type: ignore[union-attr]
 
     if prop_value is not None:
         return prop_value
@@ -128,7 +128,7 @@ def get_site_symbol(site: PeriodicSite) -> str:
     if isinstance(species, Composition):
         el_amt_dict = species.get_el_amt_dict()
         if el_amt_dict:
-            return max(el_amt_dict, key=el_amt_dict.get)
+            return max(el_amt_dict, key=el_amt_dict.get)  # type: ignore[arg-type]
         if species.elements:
             return species.elements[0].symbol
         return "X"
@@ -282,7 +282,7 @@ def get_elem_colors(
     if isinstance(elem_colors, Mapping):
         return dict(elem_colors)
     if isinstance(elem_colors, ElemColorScheme):
-        return elem_colors.color_map
+        return elem_colors.color_map  # type: ignore[return-value]
     raise ValueError(
         f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
     )
@@ -364,7 +364,7 @@ def get_subplot_title(
             from moyopy import MoyoDataset
             from moyopy.interface import MoyoAdapter
 
-            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number
+            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number  # type: ignore[arg-type]
             title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
         else:  # For str or any other Hashable type, convert to string
             title_dict["text"] = str(struct_key)
@@ -448,10 +448,11 @@ def normalize_elem_color(raw_color_from_map: ColorType) -> str:
         and len(raw_color_from_map) == 3
         and all(isinstance(c, (float, int)) for c in raw_color_from_map)
     ):
-        r, g, b = (
-            int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)
+        rgb = [
+            int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)  # type: ignore[arg-type]
             for c in raw_color_from_map
-        )
+        ]
+        r, g, b = rgb
         return f"rgb({r},{g},{b})"
     if isinstance(raw_color_from_map, str):
         return raw_color_from_map
@@ -542,7 +543,7 @@ def draw_site(
 
     # Handle ordered sites (single species)
     majority_species = (
-        max(species, key=species.get) if isinstance(species, Composition) else species
+        max(species, key=species.get) if isinstance(species, Composition) else species  # type: ignore[arg-type]
     )
     if not isinstance(majority_species, Species):
         majority_species = Species(str(majority_species))
@@ -1484,7 +1485,7 @@ def draw_bonds(
 
     for site_idx, site1 in enumerate(structure):
         try:
-            connections = nn.get_nn_info(structure, n=site_idx)
+            connections = nn.get_nn_info(structure, n=site_idx)  # type: ignore[arg-type]
         except ValueError as exc:
             if "No Voronoi neighbors found" in str(exc):
                 warnings.warn(

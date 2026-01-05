@@ -255,7 +255,7 @@ def df_to_pdf(
     if styler_css:
         styler_css = DEFAULT_DF_STYLES if styler_css is True else styler_css
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in styler_css.items()],
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()],  # type: ignore[arg-type]
             overwrite=False,
         )
 
@@ -393,7 +393,7 @@ def df_to_html(
     if styler_css:
         styler_css = styler_css if isinstance(styler_css, dict) else DEFAULT_DF_STYLES
         styler.set_table_styles(
-            [dict(selector=sel, props=val) for sel, val in styler_css.items()]
+            [dict(selector=sel, props=val) for sel, val in styler_css.items()]  # type: ignore[arg-type]
         )
     html = styler.to_html(**kwargs)
     if html is None:
@@ -484,12 +484,12 @@ def df_to_svg(
         rows = []
         for row in soup.find_all("tr"):
             cells = []
-            for cell in row.find_all(["td", "th"]):
+            for cell in row.find_all(["td", "th"]):  # type: ignore[union-attr]
                 text = cell.get_text()
                 bold = cell.name == "th"
                 align = (
                     get_style_prop(cell, "text-align")
-                    or get_style_prop(row, "text-align")
+                    or get_style_prop(row, "text-align")  # type: ignore[arg-type]
                     or "left"
                 )
                 bg_color = get_style_prop(cell, "background-color") or "#ffffff"
@@ -500,7 +500,7 @@ def df_to_svg(
             rows.append(cells)
 
         num_header_rows = (
-            len(soup.find("thead").find_all("tr")) if soup.find("thead") else 0
+            len(soup.find("thead").find_all("tr")) if soup.find("thead") else 0  # type: ignore[union-attr]
         )
         return rows, num_header_rows
 

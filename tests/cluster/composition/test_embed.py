@@ -22,7 +22,7 @@ def test_one_hot_encode(
 ) -> None:
     """Test one-hot encoding of chemical formulas."""
     # Default elements list contains all elements in the periodic table
-    result = one_hot_encode(compositions)
+    result = one_hot_encode(compositions)  # type: ignore[arg-type]
 
     # Check shape
     assert result.shape == expected_shape
@@ -32,7 +32,7 @@ def test_one_hot_encode(
 
     # Test with a custom elements list
     elements = ["H", "C", "O", "Na", "Cl"]
-    result_custom = one_hot_encode(compositions, elements=elements)
+    result_custom = one_hot_encode(compositions, elements=elements)  # type: ignore[arg-type]
 
     # Check custom shape
     assert result_custom.shape == (len(compositions), len(elements))
@@ -72,10 +72,10 @@ def test_one_hot_encode_pandas_input() -> None:
 def test_one_hot_encode_invalid_input() -> None:
     """Test one-hot encoding with invalid input."""
     with pytest.raises(ValueError, match="Invalid composition="):
-        one_hot_encode([1, 2, 3])
+        one_hot_encode([1, 2, 3])  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Invalid composition="):
-        one_hot_encode([["H2O"]])
+        one_hot_encode([["H2O"]])  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -124,10 +124,10 @@ def test_matminer_featurize_invalid_input() -> None:
     """Test matminer featurization with invalid input."""
     pytest.importorskip("matminer")
     with pytest.raises(ValueError, match="Invalid composition="):
-        matminer_featurize([1, 2, 3])
+        matminer_featurize([1, 2, 3])  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Invalid composition="):
-        matminer_featurize([["H2O"]])
+        matminer_featurize([["H2O"]])  # type: ignore[arg-type]
 
 
 def test_matminer_featurize_invalid_feature_subset() -> None:

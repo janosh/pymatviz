@@ -63,7 +63,7 @@ def test_normalize_get_neighbors_with_nn_class() -> None:
 def test_normalize_get_neighbors_invalid_input() -> None:
     """Test normalize_get_neighbors with invalid input."""
     with pytest.raises(TypeError, match="Invalid strategy="):
-        normalize_get_neighbors(strategy="invalid")
+        normalize_get_neighbors(strategy="invalid")  # type: ignore[arg-type]
 
 
 def test_calculate_average_cn() -> None:

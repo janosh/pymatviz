@@ -114,7 +114,7 @@ def phonon_bands(
     bs_dict: dict[Hashable, PhononBands] = {}
     for key, bands in input_dict.items():
         if type(bands).__module__.startswith("phonopy"):
-            bs_dict[key] = phonopy_to_pymatgen_bands(bands)
+            bs_dict[key] = phonopy_to_pymatgen_bands(bands)  # type: ignore[arg-type]
         elif isinstance(bands, PhononBands):
             bs_dict[key] = bands
         else:
@@ -422,12 +422,12 @@ def phonon_dos(
         cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
         if cls_name == "phonopy.phonon.dos.TotalDos":
             # convert phonopy TotalDos to pymatgen PhononDos
-            dos_dict[key] = PhononDos(
+            dos_dict[key] = PhononDos(  # type: ignore[index]
                 frequencies=dos.frequency_points,  # type: ignore[union-attr]
                 densities=dos.dos,  # type: ignore[union-attr]
             )
         elif isinstance(dos, PhononDos):
-            dos_dict[key] = dos
+            dos_dict[key] = dos  # type: ignore[index]
         else:
             raise TypeError(
                 f"Only {PhononDos.__name__} or dict supported, got {type(dos).__name__}"
@@ -566,9 +566,9 @@ def phonon_bands_and_dos(
     Raises:
         ValueError: If band_structs and doses keys don't match.
     """
-    if not isinstance(band_structs, Mapping):  # wrap single input in dict
+    if not isinstance(band_structs, Mapping):  # normalize input to Mapping
         band_structs = {"": band_structs}
-    if not isinstance(doses, Mapping):  # wrap single input in dict
+    if not isinstance(doses, Mapping):  # normalize input to Mapping
         doses = {"": doses}
     if (band_keys := set(band_structs)) != (dos_keys := set(doses)):
         raise ValueError(f"{band_keys=} and {dos_keys=} must be identical")

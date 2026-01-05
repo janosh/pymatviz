@@ -145,7 +145,7 @@ def xrd_pattern(  # noqa: D417
         if is_ase_atoms(pattern_or_struct):
             from pymatgen.io.ase import AseAtomsAdaptor
 
-            pattern_or_struct = AseAtomsAdaptor().get_structure(pattern_or_struct)
+            pattern_or_struct = AseAtomsAdaptor().get_structure(pattern_or_struct)  # type: ignore[arg-type]
 
         if isinstance(pattern_or_struct, Structure):
             xrd_calculator = XRDCalculator(wavelength=wavelength)
@@ -181,8 +181,8 @@ def xrd_pattern(  # noqa: D417
         if stack:
             row = trace_idx + 1 if stack == "vertical" else 1
             col = trace_idx + 1 if stack == "horizontal" else 1
-            trace_kwargs.setdefault("row", row)
-            trace_kwargs.setdefault("col", col)
+            trace_kwargs.setdefault("row", row)  # type: ignore[union-attr]
+            trace_kwargs.setdefault("col", col)  # type: ignore[union-attr]
         fig.add_bar(
             x=two_theta,
             y=intensities,
@@ -190,7 +190,7 @@ def xrd_pattern(  # noqa: D417
             name=label,
             hovertext=tooltips,
             hoverinfo="text",
-            **trace_kwargs,
+            **trace_kwargs,  # type: ignore[arg-type]
         )
 
     # Normalize intensities to 100 and add annotations

@@ -88,7 +88,7 @@ def structures() -> tuple[Structure, ...]:
 
 @pytest.fixture
 def ase_atoms() -> tuple[ase.Atoms, ase.Atoms]:
-    return tuple(copy.copy(atoms) for atoms in SI_ATOMS)
+    return tuple(copy.copy(atoms) for atoms in SI_ATOMS)  # type: ignore[return-value]
 
 
 @pytest.fixture
@@ -159,7 +159,7 @@ def fe3co4_disordered() -> Structure:
     """
     from pymatviz.structure import fe3co4_disordered
 
-    return fe3co4_disordered
+    return fe3co4_disordered  # type: ignore[return-value]
 
 
 @pytest.fixture

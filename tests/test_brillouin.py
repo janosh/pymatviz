@@ -251,7 +251,7 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
     def subplot_title(struct: Structure, key: Hashable) -> str:
         return f"Custom {key} - {struct.formula}"
 
-    fig = brillouin_zone_3d(struct_dict, subplot_title=subplot_title)
+    fig = brillouin_zone_3d(struct_dict, subplot_title=subplot_title)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     for idx, (key, struct) in enumerate(struct_dict.items()):
         assert fig.layout.annotations[idx].text == f"Custom {key} - {struct.formula}"
@@ -331,7 +331,7 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
             text=f"Custom {key}", font=dict(size=16, color="blue"), yanchor="bottom"
         )
 
-    fig = brillouin_zone_3d(structures, subplot_title=subplot_title)
+    fig = brillouin_zone_3d(structures, subplot_title=subplot_title)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     for idx, struct in enumerate(structures):
         anno = fig.layout.annotations[idx]
@@ -404,7 +404,7 @@ def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) ->
         font = dict(size=20, color="red")
         return dict(text=f"Test {key}", font=font, x=0.5, y=0.9)
 
-    fig = brillouin_zone_3d(structures, subplot_title=title_with_dict)
+    fig = brillouin_zone_3d(structures, subplot_title=title_with_dict)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     for idx, anno in enumerate(fig.layout.annotations):
         expected_text = f"Test {idx + 1} {structures[idx].formula}"
@@ -423,7 +423,7 @@ def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) ->
     def title_with_string(struct: Structure, key: Hashable) -> str:
         return f"Structure {key} ({len(struct)} atoms)"
 
-    fig = brillouin_zone_3d(structures, subplot_title=title_with_string)
+    fig = brillouin_zone_3d(structures, subplot_title=title_with_string)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     for idx, struct in enumerate(structures):
         expected_text = f"Structure {idx + 1} {struct.formula} ({len(struct)} atoms)"

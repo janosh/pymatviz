@@ -75,7 +75,7 @@ def _get_all_rendered_site_info(
     for site_primary in structure:
         if hasattr(site_primary.species, "elements"):  # Disordered
             el_amt_dict = site_primary.species.get_el_amt_dict()
-            symbol = max(el_amt_dict, key=el_amt_dict.get) if el_amt_dict else "X"
+            symbol = max(el_amt_dict, key=el_amt_dict.get) if el_amt_dict else "X"  # type: ignore[arg-type]
         elif hasattr(site_primary.species, "symbol"):  # Element
             symbol = site_primary.species.symbol
         elif hasattr(site_primary.species, "element"):  # Specie
@@ -559,7 +559,7 @@ def test_structure_2d_multiple_inputs(
     else:  # list
         structures_input = list(structs_dict.values())
 
-    fig = pmv.structure_2d(structures_input, n_cols=n_cols, site_labels=False)
+    fig = pmv.structure_2d(structures_input, n_cols=n_cols, site_labels=False)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
 
     # Validate trace counts
@@ -690,7 +690,7 @@ def test_structure_2d_invalid_input() -> None:
     """Test that structure_2d raises errors for invalid inputs."""
     expected_err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
     with pytest.raises(TypeError, match=expected_err_msg):
-        pmv.structure_2d("invalid input")
+        pmv.structure_2d("invalid input")  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Cannot plot empty set of structures"):
         pmv.structure_2d([])
@@ -1052,7 +1052,7 @@ def test_structure_3d_multiple() -> None:
         "struct4": struct4,
     }
     # Test with default site_labels="legend"
-    fig = pmv.structure_3d(structs_dict, n_cols=2)
+    fig = pmv.structure_3d(structs_dict, n_cols=2)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
 
     expected_total_traces_3d = 0
@@ -1114,13 +1114,13 @@ def test_structure_3d_multiple() -> None:
 
     # Test pandas.Series[Structure]
     struct_series = pd.Series(structs_dict)
-    fig = pmv.structure_3d(struct_series)
+    fig = pmv.structure_3d(struct_series)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
     # Test list[Structure]
-    fig = pmv.structure_3d(list(structs_dict.values()), n_cols=3)
+    fig = pmv.structure_3d(list(structs_dict.values()), n_cols=3)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
@@ -1129,7 +1129,7 @@ def test_structure_3d_multiple() -> None:
     def custom_subplot_title_func(struct: Structure, key: Hashable) -> str:
         return f"{key} - {struct.formula}"
 
-    fig = pmv.structure_3d(struct_series, subplot_title=custom_subplot_title_func)
+    fig = pmv.structure_3d(struct_series, subplot_title=custom_subplot_title_func)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles
@@ -1211,7 +1211,7 @@ def test_structure_3d_subplot_title_coverage() -> None:
 
     fig = pmv.structure_3d(
         {"struct1": struct1, "struct2": struct2},
-        subplot_title=custom_title_with_position,
+        subplot_title=custom_title_with_position,  # type: ignore[arg-type]
         n_cols=2,
     )
     assert isinstance(fig, go.Figure)
@@ -1620,7 +1620,7 @@ def test_color_processing_edge_cases() -> None:
     ]
 
     for input_color, expected in test_cases:
-        result = normalize_elem_color(input_color)
+        result = normalize_elem_color(input_color)  # type: ignore[arg-type]
         assert result == expected
 
 

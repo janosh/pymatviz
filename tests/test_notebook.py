@@ -97,7 +97,7 @@ def test_set_renderer_widget_and_string_equivalence() -> None:
     struct = Structure(Lattice.cubic(3), ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
     for renderer in (pmv.StructureWidget.__name__, pmv.StructureWidget):
         set_renderer(Structure, renderer)
-        mime = struct._repr_mimebundle_()
+        mime = struct._repr_mimebundle_()  # type: ignore[attr-defined]
         assert isinstance(mime, dict)
         assert "application/vnd.jupyter.widget-view+json" in mime
         assert "text/plain" in mime
@@ -217,8 +217,8 @@ def test_notebook_mode_toggle(enable: bool) -> None:
     assert hasattr(Structure, "_repr_mimebundle_") == enable
 
     if enable:
-        assert callable(Structure._ipython_display_)
-        assert callable(Structure._repr_mimebundle_)
+        assert callable(Structure._ipython_display_)  # type: ignore[attr-defined]
+        assert callable(Structure._repr_mimebundle_)  # type: ignore[attr-defined]
 
     # Check optional classes
     optional_classes = [
@@ -328,7 +328,7 @@ def test_structure_toolbar_hiding(structures: tuple[Structure, Structure]) -> No
     pmv.notebook_mode(on=True)
 
     try:
-        mime_bundle = structures[0]._repr_mimebundle_()
+        mime_bundle = structures[0]._repr_mimebundle_()  # type: ignore[attr-defined]
 
         # Check that plotly JSON has toolbar configuration (if using plotly renderer)
         if "application/vnd.plotly.v1+json" in mime_bundle:
@@ -374,14 +374,14 @@ def test_fallback_without_pymatviz(
     pmv.notebook_mode(on=True)
 
     try:  # Test _ipython_display_ fallback
-        structures[0]._ipython_display_()
+        structures[0]._ipython_display_()  # type: ignore[attr-defined]
         assert len(published_data) == 1
         display_data = published_data[0]
         assert "text/plain" in display_data
         assert "application/vnd.plotly.v1+json" not in display_data
 
         # Test _repr_mimebundle_ fallback
-        mime_bundle = structures[0]._repr_mimebundle_()
+        mime_bundle = structures[0]._repr_mimebundle_()  # type: ignore[attr-defined]
         assert "text/plain" in mime_bundle
         assert "application/vnd.plotly.v1+json" not in mime_bundle
 
@@ -553,7 +553,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
         assert callable(TotalDos._repr_mimebundle_)
 
         # Test _ipython_display_ method on the instance
-        phonopy_nacl.total_dos._ipython_display_()
+        phonopy_nacl.total_dos._ipython_display_()  # type: ignore[union-attr]
 
         # Check that data was published
         assert len(published_data) == 1
@@ -569,7 +569,7 @@ def test_phonopy_dos_integration(monkeypatch: pytest.MonkeyPatch) -> None:
             assert "layout" in plotly_json
 
         # Test _repr_mimebundle_ method on the instance
-        mime_bundle = phonopy_nacl.total_dos._repr_mimebundle_()
+        mime_bundle = phonopy_nacl.total_dos._repr_mimebundle_()  # type: ignore[union-attr]
         assert isinstance(mime_bundle, dict)
         assert "text/plain" in mime_bundle
 

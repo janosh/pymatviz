@@ -124,7 +124,7 @@ def confusion_matrix(
         [[f"{val:{float_fmt}}" for val in row] for row in conf_mat_arr]
     ).T
     if annotations is None:
-        annotations = fmt_tile_vals
+        annotations = fmt_tile_vals  # type: ignore[assignment]
     elif callable(annotations):  # If annotations is a callable, apply it to each cell
         total = sample_counts.sum()
         anno_matrix = []
@@ -147,8 +147,8 @@ def confusion_matrix(
             anno_matrix += [row]
         annotations = np.array(anno_matrix).T
     else:  # When custom annotations provided, append percentage values
-        annotations = np.char.add(annotations, "<br>")
-        annotations = np.char.add(annotations, fmt_tile_vals)
+        annotations = np.char.add(annotations, "<br>")  # type: ignore[assignment,arg-type]
+        annotations = np.char.add(annotations, fmt_tile_vals)  # type: ignore[arg-type]
 
     heatmap_defaults = dict(
         z=np.rot90(conf_mat_arr),

@@ -103,7 +103,7 @@ def _register_renderers() -> None:
         if not hasattr(cls, "_display_"):
             cls._display_ = create_widget  # type: ignore[attr-defined]
     if not hasattr(Composition, "_display_"):
-        Composition._display_ = create_widget
+        Composition._display_ = create_widget  # type: ignore[attr-defined]
 
 
 def register_matterviz_widgets() -> None:

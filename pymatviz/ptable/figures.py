@@ -718,7 +718,7 @@ def _add_colorbar_trace(
     """Add an invisible scatter trace with a colorbar to the figure."""
     # For callable colorscales, sample at endpoints to create a 2-point colorscale
     if callable(colorscale):
-        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]
+        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]  # type: ignore[assignment]
 
     # Ensure tickformat is included in colorbar settings
     if "tickformat" not in colorbar:
@@ -942,14 +942,14 @@ def ptable_heatmap_splits_plotly(
         elif colorbar is None:
             # Create colorbar settings with column names as titles
             colorbar = [dict(title=label) for label in split_labels]
-        data = {idx: row.tolist() for idx, row in data.iterrows()}
+        data = {idx: row.tolist() for idx, row in data.iterrows()}  # type: ignore[assignment]
     elif isinstance(data, pd.Series):
         data = data.to_dict()
 
     # Calculate split ranges early if using multiple colorscales
     if not data:
         raise ValueError(f"ptable_heatmap_splits_plotly: {data=} must not be empty")
-    n_splits = len(next(iter(data.values())))
+    n_splits = len(next(iter(data.values())))  # type: ignore[arg-type]
 
     if not split_labels:  # if not DataFrame or empty columns
         split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
@@ -963,7 +963,7 @@ def ptable_heatmap_splits_plotly(
     for split_idx in range(n_splits):
         split_values = [
             values[split_idx]
-            for values in data.values()
+            for values in data.values()  # type: ignore[union-attr]
             if len(values) > split_idx
             and not np.isnan(values[split_idx])
             and values[split_idx] != 0
@@ -1654,7 +1654,7 @@ def ptable_scatter_plotly(
             elem_values if isinstance(elem_values, dict) else {"": elem_values}
         ).values():
             if len(elem_data) > 2:  # Has color data
-                color_vals = elem_data[2]
+                color_vals = elem_data[2]  # type: ignore[index]
                 if all(isinstance(val, int | float) for val in color_vals):
                     cbar_min = min(cbar_min, *color_vals)
                     cbar_max = max(cbar_max, *color_vals)

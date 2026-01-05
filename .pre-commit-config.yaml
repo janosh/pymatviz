@@ -17,7 +17,7 @@ repos:
         entry: ty check
         language: python
         types: [python]
-        args: [--ignore, unresolved-import]
+        files: ^(pymatviz|tests)/
         additional_dependencies: [ty>=0.0.9]
 
   - repo: https://github.com/janosh/format-ipy-cells
