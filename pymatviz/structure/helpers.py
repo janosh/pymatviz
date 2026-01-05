@@ -1621,16 +1621,16 @@ def _standardize_struct(
 
 
 def _prep_augmented_structure_for_bonding(
-    struct_i: Structure | IStructure,
+    struct_i: Structure | IStructure | IMolecule,
     *,
     show_image_sites: bool | dict[str, Any],
     cell_boundary_tol: float = 0,
-) -> Structure:
+) -> Structure:  # Always returns Structure from Structure.from_sites()
     """Prepare an augmented structure including primary and optionally image sites for
     bonding.
 
     Args:
-        struct_i (Structure | IStructure): Periodic structure to prepare.
+        struct_i (Structure | IStructure | IMolecule): Structure to prepare.
         show_image_sites: Whether to include image sites.
         cell_boundary_tol (float): Distance beyond unit cell boundaries within which
             image atoms are included.
