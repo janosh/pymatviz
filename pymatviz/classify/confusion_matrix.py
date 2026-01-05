@@ -150,7 +150,14 @@ def confusion_matrix(
             anno_matrix += [row]
         processed_annotations = np.array(anno_matrix).T
     else:  # When custom annotations provided, append percentage values
-        processed_annotations = np.char.add(np.asarray(annotations), "<br>")
+        anno_arr = np.asarray(annotations)
+        if anno_arr.shape != fmt_tile_vals.shape:
+            raise ValueError(
+                f"Custom annotations shape {anno_arr.shape} does not match confusion "
+                f"matrix shape {fmt_tile_vals.shape}. Note: annotations should be "
+                f"provided in transposed form (columns, rows) to match the heatmap."
+            )
+        processed_annotations = np.char.add(anno_arr, "<br>")
         processed_annotations = np.char.add(processed_annotations, fmt_tile_vals)
 
     heatmap_defaults = dict(
