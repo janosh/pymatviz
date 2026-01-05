@@ -46,7 +46,7 @@ def test_spacegroup_sunburst(show_counts: ShowCounts) -> None:
 def test_spacegroup_sunburst_invalid_show_counts() -> None:
     """Test that invalid show_counts values raise ValueError."""
     with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
-        spacegroup_sunburst([1], show_counts="invalid")  # type: ignore[invalid-argument-type]
+        spacegroup_sunburst([1], show_counts="invalid")
 
 
 def test_spacegroup_sunburst_single_item() -> None:
@@ -242,7 +242,7 @@ def test_chem_sys_sunburst_input_types(structures: list[Structure]) -> None:
 
     # Test with invalid input type
     with pytest.raises(TypeError, match="Expected str, Composition or Structure"):
-        pmv.chem_sys_sunburst([1])  # type: ignore[arg-type]
+        pmv.chem_sys_sunburst([1])
 
 
 def test_chem_sys_sunburst_high_arity() -> None:
