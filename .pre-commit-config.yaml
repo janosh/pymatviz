@@ -16,8 +16,9 @@ repos:
         name: ty check
         entry: ty check
         language: python
+        types: [python]
         args: [--ignore, unresolved-import]
-        additional_dependencies: [ty]
+        additional_dependencies: [ty>=0.0.9]
 
   - repo: https://github.com/janosh/format-ipy-cells
     rev: v0.1.11

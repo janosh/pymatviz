@@ -177,11 +177,11 @@ def luminance(color: ColorType) -> float:
         else:
             raise ValueError(f"Unsupported color format: {color}")
     elif isinstance(color, tuple) and len(color) >= 3:
+        # Extract RGB values (first 3 elements must be numeric for valid colors)
+        r, g, b = float(color[0]), float(color[1]), float(color[2])  # type: ignore[arg-type]
         # Check if any value is > 1, indicating 0-255 range
-        if any(val > 1 for val in color[:3]):
-            r, g, b = color[0] / 255, color[1] / 255, color[2] / 255
-        else:
-            r, g, b = color[:3]
+        if r > 1 or g > 1 or b > 1:
+            r, g, b = r / 255, g / 255, b / 255
     else:
         raise ValueError(f"Unsupported color type: {type(color)}")
 
