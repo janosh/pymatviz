@@ -583,14 +583,13 @@ def normalize_spacegroups(
 
     first_item = data.iloc[0] if isinstance(data, pd.Series) else data[0]
 
-    if type(first_item).__qualname__ in ("Structure", "Atoms", "MSONAtoms"):
-        # pymatgen Structure or ASE Atoms (incl. MSONAtoms wrapper)
-        # extract spacegroup numbers via moyopy
+    if is_structure_like(first_item):
+        # pymatgen Structure or ASE Atoms - extract spacegroup numbers via moyopy
         from moyopy import MoyoDataset
         from moyopy.interface import MoyoAdapter
 
         return pd.Series(
-            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
+            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]
         )
 
     result = pd.Series(data)
