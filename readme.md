@@ -60,12 +60,12 @@ See [`pymatviz/ptable/plotly.py`](pymatviz/ptable/plotly.py). The module support
 > [!WARNING]
 > Version 0.16.0 of `pymatviz` dropped the matplotlib-based functions in `ptable_matplotlib.py` in https://github.com/janosh/pymatviz/pull/270. Please use the `plotly`-based functions shown below instead which have feature parity, interactivity and better test coverage.
 
-|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/plotly.py#L38)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/plotly.py#L38) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
+|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/figures.py#L38)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/figures.py#L38) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                        ![ptable-heatmap-plotly-more-hover-data]                                                        |                                                          ![ptable-heatmap-plotly-log]                                                          |
-|               [`ptable_hists_plotly(data)`](pymatviz/ptable/plotly.py#L398) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/plotly.py#L1359) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
+|               [`ptable_hists_plotly(data)`](pymatviz/ptable/figures.py#L391) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/figures.py#L1495) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
 |                                                                 ![ptable-hists-plotly]                                                                 |                                                        ![ptable-scatter-plotly-markers]                                                        |
-| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/plotly.py#L778) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/plotly.py#L778)                                |
+| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/figures.py#L797) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/figures.py#L797)                                |
 |                                                           ![ptable-heatmap-splits-plotly-2]                                                            |                                                       ![ptable-heatmap-splits-plotly-3]                                                        |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -83,10 +83,10 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ## Phonons
 
-| [`phonon_bands(bands_dict)`](pymatviz/phonons/plotly.py#L35) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/plotly.py#L381) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
+| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L43) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L363) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
 | :----------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                  ![phonon-bands]                                                   |                                                                   ![phonon-dos]                                                                   |
-|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/plotly.py#L528)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/plotly.py#L528) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L511)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L511) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
 |                                          ![phonon-bands-and-dos-mp-2758]                                           |                                                         ![phonon-bands-and-dos-mp-23907]                                                          |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
@@ -142,10 +142,10 @@ On the roadmap but no ETA yet.
 
 See [`pymatviz/structure/plotly.py`](pymatviz/structure/plotly.py).
 
-|                           [`structure_3d(hea_structure)`](pymatviz/structure/plotly.py#L318)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/plotly.py#L318) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
+|                           [`structure_3d(hea_structure)`](pymatviz/structure/figures.py#L423)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py#L423) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
 | :---------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![hea-structure-3d]                                                   |                                                    ![lco-structure-3d]                                                     |
-| [`structure_2d(six_structs)`](pymatviz/structure/plotly.py#L42) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/plotly.py#L318) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
+| [`structure_2d(six_structs)`](pymatviz/structure/figures.py#L27) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/figures.py#L423) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
 |                                            ![matbench-phonons-structures-2d]                                            |                                             ![matbench-phonons-structures-3d]                                              |
 
 [matbench-phonons-structures-2d]: assets/svg/matbench-phonons-structures-2d.svg
@@ -223,7 +223,7 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
-| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/plotly.py#L33) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/plotly.py#L33) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
+| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L34) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L34) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
 | :-----------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------: |
 |                ![element-pair-rdfs-Na8Nb8O24]                 |                                               ![element-pair-rdfs-crystal-vs-amorphous]                                                |
 
@@ -232,12 +232,12 @@ See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
 ## Coordination
 
-See [`pymatviz/coordination/plotly.py`](pymatviz/coordination/plotly.py).
+See [`pymatviz/coordination/plotly.py`](pymatviz/coordination/figures.py).
 
-|              [`coordination_hist(struct_dict)`](pymatviz/coordination/plotly.py#L34)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/plotly.py#L34) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
+|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L35)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L35) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :-----------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                    ![coordination-hist-single]                                    |                                                                  ![coordination-hist-by-structure-and-element]                                                                  |
-| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/plotly.py#L337) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/plotly.py#L337) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
+| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L366) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L366) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
 |                                 ![coordination-vs-cutoff-single]                                  |                                                                       ![coordination-vs-cutoff-multiple]                                                                        |
 
 [coordination-hist-single]: assets/svg/coordination-hist-single.svg

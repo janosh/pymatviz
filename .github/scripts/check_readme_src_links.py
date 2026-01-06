@@ -1,3 +1,4 @@
+# noqa: INP001
 """Auto-update Markdown links to Python function definitions.
 
 This script rewrites Markdown links like:
@@ -84,7 +85,7 @@ def update_markdown(md_text: str, repo_root: Path) -> tuple[str, int]:
     return updated_text, updated_count
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:  # noqa: D103
     parser = argparse.ArgumentParser(description="Auto-update Markdown .py#L... links.")
     parser.add_argument(
         "--repo-root", type=Path, default=Path("."), help="Repository root."
@@ -92,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--readme",
         type=Path,
-        default=Path("README.md"),
+        default=Path("readme.md"),
         help="Markdown file to update.",
     )
     args = parser.parse_args(argv)
@@ -107,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     readme_path.write_text(updated, encoding="utf-8")
-    print(f"Updated {n_updated} link(s).")
+    print(f"Updated {n_updated} link(s).")  # noqa: T201
     return 0
 
 
