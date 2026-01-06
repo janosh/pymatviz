@@ -603,6 +603,14 @@ def normalize_spacegroups(
             raise ValueError(
                 f"Space group numbers must be in [1, 230], got: {invalid.tolist()}"
             )
+        return result
+
+    # Convert Hermann-Mauguin symbols to space group numbers
+    if isinstance(first_item, str):
+        from pymatgen.symmetry.groups import SpaceGroup
+
+        return pd.Series(SpaceGroup(symbol).int_number for symbol in result)
+
     return result
 
 

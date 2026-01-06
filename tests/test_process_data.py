@@ -642,7 +642,7 @@ def test_bin_df_cols_raises() -> None:
     [
         ([1, 2, 3, 225], [1, 2, 3, 225]),
         (pd.Series([1, 225, 167]), [1, 225, 167]),
-        (["Fm-3m", "P1", "Pnma"], ["Fm-3m", "P1", "Pnma"]),  # Hermann-Mauguin symbols
+        (["Fm-3m", "P1", "Pnma"], [225, 1, 62]),  # Hermann-Mauguin symbols -> numbers
     ],
 )
 def test_normalize_spacegroups(data: list | pd.Series, expected: list) -> None:
