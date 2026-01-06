@@ -96,7 +96,7 @@ palettes_3 = (
 # Example with vertical colorbars
 fig = pmv.ptable_heatmap_splits_plotly(
     # Use dummy values for all elements
-    {str(elem): list(range(len(palettes_3))) for elem in Element},
+    {str(elem): list(range(len(palettes_3))) for elem in Element},  # type: ignore[arg-type]
     orientation="diagonal",  # could also use "grid"
     colorscale=make_color_scale(palettes_3),
     colorbar=[
@@ -121,7 +121,7 @@ palettes_2 = (pmv_colors.ELEM_COLORS_ALLOY, pmv_colors.ELEM_COLORS_VESTA)
 
 fig = pmv.ptable_heatmap_splits_plotly(
     # Use dummy values for all elements
-    {str(elem): list(range(len(palettes_2))) for elem in Element},
+    {str(elem): list(range(len(palettes_2))) for elem in Element},  # type: ignore[arg-type]
     orientation="vertical",
     colorscale=make_color_scale(palettes_2),
     colorbar=[
@@ -142,7 +142,7 @@ data_dict = {el.symbol: np_rng.integers(0, 100, size=4) for el in Element}
 
 # Use grid orientation with 4 different colorscales and mixed colorbar orientations
 fig = pmv.ptable_heatmap_splits_plotly(
-    data=data_dict,
+    data=data_dict,  # type: ignore[arg-type]
     orientation="grid",
     # Use colorscale names directly
     colorscale=["Viridis", "Plasma", "Inferno", "Magma"],

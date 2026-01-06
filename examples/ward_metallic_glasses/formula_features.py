@@ -341,7 +341,7 @@ if __name__ == "__main__":
     )
     print("\nFeatures for Pt50P50:")
     for feature, values in features.items():
-        print(f"{feature}: {values[test_comp]:.2f}")
+        print(f"{feature}: {values[test_comp]:.2f}")  # type: ignore[index]
 
     # Test with a more complex composition
     test_comp2 = "Zr6.2Ti45.8Cu39.9Ni5.1Sn3"

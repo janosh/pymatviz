@@ -119,7 +119,7 @@ def process_dataset(
         if embed_method == "one-hot":
             embeddings = pcc.one_hot_encode(compositions)
         elif embed_method in (Embed.magpie, Embed.matscholar_el):
-            embeddings = pcc.matminer_featurize(compositions, preset=embed_method)
+            embeddings = pcc.matminer_featurize(compositions, preset=embed_method.value)  # type: ignore[arg-type]
         else:
             raise ValueError(f"Unknown {embed_method=}")
 

@@ -17,7 +17,7 @@ for elem in Element:
     phase = np_rng.uniform(0, 2 * np.pi)
     noise = np_rng.normal(0, 0.2, len(xs))
     ys = np.sin(freq * xs + phase) + noise
-    rand_sine_data[elem.symbol] = xs, ys
+    rand_sine_data[elem.symbol] = xs, ys  # type: ignore[assignment]
 
 
 rand_parity_data = {  # random parity data with y = x + noise
@@ -70,10 +70,10 @@ for mode, line_kwargs, marker_kwargs, symbol_kwargs, elem_data_dict, color_strat
     ),
 ]:
     fig = pmv.ptable_scatter_plotly(
-        elem_data_dict,
+        elem_data_dict,  # type: ignore[arg-type]
         mode=mode,  # type: ignore[arg-type]
         line_kwargs=line_kwargs,
-        color_elem_strategy=color_strategy,
+        color_elem_strategy=color_strategy,  # type: ignore[arg-type]
         scale=1.2,
         marker_kwargs=marker_kwargs,
         symbol_kwargs=symbol_kwargs,
