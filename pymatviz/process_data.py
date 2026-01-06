@@ -674,7 +674,7 @@ def sankey_flow_data(
 
     Args:
         df (pd.DataFrame): DataFrame containing source and target columns.
-        cols (list[str]): 2-tuple of (source_col, target_col) column names.
+        cols (list[str]): 2-element list of [source_col, target_col] column names.
         labels_with_counts (bool | "percent"): Whether to append counts to labels.
             If "percent", shows percentages instead of counts. Defaults to True.
 
