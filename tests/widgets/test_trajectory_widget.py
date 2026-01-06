@@ -470,7 +470,7 @@ def test_trajectory_widget_with_structure_info() -> None:
         species=("Fe", "Fe"),
         coords=((0, 0, 0), (0.5, 0.5, 0.5)),
     )
-    structure.info = {"temperature": 300, "pressure": 1.0}
+    structure.info = {"temperature": 300, "pressure": 1.0}  # type: ignore[attr-defined]
 
     widget = TrajectoryWidget(trajectory=structure)
 

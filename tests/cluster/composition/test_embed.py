@@ -22,7 +22,7 @@ def test_one_hot_encode(
 ) -> None:
     """Test one-hot encoding of chemical formulas."""
     # Default elements list contains all elements in the periodic table
-    result = one_hot_encode(compositions)
+    result = one_hot_encode(compositions)  # type: ignore[arg-type]
 
     # Check shape
     assert result.shape == expected_shape
@@ -32,7 +32,7 @@ def test_one_hot_encode(
 
     # Test with a custom elements list
     elements = ["H", "C", "O", "Na", "Cl"]
-    result_custom = one_hot_encode(compositions, elements=elements)
+    result_custom = one_hot_encode(compositions, elements=elements)  # type: ignore[arg-type]
 
     # Check custom shape
     assert result_custom.shape == (len(compositions), len(elements))

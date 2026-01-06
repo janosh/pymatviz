@@ -73,7 +73,7 @@ filtered_energies: dict[str, np.ndarray] = {}
 # First pass: collect min energies and filter data
 for elem2 in sorted_elements:
     distances, energies = map(np.asarray, diatomic_curves[elem2])
-    mask = distances >= 0.5  # Filter data points where distance >= 0.5
+    mask = distances >= 0.5  # type: ignore[unsupported-operator]
     filtered_distances[elem2] = distances[mask]
     filtered_energies[elem2] = energies[mask]
     min_energies[elem2] = min(energies[mask])

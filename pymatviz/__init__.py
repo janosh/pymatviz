@@ -70,7 +70,6 @@ from pymatviz.scatter import (
     density_scatter_with_hist,
 )
 from pymatviz.structure import structure_2d, structure_3d
-from pymatviz.structure.figures import structure_2d_plotly, structure_3d_plotly
 from pymatviz.sunburst import chem_env_sunburst, chem_sys_sunburst, spacegroup_sunburst
 from pymatviz.templates import (
     pmv_dark_template,
@@ -120,6 +119,6 @@ if os.environ.get("CI"):  # Configure Plotly to be silent in CI
 
     # Replace fig.show() method with a noop version for CI environments to avoid
     # spamming logs with huge HTML strings
-    go.Figure.show = lambda *_args, **_kwargs: None  # type: ignore[assignment]
+    go.Figure.show = lambda *_args, **_kwargs: None  # type: ignore[invalid-assignment]
 
 notebook_mode(on=IS_IPYTHON)

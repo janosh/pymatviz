@@ -119,7 +119,7 @@ def test_ptable_hists_colorbar_formatting() -> None:
     }
 
     # Test with default settings and colorbar
-    fig = pmv.ptable_hists_plotly(test_data, colorbar={"title": "Test"})
+    fig = pmv.ptable_hists_plotly(test_data, colorbar={"title": "Test"})  # type: ignore[arg-type]
 
     # Find the colorbar trace
     colorbar_trace = get_scatter_colorbar_trace(fig)
@@ -258,7 +258,7 @@ def test_ptable_hists_log_scale_formatting() -> None:
     }
 
     # Test with log scale
-    fig = pmv.ptable_hists_plotly(test_data, log=True, colorbar={"title": "Test"})
+    fig = pmv.ptable_hists_plotly(test_data, log=True, colorbar={"title": "Test"})  # type: ignore[arg-type]
 
     # Find the colorbar trace
     colorbar_trace = get_scatter_colorbar_trace(fig)

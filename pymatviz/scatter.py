@@ -27,8 +27,9 @@ def _get_axis_labels(
 ) -> tuple[str, str]:
     """Extract axis labels from data or column names."""
     if df is not None:
-        xlabel = getattr(df[x], "name", x)
-        ylabel = getattr(df[y], "name", y)
+        # x, y are column names (str) when df is provided
+        xlabel: str = getattr(df[x], "name", x)  # type: ignore[arg-type]
+        ylabel: str = getattr(df[y], "name", y)  # type: ignore[arg-type]
     else:
         xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
         ylabel = getattr(y, "name", y if isinstance(y, str) else "Predicted")
@@ -171,12 +172,12 @@ def density_scatter(
             ylabel = ylabel or auto_ylabel
 
         # Create column names for DataFrame
-        x_col = xlabel if isinstance(xlabel, str) else "x"
-        y_col = ylabel if isinstance(ylabel, str) else "y"
-        df_data = pd.DataFrame({x_col: xs, y_col: ys})
-        x, y = x_col, y_col
+        x = xlabel if isinstance(xlabel, str) else "x"
+        y = ylabel if isinstance(ylabel, str) else "y"
+        df_data = pd.DataFrame({x: xs, y: ys})
     else:
         df_data = df
+        x, y = str(x), str(y)  # x and y are column names when df is provided
     if xlabel is None or ylabel is None:
         auto_xlabel, auto_ylabel = _get_axis_labels(x, y, df)
         xlabel = xlabel or auto_xlabel
@@ -252,7 +253,13 @@ def density_scatter(
 
     if log_density:
         _update_colorbar_for_log_density(
-            fig, color_vals, bin_counts_col, x, y, hover_format, custom_hovertemplate
+            fig,
+            color_vals,
+            bin_counts_col,
+            x,
+            y,
+            hover_format,
+            custom_hovertemplate,
         )
 
     pmv.powerups.enhance_parity_plot(
@@ -464,7 +471,9 @@ def density_hexbin(
     xlabel, ylabel = _get_axis_labels(x, y, df)
 
     # Use numpy's histogram2d for initial binning, then convert to hex coordinates
-    hist, x_edges, y_edges = np.histogram2d(xs, ys, bins=gridsize, weights=weights)
+    hist, x_edges, y_edges = np.histogram2d(  # type: ignore[no-matching-overload]
+        xs, ys, bins=gridsize, weights=weights
+    )
 
     # Create hexagonal grid from rectangular bins
     x_centers = (x_edges[:-1] + x_edges[1:]) / 2

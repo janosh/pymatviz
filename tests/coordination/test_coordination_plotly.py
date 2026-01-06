@@ -144,7 +144,7 @@ def test_coordination_hist_bar_kwargs(structures: Sequence[Structure]) -> None:
 def test_coordination_hist_invalid_input() -> None:
     """Test coordination_hist with invalid input."""
     with pytest.raises(TypeError):
-        coordination_hist("invalid input")
+        coordination_hist("invalid input")  # type: ignore[arg-type]
 
 
 def test_coordination_hist_empty() -> None:
@@ -240,7 +240,7 @@ def test_coordination_vs_cutoff_line_invalid_input() -> None:
             match="Input must be a pymatgen Structure, IStructure, Molecule, "
             "IMolecule, ASE Atoms, or PhonopyAtoms object",
         ):
-            coordination_vs_cutoff_line(inputs)
+            coordination_vs_cutoff_line(inputs)  # type: ignore[arg-type]
 
 
 def test_coordination_vs_cutoff_line_invalid_strategy() -> None:

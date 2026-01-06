@@ -69,7 +69,7 @@ def _standardize_input(
 
     if strict:
         for trace_dict in curves_dict.values():
-            curve_probs = np.asarray(trace_dict["probs_positive"])
+            curve_probs = np.asarray(trace_dict["probs_positive"])  # type: ignore[index]
             curve_probs_no_nan = curve_probs[~np.isnan(curve_probs)]
             min_prob, max_prob = curve_probs_no_nan.min(), curve_probs_no_nan.max()
             if not (0 <= min_prob <= max_prob <= 1):
@@ -77,7 +77,7 @@ def _standardize_input(
                     f"Probabilities must be in [0, 1], got range {(min_prob, max_prob)}"
                 )
 
-    return targets, curves_dict
+    return targets, curves_dict  # type: ignore[invalid-return-type]
 
 
 def roc_curve_plotly(

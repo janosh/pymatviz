@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import numpy as np
 import plotly.graph_objects as go
@@ -14,7 +14,7 @@ from pymatviz.process_data import is_ase_atoms
 
 
 if TYPE_CHECKING:
-    from typing import Any, TypeAlias
+    from typing import TypeAlias
 
 
 PatternOrStruct: TypeAlias = DiffractionPattern | Structure
@@ -138,14 +138,17 @@ def xrd_pattern(  # noqa: D417
 
     for trace_idx, (label, pattern_data) in enumerate(patterns.items()):
         if isinstance(pattern_data, tuple):
-            pattern_or_struct, trace_kwargs = pattern_data
+            pattern_or_struct, trace_kwargs = (
+                pattern_data[0],
+                cast("dict[str, Any]", pattern_data[1]),
+            )
         else:
             pattern_or_struct, trace_kwargs = pattern_data, {}
 
         if is_ase_atoms(pattern_or_struct):
             from pymatgen.io.ase import AseAtomsAdaptor
 
-            pattern_or_struct = AseAtomsAdaptor().get_structure(pattern_or_struct)
+            pattern_or_struct = AseAtomsAdaptor().get_structure(pattern_or_struct)  # type: ignore[arg-type]
 
         if isinstance(pattern_or_struct, Structure):
             xrd_calculator = XRDCalculator(wavelength=wavelength)

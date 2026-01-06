@@ -131,3 +131,7 @@ docstring-code-format = true
 
 [dependency-groups]
 dev = ["prek>=0.2.13", "ty>=0.0.1a25"]
+
+[tool.ty.rules]
+unused-ignore-comment = "warn"
+unresolved-import = "ignore"

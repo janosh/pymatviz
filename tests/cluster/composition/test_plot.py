@@ -1718,8 +1718,8 @@ def test_precomputed_embeddings_in_composition_col() -> None:
 
     # Verify embeddings are the same, though possibly reordered
     # Compare with tolerance to avoid float hashing pitfalls
-    embeddings_set = {tuple(np.round(emb, 12)) for emb in embeddings}  # type: ignore[arg-type]
-    fig_embeddings_set = {tuple(np.round(emb, 12)) for emb in fig.embeddings}  # type: ignore[arg-type]
+    embeddings_set = {tuple(np.round(emb, 12)) for emb in embeddings}
+    fig_embeddings_set = {tuple(np.round(emb, 12)) for emb in fig.embeddings}
     assert embeddings_set == fig_embeddings_set
 
 

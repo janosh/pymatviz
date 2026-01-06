@@ -106,7 +106,7 @@ fig_custom_size.show()
 # coverage_data_file=f"{pmv.ROOT}/tmp/2025-07-31-pymatviz-coverage.json"
 coverage_data_file = "https://github.com/user-attachments/files/21545088/2025-07-31-pymatviz-coverage.json"
 
-fig_coverage = pmv.py_pkg_treemap(
+fig_cov = pmv.py_pkg_treemap(
     "pymatviz",
     color_by="coverage",
     coverage_data_file=coverage_data_file,
@@ -115,16 +115,16 @@ fig_coverage = pmv.py_pkg_treemap(
     color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
 )
 title = "pymatviz: Coverage Heatmap (Cell size by lines, Color by test coverage)"
-fig_coverage.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
-fig_coverage.show()
-pmv.io.save_and_compress_svg(fig_coverage, "py-pkg-treemap-pymatviz-coverage")
+fig_cov.layout.title.update(text=title, x=0.5, y=0.97, font_size=18)
+fig_cov.show()
+pmv.io.save_and_compress_svg(fig_cov, "py-pkg-treemap-pymatviz-coverage")
 
 
 # %% pymatgen treemap with coverage heatmap and manual color range (0-100%)
 coverage_data_file = "https://github.com/user-attachments/files/21545087/2025-07-31-pymatgen-coverage.json"
 # coverage_data_file = f"{pmv.ROOT}/tmp/2025-07-31-pymatgen-coverage.json"
 
-fig_cvrg_range = pmv.py_pkg_treemap(
+fig_cov_range = pmv.py_pkg_treemap(
     pymatgen,
     color_by="coverage",
     coverage_data_file=coverage_data_file,  # Use existing coverage data
@@ -134,7 +134,7 @@ fig_cvrg_range = pmv.py_pkg_treemap(
     color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
 )
 # title_range = "pymatgen: Coverage Heatmap with Manual Range (0-100%)"
-# fig_cvrg_range.layout.title.update(text=title_range, x=0.5, y=0.97, font_size=18)
-fig_cvrg_range.layout.margin = dict(l=0, r=0, b=0, t=0)
-fig_cvrg_range.show()
-pmv.io.save_and_compress_svg(fig_cvrg_range, "py-pkg-treemap-pymatgen-coverage")
+# fig_cov_range.layout.title.update(text=title_range, x=0.5, y=0.97, font_size=18)
+fig_cov_range.layout.margin = dict(l=0, r=0, b=0, t=0)
+fig_cov_range.show()
+pmv.io.save_and_compress_svg(fig_cov_range, "py-pkg-treemap-pymatgen-coverage")

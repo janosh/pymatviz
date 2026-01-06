@@ -1,6 +1,6 @@
 """Sunburst plot of crystal systems."""
 
-from collections.abc import Iterable
+from collections.abc import Sequence
 from typing import Any, Literal
 
 import pandas as pd
@@ -14,7 +14,7 @@ from pymatviz.typing import ShowCounts
 
 
 def spacegroup_sunburst(
-    data: Iterable[int | str] | pd.Series,
+    data: Sequence[int | str] | pd.Series,
     *,
     show_counts: ShowCounts = "value",
     max_slices: int | None = None,
@@ -44,8 +44,14 @@ def spacegroup_sunburst(
 
     Returns:
         Figure: The Plotly figure.
+
+    Raises:
+        ValueError: If data is empty.
     """
-    if type(next(iter(data))).__qualname__ in ("Structure", "Atoms"):
+    if len(data) == 0:
+        raise ValueError("spacegroup_sunburst requires non-empty data")
+
+    if type(data[0]).__qualname__ in ("Structure", "Atoms"):
         # if 1st sequence item is pymatgen structure or ASE Atoms, assume all are
         from moyopy import MoyoDataset
         from moyopy.interface import MoyoAdapter

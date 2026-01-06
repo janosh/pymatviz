@@ -14,7 +14,7 @@ from pymatviz.typing import AnyStructure
 
 
 def brillouin_zone_3d(
-    struct: AnyStructure | Sequence[AnyStructure],
+    struct: AnyStructure | Sequence[AnyStructure] | dict[str, AnyStructure],
     *,
     # Surface styling
     surface_kwargs: dict[str, Any] | None = None,

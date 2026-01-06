@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Literal, ParamSpec, TypeVar, Union, get_args
 
 import pandas as pd
 import plotly.graph_objects as go
-from pymatgen.core import IStructure, Structure
+from pymatgen.core import Composition, IMolecule, IStructure, Molecule, Structure
 from pymatgen.io.ase import MSONAtoms
 from pymatgen.phonon.dos import PhononDos
 
@@ -19,7 +19,9 @@ if TYPE_CHECKING:
     from phonopy.phonon.dos import TotalDos
 
 Xyz: TypeAlias = tuple[float, float, float]
-AnyStructure: TypeAlias = Union[Structure, IStructure, MSONAtoms, "AseAtoms"]
+AnyStructure: TypeAlias = Union[
+    Structure, IStructure, Molecule, IMolecule, MSONAtoms, "AseAtoms"
+]
 AnyDos: TypeAlias = Union[PhononDos, "TotalDos"]
 
 ColorElemTypeStrategy: TypeAlias = Literal["symbol", "background", "both", "off"]
@@ -35,7 +37,13 @@ CrystalSystem: TypeAlias = Literal[
     "cubic",
 ]
 
-ElemValues: TypeAlias = dict[str | int, float] | pd.Series | Sequence[str]
+ElemValues: TypeAlias = (
+    Mapping[str, int | float]
+    | Mapping[int, int | float]
+    | pd.Series
+    | Sequence[str]
+    | Sequence["Composition"]
+)
 
 T = TypeVar("T")  # generic type for input validation
 P = ParamSpec("P")  # generic type for return value

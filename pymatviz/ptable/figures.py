@@ -215,8 +215,8 @@ def ptable_heatmap_plotly(
 
             if callable(label_map):
                 label = label_map(label)
-            elif isinstance(label_map, dict):
-                label = label_map.get(label, label)  # type: ignore[arg-type]
+            elif isinstance(label_map, dict) and label in label_map:
+                label = str(label_map[label])
         # Apply custom element symbol if provided
         display_symbol = (element_symbol_map or {}).get(symbol, symbol)
 
@@ -600,11 +600,8 @@ def ptable_hists_plotly(
             else:
                 annotation = ""
 
-            if annotation:  # Only add annotation if we have text
-                # Convert single annotation to list for uniform handling
-                for anno in (
-                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
-                ):
+            if annotation and (anno_list := _normalize_annotation(annotation)):
+                for anno in anno_list:
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}
                     anno_defaults = {
@@ -689,6 +686,29 @@ def ptable_hists_plotly(
     return fig
 
 
+def _normalize_annotation(
+    annotation: Any,
+) -> list[str | dict[str, Any]] | None:
+    """Normalize annotation input to a list of annotation dicts/strings.
+
+    Args:
+        annotation: Single annotation string, dict, or list of these.
+
+    Returns:
+        List of annotations, or None if input is not a recognized type.
+    """
+    if isinstance(annotation, str):
+        return [annotation]
+    if isinstance(annotation, dict):
+        return [annotation]
+    if isinstance(annotation, list):
+        # Validate list elements are str or dict
+        if not all(isinstance(item, str | dict) for item in annotation):
+            return None
+        return annotation
+    return None
+
+
 def _add_colorbar_trace(
     fig: go.Figure,
     colorscale: ColorScale,
@@ -701,7 +721,7 @@ def _add_colorbar_trace(
     """Add an invisible scatter trace with a colorbar to the figure."""
     # For callable colorscales, sample at endpoints to create a 2-point colorscale
     if callable(colorscale):
-        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]
+        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]  # type: ignore[assignment]
 
     # Ensure tickformat is included in colorbar settings
     if "tickformat" not in colorbar:
@@ -716,16 +736,17 @@ def _add_colorbar_trace(
         cmax=cmax,
         colorbar=colorbar,
     )
-    scatter_kwargs: dict[str, Any] = dict(
-        x=[None],
-        y=[None],
-        mode="markers",
-        marker=marker,
-        showlegend=False,
-        hoverinfo="none",
-    )
+    scatter_kwargs: dict[str, Any] = {
+        "x": [None],
+        "y": [None],
+        "mode": "markers",
+        "marker": marker,
+        "showlegend": False,
+        "hoverinfo": "none",
+    }
     if row is not None and col is not None:
-        scatter_kwargs.update(row=row, col=col)  # type: ignore[invalid-argument-type]
+        scatter_kwargs["row"] = row
+        scatter_kwargs["col"] = col
         # Hide the axes for the invisible scatter trace
         fig.update_xaxes(visible=False, row=row, col=col)
         fig.update_yaxes(visible=False, row=row, col=col)
@@ -924,9 +945,9 @@ def ptable_heatmap_splits_plotly(
         elif colorbar is None:
             # Create colorbar settings with column names as titles
             colorbar = [dict(title=label) for label in split_labels]
-        data = {idx: row.tolist() for idx, row in data.iterrows()}  # type: ignore[misc]
+        data = {idx: row.tolist() for idx, row in data.iterrows()}  # type: ignore[assignment]
     elif isinstance(data, pd.Series):
-        data = data.to_dict()  # type: ignore[assignment]
+        data = data.to_dict()
 
     # Calculate split ranges early if using multiple colorscales
     if not data:
@@ -1353,11 +1374,8 @@ def ptable_heatmap_splits_plotly(
             else:
                 annotation = ""
 
-            if annotation:  # Only add annotation if we have text
-                # Convert single annotation to list for uniform handling
-                for anno in (
-                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
-                ):
+            if annotation and (anno_list := _normalize_annotation(annotation)):
+                for anno in anno_list:
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}
                     anno_defaults = {
@@ -1809,11 +1827,8 @@ def ptable_scatter_plotly(
             else:
                 annotation = ""
 
-            if annotation:  # Only add annotation if we have text
-                # Convert single annotation to list for uniform handling
-                for anno in (
-                    [annotation] if isinstance(annotation, str | dict) else annotation  # type: ignore[not-iterable]
-                ):
+            if annotation and (anno_list := _normalize_annotation(annotation)):
+                for anno in anno_list:
                     # Convert string annotations to dict format
                     anno_dict = anno if isinstance(anno, dict) else {"text": anno}
                     anno_defaults = {

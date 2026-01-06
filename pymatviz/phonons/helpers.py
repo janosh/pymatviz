@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
+from pymatgen.electronic_structure.bandstructure import (
+    BandStructure,
+    BandStructureSymmLine,
+)
 from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.util.string import htmlify
 
@@ -19,7 +22,7 @@ if TYPE_CHECKING:
     from pymatgen.core import Structure
     from pymatgen.phonon.dos import PhononDos
 
-AnyBandStructure: TypeAlias = BandStructureSymmLine | PhononBands
+AnyBandStructure: TypeAlias = BandStructure | BandStructureSymmLine | PhononBands
 YMin: TypeAlias = float | Literal["y_min"]
 YMax: TypeAlias = float | Literal["y_max"]
 
