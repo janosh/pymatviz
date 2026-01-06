@@ -1120,7 +1120,7 @@ def test_structure_3d_multiple() -> None:
     assert len(fig.layout.annotations) == expected_n_subplot_titles
 
     # Test list[Structure]
-    fig = pmv.structure_3d(list(structs_dict.values()), n_cols=3)  # type: ignore[arg-type]
+    fig = pmv.structure_3d(list(structs_dict.values()), n_cols=3)
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == expected_total_traces_3d
     assert len(fig.layout.annotations) == expected_n_subplot_titles

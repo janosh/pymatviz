@@ -77,7 +77,7 @@ def _standardize_input(
                     f"Probabilities must be in [0, 1], got range {(min_prob, max_prob)}"
                 )
 
-    return targets, curves_dict  # type: ignore[return-value]
+    return targets, curves_dict  # type: ignore[invalid-return-type]
 
 
 def roc_curve_plotly(

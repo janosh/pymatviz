@@ -221,7 +221,7 @@ def structure_2d(
         # For bonding, consider primary and image sites if show_image_sites is active
         # The actual plotting of image sites is handled later by draw_site if show_sites
         augmented_structure = helpers._prep_augmented_structure_for_bonding(
-            struct_i,  # type: ignore[arg-type]
+            struct_i,
             show_image_sites=show_image_sites and show_sites,
             cell_boundary_tol=cell_boundary_tol_i,
         )
@@ -608,7 +608,7 @@ def structure_3d(
         # This augmented_structure is used for collecting all site data for the single
         # 3D trace and for bond calculations.
         augmented_structure = helpers._prep_augmented_structure_for_bonding(
-            struct_i,  # type: ignore[arg-type]
+            struct_i,
             show_image_sites=show_image_sites and show_sites,
             cell_boundary_tol=cell_boundary_tol_i,
         )

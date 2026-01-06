@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from glob import glob
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import plotly.graph_objects as go
@@ -248,10 +248,10 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
     assert len(fig._grid_ref[0]) == 1  # number of columns
 
     # Test custom subplot titles
-    def subplot_title(struct: Structure, key: Hashable) -> str:
+    def subplot_title(struct: AnyStructure, key: Hashable) -> str:
         return f"Custom {key} - {struct.formula}"
 
-    fig = brillouin_zone_3d(struct_dict, subplot_title=subplot_title)  # type: ignore[arg-type]
+    fig = brillouin_zone_3d(struct_dict, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
     for idx, (key, struct) in enumerate(struct_dict.items()):
         assert fig.layout.annotations[idx].text == f"Custom {key} - {struct.formula}"
@@ -326,12 +326,12 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
         assert scene.domain.y == pytest.approx([y_start, y_end], abs=1e-10)
 
     # Test custom subplot title with dict return
-    def subplot_title(_struct: Structure, key: Hashable) -> dict[str, Any]:
+    def subplot_title(_struct: AnyStructure, key: Hashable) -> dict[str, Any]:
         return dict(
             text=f"Custom {key}", font=dict(size=16, color="blue"), yanchor="bottom"
         )
 
-    fig = brillouin_zone_3d(structures, subplot_title=subplot_title)  # type: ignore[arg-type]
+    fig = brillouin_zone_3d(structures, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
     for idx, struct in enumerate(structures):
         anno = fig.layout.annotations[idx]
@@ -345,11 +345,11 @@ def test_brillouin_zone_3d_subplot_grid_options(structures: list[Structure]) -> 
 def test_brillouin_zone_3d_axes_vectors(structures: list[Structure]) -> None:
     """Test customization of coordinate axes vectors."""
     # Test with custom axes vector styling
-    custom_axes = {
+    custom_axes: dict[Literal["shaft", "cone"], dict[str, Any]] = {
         "shaft": {"color": "purple", "width": 8},
         "cone": {"sizeref": 0.4},  # Match the default value
     }
-    fig = brillouin_zone_3d(structures[0], axes_vectors=custom_axes)  # type: ignore[arg-type]
+    fig = brillouin_zone_3d(structures[0], axes_vectors=custom_axes)
     assert isinstance(fig, go.Figure)
 
     # Check shaft traces
@@ -400,11 +400,11 @@ def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) ->
     """Test different subplot title configurations."""
 
     # Test with dict return type for subplot titles
-    def title_with_dict(_struct: Structure, key: Hashable) -> dict[str, Any]:
+    def title_with_dict(_struct: AnyStructure, key: Hashable) -> dict[str, Any]:
         font = dict(size=20, color="red")
         return dict(text=f"Test {key}", font=font, x=0.5, y=0.9)
 
-    fig = brillouin_zone_3d(structures, subplot_title=title_with_dict)  # type: ignore[arg-type]
+    fig = brillouin_zone_3d(structures, subplot_title=title_with_dict)
     assert isinstance(fig, go.Figure)
     for idx, anno in enumerate(fig.layout.annotations):
         expected_text = f"Test {idx + 1} {structures[idx].formula}"
@@ -420,10 +420,10 @@ def test_brillouin_zone_3d_custom_subplot_titles(structures: list[Structure]) ->
     assert all(anno.text == " " for anno in fig.layout.annotations)
 
     # Test with custom string return type
-    def title_with_string(struct: Structure, key: Hashable) -> str:
+    def title_with_string(struct: AnyStructure, key: Hashable) -> str:
         return f"Structure {key} ({len(struct)} atoms)"
 
-    fig = brillouin_zone_3d(structures, subplot_title=title_with_string)  # type: ignore[arg-type]
+    fig = brillouin_zone_3d(structures, subplot_title=title_with_string)
     assert isinstance(fig, go.Figure)
     for idx, struct in enumerate(structures):
         expected_text = f"Structure {idx + 1} {struct.formula} ({len(struct)} atoms)"

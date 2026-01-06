@@ -849,7 +849,7 @@ def test_py_pkg_treemap_coverage_scenarios(
         df_modules = pmv.treemap.py_pkg.collect_package_modules(["my_pkg"])
         if not df_modules.empty:
             custom_colors = {
-                row["file_path"]: float(int(idx) * 25 + 50)  # type: ignore[arg-type]
+                row["file_path"]: float(int(idx) * 25 + 50)  # type: ignore[invalid-argument-type]
                 for idx, row in df_modules.head(2).iterrows()
             }
             kwargs["color_by"] = custom_colors

@@ -422,12 +422,12 @@ def phonon_dos(
         if cls_name == "phonopy.phonon.dos.TotalDos":
             # Cast to Any to access phonopy TotalDos attributes
             phonopy_dos = cast("Any", dos)
-            dos_dict[key] = PhononDos(
+            dos_dict[key] = PhononDos(  # type: ignore[index]
                 frequencies=phonopy_dos.frequency_points,
                 densities=phonopy_dos.dos,
             )
         elif isinstance(dos, PhononDos):
-            dos_dict[key] = dos
+            dos_dict[key] = dos  # type: ignore[index]
         else:
             raise TypeError(
                 f"Only {PhononDos.__name__} or dict supported, got {type(dos).__name__}"

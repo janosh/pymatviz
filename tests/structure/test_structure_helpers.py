@@ -101,7 +101,7 @@ def test_angles_to_rotation_matrix(
 ) -> None:
     rot_matrix = _angles_to_rotation_matrix(angles)
     assert rot_matrix.shape == expected_shape
-    assert_allclose(np.linalg.det(rot_matrix), 1.0)  # type: ignore[arg-type]
+    assert_allclose(np.linalg.det(rot_matrix), 1.0)
 
 
 def test_angles_to_rotation_matrix_invalid_input() -> None:

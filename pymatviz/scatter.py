@@ -470,7 +470,7 @@ def density_hexbin(
     xlabel, ylabel = _get_axis_labels(x, y, df)
 
     # Use numpy's histogram2d for initial binning, then convert to hex coordinates
-    hist, x_edges, y_edges = np.histogram2d(  # type: ignore[call-overload]
+    hist, x_edges, y_edges = np.histogram2d(  # type: ignore[no-matching-overload]
         xs, ys, bins=gridsize, weights=weights
     )
 

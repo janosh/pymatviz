@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import numpy as np
 import plotly.graph_objects as go
@@ -14,7 +14,7 @@ from pymatviz.process_data import is_ase_atoms
 
 
 if TYPE_CHECKING:
-    from typing import Any, TypeAlias
+    from typing import TypeAlias
 
 
 PatternOrStruct: TypeAlias = DiffractionPattern | Structure
@@ -138,7 +138,10 @@ def xrd_pattern(  # noqa: D417
 
     for trace_idx, (label, pattern_data) in enumerate(patterns.items()):
         if isinstance(pattern_data, tuple):
-            pattern_or_struct, trace_kwargs = pattern_data
+            pattern_or_struct, trace_kwargs = (
+                pattern_data[0],
+                cast("dict[str, Any]", pattern_data[1]),
+            )
         else:
             pattern_or_struct, trace_kwargs = pattern_data, {}
 
@@ -181,8 +184,8 @@ def xrd_pattern(  # noqa: D417
         if stack:
             row = trace_idx + 1 if stack == "vertical" else 1
             col = trace_idx + 1 if stack == "horizontal" else 1
-            trace_kwargs.setdefault("row", row)  # type: ignore[union-attr]
-            trace_kwargs.setdefault("col", col)  # type: ignore[union-attr]
+            trace_kwargs.setdefault("row", row)
+            trace_kwargs.setdefault("col", col)
         fig.add_bar(
             x=two_theta,
             y=intensities,
@@ -190,7 +193,7 @@ def xrd_pattern(  # noqa: D417
             name=label,
             hovertext=tooltips,
             hoverinfo="text",
-            **trace_kwargs,  # type: ignore[arg-type]
+            **trace_kwargs,
         )
 
     # Normalize intensities to 100 and add annotations
