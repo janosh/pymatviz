@@ -8,38 +8,75 @@ by locating the line number of:
     `def function(...)`
 
 in the referenced Python module and updating the '#L...' anchor accordingly.
+It also validates that all `.py` file links (with or without line anchors) point
+to files that actually exist.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 from pathlib import Path
 
 
 _MD_LINK_RE: re.Pattern[str] = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 _PY_LINE_ANCHOR_RE: re.Pattern[str] = re.compile(r"^(?P<path>.+\.py)#L\d+(?:-L\d+)?$")
+_PY_LINK_RE: re.Pattern[str] = re.compile(r"^(?P<path>.+\.py)(?:#L\d+(?:-L\d+)?)?$")
 _FUNC_NAME_IN_TEXT_RE: re.Pattern[str] = re.compile(r"`?(?P<name>[A-Za-z_]\w*)\s*\(")
 
 
-def update_markdown(md_text: str, repo_root: Path) -> tuple[str, int]:
-    """Update eligible links in the given markdown text."""
+def extract_func_name(link_text: str) -> str | None:
+    """Extract a function name from Markdown link text.
 
-    def extract_func_name(link_text: str) -> str | None:
-        """Extract a function name from Markdown link text."""
-        match = _FUNC_NAME_IN_TEXT_RE.search(link_text)
-        return match.group("name") if match else None
+    Args:
+        link_text: The text portion of a Markdown link, e.g. "`function_name(args)`"
 
-    def find_def_line(module_path: Path, func_name: str) -> int | None:
-        """Find the 1-based line number of 'def <func_name>' in a Python file."""
-        pattern = re.compile(rf"^\s*def\s+{re.escape(func_name)}\b")
-        for idx, line in enumerate(
-            module_path.read_text(encoding="utf-8").splitlines(), start=1
-        ):
-            if pattern.search(line):
-                return idx
+    Returns:
+        The function name if found, otherwise None.
+    """
+    match = _FUNC_NAME_IN_TEXT_RE.search(link_text)
+    return match.group("name") if match else None
+
+
+def find_def_line(module_path: Path, func_name: str) -> int | None:
+    """Find line number of function definition using AST parsing.
+
+    Uses Python's AST module for robust parsing that handles decorators,
+    comments, and edge cases better than regex.
+
+    Args:
+        module_path: Path to the Python source file.
+        func_name: Name of the function to find.
+
+    Returns:
+        The 1-based line number where the function is defined, or None if not found.
+    """
+    code = module_path.read_text(encoding="utf-8")
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
         return None
 
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == func_name:
+            return node.lineno
+    return None
+
+
+def update_markdown(
+    md_text: str, repo_root: Path, *, check_only: bool = False
+) -> tuple[str, int, list[str]]:
+    """Update eligible links in the given markdown text.
+
+    Args:
+        md_text: The markdown content to process.
+        repo_root: Root directory of the repository for resolving relative paths.
+        check_only: If True, only report what would change without modifying.
+
+    Returns:
+        A tuple of (updated_text, update_count, missing_files_list).
+    """
     updated_count = 0
     missing_files: list[str] = []
 
@@ -49,17 +86,26 @@ def update_markdown(md_text: str, repo_root: Path) -> tuple[str, int]:
         link_text = match.group(1)
         url = match.group(2)
 
+        # Check if this is any .py link (with or without anchor)
+        py_match = _PY_LINK_RE.match(url)
+        if not py_match:
+            return match.group(0)
+
+        # Validate that the .py file exists
+        rel_path_str = py_match.group("path")
+        rel_path = Path(rel_path_str)
+        abs_path = (repo_root / rel_path).resolve()
+
+        if not abs_path.exists():
+            missing_files.append(f"{url} -> {abs_path}")
+            return match.group(0)
+
+        # Only update line numbers for links that have #L anchors
         if not _PY_LINE_ANCHOR_RE.match(url):
             return match.group(0)
 
         func_name = extract_func_name(link_text)
         if not func_name:
-            return match.group(0)
-
-        rel_path = Path(url.split("#", 1)[0])
-        abs_path = (repo_root / rel_path).resolve()
-        if not abs_path.exists():
-            missing_files.append(f"{url} -> {abs_path} (func: {func_name})")
             return match.group(0)
 
         lineno = find_def_line(abs_path, func_name)
@@ -71,22 +117,27 @@ def update_markdown(md_text: str, repo_root: Path) -> tuple[str, int]:
             return match.group(0)
 
         updated_count += 1
+        if check_only:
+            return match.group(0)  # Don't modify in check mode
         return f"[{link_text}]({new_url})"
 
     updated_text = _MD_LINK_RE.sub(replace, md_text)
 
-    # Fail at the end if any missing files were encountered
-    if missing_files:
-        msg = "Missing target .py files referenced by Markdown links:\n" + "\n".join(
-            f"- {item}" for item in sorted(set(missing_files))
-        )
-        raise FileNotFoundError(msg)
-
-    return updated_text, updated_count
+    return updated_text, updated_count, missing_files
 
 
-def main(argv: list[str] | None = None) -> int:  # noqa: D103
-    parser = argparse.ArgumentParser(description="Auto-update Markdown .py#L... links.")
+def main(argv: list[str] | None = None) -> int:
+    """Main entry point for the script.
+
+    Args:
+        argv: Command line arguments. If None, uses sys.argv.
+
+    Returns:
+        Exit code (0 for success, 1 for failure).
+    """
+    parser = argparse.ArgumentParser(
+        description="Auto-update Markdown .py#L... links and validate .py links."
+    )
     parser.add_argument(
         "--repo-root", type=Path, default=Path("."), help="Repository root."
     )
@@ -96,13 +147,35 @@ def main(argv: list[str] | None = None) -> int:  # noqa: D103
         default=Path("readme.md"),
         help="Markdown file to update.",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check mode: exit 1 if updates are needed, without modifying files.",
+    )
     args = parser.parse_args(argv)
 
     repo_root = args.repo_root.resolve()
     readme_path = (repo_root / args.readme).resolve()
 
     original = readme_path.read_text(encoding="utf-8")
-    updated, n_updated = update_markdown(original, repo_root)
+    updated, n_updated, missing_files = update_markdown(
+        original, repo_root, check_only=args.check
+    )
+
+    # Report missing files
+    if missing_files:
+        msg = "Missing target .py files referenced by Markdown links:\n" + "\n".join(
+            f"  - {item}" for item in sorted(set(missing_files))
+        )
+        print(msg)  # noqa: T201
+        return 1
+
+    if args.check:
+        if n_updated > 0:
+            print(f"Check failed: {n_updated} link(s) need updating.")  # noqa: T201
+            return 1
+        print("All links are up to date.")  # noqa: T201
+        return 0
 
     if updated == original:
         return 0

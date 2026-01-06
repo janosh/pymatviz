@@ -55,7 +55,7 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 ## Periodic Table
 
-See [`pymatviz/ptable/plotly.py`](pymatviz/ptable/plotly.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
+See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
 > [!WARNING]
 > Version 0.16.0 of `pymatviz` dropped the matplotlib-based functions in `ptable_matplotlib.py` in https://github.com/janosh/pymatviz/pull/270. Please use the `plotly`-based functions shown below instead which have feature parity, interactivity and better test coverage.
@@ -140,7 +140,7 @@ On the roadmap but no ETA yet.
 
 ## Structure
 
-See [`pymatviz/structure/plotly.py`](pymatviz/structure/plotly.py).
+See [`pymatviz/structure/figures.py`](pymatviz/structure/figures.py).
 
 |                           [`structure_3d(hea_structure)`](pymatviz/structure/figures.py#L423)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py#L423) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
 | :---------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------: |
@@ -221,7 +221,7 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 ## Radial Distribution Functions
 
-See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
+See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
 | [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L34) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L34) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
 | :-----------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------: |
@@ -232,7 +232,7 @@ See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
 ## Coordination
 
-See [`pymatviz/coordination/plotly.py`](pymatviz/coordination/figures.py).
+See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
 |              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L35)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L35) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :-----------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
