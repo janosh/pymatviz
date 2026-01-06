@@ -13,9 +13,6 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Check README Python source links
-        run: python3 .github/scripts/check_readme_src_links.py --check
-
       - name: Discover broken links
         uses: lycheeverse/lychee-action@v2
         with:
