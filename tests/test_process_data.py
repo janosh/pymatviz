@@ -713,3 +713,26 @@ def test_sankey_flow_data_invalid_cols_raises() -> None:
     df_test = pd.DataFrame({"A": ["x"], "B": ["p"]})
     with pytest.raises(ValueError, match="should specify exactly two columns"):
         pmv_pd.sankey_flow_data(df_test, ["A"])
+
+
+def test_sankey_flow_data_deduplicates_nodes() -> None:
+    """Test that nodes appearing in both source and target are deduplicated."""
+    # Node "A" appears in both source and target columns
+    df_test = pd.DataFrame({"src": ["A", "A", "B"], "tgt": ["C", "A", "C"]})
+    result = pmv_pd.sankey_flow_data(df_test, ["src", "tgt"], labels_with_counts=False)
+
+    # Should have unique nodes: A, B, C (not duplicates)
+    assert len(result["labels"]) == 3
+    assert set(result["labels"]) == {"A", "B", "C"}
+
+    # Indices should map correctly to unique nodes
+    unique_vals = result["labels"]
+    val_to_idx = {val: idx for idx, val in enumerate(unique_vals)}
+    for src_val, src_idx in zip(
+        result["source"], result["source_indices"], strict=True
+    ):
+        assert val_to_idx[src_val] == src_idx
+    for tgt_val, tgt_idx in zip(
+        result["target"], result["target_indices"], strict=True
+    ):
+        assert val_to_idx[tgt_val] == tgt_idx

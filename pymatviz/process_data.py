@@ -700,22 +700,25 @@ def sankey_flow_data(
         df[list(cols)].value_counts().reset_index().to_numpy().T.tolist()
     )
 
+    # Deduplicate nodes - a value may appear in both source and target columns
+    unique_vals = list(dict.fromkeys(source + target))  # preserves order
+    val_to_idx = {val: idx for idx, val in enumerate(unique_vals)}
+
     if labels_with_counts:
         as_percent = labels_with_counts == "percent"
         source_counts = df[cols[0]].value_counts(normalize=as_percent).to_dict()
         target_counts = df[cols[1]].value_counts(normalize=as_percent).to_dict()
+        all_counts = {**source_counts, **target_counts}
         fmt = ".1%" if as_percent else "d"
-        labels = [f"{x}: {source_counts[x]:{fmt}}" for x in source] + [
-            f"{x}: {target_counts[x]:{fmt}}" for x in target
-        ]
+        labels = [f"{val}: {all_counts[val]:{fmt}}" for val in unique_vals]
     else:
-        labels = source + target
+        labels = unique_vals
 
     return {
         "source": source,
         "target": target,
         "value": value,
         "labels": labels,
-        "source_indices": list(range(len(source))),
-        "target_indices": list(range(len(source), len(source) + len(target))),
+        "source_indices": [val_to_idx[val] for val in source],
+        "target_indices": [val_to_idx[val] for val in target],
     }
