@@ -659,205 +659,161 @@ def test_bin_df_cols_raises() -> None:
         pmv_pd.bin_df_cols(df_dummy, bin_by_cols, n_bins=[2])
 
 
-class TestNormalizeSpacegroups:
-    """Tests for normalize_spacegroups function."""
-
-    def test_with_integers(self) -> None:
-        """Test normalize_spacegroups with space group numbers."""
-        result = pmv_pd.normalize_spacegroups([1, 2, 3, 225])
-        assert len(result) == 4
-        assert list(result) == [1, 2, 3, 225]
-
-    def test_with_series(self) -> None:
-        """Test normalize_spacegroups with pandas Series."""
-        series = pd.Series([1, 225, 167])
-        result = pmv_pd.normalize_spacegroups(series)
-        assert len(result) == 3
-        assert list(result) == [1, 225, 167]
-
-    def test_empty_raises(self) -> None:
-        """Test that empty input raises ValueError."""
-        with pytest.raises(ValueError, match="Cannot normalize empty spacegroup data"):
-            pmv_pd.normalize_spacegroups([])
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        ([1, 2, 3, 225], [1, 2, 3, 225]),
+        (pd.Series([1, 225, 167]), [1, 225, 167]),
+    ],
+)
+def test_normalize_spacegroups(data: list | pd.Series, expected: list) -> None:
+    """Test normalize_spacegroups with various input types."""
+    assert list(pmv_pd.normalize_spacegroups(data)) == expected
 
 
-class TestSankeyFlowData:
-    """Tests for sankey_flow_data function."""
+def test_normalize_spacegroups_empty_raises() -> None:
+    """Test that empty input raises ValueError."""
+    with pytest.raises(ValueError, match="Cannot normalize empty spacegroup data"):
+        pmv_pd.normalize_spacegroups([])
 
-    def test_basic(self) -> None:
-        """Test basic sankey_flow_data functionality."""
-        df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
-        result = pmv_pd.sankey_flow_data(df_test, ["A", "B"])
 
-        assert "source" in result
-        assert "target" in result
-        assert "value" in result
-        assert "labels" in result
-        assert "source_indices" in result
-        assert "target_indices" in result
+def test_sankey_flow_data_returns_expected_keys() -> None:
+    """Test sankey_flow_data returns all expected keys."""
+    df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
+    result = pmv_pd.sankey_flow_data(df_test, ["A", "B"])
+    assert set(result) == {
+        "source",
+        "target",
+        "value",
+        "labels",
+        "source_indices",
+        "target_indices",
+    }
 
-    def test_with_counts(self) -> None:
-        """Test sankey_flow_data with counts in labels."""
-        df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
-        result = pmv_pd.sankey_flow_data(df_test, ["A", "B"], labels_with_counts=True)
 
-        # Labels should include counts
-        assert any(":" in label for label in result["labels"])
+@pytest.mark.parametrize(
+    ("labels_with_counts", "check_char", "should_contain"),
+    [(True, ":", True), ("percent", "%", True), (False, ":", False)],
+)
+def test_sankey_flow_data_labels(
+    labels_with_counts: bool | str, check_char: str, should_contain: bool
+) -> None:
+    """Test sankey_flow_data label formatting options."""
+    df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
+    result = pmv_pd.sankey_flow_data(
+        df_test, ["A", "B"], labels_with_counts=labels_with_counts
+    )
+    has_char = any(check_char in label for label in result["labels"])
+    assert has_char == should_contain
 
-    def test_with_percent(self) -> None:
-        """Test sankey_flow_data with percent in labels."""
-        df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
-        result = pmv_pd.sankey_flow_data(
-            df_test, ["A", "B"], labels_with_counts="percent"
+
+def test_sankey_flow_data_invalid_cols_raises() -> None:
+    """Test that invalid columns raise ValueError."""
+    df_test = pd.DataFrame({"A": ["x"], "B": ["p"]})
+    with pytest.raises(ValueError, match="should specify exactly two columns"):
+        pmv_pd.sankey_flow_data(df_test, ["A"])
+
+
+@pytest.mark.parametrize(
+    ("arr", "strategy", "kwargs", "expected_idx1"),
+    [
+        ([1.0, np.nan, 3.0, 11.0], "mean", {}, 5.0),  # mean of 1, 3, 11
+        ([1.0, np.nan, 3.0, 5.0], "median", {}, 3.0),  # median of 1, 3, 5
+        ([1.0, np.nan, 3.0], "zero", {}, 0.0),
+        ([1.0, np.nan, 3.0], "fill", {"fill_value": -1.0}, -1.0),
+    ],
+)
+def test_handle_missing_values_strategies(
+    arr: list, strategy: str, kwargs: dict, expected_idx1: float
+) -> None:
+    """Test handle_missing_values with various strategies."""
+    result = pmv_pd.handle_missing_values(np.array(arr), strategy=strategy, **kwargs)
+    assert result[1] == expected_idx1
+
+
+def test_handle_missing_values_drop() -> None:
+    """Test drop strategy removes NaN values."""
+    result = pmv_pd.handle_missing_values(np.array([1.0, np.nan, 3.0]), strategy="drop")
+    assert list(result) == [1.0, 3.0]
+
+
+def test_handle_missing_values_dataframe() -> None:
+    """Test handle_missing_values with DataFrame."""
+    df_test = pd.DataFrame({"A": [1.0, np.nan, 3.0], "B": [4.0, 5.0, 6.0]})
+    assert len(pmv_pd.handle_missing_values(df_test, strategy="drop")) == 2
+    result = pmv_pd.handle_missing_values(df_test, strategy="fill", fill_value=-1.0)
+    assert result.loc[1, "A"] == -1.0
+
+
+@pytest.mark.parametrize(
+    ("strategy", "kwargs", "error_match"),
+    [
+        ("invalid", {}, "Invalid strategy"),
+        ("fill", {}, "fill_value is required"),
+    ],
+)
+def test_handle_missing_values_raises(
+    strategy: str, kwargs: dict, error_match: str
+) -> None:
+    """Test handle_missing_values error cases."""
+    with pytest.raises(ValueError, match=error_match):
+        pmv_pd.handle_missing_values(
+            np.array([1.0, np.nan]), strategy=strategy, **kwargs
         )
 
-        # Labels should include percentages
-        assert any("%" in label for label in result["labels"])
 
-    def test_without_counts(self) -> None:
-        """Test sankey_flow_data without counts in labels."""
-        df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
-        result = pmv_pd.sankey_flow_data(df_test, ["A", "B"], labels_with_counts=False)
-
-        # Labels should not include counts
-        assert all(":" not in label for label in result["labels"])
-
-    def test_invalid_cols_raises(self) -> None:
-        """Test that invalid columns raise ValueError."""
-        df_test = pd.DataFrame({"A": ["x"], "B": ["p"]})
-        with pytest.raises(ValueError, match="should specify exactly two columns"):
-            pmv_pd.sankey_flow_data(df_test, ["A"])
+@pytest.mark.parametrize(
+    ("arr", "kwargs", "expected_len"),
+    [
+        ([1.0, np.nan, 3.0], {"handle_nan": "drop", "handle_inf": "keep"}, 2),
+        ([1.0, np.inf, 3.0, -np.inf], {"handle_nan": "keep", "handle_inf": "drop"}, 2),
+    ],
+)
+def test_handle_anomalies_drop(arr: list, kwargs: dict, expected_len: int) -> None:
+    """Test handle_anomalies drop strategies."""
+    assert len(pmv_pd.handle_anomalies(np.array(arr), **kwargs)) == expected_len
 
 
-class TestHandleMissingValues:
-    """Tests for handle_missing_values function."""
-
-    def test_drop_strategy_array(self) -> None:
-        """Test drop strategy with numpy array."""
-        arr = np.array([1.0, np.nan, 3.0, np.nan, 5.0])
-        result = pmv_pd.handle_missing_values(arr, strategy="drop")
-        assert len(result) == 3
-        assert list(result) == [1.0, 3.0, 5.0]
-
-    def test_fill_strategy_array(self) -> None:
-        """Test fill strategy with numpy array."""
-        arr = np.array([1.0, np.nan, 3.0])
-        result = pmv_pd.handle_missing_values(arr, strategy="fill", fill_value=0.0)
-        assert len(result) == 3
-        assert list(result) == [1.0, 0.0, 3.0]
-
-    def test_mean_strategy_array(self) -> None:
-        """Test mean strategy with numpy array."""
-        arr = np.array([1.0, np.nan, 3.0, 11.0])  # mean=5.0, median=3.0
-        result = pmv_pd.handle_missing_values(arr, strategy="mean")
-        assert len(result) == 4
-        assert result[1] == 5.0  # mean of 1, 3, 11
-
-    def test_median_strategy_array(self) -> None:
-        """Test median strategy with numpy array."""
-        arr = np.array([1.0, np.nan, 3.0, 5.0])
-        result = pmv_pd.handle_missing_values(arr, strategy="median")
-        assert len(result) == 4
-        assert result[1] == 3.0  # median of 1, 3, 5
-
-    def test_zero_strategy_array(self) -> None:
-        """Test zero strategy with numpy array."""
-        arr = np.array([1.0, np.nan, 3.0])
-        result = pmv_pd.handle_missing_values(arr, strategy="zero")
-        assert len(result) == 3
-        assert result[1] == 0.0
-
-    def test_drop_strategy_dataframe(self) -> None:
-        """Test drop strategy with DataFrame."""
-        df_test = pd.DataFrame({"A": [1.0, np.nan, 3.0], "B": [4.0, 5.0, 6.0]})
-        result = pmv_pd.handle_missing_values(df_test, strategy="drop")
-        assert len(result) == 2
-
-    def test_fill_strategy_dataframe(self) -> None:
-        """Test fill strategy with DataFrame."""
-        df_test = pd.DataFrame({"A": [1.0, np.nan, 3.0], "B": [4.0, 5.0, 6.0]})
-        result = pmv_pd.handle_missing_values(df_test, strategy="fill", fill_value=-1.0)
-        assert isinstance(result, pd.DataFrame)
-        assert result.loc[1, "A"] == -1.0
-
-    def test_invalid_strategy_raises(self) -> None:
-        """Test that invalid strategy raises ValueError."""
-        arr = np.array([1.0, np.nan])
-        with pytest.raises(ValueError, match="Invalid strategy"):
-            pmv_pd.handle_missing_values(arr, strategy="invalid")
-
-    def test_fill_without_value_raises(self) -> None:
-        """Test that fill strategy without fill_value raises ValueError."""
-        arr = np.array([1.0, np.nan])
-        with pytest.raises(ValueError, match="fill_value is required"):
-            pmv_pd.handle_missing_values(arr, strategy="fill")
+def test_handle_anomalies_clip_inf() -> None:
+    """Test clipping infinity to finite min/max."""
+    arr = np.array([1.0, np.inf, 3.0, -np.inf, 5.0])
+    result = pmv_pd.handle_anomalies(arr, handle_nan="keep", handle_inf="clip")
+    assert (result[1], result[3]) == (5.0, 1.0)  # +inf->max, -inf->min
 
 
-class TestHandleAnomalies:
-    """Tests for handle_anomalies function."""
+@pytest.mark.parametrize(
+    ("arr", "kwargs", "check_indices", "expected_vals"),
+    [
+        ([1.0, np.nan, 3.0], {"handle_nan": "zero"}, [1], [0.0]),
+        ([1.0, np.inf, -np.inf], {"handle_inf": "zero"}, [1, 2], [0.0, 0.0]),
+        (
+            [1.0, np.nan, np.inf, -np.inf, 3.0],
+            {"handle_nan": "zero", "handle_inf": "clip"},
+            [1, 2, 3],
+            [0.0, 3.0, 1.0],
+        ),
+    ],
+)
+def test_handle_anomalies_replace(
+    arr: list, kwargs: dict, check_indices: list, expected_vals: list
+) -> None:
+    """Test handle_anomalies replacement strategies."""
+    result = pmv_pd.handle_anomalies(np.array(arr), **kwargs)
+    for idx, val in zip(check_indices, expected_vals, strict=True):
+        assert result[idx] == val
 
-    def test_handle_nan_drop(self) -> None:
-        """Test dropping NaN values."""
-        arr = np.array([1.0, np.nan, 3.0])
-        result = pmv_pd.handle_anomalies(arr, handle_nan="drop", handle_inf="keep")
-        assert len(result) == 2
 
-    def test_handle_inf_drop(self) -> None:
-        """Test dropping infinity values."""
-        arr = np.array([1.0, np.inf, 3.0, -np.inf])
-        result = pmv_pd.handle_anomalies(arr, handle_nan="keep", handle_inf="drop")
-        assert len(result) == 2
-
-    def test_handle_inf_clip(self) -> None:
-        """Test clipping infinity values."""
-        arr = np.array([1.0, np.inf, 3.0, -np.inf, 5.0])
-        result = pmv_pd.handle_anomalies(arr, handle_nan="keep", handle_inf="clip")
-        assert len(result) == 5
-        assert result[1] == 5.0  # +inf clipped to max
-        assert result[3] == 1.0  # -inf clipped to min
-
-    def test_handle_nan_zero(self) -> None:
-        """Test replacing NaN with zero."""
-        arr = np.array([1.0, np.nan, 3.0])
-        result = pmv_pd.handle_anomalies(arr, handle_nan="zero", handle_inf="keep")
-        assert result[1] == 0.0
-
-    def test_handle_inf_zero(self) -> None:
-        """Test replacing infinity with zero."""
-        arr = np.array([1.0, np.inf, -np.inf])
-        result = pmv_pd.handle_anomalies(arr, handle_nan="keep", handle_inf="zero")
-        assert result[1] == 0.0
-        assert result[2] == 0.0
-
-    def test_combined_handling(self) -> None:
-        """Test handling both NaN and infinity."""
-        arr = np.array([1.0, np.nan, np.inf, -np.inf, 3.0])
-        result = pmv_pd.handle_anomalies(arr, handle_nan="zero", handle_inf="clip")
-        assert len(result) == 5
-        assert result[1] == 0.0  # NaN -> 0
-        assert result[2] == 3.0  # +inf -> max finite value
-        assert result[3] == 1.0  # -inf -> min finite value
-
-    def test_invalid_nan_strategy_raises(self) -> None:
-        """Test that invalid handle_nan raises ValueError."""
-        arr = np.array([1.0])
-        with pytest.raises(ValueError, match="Invalid handle_nan"):
-            pmv_pd.handle_anomalies(arr, handle_nan="invalid")
-
-    def test_invalid_inf_strategy_raises(self) -> None:
-        """Test that invalid handle_inf raises ValueError."""
-        arr = np.array([1.0])
-        with pytest.raises(ValueError, match="Invalid handle_inf"):
-            pmv_pd.handle_anomalies(arr, handle_inf="invalid")
-
-    def test_fill_nan_without_value_raises(self) -> None:
-        """Test that fill nan without value raises ValueError."""
-        arr = np.array([1.0, np.nan])
-        with pytest.raises(ValueError, match="nan_fill_value is required"):
-            pmv_pd.handle_anomalies(arr, handle_nan="fill")
-
-    def test_fill_inf_without_value_raises(self) -> None:
-        """Test that fill inf without value raises ValueError."""
-        arr = np.array([1.0, np.inf])
-        with pytest.raises(ValueError, match="inf_fill_value is required"):
-            pmv_pd.handle_anomalies(arr, handle_inf="fill")
+@pytest.mark.parametrize(
+    ("kwargs", "error_match"),
+    [
+        ({"handle_nan": "invalid"}, "Invalid handle_nan"),
+        ({"handle_inf": "invalid"}, "Invalid handle_inf"),
+        ({"handle_nan": "fill"}, "nan_fill_value is required"),
+        ({"handle_inf": "fill"}, "inf_fill_value is required"),
+    ],
+)
+def test_handle_anomalies_raises(kwargs: dict, error_match: str) -> None:
+    """Test handle_anomalies error cases."""
+    arr = np.array([1.0, np.nan, np.inf])
+    with pytest.raises(ValueError, match=error_match):
+        pmv_pd.handle_anomalies(arr, **kwargs)
