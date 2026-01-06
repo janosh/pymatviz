@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
 
+from pymatviz.process_data import sankey_flow_data
+
 
 if TYPE_CHECKING:
     from typing import Any, Literal
@@ -41,25 +43,7 @@ def sankey_from_2_df_cols(
     Returns:
         Figure: Plotly figure containing the Sankey diagram.
     """
-    if len(cols) != 2:
-        raise ValueError(
-            f"{cols=} should specify exactly two columns: (source_col, target_col)"
-        )
-
-    source, target, value = (
-        df[list(cols)].value_counts().reset_index().to_numpy().T.tolist()
-    )
-
-    if labels_with_counts:
-        as_percent = labels_with_counts == "percent"
-        source_counts = df[cols[0]].value_counts(normalize=as_percent).to_dict()
-        target_counts = df[cols[1]].value_counts(normalize=as_percent).to_dict()
-        fmt = ".1%" if as_percent else "d"
-        label = [f"{x}: {source_counts[x]:{fmt}}" for x in source] + [
-            f"{x}: {target_counts[x]:{fmt}}" for x in target
-        ]
-    else:
-        label = source + target
+    flow_data = sankey_flow_data(df, cols, labels_with_counts=labels_with_counts)
 
     fig = go.Figure()
     fig.add_sankey(
@@ -67,13 +51,12 @@ def sankey_from_2_df_cols(
             pad=20,
             thickness=30,
             line=dict(color="black", width=0.5),
-            label=label,
+            label=flow_data["labels"],
         ),
         link=dict(
-            # indices in source, target, value correspond to labels
-            source=[source.index(x) for x in source],
-            target=[len(source) + target.index(x) for x in target],
-            value=value,
+            source=flow_data["source_indices"],
+            target=flow_data["target_indices"],
+            value=flow_data["value"],
         ),
         **kwargs,
     )
