@@ -606,7 +606,7 @@ def normalize_spacegroups(
     if isinstance(first_item, str):
         from pymatgen.symmetry.groups import SpaceGroup
 
-        return pd.Series(SpaceGroup(symbol).int_number for symbol in result)
+        return pd.Series([SpaceGroup(sym).int_number for sym in result])
 
     return result
 

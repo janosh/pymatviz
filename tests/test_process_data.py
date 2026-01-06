@@ -678,6 +678,12 @@ def test_normalize_spacegroups_invalid_number_raises(invalid_val: int) -> None:
         pmv_pd.normalize_spacegroups([1, invalid_val, 225])
 
 
+def test_normalize_spacegroups_invalid_symbol_raises() -> None:
+    """Test that invalid space group symbols raise ValueError."""
+    with pytest.raises(ValueError, match="InvalidSymbol"):
+        pmv_pd.normalize_spacegroups(["Fm-3m", "InvalidSymbol", "P1"])
+
+
 def test_sankey_flow_data_returns_expected_keys() -> None:
     """Test sankey_flow_data returns all expected keys."""
     df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})
