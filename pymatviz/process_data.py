@@ -606,7 +606,10 @@ def normalize_spacegroups(
     if isinstance(first_item, str):
         from pymatgen.symmetry.groups import SpaceGroup
 
-        return pd.Series([SpaceGroup(sym).int_number for sym in result])
+        try:
+            return pd.Series([SpaceGroup(sym).int_number for sym in result])
+        except ValueError as exc:
+            raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
 
     return result
 
