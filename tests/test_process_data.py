@@ -64,43 +64,22 @@ def test_count_elements_bad_atomic_nums(range_limits: tuple[int, int]) -> None:
         pmv_pd.count_elements({str(idx): 0 for idx in range(*range_limits)})
 
 
-def test_count_elements_composition_objects() -> None:
+@pytest.mark.parametrize(
+    ("count_mode", "expected_counts"),
+    [
+        (ElemCountMode.composition, {"Fe": 22, "O": 63, "P": 12}),
+        (ElemCountMode.fractional_composition, {"Fe": 2.5, "O": 5, "P": 0.5}),
+        (ElemCountMode.reduced_composition, {"Fe": 13, "O": 27, "P": 3}),
+        (ElemCountMode.occurrence, {"Fe": 8, "O": 8, "P": 3}),
+    ],
+)
+def test_count_elements_composition_objects(
+    count_mode: ElemCountMode, expected_counts: dict[str, float]
+) -> None:
+    """Test count_elements with Composition objects and various count modes."""
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv_pd.count_elements(compositions, count_mode=ElemCountMode.composition)
-    expected = pd.Series(
-        {"Fe": 22, "O": 63, "P": 12}, index=pmv.df_ptable.index, name="count"
-    )
-    pd.testing.assert_series_equal(series, expected, check_dtype=False)
-
-
-def test_count_elements_composition_objects_fractional() -> None:
-    compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv_pd.count_elements(
-        compositions, count_mode=ElemCountMode.fractional_composition
-    )
-    expected = pd.Series(
-        {"Fe": 2.5, "O": 5, "P": 0.5}, index=pmv.df_ptable.index, name="count"
-    )
-    pd.testing.assert_series_equal(series, expected, check_dtype=False)
-
-
-def test_count_elements_composition_objects_reduced() -> None:
-    compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv_pd.count_elements(
-        compositions, count_mode=ElemCountMode.reduced_composition
-    )
-    expected = pd.Series(
-        {"Fe": 13, "O": 27, "P": 3}, index=pmv.df_ptable.index, name="count"
-    )
-    pd.testing.assert_series_equal(series, expected, check_dtype=False)
-
-
-def test_count_elements_composition_objects_occurrence() -> None:
-    compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
-    series = pmv_pd.count_elements(compositions, count_mode=ElemCountMode.occurrence)
-    expected = pd.Series(
-        {"Fe": 8, "O": 8, "P": 3}, index=pmv.df_ptable.index, name="count"
-    )
+    series = pmv_pd.count_elements(compositions, count_mode=count_mode)
+    expected = pd.Series(expected_counts, index=pmv.df_ptable.index, name="count")
     pd.testing.assert_series_equal(series, expected, check_dtype=False)
 
 
@@ -174,16 +153,17 @@ def test_count_formulas_basic() -> None:
     assert arity_counts["ternary"] == 1  # LiFeO2
 
 
-def test_count_formulas_empty() -> None:
-    """Test handling of empty input."""
-    with pytest.raises(ValueError, match="Empty input: data sequence is empty"):
-        pmv_pd.count_formulas([])
-
-
-def test_count_formulas_invalid_formula() -> None:
-    """Test handling of invalid formulas."""
-    with pytest.raises(ValueError, match="Invalid formula"):
-        pmv_pd.count_formulas(["Fe2O3", "NotAFormula"])
+@pytest.mark.parametrize(
+    ("data", "error_match"),
+    [
+        ([], "Empty input: data sequence is empty"),
+        (["Fe2O3", "NotAFormula"], "Invalid formula"),
+    ],
+)
+def test_count_formulas_raises(data: list, error_match: str) -> None:
+    """Test count_formulas error handling."""
+    with pytest.raises(ValueError, match=error_match):
+        pmv_pd.count_formulas(data)
 
 
 def test_count_formulas_composition_objects() -> None:
@@ -447,7 +427,7 @@ def test_is_ase_atoms(obj: object, expected: bool) -> None:
 
 
 def test_is_phonopy_atoms() -> None:
-    """Test the is_phonopy_atoms function with various inputs."""
+    """Test is_phonopy_atoms with real PhonopyAtoms object."""
     pytest.importorskip("phonopy")
     from phonopy.structure.atoms import PhonopyAtoms
 
@@ -455,15 +435,14 @@ def test_is_phonopy_atoms() -> None:
         symbols=["Si"], positions=[[0, 0, 0]], cell=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]
     )
     assert pmv_pd.is_phonopy_atoms(phonopy_atoms)
-    assert (
-        pmv_pd.is_phonopy_atoms(Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]))
-        is False
-    )
-    assert pmv_pd.is_phonopy_atoms("string") is False
-    assert pmv_pd.is_phonopy_atoms(123) is False
-    assert pmv_pd.is_phonopy_atoms([1, 2, 3]) is False
-    assert pmv_pd.is_phonopy_atoms({"key": "value"}) is False
-    assert pmv_pd.is_phonopy_atoms(None) is False
+
+
+@pytest.mark.parametrize(
+    "obj", [Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]]), "string", 123, None]
+)
+def test_is_phonopy_atoms_false(obj: object) -> None:
+    """Test is_phonopy_atoms returns False for non-PhonopyAtoms objects."""
+    assert pmv_pd.is_phonopy_atoms(obj) is False
 
 
 class DummyClass:
