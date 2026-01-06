@@ -643,11 +643,27 @@ def test_bin_df_cols_raises() -> None:
     [
         ([1, 2, 3, 225], [1, 2, 3, 225]),
         (pd.Series([1, 225, 167]), [1, 225, 167]),
+        (["Fm-3m", "P1", "Pnma"], ["Fm-3m", "P1", "Pnma"]),  # Hermann-Mauguin symbols
     ],
 )
 def test_normalize_spacegroups(data: list | pd.Series, expected: list) -> None:
     """Test normalize_spacegroups with various input types."""
     assert list(pmv_pd.normalize_spacegroups(data)) == expected
+
+
+def test_normalize_spacegroups_with_structures() -> None:
+    """Test normalize_spacegroups with pymatgen Structure objects."""
+    result = pmv_pd.normalize_spacegroups(SI_STRUCTS)
+    assert len(result) == len(SI_STRUCTS)
+    # Si structures should have space group 227 (Fd-3m) or similar cubic
+    assert all(1 <= spg <= 230 for spg in result)
+
+
+def test_normalize_spacegroups_with_ase_atoms() -> None:
+    """Test normalize_spacegroups with ASE Atoms objects."""
+    result = pmv_pd.normalize_spacegroups(SI_ATOMS)
+    assert len(result) == len(SI_ATOMS)
+    assert all(1 <= spg <= 230 for spg in result)
 
 
 def test_normalize_spacegroups_empty_raises() -> None:
