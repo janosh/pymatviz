@@ -26,7 +26,10 @@ def find_def_line(path: Path, func_name: str) -> int | None:
     except SyntaxError:
         return None
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name == func_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == func_name
+        ):
             return node.lineno
     return None
 
