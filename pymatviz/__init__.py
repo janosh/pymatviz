@@ -56,8 +56,6 @@ from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
 from pymatviz.process_data import (
     count_elements,
     count_formulas,
-    handle_anomalies,
-    handle_missing_values,
     normalize_phonon_bands,
     normalize_spacegroups,
     sankey_flow_data,
