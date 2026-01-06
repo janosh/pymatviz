@@ -557,3 +557,350 @@ def bin_df_cols(
 
     # Set the index back to the original index name
     return df_bin.set_index(orig_index_name)
+
+
+def normalize_spacegroups(
+    data: Sequence[int | str | Any] | pd.Series,
+) -> pd.Series:
+    """Normalize spacegroup data from structures, numbers, or symbols to a Series.
+
+    Handles pymatgen Structure, ASE Atoms, space group numbers (1-230), or
+    Hermann-Mauguin symbols.
+
+    Args:
+        data (Sequence[int | str | Structure] | pd.Series): Space group data. Can be:
+            - Sequence of pymatgen Structures or ASE Atoms
+            - Sequence of space group numbers (1-230)
+            - Sequence of Hermann-Mauguin symbols
+            - pandas Series of any of the above
+
+    Returns:
+        pd.Series: Series of space group numbers (1-230).
+
+    Raises:
+        ValueError: If data is empty.
+    """
+    if len(data) == 0:
+        raise ValueError("Cannot normalize empty spacegroup data")
+
+    first_item = data.iloc[0] if isinstance(data, pd.Series) else data[0]
+
+    if type(first_item).__qualname__ in ("Structure", "Atoms"):
+        # pymatgen Structure or ASE Atoms - extract spacegroup numbers
+        from moyopy import MoyoDataset
+        from moyopy.interface import MoyoAdapter
+
+        return pd.Series(
+            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
+        )
+
+    return pd.Series(data)
+
+
+def normalize_phonon_bands(
+    band_structs: Any,
+) -> dict[str, Any]:
+    """Normalize phonon band structure input to a dict of pymatgen PhononBands.
+
+    Handles single or multiple band structures from pymatgen or phonopy.
+
+    Args:
+        band_structs: Single band structure or dict/mapping of band structures.
+            Can be:
+            - pymatgen PhononBandStructureSymmLine
+            - phonopy BandStructure
+            - dict mapping labels to any of the above
+
+    Returns:
+        dict[str, PhononBandStructureSymmLine]: Dict mapping labels to pymatgen
+            PhononBandStructureSymmLine objects.
+
+    Raises:
+        TypeError: If input is not a supported band structure type.
+        ValueError: If the resulting dict is empty.
+    """
+    from collections.abc import Mapping
+
+    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
+
+    from pymatviz.phonons.helpers import phonopy_to_pymatgen_bands
+
+    # Convert single input to dict
+    if isinstance(band_structs, Mapping):
+        input_dict = dict(band_structs)
+    else:
+        input_dict = {"": band_structs}
+
+    # Convert all to pymatgen format
+    result: dict[str, PhononBands] = {}
+    for key, bands in input_dict.items():
+        if type(bands).__module__.startswith("phonopy"):
+            result[key] = phonopy_to_pymatgen_bands(bands)
+        elif isinstance(bands, PhononBands):
+            result[key] = bands
+        else:
+            cls_name = PhononBands.__name__
+            raise TypeError(
+                f"Only {cls_name}, phonopy BandStructure or dict supported, "
+                f"got {type(bands).__name__}"
+            )
+
+    if len(result) == 0:
+        raise ValueError("Empty band structure dict")
+
+    return result
+
+
+def sankey_flow_data(
+    df: pd.DataFrame,
+    cols: list[str],
+    *,
+    labels_with_counts: bool | str = True,
+) -> dict[str, Any]:
+    """Extract flow data from DataFrame columns for Sankey diagrams.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing source and target columns.
+        cols (list[str]): 2-tuple of (source_col, target_col) column names.
+        labels_with_counts (bool | "percent"): Whether to append counts to labels.
+            If "percent", shows percentages instead of counts. Defaults to True.
+
+    Returns:
+        dict with keys:
+            - "source": list of source node values
+            - "target": list of target node values
+            - "value": list of flow values (counts)
+            - "labels": list of node labels (with optional counts)
+            - "source_indices": list of source node indices for links
+            - "target_indices": list of target node indices for links
+
+    Raises:
+        ValueError: If cols doesn't have exactly 2 elements.
+    """
+    if len(cols) != 2:
+        raise ValueError(
+            f"{cols=} should specify exactly two columns: (source_col, target_col)"
+        )
+
+    source, target, value = (
+        df[list(cols)].value_counts().reset_index().to_numpy().T.tolist()
+    )
+
+    if labels_with_counts:
+        as_percent = labels_with_counts == "percent"
+        source_counts = df[cols[0]].value_counts(normalize=as_percent).to_dict()
+        target_counts = df[cols[1]].value_counts(normalize=as_percent).to_dict()
+        fmt = ".1%" if as_percent else "d"
+        labels = [f"{x}: {source_counts[x]:{fmt}}" for x in source] + [
+            f"{x}: {target_counts[x]:{fmt}}" for x in target
+        ]
+    else:
+        labels = source + target
+
+    return {
+        "source": source,
+        "target": target,
+        "value": value,
+        "labels": labels,
+        "source_indices": [source.index(x) for x in source],
+        "target_indices": [len(source) + target.index(x) for x in target],
+    }
+
+
+def handle_missing_values(
+    data: np.ndarray | pd.DataFrame | pd.Series,
+    *,
+    strategy: str = "drop",
+    fill_value: float | None = None,
+) -> np.ndarray | pd.DataFrame | pd.Series:
+    """Handle missing values (NaN) in data.
+
+    Args:
+        data: Input data (numpy array, DataFrame, or Series).
+        strategy: How to handle missing values. Options:
+            - "drop": Remove rows/elements with NaN (default)
+            - "fill": Replace with fill_value
+            - "mean": Replace with mean of non-NaN values
+            - "median": Replace with median of non-NaN values
+            - "zero": Replace with 0
+        fill_value: Value to use when strategy="fill". Required for "fill" strategy.
+
+    Returns:
+        Data with missing values handled according to strategy.
+
+    Raises:
+        ValueError: If strategy is "fill" but fill_value is None.
+        ValueError: If strategy is not recognized.
+    """
+    valid_strategies = ("drop", "fill", "mean", "median", "zero")
+    if strategy not in valid_strategies:
+        raise ValueError(f"Invalid {strategy=}, must be one of {valid_strategies}")
+
+    if strategy == "fill" and fill_value is None:
+        raise ValueError("fill_value is required when strategy='fill'")
+
+    if isinstance(data, pd.DataFrame | pd.Series):
+        if strategy == "drop":
+            return data.dropna()
+        if strategy == "fill":
+            return data.fillna(fill_value)
+        if strategy == "mean":
+            return data.fillna(data.mean())
+        if strategy == "median":
+            return data.fillna(data.median())
+        if strategy == "zero":
+            return data.fillna(0)
+
+    else:  # numpy array
+        arr = np.asarray(data)
+        mask = np.isnan(arr)
+
+        if strategy == "drop":
+            return arr[~mask]
+        if strategy == "fill":
+            result = arr.copy()
+            result[mask] = fill_value
+            return result
+        if strategy == "mean":
+            result = arr.copy()
+            result[mask] = np.nanmean(arr)
+            return result
+        if strategy == "median":
+            result = arr.copy()
+            result[mask] = np.nanmedian(arr)
+            return result
+        if strategy == "zero":
+            result = arr.copy()
+            result[mask] = 0
+            return result
+
+    return data  # unreachable, for type checker
+
+
+def handle_anomalies(
+    data: np.ndarray | pd.DataFrame | pd.Series,
+    *,
+    handle_nan: str = "drop",
+    handle_inf: str = "drop",
+    nan_fill_value: float | None = None,
+    inf_fill_value: float | None = None,
+) -> np.ndarray | pd.DataFrame | pd.Series:
+    """Handle anomalous values (NaN and infinity) in data.
+
+    Args:
+        data: Input data (numpy array, DataFrame, or Series).
+        handle_nan: How to handle NaN values. Options:
+            - "drop": Remove elements with NaN (default)
+            - "fill": Replace with nan_fill_value
+            - "mean": Replace with mean of finite values
+            - "median": Replace with median of finite values
+            - "zero": Replace with 0
+            - "keep": Leave NaN values as-is
+        handle_inf: How to handle infinity values. Options:
+            - "drop": Remove elements with inf (default)
+            - "fill": Replace with inf_fill_value
+            - "clip": Replace +inf with max finite value, -inf with min finite value
+            - "zero": Replace with 0
+            - "keep": Leave inf values as-is
+        nan_fill_value: Value to use when handle_nan="fill".
+        inf_fill_value: Value to use when handle_inf="fill".
+
+    Returns:
+        Data with anomalous values handled according to strategy.
+
+    Raises:
+        ValueError: If invalid strategy is provided.
+    """
+    valid_nan_strategies = ("drop", "fill", "mean", "median", "zero", "keep")
+    valid_inf_strategies = ("drop", "fill", "clip", "zero", "keep")
+
+    if handle_nan not in valid_nan_strategies:
+        raise ValueError(
+            f"Invalid {handle_nan=}, must be one of {valid_nan_strategies}"
+        )
+    if handle_inf not in valid_inf_strategies:
+        raise ValueError(
+            f"Invalid {handle_inf=}, must be one of {valid_inf_strategies}"
+        )
+
+    if handle_nan == "fill" and nan_fill_value is None:
+        raise ValueError("nan_fill_value is required when handle_nan='fill'")
+    if handle_inf == "fill" and inf_fill_value is None:
+        raise ValueError("inf_fill_value is required when handle_inf='fill'")
+
+    if isinstance(data, pd.DataFrame | pd.Series):
+        result = data.copy()
+        is_df = isinstance(result, pd.DataFrame)
+
+        # Handle infinities first
+        if handle_inf != "keep":
+            inf_mask = np.isinf(result.to_numpy() if is_df else result)
+            if handle_inf == "drop":
+                result = result[~inf_mask.any(axis=1)] if is_df else result[~inf_mask]
+            elif handle_inf == "fill":
+                result = result.replace([np.inf, -np.inf], inf_fill_value)
+            elif handle_inf == "clip":
+                finite_vals = result.replace([np.inf, -np.inf], np.nan)
+                min_val = finite_vals.min().min() if is_df else finite_vals.min()
+                max_val = finite_vals.max().max() if is_df else finite_vals.max()
+                result = result.replace(np.inf, max_val).replace(-np.inf, min_val)
+            elif handle_inf == "zero":
+                result = result.replace([np.inf, -np.inf], 0)
+
+        # Handle NaN
+        if handle_nan != "keep":
+            if handle_nan == "drop":
+                result = result.dropna()
+            elif handle_nan == "fill":
+                result = result.fillna(nan_fill_value)
+            elif handle_nan == "mean":
+                result = result.fillna(result.mean())
+            elif handle_nan == "median":
+                result = result.fillna(result.median())
+            elif handle_nan == "zero":
+                result = result.fillna(0)
+
+        return result
+
+    # numpy array
+    arr = np.asarray(data, dtype=float)
+    result = arr.copy()
+
+    # Handle infinities first
+    if handle_inf != "keep":
+        pos_inf_mask = np.isposinf(result)
+        neg_inf_mask = np.isneginf(result)
+        inf_mask = pos_inf_mask | neg_inf_mask
+
+        if handle_inf == "fill":
+            result[inf_mask] = inf_fill_value
+        elif handle_inf == "clip":
+            finite_vals = result[np.isfinite(result)]
+            if len(finite_vals) > 0:
+                result[pos_inf_mask] = np.max(finite_vals)
+                result[neg_inf_mask] = np.min(finite_vals)
+        elif handle_inf == "zero":
+            result[inf_mask] = 0
+
+    # Handle NaN
+    nan_mask = np.isnan(result)
+    if handle_nan != "keep":
+        if handle_nan == "fill":
+            result[nan_mask] = nan_fill_value
+        elif handle_nan == "mean":
+            result[nan_mask] = np.nanmean(arr)
+        elif handle_nan == "median":
+            result[nan_mask] = np.nanmedian(arr)
+        elif handle_nan == "zero":
+            result[nan_mask] = 0
+
+    # For "drop" strategy, we need to filter
+    if handle_nan == "drop" or handle_inf == "drop":
+        keep_mask = np.ones(len(result), dtype=bool)
+        if handle_nan == "drop":
+            keep_mask &= ~np.isnan(result)
+        if handle_inf == "drop":
+            keep_mask &= np.isfinite(result)
+        result = result[keep_mask]
+
+    return result
