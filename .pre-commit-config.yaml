@@ -18,6 +18,12 @@ repos:
         language: python
         types: [python]
         additional_dependencies: [ty>=0.0.9]
+      - id: check-readme-src-links
+        name: Check README source links
+        entry: python .github/scripts/check_readme_src_links.py
+        language: python
+        files: ^(readme\.md|pymatviz/.*\.py)$
+        pass_filenames: false
 
   - repo: https://github.com/janosh/format-ipy-cells
     rev: v0.1.11

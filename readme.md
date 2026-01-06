@@ -55,17 +55,17 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 ## Periodic Table
 
-See [`pymatviz/ptable/plotly.py`](pymatviz/ptable/plotly.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
+See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
 > [!WARNING]
 > Version 0.16.0 of `pymatviz` dropped the matplotlib-based functions in `ptable_matplotlib.py` in https://github.com/janosh/pymatviz/pull/270. Please use the `plotly`-based functions shown below instead which have feature parity, interactivity and better test coverage.
 
-|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/plotly.py#L38)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/plotly.py#L38) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
+|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/figures.py#L38)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/figures.py#L38) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                        ![ptable-heatmap-plotly-more-hover-data]                                                        |                                                          ![ptable-heatmap-plotly-log]                                                          |
-|               [`ptable_hists_plotly(data)`](pymatviz/ptable/plotly.py#L398) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/plotly.py#L1359) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
+|               [`ptable_hists_plotly(data)`](pymatviz/ptable/figures.py#L391) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/figures.py#L1495) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
 |                                                                 ![ptable-hists-plotly]                                                                 |                                                        ![ptable-scatter-plotly-markers]                                                        |
-| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/plotly.py#L778) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/plotly.py#L778)                                |
+| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/figures.py#L797) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/figures.py#L797)                                |
 |                                                           ![ptable-heatmap-splits-plotly-2]                                                            |                                                       ![ptable-heatmap-splits-plotly-3]                                                        |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -83,10 +83,10 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ## Phonons
 
-| [`phonon_bands(bands_dict)`](pymatviz/phonons/plotly.py#L35) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/plotly.py#L381) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
+| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L43) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L363) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
 | :----------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                  ![phonon-bands]                                                   |                                                                   ![phonon-dos]                                                                   |
-|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/plotly.py#L528)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/plotly.py#L528) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L511)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L511) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
 |                                          ![phonon-bands-and-dos-mp-2758]                                           |                                                         ![phonon-bands-and-dos-mp-23907]                                                          |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
@@ -96,7 +96,7 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ### Composition Clustering
 
-| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](pymatviz/cluster/composition/plot.py#L32) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](pymatviz/cluster/composition/plot.py#L32) |
+| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](pymatviz/cluster/composition/plot.py#L366) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](pymatviz/cluster/composition/plot.py#L366) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                                                ![matbench-perovskites-magpie-pca-2d]                                                                                                 |                                                      ![matbench-perovskites-magpie-tsne-3d]                                                       |
 
@@ -140,12 +140,12 @@ On the roadmap but no ETA yet.
 
 ## Structure
 
-See [`pymatviz/structure/plotly.py`](pymatviz/structure/plotly.py).
+See [`pymatviz/structure/figures.py`](pymatviz/structure/figures.py).
 
-|                           [`structure_3d(hea_structure)`](pymatviz/structure/plotly.py#L318)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/plotly.py#L318) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
+|                           [`structure_3d(hea_structure)`](pymatviz/structure/figures.py#L423)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py#L423) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
 | :---------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![hea-structure-3d]                                                   |                                                    ![lco-structure-3d]                                                     |
-| [`structure_2d(six_structs)`](pymatviz/structure/plotly.py#L42) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/plotly.py#L318) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
+| [`structure_2d(six_structs)`](pymatviz/structure/figures.py#L27) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/figures.py#L423) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
 |                                            ![matbench-phonons-structures-2d]                                            |                                             ![matbench-phonons-structures-3d]                                              |
 
 [matbench-phonons-structures-2d]: assets/svg/matbench-phonons-structures-2d.svg
@@ -192,10 +192,10 @@ Importing `pymatviz` auto-registers all widgets for their respective sets of sup
 
 See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 
-|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L15) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L15)   |
+|   [`brillouin_zone_3d(cubic_struct)`](pymatviz/brillouin.py#L16) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py)    |  [`brillouin_zone_3d(hexagonal_struct)`](pymatviz/brillouin.py#L16)   |
 | :------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------: |
 |                                                   ![brillouin-cubic-mp-10018]                                                    |                   ![brillouin-hexagonal-mp-862690]                    |
-| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L15) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L15) |
+| [`brillouin_zone_3d(monoclinic_struct)`](pymatviz/brillouin.py#L16) [![fig-icon]](assets/scripts/brillouin/brillouin_zone_3d.py) | [`brillouin_zone_3d(orthorhombic_struct)`](pymatviz/brillouin.py#L16) |
 |                                                ![brillouin-monoclinic-mp-1183089]                                                |                      ![brillouin-volumes-3-cols]                      |
 
 [brillouin-cubic-mp-10018]: assets/svg/brillouin-cubic-mp-10018.svg
@@ -208,10 +208,10 @@ See [`pymatviz/brillouin.py`](pymatviz/brillouin.py).
 
 See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
-|             [`xrd_pattern(pattern)`](pymatviz/xrd.py#L42) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L42)   |
+|             [`xrd_pattern(pattern)`](pymatviz/xrd.py#L45) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py)             |  [`xrd_pattern({key1: patt1, key2: patt2})`](pymatviz/xrd.py#L45)   |
 | :--------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------: |
 |                                                     ![xrd-pattern]                                                     |                       ![xrd-pattern-multiple]                       |
-| [`xrd_pattern(struct_dict, stack="horizontal")`](pymatviz/xrd.py#L42) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical")`](pymatviz/xrd.py#L42) |
+| [`xrd_pattern(struct_dict, stack="horizontal")`](pymatviz/xrd.py#L45) [![fig-icon]](assets/scripts/xrd/xrd_pattern.py) | [`xrd_pattern(struct_dict, stack="vertical")`](pymatviz/xrd.py#L45) |
 |                                            ![xrd-pattern-horizontal-stack]                                             |                    ![xrd-pattern-vertical-stack]                    |
 
 [xrd-pattern]: assets/svg/xrd-pattern.svg
@@ -221,9 +221,9 @@ See [`pymatviz/xrd.py`](pymatviz/xrd.py).
 
 ## Radial Distribution Functions
 
-See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
+See [`pymatviz/rdf/figures.py`](pymatviz/rdf/figures.py).
 
-| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/plotly.py#L33) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/plotly.py#L33) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
+| [`element_pair_rdfs(pmg_struct)`](pymatviz/rdf/figures.py#L34) | [`element_pair_rdfs({"A": struct1, "B": struct2})`](pymatviz/rdf/figures.py#L34) [![fig-icon]](assets/scripts/rdf/element_pair_rdfs.py) |
 | :-----------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------: |
 |                ![element-pair-rdfs-Na8Nb8O24]                 |                                               ![element-pair-rdfs-crystal-vs-amorphous]                                                |
 
@@ -232,12 +232,12 @@ See [`pymatviz/rdf/plotly.py`](pymatviz/rdf/plotly.py).
 
 ## Coordination
 
-See [`pymatviz/coordination/plotly.py`](pymatviz/coordination/plotly.py).
+See [`pymatviz/coordination/figures.py`](pymatviz/coordination/figures.py).
 
-|              [`coordination_hist(struct_dict)`](pymatviz/coordination/plotly.py#L34)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/plotly.py#L34) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
+|              [`coordination_hist(struct_dict)`](pymatviz/coordination/figures.py#L35)              |            [`coordination_hist(struct_dict, by_element=True)`](pymatviz/coordination/figures.py#L35) [![fig-icon]](assets/scripts/coordination/coordination_hist.py)             |
 | :-----------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                    ![coordination-hist-single]                                    |                                                                  ![coordination-hist-by-structure-and-element]                                                                  |
-| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/plotly.py#L337) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/plotly.py#L337) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
+| [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L366) | [`coordination_vs_cutoff_line(struct_dict, strategy=None)`](pymatviz/coordination/figures.py#L366) [![fig-icon]](assets/scripts/coordination/coordination_vs_cutoff_line.py#L52) |
 |                                 ![coordination-vs-cutoff-single]                                  |                                                                       ![coordination-vs-cutoff-multiple]                                                                        |
 
 [coordination-hist-single]: assets/svg/coordination-hist-single.svg
@@ -267,11 +267,11 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 | [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...])`](pymatviz/treemap/chem_sys.py#L36) [![fig-icon]](assets/scripts/treemap/chem_sys_treemap.py) | [`chem_sys_treemap(["FeO", "Fe2O3", "LiPO4", ...], group_by="formula")`](pymatviz/treemap/chem_sys.py#L36) |
 | :----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
 |                                                           ![chem-sys-treemap-formula]                                                            |                                        ![chem-sys-treemap-ward-bmg]                                        |
-|           [`chem_env_treemap(structures)`](pymatviz/treemap/chem_env.py#L36) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_cells_cn=3, max_cells_ce=4)`](pymatviz/treemap/chem_env.py#L36)     |
+|           [`chem_env_treemap(structures)`](pymatviz/treemap/chem_env.py#L50) [![fig-icon]](assets/scripts/treemap/chem_env_treemap.py)           |     [`chem_env_treemap(structures, max_cells_cn=3, max_cells_ce=4)`](pymatviz/treemap/chem_env.py#L50)     |
 |                                                            ![chem-env-treemap-basic]                                                             |                                     ![chem-env-treemap-large-dataset]                                      |
-|              [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L36)            |
+|              [`py_pkg_treemap("pymatviz")`](pymatviz/treemap/py_pkg.py#L513) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)              |           [`py_pkg_treemap(["pymatviz", "flame", "pymatgen"])`](pymatviz/treemap/py_pkg.py#L36)            |
 |                                                            ![py-pkg-treemap-pymatviz]                                                            |                                         ![py-pkg-treemap-multiple]                                         |
-|   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L36) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)    | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L36)  |
+|   [`py_pkg_treemap("pymatviz", color_by="coverage")`](pymatviz/treemap/py_pkg.py#L513) [![fig-icon]](assets/scripts/treemap/py_pkg_treemap.py)    | [`py_pkg_treemap("pymatgen", color_by="coverage", color_range=(0, 100))`](pymatviz/treemap/py_pkg.py#L513)  |
 |                                                       ![py-pkg-treemap-pymatviz-coverage]                                                        |                                    ![py-pkg-treemap-pymatgen-coverage]                                     |
 
 > **Note:** For `color_by="coverage"` the package must have coverage data (e.g. run `pytest --cov=<pkg> --cov-report=xml` and pass the resulting `.coverage` file to `coverage_data_file`).
@@ -289,7 +289,7 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 
 See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 
-| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py#L20) [![fig-icon]](assets/scripts/rainclouds/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py#L20) |
+| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py#L21) [![fig-icon]](assets/scripts/rainclouds/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py#L21) |
 | :-------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------: |
 |                                              ![rainclouds-bimodal]                                              |                   ![rainclouds-trimodal]                   |
 
@@ -300,7 +300,7 @@ See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 
 See [`pymatviz/sankey.py`](pymatviz/sankey.py).
 
-| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py#L16) [![fig-icon]](assets/scripts/sankey/sankey_from_2_df_cols.py) | [`sankey_from_2_df_cols(df_space_groups)`](pymatviz/sankey.py#L16) |
+| [`sankey_from_2_df_cols(df_perovskites)`](pymatviz/sankey.py#L18) [![fig-icon]](assets/scripts/sankey/sankey_from_2_df_cols.py) | [`sankey_from_2_df_cols(df_space_groups)`](pymatviz/sankey.py#L18) |
 | :-----------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------: |
 |                                              ![sankey-spglib-vs-aflow-spacegroups]                                              |                ![sankey-crystal-sys-to-spg-symbol]                 |
 
@@ -322,7 +322,7 @@ See [`pymatviz/bar.py`](pymatviz/bar.py).
 
 See [`pymatviz/histogram.py`](pymatviz/histogram.py).
 
-| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histogram.py#L37) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L108) [![fig-icon]](assets/scripts/histogram/histogram.py) |
+| [`elements_hist(compositions, log=True, bar_values='count')`](pymatviz/histogram.py#L21) [![fig-icon]](assets/scripts/histogram/elements_hist.py) | [`histogram({'key1': values1, 'key2': values2})`](pymatviz/histogram.py#L89) [![fig-icon]](assets/scripts/histogram/histogram.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                 ![elements-hist]                                                                  |                                                         ![histogram-ecdf]                                                          |
 
@@ -347,23 +347,23 @@ See [`pymatviz/scatter.py`](pymatviz/scatter.py).
 
 See [`pymatviz/uncertainty.py`](pymatviz/uncertainty.py).
 
-|             [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L27) [![fig-icon]](assets/scripts/uncertainty/qq_gaussian.py)              |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L27)        |
+|             [`qq_gaussian(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L22) [![fig-icon]](assets/scripts/uncertainty/qq_gaussian.py)              |       [`qq_gaussian(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L22)        |
 | :---------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
 |                                                                    ![qq-gaussian]                                                                     |                                ![qq-gaussian-multiple]                                 |
-| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L208) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L208) |
+| [`error_decay_with_uncert(y_true, y_pred, y_std)`](pymatviz/uncertainty.py#L119) [![fig-icon]](assets/scripts/uncertainty/error_decay_with_uncert.py) | [`error_decay_with_uncert(y_true, y_pred, y_std: dict)`](pymatviz/uncertainty.py#L119) |
 |                                                              ![error-decay-with-uncert]                                                               |                          ![error-decay-with-uncert-multiple]                           |
 
 ## Classification
 
 See [`pymatviz/classify/confusion_matrix.py`](pymatviz/classify/confusion_matrix.py).
 
-| [`confusion_matrix(conf_mat, ...)`](pymatviz/classify/confusion_matrix.py#L10) | [`confusion_matrix(y_true, y_pred, ...)`](pymatviz/classify/confusion_matrix.py#L10) [![fig-icon]](assets/scripts/classify/confusion_matrix.py) |
+| [`confusion_matrix(conf_mat, ...)`](pymatviz/classify/confusion_matrix.py#L14) | [`confusion_matrix(y_true, y_pred, ...)`](pymatviz/classify/confusion_matrix.py#L14) [![fig-icon]](assets/scripts/classify/confusion_matrix.py) |
 | :----------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: |
 |                         ![stability-confusion-matrix]                          |                                                       ![crystal-system-confusion-matrix]                                                        |
 
 See [`pymatviz/classify/curves.py`](pymatviz/classify/curves.py).
 
-| [`roc_curve_plotly(targets, probs_positive)`](pymatviz/classify/curves.py#L76) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve_plotly(targets, probs_positive)`](pymatviz/classify/curves.py#L176) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
+| [`roc_curve_plotly(targets, probs_positive)`](pymatviz/classify/curves.py#L83) [![fig-icon]](assets/scripts/classify/roc_curve.py) | [`precision_recall_curve_plotly(targets, probs_positive)`](pymatviz/classify/curves.py#L183) [![fig-icon]](assets/scripts/classify/precision_recall_curve.py) |
 | :--------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                    ![roc-curve-plotly-multiple]                                                    |                                                           ![precision-recall-curve-plotly-multiple]                                                           |
 
