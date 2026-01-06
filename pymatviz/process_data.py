@@ -18,13 +18,11 @@ from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
-    from pymatgen.core import IMolecule, Molecule
-
-
-if TYPE_CHECKING:
     from collections.abc import Callable
 
     from numpy.typing import ArrayLike
+    from pymatgen.core import IMolecule, Molecule
+    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
 
     from pymatviz.typing import AnyStructure, ElemValues, FormulaGroupBy, T
 
@@ -616,7 +614,7 @@ def normalize_spacegroups(
 
 def normalize_phonon_bands(
     band_structs: Any,
-) -> dict[str, Any]:
+) -> dict[str, PhononBandStructureSymmLine]:
     """Normalize phonon band structure input to a dict of pymatgen PhononBands.
 
     Handles single or multiple band structures from pymatgen or phonopy.
@@ -634,7 +632,7 @@ def normalize_phonon_bands(
 
     Raises:
         TypeError: If input is not a supported band structure type.
-        ValueError: If the resulting dict is empty.
+        ValueError: If input is an empty mapping.
     """
     from collections.abc import Mapping
 
@@ -645,6 +643,8 @@ def normalize_phonon_bands(
     # Convert single input to dict
     if isinstance(band_structs, Mapping):
         input_dict = dict(band_structs)
+        if len(input_dict) == 0:
+            raise ValueError("Empty band structure mapping")
     else:
         input_dict = {"": band_structs}
 
@@ -661,9 +661,6 @@ def normalize_phonon_bands(
                 f"Only {cls_name}, phonopy BandStructure or dict supported, "
                 f"got {type(bands).__name__}"
             )
-
-    if len(result) == 0:
-        raise ValueError("Empty band structure dict")
 
     return result
 
