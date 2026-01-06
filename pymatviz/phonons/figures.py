@@ -12,7 +12,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.constants as const
 from plotly.subplots import make_subplots
-from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 from pymatgen.phonon.dos import PhononDos
 
 from pymatviz.phonons.helpers import (
@@ -20,9 +19,9 @@ from pymatviz.phonons.helpers import (
     YMax,
     YMin,
     _shaded_range,
-    phonopy_to_pymatgen_bands,
     pretty_sym_point,
 )
+from pymatviz.process_data import normalize_phonon_bands
 from pymatviz.typing import (
     SET_INTERSECTION,
     SET_MODE,
@@ -38,6 +37,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     from phonopy.phonon.band_structure import BandStructure as PhonopyBandStructure
+    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
 
 
 def phonon_bands(
@@ -102,29 +102,8 @@ def phonon_bands(
         TypeError: If band_structs is not a PhononBandStructureSymmLine, phonopy
             BandStructure or dict of these.
     """
-    # Convert input to dict if single band structure
-    input_dict: dict[str, AnyBandStructure | PhonopyBandStructure]
-    if isinstance(band_structs, Mapping):
-        input_dict = dict(band_structs)  # type: ignore[assignment]
-    else:
-        input_dict = {"": band_structs}
-
-    # Convert phonopy band structures to pymatgen format
-    bs_dict: dict[str, PhononBands] = {}
-    for key, bands in input_dict.items():
-        if type(bands).__module__.startswith("phonopy"):
-            bs_dict[key] = phonopy_to_pymatgen_bands(bands)  # type: ignore[arg-type]
-        elif isinstance(bands, PhononBands):
-            bs_dict[key] = bands
-        else:
-            cls_name = PhononBands.__name__
-            raise TypeError(
-                f"Only {cls_name}, phonopy BandStructure or dict supported, "
-                f"got {type(bands).__name__}"
-            )
-
-    if len(bs_dict) == 0:
-        raise ValueError("Empty band structure dict")
+    # Convert input to dict of pymatgen PhononBands
+    bs_dict: dict[str, PhononBands] = normalize_phonon_bands(band_structs)
 
     fig = go.Figure()
     line_kwargs = line_kwargs or {}
@@ -309,7 +288,7 @@ def phonon_bands(
                         # Use mode-specific styles
                         line_defaults |= mode_styles
                     else:  # Apply single style dict to all lines
-                        line_defaults |= line_kwargs  # type: ignore[arg-type]
+                        line_defaults |= cast("dict[str, Any]", line_kwargs)
 
                 is_new_name = trace_name not in existing_names
                 fig.add_scatter(
