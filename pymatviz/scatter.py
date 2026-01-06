@@ -27,11 +27,12 @@ def _get_axis_labels(
 ) -> tuple[str, str]:
     """Extract axis labels from data or column names."""
     if df is not None:
-        xlabel = str(getattr(df[x], "name", x))
-        ylabel = str(getattr(df[y], "name", y))
+        # x, y are column names (str) when df is provided
+        xlabel: str = getattr(df[x], "name", x)  # type: ignore[arg-type]
+        ylabel: str = getattr(df[y], "name", y)  # type: ignore[arg-type]
     else:
-        xlabel = str(getattr(x, "name", x if isinstance(x, str) else "Actual"))
-        ylabel = str(getattr(y, "name", y if isinstance(y, str) else "Predicted"))
+        xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
+        ylabel = getattr(y, "name", y if isinstance(y, str) else "Predicted")
     return xlabel, ylabel
 
 
