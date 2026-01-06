@@ -53,7 +53,15 @@ from pymatviz.histogram import elements_hist, histogram
 from pymatviz.io import df_to_html, df_to_pdf, df_to_svg, save_fig
 from pymatviz.notebook import notebook_mode
 from pymatviz.phonons import phonon_bands, phonon_bands_and_dos, phonon_dos
-from pymatviz.process_data import count_elements, count_formulas
+from pymatviz.process_data import (
+    count_elements,
+    count_formulas,
+    handle_anomalies,
+    handle_missing_values,
+    normalize_phonon_bands,
+    normalize_spacegroups,
+    sankey_flow_data,
+)
 from pymatviz.ptable import (
     ptable_heatmap_plotly,
     ptable_heatmap_splits_plotly,
