@@ -9,7 +9,6 @@ by locating the current line number of:
 in the referenced Python module and updating the '#L...' anchor accordingly.
 
 TODO:
-- add to link check workflow
 - non-existent func def doesn't raise
 """
 
@@ -98,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--readme",
         type=Path,
-        default=Path("README.md"),
+        default=Path("readme.md"),
         help="Markdown file to update.",
     )
 
