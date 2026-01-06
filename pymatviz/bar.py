@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from pymatviz.enums import Key
+from pymatviz.process_data import normalize_spacegroups
 from pymatviz.utils import si_fmt_int, spg_to_crystal_sys
 
 
@@ -55,17 +56,7 @@ def spacegroup_bar(
     if len(data) == 0:
         raise ValueError("spacegroup_bar requires non-empty data")
 
-    if type(data[0]).__qualname__ in ("Structure", "Atoms"):
-        # if 1st sequence item is pymatgen structure or ASE Atoms, assume all are
-        from moyopy import MoyoDataset
-        from moyopy.interface import MoyoAdapter
-
-        series = pd.Series(
-            MoyoDataset(MoyoAdapter.from_py_obj(struct)).number  # type: ignore[arg-type]
-            for struct in data
-        )
-    else:
-        series = pd.Series(data)
+    series = normalize_spacegroups(data)
 
     count_col = "Counts"
     df_data = series.value_counts(sort=False).to_frame(name=count_col)

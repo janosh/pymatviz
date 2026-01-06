@@ -167,7 +167,7 @@ def test_phonon_bands_raises(
             path_mode="invalid",  # type: ignore[arg-type]
         )
 
-    with pytest.raises(ValueError, match="Empty band structure dict"):
+    with pytest.raises(ValueError, match="Empty band structure mapping"):
         pmv.phonon_bands({})
 
     # test invalid shaded_ys values

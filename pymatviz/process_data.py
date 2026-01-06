@@ -18,13 +18,11 @@ from pymatviz.utils import df_ptable
 
 
 if TYPE_CHECKING:
-    from pymatgen.core import IMolecule, Molecule
-
-
-if TYPE_CHECKING:
     from collections.abc import Callable
 
     from numpy.typing import ArrayLike
+    from pymatgen.core import IMolecule, Molecule
+    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine
 
     from pymatviz.typing import AnyStructure, ElemValues, FormulaGroupBy, T
 
@@ -557,3 +555,172 @@ def bin_df_cols(
 
     # Set the index back to the original index name
     return df_bin.set_index(orig_index_name)
+
+
+def normalize_spacegroups(
+    data: Sequence[int | str | Any] | pd.Series,
+) -> pd.Series:
+    """Normalize spacegroup data from structures, numbers, or symbols to a Series.
+
+    Handles pymatgen Structure, ASE Atoms, space group numbers (1-230), or
+    Hermann-Mauguin symbols.
+
+    Args:
+        data (Sequence[int | str | Structure] | pd.Series): Space group data. Can be:
+            - Sequence of pymatgen Structures or ASE Atoms
+            - Sequence of space group numbers (1-230)
+            - Sequence of Hermann-Mauguin symbols
+            - pandas Series of any of the above
+
+    Returns:
+        pd.Series: Series of space group numbers (1-230).
+
+    Raises:
+        ValueError: If data is empty.
+    """
+    if len(data) == 0:
+        raise ValueError("Cannot normalize empty spacegroup data")
+
+    first_item = data.iloc[0] if isinstance(data, pd.Series) else data[0]
+
+    if is_structure_like(first_item):
+        # pymatgen Structure or ASE Atoms - extract spacegroup numbers via moyopy
+        from moyopy import MoyoDataset
+        from moyopy.interface import MoyoAdapter
+
+        return pd.Series(
+            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]
+        )
+
+    result = pd.Series(data)
+    # Validate if data appears to be spacegroup numbers
+    if pd.api.types.is_numeric_dtype(result):
+        invalid = result[(result < 1) | (result > 230)]
+        if len(invalid) > 0:
+            raise ValueError(
+                f"Space group numbers must be in [1, 230], got: {invalid.tolist()}"
+            )
+        return result
+
+    # Convert Hermann-Mauguin symbols to space group numbers
+    if isinstance(first_item, str):
+        from pymatgen.symmetry.groups import SpaceGroup
+
+        try:
+            return pd.Series([SpaceGroup(sym).int_number for sym in result])
+        except ValueError as exc:
+            raise ValueError(f"Invalid Hermann-Mauguin symbol: {exc}") from exc
+
+    return result
+
+
+def normalize_phonon_bands(
+    band_structs: Any,
+) -> dict[str, PhononBandStructureSymmLine]:
+    """Normalize phonon band structure input to a dict of pymatgen PhononBands.
+
+    Handles single or multiple band structures from pymatgen or phonopy.
+
+    Args:
+        band_structs: Single band structure or dict/mapping of band structures.
+            Can be:
+            - pymatgen PhononBandStructureSymmLine
+            - phonopy BandStructure
+            - dict mapping labels to any of the above
+
+    Returns:
+        dict[str, PhononBandStructureSymmLine]: Dict mapping labels to pymatgen
+            PhononBandStructureSymmLine objects.
+
+    Raises:
+        TypeError: If input is not a supported band structure type.
+        ValueError: If input is an empty mapping.
+    """
+    from collections.abc import Mapping
+
+    from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
+
+    from pymatviz.phonons.helpers import phonopy_to_pymatgen_bands
+
+    # Convert single input to dict
+    if isinstance(band_structs, Mapping):
+        input_dict = dict(band_structs)
+        if len(input_dict) == 0:
+            raise ValueError("Empty band structure mapping")
+    else:
+        input_dict = {"": band_structs}
+
+    # Convert all to pymatgen format
+    result: dict[str, PhononBands] = {}
+    for key, bands in input_dict.items():
+        if type(bands).__module__.startswith("phonopy"):
+            result[key] = phonopy_to_pymatgen_bands(bands)
+        elif isinstance(bands, PhononBands):
+            result[key] = bands
+        else:
+            cls_name = PhononBands.__name__
+            raise TypeError(
+                f"Only {cls_name}, phonopy BandStructure or dict supported, "
+                f"got {type(bands).__name__}"
+            )
+
+    return result
+
+
+def sankey_flow_data(
+    df: pd.DataFrame,
+    cols: list[str],
+    *,
+    labels_with_counts: bool | str = True,
+) -> dict[str, Any]:
+    """Extract flow data from DataFrame columns for Sankey diagrams.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing source and target columns.
+        cols (list[str]): 2-element list of [source_col, target_col] column names.
+        labels_with_counts (bool | "percent"): Whether to append counts to labels.
+            If "percent", shows percentages instead of counts. Defaults to True.
+
+    Returns:
+        dict with keys:
+            - "source": list of source node values
+            - "target": list of target node values
+            - "value": list of flow values (counts)
+            - "labels": list of node labels (with optional counts)
+            - "source_indices": list of source node indices for links
+            - "target_indices": list of target node indices for links
+
+    Raises:
+        ValueError: If cols doesn't have exactly 2 elements.
+    """
+    if len(cols) != 2:
+        raise ValueError(
+            f"{cols=} should specify exactly two columns: (source_col, target_col)"
+        )
+
+    source, target, value = (
+        df[list(cols)].value_counts().reset_index().to_numpy().T.tolist()
+    )
+
+    # Deduplicate nodes - a value may appear in both source and target columns
+    unique_vals = list(dict.fromkeys(source + target))  # preserves order
+    val_to_idx = {val: idx for idx, val in enumerate(unique_vals)}
+
+    if labels_with_counts:
+        as_percent = labels_with_counts == "percent"
+        source_counts = df[cols[0]].value_counts(normalize=as_percent).to_dict()
+        target_counts = df[cols[1]].value_counts(normalize=as_percent).to_dict()
+        all_counts = {**source_counts, **target_counts}
+        fmt = ".1%" if as_percent else "d"
+        labels = [f"{val}: {all_counts[val]:{fmt}}" for val in unique_vals]
+    else:
+        labels = unique_vals
+
+    return {
+        "source": source,
+        "target": target,
+        "value": value,
+        "labels": labels,
+        "source_indices": [val_to_idx[val] for val in source],
+        "target_indices": [val_to_idx[val] for val in target],
+    }
