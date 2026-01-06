@@ -748,10 +748,10 @@ class TestHandleMissingValues:
 
     def test_mean_strategy_array(self) -> None:
         """Test mean strategy with numpy array."""
-        arr = np.array([1.0, np.nan, 3.0])
+        arr = np.array([1.0, np.nan, 3.0, 11.0])  # mean=5.0, median=3.0
         result = pmv_pd.handle_missing_values(arr, strategy="mean")
-        assert len(result) == 3
-        assert result[1] == 2.0  # mean of 1 and 3
+        assert len(result) == 4
+        assert result[1] == 5.0  # mean of 1, 3, 11
 
     def test_median_strategy_array(self) -> None:
         """Test median strategy with numpy array."""
