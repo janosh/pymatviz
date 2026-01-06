@@ -91,7 +91,7 @@ def coordination_hist(
     Returns:
         go.Figure: A plotly Figure object containing the histogram.
     """
-    structures = normalize_structures(structures)
+    struct_dict = normalize_structures(structures)
 
     # coord_data: coordination numbers and hover data for each structure and element
     coord_data: dict[Hashable, dict[str, Any]] = {}
@@ -107,10 +107,10 @@ def coordination_hist(
 
     get_neighbors = normalize_get_neighbors(strategy)
 
-    for struct_key, structure in structures.items():
+    for struct_key, structure in struct_dict.items():
         coord_data[struct_key] = {}
         for idx, site in enumerate(structure):
-            cn = len(get_neighbors(site, structure))
+            cn = len(get_neighbors(site, structure))  # type: ignore[arg-type]
             min_cn = min(min_cn, cn)
             max_cn = max(max_cn, cn)
             elem_symbol = get_site_symbol(site)
@@ -392,7 +392,7 @@ def coordination_vs_cutoff_line(
     Returns:
         A plotly Figure object containing the line plot.
     """
-    structures = normalize_structures(structures)
+    struct_dict = normalize_structures(structures)
 
     # Determine cutoff range based on strategy
     if (
@@ -431,7 +431,7 @@ def coordination_vs_cutoff_line(
             "instance, or NearNeighbors subclass."
         )
 
-    cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
+    cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)  # type: ignore[call-overload]
 
     if isinstance(element_color_scheme, dict):
         element_colors = ELEM_COLORS_JMOL | element_color_scheme
@@ -443,18 +443,18 @@ def coordination_vs_cutoff_line(
             "or a custom dict."
         )
 
-    n_cols = min(3, len(structures))
-    n_rows = math.ceil(len(structures) / n_cols)
+    n_cols = min(3, len(struct_dict))
+    n_rows = math.ceil(len(struct_dict) / n_cols)
     subplot_kwargs = dict(
         cols=n_cols,
         rows=n_rows,
         shared_xaxes=True,
         vertical_spacing=0.05,
-        subplot_titles=list(structures),
+        subplot_titles=[str(key) for key in struct_dict],
     ) | (subplot_kwargs or {})
     fig = make_subplots(**subplot_kwargs)
 
-    for idx, (struct_name, structure) in enumerate(structures.items(), start=1):
+    for idx, (struct_name, structure) in enumerate(struct_dict.items(), start=1):
         elements = sorted(
             {
                 elem_symbol
@@ -467,7 +467,7 @@ def coordination_vs_cutoff_line(
             coord_numbers = []
             for cutoff in cutoffs:
                 get_neighbors_fn = normalize_get_neighbors(strategy=cutoff)
-                avg_cn = calculate_average_cn(structure, element, get_neighbors_fn)
+                avg_cn = calculate_average_cn(structure, element, get_neighbors_fn)  # type: ignore[arg-type]
                 coord_numbers.append(avg_cn)
 
             color = element_colors.get(element)

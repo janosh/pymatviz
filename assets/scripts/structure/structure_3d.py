@@ -50,7 +50,7 @@ fig.show()
 
 # %% Example: Disordered site rendering (multiple spheres in 3D)
 fig = pmv.structure_3d(
-    disordered_demo_structures,
+    disordered_demo_structures,  # type: ignore[arg-type]
     elem_colors=ElemColorScheme.jmol,
     n_cols=2,
     show_cell={"edge": dict(color="darkgray", width=2)},

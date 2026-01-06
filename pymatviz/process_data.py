@@ -377,7 +377,7 @@ def normalize_structures(
 
 def normalize_to_dict(
     inputs: T | Sequence[T] | dict[str, T],
-    cls: type[T] = SiteCollection,
+    cls: type[T] = SiteCollection,  # type: ignore[assignment]
     key_gen: Callable[[T], str] = lambda obj: getattr(
         obj, "formula", type(obj).__name__
     ),
@@ -417,7 +417,7 @@ def normalize_to_dict(
             out_dict[key] = obj
         return out_dict
     if isinstance(inputs, dict):
-        return inputs
+        return inputs  # type: ignore[return-value]
     if isinstance(inputs, pd.Series):
         return inputs.to_dict()
 
@@ -431,7 +431,7 @@ def df_to_arrays(
     df: pd.DataFrame | None,
     *args: str | ArrayLike,
     strict: bool = True,
-) -> list[ArrayLike | dict[str, ArrayLike]]:
+) -> list[str | ArrayLike | dict[str, ArrayLike]]:
     """If df is None, this is a no-op: args are returned as-is. If df is a
     dataframe, all following args are used as column names and the column data
     returned as arrays (after dropping rows with NaNs in any column).
@@ -447,8 +447,9 @@ def df_to_arrays(
         TypeError: If df is not pd.DataFrame and not None.
 
     Returns:
-        list[ArrayLike | dict[str, ArrayLike]]: Array data for each column name or
-            dictionary of column names and array data.
+        list[str | ArrayLike | dict[str, ArrayLike]]: Array data for each column name,
+            dictionary of column names and array data, or original string args when
+            strict=False and df is not a DataFrame.
     """
     if df is None:
         if cols := [arg for arg in args if isinstance(arg, str)]:
@@ -458,7 +459,7 @@ def df_to_arrays(
 
     if not isinstance(df, pd.DataFrame):
         if not strict:
-            return list(args)  # type: ignore[return-value]
+            return list(args)
         raise TypeError(f"df should be pandas DataFrame or None, got {type(df)}")
 
     if arrays := [arg for arg in args if isinstance(arg, np.ndarray)]:
@@ -475,15 +476,15 @@ def df_to_arrays(
         if isinstance(col_name, str | int):
             flat_args.append(col_name)
         else:
-            flat_args.extend(col_name)
+            flat_args.extend(col_name)  # type: ignore[arg-type]
 
     df_no_nan = df.dropna(subset=flat_args)
     for idx, col_name in enumerate(args):
         if isinstance(col_name, str | int):
             args[idx] = df_no_nan[col_name].to_numpy()  # type: ignore[index]
         else:
-            col_data = df_no_nan[[*col_name]].to_numpy().T
-            args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index]
+            col_data = df_no_nan[[*col_name]].to_numpy().T  # type: ignore[misc]
+            args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index,arg-type]
 
     return args  # type: ignore[return-value]
 

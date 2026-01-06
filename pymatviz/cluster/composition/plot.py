@@ -57,6 +57,14 @@ class ProjectionCallable(Protocol):
         ...
 
 
+class EmbeddingCallable(Protocol):
+    """Protocol for custom embedding functions."""
+
+    def __call__(self, compositions: Sequence[str], **kwargs: Any) -> np.ndarray:
+        """Convert compositions to embeddings."""
+        ...
+
+
 class EmbeddingMethod(LabelEnum):
     """Supported embedding methods for composition vectorization."""
 
@@ -362,7 +370,7 @@ def cluster_compositions(
     prop_name: str | None = None,
     embedding_method: str
     | EmbeddingMethod
-    | Callable[[Sequence[str], Any], np.ndarray] = EmbeddingMethod.magpie,
+    | EmbeddingCallable = EmbeddingMethod.magpie,
     projection: ProjectionMethod | ProjectionCallable | str,
     n_components: int = 2,
     hover_format: str = ".2f",

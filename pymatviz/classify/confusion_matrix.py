@@ -1,10 +1,14 @@
 """Confusion matrix plotting functions."""
 
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import plotly.graph_objects as go
+
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 def confusion_matrix(
@@ -123,8 +127,11 @@ def confusion_matrix(
     fmt_tile_vals = np.array(
         [[f"{val:{float_fmt}}" for val in row] for row in conf_mat_arr]
     ).T
+
+    # Process annotations into a numpy array for the heatmap
+    processed_annotations: NDArray[np.str_]
     if annotations is None:
-        annotations = fmt_tile_vals
+        processed_annotations = fmt_tile_vals
     elif callable(annotations):  # If annotations is a callable, apply it to each cell
         total = sample_counts.sum()
         anno_matrix = []
@@ -145,16 +152,25 @@ def confusion_matrix(
                 )
                 row += [annotations(count, total, row_pct, col_pct)]
             anno_matrix += [row]
-        annotations = np.array(anno_matrix).T
+        processed_annotations = np.array(anno_matrix).T
     else:  # When custom annotations provided, append percentage values
-        annotations = np.char.add(annotations, "<br>")
-        annotations = np.char.add(annotations, fmt_tile_vals)
+        anno_arr = np.asarray(annotations)
+        if anno_arr.shape != fmt_tile_vals.shape:
+            raise ValueError(
+                f"Custom annotations shape {anno_arr.shape} does not match confusion "
+                f"matrix shape {fmt_tile_vals.shape}. Note: annotations should be "
+                f"provided in transposed form (columns, rows) to match the heatmap."
+            )
+        processed_annotations = np.char.add(anno_arr, "<br>")
+        processed_annotations = np.char.add(processed_annotations, fmt_tile_vals)
 
+    # rot90 rotates data to match Plotly's bottom-left origin convention
+    # processed_annotations.T undoes earlier transpose (line 125/151) before rotation
     heatmap_defaults = dict(
         z=np.rot90(conf_mat_arr),
         x=formatted_labels["x"],
         y=formatted_labels["y"],
-        annotation_text=np.rot90(np.array(annotations).T),
+        annotation_text=np.rot90(processed_annotations.T),
         colorscale=colorscale,
         xgap=7,
         ygap=7,

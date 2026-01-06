@@ -31,7 +31,15 @@ from pymatviz.enums import Key
 
 
 if TYPE_CHECKING:
+    from typing import TypeAlias
+
     import plotly.graph_objects as go
+
+    # (dataset_name, target_key, target_label, target_symbol, embed_method,
+    #  proj_method, n_components, colorbar_kwargs)
+    PlotConfig: TypeAlias = tuple[
+        str, str, str, str, Embed, Project, int, dict[str, Any]
+    ]
 
 
 pmv.set_plotly_template("pymatviz_white")
@@ -111,7 +119,7 @@ def process_dataset(
         if embed_method == "one-hot":
             embeddings = pcc.one_hot_encode(compositions)
         elif embed_method in (Embed.magpie, Embed.matscholar_el):
-            embeddings = pcc.matminer_featurize(compositions, preset=embed_method)  # type: ignore[arg-type]
+            embeddings = pcc.matminer_featurize(compositions, preset=embed_method.value)  # type: ignore[arg-type]
         else:
             raise ValueError(f"Unknown {embed_method=}")
 
@@ -222,36 +230,35 @@ mb_bulk_modulus: tuple[str, str, str, str] = (
     "Bulk Modulus (GPa)",
     "K<sub>VRH</sub>",
 )
-plot_combinations: list[  # type: ignore[invalid-assignment]
-    tuple[str, str, str, str, Embed, Project, int, dict[str, Any]]
-] = [
+# ty can't infer tuple types from starred expressions, so we need type: ignore
+plot_combinations: list[PlotConfig] = [  # type: ignore[list-item]
     # 1. Steels with PCA (2D) - shows clear linear trends
-    (*mb_steels, Embed.magpie, Project.pca, 2, dict(x=0.01, xanchor="left")),
+    (*mb_steels, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
     # 2. Steels with t-SNE (2D) - shows non-linear clustering
-    (*mb_steels, Embed.magpie, Project.tsne, 2, dict(x=0.01, xanchor="left")),
+    (*mb_steels, Embed.magpie, Project.tsne, 2, {"x": 0.01, "xanchor": "left"}),
     # TODO umap-learn seemingly not installed by uv run in CI, fix later
     # 3. JDFT2D with UMAP (2D) - shows modern non-linear projection
-    # (*mb_jdft2d, Embed.magpie, Project.umap, 2, dict(x=0.01, xanchor="left")),
+    # (*mb_jdft2d, Embed.magpie, Project.umap, 2, {"x": 0.01, "xanchor": "left"}),
     # 4. JDFT2D with one-hot encoding and PCA (3D) - shows raw element relationships
-    (*mb_jdft2d, Embed.one_hot, Project.pca, 3, dict()),
+    (*mb_jdft2d, Embed.one_hot, Project.pca, 3, {}),
     # 5. Steels with Matscholar embedding and t-SNE (3D) - shows advanced embedding
-    (*mb_steels, Embed.matscholar_el, Project.tsne, 3, dict(x=0.5, y=0.8)),
+    (*mb_steels, Embed.matscholar_el, Project.tsne, 3, {"x": 0.5, "y": 0.8}),
     # 6. Dielectric with PCA (2D) - shows clear linear trends
-    (*mb_dielectric, Embed.magpie, Project.pca, 2, dict(x=0.01, xanchor="left")),
+    (*mb_dielectric, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
     # 7. Perovskites with PCA (2D) - shows clear linear trends
-    (*mb_perovskites, Embed.magpie, Project.pca, 2, dict(x=0.01, xanchor="left")),
+    (*mb_perovskites, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
     # 8. Phonons with PCA (2D) - shows clear linear trends
-    (*mb_phonons, Embed.magpie, Project.pca, 2, dict(x=0.01, xanchor="left")),
+    (*mb_phonons, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
     # 9. Bulk Modulus with PCA (2D) - shows clear linear trends
     (
         *mb_bulk_modulus,
         Embed.magpie,
         Project.pca,
         2,
-        dict(x=0.99, y=0.96, yanchor="top"),
+        {"x": 0.99, "y": 0.96, "yanchor": "top"},
     ),
     # 10. Perovskites with t-SNE (3D) - shows raw element relationships
-    (*mb_perovskites, Embed.magpie, Project.tsne, 3, dict()),
+    (*mb_perovskites, Embed.magpie, Project.tsne, 3, {}),
 ]
 
 for (

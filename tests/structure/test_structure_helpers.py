@@ -341,7 +341,7 @@ def test_get_subplot_title(
     expected_text: str,
 ) -> None:
     structure = structures[0]
-    title = get_subplot_title(structure, struct_key, 1, subplot_title)
+    title = get_subplot_title(structure, struct_key, 1, subplot_title)  # type: ignore[arg-type]
     assert isinstance(title, dict)
     assert "text" in title
     assert expected_text in title["text"]
@@ -388,11 +388,11 @@ def test_draw_vector(
 ) -> None:
     """Test vector drawing with various settings."""
     fig = go.Figure()
-    start, vector = np.array(start), np.array(vector)
+    start, vector = np.array(start), np.array(vector)  # type: ignore[assignment]
 
     # Draw vector and check trace count
     initial_trace_count = len(fig.data)
-    draw_vector(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
+    draw_vector(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)  # type: ignore[arg-type]
     assert len(fig.data) - initial_trace_count == expected_traces
 
     # Check trace properties based on dimensionality
@@ -560,7 +560,7 @@ def test_get_site_hover_text(
     """Test hover text generation for sites with various formats."""
     lattice = Lattice.cubic(1.0)
     site = PeriodicSite("Si", [0, 0, 0], lattice)
-    result = get_site_hover_text(site, hover_text, site.species)
+    result = get_site_hover_text(site, hover_text, site.species)  # type: ignore[arg-type]
     assert result == expected_output
 
 
@@ -571,7 +571,7 @@ def test_get_site_hover_text_float_formatting() -> None:
     site = PeriodicSite("Si", [1.23456789, 1e-17, 2.3456], lattice)
 
     # Test default format (.4)
-    result_default = get_site_hover_text(site, SiteCoords.cartesian, site.species)
+    result_default = get_site_hover_text(site, SiteCoords.cartesian, site.species)  # type: ignore[arg-type]
     assert "1.235" in result_default
     assert ("1e-17" in result_default) or (
         "0" in result_default
@@ -579,13 +579,13 @@ def test_get_site_hover_text_float_formatting() -> None:
     assert "2.346" in result_default
 
     # Test custom string format (.2f)
-    result_2f = get_site_hover_text(site, SiteCoords.cartesian, site.species, ".2f")
+    result_2f = get_site_hover_text(site, SiteCoords.cartesian, site.species, ".2f")  # type: ignore[arg-type]
     assert "1.23" in result_2f
     assert "0.00" in result_2f
     assert "2.35" in result_2f
 
     # Test with fractional coordinates
-    result_frac = get_site_hover_text(site, SiteCoords.fractional, site.species, ".6f")
+    result_frac = get_site_hover_text(site, SiteCoords.fractional, site.species, ".6f")  # type: ignore[arg-type]
     assert "1.234568" in result_frac
     assert "0.000000" in result_frac
     assert "2.345600" in result_frac
@@ -596,7 +596,10 @@ def test_get_site_hover_text_float_formatting() -> None:
         return f"~{val:.1f}"
 
     result_custom = get_site_hover_text(
-        site, SiteCoords.cartesian, site.species, custom_formatter
+        site,
+        SiteCoords.cartesian,
+        site.species,  # type: ignore[arg-type]
+        custom_formatter,
     )
     assert "~1.2" in result_custom
     assert "~0.0" in result_custom  # 1e-17 rounds to 0
@@ -604,7 +607,10 @@ def test_get_site_hover_text_float_formatting() -> None:
 
     # Test with both cartesian and fractional
     result_both = get_site_hover_text(
-        site, SiteCoords.cartesian_fractional, site.species, ".3f"
+        site,
+        SiteCoords.cartesian_fractional,
+        site.species,  # type: ignore[arg-type]
+        ".3f",
     )
     assert "1.235" in result_both  # cartesian
     assert "0.000" in result_both  # 1e-17 rounded

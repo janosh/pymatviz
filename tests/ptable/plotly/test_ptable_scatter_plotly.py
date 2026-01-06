@@ -158,7 +158,7 @@ def test_annotations(
     expected_count: int,
 ) -> None:
     """Test different types of annotations."""
-    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)
+    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)  # type: ignore[arg-type]
 
     if callable(annotations):
         # For callable annotations, check format
@@ -479,7 +479,7 @@ def test_mixed_input_types() -> None:
             "tuple": ((1, 2), (3, 4)),  # Python tuples
         }
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
 
     # All should be plotted correctly
     assert len(fig.data) == 3

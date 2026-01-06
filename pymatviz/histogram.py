@@ -152,7 +152,7 @@ def histogram(
 
     fig = go.Figure(**fig_kwargs or {})
     for label, vals in data.items():
-        hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
+        hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)  # type: ignore[call-overload]
         fig.add_bar(
             x=bin_edges[:-1],
             y=hist_vals,

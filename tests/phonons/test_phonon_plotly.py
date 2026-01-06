@@ -69,7 +69,7 @@ def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
     with pytest.raises(
         TypeError, match=f"Only {PhononDos.__name__} or dict supported, got str"
     ):
-        pmv.phonon_dos("invalid input")
+        pmv.phonon_dos("invalid input")  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Empty DOS dict"):
         pmv.phonon_dos({})
@@ -191,7 +191,7 @@ def test_phonon_bands_path_mode_raises(phonon_bands_doses_mp_2758: BandsDoses) -
     with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
-            path_mode="invalid",
+            path_mode="invalid",  # type: ignore[arg-type]
         )
 
 
@@ -241,7 +241,7 @@ def test_phonon_bands_and_dos_path_mode_raises(
         pmv.phonon_bands_and_dos(
             phonon_bands_doses_mp_2758["bands"],
             phonon_bands_doses_mp_2758["doses"],
-            path_mode="invalid",
+            path_mode="invalid",  # type: ignore[arg-type]
         )
 
 
@@ -253,7 +253,7 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
 
     # Test single TotalDos
     fig = pmv.phonon_dos(
-        phonopy_nacl.total_dos,
+        phonopy_nacl.total_dos,  # type: ignore[arg-type]
         stack=False,
         sigma=0.1,
         normalize="max",
@@ -265,7 +265,7 @@ def test_phonon_dos_with_phonopy(phonopy_nacl: Phonopy) -> None:
 
     # Test dictionary of TotalDos objects
     dos_dict = {"DFT": phonopy_nacl.total_dos, "ML": phonopy_nacl.total_dos}
-    fig = pmv.phonon_dos(dos_dict, stack=True, sigma=0.1, normalize="max", units="THz")
+    fig = pmv.phonon_dos(dos_dict, stack=True, sigma=0.1, normalize="max", units="THz")  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     assert {trace.name for trace in fig.data} == {"DFT", "ML"}
 
@@ -285,7 +285,7 @@ def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
     phonopy_nacl.run_band_structure(paths=list(bands.values()))
 
     # Test single band structure
-    fig = pmv.phonon_bands(phonopy_nacl.band_structure)
+    fig = pmv.phonon_bands(phonopy_nacl.band_structure)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 6
 
@@ -294,6 +294,6 @@ def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
         "NaCl (phonopy)": phonopy_nacl.band_structure,
         "DFT": phonopy_nacl.band_structure,
     }
-    fig = pmv.phonon_bands(bands_dict)
+    fig = pmv.phonon_bands(bands_dict)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 6 * len(bands_dict)

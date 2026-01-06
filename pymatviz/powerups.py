@@ -211,7 +211,10 @@ def _get_valid_traces(
     elif isinstance(traces, slice):
         selected_traces = list(range(*traces.indices(len(fig.data))))
     elif isinstance(traces, (list, tuple)):
-        selected_traces = [idx for idx in traces if 0 <= idx < len(fig.data)]
+        # At runtime, we validate indices are integers and in bounds
+        selected_traces = [
+            idx for idx in traces if isinstance(idx, int) and 0 <= idx < len(fig.data)
+        ]
         if not selected_traces:
             valid_range = f"0-{len(fig.data) - 1}"
             raise ValueError(f"No valid trace indices in {traces}, {valid_range=}")
@@ -341,9 +344,11 @@ def add_best_fit_line(
         xref: str = "x",
         yref: str = "y",
     ) -> None:
+        # Convert to numpy arrays for array operations
+        arr_xs, arr_ys = np.asarray(data_xs), np.asarray(data_ys)
         # Calculate line parameters
-        slope, intercept = np.polyfit(data_xs, data_ys, 1)
-        x_min, x_max = min(data_xs), max(data_xs)
+        slope, intercept = np.polyfit(arr_xs, arr_ys, 1)
+        x_min, x_max = float(arr_xs.min()), float(arr_xs.max())
         y0, y1 = slope * x_min + intercept, slope * x_max + intercept
 
         # Add line
@@ -402,8 +407,9 @@ def add_best_fit_line(
         annotate(text, fig=fig, **plotly_anno_defaults)
 
     # CASE 1: Custom data provided directly
-    if len(xs) > 0 and len(ys) > 0:
-        add_fit_line(xs, ys, line_color)
+    xs_arr, ys_arr = np.asarray(xs), np.asarray(ys)
+    if len(xs_arr) > 0 and len(ys_arr) > 0:
+        add_fit_line(xs_arr, ys_arr, line_color)
         return fig
 
     # Get valid traces for plotly
@@ -506,20 +512,28 @@ def enhance_parity_plot(
         ValueError: If xs and ys are not provided and fig is not a plotly figure where
             the data can be directly accessed.
     """
+    # Convert to numpy arrays early for array operations
+    xs_arr, ys_arr = np.asarray(xs), np.asarray(ys)
+
     # Add identity line if requested
     if identity_line and fig is not None:
         identity_kwargs = identity_line if isinstance(identity_line, dict) else {}
         add_identity_line(fig, traces=traces, **identity_kwargs)
 
     # Early return if no stats or best-fit line needed and manual data not provided
-    if not stats and best_fit_line is not True and len(xs) == 0 and len(ys) == 0:
+    if (
+        not stats
+        and best_fit_line is not True
+        and len(xs_arr) == 0
+        and len(ys_arr) == 0
+    ):
         return fig
 
     # Case 1: Data provided directly
-    if len(xs) > 0 and len(ys) > 0:
+    if len(xs_arr) > 0 and len(ys_arr) > 0:
         # If best_fit_line is None, determine whether to add it based on R²
         if best_fit_line is None:
-            r2 = r2_score(xs, ys)
+            r2 = r2_score(xs_arr, ys_arr)
             best_fit_line = r2 > 0.3
 
         # Add best fit line if requested
@@ -527,12 +541,12 @@ def enhance_parity_plot(
             direct_best_fit_kwargs = (
                 {} if isinstance(best_fit_line, bool) else best_fit_line
             )
-            add_best_fit_line(fig, xs=xs, ys=ys, **direct_best_fit_kwargs)
+            add_best_fit_line(fig, xs=xs_arr, ys=ys_arr, **direct_best_fit_kwargs)
 
         # Add stats annotation if requested
         if stats and annotation_mode != "none" and fig is not None:
             direct_stats_kwargs = {} if isinstance(stats, bool) else stats
-            annotate_metrics(xs, ys, fig=fig, **direct_stats_kwargs)
+            annotate_metrics(xs_arr, ys_arr, fig=fig, **direct_stats_kwargs)
 
         return fig
 
@@ -657,9 +671,12 @@ def add_ecdf_line(
     has_subplots = fig._grid_ref is not None
     base_name = trace_kwargs.get("name", "Cumulative")
 
+    # Convert to numpy array for array operations
+    values_arr = np.asarray(values) if values is not None else np.array([])
+
     # If explicit values are provided, just add one ECDF line
-    if values is not None and len(values) > 0:
-        ecdf_trace = px.ecdf(values).data[0]
+    if len(values_arr) > 0:
+        ecdf_trace = px.ecdf(values_arr).data[0]
         fig.add_trace(ecdf_trace, **kwargs)
 
         # Set hover template

@@ -12,7 +12,15 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import plotly.graph_objects as go
 from plotly import colors as pcolors
-from pymatgen.core import Composition, Lattice, PeriodicSite, Species, Structure
+from pymatgen.core import (
+    Composition,
+    IMolecule,
+    IStructure,
+    Lattice,
+    PeriodicSite,
+    Species,
+    Structure,
+)
 from pymatgen.core.periodic_table import Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
@@ -57,9 +65,9 @@ def get_struct_prop(
     # Check structure/atoms properties first (highest precedence)
     prop_value = None
     if is_ase_atoms(struct):
-        prop_value = struct.info.get(prop_name)
+        prop_value = struct.info.get(prop_name)  # type: ignore[union-attr]
     elif hasattr(struct, "properties"):
-        prop_value = struct.properties.get(prop_name)
+        prop_value = struct.properties.get(prop_name)  # type: ignore[union-attr]
 
     if prop_value is not None:
         return prop_value
@@ -120,7 +128,7 @@ def get_site_symbol(site: PeriodicSite) -> str:
     if isinstance(species, Composition):
         el_amt_dict = species.get_el_amt_dict()
         if el_amt_dict:
-            return max(el_amt_dict, key=el_amt_dict.get)
+            return max(el_amt_dict, key=el_amt_dict.get)  # type: ignore[arg-type]
         if species.elements:
             return species.elements[0].symbol
         return "X"
@@ -138,26 +146,25 @@ def get_site_symbol(site: PeriodicSite) -> str:
 
 def _angles_to_rotation_matrix(
     angles: str, rotation: ArrayLike | None = None
-) -> ArrayLike:
+) -> np.ndarray:
     """Convert Euler angles to a rotation matrix.
 
     Note the order of angles matters. 50x,40z != 40z,50x.
 
     Args:
         angles (str): Euler angles (in degrees) formatted as '-10y,50x,120z'
-        rotation (np.array, optional): Initial rotation matrix. Use this if you already
-            have a rotation and want to combine it with the rotation defined by angles.
-            Defaults to identity matrix np.eye(3).
+        rotation (np.ndarray, optional): Initial rotation matrix. Use this if you
+            already have a rotation and want to combine it with the rotation defined
+            by angles. Defaults to identity matrix np.eye(3).
 
     Returns:
-        np.array: 3d rotation matrix.
+        np.ndarray: 3d rotation matrix.
     """
-    if rotation is None:
-        rotation = np.eye(3)
+    rot_matrix: np.ndarray = np.eye(3) if rotation is None else np.asarray(rotation)
 
     # Return initial rotation matrix if no angles
     if not angles:
-        return rotation.copy()
+        return rot_matrix.copy()
 
     for angle in angles.split(","):
         radians = math.radians(float(angle[:-1]))
@@ -166,12 +173,12 @@ def _angles_to_rotation_matrix(
         sin = math.sin(radians)
         cos = math.cos(radians)
         if dim == 0:
-            rotation = np.dot(rotation, [(1, 0, 0), (0, cos, sin), (0, -sin, cos)])
+            rot_matrix = np.dot(rot_matrix, [(1, 0, 0), (0, cos, sin), (0, -sin, cos)])
         elif dim == 1:
-            rotation = np.dot(rotation, [(cos, 0, -sin), (0, 1, 0), (sin, 0, cos)])
+            rot_matrix = np.dot(rot_matrix, [(cos, 0, -sin), (0, 1, 0), (sin, 0, cos)])
         else:
-            rotation = np.dot(rotation, [(cos, sin, 0), (-sin, cos, 0), (0, 0, 1)])
-    return rotation
+            rot_matrix = np.dot(rot_matrix, [(cos, sin, 0), (-sin, cos, 0), (0, 0, 1)])
+    return rot_matrix
 
 
 def get_image_sites(
@@ -227,14 +234,16 @@ def get_image_sites(
     return np.array(coords_image_atoms)
 
 
-def cell_to_lines(cell: ArrayLike) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
+def cell_to_lines(
+    cell: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert lattice vectors to plot lines.
 
     Args:
-        cell (np.array): Lattice vectors.
+        cell (np.ndarray): Lattice vectors.
 
     Returns:
-        tuple[np.array, np.array, np.array]:
+        tuple[np.ndarray, np.ndarray, np.ndarray]:
         - Lines
         - z-indices that sort plot elements into out-of-plane layers
         - lines used to plot the cell
@@ -272,7 +281,7 @@ def get_elem_colors(
     if isinstance(elem_colors, Mapping):
         return dict(elem_colors)
     if isinstance(elem_colors, ElemColorScheme):
-        return elem_colors.color_map
+        return elem_colors.color_map  # type: ignore[return-value]
     raise ValueError(
         f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
     )
@@ -330,10 +339,10 @@ def generate_site_label(
 
 
 def get_subplot_title(
-    struct_i: Structure,
+    struct_i: AnyStructure,
     struct_key: Hashable,
     idx: int,
-    subplot_title: Callable[[Structure, Hashable], str | dict[str, Any]] | None,
+    subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]] | None,
 ) -> dict[str, Any]:
     """Generate a subplot title based on the provided function or default logic."""
     title_dict: dict[str, str | float | dict[str, str | float]] = {}
@@ -354,7 +363,7 @@ def get_subplot_title(
             from moyopy import MoyoDataset
             from moyopy.interface import MoyoAdapter
 
-            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number
+            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number  # type: ignore[arg-type]
             title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
         else:  # For str or any other Hashable type, convert to string
             title_dict["text"] = str(struct_key)
@@ -365,7 +374,7 @@ def get_subplot_title(
 def get_site_hover_text(
     site: PeriodicSite,
     hover_text: SiteCoords | Callable[[PeriodicSite], str],
-    majority_species: Species,
+    majority_species: Species | Element,
     float_fmt: str | Callable[[float], str] = ".4",
 ) -> str:
     """Generate hover text for a site based on the hover template.
@@ -374,7 +383,7 @@ def get_site_hover_text(
         site (PeriodicSite): The periodic site.
         hover_text (SiteCoords | Callable[[PeriodicSite], str]): The hover text template
             or a custom callable.
-        majority_species (Species): The majority species at the site.
+        majority_species (Species | Element): The majority species at the site.
         float_fmt (str | Callable[[float], str]): Float formatting for coordinates. Can
             be an f-string format like ".4" (default) or a callable that takes a float
             and returns a string.
@@ -438,10 +447,11 @@ def normalize_elem_color(raw_color_from_map: ColorType) -> str:
         and len(raw_color_from_map) == 3
         and all(isinstance(c, (float, int)) for c in raw_color_from_map)
     ):
-        r, g, b = (
-            int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)
+        rgb = [
+            int(c * 255) if isinstance(c, float) and 0 <= c <= 1 else int(c)  # type: ignore[arg-type]
             for c in raw_color_from_map
-        )
+        ]
+        r, g, b = rgb
         return f"rgb({r},{g},{b})"
     if isinstance(raw_color_from_map, str):
         return raw_color_from_map
@@ -532,7 +542,7 @@ def draw_site(
 
     # Handle ordered sites (single species)
     majority_species = (
-        max(species, key=species.get) if isinstance(species, Composition) else species
+        max(species, key=species.get) if isinstance(species, Composition) else species  # type: ignore[arg-type]
     )
     if not isinstance(majority_species, Species):
         majority_species = Species(str(majority_species))
@@ -588,7 +598,7 @@ def draw_site(
 
 
 def get_disordered_site_legend_name(
-    sorted_species: list[tuple[Species, float]], *, is_image: bool = False
+    sorted_species: list[tuple[Species | Element, float]], *, is_image: bool = False
 ) -> str:
     """Create a legend name for a disordered site showing all elements with occupancies.
 
@@ -1198,7 +1208,7 @@ def draw_vector(
 
 def draw_cell(
     fig: go.Figure,
-    structure: Structure,
+    structure: Structure | IStructure | IMolecule,
     cell_kwargs: dict[str, Any],
     *,
     is_3d: bool = True,
@@ -1376,7 +1386,7 @@ def draw_cell(
 
 
 def get_first_matching_site_prop(
-    structures: Sequence[Structure],
+    structures: Sequence[Structure | IStructure | IMolecule],
     prop_keys: Sequence[str],
     *,
     warn_if_none: bool = True,
@@ -1418,7 +1428,7 @@ def get_first_matching_site_prop(
 
 def draw_bonds(
     fig: go.Figure,
-    structure: Structure,
+    structure: Structure | IStructure | IMolecule,
     nn: NearNeighbors,
     *,
     is_3d: bool = True,
@@ -1474,7 +1484,7 @@ def draw_bonds(
 
     for site_idx, site1 in enumerate(structure):
         try:
-            connections = nn.get_nn_info(structure, n=site_idx)
+            connections = nn.get_nn_info(structure, n=site_idx)  # type: ignore[arg-type]
         except ValueError as exc:
             if "No Voronoi neighbors found" in str(exc):
                 warnings.warn(
@@ -1498,8 +1508,8 @@ def draw_bonds(
 
             # If plotted_sites_coords is provided, check if both bond ends are plotted
             if plotted_sites_coords is not None:
-                coords_from_rounded = tuple(np.round(coords_from, 5))  # type: ignore[arg-type]
-                cart_coords_to_rounded = tuple(np.round(cart_coords_to, 5))  # type: ignore[arg-type]
+                coords_from_rounded = tuple(np.round(coords_from, 5))
+                cart_coords_to_rounded = tuple(np.round(cart_coords_to, 5))
 
                 if (
                     coords_from_rounded not in plotted_sites_coords
@@ -1596,12 +1606,12 @@ def draw_bonds(
 
 
 def _standardize_struct(
-    struct_i: Structure, *, standardize_struct: bool | None
-) -> Structure:
+    struct_i: Structure | IStructure | IMolecule, *, standardize_struct: bool | None
+) -> Structure | IStructure | IMolecule:
     """Standardize the structure if needed."""
     if standardize_struct is None:
         standardize_struct = any(any(site.frac_coords < 0) for site in struct_i)
-    if standardize_struct:
+    if standardize_struct and isinstance(struct_i, (Structure, IStructure)):
         try:
             spg_analyzer = SpacegroupAnalyzer(struct_i)
             return spg_analyzer.get_conventional_standard_structure()
@@ -1611,16 +1621,16 @@ def _standardize_struct(
 
 
 def _prep_augmented_structure_for_bonding(
-    struct_i: Structure,
+    struct_i: Structure | IStructure | IMolecule,
     *,
     show_image_sites: bool | dict[str, Any],
     cell_boundary_tol: float = 0,
-) -> Structure:
+) -> Structure:  # Always returns Structure from Structure.from_sites()
     """Prepare an augmented structure including primary and optionally image sites for
     bonding.
 
     Args:
-        struct_i (Structure): System to prepare.
+        struct_i (Structure | IStructure | IMolecule): Structure to prepare.
         show_image_sites: Whether to include image sites.
         cell_boundary_tol (float): Distance beyond unit cell boundaries within which
             image atoms are included.
@@ -1645,7 +1655,7 @@ def _prep_augmented_structure_for_bonding(
                 cell_boundary_tol=cell_boundary_tol,
             )
             for image_cart_coords_arr in image_cart_coords_arrays:
-                coord_tuple_key = tuple(np.round(image_cart_coords_arr, 5))  # type: ignore[arg-type]
+                coord_tuple_key = tuple(np.round(image_cart_coords_arr, 5))
                 if coord_tuple_key not in processed_image_coords:
                     image_frac_coords = struct_i.lattice.get_fractional_coords(
                         image_cart_coords_arr

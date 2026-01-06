@@ -396,7 +396,7 @@ def test_calculate_rdf_input_validation(
 
     # Test for expected error
     structure_param = params.pop("structure")
-    with pytest.raises(expected_err_cls, match=error_msg):
+    with pytest.raises(expected_err_cls, match=error_msg):  # type: ignore[arg-type]
         calculate_rdf(structure_param, **params)  # type: ignore[arg-type]
 
 
@@ -405,9 +405,9 @@ def test_calculate_rdf_invalid_structure_type() -> None:
     with pytest.raises(
         TypeError, match="Input must be a pymatgen Structure, IStructure, Molecule"
     ):
-        calculate_rdf("not a structure", cutoff=10, n_bins=10)
+        calculate_rdf("not a structure", cutoff=10, n_bins=10)  # type: ignore[arg-type]
 
     with pytest.raises(
         TypeError, match="Input must be a pymatgen Structure, IStructure, Molecule"
     ):
-        calculate_rdf(42, cutoff=10, n_bins=10)
+        calculate_rdf(42, cutoff=10, n_bins=10)  # type: ignore[arg-type]

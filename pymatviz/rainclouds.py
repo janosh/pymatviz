@@ -187,8 +187,8 @@ def rainclouds(
                 ):
                     df_i, col = data_itm
                     for col in cols_to_show:
-                        if col in df_i:
-                            for val_idx, val in enumerate(df_i[col]):
+                        if col in df_i:  # type: ignore[operator]
+                            for val_idx, val in enumerate(df_i[col]):  # type: ignore[index]
                                 hover_text[val_idx] += f"<br>{col}: {val}"
                 elif isinstance(hover_data, dict):
                     for col, col_data in hover_data.get(label, {}).items():  # type: ignore[union-attr]

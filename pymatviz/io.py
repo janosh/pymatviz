@@ -484,12 +484,12 @@ def df_to_svg(
         rows = []
         for row in soup.find_all("tr"):
             cells = []
-            for cell in row.find_all(["td", "th"]):
+            for cell in row.find_all(["td", "th"]):  # type: ignore[union-attr]
                 text = cell.get_text()
                 bold = cell.name == "th"
                 align = (
                     get_style_prop(cell, "text-align")
-                    or get_style_prop(row, "text-align")
+                    or get_style_prop(row, "text-align")  # type: ignore[arg-type]
                     or "left"
                 )
                 bg_color = get_style_prop(cell, "background-color") or "#ffffff"
@@ -500,7 +500,7 @@ def df_to_svg(
             rows.append(cells)
 
         num_header_rows = (
-            len(soup.find("thead").find_all("tr")) if soup.find("thead") else 0
+            len(soup.find("thead").find_all("tr")) if soup.find("thead") else 0  # type: ignore[union-attr]
         )
         return rows, num_header_rows
 

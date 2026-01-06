@@ -117,7 +117,7 @@ def test_element_pair_rdfs_invalid_elements(structures: list[Structure]) -> None
 def test_element_pair_rdfs_invalid_structure() -> None:
     err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
     with pytest.raises(TypeError, match=err_msg):
-        element_pair_rdfs("not a structure")
+        element_pair_rdfs("not a structure")  # type: ignore[arg-type]
 
 
 def test_element_pair_rdfs_conflicting_bins_and_bin_size(
@@ -312,7 +312,7 @@ def test_full_rdf_empty_structure() -> None:
 def test_full_rdf_invalid_structure() -> None:
     err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
     with pytest.raises(TypeError, match=err_msg):
-        full_rdf("not a structure")
+        full_rdf("not a structure")  # type: ignore[arg-type]
 
 
 def test_full_rdf_conflicting_bins_and_bin_size(structures: list[Structure]) -> None:
