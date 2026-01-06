@@ -288,7 +288,6 @@ def phonon_bands(
                         # Use mode-specific styles
                         line_defaults |= mode_styles
                     else:  # Apply single style dict to all lines
-                        # line_kwargs is dict[str, Any] here (not mode-specific)
                         line_defaults |= cast("dict[str, Any]", line_kwargs)
 
                 is_new_name = trace_name not in existing_names

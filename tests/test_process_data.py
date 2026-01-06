@@ -677,6 +677,13 @@ def test_normalize_spacegroups_empty_raises() -> None:
         pmv_pd.normalize_spacegroups([])
 
 
+@pytest.mark.parametrize("invalid_val", [0, -1, 231, 500])
+def test_normalize_spacegroups_invalid_number_raises(invalid_val: int) -> None:
+    """Test that out-of-range spacegroup numbers raise ValueError."""
+    with pytest.raises(ValueError, match=r"Space group numbers must be in \[1, 230\]"):
+        pmv_pd.normalize_spacegroups([1, invalid_val, 225])
+
+
 def test_sankey_flow_data_returns_expected_keys() -> None:
     """Test sankey_flow_data returns all expected keys."""
     df_test = pd.DataFrame({"A": ["x", "x", "y"], "B": ["p", "q", "p"]})

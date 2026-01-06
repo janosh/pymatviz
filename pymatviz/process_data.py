@@ -594,7 +594,15 @@ def normalize_spacegroups(
             MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data
         )
 
-    return pd.Series(data)
+    result = pd.Series(data)
+    # Validate if data appears to be spacegroup numbers
+    if pd.api.types.is_numeric_dtype(result):
+        invalid = result[(result < 1) | (result > 230)]
+        if len(invalid) > 0:
+            raise ValueError(
+                f"Space group numbers must be in [1, 230], got: {invalid.tolist()}"
+            )
+    return result
 
 
 def normalize_phonon_bands(
@@ -702,8 +710,8 @@ def sankey_flow_data(
         "target": target,
         "value": value,
         "labels": labels,
-        "source_indices": [source.index(x) for x in source],
-        "target_indices": [len(source) + target.index(x) for x in target],
+        "source_indices": list(range(len(source))),
+        "target_indices": list(range(len(source), len(source) + len(target))),
     }
 
 
