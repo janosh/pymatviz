@@ -536,6 +536,20 @@ def test_ptable_heatmap_plotly_colorbar_log_mode() -> None:
     )
     assert list(get_colorbar(fig).ticktext) == custom_labels
 
+    # Format type preserved during auto-dedupe (e.g. ".1g" stays general format)
+    fig = pmv.ptable_heatmap_plotly(
+        data_narrow, colorbar={"tickformat": ".1g"}, log=True
+    )
+    tick_labels = get_colorbar(fig).ticktext
+    assert len(tick_labels) == len(set(tick_labels)), f"Duplicate labels: {tick_labels}"
+
+    # Non-positive tickvals raise ValueError for log scale
+    for invalid_tickvals in ([0, 1, 10], [-1, 1, 10]):
+        with pytest.raises(ValueError, match="tickvals must be positive"):
+            pmv.ptable_heatmap_plotly(
+                data, colorbar={"tickvals": invalid_tickvals}, log=True
+            )
+
 
 def test_ptable_heatmap_plotly_value_formatting() -> None:
     """Test float formatting of value labels in ptable_heatmap_plotly."""

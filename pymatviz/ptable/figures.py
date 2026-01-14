@@ -387,19 +387,25 @@ def ptable_heatmap_plotly(
         tick_values = np.logspace(orig_min, orig_max, num=10, endpoint=True)
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
         tick_values = list(colorbar.pop("tickvals", tick_values))  # type: ignore[arg-type]
+        if any(val <= 0 for val in tick_values):
+            raise ValueError(
+                f"tickvals must be positive for log scale, got {tick_values}"
+            )
         tick_fmt = str(colorbar.pop("tickformat", ".0f"))
         custom_ticktext = colorbar.pop("ticktext", None)
 
         if custom_ticktext is not None:
-            ticktext = [str(t) for t in custom_ticktext]  # type: ignore[union-attr]
+            ticktext = [str(t) for t in custom_ticktext]
         else:
             # Auto-increase precision to avoid duplicate labels
-            # Extract precision from format like ".2f" or ".10g"
+            # Extract precision and format type from format like ".2f" or ".10g"
             precision = 0
+            fmt_type = "f"  # default to fixed-point
             for char in tick_fmt[1:]:
                 if char.isdigit():
                     precision = precision * 10 + int(char)
-                else:
+                elif char in "fegFEG":  # valid format types
+                    fmt_type = char
                     break
             for _ in range(7):  # max 6 decimal places
                 ticktext = [
@@ -408,7 +414,7 @@ def ptable_heatmap_plotly(
                 if len(ticktext) == len(set(ticktext)):
                     break
                 precision += 1
-                tick_fmt = f".{precision}f"
+                tick_fmt = f".{precision}{fmt_type}"
 
         colorbar = dict(tickvals=np.log10(tick_values), ticktext=ticktext, **colorbar)
 
