@@ -1,0 +1,117 @@
+{
+  "name": "svelte-eslint-parser",
+  "version": "1.2.0",
+  "type": "module",
+  "description": "Svelte parser for ESLint",
+  "repository": "git+https://github.com/sveltejs/svelte-eslint-parser.git",
+  "homepage": "https://github.com/sveltejs/svelte-eslint-parser#readme",
+  "author": "Yosuke Ota (https://github.com/ota-meshi)",
+  "contributors": [
+    "JounQin (https://github.com/JounQin)"
+  ],
+  "funding": "https://github.com/sponsors/ota-meshi",
+  "license": "MIT",
+  "engines": {
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "keywords": [
+    "svelte",
+    "sveltejs",
+    "eslint",
+    "parser"
+  ],
+  "peerDependencies": {
+    "svelte": "^3.37.0 || ^4.0.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "svelte": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "eslint-scope": "^8.2.0",
+    "eslint-visitor-keys": "^4.0.0",
+    "espree": "^10.0.0",
+    "postcss": "^8.4.49",
+    "postcss-scss": "^4.0.9",
+    "postcss-selector-parser": "^7.0.0"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.28.1",
+    "@changesets/get-release-plan": "^4.0.8",
+    "@ota-meshi/eslint-plugin": "^0.17.6",
+    "@ota-meshi/test-snapshot": "^1.1.0",
+    "@types/benchmark": "^2.1.5",
+    "@types/chai": "^5.2.1",
+    "@types/eslint": "^9.6.1",
+    "@types/eslint-scope": "^3.7.7",
+    "@types/eslint-visitor-keys": "^3.3.2",
+    "@types/estree": "^1.0.7",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.13.13",
+    "@types/semver": "^7.7.0",
+    "@typescript-eslint/parser": "^8.29.0",
+    "@typescript-eslint/types": "^8.29.0",
+    "benchmark": "^2.1.4",
+    "c8": "^10.1.3",
+    "chai": "^5.2.0",
+    "env-cmd": "^10.1.0",
+    "esbuild": "^0.25.1",
+    "eslint": "~9.26.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-jsdoc": "^50.6.9",
+    "eslint-plugin-json-schema-validator": "^5.3.1",
+    "eslint-plugin-jsonc": "^2.20.0",
+    "eslint-plugin-n": "^17.17.0",
+    "eslint-plugin-node-dependencies": "^1.0.0",
+    "eslint-plugin-prettier": "^5.2.5",
+    "eslint-plugin-regexp": "^2.7.0",
+    "eslint-plugin-svelte": "^3.3.3",
+    "eslint-plugin-yml": "^1.17.0",
+    "globals": "^16.0.0",
+    "locate-character": "^3.0.0",
+    "magic-string": "^0.30.17",
+    "mocha": "^11.1.0",
+    "prettier": "~3.5.3",
+    "prettier-plugin-pkg": "^0.19.0",
+    "prettier-plugin-svelte": "^3.3.3",
+    "rimraf": "^6.0.1",
+    "semver": "^7.7.1",
+    "svelte": "^5.30.1",
+    "svelte2tsx": "^0.7.35",
+    "tsx": "^4.19.3",
+    "typescript": "~5.8.2",
+    "typescript-eslint": "^8.28.0",
+    "typescript-eslint-parser-for-extra-files": "^0.9.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "benchmark": "pnpm run ts benchmark/index.ts",
+    "build": "pnpm run build:meta && pnpm run build:tsc",
+    "build:meta": "pnpm run ts ./tools/update-meta.ts",
+    "build:tsc": "tsc --project ./tsconfig.build.json",
+    "clean": "rimraf lib coverage",
+    "cover": "c8 --reporter=lcov pnpm run test",
+    "debug": "pnpm run mocha \"tests/src/**/*.ts\" --reporter dot --timeout 60000",
+    "eslint-fix": "pnpm run lint --fix",
+    "lint": "eslint .",
+    "mocha": "pnpm run ts ./node_modules/mocha/bin/mocha.js",
+    "prebuild": "pnpm run clean",
+    "prerelease": "pnpm run clean && pnpm run build",
+    "preversion": "pnpm run lint && pnpm run test",
+    "release": "changeset publish",
+    "run-update-fixtures": "pnpm run ts ./tools/update-fixtures.ts",
+    "test": "pnpm run mocha \"tests/src/**/*.ts\" --reporter dot --timeout 60000",
+    "ts": "node --import tsx/esm",
+    "update-fixtures": "git add package.json && pnpm i -D svelte@4 && git checkout package.json && pnpm run run-update-fixtures && pnpm i && pnpm run run-update-fixtures",
+    "version:ci": "env-cmd -e version-ci pnpm run build:meta && changeset version"
+  }
+}
