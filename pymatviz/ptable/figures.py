@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -33,6 +33,21 @@ if TYPE_CHECKING:
 ColorScale: TypeAlias = (
     str | Sequence[str] | Sequence[tuple[float, str]] | Callable[[str, float, int], str]
 )
+
+
+class ColorbarConfig(TypedDict, total=False):
+    """Colorbar config. tickvals/ticktext/tickformat are special when log=True."""
+
+    title: str
+    title_side: Literal["top", "bottom", "right", "left"]
+    orientation: Literal["v", "h"]
+    len: float
+    thickness: float
+    x: float
+    y: float
+    tickvals: Sequence[float]
+    ticktext: Sequence[str]
+    tickformat: str
 
 
 def ptable_heatmap_plotly(
@@ -111,17 +126,17 @@ def ptable_heatmap_plotly(
             allowed. Defaults to automatic font size based on plot size. Element symbols
             will be bold and 1.5x this size.
         bg_color (str): Plot background color. Defaults to "rgba(0, 0, 0, 0)".
-        colorbar (dict[str, Any]): Plotly colorbar properties documented at
-            https://plotly.com/python/reference#heatmap-colorbar. Defaults to
-            dict(orientation="h"). Commonly used keys are:
+        colorbar (ColorbarConfig | dict[str, Any]): Plotly colorbar properties
+            documented at https://plotly.com/python/reference#heatmap-colorbar.
+            Defaults to dict(orientation="h"). Commonly used keys are:
             - title: colorbar title
             - title_side: "top" | "bottom" | "right" | "left"
-            - tickmode: "array" | "auto" | "linear" | "log" | "date" | "category"
-            - tickvals: list of tick values
-            - ticktext: list of tick labels
-            - tickformat: f-string format option for tick labels
             - len: fraction of plot height or width depending on orientation
-            - thickness: fraction of plot height or width depending on orientation
+            When log=True, these keys have special handling:
+            - tickvals: tick positions in LINEAR scale (auto log-transformed internally)
+            - ticktext: custom tick labels (bypasses auto-generation if provided)
+            - tickformat: Python format string for si_fmt(), e.g. ".2f" or ".3g"
+              (NOTE: this is NOT Plotly's D3 tickformat syntax)
         nan_color (str): Fill color for element tiles with NaN values. Defaults to
             "#eff".
         cscale_range (tuple[float | None, float | None]): Colorbar range. Defaults to
@@ -131,6 +146,8 @@ def ptable_heatmap_plotly(
             Defaults to ().
         log (bool): Whether to use a logarithmic color scale. Defaults to False.
             Piece of advice: colorscale="viridis" and log=True go well together.
+            Tick labels are auto-deduplicated by increasing precision if needed.
+            Use colorbar={"tickformat": ".2f"} to control tick label precision.
         fill_value (float | None): Value to fill in for missing elements. Defaults to 0.
         element_symbol_map (dict[str, str] | None): A dictionary to map element symbols
             to custom strings. If provided, these custom strings will be displayed
@@ -369,14 +386,27 @@ def ptable_heatmap_plotly(
         orig_max = np.ceil(max(non_nan_values))
         tick_values = np.logspace(orig_min, orig_max, num=10, endpoint=True)
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
-        tick_values = colorbar.pop("tickvals", tick_values)
-        tick_fmt = colorbar.pop("tickformat", ".0f")
+        tick_values = list(colorbar.pop("tickvals", tick_values))  # type: ignore[arg-type]
+        tick_fmt = str(colorbar.pop("tickformat", ".0f"))
+        custom_ticktext = colorbar.pop("ticktext", None)
 
-        colorbar = dict(
-            tickvals=np.log10(tick_values),
-            ticktext=[si_fmt(v * car_multiplier, fmt=tick_fmt) for v in tick_values],
-            **colorbar,
-        )
+        if custom_ticktext is not None:
+            ticktext = [str(t) for t in custom_ticktext]  # type: ignore[union-attr]
+        else:
+            # Auto-increase precision to avoid duplicate labels
+            precision = (
+                int(tick_fmt[1]) if len(tick_fmt) > 1 and tick_fmt[1].isdigit() else 0
+            )
+            for _ in range(7):  # max 6 decimal places
+                ticktext = [
+                    si_fmt(v * car_multiplier, fmt=tick_fmt) for v in tick_values
+                ]
+                if len(ticktext) == len(set(ticktext)):
+                    break
+                precision += 1
+                tick_fmt = f".{precision}f"
+
+        colorbar = dict(tickvals=np.log10(tick_values), ticktext=ticktext, **colorbar)
 
     # suffix % to colorbar title if heat_mode is "percent"
     if heat_mode == "percent" and (cbar_title := colorbar.get("title")):
