@@ -369,10 +369,12 @@ def ptable_heatmap_plotly(
         orig_max = np.ceil(max(non_nan_values))
         tick_values = np.logspace(orig_min, orig_max, num=10, endpoint=True)
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
+        tick_values = colorbar.pop("tickvals", tick_values)
+        tick_fmt = colorbar.pop("tickformat", ".0f")
 
         colorbar = dict(
             tickvals=np.log10(tick_values),
-            ticktext=[si_fmt(v * car_multiplier, fmt=".0f") for v in tick_values],
+            ticktext=[si_fmt(v * car_multiplier, fmt=tick_fmt) for v in tick_values],
             **colorbar,
         )
 

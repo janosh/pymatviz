@@ -488,6 +488,26 @@ def test_ptable_heatmap_plotly_colorbar() -> None:
     fig = pmv.ptable_heatmap_plotly(data, show_scale=False)
     assert not any(trace.showscale for trace in fig.data)
 
+    # Test `tickvals` kwargs when `log=True`
+    log_colorbar = dict(tickvals=[1.234, 5.678])
+
+    fig = pmv.ptable_heatmap_plotly(data, colorbar=log_colorbar, log=True)
+    log_colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
+    actual_log_colorbar = log_colorbar_trace.colorbar
+
+    assert all(actual_log_colorbar.tickvals == np.log10(log_colorbar["tickvals"]))
+
+    # Check duplicates on ticktext when `log=True`
+    data = {"Fe": 0.12, "O": 0.56, "Si": 9}
+    log_colorbar = dict(tickformat=".3g")
+
+    fig = pmv.ptable_heatmap_plotly(data, colorbar=log_colorbar, log=True)
+    log_colorbar_trace = next(trace for trace in fig.data if hasattr(trace, "colorbar"))
+    actual_log_colorbar = log_colorbar_trace.colorbar
+
+    actual_tick_text = actual_log_colorbar.ticktext
+    assert len(actual_tick_text) == len(set(actual_tick_text))
+
 
 def test_ptable_heatmap_plotly_value_formatting() -> None:
     """Test float formatting of value labels in ptable_heatmap_plotly."""
