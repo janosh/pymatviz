@@ -489,6 +489,68 @@ def test_ptable_heatmap_plotly_colorbar() -> None:
     assert not any(trace.showscale for trace in fig.data)
 
 
+def test_ptable_heatmap_plotly_colorbar_log_mode() -> None:
+    """Regression tests for https://github.com/janosh/pymatviz/pull/334 fixing
+    TypeError when passing tickvals via colorbar kwargs and duplicate tick labels.
+    """
+    data = {"Fe": 1.234, "O": 5.678, "Si": 9.0}
+
+    def get_colorbar(fig: go.Figure) -> go.heatmap.ColorBar:
+        return next(tr for tr in fig.data if hasattr(tr, "colorbar")).colorbar
+
+    # Default log behavior works
+    fig = pmv.ptable_heatmap_plotly(data, log=True)
+    cbar = get_colorbar(fig)
+    assert cbar.tickvals is not None
+    assert cbar.ticktext is not None
+    assert len(cbar.tickvals) == len(cbar.ticktext)
+
+    # Custom tickvals with log=True - previously raised TypeError
+    custom_tickvals = [1.0, 2.0, 5.0, 10.0]
+    fig = pmv.ptable_heatmap_plotly(
+        data, colorbar={"tickvals": custom_tickvals}, log=True
+    )
+    assert np.allclose(get_colorbar(fig).tickvals, np.log10(custom_tickvals))
+
+    # Custom tickvals + tickformat + other kwargs all preserved
+    fig = pmv.ptable_heatmap_plotly(
+        data,
+        colorbar={"title": "Log Scale", "tickvals": [1, 5], "len": 0.6},
+        log=True,
+    )
+    cbar = get_colorbar(fig)
+    assert "Log Scale" in cbar.title.text
+    assert cbar.len == 0.6
+    assert np.allclose(cbar.tickvals, np.log10([1, 5]))
+
+    # Auto-dedupe: tick labels are unique even without custom tickformat
+    data_narrow = {"Fe": 0.12, "O": 0.56, "Si": 9}
+    fig = pmv.ptable_heatmap_plotly(data_narrow, log=True)
+    tick_labels = get_colorbar(fig).ticktext
+    assert len(tick_labels) == len(set(tick_labels)), f"Duplicate labels: {tick_labels}"
+
+    # Custom ticktext bypasses auto-generation
+    custom_labels = ["low", "mid", "high"]
+    fig = pmv.ptable_heatmap_plotly(
+        data, colorbar={"tickvals": [1, 5, 10], "ticktext": custom_labels}, log=True
+    )
+    assert list(get_colorbar(fig).ticktext) == custom_labels
+
+    # Format type preserved during auto-dedupe (e.g. ".1g" stays general format)
+    fig = pmv.ptable_heatmap_plotly(
+        data_narrow, colorbar={"tickformat": ".1g"}, log=True
+    )
+    tick_labels = get_colorbar(fig).ticktext
+    assert len(tick_labels) == len(set(tick_labels)), f"Duplicate labels: {tick_labels}"
+
+    # Non-positive tickvals raise ValueError for log scale
+    for invalid_tickvals in ([0, 1, 10], [-1, 1, 10]):
+        with pytest.raises(ValueError, match="tickvals must be positive"):
+            pmv.ptable_heatmap_plotly(
+                data, colorbar={"tickvals": invalid_tickvals}, log=True
+            )
+
+
 def test_ptable_heatmap_plotly_value_formatting() -> None:
     """Test float formatting of value labels in ptable_heatmap_plotly."""
     # Test cases: (values, heat_mode, fmt, expected_labels)
