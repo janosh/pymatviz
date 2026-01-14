@@ -394,9 +394,13 @@ def ptable_heatmap_plotly(
             ticktext = [str(t) for t in custom_ticktext]  # type: ignore[union-attr]
         else:
             # Auto-increase precision to avoid duplicate labels
-            precision = (
-                int(tick_fmt[1]) if len(tick_fmt) > 1 and tick_fmt[1].isdigit() else 0
-            )
+            # Extract precision from format like ".2f" or ".10g"
+            precision = 0
+            for char in tick_fmt[1:]:
+                if char.isdigit():
+                    precision = precision * 10 + int(char)
+                else:
+                    break
             for _ in range(7):  # max 6 decimal places
                 ticktext = [
                     si_fmt(v * car_multiplier, fmt=tick_fmt) for v in tick_values
