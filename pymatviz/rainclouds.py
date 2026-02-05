@@ -75,7 +75,6 @@ def rainclouds(
         show_box (bool, optional): Whether to show the box plot. Defaults to True.
         show_points (bool, optional): Whether to show the strip plot points.
             Defaults to True.
-        **kwargs: Additional keyword arguments to pass to the plotting functions.
 
     Returns:
         go.Figure: The Plotly figure containing the raincloud plot.
@@ -106,12 +105,11 @@ def rainclouds(
                 hover_data = [col]
             elif isinstance(hover_data, list) and col not in hover_data:
                 hover_data = [col, *hover_data]
-            elif (
-                isinstance(hover_data, dict)
-                and label in hover_data
-                and col not in hover_data[label]  # ty: ignore[invalid-argument-type]
-            ):
-                hover_data[label] = [col, *hover_data[label]]  # ty: ignore[invalid-argument-type,invalid-assignment]
+            elif isinstance(hover_data, dict) and label in hover_data:
+                existing = hover_data[label]  # ty: ignore[invalid-argument-type]
+                if isinstance(existing, list) and col not in existing:
+                    # avoid mutating caller's dict by creating a new one
+                    hover_data = {**hover_data, label: [col, *existing]}  # ty: ignore[invalid-assignment]
         else:
             values = data_itm
 
