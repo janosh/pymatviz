@@ -214,10 +214,8 @@ def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
     [
         (True, [" lines", "%)", "my_pkg (", "another_pkg ("], []),  # Default formatter
         (False, ["my_pkg", "another_pkg"], ["(", " lines"]),  # No formatting
-        (
-            lambda pkg,
-            count,
-            total: f"PKG: {pkg} [{count}/{total}]",  # Custom formatter
+        (  # Custom formatter
+            lambda pkg, count, total: f"PKG: {pkg} [{count}/{total}]",
             ["PKG: my_pkg [", "PKG: another_pkg ["],
             [],
         ),

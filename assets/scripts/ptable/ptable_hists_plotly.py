@@ -18,7 +18,7 @@ data_dict = {
 fig = pmv.ptable_hists_plotly(
     data_dict,
     bins=30,
-    colorbar=dict(title="Element Distributions"),  # type: ignore[arg-type]
+    colorbar=dict(title="Element Distributions"),
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "ptable-hists-plotly")
@@ -26,7 +26,7 @@ fig.show()
 
 # %% Example 2: horizontal colorbar and custom annotations
 fig = pmv.ptable_hists_plotly(
-    data_dict,  # type: ignore[arg-type]
+    data_dict,
     bins=30,
     colorbar=dict(title="Element Distributions", orientation="h"),
     color_elem_strategy="background",

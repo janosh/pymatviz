@@ -10,7 +10,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 import pymatviz as pmv
 from pymatviz.coordination import CnSplitMode
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES, formula_spg_str
 
 
 pmv.set_plotly_template("pymatviz_white")
@@ -19,9 +19,6 @@ df_phonon = load_dataset(data_name := "matbench_phonons")
 
 
 # %%
-formula_spg_str = (
-    lambda struct: f"{struct.formula} ({struct.get_space_group_info()[1]})"
-)
 structures = {
     formula_spg_str(struct := Structure.from_file(file)): struct
     for file in (

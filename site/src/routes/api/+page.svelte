@@ -2,11 +2,9 @@
   export let data
 </script>
 
-<main>
-  <h1 class="toc-exclude">API</h1>
+<h1 class="toc-exclude">API</h1>
 
-  {@html data.html}
-</main>
+{@html data.html}
 
 <style>
   /* select all but first module h1s */

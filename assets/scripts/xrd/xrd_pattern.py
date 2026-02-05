@@ -7,16 +7,13 @@ from pymatgen.analysis.diffraction.xrd import XRDCalculator
 from pymatgen.core import Structure
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES
+from pymatviz.utils.testing import TEST_FILES, formula_spg_str
 
 
 pmv.set_plotly_template("pymatviz_white")
 
 
 # %%
-formula_spg_str = (
-    lambda struct: f"{struct.formula} ({struct.get_space_group_info()[1]})"
-)
 structures = {
     formula_spg_str(struct := Structure.from_file(file)): struct
     for file in glob(f"{TEST_FILES}/xrd/*.cif")

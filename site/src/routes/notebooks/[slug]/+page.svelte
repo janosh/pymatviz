@@ -5,8 +5,6 @@
   export let data
 </script>
 
-<main>
-  {@html data.html}
+{@html data.html}
 
-  <PrevNext items={data.routes} current={page.url.pathname} />
-</main>
+<PrevNext items={data.routes} current={page.url.pathname} />

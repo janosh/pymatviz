@@ -100,7 +100,7 @@ def spacegroup_bar(
         x_label = "International Spacegroup Symbol"
 
     # count rows per crystal system
-    crys_sys_counts = df_data.groupby(Key.crystal_system).sum(count_col)
+    crys_sys_counts = df_data.groupby(Key.crystal_system)[[count_col]].sum()
     crys_sys_counts["width"] = df_data.value_counts(Key.crystal_system)
     crys_sys_counts["color"] = pd.Series(crystal_sys_colors)
 

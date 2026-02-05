@@ -230,8 +230,7 @@ mb_bulk_modulus: tuple[str, str, str, str] = (
     "Bulk Modulus (GPa)",
     "K<sub>VRH</sub>",
 )
-# ty can't infer tuple types from starred expressions, so we need type: ignore
-plot_combinations: list[PlotConfig] = [  # type: ignore[list-item]
+plot_combinations: list[PlotConfig] = [  # ty: ignore[invalid-assignment]
     # 1. Steels with PCA (2D) - shows clear linear trends
     (*mb_steels, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
     # 2. Steels with t-SNE (2D) - shows non-linear clustering

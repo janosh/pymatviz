@@ -697,20 +697,14 @@ def add_ecdf_line(
         line_color = trace_kwargs.get("line_color", "gray")
         line_dash = trace_kwargs.get("line", {}).get("dash", "solid")
 
-        trace_defaults = dict(
-            yaxis="y2",
-            name=name,
-            line=dict(
-                color=line_color,
-                dash=line_dash,
-            ),
-        )
+        line_defaults = dict(color=line_color, dash=line_dash)
+        trace_defaults: dict[str, Any] = dict(yaxis="y2", name=name, line=line_defaults)
 
         # Apply user overrides
         current_trace_kwargs = trace_defaults.copy()
         for key, value in trace_kwargs.items():
             if key == "line" and isinstance(value, dict):
-                current_trace_kwargs["line"] = {**trace_defaults["line"], **value}
+                current_trace_kwargs["line"] = {**line_defaults, **value}
             else:
                 current_trace_kwargs[key] = value
 
