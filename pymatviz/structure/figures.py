@@ -297,9 +297,10 @@ def structure_2d(
                 # Add image sites for the current primary site
                 # This uses the global show_image_sites argument.
                 if show_image_sites:
+                    lattice = struct_i.lattice  # ty: ignore[possibly-missing-attribute]
                     image_cart_coords_arrays = helpers.get_image_sites(
                         site,
-                        struct_i.lattice,
+                        lattice,
                         cell_boundary_tol=cell_boundary_tol_i,
                     )
                     if len(image_cart_coords_arrays) > 0:

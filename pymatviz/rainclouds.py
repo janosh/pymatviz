@@ -109,9 +109,9 @@ def rainclouds(
             elif (
                 isinstance(hover_data, dict)
                 and label in hover_data
-                and col not in hover_data[label]
+                and col not in hover_data[label]  # ty: ignore[invalid-argument-type]
             ):
-                hover_data[label] = [col, *hover_data[label]]  # ty: ignore[invalid-assignment]
+                hover_data[label] = [col, *hover_data[label]]  # ty: ignore[invalid-argument-type,invalid-assignment]
         else:
             values = data_itm
 

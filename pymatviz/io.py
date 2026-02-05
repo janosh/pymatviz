@@ -482,9 +482,9 @@ def df_to_svg(
             return None
 
         rows = []
-        for row in soup.find_all("tr"):
+        for row in soup.select("tr"):
             cells = []
-            for cell in row.find_all(["td", "th"]):
+            for cell in row.select("td, th"):
                 text = cell.get_text()
                 bold = cell.name == "th"
                 align = (
@@ -494,14 +494,13 @@ def df_to_svg(
                 )
                 bg_color = get_style_prop(cell, "background-color") or "#ffffff"
                 color = get_style_prop(cell, "color") or "#000000"
-                col_span = int(cell.get("colspan", 1))
-                row_span = int(cell.get("rowspan", 1))
+                col_span = int(str(cell.get("colspan") or 1))
+                row_span = int(str(cell.get("rowspan") or 1))
                 cells.append([text, bold, align, bg_color, color, row_span, col_span])
             rows.append(cells)
 
-        num_header_rows = (
-            len(soup.find("thead").find_all("tr")) if soup.find("thead") else 0
-        )
+        thead = soup.find("thead")
+        num_header_rows = len(thead.select("tr")) if isinstance(thead, bs4.Tag) else 0
         return rows, num_header_rows
 
     def calculate_dimensions(

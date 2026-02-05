@@ -987,7 +987,7 @@ def ptable_heatmap_splits_plotly(
         elif colorbar is None:
             # Create colorbar settings with column names as titles
             colorbar = [dict(title=label) for label in split_labels]
-        data = {idx: row.tolist() for idx, row in data.iterrows()}
+        data = {str(idx): row.tolist() for idx, row in data.iterrows()}
     elif isinstance(data, pd.Series):
         data = data.to_dict()
 
