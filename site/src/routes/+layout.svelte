@@ -24,7 +24,7 @@
       filename.replace(/^\./, ``).replace(/\/\+page\.\w+$/, ``) || `/`
     )
 
-  const actions = file_routes.concat(notebook_routes).map((name) => ({
+  const actions = [...new Set([...file_routes, ...notebook_routes])].map((name) => ({
     label: name,
     action: () => goto(name),
   }))
