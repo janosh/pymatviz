@@ -81,14 +81,15 @@ def brillouin_zone_3d(
         subplot_titles=[" " for _ in range(n_structs)],
     )
 
-    for idx, (struct_key, structure) in enumerate(structures.items(), start=1):
-        from pymatviz.structure.helpers import get_site_symbol
+    from pymatviz.structure.helpers import get_site_symbol
 
+    for idx, (struct_key, structure) in enumerate(structures.items(), start=1):
         # Convert pymatgen Structure to seekpath input format
+        lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
+        frac_coords = structure.frac_coords  # ty: ignore[possibly-missing-attribute]
         spglib_atoms = (
-            structure.lattice.matrix,  # cell
-            structure.frac_coords,  # positions
-            # Get atomic number from element symbol (handling disordered sites)
+            lattice.matrix,  # cell
+            frac_coords,  # positions
             [Element(get_site_symbol(site)).number for site in structure],
         )
         # Get primitive structure and symmetry info using seekpath

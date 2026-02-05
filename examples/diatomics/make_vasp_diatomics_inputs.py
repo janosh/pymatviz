@@ -43,7 +43,7 @@ def create_diatomic_inputs(
         and isinstance(distances[-1], int)
     ):
         min_dist, max_dist, n_points = distances
-        distances = np.logspace(np.log10(min_dist), np.log10(max_dist), n_points)  # type: ignore[no-matching-overload]
+        distances = np.logspace(np.log10(min_dist), np.log10(max_dist), n_points)
     a, b, c = box_size
     box = Lattice.orthorhombic(a, b, c)
 
@@ -83,7 +83,7 @@ def create_diatomic_inputs(
 
                 # Generate VASP input files
                 vasp_input_set = MPStaticSet(
-                    dimer,  # type: ignore[arg-type]
+                    dimer,
                     user_kpoints_settings={},  # sample a single k-point at Gamma
                     # disable symmetry since spglib in VASP sometimes detects false
                     # symmetries in dimers and fails (used to be Kpoints() before {})

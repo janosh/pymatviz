@@ -65,9 +65,9 @@ def get_struct_prop(
     # Check structure/atoms properties first (highest precedence)
     prop_value = None
     if is_ase_atoms(struct):
-        prop_value = struct.info.get(prop_name)  # type: ignore[union-attr]
+        prop_value = struct.info.get(prop_name)  # ty: ignore[possibly-missing-attribute]
     elif hasattr(struct, "properties"):
-        prop_value = struct.properties.get(prop_name)  # type: ignore[union-attr]
+        prop_value = struct.properties.get(prop_name)  # ty: ignore[unresolved-attribute]
 
     if prop_value is not None:
         return prop_value
@@ -128,7 +128,7 @@ def get_site_symbol(site: PeriodicSite) -> str:
     if isinstance(species, Composition):
         el_amt_dict = species.get_el_amt_dict()
         if el_amt_dict:
-            return max(el_amt_dict, key=el_amt_dict.get)  # type: ignore[arg-type]
+            return max(el_amt_dict, key=el_amt_dict.get)  # ty: ignore[no-matching-overload]
         if species.elements:
             return species.elements[0].symbol
         return "X"
@@ -363,8 +363,8 @@ def get_subplot_title(
             from moyopy import MoyoDataset
             from moyopy.interface import MoyoAdapter
 
-            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number  # type: ignore[arg-type]
-            title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
+            spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number  # ty: ignore[invalid-argument-type]
+            title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"  # ty: ignore[possibly-missing-attribute]
         else:  # For str or any other Hashable type, convert to string
             title_dict["text"] = str(struct_key)
 
@@ -542,7 +542,7 @@ def draw_site(
 
     # Handle ordered sites (single species)
     majority_species = (
-        max(species, key=species.get) if isinstance(species, Composition) else species  # type: ignore[arg-type]
+        max(species, key=species.get) if isinstance(species, Composition) else species  # ty: ignore[no-matching-overload]
     )
     if not isinstance(majority_species, Species):
         majority_species = Species(str(majority_species))
@@ -1238,13 +1238,14 @@ def draw_cell(
         go.Figure: The updated plotly figure.
     """
     corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
-    cart_corners = structure.lattice.get_cartesian_coords(corners)
+    lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
+    cart_corners = lattice.get_cartesian_coords(corners)
 
     # Apply rotation to cartesian corners for 2D plots
     if not is_3d and rotation_matrix is not None:
         cart_corners = np.dot(cart_corners, rotation_matrix)
 
-    alpha, beta, gamma = structure.lattice.angles
+    alpha, beta, gamma = lattice.angles
 
     trace_adder = (  # prefill args for add_scatter or add_scatter3d
         functools.partial(fig.add_scatter3d, scene=scene)
@@ -1473,6 +1474,7 @@ def draw_bonds(
         effective_bond_kwargs.update(bond_kwargs)
 
     _elem_colors = elem_colors or get_elem_colors(ElemColorScheme.jmol)
+    lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
 
     def parse_color(color_val: Any) -> str:
         """Convert various color formats to RGB string."""
@@ -1484,7 +1486,7 @@ def draw_bonds(
 
     for site_idx, site1 in enumerate(structure):
         try:
-            connections = nn.get_nn_info(structure, n=site_idx)  # type: ignore[arg-type]
+            connections = nn.get_nn_info(structure, n=site_idx)  # ty: ignore[invalid-argument-type]
         except ValueError as exc:
             if "No Voronoi neighbors found" in str(exc):
                 warnings.warn(
@@ -1502,7 +1504,7 @@ def draw_bonds(
 
             coords_from = site1.coords
             actual_bonded_site_frac_coords = site2.frac_coords + jimage
-            cart_coords_to = structure.lattice.get_cartesian_coords(
+            cart_coords_to = lattice.get_cartesian_coords(
                 actual_bonded_site_frac_coords
             )
 
@@ -1635,11 +1637,12 @@ def _prep_augmented_structure_for_bonding(
         cell_boundary_tol (float): Distance beyond unit cell boundaries within which
             image atoms are included.
     """
+    lattice = struct_i.lattice  # ty: ignore[possibly-missing-attribute]
     all_sites_for_bonding = [
         PeriodicSite(
             species=site_in_cell.species,
             coords=site_in_cell.frac_coords,
-            lattice=struct_i.lattice,
+            lattice=lattice,
             properties=site_in_cell.properties.copy() | dict(is_image=False),
             coords_are_cartesian=False,
         )
@@ -1650,20 +1653,18 @@ def _prep_augmented_structure_for_bonding(
         processed_image_coords: set[Xyz] = set()
         for site_in_cell in struct_i:
             image_cart_coords_arrays = get_image_sites(
-                site_in_cell,
-                struct_i.lattice,
-                cell_boundary_tol=cell_boundary_tol,
+                site_in_cell, lattice, cell_boundary_tol=cell_boundary_tol
             )
             for image_cart_coords_arr in image_cart_coords_arrays:
                 coord_tuple_key = tuple(np.round(image_cart_coords_arr, 5))
                 if coord_tuple_key not in processed_image_coords:
-                    image_frac_coords = struct_i.lattice.get_fractional_coords(
+                    image_frac_coords = lattice.get_fractional_coords(
                         image_cart_coords_arr
                     )
                     image_periodic_site = PeriodicSite(
                         site_in_cell.species,
                         image_frac_coords,
-                        struct_i.lattice,
+                        lattice,
                         properties=site_in_cell.properties.copy() | dict(is_image=True),
                         coords_are_cartesian=False,
                     )

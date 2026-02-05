@@ -375,7 +375,7 @@ def normalize_structures(
 
 def normalize_to_dict(
     inputs: T | Sequence[T] | dict[str, T],
-    cls: type[T] = SiteCollection,  # type: ignore[assignment]
+    cls: type[T] = SiteCollection,  # ty: ignore[invalid-parameter-default]
     key_gen: Callable[[T], str] = lambda obj: getattr(
         obj, "formula", type(obj).__name__
     ),
@@ -415,7 +415,7 @@ def normalize_to_dict(
             out_dict[key] = obj
         return out_dict
     if isinstance(inputs, dict):
-        return inputs  # type: ignore[return-value]
+        return inputs  # ty: ignore[invalid-return-type]
     if isinstance(inputs, pd.Series):
         return inputs.to_dict()
 
@@ -468,23 +468,23 @@ def df_to_arrays(
 
     flat_args = []
     # tuple doesn't support item assignment
-    args = list(args)  # type: ignore[assignment]
+    args = list(args)  # ty: ignore[invalid-assignment]
 
     for col_name in args:
         if isinstance(col_name, str | int):
             flat_args.append(col_name)
         else:
-            flat_args.extend(col_name)  # type: ignore[arg-type]
+            flat_args.extend(col_name)  # ty: ignore[invalid-argument-type]
 
     df_no_nan = df.dropna(subset=flat_args)
     for idx, col_name in enumerate(args):
         if isinstance(col_name, str | int):
-            args[idx] = df_no_nan[col_name].to_numpy()  # type: ignore[index]
+            args[idx] = df_no_nan[col_name].to_numpy()  # ty: ignore[invalid-assignment]
         else:
-            col_data = df_no_nan[[*col_name]].to_numpy().T  # type: ignore[misc]
-            args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index,arg-type]
+            col_data = df_no_nan[[*col_name]].to_numpy().T  # ty: ignore[not-iterable]
+            args[idx] = dict(zip(col_name, col_data, strict=True))  # ty: ignore[invalid-assignment]
 
-    return args  # type: ignore[return-value]
+    return args  # ty: ignore[invalid-return-type]
 
 
 def bin_df_cols(
@@ -589,7 +589,7 @@ def normalize_spacegroups(
         from moyopy.interface import MoyoAdapter
 
         return pd.Series(
-            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]
+            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]  # ty: ignore[invalid-argument-type]
         )
 
     result = pd.Series(data)

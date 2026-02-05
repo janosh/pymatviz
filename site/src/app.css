@@ -2,26 +2,13 @@
   --night: #061e25;
   --blue: cornflowerblue;
   --text-color: rgb(208, 208, 208);
-  --max-main-width: 50em;
-
-  --toc-mobile-bg: #0d1a1d;
-  --toc-mobile-shadow: 0 0 1em 0 black;
-  --toc-title-padding: 0 0 0 3pt;
-  --toc-li-padding: 2pt 1ex;
-  --toc-mobile-btn-color: white;
-  --toc-mobile-btn-bg: teal;
-  --toc-mobile-btn-padding: 1pt 2pt;
-  --toc-desktop-nav-margin: 0 0 0 1em;
-  --toc-min-width: 15em;
-  --toc-active-border: solid cornflowerblue;
-  --toc-active-border-width: 0 0 0 2pt;
-  --toc-active-bg: none;
-  --toc-active-border-radius: 0;
+  --max-main-width: 55em;
 
   --github-corner-color: var(--night);
   --github-corner-bg: white;
 
   --sms-options-bg: rgb(50, 48, 66);
+  --sms-li-color: white;
   --sms-active-color: cornflowerblue;
 }
 body {
@@ -31,6 +18,9 @@ body {
   line-height: 1.5;
   margin: 0;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 main {
   padding: calc(1ex + 2vw);
@@ -55,15 +45,6 @@ a {
 }
 a:hover {
   color: orange;
-}
-a.link {
-  padding: 0 4pt;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 3pt;
-  transition: 0.2s;
-}
-a.link[aria-current='page'] {
-  color: mediumseagreen;
 }
 code {
   overflow-wrap: break-word;
@@ -113,20 +94,22 @@ h1 {
   display: none;
 }
 
+/* :where() for zero specificity so page-specific styles can override */
 :where(h2, h3, h4, h5, h6) {
   scroll-margin-top: 50px;
   transition: 0.3s;
 }
-:where(h2, h3, h4, h5, h6).toc-clicked {
+/* Highlight heading on fragment navigation or ToC click */
+:is(h2, h3, h4, h5, h6):is(:target, .toc-clicked) {
   color: orange;
 }
-/* style heading anchors added by rehype-autolink-headings, see svelte.config.js */
-:where(h2, h3, h4, h5, h6) a[aria-hidden='true'] {
+/* Heading anchor links (heading_anchors attachment) */
+:is(h2, h3, h4, h5, h6) a[aria-hidden='true'] {
   transition: 0.3s;
   margin-left: 4pt;
   opacity: 0;
 }
-:where(h2, h3, h4, h5, h6):hover a[aria-hidden='true'] {
+:is(h2, h3, h4, h5, h6):hover a[aria-hidden='true'] {
   opacity: 1;
 }
 
@@ -141,13 +124,6 @@ blockquote p:last-child {
 }
 blockquote p:first-child {
   margin-top: 0;
-}
-
-aside.toc.desktop {
-  position: fixed;
-  top: 3em;
-  left: calc(50vw + 45em / 2);
-  max-width: 16em;
 }
 
 caption {

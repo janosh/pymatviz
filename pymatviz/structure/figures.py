@@ -234,6 +234,7 @@ def structure_2d(
             plotted_sites_coords = {
                 tuple(np.round(site.coords, 5)) for site in augmented_structure
             }
+            lattice = struct_i.lattice  # ty: ignore[possibly-missing-attribute]
 
             for site_idx_loop, (site, rotated_site_coords_3d) in enumerate(
                 zip(struct_i, rotated_coords_all_sites, strict=False)
@@ -299,7 +300,7 @@ def structure_2d(
                 if show_image_sites:
                     image_cart_coords_arrays = helpers.get_image_sites(
                         site,
-                        struct_i.lattice,
+                        lattice,
                         cell_boundary_tol=cell_boundary_tol_i,
                     )
                     if len(image_cart_coords_arrays) > 0:

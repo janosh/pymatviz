@@ -202,13 +202,17 @@ def confusion_matrix(
         available_metrics |= {
             "Prec": lambda: precision,
             "Rec": lambda: recall,
-            "F1": lambda: 2 * precision * recall / (precision + recall)
-            if precision + recall > 0
-            else 0,
-            "MCC": lambda: (tp * tn - fp * fn)
-            / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-            if n_classes == 2
-            else None,
+            "F1": lambda: (
+                2 * precision * recall / (precision + recall)
+                if precision + recall > 0
+                else 0
+            ),
+            "MCC": lambda: (
+                (tp * tn - fp * fn)
+                / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+                if (tp + fp) * (tp + fn) * (tn + fp) * (tn + fn) > 0
+                else 0
+            ),
         }
 
     for metric, fmt in metrics_dict.items():

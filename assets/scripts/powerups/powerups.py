@@ -220,9 +220,11 @@ fig.update_layout(title="Filter Traces by Marker Properties")
 # Add parity plot enhancements only to traces with marker size > 7
 pmv.powerups.enhance_parity_plot(
     fig,
-    traces=lambda trace: hasattr(trace, "marker")
-    and hasattr(trace.marker, "size")
-    and trace.marker.size > 7,
+    traces=lambda trace: (
+        hasattr(trace, "marker")
+        and hasattr(trace.marker, "size")
+        and trace.marker.size > 7
+    ),
     annotation_mode="per_trace",
 )
 fig.layout.title.update(x=0.5)

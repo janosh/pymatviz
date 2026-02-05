@@ -9,9 +9,22 @@ from pymatviz.utils import ROOT
 
 if TYPE_CHECKING:
     from phonopy import Phonopy
+    from pymatgen.core import Structure
 
 
 TEST_FILES: str = f"{ROOT}/tests/files"
+
+
+def formula_spg_str(struct: Structure) -> str:
+    """Get a string with formula and space group number for a structure.
+
+    Args:
+        struct: A pymatgen Structure object.
+
+    Returns:
+        String in format "Formula (spg_number)", e.g. "NaCl (225)".
+    """
+    return f"{struct.formula} ({struct.get_space_group_info()[1]})"
 
 
 def load_phonopy_nacl() -> Phonopy:

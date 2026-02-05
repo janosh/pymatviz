@@ -118,7 +118,7 @@ def test_widget_complete_lifecycle() -> None:
     }
 
     # Create new widget from state
-    restored_widget = CompositionWidget(**state)  # type: ignore[arg-type]
+    restored_widget = CompositionWidget(**state)
 
     # Verify state preservation
     for key, value in state.items():

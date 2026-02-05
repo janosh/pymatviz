@@ -1,22 +1,14 @@
-<main>
-  <h1 class="toc-exclude">Examples</h1>
+<script lang="ts">
+  import { notebook_filenames } from '$lib/notebooks'
+</script>
 
-  <ol>
-    {#each Object.keys(
-        import.meta.glob(`$root/examples/*.html`, {
-          eager: true,
-          query: `?url`,
-          import: `default`,
-        }),
-      ) as
-      key
-      (key)
-    }
-      {@const filename = key.split(`/`).at(-1)?.split(`.`)[0]}
-      <li><a href="/notebooks/{filename}">{filename}.ipynb</a></li>
-    {/each}
-  </ol>
-</main>
+<h1 class="toc-exclude">Examples</h1>
+
+<ol>
+  {#each notebook_filenames as filename (filename)}
+    <li><a href="/notebooks/{filename}">{filename}.ipynb</a></li>
+  {/each}
+</ol>
 
 <style>
   ol {

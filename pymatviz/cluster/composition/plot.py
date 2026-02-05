@@ -233,10 +233,8 @@ def _generate_colorbar_ticks(
 
             if lin_thresh is not None and lin_scale is not None:
                 # Custom arcsinh transformation function
-                transform_func = (
-                    lambda x: np.arcsinh((x * lin_scale) / lin_thresh)
-                    * lin_thresh
-                    / scale_factor
+                transform_func = lambda x: (
+                    np.arcsinh((x * lin_scale) / lin_thresh) * lin_thresh / scale_factor
                 )
             else:
                 # Simple arcsinh with scale factor
@@ -657,8 +655,8 @@ def cluster_compositions(
 
     if show_chem_sys in ("shape", "color", "color+shape"):
         chem_systems = []
-        symbol_filter = (
-            lambda x: isinstance(x, str)
+        symbol_filter = lambda x: (
+            isinstance(x, str)
             and not x.isdigit()
             and not x.endswith("-dot")
             and "-open" not in x

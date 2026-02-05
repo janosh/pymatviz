@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import gzip
 import json
+import zipfile
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -21,6 +23,18 @@ if TYPE_CHECKING:
     from typing import Any
 
     from pymatgen.core import Structure
+
+
+def _write_gzip(filepath: str, content: str) -> None:
+    """Write content to a gzip file."""
+    with gzip.open(filepath, "wt") as gz_file:
+        gz_file.write(content)
+
+
+def _write_zip(filepath: str, content: str) -> None:
+    """Write content to a zip file containing trajectory.xyz."""
+    with zipfile.ZipFile(filepath, "w") as zip_file:
+        zip_file.writestr("trajectory.xyz", content)
 
 
 def test_widget_build_files_and_display_trajectory() -> None:
@@ -79,15 +93,7 @@ def test_trajectory_file_loading_various_formats(
 
 @pytest.mark.parametrize(
     ("file_suffix", "compression_func"),
-    [
-        (".xyz.gz", lambda f, content: __import__("gzip").open(f, "wt").write(content)),
-        (
-            ".zip",
-            lambda f, content: __import__("zipfile")
-            .ZipFile(f, "w")
-            .writestr("trajectory.xyz", content),
-        ),
-    ],
+    [(".xyz.gz", _write_gzip), (".zip", _write_zip)],
 )
 def test_trajectory_file_loading_compressed_formats(
     file_suffix: str, compression_func: Any, tmp_path: Path

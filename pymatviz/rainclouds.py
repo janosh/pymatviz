@@ -63,7 +63,9 @@ def rainclouds(
         cut (float, optional): Distance past extreme data points to extend KDE. Defaults
             to 0.0.
         scale ("area" | "count" | "width", optional): Method to scale the width
-            of each violin. Defaults to "area".
+            of each violin. "area" normalizes by integral so all violins have equal area
+            "count" scales by sample size, "width" normalizes by max so all violins have
+            equal max width. Defaults to "area".
         rain_offset (float, optional): Shift the strip plot position. Defaults to -0.25.
         offset (float | None, optional): Shift the violin plot position.
             Defaults to None.
@@ -75,7 +77,6 @@ def rainclouds(
         show_box (bool, optional): Whether to show the box plot. Defaults to True.
         show_points (bool, optional): Whether to show the strip plot points.
             Defaults to True.
-        **kwargs: Additional keyword arguments to pass to the plotting functions.
 
     Returns:
         go.Figure: The Plotly figure containing the raincloud plot.
@@ -106,12 +107,11 @@ def rainclouds(
                 hover_data = [col]
             elif isinstance(hover_data, list) and col not in hover_data:
                 hover_data = [col, *hover_data]
-            elif (
-                isinstance(hover_data, dict)
-                and label in hover_data
-                and col not in hover_data[label]
-            ):
-                hover_data[label] = [col, *hover_data[label]]  # type: ignore[invalid-assignment]
+            elif isinstance(hover_data, dict) and label in hover_data:
+                existing = hover_data[label]  # ty: ignore[invalid-argument-type]
+                if isinstance(existing, list) and col not in existing:
+                    # avoid mutating caller's dict by creating a new one
+                    hover_data = {**hover_data, label: [col, *existing]}  # ty: ignore[invalid-assignment]
         else:
             values = data_itm
 
@@ -121,10 +121,12 @@ def rainclouds(
             y_range = kde(x_range)
 
             if scale == "area":
-                y_range /= y_range.max()
+                # normalize by integral so all violins have equal area
+                y_range /= np.trapezoid(y_range, x_range)
             elif scale == "count":
                 y_range *= len(values) / y_range.max()
             elif scale == "width":
+                # normalize by max so all violins have equal max width
                 y_range /= y_range.max()
 
             common_violin_kwargs = dict(

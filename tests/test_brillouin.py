@@ -249,7 +249,8 @@ def test_brillouin_zone_3d_subplot_grid(structures: list[Structure]) -> None:
 
     # Test custom subplot titles
     def subplot_title(struct: AnyStructure, key: Hashable) -> str:
-        return f"Custom {key} - {struct.formula}"
+        formula = struct.formula  # ty: ignore[possibly-missing-attribute]
+        return f"Custom {key} - {formula}"
 
     fig = brillouin_zone_3d(struct_dict, subplot_title=subplot_title)
     assert isinstance(fig, go.Figure)
