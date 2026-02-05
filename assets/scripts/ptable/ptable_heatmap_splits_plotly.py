@@ -138,7 +138,7 @@ fig.show()
 
 # %% Example 6: Mixed colorbar orientations
 # Create data with 4 splits
-data_dict = {el.symbol: list(np_rng.integers(0, 100, size=4)) for el in Element}
+data_dict = {el.symbol: np_rng.integers(0, 100, size=4) for el in Element}
 
 # Use grid orientation with 4 different colorscales and mixed colorbar orientations
 fig = pmv.ptable_heatmap_splits_plotly(

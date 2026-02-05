@@ -431,7 +431,11 @@ def ptable_heatmap_plotly(
 
 
 def ptable_hists_plotly(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    data: (
+        pd.DataFrame
+        | pd.Series
+        | dict[str, Sequence[int | float] | np.ndarray[Any, Any]]
+    ),
     *,
     # Histogram-specific
     bins: int = 20,
@@ -460,10 +464,11 @@ def ptable_hists_plotly(
     """Plotly figure with histograms for each element laid out in a periodic table.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[float]]): Map from element
-            symbols to histogram values. E.g. if dict, {"Fe": [1, 2, 3], "O": [4, 5]}.
-            If pd.Series, index is element symbols and values lists. If pd.DataFrame,
-            column names are element symbols histograms are plotted from each column.
+        data (pd.DataFrame | pd.Series | dict[str, Sequence | ndarray]): Map from
+            element symbols to histogram values. E.g. {"Fe": [1, 2, 3], "O": [4, 5]}.
+            Values can be lists or numpy arrays. If pd.Series, index is element symbols
+            and values lists. If pd.DataFrame, column names are element symbols and
+            histograms are plotted from each column.
 
         --- Histogram-specific ---
         bins (int): Number of bins for the histograms. Defaults to 20.
@@ -837,7 +842,11 @@ def _get_colorbar_settings(
 
 
 def ptable_heatmap_splits_plotly(
-    data: pd.DataFrame | pd.Series | dict[str, list[float]],
+    data: (
+        pd.DataFrame
+        | pd.Series
+        | dict[str, Sequence[int | float] | np.ndarray[Any, Any]]
+    ),
     *,
     # Split
     orientation: Literal["diagonal", "horizontal", "vertical", "grid"] = "diagonal",
@@ -870,9 +879,10 @@ def ptable_heatmap_splits_plotly(
     where each element tile is split into sections representing different values.
 
     Args:
-        data (pd.DataFrame | pd.Series | dict[str, list[list[float]]]): Map from element
-            symbols to plot data. E.g. if dict, {"Fe": [1, 2], "Co": [3, 4]}, where the
+        data (pd.DataFrame | pd.Series | dict[str, Sequence | ndarray]): Map from
+            element symbols to plot data. E.g. {"Fe": [1, 2], "Co": [3, 4]}, where the
             1st value would be plotted in lower-left corner, 2nd in the upper-right.
+            Values can be lists, tuples, or numpy arrays of numeric values.
 
         --- Figure ---
         colorscale (ColorScale | Sequence[ColorScale]): Color scale(s) for heatmap.

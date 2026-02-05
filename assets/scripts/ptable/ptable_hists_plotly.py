@@ -9,7 +9,7 @@ import pymatviz as pmv
 
 np_rng = np.random.default_rng(seed=0)
 data_dict = {
-    elem.symbol: list(np_rng.standard_normal(100) + np_rng.standard_normal(100))
+    elem.symbol: np_rng.standard_normal(100) + np_rng.standard_normal(100)
     for elem in Element
 }
 
