@@ -119,10 +119,12 @@ def rainclouds(
             y_range = kde(x_range)
 
             if scale == "area":
-                y_range /= y_range.max()
+                # normalize by integral so all violins have equal area
+                y_range /= np.trapezoid(y_range, x_range)
             elif scale == "count":
                 y_range *= len(values) / y_range.max()
             elif scale == "width":
+                # normalize by max so all violins have equal max width
                 y_range /= y_range.max()
 
             common_violin_kwargs = dict(

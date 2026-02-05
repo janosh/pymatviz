@@ -85,9 +85,11 @@ def brillouin_zone_3d(
         from pymatviz.structure.helpers import get_site_symbol
 
         # Convert pymatgen Structure to seekpath input format
+        lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
+        frac_coords = structure.frac_coords  # ty: ignore[possibly-missing-attribute]
         spglib_atoms = (
-            structure.lattice.matrix,  # ty: ignore[possibly-missing-attribute]
-            structure.frac_coords,  # ty: ignore[possibly-missing-attribute]
+            lattice.matrix,  # cell
+            frac_coords,  # positions
             [Element(get_site_symbol(site)).number for site in structure],
         )
         # Get primitive structure and symmetry info using seekpath
