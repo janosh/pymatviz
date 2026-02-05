@@ -598,9 +598,9 @@ def py_pkg_treemap(
         >>> # Only show files with at least 50 lines of code by using cell_size_fn
         >>> fig3 = pmv.py_pkg_treemap(
         ...     "pymatviz",
-        ...     cell_size_fn=lambda cell: cell.line_count
-        ...     if cell.line_count >= 50
-        ...     else 0,
+        ...     cell_size_fn=lambda cell: (
+        ...         cell.line_count if cell.line_count >= 50 else 0
+        ...     ),
         ... )
         >>> # Group by top-level directory instead of module
         >>> fig4 = pmv.py_pkg_treemap("pymatviz", group_by="directory")
@@ -740,9 +740,9 @@ def py_pkg_treemap(
     # Create columns for each level of the hierarchy from 'module_parts'
     for level_idx, col_name in enumerate(level_columns):
         df_treemap[col_name] = df_treemap["module_parts"].map(
-            lambda parts, current_idx=level_idx: parts[current_idx]
-            if current_idx < len(parts)
-            else None
+            lambda parts, current_idx=level_idx: (
+                parts[current_idx] if current_idx < len(parts) else None
+            )
         )
 
     # Define the path definition based on group_by

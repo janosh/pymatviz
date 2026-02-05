@@ -3,8 +3,6 @@
   import Toc from 'svelte-toc'
 </script>
 
-<main>
-  <Changelog />
-</main>
+<Changelog />
 
 <Toc headingSelector="main > :where(h4)" breakpoint={1250} />
