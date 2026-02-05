@@ -25,10 +25,10 @@ if TYPE_CHECKING:
     from pymatgen.core import Structure
 
 
-def _write_gzip(filepath: str, content: str) -> int:
+def _write_gzip(filepath: str, content: str) -> None:
     """Write content to a gzip file."""
     with gzip.open(filepath, "wt") as gz_file:
-        return gz_file.write(content)
+        gz_file.write(content)
 
 
 def _write_zip(filepath: str, content: str) -> None:

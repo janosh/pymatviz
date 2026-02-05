@@ -46,15 +46,6 @@ a {
 a:hover {
   color: orange;
 }
-a.link {
-  padding: 0 4pt;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 3pt;
-  transition: 0.2s;
-}
-a.link[aria-current='page'] {
-  color: mediumseagreen;
-}
 code {
   overflow-wrap: break-word;
   padding: 1pt 3pt;

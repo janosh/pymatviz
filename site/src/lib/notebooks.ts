@@ -6,7 +6,10 @@ const notebook_html_files: Record<string, string> = import.meta.glob(
 
 export const notebook_paths: string[] = Object.keys(notebook_html_files)
 
-export const notebook_routes: string[] = notebook_paths.map((path) => {
-  const filename = path.split(`/`).at(-1)?.replace(`.html`, ``)
-  return `/notebooks/${filename}`
-})
+export const notebook_filenames: string[] = notebook_paths.map(
+  (path) => path.split(`/`).at(-1)?.replace(`.html`, ``) ?? ``,
+)
+
+export const notebook_routes: string[] = notebook_filenames.map(
+  (name) => `/notebooks/${name}`,
+)

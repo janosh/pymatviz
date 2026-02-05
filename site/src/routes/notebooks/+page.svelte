@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { notebook_paths } from '$lib/notebooks'
+  import { notebook_filenames } from '$lib/notebooks'
 </script>
 
 <h1 class="toc-exclude">Examples</h1>
 
 <ol>
-  {#each notebook_paths as path (path)}
-    {@const filename = path.split(`/`).at(-1)?.replace(`.html`, ``)}
+  {#each notebook_filenames as filename (filename)}
     <li><a href="/notebooks/{filename}">{filename}.ipynb</a></li>
   {/each}
 </ol>

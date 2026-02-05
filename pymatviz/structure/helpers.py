@@ -1474,6 +1474,7 @@ def draw_bonds(
         effective_bond_kwargs.update(bond_kwargs)
 
     _elem_colors = elem_colors or get_elem_colors(ElemColorScheme.jmol)
+    lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
 
     def parse_color(color_val: Any) -> str:
         """Convert various color formats to RGB string."""
@@ -1503,8 +1504,7 @@ def draw_bonds(
 
             coords_from = site1.coords
             actual_bonded_site_frac_coords = site2.frac_coords + jimage
-            struct_lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
-            cart_coords_to = struct_lattice.get_cartesian_coords(
+            cart_coords_to = lattice.get_cartesian_coords(
                 actual_bonded_site_frac_coords
             )
 
