@@ -9,7 +9,7 @@ import pymatviz as pmv
 
 np_rng = np.random.default_rng(seed=0)
 data_dict = {
-    elem.symbol: np_rng.standard_normal(100) + np_rng.standard_normal(100)
+    elem.symbol: list(np_rng.standard_normal(100) + np_rng.standard_normal(100))
     for elem in Element
 }
 
@@ -18,7 +18,7 @@ data_dict = {
 fig = pmv.ptable_hists_plotly(
     data_dict,
     bins=30,
-    colorbar=dict(title="Element Distributions"),  # type: ignore[arg-type]
+    colorbar=dict(title="Element Distributions"),
 )
 fig.show()
 # pmv.io.save_and_compress_svg(fig, "ptable-hists-plotly")
@@ -26,7 +26,7 @@ fig.show()
 
 # %% Example 2: horizontal colorbar and custom annotations
 fig = pmv.ptable_hists_plotly(
-    data_dict,  # type: ignore[arg-type]
+    data_dict,
     bins=30,
     colorbar=dict(title="Element Distributions", orientation="h"),
     color_elem_strategy="background",

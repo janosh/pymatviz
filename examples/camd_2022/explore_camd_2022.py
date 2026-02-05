@@ -38,7 +38,7 @@ else:
     dataset_url = f"{base_url}/camd_data_to_release_{with_feat_str}features.json"
     data = requests.get(dataset_url, timeout=10).json()
     df_camd = pd.DataFrame(data)
-    df_camd = df_camd.to_csv(f"camd-2022-{with_feat_str}-features.csv.bz2")
+    df_camd.to_csv(f"camd-2022-{with_feat_str}-features.csv.bz2")
 
 
 # %%

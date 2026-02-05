@@ -375,7 +375,7 @@ def normalize_structures(
 
 def normalize_to_dict(
     inputs: T | Sequence[T] | dict[str, T],
-    cls: type[T] = SiteCollection,  # type: ignore[assignment]
+    cls: type[T] = SiteCollection,
     key_gen: Callable[[T], str] = lambda obj: getattr(
         obj, "formula", type(obj).__name__
     ),
@@ -474,14 +474,14 @@ def df_to_arrays(
         if isinstance(col_name, str | int):
             flat_args.append(col_name)
         else:
-            flat_args.extend(col_name)  # type: ignore[arg-type]
+            flat_args.extend(col_name)
 
     df_no_nan = df.dropna(subset=flat_args)
     for idx, col_name in enumerate(args):
         if isinstance(col_name, str | int):
             args[idx] = df_no_nan[col_name].to_numpy()  # type: ignore[index]
         else:
-            col_data = df_no_nan[[*col_name]].to_numpy().T  # type: ignore[misc]
+            col_data = df_no_nan[[*col_name]].to_numpy().T
             args[idx] = dict(zip(col_name, col_data, strict=True))  # type: ignore[index,arg-type]
 
     return args  # type: ignore[return-value]

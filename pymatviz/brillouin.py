@@ -86,9 +86,8 @@ def brillouin_zone_3d(
 
         # Convert pymatgen Structure to seekpath input format
         spglib_atoms = (
-            structure.lattice.matrix,  # cell
-            structure.frac_coords,  # positions
-            # Get atomic number from element symbol (handling disordered sites)
+            structure.lattice.matrix,
+            structure.frac_coords,
             [Element(get_site_symbol(site)).number for site in structure],
         )
         # Get primitive structure and symmetry info using seekpath

@@ -111,7 +111,7 @@ def rainclouds(
                 and label in hover_data
                 and col not in hover_data[label]
             ):
-                hover_data[label] = [col, *hover_data[label]]  # type: ignore[invalid-assignment]
+                hover_data[label] = [col, *hover_data[label]]  # ty: ignore[invalid-assignment]
         else:
             values = data_itm
 

@@ -386,7 +386,7 @@ def ptable_heatmap_plotly(
         orig_max = np.ceil(max(non_nan_values))
         tick_values = np.logspace(orig_min, orig_max, num=10, endpoint=True)
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
-        tick_values = list(colorbar.pop("tickvals", tick_values))  # type: ignore[arg-type]
+        tick_values = list(colorbar.pop("tickvals", tick_values))
         if any(val <= 0 for val in tick_values):
             raise ValueError(
                 f"tickvals must be positive for log scale, got {tick_values}"
@@ -987,14 +987,14 @@ def ptable_heatmap_splits_plotly(
         elif colorbar is None:
             # Create colorbar settings with column names as titles
             colorbar = [dict(title=label) for label in split_labels]
-        data = {idx: row.tolist() for idx, row in data.iterrows()}  # type: ignore[assignment]
+        data = {idx: row.tolist() for idx, row in data.iterrows()}
     elif isinstance(data, pd.Series):
         data = data.to_dict()
 
     # Calculate split ranges early if using multiple colorscales
     if not data:
         raise ValueError(f"ptable_heatmap_splits_plotly: {data=} must not be empty")
-    n_splits = len(next(iter(data.values())))  # type: ignore[arg-type]
+    n_splits = len(next(iter(data.values())))
 
     if not split_labels:  # if not DataFrame or empty columns
         split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
@@ -1008,7 +1008,7 @@ def ptable_heatmap_splits_plotly(
     for split_idx in range(n_splits):
         split_values = [
             values[split_idx]
-            for values in data.values()  # type: ignore[union-attr]
+            for values in data.values()
             if len(values) > split_idx
             and not np.isnan(values[split_idx])
             and values[split_idx] != 0
