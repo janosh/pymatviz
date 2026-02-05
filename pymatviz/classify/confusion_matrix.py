@@ -210,6 +210,8 @@ def confusion_matrix(
             "MCC": lambda: (
                 (tp * tn - fp * fn)
                 / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+                if (tp + fp) * (tp + fn) * (tn + fp) * (tn + fn) > 0
+                else 0
             ),
         }
 

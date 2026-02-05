@@ -6,7 +6,7 @@
 
 <ol>
   {#each notebook_paths as path (path)}
-    {@const filename = path.split(`/`).at(-1)?.split(`.`)[0]}
+    {@const filename = path.split(`/`).at(-1)?.replace(`.html`, ``)}
     <li><a href="/notebooks/{filename}">{filename}.ipynb</a></li>
   {/each}
 </ol>
