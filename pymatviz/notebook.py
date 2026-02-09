@@ -17,19 +17,15 @@ def _widget_mime_bundle(obj: Any) -> dict[str, Any]:
     try:
         from pymatviz.widgets.mime import create_widget
 
-        widget = create_widget(obj)
-        mime_bundle = widget._repr_mimebundle_()
-    except Exception:  # noqa: BLE001
+        mime_bundle = create_widget(obj)._repr_mimebundle_()
+    except (ImportError, ValueError, TypeError, OSError, RuntimeError, AttributeError):
         return {"text/plain": repr(obj)}
 
     if isinstance(mime_bundle, tuple):
         mime_bundle = mime_bundle[0]
     if not isinstance(mime_bundle, dict):
         return {"text/plain": repr(obj)}
-    result = mime_bundle.copy()
-    if "text/plain" not in result:
-        result["text/plain"] = repr(obj)
-    return result
+    return {**mime_bundle, "text/plain": mime_bundle.get("text/plain", repr(obj))}
 
 
 def _ipython_display(self: Any) -> None:
@@ -64,20 +60,16 @@ def notebook_mode(*, on: bool) -> None:
 
     from pymatviz.widgets.mime import _CLASS_SPECS
 
-    # Derive (module, class_name) pairs from the canonical _CLASS_SPECS registry
-    for module_path, class_name in (
-        (mod, name)
-        for mod, names, _widget_cls, _param in _CLASS_SPECS
-        for name in names
-    ):
-        try:
-            cls = getattr(import_module(module_path), class_name)
-            if on:
-                cls._ipython_display_ = _ipython_display
-                cls._repr_mimebundle_ = _repr_mimebundle
-            else:
-                for attr in ("_ipython_display_", "_repr_mimebundle_"):
-                    if hasattr(cls, attr):
-                        delattr(cls, attr)
-        except (ImportError, AttributeError):
-            pass  # Module not available or crystal_toolkit conflict
+    for module_path, class_names, _widget_cls, _param in _CLASS_SPECS:
+        for class_name in class_names:
+            try:
+                cls = getattr(import_module(module_path), class_name)
+                if on:
+                    cls._ipython_display_ = _ipython_display
+                    cls._repr_mimebundle_ = _repr_mimebundle
+                else:
+                    for attr in ("_ipython_display_", "_repr_mimebundle_"):
+                        if hasattr(cls, attr):
+                            delattr(cls, attr)
+            except (ImportError, AttributeError):
+                pass  # Module not available or crystal_toolkit conflict

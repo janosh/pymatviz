@@ -161,8 +161,8 @@ def _(np, pmv):
     _dos_data = {
         "@module": "pymatgen.electronic_structure.dos",
         "@class": "Dos",
-        "energies": list(np.linspace(-5, 5, 200)),
-        "densities": {"1": list(np.exp(-0.5 * np.linspace(-5, 5, 200) ** 2))},
+        "energies": np.linspace(-5, 5, 200).tolist(),
+        "densities": {"1": np.exp(-0.5 * np.linspace(-5, 5, 200) ** 2).tolist()},
         "efermi": 0.0,
     }
     pmv.DosWidget(dos=_dos_data, style="height: 400px;")

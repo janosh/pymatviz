@@ -44,5 +44,6 @@ class XrdWidget(MatterVizWidget):
         """
         from pymatviz.widgets._normalize import normalize_xrd_pattern
 
-        pattern_data = normalize_xrd_pattern(patterns)
-        super().__init__(widget_type="xrd", patterns=pattern_data, **kwargs)
+        super().__init__(
+            widget_type="xrd", patterns=normalize_xrd_pattern(patterns), **kwargs
+        )

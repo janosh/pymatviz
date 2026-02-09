@@ -48,11 +48,9 @@ class BandsAndDosWidget(MatterVizWidget):
         """
         from pymatviz.widgets._normalize import _to_dict
 
-        bs_data = _to_dict(band_structure, "band structure")
-        dos_data = _to_dict(dos, "DOS")
         super().__init__(
             widget_type="bands_and_dos",
-            band_structure=bs_data,
-            dos=dos_data,
+            band_structure=_to_dict(band_structure, "band structure"),
+            dos=_to_dict(dos, "DOS"),
             **kwargs,
         )

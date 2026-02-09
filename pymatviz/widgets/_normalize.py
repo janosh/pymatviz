@@ -70,7 +70,7 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
             entries = []
             for entry in obj.all_entries:
                 entry_dict: dict[str, Any] = {
-                    "composition": dict(entry.composition.as_dict()),
+                    "composition": entry.composition.as_dict(),
                     "energy": entry.energy,
                     "energy_per_atom": entry.energy_per_atom,
                 }
@@ -108,23 +108,23 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
         from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 
         if isinstance(obj, DiffractionPattern):
-            result: dict[str, Any] = {
-                "x": [float(val) for val in obj.x],
-                "y": [float(val) for val in obj.y],
-            }
+            result: dict[str, Any] = {"x": obj.x.tolist(), "y": obj.y.tolist()}
             if obj.hkls is not None:
                 result["hkls"] = [
                     [
                         {
-                            k: ([int(idx) for idx in v] if k == "hkl" else v)
-                            for k, v in h.items()
+                            key: list(val) if key == "hkl" else val
+                            for key, val in hkl_entry.items()
                         }
-                        for h in hkl_list
+                        for hkl_entry in hkl_list
                     ]
                     for hkl_list in obj.hkls
                 ]
             if obj.d_hkls is not None:
-                result["d_hkls"] = [float(val) for val in obj.d_hkls]
+                d_hkls = obj.d_hkls
+                result["d_hkls"] = (
+                    d_hkls.tolist() if hasattr(d_hkls, "tolist") else list(d_hkls)
+                )
             return result
     except ImportError:
         pass

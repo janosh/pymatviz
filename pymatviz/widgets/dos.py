@@ -48,5 +48,4 @@ class DosWidget(MatterVizWidget):
         """
         from pymatviz.widgets._normalize import _to_dict
 
-        dos_data = _to_dict(dos, "DOS")
-        super().__init__(widget_type="dos", dos=dos_data, **kwargs)
+        super().__init__(widget_type="dos", dos=_to_dict(dos, "DOS"), **kwargs)

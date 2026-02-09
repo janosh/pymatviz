@@ -147,8 +147,8 @@ display(bands_widget)
 dos_data = {
     "@module": "pymatgen.electronic_structure.dos",
     "@class": "Dos",
-    "energies": list(np.linspace(-5, 5, 200)),
-    "densities": {"1": list(np.exp(-0.5 * np.linspace(-5, 5, 200) ** 2))},
+    "energies": np.linspace(-5, 5, 200).tolist(),
+    "densities": {"1": np.exp(-0.5 * np.linspace(-5, 5, 200) ** 2).tolist()},
     "efermi": 0.0,
 }
 

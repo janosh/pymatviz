@@ -69,5 +69,8 @@ class ConvexHullWidget(MatterVizWidget):
         """
         from pymatviz.widgets._normalize import normalize_convex_hull_entries
 
-        entries_data = normalize_convex_hull_entries(entries)
-        super().__init__(widget_type="convex_hull", entries=entries_data, **kwargs)
+        super().__init__(
+            widget_type="convex_hull",
+            entries=normalize_convex_hull_entries(entries),
+            **kwargs,
+        )

@@ -63,10 +63,9 @@ class BrillouinZoneWidget(MatterVizWidget):
         """
         from pymatviz.widgets._normalize import normalize_structure_for_bz
 
-        struct_data = normalize_structure_for_bz(structure)
         super().__init__(
             widget_type="brillouin_zone",
-            structure=struct_data,
+            structure=normalize_structure_for_bz(structure),
             bz_data=bz_data,
             **kwargs,
         )
