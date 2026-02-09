@@ -215,16 +215,18 @@ display(ase_traj_widget)
 
 # %% Render local flame HDF5 trajectory file
 file_name = "flame-gold-cluster-55-atoms.h5"
-if not os.path.isfile(f"tmp/{file_name}"):
+tmp_dir = f"{os.path.dirname(__file__)}/tmp"
+local_path = f"{tmp_dir}/{file_name}"
+if not os.path.isfile(local_path):
     import urllib.request
 
-    os.makedirs("tmp", exist_ok=True)
+    os.makedirs(tmp_dir, exist_ok=True)
     urllib.request.urlretrieve(  # noqa: S310
-        f"{matterviz_traj_dir_url}/{file_name}", f"tmp/{file_name}"
+        f"{matterviz_traj_dir_url}/{file_name}", local_path
     )
 
 traj_widget = pmv.TrajectoryWidget(
-    data_url=f"{os.path.dirname(__file__)}/tmp/{file_name}",
+    data_url=local_path,
     display_mode="structure+scatter",
     show_force_vectors=False,
 )

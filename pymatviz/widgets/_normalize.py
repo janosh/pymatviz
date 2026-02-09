@@ -121,9 +121,10 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
                     for hkl_list in obj.hkls
                 ]
             if obj.d_hkls is not None:
-                d_hkls = obj.d_hkls
                 result["d_hkls"] = (
-                    d_hkls.tolist() if hasattr(d_hkls, "tolist") else list(d_hkls)
+                    obj.d_hkls.tolist()
+                    if hasattr(obj.d_hkls, "tolist")
+                    else list(obj.d_hkls)
                 )
             return result
     except ImportError:
