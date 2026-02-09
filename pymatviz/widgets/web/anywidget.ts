@@ -1,10 +1,22 @@
 // MatterViz AnyWidget Entry Point
 
 import type { AnyModel, Render } from 'anywidget/types'
-import { Composition, Structure, Trajectory } from 'matterviz'
+import {
+  Bands,
+  BandsAndDos,
+  BrillouinZone,
+  Composition,
+  ConvexHull,
+  Dos,
+  FermiSurface,
+  IsobaricBinaryPhaseDiagram,
+  Structure,
+  Trajectory,
+  XrdPlot,
+} from 'matterviz'
 import app_css from 'matterviz/app.css?raw'
 import type { ThemeType } from 'matterviz/theme'
-import { mount, unmount } from 'svelte'
+import { type Component, mount, unmount } from 'svelte'
 import {
   detect_parent_theme,
   get_theme_css,
@@ -38,11 +50,7 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
       outline: none; border-color: #007acc; box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
     }
     :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea)::placeholder { color: #888888; }
-    ${
-    is_shadow_dom
-      ? app_css
-      : `div:is(.structure, .trajectory, .composition) { ${app_css} }`
-  }
+    ${app_css}
   `
 
   // Apply styles
@@ -71,6 +79,45 @@ const get_prop = (model: AnyModel, key: string) => {
   }
 }
 
+// Common props for notebook context
+const notebook_common = { allow_file_drop: false }
+
+// Helper: mount a Svelte component and track the instance
+const mount_widget = (
+  el: HTMLElement,
+  component: Component<Record<string, unknown>>,
+  props: Record<string, unknown>,
+) => {
+  instances.set(
+    el,
+    mount(component, { target: el, props: { ...notebook_common, ...props } }),
+  )
+}
+
+// Build scene/lattice props shared by structure and trajectory renderers
+const get_scene_props = (model: AnyModel) => ({
+  atom_radius: get_prop(model, `atom_radius`),
+  show_atoms: get_prop(model, `show_atoms`),
+  auto_rotate: get_prop(model, `auto_rotate`) ?? 0.2,
+  same_size_atoms: get_prop(model, `same_size_atoms`),
+  show_bonds: get_prop(model, `show_bonds`),
+  show_force_vectors: get_prop(model, `show_force_vectors`),
+  force_vector_scale: get_prop(model, `force_vector_scale`),
+  force_vector_color: get_prop(model, `force_vector_color`),
+  bond_thickness: get_prop(model, `bond_thickness`),
+  bond_color: get_prop(model, `bond_color`),
+  bonding_strategy: get_prop(model, `bonding_strategy`),
+})
+
+const get_lattice_props = (model: AnyModel) => ({
+  cell_edge_opacity: get_prop(model, `cell_edge_opacity`),
+  cell_surface_opacity: get_prop(model, `cell_surface_opacity`),
+  cell_edge_color: get_prop(model, `cell_edge_color`),
+  cell_surface_color: get_prop(model, `cell_surface_color`),
+  cell_edge_width: get_prop(model, `cell_edge_width`),
+  show_cell_vectors: get_prop(model, `show_cell_vectors`),
+})
+
 // Detect widget type and render
 const render: Render = (props) => {
   const { model, el } = props
@@ -87,111 +134,73 @@ const render: Render = (props) => {
     instances.delete(el)
   }
 
-  const has_trajectory = get_prop(model, `trajectory`) !== undefined
-  const has_structure = get_prop(model, `structure`) !== undefined
-  const has_composition = get_prop(model, `composition`) !== undefined
-  const has_data_url = get_prop(model, `data_url`) !== undefined
+  const widget_type = get_prop(model, `widget_type`)
 
-  if (has_trajectory) render_trajectory(props)
-  else if (has_structure) render_structure(props)
-  else if (has_composition) render_composition(props)
-  // TODO both Structure and Trajectory can be rendered from data_urls, need to find a way to distinguish between them (currently just opting for Trajectory)
-  else if (has_data_url) render_trajectory(props)
-  else throw new Error(`No valid input found for widget`)
+  const renderers: Record<string, Render> = {
+    structure: render_structure,
+    trajectory: render_trajectory,
+    composition: render_composition,
+    convex_hull: render_convex_hull,
+    band_structure: render_band_structure,
+    dos: render_dos,
+    bands_and_dos: render_bands_and_dos,
+    fermi_surface: render_fermi_surface,
+    brillouin_zone: render_brillouin_zone,
+    phase_diagram: render_phase_diagram,
+    xrd: render_xrd,
+  }
+
+  if (!widget_type) throw new Error(`widget_type not set on model`)
+  const renderer = renderers[widget_type]
+  if (renderer) return renderer(props)
+  throw new Error(`Unknown widget_type: '${widget_type}'`)
 }
 
+// === Widget renderers ===
+
 const render_composition: Render = ({ model, el }) => {
-  const props = {
+  mount_widget(el, Composition, {
     composition: get_prop(model, `composition`),
     mode: get_prop(model, `mode`),
     show_percentages: get_prop(model, `show_percentages`),
     color_scheme: get_prop(model, `color_scheme`),
+    show_controls: get_prop(model, `show_controls`),
     style: get_prop(model, `style`),
-  }
-
-  const component = mount(Composition, { target: el, props })
-  instances.set(el, component)
+  })
 }
 
 const render_structure: Render = ({ model, el }) => {
-  const props = {
+  mount_widget(el, Structure, {
     structure: get_prop(model, `structure`),
     data_url: get_prop(model, `data_url`),
-    scene_props: {
-      atom_radius: get_prop(model, `atom_radius`),
-      show_atoms: get_prop(model, `show_atoms`),
-      auto_rotate: get_prop(model, `auto_rotate`) ?? 0.2,
-      same_size_atoms: get_prop(model, `same_size_atoms`),
-      show_bonds: get_prop(model, `show_bonds`),
-      show_force_vectors: get_prop(model, `show_force_vectors`),
-      force_vector_scale: get_prop(model, `force_vector_scale`),
-      force_vector_color: get_prop(model, `force_vector_color`),
-      bond_thickness: get_prop(model, `bond_thickness`),
-      bond_color: get_prop(model, `bond_color`),
-      bonding_strategy: get_prop(model, `bonding_strategy`),
-    },
-    lattice_props: {
-      cell_edge_opacity: get_prop(model, `cell_edge_opacity`),
-      cell_surface_opacity: get_prop(model, `cell_surface_opacity`),
-      cell_edge_color: get_prop(model, `cell_edge_color`),
-      cell_surface_color: get_prop(model, `cell_surface_color`),
-      cell_edge_width: get_prop(model, `cell_edge_width`),
-      show_cell_vectors: get_prop(model, `show_cell_vectors`),
-    },
-    // Display options
+    scene_props: get_scene_props(model),
+    lattice_props: get_lattice_props(model),
     show_site_labels: get_prop(model, `show_site_labels`),
     show_image_atoms: get_prop(model, `show_image_atoms`),
     color_scheme: get_prop(model, `color_scheme`),
     background_color: get_prop(model, `background_color`),
     background_opacity: get_prop(model, `background_opacity`),
-    // Widget configuration
     show_controls: get_prop(model, `show_controls`),
     enable_info_pane: get_prop(model, `enable_info_pane`),
     fullscreen_toggle: get_prop(model, `fullscreen_toggle`),
-    allow_file_drop: false, // Disable file drop in notebook context
     png_dpi: get_prop(model, `png_dpi`),
     style: get_prop(model, `style`),
-  }
-
-  const component = mount(Structure, { target: el, props })
-  instances.set(el, component)
+  })
 }
 
 const render_trajectory: Render = ({ model, el }) => {
-  const props = {
+  mount_widget(el, Trajectory, {
     trajectory: get_prop(model, `trajectory`),
     data_url: get_prop(model, `data_url`),
     current_step_idx: get_prop(model, `current_step_idx`),
-    // Layout and display
     layout: get_prop(model, `layout`),
     display_mode: get_prop(model, `display_mode`),
     show_controls: get_prop(model, `show_controls`),
     fullscreen_toggle: get_prop(model, `fullscreen_toggle`),
     auto_play: get_prop(model, `auto_play`),
-    // Widget configuration
-    allow_file_drop: false, // Disable file drop in notebook context
     structure_props: {
-      scene_props: {
-        atom_radius: get_prop(model, `atom_radius`),
-        show_atoms: get_prop(model, `show_atoms`),
-        auto_rotate: get_prop(model, `auto_rotate`) ?? 0.2,
-        same_size_atoms: get_prop(model, `same_size_atoms`),
-        show_bonds: get_prop(model, `show_bonds`),
-        show_force_vectors: get_prop(model, `show_force_vectors`),
-        force_vector_scale: get_prop(model, `force_vector_scale`),
-        force_vector_color: get_prop(model, `force_vector_color`),
-        bond_thickness: get_prop(model, `bond_thickness`),
-        bond_color: get_prop(model, `bond_color`),
-        bonding_strategy: get_prop(model, `bonding_strategy`),
-      },
-      lattice_props: {
-        cell_edge_opacity: get_prop(model, `cell_edge_opacity`),
-        cell_surface_opacity: get_prop(model, `cell_surface_opacity`),
-        cell_edge_color: get_prop(model, `cell_edge_color`),
-        cell_surface_color: get_prop(model, `cell_surface_color`),
-        cell_edge_width: get_prop(model, `cell_edge_width`),
-        show_cell_vectors: get_prop(model, `show_cell_vectors`),
-      },
+      scene_props: get_scene_props(model),
+      lattice_props: get_lattice_props(model),
       show_site_labels: get_prop(model, `show_site_labels`),
       show_image_atoms: get_prop(model, `show_image_atoms`),
       color_scheme: get_prop(model, `color_scheme`),
@@ -203,10 +212,113 @@ const render_trajectory: Render = ({ model, el }) => {
     property_labels: get_prop(model, `property_labels`),
     units: get_prop(model, `units`),
     style: get_prop(model, `style`),
-  }
+  })
+}
 
-  const component = mount(Trajectory, { target: el, props })
-  instances.set(el, component)
+const render_convex_hull: Render = ({ model, el }) => {
+  mount_widget(el, ConvexHull, {
+    entries: get_prop(model, `entries`),
+    show_stable: get_prop(model, `show_stable`),
+    show_unstable: get_prop(model, `show_unstable`),
+    show_hull_faces: get_prop(model, `show_hull_faces`),
+    hull_face_opacity: get_prop(model, `hull_face_opacity`),
+    show_stable_labels: get_prop(model, `show_stable_labels`),
+    show_unstable_labels: get_prop(model, `show_unstable_labels`),
+    max_hull_dist_show_labels: get_prop(model, `max_hull_dist_show_labels`),
+    max_hull_dist_show_phases: get_prop(model, `max_hull_dist_show_phases`),
+    temperature: get_prop(model, `temperature`),
+    show_controls: get_prop(model, `show_controls`),
+    style: get_prop(model, `style`),
+  })
+}
+
+const render_band_structure: Render = ({ model, el }) => {
+  mount_widget(el, Bands, {
+    // Python traitlet `band_structure` -> Svelte prop `band_structs`
+    band_structs: get_prop(model, `band_structure`),
+    band_type: get_prop(model, `band_type`),
+    show_legend: get_prop(model, `show_legend`),
+    fermi_level: get_prop(model, `fermi_level`),
+    reference_frequency: get_prop(model, `reference_frequency`),
+    show_controls: get_prop(model, `show_controls`),
+    style: get_prop(model, `style`),
+  })
+}
+
+const render_dos: Render = ({ model, el }) => {
+  mount_widget(el, Dos, {
+    // Python traitlet `dos` -> Svelte prop `doses`
+    doses: get_prop(model, `dos`),
+    stack: get_prop(model, `stack`),
+    sigma: get_prop(model, `sigma`),
+    normalize: get_prop(model, `normalize`),
+    orientation: get_prop(model, `orientation`),
+    show_legend: get_prop(model, `show_legend`),
+    spin_mode: get_prop(model, `spin_mode`),
+    show_controls: get_prop(model, `show_controls`),
+    style: get_prop(model, `style`),
+  })
+}
+
+const render_bands_and_dos: Render = ({ model, el }) => {
+  mount_widget(el, BandsAndDos, {
+    // Python traitlet `band_structure` -> Svelte prop `band_structs`
+    band_structs: get_prop(model, `band_structure`),
+    // Python traitlet `dos` -> Svelte prop `doses`
+    doses: get_prop(model, `dos`),
+    show_controls: get_prop(model, `show_controls`),
+    style: get_prop(model, `style`),
+  })
+}
+
+const render_fermi_surface: Render = ({ model, el }) => {
+  mount_widget(el, FermiSurface, {
+    fermi_data: get_prop(model, `fermi_data`),
+    band_data: get_prop(model, `band_data`),
+    mu: get_prop(model, `mu`),
+    representation: get_prop(model, `representation`),
+    surface_opacity: get_prop(model, `surface_opacity`),
+    show_bz: get_prop(model, `show_bz`),
+    bz_opacity: get_prop(model, `bz_opacity`),
+    show_vectors: get_prop(model, `show_vectors`),
+    camera_projection: get_prop(model, `camera_projection`),
+    show_controls: get_prop(model, `show_controls`),
+    style: get_prop(model, `style`),
+  })
+}
+
+const render_brillouin_zone: Render = ({ model, el }) => {
+  mount_widget(el, BrillouinZone, {
+    structure: get_prop(model, `structure`),
+    bz_data: get_prop(model, `bz_data`),
+    surface_color: get_prop(model, `surface_color`),
+    surface_opacity: get_prop(model, `surface_opacity`),
+    edge_color: get_prop(model, `edge_color`),
+    edge_width: get_prop(model, `edge_width`),
+    show_vectors: get_prop(model, `show_vectors`),
+    show_ibz: get_prop(model, `show_ibz`),
+    ibz_color: get_prop(model, `ibz_color`),
+    ibz_opacity: get_prop(model, `ibz_opacity`),
+    camera_projection: get_prop(model, `camera_projection`),
+    show_controls: get_prop(model, `show_controls`),
+    style: get_prop(model, `style`),
+  })
+}
+
+const render_phase_diagram: Render = ({ model, el }) => {
+  mount_widget(el, IsobaricBinaryPhaseDiagram, {
+    data: get_prop(model, `data`),
+    show_controls: get_prop(model, `show_controls`),
+    style: get_prop(model, `style`),
+  })
+}
+
+const render_xrd: Render = ({ model, el }) => {
+  mount_widget(el, XrdPlot, {
+    patterns: get_prop(model, `patterns`),
+    show_controls: get_prop(model, `show_controls`),
+    style: get_prop(model, `style`),
+  })
 }
 
 export default { render }

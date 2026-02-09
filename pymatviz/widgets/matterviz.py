@@ -8,6 +8,7 @@ import subprocess
 import urllib.request
 from typing import Any
 
+import traitlets as tl
 from anywidget import AnyWidget
 
 
@@ -87,6 +88,10 @@ def build_widget_assets() -> None:
 
 class MatterVizWidget(AnyWidget):
     """Base widget class that lazily loads and caches MatterViz widget assets."""
+
+    widget_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    style = tl.Unicode(allow_none=True).tag(sync=True)
+    show_controls = tl.Bool(default_value=True).tag(sync=True)
 
     def __init__(self, version_override: str | None = None, **kwargs: Any) -> None:
         """Initialize the widget with lazy loading of widget assets.

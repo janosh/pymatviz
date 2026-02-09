@@ -110,7 +110,7 @@ def coordination_hist(
     for struct_key, structure in struct_dict.items():
         coord_data[struct_key] = {}
         for idx, site in enumerate(structure):
-            cn = len(get_neighbors(site, structure))  # type: ignore[arg-type]
+            cn = len(get_neighbors(site, structure))
             min_cn = min(min_cn, cn)
             max_cn = max(max_cn, cn)
             elem_symbol = get_site_symbol(site)
@@ -431,7 +431,7 @@ def coordination_vs_cutoff_line(
             "instance, or NearNeighbors subclass."
         )
 
-    cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)  # type: ignore[call-overload]
+    cutoffs = np.linspace(cutoff_range[0], cutoff_range[1], num_points)
 
     if isinstance(element_color_scheme, dict):
         element_colors = ELEM_COLORS_JMOL | element_color_scheme
@@ -467,7 +467,7 @@ def coordination_vs_cutoff_line(
             coord_numbers = []
             for cutoff in cutoffs:
                 get_neighbors_fn = normalize_get_neighbors(strategy=cutoff)
-                avg_cn = calculate_average_cn(structure, element, get_neighbors_fn)  # type: ignore[arg-type]
+                avg_cn = calculate_average_cn(structure, element, get_neighbors_fn)
                 coord_numbers.append(avg_cn)
 
             color = element_colors.get(element)

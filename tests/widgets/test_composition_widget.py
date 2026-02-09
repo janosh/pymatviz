@@ -34,7 +34,7 @@ def test_widget_composition_inputs(
 ) -> None:
     """Widget must handle different composition input types and formats."""
     widget = CompositionWidget(composition=composition_input)
-
+    assert widget.widget_type == "composition"
     assert widget.composition is not None
     assert isinstance(widget.composition, dict)
     assert set(widget.composition) == expected_elements
