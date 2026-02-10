@@ -148,7 +148,7 @@ os.makedirs(fig_dir := f"{module_dir}/tmp/phonons", exist_ok=True)
 for bulk_str, model_results in results.items():
     bands = {key: ph.band_structure for key, ph in model_results.items()}
     doses = {key: ph.total_dos for key, ph in model_results.items()}
-    fig = pmv.phonon_bands_and_dos(bands, doses)  # type: ignore[arg-type]
+    fig = pmv.phonon_bands_and_dos(bands, doses)
     fig.layout.title.update(text=f"{bulk_str}")
     fig.layout.margin.t = 60
     fig.show()

@@ -75,12 +75,8 @@ class TrajectoryWidget(MatterVizWidget):
         ],
         default_value="structure+scatter",
     ).tag(sync=True)
-    show_controls = tl.Bool(default_value=True).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-
-    # Styling
-    style = tl.Unicode(allow_none=True).tag(sync=True)  # Custom CSS styles
 
     # Structure visualization
     atom_radius = tl.Float(allow_none=True, default_value=None).tag(sync=True)
@@ -137,7 +133,7 @@ class TrajectoryWidget(MatterVizWidget):
         if trajectory is not None:  # Convert trajectory objects if needed
             trajectory = self._normalize_trajectory(trajectory)
 
-        super().__init__(trajectory=trajectory, **kwargs)
+        super().__init__(widget_type="trajectory", trajectory=trajectory, **kwargs)
 
     def _normalize_trajectory(self, trajectory: Any) -> dict[str, Any] | None:
         """Convert trajectory to matterviz format."""

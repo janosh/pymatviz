@@ -150,6 +150,7 @@ def test_trajectory_file_loading_with_metadata(tmp_path: Path) -> None:
 def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> None:
     """Widget must create proper view model for frontend."""
     widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
+    assert widget.widget_type == "trajectory"
 
     # Test that widget has proper attributes for anywidget
     assert hasattr(widget, "trajectory"), "Widget missing trajectory attribute"
@@ -476,7 +477,7 @@ def test_trajectory_widget_with_structure_info() -> None:
         species=("Fe", "Fe"),
         coords=((0, 0, 0), (0.5, 0.5, 0.5)),
     )
-    structure.info = {"temperature": 300, "pressure": 1.0}  # type: ignore[attr-defined]
+    structure.info = {"temperature": 300, "pressure": 1.0}
 
     widget = TrajectoryWidget(trajectory=structure)
 

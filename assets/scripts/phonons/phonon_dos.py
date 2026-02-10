@@ -53,7 +53,7 @@ phonopy_nacl.run_total_dos()
 plt = phonopy_nacl.plot_total_dos()
 plt.title("NaCl DOS plotted by phonopy")
 
-fig = pmv.phonon_dos(phonopy_nacl.total_dos)  # type: ignore[arg-type]
+fig = pmv.phonon_dos(phonopy_nacl.total_dos)
 fig.layout.title = dict(text="NaCl DOS plotted by pymatviz", x=0.5, y=0.97)
 fig.layout.margin = dict(l=0, r=0, b=0, t=40)
 fig.show()

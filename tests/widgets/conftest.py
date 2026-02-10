@@ -67,7 +67,7 @@ def assert_widget_notebook_integration(
 ) -> None:
     """Validate that a widget renders correctly in notebook environments."""
     # MIME bundle (accept dict or (data, metadata))
-    mime = widget._repr_mimebundle_()  # type: ignore[call-arg]
+    mime = widget._repr_mimebundle_()
     if isinstance(mime, tuple):
         assert len(mime) == 2
         mime_data, metadata = mime
@@ -84,7 +84,7 @@ def assert_widget_notebook_integration(
     assert isinstance(view.get("model_id"), str)
     assert bool(view["model_id"]) is True
     # Fresh model_id on a new repr call (new view)
-    mime2 = widget._repr_mimebundle_()  # type: ignore[call-arg]
+    mime2 = widget._repr_mimebundle_()
     if mime2 is not None:
         mime2 = mime2[0] if isinstance(mime2, tuple) else mime2
         view2 = mime2[view_key]
@@ -161,9 +161,5 @@ def assert_widget_property_sync(
 def assert_widget_edge_cases(
     widget: CompositionWidget | StructureWidget | TrajectoryWidget,
 ) -> None:
-    """Test widget edge cases and error handling."""
-    # Test widget handles missing/corrupted build files gracefully
-    assert hasattr(widget, "_esm")
-    assert hasattr(widget, "_css")
-    assert len(widget._esm) > 1000  # Should contain actual content
-    assert len(widget._css) > 100  # Should contain actual content
+    """Alias for assert_widget_build_files (kept for existing test callers)."""
+    assert_widget_build_files(widget)

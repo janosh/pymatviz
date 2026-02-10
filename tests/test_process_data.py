@@ -84,7 +84,7 @@ def test_count_elements_composition_objects(
 
 def test_count_elements_mixed_input() -> None:
     mixed_input = ["Fe2O3", Composition("Fe4P4O16"), "LiCoO2", Composition("NaCl")]
-    series = pmv_pd.count_elements(mixed_input, count_mode=ElemCountMode.composition)  # type: ignore[arg-type]
+    series = pmv_pd.count_elements(mixed_input, count_mode=ElemCountMode.composition)
     expected = pd.Series(
         {"Fe": 6, "O": 21, "P": 4, "Li": 1, "Co": 1, "Na": 1, "Cl": 1},
         index=pmv.df_ptable.index,
@@ -531,7 +531,7 @@ def test_df_to_arrays() -> None:
     assert y1 == pytest.approx(y_pred)
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays("foo", y_true, y_pred)  # type: ignore[arg-type]
+        pmv_pd.df_to_arrays("foo", y_true, y_pred)
 
     bad_col_name = "not-real-col-name"
     with pytest.raises(KeyError) as exc:
@@ -541,11 +541,11 @@ def test_df_to_arrays() -> None:
 
 
 def test_df_to_arrays_strict() -> None:
-    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)  # type: ignore[arg-type]
+    args = pmv_pd.df_to_arrays(42, "foo", "bar", strict=False)
     assert args == ["foo", "bar"]
 
     with pytest.raises(TypeError, match="df should be pandas DataFrame or None"):
-        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)  # type: ignore[arg-type]
+        pmv_pd.df_to_arrays(42, "foo", "bar", strict=True)
 
 
 @pytest.mark.parametrize(
