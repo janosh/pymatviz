@@ -40,6 +40,16 @@ if TYPE_CHECKING:
     from pymatviz.typing import AnyStructure, ColorType, Xyz
 
 
+def _coerce_vector(value: Any) -> np.ndarray:
+    """Convert a site property value to a numpy array vector.
+
+    Handles pymatgen Magmom objects by extracting their global_moment.
+    """
+    if hasattr(value, "global_moment"):
+        return np.asarray(value.global_moment)
+    return np.asarray(value)
+
+
 def get_struct_prop(
     struct: AnyStructure, struct_key: Hashable, prop_name: str, func_param: Any
 ) -> Any:

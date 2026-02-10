@@ -21,6 +21,7 @@ from pymatviz.structure.helpers import (
     CELL_EDGES,
     NO_SYM_MSG,
     _angles_to_rotation_matrix,
+    _coerce_vector,
     draw_bonds,
     draw_cell,
     draw_disordered_site,
@@ -1064,3 +1065,63 @@ def testget_disordered_site_legend_name() -> None:
     ]  # Already sorted by occupancy
     result = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert result == "Ni₀.₆₇Fe₀.₃₃"  # Should be sorted by occupancy and rounded
+
+
+def test_coerce_vector_plain_list() -> None:
+    """Test _coerce_vector with a plain list."""
+    result = _coerce_vector([1, 2, 3])
+    assert_allclose(result, [1, 2, 3])
+    assert result.shape == (3,)
+
+
+def test_coerce_vector_numpy_array() -> None:
+    """Test _coerce_vector with a numpy array."""
+    arr = np.array([0.1, 0.2, 0.3])
+    result = _coerce_vector(arr)
+    assert_allclose(result, arr)
+    assert result.shape == (3,)
+
+
+def test_coerce_vector_magmom() -> None:
+    """Test _coerce_vector with a pymatgen Magmom object."""
+    from pymatgen.electronic_structure.core import Magmom
+
+    magmom = Magmom([0, 0, 0.5])
+    result = _coerce_vector(magmom)
+    assert result.shape == (3,)
+    assert_allclose(result, [0, 0, 0.5])
+
+    # Verify that np.array alone would give wrong result
+    raw = np.array(magmom)
+    assert raw.shape == (), "np.array(Magmom) should be scalar"
+
+
+def test_coerce_vector_zero_magmom() -> None:
+    """Test _coerce_vector with a zero Magmom returns proper zero vector."""
+    from pymatgen.electronic_structure.core import Magmom
+
+    magmom = Magmom([0, 0, 0])
+    result = _coerce_vector(magmom)
+    assert result.shape == (3,)
+    assert_allclose(result, [0, 0, 0])
+    assert not np.any(result), "Zero vector should have np.any == False"
+
+
+def test_get_first_matching_site_prop_with_magmom() -> None:
+    """Test get_first_matching_site_prop with Magmom objects as site properties."""
+    from pymatgen.electronic_structure.core import Magmom
+
+    lattice = Lattice.cubic(5.0)
+    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct.add_site_property("magmom", [Magmom([0, 0, 1]), Magmom([0, 0, -1])])
+
+    # With the _coerce_vector fix, this should find "magmom" as a 3D vector property
+    result = get_first_matching_site_prop(
+        [struct],
+        ["magmom"],
+        warn_if_none=False,
+        filter_callback=lambda _prop, value: (
+            (_coerce_vector(value).shape or [None])[-1] == 3
+        ),
+    )
+    assert result == "magmom"
