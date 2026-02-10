@@ -47,9 +47,6 @@ class CompositionWidget(MatterVizWidget):
         default_value="Jmol",
     ).tag(sync=True)
 
-    # Widget styling
-    style = tl.Unicode(allow_none=True).tag(sync=True)  # Custom CSS styles
-
     # PyMatGen composition kwargs
     pymatgen_kwargs = tl.Dict(allow_none=True).tag(sync=True)
 
@@ -68,4 +65,4 @@ class CompositionWidget(MatterVizWidget):
             comp_kwargs = dict(strict=True, allow_negative=True)
             comp_kwargs |= kwargs.pop("pymatgen_kwargs", {})
             comp_dict = Composition(composition, **comp_kwargs).as_dict()
-        super().__init__(composition=comp_dict, **kwargs)
+        super().__init__(widget_type="composition", composition=comp_dict, **kwargs)

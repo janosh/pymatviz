@@ -1,116 +1,131 @@
-"""MIME type handling for automatic structure and trajectory visualization."""
+"""Auto-display registration for pymatgen objects as MatterViz widgets."""
 
 from __future__ import annotations
 
-from importlib import import_module
-from typing import TYPE_CHECKING, Any, Final, Literal, get_args
+from typing import Any
 
-from pymatgen.core import Composition
-
+from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.composition import CompositionWidget
+from pymatviz.widgets.convex_hull import ConvexHullWidget
+from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.structure import StructureWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
+from pymatviz.widgets.xrd import XrdWidget
 
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
+# Direct mapping: pymatgen class -> (widget class, constructor kwarg name)
+_AUTO_DISPLAY: dict[type, tuple[type, str]] = {}
 
-WidgetType = Literal["structure", "trajectory", "composition"]
-StructureType, TrajectoryType, CompositionType = get_args(WidgetType)
-WIDGET_REGISTRY: dict[Callable[[Any], bool], WidgetType] = {}
+# (module_path, class_names, widget_class, param_name) for deferred import.
+# Note: PhaseDiagramWidget is NOT auto-registered here — it visualizes isobaric
+# binary phase diagrams (T vs x), NOT pymatgen's PhaseDiagram (energy convex hull).
+# Use ConvexHullWidget for pymatgen PhaseDiagram objects.
+_CLASS_SPECS: list[tuple[str, list[str], type, str]] = [
+    # Structures (pymatgen, ASE, phonopy)
+    (
+        "pymatgen.core",
+        ["Structure", "IStructure", "Molecule", "IMolecule"],
+        StructureWidget,
+        "structure",
+    ),
+    ("ase.atoms", ["Atoms"], StructureWidget, "structure"),
+    ("phonopy.structure.atoms", ["PhonopyAtoms"], StructureWidget, "structure"),
+    # Band structures
+    (
+        "pymatgen.electronic_structure.bandstructure",
+        ["BandStructure", "BandStructureSymmLine"],
+        BandStructureWidget,
+        "band_structure",
+    ),
+    (
+        "pymatgen.phonon.bandstructure",
+        ["PhononBandStructureSymmLine"],
+        BandStructureWidget,
+        "band_structure",
+    ),
+    # DOS (pymatgen electronic + phonon, phonopy)
+    ("pymatgen.electronic_structure.dos", ["Dos", "CompleteDos"], DosWidget, "dos"),
+    ("pymatgen.phonon.dos", ["PhononDos"], DosWidget, "dos"),
+    ("phonopy.phonon.dos", ["TotalDos"], DosWidget, "dos"),
+    # XRD
+    (
+        "pymatgen.analysis.diffraction.xrd",
+        ["DiffractionPattern"],
+        XrdWidget,
+        "patterns",
+    ),
+    # PhaseDiagram -> ConvexHull
+    ("pymatgen.analysis.phase_diagram", ["PhaseDiagram"], ConvexHullWidget, "entries"),
+    # Composition
+    ("pymatgen.core", ["Composition"], CompositionWidget, "composition"),
+]
 
-WIDGET_MAP: dict[WidgetType, tuple[str, str, WidgetType]] = {
-    StructureType: ("pymatviz", StructureWidget.__name__, StructureType),
-    TrajectoryType: ("pymatviz", TrajectoryWidget.__name__, TrajectoryType),
-    CompositionType: ("pymatviz", CompositionWidget.__name__, CompositionType),
-}
-_WIDGET_CLASS_TO_KEY: Final = {
-    cls_name: key for key, (_, cls_name, _) in WIDGET_MAP.items()
-}
 
-# Configuration for structure rendering mode
-_RENDERER_REGISTRY: dict[type, Callable[..., Any] | str] = {}
+def create_widget(obj: Any) -> Any:
+    """Create the appropriate MatterViz widget for a pymatgen/ASE/phonopy object.
 
-
-def create_widget(obj: Any, widget_type: WidgetType | None = None) -> Any:
-    """Create widget for object."""
-    if widget_type is None:
-        for predicate, wt in WIDGET_REGISTRY.items():
-            if predicate(obj):
-                widget_type = wt
-                break
-        else:
-            raise ValueError(f"No widget type found for {obj=}")
-
-    if widget_type not in get_args(WidgetType):
-        raise ValueError(
-            f"Unknown {widget_type=}, must be one of {get_args(WidgetType)}"
-        )
-
-    module_name, class_name, param_name = WIDGET_MAP[widget_type]
-
-    widget_module = import_module(name=f"{module_name}.widgets.{widget_type}")
-    widget_class = getattr(widget_module, class_name)
-    return widget_class(**{param_name: obj})
-
-
-def set_renderer(
-    cls: type, renderer: Callable[..., Any] | str
-) -> Callable[..., Any] | str | None:
-    """Set the renderer for a specific class.
+    Uses MRO-based type matching, so subclasses of registered types are handled
+    automatically. Falls back to trajectory detection for list/tuple of structures.
 
     Args:
-        cls: The class to register a renderer for (e.g. Structure, Atoms, Composition)
-        renderer: The render function to use (name or actual reference). E.g.
-            pmv.structure_3d, pmv.StructureWidget or "StructureWidget"
+        obj: A pymatgen Structure, Composition, BandStructure, Dos, PhaseDiagram,
+            DiffractionPattern, or similar object.
 
     Returns:
-        The previous renderer for this class, or None if none was set
+        The appropriate widget instance.
 
     Raises:
-        TypeError: If renderer is not a callable nor a valid widget name.
+        ValueError: If no widget is registered for the given object type.
     """
-    if renderer not in _WIDGET_CLASS_TO_KEY and not callable(renderer):
-        raise TypeError(
-            f"Unknown {renderer=}. Must be callable or a valid widget "
-            f"name: {list(_WIDGET_CLASS_TO_KEY)}"
+    if not _AUTO_DISPLAY:
+        register_matterviz_widgets()
+
+    # MRO-based lookup: walks the inheritance chain for exact or parent match
+    for cls in type(obj).__mro__:
+        if cls in _AUTO_DISPLAY:
+            widget_cls, param_name = _AUTO_DISPLAY[cls]
+            return widget_cls(**{param_name: obj})
+
+    # Fallback: trajectory heuristic (list/tuple of structures or dicts)
+    if isinstance(obj, (list, tuple)):
+        if len(obj) == 0:
+            raise ValueError("Cannot create widget from empty sequence")
+        first = obj[0]
+        is_struct = any(
+            _AUTO_DISPLAY.get(cls, (None,))[0] is StructureWidget
+            for cls in type(first).__mro__
         )
+        is_frame_dict = isinstance(first, dict) and "structure" in first
+        if is_struct or is_frame_dict:
+            return TrajectoryWidget(trajectory=obj)
 
-    previous = _RENDERER_REGISTRY.get(cls)
-    _RENDERER_REGISTRY[cls] = renderer
-    return previous
-
-
-def _register_renderers() -> None:
-    """Register renderers for all environments."""
-    from pymatviz.process_data import STRUCTURE_CLASSES
-
-    classes: list[type] = []  # collect structure classes
-    for module_path, class_names in STRUCTURE_CLASSES:
-        try:
-            module = __import__(module_path, fromlist=class_names)
-            classes.extend(
-                getattr(module, cls) for cls in class_names if hasattr(module, cls)
-            )
-        except ImportError:
-            continue
-
-    set_renderer(Composition, CompositionWidget.__name__)
-    for cls in classes:
-        set_renderer(cls, StructureWidget.__name__)
-
-    for cls in classes:  # Register for Marimo
-        if not hasattr(cls, "_display_"):
-            cls._display_ = create_widget  # type: ignore[attr-defined]
-    if not hasattr(Composition, "_display_"):
-        Composition._display_ = create_widget  # type: ignore[attr-defined]
+    raise ValueError(
+        f"No widget registered for {type(obj).__name__}. Supported types: "
+        f"{', '.join(cls.__name__ for cls in _AUTO_DISPLAY)}"
+    )
 
 
 def register_matterviz_widgets() -> None:
-    """Register widgets for automatic display."""
-    from pymatviz import process_data as pd
+    """Register pymatgen/ASE/phonopy classes for auto-display in notebooks.
 
-    WIDGET_REGISTRY[pd.is_trajectory_like] = TrajectoryType
-    WIDGET_REGISTRY[pd.is_composition_like] = CompositionType
-    WIDGET_REGISTRY[pd.is_structure_like] = StructureType
-    _register_renderers()
+    Populates the _AUTO_DISPLAY registry and monkey-patches _display_ on
+    registered classes for marimo auto-rendering.
+    """
+    if _AUTO_DISPLAY:
+        return  # already registered
+
+    # Load and register all class specs (silently skip unavailable packages)
+    for module_path, class_names, widget_cls, param_name in _CLASS_SPECS:
+        try:
+            module = __import__(module_path, fromlist=class_names)
+        except ImportError:
+            continue
+        for name in class_names:
+            cls = getattr(module, name, None)
+            if cls is not None:
+                _AUTO_DISPLAY[cls] = (widget_cls, param_name)
+
+    # Register _display_ for marimo auto-rendering
+    for cls in _AUTO_DISPLAY:
+        if not hasattr(cls, "_display_"):
+            cls._display_ = create_widget  # type: ignore[attr-defined]

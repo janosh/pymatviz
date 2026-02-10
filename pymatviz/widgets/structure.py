@@ -63,11 +63,7 @@ class StructureWidget(MatterVizWidget):
     background_color = tl.Unicode(allow_none=True).tag(sync=True)
     background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
-    # Styling
-    style = tl.Unicode(allow_none=True).tag(sync=True)  # Custom CSS styles
-
     # UI controls
-    show_controls = tl.Bool(default_value=True).tag(sync=True)
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     png_dpi = tl.Int(allow_none=True, default_value=None).tag(sync=True)
@@ -90,4 +86,4 @@ class StructureWidget(MatterVizWidget):
         else:
             struct_dict = None
 
-        super().__init__(structure=struct_dict, **kwargs)
+        super().__init__(widget_type="structure", structure=struct_dict, **kwargs)

@@ -14,7 +14,6 @@ import marimo
 
 
 # ruff: noqa: B018, ANN001, N803, ANN202
-# mypy: ignore-errors
 
 
 __generated_with = "0.14.10"
@@ -27,94 +26,199 @@ def _():
     from typing import Final
 
     import marimo as mo
+    import numpy as np
     from ase.build import bulk, molecule
-    from ipywidgets import GridBox, Layout
     from phonopy.structure.atoms import PhonopyAtoms
     from pymatgen.core import Composition, Lattice, Structure
 
     import pymatviz as pmv
 
-    # Test Structure Widget
-    struct = Structure(
-        lattice=Lattice.cubic(3),
-        species=("Fe", "Fe"),
-        coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-    )
-
-    structure_widget = pmv.StructureWidget(structure=struct)
-    structure_widget
+    np_rng = np.random.default_rng(seed=0)
     return (
         Composition,
         Final,
-        GridBox,
         Lattice,
-        Layout,
         PhonopyAtoms,
         Structure,
         bulk,
         mo,
         molecule,
+        np,
+        np_rng,
         os,
         pmv,
-        struct,
     )
 
 
+# === Convex Hull from PhaseDiagram ===
+
+
 @app.cell
-def _(struct):
-    # Test pymatgen Structure MIME type recognition (should render as StructureWidget)
-    struct
+def _(Composition, pmv):
+    from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
+
+    _phase_diag = PhaseDiagram(
+        [
+            PDEntry(Composition("Li"), -1.9),
+            PDEntry(Composition("Fe"), -4.2),
+            PDEntry(Composition("O"), -3.0),
+            PDEntry(Composition("Li2O"), -14.3),
+            PDEntry(Composition("Fe2O3"), -25.5),
+            PDEntry(Composition("LiFeO2"), -18.0),
+            PDEntry(Composition("FeO"), -8.5),
+        ]
+    )
+    pmv.ConvexHullWidget(entries=_phase_diag, style="height: 500px;")
+
+
+# === 3D Structure + Brillouin Zone ===
 
 
 @app.cell
 def _(Lattice, Structure, pmv):
-    # Test Trajectory Widget with simple trajectory of expanding lattice
+    _struct = Structure(
+        lattice=Lattice.hexagonal(3.19, 5.19),
+        species=["Ga", "Ga", "N", "N"],
+        coords=[
+            [1 / 3, 2 / 3, 0],
+            [2 / 3, 1 / 3, 0.5],
+            [1 / 3, 2 / 3, 0.375],
+            [2 / 3, 1 / 3, 0.875],
+        ],
+    )
+    pmv.StructureWidget(structure=_struct, show_bonds=True, style="height: 400px;")
+    return (_struct,)
 
-    trajectory = []
-    for idx in range(5):
-        scale = 3.0 + idx * 0.1
-        struct_frame = Structure(
-            lattice=Lattice.cubic(scale),
-            species=("Fe", "Fe"),
-            coords=((0, 0, 0), (0.5, 0.5, 0.5)),
+
+@app.cell
+def _(_struct, pmv):
+    pmv.BrillouinZoneWidget(
+        structure=_struct, show_vectors=True, style="height: 400px;"
+    )
+
+
+# === XRD Pattern ===
+
+
+@app.cell
+def _(Lattice, Structure, pmv):
+    from pymatgen.analysis.diffraction.xrd import XRDCalculator
+
+    _tio2_struct = Structure(
+        Lattice.tetragonal(4.594, 2.959),
+        ["Ti", "Ti", "O", "O", "O", "O"],
+        [
+            [0, 0, 0],
+            [0.5, 0.5, 0.5],
+            [0.305, 0.305, 0],
+            [0.695, 0.695, 0],
+            [0.195, 0.805, 0.5],
+            [0.805, 0.195, 0.5],
+        ],
+    )
+    pmv.XrdWidget(
+        patterns=XRDCalculator().get_pattern(_tio2_struct), style="height: 350px;"
+    )
+
+
+# === Trajectory with Force Vectors ===
+
+
+@app.cell
+def _(Lattice, Structure, np, np_rng, pmv):
+    _trajectory = []
+    _base_struct = Structure(
+        lattice=Lattice.cubic(3.0),
+        species=("Fe", "Fe"),
+        coords=((0, 0, 0), (0.5, 0.5, 0.5)),
+    )
+    for _idx in range(_n_steps := 20):
+        _frame = _base_struct.perturb(distance=0.2).copy()
+        _energy = _n_steps / 2 - _idx * np_rng.random()
+        np.fill_diagonal(_dist := _frame.distance_matrix, np.inf)
+        _trajectory.append(
+            {"structure": _frame, "energy": _energy, "force_max": 1 / _dist.min()}
         )
-        trajectory.append(struct_frame)
 
-    trajectory_widget = pmv.TrajectoryWidget(trajectory=trajectory)
-    trajectory_widget
-    return (trajectory_widget,)
+    pmv.TrajectoryWidget(
+        trajectory=_trajectory,
+        display_mode="structure+scatter",
+        show_force_vectors=True,
+        style="height: 600px;",
+    )
 
 
-@app.cell
-def _(bulk):
-    # Test ASE Atoms MIME type display
-
-    ase_atoms = bulk("Al", "fcc", a=4.05)
-    ase_atoms *= (2, 2, 2)  # Create a 2x2x2 supercell
-    ase_atoms
-    return (ase_atoms,)
+# === Band Structure + DOS ===
 
 
 @app.cell
-def _(molecule):
-    # Test ASE molecule MIME type display
-
-    ase_molecule = molecule("H2O")
-    ase_molecule.center(vacuum=3.0)
-    ase_molecule
-    return (ase_molecule,)
+def _(np, pmv):
+    _band_data = {
+        "@module": "pymatgen.electronic_structure.bandstructure",
+        "@class": "BandStructureSymmLine",
+        "bands": {
+            "1": [[0.5 * np.sin(k / 10) + idx for k in range(50)] for idx in range(4)]
+        },
+        "efermi": 0.0,
+        "kpoints": [[k / 50, 0, 0] for k in range(50)],
+        "labels_dict": {"\\Gamma": [0, 0, 0], "X": [0.5, 0, 0], "M": [0.5, 0.5, 0]},
+        "lattice_rec": {"matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]},
+    }
+    pmv.BandStructureWidget(band_structure=_band_data, style="height: 400px;")
+    return (_band_data,)
 
 
 @app.cell
-def _(PhonopyAtoms):
-    # Test phonopy atoms MIME type display
+def _(np, pmv):
+    _dos_data = {
+        "@module": "pymatgen.electronic_structure.dos",
+        "@class": "Dos",
+        "energies": np.linspace(-5, 5, 200).tolist(),
+        "densities": {"1": np.exp(-0.5 * np.linspace(-5, 5, 200) ** 2).tolist()},
+        "efermi": 0.0,
+    }
+    pmv.DosWidget(dos=_dos_data, style="height: 400px;")
+    return (_dos_data,)
 
-    lattice = [[4, 0, 0], [0, 4, 0], [0, 0, 4]]
-    positions = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
-    symbols = ["Na", "Cl"]
 
-    phonopy_atoms = PhonopyAtoms(symbols=symbols, positions=positions, cell=lattice)
-    phonopy_atoms
+@app.cell
+def _(_band_data, _dos_data, pmv):
+    pmv.BandsAndDosWidget(
+        band_structure=_band_data, dos=_dos_data, style="height: 500px;"
+    )
+
+
+# === Composition Grid ===
+
+
+@app.cell
+def _(Composition, mo, pmv):
+    _comps = (
+        "Fe2 O3",
+        Composition("Li P O4"),
+        dict(Co=20, Cr=20, Fe=20, Mn=20, Ni=20),
+        dict(Ti=20, Zr=20, Nb=20, Mo=20, V=20),
+    )
+    _modes = ("pie", "bar", "bubble")
+    _size = 100
+    _h_stacks = [
+        mo.hstack(
+            [
+                pmv.CompositionWidget(
+                    composition=comp,
+                    mode=mode,
+                    style=f"width: {(1 + (mode == 'bar')) * _size}px;"
+                    f" height: {_size}px;",
+                )
+                for mode in _modes
+            ]
+        )
+        for comp in _comps
+    ]
+    mo.vstack(_h_stacks, align="center", gap=2)
+
+
+# === Remote Trajectory Files ===
 
 
 @app.cell
@@ -122,6 +226,7 @@ def _(Final, os, pmv):
     matterviz_traj_dir_url: Final = (
         "https://github.com/janosh/matterviz/raw/6288721042/src/site/trajectories"
     )
+
     _file_name = "flame-gold-cluster-55-atoms.h5"
     if not os.path.isfile(f"tmp/{_file_name}"):
         import urllib.request
@@ -130,19 +235,19 @@ def _(Final, os, pmv):
         urllib.request.urlretrieve(  # noqa: S310
             f"{matterviz_traj_dir_url}/{_file_name}", f"tmp/{_file_name}"
         )
-    _gold_cluster_traj = pmv.TrajectoryWidget(
+
+    pmv.TrajectoryWidget(
         data_url=f"tmp/{_file_name}",
         display_mode="structure+scatter",
         show_force_vectors=False,
     )
-    _gold_cluster_traj
     return (matterviz_traj_dir_url,)
 
 
 @app.cell
 def _(matterviz_traj_dir_url, pmv):
     _file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
-    ase_traj_widget = pmv.TrajectoryWidget(
+    pmv.TrajectoryWidget(
         data_url=f"{matterviz_traj_dir_url}/{_file_name}",
         display_mode="structure+scatter",
         show_force_vectors=True,
@@ -152,95 +257,32 @@ def _(matterviz_traj_dir_url, pmv):
         bonding_strategy="nearest_neighbor",
         style="height: 600px;",
     )
-    ase_traj_widget
+
+
+# === MIME Type Auto-display ===
 
 
 @app.cell
-def _(matterviz_traj_dir_url, pmv):
-    _gold_cluster_traj = pmv.TrajectoryWidget(
-        data_url=f"{matterviz_traj_dir_url}/flame-gold-cluster-55-atoms.h5",
-        display_mode="structure+scatter",
-        show_force_vectors=False,
-        style="height: 600px;",
+def _(bulk):
+    _ase_atoms = bulk("Al", "fcc", a=4.05)
+    _ase_atoms *= (2, 2, 2)
+    _ase_atoms
+
+
+@app.cell
+def _(molecule):
+    _ase_molecule = molecule("H2O")
+    _ase_molecule.center(vacuum=3.0)
+    _ase_molecule
+
+
+@app.cell
+def _(PhonopyAtoms):
+    PhonopyAtoms(
+        symbols=["Na", "Cl"],
+        positions=[[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]],
+        cell=[[4, 0, 0], [0, 4, 0], [0, 0, 4]],
     )
-    _gold_cluster_traj
-
-
-@app.cell
-def _(Lattice, Structure, mo):
-    """Dynamic trajectory growing in real time."""
-    from time import sleep
-
-    # Create trajectory with expanding lattice and properties
-    dynamic_trajectory = []
-    _step_idx = 0
-    for _step_idx in range(_n_steps := 10):
-        sleep(0.5)
-        _scale = 3.0 + _step_idx * 0.1
-        _struct = Structure(
-            lattice=Lattice.cubic(_scale),
-            species=("Fe", "Fe"),
-            coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-        )
-
-        # Add properties to demonstrate the new functionality
-        _trajectory_step = {
-            "structure": _struct,
-            "energy": -1.23 - _step_idx**0.5 * 0.01,
-            "step": _step_idx,
-            "lattice_parameter": _scale,
-        }
-        dynamic_trajectory.append(_trajectory_step)
-
-    # Display status
-    mo.md(f"**Auto-growing trajectory demo** - Current steps: {_step_idx}/{_n_steps}")
-
-    return dynamic_trajectory
-
-
-@app.cell
-def _(dynamic_trajectory, pmv):
-    """Create the auto-growing trajectory widget for marimo demo."""
-    # Create initial trajectory with one step
-
-    # Create trajectory widget
-    dynamic_trajectory_widget = pmv.TrajectoryWidget(
-        trajectory=dynamic_trajectory,
-        display_mode="structure+scatter",
-        show_controls=True,
-        style="height: 600px;",
-    )
-    dynamic_trajectory_widget
-    return dynamic_trajectory_widget
-
-
-@app.cell
-def _(Composition, mo, pmv):
-    # Test Composition Widget
-
-    comps = (
-        "Fe2 O3",
-        Composition("Li P O4"),
-        dict(Co=20, Cr=20, Fe=20, Mn=20, Ni=20),
-        dict(Ti=20, Zr=20, Nb=20, Mo=20, V=20),
-    )
-    modes = ("pie", "bar", "bubble")
-    size = 100
-    # Build a grid.
-    h_stacks = [
-        mo.hstack(
-            [
-                pmv.CompositionWidget(
-                    composition=comp,
-                    mode=mode,
-                    style=f"width: {(1 + (mode == 'bar')) * size}px; height: {size}px;",
-                )
-                for mode in modes
-            ]
-        )
-        for comp in comps
-    ]
-    mo.vstack(h_stacks, align="center", gap=2)
 
 
 if __name__ == "__main__":

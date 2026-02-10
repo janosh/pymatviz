@@ -37,6 +37,7 @@ def test_widget_structure_inputs(
     for structure in structures:
         # Test with Structure object
         widget = StructureWidget(structure=structure)
+        assert widget.widget_type == "structure"
         assert widget.structure == structure.as_dict()
 
         # Test with structure dict

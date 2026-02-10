@@ -16,5 +16,9 @@ export default defineConfig({
       cssFileName: `matterviz`,
     },
     minify: false,
+    rollupOptions: {
+      // Disable code splitting -- widget asset loader expects a single JS file
+      output: { inlineDynamicImports: true },
+    },
   },
 })

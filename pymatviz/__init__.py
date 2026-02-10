@@ -85,7 +85,19 @@ from pymatviz.templates import (
 from pymatviz.treemap import chem_env_treemap, chem_sys_treemap, py_pkg_treemap
 from pymatviz.uncertainty import error_decay_with_uncert, qq_gaussian
 from pymatviz.utils import PKG_DIR, ROOT, df_ptable, html_tag, si_fmt, si_fmt_int
-from pymatviz.widgets import CompositionWidget, StructureWidget, TrajectoryWidget
+from pymatviz.widgets import (
+    BandsAndDosWidget,
+    BandStructureWidget,
+    BrillouinZoneWidget,
+    CompositionWidget,
+    ConvexHullWidget,
+    DosWidget,
+    FermiSurfaceWidget,
+    PhaseDiagramWidget,
+    StructureWidget,
+    TrajectoryWidget,
+    XrdWidget,
+)
 from pymatviz.xrd import xrd_pattern
 
 
@@ -125,6 +137,6 @@ if os.environ.get("CI"):  # Configure Plotly to be silent in CI
 
     # Replace fig.show() method with a noop version for CI environments to avoid
     # spamming logs with huge HTML strings
-    go.Figure.show = lambda *_args, **_kwargs: None  # type: ignore[invalid-assignment]
+    go.Figure.show = lambda *_args, **_kwargs: None
 
 notebook_mode(on=IS_IPYTHON)
