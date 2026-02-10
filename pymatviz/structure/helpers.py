@@ -40,6 +40,42 @@ if TYPE_CHECKING:
     from pymatviz.typing import AnyStructure, ColorType, Xyz
 
 
+def _coerce_vector(value: Any) -> np.ndarray:
+    """Convert a site property value to a numpy array vector.
+
+    Handles pymatgen Magmom objects by extracting their global_moment.
+    """
+    if hasattr(value, "global_moment"):
+        return np.asarray(value.global_moment)
+    return np.asarray(value)
+
+
+def _is_3d_vector(value: Any) -> bool:
+    """Check if a site property value is or contains 3D vectors.
+
+    Returns True for shape (3,) or (N, 3) arrays, matching both per-site
+    and structure-level vector properties.
+    """
+    vec = _coerce_vector(value)
+    return vec.shape[-1:] == (3,) and vec.ndim in (1, 2)
+
+
+def _get_site_vector(
+    site: PeriodicSite,
+    struct: AnyStructure,
+    site_idx: int,
+    vector_prop: str,
+) -> np.ndarray | None:
+    """Get vector property for a site, checking site then structure properties."""
+    if vector_prop in site.properties:
+        return _coerce_vector(site.properties[vector_prop])
+    if vector_prop in struct.properties and site_idx < len(
+        struct.properties[vector_prop]
+    ):
+        return _coerce_vector(struct.properties[vector_prop][site_idx])
+    return None
+
+
 def get_struct_prop(
     struct: AnyStructure, struct_key: Hashable, prop_name: str, func_param: Any
 ) -> Any:

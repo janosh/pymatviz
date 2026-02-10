@@ -155,7 +155,7 @@ def structure_2d(
         list(structures.values()),
         show_site_vectors,
         warn_if_none=show_site_vectors != ("force", "magmom"),
-        filter_callback=lambda _prop, value: (np.array(value).shape or [None])[-1] == 3,
+        filter_callback=lambda _prop, val: helpers._is_3d_vector(val),
     )
 
     # Track seen elements per subplot for legend management
@@ -272,14 +272,9 @@ def structure_2d(
                 )
 
                 if vector_prop:  # Add vector arrows for the primary site
-                    vector = None
-                    if vector_prop in site.properties:
-                        vector = np.array(site.properties[vector_prop])
-                    # Ensure site_idx_loop is valid for struct_i.properties[vector_prop]
-                    elif vector_prop in struct_i.properties and site_idx_loop < len(
-                        struct_i.properties[vector_prop]
-                    ):
-                        vector = struct_i.properties[vector_prop][site_idx_loop]
+                    vector = helpers._get_site_vector(
+                        site, struct_i, site_idx_loop, vector_prop
+                    )
 
                     if vector is not None and np.any(vector):
                         # Rotate the vector for 2D projection
@@ -548,7 +543,7 @@ def structure_3d(
         list(structures.values()),
         show_site_vectors,
         warn_if_none=show_site_vectors != ("force", "magmom"),
-        filter_callback=lambda _prop, value: (np.array(value).shape or [None])[-1] == 3,
+        filter_callback=lambda _prop, val: helpers._is_3d_vector(val),
     )
 
     # Track seen elements per subplot for legend management
@@ -666,17 +661,12 @@ def structure_3d(
             # Add vectors for primary sites only
             for site_idx_loop, site_in_original_struct in enumerate(struct_i):
                 if vector_prop:
-                    vector = None
-                    # Check properties on the original site object
-                    if vector_prop in site_in_original_struct.properties:
-                        vector = np.array(
-                            site_in_original_struct.properties[vector_prop]
-                        )
-                    # Check structure-level properties, using original site_idx_loop
-                    elif vector_prop in struct_i.properties and site_idx_loop < len(
-                        struct_i.properties[vector_prop]
-                    ):
-                        vector = struct_i.properties[vector_prop][site_idx_loop]
+                    vector = helpers._get_site_vector(
+                        site_in_original_struct,
+                        struct_i,
+                        site_idx_loop,
+                        vector_prop,
+                    )
 
                     if vector is not None and np.any(vector):
                         helpers.draw_vector(

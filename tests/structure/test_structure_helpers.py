@@ -21,6 +21,9 @@ from pymatviz.structure.helpers import (
     CELL_EDGES,
     NO_SYM_MSG,
     _angles_to_rotation_matrix,
+    _coerce_vector,
+    _get_site_vector,
+    _is_3d_vector,
     draw_bonds,
     draw_cell,
     draw_disordered_site,
@@ -1064,3 +1067,167 @@ def testget_disordered_site_legend_name() -> None:
     ]  # Already sorted by occupancy
     result = get_disordered_site_legend_name(sorted_species, is_image=False)
     assert result == "Ni₀.₆₇Fe₀.₃₃"  # Should be sorted by occupancy and rounded
+
+
+@pytest.mark.parametrize(
+    ("input_val", "expected"),
+    [
+        ([1, 2, 3], [1, 2, 3]),
+        (np.array([0.1, 0.2, 0.3]), [0.1, 0.2, 0.3]),
+    ],
+    ids=["list", "ndarray"],
+)
+def test_coerce_vector_array_like(
+    input_val: list[float] | np.ndarray, expected: list[float]
+) -> None:
+    """Test _coerce_vector with plain array-like inputs."""
+    result = _coerce_vector(input_val)
+    assert_allclose(result, expected)
+    assert result.shape == (3,)
+
+
+@pytest.mark.parametrize(
+    ("moment", "expected"),
+    [
+        ([0, 0, 0.5], [0, 0, 0.5]),
+        ([0, 0, 0], [0, 0, 0]),
+        ([1.5, -0.5, 2.0], [1.5, -0.5, 2.0]),
+    ],
+    ids=["collinear", "zero", "non_collinear"],
+)
+def test_coerce_vector_magmom(moment: list[float], expected: list[float]) -> None:
+    """Test _coerce_vector extracts global_moment from Magmom objects."""
+    from pymatgen.electronic_structure.core import Magmom
+
+    result = _coerce_vector(Magmom(moment))
+    assert result.shape == (3,)
+    assert_allclose(result, expected)
+
+
+# === _is_3d_vector ===
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ([1, 2, 3], True),
+        (np.zeros(3), True),
+        (np.array([[1, 2, 3], [4, 5, 6]]), True),
+        (5, False),
+        ([1, 2], False),
+        ([1, 2, 3, 4], False),
+        (np.ones((3, 2)), False),
+        (np.zeros((2, 3, 4)), False),
+        ([], False),
+    ],
+    ids=[
+        "vec_3",
+        "zeros_3",
+        "Nx3_matrix",
+        "scalar",
+        "vec_2",
+        "vec_4",
+        "3xN_matrix",
+        "3d_tensor",
+        "empty",
+    ],
+)
+def test_is_3d_vector(value: Any, expected: bool) -> None:
+    """Test _is_3d_vector with various inputs."""
+    assert _is_3d_vector(value) is expected
+
+
+def test_is_3d_vector_magmom() -> None:
+    """Test _is_3d_vector recognizes Magmom objects as 3D vectors."""
+    from pymatgen.electronic_structure.core import Magmom
+
+    assert _is_3d_vector(Magmom([0, 0, 1])) is True
+    assert _is_3d_vector(Magmom([0, 0, 0])) is True
+
+
+# === _get_site_vector ===
+
+
+@pytest.mark.parametrize(
+    ("use_site_prop", "expected"),
+    [(True, [1, 0, 0]), (False, [0.5, 0.5, 0])],
+    ids=["site_properties", "struct_properties"],
+)
+def test_get_site_vector_lookup(use_site_prop: bool, expected: list[float]) -> None:
+    """Test _get_site_vector from site.properties and struct.properties fallback."""
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    forces = [expected, [0, 1, 0]]
+    if use_site_prop:
+        struct.add_site_property("force", forces)
+    else:
+        struct.properties["force"] = forces
+
+    result = _get_site_vector(struct[0], struct, 0, "force")
+    assert result is not None
+    assert_allclose(result, expected)
+    assert result.shape == (3,)
+
+
+def test_get_site_vector_returns_none() -> None:
+    """Test _get_site_vector returns None for missing or OOB properties."""
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    # No property at all
+    assert _get_site_vector(struct[0], struct, 0, "nonexistent") is None
+    # Struct property exists but site_idx out of bounds
+    struct.properties["force"] = [[1, 0, 0]]
+    assert _get_site_vector(struct[1], struct, 1, "force") is None
+
+
+def test_get_site_vector_with_magmom() -> None:
+    """Test _get_site_vector coerces Magmom objects to (3,) arrays."""
+    from pymatgen.electronic_structure.core import Magmom
+
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    struct.add_site_property("magmom", [Magmom([0, 0, 3]), Magmom([0, 0, -3])])
+
+    result = _get_site_vector(struct[0], struct, 0, "magmom")
+    assert result is not None
+    assert result.shape == (3,)
+    assert_allclose(result, [0, 0, 3])
+
+
+def test_get_site_vector_site_takes_precedence() -> None:
+    """Test site.properties takes precedence over struct.properties."""
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Fe"], [[0, 0, 0]])
+    struct.add_site_property("force", [[1, 0, 0]])
+    struct.properties["force"] = [[99, 99, 99]]  # should be ignored
+
+    result = _get_site_vector(struct[0], struct, 0, "force")
+    assert result is not None
+    assert_allclose(result, [1, 0, 0])
+
+
+@pytest.mark.parametrize(
+    "use_site_prop", [True, False], ids=["site_level_magmom", "struct_level"]
+)
+def test_get_first_matching_site_prop_with_3d_filter(
+    use_site_prop: bool,
+) -> None:
+    """Test get_first_matching_site_prop with _is_3d_vector filter."""
+    from pymatgen.electronic_structure.core import Magmom
+
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    if use_site_prop:
+        struct.add_site_property("magmom", [Magmom([0, 0, 1]), Magmom([0, 0, -1])])
+        prop_key = "magmom"
+    else:
+        struct.properties["force"] = [[1, 0, 0], [0, 1, 0]]
+        prop_key = "force"
+
+    result = get_first_matching_site_prop(
+        [struct],
+        [prop_key],
+        warn_if_none=False,
+        filter_callback=lambda _prop, val: _is_3d_vector(val),
+    )
+    assert result == prop_key
