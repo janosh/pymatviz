@@ -1148,27 +1148,25 @@ def test_is_3d_vector_magmom() -> None:
 # === _get_site_vector ===
 
 
-def test_get_site_vector_from_site_properties() -> None:
-    """Test _get_site_vector returns coerced vector from site.properties."""
+@pytest.mark.parametrize(
+    ("use_site_prop", "expected"),
+    [(True, [1, 0, 0]), (False, [0.5, 0.5, 0])],
+    ids=["site_properties", "struct_properties"],
+)
+def test_get_site_vector_lookup(use_site_prop: bool, expected: list[float]) -> None:
+    """Test _get_site_vector from site.properties and struct.properties fallback."""
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    struct.add_site_property("force", [[1, 0, 0], [0, 1, 0]])
+    forces = [expected, [0, 1, 0]]
+    if use_site_prop:
+        struct.add_site_property("force", forces)
+    else:
+        struct.properties["force"] = forces
 
     result = _get_site_vector(struct[0], struct, 0, "force")
     assert result is not None
-    assert_allclose(result, [1, 0, 0])
+    assert_allclose(result, expected)
     assert result.shape == (3,)
-
-
-def test_get_site_vector_from_struct_properties() -> None:
-    """Test _get_site_vector falls back to struct.properties."""
-    lattice = Lattice.cubic(4.0)
-    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    struct.properties["force"] = [[0.5, 0.5, 0], [0, 0, 1]]
-
-    result = _get_site_vector(struct[0], struct, 0, "force")
-    assert result is not None
-    assert_allclose(result, [0.5, 0.5, 0])
 
 
 def test_get_site_vector_returns_none() -> None:
@@ -1208,33 +1206,28 @@ def test_get_site_vector_site_takes_precedence() -> None:
     assert_allclose(result, [1, 0, 0])
 
 
-def test_get_first_matching_site_prop_with_magmom() -> None:
-    """Test get_first_matching_site_prop finds Magmom-valued properties."""
+@pytest.mark.parametrize(
+    "use_site_prop", [True, False], ids=["site_level_magmom", "struct_level"]
+)
+def test_get_first_matching_site_prop_with_3d_filter(
+    use_site_prop: bool,
+) -> None:
+    """Test get_first_matching_site_prop with _is_3d_vector filter."""
     from pymatgen.electronic_structure.core import Magmom
 
-    lattice = Lattice.cubic(5.0)
-    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    struct.add_site_property("magmom", [Magmom([0, 0, 1]), Magmom([0, 0, -1])])
-
-    result = get_first_matching_site_prop(
-        [struct],
-        ["magmom"],
-        warn_if_none=False,
-        filter_callback=lambda _prop, val: _is_3d_vector(val),
-    )
-    assert result == "magmom"
-
-
-def test_get_first_matching_site_prop_struct_level() -> None:
-    """Test _is_3d_vector accepts (N, 3) arrays from struct.properties."""
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    struct.properties["force"] = [[1, 0, 0], [0, 1, 0]]
+    if use_site_prop:
+        struct.add_site_property("magmom", [Magmom([0, 0, 1]), Magmom([0, 0, -1])])
+        prop_key = "magmom"
+    else:
+        struct.properties["force"] = [[1, 0, 0], [0, 1, 0]]
+        prop_key = "force"
 
     result = get_first_matching_site_prop(
         [struct],
-        ["force"],
+        [prop_key],
         warn_if_none=False,
         filter_callback=lambda _prop, val: _is_3d_vector(val),
     )
-    assert result == "force"
+    assert result == prop_key
