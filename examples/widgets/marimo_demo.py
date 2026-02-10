@@ -77,14 +77,16 @@ def _(Composition, pmv):
 @app.cell
 def _(Lattice, Structure, pmv):
     _struct = Structure(
-        lattice=Lattice.cubic(3),
-        species=("Fe", "Fe"),
-        coords=((0, 0, 0), (0.5, 0.5, 0.5)),
+        lattice=Lattice.hexagonal(3.19, 5.19),
+        species=["Ga", "Ga", "N", "N"],
+        coords=[
+            [1 / 3, 2 / 3, 0],
+            [2 / 3, 1 / 3, 0.5],
+            [1 / 3, 2 / 3, 0.375],
+            [2 / 3, 1 / 3, 0.875],
+        ],
     )
-    _struct_widget = pmv.StructureWidget(
-        structure=_struct, show_bonds=True, style="height: 400px;"
-    )
-    _struct_widget
+    pmv.StructureWidget(structure=_struct, show_bonds=True, style="height: 400px;")
     return (_struct,)
 
 
@@ -100,13 +102,23 @@ def _(_struct, pmv):
 
 @app.cell
 def _(Lattice, Structure, pmv):
-    _si_struct = Structure(
-        Lattice.cubic(5.431), ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]]
-    )
     from pymatgen.analysis.diffraction.xrd import XRDCalculator
 
-    _xrd_pattern = XRDCalculator().get_pattern(_si_struct)
-    pmv.XrdWidget(patterns=_xrd_pattern, style="height: 350px;")
+    _tio2_struct = Structure(
+        Lattice.tetragonal(4.594, 2.959),
+        ["Ti", "Ti", "O", "O", "O", "O"],
+        [
+            [0, 0, 0],
+            [0.5, 0.5, 0.5],
+            [0.305, 0.305, 0],
+            [0.695, 0.695, 0],
+            [0.195, 0.805, 0.5],
+            [0.805, 0.195, 0.5],
+        ],
+    )
+    pmv.XrdWidget(
+        patterns=XRDCalculator().get_pattern(_tio2_struct), style="height: 350px;"
+    )
 
 
 # === Trajectory with Force Vectors ===

@@ -56,11 +56,16 @@ display(convex_hull_widget)
 # === 3D Structure + Brillouin Zone ===
 
 
-# %% Structure Widget — BCC iron
+# %% Structure Widget — wurtzite GaN (hexagonal, more interesting than cubic)
 struct = Structure(
-    lattice=Lattice.cubic(3),
-    species=("Fe", "Fe"),
-    coords=((0, 0, 0), (0.5, 0.5, 0.5)),
+    lattice=Lattice.hexagonal(3.19, 5.19),
+    species=["Ga", "Ga", "N", "N"],
+    coords=[
+        [1 / 3, 2 / 3, 0],
+        [2 / 3, 1 / 3, 0.5],
+        [1 / 3, 2 / 3, 0.375],
+        [2 / 3, 1 / 3, 0.875],
+    ],
 )
 
 structure_widget = pmv.StructureWidget(
@@ -69,7 +74,7 @@ structure_widget = pmv.StructureWidget(
 display(structure_widget)
 
 
-# %% Brillouin Zone — from the same structure
+# %% Brillouin Zone — hexagonal BZ from GaN
 bz_widget = pmv.BrillouinZoneWidget(
     structure=struct, show_vectors=True, style="height: 400px;"
 )
@@ -79,16 +84,23 @@ display(bz_widget)
 # === XRD Pattern ===
 
 
-# %% XRD Pattern — computed from a silicon structure
-si_struct = Structure(
-    Lattice.cubic(5.431),
-    ["Si", "Si"],
-    [[0, 0, 0], [0.25, 0.25, 0.25]],
-)
+# %% XRD Pattern — rutile TiO2 (tetragonal, richer peak pattern than cubic Si)
 from pymatgen.analysis.diffraction.xrd import XRDCalculator  # noqa: E402
 
 
-xrd_pattern = XRDCalculator().get_pattern(si_struct)
+tio2_struct = Structure(
+    Lattice.tetragonal(4.594, 2.959),
+    ["Ti", "Ti", "O", "O", "O", "O"],
+    [
+        [0, 0, 0],
+        [0.5, 0.5, 0.5],
+        [0.305, 0.305, 0],
+        [0.695, 0.695, 0],
+        [0.195, 0.805, 0.5],
+        [0.805, 0.195, 0.5],
+    ],
+)
+xrd_pattern = XRDCalculator().get_pattern(tio2_struct)
 
 xrd_widget = pmv.XrdWidget(patterns=xrd_pattern, style="height: 350px;")
 display(xrd_widget)

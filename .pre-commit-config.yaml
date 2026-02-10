@@ -17,7 +17,8 @@ repos:
         entry: ty check
         language: python
         types: [python]
-        additional_dependencies: [ty>=0.0.9]
+        pass_filenames: false
+        additional_dependencies: [ty>=0.0.15]
       - id: check-readme-src-links
         name: Check README source links
         entry: python .github/scripts/check_readme_src_links.py
