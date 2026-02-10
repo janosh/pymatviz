@@ -142,10 +142,10 @@ On the roadmap but no ETA yet.
 
 See [`pymatviz/structure/figures.py`](pymatviz/structure/figures.py).
 
-|                           [`structure_3d(hea_structure)`](pymatviz/structure/figures.py#L428)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py#L428) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
+|                           [`structure_3d(hea_structure)`](pymatviz/structure/figures.py)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
 | :----------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![hea-structure-3d]                                                    |                                                     ![lco-structure-3d]                                                     |
-| [`structure_2d(six_structs)`](pymatviz/structure/figures.py#L27) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/figures.py#L428) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
+| [`structure_2d(six_structs)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
 |                                            ![matbench-phonons-structures-2d]                                             |                                              ![matbench-phonons-structures-3d]                                              |
 
 [matbench-phonons-structures-2d]: assets/svg/matbench-phonons-structures-2d.svg

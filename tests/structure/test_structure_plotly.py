@@ -1869,63 +1869,27 @@ def test_disordered_site_legend_name_formatting() -> None:
     assert legend_name == "Fe₀.₅Ni₀.₅"
 
 
-def test_structure_3d_with_magmom_objects() -> None:
-    """Test that structure_3d works with pymatgen Magmom objects as site properties.
-
-    Regression test: Magmom objects caused crashes because np.array(Magmom) returns
-    a scalar instead of a (3,) array, breaking the filter callback and vector drawing.
-    """
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
+@pytest.mark.parametrize(
+    ("moments", "expect_vectors"),
+    [([1, -1], True), ([0, 0], False)],
+    ids=["nonzero", "zero"],
+)
+def test_structure_with_magmom_objects(
+    plot_func: Callable, moments: list[int], expect_vectors: bool
+) -> None:
+    """Regression: Magmom objects crashed or produced wrong vectors."""
     from pymatgen.electronic_structure.core import Magmom
 
     lattice = Lattice.cubic(4.0)
     struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    struct.add_site_property("magmom", [Magmom([0, 0, 1]), Magmom([0, 0, -1])])
+    struct.add_site_property("magmom", [Magmom([0, 0, mom]) for mom in moments])
 
-    fig = pmv.structure_3d(struct, show_site_vectors="magmom")
+    fig = plot_func(struct, show_site_vectors="magmom")
     assert isinstance(fig, go.Figure)
 
-    # Verify vector traces were added (line + cone per site with non-zero magmom)
-    vector_traces = [
-        trace for trace in fig.data if (trace.name or "").startswith("vector")
-    ]
-    assert len(vector_traces) > 0, "Expected vector traces for magmom arrows"
-
-
-def test_structure_2d_with_magmom_objects() -> None:
-    """Test that structure_2d works with pymatgen Magmom objects as site properties."""
-    from pymatgen.electronic_structure.core import Magmom
-
-    lattice = Lattice.cubic(4.0)
-    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    struct.add_site_property("magmom", [Magmom([0, 0, 1]), Magmom([0, 0, -1])])
-
-    fig = pmv.structure_2d(struct, show_site_vectors="magmom")
-    assert isinstance(fig, go.Figure)
-
-    # Verify vector traces were added
-    vector_traces = [
-        trace for trace in fig.data if (trace.name or "").startswith("vector")
-    ]
-    assert len(vector_traces) > 0, "Expected vector traces for magmom arrows"
-
-
-def test_structure_3d_with_zero_magmom_objects() -> None:
-    """Test that zero Magmom objects don't produce spurious vector arrows.
-
-    Regression test: np.any(Magmom([0,0,0])) returns True due to Magmom being truthy,
-    so _coerce_vector must convert to a plain array first.
-    """
-    from pymatgen.electronic_structure.core import Magmom
-
-    lattice = Lattice.cubic(4.0)
-    struct = Structure(lattice, ["Fe", "Fe"], [[0, 0, 0], [0.5, 0.5, 0.5]])
-    struct.add_site_property("magmom", [Magmom([0, 0, 0]), Magmom([0, 0, 0])])
-
-    fig = pmv.structure_3d(struct, show_site_vectors="magmom")
-    assert isinstance(fig, go.Figure)
-
-    # Zero magmom should NOT produce vector arrows
-    vector_traces = [
-        trace for trace in fig.data if (trace.name or "").startswith("vector")
-    ]
-    assert len(vector_traces) == 0, "Zero magmom should not produce vector arrows"
+    vector_traces = [tr for tr in fig.data if (tr.name or "").startswith("vector")]
+    if expect_vectors:
+        assert len(vector_traces) > 0, "Expected vector traces for magmom"
+    else:
+        assert len(vector_traces) == 0, "Zero magmom should have no vectors"
