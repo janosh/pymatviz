@@ -239,6 +239,9 @@ def structure_2d(
                 tuple(np.round(site.coords, 5)) for site in augmented_structure
             }
             lattice = struct_i.lattice  # ty: ignore[possibly-missing-attribute]
+            vector_arrow_kwargs = (
+                (vector_kwargs or {}).get(vector_prop, {}) if vector_prop else {}
+            )
 
             for site_idx_loop, (site, rotated_site_coords_3d) in enumerate(
                 zip(struct_i, rotated_coords_all_sites, strict=False)
@@ -275,11 +278,11 @@ def structure_2d(
                     legend=f"legend{idx}" if idx > 1 and n_structs > 1 else "legend",
                 )
 
+                rotated_vector = None
                 if vector_prop:  # Add vector arrows for the primary site
                     vector = helpers._get_site_vector(
                         site, struct_i, site_idx_loop, vector_prop
                     )
-
                     if vector is not None and np.any(vector):
                         # Rotate the vector for 2D projection
                         rotated_vector = np.dot(vector, rotation_matrix)
@@ -288,7 +291,7 @@ def structure_2d(
                             rotated_site_coords_3d,
                             rotated_vector,
                             is_3d=False,
-                            arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
+                            arrow_kwargs=vector_arrow_kwargs,
                             row=row,
                             col=col,
                             name=f"vector-{struct_key}-{site_idx_loop}",
@@ -335,26 +338,18 @@ def structure_2d(
                                 else "legend",
                             )
 
-                            if show_image_vectors and vector_prop:
-                                img_vector = helpers._get_site_vector(
-                                    site, struct_i, site_idx_loop, vector_prop
+                            # Reuse vector/rotated_vector from primary site above
+                            if show_image_vectors and rotated_vector is not None:
+                                helpers.draw_vector(
+                                    fig,
+                                    current_rotated_image_coords_3d,
+                                    rotated_vector,
+                                    is_3d=False,
+                                    arrow_kwargs=vector_arrow_kwargs,
+                                    row=row,
+                                    col=col,
+                                    name=f"vector-{struct_key}-img-{site_idx_loop}-{image_idx}",
                                 )
-                                if img_vector is not None and np.any(img_vector):
-                                    rotated_img_vector = np.dot(
-                                        img_vector, rotation_matrix
-                                    )
-                                    helpers.draw_vector(
-                                        fig,
-                                        current_rotated_image_coords_3d,
-                                        rotated_img_vector,
-                                        is_3d=False,
-                                        arrow_kwargs=(vector_kwargs or {}).get(
-                                            vector_prop, {}
-                                        ),
-                                        row=row,
-                                        col=col,
-                                        name=f"vector-{struct_key}-img-{site_idx_loop}-{image_idx}",
-                                    )
         else:
             # If no sites are being rendered, set empty set to filter out all bonds
             plotted_sites_coords = set()
@@ -687,37 +682,39 @@ def structure_3d(
                     name=f"Image of {symbol}" if is_image_site else symbol,
                 )
 
-            # Add vectors for primary sites
-            for site_idx_loop, site_in_original_struct in enumerate(struct_i):
-                if vector_prop:
+            # Add vectors for primary sites (and image sites if enabled)
+            if vector_prop:
+                vector_arrow_kwargs = (vector_kwargs or {}).get(vector_prop, {})
+                show_image_site_vectors = show_image_vectors and show_image_sites
+                lattice = (
+                    struct_i.lattice  # ty: ignore[possibly-missing-attribute]
+                    if show_image_site_vectors
+                    else None
+                )
+                for site_idx_loop, site_in_original_struct in enumerate(struct_i):
                     vector = helpers._get_site_vector(
                         site_in_original_struct,
                         struct_i,
                         site_idx_loop,
                         vector_prop,
                     )
+                    if vector is None or not np.any(vector):
+                        continue
 
-                    if vector is not None and np.any(vector):
-                        helpers.draw_vector(
-                            fig,
-                            site_in_original_struct.coords,
-                            vector,
-                            is_3d=True,
-                            arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
-                            scene=scene_name,
-                            name=f"vector{site_idx_loop}",
-                        )
-
-            # Add vectors for image sites
-            if show_image_vectors and show_image_sites and vector_prop:
-                lattice = struct_i.lattice
-                for site_idx_loop, site_in_orig in enumerate(struct_i):
-                    vector = helpers._get_site_vector(
-                        site_in_orig, struct_i, site_idx_loop, vector_prop
+                    helpers.draw_vector(
+                        fig,
+                        site_in_original_struct.coords,
+                        vector,
+                        is_3d=True,
+                        arrow_kwargs=vector_arrow_kwargs,
+                        scene=scene_name,
+                        name=f"vector{site_idx_loop}",
                     )
-                    if vector is not None and np.any(vector):
+
+                    # Also draw vectors at image site positions
+                    if show_image_site_vectors and lattice is not None:
                         image_cart_coords = helpers.get_image_sites(
-                            site_in_orig,
+                            site_in_original_struct,
                             lattice,
                             cell_boundary_tol=cell_boundary_tol_i,
                         )
@@ -727,7 +724,7 @@ def structure_3d(
                                 img_coords,
                                 vector,
                                 is_3d=True,
-                                arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
+                                arrow_kwargs=vector_arrow_kwargs,
                                 scene=scene_name,
                                 name=f"vector-img-{site_idx_loop}-{img_idx}",
                             )
