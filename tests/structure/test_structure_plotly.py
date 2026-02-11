@@ -1893,3 +1893,48 @@ def test_structure_with_magmom_objects(
         assert len(vector_traces) > 0, "Expected vector traces for magmom"
     else:
         assert len(vector_traces) == 0, "Zero magmom should have no vectors"
+
+
+@pytest.mark.parametrize("plot_func", [pmv.structure_2d, pmv.structure_3d])
+@pytest.mark.parametrize(
+    ("show_image_sites", "show_image_vectors", "expect_image_vectors"),
+    [
+        pytest.param(True, True, True, id="image-sites-on_image-vectors-on"),
+        pytest.param(True, False, False, id="image-sites-on_image-vectors-off"),
+        pytest.param(False, True, False, id="image-sites-off_image-vectors-on"),
+        pytest.param(False, False, False, id="image-sites-off_image-vectors-off"),
+    ],
+)
+def test_show_image_vectors(
+    plot_func: Callable,
+    show_image_sites: bool,
+    show_image_vectors: bool,
+    expect_image_vectors: bool,
+) -> None:
+    """Test that vectors are drawn/not drawn at image site positions."""
+    # Atom at origin generates image sites at cell corners
+    lattice = Lattice.cubic(4.0)
+    struct = Structure(lattice, ["Fe"], [[0, 0, 0]])
+    struct[0].properties["force"] = [0.1, 0.2, 0.3]
+
+    fig = plot_func(
+        struct,
+        show_site_vectors="force",
+        show_image_sites=show_image_sites,
+        show_image_vectors=show_image_vectors,
+    )
+    assert isinstance(fig, go.Figure)
+
+    # Image vector traces contain "img" in their name
+    has_image_vector_traces = any(
+        "img" in (trace.name or "") and "vector" in (trace.name or "")
+        for trace in fig.data
+    )
+    # Primary vector traces start with "vector" but don't contain "img"
+    has_primary_vector_traces = any(
+        (trace.name or "").startswith("vector") and "img" not in (trace.name or "")
+        for trace in fig.data
+    )
+
+    assert has_primary_vector_traces, "Should always have primary site vectors"
+    assert has_image_vector_traces is expect_image_vectors
