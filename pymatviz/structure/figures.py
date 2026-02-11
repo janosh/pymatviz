@@ -46,6 +46,7 @@ def structure_2d(
     subplot_title: Callable[[AnyStructure, Hashable], str | dict[str, Any]]
     | None = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
+    show_image_vectors: bool = True,
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
     hover_text: SiteCoords
     | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
@@ -109,6 +110,9 @@ def structure_2d(
             structure properties in any of the passed structures (if a dict of
             structures was passed). But it will only plot one vector per site and it
             will use the same key for all sites and across all structures.
+        show_image_vectors (bool, optional): Whether to show vectors at image site
+            positions. Only has effect when both show_image_sites and
+            show_site_vectors are active. Defaults to True.
         vector_kwargs (dict[str, dict[str, Any]], optional): For customizing vector
             arrows. Keys are property names (e.g., "force", "magmom"), values are
             dictionaries of arrow customization options. Use key "scale" to adjust
@@ -330,6 +334,27 @@ def structure_2d(
                                 if idx > 1 and n_structs > 1
                                 else "legend",
                             )
+
+                            if show_image_vectors and vector_prop:
+                                img_vector = helpers._get_site_vector(
+                                    site, struct_i, site_idx_loop, vector_prop
+                                )
+                                if img_vector is not None and np.any(img_vector):
+                                    rotated_img_vector = np.dot(
+                                        img_vector, rotation_matrix
+                                    )
+                                    helpers.draw_vector(
+                                        fig,
+                                        current_rotated_image_coords_3d,
+                                        rotated_img_vector,
+                                        is_3d=False,
+                                        arrow_kwargs=(vector_kwargs or {}).get(
+                                            vector_prop, {}
+                                        ),
+                                        row=row,
+                                        col=col,
+                                        name=f"vector-{struct_key}-img-{site_idx_loop}-{image_idx}",
+                                    )
         else:
             # If no sites are being rendered, set empty set to filter out all bonds
             plotted_sites_coords = set()
@@ -438,6 +463,7 @@ def structure_3d(
     | None
     | Literal[False] = None,
     show_site_vectors: str | Sequence[str] = ("force", "magmom"),
+    show_image_vectors: bool = True,
     vector_kwargs: dict[str, dict[str, Any]] | None = None,
     hover_text: SiteCoords
     | Callable[[PeriodicSite], str] = SiteCoords.cartesian_fractional,
@@ -498,6 +524,9 @@ def structure_3d(
             structure properties in any of the passed structures (if a dict of
             structures was passed). But it will only plot one vector per site and it
             will use the same key for all sites and across all structures.
+        show_image_vectors (bool, optional): Whether to show vectors at image site
+            positions. Only has effect when both show_image_sites and
+            show_site_vectors are active. Defaults to True.
         vector_kwargs (dict[str, dict[str, Any]], optional): For customizing vector
             arrows. Keys are property names (e.g., "force", "magmom"), values are
             dictionaries of arrow customization options. Use key "scale" to adjust
@@ -658,7 +687,7 @@ def structure_3d(
                     name=f"Image of {symbol}" if is_image_site else symbol,
                 )
 
-            # Add vectors for primary sites only
+            # Add vectors for primary sites
             for site_idx_loop, site_in_original_struct in enumerate(struct_i):
                 if vector_prop:
                     vector = helpers._get_site_vector(
@@ -678,6 +707,30 @@ def structure_3d(
                             scene=scene_name,
                             name=f"vector{site_idx_loop}",
                         )
+
+            # Add vectors for image sites
+            if show_image_vectors and show_image_sites and vector_prop:
+                lattice = struct_i.lattice
+                for site_idx_loop, site_in_orig in enumerate(struct_i):
+                    vector = helpers._get_site_vector(
+                        site_in_orig, struct_i, site_idx_loop, vector_prop
+                    )
+                    if vector is not None and np.any(vector):
+                        image_cart_coords = helpers.get_image_sites(
+                            site_in_orig,
+                            lattice,
+                            cell_boundary_tol=cell_boundary_tol_i,
+                        )
+                        for img_idx, img_coords in enumerate(image_cart_coords):
+                            helpers.draw_vector(
+                                fig,
+                                img_coords,
+                                vector,
+                                is_3d=True,
+                                arrow_kwargs=(vector_kwargs or {}).get(vector_prop, {}),
+                                scene=scene_name,
+                                name=f"vector-img-{site_idx_loop}-{img_idx}",
+                            )
 
         # Draw bonds using the augmented structure after sites are processed
         if show_bonds:
