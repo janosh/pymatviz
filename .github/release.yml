@@ -7,7 +7,7 @@ changelog:
     - title: 🎉 New Features
       labels: [feature]
     - title: 🛠 Enhancements
-      labels: [enhancement, DX, UX]
+      labels: [enhancement, dx, ux]
     - title: 🐛 Bug Fixes
       labels: [fix]
     - title: 📖 Documentation
@@ -15,19 +15,19 @@ changelog:
     - title: 🧹 House-Keeping
       labels: [housekeeping]
     - title: 🚀 Performance
-      labels: [performance]
+      labels: [perf]
     - title: 🚧 CI
       labels: [ci]
     - title: 💡 Refactoring
       labels: [refactor]
     - title: 🧪 Tests
-      labels: [tests]
+      labels: [testing]
     - title: 🔒 Security Fixes
       labels: [security]
     - title: 🏥 Package Health
       labels: [pkg]
     - title: 📦 Dependencies
-      labels: [dependencies, outdated]
+      labels: [deps]
     - title: 🏷️ Type Hints
       labels: [types]
     - title: 🧹 Linting

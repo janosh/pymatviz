@@ -1,5 +1,33 @@
 # Changelog
 
+## [v0.17.4](https://github.com/janosh/pymatviz/compare/v0.17.3...v0.17.4)
+
+> 11 February 2026
+
+### 🛠 Enhancements
+
+- Add 8 new MatterViz widgets for band structures, DOS, convex hulls, and more by @janosh in https://github.com/janosh/pymatviz/pull/336
+- Add `show_image_vectors` option to `structure_2d` and `structure_3d` by @lan496 in https://github.com/janosh/pymatviz/pull/338
+
+### 🐛 Bug Fixes
+
+- Dynamically link to function source line number from `readme.md` by @DanielYang59 in https://github.com/janosh/pymatviz/pull/333
+- Fix minor colorbar tick issues in ptable_heatmap_plotly when log=True by @chhyyi in https://github.com/janosh/pymatviz/pull/334
+- fix: handle pymatgen Magmom objects in show_site_vectors by @lan496 in https://github.com/janosh/pymatviz/pull/337
+
+### 💡 Refactoring
+
+- Separate data preprocessing from plotters by @janosh in https://github.com/janosh/pymatviz/pull/332
+
+### 🏷️ Type Hints
+
+- Fix all `ty` v0.9.0 errors by @janosh in https://github.com/janosh/pymatviz/pull/331
+
+## New Contributors
+
+- @chhyyi made their first contribution in https://github.com/janosh/pymatviz/pull/334
+- @lan496 made their first contribution in https://github.com/janosh/pymatviz/pull/337
+
 ## [v0.17.3](https://github.com/janosh/pymatviz/compare/v0.17.2...v0.17.3)
 
 > 7 November 2025

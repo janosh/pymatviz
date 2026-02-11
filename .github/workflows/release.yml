@@ -7,6 +7,7 @@ on:
 jobs:
   tests:
     uses: ./.github/workflows/test.yml
+    secrets: inherit
 
   release:
     runs-on: ubuntu-latest
