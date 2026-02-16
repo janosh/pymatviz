@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
     from phonopy import Phonopy
+    from pymatgen.phonon.dos import CompletePhononDos
 
     from pymatviz.typing import SetMode
     from tests.conftest import BandsDoses
@@ -66,9 +67,7 @@ def test_phonon_dos(
 
 def test_phonon_dos_raises(phonon_bands_doses_mp_2758: BandsDoses) -> None:
     """Test phonon_dos raises appropriate errors."""
-    with pytest.raises(
-        TypeError, match=f"Only {PhononDos.__name__} or dict supported, got str"
-    ):
+    with pytest.raises(TypeError, match="supported, got str"):
         pmv.phonon_dos("invalid input")  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Empty DOS dict"):
@@ -297,3 +296,199 @@ def test_phonon_bands_with_phonopy(phonopy_nacl: Phonopy) -> None:
     fig = pmv.phonon_bands(bands_dict)  # type: ignore[arg-type]
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 6 * len(bands_dict)
+
+
+# === Element/site-projected phonon DOS tests ===
+
+
+@pytest.mark.parametrize(
+    ("project", "show_total", "expected_names"),
+    [
+        ("element", True, {"Na", "Cl", "Total"}),
+        ("element", False, {"Na", "Cl"}),
+        ("site", True, {"Na0", "Cl1", "Total"}),
+        ("site", False, {"Na0", "Cl1"}),
+    ],
+)
+def test_phonon_dos_projection(
+    complete_phonon_dos: CompletePhononDos,
+    project: Literal["element", "site"],
+    show_total: bool,
+    expected_names: set[str],
+) -> None:
+    """Test element/site projection with show_total on/off."""
+    fig = pmv.phonon_dos(complete_phonon_dos, project=project, show_total=show_total)
+    assert {trace.name for trace in fig.data} == expected_names
+
+    if project == "element":
+        expected_dos_by_name = {
+            str(element): dos
+            for element, dos in complete_phonon_dos.get_element_dos().items()
+        }
+    else:
+        expected_dos_by_name = {
+            f"{site.specie}{site_idx}": complete_phonon_dos.get_site_dos(site)
+            for site_idx, site in enumerate(complete_phonon_dos.structure)
+        }
+    for trace in fig.data:
+        if trace.name == "Total":
+            continue
+        expected_dos = expected_dos_by_name[trace.name]
+        assert np.allclose(trace.x, expected_dos.frequencies)
+        assert np.allclose(trace.y, expected_dos.densities)
+
+    if show_total:
+        total_trace = next(tr for tr in fig.data if tr.name == "Total")
+        assert np.allclose(total_trace.x, complete_phonon_dos.frequencies)
+        assert np.allclose(total_trace.y, complete_phonon_dos.densities)
+        assert total_trace.line.dash == "dash"
+        assert total_trace.line.color == "gray"
+
+
+@pytest.mark.parametrize(
+    ("project", "expected_names"),
+    [
+        (
+            "element",
+            {"DFT - Na", "DFT - Cl", "ML - Na", "ML - Cl", "DFT - Total", "ML - Total"},
+        ),
+        (
+            "site",
+            {
+                "DFT - Na0",
+                "DFT - Cl1",
+                "ML - Na0",
+                "ML - Cl1",
+                "DFT - Total",
+                "ML - Total",
+            },
+        ),
+    ],
+)
+def test_phonon_dos_projection_dict(
+    complete_phonon_dos: CompletePhononDos,
+    project: Literal["element", "site"],
+    expected_names: set[str],
+) -> None:
+    """Test projection with dict of multiple CompletePhononDos."""
+    dos_dict = {"DFT": complete_phonon_dos, "ML": complete_phonon_dos}
+    fig = pmv.phonon_dos(dos_dict, project=project)
+    assert {trace.name for trace in fig.data} == expected_names
+
+
+def test_phonon_dos_projection_dict_stack_resets_by_model(
+    complete_phonon_dos: CompletePhononDos,
+) -> None:
+    """Test stacked projected DOS accumulates separately for each model label."""
+    dos_dict = {"DFT": complete_phonon_dos, "ML": complete_phonon_dos}
+    fig_unstacked = pmv.phonon_dos(
+        dos_dict, project="element", show_total=False, stack=False
+    )
+    fig_stacked = pmv.phonon_dos(
+        dos_dict, project="element", show_total=False, stack=True
+    )
+
+    unstacked_by_name = {
+        trace.name: np.asarray(trace.y) for trace in fig_unstacked.data
+    }
+    stacked_by_name = {trace.name: np.asarray(trace.y) for trace in fig_stacked.data}
+    for model_label in ("DFT", "ML"):
+        trace_name = next(
+            trace.name
+            for trace in fig_stacked.data
+            if trace.name.startswith(f"{model_label} - ")
+        )
+        assert np.allclose(stacked_by_name[trace_name], unstacked_by_name[trace_name])
+
+
+def test_phonon_dos_projection_raises(
+    complete_phonon_dos: CompletePhononDos,
+    phonon_bands_doses_mp_2758: BandsDoses,
+) -> None:
+    """Test error cases for project parameter."""
+    plain_dos = phonon_bands_doses_mp_2758["doses"]["DFT"]
+    # single plain PhononDos
+    with pytest.raises(TypeError, match="project='element' requires CompletePhononDos"):
+        pmv.phonon_dos(plain_dos, project="element")
+    # dict containing plain PhononDos
+    mixed = {"good": complete_phonon_dos, "bad": plain_dos}
+    with pytest.raises(TypeError, match="project='element' requires CompletePhononDos"):
+        pmv.phonon_dos(mixed, project="element")
+    # invalid project value
+    with pytest.raises(ValueError, match="Invalid project='invalid'"):
+        pmv.phonon_dos(complete_phonon_dos, project="invalid")  # type: ignore[arg-type]
+
+
+def test_phonon_dos_projection_unit_conversion(
+    complete_phonon_dos: CompletePhononDos,
+) -> None:
+    """Test that unit conversion is applied to projected traces."""
+    fig_thz = pmv.phonon_dos(complete_phonon_dos, project="element", show_total=False)
+    fig_ev = pmv.phonon_dos(
+        complete_phonon_dos, project="element", show_total=False, units="eV"
+    )
+    assert max(fig_ev.data[0].x) < max(fig_thz.data[0].x)
+    assert fig_ev.layout.xaxis.title.text == "Frequency (eV)"
+
+
+def test_phonon_dos_projection_normalization_values(
+    complete_phonon_dos: CompletePhononDos,
+) -> None:
+    """Test that max normalization produces peak=1.0 for each trace."""
+    fig = pmv.phonon_dos(
+        complete_phonon_dos, project="element", normalize="max", show_total=False
+    )
+    for trace in fig.data:
+        assert max(trace.y) == pytest.approx(1.0)
+
+
+def test_phonon_dos_projection_sigma_smearing(
+    complete_phonon_dos: CompletePhononDos,
+) -> None:
+    """Test that sigma smearing lowers peak height in projected traces."""
+    fig_raw = pmv.phonon_dos(
+        complete_phonon_dos, project="element", sigma=0, show_total=False
+    )
+    fig_smooth = pmv.phonon_dos(
+        complete_phonon_dos, project="element", sigma=0.5, show_total=False
+    )
+    assert max(fig_smooth.data[0].y) < max(fig_raw.data[0].y)
+
+
+@pytest.mark.parametrize("normalize_mode", ["max", "sum", "integral"])
+def test_phonon_dos_normalize_zero_density_raises(
+    normalize_mode: Literal["max", "sum", "integral"],
+) -> None:
+    """Test normalization raises on all-zero DOS."""
+    frequencies = np.linspace(0, 10, 100)
+    zero_dos = PhononDos(frequencies, np.zeros_like(frequencies))
+    with pytest.raises(ValueError, match=f"mode='{normalize_mode}'"):
+        pmv.phonon_dos(zero_dos, normalize=normalize_mode)
+
+
+def test_phonon_dos_integral_normalize_requires_two_frequency_points() -> None:
+    """Test integral normalization raises for a single frequency point."""
+    single_point_dos = PhononDos(np.array([1.0]), np.array([1.0]))
+    with pytest.raises(ValueError, match="need >=2 frequency points"):
+        pmv.phonon_dos(single_point_dos, normalize="integral")
+
+
+def test_phonon_dos_show_total_ignored_without_project(
+    phonon_bands_doses_mp_2758: BandsDoses,
+) -> None:
+    """Test that show_total has no effect when project is None."""
+    dos = phonon_bands_doses_mp_2758["doses"]["DFT"]
+    fig_a = pmv.phonon_dos(dos)
+    fig_b = pmv.phonon_dos(dos, show_total=False)
+    assert [t.name for t in fig_a.data] == [t.name for t in fig_b.data]
+
+
+def test_phonon_dos_complete_dos_without_projection(
+    complete_phonon_dos: CompletePhononDos,
+) -> None:
+    """Test CompletePhononDos defaults to total DOS when project is None."""
+    fig = pmv.phonon_dos(complete_phonon_dos)
+    assert len(fig.data) == 1
+    trace = fig.data[0]
+    assert np.allclose(trace.x, complete_phonon_dos.frequencies)
+    assert np.allclose(trace.y, complete_phonon_dos.densities)

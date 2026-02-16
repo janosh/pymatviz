@@ -11,7 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 from monty.io import zopen
-from monty.json import MontyDecoder, MSONable
+from monty.json import MontyDecoder
 from plotly.subplots import make_subplots
 from pymatgen.core import Lattice, Structure
 from pymatgen.io.ase import AseAtomsAdaptor
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     import ase
     from phonopy import Phonopy
     from pymatgen.phonon.bandstructure import PhononBandStructureSymmLine as PhononBands
-    from pymatgen.phonon.dos import PhononDos
+    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
 
 
 # random regression data
@@ -180,25 +180,16 @@ class BandsDoses(TypedDict):
 
 
 bs_key, dos_key = "phonon_bandstructure", "phonon_dos"
-# enable loading PhononDBDocParsed with @module set to uninstalled ffonons.dbs.phonondb
-# by changing to identical dataclass in pymatviz.phonons module
-MSONable.REDIRECT["ffonons.dbs.phonondb"] = {
-    "PhononDBDocParsed": {
-        "@class": "PhononDBDoc",
-        "@module": "pymatviz.phonons.helpers",
-    }
-}
-MSONable.REDIRECT["atomate2.common.schemas.phonons"] = {
-    "PhononBSDOSDoc": {"@class": "PhononDBDoc", "@module": "pymatviz.phonons.helpers"}
-}
 
 
 @pytest.fixture
 def phonon_bands_doses_mp_2758() -> BandsDoses:
-    with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz") as file:
+    with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz", "rt") as file:
         dft_doc = json.loads(file.read(), cls=MontyDecoder)
 
-    with zopen(f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-mace-y7uhwpje.json.xz") as file:
+    with zopen(
+        f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-mace-y7uhwpje.json.xz", "rt"
+    ) as file:
         ml_doc = json.loads(file.read(), cls=MontyDecoder)
 
     bands = {"DFT": getattr(dft_doc, bs_key), "MACE": getattr(ml_doc, bs_key)}
@@ -208,8 +199,8 @@ def phonon_bands_doses_mp_2758() -> BandsDoses:
 
 @pytest.fixture
 def phonon_bands_doses_mp_2667() -> BandsDoses:
-    # with zopen(f"{TEST_FILES}/phonons/mp-2691-Cd4Se4-pbe.json.xz") as file:
-    with zopen(f"{TEST_FILES}/phonons/mp-2667-Cs1Au1-pbe.json.xz") as file:
+    # with zopen(f"{TEST_FILES}/phonons/mp-2691-Cd4Se4-pbe.json.xz", "rt") as file:
+    with zopen(f"{TEST_FILES}/phonons/mp-2667-Cs1Au1-pbe.json.xz", "rt") as file:
         return json.loads(file.read(), cls=MontyDecoder)
 
 
@@ -219,7 +210,21 @@ def phonon_doses() -> dict[str, PhononDos]:
     assert len(paths) >= 2
     return {
         path.split("/")[-1].split("-pbe")[0]: getattr(
-            json.loads(zopen(path).read(), cls=MontyDecoder), dos_key
+            json.loads(zopen(path, mode="rt").read(), cls=MontyDecoder), dos_key
         )
         for path in paths
     }
+
+
+@pytest.fixture
+def complete_phonon_dos() -> CompletePhononDos:
+    """Synthetic CompletePhononDos for NaCl with per-site partial DOS."""
+    from pymatgen.phonon.dos import CompletePhononDos, PhononDos
+
+    struct = Structure(Lattice.cubic(5.64), ["Na", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    rng = np.random.default_rng(seed=0)
+    freqs = np.linspace(0, 10, 100)
+    site_densities = [rng.random(100) for _site in struct]
+    pdos = dict(zip(struct, site_densities, strict=True))
+    total_densities = np.sum(site_densities, axis=0)
+    return CompletePhononDos(struct, PhononDos(freqs, total_densities), pdos)
