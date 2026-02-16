@@ -14,12 +14,6 @@ from pymatviz.phonons import PhononDBDoc
 from pymatviz.utils.testing import TEST_FILES
 
 
-try:
-    import atomate2  # noqa: F401
-except ImportError:
-    raise SystemExit(0) from None  # need atomate2 for MontyDecoder to load PhononDBDoc
-
-
 # %% Plot phonon bands and DOS
 for mp_id, formula in (
     ("mp-2758", "Sr4Se4"),
@@ -28,7 +22,7 @@ for mp_id, formula in (
     docs: dict[str, PhononDBDoc] = {}
     for path in glob(f"{TEST_FILES}/phonons/{mp_id}-{formula}-*.json.xz"):
         key = path.split("-")[-1].split(".")[0]
-        with zopen(path) as file:
+        with zopen(path, mode="rt") as file:
             docs[key] = json.loads(file.read(), cls=MontyDecoder)
 
     ph_bands: dict[str, PhononBands] = {
