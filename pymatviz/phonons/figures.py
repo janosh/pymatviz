@@ -12,7 +12,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.constants as const
 from plotly.subplots import make_subplots
-from pymatgen.phonon.dos import PhononDos
+from pymatgen.phonon.dos import CompletePhononDos, PhononDos
 
 from pymatviz.phonons.helpers import (
     AnyBandStructure,
@@ -361,89 +361,167 @@ def phonon_bands(
 
 
 def phonon_dos(
-    doses: AnyDos | Mapping[str, AnyDos],
+    doses: AnyDos | CompletePhononDos | Mapping[str, AnyDos | CompletePhononDos],
     *,
     stack: bool = False,
     sigma: float = 0,
     units: Literal["THz", "eV", "meV", "Ha", "cm-1"] = "THz",
     normalize: Literal["max", "sum", "integral"] | None = None,
     last_peak_anno: str | None = None,
+    project: Literal["element", "site"] | None = None,
+    show_total: bool = True,
     **kwargs: Any,
 ) -> go.Figure:
     """Plot phonon DOS using Plotly.
 
     Args:
-        doses (AnyDos | dict[str, AnyDos]): pymatgen
-            PhononDos or phonopy TotalDos or dict of multiple of either.
+        doses (AnyDos | CompletePhononDos | dict[str, AnyDos | CompletePhononDos]):
+            pymatgen PhononDos, CompletePhononDos, phonopy TotalDos, or dict of these.
         stack (bool): Whether to plot the DOS as a stacked area graph. Defaults to
             False.
-        sigma (float): Standard deviation for Gaussian smearing. Defaults to None.
+        sigma (float): Standard deviation for Gaussian smearing. Defaults to 0.
         units (str): Units for the frequencies. Defaults to "THz".
-        legend (dict): Legend configuration.
-        normalize (bool): Whether to normalize the DOS. Defaults to False.
+        normalize (str | None): Normalization mode. One of "max", "sum", "integral",
+            or None. Defaults to None.
         last_peak_anno (str): Annotation for last DOS peak with f-string placeholders
             for key (of dict containing multiple DOSes), last_peak frequency and units.
             Defaults to None, meaning last peak annotation is disabled. Set to "" to
             enable with a sensible default string.
+        project (str | None): Projection mode for CompletePhononDos.
+            "element" decomposes into per-element partial DOS, "site" into per-site
+            partial DOS. Requires CompletePhononDos input. Defaults to None (plot
+            total DOS only).
+        show_total (bool): When projecting, overlay the total DOS as a dashed gray line.
+            Only used when project is not None. Defaults to True.
         **kwargs: Passed to Plotly's Figure.add_scatter method.
 
     Returns:
         go.Figure: Plotly figure object.
+
+    Raises:
+        TypeError: If project is set but input is not CompletePhononDos.
     """
     valid_normalize = (None, "max", "sum", "integral")
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
+    if project not in (None, "element", "site"):
+        raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
+    raw_doses = (
+        cast("Mapping[str, AnyDos | CompletePhononDos]", doses)
+        if isinstance(doses, Mapping)
+        else {"": doses}
+    )
 
-    input_doses = doses if isinstance(doses, Mapping) else {"": doses}
     dos_dict: dict[str, PhononDos] = {}
-    for key, dos in input_doses.items():
-        cls_name = f"{type(dos).__module__}.{type(dos).__qualname__}"
-        if cls_name == "phonopy.phonon.dos.TotalDos":
-            # Cast to Any to access phonopy TotalDos attributes
-            phonopy_dos = cast("Any", dos)
-            dos_dict[key] = PhononDos(  # type: ignore[index]
-                frequencies=phonopy_dos.frequency_points,
-                densities=phonopy_dos.dos,
-            )
-        elif isinstance(dos, PhononDos):
-            dos_dict[key] = dos  # type: ignore[index]
-        else:
+    total_overlay_dict: dict[str, PhononDos] = {}
+    for label, raw_dos in raw_doses.items():
+        label_prefix = f"{label} - " if label else ""
+        if project is None:
+            cls_name = f"{type(raw_dos).__module__}.{type(raw_dos).__qualname__}"
+            if cls_name == "phonopy.phonon.dos.TotalDos":
+                phonopy_total_dos = cast("Any", raw_dos)
+                dos_dict[label] = PhononDos(
+                    frequencies=phonopy_total_dos.frequency_points,
+                    densities=phonopy_total_dos.dos,
+                )
+            elif isinstance(raw_dos, CompletePhononDos):
+                dos_dict[label] = PhononDos(raw_dos.frequencies, raw_dos.densities)
+            elif isinstance(raw_dos, PhononDos):
+                dos_dict[label] = raw_dos
+            else:
+                raise TypeError(
+                    f"Only {PhononDos.__name__}, {CompletePhononDos.__name__}, "
+                    "phonopy TotalDos, or dict of these supported, "
+                    f"got {type(raw_dos).__name__}"
+                )
+            continue
+        if not isinstance(raw_dos, CompletePhononDos):
             raise TypeError(
-                f"Only {PhononDos.__name__} or dict supported, got {type(dos).__name__}"
+                f"project={project!r} requires CompletePhononDos, "
+                f"got {type(raw_dos).__name__} for key {label!r}"
             )
-    if len(dos_dict) == 0:
+        projected_dos = (
+            raw_dos.get_element_dos()
+            if project == "element"
+            else {
+                f"{site.specie}{site_idx}": raw_dos.get_site_dos(site)
+                for site_idx, site in enumerate(raw_dos.structure)
+            }
+        )
+        dos_dict |= {f"{label_prefix}{key}": dos for key, dos in projected_dos.items()}
+        if show_total:
+            total_overlay_dict[f"{label_prefix}Total"] = PhononDos(
+                raw_dos.frequencies, raw_dos.densities
+            )
+
+    if not dos_dict:
         raise ValueError("Empty DOS dict")
 
     if last_peak_anno == "":
         last_peak_anno = "ω<sub>{key}</sub></span>={last_peak:.1f} {units}"
 
-    fig = go.Figure()
-
-    for key, dos in dos_dict.items():
-        frequencies = dos.frequencies
+    def _prepare_dos(dos: PhononDos) -> tuple[np.ndarray, np.ndarray]:
+        """Convert frequencies and apply smearing + normalization."""
+        frequencies = convert_frequencies(dos.frequencies, units)
         densities = dos.get_smeared_densities(sigma)
-
-        # convert frequencies to specified units
-        frequencies = convert_frequencies(frequencies, units)
-
-        # normalize DOS
-        if normalize == "max":
-            densities /= densities.max()
-        elif normalize == "sum":
-            densities /= densities.sum()
+        if normalize in ("max", "sum"):
+            density_norm = densities.max() if normalize == "max" else densities.sum()
+            if density_norm == 0:
+                msg_key = "max density" if normalize == "max" else "sum density"
+                raise ValueError(
+                    f"Cannot normalize DOS with mode={normalize!r}: {msg_key} is 0."
+                )
+            densities = densities / density_norm
         elif normalize == "integral":
+            if len(frequencies) < 2:
+                raise ValueError(
+                    "Cannot normalize DOS with mode='integral': "
+                    "need >=2 frequency points."
+                )
             bin_width = frequencies[1] - frequencies[0]
-            densities = densities / densities.sum() / bin_width
+            if bin_width == 0:
+                raise ValueError(
+                    "Cannot normalize DOS with mode='integral': bin width is 0."
+                )
+            density_norm = densities.sum()
+            if density_norm == 0:
+                raise ValueError(
+                    "Cannot normalize DOS with mode='integral': sum density is 0."
+                )
+            densities = densities / density_norm / bin_width
+        return frequencies, densities
 
-        scatter_defaults = dict(mode="lines")
+    fig = go.Figure()
+    cumulative_density_by_group: dict[str, np.ndarray] = {}
+    for dos_name, dos_obj in dos_dict.items():
+        frequencies, densities = _prepare_dos(dos_obj)
+        scatter_kwargs: dict[str, Any] = {"mode": "lines"}
         if stack:
-            if fig.data:  # for stacked plots, accumulate densities
-                densities += fig.data[-1].y
-            scatter_defaults.setdefault("fill", "tonexty")
-
+            stack_group = (
+                ""
+                if project is None or " - " not in dos_name
+                else dos_name.split(" - ", maxsplit=1)[0]
+            )
+            densities = densities + cumulative_density_by_group.get(
+                stack_group, np.zeros_like(densities)
+            )
+            cumulative_density_by_group[stack_group] = densities
+            scatter_kwargs["fill"] = "tonexty"
         fig.add_scatter(
-            x=frequencies, y=densities, name=key, **scatter_defaults | kwargs
+            x=frequencies, y=densities, name=dos_name, **scatter_kwargs | kwargs
         )
+
+    if project is not None and show_total:
+        for total_name, total_dos in total_overlay_dict.items():
+            frequencies, densities = _prepare_dos(total_dos)
+            fig.add_scatter(
+                x=frequencies,
+                y=densities,
+                name=total_name,
+                mode="lines",
+                line=dict(dash="dash", color="gray", width=1.5),
+                showlegend=True,
+            )
 
     fig.layout.xaxis.update(title=f"Frequency ({units})")
     fig.layout.yaxis.update(title="Density of States", rangemode="tozero")

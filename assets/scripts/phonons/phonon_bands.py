@@ -14,12 +14,6 @@ from pymatviz.phonons import PhononDBDoc
 from pymatviz.utils.testing import TEST_FILES
 
 
-try:
-    import atomate2  # noqa: F401
-except ImportError:
-    raise SystemExit(0) from None  # need atomate2 for MontyDecoder to load PhononDBDoc
-
-
 pmv.set_plotly_template("pymatviz_white")
 
 
@@ -39,7 +33,7 @@ for mp_id, formula in (
             if "m3gnet" in path
             else "PBE"
         )
-        with zopen(path) as file:
+        with zopen(path, mode="rt") as file:
             docs[model_label] = json.loads(file.read(), cls=MontyDecoder)
 
     ph_bands: dict[str, PhononBands] = {
