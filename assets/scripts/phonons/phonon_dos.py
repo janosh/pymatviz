@@ -3,6 +3,7 @@
 # %%
 import json
 from glob import glob
+from typing import Any, cast
 
 import plotly.graph_objects as go
 from monty.io import zopen
@@ -87,30 +88,28 @@ complete_dos = CompletePhononDos(struct, total_dos, site_dos)
 
 
 # %% Element-projected DOS (default: with total overlay)
-fig = pmv.phonon_dos(complete_dos, project="element")
-show_figure(fig, "NaCl Element-Projected Phonon DOS")
+projected_examples: list[tuple[str, dict[str, str | bool]]] = [
+    ("NaCl Element-Projected Phonon DOS", {"project": "element"}),
+    (
+        "NaCl Element-Projected Phonon DOS (no total)",
+        {"project": "element", "show_total": False},
+    ),
+    (
+        "NaCl Element-Projected Phonon DOS (stacked)",
+        {"project": "element", "stack": True, "show_total": False},
+    ),
+    ("NaCl Site-Projected Phonon DOS", {"project": "site"}),
+    (
+        "NaCl Element-Projected Phonon DOS (normalized)",
+        {"project": "element", "normalize": "max"},
+    ),
+]
+for plot_title, plot_kwargs in projected_examples:
+    fig = pmv.phonon_dos(complete_dos, **cast("dict[str, Any]", plot_kwargs))
+    show_figure(fig, plot_title)
+
 # pmv.io.save_and_compress_svg(fig, "phonon-dos-element-projected")
-
-
-# %% Element-projected DOS without total
-fig = pmv.phonon_dos(complete_dos, project="element", show_total=False)
-show_figure(fig, "NaCl Element-Projected Phonon DOS (no total)")
-
-
-# %% Element-projected DOS with stacking
-fig = pmv.phonon_dos(complete_dos, project="element", stack=True, show_total=False)
-show_figure(fig, "NaCl Element-Projected Phonon DOS (stacked)")
-
-
-# %% Site-projected DOS
-fig = pmv.phonon_dos(complete_dos, project="site")
-show_figure(fig, "NaCl Site-Projected Phonon DOS")
 # pmv.io.save_and_compress_svg(fig, "phonon-dos-site-projected")
-
-
-# %% Element-projected DOS with normalization
-fig = pmv.phonon_dos(complete_dos, project="element", normalize="max")
-show_figure(fig, "NaCl Element-Projected Phonon DOS (normalized)")
 
 
 # %% Comparing multiple models with element projection

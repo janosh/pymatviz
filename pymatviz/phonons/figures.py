@@ -404,6 +404,8 @@ def phonon_dos(
     valid_normalize = (None, "max", "sum", "integral")
     if normalize not in valid_normalize:
         raise ValueError(f"Invalid {normalize=}, must be one of {valid_normalize}.")
+    if project not in (None, "element", "site"):
+        raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
     raw_doses = (
         cast("Mapping[str, AnyDos | CompletePhononDos]", doses)
         if isinstance(doses, Mapping)
@@ -438,21 +440,18 @@ def phonon_dos(
                 f"project={project!r} requires CompletePhononDos, "
                 f"got {type(raw_dos).__name__} for key {label!r}"
             )
-        if project == "element":
-            dos_dict |= {
-                f"{label_prefix}{element}": partial_dos
-                for element, partial_dos in raw_dos.get_element_dos().items()
-            }
-        elif project == "site":
-            dos_dict |= {
-                f"{label_prefix}{site.specie}{site_idx}": raw_dos.get_site_dos(site)
+        projected_dos = (
+            raw_dos.get_element_dos()
+            if project == "element"
+            else {
+                f"{site.specie}{site_idx}": raw_dos.get_site_dos(site)
                 for site_idx, site in enumerate(raw_dos.structure)
             }
-        else:
-            raise ValueError(f"Invalid {project=}, must be 'element' or 'site'")
+        )
+        dos_dict |= {f"{label_prefix}{key}": dos for key, dos in projected_dos.items()}
         if show_total:
-            total_overlay_dict[f"{label_prefix}Total" if label_prefix else "Total"] = (
-                PhononDos(raw_dos.frequencies, raw_dos.densities)
+            total_overlay_dict[f"{label_prefix}Total"] = PhononDos(
+                raw_dos.frequencies, raw_dos.densities
             )
 
     if not dos_dict:
