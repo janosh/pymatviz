@@ -456,3 +456,14 @@ def test_phonon_dos_show_total_ignored_without_project(
     fig_a = pmv.phonon_dos(dos)
     fig_b = pmv.phonon_dos(dos, show_total=False)
     assert [t.name for t in fig_a.data] == [t.name for t in fig_b.data]
+
+
+def test_phonon_dos_complete_dos_without_projection(
+    complete_phonon_dos: CompletePhononDos,
+) -> None:
+    """Test CompletePhononDos defaults to total DOS when project is None."""
+    fig = pmv.phonon_dos(complete_phonon_dos)
+    assert len(fig.data) == 1
+    trace = fig.data[0]
+    assert np.allclose(trace.x, complete_phonon_dos.frequencies)
+    assert np.allclose(trace.y, complete_phonon_dos.densities)
