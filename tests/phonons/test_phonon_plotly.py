@@ -376,6 +376,31 @@ def test_phonon_dos_projection_dict(
     assert {trace.name for trace in fig.data} == expected_names
 
 
+def test_phonon_dos_projection_dict_stack_resets_by_model(
+    complete_phonon_dos: CompletePhononDos,
+) -> None:
+    """Test stacked projected DOS accumulates separately for each model label."""
+    dos_dict = {"DFT": complete_phonon_dos, "ML": complete_phonon_dos}
+    fig_unstacked = pmv.phonon_dos(
+        dos_dict, project="element", show_total=False, stack=False
+    )
+    fig_stacked = pmv.phonon_dos(
+        dos_dict, project="element", show_total=False, stack=True
+    )
+
+    unstacked_by_name = {
+        trace.name: np.asarray(trace.y) for trace in fig_unstacked.data
+    }
+    stacked_by_name = {trace.name: np.asarray(trace.y) for trace in fig_stacked.data}
+    for model_label in ("DFT", "ML"):
+        trace_name = next(
+            trace.name
+            for trace in fig_stacked.data
+            if trace.name.startswith(f"{model_label} - ")
+        )
+        assert np.allclose(stacked_by_name[trace_name], unstacked_by_name[trace_name])
+
+
 def test_phonon_dos_projection_raises(
     complete_phonon_dos: CompletePhononDos,
     phonon_bands_doses_mp_2758: BandsDoses,

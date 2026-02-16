@@ -19,6 +19,10 @@ from pymatviz.utils.testing import TEST_FILES, load_phonopy_nacl
 pmv.set_plotly_template("pymatviz_white")
 
 
+class PhonopyDosMissingError(RuntimeError):
+    """Raised when phonopy fails to compute a required DOS output."""
+
+
 def show_figure(plotly_figure: go.Figure, title: str, *, y_pos: float = 0.97) -> None:
     """Apply consistent layout settings and display the figure."""
     plotly_figure.layout.title = dict(text=title, x=0.5, y=y_pos)
@@ -55,7 +59,7 @@ phonopy_nacl = load_phonopy_nacl()
 phonopy_nacl.run_mesh([10, 10, 10])
 phonopy_nacl.run_total_dos()
 if phonopy_nacl.total_dos is None:
-    raise RuntimeError("phonopy failed to compute total DOS for NaCl example.")
+    raise PhonopyDosMissingError
 
 plt = phonopy_nacl.plot_total_dos()
 plt.title("NaCl DOS plotted by phonopy")
@@ -71,9 +75,9 @@ phonopy_nacl_pdos.run_mesh([10, 10, 10], with_eigenvectors=True, is_mesh_symmetr
 phonopy_nacl_pdos.run_projected_dos()
 phonopy_nacl_pdos.run_total_dos()
 if phonopy_nacl_pdos.total_dos is None:
-    raise RuntimeError("phonopy failed to compute total DOS for projected DOS example.")
+    raise PhonopyDosMissingError
 if phonopy_nacl_pdos.projected_dos is None:
-    raise RuntimeError("phonopy failed to compute projected DOS for NaCl example.")
+    raise PhonopyDosMissingError
 
 struct = get_pmg_structure(phonopy_nacl_pdos.primitive)
 total_dos = PhononDos(

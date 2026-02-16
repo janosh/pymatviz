@@ -471,7 +471,7 @@ def phonon_dos(
                 raise ValueError(
                     f"Cannot normalize DOS with mode={normalize!r}: {msg_key} is 0."
                 )
-            densities /= density_norm
+            densities = densities / density_norm
         elif normalize == "integral":
             if len(frequencies) < 2:
                 raise ValueError(
@@ -492,17 +492,20 @@ def phonon_dos(
         return frequencies, densities
 
     fig = go.Figure()
-    cumulative_density: np.ndarray | None = None
+    cumulative_density_by_group: dict[str, np.ndarray] = {}
     for dos_name, dos_obj in dos_dict.items():
         frequencies, densities = _prepare_dos(dos_obj)
         scatter_kwargs: dict[str, Any] = {"mode": "lines"}
         if stack:
-            cumulative_density = (
-                densities
-                if cumulative_density is None
-                else cumulative_density + densities
+            stack_group = (
+                ""
+                if project is None or " - " not in dos_name
+                else dos_name.split(" - ", maxsplit=1)[0]
             )
-            densities = cumulative_density
+            densities = densities + cumulative_density_by_group.get(
+                stack_group, np.zeros_like(densities)
+            )
+            cumulative_density_by_group[stack_group] = densities
             scatter_kwargs["fill"] = "tonexty"
         fig.add_scatter(
             x=frequencies, y=densities, name=dos_name, **scatter_kwargs | kwargs
