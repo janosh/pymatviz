@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
@@ -271,7 +271,10 @@ def phonon_bands(
                 # Apply line style based on line_kwargs type
                 if callable(line_kwargs):
                     # Pass band data and index to callback
-                    custom_style = line_kwargs(frequencies, band_idx)
+                    line_style_callback = cast(
+                        "Callable[[np.ndarray, int], dict[str, Any]]", line_kwargs
+                    )
+                    custom_style = line_style_callback(frequencies, band_idx)
                     line_defaults |= custom_style
                 elif isinstance(line_kwargs, dict):
                     # check for custom line styles for one or both modes

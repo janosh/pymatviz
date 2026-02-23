@@ -7,7 +7,7 @@ import itertools
 import math
 import warnings
 from collections.abc import Hashable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import plotly.graph_objects as go
@@ -101,7 +101,7 @@ def get_struct_prop(
     # Check structure/atoms properties first (highest precedence)
     prop_value = None
     if is_ase_atoms(struct):
-        prop_value = struct.info.get(prop_name)  # ty: ignore[possibly-missing-attribute]
+        prop_value = struct.info.get(prop_name)
     elif hasattr(struct, "properties"):
         prop_value = struct.properties.get(prop_name)  # ty: ignore[unresolved-attribute]
 
@@ -142,8 +142,6 @@ CELL_EDGES = (
 
 def get_site_species(site: PeriodicSite) -> Composition | Species | Element:
     """Get species/composition from a site (handles ordered and disordered sites)."""
-    from typing import cast
-
     return cast(
         "Composition | Species | Element", getattr(site, "specie", site.species)
     )
@@ -400,7 +398,7 @@ def get_subplot_title(
             from moyopy.interface import MoyoAdapter
 
             spg_num = MoyoDataset(MoyoAdapter.from_py_obj(struct_i)).number  # ty: ignore[invalid-argument-type]
-            title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"  # ty: ignore[possibly-missing-attribute]
+            title_dict["text"] = f"{idx}. {struct_i.formula} (spg={spg_num})"
         else:  # For str or any other Hashable type, convert to string
             title_dict["text"] = str(struct_key)
 
@@ -1274,7 +1272,7 @@ def draw_cell(
         go.Figure: The updated plotly figure.
     """
     corners = np.array(list(itertools.product((0, 1), (0, 1), (0, 1))))
-    lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
+    lattice = structure.lattice
     cart_corners = lattice.get_cartesian_coords(corners)
 
     # Apply rotation to cartesian corners for 2D plots
@@ -1510,7 +1508,7 @@ def draw_bonds(
         effective_bond_kwargs.update(bond_kwargs)
 
     _elem_colors = elem_colors or get_elem_colors(ElemColorScheme.jmol)
-    lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
+    lattice = structure.lattice
 
     def parse_color(color_val: Any) -> str:
         """Convert various color formats to RGB string."""
@@ -1673,7 +1671,7 @@ def _prep_augmented_structure_for_bonding(
         cell_boundary_tol (float): Distance beyond unit cell boundaries within which
             image atoms are included.
     """
-    lattice = struct_i.lattice  # ty: ignore[possibly-missing-attribute]
+    lattice = struct_i.lattice
     all_sites_for_bonding = [
         PeriodicSite(
             species=site_in_cell.species,

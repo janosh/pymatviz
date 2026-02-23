@@ -1,7 +1,7 @@
 """Confusion matrix plotting functions."""
 
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import plotly.graph_objects as go
@@ -133,6 +133,7 @@ def confusion_matrix(
     if annotations is None:
         processed_annotations = fmt_tile_vals
     elif callable(annotations):  # If annotations is a callable, apply it to each cell
+        annotation_func = cast("Callable[[int, int, float, float], str]", annotations)
         total = sample_counts.sum()
         anno_matrix = []
         for ii in range(len(conf_mat_arr)):
@@ -150,7 +151,7 @@ def confusion_matrix(
                     if conf_mat_arr[:, jj].sum() > 0
                     else 0
                 )
-                row += [annotations(count, total, row_pct, col_pct)]
+                row += [annotation_func(count, total, row_pct, col_pct)]
             anno_matrix += [row]
         processed_annotations = np.array(anno_matrix).T
     else:  # When custom annotations provided, append percentage values

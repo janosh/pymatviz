@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 from typing import Any
 
 import numpy as np
@@ -162,7 +163,7 @@ def test_normalize_structure_for_bz_passthrough() -> None:
                 "Si", "diamond", a=5.43
             ),
             marks=pytest.mark.skipif(
-                not __import__("importlib").util.find_spec("ase"),
+                not importlib.util.find_spec("ase"),
                 reason="ase not installed",
             ),
         ),

@@ -230,7 +230,7 @@ mb_bulk_modulus: tuple[str, str, str, str] = (
     "Bulk Modulus (GPa)",
     "K<sub>VRH</sub>",
 )
-plot_combinations: list[PlotConfig] = [  # ty: ignore[invalid-assignment]
+plot_combinations: list[PlotConfig] = [
     # 1. Steels with PCA (2D) - shows clear linear trends
     (*mb_steels, Embed.magpie, Project.pca, 2, {"x": 0.01, "xanchor": "left"}),
     # 2. Steels with t-SNE (2D) - shows non-linear clustering

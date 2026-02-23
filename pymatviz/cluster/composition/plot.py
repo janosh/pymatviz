@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Protocol, get_args
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, get_args
 
 import numpy as np
 import pandas as pd
@@ -609,7 +609,8 @@ def cluster_compositions(
             # Create embeddings
             if callable(embedding_method):
                 # Use custom embedding function
-                embeddings = embedding_method(compositions, **(embedding_kwargs or {}))
+                embedding_fn = cast("EmbeddingCallable", embedding_method)
+                embeddings = embedding_fn(compositions, **(embedding_kwargs or {}))
             # Use built-in embedding methods
             elif embedding_method == "one-hot":
                 embeddings = one_hot_encode(compositions, **(embedding_kwargs or {}))
@@ -628,7 +629,8 @@ def cluster_compositions(
         # Project embeddings
         if callable(projection):
             # Use custom projection function
-            projected = projection(
+            projection_fn = cast("ProjectionCallable", projection)
+            projected = projection_fn(
                 embeddings,
                 n_components=n_components,
                 **projection_kwargs,
