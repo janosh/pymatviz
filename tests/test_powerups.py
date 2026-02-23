@@ -201,7 +201,9 @@ def test_toggle_log_linear_y_axis(plotly_scatter: go.Figure) -> None:
     fig.layout.updatemenus = [powerups.toggle_log_linear_y_axis]
 
     # check that figure now has "Log Y"/"Linear Y" toggle buttons
-    buttons = fig.layout.updatemenus[0].buttons
+    menu = fig.layout.updatemenus[0]
+    assert isinstance(menu, Updatemenu)
+    buttons = menu.buttons
     assert len(buttons) == 2
     assert fig.layout.yaxis.type is None
     assert buttons[0].args[0]["yaxis.type"] == "linear"
@@ -225,7 +227,9 @@ def test_toggle_log_linear_x_axis(plotly_scatter: go.Figure) -> None:
     fig.layout.updatemenus = [powerups.toggle_log_linear_x_axis]
 
     # check that figure now has "Log X"/"Linear X" toggle buttons
-    buttons = fig.layout.updatemenus[0].buttons
+    menu = fig.layout.updatemenus[0]
+    assert isinstance(menu, Updatemenu)
+    buttons = menu.buttons
     assert len(buttons) == 2
     assert fig.layout.xaxis.type is None
     assert buttons[0].args[0]["xaxis.type"] == "linear"
@@ -249,7 +253,9 @@ def test_toggle_grid(plotly_scatter: go.Figure) -> None:
     fig.layout.updatemenus = [powerups.toggle_grid]
 
     # check that figure now has "Show Grid"/"Hide Grid" toggle buttons
-    buttons = fig.layout.updatemenus[0].buttons
+    menu = fig.layout.updatemenus[0]
+    assert isinstance(menu, Updatemenu)
+    buttons = menu.buttons
     assert len(buttons) == 2
     assert fig.layout.xaxis.showgrid is None
     assert fig.layout.yaxis.showgrid is None
@@ -279,7 +285,9 @@ def test_select_colorscale() -> None:
     fig.layout.updatemenus = [powerups.select_colorscale]
 
     # check that figure now has colorscale toggle buttons
-    buttons = fig.layout.updatemenus[0].buttons
+    menu = fig.layout.updatemenus[0]
+    assert isinstance(menu, Updatemenu)
+    buttons = menu.buttons
     assert len(buttons) == 4
     colorscales = ["Viridis", "Plasma", "Inferno", "Magma"]
     for button, colorscale in zip(buttons, colorscales, strict=True):
@@ -295,7 +303,9 @@ def test_select_marker_mode(plotly_scatter: go.Figure) -> None:
     fig.layout.updatemenus = [powerups.select_marker_mode]
 
     # check that figure now has plot type toggle buttons
-    buttons = fig.layout.updatemenus[0].buttons
+    menu = fig.layout.updatemenus[0]
+    assert isinstance(menu, Updatemenu)
+    buttons = menu.buttons
     assert len(buttons) == 3
     plot_types = ["markers", "lines", "lines+markers"]
     labels = ["Scatter", "Line", "Line+Markers"]

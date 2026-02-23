@@ -519,9 +519,16 @@ def test_auto_display_registry(
 
 
 def test_marimo_display_registered() -> None:
-    """Test _display_ is monkey-patched on all registered classes."""
+    """Registered classes expose callable _display_ that creates widgets."""
     from pymatviz.widgets.mime import _AUTO_DISPLAY, create_widget
 
     for cls in _AUTO_DISPLAY:
-        assert hasattr(cls, "_display_"), f"{cls.__name__} missing _display_"
-        assert cls._display_ is create_widget
+        display_method = getattr(cls, "_display_", None)
+        assert callable(display_method), f"{cls.__name__} missing callable _display_"
+
+    composition_obj = Composition("Fe2O3")
+    widget = composition_obj._display_()
+    expected_widget = create_widget(composition_obj)
+    assert widget.widget_type == expected_widget.widget_type
+    assert widget.composition == expected_widget.composition
+    assert widget.widget_type == "composition"
