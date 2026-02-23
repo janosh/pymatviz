@@ -232,6 +232,13 @@ def save_papers(papers: list[ScholarPaper], filename: str) -> None:
         yaml.dump(papers, file, default_flow_style=False, allow_unicode=True)
 
 
+def clean_author_name(author_name: str) -> str:
+    """Remove footnote/superscript markers from an author name."""
+    cleaned_name = re.sub(r"\^[0-9]+", "", author_name)
+    cleaned_name = re.sub(r"[⁰¹²³⁴⁵⁶⁷⁸⁹]+", "", cleaned_name)
+    return re.sub(r"\s+", " ", cleaned_name).strip()
+
+
 def update_readme(
     papers: list[ScholarPaper], readme_path: str = f"{ROOT}/readme.md"
 ) -> None:
@@ -270,7 +277,9 @@ def update_readme(
         if not paper.get("authors"):
             print(f"Paper {paper['title']} has no authors, skipping")
             continue
-        authors_str = ", ".join(paper["authors"][:3])
+        authors_str = ", ".join(
+            clean_author_name(author) for author in paper["authors"][:3]
+        )
         if len(paper["authors"]) > 3:
             authors_str += " et al."
 

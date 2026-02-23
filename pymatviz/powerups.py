@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import numpy as np
 import plotly.express as px
@@ -219,7 +219,10 @@ def _get_valid_traces(
             valid_range = f"0-{len(fig.data) - 1}"
             raise ValueError(f"No valid trace indices in {traces}, {valid_range=}")
     elif callable(traces):
-        selected_traces = [idx for idx, trace in enumerate(fig.data) if traces(trace)]
+        trace_predicate = cast("TracePredicate", traces)
+        selected_traces = [
+            idx for idx, trace in enumerate(fig.data) if trace_predicate(trace)
+        ]
         if not selected_traces:
             raise ValueError("No traces matched the filtering function")
     else:
@@ -884,10 +887,18 @@ def add_ecdf_line(
             fig.data[-1].update(**current_trace_kwargs)
 
     # Make sure yaxis2 has color set if specified in trace_kwargs
-    if "line" in trace_kwargs and "color" in trace_kwargs["line"]:
-        fig.layout.yaxis2.color = trace_kwargs["line"]["color"]
-    elif "line_color" in trace_kwargs:
-        fig.layout.yaxis2.color = trace_kwargs["line_color"]
+    yaxis2_color: str | None = None
+    line_settings = trace_kwargs.get("line")
+    if isinstance(line_settings, dict):
+        line_color = line_settings.get("color")
+        if isinstance(line_color, str):
+            yaxis2_color = line_color
+    if yaxis2_color is None:
+        top_level_line_color = trace_kwargs.get("line_color")
+        if isinstance(top_level_line_color, str):
+            yaxis2_color = top_level_line_color
+    if yaxis2_color is not None:
+        fig.layout.yaxis2.update(color=yaxis2_color)
 
     return fig
 

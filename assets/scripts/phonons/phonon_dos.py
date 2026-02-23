@@ -23,6 +23,14 @@ class PhonopyDosMissingError(RuntimeError):
     """Raised when phonopy fails to compute a required DOS output."""
 
 
+class PhonopyTotalDosMissingError(PhonopyDosMissingError):
+    """Raised when phonopy total DOS is missing."""
+
+
+class PhonopyProjectedDosMissingError(PhonopyDosMissingError):
+    """Raised when phonopy projected DOS is missing."""
+
+
 def show_figure(plotly_figure: go.Figure, title: str, *, y_pos: float = 0.97) -> None:
     """Apply consistent layout settings and display the figure."""
     plotly_figure.layout.title = dict(text=title, x=0.5, y=y_pos)
@@ -59,7 +67,7 @@ phonopy_nacl = load_phonopy_nacl()
 phonopy_nacl.run_mesh([10, 10, 10])
 phonopy_nacl.run_total_dos()
 if phonopy_nacl.total_dos is None:
-    raise PhonopyDosMissingError
+    raise PhonopyTotalDosMissingError
 
 plt = phonopy_nacl.plot_total_dos()
 plt.title("NaCl DOS plotted by phonopy")
@@ -75,9 +83,9 @@ phonopy_nacl_pdos.run_mesh([10, 10, 10], with_eigenvectors=True, is_mesh_symmetr
 phonopy_nacl_pdos.run_projected_dos()
 phonopy_nacl_pdos.run_total_dos()
 if phonopy_nacl_pdos.total_dos is None:
-    raise PhonopyDosMissingError
+    raise PhonopyTotalDosMissingError
 if phonopy_nacl_pdos.projected_dos is None:
-    raise PhonopyDosMissingError
+    raise PhonopyProjectedDosMissingError
 
 struct = get_pmg_structure(phonopy_nacl_pdos.primitive)
 total_dos = PhononDos(

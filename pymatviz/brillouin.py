@@ -85,8 +85,8 @@ def brillouin_zone_3d(
 
     for idx, (struct_key, structure) in enumerate(structures.items(), start=1):
         # Convert pymatgen Structure to seekpath input format
-        lattice = structure.lattice  # ty: ignore[possibly-missing-attribute]
-        frac_coords = structure.frac_coords  # ty: ignore[possibly-missing-attribute]
+        lattice = structure.lattice
+        frac_coords = structure.frac_coords
         spglib_atoms = (
             lattice.matrix,  # cell
             frac_coords,  # positions

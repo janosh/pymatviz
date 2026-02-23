@@ -43,13 +43,14 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
   const style_content = `
     ${get_theme_css(detected_theme, is_shadow_dom)}
     .cell-output-ipywidget-background { background: transparent !important; }
-    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea, select) {
-      background-color: #2d2d2d; color: #ffffff; border: 1px solid #555555; border-radius: 4px; padding: 6px 8px;
+    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) {
+      background-color: var(--surface-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 6px 8px;
     }
-    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea, select):focus {
-      outline: none; border-color: #007acc; box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select):focus {
+      outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 25%, transparent);
     }
-    :is(.vscode-dark, .dark-theme, [data-jp-theme-light="false"]) :is(input, textarea)::placeholder { color: #888888; }
+    :is(input, textarea)::placeholder { color: var(--text-color-muted); }
+    select option { background-color: var(--surface-bg); color: var(--text-color); }
     ${app_css}
   `
 

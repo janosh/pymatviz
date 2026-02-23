@@ -156,10 +156,3 @@ def assert_widget_property_sync(
     # Test that attribute is tagged for sync
     trait = widget.class_traits()[property_name]
     assert trait.metadata.get("sync") is True, f"Property {property_name} not synced"
-
-
-def assert_widget_edge_cases(
-    widget: CompositionWidget | StructureWidget | TrajectoryWidget,
-) -> None:
-    """Alias for assert_widget_build_files (kept for existing test callers)."""
-    assert_widget_build_files(widget)

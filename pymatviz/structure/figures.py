@@ -238,7 +238,7 @@ def structure_2d(
             plotted_sites_coords = {
                 tuple(np.round(site.coords, 5)) for site in augmented_structure
             }
-            lattice = struct_i.lattice  # ty: ignore[possibly-missing-attribute]
+            lattice = struct_i.lattice
             vector_arrow_kwargs = (
                 (vector_kwargs or {}).get(vector_prop, {}) if vector_prop else {}
             )
@@ -686,11 +686,7 @@ def structure_3d(
             if vector_prop:
                 vector_arrow_kwargs = (vector_kwargs or {}).get(vector_prop, {})
                 show_image_site_vectors = show_image_vectors and show_image_sites
-                lattice = (
-                    struct_i.lattice  # ty: ignore[possibly-missing-attribute]
-                    if show_image_site_vectors
-                    else None
-                )
+                lattice = struct_i.lattice if show_image_site_vectors else None
                 for site_idx_loop, site_in_original_struct in enumerate(struct_i):
                     vector = helpers._get_site_vector(
                         site_in_original_struct,

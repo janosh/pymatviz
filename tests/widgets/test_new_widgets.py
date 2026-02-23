@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 from typing import Any
 
 import numpy as np
@@ -65,6 +66,10 @@ def test_normalize_convex_hull_entries_passthrough() -> None:
     assert normalize_convex_hull_entries(None) is None
     entries = [{"composition": {"Li": 1}, "energy": -1.5}]
     assert normalize_convex_hull_entries(entries) is entries
+    tuple_entries = tuple(entries)
+    normalized_entries = normalize_convex_hull_entries(tuple_entries)
+    assert isinstance(normalized_entries, list)
+    assert normalized_entries == entries
 
 
 def test_normalize_convex_hull_entries_from_phase_diagram() -> None:
@@ -109,6 +114,87 @@ def test_normalize_xrd_pattern_passthrough() -> None:
     assert normalize_xrd_pattern(None) is None
     test_dict = {"x": [1, 2], "y": [3, 4]}
     assert normalize_xrd_pattern(test_dict) is test_dict
+
+
+@pytest.mark.parametrize(
+    ("xrd_dict", "match"),
+    [
+        (
+            {"x": [1.0, 2.0]},
+            "Expected keys: \\['x', 'y'\\]",
+        ),
+        (
+            {"x": [1.0], "y": [2.0, 3.0]},
+            "mismatched canonical lengths",
+        ),
+        (
+            {"two_theta": [1.0, 2.0]},
+            "Expected keys: \\['two_theta', 'intensities'\\]",
+        ),
+        (
+            {"two_theta": [1.0], "intensities": [2.0, 3.0]},
+            "mismatched Ferrox lengths",
+        ),
+        (
+            {"q": [1.0], "intensity": [2.0]},
+            "Unsupported XRD dict schema",
+        ),
+    ],
+)
+def test_normalize_xrd_pattern_dict_validation_errors(
+    xrd_dict: dict[str, list[float]], match: str
+) -> None:
+    """Test canonical/Ferrox dict validation raises descriptive errors."""
+    with pytest.raises(ValueError, match=match):
+        normalize_xrd_pattern(xrd_dict)
+
+
+@pytest.mark.parametrize(
+    ("hkls_in", "expected_hkls"),
+    [
+        (
+            [[1, 0, 0], [1, 1, 0]],
+            [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]],
+        ),
+        (
+            [[[1, 0, 0]], [[1, 1, 0]]],
+            [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]],
+        ),
+        (
+            [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]],
+            [[{"hkl": [1, 0, 0]}], [{"hkl": [1, 1, 0]}]],
+        ),
+    ],
+)
+def test_normalize_xrd_pattern_ferrox_hkls_shapes(
+    hkls_in: list[Any], expected_hkls: list[list[dict[str, list[int]]]]
+) -> None:
+    """Test Ferrox hkls normalization for flat, nested, and passthrough forms."""
+    ferrox_dict = {
+        "two_theta": [10.0, 20.0],
+        "intensities": [100.0, 50.0],
+        "d_spacings": [2.5, 2.0],
+        "hkls": hkls_in,
+    }
+    result = normalize_xrd_pattern(ferrox_dict)
+    assert result is not None
+    assert result["x"] == [10.0, 20.0]
+    assert result["y"] == [100.0, 50.0]
+    assert result["d_hkls"] == [2.5, 2.0]
+    assert result["hkls"] == expected_hkls
+
+
+def test_normalize_xrd_pattern_mixed_schema_prefers_complete_ferrox() -> None:
+    """Test mixed-key dict uses Ferrox schema when canonical is incomplete."""
+    mixed_dict = {
+        "y": [10.0, 20.0],
+        "two_theta": [30.0, 40.0],
+        "intensities": [1.0, 2.0],
+    }
+    result = normalize_xrd_pattern(mixed_dict)
+    assert result is not None
+    assert result["x"] == [30.0, 40.0]
+    assert result["y"] == [1.0, 2.0]
 
 
 def test_normalize_xrd_pattern_from_diffraction_pattern() -> None:
@@ -162,7 +248,7 @@ def test_normalize_structure_for_bz_passthrough() -> None:
                 "Si", "diamond", a=5.43
             ),
             marks=pytest.mark.skipif(
-                not __import__("importlib").util.find_spec("ase"),
+                not importlib.util.find_spec("ase"),
                 reason="ase not installed",
             ),
         ),
@@ -186,32 +272,78 @@ def test_normalize_structure_for_bz_unsupported_type() -> None:
 
 
 @pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "expected_type"),
+    ("widget_cls", "kwargs", "expected_type", "state_key", "expected_state"),
     [
         (
             ConvexHullWidget,
             {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]},
             "convex_hull",
+            "entries",
+            [{"composition": {"Li": 1}, "energy": -1.5}],
         ),
-        (BandStructureWidget, {"band_structure": {"bands": []}}, "band_structure"),
-        (DosWidget, {"dos": {"energies": [0]}}, "dos"),
+        (
+            BandStructureWidget,
+            {"band_structure": {"bands": []}},
+            "band_structure",
+            "band_structure",
+            {"bands": []},
+        ),
+        (DosWidget, {"dos": {"energies": [0]}}, "dos", "dos", {"energies": [0]}),
         (
             BandsAndDosWidget,
             {"band_structure": {"bands": []}, "dos": {"energies": []}},
             "bands_and_dos",
+            "dos",
+            {"energies": []},
         ),
-        (FermiSurfaceWidget, {"fermi_data": {"isosurfaces": []}}, "fermi_surface"),
-        (FermiSurfaceWidget, {"band_data": {"energies": []}}, "fermi_surface"),
-        (BrillouinZoneWidget, {}, "brillouin_zone"),
-        (PhaseDiagramWidget, {"data": {"components": ["A", "B"]}}, "phase_diagram"),
-        (XrdWidget, {"patterns": {"x": [10], "y": [100]}}, "xrd"),
+        (
+            FermiSurfaceWidget,
+            {"fermi_data": {"isosurfaces": []}},
+            "fermi_surface",
+            "fermi_data",
+            {"isosurfaces": []},
+        ),
+        (
+            FermiSurfaceWidget,
+            {"band_data": {"energies": []}},
+            "fermi_surface",
+            "band_data",
+            {"energies": []},
+        ),
+        (
+            BrillouinZoneWidget,
+            {"structure": {"lattice": {}, "sites": []}},
+            "brillouin_zone",
+            "structure",
+            {"lattice": {}, "sites": []},
+        ),
+        (
+            PhaseDiagramWidget,
+            {"data": {"components": ["A", "B"]}},
+            "phase_diagram",
+            "data",
+            {"components": ["A", "B"]},
+        ),
+        (
+            XrdWidget,
+            {"patterns": {"x": [10], "y": [100]}},
+            "xrd",
+            "patterns",
+            {"x": [10], "y": [100]},
+        ),
     ],
 )
 def test_widget_construction_and_type(
-    widget_cls: type, kwargs: dict[str, Any], expected_type: str
+    widget_cls: type,
+    kwargs: dict[str, Any],
+    expected_type: str,
+    state_key: str,
+    expected_state: Any,
 ) -> None:
-    """Test each widget sets widget_type correctly."""
-    assert widget_cls(**kwargs).widget_type == expected_type
+    """Test widget constructors preserve expected normalized state."""
+    widget = widget_cls(**kwargs)
+    assert widget.widget_type == expected_type
+    assert getattr(widget, state_key) == expected_state
 
 
 def test_convex_hull_widget_from_phase_diagram() -> None:
@@ -271,9 +403,24 @@ def test_xrd_widget_from_diffraction_pattern() -> None:
 
 
 def test_fermi_surface_widget_dual_input() -> None:
-    """Test FermiSurfaceWidget accepts fermi_data xor band_data."""
+    """Test FermiSurfaceWidget accepts exactly one data source."""
     assert FermiSurfaceWidget(fermi_data={"iso": []}).band_data is None
     assert FermiSurfaceWidget(band_data={"e": []}).fermi_data is None
+
+
+@pytest.mark.parametrize(
+    ("fermi_data", "band_data"),
+    [
+        (None, None),
+        ({"isosurfaces": []}, {"energies": []}),
+    ],
+)
+def test_fermi_surface_widget_invalid_input_combo(
+    fermi_data: dict[str, Any] | None, band_data: dict[str, Any] | None
+) -> None:
+    """Test FermiSurfaceWidget rejects ambiguous or missing input sources."""
+    with pytest.raises(ValueError, match="exactly one of fermi_data or band_data"):
+        FermiSurfaceWidget(fermi_data=fermi_data, band_data=band_data)
 
 
 # === create_widget + registry ===
@@ -372,9 +519,16 @@ def test_auto_display_registry(
 
 
 def test_marimo_display_registered() -> None:
-    """Test _display_ is monkey-patched on all registered classes."""
+    """Registered classes expose callable _display_ that creates widgets."""
     from pymatviz.widgets.mime import _AUTO_DISPLAY, create_widget
 
     for cls in _AUTO_DISPLAY:
-        assert hasattr(cls, "_display_"), f"{cls.__name__} missing _display_"
-        assert cls._display_ is create_widget
+        display_method = getattr(cls, "_display_", None)
+        assert callable(display_method), f"{cls.__name__} missing callable _display_"
+
+    composition_obj = Composition("Fe2O3")
+    widget = composition_obj._display_()
+    expected_widget = create_widget(composition_obj)
+    assert widget.widget_type == expected_widget.widget_type
+    assert widget.composition == expected_widget.composition
+    assert widget.widget_type == "composition"

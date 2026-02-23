@@ -92,10 +92,7 @@ def element_pair_rdfs(
             )
 
     # Calculate dynamic cutoff if not specified or negative
-    max_cell_len = max(
-        max(struct.lattice.abc)  # ty: ignore[possibly-missing-attribute]
-        for struct in struct_dict.values()
-    )
+    max_cell_len = max(max(struct.lattice.abc) for struct in struct_dict.values())
     if cutoff is None:
         cutoff = min(15, 2 * max_cell_len)
     elif cutoff < 0:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import time
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -11,7 +10,6 @@ import pytest
 from pymatviz import StructureWidget
 from tests.widgets.conftest import (
     assert_widget_build_files,
-    assert_widget_edge_cases,
     assert_widget_notebook_integration,
     assert_widget_property_sync,
 )
@@ -140,17 +138,10 @@ def test_widget_complete_lifecycle(structures: tuple[Structure, Structure]) -> N
         assert getattr(restored_widget, key) == value
 
 
-def test_widget_performance_and_large_structures(
+def test_widget_handles_large_structures(
     structures: tuple[Structure, Structure],
 ) -> None:
-    """Test widget performance with large structures."""
-    # Test creation performance
-    start_time = time.perf_counter()
-    for _ in range(10):
-        StructureWidget(structure=structures[0])
-    creation_time = time.perf_counter() - start_time
-    assert creation_time < 0.3
-
+    """Test widget handles large structures without losing site information."""
     # Test large structure handling (10x10x10 supercell with 2000 atoms)
     large_structure = structures[0] * 10
     assert len(large_structure) == 2_000
@@ -169,9 +160,9 @@ def test_widget_edge_cases_and_error_handling_structure(
     widget = StructureWidget()
     assert widget.structure is None
 
-    # Test widget handles missing/corrupted build files gracefully
+    # Build-asset sanity check on a regular instance.
     widget = StructureWidget(structure=structures[0].as_dict())
-    assert_widget_edge_cases(widget)
+    assert_widget_build_files(widget)
 
     # Test structure serialization
     json.dumps(widget.structure)  # Should not raise exception

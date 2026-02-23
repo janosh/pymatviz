@@ -34,7 +34,7 @@
 
 <Toc
   {headingSelector}
-  breakpoint={1250}
+  breakpoint={1400}
   warnOnEmpty={false}
   --toc-mobile-bg="#0d1a1d"
   --toc-mobile-shadow="0 0 1em 0 black"
@@ -74,11 +74,22 @@
 
 <style>
   :global(aside.toc.desktop) {
-    position: fixed;
-    top: 3em;
-    right: 6em;
-    max-width: 300px;
-    font-size: 0.6em;
+    display: none;
+  }
+  @media (min-width: 1400px) {
+    :global(aside.toc.desktop) {
+      display: block;
+      position: fixed;
+      top: 4.5em;
+      right: 1.5em;
+      width: min(22em, 26vw);
+      max-height: calc(100dvh - 6em);
+      overflow-y: auto;
+      font-size: clamp(0.7em, 0.65em + 0.15vw, 0.9em);
+    }
+    main {
+      padding-right: min(24em, 30vw);
+    }
   }
   a[href='/'] {
     font-size: 15pt;

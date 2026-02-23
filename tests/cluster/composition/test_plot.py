@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import itertools
 import re
-from typing import TYPE_CHECKING, Any, get_args
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, cast, get_args
 
 import numpy as np
 import pandas as pd
@@ -20,8 +21,6 @@ from tests.conftest import np_rng
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from pymatviz.cluster.composition import ProjectionCallable, ProjectionMethod
     from pymatviz.cluster.composition.plot import ShowChemSys
 
@@ -337,9 +336,10 @@ def test_sorting_options(
         # Ascending order
         expected_indices = np.argsort(sample_df["property"])
         expected_compositions = sample_df.iloc[expected_indices]["composition"].tolist()
-    elif callable(sort_value):
+    elif isinstance(sort_value, Callable):
         # Use the provided custom sorter directly for expected order
-        expected_indices = np.asarray(sort_value(np.array(sample_df["property"])))
+        custom_sorter = cast("Callable[[np.ndarray], np.ndarray]", sort_value)
+        expected_indices = np.asarray(custom_sorter(np.array(sample_df["property"])))
         assert expected_indices.shape == (len(sample_df),)
         # permutation sanity checks
         assert expected_indices.dtype.kind in "iu"
