@@ -135,13 +135,144 @@ class TrajectoryWidget(MatterVizWidget):
 
         super().__init__(widget_type="trajectory", trajectory=trajectory, **kwargs)
 
+    def _validate_trajectory_dict(self, trajectory_data: dict[str, Any]) -> None:
+        """Validate trajectory-dict schema and raise helpful errors.
+
+        Expected top-level schema:
+            {"frames": [frame0, frame1, ...], "metadata": {...}}
+        Expected frame schema:
+            {"structure": <structure-dict>, ...}
+        Expected structure schema:
+            {"lattice": {"matrix": ...}, "sites": [...]}
+        """
+        if "frames" not in trajectory_data:
+            available_keys = sorted(str(key) for key in trajectory_data)
+            raise ValueError(
+                "Trajectory dict is missing required key 'frames'. "
+                f"Expected keys include ['frames', 'metadata']; got {available_keys}."
+            )
+
+        frames_data = trajectory_data["frames"]
+        if not isinstance(frames_data, list):
+            raise TypeError(
+                "Trajectory dict key 'frames' must be a list. "
+                f"Got type: {type(frames_data)}."
+            )
+        if not frames_data:
+            raise ValueError(
+                "Trajectory dict 'frames' is empty. Provide at least one frame."
+            )
+
+        first_frame = frames_data[0]
+        if not isinstance(first_frame, dict):
+            raise TypeError(
+                "Trajectory frame must be a dict with at least a 'structure' key. "
+                f"Got first frame type: {type(first_frame)}."
+            )
+        if "structure" not in first_frame:
+            frame_keys = sorted(str(key) for key in first_frame)
+            raise ValueError(
+                "Trajectory frame is missing required key 'structure'. "
+                f"Frame keys: {frame_keys}."
+            )
+
+        structure_data = first_frame["structure"]
+        if not isinstance(structure_data, dict):
+            raise TypeError(
+                "Trajectory frame 'structure' must be a dict. "
+                f"Got type: {type(structure_data)}."
+            )
+
+        if "sites" not in structure_data or not isinstance(
+            structure_data["sites"], list
+        ):
+            raise ValueError(
+                "Trajectory frame structure must include list-valued key 'sites'."
+            )
+        if not structure_data["sites"]:
+            raise ValueError(
+                "Trajectory frame structure has empty 'sites'. "
+                "At least one site is required."
+            )
+
+        if (
+            "lattice" not in structure_data
+            or not isinstance(structure_data["lattice"], dict)
+            or "matrix" not in structure_data["lattice"]
+        ):
+            raise ValueError(
+                "Trajectory frame structure must include 'lattice.matrix' for "
+                "periodic structure rendering."
+            )
+        first_site = structure_data["sites"][0]
+        if not isinstance(first_site, dict):
+            raise TypeError(
+                "Trajectory frame site entries must be dicts. "
+                f"Got type: {type(first_site)}."
+            )
+        if "species" not in first_site:
+            site_keys = sorted(str(key) for key in first_site)
+            raise ValueError(
+                "Trajectory frame site is missing required key 'species'. "
+                f"Site keys: {site_keys}."
+            )
+        if "abc" not in first_site and "xyz" not in first_site:
+            site_keys = sorted(str(key) for key in first_site)
+            raise ValueError(
+                "Trajectory frame site needs coordinate key 'abc' or 'xyz'. "
+                f"Site keys: {site_keys}."
+            )
+        if "label" not in first_site:
+            raise ValueError(
+                "Trajectory frame site is missing key 'label'. Provide a per-site "
+                "label like 'Si1' for stable widget rendering."
+            )
+        if "properties" not in first_site or not isinstance(
+            first_site["properties"], dict
+        ):
+            raise ValueError(
+                "Trajectory frame site needs dict key 'properties' "
+                "(use {} if no properties are present)."
+            )
+
+        missing_lattice_keys = [
+            key
+            for key in ("a", "b", "c", "alpha", "beta", "gamma")
+            if key not in structure_data["lattice"]
+        ]
+        if missing_lattice_keys:
+            raise ValueError(
+                "Trajectory frame structure lattice is missing derived cell keys "
+                f"{missing_lattice_keys}. Include keys "
+                "['a', 'b', 'c', 'alpha', 'beta', 'gamma'] for robust rendering."
+            )
+
     def _normalize_trajectory(self, trajectory: Any) -> dict[str, Any] | None:
         """Convert trajectory to matterviz format."""
         if trajectory is None:
             return None
 
-        # Check if already in correct format (dict with 'frames' key)
-        if isinstance(trajectory, dict) and "frames" in trajectory:
+        def is_structure_like(struct_or_atoms: Any) -> bool:
+            """Check whether object looks like a structure/atoms instance."""
+            return hasattr(struct_or_atoms, "as_dict") or hasattr(
+                struct_or_atoms, "get_chemical_symbols"
+            )
+
+        # Check if already in trajectory-dict format and validate schema.
+        if isinstance(trajectory, dict):
+            frames_data = trajectory.get("frames")
+            if (
+                isinstance(frames_data, list)
+                and frames_data
+                and all(is_structure_like(frame) for frame in frames_data)
+            ):
+                normalized_trajectory = self._normalize_trajectory(frames_data)
+                if isinstance(normalized_trajectory, dict):
+                    input_metadata = trajectory.get("metadata")
+                    if isinstance(input_metadata, dict):
+                        normalized_trajectory["metadata"] = input_metadata
+                return normalized_trajectory
+            self._validate_trajectory_dict(trajectory)
             return trajectory
 
         # Handle list/sequence of structures or dicts with properties

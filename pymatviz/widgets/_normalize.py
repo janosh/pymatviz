@@ -7,6 +7,38 @@ from __future__ import annotations
 from typing import Any
 
 
+def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
+    """Normalize Ferrox HKL payload into widget-compatible shape.
+
+    Args:
+        hkls_data: HKL payload from Ferrox-style dict input.
+
+    Returns:
+        Normalized HKL payload where flat or grouped Miller indices are converted
+        to `[[{"hkl": [h, k, l]}], ...]`. Unrecognized structures are returned
+        unchanged.
+    """
+    if not isinstance(hkls_data, list):
+        return hkls_data
+    if hkls_data and all(
+        isinstance(hkl_entry, list)
+        and len(hkl_entry) == 3
+        and all(isinstance(value, int) for value in hkl_entry)
+        for hkl_entry in hkls_data
+    ):
+        return [[{"hkl": hkl_entry}] for hkl_entry in hkls_data]
+    if hkls_data and all(
+        isinstance(hkl_group, list)
+        and hkl_group
+        and isinstance(hkl_group[0], list)
+        and len(hkl_group[0]) == 3
+        and all(isinstance(value, int) for value in hkl_group[0])
+        for hkl_group in hkls_data
+    ):
+        return [[{"hkl": hkl_group[0]}] for hkl_group in hkls_data]
+    return hkls_data
+
+
 def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
@@ -130,30 +162,8 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
             if "d_spacings" in obj:
                 normalized["d_hkls"] = obj["d_spacings"]
 
-            hkls_data = obj.get("hkls")
-            if isinstance(hkls_data, list):
-                if hkls_data and all(
-                    isinstance(hkl_entry, list)
-                    and len(hkl_entry) == 3
-                    and all(isinstance(value, int) for value in hkl_entry)
-                    for hkl_entry in hkls_data
-                ):
-                    normalized["hkls"] = [
-                        [{"hkl": hkl_entry}] for hkl_entry in hkls_data
-                    ]
-                elif hkls_data and all(
-                    isinstance(hkl_group, list)
-                    and hkl_group
-                    and isinstance(hkl_group[0], list)
-                    and len(hkl_group[0]) == 3
-                    and all(isinstance(value, int) for value in hkl_group[0])
-                    for hkl_group in hkls_data
-                ):
-                    normalized["hkls"] = [
-                        [{"hkl": hkl_group[0]}] for hkl_group in hkls_data
-                    ]
-                else:
-                    normalized["hkls"] = hkls_data
+            if "hkls" in obj:
+                normalized["hkls"] = _normalize_ferrox_hkls(obj["hkls"])
 
             return normalized
 

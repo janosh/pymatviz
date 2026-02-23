@@ -252,7 +252,12 @@ def test_widget_complete_lifecycle(
 
     # Verify state preservation
     for key, value in state.items():
-        assert getattr(restored_widget, key) == value
+        if key != "trajectory":
+            assert getattr(restored_widget, key) == value
+
+    restored_trajectory = restored_widget.trajectory
+    assert restored_trajectory is not None
+    assert len(restored_trajectory["frames"]) == len(state["trajectory"]["frames"])
 
 
 def test_widget_performance_and_large_trajectories(
@@ -401,10 +406,6 @@ def test_trajectory_widget_backward_compatibility(
     [
         (None, None),
         ([], {"frames": [], "metadata": {}}),
-        (
-            {"frames": [{"structure": "test", "step": 0}]},
-            {"frames": [{"structure": "test", "step": 0}]},
-        ),
     ],
 )
 def test_trajectory_widget_edge_cases(
@@ -417,6 +418,82 @@ def test_trajectory_widget_edge_cases(
         assert result == expected_result  # Test exact match for non-None results
     else:
         assert result is None
+
+
+@pytest.mark.parametrize(
+    ("trajectory_input", "error_cls", "match"),
+    [
+        (
+            {"metadata": {}},
+            ValueError,
+            "missing required key 'frames'",
+        ),
+        (
+            {"frames": []},
+            ValueError,
+            "frames' is empty",
+        ),
+        (
+            {"frames": [123]},
+            TypeError,
+            "frame must be a dict",
+        ),
+        (
+            {"frames": [{"step": 0}]},
+            ValueError,
+            "missing required key 'structure'",
+        ),
+        (
+            {"frames": [{"structure": "bad", "step": 0}]},
+            TypeError,
+            "'structure' must be a dict",
+        ),
+        (
+            {
+                "frames": [
+                    {
+                        "structure": {
+                            "lattice": {"matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]},
+                            "sites": [],
+                        },
+                        "step": 0,
+                    }
+                ]
+            },
+            ValueError,
+            "empty 'sites'",
+        ),
+        (
+            {
+                "frames": [
+                    {
+                        "structure": {
+                            "lattice": {
+                                "matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                                "a": 1.0,
+                                "b": 1.0,
+                                "c": 1.0,
+                                "alpha": 90.0,
+                                "beta": 90.0,
+                                "gamma": 90.0,
+                            },
+                            "sites": [{"species": [{"element": "Si", "occu": 1.0}]}],
+                        },
+                        "step": 0,
+                    }
+                ]
+            },
+            ValueError,
+            "coordinate key 'abc' or 'xyz'",
+        ),
+    ],
+)
+def test_trajectory_widget_invalid_dict_schema_raises_helpful_error(
+    trajectory_input: dict[str, Any], error_cls: type[Exception], match: str
+) -> None:
+    """Invalid trajectory dicts should fail with actionable schema errors."""
+    with pytest.raises(error_cls, match=match):
+        TrajectoryWidget(trajectory=trajectory_input)
 
 
 def test_trajectory_widget_single_structure_extra_fields() -> None:
@@ -477,7 +554,7 @@ def test_trajectory_widget_with_structure_info() -> None:
         species=("Fe", "Fe"),
         coords=((0, 0, 0), (0.5, 0.5, 0.5)),
     )
-    structure.info = {"temperature": 300, "pressure": 1.0}
+    object.__setattr__(structure, "info", {"temperature": 300, "pressure": 1.0})
 
     widget = TrajectoryWidget(trajectory=structure)
 
