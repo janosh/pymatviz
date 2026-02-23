@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
@@ -268,3 +268,50 @@ def test_matterviz_widget_inheritance() -> None:
     """Test that MatterVizWidget inherits from AnyWidget."""
     widget = matterviz.MatterVizWidget()
     assert isinstance(widget, traitlets.HasTraits)
+
+
+@pytest.mark.parametrize(
+    ("init_kwargs", "updates", "expected_state"),
+    [
+        (
+            {
+                "widget_type": "composition",
+                "style": "width: 400px",
+                "show_controls": False,
+            },
+            {},
+            {
+                "widget_type": "composition",
+                "style": "width: 400px",
+                "show_controls": False,
+            },
+        ),
+        (
+            {},
+            {"widget_type": "xrd", "style": "height: 300px", "show_controls": False},
+            {"widget_type": "xrd", "style": "height: 300px", "show_controls": False},
+        ),
+    ],
+)
+def test_matterviz_widget_to_dict(
+    tmp_path: Path,
+    init_kwargs: dict[str, Any],
+    updates: dict[str, Any],
+    expected_state: dict[str, Any],
+) -> None:
+    """Test to_dict exports public synced state and reflects updates."""
+    with (
+        patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="widget content"),
+        patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
+    ):
+        widget = matterviz.MatterVizWidget(**init_kwargs)
+
+    for key, value in updates.items():
+        setattr(widget, key, value)
+
+    state = widget.to_dict()
+    assert set(state) == {"widget_type", "style", "show_controls"}
+    assert "_esm" not in state
+    assert "_css" not in state
+    for key, value in expected_state.items():
+        assert state[key] == value

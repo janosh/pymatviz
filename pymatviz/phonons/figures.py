@@ -413,6 +413,9 @@ def phonon_dos(
     )
 
     dos_dict: dict[str, PhononDos] = {}
+    stack_group_by_trace: dict[str, str] | None = (
+        {} if stack and project is not None else None
+    )
     total_overlay_dict: dict[str, PhononDos] = {}
     for label, raw_dos in raw_doses.items():
         label_prefix = f"{label} - " if label else ""
@@ -448,7 +451,11 @@ def phonon_dos(
                 for site_idx, site in enumerate(raw_dos.structure)
             }
         )
-        dos_dict |= {f"{label_prefix}{key}": dos for key, dos in projected_dos.items()}
+        for key, dos in projected_dos.items():
+            trace_name = f"{label_prefix}{key}"
+            dos_dict[trace_name] = dos
+            if stack_group_by_trace is not None:
+                stack_group_by_trace[trace_name] = label
         if show_total:
             total_overlay_dict[f"{label_prefix}Total"] = PhononDos(
                 raw_dos.frequencies, raw_dos.densities
@@ -493,15 +500,18 @@ def phonon_dos(
 
     fig = go.Figure()
     cumulative_density_by_group: dict[str, np.ndarray] = {}
+
+    def _stack_group(trace_name: str) -> str:
+        """Return stack accumulation group for this DOS trace."""
+        if project is None:
+            return ""
+        return stack_group_by_trace.get(trace_name, "") if stack_group_by_trace else ""
+
     for dos_name, dos_obj in dos_dict.items():
         frequencies, densities = _prepare_dos(dos_obj)
         scatter_kwargs: dict[str, Any] = {"mode": "lines"}
         if stack:
-            stack_group = (
-                ""
-                if project is None or " - " not in dos_name
-                else dos_name.split(" - ", maxsplit=1)[0]
-            )
+            stack_group = _stack_group(dos_name)
             densities = densities + cumulative_density_by_group.get(
                 stack_group, np.zeros_like(densities)
             )

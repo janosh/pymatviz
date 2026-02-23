@@ -89,6 +89,7 @@ def build_widget_assets() -> None:
 class MatterVizWidget(AnyWidget):
     """Base widget class that lazily loads and caches MatterViz widget assets."""
 
+    state_fields: tuple[str, ...] = ("widget_type", "style", "show_controls")
     widget_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     style = tl.Unicode(allow_none=True).tag(sync=True)
     show_controls = tl.Bool(default_value=True).tag(sync=True)
@@ -106,3 +107,14 @@ class MatterVizWidget(AnyWidget):
         self._css = fetch_widget_asset("matterviz.css", version_override)
 
         super().__init__(**kwargs)
+
+    def display(self) -> MatterVizWidget:
+        """Display this widget in notebook environments and return itself."""
+        from IPython.display import display as ipython_display
+
+        ipython_display(self)
+        return self
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return public synced widget state as a plain dictionary."""
+        return {field: getattr(self, field) for field in self.state_fields}
