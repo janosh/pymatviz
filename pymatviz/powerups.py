@@ -887,10 +887,18 @@ def add_ecdf_line(
             fig.data[-1].update(**current_trace_kwargs)
 
     # Make sure yaxis2 has color set if specified in trace_kwargs
-    if "line" in trace_kwargs and "color" in trace_kwargs["line"]:
-        fig.layout.yaxis2.color = trace_kwargs["line"]["color"]
-    elif "line_color" in trace_kwargs:
-        fig.layout.yaxis2.color = trace_kwargs["line_color"]
+    yaxis2_color: str | None = None
+    line_settings = trace_kwargs.get("line")
+    if isinstance(line_settings, dict):
+        line_color = line_settings.get("color")
+        if isinstance(line_color, str):
+            yaxis2_color = line_color
+    if yaxis2_color is None:
+        top_level_line_color = trace_kwargs.get("line_color")
+        if isinstance(top_level_line_color, str):
+            yaxis2_color = top_level_line_color
+    if yaxis2_color is not None:
+        fig.layout.yaxis2.update(color=yaxis2_color)
 
     return fig
 

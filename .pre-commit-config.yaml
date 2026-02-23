@@ -14,11 +14,11 @@ repos:
     hooks:
       - id: ty
         name: ty check
-        entry: ty check
+        entry: ty check --ignore unused-type-ignore-comment --ignore unused-ignore-comment
         language: python
         types: [python]
         pass_filenames: false
-        additional_dependencies: [ty>=0.0.15]
+        additional_dependencies: [ty==0.0.18]
       - id: check-readme-src-links
         name: Check README source links
         entry: python .github/scripts/check_readme_src_links.py

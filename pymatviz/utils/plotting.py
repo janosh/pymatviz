@@ -10,7 +10,8 @@ Available functions:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Final, cast
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -18,7 +19,7 @@ import plotly.io as pio
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Sequence
     from typing import Any
 
     from pymatviz.typing import ColorType
@@ -306,9 +307,10 @@ def get_fig_xy_range(
             trace_index = indices[0] if indices else 0
         elif isinstance(traces, list):
             trace_index = traces[0] if traces else 0
-        elif callable(traces):
+        elif isinstance(traces, Callable):
+            trace_predicate = cast("Callable[[Any], bool]", traces)
             for idx, trace in enumerate(fig.data):
-                if traces(trace):
+                if trace_predicate(trace):
                     trace_index = idx
                     break
 

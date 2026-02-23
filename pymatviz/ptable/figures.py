@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, cast
 
 import numpy as np
 import pandas as pd
@@ -222,16 +222,18 @@ def ptable_heatmap_plotly(
             if symbol in exclude_elements:
                 label = "excl."
             elif heat_val := heat_value_element_map.get(symbol):
-                if callable(fmt):
-                    label = fmt(heat_val)
+                if isinstance(fmt, Callable):
+                    format_func = cast("Callable[[float], str]", fmt)
+                    label = format_func(heat_val)
                 elif heat_mode == "percent":
                     label = f"{heat_val:{fmt or '.1%'}}"
                 else:
                     fmt_str = fmt if isinstance(fmt, str) else ".1f"
                     label = f"{si_fmt(heat_val, fmt=fmt_str)}".replace("e+0", "e")
 
-            if callable(label_map):
-                label = label_map(label)
+            if isinstance(label_map, Callable):
+                label_mapper = cast("Callable[[str], str]", label_map)
+                label = label_mapper(label)
             elif isinstance(label_map, dict) and label in label_map:
                 label = str(label_map[label])
         # Apply custom element symbol if provided
@@ -638,9 +640,13 @@ def ptable_hists_plotly(
         )
 
         if annotations is not None:
-            if callable(annotations):
+            if isinstance(annotations, Callable):
                 # Pass the element's values to the callable
-                annotation = annotations(values)
+                annotation_func = cast(
+                    "Callable[[Sequence[int | float]], str | dict[str, Any] | list[dict[str, Any]]]",  # noqa: E501
+                    annotations,
+                )
+                annotation = annotation_func(values)
             elif isinstance(annotations, dict):
                 # Use dictionary lookup
                 annotation = annotations.get(symbol, "")
@@ -1188,9 +1194,10 @@ def ptable_heatmap_splits_plotly(
                 color = zero_color
             elif len(values) <= idx or np.isnan(values[idx]):
                 color = nan_color
-            elif callable(colorscale):
+            elif isinstance(colorscale, Callable):
                 # Use the callable to get color directly
-                color = colorscale(symbol, values[idx], idx)
+                colorscale_func = cast("Callable[[str, float, int], str]", colorscale)
+                color = colorscale_func(symbol, values[idx], idx)
             else:
                 # Get the colorscale for this split
                 cscale = colorscales[idx]
@@ -1381,7 +1388,9 @@ def ptable_heatmap_splits_plotly(
                 if not np.isnan(val):
                     split_name = split_labels[idx]
                     formatted_val = (
-                        hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
+                        cast("Callable[[float], str]", hover_fmt)(val)
+                        if isinstance(hover_fmt, Callable)
+                        else f"{val:{hover_fmt}}"
                     )
                     split_values.append(
                         hover_template.format(
@@ -1400,7 +1409,9 @@ def ptable_heatmap_splits_plotly(
                 if not np.isnan(val):
                     split_name = split_labels[idx]
                     formatted_val = (
-                        hover_fmt(val) if callable(hover_fmt) else f"{val:{hover_fmt}}"
+                        cast("Callable[[float], str]", hover_fmt)(val)
+                        if isinstance(hover_fmt, Callable)
+                        else f"{val:{hover_fmt}}"
                     )
                     hover_text += f"<br>{split_name}: {formatted_val}"
 
@@ -1417,9 +1428,13 @@ def ptable_heatmap_splits_plotly(
             **xy_ref,
         )
         if annotations is not None:
-            if callable(annotations):
+            if isinstance(annotations, Callable):
                 # Pass the element's values to the callable
-                annotation = annotations(values)
+                annotation_func = cast(
+                    "Callable[[Sequence[float]], str | dict[str, Any]]",
+                    annotations,
+                )
+                annotation = annotation_func(values)
             elif isinstance(annotations, dict):
                 # Use dictionary lookup
                 annotation = annotations.get(symbol, "")
@@ -1871,9 +1886,13 @@ def ptable_scatter_plotly(
 
         # Add custom annotations if provided
         if annotations is not None:
-            if callable(annotations):
+            if isinstance(annotations, Callable):
                 # Pass the element's values to the callable
-                annotation = annotations(symbol_data)
+                annotation_func = cast(
+                    "Callable[[Any], str | dict[str, Any] | list[dict[str, Any]]]",
+                    annotations,
+                )
+                annotation = annotation_func(symbol_data)
             elif isinstance(annotations, dict):
                 annotation = annotations.get(symbol, "")
             else:

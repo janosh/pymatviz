@@ -6,7 +6,7 @@ import functools
 import itertools
 import math
 import warnings
-from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
@@ -30,7 +30,6 @@ from pymatviz.utils import df_ptable, pick_max_contrast_color
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from typing import Any, Literal
 
     import pandas as pd
@@ -430,8 +429,9 @@ def get_site_hover_text(
 
     def format_coord(coord_val: float) -> str:
         """Format a coordinate value using the specified formatter."""
-        if callable(float_fmt):
-            return float_fmt(coord_val)
+        if isinstance(float_fmt, Callable):
+            float_formatter = cast("Callable[[float], str]", float_fmt)
+            return float_formatter(coord_val)
         # Convert to float to handle int coordinates properly
         formatted = f"{float(coord_val):{float_fmt}}"
         # For ints, remove unnecessary decimal places
