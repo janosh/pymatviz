@@ -12,8 +12,9 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class XrdWidget(MatterVizWidget):
     """MatterViz widget for visualizing X-ray diffraction patterns.
 
-    Accepts a pymatgen DiffractionPattern or a dict with x (2-theta), y (intensity),
-    and optional hkls/d_hkls data.
+    Accepts a pymatgen DiffractionPattern or a dict with either:
+    - canonical keys: x (2-theta), y (intensity), optional hkls/d_hkls
+    - Ferrox keys: two_theta, intensities, optional hkls/d_spacings
 
     Examples:
         From a pymatgen DiffractionPattern:

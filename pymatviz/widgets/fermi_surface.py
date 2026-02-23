@@ -59,6 +59,9 @@ class FermiSurfaceWidget(MatterVizWidget):
             band_data: Raw band grid data with energies on a k-grid.
             **kwargs: Additional widget properties.
         """
+        if (fermi_data is None) == (band_data is None):
+            raise ValueError("Provide exactly one of fermi_data or band_data.")
+
         super().__init__(
             widget_type="fermi_surface",
             fermi_data=fermi_data,

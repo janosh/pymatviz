@@ -376,29 +376,52 @@ def test_phonon_dos_projection_dict(
     assert {trace.name for trace in fig.data} == expected_names
 
 
+@pytest.mark.parametrize(
+    "model_labels",
+    [
+        ("DFT", "ML"),
+        ("DFT - baseline", "DFT - variant"),
+    ],
+)
 def test_phonon_dos_projection_dict_stack_resets_by_model(
     complete_phonon_dos: CompletePhononDos,
+    model_labels: tuple[str, str],
 ) -> None:
     """Test stacked projected DOS accumulates separately for each model label."""
-    dos_dict = {"DFT": complete_phonon_dos, "ML": complete_phonon_dos}
+    dos_dict = {label: copy.deepcopy(complete_phonon_dos) for label in model_labels}
     fig_unstacked = pmv.phonon_dos(
         dos_dict, project="element", show_total=False, stack=False
     )
     fig_stacked = pmv.phonon_dos(
         dos_dict, project="element", show_total=False, stack=True
     )
-
     unstacked_by_name = {
         trace.name: np.asarray(trace.y) for trace in fig_unstacked.data
     }
     stacked_by_name = {trace.name: np.asarray(trace.y) for trace in fig_stacked.data}
-    for model_label in ("DFT", "ML"):
-        trace_name = next(
-            trace.name
+    for model_label in model_labels:
+        found_trace = next(
+            trace
             for trace in fig_stacked.data
             if trace.name.startswith(f"{model_label} - ")
         )
-        assert np.allclose(stacked_by_name[trace_name], unstacked_by_name[trace_name])
+        assert np.allclose(
+            stacked_by_name[found_trace.name], unstacked_by_name[found_trace.name]
+        )
+        assert found_trace.fill == "tozeroy"
+
+
+def test_phonon_dos_projection_stack_keeps_total_unstacked(
+    complete_phonon_dos: CompletePhononDos,
+) -> None:
+    """Test total overlay trace values are unchanged by stack=True."""
+    fig_unstacked = pmv.phonon_dos(complete_phonon_dos, project="element", stack=False)
+    fig_stacked = pmv.phonon_dos(complete_phonon_dos, project="element", stack=True)
+    unstacked_total = next(
+        trace for trace in fig_unstacked.data if trace.name == "Total"
+    )
+    stacked_total = next(trace for trace in fig_stacked.data if trace.name == "Total")
+    assert np.allclose(stacked_total.y, unstacked_total.y)
 
 
 def test_phonon_dos_projection_raises(

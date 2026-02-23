@@ -111,7 +111,7 @@ def calc_reduced_binary_liquidus_temp(
     binary_interpolations: dict[str, interp1d],
     *,
     on_key_err: Literal["raise", "set-none"] = "set-none",
-) -> float:
+) -> float | None:
     """Calculate the reduced average binary liquidus temperature for a general alloy.
 
     NOTE the unary melting points from the tabulated data are not used here as
@@ -127,11 +127,11 @@ def calc_reduced_binary_liquidus_temp(
         on_key_err ("raise" | "set-none"): How to handle missing binary
             systems.
             If "raise", raises KeyError. If "set-none", returns None.
-            Defaults to "raise".
+            Defaults to "set-none".
 
     Returns:
-        float: The reduced binary liquidus temperature or None if on_key_err="set-none"
-            and a binary system is missing.
+        float | None: Reduced binary liquidus temperature or None if
+            on_key_err="set-none" and a binary system is missing.
     """
     if len(composition) < 2:
         return 1.0
@@ -149,7 +149,7 @@ def calc_reduced_binary_liquidus_temp(
         except KeyError:
             if on_key_err == "raise":
                 raise
-            return None  # type: ignore[return-value]
+            return None
         binary_weight = sum(comp_dict.values())
         temp_alloy += temp_binary * binary_weight
         temp_alloy_norm += binary_weight
@@ -335,13 +335,15 @@ if __name__ == "__main__":
     binary_interpolations = load_binary_liquidus_data(zip_path)
 
     # Test with a simple binary composition
-    test_comp = Composition("Pt50P50")
+    test_comp = "Pt50P50"
     features = calc_liu_features(
         [test_comp], binary_liquidus_data=binary_interpolations
     )
     print("\nFeatures for Pt50P50:")
     for feature, values in features.items():
-        print(f"{feature}: {values[test_comp]:.2f}")  # type: ignore[index]
+        feature_value = values.get(test_comp)
+        value_text = "N/A" if feature_value is None else f"{feature_value:.2f}"
+        print(f"{feature}: {value_text}")
 
     # Test with a more complex composition
     test_comp2 = "Zr6.2Ti45.8Cu39.9Ni5.1Sn3"
@@ -350,7 +352,9 @@ if __name__ == "__main__":
     )
     print(f"\nFeatures for {test_comp2}:")
     for feature, values in features2.items():
-        print(f"{feature}: {values[test_comp2]:.2f}")
+        feature_value = values.get(test_comp2)
+        value_text = "N/A" if feature_value is None else f"{feature_value:.2f}"
+        print(f"{feature}: {value_text}")
 
     # Example of batch processing with a DataFrame
     df_test = pd.DataFrame(

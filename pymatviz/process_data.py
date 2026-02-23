@@ -375,7 +375,7 @@ def normalize_structures(
 
 def normalize_to_dict(
     inputs: T | Sequence[T] | dict[str, T],
-    cls: type[T] = SiteCollection,  # ty: ignore[invalid-parameter-default]
+    cls: type[T] = SiteCollection,
     key_gen: Callable[[T], str] = lambda obj: getattr(
         obj, "formula", type(obj).__name__
     ),
@@ -474,14 +474,14 @@ def df_to_arrays(
         if isinstance(col_name, str | int):
             flat_args.append(col_name)
         else:
-            flat_args.extend(col_name)  # ty: ignore[invalid-argument-type]
+            flat_args.extend(col_name)
 
     df_no_nan = df.dropna(subset=flat_args)
     for idx, col_name in enumerate(args):
         if isinstance(col_name, str | int):
             args[idx] = df_no_nan[col_name].to_numpy()  # ty: ignore[invalid-assignment]
         else:
-            col_data = df_no_nan[[*col_name]].to_numpy().T  # ty: ignore[not-iterable]
+            col_data = df_no_nan[[*col_name]].to_numpy().T
             args[idx] = dict(zip(col_name, col_data, strict=True))  # ty: ignore[invalid-assignment]
 
     return args  # ty: ignore[invalid-return-type]
@@ -589,7 +589,7 @@ def normalize_spacegroups(
         from moyopy.interface import MoyoAdapter
 
         return pd.Series(
-            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]  # ty: ignore[invalid-argument-type]
+            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]
         )
 
     result = pd.Series(data)

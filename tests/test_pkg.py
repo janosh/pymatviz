@@ -74,7 +74,3 @@ def test_all_modules_reexported() -> None:
 
     finally:
         sys.modules[pmv.PKG_NAME] = pymatviz
-
-
-def test_is_ipython() -> None:
-    assert pmv.IS_IPYTHON in (True, False)

@@ -13,7 +13,6 @@ import pytest
 from pymatviz import TrajectoryWidget
 from tests.widgets.conftest import (
     assert_widget_build_files,
-    assert_widget_edge_cases,
     assert_widget_notebook_integration,
 )
 
@@ -152,14 +151,18 @@ def test_widget_creates_view_model(multi_frame_trajectory: dict[str, Any]) -> No
     widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
     assert widget.widget_type == "trajectory"
 
-    # Test that widget has proper attributes for anywidget
-    assert hasattr(widget, "trajectory"), "Widget missing trajectory attribute"
-    assert hasattr(widget, "current_step_idx")
-    assert hasattr(widget, "layout"), "Widget missing layout attribute"
-    assert hasattr(widget, "display_mode"), "Widget missing display_mode attribute"
-    assert hasattr(widget, "show_controls"), "Widget missing show_controls attribute"
+    # Synced traits expose the widget state contract used by the frontend.
+    class_traits = widget.class_traits()
+    for trait_name in (
+        "trajectory",
+        "current_step_idx",
+        "layout",
+        "display_mode",
+        "show_controls",
+    ):
+        trait = class_traits[trait_name]
+        assert trait.metadata.get("sync") is True
 
-    # Test that attributes are synchronized
     assert widget.trajectory == multi_frame_trajectory
     assert widget.current_step_idx == 0
     assert widget.layout == "auto"
@@ -252,7 +255,12 @@ def test_widget_complete_lifecycle(
 
     # Verify state preservation
     for key, value in state.items():
-        assert getattr(restored_widget, key) == value
+        if key != "trajectory":
+            assert getattr(restored_widget, key) == value
+
+    restored_trajectory = restored_widget.trajectory
+    assert restored_trajectory is not None
+    assert len(restored_trajectory["frames"]) == len(state["trajectory"]["frames"])
 
 
 def test_widget_performance_and_large_trajectories(
@@ -283,9 +291,9 @@ def test_widget_edge_cases_and_error_handling_trajectory(
     assert widget.trajectory is None
     assert widget.current_step_idx == 0
 
-    # Test widget handles missing/corrupted build files gracefully
+    # Build-asset sanity check on a regular instance.
     widget = TrajectoryWidget(trajectory=multi_frame_trajectory)
-    assert_widget_edge_cases(widget)
+    assert_widget_build_files(widget)
 
     # Test trajectory serialization
     json.dumps(widget.trajectory)  # Should not raise exception
@@ -401,10 +409,6 @@ def test_trajectory_widget_backward_compatibility(
     [
         (None, None),
         ([], {"frames": [], "metadata": {}}),
-        (
-            {"frames": [{"structure": "test", "step": 0}]},
-            {"frames": [{"structure": "test", "step": 0}]},
-        ),
     ],
 )
 def test_trajectory_widget_edge_cases(
@@ -417,6 +421,151 @@ def test_trajectory_widget_edge_cases(
         assert result == expected_result  # Test exact match for non-None results
     else:
         assert result is None
+
+
+def _build_invalid_trajectory_input(
+    case_name: str, valid_structure: dict[str, Any]
+) -> dict[str, Any]:
+    """Create compact invalid trajectory dict variants for schema validation tests."""
+
+    def _single_frame(structure_data: Any) -> dict[str, Any]:
+        """Wrap structure payload in a single-frame trajectory dict."""
+        return {"frames": [{"structure": structure_data, "step": 0}]}
+
+    def _site_with_species(element_symbol: str, *, include_abc: bool) -> dict[str, Any]:
+        """Build a minimal site payload with optional fractional coordinates."""
+        site_data: dict[str, Any] = {
+            "species": [{"element": element_symbol, "occu": 1.0}]
+        }
+        if include_abc:
+            site_data["abc"] = [0, 0, 0]
+        return site_data
+
+    invalid_cases: dict[str, dict[str, Any]] = {
+        "missing_frames": {"metadata": {}},
+        "empty_frames": {"frames": []},
+        "non_dict_frame": {"frames": [123]},
+        "missing_structure": {"frames": [{"step": 0}]},
+        "bad_structure_type": {"frames": [{"structure": "bad", "step": 0}]},
+        "missing_lattice_params": _single_frame(
+            {
+                "lattice": {"a": 1.0, "b": 1.0, "c": 1.0},
+                "sites": [_site_with_species("Si", include_abc=True)],
+            }
+        ),
+        "empty_sites": _single_frame({**valid_structure, "sites": []}),
+        "missing_site_coords": _single_frame(
+            {**valid_structure, "sites": [_site_with_species("Si", include_abc=False)]}
+        ),
+        "missing_coords_second_site": _single_frame(
+            {
+                **valid_structure,
+                "sites": [
+                    _site_with_species("Si", include_abc=True),
+                    _site_with_species("O", include_abc=False),
+                ],
+            }
+        ),
+    }
+    return invalid_cases[case_name]
+
+
+@pytest.mark.parametrize(
+    ("case_name", "error_cls", "match"),
+    [
+        ("missing_frames", ValueError, "missing required key 'frames'"),
+        ("empty_frames", ValueError, "frames' is empty"),
+        ("non_dict_frame", TypeError, "frame must be a dict"),
+        ("missing_structure", ValueError, "missing required key 'structure'"),
+        ("bad_structure_type", TypeError, "'structure' must be a dict"),
+        (
+            "missing_lattice_params",
+            ValueError,
+            "must provide either 'matrix' or all of",
+        ),
+        ("empty_sites", ValueError, "empty 'sites'"),
+        ("missing_site_coords", ValueError, "coordinate key 'abc' or 'xyz'"),
+        ("missing_coords_second_site", ValueError, "coordinate key 'abc' or 'xyz'"),
+    ],
+)
+def test_trajectory_widget_invalid_dict_schema_raises_helpful_error(
+    case_name: str,
+    error_cls: type[Exception],
+    match: str,
+    fe3co4_disordered: Structure,
+) -> None:
+    """Invalid trajectory dicts should fail with actionable schema errors."""
+    valid_structure = fe3co4_disordered.as_dict()
+    trajectory_input = _build_invalid_trajectory_input(case_name, valid_structure)
+    with pytest.raises(error_cls, match=match):
+        TrajectoryWidget(trajectory=trajectory_input)
+
+
+@pytest.mark.parametrize(
+    ("structure_input", "expected_site_coord_key", "expected_lattice_key"),
+    [
+        (
+            {
+                "lattice": {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]},
+                "sites": [{"species": [{"element": "Si"}], "abc": [0.25, 0.5, 0.75]}],
+            },
+            "xyz",
+            "volume",
+        ),
+        (
+            {
+                "lattice": {
+                    "a": 4.0,
+                    "b": 5.0,
+                    "c": 6.0,
+                    "alpha": 90.0,
+                    "beta": 90.0,
+                    "gamma": 90.0,
+                },
+                "sites": [{"species": [{"element": "Si"}], "xyz": [1.0, 2.5, 3.0]}],
+            },
+            "abc",
+            "matrix",
+        ),
+    ],
+)
+def test_trajectory_widget_derives_missing_fields(
+    structure_input: dict[str, Any],
+    expected_site_coord_key: str,
+    expected_lattice_key: str,
+) -> None:
+    """Trajectory dict inputs derive missing lattice/site fields."""
+    widget = TrajectoryWidget(
+        trajectory={"frames": [{"structure": structure_input, "step": 0}]}
+    )
+    structure = widget.trajectory["frames"][0]["structure"]
+    site = structure["sites"][0]
+    assert expected_lattice_key in structure["lattice"]
+    assert expected_site_coord_key in site
+    assert "label" in site
+    assert "properties" in site
+
+
+def test_trajectory_widget_accepts_string_species_entries() -> None:
+    """String species entries should normalize without assuming mapping access."""
+    widget = TrajectoryWidget(
+        trajectory={
+            "frames": [
+                {
+                    "structure": {
+                        "lattice": {"matrix": [[4, 0, 0], [0, 4, 0], [0, 0, 4]]},
+                        "sites": [{"species": ["Si"], "abc": [0.0, 0.0, 0.0]}],
+                    },
+                    "step": 0,
+                }
+            ]
+        }
+    )
+    structure = widget.trajectory["frames"][0]["structure"]
+    site = structure["sites"][0]
+    assert site["species"] == ["Si"]
+    assert site["label"] == "Si1"
+    assert "xyz" in site
 
 
 def test_trajectory_widget_single_structure_extra_fields() -> None:
@@ -445,17 +594,28 @@ def test_trajectory_string_input_raises_error() -> None:
         TrajectoryWidget(trajectory="just a string")
 
 
-def test_trajectory_widget_with_structure_properties() -> None:
-    """Test TrajectoryWidget handles structures with properties and info."""
+@pytest.mark.parametrize(
+    ("metadata_field", "metadata_value"),
+    [
+        ("properties", {"energy": -1.23, "forces": [[0.1, 0.2, 0.3]]}),
+        ("info", {"temperature": 300, "pressure": 1.0}),
+    ],
+)
+def test_trajectory_widget_with_structure_metadata(
+    metadata_field: str, metadata_value: dict[str, Any]
+) -> None:
+    """TrajectoryWidget forwards structure properties/info to frame metadata."""
     from pymatgen.core import Lattice, Structure
 
-    # Create structure with properties only
     structure = Structure(
         lattice=Lattice.cubic(3.0),
         species=("Fe", "Fe"),
         coords=((0, 0, 0), (0.5, 0.5, 0.5)),
     )
-    structure.properties = {"energy": -1.23, "forces": [[0.1, 0.2, 0.3]]}
+    if metadata_field == "properties":
+        structure.properties = metadata_value
+    else:
+        object.__setattr__(structure, "info", metadata_value)
 
     widget = TrajectoryWidget(trajectory=structure)
 
@@ -463,30 +623,7 @@ def test_trajectory_widget_with_structure_properties() -> None:
     assert len(widget.trajectory["frames"]) == 1
     frame = widget.trajectory["frames"][0]
     assert "metadata" in frame
-    assert frame["metadata"]["energy"] == -1.23
-    assert frame["metadata"]["forces"] == [[0.1, 0.2, 0.3]]
-
-
-def test_trajectory_widget_with_structure_info() -> None:
-    """Test TrajectoryWidget handles structures with info attribute."""
-    from pymatgen.core import Lattice, Structure
-
-    # Create structure with info only (no properties)
-    structure = Structure(
-        lattice=Lattice.cubic(3.0),
-        species=("Fe", "Fe"),
-        coords=((0, 0, 0), (0.5, 0.5, 0.5)),
-    )
-    structure.info = {"temperature": 300, "pressure": 1.0}
-
-    widget = TrajectoryWidget(trajectory=structure)
-
-    assert widget.trajectory is not None
-    assert len(widget.trajectory["frames"]) == 1
-    frame = widget.trajectory["frames"][0]
-    assert "metadata" in frame
-    assert frame["metadata"]["temperature"] == 300
-    assert frame["metadata"]["pressure"] == 1.0
+    assert frame["metadata"] == metadata_value
 
 
 def test_trajectory_widget_with_ase_atoms() -> None:

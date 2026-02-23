@@ -21,7 +21,7 @@ A toolkit for visualizations in materials informatics.
 
 <slot name="how-to-cite">
 
-> If you use `pymatviz` in your research, [see how to cite](#how-to-cite-pymatviz). Check out [33 existing papers using `pymatviz`](#papers-using-pymatviz) for inspiration!
+> If you use `pymatviz` in your research, [see how to cite](#how-to-cite-pymatviz). Check out [41 existing papers using `pymatviz`](#papers-using-pymatviz) for inspiration!
 
 </slot>
 
@@ -63,9 +63,9 @@ See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module suppo
 |                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/figures.py#L53)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/figures.py#L53) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                        ![ptable-heatmap-plotly-more-hover-data]                                                         |                                                          ![ptable-heatmap-plotly-log]                                                           |
-|               [`ptable_hists_plotly(data)`](pymatviz/ptable/figures.py#L433) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/figures.py#L1547) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
+|               [`ptable_hists_plotly(data)`](pymatviz/ptable/figures.py#L435) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/figures.py#L1562) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
 |                                                                 ![ptable-hists-plotly]                                                                  |                                                        ![ptable-scatter-plotly-markers]                                                         |
-| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/figures.py#L844) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/figures.py#L844)                                |
+| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/figures.py#L850) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/figures.py#L850)                                |
 |                                                            ![ptable-heatmap-splits-plotly-2]                                                            |                                                        ![ptable-heatmap-splits-plotly-3]                                                        |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -83,10 +83,10 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ## Phonons
 
-| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L43) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L363) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
+| [`phonon_bands(bands_dict)`](pymatviz/phonons/figures.py#L43) [![fig-icon]](assets/scripts/phonons/phonon_bands.py) |                  [`phonon_dos(doses_dict)`](pymatviz/phonons/figures.py#L366) [![fig-icon]](assets/scripts/phonons/phonon_dos.py)                  |
 | :-----------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                   ![phonon-bands]                                                   |                                                                   ![phonon-dos]                                                                    |
-|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L589)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L589) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
+|                 [`phonon_bands_and_dos(bands_dict, doses_dict)`](pymatviz/phonons/figures.py#L606)                  | [`phonon_bands_and_dos(single_bands, single_dos)`](pymatviz/phonons/figures.py#L606) [![fig-icon]](assets/scripts/phonons/phonon_bands_and_dos.py) |
 |                                           ![phonon-bands-and-dos-mp-2758]                                           |                                                          ![phonon-bands-and-dos-mp-23907]                                                          |
 
 [phonon-bands]: assets/svg/phonon-bands-mp-2758.svg
@@ -397,26 +397,34 @@ See [`citation.cff`](citation.cff) or cite the [Zenodo record](https://zenodo.or
 
 ## Papers using `pymatviz`
 
-Sorted by number of citations, then year. Last updated 2026-01-19. Auto-generated [from Google Scholar](https://scholar.google.com/scholar?q=pymatviz). Manual additions [via PR](https://github.com/janosh/pymatviz/edit/main/readme.md) welcome.
+Sorted by number of citations, then year. Last updated 2026-02-25. Auto-generated [from Google Scholar](https://scholar.google.com/scholar?q=pymatviz). Manual additions [via PR](https://github.com/janosh/pymatviz/edit/main/readme.md) welcome.
 
+1. L Barroso-Luque, M Shuaibi, X Fu et al. (2024). [Open materials 2024 (omat24) inorganic materials dataset and models](https://arxiv.org/abs/2410.12771) (cited by 230)
 1. C Zeni, R Pinsler, D Zügner et al. (2023). [Mattergen: a generative model for inorganic materials design](https://arxiv.org/abs/2312.03687) (cited by 166)
-1. L Barroso-Luque, M Shuaibi, X Fu et al. (2024). [Open materials 2024 (omat24) inorganic materials dataset and models](https://arxiv.org/abs/2410.12771) (cited by 136)
-1. J Riebesell, REA Goodall, P Benner et al. (2023). [Matbench Discovery--A framework to evaluate machine learning crystal stability predictions](https://arxiv.org/abs/2308.14920) (cited by 117)
-1. C Chen, DT Nguyen, SJ Lee et al. (2024). [Accelerating computational materials discovery with machine learning and cloud high-performance computing: from large-scale screening to experimental validation](https://pubs.acs.org/doi/abs/10.1021/jacs.4c03849) (cited by 81)
-1. M Giantomassi, G Materzanini (2024). [Systematic assessment of various universal machine‐learning interatomic potentials](https://onlinelibrary.wiley.com/doi/abs/10.1002/mgea.58) (cited by 44)
-1. K Li, AN Rubungo, X Lei et al. (2025). [Probing out-of-distribution generalization in machine learning for materials](https://www.nature.com/articles/s43246-024-00731-w) (cited by 29)
-1. AA Naik, C Ertural, P Benner et al. (2023). [A quantum-chemical bonding database for solid-state materials](https://www.nature.com/articles/s41597-023-02477-5) (cited by 22)
-1. A Kapeliukha, RA Mayo (2025). [MOSAEC-DB: a comprehensive database of experimental metal–organic frameworks with verified chemical accuracy suitable for molecular simulations](https://pubs.rsc.org/en/content/articlehtml/2025/sc/d4sc07438f) (cited by 15)
+1. C Chen, DT Nguyen, SJ Lee et al. (2024). [Accelerating computational materials discovery with machine learning and cloud high-performance computing: from large-scale screening to experimental validation](https://pubs.acs.org/doi/abs/10.1021/jacs.4c03849) (cited by 131)
+1. J Riebesell, REA Goodall, P Benner et al. (2023). [Matbench Discovery--A framework to evaluate machine learning crystal stability predictions](https://arxiv.org/abs/2308.14920) (cited by 106)
+1. H Yu, M Giantomassi, G Materzanini (2024). [Systematic assessment of various universal machine‐learning interatomic potentials](https://onlinelibrary.wiley.com/doi/abs/10.1002/mgea.58) (cited by 69)
+1. M Gibaldi, A Kapeliukha, A White et al. (2025). [MOSAEC-DB: a comprehensive database of experimental metal–organic frameworks with verified chemical accuracy suitable for molecular simulations](https://pubs.rsc.org/en/content/articlehtml/2025/sc/d4sc07438f) (cited by 34)
+1. AA Naik, C Ertural, N Dhamrait et al. (2023). [A quantum-chemical bonding database for solid-state materials](https://www.nature.com/articles/s41597-023-02477-5) (cited by 28)
+1. F Therrien, J Abou Haibeh, D Sharma et al. (2026). [OBELiX: A curated dataset of crystal structures and experimentally measured ionic conductivities for lithium solid-state electrolytes](https://pubs.rsc.org/en/content/articlehtml/2026/dd/d5dd00441a) (cited by 9)
+1. K Li, AN Rubungo, X Lei et al. (2024). [Probing out-of-distribution generalization in machine learning for materials](https://arxiv.org/abs/2406.06489) (cited by 9)
 1. Y Zhou, X He, Z Li (2025). [Scientists' First Exam: Probing Cognitive Abilities of MLLM via Perception, Understanding, and Reasoning](https://arxiv.org/abs/2506.10521) (cited by 6)
-1. HH Li, Q Chen, G Ceder (2024). [Voltage Mining for (De) lithiation-Stabilized Cathodes and a Machine Learning Model for Li-Ion Cathode Voltage](https://pubs.acs.org/doi/abs/10.1021/acsami.4c15742) (cited by 4)
-1. F Therrien, JA Haibeh, D Sharma (2025). [OBELiX: A curated dataset of crystal structures and experimentally measured ionic conductivities for lithium solid-state electrolytes](https://arxiv.org/abs/2502.14234) (cited by 3)
+1. HH Li, Q Chen, G Ceder (2024). [Voltage Mining for (De) lithiation-Stabilized Cathodes and a Machine Learning Model for Li-Ion Cathode Voltage](https://pubs.acs.org/doi/abs/10.1021/acsami.4c15742) (cited by 5)
+1. A Peng, X Liu, MY Guo et al. (2025). [The openlam challenges](https://arxiv.org/abs/2501.16358) (cited by 3)
+1. J Nam, S Liu, G Winter et al. (2025). [Flow matching for accelerated simulation of atomic transport in crystalline materials](https://www.nature.com/articles/s42256-025-01125-4) (cited by 3)
 1. A Onwuli, KT Butler, A Walsh (2024). [Ionic species representations for materials informatics](https://pubs.aip.org/aip/aml/article/2/3/036112/3313198) (cited by 3)
 1. N Tuchinda, CA Schuh (2025). [Grain Boundary Segregation and Embrittlement of Aluminum Binary Alloys from First Principles](https://arxiv.org/abs/2502.01579) (cited by 2)
-1. A Peng, MY Guo (2025). [The OpenLAM Challenges](https://arxiv.org/abs/2501.16358) (cited by 1)
+1. R Nduma, H Park, A Walsh (2025). [Crystalyse: a multi-tool agent for materials design](https://arxiv.org/abs/2512.00977) (cited by 2)
 1. N Tuchinda, CA Schuh (2025). [A grain boundary embrittlement genome for substitutional cubic alloys](https://pubs.aip.org/aip/apl/article/126/17/171602/3345390) (cited by 1)
+1. A Giunto, Y Fei, P Nevatia et al. (2025). [Harnessing Automated SEM-EDS and Machine Learning to Unlock High-Throughput Compositional Characterization of Powder Materials](https://www.researchsquare.com/article/rs-7837297/latest) (cited by 1)
+1. T Cavignac, J Schmidt, PP De Breuck et al. (2025). [AI-Driven Expansion and Application of the Alexandria Database](https://arxiv.org/abs/2512.09169) (cited by 1)
+1. J Riebesell, H Yang, R Goodall et al. (2024). [janosh/pymatviz: v0. 11.0](https://ui.adsabs.harvard.edu/abs/2024zndo..13624216R/abstract) (cited by 1)
+1. T Warford, FL Thiemann, GĂĄ CsĂĄnyi (2026). [Better without U: Impact of Selective Hubbard U Correction on Foundational MLIPs](https://arxiv.org/abs/2601.21056)
+1. Mohammed Al-Fahdi, Riccardo Rurali, Jianjun Hu et al. (2025). [Accelerated discovery of extreme lattice thermal conductivity by crystal graph attention networks and chemical bonding](https://www.nature.com/articles/s41524-025-01871-4)
+1. Omar Allam, Brook Wander, SungYeon Kim et al. (2025). [AQCat25: Unlocking spin-aware, high-fidelity machine learning potentials for heterogeneous catalysis](http://arxiv.org/abs/2510.22938)
 1. Giulio Benedini, Antoine Loew, Matti Hellstrom et al. (2025). [Universal Machine Learning Potential for Systems with Reduced Dimensionality](https://arxiv.org/abs/2508.15614v1)
 1. Yuan Chiang, Tobias Kreiman, Elizabeth Weaver et al. (2025). [MLIP Arena: Advancing Fairness and Transparency in Machine Learning Interatomic Potentials through an Open and Accessible Benchmark Platform](https://openreview.net/forum?id=ysKfIavYQE)
-1. Orion Cohen, Janosh Riebesell, Rhys Goodall et al. (2025). [TorchSim: An efficient atomistic simulation engine in PyTorch](http://arxiv.org/abs/2508.06628)
+1. Orion Archer Cohen, Janosh Riebesell, Rhys Goodall et al. (2025). [TorchSim: An efficient atomistic simulation engine in PyTorch](http://iopscience.iop.org/article/10.1088/3050-287X/ae1799)
 1. Alin Marin Elena, Prathami Divakar Kamath, Théo Jaffrelot Inizan et al. (2025). [Machine learned potential for high-throughput phonon calculations of metal—organic frameworks](https://www.nature.com/articles/s41524-025-01611-8)
 1. Matthew K. Horton, Patrick Huck, Ruo Xi Yang et al. (2025). [Accelerated data-driven materials science with the Materials Project](https://www.nature.com/articles/s41563-025-02272-0)
 1. Aaron D. Kaplan, Runze Liu, Ji Qi et al. (2025). [A Foundational Potential Energy Surface Dataset for Materials](http://arxiv.org/abs/2503.04070)
@@ -427,7 +435,7 @@ Sorted by number of citations, then year. Last updated 2026-01-19. Auto-generate
 1. Yingheng Tang, Wenbin Xu, Jie Cao et al. (2025). [MatterChat: A Multi-Modal LLM for Material Science](http://arxiv.org/abs/2502.13107)
 1. Liming Wu, Wenbing Huang, Rui Jiao et al. (2025). [Siamese Foundation Models for Crystal Structure Prediction](http://arxiv.org/abs/2503.10471)
 1. K Yan, M Bohde, A Kryvenko (2025). [A Materials Foundation Model via Hybrid Invariant-Equivariant Architectures](https://arxiv.org/abs/2503.05771)
-1. RA Mayo (2025). [Generalizable classification of crystal structure error types using graph attention networks](https://pubs.rsc.org/en/content/articlehtml/2025/ta/d5ta05426e)
+1. M Gibaldi, J Luo, AJ White et al. (2025). [Generalizable classification of crystal structure error types using graph attention networks](https://pubs.rsc.org/en/content/articlehtml/2025/ta/d5ta05426e)
 1. Daniel W. Davies, Keith T. Butler, Adam J. Jackson et al. (2024). [SMACT: Semiconducting Materials by Analogy and Chemical Theory](https://github.com/WMD-group/SMACT)
 1. Hui Zheng, Eric Sivonxay, Rasmus Christensen et al. (2024). [The ab initio non-crystalline structure database: empowering machine learning to decode diffusivity](https://www.nature.com/articles/s41524-024-01469-2)
 1. Ilyes Batatia, Philipp Benner, Yuan Chiang et al. (2023). [A foundation model for atomistic materials chemistry](https://arxiv.org/abs/2401.00096v1)

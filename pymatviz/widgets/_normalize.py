@@ -7,6 +7,38 @@ from __future__ import annotations
 from typing import Any
 
 
+def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
+    """Normalize Ferrox HKL payload into widget-compatible shape.
+
+    Args:
+        hkls_data: HKL payload from Ferrox-style dict input.
+
+    Returns:
+        Normalized HKL payload where flat or grouped Miller indices are converted
+        to `[[{"hkl": [h, k, l]}], ...]`. Unrecognized structures are returned
+        unchanged.
+    """
+    if not isinstance(hkls_data, list):
+        return hkls_data
+    if hkls_data and all(
+        isinstance(hkl_entry, list)
+        and len(hkl_entry) == 3
+        and all(isinstance(value, int) for value in hkl_entry)
+        for hkl_entry in hkls_data
+    ):
+        return [[{"hkl": hkl_entry}] for hkl_entry in hkls_data]
+    if hkls_data and all(
+        isinstance(hkl_group, list)
+        and hkl_group
+        and isinstance(hkl_group[0], list)
+        and len(hkl_group[0]) == 3
+        and all(isinstance(value, int) for value in hkl_group[0])
+        for hkl_group in hkls_data
+    ):
+        return [[{"hkl": hkl_group[0]}] for hkl_group in hkls_data]
+    return hkls_data
+
+
 def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
     """Convert None/dict/MSONable object to a JSON-serializable dict.
 
@@ -102,7 +134,61 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     if obj is None:
         return None
     if isinstance(obj, dict):
-        return obj
+        has_canonical_keys = all(key in obj for key in ("x", "y"))
+        has_ferrox_keys = all(key in obj for key in ("two_theta", "intensities"))
+        has_partial_canonical = any(key in obj for key in ("x", "y"))
+        has_partial_ferrox = any(key in obj for key in ("two_theta", "intensities"))
+
+        if has_canonical_keys:
+            if len(obj["x"]) != len(obj["y"]):
+                raise ValueError(
+                    "XRD pattern dict has mismatched canonical lengths: "
+                    f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
+                )
+            return obj
+
+        if has_ferrox_keys:
+            if len(obj["two_theta"]) != len(obj["intensities"]):
+                raise ValueError(
+                    "XRD pattern dict has mismatched Ferrox lengths: "
+                    f"len(two_theta)={len(obj['two_theta'])}, "
+                    f"len(intensities)={len(obj['intensities'])}."
+                )
+
+            normalized: dict[str, Any] = {
+                "x": obj["two_theta"],
+                "y": obj["intensities"],
+            }
+            if "d_spacings" in obj:
+                normalized["d_hkls"] = obj["d_spacings"]
+
+            if "hkls" in obj:
+                normalized["hkls"] = _normalize_ferrox_hkls(obj["hkls"])
+
+            return normalized
+
+        if has_partial_canonical:
+            missing_keys = [key for key in ("x", "y") if key not in obj]
+            raise ValueError(
+                "XRD pattern dict missing required key(s) for canonical schema: "
+                f"{missing_keys}. Expected keys: ['x', 'y']."
+            )
+
+        if has_partial_ferrox:
+            missing_keys = [
+                key for key in ("two_theta", "intensities") if key not in obj
+            ]
+            raise ValueError(
+                "XRD pattern dict missing required key(s) for Ferrox schema: "
+                f"{missing_keys}. Expected keys: ['two_theta', 'intensities']."
+            )
+
+        available_keys = sorted(str(key) for key in obj)
+        raise ValueError(
+            "Unsupported XRD dict schema. Expected either canonical keys "
+            "['x', 'y'] or Ferrox keys ['two_theta', 'intensities'], but got "
+            f"keys: {available_keys}."
+        )
 
     try:
         from pymatgen.analysis.diffraction.xrd import DiffractionPattern
