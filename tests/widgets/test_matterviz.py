@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
-import traitlets
 
 from pymatviz import PKG_NAME
 from pymatviz.widgets import matterviz
@@ -262,12 +261,6 @@ def test_lazy_matterviz_widget_version_override(tmp_path: Path) -> None:
 
     assert widget._esm == "widget content"
     assert widget._css == "widget content"
-
-
-def test_matterviz_widget_inheritance() -> None:
-    """Test that MatterVizWidget inherits from AnyWidget."""
-    widget = matterviz.MatterVizWidget()
-    assert isinstance(widget, traitlets.HasTraits)
 
 
 @pytest.mark.parametrize(

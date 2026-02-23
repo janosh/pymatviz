@@ -406,6 +406,12 @@ def test_phonon_dos_projection_dict_stack_resets_by_model(
             if trace.name.startswith(f"{model_label} - ")
         )
         assert np.allclose(stacked_by_name[trace_name], unstacked_by_name[trace_name])
+        first_group_trace = next(
+            trace
+            for trace in fig_stacked.data
+            if trace.name.startswith(f"{model_label} - ")
+        )
+        assert first_group_trace.fill == "tozeroy"
 
 
 def test_phonon_dos_projection_stack_keeps_total_unstacked(

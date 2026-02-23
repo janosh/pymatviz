@@ -503,6 +503,7 @@ def phonon_dos(
 
     fig = go.Figure()
     cumulative_density_by_group: dict[str, np.ndarray] = {}
+    seen_stack_groups: set[str] = set()
 
     def _stack_group(trace_name: str) -> str:
         """Return stack accumulation group for this DOS trace."""
@@ -519,7 +520,10 @@ def phonon_dos(
                 stack_group, np.zeros_like(densities)
             )
             cumulative_density_by_group[stack_group] = densities
-            scatter_kwargs["fill"] = "tonexty"
+            scatter_kwargs["fill"] = (
+                "tozeroy" if stack_group not in seen_stack_groups else "tonexty"
+            )
+            seen_stack_groups.add(stack_group)
         fig.add_scatter(
             x=frequencies, y=densities, name=dos_name, **scatter_kwargs | kwargs
         )

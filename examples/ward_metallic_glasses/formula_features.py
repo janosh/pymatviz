@@ -127,7 +127,7 @@ def calc_reduced_binary_liquidus_temp(
         on_key_err ("raise" | "set-none"): How to handle missing binary
             systems.
             If "raise", raises KeyError. If "set-none", returns None.
-            Defaults to "raise".
+            Defaults to "set-none".
 
     Returns:
         float | None: Reduced binary liquidus temperature or None if
@@ -341,7 +341,9 @@ if __name__ == "__main__":
     )
     print("\nFeatures for Pt50P50:")
     for feature, values in features.items():
-        print(f"{feature}: {values[test_comp]:.2f}")
+        feature_value = values.get(test_comp)
+        value_text = "N/A" if feature_value is None else f"{feature_value:.2f}"
+        print(f"{feature}: {value_text}")
 
     # Test with a more complex composition
     test_comp2 = "Zr6.2Ti45.8Cu39.9Ni5.1Sn3"
@@ -350,7 +352,9 @@ if __name__ == "__main__":
     )
     print(f"\nFeatures for {test_comp2}:")
     for feature, values in features2.items():
-        print(f"{feature}: {values[test_comp2]:.2f}")
+        feature_value = values.get(test_comp2)
+        value_text = "N/A" if feature_value is None else f"{feature_value:.2f}"
+        print(f"{feature}: {value_text}")
 
     # Example of batch processing with a DataFrame
     df_test = pd.DataFrame(

@@ -102,7 +102,79 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     if obj is None:
         return None
     if isinstance(obj, dict):
-        return obj
+        has_canonical_keys = "x" in obj or "y" in obj
+        has_ferrox_keys = "two_theta" in obj or "intensities" in obj
+
+        if has_canonical_keys:
+            missing_keys = [key for key in ("x", "y") if key not in obj]
+            if missing_keys:
+                raise ValueError(
+                    "XRD pattern dict missing required key(s) for canonical schema: "
+                    f"{missing_keys}. Expected keys: ['x', 'y']."
+                )
+            if len(obj["x"]) != len(obj["y"]):
+                raise ValueError(
+                    "XRD pattern dict has mismatched canonical lengths: "
+                    f"len(x)={len(obj['x'])}, len(y)={len(obj['y'])}."
+                )
+            return obj
+
+        if has_ferrox_keys:
+            missing_keys = [
+                key for key in ("two_theta", "intensities") if key not in obj
+            ]
+            if missing_keys:
+                raise ValueError(
+                    "XRD pattern dict missing required key(s) for Ferrox schema: "
+                    f"{missing_keys}. Expected keys: ['two_theta', 'intensities']."
+                )
+            if len(obj["two_theta"]) != len(obj["intensities"]):
+                raise ValueError(
+                    "XRD pattern dict has mismatched Ferrox lengths: "
+                    f"len(two_theta)={len(obj['two_theta'])}, "
+                    f"len(intensities)={len(obj['intensities'])}."
+                )
+
+            normalized: dict[str, Any] = {
+                "x": obj["two_theta"],
+                "y": obj["intensities"],
+            }
+            if "d_spacings" in obj:
+                normalized["d_hkls"] = obj["d_spacings"]
+
+            hkls_data = obj.get("hkls")
+            if isinstance(hkls_data, list):
+                if hkls_data and all(
+                    isinstance(hkl_entry, list)
+                    and len(hkl_entry) == 3
+                    and all(isinstance(value, int) for value in hkl_entry)
+                    for hkl_entry in hkls_data
+                ):
+                    normalized["hkls"] = [
+                        [{"hkl": hkl_entry}] for hkl_entry in hkls_data
+                    ]
+                elif hkls_data and all(
+                    isinstance(hkl_group, list)
+                    and hkl_group
+                    and isinstance(hkl_group[0], list)
+                    and len(hkl_group[0]) == 3
+                    and all(isinstance(value, int) for value in hkl_group[0])
+                    for hkl_group in hkls_data
+                ):
+                    normalized["hkls"] = [
+                        [{"hkl": hkl_group[0]}] for hkl_group in hkls_data
+                    ]
+                else:
+                    normalized["hkls"] = hkls_data
+
+            return normalized
+
+        available_keys = sorted(str(key) for key in obj)
+        raise ValueError(
+            "Unsupported XRD dict schema. Expected either canonical keys "
+            "['x', 'y'] or Ferrox keys ['two_theta', 'intensities'], but got "
+            f"keys: {available_keys}."
+        )
 
     try:
         from pymatgen.analysis.diffraction.xrd import DiffractionPattern
