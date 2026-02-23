@@ -184,6 +184,19 @@ def test_normalize_xrd_pattern_ferrox_hkls_shapes(
     assert result["hkls"] == expected_hkls
 
 
+def test_normalize_xrd_pattern_mixed_schema_prefers_complete_ferrox() -> None:
+    """Test mixed-key dict uses Ferrox schema when canonical is incomplete."""
+    mixed_dict = {
+        "y": [10.0, 20.0],
+        "two_theta": [30.0, 40.0],
+        "intensities": [1.0, 2.0],
+    }
+    result = normalize_xrd_pattern(mixed_dict)
+    assert result is not None
+    assert result["x"] == [30.0, 40.0]
+    assert result["y"] == [1.0, 2.0]
+
+
 def test_normalize_xrd_pattern_from_diffraction_pattern() -> None:
     """Test DiffractionPattern conversion produces plain floats/ints."""
     from pymatgen.analysis.diffraction.xrd import DiffractionPattern

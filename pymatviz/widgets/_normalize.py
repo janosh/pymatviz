@@ -102,16 +102,12 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
     if obj is None:
         return None
     if isinstance(obj, dict):
-        has_canonical_keys = "x" in obj or "y" in obj
-        has_ferrox_keys = "two_theta" in obj or "intensities" in obj
+        has_canonical_keys = all(key in obj for key in ("x", "y"))
+        has_ferrox_keys = all(key in obj for key in ("two_theta", "intensities"))
+        has_partial_canonical = any(key in obj for key in ("x", "y"))
+        has_partial_ferrox = any(key in obj for key in ("two_theta", "intensities"))
 
         if has_canonical_keys:
-            missing_keys = [key for key in ("x", "y") if key not in obj]
-            if missing_keys:
-                raise ValueError(
-                    "XRD pattern dict missing required key(s) for canonical schema: "
-                    f"{missing_keys}. Expected keys: ['x', 'y']."
-                )
             if len(obj["x"]) != len(obj["y"]):
                 raise ValueError(
                     "XRD pattern dict has mismatched canonical lengths: "
@@ -120,14 +116,6 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
             return obj
 
         if has_ferrox_keys:
-            missing_keys = [
-                key for key in ("two_theta", "intensities") if key not in obj
-            ]
-            if missing_keys:
-                raise ValueError(
-                    "XRD pattern dict missing required key(s) for Ferrox schema: "
-                    f"{missing_keys}. Expected keys: ['two_theta', 'intensities']."
-                )
             if len(obj["two_theta"]) != len(obj["intensities"]):
                 raise ValueError(
                     "XRD pattern dict has mismatched Ferrox lengths: "
@@ -168,6 +156,22 @@ def normalize_xrd_pattern(obj: Any) -> dict[str, Any] | None:
                     normalized["hkls"] = hkls_data
 
             return normalized
+
+        if has_partial_canonical:
+            missing_keys = [key for key in ("x", "y") if key not in obj]
+            raise ValueError(
+                "XRD pattern dict missing required key(s) for canonical schema: "
+                f"{missing_keys}. Expected keys: ['x', 'y']."
+            )
+
+        if has_partial_ferrox:
+            missing_keys = [
+                key for key in ("two_theta", "intensities") if key not in obj
+            ]
+            raise ValueError(
+                "XRD pattern dict missing required key(s) for Ferrox schema: "
+                f"{missing_keys}. Expected keys: ['two_theta', 'intensities']."
+            )
 
         available_keys = sorted(str(key) for key in obj)
         raise ValueError(
