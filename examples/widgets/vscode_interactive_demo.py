@@ -12,22 +12,31 @@ __date__ = "2025-07-16"
 
 # %%
 import itertools
+import json
 import os
 from typing import Final
 
 import numpy as np
 from ase.build import bulk, molecule
-from IPython.display import display
 from ipywidgets import GridBox, Layout
+from monty.io import zopen
+from monty.json import MontyDecoder
 from phonopy.structure.atoms import PhonopyAtoms
 from pymatgen.core import Composition, Lattice, Structure
 
 import pymatviz as pmv
+from pymatviz.utils.testing import TEST_FILES
+from pymatviz.widgets.matterviz import MatterVizWidget
 
 
 np_rng = np.random.default_rng(seed=0)
 
 # === Convex Hull from PhaseDiagram ===
+
+
+# %% [markdown]
+# ### Convex Hull Widget
+# Build a small Li-Fe-O phase diagram and visualize stable/unstable entries on the hull.
 
 
 # %% Convex Hull — compute stability from PhaseDiagram entries
@@ -50,10 +59,15 @@ convex_hull_widget = pmv.ConvexHullWidget(
     entries=phase_diag,
     style="height: 500px;",
 )
-display(convex_hull_widget)
+convex_hull_widget.display()
 
 
 # === 3D Structure + Brillouin Zone ===
+
+
+# %% [markdown]
+# ### Structure Widget
+# Render wurtzite GaN as an interactive crystal structure with bonds.
 
 
 # %% Structure Widget — wurtzite GaN (hexagonal, more interesting than cubic)
@@ -71,17 +85,27 @@ struct = Structure(
 structure_widget = pmv.StructureWidget(
     structure=struct, show_bonds=True, style="height: 400px;"
 )
-display(structure_widget)
+structure_widget.display()
+
+
+# %% [markdown]
+# ### Brillouin Zone Widget
+# Show the reciprocal-space Brillouin zone corresponding to the GaN structure above.
 
 
 # %% Brillouin Zone — hexagonal BZ from GaN
 bz_widget = pmv.BrillouinZoneWidget(
     structure=struct, show_vectors=True, style="height: 400px;"
 )
-display(bz_widget)
+bz_widget.display()
 
 
 # === XRD Pattern ===
+
+
+# %% [markdown]
+# ### XRD Widget
+# Compute an XRD pattern for rutile TiO2 and render peak intensities versus 2-theta.
 
 
 # %% XRD Pattern — rutile TiO2 (tetragonal, richer peak pattern than cubic Si)
@@ -103,10 +127,15 @@ tio2_struct = Structure(
 xrd_pattern = XRDCalculator().get_pattern(tio2_struct)
 
 xrd_widget = pmv.XrdWidget(patterns=xrd_pattern, style="height: 350px;")
-display(xrd_widget)
+xrd_widget.display()
 
 
 # === Trajectory with Force Vectors ===
+
+
+# %% [markdown]
+# ### Trajectory Widget
+# Simulate a short perturbed Fe trajectory and display structure and scalar properties.
 
 
 # %% Trajectory Widget — expanding lattice with energy/force properties
@@ -132,50 +161,142 @@ trajectory_widget = pmv.TrajectoryWidget(
     show_force_vectors=True,
     style="height: 600px;",
 )
-display(trajectory_widget)
+trajectory_widget.display()
+
+
+# === Plot Widgets ===
+
+
+# %% [markdown]
+# ### Scatter Plot Widget
+# Dual-axis comparison of `sin(x)` and `cos(x)` on shared x-values.
+
+
+# %% ScatterPlot Widget — dual-axis trigonometric curves
+scatter_series = [
+    {
+        "label": "sin(x)",
+        "x": np.linspace(0, 6.0, 60).tolist(),
+        "y": np.sin(np.linspace(0, 6.0, 60)).tolist(),
+    },
+    {
+        "label": "cos(x)",
+        "x": np.linspace(0, 6.0, 60).tolist(),
+        "y": np.cos(np.linspace(0, 6.0, 60)).tolist(),
+        "y_axis": "y2",
+    },
+]
+scatter_plot_widget = pmv.ScatterPlotWidget(
+    series=scatter_series,
+    x_axis={"label": "x"},
+    y_axis={"label": "sin(x)"},
+    y2_axis={"label": "cos(x)", "color": "#ff7f0e"},
+    display={"x_grid": True, "y_grid": True},
+    legend={"position": "top-right"},
+    style="height: 420px;",
+)
+MatterVizWidget.display(scatter_plot_widget)
+
+
+# %% [markdown]
+# ### Bar Plot Widget
+# Grouped bars compare two model score series over the same sample index axis.
+
+
+# %% BarPlot Widget — grouped comparison bars
+bar_series = [
+    {"label": "Model A", "x": [0, 1, 2], "y": [4.2, 5.1, 4.8]},
+    {"label": "Model B", "x": [0, 1, 2], "y": [3.9, 4.6, 5.2]},
+]
+bar_plot_widget = pmv.BarPlotWidget(
+    series=bar_series,
+    mode="grouped",
+    x_axis={"label": "Sample index"},
+    y_axis={"label": "Score"},
+    display={"y_grid": True},
+    style="height: 360px;",
+)
+MatterVizWidget.display(bar_plot_widget)
+
+
+# %% [markdown]
+# ### Histogram Widget
+# Overlaid histograms summarize the value distributions of the two scatter series.
+
+
+# %% Histogram Widget — distribution overlay for scatter data
+histogram_series = [
+    {
+        "label": scatter_series[0]["label"],
+        "x": scatter_series[0]["x"],
+        "y": scatter_series[0]["y"],
+    },
+    {
+        "label": scatter_series[1]["label"],
+        "x": scatter_series[1]["x"],
+        "y": scatter_series[1]["y"],
+    },
+]
+histogram_widget = pmv.HistogramWidget(
+    series=histogram_series,
+    bins=20,
+    mode="overlay",
+    x_axis={"label": "Value"},
+    y_axis={"label": "Count"},
+    style="height: 360px;",
+)
+MatterVizWidget.display(histogram_widget)
 
 
 # === Band Structure + DOS ===
 
 
+# %% [markdown]
+# ### Band Structure Widget
+# Load realistic phonon band structure data from test fixtures.
+
+
 # %% Band Structure Widget — dict-based demo
-band_data = {
-    "@module": "pymatgen.electronic_structure.bandstructure",
-    "@class": "BandStructureSymmLine",
-    "bands": {
-        "1": [[0.5 * np.sin(k / 10) + idx for k in range(50)] for idx in range(4)]
-    },
-    "efermi": 0.0,
-    "kpoints": [[k / 50, 0, 0] for k in range(50)],
-    "labels_dict": {"\\Gamma": [0, 0, 0], "X": [0.5, 0, 0], "M": [0.5, 0.5, 0]},
-    "lattice_rec": {"matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]},
-}
+phonon_fixture_path = f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz"
+with zopen(phonon_fixture_path, mode="rt") as file:
+    phonon_doc = json.loads(file.read(), cls=MontyDecoder)
+
+band_data = phonon_doc.phonon_bandstructure
 
 bands_widget = pmv.BandStructureWidget(band_structure=band_data, style="height: 400px;")
-display(bands_widget)
+bands_widget.display()
+
+
+# %% [markdown]
+# ### DOS Widget
+# Use matching phonon DOS data from the same fixture document.
 
 
 # %% DOS Widget — dict-based demo
-dos_data = {
-    "@module": "pymatgen.electronic_structure.dos",
-    "@class": "Dos",
-    "energies": np.linspace(-5, 5, 200).tolist(),
-    "densities": {"1": np.exp(-0.5 * np.linspace(-5, 5, 200) ** 2).tolist()},
-    "efermi": 0.0,
-}
+dos_data = phonon_doc.phonon_dos
 
 dos_widget = pmv.DosWidget(dos=dos_data, style="height: 400px;")
-display(dos_widget)
+dos_widget.display()
+
+
+# %% [markdown]
+# ### Bands + DOS Widget
+# Combine bands and DOS into a coordinated side-by-side view.
 
 
 # %% Combined Bands + DOS
 bands_dos_widget = pmv.BandsAndDosWidget(
     band_structure=band_data, dos=dos_data, style="height: 500px;"
 )
-display(bands_dos_widget)
+bands_dos_widget.display()
 
 
 # === Composition Grid ===
+
+
+# %% [markdown]
+# ### Composition Widgets Grid
+# Compare multiple compositions across pie, bar, and bubble display modes.
 
 
 # %% Composition Widget -- grid of compositions x modes
@@ -206,6 +327,11 @@ GridBox(children=children, layout=layout)
 # === Remote Trajectory Files ===
 
 
+# %% [markdown]
+# ### Remote Trajectory Widget
+# Load and visualize an online XYZ trajectory with force vectors and bond rendering.
+
+
 # %% Render remote ASE trajectory file
 matterviz_traj_dir_url: Final = (
     "https://github.com/janosh/matterviz/raw/6288721042/src/site/trajectories"
@@ -222,7 +348,12 @@ ase_traj_widget = pmv.TrajectoryWidget(
     bonding_strategy="nearest_neighbor",
     style="height: 600px;",
 )
-display(ase_traj_widget)
+ase_traj_widget.display()
+
+
+# %% [markdown]
+# ### Local HDF5 Trajectory Widget
+# Download once, cache locally, and render an HDF5 trajectory file from disk.
 
 
 # %% Render local flame HDF5 trajectory file
@@ -242,22 +373,37 @@ traj_widget = pmv.TrajectoryWidget(
     display_mode="structure+scatter",
     show_force_vectors=False,
 )
-display(traj_widget)
+traj_widget.display()
 
 
 # === MIME Type Auto-display ===
 
 
+# %% [markdown]
+# ### ASE Atoms MIME Rendering
+# Demonstrate automatic widget rendering for an ASE bulk structure object.
+
+
 # %% ASE Atoms — auto-rendered via MIME type recognition
 ase_atoms = bulk("Al", "fcc", a=4.05)
 ase_atoms *= (2, 2, 2)
-display(ase_atoms)
+ase_atoms  # noqa: B018
+
+
+# %% [markdown]
+# ### ASE Molecule MIME Rendering
+# Demonstrate automatic widget rendering for a simple ASE molecular object.
 
 
 # %% ASE molecule
 ase_molecule = molecule("H2O")
 ase_molecule.center(vacuum=3.0)
-display(ase_molecule)
+ase_molecule  # noqa: B018
+
+
+# %% [markdown]
+# ### PhonopyAtoms MIME Rendering
+# Demonstrate automatic widget rendering for a PhonopyAtoms crystal object.
 
 
 # %% PhonopyAtoms — auto-rendered via MIME type recognition
@@ -266,4 +412,4 @@ phonopy_atoms = PhonopyAtoms(
     positions=[[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]],
     cell=[[4, 0, 0], [0, 4, 0], [0, 0, 4]],
 )
-display(phonopy_atoms)
+phonopy_atoms  # noqa: B018
