@@ -42,6 +42,30 @@ jobs:
       test-cmd: pytest --durations 20 --cov-branch --cov-report=xml --cov pymatviz --splits 4 --group ${{ matrix.split }} --splitting-algorithm least_duration
       upload-coverage: strict
 
+  run-widget-demos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Build widget assets, install deps, run all demos
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          export PATH="$HOME/.deno/bin:$PATH"
+          cd pymatviz/widgets/web && deno task build && cd ../../..
+          uv pip install -e '.[test]' marimo nbconvert ipykernel --system
+          python examples/widgets/vscode_interactive_demo.py
+          marimo export script examples/widgets/marimo_demo.py -o /tmp/marimo_flat.py && python /tmp/marimo_flat.py
+          jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=120 examples/widgets/jupyter_demo.ipynb --output /tmp/jupyter_out.ipynb
+
   find-example-scripts:
     runs-on: ubuntu-latest
     outputs:
