@@ -4,6 +4,7 @@ for matterviz Svelte components.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 
@@ -62,6 +63,166 @@ def _to_dict(obj: Any, label: str) -> dict[str, Any] | None:
         f"Unsupported type for {label}: {type(obj)}. "
         "Expected dict or object with .as_dict()."
     )
+
+
+def _normalize_numeric_sequence(
+    values: list[Any], field_label: str, *, series_index: int
+) -> list[float]:
+    """Normalize a numeric sequence into finite floats.
+
+    Args:
+        values: Candidate numeric sequence.
+        field_label: Field name for error context (usually ``x`` or ``y``).
+        series_index: Zero-based series index for actionable error messages.
+
+    Returns:
+        List of finite floats.
+
+    Raises:
+        TypeError: If a value is not numeric.
+        ValueError: If a numeric value is non-finite (NaN/inf).
+    """
+    normalized_values: list[float] = []
+    for value_index, value in enumerate(values):
+        if not isinstance(value, (int, float)):
+            raise TypeError(
+                "Plot series values must be numeric. "
+                f"Got {field_label}[{value_index}]={value!r} in series index "
+                f"{series_index}."
+            )
+        numeric_value = float(value)
+        if not math.isfinite(numeric_value):
+            raise ValueError(
+                "Plot series values must be finite numbers. "
+                f"Got {field_label}[{value_index}]={value!r} in series index "
+                f"{series_index}."
+            )
+        normalized_values.append(numeric_value)
+    return normalized_values
+
+
+def normalize_plot_json(value: Any, label: str) -> Any:
+    """Recursively normalize plot config values to JSON-safe Python primitives.
+
+    Args:
+        value: Arbitrary Python value used in widget props.
+        label: Human-readable label included in error messages.
+
+    Returns:
+        JSON-safe value composed of dict/list/str/bool/int/float/None.
+
+    Raises:
+        TypeError: If value cannot be serialized to JSON-safe primitives.
+        ValueError: If value contains non-finite numbers.
+    """
+    if value is None or isinstance(value, (bool, str)):
+        return value
+
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError(f"{label} contains non-finite float value: {value!r}.")
+        return value
+
+    if hasattr(value, "item") and callable(value.item):
+        try:
+            scalar_value = value.item()
+        except (TypeError, ValueError):
+            scalar_value = None
+        if scalar_value is not None:
+            return normalize_plot_json(scalar_value, label)
+
+    if hasattr(value, "tolist") and callable(value.tolist):
+        try:
+            list_value = value.tolist()
+        except (TypeError, ValueError):
+            list_value = None
+        if list_value is not None:
+            return normalize_plot_json(list_value, label)
+
+    if isinstance(value, dict):
+        return {
+            str(key): normalize_plot_json(entry, f"{label}.{key}")
+            for key, entry in value.items()
+        }
+
+    if isinstance(value, (list, tuple)):
+        return [normalize_plot_json(entry, label) for entry in value]
+
+    if hasattr(value, "as_dict") and callable(value.as_dict):
+        return normalize_plot_json(value.as_dict(), label)
+
+    raise TypeError(
+        f"Unsupported value in {label}: {type(value)}. "
+        "Expected JSON-serializable primitives, lists, dicts, numpy arrays, or "
+        "MSONable objects."
+    )
+
+
+def normalize_plot_series(
+    series_data: Any, *, component_name: str
+) -> list[dict[str, Any]] | None:
+    """Normalize and validate generic plot series payloads.
+
+    Args:
+        series_data: Sequence of series dicts or None.
+        component_name: Widget/component name used in error messages.
+
+    Returns:
+        Normalized list of series dictionaries or ``None``.
+
+    Raises:
+        TypeError: If input type or series item types are invalid.
+        ValueError: If required fields are missing, malformed, or length-mismatched.
+    """
+    if series_data is None:
+        return None
+    if not isinstance(series_data, (list, tuple)):
+        raise TypeError(
+            f"{component_name} 'series' must be a list/tuple of dicts, got "
+            f"{type(series_data)}."
+        )
+
+    normalized_series: list[dict[str, Any]] = []
+    for series_index, series_entry in enumerate(series_data):
+        if not isinstance(series_entry, dict):
+            raise TypeError(
+                f"{component_name} series entries must be dicts. "
+                f"Got type {type(series_entry)} at index {series_index}."
+            )
+        if "x" not in series_entry or "y" not in series_entry:
+            available_keys = sorted(str(key) for key in series_entry)
+            raise ValueError(
+                f"{component_name} series entry must include keys 'x' and 'y'. "
+                f"Got keys at index {series_index}: {available_keys}."
+            )
+
+        normalized_entry = normalize_plot_json(series_entry, f"{component_name}.series")
+        x_values = normalized_entry["x"]
+        y_values = normalized_entry["y"]
+        if not isinstance(x_values, list) or not isinstance(y_values, list):
+            raise TypeError(
+                f"{component_name} series x/y must be list-like after normalization. "
+                f"Got types x={type(x_values)}, y={type(y_values)} at index "
+                f"{series_index}."
+            )
+        if len(x_values) != len(y_values):
+            raise ValueError(
+                f"{component_name} series x/y lengths must match at index "
+                f"{series_index}, got len(x)={len(x_values)} and "
+                f"len(y)={len(y_values)}."
+            )
+
+        normalized_entry["x"] = _normalize_numeric_sequence(
+            x_values, "x", series_index=series_index
+        )
+        normalized_entry["y"] = _normalize_numeric_sequence(
+            y_values, "y", series_index=series_index
+        )
+        normalized_series.append(normalized_entry)
+
+    return normalized_series
 
 
 def normalize_structure_for_bz(obj: Any) -> dict[str, Any] | None:

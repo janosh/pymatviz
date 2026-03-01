@@ -12,16 +12,20 @@ from pymatgen.core import Composition, Lattice, Structure
 from pymatviz.widgets._normalize import (
     _to_dict,
     normalize_convex_hull_entries,
+    normalize_plot_series,
     normalize_structure_for_bz,
     normalize_xrd_pattern,
 )
 from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
+from pymatviz.widgets.bar_plot import BarPlotWidget
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
 from pymatviz.widgets.convex_hull import ConvexHullWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
+from pymatviz.widgets.histogram import HistogramWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
+from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.xrd import XrdWidget
 
 
@@ -268,6 +272,51 @@ def test_normalize_structure_for_bz_unsupported_type() -> None:
         normalize_structure_for_bz(42)
 
 
+# === normalize_plot_series ===
+
+
+def test_normalize_plot_series_from_numpy_arrays() -> None:
+    """Series arrays from NumPy must normalize to finite Python floats."""
+    normalized = normalize_plot_series(
+        [{"x": np.array([0, 1, 2]), "y": np.array([0.1, 0.2, 0.3]), "label": "A"}],
+        component_name="ScatterPlot",
+    )
+    assert normalized == [{"x": [0.0, 1.0, 2.0], "y": [0.1, 0.2, 0.3], "label": "A"}]
+
+
+@pytest.mark.parametrize(
+    ("series_data", "error_cls", "match"),
+    [
+        ("bad", TypeError, "must be a list/tuple"),
+        ([{"x": [0, 1]}], ValueError, "must include keys 'x' and 'y'"),
+        ([{"x": [0], "y": [0, 1]}], ValueError, "lengths must match"),
+        ([{"x": [0, float("nan")], "y": [1, 2]}], ValueError, "non-finite"),
+    ],
+)
+def test_normalize_plot_series_validation_errors(
+    series_data: Any, error_cls: type[Exception], match: str
+) -> None:
+    """Invalid plot series payloads should fail with helpful messages."""
+    with pytest.raises(error_cls, match=match):
+        normalize_plot_series(series_data, component_name="ScatterPlot")
+
+
+@pytest.mark.parametrize(
+    ("series_data", "error_cls", "match"),
+    [
+        ([{"x": [0, 1]}], ValueError, "must include keys 'x' and 'y'"),
+        ([{"x": [0], "y": [0, 1]}], ValueError, "lengths must match"),
+        ([{"x": [0, float("nan")], "y": [1, 2]}], ValueError, "non-finite"),
+    ],
+)
+def test_histogram_widget_series_validation_errors(
+    series_data: Any, error_cls: type[Exception], match: str
+) -> None:
+    """HistogramWidget should validate series early in Python."""
+    with pytest.raises(error_cls, match=match):
+        HistogramWidget(series=series_data)
+
+
 # === Widget construction ===
 
 
@@ -331,6 +380,27 @@ def test_normalize_structure_for_bz_unsupported_type() -> None:
             "patterns",
             {"x": [10], "y": [100]},
         ),
+        (
+            ScatterPlotWidget,
+            {"series": [{"x": [0, 1], "y": [1, 2], "label": "curve"}]},
+            "scatter_plot",
+            "series",
+            [{"x": [0.0, 1.0], "y": [1.0, 2.0], "label": "curve"}],
+        ),
+        (
+            BarPlotWidget,
+            {"series": [{"x": [0, 1], "y": [2, 3], "label": "bars"}]},
+            "bar_plot",
+            "series",
+            [{"x": [0.0, 1.0], "y": [2.0, 3.0], "label": "bars"}],
+        ),
+        (
+            HistogramWidget,
+            {"series": [{"x": [0, 1], "y": [2, 2.5], "label": "hist"}]},
+            "histogram",
+            "series",
+            [{"x": [0.0, 1.0], "y": [2.0, 2.5], "label": "hist"}],
+        ),
     ],
 )
 def test_widget_construction_and_type(
@@ -344,6 +414,20 @@ def test_widget_construction_and_type(
     widget = widget_cls(**kwargs)
     assert widget.widget_type == expected_type
     assert getattr(widget, state_key) == expected_state
+
+
+def test_plot_widget_traitlets_defaults() -> None:
+    """Plot widget wrappers must expose expected default traitlet values."""
+    scatter_widget = ScatterPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}])
+    bar_widget = BarPlotWidget(series=[{"x": [0, 1], "y": [1, 2]}])
+    histogram_widget = HistogramWidget(series=[{"x": [0, 1], "y": [1, 2]}])
+
+    assert scatter_widget.widget_type == "scatter_plot"
+    assert bar_widget.orientation == "vertical"
+    assert bar_widget.mode == "overlay"
+    assert histogram_widget.bins == 100
+    assert histogram_widget.mode == "single"
+    assert histogram_widget.show_legend is True
 
 
 def test_convex_hull_widget_from_phase_diagram() -> None:

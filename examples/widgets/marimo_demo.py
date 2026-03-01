@@ -2,6 +2,10 @@
 
 Run with `marimo edit examples/widgets/marimo_demo.py --no-sandbox --watch`.
 """
+
+# ruff: noqa: ANN001, ANN202, B018, N803
+# marimo cells are generated as `def _(...):` with injected args — these rules
+# conflict with marimo's code generation pattern and cannot be fixed per-cell.
 # /// script
 # dependencies = [
 #     "pymatgen>=2024.1.1",
@@ -13,10 +17,7 @@ Run with `marimo edit examples/widgets/marimo_demo.py --no-sandbox --watch`.
 import marimo
 
 
-# ruff: noqa: B018, ANN001, N803, ANN202
-
-
-__generated_with = "0.14.10"
+__generated_with = "0.20.2"
 app = marimo.App(width="full")
 
 
@@ -50,7 +51,12 @@ def _():
     )
 
 
-# === Convex Hull from PhaseDiagram ===
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Convex Hull Widget
+    Build a compact Li-Fe-O phase diagram and visualize its convex hull.
+    """)
 
 
 @app.cell
@@ -71,7 +77,12 @@ def _(Composition, pmv):
     pmv.ConvexHullWidget(entries=_phase_diag, style="height: 500px;")
 
 
-# === 3D Structure + Brillouin Zone ===
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Structure Widget
+    Render a wurtzite GaN crystal with bonds in an interactive 3D view.
+    """)
 
 
 @app.cell
@@ -91,13 +102,26 @@ def _(Lattice, Structure, pmv):
 
 
 @app.cell
+def _(mo):
+    mo.md("""
+    ### Brillouin Zone Widget
+    Show the reciprocal-space Brillouin zone for the structure above.
+    """)
+
+
+@app.cell
 def _(_struct, pmv):
     pmv.BrillouinZoneWidget(
         structure=_struct, show_vectors=True, style="height: 400px;"
     )
 
 
-# === XRD Pattern ===
+@app.cell
+def _(mo):
+    mo.md("""
+    ### XRD Widget
+    Compute and display an XRD pattern for rutile TiO2.
+    """)
 
 
 @app.cell
@@ -121,7 +145,13 @@ def _(Lattice, Structure, pmv):
     )
 
 
-# === Trajectory with Force Vectors ===
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Trajectory Widget
+    Generate a short perturbed Fe trajectory and plot structure with
+    scalar metadata.
+    """)
 
 
 @app.cell
@@ -148,37 +178,136 @@ def _(Lattice, Structure, np, np_rng, pmv):
     )
 
 
-# === Band Structure + DOS ===
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Scatter Plot Widget
+    Dual-axis comparison of `sin(x)` and `cos(x)` with shared x-values.
+    """)
 
 
 @app.cell
 def _(np, pmv):
-    _band_data = {
-        "@module": "pymatgen.electronic_structure.bandstructure",
-        "@class": "BandStructureSymmLine",
-        "bands": {
-            "1": [[0.5 * np.sin(k / 10) + idx for k in range(50)] for idx in range(4)]
+    x_vals = np.linspace(0, 6.0, 60)
+    scatter_series = [
+        dict(label="sin(x)", x=x_vals, y=np.sin(x_vals)),
+        dict(label="cos(x)", x=x_vals, y=np.cos(x_vals), y_axis="y2"),
+    ]
+    pmv.ScatterPlotWidget(
+        series=scatter_series,
+        x_axis={"label": "x"},
+        y_axis={"label": "sin(x)"},
+        y2_axis={"label": "cos(x)", "color": "#ff7f0e"},
+        display={"x_grid": True, "y_grid": True},
+        legend={"position": "top-right"},
+        style="height: 420px;",
+    )
+    return (scatter_series,)
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Bar Plot Widget
+    Grouped bars compare two model scores across the same sample indices.
+    """)
+
+
+@app.cell
+def _(pmv):
+    bar_series = [
+        {"label": "Model A", "x": [0, 1, 2], "y": [4.2, 5.1, 4.8]},
+        {"label": "Model B", "x": [0, 1, 2], "y": [3.9, 4.6, 5.2]},
+    ]
+    pmv.BarPlotWidget(
+        series=bar_series,
+        mode="grouped",
+        x_axis={"label": "Sample index"},
+        y_axis={"label": "Score"},
+        display={"y_grid": True},
+        style="height: 360px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Histogram Widget
+    Overlaid histograms show the distributions of the two trigonometric series.
+    """)
+
+
+@app.cell
+def _(pmv, scatter_series):
+    histogram_series = [
+        {
+            "label": scatter_series[0]["label"],
+            "x": scatter_series[0]["x"],
+            "y": scatter_series[0]["y"],
         },
-        "efermi": 0.0,
-        "kpoints": [[k / 50, 0, 0] for k in range(50)],
-        "labels_dict": {"\\Gamma": [0, 0, 0], "X": [0.5, 0, 0], "M": [0.5, 0.5, 0]},
-        "lattice_rec": {"matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]},
-    }
-    pmv.BandStructureWidget(band_structure=_band_data, style="height: 400px;")
-    return (_band_data,)
+        {
+            "label": scatter_series[1]["label"],
+            "x": scatter_series[1]["x"],
+            "y": scatter_series[1]["y"],
+        },
+    ]
+    pmv.HistogramWidget(
+        series=histogram_series,
+        bins=20,
+        mode="overlay",
+        x_axis={"label": "Value"},
+        y_axis={"label": "Count"},
+        style="height: 360px;",
+    )
 
 
 @app.cell
-def _(np, pmv):
-    _dos_data = {
-        "@module": "pymatgen.electronic_structure.dos",
-        "@class": "Dos",
-        "energies": np.linspace(-5, 5, 200).tolist(),
-        "densities": {"1": np.exp(-0.5 * np.linspace(-5, 5, 200) ** 2).tolist()},
-        "efermi": 0.0,
-    }
+def _(mo):
+    mo.md("""
+    ### Band Structure Widget
+    Load realistic phonon band structure data from test fixtures.
+    """)
+
+
+@app.cell
+def _(pmv):
+    import json
+
+    from monty.io import zopen
+    from monty.json import MontyDecoder
+
+    from pymatviz.utils.testing import TEST_FILES
+
+    _phonon_fixture_path = f"{TEST_FILES}/phonons/mp-2758-Sr4Se4-pbe.json.xz"
+    with zopen(_phonon_fixture_path, mode="rt") as file:
+        _phonon_doc = json.loads(file.read(), cls=MontyDecoder)
+
+    _band_data = _phonon_doc.phonon_bandstructure
+    pmv.BandStructureWidget(band_structure=_band_data, style="height: 400px;")
+    return (_band_data, _phonon_doc)
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### DOS Widget
+    Use matching phonon DOS data from the same fixture.
+    """)
+
+
+@app.cell
+def _(_phonon_doc, pmv):
+    _dos_data = _phonon_doc.phonon_dos
     pmv.DosWidget(dos=_dos_data, style="height: 400px;")
     return (_dos_data,)
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Bands + DOS Widget
+    Combine bands and DOS into a coordinated electronic-structure view.
+    """)
 
 
 @app.cell
@@ -188,7 +317,12 @@ def _(_band_data, _dos_data, pmv):
     )
 
 
-# === Composition Grid ===
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Composition Widgets Grid
+    Compare several compositions across pie, bar, and bubble modes.
+    """)
 
 
 @app.cell
@@ -218,7 +352,13 @@ def _(Composition, mo, pmv):
     mo.vstack(_h_stacks, align="center", gap=2)
 
 
-# === Remote Trajectory Files ===
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Local Trajectory From Download
+    Download a trajectory file once, cache it, and visualize it from
+    local storage.
+    """)
 
 
 @app.cell
@@ -245,6 +385,14 @@ def _(Final, os, pmv):
 
 
 @app.cell
+def _(mo):
+    mo.md("""
+    ### Remote Trajectory URL
+    Render a trajectory directly from a remote URL with force vectors and bonds.
+    """)
+
+
+@app.cell
 def _(matterviz_traj_dir_url, pmv):
     _file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
     pmv.TrajectoryWidget(
@@ -259,7 +407,12 @@ def _(matterviz_traj_dir_url, pmv):
     )
 
 
-# === MIME Type Auto-display ===
+@app.cell
+def _(mo):
+    mo.md("""
+    ### ASE Atoms MIME Rendering
+    Display an ASE bulk structure via pymatviz MIME auto-rendering.
+    """)
 
 
 @app.cell
@@ -270,10 +423,26 @@ def _(bulk):
 
 
 @app.cell
+def _(mo):
+    mo.md("""
+    ### ASE Molecule MIME Rendering
+    Display an ASE molecule via pymatviz MIME auto-rendering.
+    """)
+
+
+@app.cell
 def _(molecule):
     _ase_molecule = molecule("H2O")
     _ase_molecule.center(vacuum=3.0)
     _ase_molecule
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### PhonopyAtoms MIME Rendering
+    Display a PhonopyAtoms structure via pymatviz MIME auto-rendering.
+    """)
 
 
 @app.cell

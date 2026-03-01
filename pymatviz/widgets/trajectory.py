@@ -136,6 +136,15 @@ class TrajectoryWidget(MatterVizWidget):
 
         super().__init__(widget_type="trajectory", trajectory=trajectory, **kwargs)
 
+    @staticmethod
+    def _validate_species_list(species_data: Any, location: str) -> None:
+        """Validate that species data is a non-empty list."""
+        if not isinstance(species_data, list) or not species_data:
+            raise ValueError(
+                "Trajectory frame site key 'species' must be a non-empty list. "
+                f"{location}: {species_data}."
+            )
+
     def _to_structure_dict(self, structure_input: Any) -> tuple[dict[str, Any], Any]:
         """Convert structure-like input to dict and metadata source object."""
         from pymatviz.process_data import normalize_structures
@@ -208,15 +217,15 @@ class TrajectoryWidget(MatterVizWidget):
         for site_idx, site_data in enumerate(completed_structure["sites"]):
             site_dict = dict(site_data)
             species_data = site_dict["species"]
-            if isinstance(species_data, list):
-                site_dict["species"] = [
-                    (
-                        {**species, "occu": 1.0}
-                        if isinstance(species, Mapping) and "occu" not in species
-                        else species
-                    )
-                    for species in species_data
-                ]
+            self._validate_species_list(species_data, f"Site index {site_idx}, value")
+            site_dict["species"] = [
+                (
+                    {**species, "occu": 1.0}
+                    if isinstance(species, Mapping) and "occu" not in species
+                    else species
+                )
+                for species in species_data
+            ]
 
             has_abc = "abc" in site_dict
             has_xyz = "xyz" in site_dict
@@ -360,6 +369,8 @@ class TrajectoryWidget(MatterVizWidget):
                 "Trajectory frame site is missing required key 'species'. "
                 f"Site keys: {site_keys}."
             )
+        species_data = first_site["species"]
+        self._validate_species_list(species_data, "Got value")
         if "abc" not in first_site and "xyz" not in first_site:
             site_keys = sorted(str(key) for key in first_site)
             raise ValueError(
