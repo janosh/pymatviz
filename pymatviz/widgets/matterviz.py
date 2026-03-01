@@ -28,17 +28,24 @@ def _in_marimo_runtime() -> bool:
 
 
 def _marimo_esm_url(esm_text: str) -> str | None:
-    """Return an absolute http(s) URL for ESM assets via marimo's virtual file system.
+    """Return a virtual-file URL for ESM assets in marimo browser mode.
 
-    anywidget only treats _esm values starting with http(s):// as URLs;
-    all other strings are parsed as inline JavaScript source.  Marimo's
-    virtual-file API produces relative ./@file/… paths, so we resolve
-    them to absolute URLs using the runtime request context.
+    Creates a virtual file via marimo's ``js()`` API and resolves the
+    ``./@file/…`` path to an absolute HTTP URL.  Returns ``None`` when
+    virtual files aren't supported (VS Code extension) to avoid creating
+    ~14 MB base64 data URLs that crash the kernel.
     """
     try:
         from marimo._output.data.data import js
         from marimo._runtime.context import get_context
     except ImportError:
+        return None
+
+    # Virtual files required — without them js() creates ~14 MB data URLs
+    try:
+        if not get_context().virtual_files_supported:
+            return None
+    except (RuntimeError, AttributeError):
         return None
 
     try:
@@ -49,23 +56,24 @@ def _marimo_esm_url(esm_text: str) -> str | None:
     if not relative_url or not relative_url.startswith("./@file/"):
         return None
 
+    # Resolve to absolute URL using request context
     try:
         request = get_context().request
     except (RuntimeError, AttributeError):
-        return None
+        return relative_url
 
     if request is None:
-        return None
+        return relative_url
 
     base = request.base_url
     if not isinstance(base, dict):
-        return None
+        return relative_url
 
     scheme = base.get("scheme")
     netloc = base.get("netloc")
     path = base.get("path", "/")
     if not isinstance(scheme, str) or not isinstance(netloc, str):
-        return None
+        return relative_url
 
     return urljoin(f"{scheme}://{netloc}{path}", relative_url)
 
@@ -145,7 +153,13 @@ def build_widget_assets() -> None:
 
 
 class MatterVizWidget(AnyWidget):
-    """Base widget class that lazily loads and caches MatterViz widget assets."""
+    """Base widget class that lazily loads and caches MatterViz widget assets.
+
+    Note:
+        The marimo VS Code extension does not support virtual files, so
+        widgets with large JS bundles (>5 MB) cannot render there.  Use
+        ``marimo edit`` in a browser instead.
+    """
 
     _esm: str
     _css: str
@@ -190,20 +204,23 @@ class MatterVizWidget(AnyWidget):
     def _init_marimo_assets(self) -> None:
         """Configure assets for marimo: ESM via absolute URL, CSS inline.
 
-        Marimo serializes each cell output independently and has an
-        output_max_bytes limit (~10 MB default).  Serving ESM via marimo's
-        virtual-file system avoids embedding ~10 MB of JS per widget.
+        In browser mode (``marimo edit``), ESM is served via marimo's
+        virtual-file system to avoid embedding ~10 MB of JS per widget.
         CSS stays inline (~166 KB) to sidestep stylesheet URL loading
         issues in marimo's anywidget integration.
+
+        In VS Code extension mode, virtual files are unavailable and the
+        inline bundle exceeds marimo's output_max_bytes limit.  Widgets
+        will not render — use ``marimo edit`` in a browser instead.
         """
         self.__class__._set_class_assets()
         esm_text, css_text = self.__class__._esm, self.__class__._css
 
         esm_url = _marimo_esm_url(esm_text)
         if esm_url:
-            self._esm = esm_url
-            self._css = css_text
-        # Fall through: class-level inline assets already set by _set_class_assets
+            self.__class__._esm = esm_url
+            # CSS inline on class — shared across instances
+            self.__class__._css = css_text
 
     def display(self) -> MatterVizWidget:
         """Display this widget in notebook environments and return itself."""

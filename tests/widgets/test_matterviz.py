@@ -355,31 +355,23 @@ def test_marimo_esm_url_full_resolution() -> None:
     mods["marimo._output.data.data"].js.assert_called_once_with("const x = 1;")
 
 
-@pytest.mark.parametrize(
-    ("vfile_url", "request_val"),
-    [
-        ("data:text/javascript;base64,abc", "valid"),
-        ("./@file/12345-abc.js", None),
-        ("./@file/12345-abc.js", MagicMock(base_url="not-a-dict")),
-        ("./@file/12345-abc.js", MagicMock(base_url={"scheme": 123, "netloc": "h"})),
-        (
-            "./@file/12345-abc.js",
-            MagicMock(base_url={"scheme": "http", "netloc": None}),
-        ),
-    ],
-    ids=[
-        "data_url_not_virtual_file",
-        "no_request",
-        "base_url_not_dict",
-        "scheme_not_str",
-        "netloc_none",
-    ],
-)
-def test_marimo_esm_url_returns_none(vfile_url: str, request_val: Any) -> None:
-    """Returns None for non-./@file/ URLs or malformed request contexts."""
-    mods = _mock_marimo_modules(vfile_url=vfile_url, request=request_val)
+def test_marimo_esm_url_returns_none_for_non_virtual_file() -> None:
+    """Returns None when js() returns a non-./@file/ URL (e.g. data URL)."""
+    mods = _mock_marimo_modules(vfile_url="data:text/javascript;base64,abc")
     with patch.dict("sys.modules", mods):
         assert _marimo_esm_url("code") is None
+
+
+@pytest.mark.parametrize(
+    "request_val",
+    [None, MagicMock(base_url="not-a-dict"), MagicMock(base_url={"scheme": 123})],
+    ids=["no_request", "base_url_not_dict", "scheme_not_str"],
+)
+def test_marimo_esm_url_falls_back_to_relative(request_val: Any) -> None:
+    """Falls back to relative ./@file/ URL when request context is unavailable."""
+    mods = _mock_marimo_modules(request=request_val)
+    with patch.dict("sys.modules", mods):
+        assert _marimo_esm_url("code") == "./@file/12345-abc.js"
 
 
 # === _init_marimo_assets ===
@@ -403,7 +395,6 @@ def test_init_marimo_assets_uses_esm_url() -> None:
 
     assert widget._esm == "http://localhost:2718/@file/123-abc.js"
     assert widget._css == "css_content"
-    assert "_esm" in widget.__dict__, "ESM should be on instance, not class"
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")
