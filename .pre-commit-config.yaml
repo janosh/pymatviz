@@ -26,6 +26,15 @@ repos:
         files: ^(readme\.md|pymatviz/.*\.py)$
         pass_filenames: false
 
+  - repo: local
+    hooks:
+      - id: marimo-check
+        name: marimo check
+        entry: marimo check --strict
+        language: python
+        files: examples/widgets/marimo_demo\.py$
+        additional_dependencies: [marimo]
+
   - repo: https://github.com/janosh/format-ipy-cells
     rev: v0.1.11
     hooks:

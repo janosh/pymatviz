@@ -2,6 +2,10 @@
 
 Run with `marimo edit examples/widgets/marimo_demo.py --no-sandbox --watch`.
 """
+
+# ruff: noqa: ANN001, ANN202, B018, N803
+# marimo cells are generated as `def _(...):` with injected args — these rules
+# conflict with marimo's code generation pattern and cannot be fixed per-cell.
 # /// script
 # dependencies = [
 #     "pymatgen>=2024.1.1",
@@ -13,10 +17,7 @@ Run with `marimo edit examples/widgets/marimo_demo.py --no-sandbox --watch`.
 import marimo
 
 
-# ruff: noqa: B018, ANN001, N803, ANN202
-
-
-__generated_with = "0.14.10"
+__generated_with = "0.20.2"
 app = marimo.App(width="full")
 
 
@@ -50,15 +51,12 @@ def _():
     )
 
 
-# === Convex Hull from PhaseDiagram ===
-
-
 @app.cell
 def _(mo):
-    mo.md(
-        "### Convex Hull Widget\n"
-        "Build a compact Li-Fe-O phase diagram and visualize its convex hull."
-    )
+    mo.md("""
+    ### Convex Hull Widget
+    Build a compact Li-Fe-O phase diagram and visualize its convex hull.
+    """)
 
 
 @app.cell
@@ -79,15 +77,12 @@ def _(Composition, pmv):
     pmv.ConvexHullWidget(entries=_phase_diag, style="height: 500px;")
 
 
-# === 3D Structure + Brillouin Zone ===
-
-
 @app.cell
 def _(mo):
-    mo.md(
-        "### Structure Widget\n"
-        "Render a wurtzite GaN crystal with bonds in an interactive 3D view."
-    )
+    mo.md("""
+    ### Structure Widget
+    Render a wurtzite GaN crystal with bonds in an interactive 3D view.
+    """)
 
 
 @app.cell
@@ -108,10 +103,10 @@ def _(Lattice, Structure, pmv):
 
 @app.cell
 def _(mo):
-    mo.md(
-        "### Brillouin Zone Widget\n"
-        "Show the reciprocal-space Brillouin zone for the structure above."
-    )
+    mo.md("""
+    ### Brillouin Zone Widget
+    Show the reciprocal-space Brillouin zone for the structure above.
+    """)
 
 
 @app.cell
@@ -121,12 +116,12 @@ def _(_struct, pmv):
     )
 
 
-# === XRD Pattern ===
-
-
 @app.cell
 def _(mo):
-    mo.md("### XRD Widget\nCompute and display an XRD pattern for rutile TiO2.")
+    mo.md("""
+    ### XRD Widget
+    Compute and display an XRD pattern for rutile TiO2.
+    """)
 
 
 @app.cell
@@ -150,16 +145,13 @@ def _(Lattice, Structure, pmv):
     )
 
 
-# === Trajectory with Force Vectors ===
-
-
 @app.cell
 def _(mo):
-    mo.md(
-        "### Trajectory Widget\n"
-        "Generate a short perturbed Fe trajectory and plot structure with "
-        "scalar metadata."
-    )
+    mo.md("""
+    ### Trajectory Widget
+    Generate a short perturbed Fe trajectory and plot structure with
+    scalar metadata.
+    """)
 
 
 @app.cell
@@ -186,31 +178,20 @@ def _(Lattice, Structure, np, np_rng, pmv):
     )
 
 
-# === Plot Widgets ===
-
-
 @app.cell
 def _(mo):
-    mo.md(
-        "### Scatter Plot Widget\n"
-        "Dual-axis comparison of `sin(x)` and `cos(x)` with shared x-values."
-    )
+    mo.md("""
+    ### Scatter Plot Widget
+    Dual-axis comparison of `sin(x)` and `cos(x)` with shared x-values.
+    """)
 
 
 @app.cell
 def _(np, pmv):
+    x_vals = np.linspace(0, 6.0, 60)
     scatter_series = [
-        {
-            "label": "sin(x)",
-            "x": np.linspace(0, 6.0, 60).tolist(),
-            "y": np.sin(np.linspace(0, 6.0, 60)).tolist(),
-        },
-        {
-            "label": "cos(x)",
-            "x": np.linspace(0, 6.0, 60).tolist(),
-            "y": np.cos(np.linspace(0, 6.0, 60)).tolist(),
-            "y_axis": "y2",
-        },
+        dict(label="sin(x)", x=x_vals, y=np.sin(x_vals)),
+        dict(label="cos(x)", x=x_vals, y=np.cos(x_vals), y_axis="y2"),
     ]
     pmv.ScatterPlotWidget(
         series=scatter_series,
@@ -226,10 +207,10 @@ def _(np, pmv):
 
 @app.cell
 def _(mo):
-    mo.md(
-        "### Bar Plot Widget\n"
-        "Grouped bars compare two model scores across the same sample indices."
-    )
+    mo.md("""
+    ### Bar Plot Widget
+    Grouped bars compare two model scores across the same sample indices.
+    """)
 
 
 @app.cell
@@ -250,14 +231,14 @@ def _(pmv):
 
 @app.cell
 def _(mo):
-    mo.md(
-        "### Histogram Widget\n"
-        "Overlaid histograms show the distributions of the two trigonometric series."
-    )
+    mo.md("""
+    ### Histogram Widget
+    Overlaid histograms show the distributions of the two trigonometric series.
+    """)
 
 
 @app.cell
-def _(scatter_series, pmv):
+def _(pmv, scatter_series):
     histogram_series = [
         {
             "label": scatter_series[0]["label"],
@@ -280,15 +261,12 @@ def _(scatter_series, pmv):
     )
 
 
-# === Band Structure + DOS ===
-
-
 @app.cell
 def _(mo):
-    mo.md(
-        "### Band Structure Widget\n"
-        "Load realistic phonon band structure data from test fixtures."
-    )
+    mo.md("""
+    ### Band Structure Widget
+    Load realistic phonon band structure data from test fixtures.
+    """)
 
 
 @app.cell
@@ -306,12 +284,15 @@ def _(pmv):
 
     _band_data = _phonon_doc.phonon_bandstructure
     pmv.BandStructureWidget(band_structure=_band_data, style="height: 400px;")
-    return _band_data, _phonon_doc
+    return (_band_data, _phonon_doc)
 
 
 @app.cell
 def _(mo):
-    mo.md("### DOS Widget\nUse matching phonon DOS data from the same fixture.")
+    mo.md("""
+    ### DOS Widget
+    Use matching phonon DOS data from the same fixture.
+    """)
 
 
 @app.cell
@@ -323,10 +304,10 @@ def _(_phonon_doc, pmv):
 
 @app.cell
 def _(mo):
-    mo.md(
-        "### Bands + DOS Widget\n"
-        "Combine bands and DOS into a coordinated electronic-structure view."
-    )
+    mo.md("""
+    ### Bands + DOS Widget
+    Combine bands and DOS into a coordinated electronic-structure view.
+    """)
 
 
 @app.cell
@@ -336,15 +317,12 @@ def _(_band_data, _dos_data, pmv):
     )
 
 
-# === Composition Grid ===
-
-
 @app.cell
 def _(mo):
-    mo.md(
-        "### Composition Widgets Grid\n"
-        "Compare several compositions across pie, bar, and bubble modes."
-    )
+    mo.md("""
+    ### Composition Widgets Grid
+    Compare several compositions across pie, bar, and bubble modes.
+    """)
 
 
 @app.cell
@@ -374,16 +352,13 @@ def _(Composition, mo, pmv):
     mo.vstack(_h_stacks, align="center", gap=2)
 
 
-# === Remote Trajectory Files ===
-
-
 @app.cell
 def _(mo):
-    mo.md(
-        "### Local Trajectory From Download\n"
-        "Download a trajectory file once, cache it, and visualize it from "
-        "local storage."
-    )
+    mo.md("""
+    ### Local Trajectory From Download
+    Download a trajectory file once, cache it, and visualize it from
+    local storage.
+    """)
 
 
 @app.cell
@@ -411,10 +386,10 @@ def _(Final, os, pmv):
 
 @app.cell
 def _(mo):
-    mo.md(
-        "### Remote Trajectory URL\n"
-        "Render a trajectory directly from a remote URL with force vectors and bonds."
-    )
+    mo.md("""
+    ### Remote Trajectory URL
+    Render a trajectory directly from a remote URL with force vectors and bonds.
+    """)
 
 
 @app.cell
@@ -432,15 +407,12 @@ def _(matterviz_traj_dir_url, pmv):
     )
 
 
-# === MIME Type Auto-display ===
-
-
 @app.cell
 def _(mo):
-    mo.md(
-        "### ASE Atoms MIME Rendering\n"
-        "Display an ASE bulk structure via pymatviz MIME auto-rendering."
-    )
+    mo.md("""
+    ### ASE Atoms MIME Rendering
+    Display an ASE bulk structure via pymatviz MIME auto-rendering.
+    """)
 
 
 @app.cell
@@ -452,10 +424,10 @@ def _(bulk):
 
 @app.cell
 def _(mo):
-    mo.md(
-        "### ASE Molecule MIME Rendering\n"
-        "Display an ASE molecule via pymatviz MIME auto-rendering."
-    )
+    mo.md("""
+    ### ASE Molecule MIME Rendering
+    Display an ASE molecule via pymatviz MIME auto-rendering.
+    """)
 
 
 @app.cell
@@ -467,10 +439,10 @@ def _(molecule):
 
 @app.cell
 def _(mo):
-    mo.md(
-        "### PhonopyAtoms MIME Rendering\n"
-        "Display a PhonopyAtoms structure via pymatviz MIME auto-rendering."
-    )
+    mo.md("""
+    ### PhonopyAtoms MIME Rendering
+    Display a PhonopyAtoms structure via pymatviz MIME auto-rendering.
+    """)
 
 
 @app.cell

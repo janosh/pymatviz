@@ -13,6 +13,22 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class BarPlotWidget(MatterVizWidget):
     """MatterViz widget wrapper for grouped/stacked/overlay bar plots."""
 
+    state_fields = (
+        *MatterVizWidget.state_fields,
+        "series",
+        "orientation",
+        "mode",
+        "x_axis",
+        "y_axis",
+        "y2_axis",
+        "display",
+        "legend",
+        "bar",
+        "line",
+        "ref_lines",
+        "controls",
+    )
+
     series = tl.List(allow_none=True).tag(sync=True)
     orientation = tl.CaselessStrEnum(
         values=["vertical", "horizontal"], default_value="vertical"

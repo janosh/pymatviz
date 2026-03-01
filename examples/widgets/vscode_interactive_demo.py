@@ -18,6 +18,7 @@ from typing import Final
 
 import numpy as np
 from ase.build import bulk, molecule
+from IPython.display import display
 from ipywidgets import GridBox, Layout
 from monty.io import zopen
 from monty.json import MontyDecoder
@@ -26,7 +27,6 @@ from pymatgen.core import Composition, Lattice, Structure
 
 import pymatviz as pmv
 from pymatviz.utils.testing import TEST_FILES
-from pymatviz.widgets.matterviz import MatterVizWidget
 
 
 np_rng = np.random.default_rng(seed=0)
@@ -195,7 +195,7 @@ scatter_plot_widget = pmv.ScatterPlotWidget(
     legend={"position": "top-right"},
     style="height: 420px;",
 )
-MatterVizWidget.display(scatter_plot_widget)
+display(scatter_plot_widget)
 
 
 # %% [markdown]
@@ -216,7 +216,7 @@ bar_plot_widget = pmv.BarPlotWidget(
     display={"y_grid": True},
     style="height: 360px;",
 )
-MatterVizWidget.display(bar_plot_widget)
+display(bar_plot_widget)
 
 
 # %% [markdown]
@@ -245,7 +245,7 @@ histogram_widget = pmv.HistogramWidget(
     y_axis={"label": "Count"},
     style="height: 360px;",
 )
-MatterVizWidget.display(histogram_widget)
+display(histogram_widget)
 
 
 # === Band Structure + DOS ===
