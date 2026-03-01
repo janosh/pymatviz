@@ -163,10 +163,7 @@ class MatterVizWidget(AnyWidget):
 
     _esm: str
     _css: str
-    _asset_cache: ClassVar[dict[str, tuple[str, str]]] = {}
-    _marimo_esm_cached_url: ClassVar[str | None] = None
-    _marimo_esm_cache_ready: ClassVar[bool] = False
-    state_fields: tuple[str, ...] = ("widget_type", "style", "show_controls")
+    _asset_cache: ClassVar[dict[str, tuple[str, str] | str | None]] = {}
     widget_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     style = tl.Unicode(allow_none=True).tag(sync=True)
     show_controls = tl.Bool(default_value=True).tag(sync=True)
@@ -217,13 +214,16 @@ class MatterVizWidget(AnyWidget):
         will not render — use ``marimo edit`` in a browser instead.
         """
         type(self)._set_class_assets()
+        cache = type(self)._asset_cache
 
-        if not type(self)._marimo_esm_cache_ready:
-            type(self)._marimo_esm_cached_url = _marimo_esm_url(type(self)._esm)
-            type(self)._marimo_esm_cache_ready = True
+        # Cache the resolved marimo URL so js() is only called once per session.
+        # _esm source text never changes for a given version (version_override
+        # takes a separate code path and bypasses _init_marimo_assets entirely).
+        if "marimo_esm" not in cache:
+            cache["marimo_esm"] = _marimo_esm_url(type(self)._esm)
 
-        esm_url = type(self)._marimo_esm_cached_url
-        if esm_url:
+        esm_url = cache["marimo_esm"]
+        if isinstance(esm_url, str):
             self._esm = esm_url
 
     def display(self) -> MatterVizWidget:
@@ -234,5 +234,13 @@ class MatterVizWidget(AnyWidget):
         return self
 
     def to_dict(self) -> dict[str, Any]:
-        """Return public synced widget state as a plain dictionary."""
-        return {field: getattr(self, field) for field in self.state_fields}
+        """Return public synced widget state as a plain dictionary.
+
+        Discovers fields automatically from traitlets tagged with ``sync=True``,
+        excluding private traits (names starting with ``_``).
+        """
+        return {
+            name: getattr(self, name)
+            for name in self.traits(sync=True)
+            if not name.startswith("_")
+        }

@@ -205,13 +205,8 @@ class TrajectoryWidget(MatterVizWidget):
             )
 
         lattice_data.setdefault("pbc", [True, True, True])
-        lattice_data["a"] = float(lattice_obj.a)
-        lattice_data["b"] = float(lattice_obj.b)
-        lattice_data["c"] = float(lattice_obj.c)
-        lattice_data["alpha"] = float(lattice_obj.alpha)
-        lattice_data["beta"] = float(lattice_obj.beta)
-        lattice_data["gamma"] = float(lattice_obj.gamma)
-        lattice_data["volume"] = float(lattice_obj.volume)
+        for param in ("a", "b", "c", "alpha", "beta", "gamma", "volume"):
+            lattice_data[param] = float(getattr(lattice_obj, param))
 
         completed_sites: list[dict[str, Any]] = []
         for site_idx, site_data in enumerate(completed_structure["sites"]):
@@ -385,7 +380,6 @@ class TrajectoryWidget(MatterVizWidget):
 
         from pymatviz.process_data import is_structure_like
 
-        # Check if already in trajectory-dict format and validate schema.
         if isinstance(trajectory, dict):
             frames_data = trajectory.get("frames")
             if (
@@ -402,29 +396,19 @@ class TrajectoryWidget(MatterVizWidget):
             self._validate_trajectory_dict(trajectory)
             return self._complete_trajectory_dict(trajectory)
 
-        # Handle list/sequence of structures or dicts with properties
         if isinstance(trajectory, (list, tuple)):
             frames: list[dict[str, Any]] = []
             for step_idx, item in enumerate(trajectory):
-                # Handle dict format with properties like {"structure": struct,
-                # "energy": 1.23, ...}
                 if isinstance(item, dict):
-                    # Extract structure from dict
                     structure = item.get("structure", item)
-
-                    # Extract properties (everything except 'structure')
                     properties = {k: v for k, v in item.items() if k != "structure"}
                 else:
-                    # Handle direct structure objects (backward compatibility)
                     structure = item
                     properties = {}
 
                 structure_dict, metadata_source = self._to_structure_dict(structure)
+                frame: dict[str, Any] = {"structure": structure_dict, "step": step_idx}
 
-                # Create trajectory frame
-                frame = {"structure": structure_dict, "step": step_idx}
-
-                # Add properties from dict format
                 if properties:
                     frame["metadata"] = properties
                 else:
@@ -436,20 +420,14 @@ class TrajectoryWidget(MatterVizWidget):
 
             return {"frames": frames, "metadata": {}}
 
-        # Handle single structure (convert to single-frame trajectory)
         if hasattr(trajectory, "as_dict") or hasattr(
             trajectory, "get_chemical_symbols"
         ):
             structure_dict, metadata_source = self._to_structure_dict(trajectory)
-
-            frame = {"structure": structure_dict, "step": 0}
-
-            # Add metadata if available
+            frame: dict[str, Any] = {"structure": structure_dict, "step": 0}
             metadata = self._extract_object_metadata(metadata_source)
-
             if metadata:
                 frame["metadata"] = metadata
-
             return {"frames": [frame], "metadata": {}}
 
         raise TypeError(

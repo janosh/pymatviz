@@ -28,7 +28,7 @@ _real_import = builtins.__import__
 def _block_marimo(name: str, *args: Any, **kwargs: Any) -> types.ModuleType:
     """Import hook that raises ImportError for any marimo submodule."""
     if name.startswith("marimo"):
-        raise ImportError(f"No module named '{name}'")
+        raise ImportError(name)
     return _real_import(name, *args, **kwargs)
 
 
@@ -65,15 +65,9 @@ def _clean_asset_cache() -> Generator[None]:
     saved_esm = getattr(cls, "_esm", None)
     saved_css = getattr(cls, "_css", None)
     saved_cache = cls._asset_cache.copy()
-    saved_marimo_esm_url = cls._marimo_esm_cached_url
-    saved_marimo_esm_ready = cls._marimo_esm_cache_ready
     cls._asset_cache.clear()
-    cls._marimo_esm_cached_url = None
-    cls._marimo_esm_cache_ready = False
     yield
     cls._asset_cache = saved_cache
-    cls._marimo_esm_cached_url = saved_marimo_esm_url
-    cls._marimo_esm_cache_ready = saved_marimo_esm_ready
     if had_esm:
         assert saved_esm is not None
         cls._esm = saved_esm
@@ -281,9 +275,12 @@ def test_matterviz_widget_to_dict(
         setattr(widget, key, value)
 
     state = widget.to_dict()
-    assert set(state) == {"widget_type", "style", "show_controls"}
-    assert "_esm" not in state
-    assert "_css" not in state
+    assert {"widget_type", "style", "show_controls"} <= set(state)
+    assert not any(key.startswith("_") for key in state)
+    non_synced_internals = {"comm", "keys", "log"}
+    assert not non_synced_internals & set(state), (
+        f"Non-synced traitlets leaked into to_dict: {non_synced_internals & set(state)}"
+    )
     for key, value in expected_state.items():
         assert state[key] == value
 

@@ -125,21 +125,16 @@ def normalize_plot_json(value: Any, label: str) -> Any:
             raise ValueError(f"{label} contains non-finite float value: {value!r}.")
         return value
 
-    if hasattr(value, "item") and callable(value.item):
+    # Convert numpy scalars (.item()) and arrays (.tolist()) to native Python
+    for method_name in ("item", "tolist"):
+        method = getattr(value, method_name, None)
+        if not callable(method):
+            continue
         try:
-            scalar_value = value.item()
+            converted = method()
         except (TypeError, ValueError):
-            scalar_value = None
-        if scalar_value is not None:
-            return normalize_plot_json(scalar_value, label)
-
-    if hasattr(value, "tolist") and callable(value.tolist):
-        try:
-            list_value = value.tolist()
-        except (TypeError, ValueError):
-            list_value = None
-        if list_value is not None:
-            return normalize_plot_json(list_value, label)
+            continue
+        return normalize_plot_json(converted, label)
 
     if isinstance(value, dict):
         return {
