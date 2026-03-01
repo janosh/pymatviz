@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -16,6 +17,7 @@ from pymatviz.widgets.convex_hull import ConvexHullWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.histogram import HistogramWidget
+from pymatviz.widgets.matterviz import MatterVizWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
 from pymatviz.widgets.xrd import XrdWidget
@@ -387,3 +389,38 @@ def test_fermi_surface_widget_invalid_input_combo(
     """FermiSurfaceWidget rejects ambiguous or missing input sources."""
     with pytest.raises(ValueError, match="exactly one of fermi_data or band_data"):
         FermiSurfaceWidget(fermi_data=fermi_data, band_data=band_data)
+
+
+# === show() method ===
+
+
+def test_show_returns_self_and_calls_ipython_display() -> None:
+    """show() calls IPython.display.display and returns the widget instance."""
+    with patch("pymatviz.widgets.matterviz.fetch_widget_asset", return_value="x"):
+        widget = MatterVizWidget(widget_type="test")
+
+    with patch("IPython.display.display") as mock_display:
+        result = widget.show()
+
+    assert result is widget
+    mock_display.assert_called_once_with(widget)
+
+
+@pytest.mark.parametrize(
+    "widget_cls",
+    [ScatterPlotWidget, BarPlotWidget, HistogramWidget],
+)
+def test_show_not_shadowed_by_display_traitlet(widget_cls: type) -> None:
+    """show() remains callable on widgets that define a 'display' traitlet."""
+    widget = widget_cls(
+        series=[{"x": [0, 1], "y": [1, 2]}],
+        display={"x_grid": True},
+    )
+    assert callable(widget.show)
+    assert isinstance(widget.display, dict)
+
+    with patch("IPython.display.display") as mock_display:
+        result = widget.show()
+
+    assert result is widget
+    mock_display.assert_called_once_with(widget)

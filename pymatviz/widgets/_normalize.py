@@ -115,11 +115,9 @@ def normalize_plot_json(value: Any, label: str) -> Any:
         TypeError: If value cannot be serialized to JSON-safe primitives.
         ValueError: If value contains non-finite numbers.
     """
-    if value is None or isinstance(value, (bool, str)):
+    if value is None or isinstance(value, (bool, str, int)):
         return value
 
-    if isinstance(value, int):
-        return value
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError(f"{label} contains non-finite float value: {value!r}.")

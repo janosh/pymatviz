@@ -100,6 +100,7 @@ from pymatviz.widgets import (
     StructureWidget,
     TrajectoryWidget,
     XrdWidget,
+    configure_assets,
 )
 from pymatviz.xrd import xrd_pattern
 

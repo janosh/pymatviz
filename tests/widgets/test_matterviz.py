@@ -12,7 +12,12 @@ import pytest
 
 from pymatviz import PKG_NAME
 from pymatviz.widgets import matterviz
-from pymatviz.widgets.matterviz import _in_marimo_runtime, _marimo_esm_url
+from pymatviz.widgets.matterviz import (
+    _in_marimo_runtime,
+    _marimo_esm_url,
+    _read_asset_source,
+    configure_assets,
+)
 
 
 if TYPE_CHECKING:
@@ -97,9 +102,9 @@ def test_clear_widget_cache(cache_exists: bool, tmp_path: Path) -> None:
     assert not cache_dir.exists()
 
 
-@pytest.mark.parametrize("version_override", [None, "1.2.3", "2.0.0"])
+@pytest.mark.parametrize("version_override", ["1.2.3", "2.0.0"])
 def test_clear_widget_cache_version_specific(
-    version_override: str | None, tmp_path: Path
+    version_override: str, tmp_path: Path
 ) -> None:
     """Version-specific clearing removes only the targeted version directory."""
     build_dir = tmp_path / "build"
@@ -111,12 +116,9 @@ def test_clear_widget_cache_version_specific(
     with patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)):
         matterviz.clear_widget_cache(version_override)
 
-    if version_override:
-        assert not (build_dir / version_override).exists()
-        other_version = "2.0.0" if version_override == "1.2.3" else "1.2.3"
-        assert (build_dir / other_version).exists()
-    else:
-        assert not (tmp_path / ".cache" / PKG_NAME).exists()
+    assert not (build_dir / version_override).exists()
+    other_version = "2.0.0" if version_override == "1.2.3" else "1.2.3"
+    assert (build_dir / other_version).exists()
 
 
 # === fetch_widget_asset ===
@@ -194,6 +196,124 @@ def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:
         pytest.raises(FileNotFoundError, match=err_msg),
     ):
         matterviz.fetch_widget_asset("test.mjs")
+
+
+# === _read_asset_source ===
+
+
+def test_read_asset_source_local_file(tmp_path: Path) -> None:
+    """Reads content from a local file path."""
+    asset_file = tmp_path / "test.mjs"
+    asset_file.write_text("export default {}")
+    assert _read_asset_source(str(asset_file)) == "export default {}"
+
+
+def test_read_asset_source_file_uri(tmp_path: Path) -> None:
+    """Reads content from a file:// URI."""
+    asset_file = tmp_path / "test.css"
+    asset_file.write_text(".widget { color: red; }")
+    assert _read_asset_source(f"file://{asset_file}") == ".widget { color: red; }"
+
+
+def test_read_asset_source_missing_file() -> None:
+    """Raises FileNotFoundError for non-existent paths."""
+    with pytest.raises(FileNotFoundError, match="Asset file not found"):
+        _read_asset_source("/nonexistent/matterviz.mjs")
+
+
+def test_read_asset_source_http_url() -> None:
+    """Fetches content from an HTTP(S) URL."""
+    with patch(f"{DOTTED_PATH}.urllib.request.urlopen") as mock_urlopen:
+        mock_response = MagicMock()
+        mock_response.read.return_value = b"export default {}"
+        mock_response.__enter__ = lambda self: self
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = _read_asset_source("https://cdn.example.com/matterviz.mjs")
+
+    assert result == "export default {}"
+    mock_urlopen.assert_called_once_with("https://cdn.example.com/matterviz.mjs")
+
+
+# === configure_assets ===
+
+
+@pytest.mark.usefixtures("_clean_asset_cache")
+def test_configure_assets_with_version() -> None:
+    """configure_assets(version=...) fetches from GitHub releases."""
+    with patch(f"{DOTTED_PATH}.fetch_widget_asset") as mock_fetch:
+        mock_fetch.side_effect = lambda name, ver: f"{name}@{ver}"
+        configure_assets(version="v0.19.0")
+
+    cls = matterviz.MatterVizWidget
+    assert cls._esm == "matterviz.mjs@v0.19.0"
+    assert cls._css == "matterviz.css@v0.19.0"
+    assert "default" in cls._asset_cache
+
+
+@pytest.mark.usefixtures("_clean_asset_cache")
+def test_configure_assets_with_urls(tmp_path: Path) -> None:
+    """configure_assets(esm_src=..., css_src=...) reads from provided sources."""
+    esm_file = tmp_path / "custom.mjs"
+    css_file = tmp_path / "custom.css"
+    esm_file.write_text("custom esm")
+    css_file.write_text("custom css")
+
+    configure_assets(esm_src=str(esm_file), css_src=str(css_file))
+
+    cls = matterviz.MatterVizWidget
+    assert cls._esm == "custom esm"
+    assert cls._css == "custom css"
+
+
+@pytest.mark.usefixtures("_clean_asset_cache")
+def test_configure_assets_css_auto_derived(tmp_path: Path) -> None:
+    """CSS path is auto-derived from ESM path when css_src is omitted."""
+    esm_file = tmp_path / "matterviz.mjs"
+    css_file = tmp_path / "matterviz.css"
+    esm_file.write_text("esm content")
+    css_file.write_text("css content")
+
+    configure_assets(esm_src=str(esm_file))
+
+    cls = matterviz.MatterVizWidget
+    assert cls._esm == "esm content"
+    assert cls._css == "css content"
+
+
+@pytest.mark.usefixtures("_clean_asset_cache")
+def test_configure_assets_reset() -> None:
+    """configure_assets() with no args resets to auto-detect."""
+    with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="preset"):
+        configure_assets(version="v1.0.0")
+
+    assert matterviz.MatterVizWidget._asset_cache.get("default") is not None
+
+    configure_assets()
+
+    assert matterviz.MatterVizWidget._asset_cache == {}
+
+
+def test_configure_assets_rejects_version_and_src() -> None:
+    """configure_assets rejects version + esm_src together."""
+    with pytest.raises(ValueError, match="not both"):
+        configure_assets(version="v1.0.0", esm_src="/path/to/file.mjs")
+
+
+@pytest.mark.usefixtures("_clean_asset_cache")
+def test_configure_assets_applies_to_subsequent_widgets(tmp_path: Path) -> None:
+    """Widgets created after configure_assets use the configured assets."""
+    esm_file = tmp_path / "matterviz.mjs"
+    css_file = tmp_path / "matterviz.css"
+    esm_file.write_text("configured esm")
+    css_file.write_text("configured css")
+
+    configure_assets(esm_src=str(esm_file))
+
+    widget = matterviz.MatterVizWidget(widget_type="test")
+    assert widget._esm == "configured esm"
+    assert widget._css == "configured css"
 
 
 # === build_widget_assets ===

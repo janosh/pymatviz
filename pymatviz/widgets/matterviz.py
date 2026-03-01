@@ -28,13 +28,7 @@ def _in_marimo_runtime() -> bool:
 
 
 def _marimo_esm_url(esm_text: str) -> str | None:
-    """Return a virtual-file URL for ESM assets in marimo browser mode.
-
-    Creates a virtual file via marimo's ``js()`` API and resolves the
-    ``./@file/…`` path to an absolute HTTP URL.  Returns ``None`` when
-    virtual files aren't supported (VS Code extension) to avoid creating
-    ~14 MB base64 data URLs that crash the kernel.
-    """
+    """Resolve ESM text to a marimo virtual-file URL, or None if unsupported."""
     try:
         from marimo._output.data.data import js
         from marimo._runtime.context import get_context
@@ -56,56 +50,91 @@ def _marimo_esm_url(esm_text: str) -> str | None:
     if not relative_url or not relative_url.startswith("./@file/"):
         return None
 
-    # Resolve to absolute URL using request context
+    # Resolve ./@file/ to absolute URL via request context, fall back to relative
     try:
-        request = get_context().request
-    except (RuntimeError, AttributeError):
+        base = get_context().request.base_url
+    except (RuntimeError, AttributeError, TypeError):
         return relative_url
-
-    if request is None:
-        return relative_url
-
-    base = request.base_url
     if not isinstance(base, dict):
         return relative_url
-
-    scheme = base.get("scheme")
-    netloc = base.get("netloc")
-    path = base.get("path", "/")
+    scheme, netloc = base.get("scheme"), base.get("netloc")
     if not isinstance(scheme, str) or not isinstance(netloc, str):
         return relative_url
+    return urljoin(f"{scheme}://{netloc}{base.get('path', '/')}", relative_url)
 
-    return urljoin(f"{scheme}://{netloc}{path}", relative_url)
+
+def _read_asset_source(src: str) -> str:
+    """Read asset content from an HTTP(S) URL, ``file://`` URI, or local path."""
+    if src.startswith(("http://", "https://")):
+        with urllib.request.urlopen(src) as response:  # noqa: S310
+            return response.read().decode("utf-8")
+    src = src.removeprefix("file://")
+    if not os.path.isfile(src):
+        raise FileNotFoundError(f"Asset file not found: {src}")
+    with open(src, encoding="utf-8") as file:
+        return file.read()
+
+
+def configure_assets(
+    *,
+    version: str | None = None,
+    esm_src: str | None = None,
+    css_src: str | None = None,
+) -> None:
+    """Configure matterviz widget assets globally for all subsequent widgets.
+
+    Call with no arguments to reset to default (auto-detect from installed version).
+
+    Args:
+        version: GitHub release version tag (e.g. ``"v0.18.0"``).
+            Mutually exclusive with ``esm_src``/``css_src``.
+        esm_src: URL or local file path for the ESM JavaScript bundle.
+        css_src: URL or local file path for the CSS stylesheet.
+            Derived from ``esm_src`` by replacing ``.mjs`` → ``.css`` if omitted.
+    """
+    if version and esm_src:
+        raise ValueError(
+            "configure_assets() accepts either 'version' or 'esm_src'/'css_src', "
+            "not both."
+        )
+
+    cls = MatterVizWidget
+    cls._asset_cache.clear()
+
+    if not version and not esm_src:
+        for attr in ("_esm", "_css"):
+            if attr in cls.__dict__:
+                delattr(cls, attr)
+        return
+
+    if version:
+        esm_content = fetch_widget_asset("matterviz.mjs", version)
+        css_content = fetch_widget_asset("matterviz.css", version)
+    else:
+        if css_src is None:
+            css_src = re.sub(r"\.m?js$", ".css", esm_src)  # type: ignore[arg-type]
+        esm_content = _read_asset_source(esm_src)  # type: ignore[arg-type]
+        css_content = _read_asset_source(css_src)
+
+    cls._asset_cache["default"] = (esm_content, css_content)
+    cls._esm = esm_content
+    cls._css = css_content
 
 
 def fetch_widget_asset(filename: str, version_override: str | None = None) -> str:
-    """Get widget assets with GitHub releases fallback.
-
-    Args:
-        filename (str): Name of the asset file to fetch
-        version_override (str): Override current version from package metadata
-
-    Returns:
-        str: The contents of the asset file
-    """
+    """Fetch a widget asset file, checking local build → cache → GitHub releases."""
     from pymatviz import __version__
 
-    # fallback to installed version
     asset_version = version_override or f"v{__version__}"
-    repo_url = "https://github.com/janosh/pymatviz"
-
-    # Paths
     local_path = f"{os.path.dirname(__file__)}/web/build/{filename}"
     cache_dir = f"{os.path.expanduser('~/.cache/pymatviz/build')}/{asset_version}"
     os.makedirs(cache_dir, exist_ok=True)
     cache_path = f"{cache_dir}/{filename}"
 
-    # Check local development files first
     if os.path.isfile(local_path):
         with open(local_path, encoding="utf-8") as file:
             return file.read()
 
-    # Check cache
     if os.path.isfile(cache_path):
         with open(cache_path, encoding="utf-8") as file:
             return file.read()
@@ -113,8 +142,7 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
     if not re.match(r"^v\d+\.\d+\.\d+$", asset_version):
         raise ValueError(f"Invalid version format: {asset_version=}")
 
-    # Download from GitHub releases
-    github_url = f"{repo_url}/releases/download/{asset_version}/{filename}"
+    github_url = f"https://github.com/janosh/pymatviz/releases/download/{asset_version}/{filename}"
     try:
         urllib.request.urlretrieve(github_url, cache_path)  # noqa: S310
         with open(cache_path, encoding="utf-8") as file:
@@ -171,22 +199,20 @@ class MatterVizWidget(AnyWidget):
     @classmethod
     def _set_class_assets(cls) -> None:
         """Load and cache default widget assets on the class, not instances."""
-        cache_key = "default"
-        if cache_key not in cls._asset_cache:
-            cls._asset_cache[cache_key] = (
+        if "default" not in cls._asset_cache:
+            cls._asset_cache["default"] = (
                 fetch_widget_asset("matterviz.mjs"),
                 fetch_widget_asset("matterviz.css"),
             )
-        cls._esm, cls._css = cls._asset_cache[cache_key]
+        cls._esm, cls._css = cls._asset_cache["default"]
 
     def __init__(self, version_override: str | None = None, **kwargs: Any) -> None:
-        """Initialize the widget with lazy loading of widget assets.
+        """Initialize with lazy-loaded widget assets.
 
         Args:
-            version_override (str | None): Override which asset versions to fetch.
-                Defaults to currently installed package version and should only be
-                used with good reason since different JS assets may be incompatible.
-            **kwargs: Additional arguments passed to AnyWidget
+            version_override: Fetch assets for this version tag instead of the
+                installed version. Prefer ``configure_assets()`` for global overrides.
+            **kwargs: Passed through to AnyWidget.
         """
         if version_override is not None:
             self._esm = fetch_widget_asset("matterviz.mjs", version_override)
@@ -203,30 +229,22 @@ class MatterVizWidget(AnyWidget):
     def _init_marimo_assets(self) -> None:
         """Configure assets for marimo: ESM via virtual-file URL, CSS inline.
 
-        In browser mode (``marimo edit``), ESM is served via marimo's
-        virtual-file system to avoid embedding ~10 MB of JS per widget.
-        The resolved URL is cached on the class so ``js()`` is only called
-        once. CSS stays inline (~166 KB) to sidestep stylesheet URL loading
-        issues in marimo's anywidget integration.
-
-        In VS Code extension mode, virtual files are unavailable and the
-        inline bundle exceeds marimo's output_max_bytes limit.  Widgets
-        will not render — use ``marimo edit`` in a browser instead.
+        In browser mode, ESM is served via marimo's virtual-file system to
+        avoid embedding ~10 MB of JS per widget.  In VS Code extension mode,
+        virtual files are unavailable — use ``marimo edit`` in a browser.
         """
-        type(self)._set_class_assets()
-        cache = type(self)._asset_cache
+        cls = type(self)
+        cls._set_class_assets()
 
-        # Cache the resolved marimo URL so js() is only called once per session.
-        # _esm source text never changes for a given version (version_override
-        # takes a separate code path and bypasses _init_marimo_assets entirely).
-        if "marimo_esm" not in cache:
-            cache["marimo_esm"] = _marimo_esm_url(type(self)._esm)
+        # Cache the resolved URL so js() is only called once per session
+        if "marimo_esm" not in cls._asset_cache:
+            cls._asset_cache["marimo_esm"] = _marimo_esm_url(cls._esm)
 
-        esm_url = cache["marimo_esm"]
+        esm_url = cls._asset_cache["marimo_esm"]
         if isinstance(esm_url, str):
             self._esm = esm_url
 
-    def display(self) -> MatterVizWidget:
+    def show(self) -> MatterVizWidget:
         """Display this widget in notebook environments and return itself."""
         from IPython.display import display as ipython_display
 
@@ -234,11 +252,7 @@ class MatterVizWidget(AnyWidget):
         return self
 
     def to_dict(self) -> dict[str, Any]:
-        """Return public synced widget state as a plain dictionary.
-
-        Discovers fields automatically from traitlets tagged with ``sync=True``,
-        excluding private traits (names starting with ``_``).
-        """
+        """Return all public synced traitlet values as a plain dict."""
         return {
             name: getattr(self, name)
             for name in self.traits(sync=True)

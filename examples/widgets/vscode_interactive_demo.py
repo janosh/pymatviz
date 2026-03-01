@@ -58,7 +58,7 @@ convex_hull_widget = pmv.ConvexHullWidget(
     entries=phase_diag,
     style="height: 500px;",
 )
-convex_hull_widget.display()
+convex_hull_widget.show()
 
 
 # === 3D Structure + Brillouin Zone ===
@@ -84,7 +84,7 @@ struct = Structure(
 structure_widget = pmv.StructureWidget(
     structure=struct, show_bonds=True, style="height: 400px;"
 )
-structure_widget.display()
+structure_widget.show()
 
 
 # %% [markdown]
@@ -96,7 +96,7 @@ structure_widget.display()
 bz_widget = pmv.BrillouinZoneWidget(
     structure=struct, show_vectors=True, style="height: 400px;"
 )
-bz_widget.display()
+bz_widget.show()
 
 
 # === XRD Pattern ===
@@ -126,7 +126,7 @@ tio2_struct = Structure(
 xrd_pattern = XRDCalculator().get_pattern(tio2_struct)
 
 xrd_widget = pmv.XrdWidget(patterns=xrd_pattern, style="height: 350px;")
-xrd_widget.display()
+xrd_widget.show()
 
 
 # === Trajectory with Force Vectors ===
@@ -160,7 +160,7 @@ trajectory_widget = pmv.TrajectoryWidget(
     show_force_vectors=True,
     style="height: 600px;",
 )
-trajectory_widget.display()
+trajectory_widget.show()
 
 
 # === Plot Widgets ===
@@ -190,7 +190,7 @@ scatter_plot_widget = pmv.ScatterPlotWidget(
     legend={"position": "top-right"},
     style="height: 420px;",
 )
-scatter_plot_widget.display()
+scatter_plot_widget.show()
 
 
 # %% [markdown]
@@ -211,7 +211,7 @@ bar_plot_widget = pmv.BarPlotWidget(
     display={"y_grid": True},
     style="height: 360px;",
 )
-bar_plot_widget.display()
+bar_plot_widget.show()
 
 
 # %% [markdown]
@@ -231,7 +231,7 @@ histogram_widget = pmv.HistogramWidget(
     y_axis={"label": "Count"},
     style="height: 360px;",
 )
-histogram_widget.display()
+histogram_widget.show()
 
 
 # === Band Structure + DOS ===
@@ -250,7 +250,7 @@ with zopen(phonon_fixture_path, mode="rt") as file:
 band_data = phonon_doc.phonon_bandstructure
 
 bands_widget = pmv.BandStructureWidget(band_structure=band_data, style="height: 400px;")
-bands_widget.display()
+bands_widget.show()
 
 
 # %% [markdown]
@@ -262,7 +262,7 @@ bands_widget.display()
 dos_data = phonon_doc.phonon_dos
 
 dos_widget = pmv.DosWidget(dos=dos_data, style="height: 400px;")
-dos_widget.display()
+dos_widget.show()
 
 
 # %% [markdown]
@@ -274,7 +274,7 @@ dos_widget.display()
 bands_dos_widget = pmv.BandsAndDosWidget(
     band_structure=band_data, dos=dos_data, style="height: 500px;"
 )
-bands_dos_widget.display()
+bands_dos_widget.show()
 
 
 # === Composition Grid ===
@@ -334,7 +334,7 @@ ase_traj_widget = pmv.TrajectoryWidget(
     bonding_strategy="nearest_neighbor",
     style="height: 600px;",
 )
-ase_traj_widget.display()
+ase_traj_widget.show()
 
 
 # %% [markdown]
@@ -359,7 +359,7 @@ traj_widget = pmv.TrajectoryWidget(
     display_mode="structure+scatter",
     show_force_vectors=False,
 )
-traj_widget.display()
+traj_widget.show()
 
 
 # === MIME Type Auto-display ===
