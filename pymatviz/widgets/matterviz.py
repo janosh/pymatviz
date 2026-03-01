@@ -164,6 +164,8 @@ class MatterVizWidget(AnyWidget):
     _esm: str
     _css: str
     _asset_cache: ClassVar[dict[str, tuple[str, str]]] = {}
+    _marimo_esm_cached_url: ClassVar[str | None] = None
+    _marimo_esm_cache_ready: ClassVar[bool] = False
     state_fields: tuple[str, ...] = ("widget_type", "style", "show_controls")
     widget_type = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     style = tl.Unicode(allow_none=True).tag(sync=True)
@@ -197,30 +199,32 @@ class MatterVizWidget(AnyWidget):
         else:
             # Set assets on the class so Jupyter/VS Code share them across
             # instances via ipywidgets comms without per-widget serialization.
-            self.__class__._set_class_assets()
+            type(self)._set_class_assets()
 
         super().__init__(**kwargs)
 
     def _init_marimo_assets(self) -> None:
-        """Configure assets for marimo: ESM via absolute URL, CSS inline.
+        """Configure assets for marimo: ESM via virtual-file URL, CSS inline.
 
         In browser mode (``marimo edit``), ESM is served via marimo's
         virtual-file system to avoid embedding ~10 MB of JS per widget.
-        CSS stays inline (~166 KB) to sidestep stylesheet URL loading
+        The resolved URL is cached on the class so ``js()`` is only called
+        once. CSS stays inline (~166 KB) to sidestep stylesheet URL loading
         issues in marimo's anywidget integration.
 
         In VS Code extension mode, virtual files are unavailable and the
         inline bundle exceeds marimo's output_max_bytes limit.  Widgets
         will not render — use ``marimo edit`` in a browser instead.
         """
-        self.__class__._set_class_assets()
-        esm_text, css_text = self.__class__._esm, self.__class__._css
+        type(self)._set_class_assets()
 
-        esm_url = _marimo_esm_url(esm_text)
+        if not type(self)._marimo_esm_cache_ready:
+            type(self)._marimo_esm_cached_url = _marimo_esm_url(type(self)._esm)
+            type(self)._marimo_esm_cache_ready = True
+
+        esm_url = type(self)._marimo_esm_cached_url
         if esm_url:
-            self.__class__._esm = esm_url
-            # CSS inline on class — shared across instances
-            self.__class__._css = css_text
+            self._esm = esm_url
 
     def display(self) -> MatterVizWidget:
         """Display this widget in notebook environments and return itself."""

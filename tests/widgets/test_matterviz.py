@@ -59,16 +59,31 @@ def _mock_urlretrieve_side_effect(_url: str, path: str) -> None:
 @pytest.fixture
 def _clean_asset_cache() -> Generator[None]:
     """Save and restore MatterVizWidget class-level asset state around a test."""
-    saved_esm = getattr(matterviz.MatterVizWidget, "_esm", None)
-    saved_css = getattr(matterviz.MatterVizWidget, "_css", None)
-    saved_cache = matterviz.MatterVizWidget._asset_cache.copy()
-    matterviz.MatterVizWidget._asset_cache.clear()
+    cls = matterviz.MatterVizWidget
+    had_esm = hasattr(cls, "_esm")
+    had_css = hasattr(cls, "_css")
+    saved_esm = getattr(cls, "_esm", None)
+    saved_css = getattr(cls, "_css", None)
+    saved_cache = cls._asset_cache.copy()
+    saved_marimo_esm_url = cls._marimo_esm_cached_url
+    saved_marimo_esm_ready = cls._marimo_esm_cache_ready
+    cls._asset_cache.clear()
+    cls._marimo_esm_cached_url = None
+    cls._marimo_esm_cache_ready = False
     yield
-    matterviz.MatterVizWidget._asset_cache = saved_cache
-    if saved_esm is not None:
-        matterviz.MatterVizWidget._esm = saved_esm
-    if saved_css is not None:
-        matterviz.MatterVizWidget._css = saved_css
+    cls._asset_cache = saved_cache
+    cls._marimo_esm_cached_url = saved_marimo_esm_url
+    cls._marimo_esm_cache_ready = saved_marimo_esm_ready
+    if had_esm:
+        assert saved_esm is not None
+        cls._esm = saved_esm
+    elif hasattr(cls, "_esm"):
+        delattr(cls, "_esm")
+    if had_css:
+        assert saved_css is not None
+        cls._css = saved_css
+    elif hasattr(cls, "_css"):
+        delattr(cls, "_css")
 
 
 # === clear_widget_cache ===
@@ -353,6 +368,26 @@ def test_marimo_esm_url_full_resolution() -> None:
 
     assert result == "http://localhost:8080/@file/12345-abc.js"
     mods["marimo._output.data.data"].js.assert_called_once_with("const x = 1;")
+
+
+def test_marimo_esm_url_returns_none_without_virtual_files() -> None:
+    """Returns None when virtual files are not supported (VS Code extension)."""
+    mock_data = MagicMock()
+    mock_ctx = MagicMock()
+    mock_ctx.virtual_files_supported = False
+    mock_ctx_mod = MagicMock()
+    mock_ctx_mod.get_context.return_value = mock_ctx
+
+    with patch.dict(
+        "sys.modules",
+        {
+            "marimo._output.data.data": mock_data,
+            "marimo._runtime.context": mock_ctx_mod,
+        },
+    ):
+        assert _marimo_esm_url("code") is None
+
+    mock_data.js.assert_not_called()
 
 
 def test_marimo_esm_url_returns_none_for_non_virtual_file() -> None:
