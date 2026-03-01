@@ -240,16 +240,7 @@ def _(mo):
 @app.cell
 def _(pmv, scatter_series):
     histogram_series = [
-        {
-            "label": scatter_series[0]["label"],
-            "x": scatter_series[0]["x"],
-            "y": scatter_series[0]["y"],
-        },
-        {
-            "label": scatter_series[1]["label"],
-            "x": scatter_series[1]["x"],
-            "y": scatter_series[1]["y"],
-        },
+        {key: s[key] for key in ("label", "x", "y")} for s in scatter_series
     ]
     pmv.HistogramWidget(
         series=histogram_series,

@@ -18,7 +18,6 @@ from typing import Final
 
 import numpy as np
 from ase.build import bulk, molecule
-from IPython.display import display
 from ipywidgets import GridBox, Layout
 from monty.io import zopen
 from monty.json import MontyDecoder
@@ -174,17 +173,13 @@ trajectory_widget.display()
 
 # %% ScatterPlot Widget — dual-axis trigonometric curves
 scatter_series = [
-    {
-        "label": "sin(x)",
-        "x": np.linspace(0, 6.0, 60).tolist(),
-        "y": np.sin(np.linspace(0, 6.0, 60)).tolist(),
-    },
-    {
-        "label": "cos(x)",
-        "x": np.linspace(0, 6.0, 60).tolist(),
-        "y": np.cos(np.linspace(0, 6.0, 60)).tolist(),
-        "y_axis": "y2",
-    },
+    dict(label="sin(x)", x=np.linspace(0, 6.0, 60), y=np.sin(np.linspace(0, 6.0, 60))),
+    dict(
+        label="cos(x)",
+        x=np.linspace(0, 6.0, 60),
+        y=np.cos(np.linspace(0, 6.0, 60)),
+        y_axis="y2",
+    ),
 ]
 scatter_plot_widget = pmv.ScatterPlotWidget(
     series=scatter_series,
@@ -195,7 +190,7 @@ scatter_plot_widget = pmv.ScatterPlotWidget(
     legend={"position": "top-right"},
     style="height: 420px;",
 )
-display(scatter_plot_widget)
+scatter_plot_widget.display()
 
 
 # %% [markdown]
@@ -216,7 +211,7 @@ bar_plot_widget = pmv.BarPlotWidget(
     display={"y_grid": True},
     style="height: 360px;",
 )
-display(bar_plot_widget)
+bar_plot_widget.display()
 
 
 # %% [markdown]
@@ -226,16 +221,7 @@ display(bar_plot_widget)
 
 # %% Histogram Widget — distribution overlay for scatter data
 histogram_series = [
-    {
-        "label": scatter_series[0]["label"],
-        "x": scatter_series[0]["x"],
-        "y": scatter_series[0]["y"],
-    },
-    {
-        "label": scatter_series[1]["label"],
-        "x": scatter_series[1]["x"],
-        "y": scatter_series[1]["y"],
-    },
+    {key: s[key] for key in ("label", "x", "y")} for s in scatter_series
 ]
 histogram_widget = pmv.HistogramWidget(
     series=histogram_series,
@@ -245,7 +231,7 @@ histogram_widget = pmv.HistogramWidget(
     y_axis={"label": "Count"},
     style="height: 360px;",
 )
-display(histogram_widget)
+histogram_widget.display()
 
 
 # === Band Structure + DOS ===
