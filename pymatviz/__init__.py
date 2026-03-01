@@ -88,15 +88,19 @@ from pymatviz.utils import PKG_DIR, ROOT, df_ptable, html_tag, si_fmt, si_fmt_in
 from pymatviz.widgets import (
     BandsAndDosWidget,
     BandStructureWidget,
+    BarPlotWidget,
     BrillouinZoneWidget,
     CompositionWidget,
     ConvexHullWidget,
     DosWidget,
     FermiSurfaceWidget,
+    HistogramWidget,
     PhaseDiagramWidget,
+    ScatterPlotWidget,
     StructureWidget,
     TrajectoryWidget,
     XrdWidget,
+    configure_assets,
 )
 from pymatviz.xrd import xrd_pattern
 

@@ -432,10 +432,14 @@ def _build_invalid_trajectory_input(
         """Wrap structure payload in a single-frame trajectory dict."""
         return {"frames": [{"structure": structure_data, "step": 0}]}
 
-    def _site_with_species(element_symbol: str, *, include_abc: bool) -> dict[str, Any]:
+    def _site_with_species(
+        element_symbol: str, *, include_abc: bool, empty_species: bool = False
+    ) -> dict[str, Any]:
         """Build a minimal site payload with optional fractional coordinates."""
         site_data: dict[str, Any] = {
-            "species": [{"element": element_symbol, "occu": 1.0}]
+            "species": []
+            if empty_species
+            else [{"element": element_symbol, "occu": 1.0}]
         }
         if include_abc:
             site_data["abc"] = [0, 0, 0]
@@ -456,6 +460,14 @@ def _build_invalid_trajectory_input(
         "empty_sites": _single_frame({**valid_structure, "sites": []}),
         "missing_site_coords": _single_frame(
             {**valid_structure, "sites": [_site_with_species("Si", include_abc=False)]}
+        ),
+        "empty_species": _single_frame(
+            {
+                **valid_structure,
+                "sites": [
+                    _site_with_species("Si", include_abc=True, empty_species=True)
+                ],
+            }
         ),
         "missing_coords_second_site": _single_frame(
             {
@@ -484,6 +496,7 @@ def _build_invalid_trajectory_input(
             "must provide either 'matrix' or all of",
         ),
         ("empty_sites", ValueError, "empty 'sites'"),
+        ("empty_species", ValueError, "species' must be a non-empty list"),
         ("missing_site_coords", ValueError, "coordinate key 'abc' or 'xyz'"),
         ("missing_coords_second_site", ValueError, "coordinate key 'abc' or 'xyz'"),
     ],
