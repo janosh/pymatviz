@@ -342,19 +342,18 @@ def test_to_dict_includes_subclass_fields(
     kwargs: dict[str, Any],
     expected_fields: set[str],
 ) -> None:
-    """to_dict auto-discovers all synced traitlets including subclass-specific ones."""
+    """to_dict returns base fields plus widget-specific synced traitlets."""
     widget = widget_cls(**kwargs)
     state = widget.to_dict()
 
     base_fields = {"widget_type", "style", "show_controls"}
     assert base_fields <= set(state), f"Missing base fields in {widget_cls.__name__}"
-    assert expected_fields <= set(state), (
-        f"Missing subclass fields: {expected_fields - set(state)}"
-    )
-    assert not any(key.startswith("_") for key in state)
-    non_synced_internals = {"comm", "keys", "log"}
-    assert not non_synced_internals & set(state), (
-        f"Non-synced traitlets leaked into to_dict: {non_synced_internals & set(state)}"
+
+    all_expected = base_fields | expected_fields
+    assert set(state) == all_expected, (
+        f"{widget_cls.__name__}: to_dict keys mismatch.\n"
+        f"  Extra: {set(state) - all_expected}\n"
+        f"  Missing: {all_expected - set(state)}"
     )
 
 
@@ -528,34 +527,61 @@ def test_periodic_table_accepts_list_input() -> None:
 
 
 @pytest.mark.parametrize(
-    ("widget_cls", "kwargs"),
+    ("widget_cls", "kwargs", "expected_type"),
     [
-        (PeriodicTableWidget, {}),
-        (RdfPlotWidget, {}),
-        (ScatterPlot3DWidget, {}),
-        (ChemPotDiagramWidget, {}),
-        (HeatmapMatrixWidget, {"x_items": [], "y_items": []}),
-        (SpacegroupBarPlotWidget, {}),
+        (PeriodicTableWidget, {}, "periodic_table"),
+        (RdfPlotWidget, {}, "rdf_plot"),
+        (ScatterPlot3DWidget, {}, "scatter_plot_3d"),
+        (ChemPotDiagramWidget, {}, "chem_pot_diagram"),
+        (HeatmapMatrixWidget, {}, "heatmap_matrix"),
+        (SpacegroupBarPlotWidget, {}, "spacegroup_bar"),
     ],
 )
 def test_new_widgets_construct_with_no_data(
-    widget_cls: type, kwargs: dict[str, Any]
+    widget_cls: type, kwargs: dict[str, Any], expected_type: str
 ) -> None:
     """New widgets construct successfully with empty/no data."""
     widget = widget_cls(**kwargs)
-    assert widget.widget_type is not None
+    assert widget.widget_type == expected_type
     assert isinstance(widget.to_dict(), dict)
 
 
-def test_heatmap_matrix_normalizes_numpy_values() -> None:
-    """HeatmapMatrixWidget normalizes numpy arrays to plain Python lists."""
-    widget = HeatmapMatrixWidget(
-        x_items=["A", "B"],
-        y_items=["A", "B"],
-        values=np.array([[1.0, 0.5], [0.5, 1.0]]),
-    )
-    assert widget.values == [[1.0, 0.5], [0.5, 1.0]]
-    assert type(widget.values[0]) is list
+@pytest.mark.parametrize(
+    ("widget_cls", "kwargs", "attr", "expected"),
+    [
+        (
+            HeatmapMatrixWidget,
+            {
+                "x_items": ["A", "B"],
+                "y_items": ["A", "B"],
+                "values": np.array([[1.0, 0.5], [0.5, 1.0]]),
+            },
+            "values",
+            [[1.0, 0.5], [0.5, 1.0]],
+        ),
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": np.array([1.0, 4.0, 6.9])},
+            "heatmap_values",
+            [1.0, 4.0, 6.9],
+        ),
+    ],
+)
+def test_widget_normalizes_numpy_values(
+    widget_cls: type, kwargs: dict[str, Any], attr: str, expected: list[Any]
+) -> None:
+    """Widgets normalize numpy arrays to plain Python lists."""
+    widget = widget_cls(**kwargs)
+    result = getattr(widget, attr)
+    assert result == expected
+    assert type(result) is list
+
+
+def test_heatmap_matrix_values_none_passthrough() -> None:
+    """HeatmapMatrixWidget passes None values through as None (not empty list)."""
+    widget = HeatmapMatrixWidget(x_items=["A"], y_items=["B"])
+    assert widget.values is None
+    assert widget.to_dict()["values"] is None
 
 
 def test_heatmap_matrix_accepts_nested_dict_values() -> None:
@@ -588,23 +614,20 @@ def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
         )
 
 
-def test_scatter_plot_3d_rejects_missing_z() -> None:
-    """ScatterPlot3DWidget rejects series entries without z key."""
-    with pytest.raises(ValueError, match="missing required key"):
-        ScatterPlot3DWidget(series=[{"x": [1], "y": [2], "label": "no-z"}])
-
-
-def test_scatter_plot_3d_rejects_non_dict_entry() -> None:
-    """ScatterPlot3DWidget rejects non-dict series entries."""
-    with pytest.raises(TypeError, match="must be a dict"):
-        ScatterPlot3DWidget(series=["not-a-dict"])  # type: ignore[arg-type]
-
-
-def test_periodic_table_normalizes_numpy_values() -> None:
-    """PeriodicTableWidget normalizes numpy arrays via normalize_plot_json."""
-    widget = PeriodicTableWidget(heatmap_values=np.array([1.0, 4.0, 6.9]))
-    assert widget.heatmap_values == [1.0, 4.0, 6.9]
-    assert type(widget.heatmap_values) is list
+@pytest.mark.parametrize(
+    ("series", "exc_type", "match"),
+    [
+        ([{"x": [1], "y": [2], "label": "no-z"}], ValueError, "missing required key"),
+        (["not-a-dict"], TypeError, "must be a dict"),
+        ([{1: [0], "y": [1], "z": [2]}], TypeError, "non-string keys"),
+    ],
+)
+def test_scatter_plot_3d_rejects_invalid_series(
+    series: list[Any], exc_type: type[Exception], match: str
+) -> None:
+    """ScatterPlot3DWidget rejects malformed series entries."""
+    with pytest.raises(exc_type, match=match):
+        ScatterPlot3DWidget(series=series)
 
 
 # === FermiSurfaceWidget input validation ===

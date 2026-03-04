@@ -55,14 +55,8 @@ class HeatmapMatrixWidget(MatterVizWidget):
         """
         super().__init__(
             widget_type="heatmap_matrix",
-            x_items=normalize_plot_json(
-                x_items if x_items is not None else [], "HeatmapMatrix.x_items"
-            ),
-            y_items=normalize_plot_json(
-                y_items if y_items is not None else [], "HeatmapMatrix.y_items"
-            ),
-            values=normalize_plot_json(
-                values if values is not None else [], "HeatmapMatrix.values"
-            ),
+            x_items=normalize_plot_json(x_items or [], "HeatmapMatrix.x_items"),
+            y_items=normalize_plot_json(y_items or [], "HeatmapMatrix.y_items"),
+            values=normalize_plot_json(values, "HeatmapMatrix.values"),
             **kwargs,
         )

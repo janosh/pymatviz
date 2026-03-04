@@ -23,7 +23,9 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
 
     data = tl.List(allow_none=True).tag(sync=True)
     show_counts = tl.Bool(default_value=True).tag(sync=True)
-    orientation = tl.Unicode(default_value="vertical").tag(sync=True)
+    orientation = tl.CaselessStrEnum(
+        values=["vertical", "horizontal"], default_value="vertical"
+    ).tag(sync=True)
     x_axis = tl.Dict(allow_none=True).tag(sync=True)
     y_axis = tl.Dict(allow_none=True).tag(sync=True)
 

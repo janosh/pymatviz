@@ -7,7 +7,7 @@
 # ]
 # ///
 
-__date__ = "2025-03-04"
+__date__ = "2026-03-04"
 
 
 # %%
@@ -64,22 +64,21 @@ stable_phases = {
 entries = [PDEntry(Composition(c), e) for c, e in stable_phases.items()]
 _hull = PhaseDiagram(entries)
 
-# Generate ~200 unstable entries at varying distances above the hull by
-# sweeping Li_a Fe_b O_c compositions and placing them 0.01-0.5 eV/atom
-# above the hull energy for that composition.
-for li_count in range(7):
-    for fe_count in range(7):
-        for o_count in range(1, 8):
-            if li_count == 0 and fe_count == 0:
-                continue
-            comp = Composition({"Li": li_count, "Fe": fe_count, "O": o_count})
-            formula = comp.reduced_formula
-            if formula in stable_phases:
-                continue
-            hull_energy = _hull.get_hull_energy(comp)
-            # log-normal: clusters near hull with a tail of clearly unstable outliers
-            delta = np_rng.lognormal(mean=-3.2, sigma=1.0) * comp.num_atoms
-            entries.append(PDEntry(comp, hull_energy + delta))
+# Sweep Li_a Fe_b O_c compositions and place each above the hull with
+# log-normal delta (median ~0.04 eV/atom, clamped to <=0.25 eV/atom for realism).
+# Deterministically produces 265 unstable entries (281 total with stable_phases).
+_seen = set(stable_phases)
+for li_count, fe_count, o_count in itertools.product(range(7), range(7), range(1, 8)):
+    if li_count == 0 and fe_count == 0:
+        continue
+    comp = Composition({"Li": li_count, "Fe": fe_count, "O": o_count})
+    if comp.reduced_formula in _seen:
+        continue
+    _seen.add(comp.reduced_formula)
+    per_atom_delta = min(np_rng.lognormal(mean=-3.2, sigma=1.0), 0.25)
+    entries.append(
+        PDEntry(comp, _hull.get_hull_energy(comp) + per_atom_delta * comp.num_atoms)
+    )
 phase_diag = PhaseDiagram(entries)
 
 convex_hull_widget = pmv.ConvexHullWidget(

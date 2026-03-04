@@ -193,6 +193,10 @@ class MatterVizWidget(AnyWidget):
         ``marimo edit`` in a browser instead.
     """
 
+    _EXCLUDED_TRAITS: ClassVar[frozenset[str]] = frozenset(
+        {"layout", "tabbable", "tooltip"}
+    )
+
     _esm: str
     _css: str
     _asset_cache: ClassVar[dict[str, tuple[str, str] | str | None]] = {}
@@ -263,5 +267,5 @@ class MatterVizWidget(AnyWidget):
         return {
             name: getattr(self, name)
             for name in self.traits(sync=True)
-            if not name.startswith("_")
+            if not name.startswith("_") and name not in self._EXCLUDED_TRAITS
         }

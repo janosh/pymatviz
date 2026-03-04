@@ -54,6 +54,11 @@ class ScatterPlot3DWidget(MatterVizWidget):
                         f"ScatterPlot3D series entry at index {idx} must be a "
                         f"dict, got {type(entry).__name__}."
                     )
+                if not all(isinstance(key, str) for key in entry):
+                    raise TypeError(
+                        f"ScatterPlot3D series entry at index {idx} has "
+                        f"non-string keys: {list(entry)}"
+                    )
                 missing = {"x", "y", "z"} - entry.keys()
                 if missing:
                     raise ValueError(

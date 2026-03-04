@@ -23,6 +23,7 @@ app = marimo.App(width="full")
 
 @app.cell
 def _():
+    import itertools
     import os
     from typing import Final
 
@@ -42,6 +43,7 @@ def _():
         PhonopyAtoms,
         Structure,
         bulk,
+        itertools,
         mo,
         molecule,
         np,
@@ -60,20 +62,44 @@ def _(mo):
 
 
 @app.cell
-def _(Composition, pmv):
+def _(Composition, itertools, np_rng, pmv):
     from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 
-    _phase_diag = PhaseDiagram(
-        [
-            PDEntry(Composition("Li"), -1.9),
-            PDEntry(Composition("Fe"), -4.2),
-            PDEntry(Composition("O"), -3.0),
-            PDEntry(Composition("Li2O"), -14.3),
-            PDEntry(Composition("Fe2O3"), -25.5),
-            PDEntry(Composition("LiFeO2"), -18.0),
-            PDEntry(Composition("FeO"), -8.5),
-        ]
-    )
+    _stable_phases = {
+        "Li": -1.9,
+        "Fe": -4.2,
+        "O": -3.0,
+        "Li2O": -15.8,
+        "FeO": -13.0,
+        "Fe2O3": -33.0,
+        "Fe3O4": -46.0,
+        "LiFeO2": -25.0,
+        "Li5FeO4": -58.0,
+        "LiFe5O8": -92.0,
+        "Li2Fe2O4": -52.0,
+        "LiFeO3": -31.0,
+        "Li2FeO3": -37.0,
+        "LiFe2O4": -46.0,
+        "Li3FeO3": -42.0,
+        "Fe2O5": -40.0,
+    }
+    _entries = [PDEntry(Composition(c), e) for c, e in _stable_phases.items()]
+    _hull = PhaseDiagram(_entries)
+
+    _seen = set(_stable_phases)
+    for _li, _fe, _o in itertools.product(range(7), range(7), range(1, 8)):
+        if _li == 0 and _fe == 0:
+            continue
+        _comp = Composition({"Li": _li, "Fe": _fe, "O": _o})
+        if _comp.reduced_formula in _seen:
+            continue
+        _seen.add(_comp.reduced_formula)
+        _delta = min(np_rng.lognormal(mean=-3.2, sigma=1.0), 0.25)
+        _entries.append(
+            PDEntry(_comp, _hull.get_hull_energy(_comp) + _delta * _comp.num_atoms)
+        )
+    _phase_diag = PhaseDiagram(_entries)
+
     pmv.ConvexHullWidget(entries=_phase_diag, style="height: 500px;")
 
 
