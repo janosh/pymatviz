@@ -590,8 +590,14 @@ def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
 
 def test_scatter_plot_3d_rejects_missing_z() -> None:
     """ScatterPlot3DWidget rejects series entries without z key."""
-    with pytest.raises(ValueError, match="missing required 'z' key"):
+    with pytest.raises(ValueError, match="missing required key"):
         ScatterPlot3DWidget(series=[{"x": [1], "y": [2], "label": "no-z"}])
+
+
+def test_scatter_plot_3d_rejects_non_dict_entry() -> None:
+    """ScatterPlot3DWidget rejects non-dict series entries."""
+    with pytest.raises(TypeError, match="must be a dict"):
+        ScatterPlot3DWidget(series=["not-a-dict"])  # type: ignore[arg-type]
 
 
 def test_periodic_table_normalizes_numpy_values() -> None:

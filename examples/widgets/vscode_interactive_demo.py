@@ -77,7 +77,8 @@ for li_count in range(7):
             if formula in stable_phases:
                 continue
             hull_energy = _hull.get_hull_energy(comp)
-            delta = np_rng.uniform(0.01, 0.5) * comp.num_atoms
+            # log-normal: clusters near hull with a tail of clearly unstable outliers
+            delta = np_rng.lognormal(mean=-3.2, sigma=1.0) * comp.num_atoms
             entries.append(PDEntry(comp, hull_energy + delta))
 phase_diag = PhaseDiagram(entries)
 

@@ -49,10 +49,17 @@ class ScatterPlot3DWidget(MatterVizWidget):
         """
         if series is not None:
             for idx, entry in enumerate(series):
-                if isinstance(entry, dict) and "z" not in entry:
+                if not isinstance(entry, dict):
+                    raise TypeError(
+                        f"ScatterPlot3D series entry at index {idx} must be a "
+                        f"dict, got {type(entry).__name__}."
+                    )
+                missing = {"x", "y", "z"} - entry.keys()
+                if missing:
                     raise ValueError(
                         f"ScatterPlot3D series entry at index {idx} is missing "
-                        f"required 'z' key. Got keys: {sorted(entry)}."
+                        f"required key(s): {sorted(missing)}. "
+                        f"Got keys: {sorted(entry)}."
                     )
 
         super().__init__(
