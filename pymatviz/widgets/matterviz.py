@@ -92,10 +92,14 @@ def configure_assets(
         css_src: URL or local file path for the CSS stylesheet.
             Derived from ``esm_src`` by replacing ``.mjs`` → ``.css`` if omitted.
     """
-    if version and esm_src:
+    if version and (esm_src or css_src):
         raise ValueError(
             "configure_assets() accepts either 'version' or 'esm_src'/'css_src', "
             "not both."
+        )
+    if css_src and not esm_src:
+        raise ValueError(
+            "configure_assets() requires 'esm_src' when 'css_src' is provided."
         )
 
     cls = MatterVizWidget

@@ -7,7 +7,7 @@
 # ]
 # ///
 
-__date__ = "2025-07-16"
+__date__ = "2025-03-04"
 
 
 # %%
@@ -42,17 +42,44 @@ np_rng = np.random.default_rng(seed=0)
 from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram  # noqa: E402
 
 
-phase_diag = PhaseDiagram(
-    [
-        PDEntry(Composition("Li"), -1.9),
-        PDEntry(Composition("Fe"), -4.2),
-        PDEntry(Composition("O"), -3.0),
-        PDEntry(Composition("Li2O"), -14.3),
-        PDEntry(Composition("Fe2O3"), -25.5),
-        PDEntry(Composition("LiFeO2"), -18.0),
-        PDEntry(Composition("FeO"), -8.5),
-    ]
-)
+# Stable phases on the convex hull
+stable_phases = {
+    "Li": -1.9,
+    "Fe": -4.2,
+    "O": -3.0,
+    "Li2O": -15.8,
+    "FeO": -13.0,
+    "Fe2O3": -33.0,
+    "Fe3O4": -46.0,
+    "LiFeO2": -25.0,
+    "Li5FeO4": -58.0,
+    "LiFe5O8": -92.0,
+    "Li2Fe2O4": -52.0,
+    "LiFeO3": -31.0,
+    "Li2FeO3": -37.0,
+    "LiFe2O4": -46.0,
+    "Li3FeO3": -42.0,
+    "Fe2O5": -40.0,
+}
+entries = [PDEntry(Composition(c), e) for c, e in stable_phases.items()]
+_hull = PhaseDiagram(entries)
+
+# Generate ~200 unstable entries at varying distances above the hull by
+# sweeping Li_a Fe_b O_c compositions and placing them 0.01-0.5 eV/atom
+# above the hull energy for that composition.
+for li_count in range(7):
+    for fe_count in range(7):
+        for o_count in range(1, 8):
+            if li_count == 0 and fe_count == 0:
+                continue
+            comp = Composition({"Li": li_count, "Fe": fe_count, "O": o_count})
+            formula = comp.reduced_formula
+            if formula in stable_phases:
+                continue
+            hull_energy = _hull.get_hull_energy(comp)
+            delta = np_rng.uniform(0.01, 0.5) * comp.num_atoms
+            entries.append(PDEntry(comp, hull_energy + delta))
+phase_diag = PhaseDiagram(entries)
 
 convex_hull_widget = pmv.ConvexHullWidget(
     entries=phase_diag,
@@ -360,6 +387,187 @@ traj_widget = pmv.TrajectoryWidget(
     show_force_vectors=False,
 )
 traj_widget.show()
+
+
+# === New Widget Types ===
+
+
+# %% [markdown]
+# ### Isosurface Rendering (CHGCAR/CUBE)
+# Load a VASP CHGCAR file and render charge density isosurfaces with custom settings.
+
+matterviz_iso_dir_url: Final = (
+    "https://github.com/janosh/matterviz/raw/550d96d2/src/site/isosurfaces"
+)
+
+
+# %% Isosurface — Si charge density from CHGCAR
+iso_widget = pmv.StructureWidget(
+    data_url=f"{matterviz_iso_dir_url}/Si-CHGCAR.gz",
+    isosurface_settings={
+        "isovalue": 0.05,
+        "opacity": 0.6,
+        "positive_color": "#3b82f6",
+        "show_negative": False,
+    },
+    style="height: 500px;",
+)
+iso_widget.show()
+
+
+# %% [markdown]
+# ### Molecular Orbital Isosurface (.cube)
+# Render caffeine HOMO orbital lobes from a Gaussian .cube file.
+
+
+# %% Isosurface — caffeine HOMO
+orbital_widget = pmv.StructureWidget(
+    data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
+    isosurface_settings={
+        "isovalue": 0.02,
+        "opacity": 0.7,
+        "positive_color": "#3b82f6",
+        "negative_color": "#ef4444",
+        "show_negative": True,
+    },
+    show_bonds=True,
+    style="height: 500px;",
+)
+orbital_widget.show()
+
+
+# %% [markdown]
+# ### Periodic Table Widget
+# Element heatmap showing atomic masses with interactive hover.
+
+
+# %% Periodic Table — atomic mass heatmap
+mass_data = {
+    "H": 1.008,
+    "He": 4.003,
+    "Li": 6.941,
+    "Be": 9.012,
+    "B": 10.81,
+    "C": 12.01,
+    "N": 14.01,
+    "O": 16.00,
+    "F": 19.00,
+    "Ne": 20.18,
+    "Na": 22.99,
+    "Mg": 24.31,
+    "Al": 26.98,
+    "Si": 28.09,
+    "P": 30.97,
+    "S": 32.07,
+    "Cl": 35.45,
+    "Ar": 39.95,
+    "K": 39.10,
+    "Ca": 40.08,
+    "Fe": 55.85,
+    "Co": 58.93,
+    "Ni": 58.69,
+    "Cu": 63.55,
+    "Zn": 65.38,
+}
+ptable_widget = pmv.PeriodicTableWidget(
+    heatmap_values=mass_data,
+    color_scale="interpolateViridis",
+    style="height: 400px;",
+)
+ptable_widget.show()
+
+
+# %% [markdown]
+# ### 3D Scatter Plot Widget
+# Random 3D point cloud colored by z-value.
+
+
+# %% ScatterPlot3D — random 3D data
+scatter_3d_widget = pmv.ScatterPlot3DWidget(
+    series=[
+        {
+            "x": np_rng.normal(0, 1, 50).tolist(),
+            "y": np_rng.normal(0, 1, 50).tolist(),
+            "z": np_rng.normal(0, 1, 50).tolist(),
+            "label": "Random points",
+        }
+    ],
+    x_axis={"label": "x"},
+    y_axis={"label": "y"},
+    z_axis={"label": "z"},
+    style="height: 500px;",
+)
+scatter_3d_widget.show()
+
+
+# %% [markdown]
+# ### Heatmap Matrix Widget
+# Element pair interaction strengths as a labeled grid.
+
+
+# %% HeatmapMatrix — element pair interactions
+elements = ["Fe", "O", "Li", "Mn"]
+heatmap_widget = pmv.HeatmapMatrixWidget(
+    x_items=elements,
+    y_items=elements,
+    values=[
+        [1.0, 0.8, 0.3, 0.6],
+        [0.8, 1.0, 0.2, 0.5],
+        [0.3, 0.2, 1.0, 0.4],
+        [0.6, 0.5, 0.4, 1.0],
+    ],
+    color_scale="interpolateBlues",
+    style="height: 400px;",
+)
+heatmap_widget.show()
+
+
+# %% [markdown]
+# ### Space Group Bar Plot Widget
+# Distribution of space groups in a dataset.
+
+
+# %% SpacegroupBarPlot — space group frequencies
+spacegroup_widget = pmv.SpacegroupBarPlotWidget(
+    data=[225, 225, 225, 166, 166, 62, 62, 62, 62, 139, 139, 12, 14, 14, 14, 14],
+    style="height: 350px;",
+)
+spacegroup_widget.show()
+
+
+# %% [markdown]
+# ### Chemical Potential Diagram Widget
+# Stability regions in Li-Fe-O chemical potential space.
+
+
+# %% ChemPotDiagram — Li-Fe-O system
+chem_pot_widget = pmv.ChemPotDiagramWidget(
+    entries=[
+        {"name": "Li", "energy": -1.9, "composition": {"Li": 1}},
+        {"name": "Fe", "energy": -8.3, "composition": {"Fe": 1}},
+        {"name": "O2", "energy": -4.9, "composition": {"O": 1}},
+        {"name": "Li2O", "energy": -14.3, "composition": {"Li": 2, "O": 1}},
+        {"name": "Fe2O3", "energy": -25.0, "composition": {"Fe": 2, "O": 3}},
+        {"name": "LiFeO2", "energy": -17.5, "composition": {"Li": 1, "Fe": 1, "O": 2}},
+    ],
+    style="height: 500px;",
+)
+chem_pot_widget.show()
+
+
+# %% [markdown]
+# ### RDF Plot Widget
+# Radial distribution function computed on-the-fly from the GaN structure.
+
+
+# %% RdfPlot — GaN pair distribution
+rdf_widget = pmv.RdfPlotWidget(
+    structures=struct.as_dict(),
+    cutoff=10,
+    n_bins=80,
+    style="height: 400px;",
+)
+rdf_widget.show()
 
 
 # === MIME Type Auto-display ===
