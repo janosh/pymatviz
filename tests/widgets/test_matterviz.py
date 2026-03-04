@@ -295,10 +295,20 @@ def test_configure_assets_reset() -> None:
     assert matterviz.MatterVizWidget._asset_cache == {}
 
 
-def test_configure_assets_rejects_version_and_src() -> None:
-    """configure_assets rejects version + esm_src together."""
-    with pytest.raises(ValueError, match="not both"):
-        configure_assets(version="v1.0.0", esm_src="/path/to/file.mjs")
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"version": "v1.0.0", "esm_src": "/f.mjs"}, "not both"),
+        ({"version": "v1.0.0", "css_src": "/f.css"}, "not both"),
+        ({"css_src": "/f.css"}, "requires 'esm_src'"),
+    ],
+)
+def test_configure_assets_rejects_invalid_combos(
+    kwargs: dict[str, str], match: str
+) -> None:
+    """configure_assets rejects invalid argument combinations."""
+    with pytest.raises(ValueError, match=match):
+        configure_assets(**kwargs)
 
 
 @pytest.mark.usefixtures("_clean_asset_cache")

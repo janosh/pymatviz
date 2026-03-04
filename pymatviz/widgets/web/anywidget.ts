@@ -6,13 +6,19 @@ import {
   BandsAndDos,
   BarPlot,
   BrillouinZone,
+  ChemPotDiagram,
   Composition,
   ConvexHull,
   Dos,
   FermiSurface,
+  HeatmapMatrix,
   Histogram,
   IsobaricBinaryPhaseDiagram,
+  PeriodicTable,
+  RdfPlot,
   ScatterPlot,
+  ScatterPlot3D,
+  SpacegroupBarPlot,
   Structure,
   Trajectory,
   XrdPlot,
@@ -132,6 +138,10 @@ const mount_widget = (
   component: unknown,
   props: Record<string, unknown>,
 ) => {
+  // Prevent widget overflow in notebook cell outputs
+  el.style.boxSizing = `border-box`
+  el.style.maxWidth = `100%`
+  el.style.marginRight = `2em` // in vscode-interactive window, content overflows cell container div without this
   const base_props = {
     allow_file_drop: false,
     show_controls: get_prop(model, `show_controls`),
@@ -195,6 +205,7 @@ const render: Render = (props) => {
     structure: render_structure,
     trajectory: render_trajectory,
     scatter_plot: render_scatter_plot,
+    scatter_plot_3d: render_scatter_plot_3d,
     bar_plot: render_bar_plot,
     histogram: render_histogram,
     composition: render_composition,
@@ -206,6 +217,11 @@ const render: Render = (props) => {
     brillouin_zone: render_brillouin_zone,
     phase_diagram: render_phase_diagram,
     xrd: render_xrd,
+    periodic_table: render_periodic_table,
+    rdf_plot: render_rdf_plot,
+    heatmap_matrix: render_heatmap_matrix,
+    spacegroup_bar: render_spacegroup_bar,
+    chem_pot_diagram: render_chem_pot_diagram,
   }
 
   const renderer = widget_type ? renderers[widget_type] : undefined
@@ -237,6 +253,7 @@ const render_structure: Render = ({ model, el }) => {
       `enable_info_pane`,
       `fullscreen_toggle`,
       `png_dpi`,
+      `isosurface_settings`,
     ]),
     scene_props: get_scene_props(model),
     lattice_props: get_lattice_props(model),
@@ -389,6 +406,107 @@ const render_phase_diagram: Render = ({ model, el }) => {
 
 const render_xrd: Render = ({ model, el }) => {
   mount_widget(model, el, XrdPlot, pick_props(model, [`patterns`]))
+}
+
+const render_periodic_table: Render = ({ model, el }) => {
+  mount_widget(model, el, PeriodicTable, {
+    ...pick_props(model, [
+      `heatmap_values`,
+      `color_scale`,
+      `color_scale_range`,
+      `color_overrides`,
+      `labels`,
+      `show_color_bar`,
+      `gap`,
+      `missing_color`,
+    ]),
+    log: get_prop(model, `log_scale`),
+  })
+}
+
+const render_rdf_plot: Render = ({ model, el }) => {
+  mount_widget(
+    model,
+    el,
+    RdfPlot,
+    pick_props(model, [
+      `patterns`,
+      `structures`,
+      `mode`,
+      `show_reference_line`,
+      `cutoff`,
+      `n_bins`,
+      `x_axis`,
+      `y_axis`,
+    ]),
+  )
+}
+
+const render_scatter_plot_3d: Render = ({ model, el }) => {
+  mount_widget(
+    model,
+    el,
+    ScatterPlot3D,
+    pick_props(model, [
+      `series`,
+      `surfaces`,
+      `ref_lines`,
+      `ref_planes`,
+      `x_axis`,
+      `y_axis`,
+      `z_axis`,
+      `display`,
+      `styles`,
+      `color_scale`,
+      `size_scale`,
+      `legend`,
+      `controls`,
+      `camera_projection`,
+    ]),
+  )
+}
+
+const render_heatmap_matrix: Render = ({ model, el }) => {
+  mount_widget(model, el, HeatmapMatrix, {
+    ...pick_props(model, [
+      `x_items`,
+      `y_items`,
+      `values`,
+      `color_scale`,
+      `color_scale_range`,
+      `missing_color`,
+      `x_axis`,
+      `y_axis`,
+      `tile_size`,
+      `gap`,
+      `show_values`,
+    ]),
+    log: get_prop(model, `log_scale`),
+  })
+}
+
+const render_spacegroup_bar: Render = ({ model, el }) => {
+  mount_widget(
+    model,
+    el,
+    SpacegroupBarPlot,
+    pick_props(model, [
+      `data`,
+      `show_counts`,
+      `orientation`,
+      `x_axis`,
+      `y_axis`,
+    ]),
+  )
+}
+
+const render_chem_pot_diagram: Render = ({ model, el }) => {
+  mount_widget(
+    model,
+    el,
+    ChemPotDiagram,
+    pick_props(model, [`entries`, `config`, `temperature`]),
+  )
 }
 
 export default { render }

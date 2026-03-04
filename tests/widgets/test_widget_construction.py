@@ -13,13 +13,20 @@ from pymatviz.widgets.band_structure import BandStructureWidget
 from pymatviz.widgets.bands_and_dos import BandsAndDosWidget
 from pymatviz.widgets.bar_plot import BarPlotWidget
 from pymatviz.widgets.brillouin_zone import BrillouinZoneWidget
+from pymatviz.widgets.chem_pot_diagram import ChemPotDiagramWidget
 from pymatviz.widgets.convex_hull import ConvexHullWidget
 from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
+from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
 from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
+from pymatviz.widgets.rdf_plot import RdfPlotWidget
 from pymatviz.widgets.scatter_plot import ScatterPlotWidget
+from pymatviz.widgets.scatter_plot_3d import ScatterPlot3DWidget
+from pymatviz.widgets.spacegroup_bar import SpacegroupBarPlotWidget
+from pymatviz.widgets.structure import StructureWidget
 from pymatviz.widgets.xrd import XrdWidget
 
 
@@ -106,6 +113,48 @@ from pymatviz.widgets.xrd import XrdWidget
             "histogram",
             "series",
             [{"x": [0.0, 1.0], "y": [2.0, 2.5], "label": "hist"}],
+        ),
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": {"Fe": 42, "O": 100}},
+            "periodic_table",
+            "heatmap_values",
+            {"Fe": 42, "O": 100},
+        ),
+        (
+            RdfPlotWidget,
+            {"structures": {"lattice": {}, "sites": []}},
+            "rdf_plot",
+            "structures",
+            {"lattice": {}, "sites": []},
+        ),
+        (
+            ScatterPlot3DWidget,
+            {"series": [{"x": [1], "y": [2], "z": [3], "label": "pt"}]},
+            "scatter_plot_3d",
+            "series",
+            [{"x": [1], "y": [2], "z": [3], "label": "pt"}],
+        ),
+        (
+            HeatmapMatrixWidget,
+            {"x_items": ["A", "B"], "y_items": ["C", "D"], "values": [[1, 2], [3, 4]]},
+            "heatmap_matrix",
+            "values",
+            [[1, 2], [3, 4]],
+        ),
+        (
+            SpacegroupBarPlotWidget,
+            {"data": [225, 166, 62]},
+            "spacegroup_bar",
+            "data",
+            [225, 166, 62],
+        ),
+        (
+            ChemPotDiagramWidget,
+            {"entries": [{"name": "Li2O", "energy": -14.3}]},
+            "chem_pot_diagram",
+            "entries",
+            [{"name": "Li2O", "energy": -14.3}],
         ),
     ],
 )
@@ -213,6 +262,79 @@ def test_widget_construction_and_type(
                 "temperature",
             },
         ),
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": {"Fe": 42}},
+            {
+                "heatmap_values",
+                "color_scale",
+                "color_scale_range",
+                "color_overrides",
+                "labels",
+                "log_scale",
+                "show_color_bar",
+                "gap",
+                "missing_color",
+            },
+        ),
+        (
+            ScatterPlot3DWidget,
+            {"series": [{"x": [1], "y": [2], "z": [3]}]},
+            {
+                "series",
+                "surfaces",
+                "ref_lines",
+                "ref_planes",
+                "x_axis",
+                "y_axis",
+                "z_axis",
+                "display",
+                "styles",
+                "color_scale",
+                "size_scale",
+                "legend",
+                "controls",
+                "camera_projection",
+            },
+        ),
+        (
+            HeatmapMatrixWidget,
+            {"x_items": ["A"], "y_items": ["B"]},
+            {
+                "x_items",
+                "y_items",
+                "values",
+                "color_scale",
+                "color_scale_range",
+                "log_scale",
+                "missing_color",
+                "x_axis",
+                "y_axis",
+                "tile_size",
+                "gap",
+                "show_values",
+            },
+        ),
+        (
+            SpacegroupBarPlotWidget,
+            {"data": [225]},
+            {
+                "data",
+                "show_counts",
+                "orientation",
+                "x_axis",
+                "y_axis",
+            },
+        ),
+        (
+            ChemPotDiagramWidget,
+            {"entries": [{"name": "Li", "energy": -1.9}]},
+            {
+                "entries",
+                "config",
+                "temperature",
+            },
+        ),
     ],
 )
 def test_to_dict_includes_subclass_fields(
@@ -220,19 +342,18 @@ def test_to_dict_includes_subclass_fields(
     kwargs: dict[str, Any],
     expected_fields: set[str],
 ) -> None:
-    """to_dict auto-discovers all synced traitlets including subclass-specific ones."""
+    """to_dict returns base fields plus widget-specific synced traitlets."""
     widget = widget_cls(**kwargs)
     state = widget.to_dict()
 
     base_fields = {"widget_type", "style", "show_controls"}
     assert base_fields <= set(state), f"Missing base fields in {widget_cls.__name__}"
-    assert expected_fields <= set(state), (
-        f"Missing subclass fields: {expected_fields - set(state)}"
-    )
-    assert not any(key.startswith("_") for key in state)
-    non_synced_internals = {"comm", "keys", "log"}
-    assert not non_synced_internals & set(state), (
-        f"Non-synced traitlets leaked into to_dict: {non_synced_internals & set(state)}"
+
+    all_expected = base_fields | expected_fields
+    assert set(state) == all_expected, (
+        f"{widget_cls.__name__}: to_dict keys mismatch.\n"
+        f"  Extra: {set(state) - all_expected}\n"
+        f"  Missing: {all_expected - set(state)}"
     )
 
 
@@ -266,6 +387,14 @@ def test_to_dict_reflects_runtime_mutations() -> None:
 # === Traitlet defaults ===
 
 
+_MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
+    BarPlotWidget: {"series": [{"x": [0, 1], "y": [1, 2]}]},
+    HistogramWidget: {"series": [{"x": [0, 1], "y": [1, 2]}]},
+    HeatmapMatrixWidget: {"x_items": ["A"], "y_items": ["B"]},
+    SpacegroupBarPlotWidget: {"data": [225]},
+}
+
+
 @pytest.mark.parametrize(
     ("widget_cls", "attr", "expected"),
     [
@@ -274,13 +403,24 @@ def test_to_dict_reflects_runtime_mutations() -> None:
         (HistogramWidget, "bins", 100),
         (HistogramWidget, "mode", "single"),
         (HistogramWidget, "show_legend", True),
+        (PeriodicTableWidget, "color_scale", "interpolateViridis"),
+        (PeriodicTableWidget, "log_scale", False),
+        (PeriodicTableWidget, "show_color_bar", True),
+        (PeriodicTableWidget, "missing_color", "element-category"),
+        (ScatterPlot3DWidget, "camera_projection", "perspective"),
+        (HeatmapMatrixWidget, "color_scale", "interpolateViridis"),
+        (HeatmapMatrixWidget, "tile_size", "6px"),
+        (HeatmapMatrixWidget, "gap", "0px"),
+        (SpacegroupBarPlotWidget, "show_counts", True),
+        (SpacegroupBarPlotWidget, "orientation", "vertical"),
+        (RdfPlotWidget, "cutoff", 15),
+        (RdfPlotWidget, "n_bins", 75),
+        (RdfPlotWidget, "mode", "element_pairs"),
     ],
 )
-def test_plot_widget_traitlet_defaults(
-    widget_cls: type, attr: str, expected: Any
-) -> None:
-    """Plot widgets expose correct default traitlet values."""
-    widget = widget_cls(series=[{"x": [0, 1], "y": [1, 2]}])
+def test_widget_traitlet_defaults(widget_cls: type, attr: str, expected: Any) -> None:
+    """Widgets expose correct default traitlet values."""
+    widget = widget_cls(**_MINIMAL_KWARGS.get(widget_cls, {}))
     assert getattr(widget, attr) == expected
 
 
@@ -365,6 +505,129 @@ def test_histogram_widget_delegates_series_validation() -> None:
     """HistogramWidget constructor delegates to normalize_plot_series validation."""
     with pytest.raises(ValueError, match="must include keys 'x' and 'y'"):
         HistogramWidget(series=[{"x": [0, 1]}])
+
+
+# === New widget specific behaviors ===
+
+
+def test_structure_widget_isosurface_settings() -> None:
+    """StructureWidget passes isosurface_settings through to_dict."""
+    iso_settings = {"isovalue": 0.05, "opacity": 0.6, "positive_color": "#3b82f6"}
+    widget = StructureWidget(isosurface_settings=iso_settings)
+    state = widget.to_dict()
+    assert state["isosurface_settings"] == iso_settings
+    assert state["widget_type"] == "structure"
+
+
+def test_periodic_table_accepts_list_input() -> None:
+    """PeriodicTableWidget accepts list of values (not just dict)."""
+    widget = PeriodicTableWidget(heatmap_values=[1.0, 4.0, 6.9])
+    assert widget.heatmap_values == [1.0, 4.0, 6.9]
+    assert widget.widget_type == "periodic_table"
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "kwargs", "expected_type"),
+    [
+        (PeriodicTableWidget, {}, "periodic_table"),
+        (RdfPlotWidget, {}, "rdf_plot"),
+        (ScatterPlot3DWidget, {}, "scatter_plot_3d"),
+        (ChemPotDiagramWidget, {}, "chem_pot_diagram"),
+        (HeatmapMatrixWidget, {}, "heatmap_matrix"),
+        (SpacegroupBarPlotWidget, {}, "spacegroup_bar"),
+    ],
+)
+def test_new_widgets_construct_with_no_data(
+    widget_cls: type, kwargs: dict[str, Any], expected_type: str
+) -> None:
+    """New widgets construct successfully with empty/no data."""
+    widget = widget_cls(**kwargs)
+    assert widget.widget_type == expected_type
+    assert isinstance(widget.to_dict(), dict)
+
+
+@pytest.mark.parametrize(
+    ("widget_cls", "kwargs", "attr", "expected"),
+    [
+        (
+            HeatmapMatrixWidget,
+            {
+                "x_items": ["A", "B"],
+                "y_items": ["A", "B"],
+                "values": np.array([[1.0, 0.5], [0.5, 1.0]]),
+            },
+            "values",
+            [[1.0, 0.5], [0.5, 1.0]],
+        ),
+        (
+            PeriodicTableWidget,
+            {"heatmap_values": np.array([1.0, 4.0, 6.9])},
+            "heatmap_values",
+            [1.0, 4.0, 6.9],
+        ),
+    ],
+)
+def test_widget_normalizes_numpy_values(
+    widget_cls: type, kwargs: dict[str, Any], attr: str, expected: list[Any]
+) -> None:
+    """Widgets normalize numpy arrays to plain Python lists."""
+    widget = widget_cls(**kwargs)
+    result = getattr(widget, attr)
+    assert result == expected
+    assert type(result) is list
+
+
+def test_heatmap_matrix_values_none_passthrough() -> None:
+    """HeatmapMatrixWidget passes None values through as None (not empty list)."""
+    widget = HeatmapMatrixWidget(x_items=["A"], y_items=["B"])
+    assert widget.values is None
+    assert widget.to_dict()["values"] is None
+
+
+def test_heatmap_matrix_accepts_nested_dict_values() -> None:
+    """HeatmapMatrixWidget accepts dict-of-dicts as values."""
+    widget = HeatmapMatrixWidget(
+        x_items=["Fe", "O"],
+        y_items=["Fe", "O"],
+        values={"Fe": {"Fe": 1.0, "O": 0.5}, "O": {"Fe": 0.5, "O": 1.0}},
+    )
+    assert isinstance(widget.values, dict)
+    assert widget.values["Fe"]["O"] == 0.5
+
+
+def test_rdf_plot_accepts_pymatgen_structure() -> None:
+    """RdfPlotWidget normalizes pymatgen Structure to dict via _to_dict."""
+    from pymatgen.core import Lattice, Structure
+
+    struct = Structure(Lattice.cubic(3), ["Si"], [[0, 0, 0]])
+    widget = RdfPlotWidget(structures=struct)
+    assert isinstance(widget.structures, dict)
+    assert "lattice" in widget.structures
+
+
+def test_rdf_plot_rejects_both_structures_and_patterns() -> None:
+    """RdfPlotWidget rejects simultaneous structures and patterns."""
+    with pytest.raises(ValueError, match="not both"):
+        RdfPlotWidget(
+            structures={"lattice": {}, "sites": []},
+            patterns=[{"r": [1], "g_r": [1]}],
+        )
+
+
+@pytest.mark.parametrize(
+    ("series", "exc_type", "match"),
+    [
+        ([{"x": [1], "y": [2], "label": "no-z"}], ValueError, "missing required key"),
+        (["not-a-dict"], TypeError, "must be a dict"),
+        ([{1: [0], "y": [1], "z": [2]}], TypeError, "non-string keys"),
+    ],
+)
+def test_scatter_plot_3d_rejects_invalid_series(
+    series: list[Any], exc_type: type[Exception], match: str
+) -> None:
+    """ScatterPlot3DWidget rejects malformed series entries."""
+    with pytest.raises(exc_type, match=match):
+        ScatterPlot3DWidget(series=series)
 
 
 # === FermiSurfaceWidget input validation ===
