@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.17.5](https://github.com/janosh/pymatviz/compare/v0.17.4...v0.17.5)
+
+> 4 March 2026
+
+### 🛠 Enhancements
+
+- Add element and site projected phonon DOS support by @janosh in https://github.com/janosh/pymatviz/pull/339
+- Add widget state export helpers and harden projected DOS tests by @janosh in https://github.com/janosh/pymatviz/pull/340
+- Add periodic table, 3D scatter, heatmap, RDF, spacegroup, and chem pot widgets by @janosh in https://github.com/janosh/pymatviz/pull/342
+
 ## [v0.17.4](https://github.com/janosh/pymatviz/compare/v0.17.3...v0.17.4)
 
 > 11 February 2026

@@ -57,9 +57,6 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
-> [!WARNING]
-> Version 0.16.0 of `pymatviz` dropped the matplotlib-based functions in `ptable_matplotlib.py` in https://github.com/janosh/pymatviz/pull/270. Please use the `plotly`-based functions shown below instead which have feature parity, interactivity and better test coverage.
-
 |                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/figures.py#L53)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/figures.py#L53) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                        ![ptable-heatmap-plotly-more-hover-data]                                                         |                                                          ![ptable-heatmap-plotly-log]                                                           |
@@ -142,11 +139,11 @@ On the roadmap but no ETA yet.
 
 See [`pymatviz/structure/figures.py`](pymatviz/structure/figures.py).
 
-|                           [`structure_3d(hea_structure)`](pymatviz/structure/figures.py)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
-| :----------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------: |
-|                                                   ![hea-structure-3d]                                                    |                                                     ![lco-structure-3d]                                                     |
+|                            [`structure_3d(hea_structure)`](pymatviz/structure/figures.py)                            | [`structure_3d(lco_supercell)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py) |
+| :------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------: |
+|                                                 ![hea-structure-3d]                                                  |                                                  ![lco-structure-3d]                                                   |
 | [`structure_2d(six_structs)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_2d.py) |  [`structure_3d(six_structs)`](pymatviz/structure/figures.py) [![fig-icon]](assets/scripts/structure/structure_3d.py)  |
-|                                            ![matbench-phonons-structures-2d]                                             |                                              ![matbench-phonons-structures-3d]                                              |
+|                                          ![matbench-phonons-structures-2d]                                           |                                           ![matbench-phonons-structures-3d]                                            |
 
 [matbench-phonons-structures-2d]: assets/svg/matbench-phonons-structures-2d.svg
 [matbench-phonons-structures-3d]: assets/svg/matbench-phonons-structures-3d.svg
