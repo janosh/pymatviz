@@ -23,6 +23,7 @@ app = marimo.App(width="full")
 
 @app.cell
 def _():
+    import itertools
     import os
     from typing import Final
 
@@ -42,6 +43,7 @@ def _():
         PhonopyAtoms,
         Structure,
         bulk,
+        itertools,
         mo,
         molecule,
         np,
@@ -60,20 +62,44 @@ def _(mo):
 
 
 @app.cell
-def _(Composition, pmv):
+def _(Composition, itertools, np_rng, pmv):
     from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 
-    _phase_diag = PhaseDiagram(
-        [
-            PDEntry(Composition("Li"), -1.9),
-            PDEntry(Composition("Fe"), -4.2),
-            PDEntry(Composition("O"), -3.0),
-            PDEntry(Composition("Li2O"), -14.3),
-            PDEntry(Composition("Fe2O3"), -25.5),
-            PDEntry(Composition("LiFeO2"), -18.0),
-            PDEntry(Composition("FeO"), -8.5),
-        ]
-    )
+    _stable_phases = {
+        "Li": -1.9,
+        "Fe": -4.2,
+        "O": -3.0,
+        "Li2O": -15.8,
+        "FeO": -13.0,
+        "Fe2O3": -33.0,
+        "Fe3O4": -46.0,
+        "LiFeO2": -25.0,
+        "Li5FeO4": -58.0,
+        "LiFe5O8": -92.0,
+        "Li2Fe2O4": -52.0,
+        "LiFeO3": -31.0,
+        "Li2FeO3": -37.0,
+        "LiFe2O4": -46.0,
+        "Li3FeO3": -42.0,
+        "Fe2O5": -40.0,
+    }
+    _entries = [PDEntry(Composition(c), e) for c, e in _stable_phases.items()]
+    _hull = PhaseDiagram(_entries)
+
+    _seen = set(_stable_phases)
+    for _li, _fe, _o in itertools.product(range(7), range(7), range(1, 8)):
+        if _li == 0 and _fe == 0:
+            continue
+        _comp = Composition({"Li": _li, "Fe": _fe, "O": _o})
+        if _comp.reduced_formula in _seen:
+            continue
+        _seen.add(_comp.reduced_formula)
+        _delta = min(np_rng.lognormal(mean=-3.2, sigma=1.0), 0.25)
+        _entries.append(
+            PDEntry(_comp, _hull.get_hull_energy(_comp) + _delta * _comp.num_atoms)
+        )
+    _phase_diag = PhaseDiagram(_entries)
+
     pmv.ConvexHullWidget(entries=_phase_diag, style="height: 500px;")
 
 
@@ -395,6 +421,205 @@ def _(matterviz_traj_dir_url, pmv):
         show_bonds=True,
         bonding_strategy="nearest_neighbor",
         style="height: 600px;",
+    )
+
+
+@app.cell
+def _(Final):
+    matterviz_iso_dir_url: Final = (
+        "https://github.com/janosh/matterviz/raw/550d96d2/src/site/isosurfaces"
+    )
+    return (matterviz_iso_dir_url,)
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Isosurface Rendering (CHGCAR)
+    Load a VASP CHGCAR and render charge density isosurfaces.
+    """)
+
+
+@app.cell
+def _(matterviz_iso_dir_url, pmv):
+    pmv.StructureWidget(
+        data_url=f"{matterviz_iso_dir_url}/Si-CHGCAR.gz",
+        isosurface_settings={
+            "isovalue": 0.05,
+            "opacity": 0.6,
+            "positive_color": "#3b82f6",
+            "show_negative": False,
+        },
+        style="height: 500px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Molecular Orbital Isosurface
+    Caffeine HOMO orbital lobes from a Gaussian .cube file.
+    """)
+
+
+@app.cell
+def _(matterviz_iso_dir_url, pmv):
+    pmv.StructureWidget(
+        data_url=f"{matterviz_iso_dir_url}/caffeine-HOMO.cube.gz",
+        isosurface_settings={
+            "isovalue": 0.02,
+            "opacity": 0.7,
+            "positive_color": "#3b82f6",
+            "negative_color": "#ef4444",
+            "show_negative": True,
+        },
+        show_bonds=True,
+        style="height: 500px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Periodic Table Widget
+    Element heatmap showing atomic masses.
+    """)
+
+
+@app.cell
+def _(pmv):
+    pmv.PeriodicTableWidget(
+        heatmap_values={
+            "H": 1.008,
+            "He": 4.003,
+            "Li": 6.941,
+            "Be": 9.012,
+            "B": 10.81,
+            "C": 12.01,
+            "N": 14.01,
+            "O": 16.00,
+            "F": 19.00,
+            "Ne": 20.18,
+            "Na": 22.99,
+            "Mg": 24.31,
+            "Al": 26.98,
+            "Si": 28.09,
+            "Fe": 55.85,
+        },
+        color_scale="interpolateViridis",
+        style="height: 400px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### 3D Scatter Plot
+    Random 3D point cloud.
+    """)
+
+
+@app.cell
+def _(np_rng, pmv):
+    pmv.ScatterPlot3DWidget(
+        series=[
+            {
+                "x": np_rng.normal(0, 1, 50).tolist(),
+                "y": np_rng.normal(0, 1, 50).tolist(),
+                "z": np_rng.normal(0, 1, 50).tolist(),
+                "label": "Random points",
+            }
+        ],
+        x_axis={"label": "x"},
+        y_axis={"label": "y"},
+        z_axis={"label": "z"},
+        style="height: 500px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Heatmap Matrix
+    Element pair interaction strengths.
+    """)
+
+
+@app.cell
+def _(pmv):
+    _elems = ["Fe", "O", "Li", "Mn"]
+    pmv.HeatmapMatrixWidget(
+        x_items=_elems,
+        y_items=_elems,
+        values=[
+            [1.0, 0.8, 0.3, 0.6],
+            [0.8, 1.0, 0.2, 0.5],
+            [0.3, 0.2, 1.0, 0.4],
+            [0.6, 0.5, 0.4, 1.0],
+        ],
+        color_scale="interpolateBlues",
+        style="height: 400px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Space Group Bar Plot
+    Distribution of space groups in a dataset.
+    """)
+
+
+@app.cell
+def _(pmv):
+    pmv.SpacegroupBarPlotWidget(
+        data=[225, 225, 225, 166, 166, 62, 62, 62, 62, 139, 139, 12, 14, 14, 14, 14],
+        style="height: 350px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### Chemical Potential Diagram
+    Stability regions in Li-Fe-O chemical potential space.
+    """)
+
+
+@app.cell
+def _(pmv):
+    pmv.ChemPotDiagramWidget(
+        entries=[
+            {"name": "Li", "energy": -1.9, "composition": {"Li": 1}},
+            {"name": "Fe", "energy": -8.3, "composition": {"Fe": 1}},
+            {"name": "O2", "energy": -4.9, "composition": {"O": 1}},
+            {"name": "Li2O", "energy": -14.3, "composition": {"Li": 2, "O": 1}},
+            {"name": "Fe2O3", "energy": -25.0, "composition": {"Fe": 2, "O": 3}},
+            {
+                "name": "LiFeO2",
+                "energy": -17.5,
+                "composition": {"Li": 1, "Fe": 1, "O": 2},
+            },
+        ],
+        style="height: 500px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ### RDF Plot Widget
+    Radial distribution function computed on-the-fly from the GaN structure.
+    """)
+
+
+@app.cell
+def _(_struct, pmv):
+    pmv.RdfPlotWidget(
+        structures=_struct.as_dict(),
+        cutoff=10,
+        n_bins=80,
+        style="height: 400px;",
     )
 
 

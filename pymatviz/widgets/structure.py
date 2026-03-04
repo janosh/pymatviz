@@ -63,6 +63,9 @@ class StructureWidget(MatterVizWidget):
     background_color = tl.Unicode(allow_none=True).tag(sync=True)
     background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
+    # Isosurface (for volumetric data: CHGCAR, ELFCAR, CUBE files)
+    isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
+
     # UI controls
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
