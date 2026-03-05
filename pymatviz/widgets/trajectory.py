@@ -77,6 +77,7 @@ class TrajectoryWidget(MatterVizWidget):
         default_value="structure+scatter",
     ).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_gizmo = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     auto_play = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
     # Structure visualization
@@ -85,13 +86,13 @@ class TrajectoryWidget(MatterVizWidget):
     show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_image_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
-    show_force_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     color_scheme = tl.Unicode("Vesta").tag(sync=True)
 
-    # Force vectors
-    force_vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    force_vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    # Site vectors (force, magmom, or spin)
+    vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
 
     # Bonds
     bond_thickness = tl.Float(allow_none=True, default_value=None).tag(sync=True)
@@ -365,7 +366,7 @@ class TrajectoryWidget(MatterVizWidget):
                 f"Site keys: {site_keys}."
             )
         species_data = first_site["species"]
-        self._validate_species_list(species_data, "Got value")
+        self._validate_species_list(species_data, "First site (index 0), value")
         if "abc" not in first_site and "xyz" not in first_site:
             site_keys = sorted(str(key) for key in first_site)
             raise ValueError(

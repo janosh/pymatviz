@@ -50,6 +50,7 @@ test = [
     "pytest-split>=0.9",
     "pytest>=8",
 ]
+export = ["playwright>=1.40"]
 brillouin = ["seekpath>=2.1"]
 cluster = ["matminer>=0.9"]
 # umap-learn not included in cluster because its numba dep clashes with other packages

@@ -12,6 +12,14 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class StructureWidget(MatterVizWidget):
     """MatterViz widget for visualizing structures in Python notebooks.
 
+    Structure data can be provided as:
+    - ``structure``: A parsed dict (from pymatgen/ASE ``.as_dict()``), or
+      a pymatgen ``Structure``/ASE ``Atoms`` object (auto-converted).
+    - ``structure_string``: A raw file string (CIF, POSCAR, XYZ, etc.)
+      parsed on the frontend. Useful when you have the file content but
+      not a parsed object. If both are provided, ``structure`` takes
+      precedence.
+
     Examples:
         Basic usage:
         >>> from pymatviz import StructureWidget
@@ -30,6 +38,7 @@ class StructureWidget(MatterVizWidget):
     """
 
     structure = tl.Dict(allow_none=True).tag(sync=True)
+    structure_string = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     data_url = tl.Unicode(allow_none=True).tag(sync=True)
 
     # Atom visualization
@@ -38,12 +47,12 @@ class StructureWidget(MatterVizWidget):
     show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
-    show_force_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
-    # Force vectors
-    force_vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
-    force_vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    # Site vectors (force, magmom, or spin)
+    vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
 
     # Bonds
     bond_thickness = tl.Float(allow_none=True, default_value=None).tag(sync=True)
@@ -67,6 +76,7 @@ class StructureWidget(MatterVizWidget):
     isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
 
     # UI controls
+    show_gizmo = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     png_dpi = tl.Int(allow_none=True, default_value=None).tag(sync=True)
@@ -77,8 +87,12 @@ class StructureWidget(MatterVizWidget):
         """Initialize the StructureWidget.
 
         Args:
-            structure: Structure data (dict from pymatgen/ASE .as_dict() or similar)
-            **kwargs: Additional widget properties
+            structure: Structure data -- a pymatgen ``Structure``, ASE
+                ``Atoms``, or a pre-serialized dict. Converted to dict
+                internally. Alternatively, pass ``structure_string`` as
+                a keyword argument with a raw CIF/POSCAR/XYZ string.
+            **kwargs: Additional widget properties (e.g.
+                ``structure_string``, ``atom_radius``, ``show_bonds``).
         """
         from pymatviz.process_data import normalize_structures
 

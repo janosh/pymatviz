@@ -199,7 +199,7 @@ def _(Lattice, Structure, np, np_rng, pmv):
     pmv.TrajectoryWidget(
         trajectory=_trajectory,
         display_mode="structure+scatter",
-        show_force_vectors=True,
+        show_vectors=True,
         style="height: 600px;",
     )
 
@@ -396,7 +396,7 @@ def _(Final, os, pmv):
     pmv.TrajectoryWidget(
         data_url=f"tmp/{_file_name}",
         display_mode="structure+scatter",
-        show_force_vectors=False,
+        show_vectors=False,
     )
     return (matterviz_traj_dir_url,)
 
@@ -415,9 +415,9 @@ def _(matterviz_traj_dir_url, pmv):
     pmv.TrajectoryWidget(
         data_url=f"{matterviz_traj_dir_url}/{_file_name}",
         display_mode="structure+scatter",
-        show_force_vectors=True,
-        force_vector_scale=0.5,
-        force_vector_color="#ff4444",
+        show_vectors=True,
+        vector_scale=0.5,
+        vector_color="#ff4444",
         show_bonds=True,
         bonding_strategy="nearest_neighbor",
         style="height: 600px;",
