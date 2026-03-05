@@ -906,18 +906,19 @@ def test_build_html_embeds_data_and_css() -> None:
 
 
 def test_shutdown_browser_tolerates_none() -> None:
-    """_shutdown_browser handles _browser=None without error."""
+    """_shutdown_browser handles _browser=None and _pw=None without error."""
     import pymatviz.widgets._headless as headless_mod
     from pymatviz.widgets._headless import _shutdown_browser
 
-    original = headless_mod._browser
+    orig_browser = headless_mod._browser
+    orig_pw = headless_mod._pw
     headless_mod._browser = None
+    headless_mod._pw = None
     try:
-        mock_pw = MagicMock()
-        _shutdown_browser(mock_pw)
-        mock_pw.stop.assert_called_once()
+        _shutdown_browser()
     finally:
-        headless_mod._browser = original
+        headless_mod._browser = orig_browser
+        headless_mod._pw = orig_pw
 
 
 def test_get_browser_import_error() -> None:
@@ -980,18 +981,13 @@ def test_render_widget_headless_dpi_to_scale(
     with patch(f"{_HEADLESS}._get_browser", return_value=mock_browser):
         from pymatviz.widgets._headless import render_widget_headless
 
-        try:
-            render_widget_headless(
-                {"widget_type": "bar_plot"},
-                "// esm",
-                "/* css */",
-                fmt=fmt,
-                dpi=dpi,
-            )
-        except (AttributeError, TypeError):
-            pass
-
-    assert mock_browser.new_page.called, "new_page was never called"
+        render_widget_headless(
+            {"widget_type": "bar_plot"},
+            "// esm",
+            "/* css */",
+            fmt=fmt,
+            dpi=dpi,
+        )
     scale = mock_browser.new_page.call_args.kwargs["device_scale_factor"]
     assert scale == expected_scale
 

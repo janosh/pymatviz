@@ -663,18 +663,23 @@ svg_widgets: dict[str, MatterVizWidget] = {
     "composition_pie": composition_pie_widget,
 }
 
-all_exports: list[tuple[str, MatterVizWidget, tuple[str, ...]]] = [
-    *((name, wgt, ("png", "pdf")) for name, wgt in canvas_widgets.items()),
-    *((name, wgt, ("png", "svg", "pdf")) for name, wgt in svg_widgets.items()),
-]
-
-for name, widget, fmts in all_exports:
-    for fmt in fmts:
-        path = f"{EXPORT_DIR}/{name}.{fmt}"
-        try:
-            widget.to_img(filename=path, fmt=fmt)  # type: ignore[arg-type]
-            print(f"  saved {path}")
-        except (TimeoutError, RuntimeError, ImportError, OSError) as exc:
-            print(f"  SKIP {path}: {exc}")
+for widgets, fmts in [
+    (canvas_widgets, ("png", "pdf")),
+    (svg_widgets, ("png", "svg", "pdf")),
+]:
+    for name, widget in widgets.items():
+        for fmt in fmts:
+            path = f"{EXPORT_DIR}/{name}.{fmt}"
+            try:
+                widget.to_img(filename=path, fmt=fmt)  # type: ignore[arg-type]
+                print(f"  saved {path}")
+            except (
+                TimeoutError,
+                RuntimeError,
+                ImportError,
+                OSError,
+                ValueError,
+            ) as exc:
+                print(f"  SKIP {path}: {exc}")
 
 print(f"\nExport complete. Files in {EXPORT_DIR}/")

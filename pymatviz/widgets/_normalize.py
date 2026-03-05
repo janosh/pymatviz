@@ -208,7 +208,7 @@ def normalize_plot_series(
             )
 
         # x can be strings (categorical) or numeric; y must always be numeric
-        if all(isinstance(val, str) for val in x_values):
+        if x_values and all(isinstance(val, str) for val in x_values):
             normalized_entry["x"] = x_values
         else:
             normalized_entry["x"] = _normalize_numeric_sequence(

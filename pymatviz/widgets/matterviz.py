@@ -336,6 +336,8 @@ class MatterVizWidget(AnyWidget):
             raise ValueError(f"dpi must be positive, got {dpi}")
         if timeout <= 0:
             raise ValueError(f"timeout must be positive, got {timeout}")
+        if not 1 <= quality <= 100:
+            raise ValueError(f"quality must be between 1 and 100, got {quality}")
 
         valid_fmts = ("png", "jpeg", "svg", "pdf")
         if fmt is not None and fmt not in valid_fmts:

@@ -2,7 +2,7 @@
 
 Renders MatterViz widgets in a headless Chromium browser using the same
 ESM bundle and CSS that the notebook frontend uses, then captures the
-output as PNG, SVG, or PDF. Works without any notebook/IDE frontend.
+output as PNG, JPEG, SVG, or PDF. Works without any notebook/IDE frontend.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from __future__ import annotations
 import atexit
 import base64
 import contextlib
+import functools
 import json
 import os
 import tempfile
@@ -22,17 +23,14 @@ if TYPE_CHECKING:
 
 # Module-level browser cache -- reused across to_img() calls to amortize
 # the ~2s Chromium startup cost.
+_pw: Any = None
 _browser: Browser | None = None
-
-# Cache the base64-encoded ESM bundle to avoid re-encoding ~11 MB per call.
-# Keyed by id(esm_content) for fast identity check (the asset string is
-# cached and reused by MatterVizWidget._asset_cache).
-_esm_b64_cache: dict[int, str] = {}
+_atexit_registered = False
 
 
 def _get_browser() -> Browser:
     """Return a cached headless Chromium browser, launching one if needed."""
-    global _browser  # noqa: PLW0603
+    global _pw, _browser, _atexit_registered  # noqa: PLW0603
     if _browser is not None and _browser.is_connected():
         return _browser
 
@@ -44,40 +42,31 @@ def _get_browser() -> Browser:
             "Install it with:  uv pip install playwright && playwright install chromium"
         ) from None
 
-    pw = sync_playwright().start()
-    _browser = pw.chromium.launch(headless=True)
-    atexit.register(_shutdown_browser, pw)
+    _pw = sync_playwright().start()
+    _browser = _pw.chromium.launch(headless=True)
+    if not _atexit_registered:
+        atexit.register(_shutdown_browser)
+        _atexit_registered = True
     return _browser
 
 
-def _shutdown_browser(pw: Any) -> None:
+def _shutdown_browser() -> None:
     """Clean up the browser and Playwright on interpreter exit."""
-    global _browser  # noqa: PLW0603
-    if _browser is not None:
-        try:
+    global _pw, _browser  # noqa: PLW0603
+    with contextlib.suppress(Exception):
+        if _browser is not None:
             _browser.close()
-        except Exception:  # noqa: BLE001, S110
-            pass
-        _browser = None
-    try:
-        pw.stop()
-    except Exception:  # noqa: BLE001, S110
-        pass
+    _browser = None
+    with contextlib.suppress(Exception):
+        if _pw is not None:
+            _pw.stop()
+    _pw = None
 
 
+@functools.lru_cache(maxsize=4)
 def _get_esm_b64(esm_content: str) -> str:
-    """Return a cached base64-encoded ESM bundle, encoding only on first call.
-
-    Avoids re-encoding ~11 MB on every render. The cache is keyed by the
-    string's identity (``id()``), which is safe because the asset strings
-    are cached and reused by ``MatterVizWidget._asset_cache``.
-    """
-    key = id(esm_content)
-    if key not in _esm_b64_cache:
-        _esm_b64_cache[key] = base64.b64encode(esm_content.encode("utf-8")).decode(
-            "ascii"
-        )
-    return _esm_b64_cache[key]
+    """Return base64-encoded ESM bundle, cached to avoid re-encoding ~11 MB."""
+    return base64.b64encode(esm_content.encode("utf-8")).decode("ascii")
 
 
 def _build_html(
@@ -275,6 +264,10 @@ def _capture_page(
                 }
                 if (!best) return null;
 
+                // cloneNode(true) copies structure and inline styles but not
+                // computed CSS from stylesheets. Matterviz Svelte components
+                // set styles inline, so this works for our widgets. Standalone
+                // SVGs opened outside the browser may lack stylesheet-only rules.
                 const cloned = best.cloneNode(true);
                 if (!cloned.hasAttribute('xmlns'))
                     cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -397,7 +390,9 @@ def render_widget_headless(
 
         return _capture_page(page, fmt, widget_data.get("widget_type"), quality)
     except Exception as exc:
-        if "Timeout" in type(exc).__name__:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+        if isinstance(exc, (PlaywrightTimeout, TimeoutError)):
             raise TimeoutError(
                 f"Widget did not finish rendering within {timeout}s"
             ) from exc
