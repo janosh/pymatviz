@@ -280,6 +280,9 @@ class MatterVizWidget(AnyWidget):
         fmt: Literal["png", "jpeg", "svg", "pdf"] | None = None,
         dpi: int = 150,
         timeout: float = 30.0,
+        width: int | None = None,
+        height: int | None = None,
+        quality: int = 90,
     ) -> bytes:
         """Capture the widget as an image via headless Chromium rendering.
 
@@ -290,7 +293,8 @@ class MatterVizWidget(AnyWidget):
 
         Note: SVG export is only available for SVG-based (2D) widgets.
         Canvas-based widgets (Structure, Trajectory, etc.) always export
-        as PNG/JPEG. PDF export wraps a PNG capture using Pillow.
+        as PNG/JPEG. PDF export uses Chromium's native PDF generator,
+        producing vector output with selectable text for SVG widgets.
 
         Requires ``playwright`` (install with
         ``uv pip install playwright && playwright install chromium``).
@@ -302,14 +306,22 @@ class MatterVizWidget(AnyWidget):
             fmt: Image format -- ``"png"``, ``"jpeg"``, ``"svg"``, or
                 ``"pdf"``. Defaults to ``"png"`` if not specified and
                 cannot be inferred from ``filename``.
-            dpi: Resolution for PNG/JPEG/PDF output. Maps to the headless
+            dpi: Resolution for PNG/JPEG output. Maps to the headless
                 browser's device scale factor (72 = 1x, 144 = 2x, etc.).
-                Defaults to 150 (~2x). Ignored for SVG.
+                Defaults to 150 (~2x). Ignored for SVG and PDF.
             timeout: Seconds to wait for headless rendering before
                 raising ``TimeoutError``. Defaults to 30.
+            width: Override container width in pixels for this export.
+                Takes precedence over the widget's ``style``. If omitted,
+                uses the widget's style or defaults to 800px.
+            height: Override container height in pixels for this export.
+                Takes precedence over the widget's ``style``. If omitted,
+                uses the widget's style or defaults to 600px.
+            quality: JPEG compression quality (1-100). Defaults to 90.
+                Ignored for PNG, SVG, and PDF.
 
         Returns:
-            Raw image bytes (PNG, JPEG, SVG, or PDF).
+            Raw image/document bytes (PNG, JPEG, SVG, or PDF).
 
         Raises:
             ValueError: If ``fmt`` is not a supported format.
@@ -320,48 +332,53 @@ class MatterVizWidget(AnyWidget):
         """
         from pymatviz.widgets._headless import render_widget_headless
 
+        if dpi <= 0:
+            raise ValueError(f"dpi must be positive, got {dpi}")
+        if timeout <= 0:
+            raise ValueError(f"timeout must be positive, got {timeout}")
+
         valid_fmts = ("png", "jpeg", "svg", "pdf")
         if fmt is not None and fmt not in valid_fmts:
             raise ValueError(
                 f"Unsupported format {fmt!r}, expected one of {valid_fmts}"
             )
-        resolved_fmt: str = fmt or ""
-        if not resolved_fmt:
-            if filename:
-                ext = os.path.splitext(filename)[1].lower().lstrip(".")
-                if ext == "jpg":
-                    ext = "jpeg"
-                if ext not in valid_fmts:
-                    raise ValueError(
-                        f"Unsupported file extension '.{ext}'; "
-                        f"supported: {sorted(valid_fmts)}"
-                    )
-                resolved_fmt = ext
-            else:
-                resolved_fmt = "png"
+        resolved_fmt = fmt
+        if resolved_fmt is None and filename:
+            ext = os.path.splitext(filename)[1].lower().lstrip(".")
+            if ext == "jpg":
+                ext = "jpeg"
+            if ext not in valid_fmts:
+                raise ValueError(
+                    f"Unsupported file extension '.{ext}'; "
+                    f"supported: {sorted(valid_fmts)}"
+                )
+            resolved_fmt = ext
+        if resolved_fmt is None:
+            resolved_fmt = "png"
 
-        # Ensure ESM/CSS assets are loaded
-        cls = type(self)
-        cls._set_class_assets()
-        assets = cls._asset_cache["default"]
-        if not isinstance(assets, tuple):
-            raise TypeError("Widget assets not loaded correctly")
-        esm_content, css_content = assets
+        # Use instance-resolved assets (respects version_override),
+        # falling back to class default cache
+        esm_content = getattr(self, "_esm", None)
+        css_content = getattr(self, "_css", None)
+        if not isinstance(esm_content, str) or not isinstance(css_content, str):
+            cls = type(self)
+            cls._set_class_assets()
+            assets = cls._asset_cache["default"]
+            if not isinstance(assets, tuple):
+                raise TypeError("Widget assets not loaded correctly")
+            esm_content, css_content = assets
 
-        # For PDF, capture as PNG first, then convert on the Python side
-        capture_fmt = "png" if resolved_fmt == "pdf" else resolved_fmt
         img_bytes = render_widget_headless(
             widget_data=self.to_dict(),
             esm_content=esm_content,
             css_content=css_content,
-            fmt=capture_fmt,
+            fmt=resolved_fmt,
             dpi=dpi,
             timeout=timeout,
+            quality=quality,
+            width=width,
+            height=height,
         )
-
-        is_pdf = resolved_fmt == "pdf"
-        if is_pdf:
-            img_bytes = _png_to_pdf(img_bytes, dpi=dpi)
 
         if filename:
             os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
@@ -369,34 +386,3 @@ class MatterVizWidget(AnyWidget):
                 fh.write(img_bytes)
 
         return img_bytes
-
-
-def _png_to_pdf(png_bytes: bytes, dpi: int = 150) -> bytes:
-    """Convert PNG bytes to a single-page PDF using Pillow.
-
-    Args:
-        png_bytes: Raw PNG image data.
-        dpi: Resolution metadata to embed in the PDF.
-
-    Returns:
-        PDF file bytes.
-
-    Raises:
-        ImportError: If Pillow is not installed.
-    """
-    import io
-
-    from PIL import Image
-
-    img = Image.open(io.BytesIO(png_bytes))
-    if img.mode == "RGBA":
-        # PDF doesn't support transparency; composite onto white background
-        background = Image.new("RGBA", img.size, (255, 255, 255, 255))
-        background.paste(img, mask=img.split()[3])
-        img = background.convert("RGB")
-    elif img.mode != "RGB":
-        img = img.convert("RGB")
-
-    pdf_buffer = io.BytesIO()
-    img.save(pdf_buffer, format="PDF", resolution=dpi)
-    return pdf_buffer.getvalue()

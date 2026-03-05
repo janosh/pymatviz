@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import atexit
 import base64
+import contextlib
 import json
 import os
 import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 
@@ -21,6 +23,11 @@ if TYPE_CHECKING:
 # Module-level browser cache -- reused across to_img() calls to amortize
 # the ~2s Chromium startup cost.
 _browser: Browser | None = None
+
+# Cache the base64-encoded ESM bundle to avoid re-encoding ~11 MB per call.
+# Keyed by id(esm_content) for fast identity check (the asset string is
+# cached and reused by MatterVizWidget._asset_cache).
+_esm_b64_cache: dict[int, str] = {}
 
 
 def _get_browser() -> Browser:
@@ -58,11 +65,29 @@ def _shutdown_browser(pw: Any) -> None:
         pass
 
 
+def _get_esm_b64(esm_content: str) -> str:
+    """Return a cached base64-encoded ESM bundle, encoding only on first call.
+
+    Avoids re-encoding ~11 MB on every render. The cache is keyed by the
+    string's identity (``id()``), which is safe because the asset strings
+    are cached and reused by ``MatterVizWidget._asset_cache``.
+    """
+    key = id(esm_content)
+    if key not in _esm_b64_cache:
+        _esm_b64_cache[key] = base64.b64encode(esm_content.encode("utf-8")).decode(
+            "ascii"
+        )
+    return _esm_b64_cache[key]
+
+
 def _build_html(
     widget_data: dict[str, Any],
     esm_content: str,
     css_content: str,
     timeout: float = 30.0,
+    *,
+    width: int | None = None,
+    height: int | None = None,
 ) -> str:
     """Build a self-contained HTML page that renders one widget.
 
@@ -76,6 +101,10 @@ def _build_html(
         esm_content: Full text of ``matterviz.mjs``.
         css_content: Full text of ``matterviz.css``.
         timeout: Max seconds for the JS-side render polling loop.
+        width: Override container width in pixels (takes precedence
+            over widget style).
+        height: Override container height in pixels (takes precedence
+            over widget style).
 
     Returns:
         Complete HTML document as a string.
@@ -85,19 +114,24 @@ def _build_html(
 
     # Base64-encode the ESM bundle so we can load it as a blob URL.
     # data: URLs with type=module are blocked by browsers for security,
-    # but blob: URLs work fine.
-    esm_b64 = base64.b64encode(esm_content.encode("utf-8")).decode("ascii")
+    # but blob: URLs work fine. The encoding is cached across calls.
+    esm_b64 = _get_esm_b64(esm_content)
 
-    # Ensure the container has explicit dimensions so SVG/Canvas components
-    # get a non-zero bounding box and actually render.
+    # Build container style: user style first, then explicit overrides
+    # (later declarations win in inline style), then defaults for any
+    # missing dimension.
     user_style = widget_data.get("style") or ""
     parts = []
-    if "width" not in user_style:
-        parts.append("width: 800px")
-    if "height" not in user_style:
-        parts.append("height: 600px")
     if user_style:
         parts.append(user_style)
+    if width is not None:
+        parts.append(f"width: {width}px")
+    elif "width" not in user_style:
+        parts.append("width: 800px")
+    if height is not None:
+        parts.append(f"height: {height}px")
+    elif "height" not in user_style:
+        parts.append("height: 600px")
     widget_style = "; ".join(parts)
 
     return f"""\
@@ -155,8 +189,7 @@ try {{
   let found_content = false;
   while (Date.now() - start < max_wait) {{
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    const has_content = el.querySelector("canvas") || el.querySelector("svg");
-    if (has_content) {{
+    if (el.querySelector("canvas") || el.querySelector("svg")) {{
       // Extra settle time for Three.js scenes to complete first paint
       await new Promise(r => setTimeout(r, 500));
       found_content = true;
@@ -194,22 +227,25 @@ def _capture_page(
     page: Page,
     fmt: str,
     widget_type: str | None,
+    quality: int = 90,
 ) -> bytes:
     """Capture the rendered widget from a Playwright page.
 
     Args:
         page: Playwright page with the widget already rendered.
-        fmt: ``"png"``, ``"jpeg"``, or ``"svg"``.
+        fmt: ``"png"``, ``"jpeg"``, ``"svg"``, or ``"pdf"``.
         widget_type: The widget_type string for canvas-vs-SVG detection.
+        quality: JPEG compression quality (1-100). Ignored for other formats.
 
     Returns:
-        Raw image bytes.
+        Raw image/document bytes.
     """
-    _valid_capture_fmts = ("png", "jpeg", "svg")
-    if fmt not in _valid_capture_fmts:
+    if fmt not in ("png", "jpeg", "svg", "pdf"):
         raise ValueError(
-            f"Unsupported capture format {fmt!r}, expected one of {_valid_capture_fmts}"
+            f"Unsupported capture format {fmt!r}, "
+            "expected 'png', 'jpeg', 'svg', or 'pdf'"
         )
+
     if fmt == "svg":
         if widget_type in _CANVAS_WIDGET_TYPES:
             raise RuntimeError("SVG export not supported for WebGL (canvas) widgets")
@@ -257,10 +293,24 @@ def _capture_page(
             )
         return svg_string.encode("utf-8")
 
+    if fmt == "pdf":
+        # Native vector PDF via Chromium — produces selectable text and
+        # crisp vectors for SVG widgets, not a rasterized PNG wrapper.
+        page.emulate_media(media="screen")
+        bbox = page.locator("#widget-root").bounding_box()
+        if bbox is None:
+            raise RuntimeError("Widget root has no bounding box for PDF export")
+        return page.pdf(
+            width=f"{bbox['width']}px",
+            height=f"{bbox['height']}px",
+            print_background=True,
+            margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
+        )
+
     # PNG/JPEG -- screenshot the widget container
     root = page.locator("#widget-root")
     if fmt == "jpeg":
-        return root.screenshot(type="jpeg", quality=90)
+        return root.screenshot(type="jpeg", quality=quality)
     return root.screenshot(type="png")
 
 
@@ -279,6 +329,9 @@ def render_widget_headless(
     fmt: str = "png",
     dpi: int = 150,
     timeout: float = 30.0,
+    quality: int = 90,
+    width: int | None = None,
+    height: int | None = None,
 ) -> bytes:
     """Render a widget headlessly and capture it as an image.
 
@@ -290,21 +343,31 @@ def render_widget_headless(
         widget_data: Dict of traitlet values (from ``widget.to_dict()``).
         esm_content: Full ESM bundle text (``matterviz.mjs``).
         css_content: Full CSS text (``matterviz.css``).
-        fmt: Output format -- ``"png"``, ``"jpeg"``, or ``"svg"``.
-        dpi: Resolution for PNG capture. Maps to ``device_scale_factor``
+        fmt: Output format — ``"png"``, ``"jpeg"``, ``"svg"``, or ``"pdf"``.
+        dpi: Resolution for raster capture. Maps to ``device_scale_factor``
             in the headless browser (72 DPI = 1x, 144 = 2x, 216 = 3x).
-            Defaults to 150 (~2x). Ignored for SVG.
+            Defaults to 150 (~2x). Ignored for SVG and PDF.
         timeout: Max seconds to wait for the widget to render.
+        quality: JPEG compression quality (1-100). Ignored for other formats.
+        width: Override container width in pixels.
+        height: Override container height in pixels.
 
     Returns:
-        Raw image bytes (PNG, JPEG, or SVG).
+        Raw image/document bytes (PNG, JPEG, SVG, or PDF).
 
     Raises:
         RuntimeError: If the widget fails to render or the requested
             format is unsupported for the widget type.
         TimeoutError: If the widget does not finish rendering in time.
     """
-    html = _build_html(widget_data, esm_content, css_content, timeout=timeout)
+    html = _build_html(
+        widget_data,
+        esm_content,
+        css_content,
+        timeout,
+        width=width,
+        height=height,
+    )
     browser = _get_browser()
     timeout_ms = int(timeout * 1000)
 
@@ -312,17 +375,17 @@ def render_widget_headless(
     scale_factor = max(1, dpi / 72) if fmt in ("png", "jpeg") else 1
 
     # Write to a temp file and load via file:// URL.
-    # page.set_content() uses about:blank which breaks Svelte's
-    # ResizeObserver-based bind:clientWidth/Height -- components
-    # never detect their container dimensions and skip rendering.
+    # page.set_content() uses about:blank which is ~4x slower for large
+    # HTML due to IPC overhead vs disk I/O.
     tmp_path = _write_temp_html(html)
-    page = browser.new_page(
-        viewport={"width": 1024, "height": 768},
-        device_scale_factor=scale_factor,
-    )
+    page: Page | None = None
     try:
+        page = browser.new_page(
+            viewport={"width": 1024, "height": 768},
+            device_scale_factor=scale_factor,
+        )
         page.goto(
-            f"file://{tmp_path}", wait_until="domcontentloaded", timeout=timeout_ms
+            Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
         )
         page.wait_for_function(
             "() => window.__RENDER_DONE === true", timeout=timeout_ms
@@ -332,9 +395,7 @@ def render_widget_headless(
         if render_error:
             raise RuntimeError(f"Widget render failed: {render_error}")  # noqa: TRY301
 
-        return _capture_page(page, fmt, widget_data.get("widget_type"))
-    except (RuntimeError, TimeoutError):
-        raise
+        return _capture_page(page, fmt, widget_data.get("widget_type"), quality)
     except Exception as exc:
         if "Timeout" in type(exc).__name__:
             raise TimeoutError(
@@ -342,5 +403,8 @@ def render_widget_headless(
             ) from exc
         raise
     finally:
-        page.close()
-        os.unlink(tmp_path)
+        if page is not None:
+            with contextlib.suppress(Exception):
+                page.close()
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)

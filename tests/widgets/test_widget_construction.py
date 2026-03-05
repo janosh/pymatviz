@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import os
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -21,7 +20,7 @@ from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
-from pymatviz.widgets.matterviz import MatterVizWidget, _png_to_pdf
+from pymatviz.widgets.matterviz import MatterVizWidget
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
@@ -185,6 +184,7 @@ def test_widget_construction_and_type(
             {
                 "series",
                 "x_axis",
+                "x2_axis",
                 "y_axis",
                 "y2_axis",
                 "display",
@@ -196,6 +196,19 @@ def test_widget_construction_and_type(
                 "fill_regions",
                 "error_bands",
                 "controls",
+                "padding",
+                "range_padding",
+                "show_legend",
+                "x_range",
+                "x2_range",
+                "y_range",
+                "y2_range",
+                "color_bar",
+                "hover_config",
+                "label_placement_config",
+                "point_tween",
+                "line_tween",
+                "point_events",
             },
         ),
         (
@@ -208,6 +221,7 @@ def test_widget_construction_and_type(
                 "selected_property",
                 "show_legend",
                 "x_axis",
+                "x2_axis",
                 "y_axis",
                 "y2_axis",
                 "display",
@@ -215,6 +229,12 @@ def test_widget_construction_and_type(
                 "bar",
                 "ref_lines",
                 "controls",
+                "padding",
+                "range_padding",
+                "x_range",
+                "x2_range",
+                "y_range",
+                "y2_range",
             },
         ),
         (
@@ -225,6 +245,7 @@ def test_widget_construction_and_type(
                 "orientation",
                 "mode",
                 "x_axis",
+                "x2_axis",
                 "y_axis",
                 "y2_axis",
                 "display",
@@ -233,6 +254,16 @@ def test_widget_construction_and_type(
                 "line",
                 "ref_lines",
                 "controls",
+                "padding",
+                "range_padding",
+                "show_legend",
+                "x_range",
+                "x2_range",
+                "y_range",
+                "y2_range",
+                "color_scale",
+                "size_scale",
+                "point_tween",
             },
         ),
         (
@@ -709,16 +740,16 @@ def _make_widget() -> MatterVizWidget:
     [
         ("plot.png", None, "png"),
         ("plot.svg", None, "svg"),
-        ("plot.pdf", None, "png"),
+        ("plot.pdf", None, "pdf"),
         ("plot.jpg", None, "jpeg"),
         ("plot.jpeg", None, "jpeg"),
-        ("plot.PDF", None, "png"),
+        ("plot.PDF", None, "pdf"),
         ("plot.SVG", None, "svg"),
         ("plot.JPG", None, "jpeg"),
         (None, "png", "png"),
         (None, "svg", "svg"),
         (None, "jpeg", "jpeg"),
-        (None, "pdf", "png"),
+        (None, "pdf", "pdf"),
         (None, None, "png"),
     ],
 )
@@ -732,11 +763,9 @@ def test_to_img_format_inference(
     widget = _make_widget()
     resolved = f"{tmp_path}/{filename}" if filename else None
 
-    mock_headless = f"{_HEADLESS}.render_widget_headless"
-    with (
-        patch(mock_headless, return_value=_FAKE_PNG) as mock_render,
-        patch("pymatviz.widgets.matterviz._png_to_pdf", return_value=b"%PDF-fake"),
-    ):
+    with patch(
+        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
+    ) as mock_render:
         widget.to_img(filename=resolved, fmt=explicit_fmt)  # type: ignore[arg-type]
 
     assert mock_render.call_args.kwargs["fmt"] == expected_capture_fmt
@@ -763,71 +792,44 @@ def test_to_img_writes_file(tmp_path: Any, path_suffix: str) -> None:
         assert fh.read() == _FAKE_PNG
 
 
-def test_to_img_pdf_passes_dpi_to_both() -> None:
-    """to_img passes dpi to the headless renderer and _png_to_pdf."""
-    import io
-
-    from PIL import Image
-
+def test_to_img_passes_pdf_format_directly() -> None:
+    """to_img passes fmt='pdf' directly to the headless renderer."""
     widget = _make_widget()
-    img = Image.new("RGB", (10, 10), color="red")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-
-    mock_headless = f"{_HEADLESS}.render_widget_headless"
-    mock_pdf_path = "pymatviz.widgets.matterviz._png_to_pdf"
-    with (
-        patch(mock_headless, return_value=buf.getvalue()) as mock_render,
-        patch(mock_pdf_path, wraps=_png_to_pdf) as mock_pdf,
-    ):
+    with patch(
+        f"{_HEADLESS}.render_widget_headless", return_value=b"%PDF-fake"
+    ) as mock_render:
         result = widget.to_img(fmt="pdf", dpi=200)
 
+    assert mock_render.call_args.kwargs["fmt"] == "pdf"
     assert mock_render.call_args.kwargs["dpi"] == 200
-    assert mock_pdf.call_args.kwargs["dpi"] == 200
-    assert result[:5] == b"%PDF-"
+    assert result == b"%PDF-fake"
+
+
+def test_to_img_passes_quality() -> None:
+    """to_img forwards quality parameter to the headless renderer."""
+    widget = _make_widget()
+    with patch(
+        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
+    ) as mock_render:
+        widget.to_img(fmt="jpeg", quality=75)
+
+    assert mock_render.call_args.kwargs["quality"] == 75
 
 
 @pytest.mark.parametrize(
-    ("mode", "color"),
-    [("RGBA", (255, 0, 0, 128)), ("L", 128), ("P", 42)],
+    ("width", "height"),
+    [(1200, None), (None, 900), (1200, 900)],
 )
-def test_png_to_pdf_mode_handling(mode: str, color: Any) -> None:
-    """_png_to_pdf converts various image modes to valid PDF."""
-    import io
+def test_to_img_passes_width_height(width: int | None, height: int | None) -> None:
+    """to_img forwards width/height overrides to the headless renderer."""
+    widget = _make_widget()
+    with patch(
+        f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
+    ) as mock_render:
+        widget.to_img(fmt="png", width=width, height=height)
 
-    from PIL import Image
-
-    img = Image.new(mode, (10, 10), color=color)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    assert _png_to_pdf(buf.getvalue(), dpi=72)[:5] == b"%PDF-"
-
-
-def test_png_to_pdf_rgba_composites_onto_white() -> None:
-    """_png_to_pdf composites RGBA onto white, not black."""
-    import io
-
-    from PIL import Image
-
-    img = Image.new("RGBA", (10, 10), color=(255, 0, 0, 128))
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-
-    pdf_bytes = _png_to_pdf(buf.getvalue(), dpi=72)
-
-    # Build expected white-composited PDF for byte-exact comparison
-    bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
-    bg.paste(img, mask=img.split()[3])
-    expected_buf = io.BytesIO()
-    bg.convert("RGB").save(expected_buf, format="PDF", resolution=72)
-
-    assert pdf_bytes == expected_buf.getvalue(), (
-        "_png_to_pdf output does not match white-composited result"
-    )
-    # Also verify it differs from naive black-blend
-    naive_buf = io.BytesIO()
-    img.convert("RGB").save(naive_buf, format="PDF", resolution=72)
-    assert pdf_bytes != naive_buf.getvalue()
+    assert mock_render.call_args.kwargs["width"] == width
+    assert mock_render.call_args.kwargs["height"] == height
 
 
 # === _build_html unit tests ===
@@ -870,6 +872,28 @@ def test_build_html_dimensions(
         assert substr not in html, f"unexpected {substr!r} in HTML"
 
 
+@pytest.mark.parametrize(
+    ("width", "height", "expect_in"),
+    [
+        (1200, None, ["width: 1200px", _H6]),
+        (None, 900, ["width: 500px", "height: 900px"]),
+        (1200, 900, ["width: 1200px", "height: 900px"]),
+    ],
+)
+def test_build_html_width_height_override(
+    width: int | None,
+    height: int | None,
+    expect_in: list[str],
+) -> None:
+    """_build_html explicit width/height override user style and defaults."""
+    from pymatviz.widgets._headless import _build_html
+
+    data: dict[str, Any] = {"widget_type": "bar_plot", "style": "width: 500px;"}
+    html = _build_html(data, "// esm", "/* css */", width=width, height=height)
+    for substr in expect_in:
+        assert substr in html, f"expected {substr!r} in HTML"
+
+
 def test_build_html_embeds_data_and_css() -> None:
     """_build_html injects widget JSON data and CSS into the page."""
     from pymatviz.widgets._headless import _build_html
@@ -879,21 +903,6 @@ def test_build_html_embeds_data_and_css() -> None:
     html = _build_html(data, "// esm", css)
     assert '"widget_type": "scatter_plot"' in html
     assert f"<style>{css}</style>" in html
-
-
-def test_write_temp_html_creates_readable_file() -> None:
-    """_write_temp_html creates a readable .html file with correct content."""
-    from pymatviz.widgets._headless import _write_temp_html
-
-    content = "<html><body>test</body></html>"
-    path = _write_temp_html(content)
-    try:
-        assert os.path.isfile(path)
-        assert path.endswith(".html")
-        with open(path, encoding="utf-8") as fh:
-            assert fh.read() == content
-    finally:
-        os.unlink(path)
 
 
 def test_shutdown_browser_tolerates_none() -> None:
@@ -968,11 +977,7 @@ def test_render_widget_headless_dpi_to_scale(
     mock_browser = MagicMock()
     mock_browser.new_page = MagicMock(return_value=mock_page)
 
-    with (
-        patch(f"{_HEADLESS}._get_browser", return_value=mock_browser),
-        patch(f"{_HEADLESS}._write_temp_html", return_value="/tmp/x.html"),
-        patch("os.unlink"),
-    ):
+    with patch(f"{_HEADLESS}._get_browser", return_value=mock_browser):
         from pymatviz.widgets._headless import render_widget_headless
 
         try:
@@ -986,6 +991,7 @@ def test_render_widget_headless_dpi_to_scale(
         except (AttributeError, TypeError):
             pass
 
+    assert mock_browser.new_page.called, "new_page was never called"
     scale = mock_browser.new_page.call_args.kwargs["device_scale_factor"]
     assert scale == expected_scale
 
@@ -993,9 +999,11 @@ def test_render_widget_headless_dpi_to_scale(
 # === Headless integration tests (require playwright + chromium) ===
 
 _has_playwright = importlib.util.find_spec("playwright") is not None
+_has_pillow = importlib.util.find_spec("PIL") is not None
 _skip_no_playwright = pytest.mark.skipif(
     not _has_playwright, reason="playwright not installed"
 )
+_skip_no_pillow = pytest.mark.skipif(not _has_pillow, reason="Pillow not installed")
 
 
 @pytest.fixture
@@ -1008,6 +1016,7 @@ def bar_plot_widget() -> BarPlotWidget:
 
 
 @_skip_no_playwright
+@_skip_no_pillow
 def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
     """BarPlotWidget.to_img(fmt='png') produces a valid, non-trivial PNG."""
     import io
@@ -1096,6 +1105,7 @@ def test_headless_structure_svg_raises() -> None:
 
 
 @_skip_no_playwright
+@_skip_no_pillow
 def test_headless_dpi_affects_png_dimensions() -> None:
     """Higher DPI produces larger pixel dimensions for the same widget."""
     import io
