@@ -210,6 +210,12 @@ def normalize_plot_series(
         # x can be strings (categorical) or numeric; y must always be numeric
         is_categorical = x_values and all(isinstance(val, str) for val in x_values)
         if not is_categorical:
+            if x_values and any(isinstance(val, str) for val in x_values):
+                raise TypeError(
+                    f"{component_name} series x values must be all strings "
+                    f"(categorical) or all numeric, got mixed types at index "
+                    f"{series_index}."
+                )
             normalized_entry["x"] = _normalize_numeric_sequence(
                 x_values, "x", series_index=series_index
             )

@@ -347,6 +347,11 @@ class MatterVizWidget(AnyWidget):
         resolved_fmt = fmt
         if resolved_fmt is None and filename:
             ext = os.path.splitext(filename)[1].lower().lstrip(".")
+            if not ext:
+                raise ValueError(
+                    f"Cannot infer format from {filename=!r} "
+                    "(no extension). Pass fmt= explicitly."
+                )
             resolved_fmt = {"jpg": "jpeg"}.get(ext, ext)
             if resolved_fmt not in valid_fmts:
                 raise ValueError(

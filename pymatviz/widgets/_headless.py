@@ -13,7 +13,9 @@ import contextlib
 import functools
 import json
 import os
+import re
 import tempfile
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -26,28 +28,38 @@ if TYPE_CHECKING:
 _pw: Any = None
 _browser: Browser | None = None
 _atexit_registered = False
+_browser_lock = threading.Lock()
 
 
 def _get_browser() -> Browser:
-    """Return a cached headless Chromium browser, launching one if needed."""
+    """Return a cached headless Chromium browser, launching one if needed.
+
+    Thread-safe: concurrent callers block on a lock during launch.
+    """
     global _pw, _browser, _atexit_registered  # noqa: PLW0603
     if _browser is not None and _browser.is_connected():
         return _browser
 
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        raise ImportError(
-            "playwright is required for headless widget export.\n"
-            "Install it with:  uv pip install playwright && playwright install chromium"
-        ) from None
+    with _browser_lock:
+        # Double-check after acquiring the lock
+        if _browser is not None and _browser.is_connected():
+            return _browser
 
-    _pw = sync_playwright().start()
-    _browser = _pw.chromium.launch(headless=True)
-    if not _atexit_registered:
-        atexit.register(_shutdown_browser)
-        _atexit_registered = True
-    return _browser
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            raise ImportError(
+                "playwright is required for headless widget export.\n"
+                "Install it with:  uv pip install playwright"
+                " && playwright install chromium"
+            ) from None
+
+        _pw = sync_playwright().start()
+        _browser = _pw.chromium.launch(headless=True)
+        if not _atexit_registered:
+            atexit.register(_shutdown_browser)
+            _atexit_registered = True
+        return _browser
 
 
 def _shutdown_browser() -> None:
@@ -63,7 +75,7 @@ def _shutdown_browser() -> None:
     _pw = None
 
 
-@functools.lru_cache(maxsize=4)
+@functools.lru_cache(maxsize=1)
 def _get_esm_b64(esm_content: str) -> str:
     """Return base64-encoded ESM bundle, cached to avoid re-encoding ~11 MB."""
     return base64.b64encode(esm_content.encode("utf-8")).decode("ascii")
@@ -110,16 +122,18 @@ def _build_html(
     # (later declarations win in inline style), then defaults for any
     # missing dimension.
     user_style = widget_data.get("style") or ""
+    has_width = bool(re.search(r"(?:^|;\s*)width\s*:", user_style))
+    has_height = bool(re.search(r"(?:^|;\s*)height\s*:", user_style))
     parts = []
     if user_style:
         parts.append(user_style)
     if width is not None:
         parts.append(f"width: {width}px")
-    elif "width" not in user_style:
+    elif not has_width:
         parts.append("width: 800px")
     if height is not None:
         parts.append(f"height: {height}px")
-    elif "height" not in user_style:
+    elif not has_height:
         parts.append("height: 600px")
     widget_style = "; ".join(parts)
 
@@ -240,8 +254,7 @@ def _capture_page(
             raise RuntimeError("SVG export not supported for WebGL (canvas) widgets")
 
         # Find the main chart SVG -- the largest one by area, ignoring
-        # small icon SVGs (fullscreen toggles, etc.). Requires at
-        # least 100x100 px to distinguish real charts from icons.
+        # tiny icon SVGs (fullscreen toggles, toolbar buttons, etc.).
         svg_string = page.evaluate("""\
             () => {
                 const svgs = Array.from(
@@ -250,12 +263,12 @@ def _capture_page(
                 if (!svgs.length) return null;
 
                 // Pick the SVG with the largest bounding box, filtering
-                // out tiny icon SVGs (< 100px in either dimension)
+                // out tiny icon SVGs (< 20px in either dimension)
                 let best = null;
                 let best_area = 0;
                 for (const svg of svgs) {
                     const rect = svg.getBoundingClientRect();
-                    if (rect.width < 100 || rect.height < 100) continue;
+                    if (rect.width < 20 || rect.height < 20) continue;
                     const area = rect.width * rect.height;
                     if (area > best_area) {
                         best = svg;
