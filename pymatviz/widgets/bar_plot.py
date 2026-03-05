@@ -29,6 +29,17 @@ class BarPlotWidget(MatterVizWidget):
     line = tl.Dict(allow_none=True).tag(sync=True)
     ref_lines = tl.List(allow_none=True).tag(sync=True)
     controls = tl.Dict(allow_none=True).tag(sync=True)
+    padding = tl.Dict(allow_none=True).tag(sync=True)
+    range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    x2_axis = tl.Dict(allow_none=True).tag(sync=True)
+    x_range = tl.List(allow_none=True).tag(sync=True)
+    x2_range = tl.List(allow_none=True).tag(sync=True)
+    y_range = tl.List(allow_none=True).tag(sync=True)
+    y2_range = tl.List(allow_none=True).tag(sync=True)
+    color_scale = tl.Dict(allow_none=True).tag(sync=True)
+    size_scale = tl.Dict(allow_none=True).tag(sync=True)
+    point_tween = tl.Dict(allow_none=True).tag(sync=True)
 
     def __init__(
         self,
@@ -45,6 +56,17 @@ class BarPlotWidget(MatterVizWidget):
         line: dict[str, Any] | None = None,
         ref_lines: list[dict[str, Any]] | None = None,
         controls: dict[str, Any] | None = None,
+        padding: dict[str, int] | None = None,
+        range_padding: float | None = None,
+        show_legend: bool | None = None,
+        x2_axis: dict[str, Any] | None = None,
+        x_range: list[float | None] | None = None,
+        x2_range: list[float | None] | None = None,
+        y_range: list[float | None] | None = None,
+        y2_range: list[float | None] | None = None,
+        color_scale: dict[str, Any] | None = None,
+        size_scale: dict[str, Any] | None = None,
+        point_tween: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a bar plot widget.
@@ -62,6 +84,18 @@ class BarPlotWidget(MatterVizWidget):
             line: Line-style configuration for line-rendered series.
             ref_lines: Reference line definitions.
             controls: Control pane configuration.
+            padding: Plot area padding ``{"t": N, "b": N, "l": N, "r": N}``
+                in pixels.
+            range_padding: Fraction of data range to add as padding.
+            show_legend: Whether to show the legend.
+            x2_axis: Secondary X axis configuration.
+            x_range: Fixed X axis range ``[min, max]``.
+            x2_range: Fixed secondary X axis range ``[min, max]``.
+            y_range: Fixed Y axis range ``[min, max]``.
+            y2_range: Fixed secondary Y axis range ``[min, max]``.
+            color_scale: Color scaling configuration for bar colors.
+            size_scale: Marker size scaling (for line markers on bars).
+            point_tween: Point/marker animation configuration.
             **kwargs: Additional base widget keyword arguments.
         """
         super().__init__(
@@ -78,5 +112,16 @@ class BarPlotWidget(MatterVizWidget):
             line=normalize_plot_json(line, "BarPlot.line"),
             ref_lines=normalize_plot_json(ref_lines, "BarPlot.ref_lines"),
             controls=normalize_plot_json(controls, "BarPlot.controls"),
+            padding=normalize_plot_json(padding, "BarPlot.padding"),
+            range_padding=range_padding,
+            show_legend=show_legend,
+            x2_axis=normalize_plot_json(x2_axis, "BarPlot.x2_axis"),
+            x_range=x_range,
+            x2_range=x2_range,
+            y_range=y_range,
+            y2_range=y2_range,
+            color_scale=normalize_plot_json(color_scale, "BarPlot.color_scale"),
+            size_scale=normalize_plot_json(size_scale, "BarPlot.size_scale"),
+            point_tween=normalize_plot_json(point_tween, "BarPlot.point_tween"),
             **kwargs,
         )

@@ -12,6 +12,14 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class StructureWidget(MatterVizWidget):
     """MatterViz widget for visualizing structures in Python notebooks.
 
+    Structure data can be provided as:
+    - ``structure``: A parsed dict (from pymatgen/ASE ``.as_dict()``), or
+      a pymatgen ``Structure``/ASE ``Atoms`` object (auto-converted).
+    - ``structure_string``: A raw file string (CIF, POSCAR, XYZ, etc.)
+      parsed on the frontend. Useful when you have the file content but
+      not a parsed object. If both are provided, ``structure`` takes
+      precedence.
+
     Examples:
         Basic usage:
         >>> from pymatviz import StructureWidget
@@ -30,6 +38,7 @@ class StructureWidget(MatterVizWidget):
     """
 
     structure = tl.Dict(allow_none=True).tag(sync=True)
+    structure_string = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
     data_url = tl.Unicode(allow_none=True).tag(sync=True)
 
     # Atom visualization
@@ -77,8 +86,12 @@ class StructureWidget(MatterVizWidget):
         """Initialize the StructureWidget.
 
         Args:
-            structure: Structure data (dict from pymatgen/ASE .as_dict() or similar)
-            **kwargs: Additional widget properties
+            structure: Structure data -- a pymatgen ``Structure``, ASE
+                ``Atoms``, or a pre-serialized dict. Converted to dict
+                internally. Alternatively, pass ``structure_string`` as
+                a keyword argument with a raw CIF/POSCAR/XYZ string.
+            **kwargs: Additional widget properties (e.g.
+                ``structure_string``, ``atom_radius``, ``show_bonds``).
         """
         from pymatviz.process_data import normalize_structures
 

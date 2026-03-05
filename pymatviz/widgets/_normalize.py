@@ -207,9 +207,13 @@ def normalize_plot_series(
                 f"len(y)={len(y_values)}."
             )
 
-        normalized_entry["x"] = _normalize_numeric_sequence(
-            x_values, "x", series_index=series_index
-        )
+        # x can be strings (categorical) or numeric; y must always be numeric
+        if all(isinstance(val, str) for val in x_values):
+            normalized_entry["x"] = x_values
+        else:
+            normalized_entry["x"] = _normalize_numeric_sequence(
+                x_values, "x", series_index=series_index
+            )
         normalized_entry["y"] = _normalize_numeric_sequence(
             y_values, "y", series_index=series_index
         )

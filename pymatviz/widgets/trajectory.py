@@ -365,7 +365,7 @@ class TrajectoryWidget(MatterVizWidget):
                 f"Site keys: {site_keys}."
             )
         species_data = first_site["species"]
-        self._validate_species_list(species_data, "Got value")
+        self._validate_species_list(species_data, "First site (index 0), value")
         if "abc" not in first_site and "xyz" not in first_site:
             site_keys = sorted(str(key) for key in first_site)
             raise ValueError(
