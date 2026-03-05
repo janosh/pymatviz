@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
+import os
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -19,7 +21,7 @@ from pymatviz.widgets.dos import DosWidget
 from pymatviz.widgets.fermi_surface import FermiSurfaceWidget
 from pymatviz.widgets.heatmap_matrix import HeatmapMatrixWidget
 from pymatviz.widgets.histogram import HistogramWidget
-from pymatviz.widgets.matterviz import MatterVizWidget
+from pymatviz.widgets.matterviz import MatterVizWidget, _png_to_pdf
 from pymatviz.widgets.periodic_table import PeriodicTableWidget
 from pymatviz.widgets.phase_diagram import PhaseDiagramWidget
 from pymatviz.widgets.rdf_plot import RdfPlotWidget
@@ -313,6 +315,7 @@ def test_widget_construction_and_type(
                 "tile_size",
                 "gap",
                 "show_values",
+                "label_style",
             },
         ),
         (
@@ -409,7 +412,7 @@ _MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
         (PeriodicTableWidget, "missing_color", "element-category"),
         (ScatterPlot3DWidget, "camera_projection", "perspective"),
         (HeatmapMatrixWidget, "color_scale", "interpolateViridis"),
-        (HeatmapMatrixWidget, "tile_size", "6px"),
+        (HeatmapMatrixWidget, "tile_size", "50px"),
         (HeatmapMatrixWidget, "gap", "0px"),
         (SpacegroupBarPlotWidget, "show_counts", True),
         (SpacegroupBarPlotWidget, "orientation", "vertical"),
@@ -687,3 +690,425 @@ def test_show_not_shadowed_by_display_traitlet(widget_cls: type) -> None:
 
     assert result is None
     mock_display.assert_called_once_with(widget)
+
+
+# === to_img ===
+
+_HEADLESS = "pymatviz.widgets._headless"
+_FAKE_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
+
+
+def _make_widget() -> MatterVizWidget:
+    """Create a MatterVizWidget with mocked assets for testing."""
+    with patch("pymatviz.widgets.matterviz.fetch_widget_asset", return_value="x"):
+        return MatterVizWidget(widget_type="scatter_plot")
+
+
+@pytest.mark.parametrize(
+    ("filename", "explicit_fmt", "expected_capture_fmt"),
+    [
+        ("plot.png", None, "png"),
+        ("plot.svg", None, "svg"),
+        ("plot.pdf", None, "png"),
+        ("plot.jpg", None, "jpeg"),
+        ("plot.jpeg", None, "jpeg"),
+        ("plot.PDF", None, "png"),
+        ("plot.SVG", None, "svg"),
+        ("plot.JPG", None, "jpeg"),
+        (None, "png", "png"),
+        (None, "svg", "svg"),
+        (None, "jpeg", "jpeg"),
+        (None, "pdf", "png"),
+        (None, None, "png"),
+    ],
+)
+def test_to_img_format_inference(
+    filename: str | None,
+    explicit_fmt: str | None,
+    expected_capture_fmt: str,
+    tmp_path: Any,
+) -> None:
+    """to_img infers capture format from filename or explicit fmt argument."""
+    widget = _make_widget()
+    resolved = f"{tmp_path}/{filename}" if filename else None
+
+    mock_headless = f"{_HEADLESS}.render_widget_headless"
+    with (
+        patch(mock_headless, return_value=_FAKE_PNG) as mock_render,
+        patch("pymatviz.widgets.matterviz._png_to_pdf", return_value=b"%PDF-fake"),
+    ):
+        widget.to_img(filename=resolved, fmt=explicit_fmt)  # type: ignore[arg-type]
+
+    assert mock_render.call_args.kwargs["fmt"] == expected_capture_fmt
+
+
+def test_to_img_rejects_unknown_extension(tmp_path: Any) -> None:
+    """to_img raises ValueError for unrecognized file extensions."""
+    widget = _make_widget()
+    with pytest.raises(ValueError, match="Unsupported file extension"):
+        widget.to_img(filename=f"{tmp_path}/plot.tiff")
+
+
+@pytest.mark.parametrize("path_suffix", ["output.png", "sub/dir/output.png"])
+def test_to_img_writes_file(tmp_path: Any, path_suffix: str) -> None:
+    """to_img writes bytes to disk, creating parent directories as needed."""
+    widget = _make_widget()
+
+    with patch(f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG):
+        out_path = f"{tmp_path}/{path_suffix}"
+        result = widget.to_img(filename=out_path)
+
+    assert result == _FAKE_PNG
+    with open(out_path, "rb") as fh:
+        assert fh.read() == _FAKE_PNG
+
+
+def test_to_img_pdf_passes_dpi_to_both() -> None:
+    """to_img passes dpi to the headless renderer and _png_to_pdf."""
+    import io
+
+    from PIL import Image
+
+    widget = _make_widget()
+    img = Image.new("RGB", (10, 10), color="red")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+
+    mock_headless = f"{_HEADLESS}.render_widget_headless"
+    mock_pdf_path = "pymatviz.widgets.matterviz._png_to_pdf"
+    with (
+        patch(mock_headless, return_value=buf.getvalue()) as mock_render,
+        patch(mock_pdf_path, wraps=_png_to_pdf) as mock_pdf,
+    ):
+        result = widget.to_img(fmt="pdf", dpi=200)
+
+    assert mock_render.call_args.kwargs["dpi"] == 200
+    assert mock_pdf.call_args.kwargs["dpi"] == 200
+    assert result[:5] == b"%PDF-"
+
+
+@pytest.mark.parametrize(
+    ("mode", "color"),
+    [("RGBA", (255, 0, 0, 128)), ("L", 128), ("P", 42)],
+)
+def test_png_to_pdf_mode_handling(mode: str, color: Any) -> None:
+    """_png_to_pdf converts various image modes to valid PDF."""
+    import io
+
+    from PIL import Image
+
+    img = Image.new(mode, (10, 10), color=color)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    assert _png_to_pdf(buf.getvalue(), dpi=72)[:5] == b"%PDF-"
+
+
+def test_png_to_pdf_rgba_composites_onto_white() -> None:
+    """_png_to_pdf composites RGBA onto white, not black."""
+    import io
+
+    from PIL import Image
+
+    img = Image.new("RGBA", (10, 10), color=(255, 0, 0, 128))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+
+    pdf_bytes = _png_to_pdf(buf.getvalue(), dpi=72)
+
+    # Build expected white-composited PDF for byte-exact comparison
+    bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    bg.paste(img, mask=img.split()[3])
+    expected_buf = io.BytesIO()
+    bg.convert("RGB").save(expected_buf, format="PDF", resolution=72)
+
+    assert pdf_bytes == expected_buf.getvalue(), (
+        "_png_to_pdf output does not match white-composited result"
+    )
+    # Also verify it differs from naive black-blend
+    naive_buf = io.BytesIO()
+    img.convert("RGB").save(naive_buf, format="PDF", resolution=72)
+    assert pdf_bytes != naive_buf.getvalue()
+
+
+# === _build_html unit tests ===
+
+
+_W8 = "width: 800px"
+_H6 = "height: 600px"
+
+
+@pytest.mark.parametrize(
+    ("style", "expect_in", "expect_not_in"),
+    [
+        (None, [_W8, _H6], []),
+        ("", [_W8, _H6], []),
+        (
+            "width: 500px; height: 300px;",
+            ["width: 500px", "height: 300px"],
+            ["800px", "600px"],
+        ),
+        ("height: 400px;", [_W8, "height: 400px"], ["600px"]),
+        ("width: 400px;", ["width: 400px", _H6], ["800px"]),
+    ],
+)
+def test_build_html_dimensions(
+    style: str | None,
+    expect_in: list[str],
+    expect_not_in: list[str],
+) -> None:
+    """_build_html applies dimension defaults only for missing width/height."""
+    from pymatviz.widgets._headless import _build_html
+
+    data: dict[str, Any] = {"widget_type": "bar_plot"}
+    if style is not None:
+        data["style"] = style
+    html = _build_html(data, "// esm", "/* css */")
+    assert 'id="widget-root"' in html
+    for substr in expect_in:
+        assert substr in html, f"expected {substr!r} in HTML"
+    for substr in expect_not_in:
+        assert substr not in html, f"unexpected {substr!r} in HTML"
+
+
+def test_build_html_embeds_data_and_css() -> None:
+    """_build_html injects widget JSON data and CSS into the page."""
+    from pymatviz.widgets._headless import _build_html
+
+    data = {"widget_type": "scatter_plot", "series": [{"x": [1]}]}
+    css = "body { color: red; }"
+    html = _build_html(data, "// esm", css)
+    assert '"widget_type": "scatter_plot"' in html
+    assert f"<style>{css}</style>" in html
+
+
+def test_write_temp_html_creates_readable_file() -> None:
+    """_write_temp_html creates a readable .html file with correct content."""
+    from pymatviz.widgets._headless import _write_temp_html
+
+    content = "<html><body>test</body></html>"
+    path = _write_temp_html(content)
+    try:
+        assert os.path.isfile(path)
+        assert path.endswith(".html")
+        with open(path, encoding="utf-8") as fh:
+            assert fh.read() == content
+    finally:
+        os.unlink(path)
+
+
+def test_shutdown_browser_tolerates_none() -> None:
+    """_shutdown_browser handles _browser=None without error."""
+    import pymatviz.widgets._headless as headless_mod
+    from pymatviz.widgets._headless import _shutdown_browser
+
+    original = headless_mod._browser
+    headless_mod._browser = None
+    try:
+        mock_pw = MagicMock()
+        _shutdown_browser(mock_pw)
+        mock_pw.stop.assert_called_once()
+    finally:
+        headless_mod._browser = original
+
+
+def test_get_browser_import_error() -> None:
+    """_get_browser raises ImportError with install instructions."""
+    import pymatviz.widgets._headless as headless_mod
+
+    original = headless_mod._browser
+    headless_mod._browser = None
+    blocked = {"playwright": None, "playwright.sync_api": None}
+    try:
+        with (
+            patch.dict("sys.modules", blocked),
+            pytest.raises(ImportError, match="playwright is required"),
+        ):
+            headless_mod._get_browser()
+    finally:
+        headless_mod._browser = original
+
+
+def test_canvas_widget_types_frozenset() -> None:
+    """_CANVAS_WIDGET_TYPES contains the expected WebGL widget types."""
+    from pymatviz.widgets._headless import _CANVAS_WIDGET_TYPES
+
+    expected = {
+        "structure",
+        "trajectory",
+        "fermi_surface",
+        "brillouin_zone",
+        "scatter_plot_3d",
+    }
+    assert expected == _CANVAS_WIDGET_TYPES
+
+
+@pytest.mark.parametrize(
+    ("fmt", "dpi", "expected_scale"),
+    [
+        ("png", 72, 1.0),
+        ("png", 144, 2.0),
+        ("png", 216, 3.0),
+        ("png", 36, 1.0),
+        ("jpeg", 72, 1.0),
+        ("jpeg", 144, 2.0),
+        ("svg", 300, 1),
+    ],
+)
+def test_render_widget_headless_dpi_to_scale(
+    fmt: str,
+    dpi: int,
+    expected_scale: float,
+) -> None:
+    """render_widget_headless maps DPI to device_scale_factor correctly."""
+    fake_svg = '<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>'
+    mock_page = MagicMock()
+    mock_page.evaluate = MagicMock(side_effect=[None, fake_svg])
+    mock_page.locator.return_value.screenshot = MagicMock(return_value=b"\x89PNG")
+
+    mock_browser = MagicMock()
+    mock_browser.new_page = MagicMock(return_value=mock_page)
+
+    with (
+        patch(f"{_HEADLESS}._get_browser", return_value=mock_browser),
+        patch(f"{_HEADLESS}._write_temp_html", return_value="/tmp/x.html"),
+        patch("os.unlink"),
+    ):
+        from pymatviz.widgets._headless import render_widget_headless
+
+        try:
+            render_widget_headless(
+                {"widget_type": "bar_plot"},
+                "// esm",
+                "/* css */",
+                fmt=fmt,
+                dpi=dpi,
+            )
+        except (AttributeError, TypeError):
+            pass
+
+    scale = mock_browser.new_page.call_args.kwargs["device_scale_factor"]
+    assert scale == expected_scale
+
+
+# === Headless integration tests (require playwright + chromium) ===
+
+_has_playwright = importlib.util.find_spec("playwright") is not None
+_skip_no_playwright = pytest.mark.skipif(
+    not _has_playwright, reason="playwright not installed"
+)
+
+
+@pytest.fixture
+def bar_plot_widget() -> BarPlotWidget:
+    """A minimal BarPlotWidget for integration tests."""
+    return BarPlotWidget(
+        series=[{"x": [0, 1], "y": [3.0, 5.0], "label": "test"}],
+        style="height: 400px;",
+    )
+
+
+@_skip_no_playwright
+def test_headless_bar_plot_png(bar_plot_widget: BarPlotWidget) -> None:
+    """BarPlotWidget.to_img(fmt='png') produces a valid, non-trivial PNG."""
+    import io
+
+    from PIL import Image
+
+    png_bytes = bar_plot_widget.to_img(fmt="png", dpi=72)
+    assert png_bytes[:4] == b"\x89PNG"
+    img = Image.open(io.BytesIO(png_bytes))
+    assert img.width >= 400
+    assert img.height >= 200
+
+
+@_skip_no_playwright
+def test_headless_bar_plot_svg(bar_plot_widget: BarPlotWidget) -> None:
+    """BarPlotWidget.to_img(fmt='svg') returns chart SVG, not a toolbar icon."""
+    svg_text = bar_plot_widget.to_img(fmt="svg").decode("utf-8")
+    assert svg_text.startswith("<?xml")
+    assert len(svg_text) > 2000, f"SVG too small ({len(svg_text)} chars)"
+    assert "<g" in svg_text, "No <g> groups -- likely an icon"
+
+
+@_skip_no_playwright
+def test_headless_bar_plot_jpeg(bar_plot_widget: BarPlotWidget) -> None:
+    """BarPlotWidget.to_img(fmt='jpeg') produces a valid JPEG."""
+    jpeg_bytes = bar_plot_widget.to_img(fmt="jpeg", dpi=72)
+    assert jpeg_bytes[:2] == b"\xff\xd8"  # JPEG SOI marker
+    assert len(jpeg_bytes) > 1000
+
+
+@_skip_no_playwright
+def test_headless_bar_plot_jpeg_from_jpg_extension(
+    bar_plot_widget: BarPlotWidget,
+    tmp_path: Any,
+) -> None:
+    """to_img infers JPEG format from .jpg extension."""
+    out_path = f"{tmp_path}/bar.jpg"
+    result = bar_plot_widget.to_img(filename=out_path, dpi=72)
+    assert result[:2] == b"\xff\xd8"
+    with open(out_path, "rb") as fh:
+        assert fh.read() == result
+
+
+@_skip_no_playwright
+def test_headless_bar_plot_pdf(bar_plot_widget: BarPlotWidget) -> None:
+    """BarPlotWidget.to_img(fmt='pdf') produces valid PDF."""
+    pdf_bytes = bar_plot_widget.to_img(fmt="pdf")
+    assert pdf_bytes[:5] == b"%PDF-"
+    assert len(pdf_bytes) > 1000
+
+
+@_skip_no_playwright
+def test_headless_bar_plot_writes_file(
+    bar_plot_widget: BarPlotWidget,
+    tmp_path: Any,
+) -> None:
+    """to_img writes headless-captured PNG to disk."""
+    out_path = f"{tmp_path}/bar.png"
+    result = bar_plot_widget.to_img(filename=out_path, fmt="png", dpi=72)
+    assert result[:4] == b"\x89PNG"
+    with open(out_path, "rb") as fh:
+        assert fh.read() == result
+
+
+@_skip_no_playwright
+def test_headless_structure_png() -> None:
+    """StructureWidget (canvas/WebGL) produces a valid PNG."""
+    from pymatgen.core import Lattice, Structure
+
+    struct = Structure(Lattice.cubic(3.0), ["Si", "Si"], [[0, 0, 0], [0.5, 0.5, 0.5]])
+    widget = StructureWidget(structure=struct, style="height: 400px;")
+    png_bytes = widget.to_img(fmt="png", dpi=72)
+    assert png_bytes[:4] == b"\x89PNG"
+    assert len(png_bytes) > 5000
+
+
+@_skip_no_playwright
+def test_headless_structure_svg_raises() -> None:
+    """StructureWidget (canvas) raises RuntimeError for SVG export."""
+    from pymatgen.core import Lattice, Structure
+
+    struct = Structure(Lattice.cubic(3.0), ["Si"], [[0, 0, 0]])
+    widget = StructureWidget(structure=struct, style="height: 300px;")
+    with pytest.raises(RuntimeError, match="SVG export not supported"):
+        widget.to_img(fmt="svg")
+
+
+@_skip_no_playwright
+def test_headless_dpi_affects_png_dimensions() -> None:
+    """Higher DPI produces larger pixel dimensions for the same widget."""
+    import io
+
+    from PIL import Image
+
+    from pymatviz.widgets.scatter_plot import ScatterPlotWidget
+
+    widget = ScatterPlotWidget(
+        series=[{"x": [0, 1], "y": [0, 1], "label": "pt"}],
+        style="width: 200px; height: 200px;",
+    )
+    img_lo = Image.open(io.BytesIO(widget.to_img(fmt="png", dpi=72)))
+    img_hi = Image.open(io.BytesIO(widget.to_img(fmt="png", dpi=216)))
+    assert img_hi.width > img_lo.width * 2
+    assert img_hi.height > img_lo.height * 2

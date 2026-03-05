@@ -6,11 +6,15 @@ import os
 import re
 import subprocess
 import urllib.request
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urljoin
 
 import traitlets as tl
 from anywidget import AnyWidget
+
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 
 def _in_marimo_runtime() -> bool:
@@ -269,3 +273,130 @@ class MatterVizWidget(AnyWidget):
             for name in self.traits(sync=True)
             if not name.startswith("_") and name not in self._EXCLUDED_TRAITS
         }
+
+    def to_img(
+        self,
+        filename: str | None = None,
+        fmt: Literal["png", "jpeg", "svg", "pdf"] | None = None,
+        dpi: int = 150,
+        timeout: float = 30.0,
+    ) -> bytes:
+        """Capture the widget as an image via headless Chromium rendering.
+
+        Launches a headless browser (reused across calls), loads the ESM
+        bundle with the widget's data, waits for the component to render,
+        and captures the output. Works in plain Python scripts, CI, and
+        agent workflows -- no notebook frontend required.
+
+        Note: SVG export is only available for SVG-based (2D) widgets.
+        Canvas-based widgets (Structure, Trajectory, etc.) always export
+        as PNG/JPEG. PDF export wraps a PNG capture using Pillow.
+
+        Requires ``playwright`` (install with
+        ``uv pip install playwright && playwright install chromium``).
+
+        Args:
+            filename: Optional file path to write the image to. Format is
+                inferred from the extension if ``fmt`` is not provided.
+                Both ``.jpg`` and ``.jpeg`` extensions map to JPEG.
+            fmt: Image format -- ``"png"``, ``"jpeg"``, ``"svg"``, or
+                ``"pdf"``. Defaults to ``"png"`` if not specified and
+                cannot be inferred from ``filename``.
+            dpi: Resolution for PNG/JPEG/PDF output. Maps to the headless
+                browser's device scale factor (72 = 1x, 144 = 2x, etc.).
+                Defaults to 150 (~2x). Ignored for SVG.
+            timeout: Seconds to wait for headless rendering before
+                raising ``TimeoutError``. Defaults to 30.
+
+        Returns:
+            Raw image bytes (PNG, JPEG, SVG, or PDF).
+
+        Raises:
+            ValueError: If ``fmt`` is not a supported format.
+            TimeoutError: If the widget does not finish rendering in time.
+            RuntimeError: If the widget fails to render or SVG export is
+                requested for a canvas-based widget.
+            ImportError: If ``playwright`` is not installed.
+        """
+        from pymatviz.widgets._headless import render_widget_headless
+
+        valid_fmts = ("png", "jpeg", "svg", "pdf")
+        if fmt is not None and fmt not in valid_fmts:
+            raise ValueError(
+                f"Unsupported format {fmt!r}, expected one of {valid_fmts}"
+            )
+        resolved_fmt: str = fmt or ""
+        if not resolved_fmt:
+            if filename:
+                ext = os.path.splitext(filename)[1].lower().lstrip(".")
+                if ext == "jpg":
+                    ext = "jpeg"
+                if ext not in valid_fmts:
+                    raise ValueError(
+                        f"Unsupported file extension '.{ext}'; "
+                        f"supported: {sorted(valid_fmts)}"
+                    )
+                resolved_fmt = ext
+            else:
+                resolved_fmt = "png"
+
+        # Ensure ESM/CSS assets are loaded
+        cls = type(self)
+        cls._set_class_assets()
+        assets = cls._asset_cache["default"]
+        if not isinstance(assets, tuple):
+            raise TypeError("Widget assets not loaded correctly")
+        esm_content, css_content = assets
+
+        # For PDF, capture as PNG first, then convert on the Python side
+        capture_fmt = "png" if resolved_fmt == "pdf" else resolved_fmt
+        img_bytes = render_widget_headless(
+            widget_data=self.to_dict(),
+            esm_content=esm_content,
+            css_content=css_content,
+            fmt=capture_fmt,
+            dpi=dpi,
+            timeout=timeout,
+        )
+
+        is_pdf = resolved_fmt == "pdf"
+        if is_pdf:
+            img_bytes = _png_to_pdf(img_bytes, dpi=dpi)
+
+        if filename:
+            os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
+            with open(filename, "wb") as fh:
+                fh.write(img_bytes)
+
+        return img_bytes
+
+
+def _png_to_pdf(png_bytes: bytes, dpi: int = 150) -> bytes:
+    """Convert PNG bytes to a single-page PDF using Pillow.
+
+    Args:
+        png_bytes: Raw PNG image data.
+        dpi: Resolution metadata to embed in the PDF.
+
+    Returns:
+        PDF file bytes.
+
+    Raises:
+        ImportError: If Pillow is not installed.
+    """
+    import io
+
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(png_bytes))
+    if img.mode == "RGBA":
+        # PDF doesn't support transparency; composite onto white background
+        background = Image.new("RGBA", img.size, (255, 255, 255, 255))
+        background.paste(img, mask=img.split()[3])
+        img = background.convert("RGB")
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+
+    pdf_buffer = io.BytesIO()
+    img.save(pdf_buffer, format="PDF", resolution=dpi)
+    return pdf_buffer.getvalue()

@@ -7,6 +7,8 @@ examples/**/*.json.xz
 examples/**/*.csv.*
 examples/**/*.pt
 examples/**/*.pdf
+examples/**/exports/
+examples/**/tmp/
 gnome
 assets/scripts/pmv-used-by-list-*.yaml*
 *.archive
