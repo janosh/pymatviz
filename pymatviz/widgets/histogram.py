@@ -28,6 +28,13 @@ class HistogramWidget(MatterVizWidget):
     bar = tl.Dict(allow_none=True).tag(sync=True)
     ref_lines = tl.List(allow_none=True).tag(sync=True)
     controls = tl.Dict(allow_none=True).tag(sync=True)
+    padding = tl.Dict(allow_none=True).tag(sync=True)
+    range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    x2_axis = tl.Dict(allow_none=True).tag(sync=True)
+    x_range = tl.List(allow_none=True).tag(sync=True)
+    x2_range = tl.List(allow_none=True).tag(sync=True)
+    y_range = tl.List(allow_none=True).tag(sync=True)
+    y2_range = tl.List(allow_none=True).tag(sync=True)
 
     def __init__(
         self,
@@ -45,6 +52,13 @@ class HistogramWidget(MatterVizWidget):
         bar: dict[str, Any] | None = None,
         ref_lines: list[dict[str, Any]] | None = None,
         controls: dict[str, Any] | None = None,
+        padding: dict[str, int] | None = None,
+        range_padding: float | None = None,
+        x2_axis: dict[str, Any] | None = None,
+        x_range: list[float | None] | None = None,
+        x2_range: list[float | None] | None = None,
+        y_range: list[float | None] | None = None,
+        y2_range: list[float | None] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a histogram widget.
@@ -64,6 +78,14 @@ class HistogramWidget(MatterVizWidget):
             bar: Bar-style configuration.
             ref_lines: Reference line definitions.
             controls: Control pane configuration.
+            padding: Plot area padding ``{"t": N, "b": N, "l": N, "r": N}``
+                in pixels.
+            range_padding: Fraction of data range to add as padding.
+            x2_axis: Secondary X axis configuration.
+            x_range: Fixed X axis range ``[min, max]``.
+            x2_range: Fixed secondary X axis range ``[min, max]``.
+            y_range: Fixed Y axis range ``[min, max]``.
+            y2_range: Fixed secondary Y axis range ``[min, max]``.
             **kwargs: Additional base widget keyword arguments.
         """
         super().__init__(
@@ -81,5 +103,12 @@ class HistogramWidget(MatterVizWidget):
             bar=normalize_plot_json(bar, "Histogram.bar"),
             ref_lines=normalize_plot_json(ref_lines, "Histogram.ref_lines"),
             controls=normalize_plot_json(controls, "Histogram.controls"),
+            padding=normalize_plot_json(padding, "Histogram.padding"),
+            range_padding=range_padding,
+            x2_axis=normalize_plot_json(x2_axis, "Histogram.x2_axis"),
+            x_range=normalize_plot_json(x_range, "Histogram.x_range"),
+            x2_range=normalize_plot_json(x2_range, "Histogram.x2_range"),
+            y_range=normalize_plot_json(y_range, "Histogram.y_range"),
+            y2_range=normalize_plot_json(y2_range, "Histogram.y2_range"),
             **kwargs,
         )

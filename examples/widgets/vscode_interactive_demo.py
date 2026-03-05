@@ -25,7 +25,10 @@ from phonopy.structure.atoms import PhonopyAtoms
 from pymatgen.core import Composition, Lattice, Structure
 
 import pymatviz as pmv
-from pymatviz.utils.testing import TEST_FILES
+
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+TEST_FILES = f"{REPO_ROOT}/tests/files"
 
 
 np_rng = np.random.default_rng(seed=0)
@@ -184,7 +187,7 @@ for idx in range(n_steps := 20):
 trajectory_widget = pmv.TrajectoryWidget(
     trajectory=trajectory,
     display_mode="structure+scatter",
-    show_force_vectors=True,
+    show_vectors=True,
     style="height: 600px;",
 )
 trajectory_widget.show()
@@ -321,6 +324,11 @@ comps = (
 )
 modes = ("pie", "bar", "bubble")
 size = 100
+composition_pie_widget = pmv.CompositionWidget(
+    composition=comps[0],
+    mode="pie",
+    style=f"width: {size}px; height: {size}px;",
+)
 children = [
     pmv.CompositionWidget(
         composition=comp,
@@ -354,9 +362,9 @@ file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
 ase_traj_widget = pmv.TrajectoryWidget(
     data_url=f"{matterviz_traj_dir_url}/{file_name}",
     display_mode="structure+scatter",
-    show_force_vectors=True,
-    force_vector_scale=0.5,
-    force_vector_color="#ff4444",
+    show_vectors=True,
+    vector_scale=0.5,
+    vector_color="#ff4444",
     show_bonds=True,
     bonding_strategy="nearest_neighbor",
     style="height: 600px;",
@@ -384,7 +392,7 @@ if not os.path.isfile(local_path):
 traj_widget = pmv.TrajectoryWidget(
     data_url=local_path,
     display_mode="structure+scatter",
-    show_force_vectors=False,
+    show_vectors=False,
 )
 traj_widget.show()
 
@@ -517,6 +525,7 @@ heatmap_widget = pmv.HeatmapMatrixWidget(
         [0.6, 0.5, 0.4, 1.0],
     ],
     color_scale="interpolateBlues",
+    tile_size="80px",
     style="height: 400px;",
 )
 heatmap_widget.show()
@@ -607,3 +616,70 @@ phonopy_atoms = PhonopyAtoms(
     cell=[[4, 0, 0], [0, 4, 0], [0, 0, 4]],
 )
 phonopy_atoms  # noqa: B018
+
+
+# === Export all widgets to image files ===
+
+
+# %% [markdown]
+# ### Export All Widgets
+# Save every widget above to PNG, SVG, and PDF.
+# Canvas-based (WebGL) widgets only support PNG/PDF; SVG export is skipped for those.
+
+
+# %% Export widgets to all supported formats
+from pymatviz.widgets.matterviz import MatterVizWidget  # noqa: E402, I001
+
+EXPORT_DIR = f"{os.path.dirname(__file__)}/exports"
+os.makedirs(EXPORT_DIR, exist_ok=True)
+
+# Canvas-based (WebGL) widgets — PNG and PDF only (SVG not supported)
+canvas_widgets: dict[str, MatterVizWidget] = {
+    "structure": structure_widget,
+    "brillouin_zone": bz_widget,
+    "trajectory": trajectory_widget,
+    "ase_trajectory": ase_traj_widget,
+    "trajectory_md": traj_widget,
+    "isosurface": iso_widget,
+    "orbital": orbital_widget,
+    "scatter_plot_3d": scatter_3d_widget,
+}
+
+# SVG-based widgets — PNG, SVG, and PDF
+svg_widgets: dict[str, MatterVizWidget] = {
+    "convex_hull": convex_hull_widget,
+    "xrd": xrd_widget,
+    "scatter_plot": scatter_plot_widget,
+    "bar_plot": bar_plot_widget,
+    "histogram": histogram_widget,
+    "band_structure": bands_widget,
+    "dos": dos_widget,
+    "bands_and_dos": bands_dos_widget,
+    "periodic_table": ptable_widget,
+    "heatmap_matrix": heatmap_widget,
+    "spacegroup_bar": spacegroup_widget,
+    "chem_pot_diagram": chem_pot_widget,
+    "rdf_plot": rdf_widget,
+    "composition_pie": composition_pie_widget,
+}
+
+for widgets, fmts in [
+    (canvas_widgets, ("png", "pdf")),
+    (svg_widgets, ("png", "svg", "pdf")),
+]:
+    for name, widget in widgets.items():
+        for fmt in fmts:
+            path = f"{EXPORT_DIR}/{name}.{fmt}"
+            try:
+                widget.to_img(filename=path, fmt=fmt)  # type: ignore[arg-type]
+                print(f"  saved {path}")
+            except (
+                TimeoutError,
+                RuntimeError,
+                ImportError,
+                OSError,
+                ValueError,
+            ) as exc:
+                print(f"  SKIP {path}: {exc}")
+
+print(f"\nExport complete. Files in {EXPORT_DIR}/")

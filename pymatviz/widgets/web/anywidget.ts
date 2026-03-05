@@ -96,21 +96,35 @@ const pick_props = (model: AnyModel, keys: readonly string[]) =>
 const plot_common_prop_keys = [
   `series`,
   `x_axis`,
+  `x2_axis`,
   `y_axis`,
   `y2_axis`,
   `display`,
   `legend`,
   `ref_lines`,
   `controls`,
+  `padding`,
+  `range_padding`,
+  `show_legend`,
+  `x_range`,
+  `x2_range`,
+  `y_range`,
+  `y2_range`,
 ] as const
 
 const scatter_plot_prop_keys = [
   ...plot_common_prop_keys,
   `styles`,
   `color_scale`,
+  `color_bar`,
   `size_scale`,
   `fill_regions`,
   `error_bands`,
+  `hover_config`,
+  `label_placement_config`,
+  `point_tween`,
+  `line_tween`,
+  `point_events`,
 ] as const
 
 const bar_plot_prop_keys = [
@@ -119,6 +133,9 @@ const bar_plot_prop_keys = [
   `mode`,
   `bar`,
   `line`,
+  `color_scale`,
+  `size_scale`,
+  `point_tween`,
 ] as const
 
 const histogram_prop_keys = [
@@ -126,7 +143,6 @@ const histogram_prop_keys = [
   `bins`,
   `mode`,
   `selected_property`,
-  `show_legend`,
   `bar`,
 ] as const
 
@@ -163,14 +179,15 @@ const get_scene_props = (model: AnyModel) => ({
     `show_atoms`,
     `same_size_atoms`,
     `show_bonds`,
-    `show_force_vectors`,
-    `force_vector_scale`,
-    `force_vector_color`,
     `bond_thickness`,
     `bond_color`,
     `bonding_strategy`,
   ]),
   auto_rotate: get_prop(model, `auto_rotate`) ?? 0.2,
+  gizmo: get_prop(model, `show_gizmo`) ?? true,
+  show_vectors: get_prop(model, `show_vectors`),
+  vector_scale: get_prop(model, `vector_scale`),
+  vector_color: get_prop(model, `vector_color`),
 })
 
 const get_lattice_props = (model: AnyModel) =>
@@ -244,6 +261,7 @@ const render_structure: Render = ({ model, el }) => {
   mount_widget(model, el, Structure, {
     ...pick_props(model, [
       `structure`,
+      `structure_string`,
       `data_url`,
       `show_site_labels`,
       `show_image_atoms`,
@@ -480,6 +498,7 @@ const render_heatmap_matrix: Render = ({ model, el }) => {
       `tile_size`,
       `gap`,
       `show_values`,
+      `label_style`,
     ]),
     log: get_prop(model, `log_scale`),
   })

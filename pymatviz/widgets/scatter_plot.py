@@ -29,6 +29,20 @@ class ScatterPlotWidget(MatterVizWidget):
     fill_regions = tl.List(allow_none=True).tag(sync=True)
     error_bands = tl.List(allow_none=True).tag(sync=True)
     controls = tl.Dict(allow_none=True).tag(sync=True)
+    padding = tl.Dict(allow_none=True).tag(sync=True)
+    range_padding = tl.Float(allow_none=True, default_value=None).tag(sync=True)
+    show_legend = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    x2_axis = tl.Dict(allow_none=True).tag(sync=True)
+    x_range = tl.List(allow_none=True).tag(sync=True)
+    x2_range = tl.List(allow_none=True).tag(sync=True)
+    y_range = tl.List(allow_none=True).tag(sync=True)
+    y2_range = tl.List(allow_none=True).tag(sync=True)
+    color_bar = tl.Dict(allow_none=True).tag(sync=True)
+    hover_config = tl.Dict(allow_none=True).tag(sync=True)
+    label_placement_config = tl.Dict(allow_none=True).tag(sync=True)
+    point_tween = tl.Dict(allow_none=True).tag(sync=True)
+    line_tween = tl.Dict(allow_none=True).tag(sync=True)
+    point_events = tl.Unicode(allow_none=True).tag(sync=True)
 
     def __init__(
         self,
@@ -46,6 +60,20 @@ class ScatterPlotWidget(MatterVizWidget):
         fill_regions: list[dict[str, Any]] | None = None,
         error_bands: list[dict[str, Any]] | None = None,
         controls: dict[str, Any] | None = None,
+        padding: dict[str, int] | None = None,
+        range_padding: float | None = None,
+        show_legend: bool | None = None,
+        x2_axis: dict[str, Any] | None = None,
+        x_range: list[float | None] | None = None,
+        x2_range: list[float | None] | None = None,
+        y_range: list[float | None] | None = None,
+        y2_range: list[float | None] | None = None,
+        color_bar: dict[str, Any] | None = None,
+        hover_config: dict[str, Any] | None = None,
+        label_placement_config: dict[str, Any] | None = None,
+        point_tween: dict[str, Any] | None = None,
+        line_tween: dict[str, Any] | None = None,
+        point_events: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a scatter plot widget.
@@ -64,6 +92,22 @@ class ScatterPlotWidget(MatterVizWidget):
             fill_regions: Filled region definitions.
             error_bands: Error-band definitions.
             controls: Control pane configuration.
+            padding: Plot area padding ``{"t": N, "b": N, "l": N, "r": N}``
+                in pixels.
+            range_padding: Fraction of data range to add as padding.
+                Python default is ``None``; the frontend uses ``0.05``.
+            show_legend: Whether to show the legend.
+            x2_axis: Secondary X axis configuration.
+            x_range: Fixed X axis range ``[min, max]``.
+            x2_range: Fixed secondary X axis range ``[min, max]``.
+            y_range: Fixed Y axis range ``[min, max]``.
+            y2_range: Fixed secondary Y axis range ``[min, max]``.
+            color_bar: Color bar / continuous legend configuration.
+            hover_config: Tooltip hover behavior configuration.
+            label_placement_config: Data label positioning configuration.
+            point_tween: Point animation configuration.
+            line_tween: Line animation configuration.
+            point_events: CSS ``pointer-events`` value for data points.
             **kwargs: Additional base widget keyword arguments.
         """
         super().__init__(
@@ -81,5 +125,21 @@ class ScatterPlotWidget(MatterVizWidget):
             fill_regions=normalize_plot_json(fill_regions, "ScatterPlot.fill_regions"),
             error_bands=normalize_plot_json(error_bands, "ScatterPlot.error_bands"),
             controls=normalize_plot_json(controls, "ScatterPlot.controls"),
+            padding=normalize_plot_json(padding, "ScatterPlot.padding"),
+            range_padding=range_padding,
+            show_legend=show_legend,
+            x2_axis=normalize_plot_json(x2_axis, "ScatterPlot.x2_axis"),
+            x_range=normalize_plot_json(x_range, "ScatterPlot.x_range"),
+            x2_range=normalize_plot_json(x2_range, "ScatterPlot.x2_range"),
+            y_range=normalize_plot_json(y_range, "ScatterPlot.y_range"),
+            y2_range=normalize_plot_json(y2_range, "ScatterPlot.y2_range"),
+            color_bar=normalize_plot_json(color_bar, "ScatterPlot.color_bar"),
+            hover_config=normalize_plot_json(hover_config, "ScatterPlot.hover_config"),
+            label_placement_config=normalize_plot_json(
+                label_placement_config, "ScatterPlot.label_placement_config"
+            ),
+            point_tween=normalize_plot_json(point_tween, "ScatterPlot.point_tween"),
+            line_tween=normalize_plot_json(line_tween, "ScatterPlot.line_tween"),
+            point_events=point_events,
             **kwargs,
         )
