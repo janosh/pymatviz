@@ -338,6 +338,10 @@ class MatterVizWidget(AnyWidget):
             raise ValueError(f"timeout must be positive, got {timeout}")
         if not 1 <= quality <= 100:
             raise ValueError(f"quality must be between 1 and 100, got {quality}")
+        if width is not None and width <= 0:
+            raise ValueError(f"width must be positive, got {width}")
+        if height is not None and height <= 0:
+            raise ValueError(f"height must be positive, got {height}")
 
         valid_fmts = ("png", "jpeg", "svg", "pdf")
         if fmt is not None and fmt not in valid_fmts:

@@ -106,9 +106,9 @@ class HistogramWidget(MatterVizWidget):
             padding=normalize_plot_json(padding, "Histogram.padding"),
             range_padding=range_padding,
             x2_axis=normalize_plot_json(x2_axis, "Histogram.x2_axis"),
-            x_range=x_range,
-            x2_range=x2_range,
-            y_range=y_range,
-            y2_range=y2_range,
+            x_range=normalize_plot_json(x_range, "Histogram.x_range"),
+            x2_range=normalize_plot_json(x2_range, "Histogram.x2_range"),
+            y_range=normalize_plot_json(y_range, "Histogram.y_range"),
+            y2_range=normalize_plot_json(y2_range, "Histogram.y2_range"),
             **kwargs,
         )

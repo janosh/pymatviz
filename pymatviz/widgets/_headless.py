@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import atexit
 import base64
-import contextlib
 import functools
+import html as html_mod
 import json
 import os
 import re
@@ -54,8 +54,17 @@ def _get_browser() -> Browser:
                 " && playwright install chromium"
             ) from None
 
-        _pw = sync_playwright().start()
-        _browser = _pw.chromium.launch(headless=True)
+        pw = sync_playwright().start()
+        try:
+            browser = pw.chromium.launch(headless=True)
+        except Exception:
+            try:
+                pw.stop()
+            except (OSError, RuntimeError):
+                pass
+            raise
+        _pw = pw
+        _browser = browser
         if not _atexit_registered:
             atexit.register(_shutdown_browser)
             _atexit_registered = True
@@ -65,13 +74,17 @@ def _get_browser() -> Browser:
 def _shutdown_browser() -> None:
     """Clean up the browser and Playwright on interpreter exit."""
     global _pw, _browser  # noqa: PLW0603
-    with contextlib.suppress(Exception):
+    try:
         if _browser is not None:
             _browser.close()
+    except (OSError, RuntimeError):
+        pass
     _browser = None
-    with contextlib.suppress(Exception):
+    try:
         if _pw is not None:
             _pw.stop()
+    except (OSError, RuntimeError):
+        pass
     _pw = None
 
 
@@ -135,7 +148,7 @@ def _build_html(
         parts.append(f"height: {height}px")
     elif not has_height:
         parts.append("height: 600px")
-    widget_style = "; ".join(parts)
+    widget_style = html_mod.escape("; ".join(parts), quote=True)
 
     return f"""\
 <!DOCTYPE html>
@@ -262,19 +275,27 @@ def _capture_page(
                 );
                 if (!svgs.length) return null;
 
-                // Pick the SVG with the largest bounding box, filtering
-                // out tiny icon SVGs (< 20px in either dimension)
+                // Pick the largest SVG, preferring ones >= 20px in both
+                // dimensions (to skip tiny toolbar icons). Falls back to
+                // the largest SVG overall if all are small.
                 let best = null;
                 let best_area = 0;
+                let fallback = null;
+                let fallback_area = 0;
                 for (const svg of svgs) {
                     const rect = svg.getBoundingClientRect();
-                    if (rect.width < 20 || rect.height < 20) continue;
                     const area = rect.width * rect.height;
-                    if (area > best_area) {
-                        best = svg;
-                        best_area = area;
+                    if (rect.width >= 20 && rect.height >= 20) {
+                        if (area > best_area) {
+                            best = svg;
+                            best_area = area;
+                        }
+                    } else if (area > fallback_area) {
+                        fallback = svg;
+                        fallback_area = area;
                     }
                 }
+                best = best || fallback;
                 if (!best) return null;
 
                 // cloneNode(true) copies structure and inline styles but not
@@ -412,7 +433,11 @@ def render_widget_headless(
         raise
     finally:
         if page is not None:
-            with contextlib.suppress(Exception):
+            try:
                 page.close()
-        with contextlib.suppress(OSError):
+            except (OSError, RuntimeError):
+                pass
+        try:
             os.unlink(tmp_path)
+        except OSError:
+            pass
