@@ -18,14 +18,12 @@ def _normalize_axis_items(
     Plain strings (and other non-dict scalars) are wrapped as
     ``{"key": s, "label": s}``. Dicts are passed through after JSON normalization.
     """
-    result: list[dict[str, Any]] = []
-    for item in items:
-        if isinstance(item, dict):
-            result.append(normalize_plot_json(item, "HeatmapMatrix.axis_item"))
-        else:
-            label = str(item)
-            result.append({"key": label, "label": label})
-    return result
+    return [
+        normalize_plot_json(item, "HeatmapMatrix.axis_item")
+        if isinstance(item, dict)
+        else {"key": str(item), "label": str(item)}
+        for item in items
+    ]
 
 
 class HeatmapMatrixWidget(MatterVizWidget):

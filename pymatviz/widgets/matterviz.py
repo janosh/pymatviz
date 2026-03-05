@@ -347,28 +347,27 @@ class MatterVizWidget(AnyWidget):
         resolved_fmt = fmt
         if resolved_fmt is None and filename:
             ext = os.path.splitext(filename)[1].lower().lstrip(".")
-            if ext == "jpg":
-                ext = "jpeg"
-            if ext not in valid_fmts:
+            resolved_fmt = {"jpg": "jpeg"}.get(ext, ext)
+            if resolved_fmt not in valid_fmts:
                 raise ValueError(
                     f"Unsupported file extension '.{ext}'; "
                     f"supported: {sorted(valid_fmts)}"
                 )
-            resolved_fmt = ext
         if resolved_fmt is None:
             resolved_fmt = "png"
 
-        # Use instance-resolved assets (respects version_override),
-        # falling back to class default cache
-        esm_content = getattr(self, "_esm", None)
-        css_content = getattr(self, "_css", None)
-        if not isinstance(esm_content, str) or not isinstance(css_content, str):
+        # We need actual ESM source code for headless rendering, not a
+        # marimo virtual-file URL. version_override sets both _esm and _css
+        # on the instance with real content; marimo only overrides _esm with
+        # a URL. Use instance attrs only when both are present in __dict__.
+        inst_esm = self.__dict__.get("_esm")
+        inst_css = self.__dict__.get("_css")
+        if isinstance(inst_esm, str) and isinstance(inst_css, str):
+            esm_content, css_content = inst_esm, inst_css
+        else:
             cls = type(self)
             cls._set_class_assets()
-            assets = cls._asset_cache["default"]
-            if not isinstance(assets, tuple):
-                raise TypeError("Widget assets not loaded correctly")
-            esm_content, css_content = assets
+            esm_content, css_content = cls._asset_cache["default"]  # type: ignore[misc]
 
         img_bytes = render_widget_headless(
             widget_data=self.to_dict(),
