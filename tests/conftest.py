@@ -172,16 +172,6 @@ def fe3co4_disordered_with_props(fe3co4_disordered: Structure) -> Structure:
     return fe3co4_disordered.copy(site_properties=site_props)
 
 
-@pytest.fixture
-def fe3co4_multi_vectors(fe3co4_disordered: Structure) -> Structure:
-    """Disordered Fe3C-O2 structure with multiple force vectors for comparison."""
-    site_props = {
-        "force_DFT": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        "force_MLFF": [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]],
-    }
-    return fe3co4_disordered.copy(site_properties=site_props)
-
-
 class BandsDoses(TypedDict):
     """Type for phonon bands and DOS data."""
 

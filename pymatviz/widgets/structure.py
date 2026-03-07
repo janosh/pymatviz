@@ -52,6 +52,7 @@ class StructureWidget(MatterVizWidget):
     show_atoms = tl.Bool(default_value=True).tag(sync=True)
     show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_site_indices = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
     same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
@@ -88,9 +89,6 @@ class StructureWidget(MatterVizWidget):
 
     # Isosurface (for volumetric data: CHGCAR, ELFCAR, CUBE files)
     isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
-
-    # Labels
-    show_site_indices = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
     # UI controls
     show_gizmo = tl.Bool(allow_none=True, default_value=None).tag(sync=True)

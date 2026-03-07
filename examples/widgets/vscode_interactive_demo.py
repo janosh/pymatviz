@@ -668,6 +668,7 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 # Canvas-based (WebGL) widgets — PNG and PDF only (SVG not supported)
 canvas_widgets: dict[str, MatterVizWidget] = {
     "structure": structure_widget,
+    "multi_vector": multi_vec_widget,
     "brillouin_zone": bz_widget,
     "trajectory": trajectory_widget,
     "ase_trajectory": ase_traj_widget,

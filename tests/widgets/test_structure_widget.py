@@ -187,25 +187,21 @@ def test_widget_with_disordered_structure(
     assert uniq_prop_keys == {"magmom", "force"}
 
 
-@pytest.mark.parametrize(
-    ("fixture_name", "expected_keys"),
-    [
-        ("fe3co4_multi_vectors", {"force_DFT", "force_MLFF"}),
-        ("fe3co4_disordered_with_props", {"magmom", "force"}),
-    ],
-)
-def test_widget_preserves_vector_site_properties(
-    fixture_name: str,
-    expected_keys: set[str],
-    request: pytest.FixtureRequest,
+def test_widget_preserves_multi_vector_site_properties(
+    fe3co4_disordered: Structure,
 ) -> None:
-    """Widget serialization preserves all vector site property keys."""
-    struct = request.getfixturevalue(fixture_name)
+    """Widget serialization preserves multiple vector site property keys."""
+    struct = fe3co4_disordered.copy(
+        site_properties={
+            "force_DFT": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            "force_MLFF": [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]],
+        }
+    )
     widget = StructureWidget(structure=struct)
     uniq_prop_keys = {
         key for site in widget.structure["sites"] for key in site.get("properties", {})
     }
-    assert uniq_prop_keys == expected_keys
+    assert uniq_prop_keys == {"force_DFT", "force_MLFF"}
 
 
 def test_widget_vector_configs_trait() -> None:

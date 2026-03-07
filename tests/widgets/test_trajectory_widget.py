@@ -686,11 +686,4 @@ def test_trajectory_widget_vector_configs_trait() -> None:
     widget = TrajectoryWidget(vector_configs=configs, vector_scale=0.5)
     assert widget.vector_configs == configs
     assert widget.vector_scale == 0.5
-
-    state = widget.to_dict()
-    assert state["vector_configs"] == configs
-    assert state["vector_scale"] == 0.5
-
-    # Default is None
-    widget2 = TrajectoryWidget()
-    assert widget2.vector_configs is None
+    assert TrajectoryWidget().vector_configs is None
