@@ -158,9 +158,10 @@ def _(_struct, pmv):
         structure=_struct_multi_vec,
         show_bonds=True,
         vector_configs={
-            "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
-            "force_MLFF": {"visible": True, "color": "#3498db", "scale": None},
+            "force_DFT": {"color": "#e74c3c"},
+            "force_MLFF": {"color": "#3498db"},
         },
+        vector_origin_gap=0.3,
         style="height: 400px;",
     )
 

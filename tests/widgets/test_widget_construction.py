@@ -554,15 +554,23 @@ def test_structure_widget_isosurface_settings() -> None:
 
 
 def test_structure_widget_vector_props() -> None:
-    """StructureWidget exposes vector_configs and global vector props."""
+    """StructureWidget exposes vector_configs and all vector props."""
     configs = {"force": {"visible": True, "color": "#e74c3c", "scale": None}}
     widget = StructureWidget(
-        vector_configs=configs, vector_scale=3.0, vector_color="#00ff00"
+        vector_configs=configs,
+        vector_scale=3.0,
+        vector_color="#00ff00",
+        vector_normalize=True,
+        vector_uniform_thickness=True,
+        vector_origin_gap=0.25,
     )
     state = widget.to_dict()
     assert state["vector_configs"] == configs
     assert state["vector_scale"] == 3.0
     assert state["vector_color"] == "#00ff00"
+    assert state["vector_normalize"] is True
+    assert state["vector_uniform_thickness"] is True
+    assert state["vector_origin_gap"] == 0.25
 
 
 def test_periodic_table_accepts_list_input() -> None:

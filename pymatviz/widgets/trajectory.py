@@ -85,8 +85,10 @@ class TrajectoryWidget(MatterVizWidget):
     show_atoms = tl.Bool(default_value=True).tag(sync=True)
     show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_site_indices = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_image_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    auto_rotate = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     color_scheme = tl.Unicode("Vesta").tag(sync=True)
 
     # Site vectors (force, magmom, spin, etc.) -- per-key configuration

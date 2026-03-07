@@ -25,7 +25,6 @@ class StructureWidget(MatterVizWidget):
         >>> from pymatviz import StructureWidget
         >>> structure_data = {...}  # Structure dictionary from pymatgen/ASE
         >>> widget = StructureWidget(structure=structure_data)
-        >>> widget
 
         With custom visualization options:
         >>> widget = StructureWidget(
@@ -35,6 +34,13 @@ class StructureWidget(MatterVizWidget):
         ...     color_scheme="Jmol",
         ...     style="border-radius: 10px; width: 100%; height: 600px;",
         ... )
+
+        Site vectors (force/magmom/spin) are auto-detected from site properties.
+        Single vector keys use element-colored arrows; multiple keys get palette
+        colors with per-key toggles, scale sliders, and origin gap control:
+        >>> StructureWidget(structure=struct_with_forces)  # auto-detected
+        >>> StructureWidget(structure=struct, vector_origin_gap=0.3)  # multi-method
+        >>> StructureWidget(structure=struct, vector_normalize=True)  # direction only
     """
 
     structure = tl.Dict(allow_none=True).tag(sync=True)
@@ -83,8 +89,12 @@ class StructureWidget(MatterVizWidget):
     # Isosurface (for volumetric data: CHGCAR, ELFCAR, CUBE files)
     isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
 
+    # Labels
+    show_site_indices = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+
     # UI controls
     show_gizmo = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    auto_rotate = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     png_dpi = tl.Int(allow_none=True, default_value=None).tag(sync=True)
