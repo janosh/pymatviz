@@ -185,3 +185,41 @@ def test_widget_with_disordered_structure(
     }
 
     assert uniq_prop_keys == {"magmom", "force"}
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "expected_keys"),
+    [
+        ("fe3co4_multi_vectors", {"force_DFT", "force_MLFF"}),
+        ("fe3co4_disordered_with_props", {"magmom", "force"}),
+    ],
+)
+def test_widget_preserves_vector_site_properties(
+    fixture_name: str,
+    expected_keys: set[str],
+    request: pytest.FixtureRequest,
+) -> None:
+    """Widget serialization preserves all vector site property keys."""
+    struct = request.getfixturevalue(fixture_name)
+    widget = StructureWidget(structure=struct)
+    uniq_prop_keys = {
+        key for site in widget.structure["sites"] for key in site.get("properties", {})
+    }
+    assert uniq_prop_keys == expected_keys
+
+
+def test_widget_vector_configs_trait() -> None:
+    """Test vector_configs trait round-trips, updates, and defaults."""
+    configs = {
+        "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
+        "force_MLFF": {"visible": True, "color": "#3498db", "scale": 1.5},
+    }
+    widget = StructureWidget(vector_configs=configs)
+    assert widget.vector_configs == configs
+
+    updated = {**configs, "force_MLFF": {**configs["force_MLFF"], "visible": False}}
+    widget.vector_configs = updated
+    assert widget.vector_configs["force_MLFF"]["visible"] is False
+
+    assert StructureWidget().vector_configs is None
+    assert StructureWidget(vector_configs={}).vector_configs == {}

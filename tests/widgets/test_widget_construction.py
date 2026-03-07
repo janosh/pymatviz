@@ -554,12 +554,13 @@ def test_structure_widget_isosurface_settings() -> None:
 
 
 def test_structure_widget_vector_props() -> None:
-    """StructureWidget exposes generic vector props."""
+    """StructureWidget exposes vector_configs and global vector props."""
+    configs = {"force": {"visible": True, "color": "#e74c3c", "scale": None}}
     widget = StructureWidget(
-        show_vectors=True, vector_scale=3.0, vector_color="#00ff00"
+        vector_configs=configs, vector_scale=3.0, vector_color="#00ff00"
     )
     state = widget.to_dict()
-    assert state["show_vectors"] is True
+    assert state["vector_configs"] == configs
     assert state["vector_scale"] == 3.0
     assert state["vector_color"] == "#00ff00"
 

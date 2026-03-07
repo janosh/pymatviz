@@ -47,12 +47,20 @@ class StructureWidget(MatterVizWidget):
     show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
-    show_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
-    # Site vectors (force, magmom, or spin)
+    # Site vectors (force, magmom, spin, etc.) -- per-key configuration
+    # Keys map to site property names (e.g. "force", "magmom", "force_DFT").
+    # Values are dicts with optional keys: visible (bool), color (str|null),
+    # scale (float|null). Auto-populated by the frontend when omitted.
+    vector_configs = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
     vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    vector_normalize = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    vector_uniform_thickness = tl.Bool(allow_none=True, default_value=None).tag(
+        sync=True
+    )
+    vector_origin_gap = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
     # Bonds
     bond_thickness = tl.Float(allow_none=True, default_value=None).tag(sync=True)

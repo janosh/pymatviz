@@ -185,9 +185,12 @@ const get_scene_props = (model: AnyModel) => ({
   ]),
   auto_rotate: get_prop(model, `auto_rotate`) ?? 0.2,
   gizmo: get_prop(model, `show_gizmo`) ?? true,
-  show_vectors: get_prop(model, `show_vectors`),
+  vector_configs: get_prop(model, `vector_configs`),
   vector_scale: get_prop(model, `vector_scale`),
   vector_color: get_prop(model, `vector_color`),
+  vector_normalize: get_prop(model, `vector_normalize`),
+  vector_uniform_thickness: get_prop(model, `vector_uniform_thickness`),
+  vector_origin_gap: get_prop(model, `vector_origin_gap`),
 })
 
 const get_lattice_props = (model: AnyModel) =>

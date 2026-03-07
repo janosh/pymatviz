@@ -130,6 +130,44 @@ def _(Lattice, Structure, pmv):
 @app.cell
 def _(mo):
     mo.md("""
+    ### Multi-Vector Comparison
+    Compare per-atom forces from two methods (e.g. DFT vs MLFF) on the same structure.
+    Each vector set gets a distinct color and can be toggled independently.
+    """)
+
+
+@app.cell
+def _(_struct, pmv):
+    _struct_multi_vec = _struct.copy(
+        site_properties={
+            "force_DFT": [
+                [0.15, -0.08, 0.03],
+                [-0.12, 0.18, -0.06],
+                [0.03, 0.06, -0.22],
+                [-0.09, -0.03, 0.15],
+            ],
+            "force_MLFF": [
+                [0.13, -0.07, 0.04],
+                [-0.11, 0.16, -0.05],
+                [0.02, 0.07, -0.20],
+                [-0.08, -0.04, 0.14],
+            ],
+        }
+    )
+    pmv.StructureWidget(
+        structure=_struct_multi_vec,
+        show_bonds=True,
+        vector_configs={
+            "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
+            "force_MLFF": {"visible": True, "color": "#3498db", "scale": None},
+        },
+        style="height: 400px;",
+    )
+
+
+@app.cell
+def _(mo):
+    mo.md("""
     ### Brillouin Zone Widget
     Show the reciprocal-space Brillouin zone for the structure above.
     """)
@@ -199,7 +237,6 @@ def _(Lattice, Structure, np, np_rng, pmv):
     pmv.TrajectoryWidget(
         trajectory=_trajectory,
         display_mode="structure+scatter",
-        show_vectors=True,
         style="height: 600px;",
     )
 
@@ -396,7 +433,6 @@ def _(Final, os, pmv):
     pmv.TrajectoryWidget(
         data_url=f"tmp/{_file_name}",
         display_mode="structure+scatter",
-        show_vectors=False,
     )
     return (matterviz_traj_dir_url,)
 
@@ -415,7 +451,6 @@ def _(matterviz_traj_dir_url, pmv):
     pmv.TrajectoryWidget(
         data_url=f"{matterviz_traj_dir_url}/{_file_name}",
         display_mode="structure+scatter",
-        show_vectors=True,
         vector_scale=0.5,
         vector_color="#ff4444",
         show_bonds=True,
