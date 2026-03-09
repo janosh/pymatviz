@@ -25,7 +25,6 @@ class StructureWidget(MatterVizWidget):
         >>> from pymatviz import StructureWidget
         >>> structure_data = {...}  # Structure dictionary from pymatgen/ASE
         >>> widget = StructureWidget(structure=structure_data)
-        >>> widget
 
         With custom visualization options:
         >>> widget = StructureWidget(
@@ -35,6 +34,13 @@ class StructureWidget(MatterVizWidget):
         ...     color_scheme="Jmol",
         ...     style="border-radius: 10px; width: 100%; height: 600px;",
         ... )
+
+        Site vectors (force/magmom/spin) are auto-detected from site properties.
+        Single vector keys use element-colored arrows; multiple keys get palette
+        colors with per-key toggles, scale sliders, and origin gap control:
+        >>> StructureWidget(structure=struct_with_forces)  # auto-detected
+        >>> StructureWidget(structure=struct, vector_origin_gap=0.3)  # multi-method
+        >>> StructureWidget(structure=struct, vector_normalize=True)  # direction only
     """
 
     structure = tl.Dict(allow_none=True).tag(sync=True)
@@ -46,13 +52,22 @@ class StructureWidget(MatterVizWidget):
     show_atoms = tl.Bool(default_value=True).tag(sync=True)
     show_bonds = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_site_labels = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    show_site_indices = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     show_image_atoms = tl.Bool(default_value=True).tag(sync=True)
-    show_vectors = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     same_size_atoms = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
 
-    # Site vectors (force, magmom, or spin)
+    # Site vectors (force, magmom, spin, etc.) -- per-key configuration
+    # Keys map to site property names (e.g. "force", "magmom", "force_DFT").
+    # Values are dicts with optional keys: visible (bool), color (str|null),
+    # scale (float|null). Auto-populated by the frontend when omitted.
+    vector_configs = tl.Dict(allow_none=True, default_value=None).tag(sync=True)
     vector_scale = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     vector_color = tl.Unicode(allow_none=True, default_value=None).tag(sync=True)
+    vector_normalize = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    vector_uniform_thickness = tl.Bool(allow_none=True, default_value=None).tag(
+        sync=True
+    )
+    vector_origin_gap = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
     # Bonds
     bond_thickness = tl.Float(allow_none=True, default_value=None).tag(sync=True)
@@ -77,6 +92,7 @@ class StructureWidget(MatterVizWidget):
 
     # UI controls
     show_gizmo = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
+    auto_rotate = tl.Float(allow_none=True, default_value=None).tag(sync=True)
     enable_info_pane = tl.Bool(default_value=True).tag(sync=True)
     fullscreen_toggle = tl.Bool(allow_none=True, default_value=None).tag(sync=True)
     png_dpi = tl.Int(allow_none=True, default_value=None).tag(sync=True)

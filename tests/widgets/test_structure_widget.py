@@ -185,3 +185,37 @@ def test_widget_with_disordered_structure(
     }
 
     assert uniq_prop_keys == {"magmom", "force"}
+
+
+def test_widget_preserves_multi_vector_site_properties(
+    fe3co4_disordered: Structure,
+) -> None:
+    """Widget serialization preserves multiple vector site property keys."""
+    struct = fe3co4_disordered.copy(
+        site_properties={
+            "force_DFT": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            "force_MLFF": [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0]],
+        }
+    )
+    widget = StructureWidget(structure=struct)
+    uniq_prop_keys = {
+        key for site in widget.structure["sites"] for key in site.get("properties", {})
+    }
+    assert uniq_prop_keys == {"force_DFT", "force_MLFF"}
+
+
+def test_widget_vector_configs_trait() -> None:
+    """Test vector_configs trait round-trips, updates, and defaults."""
+    configs = {
+        "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
+        "force_MLFF": {"visible": True, "color": "#3498db", "scale": 1.5},
+    }
+    widget = StructureWidget(vector_configs=configs)
+    assert widget.vector_configs == configs
+
+    updated = {**configs, "force_MLFF": {**configs["force_MLFF"], "visible": False}}
+    widget.vector_configs = updated
+    assert widget.vector_configs["force_MLFF"]["visible"] is False
+
+    assert StructureWidget().vector_configs is None
+    assert StructureWidget(vector_configs={}).vector_configs == {}

@@ -182,12 +182,15 @@ const get_scene_props = (model: AnyModel) => ({
     `bond_thickness`,
     `bond_color`,
     `bonding_strategy`,
+    `vector_configs`,
+    `vector_scale`,
+    `vector_color`,
+    `vector_normalize`,
+    `vector_uniform_thickness`,
+    `vector_origin_gap`,
   ]),
   auto_rotate: get_prop(model, `auto_rotate`) ?? 0.2,
   gizmo: get_prop(model, `show_gizmo`) ?? true,
-  show_vectors: get_prop(model, `show_vectors`),
-  vector_scale: get_prop(model, `vector_scale`),
-  vector_color: get_prop(model, `vector_color`),
 })
 
 const get_lattice_props = (model: AnyModel) =>
@@ -264,6 +267,7 @@ const render_structure: Render = ({ model, el }) => {
       `structure_string`,
       `data_url`,
       `show_site_labels`,
+      `show_site_indices`,
       `show_image_atoms`,
       `color_scheme`,
       `background_color`,
@@ -297,6 +301,7 @@ const render_trajectory: Render = ({ model, el }) => {
       lattice_props: get_lattice_props(model),
       ...pick_props(model, [
         `show_site_labels`,
+        `show_site_indices`,
         `show_image_atoms`,
         `color_scheme`,
         `background_color`,
