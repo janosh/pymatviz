@@ -118,6 +118,41 @@ structure_widget.show()
 
 
 # %% [markdown]
+# ### Multi-Vector Comparison
+# Compare per-atom forces from two methods (e.g. DFT vs MLFF) on the same structure.
+# Each vector set gets a distinct color and can be toggled independently.
+
+
+# %% Multi-Vector — DFT vs MLFF force comparison on GaN
+dft_forces = [
+    [0.15, -0.08, 0.03],
+    [-0.12, 0.18, -0.06],
+    [0.03, 0.06, -0.22],
+    [-0.09, -0.03, 0.15],
+]
+mlff_forces = [
+    [0.13, -0.07, 0.04],
+    [-0.11, 0.16, -0.05],
+    [0.02, 0.07, -0.20],
+    [-0.08, -0.04, 0.14],
+]
+struct_multi_vec = struct.copy(
+    site_properties={"force_DFT": dft_forces, "force_MLFF": mlff_forces}
+)
+
+multi_vec_widget = pmv.StructureWidget(
+    structure=struct_multi_vec,
+    show_bonds=True,
+    vector_configs={
+        "force_DFT": {"color": "#e74c3c"},
+        "force_MLFF": {"color": "#3498db"},
+    },
+    style="height: 400px;",
+)
+multi_vec_widget.show()
+
+
+# %% [markdown]
 # ### Brillouin Zone Widget
 # Show the reciprocal-space Brillouin zone corresponding to the GaN structure above.
 
@@ -187,7 +222,6 @@ for idx in range(n_steps := 20):
 trajectory_widget = pmv.TrajectoryWidget(
     trajectory=trajectory,
     display_mode="structure+scatter",
-    show_vectors=True,
     style="height: 600px;",
 )
 trajectory_widget.show()
@@ -362,7 +396,6 @@ file_name = "Cr0.25Fe0.25Co0.25Ni0.25-mace-omat-qha.xyz.gz"
 ase_traj_widget = pmv.TrajectoryWidget(
     data_url=f"{matterviz_traj_dir_url}/{file_name}",
     display_mode="structure+scatter",
-    show_vectors=True,
     vector_scale=0.5,
     vector_color="#ff4444",
     show_bonds=True,
@@ -392,7 +425,6 @@ if not os.path.isfile(local_path):
 traj_widget = pmv.TrajectoryWidget(
     data_url=local_path,
     display_mode="structure+scatter",
-    show_vectors=False,
 )
 traj_widget.show()
 
@@ -636,6 +668,7 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 # Canvas-based (WebGL) widgets — PNG and PDF only (SVG not supported)
 canvas_widgets: dict[str, MatterVizWidget] = {
     "structure": structure_widget,
+    "multi_vector": multi_vec_widget,
     "brillouin_zone": bz_widget,
     "trajectory": trajectory_widget,
     "ase_trajectory": ase_traj_widget,

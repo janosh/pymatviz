@@ -675,3 +675,15 @@ def test_trajectory_widget_with_ase_atoms_with_cell() -> None:
     assert frame["step"] == 0
     assert "metadata" in frame
     assert frame["metadata"]["energy"] == -2.0
+
+
+def test_trajectory_widget_vector_configs_trait() -> None:
+    """TrajectoryWidget vector_configs trait round-trips correctly."""
+    configs = {
+        "force_DFT": {"visible": True, "color": "#e74c3c", "scale": None},
+        "force_MLFF": {"visible": False, "color": "#3498db", "scale": 2.0},
+    }
+    widget = TrajectoryWidget(vector_configs=configs, vector_scale=0.5)
+    assert widget.vector_configs == configs
+    assert widget.vector_scale == 0.5
+    assert TrajectoryWidget().vector_configs is None
