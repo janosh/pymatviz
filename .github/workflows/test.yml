@@ -25,16 +25,8 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: '3.11'
-      pre-install-cmd: |
-        # Setup Deno for widget builds
-        curl -fsSL https://deno.land/install.sh | sh
-        export DENO_INSTALL="$HOME/.deno"
-        export PATH="$DENO_INSTALL/bin:$PATH"
-        echo "$HOME/.deno/bin" >> $GITHUB_PATH
-        # Build widget assets
-        cd pymatviz/widgets/web
-        deno task build
-        cd ../../..
+      node-version: '24'
+      pre-install-cmd: (cd pymatviz/widgets/web && npm install && npm run build)
       install-cmd: |
         uv pip install -e '.[test,brillouin]'  --system
       # pytest-split distributes work load so parallel jobs finish in similar time
@@ -46,21 +38,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Build widget assets, install deps, run all demos
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install and build widget assets
+        run: npm install && npm run build
+        working-directory: pymatviz/widgets/web
+
+      - name: Run all widget demos
         run: |
-          curl -fsSL https://deno.land/install.sh | sh
-          export PATH="$HOME/.deno/bin:$PATH"
-          cd pymatviz/widgets/web && deno task build && cd ../../..
           uv pip install -e '.[test]' marimo nbconvert ipykernel --system
           python examples/widgets/vscode_interactive_demo.py
           marimo export script examples/widgets/marimo_demo.py -o /tmp/marimo_flat.py && python /tmp/marimo_flat.py
@@ -72,7 +70,7 @@ jobs:
       example_scripts: ${{ steps.set-matrix.outputs.example_scripts }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Find Python scripts
         id: set-matrix
@@ -89,10 +87,10 @@ jobs:
         example_script: ${{fromJson(needs.find-example-scripts.outputs.example_scripts)}}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 

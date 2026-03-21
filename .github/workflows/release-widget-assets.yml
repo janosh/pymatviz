@@ -18,15 +18,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install widget dependencies
+        run: npm install
+        working-directory: pymatviz/widgets/web
 
       - name: Build web files
-        run: |
-          cd pymatviz/widgets/web
-          deno task build
+        run: node_modules/.bin/vp build
+        working-directory: pymatviz/widgets/web
 
       - name: Get version
         id: get_version

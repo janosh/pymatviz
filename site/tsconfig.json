@@ -1,5 +1,6 @@
 {
   "extends": "./.svelte-kit/tsconfig.json",
+  "exclude": ["vite.config.ts"],
   "compilerOptions": {
     "strict": true,
     "module": "esnext",
@@ -11,6 +12,8 @@
     "sourceMap": true,
 
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true
   }
 }

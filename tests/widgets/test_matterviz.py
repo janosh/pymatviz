@@ -6,7 +6,7 @@ import builtins
 import os
 import re
 from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -329,17 +329,39 @@ def test_configure_assets_applies_to_subsequent_widgets(tmp_path: Path) -> None:
 # === build_widget_assets ===
 
 
-def test_build_widget_assets(tmp_path: Path) -> None:
-    """Delegates to deno task build in the widgets directory."""
+@pytest.mark.parametrize(
+    ("has_node_modules", "expected_commands"),
+    [
+        (True, [["npm", "run", "build"]]),
+        (
+            False,
+            [
+                ["npm", "install"],
+                ["npm", "run", "build"],
+            ],
+        ),
+    ],
+)
+def test_build_widget_assets_installs_only_when_needed(
+    tmp_path: Path,
+    has_node_modules: bool,
+    expected_commands: list[list[str]],
+) -> None:
+    """Installs deps only when needed before building widget assets."""
+    web_dir = f"{tmp_path}/web"
+    os.makedirs(web_dir, exist_ok=True)
+    if has_node_modules:
+        os.makedirs(f"{web_dir}/node_modules", exist_ok=True)
+
     with (
         patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
         patch(f"{DOTTED_PATH}.subprocess.run") as mock_run,
     ):
         matterviz.build_widget_assets()
 
-    mock_run.assert_called_once_with(
-        ["deno", "task", "build"], cwd=str(tmp_path), check=True
-    )
+    assert mock_run.call_args_list == [
+        call(command, cwd=web_dir, check=True) for command in expected_commands
+    ]
 
 
 # === MatterVizWidget.__init__ ===

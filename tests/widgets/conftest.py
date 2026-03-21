@@ -10,6 +10,7 @@ from pymatgen.core import Structure
 
 from pymatviz import PKG_DIR
 from pymatviz.widgets.composition import CompositionWidget
+from pymatviz.widgets.matterviz import build_widget_assets
 from pymatviz.widgets.structure import StructureWidget
 from pymatviz.widgets.trajectory import TrajectoryWidget
 
@@ -17,20 +18,12 @@ from pymatviz.widgets.trajectory import TrajectoryWidget
 @pytest.fixture(scope="session", autouse=True)
 def build_web_files() -> None:
     """Build web files (if not yet exist) before any tests run."""
-    widgets_dir = f"{PKG_DIR}/widgets"
-    web_dir = f"{widgets_dir}/web"
+    web_dir = f"{PKG_DIR}/widgets/web"
 
-    # Only build if the file doesn't exist
     if not os.path.isfile(f"{web_dir}/build/matterviz.mjs"):
         try:
-            subprocess.run(
-                ["deno", "task", "build"],  # noqa: S607
-                check=True,
-                cwd=web_dir,
-                capture_output=True,
-                timeout=20,
-            )
-        except (subprocess.SubprocessError, subprocess.TimeoutExpired) as exc:
+            build_widget_assets()
+        except subprocess.SubprocessError as exc:
             exc.add_note("Failed to build web files")
             raise
 
