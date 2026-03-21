@@ -39,20 +39,16 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
   const style_id = `matterviz-widget-styles`
   const detected_theme = theme_type ?? detect_parent_theme(target_element)
 
-  // Determine if we're in Shadow DOM (used by marimo cells) and get the appropriate root node
+  // Determine if we're in Shadow DOM (used by marimo cells) and get the appropriate root
   const root_node = target_element?.getRootNode() ?? document
-  const is_shadow_dom = root_node !== document && root_node instanceof ShadowRoot
-  const target_root = is_shadow_dom ? root_node : document
+  const in_shadow = root_node instanceof ShadowRoot
 
-  // Remove existing styles
-  const existing_style = is_shadow_dom
-    ? target_root.querySelector(`#${style_id}`)
-    : document.querySelector(`#${style_id}`)
-  existing_style?.remove()
+  // Remove existing style element (if any)
+  ;(in_shadow ? root_node : document).querySelector(`#${style_id}`)?.remove()
 
   // Create style content
   const style_content = `
-    ${get_theme_css(detected_theme, is_shadow_dom)}
+    ${get_theme_css(detected_theme, in_shadow)}
     .cell-output-ipywidget-background { background: transparent !important; }
     :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) {
       background-color: var(--surface-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 6px 8px;
@@ -66,11 +62,7 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
   `
 
   // Apply styles via adoptedStyleSheets (reuse existing sheet to avoid accumulation)
-  if (
-    is_shadow_dom &&
-    root_node instanceof ShadowRoot &&
-    `adoptedStyleSheets` in root_node
-  ) {
+  if (in_shadow && `adoptedStyleSheets` in root_node) {
     let sheet = adopted_sheets.get(root_node)
     if (!sheet) {
       sheet = new CSSStyleSheet()
@@ -85,11 +77,23 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
   const style = document.createElement(`style`)
   style.id = style_id
   style.textContent = style_content
-  if (is_shadow_dom) target_root.append(style)
+  if (in_shadow) root_node.append(style)
   else document.head.append(style)
 }
 
-const instances = new Map<HTMLElement, ReturnType<typeof mount>>()
+const instances = new WeakMap<HTMLElement, ReturnType<typeof mount>>()
+const theme_unsubs = new WeakMap<HTMLElement, () => void>()
+
+const cleanup_element = (element: HTMLElement): void => {
+  theme_unsubs.get(element)?.()
+  theme_unsubs.delete(element)
+
+  const instance = instances.get(element)
+  if (instance) {
+    unmount(instance)
+    instances.delete(element)
+  }
+}
 
 const get_prop = (model: AnyModel, key: string) => {
   try {
@@ -215,47 +219,20 @@ const get_lattice_props = (model: AnyModel) =>
 // Detect widget type and render
 const render: Render = (props) => {
   const { model, el } = props
+  const widget_type = get_prop(model, `widget_type`) as string | undefined
+  const renderer = widget_type ? renderers[widget_type] : undefined
+  if (!renderer) throw new Error(`Unknown or missing widget_type: '${widget_type}'`)
+
+  cleanup_element(el)
   inject_app_css(undefined, el)
   setup_theme_watchers(el)
 
-  // Register theme change callback to update CSS when theme changes
-  on_theme_change((theme_type) => inject_app_css(theme_type, el))
-
-  // Clean up existing instance
-  const existing = instances.get(el)
-  if (existing) {
-    unmount(existing)
-    instances.delete(el)
-  }
-
-  const widget_type = get_prop(model, `widget_type`) as string | undefined
-
-  const renderers: Record<string, Render> = {
-    structure: render_structure,
-    trajectory: render_trajectory,
-    scatter_plot: render_scatter_plot,
-    scatter_plot_3d: render_scatter_plot_3d,
-    bar_plot: render_bar_plot,
-    histogram: render_histogram,
-    composition: render_composition,
-    convex_hull: render_convex_hull,
-    band_structure: render_band_structure,
-    dos: render_dos,
-    bands_and_dos: render_bands_and_dos,
-    fermi_surface: render_fermi_surface,
-    brillouin_zone: render_brillouin_zone,
-    phase_diagram: render_phase_diagram,
-    xrd: render_xrd,
-    periodic_table: render_periodic_table,
-    rdf_plot: render_rdf_plot,
-    heatmap_matrix: render_heatmap_matrix,
-    spacegroup_bar: render_spacegroup_bar,
-    chem_pot_diagram: render_chem_pot_diagram,
-  }
-
-  const renderer = widget_type ? renderers[widget_type] : undefined
-  if (!renderer) throw new Error(`Unknown or missing widget_type: '${widget_type}'`)
-  return renderer(props)
+  theme_unsubs.set(
+    el,
+    on_theme_change((theme_type) => inject_app_css(theme_type, el)),
+  )
+  renderer(props)
+  return () => cleanup_element(el)
 }
 
 // === Widget renderers ===
@@ -528,6 +505,30 @@ const render_chem_pot_diagram: Render = ({ model, el }) => {
     ChemPotDiagram,
     pick_props(model, [`entries`, `config`, `temperature`]),
   )
+}
+
+// Static dispatch table — referenced by render() at call time (after module init)
+const renderers: Record<string, Render> = {
+  structure: render_structure,
+  trajectory: render_trajectory,
+  scatter_plot: render_scatter_plot,
+  scatter_plot_3d: render_scatter_plot_3d,
+  bar_plot: render_bar_plot,
+  histogram: render_histogram,
+  composition: render_composition,
+  convex_hull: render_convex_hull,
+  band_structure: render_band_structure,
+  dos: render_dos,
+  bands_and_dos: render_bands_and_dos,
+  fermi_surface: render_fermi_surface,
+  brillouin_zone: render_brillouin_zone,
+  phase_diagram: render_phase_diagram,
+  xrd: render_xrd,
+  periodic_table: render_periodic_table,
+  rdf_plot: render_rdf_plot,
+  heatmap_matrix: render_heatmap_matrix,
+  spacegroup_bar: render_spacegroup_bar,
+  chem_pot_diagram: render_chem_pot_diagram,
 }
 
 export default { render }

@@ -25,10 +25,8 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: '3.11'
-      pre-install-cmd: |
-        if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh" && nvm install 22 && nvm use 22
-        else echo "::error::NVM not found at \$NVM_DIR/nvm.sh — runner image may have changed"; exit 1; fi
-        (cd pymatviz/widgets/web && npm install && node_modules/.bin/vp build)
+      node-version: '24'
+      pre-install-cmd: (cd pymatviz/widgets/web && npm install && npm run build)
       install-cmd: |
         uv pip install -e '.[test,brillouin]'  --system
       # pytest-split distributes work load so parallel jobs finish in similar time
@@ -53,10 +51,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install and build widget assets
-        run: npm install && node_modules/.bin/vp build
+        run: npm install && npm run build
         working-directory: pymatviz/widgets/web
 
       - name: Run all widget demos
