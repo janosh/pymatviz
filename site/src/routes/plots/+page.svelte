@@ -15,8 +15,8 @@
       <span>{idx + 1}</span>
       <h3>{filename?.replaceAll(`-`, ` `)}</h3>
       {#if src.endsWith(`.svelte`)}
-        {#await import(src) then component}
-          <svelte:component this={component.default} />
+        {#await import(src) then {default: Component}}
+          <Component />
         {/await}
       {:else if src.endsWith(`.pdf`)}
         <embed {src} width="100%" height="500px" />

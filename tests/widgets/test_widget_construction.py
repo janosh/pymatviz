@@ -855,7 +855,7 @@ def test_to_img_passes_width_height(width: int | None, height: int | None) -> No
 def test_to_img_falls_back_from_marimo_url() -> None:
     """to_img uses class assets when instance _esm is a marimo virtual-file URL."""
     widget = _make_widget()
-    widget._esm = "./@file/virtual-esm-url.mjs"
+    widget._esm = "./@file/virtual-esm-url.js"
 
     with patch(
         f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
@@ -863,7 +863,7 @@ def test_to_img_falls_back_from_marimo_url() -> None:
         widget.to_img(fmt="png")
 
     esm_passed = mock_render.call_args.kwargs["esm_content"]
-    assert esm_passed != "./@file/virtual-esm-url.mjs"
+    assert esm_passed != "./@file/virtual-esm-url.js"
     assert isinstance(esm_passed, str)
 
 

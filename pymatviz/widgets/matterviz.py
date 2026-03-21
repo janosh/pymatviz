@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import urllib.request
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -94,7 +95,7 @@ def configure_assets(
             Mutually exclusive with ``esm_src``/``css_src``.
         esm_src: URL or local file path for the ESM JavaScript bundle.
         css_src: URL or local file path for the CSS stylesheet.
-            Derived from ``esm_src`` by replacing ``.mjs`` → ``.css`` if omitted.
+            Derived from ``esm_src`` by replacing ``.js`` → ``.css`` if omitted.
     """
     if version and (esm_src or css_src):
         raise ValueError(
@@ -116,7 +117,7 @@ def configure_assets(
         return
 
     if version:
-        esm_content = fetch_widget_asset("matterviz.mjs", version)
+        esm_content = fetch_widget_asset("matterviz.js", version)
         css_content = fetch_widget_asset("matterviz.css", version)
     else:
         if css_src is None:
@@ -168,8 +169,6 @@ def clear_widget_cache(version_override: str | None = None) -> None:
     Args:
         version_override: Optional version to clear cache for specific version only
     """
-    import shutil
-
     cache_dir = os.path.expanduser("~/.cache/pymatviz")
     if version_override:
         # Clear cache for specific version
@@ -183,9 +182,10 @@ def clear_widget_cache(version_override: str | None = None) -> None:
 
 def build_widget_assets() -> None:
     """Build widget assets locally for development."""
-    widgets_dir = os.path.dirname(__file__)
-    cmd = ["deno", "task", "build"]
-    subprocess.run(cmd, cwd=widgets_dir, check=True)  # noqa: S603
+    web_dir = f"{os.path.dirname(__file__)}/web"
+    if not os.path.isdir(f"{web_dir}/node_modules"):
+        subprocess.run(["npm", "install"], cwd=web_dir, check=True)  # noqa: S607
+    subprocess.run(["npm", "run", "build"], cwd=web_dir, check=True)  # noqa: S607
 
 
 class MatterVizWidget(AnyWidget):
@@ -213,7 +213,7 @@ class MatterVizWidget(AnyWidget):
         """Load and cache default widget assets on the class, not instances."""
         if "default" not in cls._asset_cache:
             cls._asset_cache["default"] = (
-                fetch_widget_asset("matterviz.mjs"),
+                fetch_widget_asset("matterviz.js"),
                 fetch_widget_asset("matterviz.css"),
             )
         cls._esm, cls._css = cls._asset_cache["default"]
@@ -227,7 +227,7 @@ class MatterVizWidget(AnyWidget):
             **kwargs: Passed through to AnyWidget.
         """
         if version_override is not None:
-            self._esm = fetch_widget_asset("matterviz.mjs", version_override)
+            self._esm = fetch_widget_asset("matterviz.js", version_override)
             self._css = fetch_widget_asset("matterviz.css", version_override)
         elif _in_marimo_runtime():
             self._init_marimo_assets()
