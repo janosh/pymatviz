@@ -2,7 +2,7 @@
   import { page } from '$app/state'
   import { PrevNext } from 'svelte-multiselect'
 
-  export let data
+  let { data }: { data: { html: string; slug: string; path: string; routes: string[] } } = $props()
 </script>
 
 {@html data.html}

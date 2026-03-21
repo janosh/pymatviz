@@ -1,0 +1,27 @@
+{
+  "name": "pymatviz-widgets",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "rm -rf build && vp build",
+    "check": "vp check",
+    "lint": "vp lint",
+    "fmt": "vp fmt --write"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@types/node": "^22.0.0",
+    "anywidget": "^0.9.21",
+    "matterviz": "^0.3.2",
+    "svelte": "^5.50.0",
+    "vite": "npm:@voidzero-dev/vite-plus-core@^0.1.13",
+    "vite-plus": "^0.1.13"
+  },
+  "overrides": {
+    "@sveltejs/vite-plugin-svelte": {
+      "vite": "$vite"
+    },
+    "svelte": "^5.50.0"
+  }
+}

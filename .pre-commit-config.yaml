@@ -2,7 +2,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.4
+    rev: v0.15.7
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -40,13 +40,11 @@ repos:
     hooks:
       - id: format-ipy-cells
 
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: builtin
     hooks:
       - id: check-case-conflict
       - id: check-symlinks
       - id: check-yaml
-      - id: destroyed-symlinks
       - id: end-of-file-fixer
         exclude: ^assets/.+\.(svg|html)$
       - id: mixed-line-ending
@@ -55,7 +53,7 @@ repos:
         args: [--maxkb=1024]
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.2
     hooks:
       - id: codespell
         stages: [pre-commit, commit-msg]
@@ -70,39 +68,24 @@ repos:
 
   - repo: local
     hooks:
-      - id: deno-fmt # pinned to 2.3.7 due to https://github.com/denoland/deno/issues/29968
-        name: Deno format
-        entry: deno fmt
-        types_or: [file]
+      - id: vp-fmt
+        name: Format (oxfmt)
+        entry: bash -c 'for dir in site pymatviz/widgets/web; do (cd "$dir" && [ -d node_modules ] || npm install && node_modules/.bin/vp fmt --write); done'
+        types_or: [ts, javascript, json, css, html, svelte]
         language: system
-        args: [--config, pymatviz/widgets/web/deno.jsonc, --permit-no-files]
-        exclude_types: [jupyter, json]
-        exclude: ^readme.md$ # deno fmt doesn't support ![fig-icon] syntax
-      - id: deno-lint # pinned to 2.3.7 due to https://github.com/pngwn/MDsveX/issues/743
-        name: Deno lint
-        entry: deno lint
-        types_or: [file]
+        pass_filenames: false
+      - id: vp-lint
+        name: Lint (oxlint)
+        entry: bash -c 'for dir in site pymatviz/widgets/web; do (cd "$dir" && [ -d node_modules ] || npm install && node_modules/.bin/vp lint --fix); done'
+        types_or: [ts, javascript, json, css, html, svelte]
         language: system
-        args:
-          - --config
-          - pymatviz/widgets/web/deno.jsonc
-          - --permit-no-files
-          - --fix
-
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v10.0.2
-    hooks:
-      - id: eslint
-        types: [file]
-        args: [--fix, --config, site/eslint.config.js]
-        files: \.(js|ts|svelte)$
-        additional_dependencies:
-          - eslint
-          - eslint-plugin-svelte
-          - svelte
-          - typescript
-          - typescript-eslint
-          - '@stylistic/eslint-plugin'
+        pass_filenames: false
+      - id: svelte-check
+        name: Svelte type check
+        entry: bash -c 'cd site && [ -d node_modules ] || npm install && node_modules/.bin/svelte-kit sync && node_modules/.bin/svelte-check-rs --threshold error'
+        language: system
+        types_or: [ts, svelte]
+        pass_filenames: false
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.37.0
