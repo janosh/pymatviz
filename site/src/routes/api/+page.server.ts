@@ -18,7 +18,7 @@ export async function load() {
         .use(remarkRehype)
         .use(rehypeStarryNight)
         .use(rehypeStringify)
-        .process(content)
+        .process(content as string)
 
       return String(result)
     }),

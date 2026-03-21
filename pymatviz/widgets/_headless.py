@@ -114,7 +114,7 @@ def _build_html(
 
     Args:
         widget_data: Traitlet values from ``widget.to_dict()``.
-        esm_content: Full text of ``matterviz.mjs``.
+        esm_content: Full text of ``matterviz.js``.
         css_content: Full text of ``matterviz.css``.
         timeout: Max seconds for the JS-side render polling loop.
         width: Override container width in pixels (takes precedence
@@ -455,7 +455,7 @@ def render_widget_headless(
 
     Args:
         widget_data: Dict of traitlet values (from ``widget.to_dict()``).
-        esm_content: Full ESM bundle text (``matterviz.mjs``).
+        esm_content: Full ESM bundle text (``matterviz.js``).
         css_content: Full CSS text (``matterviz.css``).
         fmt: Output format — ``"png"``, ``"jpeg"``, ``"svg"``, or ``"pdf"``.
         dpi: Resolution for raster capture. Maps to ``device_scale_factor``

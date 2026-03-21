@@ -33,24 +33,22 @@ import {
   setup_theme_watchers,
 } from './theme-detection'
 
+const adopted_sheets = new WeakMap<ShadowRoot, CSSStyleSheet>()
+
 function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): void {
   const style_id = `matterviz-widget-styles`
-  const detected_theme = theme_type || detect_parent_theme(target_element)
+  const detected_theme = theme_type ?? detect_parent_theme(target_element)
 
-  // Determine if we're in Shadow DOM (used by marimo cells) and get the appropriate root node
-  const root_node = target_element?.getRootNode() || document
-  const is_shadow_dom = root_node !== document && root_node instanceof ShadowRoot
-  const target_root = is_shadow_dom ? root_node : document
+  // Determine if we're in Shadow DOM (used by marimo cells) and get the appropriate root
+  const root_node = target_element?.getRootNode() ?? document
+  const in_shadow = root_node instanceof ShadowRoot
 
-  // Remove existing styles
-  const existing_style = is_shadow_dom
-    ? target_root.querySelector(`#${style_id}`)
-    : document.getElementById(style_id)
-  existing_style?.remove()
+  // Remove existing style element (if any)
+  ;(in_shadow ? root_node : document).querySelector(`#${style_id}`)?.remove()
 
   // Create style content
   const style_content = `
-    ${get_theme_css(detected_theme, is_shadow_dom)}
+    ${get_theme_css(detected_theme, in_shadow)}
     .cell-output-ipywidget-background { background: transparent !important; }
     :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) {
       background-color: var(--surface-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 6px 8px;
@@ -63,11 +61,15 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
     ${app_css}
   `
 
-  // Apply styles
-  if (is_shadow_dom && `adoptedStyleSheets` in target_root) {
-    const sheet = new CSSStyleSheet()
+  // Apply styles via adoptedStyleSheets (reuse existing sheet to avoid accumulation)
+  if (in_shadow && `adoptedStyleSheets` in root_node) {
+    let sheet = adopted_sheets.get(root_node)
+    if (!sheet) {
+      sheet = new CSSStyleSheet()
+      root_node.adoptedStyleSheets = [...root_node.adoptedStyleSheets, sheet]
+      adopted_sheets.set(root_node, sheet)
+    }
     sheet.replaceSync(style_content)
-    target_root.adoptedStyleSheets = [...target_root.adoptedStyleSheets, sheet]
     return
   }
 
@@ -75,17 +77,29 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
   const style = document.createElement(`style`)
   style.id = style_id
   style.textContent = style_content
-  if (is_shadow_dom) target_root.appendChild(style)
-  else document.head.appendChild(style)
+  if (in_shadow) root_node.append(style)
+  else document.head.append(style)
 }
 
-const instances = new Map<HTMLElement, ReturnType<typeof mount>>()
+const instances = new WeakMap<HTMLElement, ReturnType<typeof mount>>()
+const theme_unsubs = new WeakMap<HTMLElement, () => void>()
+
+const cleanup_element = (element: HTMLElement): void => {
+  theme_unsubs.get(element)?.()
+  theme_unsubs.delete(element)
+
+  const instance = instances.get(element)
+  if (instance) {
+    unmount(instance)
+    instances.delete(element)
+  }
+}
 
 const get_prop = (model: AnyModel, key: string) => {
   try {
     return model.get(key) ?? undefined
   } catch {
-    return undefined
+    return
   }
 }
 
@@ -146,8 +160,7 @@ const histogram_prop_keys = [
   `bar`,
 ] as const
 
-// Mount a Svelte component with auto-included base props (notebook context,
-// show_controls, style) and track the instance for cleanup
+// Mount a Svelte component with base props (notebook context, show_controls, style)
 const mount_widget = (
   model: AnyModel,
   el: HTMLElement,
@@ -157,7 +170,7 @@ const mount_widget = (
   // Prevent widget overflow in notebook cell outputs
   el.style.boxSizing = `border-box`
   el.style.maxWidth = `100%`
-  el.style.marginRight = `2em` // in vscode-interactive window, content overflows cell container div without this
+  el.style.marginRight = `2em` // In vscode-interactive window, content overflows cell container div without this
   const base_props = {
     allow_file_drop: false,
     show_controls: get_prop(model, `show_controls`),
@@ -165,7 +178,7 @@ const mount_widget = (
   }
   instances.set(
     el,
-    mount(component as unknown as Parameters<typeof mount>[0], {
+    mount(component as Parameters<typeof mount>[0], {
       target: el,
       props: { ...base_props, ...props },
     }),
@@ -206,47 +219,20 @@ const get_lattice_props = (model: AnyModel) =>
 // Detect widget type and render
 const render: Render = (props) => {
   const { model, el } = props
+  const widget_type = get_prop(model, `widget_type`) as string | undefined
+  const renderer = widget_type ? renderers[widget_type] : undefined
+  if (!renderer) throw new Error(`Unknown or missing widget_type: '${widget_type}'`)
+
+  cleanup_element(el)
   inject_app_css(undefined, el)
   setup_theme_watchers(el)
 
-  // Register theme change callback to update CSS when theme changes
-  on_theme_change((theme_type) => inject_app_css(theme_type, el))
-
-  // Clean up existing instance
-  const existing = instances.get(el)
-  if (existing) {
-    unmount(existing)
-    instances.delete(el)
-  }
-
-  const widget_type = get_prop(model, `widget_type`) as string | undefined
-
-  const renderers: Record<string, Render> = {
-    structure: render_structure,
-    trajectory: render_trajectory,
-    scatter_plot: render_scatter_plot,
-    scatter_plot_3d: render_scatter_plot_3d,
-    bar_plot: render_bar_plot,
-    histogram: render_histogram,
-    composition: render_composition,
-    convex_hull: render_convex_hull,
-    band_structure: render_band_structure,
-    dos: render_dos,
-    bands_and_dos: render_bands_and_dos,
-    fermi_surface: render_fermi_surface,
-    brillouin_zone: render_brillouin_zone,
-    phase_diagram: render_phase_diagram,
-    xrd: render_xrd,
-    periodic_table: render_periodic_table,
-    rdf_plot: render_rdf_plot,
-    heatmap_matrix: render_heatmap_matrix,
-    spacegroup_bar: render_spacegroup_bar,
-    chem_pot_diagram: render_chem_pot_diagram,
-  }
-
-  const renderer = widget_type ? renderers[widget_type] : undefined
-  if (!renderer) throw new Error(`Unknown or missing widget_type: '${widget_type}'`)
-  return renderer(props)
+  theme_unsubs.set(
+    el,
+    on_theme_change((theme_type) => inject_app_css(theme_type, el)),
+  )
+  renderer(props)
+  return () => cleanup_element(el)
 }
 
 // === Widget renderers ===
@@ -313,21 +299,15 @@ const render_trajectory: Render = ({ model, el }) => {
 }
 
 const render_scatter_plot: Render = ({ model, el }) => {
-  mount_widget(model, el, ScatterPlot, {
-    ...pick_props(model, scatter_plot_prop_keys),
-  })
+  mount_widget(model, el, ScatterPlot, pick_props(model, scatter_plot_prop_keys))
 }
 
 const render_bar_plot: Render = ({ model, el }) => {
-  mount_widget(model, el, BarPlot, {
-    ...pick_props(model, bar_plot_prop_keys),
-  })
+  mount_widget(model, el, BarPlot, pick_props(model, bar_plot_prop_keys))
 }
 
 const render_histogram: Render = ({ model, el }) => {
-  mount_widget(model, el, Histogram, {
-    ...pick_props(model, histogram_prop_keys),
-  })
+  mount_widget(model, el, Histogram, pick_props(model, histogram_prop_keys))
 }
 
 const render_convex_hull: Render = ({ model, el }) => {
@@ -352,7 +332,7 @@ const render_convex_hull: Render = ({ model, el }) => {
 
 const render_band_structure: Render = ({ model, el }) => {
   mount_widget(model, el, Bands, {
-    band_structs: get_prop(model, `band_structure`), // renamed traitlet
+    band_structs: get_prop(model, `band_structure`), // Renamed traitlet
     ...pick_props(model, [
       `band_type`,
       `show_legend`,
@@ -364,7 +344,7 @@ const render_band_structure: Render = ({ model, el }) => {
 
 const render_dos: Render = ({ model, el }) => {
   mount_widget(model, el, Dos, {
-    doses: get_prop(model, `dos`), // renamed traitlet
+    doses: get_prop(model, `dos`), // Renamed traitlet
     ...pick_props(model, [
       `stack`,
       `sigma`,
@@ -378,8 +358,8 @@ const render_dos: Render = ({ model, el }) => {
 
 const render_bands_and_dos: Render = ({ model, el }) => {
   mount_widget(model, el, BandsAndDos, {
-    band_structs: get_prop(model, `band_structure`), // renamed traitlet
-    doses: get_prop(model, `dos`), // renamed traitlet
+    band_structs: get_prop(model, `band_structure`), // Renamed traitlet
+    doses: get_prop(model, `dos`), // Renamed traitlet
   })
 }
 
@@ -514,13 +494,7 @@ const render_spacegroup_bar: Render = ({ model, el }) => {
     model,
     el,
     SpacegroupBarPlot,
-    pick_props(model, [
-      `data`,
-      `show_counts`,
-      `orientation`,
-      `x_axis`,
-      `y_axis`,
-    ]),
+    pick_props(model, [`data`, `show_counts`, `orientation`, `x_axis`, `y_axis`]),
   )
 }
 
@@ -531,6 +505,30 @@ const render_chem_pot_diagram: Render = ({ model, el }) => {
     ChemPotDiagram,
     pick_props(model, [`entries`, `config`, `temperature`]),
   )
+}
+
+// Static dispatch table — referenced by render() at call time (after module init)
+const renderers: Record<string, Render> = {
+  structure: render_structure,
+  trajectory: render_trajectory,
+  scatter_plot: render_scatter_plot,
+  scatter_plot_3d: render_scatter_plot_3d,
+  bar_plot: render_bar_plot,
+  histogram: render_histogram,
+  composition: render_composition,
+  convex_hull: render_convex_hull,
+  band_structure: render_band_structure,
+  dos: render_dos,
+  bands_and_dos: render_bands_and_dos,
+  fermi_surface: render_fermi_surface,
+  brillouin_zone: render_brillouin_zone,
+  phase_diagram: render_phase_diagram,
+  xrd: render_xrd,
+  periodic_table: render_periodic_table,
+  rdf_plot: render_rdf_plot,
+  heatmap_matrix: render_heatmap_matrix,
+  spacegroup_bar: render_spacegroup_bar,
+  chem_pot_diagram: render_chem_pot_diagram,
 }
 
 export default { render }

@@ -1,21 +1,22 @@
 // Theme Detection for AnyWidget
 
 import { luminance } from 'matterviz/colors'
-import 'matterviz/theme'
 import { COLOR_THEMES, type ThemeType } from 'matterviz/theme'
 import 'matterviz/theme/themes'
 
 // Extend globalThis with our custom properties
 declare global {
-  var jupyterlab: {
-    application?: { shell?: { dataset?: { theme?: string } } }
-  } | undefined
+  var jupyterlab:
+    | {
+        application?: { shell?: { dataset?: { theme?: string } } }
+      }
+    | undefined
   var MATTERVIZ_THEMES: Record<string, Record<string, string>> | undefined
   var MATTERVIZ_CSS_MAP: Record<string, string> | undefined
 }
 
 let current_theme: ThemeType = `light`
-const theme_observers: Set<(theme_type: ThemeType) => void> = new Set()
+const theme_observers = new Set<(theme_type: ThemeType) => void>()
 let mutation_observer: MutationObserver | null = null
 let media_query_listener: MediaQueryList | null = null
 let media_query_handler: (() => void) | null = null
@@ -92,13 +93,17 @@ function check_element_hierarchy(element: Element): ThemeType | null {
     // Check classes
     const class_list = current_element.classList
     if (
-      class_list.contains(`dark-theme`) || class_list.contains(`vscode-dark`) ||
+      class_list.contains(`dark-theme`) ||
+      class_list.contains(`vscode-dark`) ||
       class_list.contains(`dark`)
-    ) return `dark`
+    )
+      return `dark`
     if (
-      class_list.contains(`light-theme`) || class_list.contains(`vscode-light`) ||
+      class_list.contains(`light-theme`) ||
+      class_list.contains(`vscode-light`) ||
       class_list.contains(`light`)
-    ) return `light`
+    )
+      return `light`
 
     // Check data attributes
     const data_theme = current_element.getAttribute(`data-theme`)
@@ -146,11 +151,13 @@ export function setup_theme_watchers(target_element?: HTMLElement): void {
     // Watch for DOM changes
     mutation_observer = new MutationObserver((mutations) => {
       if (
-        mutations.some((mut) =>
-          mut.type === `attributes` &&
-          (mut.attributeName === `class` || mut.attributeName === `data-theme`)
+        mutations.some(
+          (mut) =>
+            mut.type === `attributes` &&
+            (mut.attributeName === `class` || mut.attributeName === `data-theme`),
         )
-      ) setTimeout(() => notify_theme_change(target_element), 10) // Debounce
+      )
+        setTimeout(() => notify_theme_change(target_element), 10) // Debounce
     })
 
     const observe_opts = { attributes: true, attributeFilter: [`class`, `data-theme`] }
@@ -200,7 +207,7 @@ export function get_theme_css(theme_type: ThemeType, is_shadow_dom = false): str
   }
 
   const css_vars = Object.entries(theme)
-    .map(([key, value]) => css_map[key] ? `${css_map[key]}: ${value};` : ``)
+    .map(([key, value]) => (css_map[key] ? `${css_map[key]}: ${value};` : ``))
     .filter(Boolean)
     .join(`\n\t`)
 

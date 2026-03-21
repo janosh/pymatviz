@@ -6,7 +6,7 @@ import builtins
 import os
 import re
 from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -128,15 +128,15 @@ def test_fetch_widget_asset_local_file(tmp_path: Path) -> None:
     """Local dev build files take priority over cache and download."""
     web_build_dir = tmp_path / "web" / "build"
     web_build_dir.mkdir(parents=True)
-    (web_build_dir / "test.mjs").write_text("local content")
+    (web_build_dir / "test.js").write_text("local content")
 
     with patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)):
-        assert matterviz.fetch_widget_asset("test.mjs") == "local content"
+        assert matterviz.fetch_widget_asset("test.js") == "local content"
 
 
 def test_fetch_widget_asset_cached_file(tmp_path: Path) -> None:
     """Cached files are returned without triggering a download."""
-    cache_file = tmp_path / "v1.0.0" / "test.mjs"
+    cache_file = tmp_path / "v1.0.0" / "test.js"
     cache_file.parent.mkdir(parents=True)
     cache_file.write_text("cached content")
 
@@ -150,7 +150,7 @@ def test_fetch_widget_asset_cached_file(tmp_path: Path) -> None:
         patch(f"{PKG_NAME}.__version__", "1.0.0"),
         patch(f"{DOTTED_PATH}.urllib.request.urlretrieve") as mock_dl,
     ):
-        assert matterviz.fetch_widget_asset("test.mjs") == "cached content"
+        assert matterviz.fetch_widget_asset("test.js") == "cached content"
 
     mock_dl.assert_not_called()
 
@@ -168,21 +168,21 @@ def test_fetch_widget_asset_downloads_and_caches(tmp_path: Path) -> None:
         patch(f"{PKG_NAME}.__version__", "1.0.0"),
     ):
         result = matterviz.fetch_widget_asset(
-            "matterviz.mjs", version_override="v0.17.0"
+            "matterviz.js", version_override="v0.17.0"
         )
 
     assert result == "downloaded content"
     expected_url = (
-        "https://github.com/janosh/pymatviz/releases/download/v0.17.0/matterviz.mjs"
+        "https://github.com/janosh/pymatviz/releases/download/v0.17.0/matterviz.js"
     )
     assert mock_dl.call_args[0][0] == expected_url
-    assert (tmp_path / "v0.17.0" / "matterviz.mjs").read_text() == "downloaded content"
+    assert (tmp_path / "v0.17.0" / "matterviz.js").read_text() == "downloaded content"
 
 
 def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:
     """Network failures raise FileNotFoundError with version info."""
     err_msg = re.escape(
-        "Could not load test.mjs from GitHub releases for version v1.0.0"
+        "Could not load test.js from GitHub releases for version v1.0.0"
     )
     with (
         patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
@@ -195,30 +195,28 @@ def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:
         patch(f"{PKG_NAME}.__version__", "1.0.0"),
         pytest.raises(FileNotFoundError, match=err_msg),
     ):
-        matterviz.fetch_widget_asset("test.mjs")
+        matterviz.fetch_widget_asset("test.js")
 
 
 # === _read_asset_source ===
 
 
-def test_read_asset_source_local_file(tmp_path: Path) -> None:
-    """Reads content from a local file path."""
-    asset_file = tmp_path / "test.mjs"
-    asset_file.write_text("export default {}")
-    assert _read_asset_source(str(asset_file)) == "export default {}"
-
-
-def test_read_asset_source_file_uri(tmp_path: Path) -> None:
-    """Reads content from a file:// URI."""
-    asset_file = tmp_path / "test.css"
-    asset_file.write_text(".widget { color: red; }")
-    assert _read_asset_source(f"file://{asset_file}") == ".widget { color: red; }"
+@pytest.mark.parametrize(
+    ("prefix", "content"),
+    [("", "export default {}"), ("file://", ".widget { color: red; }")],
+    ids=["local_path", "file_uri"],
+)
+def test_read_asset_source_file(prefix: str, content: str, tmp_path: Path) -> None:
+    """Reads content from local file paths and file:// URIs."""
+    asset_file = tmp_path / "test.js"
+    asset_file.write_text(content)
+    assert _read_asset_source(f"{prefix}{asset_file}") == content
 
 
 def test_read_asset_source_missing_file() -> None:
     """Raises FileNotFoundError for non-existent paths."""
     with pytest.raises(FileNotFoundError, match="Asset file not found"):
-        _read_asset_source("/nonexistent/matterviz.mjs")
+        _read_asset_source("/nonexistent/matterviz.js")
 
 
 def test_read_asset_source_http_url() -> None:
@@ -230,10 +228,10 @@ def test_read_asset_source_http_url() -> None:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        result = _read_asset_source("https://cdn.example.com/matterviz.mjs")
+        result = _read_asset_source("https://cdn.example.com/matterviz.js")
 
     assert result == "export default {}"
-    mock_urlopen.assert_called_once_with("https://cdn.example.com/matterviz.mjs")
+    mock_urlopen.assert_called_once_with("https://cdn.example.com/matterviz.js")
 
 
 # === configure_assets ===
@@ -247,7 +245,7 @@ def test_configure_assets_with_version() -> None:
         configure_assets(version="v0.19.0")
 
     cls = matterviz.MatterVizWidget
-    assert cls._esm == "matterviz.mjs@v0.19.0"
+    assert cls._esm == "matterviz.js@v0.19.0"
     assert cls._css == "matterviz.css@v0.19.0"
     assert "default" in cls._asset_cache
 
@@ -255,7 +253,7 @@ def test_configure_assets_with_version() -> None:
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_with_urls(tmp_path: Path) -> None:
     """configure_assets(esm_src=..., css_src=...) reads from provided sources."""
-    esm_file = tmp_path / "custom.mjs"
+    esm_file = tmp_path / "custom.js"
     css_file = tmp_path / "custom.css"
     esm_file.write_text("custom esm")
     css_file.write_text("custom css")
@@ -270,7 +268,7 @@ def test_configure_assets_with_urls(tmp_path: Path) -> None:
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_css_auto_derived(tmp_path: Path) -> None:
     """CSS path is auto-derived from ESM path when css_src is omitted."""
-    esm_file = tmp_path / "matterviz.mjs"
+    esm_file = tmp_path / "matterviz.js"
     css_file = tmp_path / "matterviz.css"
     esm_file.write_text("esm content")
     css_file.write_text("css content")
@@ -298,7 +296,7 @@ def test_configure_assets_reset() -> None:
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     [
-        ({"version": "v1.0.0", "esm_src": "/f.mjs"}, "not both"),
+        ({"version": "v1.0.0", "esm_src": "/f.js"}, "not both"),
         ({"version": "v1.0.0", "css_src": "/f.css"}, "not both"),
         ({"css_src": "/f.css"}, "requires 'esm_src'"),
     ],
@@ -314,7 +312,7 @@ def test_configure_assets_rejects_invalid_combos(
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_configure_assets_applies_to_subsequent_widgets(tmp_path: Path) -> None:
     """Widgets created after configure_assets use the configured assets."""
-    esm_file = tmp_path / "matterviz.mjs"
+    esm_file = tmp_path / "matterviz.js"
     css_file = tmp_path / "matterviz.css"
     esm_file.write_text("configured esm")
     css_file.write_text("configured css")
@@ -329,17 +327,39 @@ def test_configure_assets_applies_to_subsequent_widgets(tmp_path: Path) -> None:
 # === build_widget_assets ===
 
 
-def test_build_widget_assets(tmp_path: Path) -> None:
-    """Delegates to deno task build in the widgets directory."""
+@pytest.mark.parametrize(
+    ("has_node_modules", "expected_commands"),
+    [
+        (True, [["npm", "run", "build"]]),
+        (
+            False,
+            [
+                ["npm", "install"],
+                ["npm", "run", "build"],
+            ],
+        ),
+    ],
+)
+def test_build_widget_assets_installs_only_when_needed(
+    tmp_path: Path,
+    has_node_modules: bool,
+    expected_commands: list[list[str]],
+) -> None:
+    """Installs deps only when needed before building widget assets."""
+    web_dir = f"{tmp_path}/web"
+    os.makedirs(web_dir, exist_ok=True)
+    if has_node_modules:
+        os.makedirs(f"{web_dir}/node_modules", exist_ok=True)
+
     with (
         patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
         patch(f"{DOTTED_PATH}.subprocess.run") as mock_run,
     ):
         matterviz.build_widget_assets()
 
-    mock_run.assert_called_once_with(
-        ["deno", "task", "build"], cwd=str(tmp_path), check=True
-    )
+    assert mock_run.call_args_list == [
+        call(command, cwd=web_dir, check=True) for command in expected_commands
+    ]
 
 
 # === MatterVizWidget.__init__ ===
@@ -347,7 +367,7 @@ def test_build_widget_assets(tmp_path: Path) -> None:
 
 @pytest.mark.usefixtures("_clean_asset_cache")
 def test_lazy_matterviz_widget() -> None:
-    """Default init fetches both .mjs and .css and sets class-level assets."""
+    """Default init fetches both .js and .css and sets class-level assets."""
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="widget content"):
         widget = matterviz.MatterVizWidget()
 
@@ -362,7 +382,7 @@ def test_lazy_matterviz_widget_version_override() -> None:
         widget = matterviz.MatterVizWidget(version_override="v2.0.0")
 
     assert {call.args for call in mock.call_args_list} == {
-        ("matterviz.mjs", "v2.0.0"),
+        ("matterviz.js", "v2.0.0"),
         ("matterviz.css", "v2.0.0"),
     }
     assert widget._esm == "v2 content"

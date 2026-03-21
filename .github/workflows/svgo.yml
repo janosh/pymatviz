@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
 
       - name: Set up node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
 
       - name: Compress SVG assets and commit to current PR
         run: |

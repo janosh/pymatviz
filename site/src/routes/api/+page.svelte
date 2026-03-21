@@ -1,5 +1,5 @@
 <script lang="ts">
-  export let data
+  let { data }: { data: { html: string } } = $props()
 </script>
 
 <h1 class="toc-exclude">API</h1>
