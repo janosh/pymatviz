@@ -33,19 +33,21 @@ import {
   setup_theme_watchers,
 } from './theme-detection'
 
+const adopted_sheets = new WeakMap<ShadowRoot, CSSStyleSheet>()
+
 function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): void {
   const style_id = `matterviz-widget-styles`
-  const detected_theme = theme_type || detect_parent_theme(target_element)
+  const detected_theme = theme_type ?? detect_parent_theme(target_element)
 
   // Determine if we're in Shadow DOM (used by marimo cells) and get the appropriate root node
-  const root_node = target_element?.getRootNode() || document
+  const root_node = target_element?.getRootNode() ?? document
   const is_shadow_dom = root_node !== document && root_node instanceof ShadowRoot
   const target_root = is_shadow_dom ? root_node : document
 
   // Remove existing styles
   const existing_style = is_shadow_dom
     ? target_root.querySelector(`#${style_id}`)
-    : document.getElementById(style_id)
+    : document.querySelector(`#${style_id}`)
   existing_style?.remove()
 
   // Create style content
@@ -63,11 +65,19 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
     ${app_css}
   `
 
-  // Apply styles
-  if (is_shadow_dom && `adoptedStyleSheets` in target_root) {
-    const sheet = new CSSStyleSheet()
+  // Apply styles via adoptedStyleSheets (reuse existing sheet to avoid accumulation)
+  if (
+    is_shadow_dom &&
+    root_node instanceof ShadowRoot &&
+    `adoptedStyleSheets` in root_node
+  ) {
+    let sheet = adopted_sheets.get(root_node)
+    if (!sheet) {
+      sheet = new CSSStyleSheet()
+      root_node.adoptedStyleSheets = [...root_node.adoptedStyleSheets, sheet]
+      adopted_sheets.set(root_node, sheet)
+    }
     sheet.replaceSync(style_content)
-    target_root.adoptedStyleSheets = [...target_root.adoptedStyleSheets, sheet]
     return
   }
 
@@ -75,8 +85,8 @@ function inject_app_css(theme_type?: ThemeType, target_element?: HTMLElement): v
   const style = document.createElement(`style`)
   style.id = style_id
   style.textContent = style_content
-  if (is_shadow_dom) target_root.appendChild(style)
-  else document.head.appendChild(style)
+  if (is_shadow_dom) target_root.append(style)
+  else document.head.append(style)
 }
 
 const instances = new Map<HTMLElement, ReturnType<typeof mount>>()
@@ -85,7 +95,7 @@ const get_prop = (model: AnyModel, key: string) => {
   try {
     return model.get(key) ?? undefined
   } catch {
-    return undefined
+    return
   }
 }
 
@@ -146,8 +156,7 @@ const histogram_prop_keys = [
   `bar`,
 ] as const
 
-// Mount a Svelte component with auto-included base props (notebook context,
-// show_controls, style) and track the instance for cleanup
+// Mount a Svelte component with base props (notebook context, show_controls, style)
 const mount_widget = (
   model: AnyModel,
   el: HTMLElement,
@@ -157,7 +166,7 @@ const mount_widget = (
   // Prevent widget overflow in notebook cell outputs
   el.style.boxSizing = `border-box`
   el.style.maxWidth = `100%`
-  el.style.marginRight = `2em` // in vscode-interactive window, content overflows cell container div without this
+  el.style.marginRight = `2em` // In vscode-interactive window, content overflows cell container div without this
   const base_props = {
     allow_file_drop: false,
     show_controls: get_prop(model, `show_controls`),
@@ -165,7 +174,7 @@ const mount_widget = (
   }
   instances.set(
     el,
-    mount(component as unknown as Parameters<typeof mount>[0], {
+    mount(component as Parameters<typeof mount>[0], {
       target: el,
       props: { ...base_props, ...props },
     }),
@@ -313,21 +322,15 @@ const render_trajectory: Render = ({ model, el }) => {
 }
 
 const render_scatter_plot: Render = ({ model, el }) => {
-  mount_widget(model, el, ScatterPlot, {
-    ...pick_props(model, scatter_plot_prop_keys),
-  })
+  mount_widget(model, el, ScatterPlot, pick_props(model, scatter_plot_prop_keys))
 }
 
 const render_bar_plot: Render = ({ model, el }) => {
-  mount_widget(model, el, BarPlot, {
-    ...pick_props(model, bar_plot_prop_keys),
-  })
+  mount_widget(model, el, BarPlot, pick_props(model, bar_plot_prop_keys))
 }
 
 const render_histogram: Render = ({ model, el }) => {
-  mount_widget(model, el, Histogram, {
-    ...pick_props(model, histogram_prop_keys),
-  })
+  mount_widget(model, el, Histogram, pick_props(model, histogram_prop_keys))
 }
 
 const render_convex_hull: Render = ({ model, el }) => {
@@ -352,7 +355,7 @@ const render_convex_hull: Render = ({ model, el }) => {
 
 const render_band_structure: Render = ({ model, el }) => {
   mount_widget(model, el, Bands, {
-    band_structs: get_prop(model, `band_structure`), // renamed traitlet
+    band_structs: get_prop(model, `band_structure`), // Renamed traitlet
     ...pick_props(model, [
       `band_type`,
       `show_legend`,
@@ -364,7 +367,7 @@ const render_band_structure: Render = ({ model, el }) => {
 
 const render_dos: Render = ({ model, el }) => {
   mount_widget(model, el, Dos, {
-    doses: get_prop(model, `dos`), // renamed traitlet
+    doses: get_prop(model, `dos`), // Renamed traitlet
     ...pick_props(model, [
       `stack`,
       `sigma`,
@@ -378,8 +381,8 @@ const render_dos: Render = ({ model, el }) => {
 
 const render_bands_and_dos: Render = ({ model, el }) => {
   mount_widget(model, el, BandsAndDos, {
-    band_structs: get_prop(model, `band_structure`), // renamed traitlet
-    doses: get_prop(model, `dos`), // renamed traitlet
+    band_structs: get_prop(model, `band_structure`), // Renamed traitlet
+    doses: get_prop(model, `dos`), // Renamed traitlet
   })
 }
 
@@ -514,13 +517,7 @@ const render_spacegroup_bar: Render = ({ model, el }) => {
     model,
     el,
     SpacegroupBarPlot,
-    pick_props(model, [
-      `data`,
-      `show_counts`,
-      `orientation`,
-      `x_axis`,
-      `y_axis`,
-    ]),
+    pick_props(model, [`data`, `show_counts`, `orientation`, `x_axis`, `y_axis`]),
   )
 }
 

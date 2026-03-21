@@ -330,16 +330,16 @@ def test_configure_assets_applies_to_subsequent_widgets(tmp_path: Path) -> None:
 
 
 def test_build_widget_assets(tmp_path: Path) -> None:
-    """Delegates to deno task build in the widgets directory."""
+    """Delegates to npm run build in the web directory."""
+    web_dir = f"{tmp_path}/web"
+    os.makedirs(f"{web_dir}/node_modules", exist_ok=True)
     with (
         patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
         patch(f"{DOTTED_PATH}.subprocess.run") as mock_run,
     ):
         matterviz.build_widget_assets()
 
-    mock_run.assert_called_once_with(
-        ["deno", "task", "build"], cwd=str(tmp_path), check=True
-    )
+    mock_run.assert_called_once_with(["npm", "run", "build"], cwd=web_dir, check=True)
 
 
 # === MatterVizWidget.__init__ ===

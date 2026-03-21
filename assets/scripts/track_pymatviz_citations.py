@@ -338,8 +338,9 @@ def convert_zotero_paper(zotero_paper: dict) -> ScholarPaper | None:
 
 def main(update_freq_days: int = 7) -> None:
     """Fetch papers from Scholar and Zotero, merge, and update readme."""
-    module_dir = os.path.dirname(__file__)
-    data_file = f"{module_dir}/pmv-used-by-list-google-scholar.yaml.gz"
+    data_dir = f"{ROOT}/tmp"
+    os.makedirs(data_dir, exist_ok=True)
+    data_file = f"{data_dir}/pmv-used-by-list-google-scholar.yaml.gz"
 
     # Load existing papers
     if os.path.isfile(data_file):
@@ -365,8 +366,13 @@ def main(update_freq_days: int = 7) -> None:
             f"{data_file=} is less than {update_freq_days} days old, skipping update."
         )
 
-    with open(f"{module_dir}/pmv-used-by-list-zotero.yaml", encoding="utf-8") as file:
-        zotero_papers = yaml.safe_load(file)["references"]
+    zotero_file = f"{data_dir}/pmv-used-by-list-zotero.yaml"
+    if os.path.isfile(zotero_file):
+        with open(zotero_file, encoding="utf-8") as file:
+            zotero_papers = (yaml.safe_load(file) or {}).get("references", [])
+    else:
+        print(f"Zotero file not found: {zotero_file}, skipping Zotero papers")
+        zotero_papers = []
 
     converted_zotero_papers = [
         converted

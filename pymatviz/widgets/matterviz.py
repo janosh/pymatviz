@@ -183,9 +183,10 @@ def clear_widget_cache(version_override: str | None = None) -> None:
 
 def build_widget_assets() -> None:
     """Build widget assets locally for development."""
-    widgets_dir = os.path.dirname(__file__)
-    cmd = ["deno", "task", "build"]
-    subprocess.run(cmd, cwd=widgets_dir, check=True)  # noqa: S603
+    web_dir = f"{os.path.dirname(__file__)}/web"
+    if not os.path.isdir(f"{web_dir}/node_modules"):
+        subprocess.run(["npm", "install"], cwd=web_dir, check=True)  # noqa: S607
+    subprocess.run(["npm", "run", "build"], cwd=web_dir, check=True)  # noqa: S607
 
 
 class MatterVizWidget(AnyWidget):

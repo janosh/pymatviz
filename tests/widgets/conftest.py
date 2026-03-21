@@ -20,15 +20,22 @@ def build_web_files() -> None:
     widgets_dir = f"{PKG_DIR}/widgets"
     web_dir = f"{widgets_dir}/web"
 
-    # Only build if the file doesn't exist
     if not os.path.isfile(f"{web_dir}/build/matterviz.mjs"):
         try:
+            if not os.path.isdir(f"{web_dir}/node_modules"):
+                subprocess.run(
+                    ["npm", "install"],  # noqa: S607
+                    check=True,
+                    cwd=web_dir,
+                    capture_output=True,
+                    timeout=60,
+                )
             subprocess.run(
-                ["deno", "task", "build"],  # noqa: S607
+                ["npm", "run", "build"],  # noqa: S607
                 check=True,
                 cwd=web_dir,
                 capture_output=True,
-                timeout=20,
+                timeout=60,
             )
         except (subprocess.SubprocessError, subprocess.TimeoutExpired) as exc:
             exc.add_note("Failed to build web files")
