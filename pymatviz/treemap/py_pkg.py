@@ -798,9 +798,14 @@ def py_pkg_treemap(
                     continue
 
                 child_line_counts = group.groupby(child_col)["line_count"].sum()
-                significant = child_line_counts[
-                    child_line_counts >= min_lines_for_split
-                ]
+                # Deepest level uses the full threshold; intermediate levels
+                # use a lower cap so large modules keep their sub-packages
+                effective_min = (
+                    min_lines_for_split
+                    if is_deepest_level
+                    else min(min_lines_for_split, 500)
+                )
+                significant = child_line_counts[child_line_counts >= effective_min]
                 n_sig = len(significant)
                 # Only cap children count at the deepest level; intermediate
                 # levels expand freely so large modules keep their sub-packages
@@ -988,6 +993,27 @@ def py_pkg_treemap(
 
     # Create the treemap
     fig = px.treemap(**treemap_params)
+
+    # Break long labels at underscores so plotly can wrap text instead of
+    # shrinking the font to fit names like "advanced_transformations" on one line.
+    trace = fig.data[0]
+    max_label_len = 18
+    if trace.labels is not None:
+        wrapped = []
+        for label in trace.labels:
+            label_str = str(label)
+            if len(label_str) > max_label_len and "_" in label_str:
+                # Insert <br> after the underscore nearest to the midpoint
+                mid = len(label_str) // 2
+                best_pos = min(
+                    (pos for pos in range(len(label_str)) if label_str[pos] == "_"),
+                    key=lambda pos: abs(pos - mid),
+                )
+                label_str = (
+                    f"{label_str[: best_pos + 1]}<br>{label_str[best_pos + 1 :]}"
+                )
+            wrapped.append(label_str)
+        fig.data[0].labels = wrapped
 
     # Fix parent node colors for coverage heatmaps (weighted averages)
     if has_color_mode and color_by == "coverage":
