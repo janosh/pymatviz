@@ -1010,7 +1010,11 @@ def py_pkg_treemap(
         wrapped = []
         for label in trace.labels:
             label_str = str(label)
-            if len(label_str) > max_label_len and "_" in label_str:
+            if (
+                len(label_str) > max_label_len
+                and "_" in label_str
+                and " " not in label_str
+            ):
                 mid = len(label_str) // 2
                 best_pos = min(
                     (pos for pos in range(len(label_str)) if label_str[pos] == "_"),
