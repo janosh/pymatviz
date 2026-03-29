@@ -564,9 +564,9 @@ def py_pkg_treemap(
             the full module hierarchy is shown.
         min_lines_for_split (int): Minimum total lines of code for a child cell to
             be considered "significant" at a given depth. Children below this
-            threshold are merged into an "other" bucket. If fewer than 2 children
-            qualify as significant, the parent collapses into a single aggregated
-            cell. Only applies when group_by="module". Defaults to 0 (no minimum).
+            threshold are merged into an "other" bucket. If no children qualify
+            as significant, the parent collapses into a single aggregated cell.
+            Only applies when group_by="module". Defaults to 0 (no minimum).
         max_children_for_split (int | None): Maximum number of significant child
             cells a parent may have at the deepest level. If a parent would produce
             more significant children than this, the split is suppressed and the
@@ -779,11 +779,11 @@ def py_pkg_treemap(
 
     # Adaptive depth pruning. Iterates from the deepest level upward.
     # At each level, "significant" children (>= min_lines_for_split) are
-    # counted. If there are 2..max_children significant children, the parent
-    # is expanded (small children merge into "other"). Otherwise the parent
-    # collapses to a single cell. max_children_for_split only applies at
-    # the deepest level — intermediate levels use min_lines alone, so large
-    # modules like io/analysis always show their sub-packages.
+    # counted. If there are 1..max_children significant children, the parent
+    # is expanded (small children merge into "other"). If none are significant,
+    # the parent collapses to a single cell. max_children_for_split only
+    # applies at the deepest level — intermediate levels use min_lines alone,
+    # so large modules like io/analysis always show their sub-packages.
     rows_were_merged = False
     if group_by == "module" and (min_lines_for_split > 0 or max_children_for_split):
         for prune_depth in range(effective_depth - 1, 0, -1):
@@ -997,6 +997,11 @@ def py_pkg_treemap(
     # Create the treemap
     fig = px.treemap(**treemap_params)
 
+    # Fix parent node colors for coverage heatmaps (weighted averages).
+    # Must run before label wrapping so substring matching still works.
+    if has_color_mode and color_by == "coverage":
+        _apply_coverage_weighted_averages(fig, df_treemap)
+
     # Break long labels at underscores so plotly can wrap text instead of
     # shrinking the font to fit names like "advanced_transformations" on one line.
     trace = fig.data[0]
@@ -1006,7 +1011,6 @@ def py_pkg_treemap(
         for label in trace.labels:
             label_str = str(label)
             if len(label_str) > max_label_len and "_" in label_str:
-                # Insert <br> after the underscore nearest to the midpoint
                 mid = len(label_str) // 2
                 best_pos = min(
                     (pos for pos in range(len(label_str)) if label_str[pos] == "_"),
@@ -1017,10 +1021,6 @@ def py_pkg_treemap(
                 )
             wrapped.append(label_str)
         fig.data[0].labels = wrapped
-
-    # Fix parent node colors for coverage heatmaps (weighted averages)
-    if has_color_mode and color_by == "coverage":
-        _apply_coverage_weighted_averages(fig, df_treemap)
 
     # Configure colorbar for heatmap mode
     if has_color_mode and df_treemap["color_value"].notna().any():
