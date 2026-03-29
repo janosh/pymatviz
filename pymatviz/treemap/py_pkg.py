@@ -1,6 +1,7 @@
-"""Hierarchical treemap visualizations of Python packages.
+"""Hierarchical treemap visualizations of source code packages.
 
-For visualizing module structure and code distribution within Python packages.
+For visualizing module structure and code distribution within Python packages
+or any language project via directory scanning.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import sys
 import tempfile
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeAlias
 
 import pandas as pd
@@ -29,6 +30,25 @@ if TYPE_CHECKING:
 
 ModuleFormatter = Callable[[str, int, int], str]
 GroupBy: TypeAlias = Literal["file", "directory", "module"]
+
+_COMMENT_PREFIXES: dict[str, str] = {
+    ".py": "#",
+    ".pyi": "#",
+    ".r": "#",
+    ".jl": "#",
+    ".rb": "#",
+    ".sh": "#",
+    ".rs": "//",
+    ".ts": "//",
+    ".tsx": "//",
+    ".js": "//",
+    ".jsx": "//",
+    ".go": "//",
+    ".c": "//",
+    ".cpp": "//",
+    ".h": "//",
+    ".hpp": "//",
+}
 
 
 class ModuleStats(NamedTuple):
@@ -75,8 +95,14 @@ def _normalize_package_input(package: str | Any) -> str:
     return str(package)
 
 
-def count_lines(file_path: str) -> int:
-    """Count non-empty, non-comment lines in a Python file."""
+def count_lines(file_path: str, comment_prefixes: tuple[str, ...] = ("#",)) -> int:
+    """Count non-empty, non-comment lines in a source file.
+
+    Args:
+        file_path: Path to the source file.
+        comment_prefixes: Comment prefix strings to skip (e.g. ``("#",)`` for
+            Python, ``("//",)`` for Rust/C/JS). Defaults to Python-style.
+    """
     try:
         with open(file_path, encoding="utf-8") as file_handle:
             try:  # Read lines safely, handling potential decoding errors
@@ -85,7 +111,10 @@ def count_lines(file_path: str) -> int:
                 return 0  # Treat undecodable files as having 0 countable lines
 
             return sum(
-                bool(line.strip() and not line.strip().startswith("#"))
+                bool(
+                    (stripped := line.strip())
+                    and not any(stripped.startswith(pfx) for pfx in comment_prefixes)
+                )
                 for line in lines
             )
     except (FileNotFoundError, PermissionError):
@@ -193,27 +222,94 @@ def _analyze_py_file(file_path: str, package_name: str) -> dict[str, int]:
     return counts
 
 
-def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, float]:
-    """Collect coverage data for packages.
-
-    When coverage_data_file is not provided, this function attempts to run the
-    'coverage' command to generate coverage data on the fly. This requires the coverage
-    tool to be available in system PATH.
+def _parse_lcov_lines(lines: Iterable[str]) -> dict[str, float]:
+    """Parse lcov-format lines into a path-to-percentage map.
 
     Args:
-        coverage_data_file: Path to coverage JSON file or URL. If provided as a local
-            file and not found, raises FileNotFoundError instead of auto-generating.
-            If provided as a URL, fetches the coverage data from the remote location.
-            URLs must start with "https://".
+        lines: Iterable of raw lcov lines (may include trailing newlines).
 
     Returns:
-        dict[str, float]: Mapping from file paths to coverage percentages.
+        dict mapping file paths to coverage percentages (0-100).
+    """
+    coverage_map: dict[str, float] = {}
+    current_file: str | None = None
+    lines_hit = 0
+    lines_found = 0
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if line.startswith("SF:"):
+            current_file = line[3:]
+            lines_hit = 0
+            lines_found = 0
+        elif line.startswith("LH:"):
+            lines_hit = int(line[3:])
+        elif line.startswith("LF:"):
+            lines_found = int(line[3:])
+        elif line == "end_of_record":
+            if current_file and lines_found > 0:
+                coverage_map[current_file] = (lines_hit / lines_found) * 100
+            current_file = None
+
+    return coverage_map
+
+
+def parse_lcov_file(lcov_path: str) -> dict[str, float]:
+    """Parse an lcov/info coverage file into a path-to-percentage map.
+
+    Handles output from cargo-llvm-cov, lcov, gcov, geninfo, and similar tools
+    that produce the lcov trace-file format.
+
+    Args:
+        lcov_path: Path to an lcov-format coverage file (typically .info or .lcov).
+
+    Returns:
+        dict mapping file paths to coverage percentages (0-100).
+    """
+    with open(lcov_path, encoding="utf-8") as fh:
+        return _parse_lcov_lines(fh)
+
+
+def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, float]:
+    """Collect coverage data from various formats.
+
+    Supports Python coverage JSON (from ``coverage json``), lcov/info files
+    (from cargo-llvm-cov, lcov, gcov, etc.), and URLs to either format.
+    Format is auto-detected from file extension (.info/.lcov -> lcov, else JSON).
+
+    When coverage_data_file is not provided, attempts to run the ``coverage``
+    CLI to generate Python coverage data on the fly.
+
+    Args:
+        coverage_data_file: Path to coverage data file or URL. Supported formats:
+
+            - Python coverage JSON (from ``coverage json``)
+            - lcov/info files (.info or .lcov extension)
+
+            If provided as a URL, fetches from the remote location (HTTPS only).
+            If None, attempts auto-generation via the ``coverage`` CLI.
+
+    Returns:
+        dict[str, float]: Mapping from file paths to coverage percentages (0-100).
     """
     coverage_map: dict[str, float] = {}
 
     if coverage_data_file:
         is_url = coverage_data_file.startswith("https://")
+        is_lcov = coverage_data_file.endswith((".info", ".lcov"))
 
+        # lcov format: parse directly (or download and parse in memory for URLs)
+        if is_lcov:
+            if is_url:
+                with urllib.request.urlopen(  # noqa: S310
+                    coverage_data_file, timeout=15
+                ) as response:
+                    return _parse_lcov_lines(
+                        response.read().decode("utf-8").splitlines()
+                    )
+            return parse_lcov_file(coverage_data_file)
+
+        # JSON format (Python coverage json)
         try:
             if is_url:
                 # Security: Only HTTPS URLs allowed to prevent file:// and other schemes
@@ -229,7 +325,6 @@ def collect_coverage_data(coverage_data_file: str | None = None) -> dict[str, fl
                 )
             raise
 
-        # Process coverage data
         for file_path, file_data in coverage_data.get("files", {}).items():
             summary = file_data.get("summary", {})
             if "percent_covered" in summary:
@@ -382,6 +477,103 @@ def collect_package_modules(
     return pd.DataFrame(all_modules)
 
 
+def collect_source_modules_from_dir(
+    source_dir: str,
+    project_names: list[str],
+    file_extensions: tuple[str, ...] = (".py",),
+    ignored_dirs: tuple[str, ...] = (
+        ".git",
+        "target",
+        "node_modules",
+        ".venv",
+        "__pycache__",
+        "build",
+        "dist",
+    ),
+) -> pd.DataFrame:
+    """Collect information about source files in a directory tree.
+
+    Language-agnostic alternative to :func:`collect_package_modules`. Walks
+    the given source directory and builds a module hierarchy from the file
+    system structure. Works for any language (Rust, TypeScript, Go, ...).
+
+    Args:
+        source_dir: Root directory to scan for source files.
+        project_names: Display name(s) for the project. Files are attributed
+            to the first name.
+        file_extensions: File extensions to include, e.g. ``(".rs",)`` for
+            Rust or ``(".ts", ".tsx")`` for TypeScript.
+        ignored_dirs: Directory names to skip during traversal.
+
+    Returns:
+        pd.DataFrame with the same schema as :func:`collect_package_modules`.
+    """
+    source_dir = os.path.abspath(source_dir)
+    if not os.path.isdir(source_dir):
+        raise FileNotFoundError(f"Source directory not found: {source_dir}")
+
+    project_name = project_names[0]
+    source_dir_name = os.path.basename(source_dir)
+
+    ignored = set(ignored_dirs)
+    all_modules: list[dict[str, Any]] = []
+    for root, dirs, files in os.walk(source_dir):
+        dirs[:] = sorted(d for d in dirs if d not in ignored)
+
+        for filename in sorted(files):
+            ext = os.path.splitext(filename)[1]
+            if ext not in file_extensions:
+                continue
+
+            file_path = os.path.normpath(f"{root}/{filename}")
+            comment_prefix = (_COMMENT_PREFIXES.get(ext, "#"),)
+            line_count = count_lines(file_path, comment_prefix)
+
+            rel_path = os.path.relpath(file_path, source_dir)
+            rel_parts = rel_path.replace(os.sep, "/").split("/")
+            stem = os.path.splitext(rel_parts[-1])[0]
+
+            # Every file gets a unique leaf in the hierarchy.
+            # When a file shares its stem with a sibling directory (Rust
+            # new-style module roots like burnside.rs + burnside/), nest it
+            # inside the directory namespace to avoid non-leaf collisions.
+            sibling_dir = f"{root}/{stem}"
+            if os.path.isdir(sibling_dir):
+                module_parts = [*rel_parts[:-1], stem, stem]
+            else:
+                module_parts = [*rel_parts[:-1], stem]
+
+            full_module = f"{project_name}.{'.'.join(module_parts)}"
+            top_module = module_parts[0]
+            directory = rel_parts[0] if len(rel_parts) > 1 else "root"
+            leaf_label = module_parts[-1]
+            repo_path_segment = f"{source_dir_name}/{rel_path.replace(os.sep, '/')}"
+
+            all_modules.append(
+                {
+                    "package": project_name,
+                    "full_module": full_module,
+                    "filename": stem,
+                    "directory": directory,
+                    "top_module": top_module,
+                    "line_count": line_count,
+                    "file_path": file_path,
+                    "repo_path_segment": repo_path_segment,
+                    "leaf_label": leaf_label,
+                    "module_parts": module_parts,
+                    "depth": len(module_parts),
+                    "n_classes": 0,
+                    "n_functions": 0,
+                    "n_methods": 0,
+                    "n_internal_imports": 0,
+                    "n_external_imports": 0,
+                    "n_type_checking_imports": 0,
+                }
+            )
+
+    return pd.DataFrame(all_modules)
+
+
 def _match_coverage_path(
     file_path: str,
     coverage_map: dict[str, float],
@@ -513,10 +705,15 @@ def _apply_coverage_weighted_averages(fig: go.Figure, df_treemap: pd.DataFrame) 
 def py_pkg_treemap(
     packages: str | ModuleType | Sequence[str | ModuleType],
     *,
+    source_dir: str | None = None,
+    file_extensions: tuple[str, ...] = (".py",),
     base_url: str | None = "auto",
     show_counts: ShowCounts = "value+percent",
     cell_text_fn: ModuleFormatter | bool = default_module_formatter,
     group_by: GroupBy = "module",
+    max_module_depth: int | None = None,
+    min_lines_for_split: int = 0,
+    max_children_for_split: int | None = None,
     cell_size_fn: CellSizeFn | None = None,
     color_by: str | dict[str, float] | None = None,
     coverage_data_file: str | None = None,
@@ -524,14 +721,28 @@ def py_pkg_treemap(
     cell_border: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> go.Figure:
-    """Generate a treemap plot showing the module structure of Python packages.
+    """Generate a treemap plot showing module structure of source code packages.
+
+    Works with any language when ``source_dir`` is provided. Without it,
+    defaults to Python package introspection via importlib.
 
     The first level shows the distribution by package, and the second level
     shows modules or files, with cell sizes typically indicating code size.
 
     Args:
         packages (str | ModuleType | Sequence[str | ModuleType]): Single package
-            name/module or list of package names/modules to analyze.
+            name/module or list of package names/modules to analyze. When
+            ``source_dir`` is provided, this is used only as a display label.
+        source_dir (str | None): Path to a source directory to scan instead of
+            using Python importlib. Enables language-agnostic usage — e.g. point
+            at a Rust ``src/`` or TypeScript ``src/`` folder. When provided,
+            files are discovered by walking the directory tree rather than
+            introspecting installed Python packages. Defaults to None (Python
+            package mode).
+        file_extensions (tuple[str, ...]): File extensions to include when using
+            ``source_dir``. Defaults to ``(".py",)``. Use ``(".rs",)`` for Rust,
+            ``(".ts", ".tsx")`` for TypeScript, etc. Ignored when ``source_dir``
+            is None.
         base_url (str | None): Base URL for the source code repository (e.g., GitHub).
             If provided, the label of each module/file cell is turned into a
             clickable link pointing to the corresponding source file. Example:
@@ -553,6 +764,23 @@ def py_pkg_treemap(
             - "file": Group by filename
             - "directory": Group by top-level directory
             - "module": Group by top-level module (default)
+        max_module_depth (int | None): Maximum depth of the module hierarchy to display
+            when group_by="module". Files deeper than this level are aggregated into
+            their ancestor at the cutoff depth. For example, max_module_depth=1 shows
+            only top-level modules (io, analysis, core, ...), while max_module_depth=2
+            also shows sub-packages (io/vasp, analysis/chemenv, ...). If None (default),
+            the full module hierarchy is shown.
+        min_lines_for_split (int): Minimum total lines of code for a child cell to
+            be considered "significant" at a given depth. Children below this
+            threshold are merged into an "other" bucket. If no children qualify
+            as significant, the parent collapses into a single aggregated cell.
+            Only applies when group_by="module". Defaults to 0 (no minimum).
+        max_children_for_split (int | None): Maximum number of significant child
+            cells a parent may have at the deepest level. If a parent would produce
+            more significant children than this, the split is suppressed and the
+            parent stays aggregated. Intermediate levels are not affected, so large
+            modules always show their sub-packages. Only applies when
+            group_by="module". If None (default), no limit.
         cell_size_fn (CellSizeFn | None): A callable that takes a `ModuleStats` object
             (a NamedTuple with fields like line_count, n_classes, n_functions,
             n_methods) and returns a number (int or float) to be used for the
@@ -622,10 +850,30 @@ def py_pkg_treemap(
         >>> fig9 = pmv.py_pkg_treemap(np)  # Pass the module object directly
         >>> # Or mix strings and modules
         >>> fig10 = pmv.py_pkg_treemap([np, "pymatviz"])
+        >>> # Rust crate coverage treemap (language-agnostic mode)
+        >>> fig11 = pmv.py_pkg_treemap(
+        ...     "my_rust_crate",
+        ...     source_dir="src",
+        ...     file_extensions=(".rs",),
+        ...     color_by="coverage",
+        ...     coverage_data_file="lcov.info",
+        ...     base_url="https://github.com/user/repo/blob/main",
+        ... )
     """
+    if max_module_depth is not None and max_module_depth < 0:
+        raise ValueError(f"{max_module_depth=} must be non-negative")
+    if min_lines_for_split < 0:
+        raise ValueError(f"{min_lines_for_split=} must be non-negative")
+    if max_children_for_split is not None and max_children_for_split < 0:
+        raise ValueError(f"{max_children_for_split=} must be non-negative")
+
     # Normalize input to handle both single and multiple strings or ModuleType objects
     pkg_list = packages if isinstance(packages, (list, tuple)) else [packages]
     package_names = [_normalize_package_input(pkg) for pkg in pkg_list]
+
+    # importlib metadata is unavailable for non-Python projects
+    if source_dir and base_url == "auto":
+        base_url = None
 
     # Handle base_url = 'auto' using package metadata
     package_base_urls: dict[str, str | None] = {}
@@ -682,10 +930,16 @@ def py_pkg_treemap(
         color_values = color_by.copy()
 
     # Collect module information
-    df_modules = collect_package_modules(package_names)
+    if source_dir:
+        df_modules = collect_source_modules_from_dir(
+            source_dir, package_names, file_extensions
+        )
+    else:
+        df_modules = collect_package_modules(package_names)
 
     if df_modules.empty:
-        raise ValueError(f"No Python modules found in packages: {package_names}")
+        location = source_dir or package_names
+        raise ValueError(f"No source files found in: {location}")
 
     if cell_size_fn is None:  # set default cell size calculator if not provided
         cell_size_fn = lambda module: module.line_count
@@ -703,8 +957,9 @@ def py_pkg_treemap(
     df_modules = df_modules[df_modules["cell_value"] > 0]
 
     if df_modules.empty:
+        location = source_dir or package_names
         raise ValueError(
-            f"No Python modules found in {package_names=} after filtering by "
+            f"No source files found in {location} after filtering by "
             "cell_size_fn(module) == 0."
         )
 
@@ -734,8 +989,13 @@ def py_pkg_treemap(
     df_treemap = df_modules.copy()
 
     # Determine the maximum depth of the module hierarchy
-    max_depth = df_treemap["depth"].max() if not df_treemap.empty else 0
-    level_columns = [f"level_{idx}" for idx in range(max_depth)]
+    data_max_depth = df_treemap["depth"].max() if not df_treemap.empty else 0
+    if max_module_depth is not None and group_by == "module":
+        effective_depth = min(data_max_depth, max_module_depth)
+    else:
+        effective_depth = data_max_depth
+    depth_was_clamped = effective_depth < data_max_depth
+    level_columns = [f"level_{idx}" for idx in range(effective_depth)]
 
     # Create columns for each level of the hierarchy from 'module_parts'
     for level_idx, col_name in enumerate(level_columns):
@@ -744,6 +1004,92 @@ def py_pkg_treemap(
                 parts[current_idx] if current_idx < len(parts) else None
             )
         )
+
+    # Adaptive depth pruning. Iterates from the deepest level upward.
+    # At each level, "significant" children (>= min_lines_for_split) are
+    # counted. If there are 1..max_children significant children, the parent
+    # is expanded (small children merge into "other"). If none are significant,
+    # the parent collapses to a single cell. max_children_for_split only
+    # applies at the deepest level — intermediate levels use min_lines alone,
+    # so large modules like io/analysis always show their sub-packages.
+    rows_were_merged = False
+    if group_by == "module" and (min_lines_for_split > 0 or max_children_for_split):
+        for prune_depth in range(effective_depth - 1, 0, -1):
+            is_deepest_level = prune_depth == effective_depth - 1
+            child_col = f"level_{prune_depth}"
+            parent_cols = [f"level_{idx}" for idx in range(prune_depth)]
+
+            rows_to_drop: list[pd.Index] = []
+            rows_to_add: list[dict] = []
+
+            for _key, group in df_treemap.groupby(parent_cols, dropna=False):
+                unique_children = group[child_col].dropna().unique()
+                if len(unique_children) <= 1:
+                    continue
+
+                child_line_counts = group.groupby(child_col)["line_count"].sum()
+                # Deepest level uses the full threshold; intermediate levels
+                # use a lower cap so large modules keep their sub-packages
+                effective_min = (
+                    min_lines_for_split
+                    if is_deepest_level
+                    else min(min_lines_for_split, 500)
+                )
+                significant = child_line_counts[child_line_counts >= effective_min]
+                n_sig = len(significant)
+                # Only cap children count at the deepest level; intermediate
+                # levels expand freely so large modules keep their sub-packages
+                if is_deepest_level and max_children_for_split is not None:
+                    max_kids = max_children_for_split
+                else:
+                    max_kids = float("inf")
+
+                if 1 <= n_sig <= max_kids:
+                    # EXPAND: keep significant children, merge the rest
+                    sig_set = set(significant.index)
+                    small_mask = group[child_col].map(
+                        lambda val, sig=sig_set: pd.isna(val) or val not in sig
+                    )
+                    merge_rows = group[small_mask]
+                    if merge_rows.empty:
+                        continue
+                    clear_start, is_expand = prune_depth + 1, True
+                else:
+                    # COLLAPSE: no children are significant, merge entire group
+                    merge_rows = group
+                    clear_start, is_expand = prune_depth, False
+
+                rep = merge_rows.iloc[0].copy()
+                rep["cell_value"] = merge_rows["cell_value"].sum()
+                rep["line_count"] = merge_rows["line_count"].sum()
+                if (
+                    has_color_mode
+                    and "color_value" in merge_rows.columns
+                    and rep["line_count"] > 0
+                ):
+                    rep["color_value"] = (
+                        merge_rows["color_value"] * merge_rows["line_count"]
+                    ).sum() / rep["line_count"]
+                if is_expand:
+                    rep[child_col] = "other"
+                else:
+                    rep["depth"] = prune_depth
+                for deeper in range(clear_start, effective_depth):
+                    rep[f"level_{deeper}"] = None
+                rows_to_drop.append(merge_rows.index)
+                rows_to_add.append(rep.to_dict())
+
+            if rows_to_drop:
+                rows_were_merged = True
+                df_treemap = df_treemap.drop(index=pd.Index([]).append(rows_to_drop))
+                df_treemap = pd.concat(
+                    [df_treemap, pd.DataFrame(rows_to_add)], ignore_index=True
+                )
+
+            # Drop level columns that became entirely None after pruning
+            level_columns = [
+                col for col in level_columns if df_treemap[col].notna().any()
+            ]
 
     # Define the path definition based on group_by
     if group_by == "file":
@@ -879,9 +1225,34 @@ def py_pkg_treemap(
     # Create the treemap
     fig = px.treemap(**treemap_params)
 
-    # Fix parent node colors for coverage heatmaps (weighted averages)
+    # Fix parent node colors for coverage heatmaps (weighted averages).
+    # Must run before label wrapping so substring matching still works.
     if has_color_mode and color_by == "coverage":
         _apply_coverage_weighted_averages(fig, df_treemap)
+
+    # Break long labels at underscores so plotly can wrap text instead of
+    # shrinking the font to fit names like "advanced_transformations" on one line.
+    trace = fig.data[0]
+    max_label_len = 18
+    if trace.labels is not None:
+        wrapped = []
+        for label in trace.labels:
+            label_str = str(label)
+            if (
+                len(label_str) > max_label_len
+                and "_" in label_str
+                and " " not in label_str
+            ):
+                mid = len(label_str) // 2
+                best_pos = min(
+                    (pos for pos in range(len(label_str)) if label_str[pos] == "_"),
+                    key=lambda pos: abs(pos - mid),
+                )
+                label_str = (
+                    f"{label_str[: best_pos + 1]}<br>{label_str[best_pos + 1 :]}"
+                )
+            wrapped.append(label_str)
+        fig.data[0].labels = wrapped
 
     # Configure colorbar for heatmap mode
     if has_color_mode and df_treemap["color_value"].notna().any():
@@ -914,36 +1285,54 @@ def py_pkg_treemap(
             )
 
     # Configure hover display using hovertemplate
-    # Indices match the order in custom_data_cols
-    base_hovertemplate = (
-        "<b>%{customdata[2]}</b><br>"  # leaf_label
-        "Path: %{customdata[1]}<br>"  # repo_path_segment
-        "Cell Value: %{value:,}<br>"  # cell_value
-        "Lines: %{customdata[11]:,}<br>"  # line_count
-    )
-
-    # Add color value to hover if heatmap mode is enabled
-    if has_color_mode and not df_treemap["color_value"].isna().all():
-        color_label = "Coverage" if color_by == "coverage" else "Color Value"
-        color_format = ":.1f%" if color_by == "coverage" else ":,.2f"
-        # Last column when in color mode
-        color_value_index = len(custom_data_cols) - 1
-        base_hovertemplate += (
-            f"{color_label}: %{{customdata[{color_value_index}]{color_format}}}<br>"
+    has_depth_limit = depth_was_clamped or rows_were_merged
+    if has_depth_limit:
+        # Aggregated/collapsed nodes inherit per-file customdata from the first
+        # merged row, and Plotly synthetic parents get "(?) " placeholders.
+        # Use only Plotly built-in fields that are correct for all nodes.
+        hovertemplate = (
+            "<b>%{label}</b><br>Value: %{value:,}<br>%{percentEntry}<br><extra></extra>"
+        )
+    else:
+        # Indices match the order in custom_data_cols
+        base_hovertemplate = (
+            "<b>%{customdata[2]}</b><br>"  # leaf_label
+            "Path: %{customdata[1]}<br>"  # repo_path_segment
+            "Cell Value: %{value:,}<br>"  # cell_value
+            "Lines: %{customdata[11]:,}<br>"  # line_count
         )
 
-    hovertemplate = (
-        base_hovertemplate +
-        # percent_of_package_cell_value
-        "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
-        "Classes: %{customdata[4]:,}<br>"  # n_classes
-        "Functions: %{customdata[5]:,}<br>"  # n_functions
-        "Methods: %{customdata[9]:,}<br>"  # n_methods
-        "Internal Imports: %{customdata[6]:,}<br>"  # n_internal_imports
-        "External Imports: %{customdata[7]:,}<br>"  # n_external_imports
-        "Type Imports: %{customdata[8]:,}<br>"  # n_type_checking_imports
-        "<extra></extra>"  # Remove Plotly trace info box
-    )
+        # Add color value to hover if heatmap mode is enabled
+        if has_color_mode and not df_treemap["color_value"].isna().all():
+            color_label = "Coverage" if color_by == "coverage" else "Color Value"
+            color_value_index = len(custom_data_cols) - 1
+            if color_by == "coverage":
+                base_hovertemplate += (
+                    f"{color_label}: %{{customdata[{color_value_index}]:.1f}}%<br>"
+                )
+            else:
+                base_hovertemplate += (
+                    f"{color_label}: %{{customdata[{color_value_index}]:,.2f}}<br>"
+                )
+
+        # Only show Python AST analysis fields when they have data
+        has_analysis_data = df_treemap[analysis_cols].sum().sum() > 0
+        analysis_hover = (
+            "Classes: %{customdata[4]:,}<br>"  # n_classes
+            "Functions: %{customdata[5]:,}<br>"  # n_functions
+            "Methods: %{customdata[6]:,}<br>"  # n_methods
+            "Internal Imports: %{customdata[7]:,}<br>"  # n_internal_imports
+            "External Imports: %{customdata[8]:,}<br>"  # n_external_imports
+            "Type Imports: %{customdata[9]:,}<br>"  # n_type_checking_imports
+            if has_analysis_data
+            else ""
+        )
+        hovertemplate = (
+            base_hovertemplate
+            + "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
+            + analysis_hover
+            + "<extra></extra>"
+        )
     # Apply hovertemplate - applies to all traces, which is fine as we have one
     fig.update_traces(hovertemplate=hovertemplate)
 
@@ -953,6 +1342,11 @@ def py_pkg_treemap(
 
         def _get_coverage_text() -> str:
             """Get coverage text for display."""
+            # When module depth is limited (either by max_module_depth or adaptive
+            # pruning), aggregated parent nodes don't have customdata, so
+            # referencing it would show "(?) " placeholders.
+            if has_depth_limit:
+                return ""
             if color_by == "coverage" and has_color_mode:
                 color_value_index = len(custom_data_cols) - 1
                 return f"<br>%{{customdata[{color_value_index}]:,.1f}}% cov"
@@ -984,14 +1378,15 @@ def py_pkg_treemap(
             False: "label",
         }
 
-        if processed_base_url:  # If link generation is enabled
-            # Create the HTML link part using customdata[2,3] = file_url, leaf_label
+        if processed_base_url and not has_depth_limit:
+            # Link template uses customdata[2,3] = leaf_label, file_url.
+            # Aggregated/synthetic parent nodes lack valid customdata, so
+            # links are only safe when the full hierarchy is shown.
             link_part = (
                 "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a>"
             )
             count_part = count_templates[show_counts]
 
-            # Always use custom template when links are enabled
             template_parts = [link_part]
             if count_part:
                 template_parts.append(f"<br>{count_part}")

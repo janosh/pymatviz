@@ -88,6 +88,12 @@ class StructureWidget(MatterVizWidget):
     background_opacity = tl.Float(allow_none=True, default_value=None).tag(sync=True)
 
     # Isosurface (for volumetric data: CHGCAR, ELFCAR, CUBE files)
+    # Pass volumetric grid data directly instead of loading from data_url.
+    # Each element is a dict matching matterviz VolumetricData:
+    #   grid (3D nested list), grid_dims ([nx,ny,nz]), lattice ([[ax,ay,az],...]),
+    #   origin ([ox,oy,oz]), data_range ({min,max,abs_max,mean}),
+    #   periodic (bool), label (str, optional), data_order (str, optional).
+    volumetric_data = tl.List(tl.Dict(), default_value=[]).tag(sync=True)
     isosurface_settings = tl.Dict(allow_none=True).tag(sync=True)
 
     # UI controls
