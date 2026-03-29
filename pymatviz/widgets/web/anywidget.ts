@@ -262,6 +262,7 @@ const render_structure: Render = ({ model, el }) => {
       `fullscreen_toggle`,
       `png_dpi`,
       `isosurface_settings`,
+      `volumetric_data`,
     ]),
     scene_props: get_scene_props(model),
     lattice_props: get_lattice_props(model),

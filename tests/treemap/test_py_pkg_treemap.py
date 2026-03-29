@@ -249,7 +249,7 @@ def test_py_pkg_treemap_cell_text_fn(
 @pytest.mark.parametrize(
     ("invalid_input", "expected_error"),
     [
-        (lambda _cell: 0, "No Python modules found .* after filtering by cell_size_fn"),
+        (lambda _cell: 0, "No source files found .* after filtering by cell_size_fn"),
         ("invalid_value", "Invalid show_counts='invalid_value'"),
     ],
 )
@@ -308,7 +308,9 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
             if file_urls[i] is not None
         )
     else:
-        assert np.all(file_urls == "None")
+        assert not any(
+            isinstance(url, str) and url.startswith("http") for url in file_urls
+        )
 
     # Check hovertemplate generation
     hovertemplate = trace.hovertemplate
@@ -368,8 +370,8 @@ def test_internal_imports(dummy_pkg_path: Path) -> None:
     hovertemplate = fig.data[0].hovertemplate
     assert hovertemplate is not None
 
-    assert "Internal Imports: %{customdata[6]:,}<br>" in hovertemplate
-    assert "External Imports: %{customdata[7]:,}<br>" in hovertemplate
+    assert "Internal Imports: %{customdata[7]:,}<br>" in hovertemplate
+    assert "External Imports: %{customdata[8]:,}<br>" in hovertemplate
     assert "Classes: %{customdata[4]:,}<br>" in hovertemplate
 
     ids = fig.data[0].ids
@@ -485,7 +487,9 @@ def test_auto_base_url_metadata_exception(
     )
     custom_data = fig.data[0].customdata
     assert custom_data is not None
-    assert np.all(custom_data[:, 3] == "None")
+    assert not any(
+        isinstance(url, str) and url.startswith("http") for url in custom_data[:, 3]
+    )
 
 
 @pytest.mark.parametrize(
@@ -565,10 +569,10 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
             "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
             "Classes: %{customdata[4]:,}<br>"
             "Functions: %{customdata[5]:,}<br>"
-            "Methods: %{customdata[9]:,}<br>"
-            "Internal Imports: %{customdata[6]:,}<br>"
-            "External Imports: %{customdata[7]:,}<br>"
-            "Type Imports: %{customdata[8]:,}<br>"
+            "Methods: %{customdata[6]:,}<br>"
+            "Internal Imports: %{customdata[7]:,}<br>"
+            "External Imports: %{customdata[8]:,}<br>"
+            "Type Imports: %{customdata[9]:,}<br>"
             "<extra></extra>"
         )
 
@@ -587,10 +591,10 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
                 "file_url",
                 "n_classes",
                 "n_functions",
+                "n_methods",
                 "n_internal_imports",
                 "n_external_imports",
                 "n_type_checking_imports",
-                "n_methods",
                 "percent_of_package_cell_value",
                 "line_count",
             ],
@@ -847,8 +851,8 @@ def test_py_pkg_treemap_coverage_scenarios(
         df_modules = pmv.treemap.py_pkg.collect_package_modules(["my_pkg"])
         if not df_modules.empty:
             custom_colors = {
-                row["file_path"]: float(int(idx) * 25 + 50)  # type: ignore[invalid-argument-type]
-                for idx, row in df_modules.head(2).iterrows()
+                row["file_path"]: float(idx * 25 + 50)
+                for idx, row in enumerate(df_modules.head(2).to_dict(orient="records"))
             }
             kwargs["color_by"] = custom_colors
 
@@ -1016,17 +1020,20 @@ def test_py_pkg_treemap_coverage_edge_cases(
     check_zeros: bool,
 ) -> None:
     """Test coverage edge cases and colorbar titles."""
-    kwargs = {"color_by": color_by}
-
     # Setup based on test type
     if test_type == "coverage_with_data":
-        kwargs["coverage_data_file"] = str(mock_coverage_data)
+        fig = pmv.py_pkg_treemap(
+            "my_pkg",
+            color_by=color_by,
+            coverage_data_file=str(mock_coverage_data),
+        )
     elif test_type == "line_count":
         df_modules = pmv.treemap.py_pkg.collect_package_modules(["my_pkg"])
         if color_by not in df_modules.columns:
             pytest.skip(f"Column {color_by} not found in module data")
-
-    fig = pmv.py_pkg_treemap("my_pkg", **kwargs)  # type: ignore[arg-type]
+        fig = pmv.py_pkg_treemap("my_pkg", color_by=color_by)
+    else:
+        fig = pmv.py_pkg_treemap("my_pkg", color_by=color_by)
     assert isinstance(fig, go.Figure)
     trace = fig.data[0]
 
@@ -1282,3 +1289,585 @@ def test_collect_coverage_data_from_url() -> None:
         assert 0 <= coverage <= 100
         assert isinstance(file_path, str)
         assert len(file_path) > 0
+
+
+# === count_lines with comment_prefixes ===
+
+
+@pytest.mark.parametrize(
+    ("content", "prefixes", "expected"),
+    [
+        ("// rust comment\nlet x = 1;\nlet y = 2;\n", ("//",), 2),
+        ("# python comment\nx = 1\ny = 2\n", ("#",), 2),
+        ("-- lua comment\nprint('hi')\n", ("--",), 1),
+        ("// mixed\n# both\nreal_code = 1\n", ("//", "#"), 1),
+        ("code_only\n", ("//",), 1),
+        ("// only comments\n// and more\n", ("//",), 0),
+    ],
+)
+def test_count_lines_comment_prefixes(
+    tmp_path: Path, content: str, prefixes: tuple[str, ...], expected: int
+) -> None:
+    """count_lines strips comments based on the given prefix strings."""
+    test_file = tmp_path / "test.src"
+    test_file.write_text(content)
+    assert pmv.treemap.py_pkg.count_lines(str(test_file), prefixes) == expected
+
+
+# === parse_lcov_file ===
+
+
+@pytest.fixture(scope="module")
+def sample_lcov_file(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Create a sample lcov coverage file with two records."""
+    lcov = tmp_path_factory.mktemp("cov") / "coverage.info"
+    lcov.write_text(
+        "TN:test\n"
+        "SF:/src/analysis/convex_hull.rs\n"
+        "DA:1,1\nDA:2,1\nDA:3,0\n"
+        "LH:2\nLF:3\n"
+        "end_of_record\n"
+        "SF:/src/io/mod.rs\n"
+        "DA:1,1\n"
+        "LH:1\nLF:1\n"
+        "end_of_record\n"
+    )
+    return lcov
+
+
+def test_parse_lcov_file(sample_lcov_file: Path) -> None:
+    """parse_lcov_file extracts per-file coverage percentages."""
+    result = pmv.treemap.py_pkg.parse_lcov_file(str(sample_lcov_file))
+    assert len(result) == 2
+    assert result["/src/analysis/convex_hull.rs"] == pytest.approx(66.667, abs=0.01)
+    assert result["/src/io/mod.rs"] == pytest.approx(100.0)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param("", id="empty file"),
+        pytest.param(
+            "SF:/src/empty.rs\nLH:0\nLF:0\nend_of_record\n", id="LF:0 skipped"
+        ),
+        pytest.param(
+            "SF:/src/lib.rs\nDA:1,1\nLH:1\nLF:1\n", id="missing end_of_record"
+        ),
+    ],
+)
+def test_parse_lcov_file_returns_empty(tmp_path: Path, content: str) -> None:
+    """parse_lcov_file returns empty dict for edge-case inputs."""
+    lcov = tmp_path / "test.info"
+    lcov.write_text(content)
+    assert pmv.treemap.py_pkg.parse_lcov_file(str(lcov)) == {}
+
+
+# === collect_source_modules_from_dir ===
+
+
+@pytest.fixture(scope="module")
+def rust_like_source_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Create a Rust-like source directory structure."""
+    src = tmp_path_factory.mktemp("src")
+    (src / "lib.rs").write_text("pub mod analysis;\npub mod io;\n")
+
+    analysis = src / "analysis"
+    analysis.mkdir()
+    (analysis / "mod.rs").write_text("pub mod convex_hull;\n")
+    (analysis / "convex_hull.rs").write_text(
+        "// Convex hull implementation\n"
+        "pub fn compute() -> Vec<f64> {\n"
+        "    vec![1.0, 2.0]\n"
+        "}\n"
+    )
+
+    io_dir = src / "io"
+    io_dir.mkdir()
+    (io_dir / "mod.rs").write_text("pub mod lmdb;\n")
+    lmdb_dir = io_dir / "lmdb"
+    lmdb_dir.mkdir()
+    (lmdb_dir / "dataset.rs").write_text("pub struct Dataset;\n")
+
+    return src
+
+
+def test_collect_source_modules_basic(rust_like_source_dir: Path) -> None:
+    """collect_source_modules_from_dir finds all .rs files and builds hierarchy."""
+    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+        str(rust_like_source_dir), ["my_crate"], file_extensions=(".rs",)
+    )
+    assert set(df_result.columns) >= {
+        "package",
+        "full_module",
+        "filename",
+        "line_count",
+        "module_parts",
+        "depth",
+        "repo_path_segment",
+    }
+    assert (df_result["package"] == "my_crate").all()
+    assert (df_result["n_classes"] == 0).all()
+    assert (df_result["n_functions"] == 0).all()
+
+    stems = set(df_result["filename"])
+    assert stems >= {"lib", "mod", "convex_hull", "dataset"}
+
+
+def test_collect_source_modules_sibling_collision(
+    rust_like_source_dir: Path,
+) -> None:
+    """Sibling file+dir collision nests the file inside the directory namespace."""
+    collision_file = rust_like_source_dir / "analysis.rs"
+    collision_file.write_text("// new-style mod root\n")
+    try:
+        df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+            str(rust_like_source_dir), ["my_crate"], file_extensions=(".rs",)
+        )
+        collision_rows = df_result[
+            (df_result["filename"] == "analysis") & (df_result["directory"] == "root")
+        ]
+        assert len(collision_rows) == 1
+        assert collision_rows.iloc[0]["module_parts"] == ["analysis", "analysis"]
+    finally:
+        collision_file.unlink(missing_ok=True)
+
+
+def test_collect_source_modules_file_extensions_filter(
+    rust_like_source_dir: Path,
+) -> None:
+    """Only files matching file_extensions are included."""
+    extra_file = rust_like_source_dir / "readme.md"
+    extra_file.write_text("# Readme\n")
+    try:
+        df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+            str(rust_like_source_dir), ["proj"], file_extensions=(".rs",)
+        )
+        assert "readme" not in set(df_result["filename"])
+    finally:
+        extra_file.unlink(missing_ok=True)
+
+
+def test_collect_source_modules_ignored_dirs(
+    rust_like_source_dir: Path,
+) -> None:
+    """Directories listed in ignored_dirs are skipped."""
+    target_dir = rust_like_source_dir / "target"
+    target_dir.mkdir(exist_ok=True)
+    (target_dir / "debug.rs").write_text("fn main() {}\n")
+    try:
+        df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+            str(rust_like_source_dir), ["proj"], file_extensions=(".rs",)
+        )
+        assert "debug" not in set(df_result["filename"])
+    finally:
+        (target_dir / "debug.rs").unlink(missing_ok=True)
+        target_dir.rmdir()
+
+
+def test_collect_source_modules_nonexistent_dir() -> None:
+    """FileNotFoundError raised for non-existent source_dir."""
+    with pytest.raises(FileNotFoundError, match="Source directory not found"):
+        pmv.treemap.py_pkg.collect_source_modules_from_dir(
+            "/nonexistent/path", ["proj"]
+        )
+
+
+def test_collect_source_modules_empty_dir(tmp_path: Path) -> None:
+    """Empty directory returns empty DataFrame."""
+    empty = tmp_path / "empty_src"
+    empty.mkdir()
+    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+        str(empty), ["proj"], file_extensions=(".rs",)
+    )
+    assert df_result.empty
+
+
+def test_collect_source_modules_mixed_extensions_comment_prefix(
+    tmp_path: Path,
+) -> None:
+    """Mixed file extensions use per-file comment prefixes, not a union."""
+    src = tmp_path / "mixed"
+    src.mkdir()
+    (src / "helper.py").write_text("# py comment\n// code in python\nx = 1\n")
+    (src / "lib.rs").write_text("// rs comment\n# code in rust\nlet x = 1;\n")
+
+    df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
+        str(src), ["proj"], file_extensions=(".py", ".rs")
+    )
+    py_row = df_result[df_result["filename"] == "helper"].iloc[0]
+    rs_row = df_result[df_result["filename"] == "lib"].iloc[0]
+    assert py_row["line_count"] == 2, "// is not a comment in Python"
+    assert rs_row["line_count"] == 2, "# is not a comment in Rust"
+
+
+# === collect_coverage_data lcov support ===
+
+
+@pytest.mark.parametrize(
+    ("ext", "expected_parser"),
+    [(".info", "lcov"), (".lcov", "lcov"), (".json", "json")],
+)
+def test_collect_coverage_data_detects_format(
+    tmp_path: Path, ext: str, expected_parser: str
+) -> None:
+    """collect_coverage_data auto-detects lcov vs JSON by file extension."""
+    cov_file = tmp_path / f"coverage{ext}"
+    if expected_parser == "lcov":
+        cov_file.write_text("SF:/src/lib.rs\nDA:1,1\nLH:1\nLF:1\nend_of_record\n")
+        result = pmv.treemap.py_pkg.collect_coverage_data(str(cov_file))
+        assert result["/src/lib.rs"] == pytest.approx(100.0)
+    else:
+        cov_file.write_text(
+            json.dumps(
+                {"files": {"src/lib.py": {"summary": {"percent_covered": 75.0}}}}
+            )
+        )
+        result = pmv.treemap.py_pkg.collect_coverage_data(str(cov_file))
+        assert len(result) == 1
+        assert next(iter(result.values())) == pytest.approx(75.0)
+
+
+# === py_pkg_treemap with source_dir integration ===
+
+
+@pytest.fixture(scope="module")
+def rust_project(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
+    """Create a minimal Rust project with source files and lcov coverage."""
+    base = tmp_path_factory.mktemp("rust_proj")
+    src = base / "src"
+    src.mkdir()
+
+    (src / "lib.rs").write_text("pub mod utils;\npub fn main() {}\n")
+    utils = src / "utils"
+    utils.mkdir()
+    (utils / "mod.rs").write_text("pub fn helper() {}\n")
+    (utils / "math.rs").write_text(
+        "// math utilities\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n"
+    )
+
+    lcov = base / "lcov.info"
+    lcov.write_text(
+        f"SF:{src}/lib.rs\nLH:2\nLF:2\nend_of_record\n"
+        f"SF:{src}/utils/mod.rs\nLH:1\nLF:1\nend_of_record\n"
+        f"SF:{src}/utils/math.rs\nLH:2\nLF:3\nend_of_record\n"
+    )
+    return {"src": src, "lcov": lcov}
+
+
+def test_treemap_source_dir_basic(rust_project: dict[str, Path]) -> None:
+    """py_pkg_treemap with source_dir creates a valid figure, omits analysis hover."""
+    fig = pmv.py_pkg_treemap(
+        "my_crate",
+        source_dir=str(rust_project["src"]),
+        file_extensions=(".rs",),
+        base_url=None,
+    )
+    assert isinstance(fig, go.Figure)
+    labels = set(fig.data[0].labels)
+    assert "lib" in labels
+    assert "math" in labels
+
+    hover = fig.data[0].hovertemplate
+    for field in ("Classes:", "Functions:", "Methods:"):
+        assert field not in hover
+
+
+def test_treemap_source_dir_with_coverage(
+    rust_project: dict[str, Path],
+) -> None:
+    """py_pkg_treemap with source_dir + lcov coverage applies colors."""
+    fig = pmv.py_pkg_treemap(
+        "my_crate",
+        source_dir=str(rust_project["src"]),
+        file_extensions=(".rs",),
+        color_by="coverage",
+        coverage_data_file=str(rust_project["lcov"]),
+        base_url=None,
+    )
+    assert isinstance(fig, go.Figure)
+    trace = fig.data[0]
+    assert trace.customdata is not None
+    assert trace.customdata.shape[1] == 13  # 12 base + color_value
+    assert "Coverage:" in trace.hovertemplate
+
+
+def test_treemap_source_dir_auto_base_url_disabled(
+    rust_project: dict[str, Path],
+) -> None:
+    """base_url='auto' is silently disabled when source_dir is provided."""
+    fig = pmv.py_pkg_treemap(
+        "my_crate",
+        source_dir=str(rust_project["src"]),
+        file_extensions=(".rs",),
+        base_url="auto",
+    )
+    assert isinstance(fig, go.Figure)
+    trace = fig.data[0]
+    file_urls = trace.customdata[:, 3]
+    assert not any(isinstance(url, str) and url.startswith("http") for url in file_urls)
+
+
+def test_treemap_source_dir_explicit_base_url(
+    rust_project: dict[str, Path],
+) -> None:
+    """Explicit base_url generates links even in source_dir mode."""
+    base = "https://github.com/test/repo/blob/main"
+    fig = pmv.py_pkg_treemap(
+        "my_crate",
+        source_dir=str(rust_project["src"]),
+        file_extensions=(".rs",),
+        base_url=base,
+    )
+    trace = fig.data[0]
+    file_urls = [str(url) for url in trace.customdata[:, 3]]
+    assert any(base in url for url in file_urls)
+
+
+def test_treemap_python_includes_analysis_hover() -> None:
+    """Standard Python mode still includes analysis fields in hover."""
+    fig = pmv.py_pkg_treemap("my_pkg", base_url=None)
+    hover = fig.data[0].hovertemplate
+    assert "Classes:" in hover
+    assert "Functions:" in hover
+
+
+def test_treemap_source_dir_no_matching_files(tmp_path: Path) -> None:
+    """source_dir with no matching file_extensions raises ValueError."""
+    empty = tmp_path / "no_rs"
+    empty.mkdir()
+    (empty / "readme.md").write_text("# hello\n")
+    with pytest.raises(ValueError, match="No source files found"):
+        pmv.py_pkg_treemap("proj", source_dir=str(empty), file_extensions=(".rs",))
+
+
+def _write_py_lines(path: Path, n_lines: int) -> None:
+    """Write a Python file with n_lines of executable code."""
+    path.write_text("\n".join(f"x_{idx} = {idx}" for idx in range(n_lines)))
+
+
+@pytest.fixture(scope="module")
+def deep_pkg_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Create a package with 3 levels of nesting for depth-pruning tests.
+
+    Structure (line counts chosen to exercise adaptive thresholds):
+      deep_pkg/
+        alpha/           (top module with 3 sub-packages → expandable)
+          big/           (800 lines total → qualifies as significant child)
+            core.py      500
+            helpers.py   300
+          medium/        (400 lines total)
+            utils.py     400
+          tiny/          (50 lines → below min_lines threshold)
+            small.py     50
+        beta/            (top module with >5 sub-packages → too many children)
+          s1.py .. s6.py (100 lines each)
+        gamma/           (top module, single file → no split needed)
+          only.py        200
+    """
+    src_dir = tmp_path_factory.mktemp("deep_src")
+    pkg = src_dir / "deep_pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").touch()
+
+    # alpha — 3 sub-packages, suitable for expansion
+    alpha = pkg / "alpha"
+    alpha.mkdir()
+    (alpha / "__init__.py").touch()
+
+    for sub_name, files in {
+        "big": {"core.py": 500, "helpers.py": 300},
+        "medium": {"utils.py": 400},
+        "tiny": {"small.py": 50},
+    }.items():
+        sub_dir = alpha / sub_name
+        sub_dir.mkdir()
+        (sub_dir / "__init__.py").touch()
+        for fname, n_lines in files.items():
+            _write_py_lines(sub_dir / fname, n_lines)
+
+    # beta — 6 sub-files directly under beta (no sub-packages)
+    beta = pkg / "beta"
+    beta.mkdir()
+    (beta / "__init__.py").touch()
+    for idx in range(6):
+        _write_py_lines(beta / f"s{idx}.py", 100)
+
+    # gamma — single file
+    gamma = pkg / "gamma"
+    gamma.mkdir()
+    (gamma / "__init__.py").touch()
+    _write_py_lines(gamma / "only.py", 200)
+
+    return src_dir
+
+
+@pytest.fixture(autouse=False)
+def _deep_pkg_on_path(deep_pkg_path: Path) -> Generator[None, None, None]:
+    """Temporarily add the deep package source directory to sys.path."""
+    path_str = str(deep_pkg_path)
+    sys.path.insert(0, path_str)
+    yield
+    sys.path.remove(path_str)
+
+
+@pytest.mark.usefixtures("_deep_pkg_on_path")
+class TestMaxModuleDepth:
+    """Tests for the max_module_depth parameter."""
+
+    @pytest.mark.parametrize("depth", [1, 2, 3])
+    def test_max_depth_limits_nesting(self, depth: int) -> None:
+        """Deeper path components should not appear when depth is capped."""
+        fig = pmv.py_pkg_treemap("deep_pkg", max_module_depth=depth, base_url=None)
+        trace = fig.data[0]
+        max_id_depth = max(
+            id_val.count("/") for id_val in trace.ids if isinstance(id_val, str)
+        )
+        assert max_id_depth <= depth
+
+        if depth == 1:
+            # At depth 1, only top-level modules appear — no sub-packages
+            leaf_labels = {
+                lbl
+                for lbl, parent in zip(trace.labels, trace.parents, strict=False)
+                if parent
+            }
+            assert leaf_labels >= {"alpha", "beta", "gamma"}
+            assert leaf_labels.isdisjoint({"big", "core", "helpers"})
+
+
+@pytest.mark.usefixtures("_deep_pkg_on_path")
+class TestAdaptivePruning:
+    """Tests for min_lines_for_split and max_children_for_split."""
+
+    @pytest.mark.parametrize(
+        ("min_lines", "max_children"),
+        [
+            (300, None),  # all 6 children (100 lines each) below min_lines
+            (50, 3),  # 6 children exceeds max_children=3
+        ],
+    )
+    def test_collapse_beta_children(
+        self, min_lines: int, max_children: int | None
+    ) -> None:
+        """Beta's 6 children (100 lines each) get collapsed."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=2,
+            min_lines_for_split=min_lines,
+            max_children_for_split=max_children,
+            base_url=None,
+        )
+        labels = set(fig.data[0].labels)
+        assert "beta" in labels
+        assert labels.isdisjoint({f"s{idx}" for idx in range(6)})
+
+    @pytest.mark.parametrize(
+        ("min_lines", "expected_present", "expected_absent"),
+        [
+            # big(800) & medium(400) significant (≥200), tiny(50) merges to "other"
+            (200, {"big", "medium", "other"}, {"tiny"}),
+            # only big(800) significant (≥600), medium & tiny merge to "other"
+            (600, {"big", "other"}, {"medium", "tiny"}),
+        ],
+    )
+    def test_other_bucket_for_small_children(
+        self,
+        min_lines: int,
+        expected_present: set[str],
+        expected_absent: set[str],
+    ) -> None:
+        """Children below min_lines merge into an 'other' bucket."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=3,
+            min_lines_for_split=min_lines,
+            max_children_for_split=5,
+            base_url=None,
+        )
+        labels = set(fig.data[0].labels)
+        assert expected_present <= labels
+        assert labels.isdisjoint(expected_absent)
+
+    def test_max_children_only_at_deepest_level(self) -> None:
+        """max_children_for_split does not collapse intermediate levels."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=3,
+            min_lines_for_split=50,
+            max_children_for_split=2,
+            base_url=None,
+        )
+        labels = set(fig.data[0].labels)
+        # alpha has 3 sub-packages (big, medium, tiny) which exceeds max_children=2,
+        # but max_children only applies at the deepest level, so all 3 survive
+        assert {"alpha", "big", "medium"} <= labels
+        # At the deepest level, alpha/big has 2 children (core, helpers) ≤ 2 → expanded
+        assert {"core", "helpers"} <= labels
+
+    def test_aggregated_values_are_summed(self) -> None:
+        """Collapsed groups have summed line counts."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=2,
+            min_lines_for_split=500,
+            base_url=None,
+        )
+        labels = list(fig.data[0].labels)
+        values = list(fig.data[0].values)
+        # beta: 6 files x 100 lines = 600 total, all < 500 -> collapsed
+        assert values[labels.index("beta")] == pytest.approx(600, abs=5)
+
+    def test_min_lines_uses_line_count_not_cell_value(self) -> None:
+        """min_lines_for_split must compare against line_count, not cell_value."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=3,
+            min_lines_for_split=200,
+            max_children_for_split=5,
+            cell_size_fn=lambda _m: 1,
+            base_url=None,
+        )
+        labels = set(fig.data[0].labels)
+        # alpha sub-packages: big (800 lines), medium (400 lines) → both >= 200
+        # With cell_value each file is 1, sum ≤ 2 → would wrongly collapse
+        assert "big" in labels, "big (800 lines) should survive min_lines=200"
+        assert "medium" in labels, "medium (400 lines) should survive min_lines=200"
+
+    @pytest.mark.parametrize(
+        "base_url",
+        [None, "https://github.com/test/repo/blob/main"],
+        ids=["no_links", "with_links"],
+    )
+    def test_depth_limiting_omits_customdata_from_templates(
+        self, base_url: str | None, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Depth limiting skips customdata refs in text and hover templates."""
+        monkeypatch.setattr(
+            pmv.treemap.py_pkg, "collect_coverage_data", lambda *_a, **_kw: {}
+        )
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=2,
+            color_by="coverage",
+            base_url=base_url,
+        )
+        text_template = fig.data[0].texttemplate or ""
+        assert "customdata" not in text_template
+        assert "%{label}" in text_template
+
+        hover_template = fig.data[0].hovertemplate or ""
+        assert "customdata" not in hover_template
+        assert "%{label}" in hover_template
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"max_module_depth": -1},
+            {"min_lines_for_split": -5},
+            {"max_children_for_split": -2},
+        ],
+    )
+    def test_negative_params_raise(self, kwargs: dict[str, int]) -> None:
+        """Negative depth/pruning parameters raise ValueError."""
+        with pytest.raises(ValueError, match="must be non-negative"):
+            pmv.py_pkg_treemap("deep_pkg", **kwargs)  # type: ignore[arg-type]

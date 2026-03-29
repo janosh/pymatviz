@@ -27,4 +27,4 @@ jobs:
         working-directory: pymatviz/widgets/web
 
       - name: Run prek
-        uses: j178/prek-action@v1
+        uses: j178/prek-action@v2

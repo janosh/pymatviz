@@ -124,17 +124,31 @@ pmv.io.save_and_compress_svg(fig_cov, "py-pkg-treemap-pymatviz-coverage")
 coverage_data_file = "https://github.com/user-attachments/files/21545087/2025-07-31-pymatgen-coverage.json"
 # coverage_data_file = f"{pmv.ROOT}/tmp/2025-07-31-pymatgen-coverage.json"
 
+# Namespace packages have their own repos and coverage reports, so they show
+# as 0% coverage here which is misleading. Exclude them.
+NAMESPACE_PKGS = {"analysis.defects", "analysis.diffusion"}
+
+
+def _pmg_cell_size(cell: pmv.treemap.py_pkg.ModuleStats) -> int:
+    """Filter out namespace packages and tiny files."""
+    dotted = f".{cell.full_module}."
+    if any(f".{ns_pkg}." in dotted for ns_pkg in NAMESPACE_PKGS):
+        return 0
+    return cell.line_count if cell.line_count >= 20 else 0
+
+
 fig_cov_range = pmv.py_pkg_treemap(
     pymatgen,
     color_by="coverage",
     coverage_data_file=coverage_data_file,  # Use existing coverage data
     color_range=(0, 100),  # Manual range: 0% (red) to 100% (green)
-    cell_size_fn=lambda cell: cell.line_count if cell.line_count >= 20 else 0,
+    cell_size_fn=_pmg_cell_size,
     show_counts="value",
     color_continuous_scale="RdYlGn",  # Red-Yellow-Green scale for coverage
+    max_module_depth=3,
+    min_lines_for_split=500,  # only expand if every child has >=500 lines
+    max_children_for_split=5,  # only expand if parent has <=5 children
 )
-# title_range = "pymatgen: Coverage Heatmap with Manual Range (0-100%)"
-# fig_cov_range.layout.title.update(text=title_range, x=0.5, y=0.97, font_size=18)
 fig_cov_range.layout.margin = dict(l=0, r=0, b=0, t=0)
 fig_cov_range.show()
 pmv.io.save_and_compress_svg(fig_cov_range, "py-pkg-treemap-pymatgen-coverage")
