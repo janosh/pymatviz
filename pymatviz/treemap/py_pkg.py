@@ -796,7 +796,7 @@ def py_pkg_treemap(
 
             for _key, group in df_treemap.groupby(parent_cols, dropna=False):
                 unique_children = group[child_col].dropna().unique()
-                if len(unique_children) <= 1:
+                if len(unique_children) == 0:
                     continue
 
                 child_line_counts = group.groupby(child_col)["line_count"].sum()
@@ -816,7 +816,7 @@ def py_pkg_treemap(
                 else:
                     max_kids = float("inf")
 
-                if 1 <= n_sig <= max_kids:
+                if 2 <= n_sig <= max_kids:
                     # EXPAND: keep significant children, merge the rest
                     sig_set = set(significant.index)
                     small_mask = group[child_col].map(
@@ -1005,7 +1005,7 @@ def py_pkg_treemap(
     # Break long labels at underscores so plotly can wrap text instead of
     # shrinking the font to fit names like "advanced_transformations" on one line.
     trace = fig.data[0]
-    max_label_len = 18
+    max_label_len = 16
     if trace.labels is not None:
         wrapped = []
         for label in trace.labels:

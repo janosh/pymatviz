@@ -1413,8 +1413,8 @@ class TestAdaptivePruning:
         [
             # big(800) & medium(400) significant (≥200), tiny(50) merges to "other"
             (200, {"big", "medium", "other"}, {"tiny"}),
-            # only big(800) significant (≥600), medium & tiny merge to "other"
-            (600, {"big", "other"}, {"medium", "tiny"}),
+            # only big(800) significant (≥600) → 1 child < 2 → COLLAPSE entirely
+            (600, {"alpha"}, {"big", "medium", "tiny"}),
         ],
     )
     def test_other_bucket_for_small_children(
