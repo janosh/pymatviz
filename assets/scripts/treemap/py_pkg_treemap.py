@@ -130,11 +130,11 @@ NAMESPACE_PKGS = {"analysis.defects", "analysis.diffusion"}
 
 
 def _pmg_cell_size(cell: pmv.treemap.py_pkg.ModuleStats) -> int:
-    """Filter out namespace packages and tiny files."""
+    """Filter out namespace packages and modules under 400 lines."""
     dotted = f".{cell.full_module}."
     if any(f".{ns_pkg}." in dotted for ns_pkg in NAMESPACE_PKGS):
         return 0
-    return cell.line_count if cell.line_count >= 20 else 0
+    return cell.line_count if cell.line_count >= 400 else 0
 
 
 fig_cov_range = pmv.py_pkg_treemap(
