@@ -1486,9 +1486,12 @@ class TestAdaptivePruning:
         ids=["no_links", "with_links"],
     )
     def test_depth_limiting_omits_customdata_from_templates(
-        self, base_url: str | None
+        self, base_url: str | None, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Depth limiting skips customdata refs in text and hover templates."""
+        monkeypatch.setattr(
+            pmv.treemap.py_pkg, "collect_coverage_data", lambda *_a, **_kw: {}
+        )
         fig = pmv.py_pkg_treemap(
             "deep_pkg",
             max_module_depth=2,

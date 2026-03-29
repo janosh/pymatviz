@@ -766,6 +766,7 @@ def py_pkg_treemap(
         effective_depth = min(data_max_depth, max_module_depth)
     else:
         effective_depth = data_max_depth
+    depth_was_clamped = effective_depth < data_max_depth
     level_columns = [f"level_{idx}" for idx in range(effective_depth)]
 
     # Create columns for each level of the hierarchy from 'module_parts'
@@ -783,6 +784,7 @@ def py_pkg_treemap(
     # collapses to a single cell. max_children_for_split only applies at
     # the deepest level — intermediate levels use min_lines alone, so large
     # modules like io/analysis always show their sub-packages.
+    rows_were_merged = False
     if group_by == "module" and (min_lines_for_split > 0 or max_children_for_split):
         for prune_depth in range(effective_depth - 1, 0, -1):
             is_deepest_level = prune_depth == effective_depth - 1
@@ -850,6 +852,7 @@ def py_pkg_treemap(
                 rows_to_add.append(rep.to_dict())
 
             if rows_to_drop:
+                rows_were_merged = True
                 df_treemap = df_treemap.drop(index=pd.Index([]).append(rows_to_drop))
                 df_treemap = pd.concat(
                     [df_treemap, pd.DataFrame(rows_to_add)], ignore_index=True
@@ -1050,11 +1053,7 @@ def py_pkg_treemap(
             )
 
     # Configure hover display using hovertemplate
-    has_depth_limit = (
-        max_module_depth is not None
-        or min_lines_for_split > 0
-        or max_children_for_split is not None
-    )
+    has_depth_limit = depth_was_clamped or rows_were_merged
     if has_depth_limit:
         # Aggregated/collapsed nodes inherit per-file customdata from the first
         # merged row, and Plotly synthetic parents get "(?) " placeholders.
