@@ -158,7 +158,7 @@ def _chem_env_sunburst_chem_env(
                     )
                     chem_env_data.append(chem_env_dict)
 
-            except (ImportError, RuntimeError) as exc:
+            except (ImportError, RuntimeError, KeyError) as exc:
                 warnings.warn(
                     f"ChemEnv analysis failed for structure: {exc}",
                     UserWarning,

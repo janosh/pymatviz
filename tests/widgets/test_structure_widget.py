@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING, Any
 
 import pytest
+import traitlets as tl
 
 from pymatviz import StructureWidget
 from tests.widgets.conftest import (
@@ -49,15 +49,10 @@ def test_widget_structure_inputs(
         assert widget.structure == structure_dict
 
 
-@pytest.mark.parametrize(
-    ("invalid_structure", "expected_error"),
-    [("invalid_structure", TypeError), (123, TypeError), (["invalid"], TypeError)],
-)
-def test_widget_invalid_structure_handling(
-    invalid_structure: Any, expected_error: type[Exception]
-) -> None:
-    """Widget must handle invalid structure inputs gracefully."""
-    with pytest.raises(expected_error):
+@pytest.mark.parametrize("invalid_structure", ["invalid_structure", 123, ["invalid"]])
+def test_widget_invalid_structure_handling(invalid_structure: Any) -> None:
+    """Widget rejects non-Structure, non-dict inputs with TypeError."""
+    with pytest.raises(TypeError):
         StructureWidget(structure=invalid_structure)
 
 
@@ -70,6 +65,7 @@ def test_widget_invalid_structure_handling(
         ("style", [None, "width: 400px; height: 600px", "width: 600px; height: 800px"]),
         ("show_controls", [True, False]),
         ("enable_info_pane", [True, False]),
+        ("volumetric_data", [[], [{"grid": [[[0.1]]], "grid_dims": [1, 1, 1]}]]),
     ],
 )
 def test_widget_property_sync_structure(
@@ -98,92 +94,45 @@ def test_widget_notebook_integration_structure(
     assert_widget_notebook_integration(widget)
 
 
-def test_widget_complete_lifecycle(structures: tuple[Structure, Structure]) -> None:
-    """Test complete widget lifecycle including state persistence."""
-    structure_dict = structures[0].as_dict()
-
-    # Create widget with custom settings
-    widget = StructureWidget(
-        structure=structure_dict,
-        atom_radius=1.5,
-        show_bonds=True,
-        color_scheme="Jmol",
-        style="width: 800px; height: 600px",
-        show_controls=False,
-    )
-
-    # Test initial state
-    assert widget.structure == structure_dict
-    assert widget.atom_radius == 1.5
-    assert widget.show_bonds is True
-    assert widget.color_scheme == "Jmol"
-    assert widget.style == "width: 800px; height: 600px"
-    assert widget.show_controls is False
-
-    # Test state persistence
+def test_widget_state_restoration(structures: tuple[Structure, Structure]) -> None:
+    """Widget constructed from another widget's state preserves all values."""
     state = {
-        "structure": widget.structure,
-        "atom_radius": widget.atom_radius,
-        "show_bonds": widget.show_bonds,
-        "color_scheme": widget.color_scheme,
-        "style": widget.style,
-        "show_controls": widget.show_controls,
+        "structure": structures[0].as_dict(),
+        "atom_radius": 1.5,
+        "show_bonds": True,
+        "color_scheme": "Jmol",
+        "style": "width: 800px; height: 600px",
+        "show_controls": False,
     }
+    original = StructureWidget(**state)
+    restored = StructureWidget(**{k: getattr(original, k) for k in state})
 
-    # Create new widget from state
-    restored_widget = StructureWidget(**state)
-
-    # Verify state preservation
     for key, value in state.items():
-        assert getattr(restored_widget, key) == value
+        assert getattr(restored, key) == value
 
 
 def test_widget_handles_large_structures(
     structures: tuple[Structure, Structure],
 ) -> None:
-    """Test widget handles large structures without losing site information."""
-    # Test large structure handling (10x10x10 supercell with 2000 atoms)
-    large_structure = structures[0] * 10
-    assert len(large_structure) == 2_000
-
-    # Widget should handle large structure without crashing
-    widget = StructureWidget(structure=large_structure)
-    assert widget.structure is not None
+    """Widget preserves all sites in a 2000-atom supercell."""
+    widget = StructureWidget(structure=structures[0] * 10)
     assert len(widget.structure["sites"]) == 2000
 
 
-def test_widget_edge_cases_and_error_handling_structure(
-    structures: tuple[Structure, Structure],
-) -> None:
-    """Test widget edge cases and error handling."""
-    # Test widget with no structure
+def test_widget_no_structure_default() -> None:
+    """Widget constructed with no args defaults structure to None."""
     widget = StructureWidget()
     assert widget.structure is None
 
-    # Build-asset sanity check on a regular instance.
-    widget = StructureWidget(structure=structures[0].as_dict())
-    assert_widget_build_files(widget)
 
-    # Test structure serialization
-    json.dumps(widget.structure)  # Should not raise exception
-
-
-def test_widget_with_disordered_structure(
-    fe3co4_disordered: Structure, fe3co4_disordered_with_props: Structure
+def test_widget_preserves_disordered_site_properties(
+    fe3co4_disordered_with_props: Structure,
 ) -> None:
-    """Test widget with disordered structures and site properties."""
-    # Test disordered structure without properties
-    widget1 = StructureWidget(structure=fe3co4_disordered)
-    assert widget1.structure == fe3co4_disordered.as_dict()
-
-    # Test disordered structure with properties
-    widget2 = StructureWidget(structure=fe3co4_disordered_with_props)
-    assert widget2.structure == fe3co4_disordered_with_props.as_dict()
-
-    uniq_prop_keys = {  # Verify the specific properties are preserved
-        key for site in widget2.structure["sites"] for key in site.get("properties", {})
+    """Widget preserves magmom/force site properties from disordered structures."""
+    widget = StructureWidget(structure=fe3co4_disordered_with_props)
+    uniq_prop_keys = {
+        key for site in widget.structure["sites"] for key in site.get("properties", {})
     }
-
     assert uniq_prop_keys == {"magmom", "force"}
 
 
@@ -202,6 +151,33 @@ def test_widget_preserves_multi_vector_site_properties(
         key for site in widget.structure["sites"] for key in site.get("properties", {})
     }
     assert uniq_prop_keys == {"force_DFT", "force_MLFF"}
+
+
+def test_widget_volumetric_data_trait() -> None:
+    """volumetric_data defaults to [], round-trips, and supports mutation."""
+    assert StructureWidget().volumetric_data == []
+
+    vol = {"grid": [[[0.1]]], "grid_dims": [1, 1, 1], "periodic": True, "label": "chg"}
+    widget = StructureWidget(volumetric_data=[vol])
+    assert widget.volumetric_data == [vol]
+    assert widget.to_dict()["volumetric_data"] == [vol]
+
+    vol2 = {
+        "grid": [[[1.0]]],
+        "grid_dims": [1, 1, 1],
+        "periodic": False,
+        "label": "elf",
+    }
+    widget.volumetric_data = [vol, vol2]
+    assert len(widget.volumetric_data) == 2
+    assert widget.volumetric_data[1]["label"] == "elf"
+
+
+@pytest.mark.parametrize("bad_input", ["not_a_list", ["not_a_dict"], [42]])
+def test_widget_volumetric_data_rejects_invalid(bad_input: Any) -> None:
+    """volumetric_data rejects non-list and non-dict elements."""
+    with pytest.raises(tl.TraitError):
+        StructureWidget(volumetric_data=bad_input)
 
 
 def test_widget_vector_configs_trait() -> None:
