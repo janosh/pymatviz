@@ -1103,14 +1103,20 @@ def py_pkg_treemap(
             False: "label",
         }
 
-        if processed_base_url:  # If link generation is enabled
-            # Create the HTML link part using customdata[2,3] = file_url, leaf_label
+        has_depth_limit = (
+            max_module_depth is not None
+            or min_lines_for_split > 0
+            or max_children_for_split is not None
+        )
+        if processed_base_url and not has_depth_limit:
+            # Link template uses customdata[2,3] = leaf_label, file_url.
+            # Aggregated/synthetic parent nodes lack valid customdata, so
+            # links are only safe when the full hierarchy is shown.
             link_part = (
                 "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a>"
             )
             count_part = count_templates[show_counts]
 
-            # Always use custom template when links are enabled
             template_parts = [link_part]
             if count_part:
                 template_parts.append(f"<br>{count_part}")

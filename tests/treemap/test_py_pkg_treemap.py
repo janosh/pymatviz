@@ -1480,14 +1480,23 @@ class TestAdaptivePruning:
         assert "big" in labels, "big (800 lines) should survive min_lines=200"
         assert "medium" in labels, "medium (400 lines) should survive min_lines=200"
 
-    def test_coverage_text_omits_customdata(self) -> None:
-        """Coverage text skips customdata refs when depth limiting is active."""
+    @pytest.mark.parametrize(
+        "base_url",
+        [None, "https://github.com/test/repo/blob/main"],
+        ids=["no_links", "with_links"],
+    )
+    def test_depth_limiting_omits_customdata_from_template(
+        self, base_url: str | None
+    ) -> None:
+        """Depth limiting skips customdata refs in text (links and coverage)."""
         fig = pmv.py_pkg_treemap(
-            "deep_pkg", max_module_depth=2, color_by="coverage", base_url=None
+            "deep_pkg",
+            max_module_depth=2,
+            color_by="coverage",
+            base_url=base_url,
         )
         template = fig.data[0].texttemplate or ""
         assert "customdata" not in template
-        # Template should still render label and value
         assert "%{label}" in template
         assert "%{value" in template
 
