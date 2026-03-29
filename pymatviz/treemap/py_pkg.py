@@ -1005,7 +1005,7 @@ def py_pkg_treemap(
     # Break long labels at underscores so plotly can wrap text instead of
     # shrinking the font to fit names like "advanced_transformations" on one line.
     trace = fig.data[0]
-    max_label_len = 16
+    max_label_len = 14
     if trace.labels is not None:
         wrapped = []
         for label in trace.labels:
