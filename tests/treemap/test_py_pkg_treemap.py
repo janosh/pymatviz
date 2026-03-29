@@ -1485,20 +1485,23 @@ class TestAdaptivePruning:
         [None, "https://github.com/test/repo/blob/main"],
         ids=["no_links", "with_links"],
     )
-    def test_depth_limiting_omits_customdata_from_template(
+    def test_depth_limiting_omits_customdata_from_templates(
         self, base_url: str | None
     ) -> None:
-        """Depth limiting skips customdata refs in text (links and coverage)."""
+        """Depth limiting skips customdata refs in text and hover templates."""
         fig = pmv.py_pkg_treemap(
             "deep_pkg",
             max_module_depth=2,
             color_by="coverage",
             base_url=base_url,
         )
-        template = fig.data[0].texttemplate or ""
-        assert "customdata" not in template
-        assert "%{label}" in template
-        assert "%{value" in template
+        text_template = fig.data[0].texttemplate or ""
+        assert "customdata" not in text_template
+        assert "%{label}" in text_template
+
+        hover_template = fig.data[0].hovertemplate or ""
+        assert "customdata" not in hover_template
+        assert "%{label}" in hover_template
 
     @pytest.mark.parametrize(
         "kwargs",
