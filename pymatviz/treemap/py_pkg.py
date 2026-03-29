@@ -517,6 +517,9 @@ def py_pkg_treemap(
     show_counts: ShowCounts = "value+percent",
     cell_text_fn: ModuleFormatter | bool = default_module_formatter,
     group_by: GroupBy = "module",
+    max_module_depth: int | None = None,
+    min_lines_for_split: int = 0,
+    max_children_for_split: int | None = None,
     cell_size_fn: CellSizeFn | None = None,
     color_by: str | dict[str, float] | None = None,
     coverage_data_file: str | None = None,
@@ -553,6 +556,23 @@ def py_pkg_treemap(
             - "file": Group by filename
             - "directory": Group by top-level directory
             - "module": Group by top-level module (default)
+        max_module_depth (int | None): Maximum depth of the module hierarchy to display
+            when group_by="module". Files deeper than this level are aggregated into
+            their ancestor at the cutoff depth. For example, max_module_depth=1 shows
+            only top-level modules (io, analysis, core, ...), while max_module_depth=2
+            also shows sub-packages (io/vasp, analysis/chemenv, ...). If None (default),
+            the full module hierarchy is shown.
+        min_lines_for_split (int): Minimum total lines of code for a child cell to
+            be considered "significant" at a given depth. Children below this
+            threshold are merged into an "other" bucket. If fewer than 2 children
+            qualify as significant, the parent collapses into a single aggregated
+            cell. Only applies when group_by="module". Defaults to 0 (no minimum).
+        max_children_for_split (int | None): Maximum number of significant child
+            cells a parent may have at the deepest level. If a parent would produce
+            more significant children than this, the split is suppressed and the
+            parent stays aggregated. Intermediate levels are not affected, so large
+            modules always show their sub-packages. Only applies when
+            group_by="module". If None (default), no limit.
         cell_size_fn (CellSizeFn | None): A callable that takes a `ModuleStats` object
             (a NamedTuple with fields like line_count, n_classes, n_functions,
             n_methods) and returns a number (int or float) to be used for the
@@ -623,6 +643,13 @@ def py_pkg_treemap(
         >>> # Or mix strings and modules
         >>> fig10 = pmv.py_pkg_treemap([np, "pymatviz"])
     """
+    if max_module_depth is not None and max_module_depth < 0:
+        raise ValueError(f"{max_module_depth=} must be non-negative")
+    if min_lines_for_split < 0:
+        raise ValueError(f"{min_lines_for_split=} must be non-negative")
+    if max_children_for_split is not None and max_children_for_split < 0:
+        raise ValueError(f"{max_children_for_split=} must be non-negative")
+
     # Normalize input to handle both single and multiple strings or ModuleType objects
     pkg_list = packages if isinstance(packages, (list, tuple)) else [packages]
     package_names = [_normalize_package_input(pkg) for pkg in pkg_list]
@@ -734,8 +761,12 @@ def py_pkg_treemap(
     df_treemap = df_modules.copy()
 
     # Determine the maximum depth of the module hierarchy
-    max_depth = df_treemap["depth"].max() if not df_treemap.empty else 0
-    level_columns = [f"level_{idx}" for idx in range(max_depth)]
+    data_max_depth = df_treemap["depth"].max() if not df_treemap.empty else 0
+    if max_module_depth is not None and group_by == "module":
+        effective_depth = min(data_max_depth, max_module_depth)
+    else:
+        effective_depth = data_max_depth
+    level_columns = [f"level_{idx}" for idx in range(effective_depth)]
 
     # Create columns for each level of the hierarchy from 'module_parts'
     for level_idx, col_name in enumerate(level_columns):
@@ -744,6 +775,85 @@ def py_pkg_treemap(
                 parts[current_idx] if current_idx < len(parts) else None
             )
         )
+
+    # Adaptive depth pruning. Iterates from the deepest level upward.
+    # At each level, "significant" children (>= min_lines_for_split) are
+    # counted. If there are 2..max_children significant children, the parent
+    # is expanded (small children merge into "other"). Otherwise the parent
+    # collapses to a single cell. max_children_for_split only applies at
+    # the deepest level — intermediate levels use min_lines alone, so large
+    # modules like io/analysis always show their sub-packages.
+    if group_by == "module" and (min_lines_for_split > 0 or max_children_for_split):
+        for prune_depth in range(effective_depth - 1, 0, -1):
+            is_deepest_level = prune_depth == effective_depth - 1
+            child_col = f"level_{prune_depth}"
+            parent_cols = [f"level_{idx}" for idx in range(prune_depth)]
+
+            rows_to_drop: list[pd.Index] = []
+            rows_to_add: list[dict] = []
+
+            for _key, group in df_treemap.groupby(parent_cols, dropna=False):
+                unique_children = group[child_col].dropna().unique()
+                if len(unique_children) <= 1:
+                    continue
+
+                child_line_counts = group.groupby(child_col)["line_count"].sum()
+                significant = child_line_counts[
+                    child_line_counts >= min_lines_for_split
+                ]
+                n_sig = len(significant)
+                # Only cap children count at the deepest level; intermediate
+                # levels expand freely so large modules keep their sub-packages
+                if is_deepest_level and max_children_for_split is not None:
+                    max_kids = max_children_for_split
+                else:
+                    max_kids = float("inf")
+
+                if 1 <= n_sig <= max_kids:
+                    # EXPAND: keep significant children, merge the rest
+                    sig_set = set(significant.index)
+                    small_mask = group[child_col].map(
+                        lambda val, sig=sig_set: pd.isna(val) or val not in sig
+                    )
+                    merge_rows = group[small_mask]
+                    if merge_rows.empty:
+                        continue
+                    clear_start, is_expand = prune_depth + 1, True
+                else:
+                    # COLLAPSE: no children are significant, merge entire group
+                    merge_rows = group
+                    clear_start, is_expand = prune_depth, False
+
+                rep = merge_rows.iloc[0].copy()
+                rep["cell_value"] = merge_rows["cell_value"].sum()
+                rep["line_count"] = merge_rows["line_count"].sum()
+                if (
+                    has_color_mode
+                    and "color_value" in merge_rows.columns
+                    and rep["line_count"] > 0
+                ):
+                    rep["color_value"] = (
+                        merge_rows["color_value"] * merge_rows["line_count"]
+                    ).sum() / rep["line_count"]
+                if is_expand:
+                    rep[child_col] = "other"
+                else:
+                    rep["depth"] = prune_depth
+                for deeper in range(clear_start, effective_depth):
+                    rep[f"level_{deeper}"] = None
+                rows_to_drop.append(merge_rows.index)
+                rows_to_add.append(rep.to_dict())
+
+            if rows_to_drop:
+                df_treemap = df_treemap.drop(index=pd.Index([]).append(rows_to_drop))
+                df_treemap = pd.concat(
+                    [df_treemap, pd.DataFrame(rows_to_add)], ignore_index=True
+                )
+
+            # Drop level columns that became entirely None after pruning
+            level_columns = [
+                col for col in level_columns if df_treemap[col].notna().any()
+            ]
 
     # Define the path definition based on group_by
     if group_by == "file":
@@ -953,6 +1063,15 @@ def py_pkg_treemap(
 
         def _get_coverage_text() -> str:
             """Get coverage text for display."""
+            # When module depth is limited (either by max_module_depth or adaptive
+            # pruning), aggregated parent nodes don't have customdata, so
+            # referencing it would show "(?) " placeholders.
+            if (
+                max_module_depth is not None
+                or min_lines_for_split > 0
+                or max_children_for_split is not None
+            ):
+                return ""
             if color_by == "coverage" and has_color_mode:
                 color_value_index = len(custom_data_cols) - 1
                 return f"<br>%{{customdata[{color_value_index}]:,.1f}}% cov"

@@ -847,8 +847,8 @@ def test_py_pkg_treemap_coverage_scenarios(
         df_modules = pmv.treemap.py_pkg.collect_package_modules(["my_pkg"])
         if not df_modules.empty:
             custom_colors = {
-                row["file_path"]: float(int(idx) * 25 + 50)  # type: ignore[invalid-argument-type]
-                for idx, row in df_modules.head(2).iterrows()
+                row["file_path"]: float(idx * 25 + 50)
+                for idx, row in enumerate(df_modules.head(2).to_dict(orient="records"))
             }
             kwargs["color_by"] = custom_colors
 
@@ -1016,17 +1016,20 @@ def test_py_pkg_treemap_coverage_edge_cases(
     check_zeros: bool,
 ) -> None:
     """Test coverage edge cases and colorbar titles."""
-    kwargs = {"color_by": color_by}
-
     # Setup based on test type
     if test_type == "coverage_with_data":
-        kwargs["coverage_data_file"] = str(mock_coverage_data)
+        fig = pmv.py_pkg_treemap(
+            "my_pkg",
+            color_by=color_by,
+            coverage_data_file=str(mock_coverage_data),
+        )
     elif test_type == "line_count":
         df_modules = pmv.treemap.py_pkg.collect_package_modules(["my_pkg"])
         if color_by not in df_modules.columns:
             pytest.skip(f"Column {color_by} not found in module data")
-
-    fig = pmv.py_pkg_treemap("my_pkg", **kwargs)  # type: ignore[arg-type]
+        fig = pmv.py_pkg_treemap("my_pkg", color_by=color_by)
+    else:
+        fig = pmv.py_pkg_treemap("my_pkg", color_by=color_by)
     assert isinstance(fig, go.Figure)
     trace = fig.data[0]
 
@@ -1282,3 +1285,221 @@ def test_collect_coverage_data_from_url() -> None:
         assert 0 <= coverage <= 100
         assert isinstance(file_path, str)
         assert len(file_path) > 0
+
+
+def _write_py_lines(path: Path, n_lines: int) -> None:
+    """Write a Python file with n_lines of executable code."""
+    path.write_text("\n".join(f"x_{idx} = {idx}" for idx in range(n_lines)))
+
+
+@pytest.fixture(scope="module")
+def deep_pkg_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Create a package with 3 levels of nesting for depth-pruning tests.
+
+    Structure (line counts chosen to exercise adaptive thresholds):
+      deep_pkg/
+        alpha/           (top module with 3 sub-packages → expandable)
+          big/           (800 lines total → qualifies as significant child)
+            core.py      500
+            helpers.py   300
+          medium/        (400 lines total)
+            utils.py     400
+          tiny/          (50 lines → below min_lines threshold)
+            small.py     50
+        beta/            (top module with >5 sub-packages → too many children)
+          s1.py .. s6.py (100 lines each)
+        gamma/           (top module, single file → no split needed)
+          only.py        200
+    """
+    src_dir = tmp_path_factory.mktemp("deep_src")
+    pkg = src_dir / "deep_pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").touch()
+
+    # alpha — 3 sub-packages, suitable for expansion
+    alpha = pkg / "alpha"
+    alpha.mkdir()
+    (alpha / "__init__.py").touch()
+
+    for sub_name, files in {
+        "big": {"core.py": 500, "helpers.py": 300},
+        "medium": {"utils.py": 400},
+        "tiny": {"small.py": 50},
+    }.items():
+        sub_dir = alpha / sub_name
+        sub_dir.mkdir()
+        (sub_dir / "__init__.py").touch()
+        for fname, n_lines in files.items():
+            _write_py_lines(sub_dir / fname, n_lines)
+
+    # beta — 6 sub-files directly under beta (no sub-packages)
+    beta = pkg / "beta"
+    beta.mkdir()
+    (beta / "__init__.py").touch()
+    for idx in range(6):
+        _write_py_lines(beta / f"s{idx}.py", 100)
+
+    # gamma — single file
+    gamma = pkg / "gamma"
+    gamma.mkdir()
+    (gamma / "__init__.py").touch()
+    _write_py_lines(gamma / "only.py", 200)
+
+    return src_dir
+
+
+@pytest.fixture(autouse=False)
+def _deep_pkg_on_path(deep_pkg_path: Path) -> Generator[None, None, None]:
+    """Temporarily add the deep package source directory to sys.path."""
+    path_str = str(deep_pkg_path)
+    sys.path.insert(0, path_str)
+    yield
+    sys.path.remove(path_str)
+
+
+@pytest.mark.usefixtures("_deep_pkg_on_path")
+class TestMaxModuleDepth:
+    """Tests for the max_module_depth parameter."""
+
+    @pytest.mark.parametrize("depth", [1, 2, 3])
+    def test_max_depth_limits_nesting(self, depth: int) -> None:
+        """Deeper path components should not appear when depth is capped."""
+        fig = pmv.py_pkg_treemap("deep_pkg", max_module_depth=depth, base_url=None)
+        trace = fig.data[0]
+        max_id_depth = max(
+            id_val.count("/") for id_val in trace.ids if isinstance(id_val, str)
+        )
+        assert max_id_depth <= depth
+
+        if depth == 1:
+            # At depth 1, only top-level modules appear — no sub-packages
+            leaf_labels = {
+                lbl
+                for lbl, parent in zip(trace.labels, trace.parents, strict=False)
+                if parent
+            }
+            assert leaf_labels >= {"alpha", "beta", "gamma"}
+            assert leaf_labels.isdisjoint({"big", "core", "helpers"})
+
+
+@pytest.mark.usefixtures("_deep_pkg_on_path")
+class TestAdaptivePruning:
+    """Tests for min_lines_for_split and max_children_for_split."""
+
+    @pytest.mark.parametrize(
+        ("min_lines", "max_children"),
+        [
+            (300, None),  # all 6 children (100 lines each) below min_lines
+            (50, 3),  # 6 children exceeds max_children=3
+        ],
+    )
+    def test_collapse_beta_children(
+        self, min_lines: int, max_children: int | None
+    ) -> None:
+        """Beta's 6 children (100 lines each) get collapsed."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=2,
+            min_lines_for_split=min_lines,
+            max_children_for_split=max_children,
+            base_url=None,
+        )
+        labels = set(fig.data[0].labels)
+        assert "beta" in labels
+        assert labels.isdisjoint({f"s{idx}" for idx in range(6)})
+
+    @pytest.mark.parametrize(
+        ("min_lines", "expected_present", "expected_absent"),
+        [
+            # big(800) & medium(400) significant (≥200), tiny(50) merges to "other"
+            (200, {"big", "medium", "other"}, {"tiny"}),
+            # only big(800) significant (≥600), medium & tiny merge to "other"
+            (600, {"big", "other"}, {"medium", "tiny"}),
+        ],
+    )
+    def test_other_bucket_for_small_children(
+        self,
+        min_lines: int,
+        expected_present: set[str],
+        expected_absent: set[str],
+    ) -> None:
+        """Children below min_lines merge into an 'other' bucket."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=3,
+            min_lines_for_split=min_lines,
+            max_children_for_split=5,
+            base_url=None,
+        )
+        labels = set(fig.data[0].labels)
+        assert expected_present <= labels
+        assert labels.isdisjoint(expected_absent)
+
+    def test_max_children_only_at_deepest_level(self) -> None:
+        """max_children_for_split does not collapse intermediate levels."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=3,
+            min_lines_for_split=50,
+            max_children_for_split=2,
+            base_url=None,
+        )
+        labels = set(fig.data[0].labels)
+        # alpha has 3 sub-packages (big, medium, tiny) which exceeds max_children=2,
+        # but max_children only applies at the deepest level, so all 3 survive
+        assert {"alpha", "big", "medium"} <= labels
+        # At the deepest level, alpha/big has 2 children (core, helpers) ≤ 2 → expanded
+        assert {"core", "helpers"} <= labels
+
+    def test_aggregated_values_are_summed(self) -> None:
+        """Collapsed groups have summed line counts."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=2,
+            min_lines_for_split=500,
+            base_url=None,
+        )
+        labels = list(fig.data[0].labels)
+        values = list(fig.data[0].values)
+        # beta: 6 files x 100 lines = 600 total, all < 500 -> collapsed
+        assert values[labels.index("beta")] == pytest.approx(600, abs=5)
+
+    def test_min_lines_uses_line_count_not_cell_value(self) -> None:
+        """min_lines_for_split must compare against line_count, not cell_value."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg",
+            max_module_depth=3,
+            min_lines_for_split=200,
+            max_children_for_split=5,
+            cell_size_fn=lambda _m: 1,
+            base_url=None,
+        )
+        labels = set(fig.data[0].labels)
+        # alpha sub-packages: big (800 lines), medium (400 lines) → both >= 200
+        # With cell_value each file is 1, sum ≤ 2 → would wrongly collapse
+        assert "big" in labels, "big (800 lines) should survive min_lines=200"
+        assert "medium" in labels, "medium (400 lines) should survive min_lines=200"
+
+    def test_coverage_text_omits_customdata(self) -> None:
+        """Coverage text skips customdata refs when depth limiting is active."""
+        fig = pmv.py_pkg_treemap(
+            "deep_pkg", max_module_depth=2, color_by="coverage", base_url=None
+        )
+        template = fig.data[0].texttemplate or ""
+        assert "customdata" not in template
+        # Template should still render label and value
+        assert "%{label}" in template
+        assert "%{value" in template
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"max_module_depth": -1},
+            {"min_lines_for_split": -5},
+            {"max_children_for_split": -2},
+        ],
+    )
+    def test_negative_params_raise(self, kwargs: dict[str, int]) -> None:
+        """Negative depth/pruning parameters raise ValueError."""
+        with pytest.raises(ValueError, match="must be non-negative"):
+            pmv.py_pkg_treemap("deep_pkg", **kwargs)  # type: ignore[arg-type]
