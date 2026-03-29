@@ -368,8 +368,8 @@ def test_internal_imports(dummy_pkg_path: Path) -> None:
     hovertemplate = fig.data[0].hovertemplate
     assert hovertemplate is not None
 
-    assert "Internal Imports: %{customdata[6]:,}<br>" in hovertemplate
-    assert "External Imports: %{customdata[7]:,}<br>" in hovertemplate
+    assert "Internal Imports: %{customdata[7]:,}<br>" in hovertemplate
+    assert "External Imports: %{customdata[8]:,}<br>" in hovertemplate
     assert "Classes: %{customdata[4]:,}<br>" in hovertemplate
 
     ids = fig.data[0].ids
@@ -565,10 +565,10 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
             "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
             "Classes: %{customdata[4]:,}<br>"
             "Functions: %{customdata[5]:,}<br>"
-            "Methods: %{customdata[9]:,}<br>"
-            "Internal Imports: %{customdata[6]:,}<br>"
-            "External Imports: %{customdata[7]:,}<br>"
-            "Type Imports: %{customdata[8]:,}<br>"
+            "Methods: %{customdata[6]:,}<br>"
+            "Internal Imports: %{customdata[7]:,}<br>"
+            "External Imports: %{customdata[8]:,}<br>"
+            "Type Imports: %{customdata[9]:,}<br>"
             "<extra></extra>"
         )
 

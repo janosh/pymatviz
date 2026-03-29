@@ -1048,21 +1048,25 @@ def py_pkg_treemap(
         # Add color value to hover if heatmap mode is enabled
         if has_color_mode and not df_treemap["color_value"].isna().all():
             color_label = "Coverage" if color_by == "coverage" else "Color Value"
-            color_format = ":.1f%" if color_by == "coverage" else ":,.2f"
             color_value_index = len(custom_data_cols) - 1
-            base_hovertemplate += (
-                f"{color_label}: %{{customdata[{color_value_index}]{color_format}}}<br>"
-            )
+            if color_by == "coverage":
+                base_hovertemplate += (
+                    f"{color_label}: %{{customdata[{color_value_index}]:.1f}}%<br>"
+                )
+            else:
+                base_hovertemplate += (
+                    f"{color_label}: %{{customdata[{color_value_index}]:,.2f}}<br>"
+                )
 
         hovertemplate = (
             base_hovertemplate
             + "%{customdata[10]:.1%} of %{customdata[0]} (by cell value)<br>"
             "Classes: %{customdata[4]:,}<br>"  # n_classes
             "Functions: %{customdata[5]:,}<br>"  # n_functions
-            "Methods: %{customdata[9]:,}<br>"  # n_methods
-            "Internal Imports: %{customdata[6]:,}<br>"  # n_internal_imports
-            "External Imports: %{customdata[7]:,}<br>"  # n_external_imports
-            "Type Imports: %{customdata[8]:,}<br>"  # n_type_checking_imports
+            "Methods: %{customdata[6]:,}<br>"  # n_methods
+            "Internal Imports: %{customdata[7]:,}<br>"  # n_internal_imports
+            "External Imports: %{customdata[8]:,}<br>"  # n_external_imports
+            "Type Imports: %{customdata[9]:,}<br>"  # n_type_checking_imports
             "<extra></extra>"  # Remove Plotly trace info box
         )
     # Apply hovertemplate - applies to all traces, which is fine as we have one
