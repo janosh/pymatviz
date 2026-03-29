@@ -131,7 +131,8 @@ NAMESPACE_PKGS = {"analysis.defects", "analysis.diffusion"}
 
 def _pmg_cell_size(cell: pmv.treemap.py_pkg.ModuleStats) -> int:
     """Filter out namespace packages and tiny files."""
-    if any(ns_pkg in cell.full_module for ns_pkg in NAMESPACE_PKGS):
+    dotted = f".{cell.full_module}."
+    if any(f".{ns_pkg}." in dotted for ns_pkg in NAMESPACE_PKGS):
         return 0
     return cell.line_count if cell.line_count >= 20 else 0
 
