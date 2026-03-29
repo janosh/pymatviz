@@ -1081,11 +1081,7 @@ def py_pkg_treemap(
             # When module depth is limited (either by max_module_depth or adaptive
             # pruning), aggregated parent nodes don't have customdata, so
             # referencing it would show "(?) " placeholders.
-            if (
-                max_module_depth is not None
-                or min_lines_for_split > 0
-                or max_children_for_split is not None
-            ):
+            if has_depth_limit:
                 return ""
             if color_by == "coverage" and has_color_mode:
                 color_value_index = len(custom_data_cols) - 1
@@ -1118,11 +1114,6 @@ def py_pkg_treemap(
             False: "label",
         }
 
-        has_depth_limit = (
-            max_module_depth is not None
-            or min_lines_for_split > 0
-            or max_children_for_split is not None
-        )
         if processed_base_url and not has_depth_limit:
             # Link template uses customdata[2,3] = leaf_label, file_url.
             # Aggregated/synthetic parent nodes lack valid customdata, so
