@@ -14,7 +14,6 @@ keywords = [
     "plotly",
 ]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -39,13 +38,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-df-pdf-export = ["pdfCropMargins>=2", "weasyprint>=60"]
-df-svg-export = ["bs4>=0.0.2", "cssutils>=2.9", "lxml>=4.9"]
 make-assets = ["matminer>=0.9"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 phonons = ["phonopy>=2.31"] # only needed if user passes in phonopy objects
 test = [
-    "pymatviz[df-pdf-export, df-svg-export, cluster, phonons]",
+    "pymatviz[cluster, phonons]",
     "pytest-cov>=6",
     "pytest-split>=0.9",
     "pytest>=8",

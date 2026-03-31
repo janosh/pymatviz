@@ -103,8 +103,7 @@ fig_custom_size.show()
 
 
 # %% pymatviz treemap with coverage heatmap (cell size by lines, color by test coverage)
-# coverage_data_file=f"{pmv.ROOT}/tmp/2025-07-31-pymatviz-coverage.json"
-coverage_data_file = "https://github.com/user-attachments/files/21545088/2025-07-31-pymatviz-coverage.json"
+coverage_data_file = "https://github.com/janosh/pymatviz/releases/download/v0.17.5/2026-03-31-pymatviz-coverage.json"
 
 fig_cov = pmv.py_pkg_treemap(
     "pymatviz",
