@@ -65,24 +65,20 @@ def _mock_urlretrieve_side_effect(_url: str, path: str) -> None:
 def _clean_asset_cache() -> Generator[None]:
     """Save and restore MatterVizWidget class-level asset state around a test."""
     cls = matterviz.MatterVizWidget
-    had_esm = hasattr(cls, "_esm")
-    had_css = hasattr(cls, "_css")
-    saved_esm = getattr(cls, "_esm", None)
-    saved_css = getattr(cls, "_css", None)
+    saved = {
+        attr: (hasattr(cls, attr), getattr(cls, attr, None))
+        for attr in ("_esm", "_css")
+    }
     saved_cache = cls._asset_cache.copy()
     cls._asset_cache.clear()
     yield
     cls._asset_cache = saved_cache
-    if had_esm:
-        assert saved_esm is not None
-        cls._esm = saved_esm
-    elif hasattr(cls, "_esm"):
-        delattr(cls, "_esm")
-    if had_css:
-        assert saved_css is not None
-        cls._css = saved_css
-    elif hasattr(cls, "_css"):
-        delattr(cls, "_css")
+    for attr, (had, val) in saved.items():
+        if had:
+            assert val is not None
+            setattr(cls, attr, val)
+        elif hasattr(cls, attr):
+            delattr(cls, attr)
 
 
 # === clear_widget_cache ===
@@ -286,7 +282,10 @@ def test_configure_assets_reset() -> None:
     with patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="preset"):
         configure_assets(version="v1.0.0")
 
-    assert matterviz.MatterVizWidget._asset_cache.get("default") is not None
+    assert matterviz.MatterVizWidget._asset_cache.get("default") == (
+        "preset",
+        "preset",
+    )
 
     configure_assets()
 
@@ -435,37 +434,87 @@ def test_matterviz_widget_to_dict(
         assert state[key] == value
 
 
+# === MatterVizWidget.show ===
+
+
+@pytest.mark.parametrize("static_val", ["", None])
+def test_show_interactive(static_val: str | None) -> None:
+    """show() displays the widget interactively when PYMATVIZ_STATIC is unset/empty."""
+    with (
+        patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="content"),
+        patch(f"{DOTTED_PATH}._in_marimo_runtime", return_value=False),
+        patch.dict(os.environ, {}, clear=False),
+        patch("IPython.display.display") as mock_display,
+    ):
+        os.environ.pop("PYMATVIZ_STATIC", None)
+        if static_val is not None:
+            os.environ["PYMATVIZ_STATIC"] = static_val
+        widget = matterviz.MatterVizWidget()
+        widget.show()
+
+    mock_display.assert_called_once_with(widget)
+
+
+@pytest.mark.parametrize("static_val", ["1", "0"], ids=["val_1", "val_0"])
+def test_show_static_png(static_val: str) -> None:
+    """show() renders static PNG when PYMATVIZ_STATIC is any non-empty string.
+
+    Note: "0" is truthy in Python strings, so PYMATVIZ_STATIC=0 still
+    enables static mode. Only unsetting or setting to "" disables it.
+    """
+    fake_png = b"\x89PNG fake image bytes"
+    mock_image_cls = MagicMock()
+    mock_image_instance = MagicMock()
+    mock_image_cls.return_value = mock_image_instance
+
+    with (
+        patch(f"{DOTTED_PATH}.fetch_widget_asset", return_value="content"),
+        patch(f"{DOTTED_PATH}._in_marimo_runtime", return_value=False),
+        patch.dict(os.environ, {"PYMATVIZ_STATIC": static_val}, clear=False),
+        patch("IPython.display.display") as mock_display,
+        patch("IPython.display.Image", mock_image_cls),
+    ):
+        widget = matterviz.MatterVizWidget()
+        with patch.object(widget, "to_img", return_value=fake_png) as mock_to_img:
+            widget.show()
+
+    mock_to_img.assert_called_once_with(fmt="png")
+    mock_image_cls.assert_called_once_with(data=fake_png)
+    mock_display.assert_called_once_with(mock_image_instance)
+
+
 # === _in_marimo_runtime ===
 
 
+def test_in_marimo_runtime_no_marimo() -> None:
+    """Returns False when marimo is not installed."""
+    with patch("builtins.__import__", side_effect=_block_marimo):
+        assert _in_marimo_runtime() is False
+
+
 @pytest.mark.parametrize(
-    ("setup", "expected"),
+    ("ctx_kwargs", "expected"),
     [
-        ("no_marimo", False),
-        ("context_not_initialized", False),
-        ("runtime_error", False),
-        ("context_exists", True),
+        ({"get_context_return": MagicMock()}, True),
+        ({"get_context_side_effect": RuntimeError("no context")}, False),
     ],
+    ids=["context_exists", "runtime_error"],
 )
-def test_in_marimo_runtime(setup: str, expected: bool) -> None:
-    """Detects marimo runtime presence across import/context error scenarios."""
-    if setup == "no_marimo":
-        with patch("builtins.__import__", side_effect=_block_marimo):
-            assert _in_marimo_runtime() is expected
-        return
-
-    if setup == "context_not_initialized":
-        ctx_mod = _mock_marimo_context(get_context_side_effect=None)
-        ctx_mod.get_context.side_effect = ctx_mod.ContextNotInitializedError
-    elif setup == "runtime_error":
-        ctx_mod = _mock_marimo_context(
-            get_context_side_effect=RuntimeError("no context")
-        )
-    else:
-        ctx_mod = _mock_marimo_context(get_context_return=MagicMock())
-
+def test_in_marimo_runtime_with_context(
+    ctx_kwargs: dict[str, Any], expected: bool
+) -> None:
+    """Detects marimo runtime presence across context error scenarios."""
+    ctx_mod = _mock_marimo_context(**ctx_kwargs)
     with patch.dict("sys.modules", {"marimo._runtime.context": ctx_mod}):
         assert _in_marimo_runtime() is expected
+
+
+def test_in_marimo_runtime_context_not_initialized() -> None:
+    """Returns False when marimo context is not initialized."""
+    ctx_mod = _mock_marimo_context()
+    ctx_mod.get_context.side_effect = ctx_mod.ContextNotInitializedError
+    with patch.dict("sys.modules", {"marimo._runtime.context": ctx_mod}):
+        assert _in_marimo_runtime() is False
 
 
 # === _marimo_esm_url ===

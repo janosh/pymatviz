@@ -7,6 +7,7 @@ output as PNG, JPEG, SVG, or PDF. Works without any notebook/IDE frontend.
 
 from __future__ import annotations
 
+import asyncio
 import atexit
 import base64
 import functools
@@ -23,6 +24,8 @@ from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
+    from playwright.async_api import Browser as AsyncBrowser
+    from playwright.async_api import Page as AsyncPage
     from playwright.sync_api import Browser, Page
 
 # Module-level browser cache -- reused across to_img() calls to amortize
@@ -31,6 +34,12 @@ _pw: Any = None
 _browser: Browser | None = None
 _atexit_registered = False
 _browser_lock = threading.Lock()
+
+# Async browser cache for event-loop contexts (e.g. jupyter nbconvert --execute)
+_async_pw: Any = None
+_async_browser: AsyncBrowser | None = None
+_async_atexit_registered = False
+_async_browser_lock: asyncio.Lock | None = None
 
 
 def _get_browser() -> Browser:
@@ -58,7 +67,8 @@ def _get_browser() -> Browser:
 
         pw = sync_playwright().start()
         try:
-            browser = pw.chromium.launch(headless=True)
+            launch_args = ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
+            browser = pw.chromium.launch(headless=True, args=launch_args)
         except Exception:
             try:
                 pw.stop()
@@ -88,6 +98,196 @@ def _shutdown_browser() -> None:
     except (OSError, RuntimeError):
         pass
     _pw = None
+
+
+async def _get_async_browser() -> AsyncBrowser:
+    """Return a cached async headless Chromium browser, launching one if needed.
+
+    Uses an asyncio.Lock so only one coroutine performs browser startup.
+    """
+    global _async_pw, _async_browser, _async_atexit_registered, _async_browser_lock  # noqa: PLW0603
+    if _async_browser is not None and _async_browser.is_connected():
+        return _async_browser
+
+    if _async_browser_lock is None:
+        _async_browser_lock = asyncio.Lock()
+
+    async with _async_browser_lock:
+        if _async_browser is not None and _async_browser.is_connected():
+            return _async_browser
+
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            raise ImportError(
+                "playwright is required for headless widget export.\n"
+                "Install it with:  uv pip install playwright"
+                " && playwright install chromium"
+            ) from None
+
+        pw = await async_playwright().start()
+        try:
+            launch_args = [
+                "--no-sandbox",
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+            ]
+            browser = await pw.chromium.launch(headless=True, args=launch_args)
+        except Exception:
+            try:
+                await pw.stop()
+            except (OSError, RuntimeError):
+                pass
+            raise
+        _async_pw = pw
+        _async_browser = browser
+        if not _async_atexit_registered:
+            atexit.register(_shutdown_async_browser)
+            _async_atexit_registered = True
+        return _async_browser
+
+
+def _shutdown_async_browser() -> None:
+    """Clean up the async browser references on interpreter exit.
+
+    The Chromium subprocess is killed automatically when the Python process
+    exits, so we only need to clear references — no need to poke at Playwright
+    private APIs for a synchronous close.
+    """
+    global _async_pw, _async_browser  # noqa: PLW0603
+    _async_browser = None
+    _async_pw = None
+
+
+def _prepare_render(
+    widget_data: dict[str, Any],
+    esm_content: str,
+    css_content: str,
+    fmt: str,
+    dpi: int,
+    timeout: float,
+    width: int | None,
+    height: int | None,
+) -> tuple[str, int, float]:
+    """Build HTML, compute scale factor, write temp file.
+
+    Returns (tmp_path, timeout_ms, scale_factor).
+    """
+    html = _build_html(
+        widget_data, esm_content, css_content, timeout, width=width, height=height
+    )
+    timeout_ms = int(timeout * 1000)
+    needs_raster = fmt in ("png", "jpeg") or (
+        fmt == "pdf" and widget_data.get("widget_type") in _CANVAS_WIDGET_TYPES
+    )
+    scale_factor = max(1, dpi / 72) if needs_raster else 1
+    return _write_temp_html(html), timeout_ms, scale_factor
+
+
+async def _async_capture_page(
+    page: AsyncPage,
+    fmt: str,
+    widget_type: str | None,
+    quality: int = 90,
+    scale_factor: float = 1.0,
+) -> bytes:
+    """Async version of _capture_page."""
+    if fmt not in ("png", "jpeg", "svg", "pdf"):
+        raise ValueError(
+            f"Unsupported capture format {fmt!r}, "
+            "expected 'png', 'jpeg', 'svg', or 'pdf'"
+        )
+
+    if fmt == "svg":
+        if widget_type in _CANVAS_WIDGET_TYPES:
+            raise RuntimeError("SVG export not supported for WebGL (canvas) widgets")
+        svg_string = await page.evaluate(_SVG_EXTRACT_JS)
+        if svg_string is None:
+            raise RuntimeError(
+                "No SVG element found in widget. This widget type may not "
+                "support SVG export. Use fmt='png' instead."
+            )
+        return svg_string.encode("utf-8")
+
+    if fmt == "pdf":
+        if widget_type in _CANVAS_WIDGET_TYPES:
+            return _png_to_pdf(
+                await page.locator("#widget-root").screenshot(type="png"),
+                scale=scale_factor,
+            )
+        await page.emulate_media(media="screen")
+        bbox = await page.locator("#widget-root").bounding_box()
+        if bbox is None:
+            raise RuntimeError("Widget root has no bounding box for PDF export")
+        return await page.pdf(
+            width=f"{bbox['width']}px",
+            height=f"{bbox['height']}px",
+            print_background=True,
+            margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
+        )
+
+    root = page.locator("#widget-root")
+    if fmt == "jpeg":
+        return await root.screenshot(type="jpeg", quality=quality)
+    return await root.screenshot(type="png")
+
+
+async def _render_widget_async(
+    widget_data: dict[str, Any],
+    esm_content: str,
+    css_content: str,
+    fmt: str = "png",
+    dpi: int = 150,
+    timeout: float = 30.0,  # noqa: ASYNC109
+    quality: int = 90,
+    width: int | None = None,
+    height: int | None = None,
+) -> bytes:
+    """Async implementation of render_widget_headless for event-loop contexts."""
+    tmp_path, timeout_ms, scale_factor = _prepare_render(
+        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height
+    )
+    browser = await _get_async_browser()
+    page: AsyncPage | None = None
+    try:
+        page = await browser.new_page(
+            viewport={"width": 1024, "height": 768},
+            device_scale_factor=scale_factor,
+        )
+        await page.goto(
+            Path(tmp_path).as_uri(), wait_until="domcontentloaded", timeout=timeout_ms
+        )
+        await page.wait_for_function(
+            "() => window.__RENDER_DONE === true", timeout=timeout_ms
+        )
+        render_error = await page.evaluate("() => window.__RENDER_ERROR")
+        if render_error:
+            raise RuntimeError(f"Widget render failed: {render_error}")  # noqa: TRY301
+
+        return await _async_capture_page(
+            page, fmt, widget_data.get("widget_type"), quality, scale_factor
+        )
+    except Exception as exc:
+        try:
+            from playwright.async_api import TimeoutError as PlaywrightTimeout
+        except ImportError:
+            PlaywrightTimeout = type(None)  # noqa: N806
+
+        if isinstance(exc, (PlaywrightTimeout, TimeoutError)):
+            raise TimeoutError(
+                f"Widget did not finish rendering within {timeout}s"
+            ) from exc
+        raise
+    finally:
+        if page is not None:
+            try:
+                await page.close()
+            except (OSError, RuntimeError):
+                pass
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 @functools.lru_cache(maxsize=1)
@@ -230,6 +430,32 @@ try {{
 
 # Widget types that render via WebGL <canvas> (not SVG).
 # Keep in sync with widget classes in pymatviz/widgets/ that use Three.js.
+_SVG_EXTRACT_JS = """\
+() => {
+    const svgs = Array.from(document.querySelectorAll('#widget-root svg'));
+    if (!svgs.length) return null;
+    let best = null, best_area = 0, fallback = null, fallback_area = 0;
+    for (const svg of svgs) {
+        const rect = svg.getBoundingClientRect();
+        const area = rect.width * rect.height;
+        if (rect.width >= 20 && rect.height >= 20) {
+            if (area > best_area) { best = svg; best_area = area; }
+        } else if (area > fallback_area) { fallback = svg; fallback_area = area; }
+    }
+    best = best || fallback;
+    if (!best) return null;
+    const cloned = best.cloneNode(true);
+    if (!cloned.hasAttribute('xmlns'))
+        cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const style = cloned.getAttribute('style') || '';
+    if (!/font-family/.test(style))
+        cloned.setAttribute('style', style + ';font-family:sans-serif;');
+    cloned.setAttribute('font-family', 'sans-serif');
+    return '<?xml version="1.0" encoding="UTF-8"?>\\n'
+        + new XMLSerializer().serializeToString(cloned);
+}
+"""
+
 _CANVAS_WIDGET_TYPES = frozenset(
     {
         "structure",
@@ -346,53 +572,7 @@ def _capture_page(
         if widget_type in _CANVAS_WIDGET_TYPES:
             raise RuntimeError("SVG export not supported for WebGL (canvas) widgets")
 
-        # Find the main chart SVG -- the largest one by area, ignoring
-        # tiny icon SVGs (fullscreen toggles, toolbar buttons, etc.).
-        svg_string = page.evaluate("""\
-            () => {
-                const svgs = Array.from(
-                    document.querySelectorAll('#widget-root svg')
-                );
-                if (!svgs.length) return null;
-
-                // Pick the largest SVG, preferring ones >= 20px in both
-                // dimensions (to skip tiny toolbar icons). Falls back to
-                // the largest SVG overall if all are small.
-                let best = null;
-                let best_area = 0;
-                let fallback = null;
-                let fallback_area = 0;
-                for (const svg of svgs) {
-                    const rect = svg.getBoundingClientRect();
-                    const area = rect.width * rect.height;
-                    if (rect.width >= 20 && rect.height >= 20) {
-                        if (area > best_area) {
-                            best = svg;
-                            best_area = area;
-                        }
-                    } else if (area > fallback_area) {
-                        fallback = svg;
-                        fallback_area = area;
-                    }
-                }
-                best = best || fallback;
-                if (!best) return null;
-
-                // cloneNode(true) copies structure and inline styles but not
-                // computed CSS from stylesheets. Matterviz Svelte components
-                // set styles inline, so this works for our widgets. Standalone
-                // SVGs opened outside the browser may lack stylesheet-only rules.
-                const cloned = best.cloneNode(true);
-                if (!cloned.hasAttribute('xmlns'))
-                    cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-                const style = cloned.getAttribute('style') || '';
-                if (!/font-family/.test(style))
-                    cloned.setAttribute('style', style + ';font-family:sans-serif;');
-                cloned.setAttribute('font-family', 'sans-serif');
-                const body = new XMLSerializer().serializeToString(cloned);
-                return '<?xml version="1.0" encoding="UTF-8"?>\\n' + body;
-            }
-        """)
+        svg_string = page.evaluate(_SVG_EXTRACT_JS)
         if svg_string is None:
             raise RuntimeError(
                 "No SVG element found in widget. This widget type may not "
@@ -436,6 +616,17 @@ def _write_temp_html(html: str) -> str:
     return path
 
 
+def _has_running_event_loop() -> bool:
+    """Return True if there is a running asyncio event loop in this thread."""
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return False
+    return True
+
+
 def render_widget_headless(
     widget_data: dict[str, Any],
     esm_content: str,
@@ -452,6 +643,11 @@ def render_widget_headless(
     Launches (or reuses) a headless Chromium browser, loads a minimal HTML
     page that runs the ESM bundle with a mock anywidget model, waits for
     the render to complete, and captures the output.
+
+    When called from inside a running asyncio event loop (e.g. jupyter
+    nbconvert --execute), uses Playwright's async API via nest_asyncio
+    to avoid the greenlet deadlock that occurs with sync Playwright in
+    a ThreadPoolExecutor.
 
     Args:
         widget_data: Dict of traitlet values (from ``widget.to_dict()``).
@@ -474,28 +670,38 @@ def render_widget_headless(
             format is unsupported for the widget type.
         TimeoutError: If the widget does not finish rendering in time.
     """
-    html = _build_html(
-        widget_data,
-        esm_content,
-        css_content,
-        timeout,
-        width=width,
-        height=height,
+    widget_data = {**widget_data, "show_controls": False}
+
+    if _has_running_event_loop():
+        loop = asyncio.get_running_loop()
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply(loop)
+        except ImportError:
+            raise RuntimeError(
+                "nest_asyncio is required for headless widget export inside "
+                "Jupyter/IPython event loops.\n"
+                "Install it with:  uv pip install nest-asyncio"
+            ) from None
+        return loop.run_until_complete(
+            _render_widget_async(
+                widget_data,
+                esm_content,
+                css_content,
+                fmt,
+                dpi,
+                timeout,
+                quality,
+                width,
+                height,
+            )
+        )
+
+    tmp_path, timeout_ms, scale_factor = _prepare_render(
+        widget_data, esm_content, css_content, fmt, dpi, timeout, width, height
     )
     browser = _get_browser()
-    timeout_ms = int(timeout * 1000)
-
-    # Map DPI to Chromium's device_scale_factor (72 DPI = 1x baseline).
-    # For PDF of canvas widgets we also need high-res screenshots.
-    needs_raster = fmt in ("png", "jpeg") or (
-        fmt == "pdf" and widget_data.get("widget_type") in _CANVAS_WIDGET_TYPES
-    )
-    scale_factor = max(1, dpi / 72) if needs_raster else 1
-
-    # Write to a temp file and load via file:// URL.
-    # page.set_content() uses about:blank which is ~4x slower for large
-    # HTML due to IPC overhead vs disk I/O.
-    tmp_path = _write_temp_html(html)
     page: Page | None = None
     try:
         page = browser.new_page(
@@ -517,7 +723,10 @@ def render_widget_headless(
             page, fmt, widget_data.get("widget_type"), quality, scale_factor
         )
     except Exception as exc:
-        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+        try:
+            from playwright.sync_api import TimeoutError as PlaywrightTimeout
+        except ImportError:
+            PlaywrightTimeout = type(None)  # noqa: N806
 
         if isinstance(exc, (PlaywrightTimeout, TimeoutError)):
             raise TimeoutError(
