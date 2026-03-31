@@ -261,8 +261,19 @@ class MatterVizWidget(AnyWidget):
 
         Safe to call as the last expression in a cell — returns None to
         prevent Jupyter from auto-displaying a second copy.
+
+        When the ``PYMATVIZ_STATIC`` env var is set, renders a static PNG
+        via headless Chromium instead of the interactive widget protocol.
+        Useful for CI notebook execution where outputs must be viewable
+        without a live widget frontend (e.g. GitHub .ipynb rendering).
         """
         from IPython.display import display as ipython_display
+
+        if os.environ.get("PYMATVIZ_STATIC"):
+            from IPython.display import Image
+
+            ipython_display(Image(data=self.to_img(fmt="png")))
+            return
 
         ipython_display(self)
 
