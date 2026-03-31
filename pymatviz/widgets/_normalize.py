@@ -5,6 +5,7 @@ for matterviz Svelte components.
 from __future__ import annotations
 
 import math
+import re
 from typing import Any
 
 
@@ -244,6 +245,44 @@ def normalize_structure_for_bz(obj: Any) -> dict[str, Any] | None:
     )
 
 
+def _parse_formula_to_dict(formula: str) -> dict[str, float]:
+    """Parse a chemical formula string into an element->amount dict.
+
+    Handles simple formulas like "Li2O", "Fe2O3", "LiFePO4".
+    For formulas that are just an element symbol (e.g. "Li"), returns {"Li": 1}.
+
+    Args:
+        formula: Chemical formula string.
+
+    Returns:
+        Dict mapping element symbols to their counts.
+    """
+    composition: dict[str, float] = {}
+    for match in re.finditer(r"([A-Z][a-z]?)(\d*\.?\d*)", formula):
+        element = match.group(1)
+        count_str = match.group(2)
+        count = float(count_str) if count_str else 1.0
+        composition[element] = composition.get(element, 0) + count
+    return composition
+
+
+def _normalize_entry_compositions(
+    entries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Ensure entry compositions are dicts, parsing formula strings as needed.
+
+    The matterviz frontend expects compositions as ``{element: amount}`` dicts.
+    This converts any string compositions (e.g. ``"Li2O"``) to that format,
+    leaving dict compositions unchanged.
+    """
+    return [
+        {**entry, "composition": _parse_formula_to_dict(entry["composition"])}
+        if isinstance(entry.get("composition"), str)
+        else entry
+        for entry in entries
+    ]
+
+
 def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     """Convert a pymatgen PhaseDiagram or list of entry dicts to convex hull entries.
 
@@ -256,7 +295,8 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     if obj is None:
         return None
     if isinstance(obj, (list, tuple)):
-        return obj if isinstance(obj, list) else list(obj)
+        entries = obj if isinstance(obj, list) else list(obj)
+        return _normalize_entry_compositions(entries)
 
     try:
         from pymatgen.analysis.phase_diagram import PhaseDiagram

@@ -6,7 +6,10 @@ from typing import Any
 
 import traitlets as tl
 
-from pymatviz.widgets._normalize import normalize_plot_json
+from pymatviz.widgets._normalize import (
+    _normalize_entry_compositions,
+    normalize_plot_json,
+)
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
@@ -42,8 +45,9 @@ class ChemPotDiagramWidget(MatterVizWidget):
             **kwargs: Additional widget properties including ``config`` (dict
                 for diagram settings) and ``temperature`` (float, Kelvin).
         """
+        normalized = _normalize_entry_compositions(entries or [])
         super().__init__(
             widget_type="chem_pot_diagram",
-            entries=normalize_plot_json(entries or [], "ChemPotDiagram.entries"),
+            entries=normalize_plot_json(normalized, "ChemPotDiagram.entries"),
             **kwargs,
         )

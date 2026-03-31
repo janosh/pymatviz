@@ -10,6 +10,8 @@ import pytest
 from pymatgen.core import Composition, Lattice, Structure
 
 from pymatviz.widgets._normalize import (
+    _normalize_entry_compositions,
+    _parse_formula_to_dict,
     _to_dict,
     normalize_convex_hull_entries,
     normalize_plot_series,
@@ -51,6 +53,46 @@ def test_to_dict_raises_for_unsupported_type(label: str) -> None:
         _to_dict(42, label)
 
 
+# === _parse_formula_to_dict ===
+
+
+@pytest.mark.parametrize(
+    ("formula", "expected"),
+    [
+        ("Li", {"Li": 1.0}),
+        ("Li2O", {"Li": 2.0, "O": 1.0}),
+        ("Fe2O3", {"Fe": 2.0, "O": 3.0}),
+        ("LiFePO4", {"Li": 1.0, "Fe": 1.0, "P": 1.0, "O": 4.0}),
+        ("O", {"O": 1.0}),
+    ],
+)
+def test_parse_formula_to_dict(formula: str, expected: dict[str, float]) -> None:
+    """Formula strings are parsed to element-count dicts."""
+    assert _parse_formula_to_dict(formula) == expected
+
+
+# === _normalize_entry_compositions ===
+
+
+def test_normalize_entry_compositions_parses_strings() -> None:
+    """String compositions are parsed to dicts, dict compositions pass through."""
+    entries = [
+        {"composition": "Li2O", "energy": -14.3},
+        {"composition": {"Fe": 1}, "energy": -8.3},
+        {"composition": "O", "energy": -4.9},
+    ]
+    result = _normalize_entry_compositions(entries)
+    assert result[0]["composition"] == {"Li": 2.0, "O": 1.0}
+    assert result[1]["composition"] == {"Fe": 1}
+    assert result[2]["composition"] == {"O": 1.0}
+    assert result[1] is entries[1]
+
+
+def test_normalize_entry_compositions_empty() -> None:
+    """Empty list passes through."""
+    assert _normalize_entry_compositions([]) == []
+
+
 # === normalize_convex_hull_entries ===
 
 
@@ -58,7 +100,7 @@ def test_normalize_convex_hull_entries_passthrough() -> None:
     """Test None and list passthrough."""
     assert normalize_convex_hull_entries(None) is None
     entries = [{"composition": {"Li": 1}, "energy": -1.5}]
-    assert normalize_convex_hull_entries(entries) is entries
+    assert normalize_convex_hull_entries(entries) == entries
     tuple_entries = tuple(entries)
     normalized_entries = normalize_convex_hull_entries(tuple_entries)
     assert isinstance(normalized_entries, list)
@@ -91,6 +133,19 @@ def test_normalize_convex_hull_entries_from_phase_diagram() -> None:
         assert isinstance(entry["composition"], dict)
         assert isinstance(entry["is_stable"], bool)
     assert any(entry["is_stable"] for entry in result)
+
+
+def test_normalize_convex_hull_entries_string_compositions() -> None:
+    """String compositions in entry dicts are parsed to element-count dicts."""
+    entries = [
+        {"composition": "Li2O", "energy": -14.3},
+        {"composition": "Fe", "energy": -8.3},
+    ]
+    result = normalize_convex_hull_entries(entries)
+    assert result is not None
+    assert result[0]["composition"] == {"Li": 2.0, "O": 1.0}
+    assert result[1]["composition"] == {"Fe": 1.0}
+    assert result[0]["energy"] == -14.3
 
 
 def test_normalize_convex_hull_entries_unsupported_type() -> None:

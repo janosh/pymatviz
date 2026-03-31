@@ -58,6 +58,10 @@ umap = ["umap-learn>=0.5; python_version < '3.13'"]
 requires = ["uv_build>=0.8.10"]
 build-backend = "uv_build"
 
+# TODO remove once orjson 3.11.8 gets x86_64 Linux wheels or 3.11.9 is released
+[tool.uv]
+constraint-dependencies = ["orjson!=3.11.8"]
+
 [tool.uv.build-backend]
 module-name = "pymatviz"
 module-root = ""
