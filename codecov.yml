@@ -1,4 +1,7 @@
 comment: false
+codecov:
+  notify:
+    after_n_builds: 4 # must match number of pytest-split shards in .github/workflows/test.yml
 coverage:
   status:
     patch:

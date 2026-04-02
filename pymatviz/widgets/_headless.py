@@ -268,7 +268,10 @@ async def _render_widget_async(
             page, fmt, widget_data.get("widget_type"), quality, scale_factor
         )
     except Exception as exc:
-        from playwright.async_api import TimeoutError as PlaywrightTimeout
+        try:
+            from playwright.async_api import TimeoutError as PlaywrightTimeout
+        except ImportError:
+            PlaywrightTimeout = type(None)  # noqa: N806
 
         if isinstance(exc, (PlaywrightTimeout, TimeoutError)):
             raise TimeoutError(
@@ -720,7 +723,10 @@ def render_widget_headless(
             page, fmt, widget_data.get("widget_type"), quality, scale_factor
         )
     except Exception as exc:
-        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+        try:
+            from playwright.sync_api import TimeoutError as PlaywrightTimeout
+        except ImportError:
+            PlaywrightTimeout = type(None)  # noqa: N806
 
         if isinstance(exc, (PlaywrightTimeout, TimeoutError)):
             raise TimeoutError(
