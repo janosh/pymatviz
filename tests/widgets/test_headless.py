@@ -65,6 +65,9 @@ def test_has_running_event_loop_inside_loop() -> None:
 
 def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
     """render_widget_headless calls _render_widget_async when inside an event loop."""
+    pytest.importorskip("nest_asyncio")
+    import nest_asyncio
+
     fake_png = b"\x89PNG"
 
     async def fake_render(*_args: Any, **_kwargs: Any) -> bytes:
@@ -76,8 +79,6 @@ def test_render_widget_headless_dispatches_async_in_event_loop() -> None:
             f"{HEADLESS_PATH}._render_widget_async", side_effect=fake_render
         ) as mock_async,
     ):
-        import nest_asyncio
-
         loop = asyncio.new_event_loop()
         nest_asyncio.apply(loop)
 
