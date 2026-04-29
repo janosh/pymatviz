@@ -186,11 +186,14 @@ def confusion_matrix(
 
     # Handle metrics parameter
     if isinstance(metrics, list | tuple | set):
-        metrics_dict: dict[str, str | None] = dict.fromkeys(metrics)
+        metrics_dict: dict[Any, str | None] = dict.fromkeys(metrics)
     elif isinstance(metrics, dict):
         metrics_dict = metrics
     else:
         raise TypeError(f"Unknown {metrics=}")
+    for metric in metrics_dict:
+        if not isinstance(metric, str):
+            raise TypeError(f"Metric keys must be strings, got {type(metric).__name__}")
 
     # Add metrics annotation
     metrics_text = []
@@ -216,7 +219,7 @@ def confusion_matrix(
             ),
         }
 
-    for metric, fmt in metrics_dict.items():
+    for metric, fmt in cast("dict[str, str | None]", metrics_dict).items():
         if metric not in available_metrics:
             raise ValueError(
                 f"Unknown {metric=}. Available: {', '.join(available_metrics)}"
@@ -248,9 +251,10 @@ def confusion_matrix(
             font_size=22,
         ) | (metrics_kwargs or {})
         fig.add_annotation(**metrics_defaults)
-        if metrics_defaults.get("y", 0) >= 1:
+        y_pos = metrics_defaults.get("y", 0)
+        if isinstance(y_pos, (int, float)) and y_pos >= 1:
             fig.layout.margin.t = 60
-        if metrics_defaults.get("y", 0) <= 0:
+        if isinstance(y_pos, (int, float)) and y_pos <= 0:
             fig.layout.margin.b = 60
 
     # Update axes formatting

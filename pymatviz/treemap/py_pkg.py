@@ -884,7 +884,7 @@ def py_pkg_treemap(
                 metadata = importlib.metadata.metadata(package)
 
                 # Try Home-page first, then Project-URL entries
-                homepage = metadata.get("Home-page")  # type: ignore[attr-defined] https://github.com/astral-sh/ty/issues/1134
+                homepage = metadata.get("Home-page")  # ty: ignore[unresolved-attribute] https://github.com/astral-sh/ty/issues/1134
                 if homepage and "github.com" in homepage:
                     github_url_found = homepage
                 else:

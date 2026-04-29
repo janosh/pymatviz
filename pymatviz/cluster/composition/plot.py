@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 import warnings
-from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, get_args
 
 import numpy as np
@@ -21,7 +20,7 @@ from pymatviz.enums import LabelEnum
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from sklearn.decomposition import KernelPCA
     from sklearn.manifold import TSNE, Isomap
@@ -375,7 +374,7 @@ def cluster_compositions(
     heatmap_colorscale: str = "Viridis",
     marker_size: int = 8,
     show_chem_sys: ShowChemSys | None = None,
-    color_discrete_map: dict[str, ColorType] | None = None,
+    color_discrete_map: Mapping[str, ColorType] | None = None,
     embedding_kwargs: dict[str, Any] | None = None,
     projection_kwargs: dict[str, Any] | None = None,
     sort: bool | int | Callable[[np.ndarray], np.ndarray] = True,
@@ -623,7 +622,9 @@ def cluster_compositions(
                         "a callable, or a valid column name in the DataFrame"
                     ) from exc
                 embeddings = matminer_featurize(
-                    compositions, preset=preset.value, **(embedding_kwargs or {})
+                    compositions,
+                    preset=preset.value,  # ty: ignore[invalid-argument-type]
+                    **(embedding_kwargs or {}),
                 )
 
         # Project embeddings
@@ -636,18 +637,20 @@ def cluster_compositions(
                 **projection_kwargs,
             )
             projector = None
-        elif projection in list(ProjectionMethod):
+        else:
             # Use built-in projection methods
+            try:
+                projection_method = ProjectionMethod(projection)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"{projection=} must be in {list(ProjectionMethod)}, "
+                    f"a callable, or column name in the DataFrame"
+                ) from exc
             projected, projector = project_vectors(
                 embeddings,
-                method=projection,  # type: ignore[arg-type]
+                method=projection_method,
                 n_components=n_components,
                 **projection_kwargs,
-            )
-        else:
-            raise ValueError(
-                f"{projection=} must be in {list(ProjectionMethod)}, "
-                f"a callable, or column name in the DataFrame"
             )
 
     # Extract chemical systems if needed
@@ -802,7 +805,7 @@ def cluster_compositions(
             sort_direction = sort
         elif callable(sort):
             # Custom sort function
-            sort_indices = sort(prop_values)
+            sort_indices = sort(np.asarray(prop_values))
             df_plot = df_plot.iloc[sort_indices]
             projected = projected[sort_indices]
             if embeddings is not None:

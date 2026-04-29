@@ -75,5 +75,5 @@ bands = {
 }
 phonopy_nacl.run_band_structure(paths=list(bands.values()))
 
-fig = pmv.phonon_bands({"NaCl (phonopy)": phonopy_nacl.band_structure})  # type: ignore[arg-type]
+fig = pmv.phonon_bands({"NaCl (phonopy)": phonopy_nacl.band_structure})
 fig.show()

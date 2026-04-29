@@ -70,9 +70,9 @@ fig.show()
 
 # %% 2x4 grid
 fig = pmv.brillouin_zone_3d(
-    structures,  # type: ignore[arg-type]
+    structures,
     n_cols=4,
-    subplot_title=simple_subplot_title,  # type: ignore[arg-type]
+    subplot_title=simple_subplot_title,  # ty: ignore[invalid-argument-type]
     surface_kwargs=dict(opacity=0.4),
 )
 fig.show()
@@ -82,9 +82,9 @@ fig.show()
 # %% 3x3 grid with structure and BZ volumes
 fig = pmv.brillouin_zone_3d(
     # only pass 6 structures to avoid crowding
-    {k: v for idx, (k, v) in enumerate(structures.items()) if idx < 6},  # type: ignore[arg-type]
+    {k: v for idx, (k, v) in enumerate(structures.items()) if idx < 6},
     n_cols=3,
-    subplot_title=volume_subplot_title,  # type: ignore[arg-type]
+    subplot_title=volume_subplot_title,  # ty: ignore[invalid-argument-type]
     surface_kwargs=dict(opacity=0.4),
 )
 fig.layout.title = dict(
@@ -97,9 +97,9 @@ fig.show()
 
 # %% 4x2 grid with spacegroup information
 fig = pmv.brillouin_zone_3d(
-    structures,  # type: ignore[arg-type]
+    structures,
     n_cols=2,
-    subplot_title=spacegroup_subplot_title,  # type: ignore[arg-type]
+    subplot_title=spacegroup_subplot_title,
     surface_kwargs=dict(opacity=0.4),
 )
 fig.layout.title = dict(

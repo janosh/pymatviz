@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 def count_elements(
     values: ElemValues,
     count_mode: ElemCountMode = ElemCountMode.composition,
-    exclude_elements: Sequence[str] = (),
+    exclude_elements: str | Sequence[str] = (),
     fill_value: float | None = None,
 ) -> pd.Series:
     """Count element occurrence in list of formula strings or dict-like compositions.
@@ -61,7 +61,7 @@ def count_elements(
             - occurrence: Count the number of times each element occurs in a list of
                 formulas irrespective of compositions. E.g. [Fe2 O3, Fe O, Fe4 P4 O16]
                 counts to {Fe: 3, O: 3, P: 1}.
-        exclude_elements (Sequence[str]): Elements to exclude from the count.
+        exclude_elements (str | Sequence[str]): Element(s) to exclude from the count.
             Defaults to ().
         fill_value (float | None): Value to fill in for missing elements.
             Defaults to None for NaN.
@@ -127,15 +127,15 @@ def count_elements(
 
     if len(exclude_elements) > 0:
         if isinstance(exclude_elements, str):
-            exclude_elements = [exclude_elements]
-        if isinstance(exclude_elements, tuple):
-            exclude_elements = list(exclude_elements)
+            excluded_elements = [exclude_elements]
+        else:
+            excluded_elements = list(exclude_elements)
         try:
-            srs = srs.drop(exclude_elements)
+            srs = srs.drop(excluded_elements)
         except KeyError as exc:
-            bad_symbols = ", ".join(x for x in exclude_elements if x not in srs)
+            bad_symbols = ", ".join(x for x in excluded_elements if x not in srs)
             raise ValueError(
-                f"Unexpected symbol(s) {bad_symbols} in {exclude_elements=}"
+                f"Unexpected symbol(s) {bad_symbols} in {excluded_elements=}"
             ) from exc
 
     return srs
@@ -316,7 +316,7 @@ def normalize_structures(
     systems: AnyStructure
     | Sequence[AnyStructure]
     | pd.Series
-    | dict[str, AnyStructure],
+    | dict[Hashable, AnyStructure],
 ) -> dict[Hashable, Structure | IStructure | Molecule | IMolecule]:
     """Convert pymatgen Structures/IStructures, ASE Atoms, or PhonopyAtoms or
     sequences/dicts of them to a dictionary mapping hashable keys to pymatgen
@@ -375,7 +375,7 @@ def normalize_structures(
 
 def normalize_to_dict(
     inputs: T | Sequence[T] | dict[str, T],
-    cls: type[T] = SiteCollection,
+    cls: type[T] = SiteCollection,  # ty: ignore[invalid-parameter-default]
     key_gen: Callable[[T], str] = lambda obj: getattr(
         obj, "formula", type(obj).__name__
     ),
@@ -398,24 +398,27 @@ def normalize_to_dict(
         TypeError: If the input format is invalid.
     """
     if isinstance(inputs, cls):
-        return cast("dict[str, T]", {"": inputs})
+        return {key_gen(inputs): inputs}
 
-    if (
-        isinstance(inputs, list | tuple)
-        and all(isinstance(obj, cls) for obj in inputs)
-        and len(inputs) > 0
-    ):
+    if isinstance(inputs, Sequence) and not isinstance(inputs, (str, bytes)) and inputs:
         out_dict: dict[str, T] = {}
         for obj in inputs:
-            key = key_gen(obj)
+            if not isinstance(obj, cls):
+                raise TypeError(
+                    f"Invalid item in inputs, expected {cls.__name__}, "
+                    f"got {type(obj).__name__}"
+                )
+            base_key = key_gen(obj)
+            candidate = base_key
             idx = 1
-            while key in out_dict:
-                key += f" {idx}"
+            while candidate in out_dict:
+                candidate = f"{base_key} {idx}"
                 idx += 1
-            out_dict[key] = obj
+            out_dict[candidate] = obj
         return out_dict
+
     if isinstance(inputs, dict):
-        return inputs  # ty: ignore[invalid-return-type]
+        return cast("dict[str, T]", inputs)
     if isinstance(inputs, pd.Series):
         return inputs.to_dict()
 
@@ -467,24 +470,22 @@ def df_to_arrays(
         )
 
     flat_args = []
-    # tuple doesn't support item assignment
-    args = list(args)  # ty: ignore[invalid-assignment]
-
     for col_name in args:
         if isinstance(col_name, str | int):
             flat_args.append(col_name)
         else:
-            flat_args.extend(col_name)
+            flat_args.extend(col_name)  # ty: ignore[invalid-argument-type]
 
     df_no_nan = df.dropna(subset=flat_args)
-    for idx, col_name in enumerate(args):
+    out_args: list[str | ArrayLike | dict[str, ArrayLike]] = []
+    for col_name in args:
         if isinstance(col_name, str | int):
-            args[idx] = df_no_nan[col_name].to_numpy()  # ty: ignore[invalid-assignment]
+            out_args.append(df_no_nan[col_name].to_numpy())
         else:
-            col_data = df_no_nan[[*col_name]].to_numpy().T
-            args[idx] = dict(zip(col_name, col_data, strict=True))  # ty: ignore[invalid-assignment]
+            col_data = df_no_nan[[*col_name]].to_numpy().T  # ty: ignore[not-iterable]
+            out_args.append(dict(zip(col_name, col_data, strict=True)))  # ty: ignore[invalid-argument-type,no-matching-overload]
 
-    return args  # ty: ignore[invalid-return-type]
+    return out_args
 
 
 def bin_df_cols(
@@ -589,7 +590,7 @@ def normalize_spacegroups(
         from moyopy.interface import MoyoAdapter
 
         return pd.Series(
-            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]
+            [MoyoDataset(MoyoAdapter.from_py_obj(struct)).number for struct in data]  # ty: ignore[invalid-argument-type]
         )
 
     result = pd.Series(data)

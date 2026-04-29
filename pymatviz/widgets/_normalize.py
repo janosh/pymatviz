@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any
+from typing import Any, cast
 
 
 def _normalize_ferrox_hkls(hkls_data: Any) -> Any:
@@ -295,7 +295,9 @@ def normalize_convex_hull_entries(obj: Any) -> list[dict[str, Any]] | None:
     if obj is None:
         return None
     if isinstance(obj, (list, tuple)):
-        entries = obj if isinstance(obj, list) else list(obj)
+        entries = cast(
+            "list[dict[str, Any]]", obj if isinstance(obj, list) else list(obj)
+        )
         return _normalize_entry_compositions(entries)
 
     try:

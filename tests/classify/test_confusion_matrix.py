@@ -276,6 +276,13 @@ def test_confusion_matrix_error_cases() -> None:
             metrics={"invalid": None},
         )
 
+    with pytest.raises(TypeError, match="Metric keys must be strings, got int"):
+        confusion_matrix(
+            np.array([[1, 2], [3, 4]]),
+            x_labels=("A", "B"),
+            metrics={1: None},  # ty: ignore[invalid-argument-type]
+        )
+
 
 def test_confusion_matrix_custom_annotations(sample_conf_mat: np.ndarray) -> None:
     """Test custom cell annotations."""

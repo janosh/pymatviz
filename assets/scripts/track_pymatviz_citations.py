@@ -187,13 +187,15 @@ def fetch_scholar_papers(
             if isinstance(pub_info, dict) and "authors" in pub_info:
                 authors = [
                     author["name"]
-                    for author in pub_info.pop("authors")
+                    for author in pub_info.get("authors", [])
                     if isinstance(author, dict) and "name" in author
                 ]
 
             # Store all metadata from the result, overwrite only processed fields
-            paper: ScholarPaper = {  # type:ignore[typeddict-item]
+            paper: ScholarPaper = {
                 **result,  # Keep all original fields
+                "title": result["title"],
+                "link": result["link"],
                 "authors": authors
                 or result.get("authors", []),  # Use processed authors
                 "year": year,  # Use extracted year
