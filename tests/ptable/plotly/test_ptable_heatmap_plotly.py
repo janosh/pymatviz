@@ -70,7 +70,7 @@ def test_ptable_heatmap_plotly(glass_formulas: list[str]) -> None:
 
     with pytest.raises(TypeError, match="should be string, list of strings or list"):
         # test that bad colorscale raises ValueError
-        pmv.ptable_heatmap_plotly(glass_formulas, colorscale=lambda: "bad scale")  # type: ignore[arg-type]
+        pmv.ptable_heatmap_plotly(glass_formulas, colorscale=lambda: "bad scale")  # ty: ignore[invalid-argument-type]
 
     # test that unknown builtin colorscale raises ValueError
     with pytest.raises(PlotlyError, match="Colorscale foobar is not a built-in scale"):
@@ -210,7 +210,7 @@ def test_ptable_heatmap_plotly_cscale_range_raises() -> None:
     with pytest.raises(
         ValueError, match=re.escape(f"{cscale_range=} should have length 2")
     ):
-        pmv.ptable_heatmap_plotly(df_ptable[Key.density], cscale_range=cscale_range)  # type: ignore[arg-type]
+        pmv.ptable_heatmap_plotly(df_ptable[Key.density], cscale_range=cscale_range)  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -228,7 +228,7 @@ def test_ptable_heatmap_plotly_label_map(
     if label_map is not False:
         if label_map is None:
             # use default map
-            label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], " ")  # type: ignore[list-item]
+            label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], " ")  # ty: ignore[invalid-assignment]
         # check for non-empty intersection between label_map values and annotations
         # we use `val in anno.text` cause the labels are wrapped in non-matching
         # HTML <span> tags
@@ -292,7 +292,11 @@ def test_ptable_heatmap_plotly_hover_props() -> None:
 
 def test_ptable_heatmap_plotly_custom_label_map() -> None:
     values = {"Fe": 2, "O": 3, "H": np.nan}
-    label_map = lambda label: {2: "High", 3: "Low"}.get(float(label), label)
+
+    def label_map(label: str) -> str:
+        """Map numeric labels to custom display strings."""
+        return {2.0: "High", 3.0: "Low"}.get(float(label), label)
+
     fig = pmv.ptable_heatmap_plotly(values, label_map=label_map)
     annos = [
         anno.text
@@ -306,7 +310,7 @@ def test_ptable_heatmap_plotly_error_cases() -> None:
     with pytest.raises(
         ValueError, match=re.escape("cscale_range=(0,) should have length 2")
     ):
-        pmv.ptable_heatmap_plotly({"Fe": 2, "O": 3}, cscale_range=(0,))  # type: ignore[arg-type]
+        pmv.ptable_heatmap_plotly({"Fe": 2, "O": 3}, cscale_range=(0,))  # ty: ignore[invalid-argument-type]
 
     hover_props = ("atomic_mass", bad_hover_prop := "invalid_prop")
     with pytest.raises(ValueError, match=f"Unsupported hover_props: {bad_hover_prop}"):
@@ -348,7 +352,7 @@ def test_ptable_heatmap_plotly_hover_tooltips() -> None:
 
     # Test fraction and percent modes
     for heat_mode in ["fraction", "percent"]:
-        fig = pmv.ptable_heatmap_plotly(float_values, heat_mode=heat_mode)  # type: ignore[arg-type]
+        fig = pmv.ptable_heatmap_plotly(float_values, heat_mode=heat_mode)  # ty: ignore[invalid-argument-type]
         hover_texts = fig.data[-1].text.flat
 
         for elem_symb, value in float_values.items():
@@ -603,7 +607,7 @@ def test_ptable_heatmap_plotly_value_formatting() -> None:
     for values, heat_mode, fmt, expected_labels in test_cases:
         fig = pmv.ptable_heatmap_plotly(
             values,
-            heat_mode=heat_mode,  # type: ignore[arg-type]
+            heat_mode=heat_mode,  # ty: ignore[invalid-argument-type]
             fmt=fmt,
             font_size=10,  # smaller font for stable span style
         )

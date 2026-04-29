@@ -82,7 +82,7 @@ def classify_local_env_with_order_params(
 
         # Get neighboring sites using CrystalNN
         crystal_nn = local_env.CrystalNN()
-        nn_info = crystal_nn.get_nn_info(structure=structure, n=site_idx)  # type: ignore[arg-type]
+        nn_info = crystal_nn.get_nn_info(structure=structure, n=site_idx)
 
         # Create sites list: central site + neighbors
         sites = [structure[site_idx]] + [info["site"] for info in nn_info]
@@ -90,7 +90,7 @@ def classify_local_env_with_order_params(
         # Calculate order parameters
         neighbor_indices = list(range(1, len(sites)))
         local_order_params = local_ops.get_order_parameters(
-            structure=structure,  # type: ignore[arg-type]
+            structure=structure,
             n=0,
             indices_neighs=neighbor_indices,
         )

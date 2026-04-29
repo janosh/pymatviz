@@ -28,8 +28,8 @@ def _get_axis_labels(
     """Extract axis labels from data or column names."""
     if df is not None:
         # x, y are column names (str) when df is provided
-        xlabel: str = getattr(df[x], "name", x)  # type: ignore[arg-type]
-        ylabel: str = getattr(df[y], "name", y)  # type: ignore[arg-type]
+        xlabel: str = getattr(df[x], "name", x)
+        ylabel: str = getattr(df[y], "name", y)
     else:
         xlabel = getattr(x, "name", x if isinstance(x, str) else "Actual")
         ylabel = getattr(y, "name", y if isinstance(y, str) else "Predicted")
@@ -471,9 +471,7 @@ def density_hexbin(
     xlabel, ylabel = _get_axis_labels(x, y, df)
 
     # Use numpy's histogram2d for initial binning, then convert to hex coordinates
-    hist, x_edges, y_edges = np.histogram2d(  # type: ignore[no-matching-overload]
-        xs, ys, bins=gridsize, weights=weights
-    )
+    hist, x_edges, y_edges = np.histogram2d(xs, ys, bins=gridsize, weights=weights)
 
     # Create hexagonal grid from rectangular bins
     x_centers = (x_edges[:-1] + x_edges[1:]) / 2

@@ -148,7 +148,7 @@ def xrd_pattern(  # noqa: D417
         if is_ase_atoms(pattern_or_struct):
             from pymatgen.io.ase import AseAtomsAdaptor
 
-            pattern_or_struct = AseAtomsAdaptor().get_structure(pattern_or_struct)  # type: ignore[arg-type]
+            pattern_or_struct = AseAtomsAdaptor().get_structure(pattern_or_struct)
 
         if isinstance(pattern_or_struct, Structure):
             xrd_calculator = XRDCalculator(wavelength=wavelength)

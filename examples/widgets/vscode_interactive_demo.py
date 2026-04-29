@@ -704,7 +704,7 @@ for widgets, fmts in [
         for fmt in fmts:
             path = f"{EXPORT_DIR}/{name}.{fmt}"
             try:
-                widget.to_img(filename=path, fmt=fmt)  # type: ignore[arg-type]
+                widget.to_img(filename=path, fmt=fmt)  # ty: ignore[invalid-argument-type]
                 print(f"  saved {path}")
             except (
                 TimeoutError,

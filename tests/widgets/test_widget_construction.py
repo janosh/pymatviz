@@ -649,6 +649,13 @@ def test_heatmap_matrix_accepts_nested_dict_values() -> None:
     assert widget.values["Fe"]["O"] == 0.5
 
 
+def test_heatmap_matrix_scalar_string_axis_items() -> None:
+    """HeatmapMatrixWidget treats scalar string axis items as one label."""
+    widget = HeatmapMatrixWidget(x_items="Fe", y_items="O")
+    assert widget.x_items == [{"key": "Fe", "label": "Fe"}]
+    assert widget.y_items == [{"key": "O", "label": "O"}]
+
+
 def test_rdf_plot_accepts_pymatgen_structure() -> None:
     """RdfPlotWidget normalizes pymatgen Structure to dict via _to_dict."""
     from pymatgen.core import Lattice, Structure
@@ -786,7 +793,7 @@ def test_to_img_format_inference(
     with patch(
         f"{_HEADLESS}.render_widget_headless", return_value=_FAKE_PNG
     ) as mock_render:
-        widget.to_img(filename=resolved, fmt=explicit_fmt)  # type: ignore[arg-type]
+        widget.to_img(filename=resolved, fmt=explicit_fmt)  # ty: ignore[invalid-argument-type]
 
     assert mock_render.call_args.kwargs["fmt"] == expected_capture_fmt
 

@@ -20,6 +20,7 @@ from pymatviz.typing import (
     VALID_COLOR_ELEM_STRATEGIES,
     ColorElemTypeStrategy,
     ElemValues,
+    PTableSplitOrientation,
 )
 from pymatviz.utils import df_ptable
 from pymatviz.utils.data import si_fmt
@@ -208,7 +209,7 @@ def ptable_heatmap_plotly(
     if label_map is None:
         # default to space string for None, np.nan and "nan". space is needed
         # for <br> in tile_text to work so all element symbols are vertically aligned
-        label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], "-")  # type: ignore[list-item]
+        label_map = dict.fromkeys([np.nan, None, "nan", "nan%"], "-")  # ty: ignore[invalid-assignment]
 
     all_ints = all(isinstance(val, int) for val in values)
     counts_total = values.sum()
@@ -388,7 +389,10 @@ def ptable_heatmap_plotly(
         orig_max = np.ceil(max(non_nan_values))
         tick_values = np.logspace(orig_min, orig_max, num=10, endpoint=True)
         tick_values = [round(val, -int(np.floor(np.log10(val)))) for val in tick_values]
-        tick_values = list(colorbar.pop("tickvals", tick_values))
+        tick_values = [
+            float(val)
+            for val in cast("Sequence[Any]", colorbar.pop("tickvals", tick_values))
+        ]
         if any(val <= 0 for val in tick_values):
             raise ValueError(
                 f"tickvals must be positive for log scale, got {tick_values}"
@@ -397,7 +401,9 @@ def ptable_heatmap_plotly(
         custom_ticktext = colorbar.pop("ticktext", None)
 
         if custom_ticktext is not None:
-            ticktext = [str(t) for t in custom_ticktext]
+            if isinstance(custom_ticktext, str):
+                custom_ticktext = [custom_ticktext]
+            ticktext = [str(tick) for tick in custom_ticktext]  # ty: ignore[not-iterable]
         else:
             # Auto-increase precision to avoid duplicate labels
             # Extract precision and format type from format like ".2f" or ".10g"
@@ -774,7 +780,8 @@ def _add_colorbar_trace(
     """Add an invisible scatter trace with a colorbar to the figure."""
     # For callable colorscales, sample at endpoints to create a 2-point colorscale
     if callable(colorscale):
-        colorscale = [[0, colorscale("", cmin, 0)], [1, colorscale("", cmax, 0)]]  # type: ignore[assignment]
+        color_fn = cast("Callable[[str, float, int], str]", colorscale)
+        colorscale = [[0, color_fn("", cmin, 0)], [1, color_fn("", cmax, 0)]]  # ty: ignore[invalid-assignment]
 
     # Ensure tickformat is included in colorbar settings
     if "tickformat" not in colorbar:
@@ -855,7 +862,7 @@ def ptable_heatmap_splits_plotly(
     ),
     *,
     # Split
-    orientation: Literal["diagonal", "horizontal", "vertical", "grid"] = "diagonal",
+    orientation: PTableSplitOrientation = "diagonal",
     # Figure
     colorscale: ColorScale | Sequence[ColorScale] = "Viridis",
     colorbar: dict[str, Any] | Sequence[dict[str, Any]] | Literal[False] | None = None,
@@ -989,9 +996,9 @@ def ptable_heatmap_splits_plotly(
         split_labels = list(data.columns)
         # Propagate column names to colorbar titles if not explicitly set
         if isinstance(colorbar, dict):
-            colorbar = colorbar.copy()  # type: ignore[arg-type]
-            if "title" not in colorbar:  # type: ignore[arg-type]
-                colorbar["title"] = split_labels[0] if len(split_labels) == 1 else None  # type: ignore[arg-type]
+            colorbar = colorbar.copy()  # ty: ignore[invalid-assignment]
+            if "title" not in colorbar:  # ty: ignore[unsupported-operator]
+                colorbar["title"] = split_labels[0] if len(split_labels) == 1 else None  # ty: ignore[invalid-assignment]
         elif isinstance(colorbar, Sequence):
             colorbar = list(colorbar)  # Convert to list to allow modification
             for idx, (cbar, label) in enumerate(
@@ -1015,9 +1022,26 @@ def ptable_heatmap_splits_plotly(
     if not split_labels:  # if not DataFrame or empty columns
         split_labels = [f"Split {idx + 1}" for idx in range(n_splits)]
 
-    use_multiple_cbar = (
-        isinstance(colorscale, Sequence) and not isinstance(colorscale, str)
-    ) or isinstance(colorbar, Sequence)
+    def is_multi_colorscale(obj: object) -> bool:
+        """Distinguish multiple colorscales from a single list of color tokens."""
+        if not isinstance(obj, Sequence) or isinstance(obj, str):
+            return False
+        named_colorscales = set(plotly.colors.named_colorscales())
+        if all(isinstance(item, str) for item in obj):
+            return all(
+                item.lower().removesuffix("_r") in named_colorscales
+                for item in cast("Sequence[str]", obj)
+            )
+        return all(
+            callable(item)
+            or isinstance(item, Mapping)
+            or (isinstance(item, Sequence) and not isinstance(item, str))
+            for item in obj
+        )
+
+    use_multiple_cbar = is_multi_colorscale(colorscale) or isinstance(
+        colorbar, Sequence
+    )
 
     # Calculate ranges per split
     split_ranges = []
@@ -1041,17 +1065,17 @@ def ptable_heatmap_splits_plotly(
             if not isinstance(colorscale, Sequence) or isinstance(colorscale, str)
             else colorscale
         )
-        colorbars = (
-            [colorbar or {}] * len(colorscales)
-            if not isinstance(colorbar, Sequence)
-            else colorbar
-        )
 
         # Validate lengths
         if len(colorscales) != n_splits:
             raise ValueError(
                 f"Number of colorscales ({len(colorscales)}) must match {n_splits=}"
             )
+        colorbars = list(
+            [colorbar or {}] * n_splits
+            if not isinstance(colorbar, Sequence)
+            else colorbar
+        )
         if len(colorbars) != n_splits:
             raise ValueError(
                 f"Number of colorbars ({len(colorbars)}) must match {n_splits=}"
@@ -1061,15 +1085,18 @@ def ptable_heatmap_splits_plotly(
         colorscales = [colorscale] * n_splits
         colorbars = [colorbar or {}]
 
+    colorscales = cast("list[ColorScale]", list(colorscales))
+    colorbars = cast("list[dict[str, Any]]", colorbars)
+
     # Validate colorscales
     validator = colorscale_validator
     for idx, cscale in enumerate(colorscales):
         if callable(cscale):
             continue
         if isinstance(cscale, str):
-            colorscales[idx] = validator.validate_coerce(cscale)  # type: ignore[index]
+            colorscales[idx] = validator.validate_coerce(cscale)  # ty: ignore[invalid-assignment]
         else:
-            colorscales[idx] = validator.validate_coerce(list(cscale))  # type: ignore[index]
+            colorscales[idx] = validator.validate_coerce(list(cscale))  # ty: ignore[invalid-assignment]
 
     # Initialize figure with subplots
     has_f_block_data = any(
@@ -1098,7 +1125,7 @@ def ptable_heatmap_splits_plotly(
 
     def create_section_coords(
         n_splits: Literal[2, 3, 4],
-        orientation: Literal["diagonal", "horizontal", "vertical", "grid"],
+        orientation: PTableSplitOrientation,
     ) -> list[tuple[list[float], list[float]]]:
         """Generate x,y coordinates to split a unit square into n equal sections."""
         if orientation == "grid":
@@ -1183,11 +1210,13 @@ def ptable_heatmap_splits_plotly(
         # Get values and colors
         values = np.asarray(data.get(symbol, []), dtype=float)
 
-        if len(values) not in {2, 3, 4}:
-            raise ValueError(f"Number of splits {len(values)} must be 2, 3, or 4")
+        n_sections = len(values)
+        if n_sections not in {2, 3, 4}:
+            raise ValueError(f"Number of splits {n_sections} must be 2, 3, or 4")
+        n_sections = cast("Literal[2, 3, 4]", n_sections)
 
         # Create sections
-        sections = create_section_coords(len(values), orientation)  # type: ignore[arg-type]
+        sections = create_section_coords(n_sections, orientation)
         split_colors: list[str] = []  # Store colors for each split
         for idx, (xs, ys) in enumerate(sections):  # Loop over element tile splits
             if values[idx] == 0:
@@ -1518,7 +1547,7 @@ def ptable_heatmap_splits_plotly(
 
             # Get colorbar settings with consistent positioning
             cbar_settings = _get_colorbar_settings(
-                cbar,  # type: ignore[arg-type]
+                cbar,
                 split_idx=split_idx,
                 n_splits=n_splits if use_multiple_cbar else 1,
                 split_name=split_name if use_multiple_cbar else None,
@@ -1540,7 +1569,7 @@ def ptable_heatmap_splits_plotly(
                     else colorbars[0]
                 )
                 cbar_settings = _get_colorbar_settings(
-                    cbar,  # type: ignore[arg-type]
+                    cbar,
                     split_idx=split_idx,
                     n_splits=n_splits,
                     split_name=split_name,
@@ -1555,7 +1584,11 @@ def ptable_heatmap_splits_plotly(
 ElemData: TypeAlias = (
     tuple[Sequence[float], Sequence[float]]
     | tuple[Sequence[float], Sequence[float], Sequence[float | str]]
-    | dict[str, tuple[Sequence[float], Sequence[float]]]
+    | Mapping[str, tuple[Sequence[float], Sequence[float]]]
+)
+LineData: TypeAlias = (
+    tuple[Sequence[float], Sequence[float]]
+    | tuple[Sequence[float], Sequence[float], Sequence[float | str]]
 )
 
 
@@ -1699,10 +1732,11 @@ def ptable_scatter_plotly(
         all_y_vals: list[float] = []
         # _* to ignore optional color data
         for elem_data in data.values():
-            for x_vals, y_vals, *_ in (
-                # handle both single line and multiple lines per element cases
-                elem_data if isinstance(elem_data, dict) else {"": elem_data}
-            ).values():
+            line_data = cast(
+                "Mapping[str, LineData]",
+                elem_data if isinstance(elem_data, Mapping) else {"": elem_data},
+            )
+            for x_vals, y_vals, *_ in line_data.values():
                 all_x_vals.extend(x_vals)
                 all_y_vals.extend(y_vals)
 
@@ -1720,11 +1754,13 @@ def ptable_scatter_plotly(
     # Find global color range if any numeric color values exist
     cbar_min, cbar_max = float("inf"), float("-inf")
     for elem_values in data.values():
-        for elem_data in (
-            elem_values if isinstance(elem_values, dict) else {"": elem_values}
-        ).values():
+        line_data = cast(
+            "Mapping[str, LineData]",
+            elem_values if isinstance(elem_values, Mapping) else {"": elem_values},
+        )
+        for elem_data in line_data.values():
             if len(elem_data) > 2:  # Has color data
-                color_vals = elem_data[2]  # type: ignore[index]
+                color_vals = elem_data[2]  # ty: ignore[index-out-of-bounds]
                 if all(isinstance(val, int | float) for val in color_vals):
                     cbar_min = min(cbar_min, *color_vals)
                     cbar_max = max(cbar_max, *color_vals)
@@ -1738,14 +1774,14 @@ def ptable_scatter_plotly(
 
     # Track whether we're plotting multiple lines per element
     line_colors: dict[str, str] | None = None
-    has_multiple_lines = any(isinstance(val, dict) for val in data.values())
+    has_multiple_lines = any(isinstance(val, Mapping) for val in data.values())
 
     if has_multiple_lines:
         # Get all unique line names across elements for consistent colors
         line_names = {
             key
             for elem_data in data.values()
-            if isinstance(elem_data, dict)
+            if isinstance(elem_data, Mapping)
             for key in elem_data
         }
         # Create color map for line names
@@ -1789,7 +1825,10 @@ def ptable_scatter_plotly(
 
         symbol_data = data[symbol]
         # Add line plot if data exists for this element
-        elem_data = symbol_data if isinstance(symbol_data, dict) else {"": symbol_data}
+        elem_data = cast(
+            "Mapping[str, LineData]",
+            symbol_data if isinstance(symbol_data, Mapping) else {"": symbol_data},
+        )
         for line_name, elem_vals in elem_data.items():
             x_vals, y_vals, *rest = elem_vals
             color_vals = rest[0] if rest else None  # if 3-tuple, first entry is color

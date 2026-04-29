@@ -128,4 +128,4 @@ def register_matterviz_widgets() -> None:
     # Register _display_ for marimo auto-rendering
     for cls in _AUTO_DISPLAY:
         if not hasattr(cls, "_display_"):
-            cls._display_ = create_widget  # type: ignore[attr-defined]
+            cls._display_ = create_widget  # ty: ignore[invalid-assignment]

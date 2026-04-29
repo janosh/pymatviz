@@ -637,7 +637,7 @@ def test_custom_embedding_projection(
     fig = pmv.cluster_compositions(
         df_in=sample_df,
         prop_name="property",
-        embedding_method=embedding_method,  # type: ignore[arg-type]
+        embedding_method=embedding_method,  # ty: ignore[invalid-argument-type]
         projection=projection,
         embedding_kwargs=embedding_kwargs,
         projection_kwargs=projection_kwargs,
@@ -757,7 +757,7 @@ def test_hover_text_alignment(
         prop_name=prop_name,
         embedding_method=embedding_method,
         projection="pca",
-        sort=sort_option,  # type: ignore[arg-type]
+        sort=sort_option,  # ty: ignore[invalid-argument-type]
         show_chem_sys=viz_mode,
     )
 
@@ -1759,7 +1759,7 @@ def test_invalid_show_projection_stats(df_comp: pd.DataFrame) -> None:
             df_in=df_comp,
             embedding_method="one-hot",
             projection="pca",
-            show_projection_stats="invalid",  # type: ignore[arg-type]
+            show_projection_stats="invalid",  # ty: ignore[invalid-argument-type]
         )
 
 
@@ -1937,7 +1937,7 @@ def test_custom_projection_function(
 ) -> None:
     """Test using a custom projection function."""
     # Add some tracking to verify it's called
-    custom_projection_func.called = False  # type: ignore[attr-defined]
+    custom_projection_func.called = False  # ty: ignore[unresolved-attribute]
 
     original_func = custom_projection_func
 
@@ -1945,8 +1945,8 @@ def test_custom_projection_function(
         embeddings: np.ndarray, n_components: int, **kwargs: Any
     ) -> np.ndarray:
         """Wrapper to track that the function was called."""
-        original_func.called = True  # type: ignore[attr-defined]
-        return original_func(embeddings, n_components, **kwargs)  # type: ignore[call-arg]
+        original_func.called = True  # ty: ignore[unresolved-attribute]
+        return original_func(embeddings, n_components, **kwargs)  # ty: ignore[missing-argument]
 
     # Use the custom projection function
     fig = pmv.cluster_compositions(
@@ -1961,7 +1961,7 @@ def test_custom_projection_function(
     assert len(fig.data[0].x) == len(df_prop)
 
     # Verify the custom projector was called
-    assert original_func.called  # type: ignore[attr-defined]
+    assert original_func.called  # ty: ignore[unresolved-attribute]
 
     # Verify metadata
     assert isinstance(fig, ClusterFigure)

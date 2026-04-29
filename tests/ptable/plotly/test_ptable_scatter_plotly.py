@@ -158,7 +158,7 @@ def test_annotations(
     expected_count: int,
 ) -> None:
     """Test different types of annotations."""
-    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(sample_data, annotations=annotations)  # ty: ignore[invalid-argument-type]
 
     if callable(annotations):
         # For callable annotations, check format
@@ -204,7 +204,7 @@ def test_ptable_scatter_plotly_invalid_input() -> None:
     # Invalid mode should raise ValueError
     err_msg = "Invalid value of type 'builtins.str' received for the 'mode' property"
     with pytest.raises(ValueError, match=re.escape(err_msg)):
-        pmv.ptable_scatter_plotly({"Fe": ([1], [1])}, mode="invalid")  # type: ignore[arg-type]
+        pmv.ptable_scatter_plotly({"Fe": ([1], [1])}, mode="invalid")  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -479,7 +479,7 @@ def test_mixed_input_types() -> None:
             "tuple": ((1, 2), (3, 4)),  # Python tuples
         }
     }
-    fig = pmv.ptable_scatter_plotly(data, mode="lines")  # type: ignore[arg-type]
+    fig = pmv.ptable_scatter_plotly(data, mode="lines")
 
     # All should be plotted correctly
     assert len(fig.data) == 3

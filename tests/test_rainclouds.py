@@ -126,26 +126,33 @@ def test_rainclouds_scale(
 
 
 @pytest.mark.parametrize(
-    ("hover_data", "expected_columns"),
+    ("hover_data", "expected_first", "expected_last"),
     [
-        (None, ["value"]),
-        (["category"], ["value", "category"]),
-        ({"Group": ["extra"]}, ["value", "extra"]),
+        (None, ["value"], ["value"]),
+        (["category"], ["value", "category"], ["value", "category"]),
+        ({"Group": ["extra"]}, ["value", "extra"], ["value", "extra"]),
+        (
+            {"Group": {"source": [f"source-{idx}" for idx in range(100)]}},
+            ["value", "source: source-0"],
+            ["value", "source: source-99"],
+        ),
     ],
 )
 def test_rainclouds_hover_data(
     sample_dataframe: pd.DataFrame,
-    hover_data: Sequence[str] | dict[str, Sequence[str]] | None,
-    expected_columns: Sequence[str],
+    hover_data: (
+        Sequence[str] | dict[str, Sequence[str] | dict[str, Sequence[object]]] | None
+    ),
+    expected_first: Sequence[str],
+    expected_last: Sequence[str],
 ) -> None:
     data = {"Group": (sample_dataframe, "value")}
     fig = pmv.rainclouds(data, hover_data=hover_data)
     scatter_trace = next(
         trace for trace in fig.data if getattr(trace, "mode", None) == "markers"
     )
-    assert all(
-        all(col in text for col in expected_columns) for text in scatter_trace.hovertext
-    )
+    assert all(text in scatter_trace.hovertext[0] for text in expected_first)
+    assert all(text in scatter_trace.hovertext[-1] for text in expected_last)
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
+import numpy as np
 import pytest
 
 import pymatviz as pmv
@@ -11,7 +12,7 @@ from pymatviz.utils.plotting import contrast_ratio
 if TYPE_CHECKING:
     from typing import Literal
 
-    from pymatviz.typing import RgbColorType
+    from pymatviz.typing import ColorType, RgbColorType
 
 
 @pytest.mark.parametrize(
@@ -120,6 +121,14 @@ def test_luminance_with_edge_cases() -> None:
     # Test with invalid color
     with pytest.raises(ValueError, match="Unsupported color format: not_a_color"):
         pmv.utils.luminance("not_a_color")
+
+
+def test_luminance_accepts_numpy_scalar_rgb_tuple() -> None:
+    """Luminance accepts NumPy scalar channels in RGB tuples."""
+    color = (np.int32(128), np.int32(128), np.int32(128))
+    assert pmv.utils.luminance(cast("ColorType", color)) == pytest.approx(
+        0.21586, abs=0.001
+    )
 
 
 def test_pick_max_contrast_color_with_min_contrast_ratio() -> None:

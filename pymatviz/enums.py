@@ -14,7 +14,7 @@ from pymatviz.utils import PKG_DIR, html_tag
 if TYPE_CHECKING:
     from typing import Any, Self
 
-    from pymatviz.typing import RgbColorType
+    from pymatviz.typing import ColorType
 
 
 # Load YAML data at module level
@@ -22,9 +22,9 @@ with open(f"{PKG_DIR}/keys.yml", encoding="utf-8") as file:
     _key_data = yaml.safe_load(file)
 
 # Flatten nested structure and add group info
-_keys: Final[dict[str, dict[str, str]]] = {}
+_keys: dict[str, dict[str, str]] = {}
 for category, keys in _key_data.items():
-    _keys |= {key: {"category": category} | val for key, val in keys.items()}  # type: ignore[misc]
+    _keys |= {key: {"category": category} | val for key, val in keys.items()}
 
 
 # Map Unicode characters to their ASCII equivalents
@@ -895,7 +895,7 @@ class ElemColorScheme(LabelEnum):
     pastel = "pastel", "Pastel", "Pastel color scheme"
 
     @property
-    def color_map(self) -> dict[str, RgbColorType]:
+    def color_map(self) -> dict[str, ColorType]:
         """Return map from element symbol to color."""
         import pymatviz.colors as pmv_colors
 

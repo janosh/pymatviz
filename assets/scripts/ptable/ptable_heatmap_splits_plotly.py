@@ -9,7 +9,7 @@ from pymatgen.core import Element
 
 import pymatviz as pmv
 import pymatviz.colors as pmv_colors
-from pymatviz.typing import RgbColorType
+from pymatviz.typing import PTABLE_SPLIT_ORIENTATIONS, RgbColorType
 
 
 np_rng = np.random.default_rng(seed=0)
@@ -17,7 +17,7 @@ np_rng = np.random.default_rng(seed=0)
 
 # %% Examples of ptable_heatmap_splits_plotly with different numbers of splits
 for idx, (n_splits, orientation) in enumerate(
-    itertools.product(range(2, 5), ("diagonal", "horizontal", "vertical", "grid"))
+    itertools.product(range(2, 5), PTABLE_SPLIT_ORIENTATIONS)
 ):
     if orientation == "grid" and n_splits != 4:
         continue
@@ -26,7 +26,7 @@ for idx, (n_splits, orientation) in enumerate(
 
     # Example 1: Single colorscale with single colorbar
     data_dict = {
-        elem.symbol: np_rng.integers(10, 20, size=n_splits) for elem in Element
+        elem.symbol: np_rng.integers(10, 20, size=n_splits).tolist() for elem in Element
     }
     cbar_title = f"Periodic Table Heatmap with {n_splits}-fold split"
     fig = pmv.ptable_heatmap_splits_plotly(
@@ -138,7 +138,7 @@ fig.show()
 
 # %% Example 6: Mixed colorbar orientations
 # Create data with 4 splits
-data_dict = {el.symbol: np_rng.integers(0, 100, size=4) for el in Element}
+data_dict = {el.symbol: np_rng.integers(0, 100, size=4).tolist() for el in Element}
 
 # Use grid orientation with 4 different colorscales and mixed colorbar orientations
 fig = pmv.ptable_heatmap_splits_plotly(

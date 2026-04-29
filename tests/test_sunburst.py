@@ -46,7 +46,7 @@ def test_spacegroup_sunburst(show_counts: ShowCounts) -> None:
 def test_spacegroup_sunburst_invalid_show_counts() -> None:
     """Test that invalid show_counts values raise ValueError."""
     with pytest.raises(ValueError, match=r"Invalid.*show_counts"):
-        spacegroup_sunburst([1], show_counts="invalid")  # type: ignore[arg-type]
+        spacegroup_sunburst([1], show_counts="invalid")  # ty: ignore[invalid-argument-type]
 
 
 def test_spacegroup_sunburst_single_item() -> None:
@@ -76,7 +76,7 @@ def test_spacegroup_sunburst_other_types(
     assert isinstance(fig, go.Figure)
 
     # test with pymatgen structures
-    fig = spacegroup_sunburst(structures)  # type: ignore[arg-type]
+    fig = spacegroup_sunburst(structures)
     assert isinstance(fig, go.Figure)
 
 
@@ -147,7 +147,7 @@ def test_spacegroup_sunburst_max_slices(
 def test_spacegroup_sunburst_max_slices_mode_invalid() -> None:
     """Test spacegroup_sunburst with invalid max_slices_mode."""
     with pytest.raises(ValueError, match="Invalid max_slices_mode="):
-        pmv.spacegroup_sunburst([1, 2, 3], max_slices=1, max_slices_mode="invalid")  # type: ignore[arg-type]
+        pmv.spacegroup_sunburst([1, 2, 3], max_slices=1, max_slices_mode="invalid")  # ty: ignore[invalid-argument-type]
 
 
 def test_chem_sys_sunburst_basic() -> None:
@@ -242,7 +242,7 @@ def test_chem_sys_sunburst_input_types(structures: list[Structure]) -> None:
 
     # Test with invalid input type
     with pytest.raises(TypeError, match="Expected str, Composition or Structure"):
-        pmv.chem_sys_sunburst([1])  # type: ignore[arg-type]
+        pmv.chem_sys_sunburst([1])
 
 
 def test_chem_sys_sunburst_high_arity() -> None:
@@ -407,7 +407,7 @@ def test_chem_sys_sunburst_max_slices_mode(
 def test_chem_sys_sunburst_max_slices_mode_invalid() -> None:
     """Test chem_sys_sunburst with invalid max_slices_mode."""
     with pytest.raises(ValueError, match="Invalid max_slices_mode="):
-        pmv.chem_sys_sunburst(["Fe2O3"], max_slices=1, max_slices_mode="invalid")  # type: ignore[arg-type]
+        pmv.chem_sys_sunburst(["Fe2O3"], max_slices=1, max_slices_mode="invalid")  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize("show_counts", get_args(ShowCounts))
@@ -641,7 +641,7 @@ def test_chem_env_sunburst_invalid_chem_env_settings() -> None:
     # Invalid string should fall through to ChemEnv path and fail
     # because ChemEnv expects a dictionary, not a string
     with pytest.raises((ImportError, AttributeError, RuntimeError, TypeError)):
-        pmv.chem_env_sunburst([simple_structure], chem_env_settings="invalid_method")  # type: ignore[arg-type]
+        pmv.chem_env_sunburst([simple_structure], chem_env_settings="invalid_method")  # ty: ignore[invalid-argument-type]
 
 
 def test_chem_env_sunburst_empty_coordination_environments() -> None:
@@ -765,7 +765,7 @@ def test_limit_slices_invalid_mode() -> None:
             group_col="group",
             count_col="count",
             max_slices=1,
-            max_slices_mode="invalid",  # type: ignore[arg-type]
+            max_slices_mode="invalid",  # ty: ignore[invalid-argument-type]
         )
 
 

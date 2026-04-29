@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import traitlets as tl
 
@@ -10,8 +10,12 @@ from pymatviz.widgets._normalize import normalize_plot_json
 from pymatviz.widgets.matterviz import MatterVizWidget
 
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+
 def _normalize_axis_items(
-    items: list[str | dict[str, Any]],
+    items: Sequence[str | dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Convert axis items to the ``{key, label}`` dicts expected by the JS component.
 
@@ -71,8 +75,8 @@ class HeatmapMatrixWidget(MatterVizWidget):
 
     def __init__(
         self,
-        x_items: list[str | dict[str, Any]] | None = None,
-        y_items: list[str | dict[str, Any]] | None = None,
+        x_items: str | Sequence[str | dict[str, Any]] | None = None,
+        y_items: str | Sequence[str | dict[str, Any]] | None = None,
         values: list[list[float]] | dict[str, dict[str, float]] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -86,10 +90,13 @@ class HeatmapMatrixWidget(MatterVizWidget):
             values: 2D list of values or nested dict keyed by item keys.
             **kwargs: Additional widget properties.
         """
+        x_axis_items = [x_items] if isinstance(x_items, str) else x_items or []
+        y_axis_items = [y_items] if isinstance(y_items, str) else y_items or []
+
         super().__init__(
             widget_type="heatmap_matrix",
-            x_items=_normalize_axis_items(x_items or []),
-            y_items=_normalize_axis_items(y_items or []),
+            x_items=_normalize_axis_items(x_axis_items),
+            y_items=_normalize_axis_items(y_axis_items),
             values=normalize_plot_json(values, "HeatmapMatrix.values"),
             **kwargs,
         )

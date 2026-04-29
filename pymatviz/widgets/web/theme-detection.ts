@@ -191,7 +191,9 @@ export function cleanup_theme_watchers(): void {
 
 export function on_theme_change(callback: (theme_type: ThemeType) => void): () => void {
   theme_observers.add(callback)
-  return () => theme_observers.delete(callback)
+  return () => {
+    theme_observers.delete(callback)
+  }
 }
 
 export function get_theme_css(theme_type: ThemeType, is_shadow_dom = false): string {

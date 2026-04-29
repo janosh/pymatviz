@@ -117,7 +117,7 @@ def test_element_pair_rdfs_invalid_elements(structures: list[Structure]) -> None
 def test_element_pair_rdfs_invalid_structure() -> None:
     err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
     with pytest.raises(TypeError, match=err_msg):
-        element_pair_rdfs("not a structure")  # type: ignore[arg-type]
+        element_pair_rdfs("not a structure")  # ty: ignore[invalid-argument-type]
 
 
 def test_element_pair_rdfs_conflicting_bins_and_bin_size(
@@ -137,7 +137,7 @@ def test_element_pair_rdfs_cutoff_and_bin_size(
 ) -> None:
     struct = structures[0]
     for value in values:
-        fig = element_pair_rdfs(struct, **{param: value})  # type: ignore[arg-type]
+        fig = element_pair_rdfs(struct, **{param: value})  # ty: ignore[invalid-argument-type]
 
         # Check that we have the correct number of traces (one for each element pair)
         n_elements = len({site.specie.symbol for site in struct})
@@ -312,7 +312,7 @@ def test_full_rdf_empty_structure() -> None:
 def test_full_rdf_invalid_structure() -> None:
     err_msg = "Input must be a pymatgen Structure, IStructure, Molecule"
     with pytest.raises(TypeError, match=err_msg):
-        full_rdf("not a structure")  # type: ignore[arg-type]
+        full_rdf("not a structure")  # ty: ignore[invalid-argument-type]
 
 
 def test_full_rdf_conflicting_bins_and_bin_size(structures: list[Structure]) -> None:
@@ -331,7 +331,7 @@ def test_full_rdf_cutoff_and_bin_size(
 ) -> None:
     structure = structures[0]
     for value in values:
-        fig = full_rdf(structure, **{param: value})  # type: ignore[arg-type]
+        fig = full_rdf(structure, **{param: value})  # ty: ignore[invalid-argument-type]
 
         assert len(fig.data) == 1
         trace = fig.data[0]

@@ -107,9 +107,10 @@ def test_count_elements_exclude_elements() -> None:
 def test_count_elements_exclude_invalid_elements() -> None:
     compositions = [Composition("Fe2O3")] * 5 + [Composition("Fe4P4O16")] * 3
     exclude_elements = ["Fe", "P", "Zz"]
+    excluded_elements = list(exclude_elements)
     with pytest.raises(
         ValueError,
-        match=re.escape(f"Unexpected symbol(s) Zz in {exclude_elements=}"),
+        match=re.escape(f"Unexpected symbol(s) Zz in {excluded_elements=}"),
     ):
         pmv_pd.count_elements(
             compositions,
@@ -461,19 +462,24 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
     result = pmv_pd.normalize_to_dict(single_instance, cls=cls)
     assert isinstance(result, dict)
     assert len(result) == 1
-    assert "" in result
-    assert isinstance(result[""], cls)
+    expected_key = {
+        Structure: "Si1",
+        DummyClass: "dummy",
+        Lattice: "Lattice",
+    }[cls]
+    assert set(result) == {expected_key}
+    assert isinstance(result[expected_key], cls)
 
     # Test with a list of instances
-    instance_list = [single_instance, single_instance]
+    instance_list = [single_instance, single_instance, single_instance]
     result = pmv_pd.normalize_to_dict(instance_list, cls=cls)
     assert isinstance(result, dict)
-    assert len(result) == 2
+    assert len(result) == 3
     assert all(isinstance(s, cls) for s in result.values())
     expected_keys = {
-        Structure: {"Si1", "Si1 1"},
-        DummyClass: {"dummy", "dummy 1"},
-        Lattice: {"Lattice", "Lattice 1"},
+        Structure: {"Si1", "Si1 1", "Si1 2"},
+        DummyClass: {"dummy", "dummy 1", "dummy 2"},
+        Lattice: {"Lattice", "Lattice 1", "Lattice 2"},
     }[cls]
     assert set(result) == expected_keys
 
@@ -489,7 +495,7 @@ def test_normalize_to_dict(cls: type[Structure | DummyClass | Lattice]) -> None:
         pmv_pd.normalize_to_dict("invalid input", cls=cls)
 
     # Test with mixed valid and invalid inputs in a list
-    with pytest.raises(TypeError, match=err_msg):
+    with pytest.raises(TypeError, match="Invalid item in inputs, expected"):
         pmv_pd.normalize_to_dict([single_instance, "invalid"], cls=cls)
 
 
@@ -515,7 +521,7 @@ def test_normalize_to_dict_mixed_classes(
 
     with pytest.raises(
         TypeError,
-        match=f"Invalid inputs, expected {cls_name} or dict/list/tuple of {cls_name}",
+        match=f"Invalid item in inputs, expected {cls_name}",
     ):
         pmv_pd.normalize_to_dict([instance1, instance2], cls=cls1)
 

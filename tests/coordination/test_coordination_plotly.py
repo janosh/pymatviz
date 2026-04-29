@@ -144,7 +144,7 @@ def test_coordination_hist_bar_kwargs(structures: Sequence[Structure]) -> None:
 def test_coordination_hist_invalid_input() -> None:
     """Test coordination_hist with invalid input."""
     with pytest.raises(TypeError):
-        coordination_hist("invalid input")  # type: ignore[arg-type]
+        coordination_hist("invalid input")
 
 
 def test_coordination_hist_empty() -> None:
@@ -240,14 +240,14 @@ def test_coordination_vs_cutoff_line_invalid_input() -> None:
             match="Input must be a pymatgen Structure, IStructure, Molecule, "
             "IMolecule, ASE Atoms, or PhonopyAtoms object",
         ):
-            coordination_vs_cutoff_line(inputs)  # type: ignore[arg-type]
+            coordination_vs_cutoff_line(inputs)
 
 
 def test_coordination_vs_cutoff_line_invalid_strategy() -> None:
     """Test coordination_vs_cutoff_line with invalid strategy."""
     structure = Structure(Lattice.cubic(5), ["Si"], [[0, 0, 0]])
     with pytest.raises(TypeError, match="Invalid strategy="):
-        coordination_vs_cutoff_line(structure, strategy="invalid")  # type: ignore[arg-type]
+        coordination_vs_cutoff_line(structure, strategy="invalid")
 
 
 def test_coordination_hist_hover_text_formatting(
@@ -324,13 +324,13 @@ def test_coordination_hist_color_schemes(structures: Sequence[Structure]) -> Non
 def test_coordination_hist_invalid_elem_colors(structures: Sequence[Structure]) -> None:
     """Test invalid color scheme handling."""
     with pytest.raises(TypeError, match=r"Invalid.*element_color_scheme"):
-        coordination_hist(structures[0], element_color_scheme="invalid")  # type: ignore[arg-type]
+        coordination_hist(structures[0], element_color_scheme="invalid")  # ty: ignore[invalid-argument-type]
 
 
 def test_coordination_hist_invalid_hover_data(structures: Sequence[Structure]) -> None:
     """Test invalid hover_data handling."""
     with pytest.raises(TypeError, match="Invalid hover_data"):
-        coordination_hist(structures[0], hover_data=123)  # type: ignore[arg-type]
+        coordination_hist(structures[0], hover_data=123)  # ty: ignore[invalid-argument-type]
 
 
 def test_coordination_hist_invalid_split_mode(structures: Sequence[Structure]) -> None:

@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 from plotly.graph_objs.layout import Updatemenu
+from plotly.graph_objs.layout.annotation import Font
 from plotly.subplots import make_subplots
 
 from pymatviz import powerups
@@ -16,6 +17,25 @@ if TYPE_CHECKING:
     from typing import Any
 
 np_rng = np.random.default_rng(seed=0)
+
+
+def test_powerups_custom_metrics_and_font_preservation() -> None:
+    """Custom metrics and font objects survive annotation handling."""
+    metrics_fig = powerups.annotate_metrics(
+        [1, 2, 3], [1, 2, 3], fig=go.Figure(), metrics={"Custom": 1.23}
+    )
+    assert metrics_fig.layout.annotations[0].text == "Custom = 1.23<br>"
+
+    fit_fig = powerups.add_best_fit_line(
+        go.Figure(),
+        xs=[1, 2, 3],
+        ys=[1, 2, 3],
+        annotate_params={"color": "red", "font": Font(family="Arial", size=13)},
+    )
+    anno_font = fit_fig.layout.annotations[0].font
+    assert anno_font.color == "red"
+    assert anno_font.family == "Arial"
+    assert anno_font.size == 13
 
 
 @pytest.mark.parametrize(
@@ -177,7 +197,7 @@ def test_add_ecdf_line_raises() -> None:
             TypeError,
             match=f"{fig=} must be instance of go.Figure",
         ):
-            powerups.add_ecdf_line(fig)  # type: ignore[arg-type]
+            powerups.add_ecdf_line(fig)
 
     # check ValueError when x-values cannot be auto-determined
     fig_violin = px.violin(x=[1, 2, 3], y=[4, 5, 6])
@@ -365,7 +385,7 @@ def test_multiple_powerups(plotly_scatter: go.Figure) -> None:
         assert muni_i == Updatemenu(powerup), f"{idx=}"
         assert isinstance(muni_i, Updatemenu)
         assert muni_i.type == powerup["type"]
-        assert len(muni_i.buttons) == len(powerup["buttons"])  # type: ignore[arg-type]
+        assert len(muni_i.buttons) == len(powerup["buttons"])  # ty: ignore[invalid-argument-type]
 
 
 def test_add_ecdf_line_color_matching() -> None:

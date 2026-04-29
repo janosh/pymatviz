@@ -97,9 +97,10 @@ const cleanup_element = (element: HTMLElement): void => {
 
 const get_prop = (model: AnyModel, key: string) => {
   try {
-    return model.get(key) ?? undefined
+    return model.get(key) ?? void 0
   } catch {
-    return
+    // Missing trait values are omitted from the frontend props object.
+    return void 0
   }
 }
 

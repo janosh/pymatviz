@@ -151,7 +151,7 @@ def test_phonon_bands_raises(
         match=f"Only {PhononBands.__name__}, phonopy BandStructure or dict supported, "
         "got str",
     ):
-        pmv.phonon_bands("invalid input")  # type: ignore[arg-type]
+        pmv.phonon_bands("invalid input")
 
     # issues warning when requesting some available and some unavailable branches
     pmv.phonon_bands(
@@ -164,7 +164,7 @@ def test_phonon_bands_raises(
     with pytest.raises(ValueError, match="Invalid path_mode='invalid'"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
-            path_mode="invalid",  # type: ignore[arg-type]
+            path_mode="invalid",  # ty: ignore[invalid-argument-type]
         )
 
     with pytest.raises(ValueError, match="Empty band structure mapping"):
@@ -174,13 +174,13 @@ def test_phonon_bands_raises(
     with pytest.raises(TypeError, match="expect shaded_ys as dict, got str"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
-            shaded_ys="invalid",  # type: ignore[arg-type]
+            shaded_ys="invalid",  # ty: ignore[invalid-argument-type]
         )
 
     with pytest.raises(ValueError, match="Invalid y_val='invalid', must be one of"):
         pmv.phonon_bands(
             phonon_bands_doses_mp_2758["bands"]["DFT"],
-            shaded_ys={(0, "invalid"): dict(fillcolor="red")},  # type: ignore[arg-type]
+            shaded_ys={(0, "invalid"): dict(fillcolor="red")},  # ty: ignore[invalid-argument-type]
         )
 
 

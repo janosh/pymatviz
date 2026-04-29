@@ -27,6 +27,13 @@ AnyDos: TypeAlias = Union[PhononDos, "TotalDos"]
 ColorElemTypeStrategy: TypeAlias = Literal["symbol", "background", "both", "off"]
 VALID_COLOR_ELEM_STRATEGIES = get_args(ColorElemTypeStrategy)
 
+PTableSplitOrientation: TypeAlias = Literal[
+    "diagonal", "horizontal", "vertical", "grid"
+]
+PTABLE_SPLIT_ORIENTATIONS: tuple[PTableSplitOrientation, ...] = get_args(
+    PTableSplitOrientation
+)
+
 CrystalSystem: TypeAlias = Literal[
     "triclinic",
     "monoclinic",

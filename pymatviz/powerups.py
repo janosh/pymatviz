@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from numbers import Real
 from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import numpy as np
@@ -28,7 +29,7 @@ def annotate_metrics(
     xs: ArrayLike,
     ys: ArrayLike,
     fig: go.Figure | None = None,
-    metrics: dict[str, float] | Sequence[str] = ("MAE", "R2"),
+    metrics: Mapping[str, float] | Sequence[str] = ("MAE", "R2"),
     prefix: str = "",
     suffix: str = "",
     fmt: str = ".3",
@@ -43,9 +44,9 @@ def annotate_metrics(
         ys (array): y values.
         fig (go.Figure | None, optional): plotly Figure on which to add the annotation.
             Defaults to None.
-        metrics (dict[str, float] | Sequence[str], optional): Metrics to show. Can be a
-            subset of recognized keys MAE, R2, R2_adj, RMSE, MSE, MAPE or the names of
-            sklearn.metrics.regression functions or any dict of metric names and values.
+        metrics (Mapping[str, int | float] | Sequence[str], optional): Metrics to
+            show. Can be built-in metric names, sklearn metric names, or custom numeric
+            values.
             Defaults to ("MAE", "R2").
         prefix (str, optional): Title or other string to prepend to metrics.
             Defaults to "".
@@ -60,7 +61,7 @@ def annotate_metrics(
         metrics = [metrics]
     if not isinstance(fig, go.Figure):
         raise TypeError(f"{fig=} must be instance of go.Figure")
-    if not isinstance(metrics, (dict, list, tuple, set)):
+    if not isinstance(metrics, (Mapping, list, tuple, set)):
         raise TypeError(
             f"metrics must be dict|list|tuple|set, not {type(metrics).__name__}"
         )
@@ -73,10 +74,16 @@ def annotate_metrics(
         "R2": r2_score,
         "R2_adj": lambda x, y: 1 - (1 - r2_score(x, y)) * (len(x) - 1) / (len(x) - 2),
     }
-    for key in set(metrics) - set(funcs):
+    if isinstance(metrics, Mapping):
+        metric_keys = {
+            str(key) for key, val in metrics.items() if not isinstance(val, Real)
+        }
+    else:
+        metric_keys = {str(key) for key in metrics}
+    for key in metric_keys - set(funcs):
         if func := getattr(sklearn.metrics, key, None):
             funcs[key] = func
-    if bad_keys := set(metrics) - set(funcs):
+    if bad_keys := metric_keys - set(funcs):
         raise ValueError(f"Unrecognized metrics: {bad_keys}")
 
     def calculate_metrics(xs: ArrayLike, ys: ArrayLike) -> str:
@@ -89,10 +96,11 @@ def annotate_metrics(
         nan_mask = np.isnan(xs) | np.isnan(ys)
         xs, ys = xs[~nan_mask], ys[~nan_mask]
         text = prefix
-        if isinstance(metrics, dict):
+        if isinstance(metrics, Mapping):
             for key, val in metrics.items():
-                label = PRETTY_LABELS.get(key, key)  # type: ignore[arg-type]
-                text += f"{label} = {val:{fmt}}<br>"
+                label = PRETTY_LABELS.get(key, key)  # ty: ignore[no-matching-overload]
+                metric_value = float(val) if isinstance(val, Real) else val
+                text += f"{label} = {metric_value:{fmt}}<br>"
         else:
             for key in metrics:
                 value = funcs[key](xs, ys)
@@ -403,9 +411,16 @@ def add_best_fit_line(
 
             # Ensure font color is properly set
             if "color" in annotate_params:
-                if "font" not in plotly_anno_defaults:
-                    plotly_anno_defaults["font"] = dict()
-                plotly_anno_defaults["font"]["color"] = annotate_params["color"]  # type: ignore[index]
+                font = plotly_anno_defaults.get("font")
+                if not isinstance(font, dict):
+                    font_obj = cast("Any", font)
+                    font = (
+                        font_obj.to_plotly_json()
+                        if hasattr(font_obj, "to_plotly_json")
+                        else {}
+                    )
+                    plotly_anno_defaults["font"] = font
+                font["color"] = annotate_params["color"]
 
         annotate(text, fig=fig, **plotly_anno_defaults)
 

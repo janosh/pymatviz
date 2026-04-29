@@ -1,12 +1,11 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { defineConfig } from 'vite-plus'
 import { off, shared_fmt, shared_lint } from './vite.shared.ts'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
+const __dirname = import.meta.dirname
 
 export default defineConfig({
   fmt: shared_fmt,

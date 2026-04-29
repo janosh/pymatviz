@@ -57,12 +57,12 @@ See the Jupyter notebooks under [`examples/`](examples) for how to use `pymatviz
 
 See [`pymatviz/ptable/figures.py`](pymatviz/ptable/figures.py). The module supports heatmaps, heatmap splits (multiple values per element), histograms, scatter plots and line plots. All visualizations are interactive through [Plotly](https://plotly.com) and support displaying additional data on hover.
 
-|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/figures.py#L53)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/figures.py#L53) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
+|                                        [`ptable_heatmap_plotly(atomic_masses)`](pymatviz/ptable/figures.py#L54)                                         | [`ptable_heatmap_plotly(compositions, log=True)`](pymatviz/ptable/figures.py#L54) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_plotly.py) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                        ![ptable-heatmap-plotly-more-hover-data]                                                         |                                                          ![ptable-heatmap-plotly-log]                                                           |
-|               [`ptable_hists_plotly(data)`](pymatviz/ptable/figures.py#L435) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/figures.py#L1562) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
+|               [`ptable_hists_plotly(data)`](pymatviz/ptable/figures.py#L441) [![fig-icon]](assets/scripts/ptable/ptable_hists_plotly.py)                | [`ptable_scatter_plotly(data, mode="markers")`](pymatviz/ptable/figures.py#L1595) [![fig-icon]](assets/scripts/ptable/ptable_scatter_plotly.py) |
 |                                                                 ![ptable-hists-plotly]                                                                  |                                                        ![ptable-scatter-plotly-markers]                                                         |
-| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/figures.py#L850) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/figures.py#L850)                                |
+| [`ptable_heatmap_splits_plotly(2_vals_per_elem)`](pymatviz/ptable/figures.py#L857) [![fig-icon]](assets/scripts/ptable/ptable_heatmap_splits_plotly.py) |                               [`ptable_heatmap_splits_plotly(3_vals_per_elem)`](pymatviz/ptable/figures.py#L857)                                |
 |                                                            ![ptable-heatmap-splits-plotly-2]                                                            |                                                        ![ptable-heatmap-splits-plotly-3]                                                        |
 
 [ptable-heatmap-plotly-log]: assets/svg/ptable-heatmap-plotly-log.svg
@@ -93,7 +93,7 @@ See [`examples/mprester_ptable.ipynb`](examples/mprester_ptable.ipynb).
 
 ### Composition Clustering
 
-| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](pymatviz/cluster/composition/plot.py#L364) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](pymatviz/cluster/composition/plot.py#L364) |
+| [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=2)`](pymatviz/cluster/composition/plot.py#L363) [![fig-icon]](assets/scripts/cluster/composition/cluster_compositions_matbench.py) | [`cluster_compositions(compositions, properties, embedding_method, projection_method, n_components=3)`](pymatviz/cluster/composition/plot.py#L363) |
 | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------: |
 |                                                                                                 ![matbench-perovskites-magpie-pca-2d]                                                                                                 |                                                       ![matbench-perovskites-magpie-tsne-3d]                                                       |
 
@@ -286,7 +286,7 @@ See [`pymatviz/treemap/chem_sys.py`](pymatviz/treemap/chem_sys.py).
 
 See [`pymatviz/rainclouds.py`](pymatviz/rainclouds.py).
 
-| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py#L21) [![fig-icon]](assets/scripts/rainclouds/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py#L21) |
+| [`rainclouds(two_key_dict)`](pymatviz/rainclouds.py#L22) [![fig-icon]](assets/scripts/rainclouds/rainclouds.py) | [`rainclouds(three_key_dict)`](pymatviz/rainclouds.py#L22) |
 | :-------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------: |
 |                                              ![rainclouds-bimodal]                                              |                   ![rainclouds-trimodal]                   |
 

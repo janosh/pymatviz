@@ -101,7 +101,7 @@ def test_ptable_hists_plotly_annotations() -> None:
         ],
         "O": {"text": "Oxygen", **anno_kwargs},
     }
-    fig = pmv.ptable_hists_plotly(data, annotations=annotations)  # type: ignore[arg-type]
+    fig = pmv.ptable_hists_plotly(data, annotations=annotations)  # ty: ignore[invalid-argument-type]
     assert isinstance(fig, go.Figure)
 
     # Check multiple annotations are present
@@ -136,7 +136,7 @@ def test_ptable_hists_plotly_error_cases() -> None:
     with pytest.raises(
         ValueError, match="color_elem_strategy='invalid' must be one of"
     ):
-        pmv.ptable_hists_plotly(data, color_elem_strategy="invalid")  # type: ignore[arg-type]
+        pmv.ptable_hists_plotly(data, color_elem_strategy="invalid")  # ty: ignore[invalid-argument-type]
 
     # Test invalid scale
     with pytest.raises(ValueError, match="Invalid value of type ") as exc:
