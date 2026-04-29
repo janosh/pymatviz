@@ -60,6 +60,7 @@ export const shared_lint = {
       `@typescript-eslint/no-unsafe-member-access`,
       `@typescript-eslint/no-unsafe-argument`,
       `@typescript-eslint/only-throw-error`,
+      `@typescript-eslint/prefer-readonly-parameter-types`,
     ),
   },
 }

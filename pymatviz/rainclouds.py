@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import warnings
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pandas as pd
@@ -14,7 +16,6 @@ from scipy import stats
 
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
     from typing import Literal
 
 
@@ -32,7 +33,11 @@ def rainclouds(
     scale: Literal["area", "count", "width"] = "area",
     rain_offset: float = -0.25,
     offset: float | None = None,
-    hover_data: Sequence[str] | dict[str, Sequence[str]] | None = None,
+    hover_data: (
+        Sequence[str]
+        | Mapping[str, Sequence[str] | Mapping[str, Sequence[object]]]
+        | None
+    ) = None,
     show_violin: bool = True,
     show_box: bool = True,
     show_points: bool = True,
@@ -69,10 +74,10 @@ def rainclouds(
         rain_offset (float, optional): Shift the strip plot position. Defaults to -0.25.
         offset (float | None, optional): Shift the violin plot position.
             Defaults to None.
-        hover_data (Sequence[str] | dict[str, Sequence[str]] | None, optional):
-            Additional data to be shown in hover tooltips. Can be a list of column names
-            or a dict with the same keys as data and different column names for each
-            trace.
+        hover_data: Extra hover data. Pass None to show only plotted values. For
+            DataFrame-backed data, pass column names like ["temperature", "pressure"],
+            or a mapping from trace label to column names or per-point arrays, e.g.
+            {"train": ["temperature"]} or {"train": {"source": ["DFT", "ML"]}}.
         show_violin (bool, optional): Whether to show the violin plot. Defaults to True.
         show_box (bool, optional): Whether to show the box plot. Defaults to True.
         show_points (bool, optional): Whether to show the strip plot points.
@@ -107,17 +112,28 @@ def rainclouds(
                 hover_data = [col]
             elif isinstance(hover_data, list) and col not in hover_data:
                 hover_data = [col, *hover_data]
-            elif isinstance(hover_data, dict) and label in hover_data:
-                existing = hover_data[label]  # ty: ignore[invalid-argument-type]
-                if isinstance(existing, list) and col not in existing:
+            elif isinstance(hover_data, Mapping):
+                hover_map = cast(
+                    "Mapping[str, Sequence[str] | Mapping[str, Sequence[object]]]",
+                    hover_data,
+                )
+                existing = hover_map.get(label)
+                if (
+                    isinstance(existing, Sequence)
+                    and not isinstance(existing, (str, bytes))
+                    and col not in existing
+                ):
                     # avoid mutating caller's dict by creating a new one
-                    hover_data = {**hover_data, label: [col, *existing]}  # ty: ignore[invalid-assignment]
+                    hover_data = {**hover_map, label: [col, *existing]}
         else:
             values = data_itm
 
         if show_violin:  # the cloud
             kde = stats.gaussian_kde(values, bw_method=bw)
-            x_range = np.linspace(min(values) - cut, max(values) + cut, 100)
+            numeric_values = np.asarray(values, dtype=float)
+            x_range = np.linspace(
+                numeric_values.min() - cut, numeric_values.max() + cut, 100
+            )
             y_range = kde(x_range)
 
             if scale == "area":
@@ -179,23 +195,43 @@ def rainclouds(
             hover_text = [f"{label}<br>{hover_key}: {val:.3g}" for val in values]
 
             if hover_data is not None:
-                if isinstance(hover_data, dict):
-                    cols_to_show: Sequence[str] = hover_data.get(label, [])  # type: ignore[assignment]
-                else:
-                    cols_to_show = hover_data
-
-                if isinstance(data_itm, tuple) and isinstance(
-                    cols_to_show, (list, tuple)
-                ):
-                    df_i, col = data_itm
-                    for col in cols_to_show:
-                        if col in df_i:  # type: ignore[operator]
-                            for val_idx, val in enumerate(df_i[col]):  # type: ignore[index]
-                                hover_text[val_idx] += f"<br>{col}: {val}"
-                elif isinstance(hover_data, dict):
-                    for col, col_data in hover_data.get(label, {}).items():  # type: ignore[union-attr]
-                        for val_idx, val in enumerate(col_data):
+                extra_hover = (
+                    cast(
+                        "Mapping[str, Sequence[str] | Mapping[str, Sequence[object]]]",
+                        hover_data,
+                    ).get(label)
+                    if isinstance(hover_data, Mapping)
+                    else None
+                )
+                if isinstance(extra_hover, Mapping):
+                    for col, col_data in extra_hover.items():
+                        if isinstance(col_data, (str, bytes)):
+                            continue
+                        col_values = list(cast("Sequence[object]", col_data))
+                        if len(col_values) != len(hover_text):
+                            warnings.warn(
+                                f"Skipping hover column {col!r}: "
+                                f"{len(col_values)=} != {len(hover_text)=}",
+                                stacklevel=2,
+                            )
+                            continue
+                        for val_idx, val in enumerate(col_values):
                             hover_text[val_idx] += f"<br>{col}: {val}"
+                elif (
+                    len(data_itm) == 2
+                    and isinstance(df_i := data_itm[0], pd.DataFrame)
+                    and isinstance(data_itm[1], str)
+                    and (
+                        cols_to_show := extra_hover
+                        if isinstance(hover_data, Mapping)
+                        else hover_data
+                    )
+                    and not isinstance(cols_to_show, str)
+                ):
+                    for hover_col in cols_to_show:
+                        if hover_col in df_i:
+                            for val_idx, val in enumerate(df_i[hover_col]):
+                                hover_text[val_idx] += f"<br>{hover_col}: {val}"
 
             common_scatter_kwargs = dict(
                 mode="markers",

@@ -141,7 +141,7 @@ def test_df_to_html(
 def test_save_fig_type_error(tmp_path: Path) -> None:
     """save_fig raises TypeError for non-Figure input."""
     with pytest.raises(TypeError, match=r"Unsupported figure type.*expected plotly"):
-        pmv.save_fig("not a figure", f"{tmp_path}/dummy.html", env_disable=[])  # type: ignore[arg-type]
+        pmv.save_fig("not a figure", f"{tmp_path}/dummy.html", env_disable=[])
 
 
 def test_save_fig_prec_rounds_floats(tmp_path: Path) -> None:
@@ -199,7 +199,7 @@ def test_save_fig_pdf_template_and_hidden_traces(
 def test_save_and_compress_svg_type_error() -> None:
     """save_and_compress_svg raises TypeError for non-Figure."""
     with pytest.raises(TypeError, match="fig must be a plotly Figure"):
-        pmv.io.save_and_compress_svg("not a figure", "test")  # type: ignore[arg-type]
+        pmv.io.save_and_compress_svg("not a figure", "test")
 
 
 @pytest.mark.parametrize(

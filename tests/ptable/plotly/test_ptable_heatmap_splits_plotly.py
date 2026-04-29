@@ -25,8 +25,8 @@ def test_ptable_heatmap_splits_plotly_basic() -> None:
     }
 
     # Test each orientation
-    for orientation in ["diagonal", "horizontal", "vertical"]:
-        fig = pmv.ptable_heatmap_splits_plotly(data, orientation=orientation)  # type: ignore[arg-type]
+    for orientation in ("diagonal", "horizontal", "vertical"):
+        fig = pmv.ptable_heatmap_splits_plotly(data, orientation=orientation)
         assert isinstance(fig, go.Figure)
         # Each split should have its own subplot
         assert len(fig.data) == sum(len(v) for v in data.values()) + 1
@@ -169,7 +169,7 @@ def test_ptable_heatmap_splits_plotly_annotations() -> None:
     data = {"Fe": [1, 2], "O": [3, 4], "H": [0.5, 1.5], "He": [1.5, 2.5]}
 
     # Test with dict annotations
-    annotations = {
+    annotations: dict[str, str | dict[str, Any]] = {
         "Fe": {"text": "Iron", "font": {"size": 14, "color": "red"}},
         "O": {"text": "Oxygen", "font": {"size": 14, "color": "blue"}},
     }

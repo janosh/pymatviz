@@ -135,7 +135,7 @@ def test_get_elem_colors(
 def test_get_elem_colors_invalid_input() -> None:
     err_msg = f"colors must be a dict or one of ('{', '.join(ElemColorScheme)}')"
     with pytest.raises(ValueError, match=re.escape(err_msg)):
-        get_elem_colors("invalid_input")  # type: ignore[arg-type]
+        get_elem_colors("invalid_input")  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize(
@@ -344,7 +344,7 @@ def test_get_subplot_title(
     expected_text: str,
 ) -> None:
     structure = structures[0]
-    title = get_subplot_title(structure, struct_key, 1, subplot_title)  # type: ignore[arg-type]
+    title = get_subplot_title(structure, struct_key, 1, subplot_title)
     assert isinstance(title, dict)
     assert "text" in title
     assert expected_text in title["text"]
@@ -391,11 +391,11 @@ def test_draw_vector(
 ) -> None:
     """Test vector drawing with various settings."""
     fig = go.Figure()
-    start, vector = np.array(start), np.array(vector)  # type: ignore[assignment]
+    start, vector = np.array(start), np.array(vector)
 
     # Draw vector and check trace count
     initial_trace_count = len(fig.data)
-    draw_vector(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)  # type: ignore[arg-type]
+    draw_vector(fig, start, vector, is_3d=is_3d, arrow_kwargs=arrow_kwargs)
     assert len(fig.data) - initial_trace_count == expected_traces
 
     # Check trace properties based on dimensionality
@@ -563,7 +563,7 @@ def test_get_site_hover_text(
     """Test hover text generation for sites with various formats."""
     lattice = Lattice.cubic(1.0)
     site = PeriodicSite("Si", [0, 0, 0], lattice)
-    result = get_site_hover_text(site, hover_text, site.species)  # type: ignore[arg-type]
+    result = get_site_hover_text(site, hover_text, site.species)
     assert result == expected_output
 
 
@@ -574,7 +574,7 @@ def test_get_site_hover_text_float_formatting() -> None:
     site = PeriodicSite("Si", [1.23456789, 1e-17, 2.3456], lattice)
 
     # Test default format (.4)
-    result_default = get_site_hover_text(site, SiteCoords.cartesian, site.species)  # type: ignore[arg-type]
+    result_default = get_site_hover_text(site, SiteCoords.cartesian, site.species)
     assert "1.235" in result_default
     assert ("1e-17" in result_default) or (
         "0" in result_default
@@ -582,13 +582,13 @@ def test_get_site_hover_text_float_formatting() -> None:
     assert "2.346" in result_default
 
     # Test custom string format (.2f)
-    result_2f = get_site_hover_text(site, SiteCoords.cartesian, site.species, ".2f")  # type: ignore[arg-type]
+    result_2f = get_site_hover_text(site, SiteCoords.cartesian, site.species, ".2f")
     assert "1.23" in result_2f
     assert "0.00" in result_2f
     assert "2.35" in result_2f
 
     # Test with fractional coordinates
-    result_frac = get_site_hover_text(site, SiteCoords.fractional, site.species, ".6f")  # type: ignore[arg-type]
+    result_frac = get_site_hover_text(site, SiteCoords.fractional, site.species, ".6f")
     assert "1.234568" in result_frac
     assert "0.000000" in result_frac
     assert "2.345600" in result_frac
@@ -601,7 +601,7 @@ def test_get_site_hover_text_float_formatting() -> None:
     result_custom = get_site_hover_text(
         site,
         SiteCoords.cartesian,
-        site.species,  # type: ignore[arg-type]
+        site.species,
         custom_formatter,
     )
     assert "~1.2" in result_custom
@@ -612,7 +612,7 @@ def test_get_site_hover_text_float_formatting() -> None:
     result_both = get_site_hover_text(
         site,
         SiteCoords.cartesian_fractional,
-        site.species,  # type: ignore[arg-type]
+        site.species,
         ".3f",
     )
     assert "1.235" in result_both  # cartesian
@@ -625,7 +625,7 @@ def test_get_site_hover_text_invalid_template() -> None:
     lattice = Lattice.cubic(1.0)
     site = PeriodicSite("Si", [0, 0, 0], lattice)
     with pytest.raises(ValueError, match="Invalid hover_text="):
-        get_site_hover_text(site, "invalid_template", site.species)  # type: ignore[arg-type]
+        get_site_hover_text(site, "invalid_template", site.species)  # ty: ignore[invalid-argument-type]
 
 
 @pytest.mark.parametrize("is_3d", [True, False])

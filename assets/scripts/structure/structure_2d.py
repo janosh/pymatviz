@@ -31,7 +31,7 @@ fig.show()
 
 # %% Example: Disordered site rendering (pie slices in 2D)
 fig = pmv.structure_2d(
-    disordered_demo_structures,  # type: ignore[arg-type]
+    disordered_demo_structures,
     elem_colors=ElemColorScheme.jmol,
     n_cols=2,
     show_cell={"edge": dict(color="darkgray", width=2)},

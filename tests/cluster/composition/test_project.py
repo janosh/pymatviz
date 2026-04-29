@@ -260,7 +260,7 @@ def test_project_vectors_random_state(sample_data: np.ndarray) -> None:
 def test_project_vectors_invalid_method(sample_data: np.ndarray) -> None:
     """Test error handling for invalid method."""
     with pytest.raises(ValueError, match="Unknown projection method="):
-        project_vectors(sample_data, method="invalid_method")  # type: ignore[arg-type]
+        project_vectors(sample_data, method="invalid_method")  # ty: ignore[invalid-argument-type]
 
 
 def test_project_vectors_invalid_components(sample_data: np.ndarray) -> None:

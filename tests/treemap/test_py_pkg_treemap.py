@@ -73,8 +73,8 @@ pass"""
         """from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import pandas as pd # type: ignore
-    from collections import abc # type: ignore
+    import pandas as pd
+    from collections import abc
 
 def func_typed():
     pass
@@ -1870,4 +1870,4 @@ class TestAdaptivePruning:
     def test_negative_params_raise(self, kwargs: dict[str, int]) -> None:
         """Negative depth/pruning parameters raise ValueError."""
         with pytest.raises(ValueError, match="must be non-negative"):
-            pmv.py_pkg_treemap("deep_pkg", **kwargs)  # type: ignore[arg-type]
+            pmv.py_pkg_treemap("deep_pkg", **kwargs)  # ty: ignore[invalid-argument-type]

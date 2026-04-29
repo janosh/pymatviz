@@ -178,7 +178,7 @@ def structure_2d(
             )
 
             if is_struct_key_mapping:  # is map of structure keys to color schemes
-                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # type: ignore[arg-type]
+                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # ty: ignore[no-matching-overload]
 
         _elem_colors = helpers.get_elem_colors(struct_elem_colors)
 
@@ -359,7 +359,7 @@ def structure_2d(
             # Handle per-structure show_bonds settings if it's a dict
             struct_show_bonds: bool | NearNeighbors
             if isinstance(show_bonds, dict):
-                struct_show_bonds = show_bonds.get(struct_key, False)  # type: ignore[assignment]
+                struct_show_bonds = show_bonds.get(struct_key, False)  # ty: ignore[no-matching-overload]
             else:
                 struct_show_bonds = show_bonds
 
@@ -587,7 +587,7 @@ def structure_3d(
             )
 
             if is_struct_key_mapping:  # is map of structure keys to color schemes
-                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # type: ignore[arg-type]
+                struct_elem_colors = elem_colors.get(struct_key, ElemColorScheme.jmol)  # ty: ignore[no-matching-overload]
 
         _elem_colors = helpers.get_elem_colors(struct_elem_colors)
 
@@ -730,7 +730,7 @@ def structure_3d(
             # Handle per-structure show_bonds settings if it's a dict
             struct_show_bonds: bool | NearNeighbors
             if isinstance(show_bonds, dict):
-                struct_show_bonds = show_bonds.get(struct_key, False)  # type: ignore[assignment]
+                struct_show_bonds = show_bonds.get(struct_key, False)  # ty: ignore[no-matching-overload]
             else:
                 struct_show_bonds = show_bonds
 

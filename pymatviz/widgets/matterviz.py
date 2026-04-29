@@ -57,9 +57,12 @@ def _marimo_esm_url(esm_text: str) -> str | None:
 
     # Resolve ./@file/ to absolute URL via request context, fall back to relative
     try:
-        base = get_context().request.base_url
+        request = get_context().request
     except (RuntimeError, AttributeError, TypeError):
         return relative_url
+    if request is None:
+        return relative_url
+    base = request.base_url
     if not isinstance(base, dict):
         return relative_url
     scheme, netloc = base.get("scheme"), base.get("netloc")
@@ -120,9 +123,13 @@ def configure_assets(
         esm_content = fetch_widget_asset("matterviz.js", version)
         css_content = fetch_widget_asset("matterviz.css", version)
     else:
+        if esm_src is None:
+            raise ValueError(
+                "configure_assets() requires 'esm_src' when no version is provided."
+            )
         if css_src is None:
-            css_src = re.sub(r"\.m?js$", ".css", esm_src)  # type: ignore[arg-type]
-        esm_content = _read_asset_source(esm_src)  # type: ignore[arg-type]
+            css_src = re.sub(r"\.m?js$", ".css", esm_src)
+        esm_content = _read_asset_source(esm_src)
         css_content = _read_asset_source(css_src)
 
     cls._asset_cache["default"] = (esm_content, css_content)
@@ -387,7 +394,10 @@ class MatterVizWidget(AnyWidget):
         else:
             cls = type(self)
             cls._set_class_assets()
-            esm_content, css_content = cls._asset_cache["default"]  # type: ignore[misc]
+            default_assets = cls._asset_cache["default"]
+            if not isinstance(default_assets, tuple):
+                raise TypeError("Default widget assets were not initialized correctly.")
+            esm_content, css_content = default_assets
 
         img_bytes = render_widget_headless(
             widget_data=self.to_dict(),

@@ -127,7 +127,7 @@ def _chem_env_sunburst_chem_env(
 
         for structure in structs:
             try:
-                lgf.setup_structure(structure=structure)  # type: ignore[arg-type]
+                lgf.setup_structure(structure=structure)
                 structure_environments = lgf.compute_structure_environments()
                 lse = (
                     struct_envs.LightStructureEnvironments.from_structure_environments(
@@ -206,12 +206,12 @@ def _chem_env_sunburst_crystal_nn(
                 # Get coordination info for each site
                 for site_idx in range(len(structure)):
                     # Get coordination number
-                    nn_info = crystal_nn.get_nn_info(structure, site_idx)  # type: ignore[arg-type]
+                    nn_info = crystal_nn.get_nn_info(structure, site_idx)
                     cn_val = len(nn_info)
 
                     # Get best matching coordination environment using order parameters
                     ce_symbol = chem_env.classify_local_env_with_order_params(
-                        structure,  # type: ignore[arg-type]
+                        structure,
                         site_idx,
                         cn_val,
                     )
