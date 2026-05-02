@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
-  import { notebook_routes } from '$lib/notebooks'
   import { repository } from '$site/package.json'
   import Icon from '@iconify/svelte'
   import type { Snippet } from 'svelte'
@@ -10,7 +9,11 @@
   import Toc from 'svelte-toc'
   import '../app.css'
 
-  let { children }: { children?: Snippet } = $props()
+  let { children, data }: {
+    children?: Snippet;
+    data: { notebook_routes: string[] };
+  } = $props()
+  let toc_desktop = $state(true)
 
   let headingSelector = $derived(
     `main :is(${
@@ -24,17 +27,23 @@
       filename.replace(/^\./, ``).replace(/\/\+page\.\w+$/, ``) || `/`
     )
 
-  const actions = [...new Set([...file_routes, ...notebook_routes])].map((name) => ({
-    label: name,
-    action: () => goto(name),
-  }))
+  let actions = $derived([...new Set([...file_routes, ...data.notebook_routes])].map(
+    (name) => ({
+      label: name,
+      action: () => goto(name),
+    }),
+  ))
 </script>
 
 <CmdPalette {actions} placeholder="Go to..." />
 
 <Toc
   {headingSelector}
-  breakpoint={1400}
+  breakpoint={1500}
+  bind:desktop={toc_desktop}
+  asideStyle={toc_desktop
+    ? `position: fixed; font-size: 0.6em; top: 5em; left: calc(50vw + var(--max-main-width) / 2 + 12em)`
+    : ``}
   warnOnEmpty={false}
   --toc-mobile-bg="#0d1a1d"
   --toc-mobile-shadow="0 0 1em 0 black"
@@ -73,24 +82,6 @@
 </footer>
 
 <style>
-  :global(aside.toc.desktop) {
-    display: none;
-  }
-  @media (min-width: 1400px) {
-    :global(aside.toc.desktop) {
-      display: block;
-      position: fixed;
-      top: 4.5em;
-      right: 1.5em;
-      width: min(22em, 26vw);
-      max-height: calc(100dvh - 6em);
-      overflow-y: auto;
-      font-size: clamp(0.7em, 0.65em + 0.15vw, 0.9em);
-    }
-    main {
-      padding-right: min(24em, 30vw);
-    }
-  }
   a[href='/'] {
     font-size: 15pt;
     position: absolute;

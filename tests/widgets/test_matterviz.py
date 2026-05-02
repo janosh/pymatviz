@@ -5,6 +5,8 @@ from __future__ import annotations
 import builtins
 import os
 import re
+import urllib.error
+from email.message import Message
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, call, patch
 
@@ -54,8 +56,10 @@ def _mock_marimo_context(
     return mock_mod
 
 
-def _mock_urlretrieve_side_effect(_url: str, path: str) -> None:
+def _mock_urlretrieve_side_effect(url: str, path: str) -> None:
     """Create a file on disk to simulate ``urllib.request.urlretrieve``."""
+    if "/download/v0.17.6/" in url:
+        raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=Message(), fp=None)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, mode="w") as file:
         file.write("downloaded content")
@@ -151,8 +155,16 @@ def test_fetch_widget_asset_cached_file(tmp_path: Path) -> None:
     mock_dl.assert_not_called()
 
 
-def test_fetch_widget_asset_downloads_and_caches(tmp_path: Path) -> None:
-    """Downloads from GitHub releases and writes to version-specific cache."""
+@pytest.mark.parametrize(
+    ("version", "expected_cache_version"),
+    [("v0.17.0", "v0.17.0"), ("v0.17.6", "latest")],
+)
+def test_fetch_widget_asset_downloads_and_caches(
+    tmp_path: Path,
+    version: str,
+    expected_cache_version: str,
+) -> None:
+    """Downloads exact release assets or falls back to latest when missing."""
     with (
         patch(f"{DOTTED_PATH}.os.path.dirname", return_value=str(tmp_path)),
         patch(f"{DOTTED_PATH}.os.path.expanduser", return_value=str(tmp_path)),
@@ -163,16 +175,20 @@ def test_fetch_widget_asset_downloads_and_caches(tmp_path: Path) -> None:
         ) as mock_dl,
         patch(f"{PKG_NAME}.__version__", "1.0.0"),
     ):
-        result = matterviz.fetch_widget_asset(
-            "matterviz.js", version_override="v0.17.0"
-        )
+        result = matterviz.fetch_widget_asset("matterviz.js", version_override=version)
 
     assert result == "downloaded content"
-    expected_url = (
-        "https://github.com/janosh/pymatviz/releases/download/v0.17.0/matterviz.js"
-    )
-    assert mock_dl.call_args[0][0] == expected_url
-    assert (tmp_path / "v0.17.0" / "matterviz.js").read_text() == "downloaded content"
+    expected_urls = [
+        f"https://github.com/janosh/pymatviz/releases/download/{version}/matterviz.js"
+    ]
+    if expected_cache_version == "latest":
+        expected_urls += [
+            "https://github.com/janosh/pymatviz/releases/latest/download/matterviz.js"
+        ]
+    assert [mock_call.args[0] for mock_call in mock_dl.call_args_list] == expected_urls
+    assert (
+        tmp_path / expected_cache_version / "matterviz.js"
+    ).read_text() == "downloaded content"
 
 
 def test_fetch_widget_asset_download_error(tmp_path: Path) -> None:

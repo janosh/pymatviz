@@ -1,6 +1,6 @@
 [project]
 name = "pymatviz"
-version = "0.17.5"
+version = "0.17.6"
 description = "A toolkit for visualizations in materials informatics"
 authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
 readme = "readme.md"
@@ -24,9 +24,7 @@ urls = { Homepage = "https://github.com/janosh/pymatviz" }
 requires-python = ">=3.11"
 dependencies = [
     "anywidget>=0.9.18",
-    "kaleido>=1.2.0",
-    "moyopy[interface]>=0.7.1",
-    "nbformat>=5.10",
+    "moyopy[interface]>=0.8",
     "numpy>=2",
     "pandas[output-formatting,xml]>=2.2", # output-formatting needed for pandas Stylers,
     # see https://github.com/pandas-dev/pandas/blob/-/pyproject.toml
@@ -42,12 +40,13 @@ make-assets = ["matminer>=0.9"]
 gh-pages = ["jupyter>=1.1", "lazydocs>=0.4", "nbconvert>=7.16"]
 phonons = ["phonopy>=2.31"] # only needed if user passes in phonopy objects
 test = [
+    "kaleido>=1.2.0",
     "pymatviz[cluster, phonons]",
     "pytest-cov>=6",
     "pytest-split>=0.9",
     "pytest>=8",
 ]
-export = ["playwright>=1.40"]
+export = ["kaleido>=1.2.0", "playwright>=1.40"]
 brillouin = ["seekpath>=2.1"]
 cluster = ["matminer>=0.9"]
 # umap-learn not included in cluster because its numba dep clashes with other packages
@@ -55,12 +54,8 @@ cluster = ["matminer>=0.9"]
 umap = ["umap-learn>=0.5; python_version < '3.13'"]
 
 [build-system]
-requires = ["uv_build>=0.8.10"]
+requires = ["uv_build>=0.11.8"]
 build-backend = "uv_build"
-
-# TODO remove once orjson 3.11.8 gets x86_64 Linux wheels or 3.11.9 is released
-[tool.uv]
-constraint-dependencies = ["orjson!=3.11.8"]
 
 [tool.uv.build-backend]
 module-name = "pymatviz"
@@ -132,7 +127,7 @@ docstring-code-format = true
 ]
 
 [dependency-groups]
-dev = ["prek>=0.2.13", "ty>=0.0.1a25"]
+dev = ["prek>=0.3.11", "ty>=0.0.34"]
 
 [tool.ty.rules]
 unused-type-ignore-comment = "ignore"

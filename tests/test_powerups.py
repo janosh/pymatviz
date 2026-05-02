@@ -60,7 +60,7 @@ def test_add_ecdf_line(
     ecdf_trace = fig.data[-1]
     assert ecdf_trace.name == expected_name
     dev_fig = fig.full_figure_for_development(warn=False)
-    assert dev_fig.data[-1].line.color == expected_color
+    assert dev_fig.data[-1].line.color.casefold() == expected_color.casefold()
     assert ecdf_trace.line.dash == expected_dash
     assert ecdf_trace.yaxis == "y2"
     assert fig.layout.yaxis2.range == (0, 1)

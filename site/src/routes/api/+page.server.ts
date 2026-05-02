@@ -1,26 +1,28 @@
+import { readdirSync, readFileSync } from 'node:fs'
 import rehypeStarryNight from 'rehype-starry-night'
 import rehypeStringify from 'rehype-stringify'
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import { unified } from 'unified'
 
+const api_docs_dir = new URL(`api-docs/`, `file://${process.cwd()}/`)
+
 export async function load() {
-  const md_files = await import.meta.glob(`./*.md`, {
-    eager: true,
-    query: `?raw`,
-    import: `default`,
-  })
+  const markdown_files = readdirSync(api_docs_dir)
+    .filter((file_name) => file_name.endsWith(`.md`))
+    .toSorted()
 
   const html = await Promise.all(
-    Object.values(md_files).map(async (content) => {
+    markdown_files.map(async (file_name) => {
+      const content = readFileSync(new URL(file_name, api_docs_dir), `utf8`)
       const result = await unified()
         .use(remarkParse)
         .use(remarkRehype)
         .use(rehypeStarryNight)
         .use(rehypeStringify)
-        .process(content as string)
+        .process(content)
 
-      return String(result)
+      return String(result).replaceAll(/href="(?!https?:|#|mailto:)[^"]+"/g, `href="#"`)
     }),
   )
 

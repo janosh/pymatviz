@@ -1,22 +1,22 @@
+import {
+  notebook_entries,
+  notebook_routes,
+  read_notebook_html,
+} from '$lib/server/notebooks'
 import { error } from '@sveltejs/kit'
+import type { EntryGenerator, PageServerLoad } from './$types'
 
-export const load = async ({ params }: { params: { slug: string } }) => {
+export const entries: EntryGenerator = notebook_entries
+
+export const load: PageServerLoad = ({ params }) => {
   const { slug } = params
 
-  const notebooks = await import.meta.glob(`$root/examples/*.html`, {
-    eager: true,
-    query: `?raw`,
-    import: `default`,
-  })
-
   const path = `../examples/${slug}.ipynb`
-  const html = notebooks[path.replace(`.ipynb`, `.html`)]
-  if (!html) throw error(404, `No notebook found at path=${path}`)
+  const html = read_notebook_html(slug)
+  if (html === null) throw error(404, `No notebook found at path=${path}`)
 
   // Get prev/next with wrap around
-  const routes = Object.keys(notebooks).map((key) =>
-    key.replace(`../examples/`, `/notebooks/`).replace(`.html`, ``),
-  )
+  const routes = notebook_routes(`.html`)
 
   return { html, slug, path, routes }
 }

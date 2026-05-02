@@ -20,7 +20,7 @@ import pymatviz as pmv
 os.chdir(pmv.ROOT)
 with open(f"{pmv.ROOT}/site/package.json") as file:
     pkg = json.load(file)
-route = "site/src/routes/api"
+route = "site/api-docs"
 
 for path in glob(f"{route}/*.md"):
     os.remove(path)
