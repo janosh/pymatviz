@@ -264,10 +264,15 @@ def _get_trace_color(trace: go.Scatter, default_color: str = "navy") -> str:
     if (
         hasattr(trace, "marker")
         and hasattr(trace.marker, "color")
+        and trace.marker.color is not None
         and not isinstance(trace.marker.color, list)
     ):
         return trace.marker.color
-    if hasattr(trace, "line") and hasattr(trace.line, "color"):
+    if (
+        hasattr(trace, "line")
+        and hasattr(trace.line, "color")
+        and trace.line.color is not None
+    ):
         return trace.line.color
     return default_color
 
@@ -806,16 +811,9 @@ def add_ecdf_line(
             f"{xlabel}: %{{x}}<br>Percent: %{{y:.2%}}<extra></extra>"
         )
 
-        # Try full figure development view first for potentially resolved color
-        # Use try-except block for robustness if full_fig fails
-        full_fig = fig.full_figure_for_development(warn=False)
-        if trace_idx < len(full_fig.data):
-            full_trace = full_fig.data[trace_idx]
-            # Try getting color from full_trace, don't provide a default yet
-            target_color = _get_trace_color(full_trace)
-        else:
-            mod_trace_idx = trace_idx % len(px.colors.DEFAULT_PLOTLY_COLORS)
-            target_color = px.colors.DEFAULT_PLOTLY_COLORS[mod_trace_idx]
+        colorway = fig.layout.colorway or px.colors.qualitative.Plotly
+        default_color = colorway[trace_idx % len(colorway)]
+        target_color = _get_trace_color(target_trace, default_color)
 
         # Set legendgroup
         legendgroup = str(trace_idx)

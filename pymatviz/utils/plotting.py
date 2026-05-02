@@ -319,6 +319,8 @@ def get_fig_xy_range(
 
         trace = fig.data[trace_index]
         df_xy = pd.DataFrame({"x": trace.x, "y": trace.y}).dropna()
+        if df_xy.empty:
+            raise ValueError("No valid traces with required data found") from None
 
         # Determine ranges based on the type of axes
         if fig.layout.xaxis.type == "log":

@@ -4,7 +4,7 @@ node_modules
 # production build
 .svelte-kit
 build
-src/routes/api/*.md
+api-docs/*.md
 
 # environment variables
 .env

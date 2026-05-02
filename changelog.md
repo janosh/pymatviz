@@ -1,5 +1,25 @@
 # Changelog
 
+## [v0.17.6](https://github.com/janosh/pymatviz/compare/v0.17.5...v0.17.6)
+
+> 2 May 2026
+
+### 🛠 Enhancements
+
+- Add headless widget image export and improve widget APIs by @janosh in https://github.com/janosh/pymatviz/pull/343
+- Add multi-vector-per-atom rendering by @janosh in https://github.com/janosh/pymatviz/pull/344
+- Add adaptive depth pruning and language-agnostic source_dir mode to `py_pkg_treemap` by @janosh in https://github.com/janosh/pymatviz/pull/346
+- Add `PYMATVIZ_STATIC` env var for static PNG rendering in `show()` by @janosh in https://github.com/janosh/pymatviz/commit/285c20c
+
+### 🐛 Bug Fixes
+
+- Fix `save_fig` `r+` bug by @janosh in https://github.com/janosh/pymatviz/commit/3e24d65
+
+### 💡 Refactoring
+
+- Replace Deno and ESLint with vite-plus tooling by @janosh in https://github.com/janosh/pymatviz/pull/345
+- Remove dead `df_to_pdf` and `df_to_svg` by @janosh in https://github.com/janosh/pymatviz/commit/3e24d65
+
 ## [v0.17.5](https://github.com/janosh/pymatviz/compare/v0.17.4...v0.17.5)
 
 > 4 March 2026

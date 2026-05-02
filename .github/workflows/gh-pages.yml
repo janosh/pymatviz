@@ -11,9 +11,9 @@ jobs:
   build:
     uses: janosh/workflows/.github/workflows/nodejs-gh-pages.yml@main
     with:
-      node-version: 22
+      node-version: 24
       install-cmd: npm install
-      python-version: '3.11'
+      python-version: "3.11"
       working-directory: site
       pre-build: |
         pip install -e '..[gh-pages]'

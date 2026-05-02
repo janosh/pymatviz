@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import subprocess
+import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urljoin
@@ -94,7 +95,7 @@ def configure_assets(
     Call with no arguments to reset to default (auto-detect from installed version).
 
     Args:
-        version: GitHub release version tag (e.g. ``"v0.18.0"``).
+        version: GitHub release version tag (e.g. ``"v0.17.6"``).
             Mutually exclusive with ``esm_src``/``css_src``.
         esm_src: URL or local file path for the ESM JavaScript bundle.
         css_src: URL or local file path for the CSS stylesheet.
@@ -143,30 +144,61 @@ def fetch_widget_asset(filename: str, version_override: str | None = None) -> st
 
     asset_version = version_override or f"v{__version__}"
     local_path = f"{os.path.dirname(__file__)}/web/build/{filename}"
-    cache_dir = f"{os.path.expanduser('~/.cache/pymatviz/build')}/{asset_version}"
+    cache_root = f"{os.path.expanduser('~/.cache/pymatviz/build')}"
+    cache_dir = f"{cache_root}/{asset_version}"
     os.makedirs(cache_dir, exist_ok=True)
     cache_path = f"{cache_dir}/{filename}"
 
-    if os.path.isfile(local_path):
-        with open(local_path, encoding="utf-8") as file:
+    def read_file(path: str) -> str:
+        """Read a cached or local asset file."""
+        with open(path, encoding="utf-8") as file:
             return file.read()
 
+    if os.path.isfile(local_path):
+        return read_file(local_path)
+
     if os.path.isfile(cache_path):
-        with open(cache_path, encoding="utf-8") as file:
-            return file.read()
+        return read_file(cache_path)
 
     if not re.match(r"^v\d+\.\d+\.\d+$", asset_version):
         raise ValueError(f"Invalid version format: {asset_version=}")
 
+    def download_asset(github_url: str, output_path: str) -> str:
+        """Download release asset and return its content."""
+        urllib.request.urlretrieve(github_url, output_path)  # noqa: S310
+        return read_file(output_path)
+
     github_url = f"https://github.com/janosh/pymatviz/releases/download/{asset_version}/{filename}"
     try:
-        urllib.request.urlretrieve(github_url, cache_path)  # noqa: S310
-        with open(cache_path, encoding="utf-8") as file:
-            return file.read()
+        return download_asset(github_url, cache_path)
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            raise FileNotFoundError(
+                f"Could not load {filename} from GitHub releases for version "
+                f"{asset_version}. Please check your internet connection."
+            ) from exc
     except Exception as exc:
         raise FileNotFoundError(
             f"Could not load {filename} from GitHub releases for version "
             f"{asset_version}. Please check your internet connection."
+        ) from exc
+
+    latest_cache_dir = f"{cache_root}/latest"
+    os.makedirs(latest_cache_dir, exist_ok=True)
+    latest_cache_path = f"{latest_cache_dir}/{filename}"
+    if os.path.isfile(latest_cache_path):
+        return read_file(latest_cache_path)
+
+    latest_url = (
+        f"https://github.com/janosh/pymatviz/releases/latest/download/{filename}"
+    )
+    try:
+        return download_asset(latest_url, latest_cache_path)
+    except Exception as exc:
+        raise FileNotFoundError(
+            f"Could not load {filename} from GitHub releases for version "
+            f"{asset_version} or the latest release. Please check your internet "
+            "connection."
         ) from exc
 
 

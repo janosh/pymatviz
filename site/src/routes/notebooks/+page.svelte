@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { notebook_filenames } from '$lib/notebooks'
+  let { data }: { data: { notebook_routes: string[] } } = $props()
 </script>
 
 <h1 class="toc-exclude">Examples</h1>
 
 <ol>
-  {#each notebook_filenames as filename (filename)}
-    <li><a href="/notebooks/{filename}">{filename}.ipynb</a></li>
+  {#each data.notebook_routes as route (route)}
+    <li><a href={route}>{route.split(`/`).at(-1)}.ipynb</a></li>
   {/each}
 </ol>
 
