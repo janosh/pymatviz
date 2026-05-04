@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import importlib.util
+from enum import IntEnum
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import pytest
 from pymatgen.core import Composition, Lattice, Structure
 
@@ -69,6 +71,13 @@ def test_to_dict_raises_for_unsupported_type(label: str) -> None:
 def test_parse_formula_to_dict(formula: str, expected: dict[str, float]) -> None:
     """Formula strings are parsed to element-count dicts."""
     assert _parse_formula_to_dict(formula) == expected
+
+
+@pytest.mark.parametrize("formula", ["", "   ", "(Li)2O", "Li[Fe]O2", "2LiO", "Li2O!"])
+def test_parse_formula_to_dict_rejects_malformed(formula: str) -> None:
+    """Malformed formulas raise instead of silently dropping invalid tokens."""
+    with pytest.raises(ValueError, match=r"Formula|Unsupported|Invalid"):
+        _parse_formula_to_dict(formula)
 
 
 # === _normalize_entry_compositions ===
@@ -319,13 +328,47 @@ def test_normalize_structure_for_bz_unsupported_type() -> None:
 # === normalize_plot_series ===
 
 
-def test_normalize_plot_series_from_numpy_arrays() -> None:
-    """Series arrays from NumPy must normalize to finite Python floats."""
+@pytest.mark.parametrize(
+    ("x_values", "y_values"),
+    [
+        (np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3])),
+        (pd.Series([0, 1, 2]), pd.Series([0.1, 0.2, 0.3])),
+    ],
+)
+def test_normalize_plot_series_from_array_like_inputs(
+    x_values: Any, y_values: Any
+) -> None:
+    """Array-backed values and scalar subclasses normalize to Python primitives."""
+
+    class MockIntEnum(IntEnum):
+        """Mock integer enum for JSON-safe int subclass normalization."""
+
+        VALUE = 42
+
     normalized = normalize_plot_series(
-        [{"x": np.array([0, 1, 2]), "y": np.array([0.1, 0.2, 0.3]), "label": "A"}],
+        [
+            {
+                "x": x_values,
+                "y": y_values,
+                "label": "A",
+                "size": np.float64(4.5),
+                "rank": MockIntEnum.VALUE,
+            }
+        ],
         component_name="ScatterPlot",
     )
-    assert normalized == [{"x": [0.0, 1.0, 2.0], "y": [0.1, 0.2, 0.3], "label": "A"}]
+    assert normalized is not None
+    assert normalized == [
+        {
+            "x": [0.0, 1.0, 2.0],
+            "y": [0.1, 0.2, 0.3],
+            "label": "A",
+            "size": 4.5,
+            "rank": 42,
+        }
+    ]
+    assert type(normalized[0]["size"]) is float
+    assert type(normalized[0]["rank"]) is int
 
 
 @pytest.mark.parametrize(

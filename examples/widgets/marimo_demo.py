@@ -560,9 +560,9 @@ def _(np_rng, pmv):
     pmv.ScatterPlot3DWidget(
         series=[
             {
-                "x": np_rng.normal(0, 1, 50).tolist(),
-                "y": np_rng.normal(0, 1, 50).tolist(),
-                "z": np_rng.normal(0, 1, 50).tolist(),
+                "x": np_rng.normal(0, 1, 50),
+                "y": np_rng.normal(0, 1, 50),
+                "z": np_rng.normal(0, 1, 50),
                 "label": "Random points",
             }
         ],

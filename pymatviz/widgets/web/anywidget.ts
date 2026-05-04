@@ -496,7 +496,14 @@ const render_spacegroup_bar: Render = ({ model, el }) => {
     model,
     el,
     SpacegroupBarPlot,
-    pick_props(model, [`data`, `show_counts`, `orientation`, `x_axis`, `y_axis`]),
+    pick_props(model, [
+      `data`,
+      `show_counts`,
+      `show_legend`,
+      `orientation`,
+      `x_axis`,
+      `y_axis`,
+    ]),
   )
 }
 

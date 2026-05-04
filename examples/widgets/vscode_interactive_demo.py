@@ -526,9 +526,9 @@ ptable_widget.show()
 scatter_3d_widget = pmv.ScatterPlot3DWidget(
     series=[
         {
-            "x": np_rng.normal(0, 1, 50).tolist(),
-            "y": np_rng.normal(0, 1, 50).tolist(),
-            "z": np_rng.normal(0, 1, 50).tolist(),
+            "x": np_rng.normal(0, 1, 50),
+            "y": np_rng.normal(0, 1, 50),
+            "z": np_rng.normal(0, 1, 50),
             "label": "Random points",
         }
     ],
@@ -569,9 +569,9 @@ heatmap_widget.show()
 
 
 # %% SpacegroupBarPlot — space group frequencies
+spacegroup_counts = {1: 2, 2: 3, 12: 2, 14: 4, 15: 2, 62: 5, 63: 2, 139: 3, 141: 2, 148: 2, 166: 4, 167: 2, 194: 4, 216: 2, 221: 3, 225: 5, 227: 3, 229: 2}  # fmt: skip  # noqa: E501
 spacegroup_widget = pmv.SpacegroupBarPlotWidget(
-    data=[225, 225, 225, 166, 166, 62, 62, 62, 62, 139, 139, 12, 14, 14, 14, 14],
-    style="height: 350px;",
+    data=spacegroup_counts, style="height: 350px;"
 )
 spacegroup_widget.show()
 

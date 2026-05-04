@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import traitlets as tl
@@ -13,8 +14,8 @@ from pymatviz.widgets.matterviz import MatterVizWidget
 class SpacegroupBarPlotWidget(MatterVizWidget):
     """MatterViz widget for space group frequency bar plots.
 
-    Accepts a list of space group numbers or symbols and renders a bar chart
-    showing their frequency distribution.
+    Accepts space group numbers/symbols or ``{spacegroup: count}`` mappings and
+    renders a bar chart showing their frequency distribution.
 
     Examples:
         >>> from pymatviz import SpacegroupBarPlotWidget
@@ -23,6 +24,7 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
 
     data = tl.List(allow_none=True).tag(sync=True)
     show_counts = tl.Bool(default_value=True).tag(sync=True)
+    show_legend = tl.Bool(default_value=False).tag(sync=True)
     orientation = tl.CaselessStrEnum(
         values=["vertical", "horizontal"], default_value="vertical"
     ).tag(sync=True)
@@ -31,17 +33,23 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
 
     def __init__(
         self,
-        data: list[int | str] | None = None,
+        data: Any = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a space group bar plot widget.
 
         Args:
-            data: List of space group numbers or Hermann-Mauguin symbols.
+            data: Space group numbers/Hermann-Mauguin symbols or count mapping.
             **kwargs: Additional widget properties.
         """
+        if isinstance(data, Mapping):
+            if any(count < 0 for count in data.values()):
+                raise ValueError("Space group counts must be non-negative.")
+            data = [spg for spg, count in data.items() for _ in range(count)]
         super().__init__(
             widget_type="spacegroup_bar",
-            data=normalize_plot_json(data or [], "SpacegroupBarPlot.data"),
+            data=normalize_plot_json(
+                [] if data is None else data, "SpacegroupBarPlot.data"
+            ),
             **kwargs,
         )
