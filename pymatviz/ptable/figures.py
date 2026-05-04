@@ -998,7 +998,7 @@ def ptable_heatmap_splits_plotly(
         if isinstance(colorbar, dict):
             colorbar = colorbar.copy()  # ty: ignore[invalid-assignment]
             if "title" not in colorbar:  # ty: ignore[unsupported-operator]
-                colorbar["title"] = split_labels[0] if len(split_labels) == 1 else None  # ty: ignore[invalid-assignment]
+                colorbar["title"] = split_labels[0] if len(split_labels) == 1 else None  # ty: ignore[invalid-assignment, possibly-missing-implicit-call]
         elif isinstance(colorbar, Sequence):
             colorbar = list(colorbar)  # Convert to list to allow modification
             for idx, (cbar, label) in enumerate(

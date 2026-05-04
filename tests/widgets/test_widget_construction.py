@@ -355,6 +355,7 @@ def test_widget_construction_and_type(
             {
                 "data",
                 "show_counts",
+                "show_legend",
                 "orientation",
                 "x_axis",
                 "y_axis",
@@ -363,11 +364,7 @@ def test_widget_construction_and_type(
         (
             ChemPotDiagramWidget,
             {"entries": [{"name": "Li", "energy": -1.9}]},
-            {
-                "entries",
-                "config",
-                "temperature",
-            },
+            {"entries", "config", "temperature"},
         ),
     ],
 )
@@ -384,11 +381,7 @@ def test_to_dict_includes_subclass_fields(
     assert base_fields <= set(state), f"Missing base fields in {widget_cls.__name__}"
 
     all_expected = base_fields | expected_fields
-    assert set(state) == all_expected, (
-        f"{widget_cls.__name__}: to_dict keys mismatch.\n"
-        f"  Extra: {set(state) - all_expected}\n"
-        f"  Missing: {all_expected - set(state)}"
-    )
+    assert set(state) == all_expected
 
 
 def test_to_dict_reflects_constructor_values() -> None:
@@ -446,6 +439,7 @@ _MINIMAL_KWARGS: dict[type, dict[str, Any]] = {
         (HeatmapMatrixWidget, "tile_size", "50px"),
         (HeatmapMatrixWidget, "gap", "0px"),
         (SpacegroupBarPlotWidget, "show_counts", True),
+        (SpacegroupBarPlotWidget, "show_legend", False),
         (SpacegroupBarPlotWidget, "orientation", "vertical"),
         (RdfPlotWidget, "cutoff", 15),
         (RdfPlotWidget, "n_bins", 75),
@@ -619,6 +613,12 @@ def test_new_widgets_construct_with_no_data(
             "heatmap_values",
             [1.0, 4.0, 6.9],
         ),
+        (
+            SpacegroupBarPlotWidget,
+            {"data": np.array([225, 166, 62])},
+            "data",
+            [225, 166, 62],
+        ),
     ],
 )
 def test_widget_normalizes_numpy_values(
@@ -629,6 +629,42 @@ def test_widget_normalizes_numpy_values(
     result = getattr(widget, attr)
     assert result == expected
     assert type(result) is list
+
+
+@pytest.mark.parametrize(
+    "widget_cls", [ScatterPlotWidget, BarPlotWidget, HistogramWidget]
+)
+@pytest.mark.parametrize("input_kind", ["numpy", "pandas"])
+def test_xy_plot_widgets_accept_array_backed_series_values(
+    widget_cls: type, input_kind: str
+) -> None:
+    """XY plot widgets accept NumPy arrays and pandas Series in series values."""
+    if input_kind == "numpy":
+        x_values, y_values = np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3])
+    else:
+        pd = pytest.importorskip("pandas")
+        x_values, y_values = pd.Series([0, 1, 2]), pd.Series([0.1, 0.2, 0.3])
+
+    widget = widget_cls(
+        series=[{"x": x_values, "y": y_values, "label": "A"}],
+    )
+    expected_series = [{"x": [0.0, 1.0, 2.0], "y": [0.1, 0.2, 0.3], "label": "A"}]
+    assert widget.series == expected_series
+
+
+def test_spacegroup_bar_data_inputs() -> None:
+    """SpacegroupBarPlotWidget normalizes supported data inputs."""
+    pd = pytest.importorskip("pandas")
+    widget = SpacegroupBarPlotWidget(data=pd.Series([225, 166, 62]))
+    assert widget.data == [225, 166, 62]
+    widget = SpacegroupBarPlotWidget(data={225: np.int64(2), 166: 0, "P2_1/c": 1})
+    assert widget.data == [225, 225, "P2_1/c"]
+    for bad_data, error_cls, match in [
+        ({225: -1}, ValueError, "non-negative"),
+        ({225: 1.5}, TypeError, "integer"),
+    ]:
+        with pytest.raises(error_cls, match=match):
+            SpacegroupBarPlotWidget(data=bad_data)
 
 
 def test_heatmap_matrix_values_none_passthrough() -> None:

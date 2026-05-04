@@ -20,7 +20,9 @@ if TYPE_CHECKING:
 
 
 def rainclouds(
-    data: Mapping[str, Sequence[float] | tuple[pd.DataFrame, str]],
+    data: Mapping[
+        str, Sequence[float] | np.ndarray | pd.Series | tuple[pd.DataFrame, str]
+    ],
     *,
     orientation: Literal["h", "v"] = "h",
     alpha: float = 0.7,
@@ -101,12 +103,15 @@ def rainclouds(
         color = qualitative.Plotly[idx % len(qualitative.Plotly)]
         rgba_color = rgba_from_hex(color, alpha)
         pos = positions[idx]
+        df_i: pd.DataFrame | None = None
+        col: str | None = None
+        if isinstance(data_itm, tuple) and len(data_itm) == 2:
+            data_frame, column = data_itm
+        else:
+            data_frame, column = None, None
 
-        if (
-            len(data_itm) == 2
-            and isinstance(df_i := data_itm[0], pd.DataFrame)
-            and isinstance(col := data_itm[1], str)
-        ):
+        if isinstance(data_frame, pd.DataFrame) and isinstance(column, str):
+            df_i, col = data_frame, column
             values = df_i[col]
             if hover_data is None:
                 hover_data = [col]
@@ -191,7 +196,7 @@ def rainclouds(
         if show_points:  # the rain
             rng = np.random.default_rng(seed=0)
             jitter_values = rng.normal(0, jitter, size=len(values))
-            hover_key = data_itm[1] if isinstance(data_itm, tuple) else "value"
+            hover_key = col or "value"
             hover_text = [f"{label}<br>{hover_key}: {val:.3g}" for val in values]
 
             if hover_data is not None:
@@ -204,23 +209,21 @@ def rainclouds(
                     else None
                 )
                 if isinstance(extra_hover, Mapping):
-                    for col, col_data in extra_hover.items():
+                    for hover_col, col_data in extra_hover.items():
                         if isinstance(col_data, (str, bytes)):
                             continue
                         col_values = list(cast("Sequence[object]", col_data))
                         if len(col_values) != len(hover_text):
                             warnings.warn(
-                                f"Skipping hover column {col!r}: "
+                                f"Skipping hover column {hover_col!r}: "
                                 f"{len(col_values)=} != {len(hover_text)=}",
                                 stacklevel=2,
                             )
                             continue
                         for val_idx, val in enumerate(col_values):
-                            hover_text[val_idx] += f"<br>{col}: {val}"
+                            hover_text[val_idx] += f"<br>{hover_col}: {val}"
                 elif (
-                    len(data_itm) == 2
-                    and isinstance(df_i := data_itm[0], pd.DataFrame)
-                    and isinstance(data_itm[1], str)
+                    df_i is not None
                     and (
                         cols_to_show := extra_hover
                         if isinstance(hover_data, Mapping)

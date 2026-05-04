@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from pymatgen.analysis.diffraction.xrd import DiffractionPattern
 from pymatgen.core import Composition, Lattice, Structure
 
 from pymatviz.widgets.band_structure import BandStructureWidget
@@ -21,9 +22,7 @@ from pymatviz.widgets.xrd import XrdWidget
     [
         (lambda: Composition("Fe2O3"), "CompositionWidget", "composition"),
         (
-            lambda: __import__(
-                "pymatgen.analysis.diffraction.xrd", fromlist=["DiffractionPattern"]
-            ).DiffractionPattern(x=[10], y=[100], hkls=[], d_hkls=[]),
+            lambda: DiffractionPattern(x=[10], y=[100], hkls=[], d_hkls=[]),
             "XrdWidget",
             "xrd",
         ),

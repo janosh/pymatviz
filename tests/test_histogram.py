@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
@@ -11,6 +12,8 @@ from tests.conftest import df_regr, y_true
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    import numpy as np
 
 
 def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
@@ -37,8 +40,10 @@ def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
 
 @pytest.mark.parametrize("log_y", [True, False])
 @pytest.mark.parametrize("bins", [20, 100])
-@pytest.mark.parametrize("values", [y_true.tolist(), df_regr.y_true.tolist()])
-def test_histogram(values: Sequence[float], log_y: bool, bins: int) -> None:
+@pytest.mark.parametrize("values", [y_true, df_regr.y_true])
+def test_histogram(
+    values: Sequence[float] | np.ndarray | pd.Series, log_y: bool, bins: int
+) -> None:
     """Test histogram function with Plotly backend."""
     fig = histogram(values, log_y=log_y, bins=bins)
     assert isinstance(fig, go.Figure)
@@ -55,3 +60,36 @@ def test_histogram(values: Sequence[float], log_y: bool, bins: int) -> None:
     assert y_max == pytest.approx(y_max_exp)
 
     assert fig.layout.yaxis.title.text == "Count"
+
+
+@pytest.mark.parametrize(
+    ("values", "match"),
+    [
+        ({}, "must not be empty"),
+        ([], "non-empty 1D"),
+        ([[1, 2], [3, 4]], "non-empty 1D"),
+    ],
+)
+def test_histogram_rejects_invalid_values(values: Any, match: str) -> None:
+    """Histogram rejects empty and non-1D inputs."""
+    with pytest.raises(ValueError, match=match):
+        histogram(values)
+
+
+def test_histogram_preserves_zero_x_range_boundary() -> None:
+    """Histogram treats zero x_range bounds as explicit values."""
+    fig = histogram([1, 2, 3], x_range=(0, None), bins=3)
+    assert fig.data[0].x[0] == 0
+
+
+@pytest.mark.parametrize(
+    ("series_name", "expected_title"),
+    [(None, "Value"), ("my_col", "my_col"), (0, "0"), ("", "")],
+)
+def test_histogram_series_xaxis_title(
+    series_name: str | int | None, expected_title: str
+) -> None:
+    """Histogram uses series name as x-axis title; only None falls back to 'Value'."""
+    fig = histogram(pd.Series([1.0, 2.0, 3.0], name=series_name))
+    assert fig.layout.xaxis.title.text == expected_title
+    assert fig.data[0].name == expected_title

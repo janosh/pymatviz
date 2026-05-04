@@ -14,7 +14,7 @@ repos:
     hooks:
       - id: ty
         name: ty check
-        entry: ty check --ignore unused-type-ignore-comment --ignore unused-ignore-comment
+        entry: ty check --ignore unused-ignore-comment
         language: python
         types: [python]
         pass_filenames: false
@@ -88,7 +88,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.37.1
+    rev: 0.37.2
     hooks:
       - id: check-jsonschema
         files: ^pymatviz/keys\.yml$
