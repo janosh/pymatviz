@@ -20,7 +20,9 @@ if TYPE_CHECKING:
 
 
 def rainclouds(
-    data: Mapping[str, Sequence[float] | tuple[pd.DataFrame, str]],
+    data: Mapping[
+        str, Sequence[float] | np.ndarray | pd.Series | tuple[pd.DataFrame, str]
+    ],
     *,
     orientation: Literal["h", "v"] = "h",
     alpha: float = 0.7,

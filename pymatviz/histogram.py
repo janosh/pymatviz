@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Any, Literal
 
+    import pandas as pd
+
     from pymatviz.typing import ElemValues
 
 
@@ -60,9 +62,9 @@ def elements_hist(
     if show_values is not None:
         if show_values == "percent":
             sum_elements = non_zero.sum()
-            text_labels = [f"{el / sum_elements:.0%}" for el in non_zero.values]
+            text_labels = [f"{el / sum_elements:.0%}" for el in non_zero.to_numpy()]
         else:
-            text_labels = [str(int(val)) for val in non_zero.values]
+            text_labels = [str(int(val)) for val in non_zero.to_numpy()]
 
     fig = go.Figure(**fig_kwargs or {})
     fig.add_bar(
@@ -87,7 +89,10 @@ def elements_hist(
 
 
 def histogram(
-    values: Sequence[float] | dict[str, Sequence[float] | np.ndarray],
+    values: Sequence[float]
+    | np.ndarray
+    | pd.Series
+    | dict[str, Sequence[float] | np.ndarray | pd.Series],
     *,
     bins: int | Sequence[float] | str = 200,
     x_range: tuple[float | None, float | None] | None = None,
@@ -152,7 +157,7 @@ def histogram(
 
     fig = go.Figure(**fig_kwargs or {})
     for label, vals in data.items():
-        hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
+        hist_vals, _ = np.histogram(np.asarray(vals), bins=bin_edges, density=density)
         fig.add_bar(
             x=bin_edges[:-1],
             y=hist_vals,

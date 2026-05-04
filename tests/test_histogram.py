@@ -12,6 +12,9 @@ from tests.conftest import df_regr, y_true
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    import numpy as np
+    import pandas as pd
+
 
 def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
     """Test elements histogram with various parameters."""
@@ -37,8 +40,10 @@ def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
 
 @pytest.mark.parametrize("log_y", [True, False])
 @pytest.mark.parametrize("bins", [20, 100])
-@pytest.mark.parametrize("values", [y_true.tolist(), df_regr.y_true.tolist()])
-def test_histogram(values: Sequence[float], log_y: bool, bins: int) -> None:
+@pytest.mark.parametrize("values", [y_true, df_regr.y_true])
+def test_histogram(
+    values: Sequence[float] | np.ndarray | pd.Series, log_y: bool, bins: int
+) -> None:
     """Test histogram function with Plotly backend."""
     fig = histogram(values, log_y=log_y, bins=bins)
     assert isinstance(fig, go.Figure)
