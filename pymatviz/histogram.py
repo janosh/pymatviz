@@ -133,8 +133,7 @@ def histogram(
     Returns:
         go.Figure: The Plotly figure object containing the histogram.
     """
-    # if values was a Series, extract the name attribute to use as legend label
-    x_axis_title = getattr(values, "name", "Value")
+    x_axis_title = "Value" if (name := getattr(values, "name", None)) is None else name
     data = values if isinstance(values, dict) else {x_axis_title: values}
     data_arrays = {label: np.asarray(vals, dtype=float) for label, vals in data.items()}
     if not data_arrays:

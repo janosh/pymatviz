@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
@@ -13,7 +14,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import numpy as np
-    import pandas as pd
 
 
 def test_hist_elemental_prevalence(glass_formulas: list[str]) -> None:
@@ -80,3 +80,16 @@ def test_histogram_preserves_zero_x_range_boundary() -> None:
     """Histogram treats zero x_range bounds as explicit values."""
     fig = histogram([1, 2, 3], x_range=(0, None), bins=3)
     assert fig.data[0].x[0] == 0
+
+
+@pytest.mark.parametrize(
+    ("series_name", "expected_title"),
+    [(None, "Value"), ("my_col", "my_col"), (0, "0"), ("", "")],
+)
+def test_histogram_series_xaxis_title(
+    series_name: str | int | None, expected_title: str
+) -> None:
+    """Histogram uses series name as x-axis title; only None falls back to 'Value'."""
+    fig = histogram(pd.Series([1.0, 2.0, 3.0], name=series_name))
+    assert fig.layout.xaxis.title.text == expected_title
+    assert fig.data[0].name == expected_title
