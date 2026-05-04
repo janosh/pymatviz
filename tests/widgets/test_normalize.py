@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import importlib.util
+from enum import IntEnum
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import pytest
 from pymatgen.core import Composition, Lattice, Structure
 
@@ -14,6 +16,7 @@ from pymatviz.widgets._normalize import (
     _parse_formula_to_dict,
     _to_dict,
     normalize_convex_hull_entries,
+    normalize_plot_json,
     normalize_plot_series,
     normalize_structure_for_bz,
     normalize_xrd_pattern,
@@ -69,6 +72,13 @@ def test_to_dict_raises_for_unsupported_type(label: str) -> None:
 def test_parse_formula_to_dict(formula: str, expected: dict[str, float]) -> None:
     """Formula strings are parsed to element-count dicts."""
     assert _parse_formula_to_dict(formula) == expected
+
+
+@pytest.mark.parametrize("formula", ["", "   ", "(Li)2O", "Li[Fe]O2", "2LiO", "Li2O!"])
+def test_parse_formula_to_dict_rejects_malformed(formula: str) -> None:
+    """Malformed formulas raise instead of silently dropping invalid tokens."""
+    with pytest.raises(ValueError, match=r"Formula|Unsupported|Invalid"):
+        _parse_formula_to_dict(formula)
 
 
 # === _normalize_entry_compositions ===
@@ -292,7 +302,7 @@ def test_normalize_structure_for_bz_passthrough() -> None:
         ),
         pytest.param(
             "ASE Atoms",
-            lambda: __import__("ase.build", fromlist=["bulk"]).bulk(
+            lambda: __import__("ase.build", fromlist=["bulk"]).bulk(  # ty: ignore[unresolved-attribute]
                 "Si", "diamond", a=5.43
             ),
             marks=pytest.mark.skipif(
@@ -319,13 +329,39 @@ def test_normalize_structure_for_bz_unsupported_type() -> None:
 # === normalize_plot_series ===
 
 
-def test_normalize_plot_series_from_numpy_arrays() -> None:
-    """Series arrays from NumPy must normalize to finite Python floats."""
+@pytest.mark.parametrize(
+    ("x_values", "y_values"),
+    [
+        (np.array([0, 1, 2]), np.array([0.1, 0.2, 0.3])),
+        (pd.Series([0, 1, 2]), pd.Series([0.1, 0.2, 0.3])),
+    ],
+)
+def test_normalize_plot_series_from_array_like_inputs(
+    x_values: Any, y_values: Any
+) -> None:
+    """Array-backed series values normalize to Python primitives."""
     normalized = normalize_plot_series(
-        [{"x": np.array([0, 1, 2]), "y": np.array([0.1, 0.2, 0.3]), "label": "A"}],
+        [{"x": x_values, "y": y_values, "label": "A"}],
         component_name="ScatterPlot",
     )
     assert normalized == [{"x": [0.0, 1.0, 2.0], "y": [0.1, 0.2, 0.3], "label": "A"}]
+
+
+def test_normalize_plot_json_scalar_subclasses() -> None:
+    """Scalar subclasses normalize to JSON-safe Python primitives."""
+
+    class MockIntEnum(IntEnum):
+        """Mock integer enum for JSON-safe int subclass normalization."""
+
+        VALUE = 42
+
+    for value, expected, expected_type in [
+        (np.float64(4.5), 4.5, float),
+        (MockIntEnum.VALUE, 42, int),
+    ]:
+        normalized = normalize_plot_json(value, "test")
+        assert normalized == expected
+        assert type(normalized) is expected_type
 
 
 @pytest.mark.parametrize(

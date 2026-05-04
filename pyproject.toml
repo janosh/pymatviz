@@ -130,6 +130,5 @@ docstring-code-format = true
 dev = ["prek>=0.3.11", "ty>=0.0.34"]
 
 [tool.ty.rules]
-unused-type-ignore-comment = "ignore"
 unused-ignore-comment = "ignore"
 unresolved-import = "ignore"

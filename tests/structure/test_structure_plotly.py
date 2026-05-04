@@ -1640,8 +1640,6 @@ def test_disordered_site_constants() -> None:
 
 def test_spherical_wedge_mesh_generation() -> None:
     """Test the spherical wedge mesh generation function."""
-    import numpy as np
-
     center = np.array([0.0, 0.0, 0.0])
     radius = 1.0
     start_angle = 0.0

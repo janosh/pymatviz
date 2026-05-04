@@ -729,8 +729,6 @@ def test_normalize_package_input() -> None:
     assert pmv.treemap.py_pkg._normalize_package_input("numpy") == "numpy"
 
     # Test module object input
-    import numpy as np
-
     assert pmv.treemap.py_pkg._normalize_package_input(np) == "numpy"
 
     # Test submodule object input
@@ -748,10 +746,7 @@ def test_normalize_package_input() -> None:
 
 def test_py_pkg_treemap_with_module_objects() -> None:
     """Test py_pkg_treemap with module objects instead of strings."""
-    import numpy as np
-
-    # Test single module object
-    fig = pmv.py_pkg_treemap(np)
+    fig = pmv.py_pkg_treemap(np)  # Test single module object
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 1
 

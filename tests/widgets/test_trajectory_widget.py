@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import pickle
 import zipfile
 from typing import TYPE_CHECKING
 
@@ -66,9 +67,7 @@ def test_widget_notebook_integration() -> None:
         (
             ".pkl",
             None,
-            lambda file: __import__("pickle").dump(
-                [{"structure": "test", "energy": 1.0}], file
-            ),
+            lambda file: pickle.dump([{"structure": "test", "energy": 1.0}], file),
         ),
         (".txt", None, lambda file: file.write(b"not a trajectory file")),
     ],

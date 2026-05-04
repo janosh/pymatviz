@@ -116,13 +116,16 @@ def normalize_plot_json(value: Any, label: str) -> Any:
         TypeError: If value cannot be serialized to JSON-safe primitives.
         ValueError: If value contains non-finite numbers.
     """
-    if value is None or isinstance(value, (bool, str, int)):
+    if value is None or isinstance(value, (bool, str)):
         return value
+
+    if isinstance(value, int):
+        return int(value)
 
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError(f"{label} contains non-finite float value: {value!r}.")
-        return value
+        return float(value)
 
     # Convert numpy scalars (.item()) and arrays (.tolist()) to native Python
     for method_name in ("item", "tolist"):
@@ -257,8 +260,16 @@ def _parse_formula_to_dict(formula: str) -> dict[str, float]:
     Returns:
         Dict mapping element symbols to their counts.
     """
+    if not formula.strip():
+        raise ValueError("Formula must not be empty.")
+    if any(char in formula for char in "()[]{}"):
+        raise ValueError(f"Unsupported grouping in formula: {formula!r}.")
+
     composition: dict[str, float] = {}
-    for match in re.finditer(r"([A-Z][a-z]?)(\d*\.?\d*)", formula):
+    matches = list(re.finditer(r"([A-Z][a-z]?)(\d*\.?\d*)", formula))
+    if "".join(match.group(0) for match in matches) != formula:
+        raise ValueError(f"Invalid formula syntax: {formula!r}.")
+    for match in matches:
         element = match.group(1)
         count_str = match.group(2)
         count = float(count_str) if count_str else 1.0

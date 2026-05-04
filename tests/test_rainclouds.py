@@ -17,12 +17,12 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def sample_data() -> dict[str, Sequence[float]]:
+def sample_data() -> dict[str, np.ndarray]:
     rng = np.random.default_rng(seed=0)
     return {
-        "A": rng.normal(0, 1, 100).tolist(),
-        "B": rng.normal(2, 1.5, 80).tolist(),
-        "C": rng.normal(-1, 0.5, 120).tolist(),
+        "A": rng.normal(0, 1, 100),
+        "B": rng.normal(2, 1.5, 80),
+        "C": rng.normal(-1, 0.5, 120),
     }
 
 
@@ -50,7 +50,7 @@ def sample_dataframe() -> pd.DataFrame:
     ],
 )
 def test_rainclouds_basic(
-    sample_data: dict[str, Sequence[float]], kwargs: dict[str, Any]
+    sample_data: dict[str, np.ndarray], kwargs: dict[str, Any]
 ) -> None:
     fig = pmv.rainclouds(sample_data, **kwargs)
     assert isinstance(fig, go.Figure)
@@ -81,18 +81,24 @@ def test_rainclouds_data_shapes(
 def test_rainclouds_with_dataframe(sample_dataframe: pd.DataFrame) -> None:
     data = {
         "X": (sample_dataframe, "value"),
-        "Y": sample_dataframe[sample_dataframe["category"] == "Y"]["value"].tolist(),
+        "Y": sample_dataframe[sample_dataframe["category"] == "Y"]["value"],
     }
     fig = pmv.rainclouds(data, hover_data=["category", "extra"])
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 6
 
 
+def test_rainclouds_accepts_two_item_series_with_non_default_index() -> None:
+    """Rainclouds treats two-item Series as data, not DataFrame-column tuples."""
+    fig = pmv.rainclouds({"S": pd.Series([1.0, 2.0], index=[10, 11])})
+    assert len(fig.data) == 3
+
+
 @pytest.mark.parametrize(
     ("orientation", "expected_axis"), [("h", "yaxis"), ("v", "xaxis")]
 )
 def test_rainclouds_orientation(
-    sample_data: dict[str, Sequence[float]],
+    sample_data: dict[str, np.ndarray],
     orientation: Literal["h", "v"],
     expected_axis: str,
 ) -> None:
@@ -109,7 +115,7 @@ def test_rainclouds_orientation(
     ],
 )
 def test_rainclouds_scale(
-    sample_data: dict[str, Sequence[float]],
+    sample_data: dict[str, np.ndarray],
     scale: Literal["area", "count", "width"],
     expected_range: tuple[float, float] | None,
 ) -> None:
@@ -174,7 +180,7 @@ def test_rainclouds_invalid_input(
         pmv.rainclouds(data_input)
 
 
-def test_rainclouds_long_labels(sample_data: dict[str, Sequence[float]]) -> None:
+def test_rainclouds_long_labels(sample_data: dict[str, np.ndarray]) -> None:
     long_labels = {
         f"Very long label {idx}": data
         for idx, (_, data) in enumerate(sample_data.items())
@@ -197,7 +203,7 @@ def test_rainclouds_long_labels(sample_data: dict[str, Sequence[float]]) -> None
     ],
 )
 def test_rainclouds_trace_visibility(
-    sample_data: dict[str, Sequence[float]],
+    sample_data: dict[str, np.ndarray],
     show_violin: bool,
     show_box: bool,
     show_points: bool,
