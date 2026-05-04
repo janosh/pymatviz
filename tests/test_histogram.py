@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import plotly.graph_objects as go
 import pytest
@@ -60,3 +60,23 @@ def test_histogram(
     assert y_max == pytest.approx(y_max_exp)
 
     assert fig.layout.yaxis.title.text == "Count"
+
+
+@pytest.mark.parametrize(
+    ("values", "match"),
+    [
+        ({}, "must not be empty"),
+        ([], "non-empty 1D"),
+        ([[1, 2], [3, 4]], "non-empty 1D"),
+    ],
+)
+def test_histogram_rejects_invalid_values(values: Any, match: str) -> None:
+    """Histogram rejects empty and non-1D inputs."""
+    with pytest.raises(ValueError, match=match):
+        histogram(values)
+
+
+def test_histogram_preserves_zero_x_range_boundary() -> None:
+    """Histogram treats zero x_range bounds as explicit values."""
+    fig = histogram([1, 2, 3], x_range=(0, None), bins=3)
+    assert fig.data[0].x[0] == 0

@@ -19,10 +19,11 @@ if TYPE_CHECKING:
 @pytest.fixture
 def sample_data() -> dict[str, np.ndarray]:
     rng = np.random.default_rng(seed=0)
-    arr1 = rng.normal(0, 1, 100)
-    arr2 = rng.normal(2, 1.5, 80)
-    arr3 = rng.normal(-1, 0.5, 120)
-    return {"A": arr1, "B": arr2, "C": arr3}
+    return {
+        "A": rng.normal(0, 1, 100),
+        "B": rng.normal(2, 1.5, 80),
+        "C": rng.normal(-1, 0.5, 120),
+    }
 
 
 @pytest.fixture
@@ -85,6 +86,12 @@ def test_rainclouds_with_dataframe(sample_dataframe: pd.DataFrame) -> None:
     fig = pmv.rainclouds(data, hover_data=["category", "extra"])
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 6
+
+
+def test_rainclouds_accepts_two_item_series_with_non_default_index() -> None:
+    """Rainclouds treats two-item Series as data, not DataFrame-column tuples."""
+    fig = pmv.rainclouds({"S": pd.Series([1.0, 2.0], index=[10, 11])})
+    assert len(fig.data) == 3
 
 
 @pytest.mark.parametrize(

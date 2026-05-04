@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from operator import index
 from typing import Any
 
 import traitlets as tl
@@ -42,14 +43,22 @@ class SpacegroupBarPlotWidget(MatterVizWidget):
             data: Space group numbers/Hermann-Mauguin symbols or count mapping.
             **kwargs: Additional widget properties.
         """
-        if isinstance(data, Mapping):
-            if any(count < 0 for count in data.values()):
-                raise ValueError("Space group counts must be non-negative.")
-            data = [spg for spg, count in data.items() for _ in range(count)]
+        normalized_data: Any = data
+        if isinstance(normalized_data, Mapping):
+            try:
+                counts = {spg: index(count) for spg, count in normalized_data.items()}
+            except TypeError as exc:
+                raise TypeError("Space group counts must be integers.") from exc
+            if any(count < 0 for count in counts.values()):
+                raise ValueError("Space group counts must be non-negative integers.")
+            normalized_data = [
+                spg for spg, count in counts.items() for _ in range(count)
+            ]
         super().__init__(
             widget_type="spacegroup_bar",
             data=normalize_plot_json(
-                [] if data is None else data, "SpacegroupBarPlot.data"
+                [] if normalized_data is None else normalized_data,
+                "SpacegroupBarPlot.data",
             ),
             **kwargs,
         )

@@ -57,19 +57,20 @@ def elements_hist(
     if keep_top is not None:
         non_zero = non_zero.head(keep_top)
 
+    non_zero_values = non_zero.to_numpy()
     # Prepare text labels for bars
     text_labels = None
     if show_values is not None:
         if show_values == "percent":
             sum_elements = non_zero.sum()
-            text_labels = [f"{el / sum_elements:.0%}" for el in non_zero.to_numpy()]
+            text_labels = [f"{el / sum_elements:.0%}" for el in non_zero_values]
         else:
-            text_labels = [str(int(val)) for val in non_zero.to_numpy()]
+            text_labels = [str(int(val)) for val in non_zero_values]
 
     fig = go.Figure(**fig_kwargs or {})
     fig.add_bar(
         x=non_zero.index,
-        y=non_zero.values,
+        y=non_zero_values,
         text=text_labels,
         textposition="outside",
         opacity=opacity,
@@ -116,9 +117,8 @@ def histogram(
         px.histogram(gaussian)  # ran for 3m45s before crashing the Jupyter kernel
 
     Args:
-        values (Sequence[float] or dict[str, Sequence[float] | np.ndarray]): The values
-            to plot as a histogram. If a dict is provided, the keys are used as legend
-            labels.
+        values: Values to plot as a histogram. Accepts a sequence, NumPy array, pandas
+            Series, or dict of named series. Dict keys are used as legend labels.
         bins (int or sequence, optional): The number of bins or the bin edges to use for
             the histogram. If not provided, a default value will be used.
         x_range (tuple, optional): The range of values to include in the histogram. If
@@ -136,16 +136,27 @@ def histogram(
     # if values was a Series, extract the name attribute to use as legend label
     x_axis_title = getattr(values, "name", "Value")
     data = values if isinstance(values, dict) else {x_axis_title: values}
+    data_arrays = {label: np.asarray(vals, dtype=float) for label, vals in data.items()}
+    if not data_arrays:
+        raise ValueError("histogram values must not be empty.")
+    for label, vals in data_arrays.items():
+        if vals.ndim != 1 or len(vals) == 0:
+            raise ValueError(
+                f"histogram values for {label!r} must be a non-empty 1D array."
+            )
 
     # Calculate the maximum data range across all datasets
-    all_values = np.concatenate(list(data.values()))
+    all_values = np.concatenate(list(data_arrays.values()))
     global_min = np.min(all_values)
     global_max = np.max(all_values)
 
     if x_range is None:
         x_range = (global_min, global_max)
     else:
-        x_range = (x_range[0] or global_min, x_range[1] or global_max)
+        x_range = (
+            global_min if x_range[0] is None else x_range[0],
+            global_max if x_range[1] is None else x_range[1],
+        )
 
     # Calculate bin edges
     if isinstance(bins, int):
@@ -156,8 +167,8 @@ def histogram(
         bin_edges = np.asarray(bins)
 
     fig = go.Figure(**fig_kwargs or {})
-    for label, vals in data.items():
-        hist_vals, _ = np.histogram(np.asarray(vals), bins=bin_edges, density=density)
+    for label, vals in data_arrays.items():
+        hist_vals, _ = np.histogram(vals, bins=bin_edges, density=density)
         fig.add_bar(
             x=bin_edges[:-1],
             y=hist_vals,

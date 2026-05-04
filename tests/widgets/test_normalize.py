@@ -16,6 +16,7 @@ from pymatviz.widgets._normalize import (
     _parse_formula_to_dict,
     _to_dict,
     normalize_convex_hull_entries,
+    normalize_plot_json,
     normalize_plot_series,
     normalize_structure_for_bz,
     normalize_xrd_pattern,
@@ -338,37 +339,29 @@ def test_normalize_structure_for_bz_unsupported_type() -> None:
 def test_normalize_plot_series_from_array_like_inputs(
     x_values: Any, y_values: Any
 ) -> None:
-    """Array-backed values and scalar subclasses normalize to Python primitives."""
+    """Array-backed series values normalize to Python primitives."""
+    normalized = normalize_plot_series(
+        [{"x": x_values, "y": y_values, "label": "A"}],
+        component_name="ScatterPlot",
+    )
+    assert normalized == [{"x": [0.0, 1.0, 2.0], "y": [0.1, 0.2, 0.3], "label": "A"}]
+
+
+def test_normalize_plot_json_scalar_subclasses() -> None:
+    """Scalar subclasses normalize to JSON-safe Python primitives."""
 
     class MockIntEnum(IntEnum):
         """Mock integer enum for JSON-safe int subclass normalization."""
 
         VALUE = 42
 
-    normalized = normalize_plot_series(
-        [
-            {
-                "x": x_values,
-                "y": y_values,
-                "label": "A",
-                "size": np.float64(4.5),
-                "rank": MockIntEnum.VALUE,
-            }
-        ],
-        component_name="ScatterPlot",
-    )
-    assert normalized is not None
-    assert normalized == [
-        {
-            "x": [0.0, 1.0, 2.0],
-            "y": [0.1, 0.2, 0.3],
-            "label": "A",
-            "size": 4.5,
-            "rank": 42,
-        }
-    ]
-    assert type(normalized[0]["size"]) is float
-    assert type(normalized[0]["rank"]) is int
+    for value, expected, expected_type in [
+        (np.float64(4.5), 4.5, float),
+        (MockIntEnum.VALUE, 42, int),
+    ]:
+        normalized = normalize_plot_json(value, "test")
+        assert normalized == expected
+        assert type(normalized) is expected_type
 
 
 @pytest.mark.parametrize(

@@ -659,8 +659,12 @@ def test_spacegroup_bar_data_inputs() -> None:
     assert widget.data == [225, 166, 62]
     widget = SpacegroupBarPlotWidget(data={225: np.int64(2), 166: 0, "P2_1/c": 1})
     assert widget.data == [225, 225, "P2_1/c"]
-    with pytest.raises(ValueError, match="non-negative"):
-        SpacegroupBarPlotWidget(data={225: -1})
+    for bad_data, error_cls, match in [
+        ({225: -1}, ValueError, "non-negative"),
+        ({225: 1.5}, TypeError, "integer"),
+    ]:
+        with pytest.raises(error_cls, match=match):
+            SpacegroupBarPlotWidget(data=bad_data)
 
 
 def test_heatmap_matrix_values_none_passthrough() -> None:
