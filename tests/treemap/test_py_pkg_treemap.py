@@ -898,8 +898,8 @@ def test_collect_coverage_data_subprocess(
             patch("os.unlink"),
             patch("json.load", return_value=coverage_data),
         ):
-            mock_tempfile.return_value.__enter__.return_value.name = (
-                "/tmp/coverage.json"
+            mock_tempfile.return_value.__enter__.return_value.name = str(
+                tmp_path / "coverage.json"
             )
             mock_run.return_value = MagicMock(
                 returncode=returncode,
@@ -1064,17 +1064,25 @@ def test_py_pkg_treemap_cell_border(
 
 def test_collect_coverage_data_from_url() -> None:
     """Test collecting coverage data from the provided GitHub URL."""
-    url = (
-        "https://github.com/user-attachments/files/21545088/"
-        "2025-07-31-pymatviz-coverage.json"
+    coverage_data = {
+        "files": {
+            "pkg/module.py": {"summary": {"percent_covered": 88.5}},
+            "pkg/empty.py": {"summary": {"percent_covered": 0.0}},
+        }
+    }
+    response = MagicMock()
+    response.read.return_value = json.dumps(coverage_data)
+    response.__enter__.return_value = response
+
+    with patch("urllib.request.urlopen", return_value=response) as mock_urlopen:
+        coverage_map = pmv.treemap.py_pkg.collect_coverage_data(
+            "https://example.com/coverage.json"
+        )
+
+    mock_urlopen.assert_called_once_with(
+        "https://example.com/coverage.json", timeout=15
     )
-    coverage_map = pmv.treemap.py_pkg.collect_coverage_data(url)
-    assert coverage_map
-    for file_path, coverage in coverage_map.items():
-        assert isinstance(file_path, str)
-        assert file_path
-        assert isinstance(coverage, float)
-        assert 0 <= coverage <= 100
+    assert coverage_map == {"pkg/module.py": 88.5, "pkg/empty.py": 0.0}
 
 
 # === count_lines with comment_prefixes ===
