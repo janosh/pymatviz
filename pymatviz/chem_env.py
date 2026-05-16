@@ -104,11 +104,17 @@ def classify_local_env_with_order_params(
         )
 
         # Find the geometry with the highest order parameter
-        best_value = max(
-            (val for val in local_order_params if val is not None), default=0
+        best_match_idx, best_value = max(
+            (
+                (idx, val)
+                for idx, val in enumerate(local_order_params)
+                if val is not None
+            ),
+            key=lambda item: item[1],
+            default=(0, 0),
         )
         if best_value > 0.5:  # Only use if reasonably good match
-            return f"{names[local_order_params.index(best_value)]}:{cn_val}"
+            return f"{names[best_match_idx]}:{cn_val}"
 
     except (ImportError, RuntimeError, ValueError, IndexError):
         # Fallback to generic CN-based label

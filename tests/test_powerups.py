@@ -20,7 +20,6 @@ np_rng = np.random.default_rng(seed=0)
 
 
 def test_powerups_custom_metrics_and_font_preservation() -> None:
-    """Custom metrics and font objects survive annotation handling."""
     metrics_fig = powerups.annotate_metrics(
         [1, 2, 3], [1, 2, 3], fig=go.Figure(), metrics={"Custom": 1.23}
     )
@@ -67,8 +66,6 @@ def test_add_ecdf_line(
     assert fig.layout.yaxis2.title.text == expected_name
     assert dev_fig.layout.yaxis2.color in (expected_color, "#444")
 
-    # Check that legendgroup is set, ensuring ECDF line toggles with its trace when
-    # clicking legend handle
     assert ecdf_trace.legendgroup == "0"
 
 
@@ -90,9 +87,8 @@ def test_add_ecdf_line_stacked() -> None:
     assert ecdf_trace.yaxis == "y2"
     assert fig.layout.yaxis2.range == (0, 1)
     assert fig.layout.yaxis2.title.text == "Cumulative"
-    # Verify ecdf trace data
     assert len(ecdf_trace.x) == len(np.concatenate([y1, y2]))
-    assert ecdf_trace.y[-1] == 1.0  # Last ECDF value should be 1.0
+    assert ecdf_trace.y[-1] == 1.0
 
 
 def test_add_ecdf_line_faceted() -> None:
@@ -106,22 +102,17 @@ def test_add_ecdf_line_faceted() -> None:
     n_orig_traces = len(fig.data)
     assert n_orig_traces == 4
 
-    # Use default behavior (all traces)
     fig = powerups.add_ecdf_line(fig)
 
-    # We should have exactly 8 traces: 4 original + 4 ECDF traces (1 per original trace)
     assert len(fig.data) == 2 * n_orig_traces
     assert len(fig.data) == 8
 
-    # Check that the original trace names are included in the ECDF trace names
     found_names = set()
     for i, trace in enumerate(fig.data[4:]):
-        # Find traces with "Cumulative" name pattern
         assert "Cumulative" in trace.name
         assert f"Trace {(i // 2) + 1}{(i % 2) + 1}" in trace.name
         found_names.add(trace.name)
 
-    # Should have Cumulative trace for each of the original traces
     assert len(found_names) == 4
     assert "Cumulative (Trace 11)" in found_names
     assert "Cumulative (Trace 12)" in found_names
@@ -130,26 +121,17 @@ def test_add_ecdf_line_faceted() -> None:
 
 
 def test_add_ecdf_line_all_traces() -> None:
-    """Test that add_ecdf_line defaults to adding one ECDF line per trace."""
     fig = go.Figure()
     fig.add_scatter(x=[1, 2, 3], y=[1, 2, 3], name="Trace 1")
     fig.add_scatter(x=[4, 5, 6], y=[4, 5, 6], name="Trace 2")
 
-    # Default behavior should now be all traces
     fig = powerups.add_ecdf_line(fig)
 
-    # Should have 2 original traces + 2 ECDF traces
     assert len(fig.data) == 4
-
-    # Check that ECDF trace names include original trace names
     assert fig.data[2].name == "Cumulative (Trace 1)"
     assert fig.data[3].name == "Cumulative (Trace 2)"
-
-    # Check that ECDF traces use secondary y-axis
     assert fig.data[2].yaxis == "y2"
     assert fig.data[3].yaxis == "y2"
-
-    # Check legendgroup matching
     assert fig.data[2].legendgroup == "0"
     assert fig.data[3].legendgroup == "1"
 
@@ -160,12 +142,10 @@ def test_add_ecdf_line_histogram() -> None:
 
     assert len(fig.data) == 2
     ecdf_trace = fig.data[-1]
-    # Since it's a single trace, no name appending happens
     assert ecdf_trace.name == "Cumulative"
     assert ecdf_trace.yaxis == "y2"
     assert ecdf_trace.legendgroup == "0"
 
-    # Check y values are in ascending order from 0 to 1
     assert ecdf_trace.y[0] > 0
     assert ecdf_trace.y[-1] == 1.0
     assert all(
@@ -179,27 +159,24 @@ def test_add_ecdf_line_bar() -> None:
 
     assert len(fig.data) == 2
     ecdf_trace = fig.data[-1]
-    # Since it's a single trace, no name appending happens
     assert ecdf_trace.name == "Cumulative"
     assert ecdf_trace.yaxis == "y2"
     assert ecdf_trace.legendgroup == "0"
 
-    # Check y values start at 0.25 (1/4) and end at 1.0
     assert ecdf_trace.y[0] == 0.1
     assert ecdf_trace.y[-1] == 1.0
     assert len(ecdf_trace.y) == 10
 
 
 def test_add_ecdf_line_raises() -> None:
-    # check TypeError when passing invalid fig
-    for fig in (None, "foo", 42.0):
+    invalid_figs: tuple[Any, ...] = (None, "foo", 42.0)
+    for fig in invalid_figs:
         with pytest.raises(
             TypeError,
             match=f"{fig=} must be instance of go.Figure",
         ):
             powerups.add_ecdf_line(fig)
 
-    # check ValueError when x-values cannot be auto-determined
     fig_violin = px.violin(x=[1, 2, 3], y=[4, 5, 6])
     violin_trace = type(fig_violin.data[0])
     qual_name = f"{violin_trace.__module__}.{violin_trace.__qualname__}"
@@ -208,136 +185,117 @@ def test_add_ecdf_line_raises() -> None:
     ):
         powerups.add_ecdf_line(fig_violin)
 
-    # check ValueError disappears when passing x-values explicitly
     fig_with_ecdf = powerups.add_ecdf_line(fig_violin, values=[1, 2, 3])
     assert len(fig_with_ecdf.data) == 2
     assert fig_with_ecdf.data[1].name == "Cumulative"
 
 
-def test_toggle_log_linear_y_axis(plotly_scatter: go.Figure) -> None:
-    fig = plotly_scatter
-    assert isinstance(powerups.toggle_log_linear_y_axis, dict)
-    assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [powerups.toggle_log_linear_y_axis]
+@pytest.mark.parametrize(
+    ("powerup", "button_specs"),
+    [
+        (
+            powerups.toggle_log_linear_y_axis,
+            [
+                ("Linear Y", "relayout", {"yaxis.type": "linear"}),
+                ("Log Y", "relayout", {"yaxis.type": "log"}),
+            ],
+        ),
+        (
+            powerups.toggle_log_linear_x_axis,
+            [
+                ("Linear X", "relayout", {"xaxis.type": "linear"}),
+                ("Log X", "relayout", {"xaxis.type": "log"}),
+            ],
+        ),
+        (
+            powerups.toggle_grid,
+            [
+                (
+                    "Show Grid",
+                    "relayout",
+                    {"xaxis.showgrid": True, "yaxis.showgrid": True},
+                ),
+                (
+                    "Hide Grid",
+                    "relayout",
+                    {"xaxis.showgrid": False, "yaxis.showgrid": False},
+                ),
+            ],
+        ),
+    ],
+)
+def test_relayout_powerups(
+    plotly_scatter: go.Figure,
+    powerup: dict[str, Any],
+    button_specs: list[tuple[str, str, dict[str, Any]]],
+) -> None:
+    assert isinstance(powerup, dict)
+    assert plotly_scatter.layout.updatemenus == ()
+    for _label, _method, args in button_specs:
+        for key in args:
+            parent, attr = key.split(".")
+            assert getattr(getattr(plotly_scatter.layout, parent), attr) is None
+    plotly_scatter.layout.updatemenus = [powerup]
 
-    # check that figure now has "Log Y"/"Linear Y" toggle buttons
+    menu = plotly_scatter.layout.updatemenus[0]
+    assert isinstance(menu, Updatemenu)
+    buttons = menu.buttons
+    assert len(buttons) == len(button_specs)
+    for button, (label, method, args) in zip(buttons, button_specs, strict=True):
+        assert (button.label, button.method, button.args[0]) == (label, method, args)
+        plotly_scatter.update_layout(args)
+        for key, val in args.items():
+            parent, attr = key.split(".")
+            assert getattr(getattr(plotly_scatter.layout, parent), attr) == val
+
+
+@pytest.mark.parametrize(
+    ("fig", "powerup", "button_specs", "apply"),
+    [
+        (
+            go.Figure(go.Heatmap(z=[[1, 2], [3, 4]])),
+            powerups.select_colorscale,
+            [
+                (scale, "restyle", {"colorscale": scale})
+                for scale in ["Viridis", "Plasma", "Inferno", "Magma"]
+            ],
+            False,
+        ),
+        (
+            go.Figure(go.Scatter(x=[1, 2], y=[3, 4])),
+            powerups.select_marker_mode,
+            [
+                ("Scatter", "restyle", {"type": "scatter", "mode": "markers"}),
+                ("Line", "restyle", {"type": "scatter", "mode": "lines"}),
+                (
+                    "Line+Markers",
+                    "restyle",
+                    {"type": "scatter", "mode": "lines+markers"},
+                ),
+            ],
+            True,
+        ),
+    ],
+)
+def test_restyle_powerups(
+    fig: go.Figure,
+    powerup: dict[str, Any],
+    button_specs: list[tuple[str, str, dict[str, Any]]],
+    apply: bool,
+) -> None:
+    assert isinstance(powerup, dict)
+    assert fig.layout.updatemenus == ()
+    fig.layout.updatemenus = [powerup]
+
     menu = fig.layout.updatemenus[0]
     assert isinstance(menu, Updatemenu)
     buttons = menu.buttons
-    assert len(buttons) == 2
-    assert fig.layout.yaxis.type is None
-    assert buttons[0].args[0]["yaxis.type"] == "linear"
-    assert buttons[1].args[0]["yaxis.type"] == "log"
-    assert buttons[0].label == "Linear Y"
-    assert buttons[1].label == "Log Y"
-    assert buttons[0].method == "relayout"
-    assert buttons[1].method == "relayout"
-
-    # simulate clicking "Log Y" button
-    fig.update_layout(buttons[0].args[0])
-    assert fig.layout.yaxis.type == "linear"
-    fig.update_layout(buttons[1].args[0])
-    assert fig.layout.yaxis.type == "log"
-
-
-def test_toggle_log_linear_x_axis(plotly_scatter: go.Figure) -> None:
-    fig = plotly_scatter
-    assert isinstance(powerups.toggle_log_linear_x_axis, dict)
-    assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [powerups.toggle_log_linear_x_axis]
-
-    # check that figure now has "Log X"/"Linear X" toggle buttons
-    menu = fig.layout.updatemenus[0]
-    assert isinstance(menu, Updatemenu)
-    buttons = menu.buttons
-    assert len(buttons) == 2
-    assert fig.layout.xaxis.type is None
-    assert buttons[0].args[0]["xaxis.type"] == "linear"
-    assert buttons[1].args[0]["xaxis.type"] == "log"
-    assert buttons[0].label == "Linear X"
-    assert buttons[1].label == "Log X"
-    assert buttons[0].method == "relayout"
-    assert buttons[1].method == "relayout"
-
-    # simulate clicking buttons
-    fig.update_layout(buttons[0].args[0])
-    assert fig.layout.xaxis.type == "linear"
-    fig.update_layout(buttons[1].args[0])
-    assert fig.layout.xaxis.type == "log"
-
-
-def test_toggle_grid(plotly_scatter: go.Figure) -> None:
-    fig = plotly_scatter
-    assert isinstance(powerups.toggle_grid, dict)
-    assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [powerups.toggle_grid]
-
-    # check that figure now has "Show Grid"/"Hide Grid" toggle buttons
-    menu = fig.layout.updatemenus[0]
-    assert isinstance(menu, Updatemenu)
-    buttons = menu.buttons
-    assert len(buttons) == 2
-    assert fig.layout.xaxis.showgrid is None
-    assert fig.layout.yaxis.showgrid is None
-    assert buttons[0].args[0]["xaxis.showgrid"] is True
-    assert buttons[0].args[0]["yaxis.showgrid"] is True
-    assert buttons[1].args[0]["xaxis.showgrid"] is False
-    assert buttons[1].args[0]["yaxis.showgrid"] is False
-    assert buttons[0].label == "Show Grid"
-    assert buttons[1].label == "Hide Grid"
-    assert buttons[0].method == "relayout"
-    assert buttons[1].method == "relayout"
-
-    # simulate clicking buttons
-    fig.update_layout(buttons[0].args[0])
-    assert fig.layout.xaxis.showgrid is True
-    assert fig.layout.yaxis.showgrid is True
-    fig.update_layout(buttons[1].args[0])
-    assert fig.layout.xaxis.showgrid is False
-    assert fig.layout.yaxis.showgrid is False
-
-
-def test_select_colorscale() -> None:
-    # make a dummy heatmap
-    fig = go.Figure(go.Heatmap(z=[[1, 2], [3, 4]]))
-    assert isinstance(powerups.select_colorscale, dict)
-    assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [powerups.select_colorscale]
-
-    # check that figure now has colorscale toggle buttons
-    menu = fig.layout.updatemenus[0]
-    assert isinstance(menu, Updatemenu)
-    buttons = menu.buttons
-    assert len(buttons) == 4
-    colorscales = ["Viridis", "Plasma", "Inferno", "Magma"]
-    for button, colorscale in zip(buttons, colorscales, strict=True):
-        assert button.args[0]["colorscale"] == colorscale
-        assert button.label == colorscale
-        assert button.method == "restyle"
-
-
-def test_select_marker_mode(plotly_scatter: go.Figure) -> None:
-    fig = plotly_scatter
-    assert isinstance(powerups.select_marker_mode, dict)
-    assert fig.layout.updatemenus == ()
-    fig.layout.updatemenus = [powerups.select_marker_mode]
-
-    # check that figure now has plot type toggle buttons
-    menu = fig.layout.updatemenus[0]
-    assert isinstance(menu, Updatemenu)
-    buttons = menu.buttons
-    assert len(buttons) == 3
-    plot_types = ["markers", "lines", "lines+markers"]
-    labels = ["Scatter", "Line", "Line+Markers"]
-    for button, plot_type, label in zip(buttons, plot_types, labels, strict=True):
-        assert button.args[0]["mode"] == plot_type
-        assert button.label == label
-        assert button.method == "restyle"
-
-    # simulate clicking each plot type button
-    for button in buttons:
-        fig.update_traces(button.args[0])
-        assert fig.data[0].mode == button.args[0]["mode"]
+    assert len(buttons) == len(button_specs)
+    for button, (label, method, args) in zip(buttons, button_specs, strict=True):
+        assert (button.label, button.method, button.args[0]) == (label, method, args)
+        if apply:
+            fig.update_traces(args)
+            assert fig.data[0].mode == args["mode"]
 
 
 @pytest.mark.parametrize(
@@ -381,7 +339,7 @@ def test_multiple_powerups(plotly_scatter: go.Figure) -> None:
 
     assert len(fig.layout.updatemenus) == len(powerup_list)
     for idx, powerup in enumerate(powerup_list):
-        muni_i: Updatemenu = fig.layout.updatemenus[idx]
+        muni_i = fig.layout.updatemenus[idx]
         assert muni_i == Updatemenu(powerup), f"{idx=}"
         assert isinstance(muni_i, Updatemenu)
         assert muni_i.type == powerup["type"]
@@ -389,11 +347,6 @@ def test_multiple_powerups(plotly_scatter: go.Figure) -> None:
 
 
 def test_add_ecdf_line_color_matching() -> None:
-    """Test that ECDF line colors match their corresponding trace colors.
-
-    Covers explicit colors, default colorway, and mixed cases.
-    """
-    # --- Case 1: Explicit Colors ---
     fig_explicit = go.Figure()
     explicit_colors = ("red", "blue", "green", "purple")
     for idx, color in enumerate(explicit_colors):
@@ -404,70 +357,49 @@ def test_add_ecdf_line_color_matching() -> None:
             marker=dict(color=color),
         )
 
-    # Add ECDF lines one by one (mimics adding to specific traces)
     for idx in range(len(fig_explicit.data)):
         fig_explicit = powerups.add_ecdf_line(fig_explicit, traces=idx)
 
     assert len(fig_explicit.data) == 2 * len(explicit_colors)
-
-    # Check that ECDF lines have matching explicit colors
     dev_fig_explicit = fig_explicit.full_figure_for_development(warn=False)
     for idx, color in enumerate(explicit_colors):
         ecdf_trace_dev = dev_fig_explicit.data[idx + len(explicit_colors)]
         assert ecdf_trace_dev.line.color == color
         assert fig_explicit.data[idx + len(explicit_colors)].legendgroup == str(idx)
 
-    # --- Case 2: Default Colorway ---
     fig_colorway = go.Figure()
     n_traces_colorway = 3
     for idx in range(n_traces_colorway):
-        # No explicit color set, should use default colorway
         fig_colorway.add_histogram(x=np_rng.normal(idx * 5, 1, 100), name=f"Hist {idx}")
 
-    # Get the default colorway for comparison
     default_colorway = px.colors.qualitative.Plotly
-
-    # Add ECDF lines using the default (all traces)
     fig_colorway = powerups.add_ecdf_line(fig_colorway)
 
     assert len(fig_colorway.data) == 2 * n_traces_colorway
-
     dev_fig_colorway = fig_colorway.full_figure_for_development(warn=False)
     for idx in range(n_traces_colorway):
         expected_color = default_colorway[idx % len(default_colorway)]
         ecdf_trace_dev = dev_fig_colorway.data[idx + n_traces_colorway]
         original_trace_dev = dev_fig_colorway.data[idx]
-
-        # Check original trace color matches colorway
         assert original_trace_dev.marker.color.casefold() == expected_color.casefold()
-        # Check ECDF line color matches original trace color
         assert ecdf_trace_dev.line.color.casefold() == expected_color.casefold()
         assert fig_colorway.data[idx + n_traces_colorway].legendgroup == str(idx)
         assert f"Cumulative (Hist {idx})" == fig_colorway.data[idx + 3].name
 
-    # --- Case 3: Mixed Explicit and Colorway ---
     fig_mixed = go.Figure()
-    mixed_colors = ("orange", None, "cyan", None)  # None should use colorway
-    expected_final_colors = [
-        "orange",
-        default_colorway[1],  # First None uses 2nd colorway color
-        "cyan",
-        default_colorway[3],  # Second None uses 4th colorway color
-    ]
-
+    mixed_colors = ("orange", None, "cyan", None)
     for idx, mixed_color in enumerate(mixed_colors):
         marker_dict = dict(color=mixed_color) if mixed_color else {}
         fig_mixed.add_scatter(
             x=[idx, idx + 1], y=[1, 2], name=f"Mixed {idx}", marker=marker_dict
         )
-
-    # Add ECDF lines using the default (all traces)
     fig_mixed = powerups.add_ecdf_line(fig_mixed)
 
     assert len(fig_mixed.data) == 2 * len(mixed_colors)
-
     dev_fig_mixed = fig_mixed.full_figure_for_development(warn=False)
-    for idx, expected_color in enumerate(expected_final_colors):
+    for idx, expected_color in enumerate(
+        ["orange", default_colorway[1], "cyan", default_colorway[3]]
+    ):
         ecdf_trace_dev = dev_fig_mixed.data[idx + len(mixed_colors)]
         assert ecdf_trace_dev.line.color.casefold() == expected_color.casefold()
         assert fig_mixed.data[idx + len(mixed_colors)].legendgroup == str(idx)
@@ -477,39 +409,27 @@ def test_add_ecdf_line_color_matching() -> None:
 
 
 def test_add_ecdf_line_annotation_positioning() -> None:
-    """Test that multiple ECDF lines have vertically offset annotations."""
-    # Create a figure with multiple traces
     fig = go.Figure()
-    fig.add_scatter(x=[1, 2, 3, 4, 5], y=[1, 2, 3, 4, 5], name="Trace 1")
-    fig.add_scatter(x=[1, 2, 3, 4, 5], y=[5, 4, 3, 2, 1], name="Trace 2")
+    for y_vals, name in [
+        ([1, 2, 3, 4, 5], "Trace 1"),
+        ([5, 4, 3, 2, 1], "Trace 2"),
+    ]:
+        fig.add_scatter(x=[1, 2, 3, 4, 5], y=y_vals, name=name)
+    for idx, text in enumerate(["Annotation 1", "Annotation 2"]):
+        fig = powerups.add_ecdf_line(fig, traces=idx, trace_kwargs={"text": text})
 
-    # Add ECDF line with text annotation
-    trace_kwargs = {"text": "Annotation 1"}
-    fig = powerups.add_ecdf_line(fig, traces=0, trace_kwargs=trace_kwargs)
+    assert len(fig.data) == 4
+    for trace, legendgroup, text in zip(
+        fig.data[2:], ["0", "1"], ["Annotation 1", "Annotation 2"], strict=True
+    ):
+        assert trace.name == "Cumulative"
+        assert trace.legendgroup == legendgroup
+        assert trace.text == text
 
-    # Add second ECDF line with text annotation
-    trace_kwargs = {"text": "Annotation 2"}
-    fig = powerups.add_ecdf_line(fig, traces=1, trace_kwargs=trace_kwargs)
-
-    # Check that we have the right number of traces
-    assert len(fig.data) == 4  # 2 original traces + 2 ECDF lines
-
-    # Check ECDF trace properties
-    assert fig.data[2].name == "Cumulative"
-    assert fig.data[3].name == "Cumulative"
-    assert fig.data[2].legendgroup == "0"
-    assert fig.data[3].legendgroup == "1"
-    assert fig.data[2].text == "Annotation 1"
-    assert fig.data[3].text == "Annotation 2"
-
-    # For the last test, create a new trace and add an ECDF line for it
     fig.add_scatter(x=[1, 2, 3, 4, 5], y=[3, 3, 3, 3, 3], name="Trace 3")
-
-    # Now add a third ECDF line
     fig = powerups.add_ecdf_line(fig, traces=4, trace_kwargs={"text": "Annotation 3"})
 
-    # Check that the operation was successful
-    assert len(fig.data) == 6  # 3 original traces + 3 ECDF lines
+    assert len(fig.data) == 6
     assert fig.data[5].name == "Cumulative"
-    assert fig.data[5].legendgroup == "4"  # Should match the index of the trace (4)
+    assert fig.data[5].legendgroup == "4"
     assert fig.data[5].text == "Annotation 3"

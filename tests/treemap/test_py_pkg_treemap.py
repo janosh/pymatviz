@@ -651,9 +651,15 @@ def test_py_pkg_treemap_cell_size_fn(
         "n_external_imports",
         "n_type_checking_imports",
     }
+
+    def coerce_numeric_or_value(row: pd.Series[Any], field: str) -> Any:
+        """Return 0 for missing numeric fields, otherwise the row value."""
+        value = row[field]
+        return 0 if field in numeric_fields and pd.isna(value) else value
+
     for _, row in df_passed_to_plotly.iterrows():
         metrics_instance = pmv.treemap.py_pkg.ModuleStats._make(
-            0 if field in numeric_fields and pd.isna(row[field]) else row[field]
+            coerce_numeric_or_value(row, field)
             for field in pmv.treemap.py_pkg.ModuleStats._fields
         )
         expected_val = (
