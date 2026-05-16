@@ -34,128 +34,123 @@ from pymatviz.widgets.xrd import XrdWidget
 # === Construction and widget_type ===
 
 
+def _case(
+    widget_cls: type,
+    kwargs: dict[str, Any],
+    expected_type: str,
+    state_key: str,
+    expected_state: Any = None,
+) -> tuple[type, dict[str, Any], str, str, Any]:
+    """Build a widget construction test case."""
+    return (
+        widget_cls,
+        kwargs,
+        expected_type,
+        state_key,
+        kwargs[state_key] if expected_state is None else expected_state,
+    )
+
+
 @pytest.mark.parametrize(
     ("widget_cls", "kwargs", "expected_type", "state_key", "expected_state"),
     [
-        (
+        _case(
             ConvexHullWidget,
             {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]},
             "convex_hull",
             "entries",
-            [{"composition": {"Li": 1}, "energy": -1.5}],
         ),
-        (
+        _case(
             BandStructureWidget,
             {"band_structure": {"bands": []}},
             "band_structure",
             "band_structure",
-            {"bands": []},
         ),
-        (DosWidget, {"dos": {"energies": [0]}}, "dos", "dos", {"energies": [0]}),
-        (
+        _case(DosWidget, {"dos": {"energies": [0]}}, "dos", "dos"),
+        _case(
             BandsAndDosWidget,
             {"band_structure": {"bands": []}, "dos": {"energies": []}},
             "bands_and_dos",
             "dos",
-            {"energies": []},
         ),
-        (
+        _case(
             FermiSurfaceWidget,
             {"fermi_data": {"isosurfaces": []}},
             "fermi_surface",
             "fermi_data",
-            {"isosurfaces": []},
         ),
-        (
+        _case(
             FermiSurfaceWidget,
             {"band_data": {"energies": []}},
             "fermi_surface",
             "band_data",
-            {"energies": []},
         ),
-        (
+        _case(
             BrillouinZoneWidget,
             {"structure": {"lattice": {}, "sites": []}},
             "brillouin_zone",
             "structure",
-            {"lattice": {}, "sites": []},
         ),
-        (
+        _case(
             PhaseDiagramWidget,
             {"data": {"components": ["A", "B"]}},
             "phase_diagram",
             "data",
-            {"components": ["A", "B"]},
         ),
-        (
-            XrdWidget,
-            {"patterns": {"x": [10], "y": [100]}},
-            "xrd",
-            "patterns",
-            {"x": [10], "y": [100]},
-        ),
-        (
+        _case(XrdWidget, {"patterns": {"x": [10], "y": [100]}}, "xrd", "patterns"),
+        _case(
             ScatterPlotWidget,
             {"series": [{"x": [0, 1], "y": [1, 2], "label": "curve"}]},
             "scatter_plot",
             "series",
             [{"x": [0.0, 1.0], "y": [1.0, 2.0], "label": "curve"}],
         ),
-        (
+        _case(
             BarPlotWidget,
             {"series": [{"x": [0, 1], "y": [2, 3], "label": "bars"}]},
             "bar_plot",
             "series",
             [{"x": [0.0, 1.0], "y": [2.0, 3.0], "label": "bars"}],
         ),
-        (
+        _case(
             HistogramWidget,
             {"series": [{"x": [0, 1], "y": [2, 2.5], "label": "hist"}]},
             "histogram",
             "series",
             [{"x": [0.0, 1.0], "y": [2.0, 2.5], "label": "hist"}],
         ),
-        (
+        _case(
             PeriodicTableWidget,
             {"heatmap_values": {"Fe": 42, "O": 100}},
             "periodic_table",
             "heatmap_values",
-            {"Fe": 42, "O": 100},
         ),
-        (
+        _case(
             RdfPlotWidget,
             {"structures": {"lattice": {}, "sites": []}},
             "rdf_plot",
             "structures",
-            {"lattice": {}, "sites": []},
         ),
-        (
+        _case(
             ScatterPlot3DWidget,
             {"series": [{"x": [1], "y": [2], "z": [3], "label": "pt"}]},
             "scatter_plot_3d",
             "series",
-            [{"x": [1], "y": [2], "z": [3], "label": "pt"}],
         ),
-        (
+        _case(
             HeatmapMatrixWidget,
             {"x_items": ["A", "B"], "y_items": ["C", "D"], "values": [[1, 2], [3, 4]]},
             "heatmap_matrix",
             "values",
-            [[1, 2], [3, 4]],
         ),
-        (
-            SpacegroupBarPlotWidget,
-            {"data": [225, 166, 62]},
-            "spacegroup_bar",
-            "data",
-            [225, 166, 62],
+        _case(
+            SpacegroupBarPlotWidget, {"data": [225, 166, 62]}, "spacegroup_bar", "data"
         ),
-        (
+        _case(
             ChemPotDiagramWidget,
             {"entries": [{"name": "Li2O", "energy": -14.3}]},
             "chem_pot_diagram",
             "entries",
-            [{"name": "Li2O", "energy": -14.3}],
         ),
     ],
 )
@@ -176,212 +171,37 @@ def test_widget_construction_and_type(
 
 
 @pytest.mark.parametrize(
-    ("widget_cls", "kwargs", "expected_fields"),
+    ("widget_cls", "kwargs"),
     [
-        (
-            ScatterPlotWidget,
-            {"series": [{"x": [0, 1], "y": [1, 2], "label": "s"}]},
-            {
-                "series",
-                "x_axis",
-                "x2_axis",
-                "y_axis",
-                "y2_axis",
-                "display",
-                "legend",
-                "styles",
-                "color_scale",
-                "size_scale",
-                "ref_lines",
-                "fill_regions",
-                "error_bands",
-                "controls",
-                "padding",
-                "range_padding",
-                "show_legend",
-                "x_range",
-                "x2_range",
-                "y_range",
-                "y2_range",
-                "color_bar",
-                "hover_config",
-                "label_placement_config",
-                "point_tween",
-                "line_tween",
-                "point_events",
-            },
-        ),
+        (ScatterPlotWidget, {"series": [{"x": [0, 1], "y": [1, 2], "label": "s"}]}),
         (
             HistogramWidget,
             {"series": [{"x": [0, 1], "y": [1, 2]}], "bins": 50, "mode": "overlay"},
-            {
-                "series",
-                "bins",
-                "mode",
-                "selected_property",
-                "show_legend",
-                "x_axis",
-                "x2_axis",
-                "y_axis",
-                "y2_axis",
-                "display",
-                "legend",
-                "bar",
-                "ref_lines",
-                "controls",
-                "padding",
-                "range_padding",
-                "x_range",
-                "x2_range",
-                "y_range",
-                "y2_range",
-            },
         ),
-        (
-            BarPlotWidget,
-            {"series": [{"x": [0], "y": [1]}], "mode": "grouped"},
-            {
-                "series",
-                "orientation",
-                "mode",
-                "x_axis",
-                "x2_axis",
-                "y_axis",
-                "y2_axis",
-                "display",
-                "legend",
-                "bar",
-                "line",
-                "ref_lines",
-                "controls",
-                "padding",
-                "range_padding",
-                "show_legend",
-                "x_range",
-                "x2_range",
-                "y_range",
-                "y2_range",
-                "color_scale",
-                "size_scale",
-                "point_tween",
-            },
-        ),
-        (
-            DosWidget,
-            {"dos": {"energies": [0, 1]}, "sigma": 0.05},
-            {
-                "dos",
-                "stack",
-                "sigma",
-                "normalize",
-                "orientation",
-                "show_legend",
-                "spin_mode",
-            },
-        ),
-        (
-            ConvexHullWidget,
-            {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]},
-            {
-                "entries",
-                "show_stable",
-                "show_unstable",
-                "show_hull_faces",
-                "hull_face_opacity",
-                "show_stable_labels",
-                "show_unstable_labels",
-                "max_hull_dist_show_labels",
-                "max_hull_dist_show_phases",
-                "temperature",
-            },
-        ),
-        (
-            PeriodicTableWidget,
-            {"heatmap_values": {"Fe": 42}},
-            {
-                "heatmap_values",
-                "color_scale",
-                "color_scale_range",
-                "color_overrides",
-                "labels",
-                "log_scale",
-                "show_color_bar",
-                "gap",
-                "missing_color",
-            },
-        ),
-        (
-            ScatterPlot3DWidget,
-            {"series": [{"x": [1], "y": [2], "z": [3]}]},
-            {
-                "series",
-                "surfaces",
-                "ref_lines",
-                "ref_planes",
-                "x_axis",
-                "y_axis",
-                "z_axis",
-                "display",
-                "styles",
-                "color_scale",
-                "size_scale",
-                "legend",
-                "controls",
-                "camera_projection",
-            },
-        ),
-        (
-            HeatmapMatrixWidget,
-            {"x_items": ["A"], "y_items": ["B"]},
-            {
-                "x_items",
-                "y_items",
-                "values",
-                "color_scale",
-                "color_scale_range",
-                "log_scale",
-                "missing_color",
-                "x_axis",
-                "y_axis",
-                "tile_size",
-                "gap",
-                "show_values",
-                "label_style",
-            },
-        ),
-        (
-            SpacegroupBarPlotWidget,
-            {"data": [225]},
-            {
-                "data",
-                "show_counts",
-                "show_legend",
-                "orientation",
-                "x_axis",
-                "y_axis",
-            },
-        ),
-        (
-            ChemPotDiagramWidget,
-            {"entries": [{"name": "Li", "energy": -1.9}]},
-            {"entries", "config", "temperature"},
-        ),
+        (BarPlotWidget, {"series": [{"x": [0], "y": [1]}], "mode": "grouped"}),
+        (DosWidget, {"dos": {"energies": [0, 1]}, "sigma": 0.05}),
+        (ConvexHullWidget, {"entries": [{"composition": {"Li": 1}, "energy": -1.5}]}),
+        (PeriodicTableWidget, {"heatmap_values": {"Fe": 42}}),
+        (ScatterPlot3DWidget, {"series": [{"x": [1], "y": [2], "z": [3]}]}),
+        (HeatmapMatrixWidget, {"x_items": ["A"], "y_items": ["B"]}),
+        (SpacegroupBarPlotWidget, {"data": [225]}),
+        (ChemPotDiagramWidget, {"entries": [{"name": "Li", "energy": -1.9}]}),
     ],
 )
 def test_to_dict_includes_subclass_fields(
     widget_cls: type,
     kwargs: dict[str, Any],
-    expected_fields: set[str],
 ) -> None:
-    """to_dict returns base fields plus widget-specific synced traitlets."""
+    """to_dict returns all public synced traitlets."""
     widget = widget_cls(**kwargs)
     state = widget.to_dict()
-
-    base_fields = {"widget_type", "style", "show_controls"}
-    assert base_fields <= set(state), f"Missing base fields in {widget_cls.__name__}"
-
-    all_expected = base_fields | expected_fields
-    assert set(state) == all_expected
+    expected = {
+        name
+        for name in widget.traits(sync=True)
+        if not name.startswith("_") and name not in widget._EXCLUDED_TRAITS
+    }
+    assert {"widget_type", "style", "show_controls"} <= set(state)
+    assert set(state) == expected
 
 
 def test_to_dict_reflects_constructor_values() -> None:

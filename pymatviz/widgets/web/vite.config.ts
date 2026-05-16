@@ -5,8 +5,6 @@ import { gunzipSync } from 'node:zlib'
 import { defineConfig } from 'vite-plus'
 import { off, shared_fmt, shared_lint } from './vite.shared.ts'
 
-const __dirname = import.meta.dirname
-
 export default defineConfig({
   fmt: shared_fmt,
   lint: {
@@ -51,7 +49,7 @@ export default defineConfig({
   build: {
     outDir: `build`,
     lib: {
-      entry: resolve(__dirname, `anywidget.ts`),
+      entry: resolve(import.meta.dirname, `anywidget.ts`),
       formats: [`es`],
       fileName: `matterviz`,
       cssFileName: `matterviz`,

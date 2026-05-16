@@ -157,24 +157,26 @@ def save_fig(
                 file.write(text.replace("<div ", f"<div {style=} ", 1))
     else:
         orig_template = fig.layout.template
-        if is_pdf and template:
-            fig.layout.template = template
-        # hide click-to-show traces in PDF
         hidden_traces = []
-        for trace in fig.data:
-            if trace.visible == "legendonly":
-                trace.visible = False
-                hidden_traces.append(trace)
-        fig.write_image(path, **kwargs)
-        if is_pdf:
-            # write PDFs twice to get rid of "Loading [MathJax]/extensions/MathMenu.js"
-            # see https://github.com/plotly/plotly.py/issues/3469#issuecomment-994907721
-            sleep(pdf_sleep)
+        try:
+            if is_pdf and template:
+                fig.layout.template = template
+            # Hide legendonly (click-to-show) traces for static exports.
+            for trace in fig.data:
+                if trace.visible == "legendonly":
+                    trace.visible = False
+                    hidden_traces.append(trace)
             fig.write_image(path, **kwargs)
-
-            fig.layout.template = orig_template
-        for trace in hidden_traces:
-            trace.visible = "legendonly"
+            if is_pdf:
+                # write PDFs twice to get rid of MathJax loading text
+                # see https://github.com/plotly/plotly.py/issues/3469
+                sleep(pdf_sleep)
+                fig.write_image(path, **kwargs)
+        finally:
+            if is_pdf:
+                fig.layout.template = orig_template
+            for trace in hidden_traces:
+                trace.visible = "legendonly"
 
 
 def save_and_compress_svg(

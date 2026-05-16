@@ -21,25 +21,26 @@
   "devDependencies": {
     "@iconify/svelte": "^5.2.1",
     "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.59.0",
-    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@sveltejs/kit": "^2.60.1",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "highlight.js": "^11.11.1",
     "mdsvex": "^0.12.7",
     "rehype-starry-night": "^2.2.0",
     "rehype-stringify": "^10.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "svelte": "^5.55.5",
-    "svelte-check-rs": "^0.9.7",
+    "svelte": "^5.55.7",
+    "svelte-check-rs": "^0.9.8",
     "svelte-multiselect": "11.7.0",
     "svelte-toc": "^0.6.3",
     "tslib": "^2.8.1",
     "typescript": "^6.0.3",
     "unified": "^11.0.5",
-    "vite": "^8.0.10",
-    "vite-plus": "^0.1.20"
+    "vite": "^8.0.13",
+    "vite-plus": "^0.1.21"
   },
   "overrides": {
-    "svelte": "$svelte"
+    "svelte": "$svelte",
+    "svelte-multiselect": "11.7.0"
   }
 }

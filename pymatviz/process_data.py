@@ -121,6 +121,12 @@ def count_elements(
         )
         srs.index = srs.index.map(map_atomic_num_to_elem_symbol)
 
+    bad_symbols = srs.index.difference(df_ptable.index)
+    if len(bad_symbols) > 0:
+        raise ValueError(
+            f"Unexpected element symbol(s): {', '.join(map(str, bad_symbols))}"
+        )
+
     # Ensure all elements are present in returned Series (with value zero if they
     # weren't in values before)
     srs = srs.reindex(df_ptable.index, fill_value=fill_value).rename("count")
@@ -169,6 +175,10 @@ def count_formulas(
         ValueError: If data is empty or contains invalid formulas/elements.
         TypeError: If data contains unsupported types.
     """
+    valid_group_by = ("formula", "reduced_formula", "chem_sys")
+    if group_by not in valid_group_by:
+        raise ValueError(f"Invalid {group_by=}, must be one of {valid_group_by}")
+
     if len(data) == 0:
         raise ValueError("Empty input: data sequence is empty")
 
@@ -229,7 +239,7 @@ def count_formulas(
 
         # Remove duplicates and sort elements
         elems = sorted(set(elems))
-        if not all(elem.isalpha() for elem in elems):
+        if not all(elem in df_ptable.index for elem in elems):
             raise ValueError(f"Invalid elements in system: {item}")
         systems += [tuple(elems)]
         if group_by != Key.chem_sys:
@@ -247,7 +257,7 @@ def count_formulas(
     df_systems[Key.chem_sys] = df_systems["system"].str.join("-")
 
     # Count occurrences of each system
-    group_cols = ["arity_name", Key.chem_sys]
+    group_cols = [Key.arity, "arity_name", Key.chem_sys]
     if group_by != Key.chem_sys:
         group_cols += [Key.formula]
 
@@ -255,7 +265,14 @@ def count_formulas(
     df_counts.columns = [*group_cols, Key.count]  # preserve original column names
 
     # Sort by arity and chemical system for consistent ordering
-    return df_counts.sort_values(["arity_name", Key.chem_sys])
+    sort_cols = [
+        Key.arity,
+        Key.chem_sys,
+        *([Key.formula] if group_by != Key.chem_sys else []),
+    ]
+    return (
+        df_counts.sort_values(sort_cols).drop(columns=Key.arity).reset_index(drop=True)
+    )
 
 
 STRUCTURE_CLASSES = [

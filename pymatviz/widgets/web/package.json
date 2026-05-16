@@ -15,6 +15,7 @@
     "anywidget": "^0.11.0",
     "matterviz": "^0.3.4",
     "svelte": "^5.55.5",
+    "svelte-multiselect": "11.7.0",
     "vite": "npm:@voidzero-dev/vite-plus-core@^0.1.20",
     "vite-plus": "^0.1.20"
   },
@@ -22,6 +23,7 @@
     "@sveltejs/vite-plugin-svelte": {
       "vite": "$vite"
     },
-    "svelte": "$svelte"
+    "svelte": "$svelte",
+    "svelte-multiselect": "11.7.0"
   }
 }
