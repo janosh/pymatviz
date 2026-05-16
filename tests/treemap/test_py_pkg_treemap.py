@@ -18,7 +18,7 @@ import pymatviz as pmv
 
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
     from pathlib import Path
 
     from pymatviz.treemap.py_pkg import CellSizeFn, ModuleFormatter, ShowCounts
@@ -30,25 +30,18 @@ def dummy_pkg_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     src_dir = tmp_path_factory.mktemp("src")
 
     # my_pkg structure
-    my_pkg_dir = src_dir / "my_pkg"
-    my_pkg_dir.mkdir()
-    (my_pkg_dir / "__init__.py").touch()
-    (my_pkg_dir / "module1.py").write_text(
-        """# comment
+    files = {
+        "my_pkg/__init__.py": "",
+        "my_pkg/module1.py": """# comment
 import os
 
 def func1():
     pass # another comment
 
 x = 1
-y = 2"""
-    )
-
-    submodule_dir = my_pkg_dir / "submodule"
-    submodule_dir.mkdir()
-    (submodule_dir / "__init__.py").touch()
-    (submodule_dir / "module2.py").write_text(
-        """# comment1
+y = 2""",
+        "my_pkg/submodule/__init__.py": "",
+        "my_pkg/submodule/module2.py": """# comment1
 # comment2
 
 import sys
@@ -63,14 +56,10 @@ class MyClass:
 
 z = MyClass()
 z.method()
-print(sys.path)"""
-    )
-    (submodule_dir / "module3.py").write_text(
-        """# Just a comment
-pass"""
-    )
-    (submodule_dir / "module4_typed.py").write_text(
-        """from typing import TYPE_CHECKING
+print(sys.path)""",
+        "my_pkg/submodule/module3.py": """# Just a comment
+pass""",
+        "my_pkg/submodule/module4_typed.py": """from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -78,19 +67,21 @@ if TYPE_CHECKING:
 
 def func_typed():
     pass
-"""
-    )
+""",
+    }
 
     # another_pkg structure
-    another_pkg_dir = src_dir / "another_pkg"
-    another_pkg_dir.mkdir()
-    (another_pkg_dir / "__init__.py").touch()
-    (another_pkg_dir / "main.py").write_text(
-        """# Main module
+    files |= {
+        "another_pkg/__init__.py": "",
+        "another_pkg/main.py": """# Main module
 print("Running main")
 
-VAR = 100"""
-    )
+VAR = 100""",
+    }
+    for rel_path, content in files.items():
+        file_path = src_dir / rel_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(content)
 
     return src_dir
 
@@ -174,26 +165,16 @@ def test_find_package_path_fallbacks(dummy_pkg_path: Path) -> None:
     expected_abs_path = str(dummy_pkg_path / target_pkg).replace("\\", "/")
 
     # Test fallback to importlib.util when importlib.resources fails
-    with (
-        patch("importlib.resources.files", side_effect=ImportError, create=True),
-        patch("importlib.util.find_spec") as mock_find_spec,
-    ):
-        mock_spec = MagicMock()
-        mock_spec.origin = str(dummy_pkg_path / target_pkg / "__init__.py")
-        mock_find_spec.return_value = mock_spec
-        found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
-        assert found_path.replace("\\", "/") == expected_abs_path
-
-    # Test fallback when find_spec returns spec for a single module
-    with (
-        patch("importlib.resources.files", side_effect=ImportError, create=True),
-        patch("importlib.util.find_spec") as mock_find_spec,
-    ):
-        mock_spec = MagicMock()
-        mock_spec.origin = str(dummy_pkg_path / target_pkg / "module1.py")
-        mock_find_spec.return_value = mock_spec
-        found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
-        assert found_path.replace("\\", "/") == expected_abs_path
+    for origin in ("__init__.py", "module1.py"):
+        with (
+            patch("importlib.resources.files", side_effect=ImportError, create=True),
+            patch("importlib.util.find_spec") as mock_find_spec,
+        ):
+            mock_find_spec.return_value = MagicMock(
+                origin=str(dummy_pkg_path / target_pkg / origin)
+            )
+            found_path = pmv.treemap.py_pkg.find_package_path(target_pkg)
+            assert found_path.replace("\\", "/") == expected_abs_path
 
     # Test fallback to site-packages check
     with (
@@ -281,16 +262,14 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
     trace = fig.data[0]
 
     # Check texttemplate and textinfo
-    if expect_link:
-        expected_texttemplate = (
-            "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a><br>"
-            "%{value:,}<br>%{percentEntry}"
-        )
-        assert trace.texttemplate == expected_texttemplate
-        assert trace.textinfo == "none"
-    else:  # For value+percent without base_url, custom template is used for formatting
-        assert trace.texttemplate == "%{label}<br>%{value:,}<br>%{percentEntry}"
-        assert trace.textinfo == "none"
+    expected_texttemplate = (
+        "<a href='%{customdata[3]}' target='_blank'>%{customdata[2]}</a><br>"
+        "%{value:,}<br>%{percentEntry}"
+        if expect_link
+        else "%{label}<br>%{value:,}<br>%{percentEntry}"
+    )
+    assert trace.texttemplate == expected_texttemplate
+    assert trace.textinfo == "none"
 
     # Check customdata structure
     custom_data = trace.customdata
@@ -299,13 +278,10 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
 
     file_urls = custom_data[:, 3]  # Index 3 is file_url
     if expect_link:
-        file_node_indices = [
-            idx for idx, id_val in enumerate(trace.ids) if ".py" in id_val
-        ]
         assert all(
-            str(test_base_url) in str(file_urls[i])
-            for i in file_node_indices
-            if file_urls[i] is not None
+            str(test_base_url) in str(file_urls[idx])
+            for idx, id_val in enumerate(trace.ids)
+            if ".py" in id_val and file_urls[idx] is not None
         )
     else:
         assert not any(
@@ -323,10 +299,6 @@ def test_py_pkg_treemap_base_url(test_base_url: str | None, expect_link: bool) -
 def test_py_pkg_treemap_analysis_scenarios() -> None:
     """Test various analysis scenarios including failures."""
     pkg_name = "my_pkg"
-
-    # Test normal analysis
-    fig_normal = pmv.py_pkg_treemap(pkg_name)
-    assert isinstance(fig_normal, go.Figure)
 
     # Test analysis failure
     failed_result = {
@@ -347,32 +319,31 @@ def test_py_pkg_treemap_analysis_scenarios() -> None:
 
 def test_collect_package_modules_not_found() -> None:
     """Test collect_package_modules with a package that cannot be found."""
-    df_modules = pmv.treemap.py_pkg.collect_package_modules(
+    assert pmv.treemap.py_pkg.collect_package_modules(
         ["non_existent_package_12345"]
-    )
-    assert df_modules.empty
+    ).empty
 
 
 def test_internal_imports(dummy_pkg_path: Path) -> None:
     """Test counting of internal imports using AST analysis."""
     pkg_name = "my_pkg"
-    internal_import_content = (
+    (dummy_pkg_path / pkg_name / "internal_user.py").write_text(
         "from .submodule import module2 # internal import from sibling dir\n"
         "from . import module1 # internal import from same dir\n"
-        "import os # external import\n"
-        "\n"
-        "class InternalUser:\n"
-        "    pass\n"
+        "import os # external import\n\n"
+        "class InternalUser:\n    pass\n"
     )
-    (dummy_pkg_path / pkg_name / "internal_user.py").write_text(internal_import_content)
 
     fig = pmv.py_pkg_treemap(pkg_name)
     hovertemplate = fig.data[0].hovertemplate
     assert hovertemplate is not None
 
-    assert "Internal Imports: %{customdata[7]:,}<br>" in hovertemplate
-    assert "External Imports: %{customdata[8]:,}<br>" in hovertemplate
-    assert "Classes: %{customdata[4]:,}<br>" in hovertemplate
+    for hover_field in (
+        "Internal Imports: %{customdata[7]:,}<br>",
+        "External Imports: %{customdata[8]:,}<br>",
+        "Classes: %{customdata[4]:,}<br>",
+    ):
+        assert hover_field in hovertemplate
 
     ids = fig.data[0].ids
     custom_data = fig.data[0].customdata
@@ -381,17 +352,14 @@ def test_internal_imports(dummy_pkg_path: Path) -> None:
     )
     assert internal_user_idx != -1
 
-    assert int(custom_data[internal_user_idx, 7]) == 2  # n_internal_imports
-    assert int(custom_data[internal_user_idx, 8]) == 1  # n_external_imports
-    assert int(custom_data[internal_user_idx, 4]) == 1  # n_classes
+    assert [int(custom_data[internal_user_idx, idx]) for idx in (7, 8, 4)] == [2, 1, 1]
 
 
 def test_top_level_module(dummy_pkg_path: Path) -> None:
     """Test handling of Python files directly under the package root."""
-    pkg_name = "my_pkg"
-    (dummy_pkg_path / pkg_name / "top_level_mod.py").write_text("print('top level')")
+    (dummy_pkg_path / "my_pkg" / "top_level_mod.py").write_text("print('top level')")
 
-    fig = pmv.py_pkg_treemap(pkg_name, group_by="module")
+    fig = pmv.py_pkg_treemap("my_pkg", group_by="module")
     assert "top_level_mod" in fig.data[0].labels
     assert any(id_val.endswith("/top_level_mod") for id_val in fig.data[0].ids)
 
@@ -583,21 +551,23 @@ def test_py_pkg_treemap_tooltip_data(mock_pkg_data: pd.DataFrame) -> None:
 
         # Test specific percentage calculation
         generated_customdata_df = pd.DataFrame(
-            data=passed_custom_data_arg,
-            columns=[
-                "package_name_raw",
-                "repo_path_segment",
-                "leaf_label",
-                "file_url",
-                "n_classes",
-                "n_functions",
-                "n_methods",
-                "n_internal_imports",
-                "n_external_imports",
-                "n_type_checking_imports",
-                "percent_of_package_cell_value",
-                "line_count",
-            ],
+            passed_custom_data_arg,
+            columns=pd.Index(
+                [
+                    "package_name_raw",
+                    "repo_path_segment",
+                    "leaf_label",
+                    "file_url",
+                    "n_classes",
+                    "n_functions",
+                    "n_methods",
+                    "n_internal_imports",
+                    "n_external_imports",
+                    "n_type_checking_imports",
+                    "percent_of_package_cell_value",
+                    "line_count",
+                ]
+            ),
         )
 
         pkg1_mod_a_percent = generated_customdata_df[
@@ -671,52 +641,29 @@ def test_py_pkg_treemap_cell_size_fn(
     assert actual_filenames >= expected_filenames
 
     # Verify cell_value calculations match expectations
-    for _idx, row in df_passed_to_plotly.iterrows():
-        module_metrics_dict = row.to_dict()
-        metrics_keys = pmv.treemap.py_pkg.ModuleStats._fields
-        filtered_metrics_dict = {
-            key: module_metrics_dict[key]
+    metrics_keys = pmv.treemap.py_pkg.ModuleStats._fields
+    numeric_keys = {
+        "n_classes",
+        "n_functions",
+        "n_methods",
+        "n_internal_imports",
+        "n_external_imports",
+        "n_type_checking_imports",
+    }
+    for _, row in df_passed_to_plotly.iterrows():
+        row_dict = row.to_dict()
+        metrics_dict = {
+            key: 0
+            if key in numeric_keys and pd.isna(row_dict.get(key))
+            else row_dict[key]
             for key in metrics_keys
-            if key in module_metrics_dict
         }
-
-        for key in [
-            "n_classes",
-            "n_functions",
-            "n_methods",
-            "n_internal_imports",
-            "n_external_imports",
-            "n_type_checking_imports",
-        ]:
-            if pd.isna(filtered_metrics_dict.get(key)):
-                filtered_metrics_dict[key] = 0
-
-        metrics_instance = pmv.treemap.py_pkg.ModuleStats(
-            package=filtered_metrics_dict.get("package", ""),
-            full_module=filtered_metrics_dict.get("full_module", ""),
-            filename=filtered_metrics_dict.get("filename", ""),
-            directory=filtered_metrics_dict.get("directory", ""),
-            top_module=filtered_metrics_dict.get("top_module", ""),
-            line_count=filtered_metrics_dict.get("line_count", 0),
-            file_path=filtered_metrics_dict.get("file_path", ""),
-            repo_path_segment=filtered_metrics_dict.get("repo_path_segment", ""),
-            leaf_label=filtered_metrics_dict.get("leaf_label", ""),
-            module_parts=filtered_metrics_dict.get("module_parts", []),
-            depth=filtered_metrics_dict.get("depth", 0),
-            n_classes=filtered_metrics_dict.get("n_classes", 0),
-            n_functions=filtered_metrics_dict.get("n_functions", 0),
-            n_methods=filtered_metrics_dict.get("n_methods", 0),
-            n_internal_imports=filtered_metrics_dict.get("n_internal_imports", 0),
-            n_external_imports=filtered_metrics_dict.get("n_external_imports", 0),
-            n_type_checking_imports=filtered_metrics_dict.get(
-                "n_type_checking_imports", 0
-            ),
+        metrics_instance = pmv.treemap.py_pkg.ModuleStats(**metrics_dict)  # ty: ignore[invalid-argument-type]
+        expected_val = (
+            metrics_instance.line_count
+            if calculator is None
+            else calculator(metrics_instance)
         )
-
-        if calculator is None:
-            expected_val = metrics_instance.line_count
-        else:
-            expected_val = calculator(metrics_instance)
 
         assert expected_val > 0
         assert int(row["cell_value"]) == expected_val
@@ -772,29 +719,53 @@ def mock_coverage_data(tmp_path: Path) -> Path:
 
 
 @pytest.mark.parametrize(
-    "file_type",
-    ["valid", "missing", "invalid_json"],
+    ("file_type", "expected_len"),
+    [("valid", 3), ("missing", None), ("invalid_json", None)],
 )
 def test_collect_coverage_data(
-    tmp_path: Path, mock_coverage_data: Path, file_type: str
+    tmp_path: Path, mock_coverage_data: Path, file_type: str, expected_len: int | None
 ) -> None:
-    """Test collect_coverage_data with various file conditions."""
+    """Test collect_coverage_data with valid, missing, and malformed files."""
     if file_type == "valid":
         coverage_map = pmv.treemap.py_pkg.collect_coverage_data(str(mock_coverage_data))
-        assert len(coverage_map) == 3
-        # Check absolute paths and values
+        assert len(coverage_map) == expected_len
         coverage_dir = str(mock_coverage_data.parent)
         module1_path = os.path.normpath(f"{coverage_dir}/my_pkg/module1.py")
         assert coverage_map[module1_path] == 85.5
     elif file_type == "missing":
-        non_existent_path = str(tmp_path / "missing.json")
         with pytest.raises(FileNotFoundError):
-            pmv.treemap.py_pkg.collect_coverage_data(non_existent_path)
-    elif file_type == "invalid_json":
+            pmv.treemap.py_pkg.collect_coverage_data(str(tmp_path / "missing.json"))
+    else:
         invalid_json = tmp_path / "invalid.json"
         invalid_json.write_text("invalid json content")
         with pytest.raises(json.JSONDecodeError):
             pmv.treemap.py_pkg.collect_coverage_data(str(invalid_json))
+
+
+def _assert_colorbar_title(fig: go.Figure, expected: str) -> None:
+    """Assert the Plotly colorbar title text."""
+    coloraxis = fig.layout.coloraxis
+    assert coloraxis.colorbar is not None
+    assert coloraxis.colorbar.title.text == expected
+
+
+def _numeric_marker_colors(fig: go.Figure) -> list[float]:
+    """Return numeric marker colors from the first treemap trace."""
+    return [
+        color for color in fig.data[0].marker.colors if isinstance(color, (int, float))
+    ]
+
+
+def _write_package_files(pkg_dir: Path, files: dict[str, int]) -> None:
+    """Create a package tree with files containing the requested line counts."""
+    pkg_dir.mkdir(parents=True, exist_ok=True)
+    for rel_path, n_lines in files.items():
+        file_path = pkg_dir / rel_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        for parent in [pkg_dir, *file_path.parent.parents]:
+            if parent == pkg_dir or pkg_dir in parent.parents:
+                (parent / "__init__.py").touch()
+        _write_py_lines(file_path, n_lines)
 
 
 @pytest.mark.parametrize(
@@ -802,11 +773,7 @@ def test_collect_coverage_data(
     [
         (
             {"color_by": "coverage", "color_continuous_scale": "RdYlGn"},
-            {
-                "has_colors": True,
-                "customdata_cols": 13,
-                "colorbar_title": "Coverage (%)",
-            },
+            {"customdata_cols": 13, "title": "Coverage (%)"},
         ),
         (
             {
@@ -814,132 +781,98 @@ def test_collect_coverage_data(
                 "color_range": (0, 100),
                 "color_continuous_scale": "RdYlGn",
             },
-            {
-                "has_colors": True,
-                "color_range": (0, 100),
-                "colorbar_title": "Coverage (%)",
-            },
+            {"range": (0, 100), "title": "Coverage (%)"},
         ),
-        (
-            {"color_by": {}, "color_continuous_scale": "Viridis"},
-            {"has_colors": True, "use_custom_dict": True},
-        ),
+        ({"color_by": {}, "color_continuous_scale": "Viridis"}, {"custom": True}),
         (
             {"color_by": "coverage", "color_continuous_scale": "RdYlGn"},
-            {
-                "has_colors": True,
-                "customdata_cols": 13,
-                "colorbar_title": "Coverage (%)",
-                "test_ambiguous_filename": True,
-            },
+            {"ambiguous": True, "customdata_cols": 13, "title": "Coverage (%)"},
         ),
     ],
 )
 def test_py_pkg_treemap_coverage_scenarios(
-    mock_coverage_data: Path,
-    kwargs: dict[str, Any],
-    expectations: dict[str, Any],
+    mock_coverage_data: Path, kwargs: dict[str, Any], expectations: dict[str, Any]
 ) -> None:
-    """Test py_pkg_treemap with various coverage scenarios."""
-    # Setup custom color dict if needed
-    if expectations.get("use_custom_dict"):
+    """Test py_pkg_treemap with coverage and custom color scenarios."""
+    if expectations.get("custom"):
         df_modules = pmv.treemap.py_pkg.collect_package_modules(["my_pkg"])
-        if not df_modules.empty:
-            custom_colors = {
-                row["file_path"]: float(idx * 25 + 50)
-                for idx, row in enumerate(df_modules.head(2).to_dict(orient="records"))
-            }
-            kwargs["color_by"] = custom_colors
-
-    # Handle ambiguous filename test case
-    if expectations.get("test_ambiguous_filename"):
-        # Create coverage data with multiple files having the same basename
-        coverage_with_ambiguous = {
-            "files": {
-                "different/path/module1.py": {"summary": {"percent_covered": 75.0}},
-                "another/different/path/module1.py": {
-                    "summary": {"percent_covered": 90.0}
-                },
-                "some/other/path/module2.py": {"summary": {"percent_covered": 80.0}},
-            }
+        kwargs["color_by"] = {
+            row["file_path"]: float(idx * 25 + 50)
+            for idx, row in enumerate(df_modules.head(2).to_dict(orient="records"))
         }
+    elif expectations.get("ambiguous"):
         coverage_file = mock_coverage_data.parent / "coverage_ambiguous.json"
-        coverage_file.write_text(json.dumps(coverage_with_ambiguous))
+        coverage_file.write_text(
+            json.dumps(
+                {
+                    "files": {
+                        "different/path/module1.py": {
+                            "summary": {"percent_covered": 75.0}
+                        },
+                        "another/different/path/module1.py": {
+                            "summary": {"percent_covered": 90.0}
+                        },
+                        "some/other/path/module2.py": {
+                            "summary": {"percent_covered": 80.0}
+                        },
+                    }
+                }
+            )
+        )
         kwargs["coverage_data_file"] = str(coverage_file)
     elif kwargs.get("color_by") == "coverage":
-        # Add coverage data file for coverage tests
         kwargs["coverage_data_file"] = str(mock_coverage_data)
 
     fig = pmv.py_pkg_treemap("my_pkg", **kwargs)
-    assert isinstance(fig, go.Figure)
     trace = fig.data[0]
+    assert trace.marker.colors is not None
 
-    # Check color data
-    if expectations.get("has_colors"):
-        assert hasattr(trace, "marker")
-        if hasattr(trace.marker, "colors"):
-            assert trace.marker.colors is not None
-
-    # Check customdata shape
-    if expectations.get("customdata_cols"):
-        assert trace.customdata is not None
-        assert trace.customdata.shape[1] == expectations["customdata_cols"]
+    if customdata_cols := expectations.get("customdata_cols"):
+        assert trace.customdata.shape[1] == customdata_cols
         assert "Coverage:" in trace.hovertemplate
-
-    # Check color range
-    if expectations.get("color_range"):
-        assert fig.layout.coloraxis is not None
-        assert fig.layout.coloraxis.cmin == expectations["color_range"][0]
-        assert fig.layout.coloraxis.cmax == expectations["color_range"][1]
+    if color_range := expectations.get("range"):
+        assert fig.layout.coloraxis.cmin == color_range[0]
+        assert fig.layout.coloraxis.cmax == color_range[1]
         assert fig.layout.coloraxis.cmid == 50
-
-    # Check colorbar title
-    if expectations.get("colorbar_title"):
-        assert hasattr(fig.layout, "coloraxis")
-        coloraxis = fig.layout.coloraxis
-        if hasattr(coloraxis, "colorbar") and coloraxis.colorbar is not None:
-            assert coloraxis.colorbar.title.text == expectations["colorbar_title"]
+    if title := expectations.get("title"):
+        _assert_colorbar_title(fig, title)
 
 
 def test_py_pkg_treemap_coverage_path_matching(tmp_path: Path) -> None:
     """Test coverage path matching with src/ prefix."""
-    coverage_with_src = {
-        "files": {
-            "src/my_pkg/module1.py": {"summary": {"percent_covered": 75.0}},
-            "src/my_pkg/submodule/module2.py": {"summary": {"percent_covered": 80.0}},
-        }
-    }
     coverage_file = tmp_path / "coverage_src.json"
-    coverage_file.write_text(json.dumps(coverage_with_src))
-
+    coverage_file.write_text(
+        json.dumps(
+            {
+                "files": {
+                    "src/my_pkg/module1.py": {"summary": {"percent_covered": 75.0}},
+                    "src/my_pkg/submodule/module2.py": {
+                        "summary": {"percent_covered": 80.0}
+                    },
+                }
+            }
+        )
+    )
     fig = pmv.py_pkg_treemap(
         "my_pkg", color_by="coverage", coverage_data_file=str(coverage_file)
     )
-    assert isinstance(fig, go.Figure)
-
-    # Check that some coverage values were matched (not all zeros)
-    trace = fig.data[0]
-    if hasattr(trace.marker, "colors") and trace.marker.colors is not None:
-        colors = list(trace.marker.colors)
-        assert any(c > 0 for c in colors if isinstance(c, (int, float)))
+    assert any(color > 0 for color in _numeric_marker_colors(fig))
 
 
 @pytest.mark.parametrize(
-    ("scenario", "returncode", "coverage_data", "expects_call", "expected_result"),
+    ("scenario", "returncode", "coverage_data", "expected_result"),
     [
         (
             "file_exists",
             None,
             {"files": {"test.py": {"summary": {"percent_covered": 100.0}}}},
-            False,
             1,
         ),
-        ("subprocess_fail", 1, None, True, 0),
+        ("subprocess_fail", 1, None, 0),
         (
             "subprocess_success",
             0,
             {"files": {"/abs/test.py": {"summary": {"percent_covered": 88.5}}}},
-            True,
             1,
         ),
     ],
@@ -949,269 +882,117 @@ def test_collect_coverage_data_subprocess(
     scenario: str,
     returncode: int | None,
     coverage_data: dict[str, Any] | None,
-    expects_call: bool,
     expected_result: int,
 ) -> None:
     """Test collect_coverage_data subprocess behavior."""
-    file_path = None
-    if scenario == "file_exists":  # Create real coverage file
+    if scenario == "file_exists":
         coverage_file = tmp_path / "coverage.json"
         coverage_file.write_text(json.dumps(coverage_data))
-        file_path = str(coverage_file)
-
-    if scenario == "file_exists":  # For file_exists scenario, don't patch file ops
-        coverage_map = pmv.treemap.py_pkg.collect_coverage_data(file_path)
+        coverage_map = pmv.treemap.py_pkg.collect_coverage_data(str(coverage_file))
     else:
-        with (  # For subprocess scenarios, mock everything
+        with (
             patch("subprocess.run") as mock_run,
             patch("tempfile.NamedTemporaryFile") as mock_tempfile,
             patch("builtins.open", create=True),
             patch("os.path.exists", return_value=True),
             patch("os.unlink"),
-            patch("json.load") as mock_json_load,
+            patch("json.load", return_value=coverage_data),
         ):
+            mock_tempfile.return_value.__enter__.return_value.name = (
+                "/tmp/coverage.json"
+            )
             mock_run.return_value = MagicMock(
                 returncode=returncode,
-                stderr="Coverage error" if returncode != 0 else "",
+                stderr="Coverage error" if returncode else "",
             )
+            coverage_map = pmv.treemap.py_pkg.collect_coverage_data()
+            mock_run.assert_called_once()
 
-            # Setup subprocess success scenario
-            if returncode == 0:
-                mock_file = MagicMock()
-                mock_file.name = "/tmp/coverage_temp.json"
-                mock_tempfile.return_value.__enter__.return_value = mock_file
-                mock_json_load.return_value = coverage_data
-
-            coverage_map = pmv.treemap.py_pkg.collect_coverage_data(file_path)
-
-            # Verify subprocess call expectations
-            if expects_call:
-                mock_run.assert_called_once()
-            else:
-                mock_run.assert_not_called()
-
-    # Check results
     assert len(coverage_map) == expected_result
     if scenario == "subprocess_success":
-        assert "/abs/test.py" in coverage_map
         assert coverage_map["/abs/test.py"] == 88.5
 
 
 @pytest.mark.parametrize(
-    ("test_type", "color_by", "colorbar_title", "check_averages", "check_zeros"),
+    ("kwargs", "title", "check"),
     [
-        ("coverage_with_data", "coverage", "Coverage (%)", True, False),
-        ("coverage_no_data", "coverage", "Coverage (%)", False, True),
-        ("custom_dict", {"file1.py": 50.0}, "Color Value", False, False),
-        ("line_count", "line_count", "Line Count", False, False),
+        (
+            {"color_by": "coverage"},
+            "Coverage (%)",
+            lambda fig: any(color > 0 for color in _numeric_marker_colors(fig)),
+        ),
+        ({"color_by": {"file1.py": 50.0}}, "Color Value", lambda _fig: True),
+        ({"color_by": "line_count"}, "Line Count", lambda _fig: True),
     ],
 )
 def test_py_pkg_treemap_coverage_edge_cases(
     mock_coverage_data: Path,
-    test_type: str,
-    color_by: str | dict[str, float],
-    colorbar_title: str,
-    check_averages: bool,
-    check_zeros: bool,
+    kwargs: dict[str, Any],
+    title: str,
+    check: Callable[[go.Figure], bool],
 ) -> None:
     """Test coverage edge cases and colorbar titles."""
-    # Setup based on test type
-    if test_type == "coverage_with_data":
-        fig = pmv.py_pkg_treemap(
-            "my_pkg",
-            color_by=color_by,
-            coverage_data_file=str(mock_coverage_data),
-        )
-    elif test_type == "line_count":
+    if kwargs == {"color_by": "coverage"}:
+        kwargs = {**kwargs, "coverage_data_file": str(mock_coverage_data)}
+    if kwargs.get("color_by") == "line_count":
         df_modules = pmv.treemap.py_pkg.collect_package_modules(["my_pkg"])
-        if color_by not in df_modules.columns:
-            pytest.skip(f"Column {color_by} not found in module data")
-        fig = pmv.py_pkg_treemap("my_pkg", color_by=color_by)
-    else:
-        fig = pmv.py_pkg_treemap("my_pkg", color_by=color_by)
+        if "line_count" not in df_modules.columns:
+            pytest.skip("Column line_count not found in module data")
+    fig = pmv.py_pkg_treemap("my_pkg", **kwargs)
     assert isinstance(fig, go.Figure)
-    trace = fig.data[0]
+    assert check(fig)
+    _assert_colorbar_title(fig, title)
 
-    # Check weighted averages for parent nodes
-    if (
-        check_averages
-        and hasattr(trace.marker, "colors")
-        and trace.marker.colors is not None
-    ):
-        colors = list(trace.marker.colors)
-        labels = list(trace.labels)
-        package_indices = [
-            idx for idx, label in enumerate(labels) if "my_pkg" in str(label)
-        ]
-        if package_indices:
-            parent_colors = [colors[i] for i in package_indices]
-            assert any(isinstance(c, (int, float)) and c > 0 for c in parent_colors)
 
-    # Check zero coverage when no data
-    if check_zeros:
-        assert trace.customdata is not None
-        coverage_column = trace.customdata[:, -1]  # Last column is coverage
-        assert all(c == 0.0 for c in coverage_column)
-
-    # Check colorbar title
-    if hasattr(fig.layout, "coloraxis"):
-        coloraxis = fig.layout.coloraxis
-        if hasattr(coloraxis, "colorbar") and coloraxis.colorbar is not None:
-            assert coloraxis.colorbar.title.text == colorbar_title
+def test_py_pkg_treemap_missing_coverage_values_are_zero() -> None:
+    """Missing coverage data gives zero customdata values."""
+    fig = pmv.py_pkg_treemap("my_pkg", color_by="coverage")
+    assert all(color == 0 for color in fig.data[0].customdata[:, -1])
 
 
 def test_py_pkg_treemap_submodule_coverage_weighted_averages(
     dummy_pkg_path: Path,
 ) -> None:
-    """Test that submodule coverage shows weighted averages of child modules."""
-    # Use the existing dummy package structure
+    """Submodule coverage shows weighted averages of child modules."""
     pkg_dir = dummy_pkg_path / "my_pkg"
-
-    # Create coverage data for the existing modules
-    coverage_data = {
-        "files": {
-            str(pkg_dir / "module1.py"): {"summary": {"percent_covered": 80.0}},
-            str(pkg_dir / "submodule" / "module2.py"): {
-                "summary": {"percent_covered": 70.0}
-            },
-            str(pkg_dir / "submodule" / "module3.py"): {
-                "summary": {"percent_covered": 90.0}
-            },
-        }
-    }
     coverage_file = dummy_pkg_path / "coverage.json"
-    coverage_file.write_text(json.dumps(coverage_data))
-
-    # Create the treemap with coverage
+    coverage_file.write_text(
+        json.dumps(
+            {
+                "files": {
+                    str(pkg_dir / "module1.py"): {"summary": {"percent_covered": 80.0}},
+                    str(pkg_dir / "submodule" / "module2.py"): {
+                        "summary": {"percent_covered": 70.0}
+                    },
+                    str(pkg_dir / "submodule" / "module3.py"): {
+                        "summary": {"percent_covered": 90.0}
+                    },
+                }
+            }
+        )
+    )
     fig = pmv.py_pkg_treemap(
         "my_pkg", color_by="coverage", coverage_data_file=str(coverage_file)
     )
-
-    assert isinstance(fig, go.Figure)
-    trace = fig.data[0]
-
-    # Check that we have colors
-    assert hasattr(trace.marker, "colors")
-    assert trace.marker.colors is not None
-
-    colors = list(trace.marker.colors)
-    labels = list(trace.labels)
-
-    # Regression prevention: verify the fix works
-    # 1. Check that we have some non-zero coverage values
-    non_zero_coverage = [c for c in colors if isinstance(c, (int, float)) and c > 0]
-    assert len(non_zero_coverage) > 0, "Should have some non-zero coverage values"
-
-    # 2. Check that parent nodes have weighted averages (not all same value)
-    parent_nodes = [idx for idx, label in enumerate(labels) if "(" in str(label)]
-    if len(parent_nodes) > 1:
-        parent_coverage_values = [colors[i] for i in parent_nodes]
-        unique_parent_values = set(parent_coverage_values)
-        assert len(unique_parent_values) > 1, (
-            f"Parent nodes should have different weighted averages, "
-            f"got all same: {parent_coverage_values[0]}"
-        )
-
-    # 3. Check that the main package node has reasonable coverage
-    pkg_node_idx = None
-    for idx, label in enumerate(labels):
-        if "my_pkg" in str(label) and "(" in str(label):  # Parent node
-            pkg_node_idx = idx
-            break
-
-        if pkg_node_idx is not None:
-            pkg_coverage = colors[pkg_node_idx]
-            # Expected weighted average (may include modules without coverage)
-            assert 0.0 <= pkg_coverage <= 100.0, (
-                f"Expected coverage between 0-100, got {pkg_coverage}"
-            )
+    colors = _numeric_marker_colors(fig)
+    assert any(color > 0 for color in colors)
+    assert all(0 <= color <= 100 for color in colors)
+    assert len(set(colors)) > 1
 
 
-def test_py_pkg_treemap_coverage_regression_prevention(tmp_path: Path) -> None:
-    """Test to prevent regression where all submodules show same coverage value."""
-    # Create coverage data that would cause the bug if not fixed
-    coverage_data = {
-        "files": {
-            "pymatgen/io/vasp/input.py": {"summary": {"percent_covered": 75.0}},
-            "pymatgen/io/vasp/output.py": {"summary": {"percent_covered": 85.0}},
-            "pymatgen/io/cp2k/input.py": {"summary": {"percent_covered": 95.0}},
-            "pymatgen/io/qchem/input.py": {"summary": {"percent_covered": 65.0}},
-            "pymatgen/analysis/local_env.py": {"summary": {"percent_covered": 55.0}},
-            "pymatgen/analysis/phase_diagram.py": {
-                "summary": {"percent_covered": 45.0}
-            },
-        }
+def test_py_pkg_treemap_coverage_regression_prevention(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Parent coverage values differ when children have different coverage."""
+    files = {
+        "io/vasp/input.py": 5,
+        "io/vasp/output.py": 15,
+        "io/cp2k/input.py": 10,
+        "io/qchem/input.py": 20,
+        "analysis/local_env.py": 8,
+        "analysis/phase_diagram.py": 12,
     }
-    coverage_file = tmp_path / "regression_coverage.json"
-    coverage_file.write_text(json.dumps(coverage_data))
-
-    # Create package structure
-    pkg_dir = tmp_path / "pymatgen"
-    pkg_dir.mkdir(parents=True)
-    (pkg_dir / "__init__.py").touch()
-
-    # Create io submodules with different line counts
-    io_dir = pkg_dir / "io"
-    io_dir.mkdir()
-    (io_dir / "__init__.py").touch()
-
-    vasp_dir = io_dir / "vasp"
-    vasp_dir.mkdir()
-    (vasp_dir / "__init__.py").touch()
-    (vasp_dir / "input.py").write_text("def func1(): pass\n" * 5)  # 5 lines
-    (vasp_dir / "output.py").write_text("def func2(): pass\n" * 15)  # 15 lines
-
-    cp2k_dir = io_dir / "cp2k"
-    cp2k_dir.mkdir()
-    (cp2k_dir / "__init__.py").touch()
-    (cp2k_dir / "input.py").write_text("def func3(): pass\n" * 10)  # 10 lines
-
-    qchem_dir = io_dir / "qchem"
-    qchem_dir.mkdir()
-    (qchem_dir / "__init__.py").touch()
-    (qchem_dir / "input.py").write_text("def func4(): pass\n" * 20)  # 20 lines
-
-    # Create analysis submodules
-    analysis_dir = pkg_dir / "analysis"
-    analysis_dir.mkdir()
-    (analysis_dir / "__init__.py").touch()
-    (analysis_dir / "local_env.py").write_text("def func5(): pass\n" * 8)  # 8 lines
-    (analysis_dir / "phase_diagram.py").write_text(
-        "def func6(): pass\n" * 12
-    )  # 12 lines
-
-    # Create the treemap
-    fig = pmv.py_pkg_treemap(
-        "pymatgen", color_by="coverage", coverage_data_file=str(coverage_file)
-    )
-
-    assert isinstance(fig, go.Figure)
-    trace = fig.data[0]
-    colors = list(trace.marker.colors)
-    labels = list(trace.labels)
-
-    # Critical regression check: verify parent nodes have different coverage values
-    parent_nodes = [idx for idx, label in enumerate(labels) if "(" in str(label)]
-
-    # Verify we have at least one parent node
-    assert len(parent_nodes) > 0, "Should have at least one parent node present"
-
-    # If we have multiple parent nodes, they should have different coverage values
-    if len(parent_nodes) > 1:
-        parent_coverage_values = [colors[idx] for idx in parent_nodes]
-        unique_values = set(parent_coverage_values)
-        assert len(unique_values) > 1, (
-            f"Different parent nodes should have different coverage values, "
-            f"got all same: {parent_coverage_values[0]}"
-        )
-
-    # Verify the coverage values are reasonable
-    for idx in parent_nodes:
-        coverage_value = colors[idx]
-        assert 0.0 <= coverage_value <= 100.0
-
-    # Verify leaf nodes maintain their original values
-    leaf_expected = {
+    expected_leaf_coverage = {
         "input.py": 75.0,
         "output.py": 85.0,
         "cp2k/input.py": 95.0,
@@ -1219,71 +1000,81 @@ def test_py_pkg_treemap_coverage_regression_prevention(tmp_path: Path) -> None:
         "local_env.py": 55.0,
         "phase_diagram.py": 45.0,
     }
+    _write_package_files(tmp_path / "pymatgen", files)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    coverage_file = tmp_path / "regression_coverage.json"
+    coverage_file.write_text(
+        json.dumps(
+            {
+                "files": {
+                    f"pymatgen/{rel_path}": {
+                        "summary": {"percent_covered": expected_leaf_coverage[key]}
+                    }
+                    for rel_path, key in zip(files, expected_leaf_coverage, strict=True)
+                }
+            }
+        )
+    )
+
+    fig = pmv.py_pkg_treemap(
+        "pymatgen", color_by="coverage", coverage_data_file=str(coverage_file)
+    )
+    trace = fig.data[0]
+    colors = list(trace.marker.colors)
+    labels = list(trace.labels)
+    parent_values = [
+        colors[idx] for idx, label in enumerate(labels) if "(" in str(label)
+    ]
+    assert parent_values
+    if len(parent_values) > 1:
+        assert len(set(parent_values)) > 1
+    assert all(0.0 <= value <= 100.0 for value in parent_values)
 
     for idx, label in enumerate(labels):
-        for leaf_name, expected in leaf_expected.items():
+        for leaf_name, expected in expected_leaf_coverage.items():
             if leaf_name in str(label) and "(" not in str(label):
-                assert colors[idx] == expected, (
-                    f"Leaf {label} should have coverage {expected}, got {colors[idx]}"
-                )
+                assert colors[idx] == expected
 
 
-def test_py_pkg_treemap_cell_border() -> None:
+@pytest.mark.parametrize(
+    ("kwargs", "expected_color", "expected_width"),
+    [
+        ({}, None, None),
+        ({"cell_border": {"color": "black", "width": 2}}, "black", 2),
+        ({"cell_border": {}}, None, None),
+        ({"color_by": "coverage"}, "white", 0.5),
+        (
+            {"color_by": "coverage", "cell_border": {"color": "red", "width": 3}},
+            "red",
+            3,
+        ),
+        ({"color_by": "coverage", "cell_border": {}}, None, None),
+    ],
+)
+def test_py_pkg_treemap_cell_border(
+    kwargs: dict[str, Any], expected_color: str | None, expected_width: float | None
+) -> None:
     """Test cell_border parameter functionality."""
-    # Test default behavior (no borders in non-coverage mode)
-    fig1 = pmv.py_pkg_treemap("my_pkg")
-    assert isinstance(fig1, go.Figure)
-    # Check that no borders are applied by default in non-coverage mode
-    # Plotly creates a Line object but with no properties set
-    assert fig1.data[0].marker.line.color is None
-
-    # Test custom border in non-coverage mode
-    fig2 = pmv.py_pkg_treemap("my_pkg", cell_border={"color": "black", "width": 2})
-    assert isinstance(fig2, go.Figure)
-    assert fig2.data[0].marker.line.color == "black"
-    assert fig2.data[0].marker.line.width == 2
-
-    # Test empty border (no borders) in non-coverage mode
-    fig3 = pmv.py_pkg_treemap("my_pkg", cell_border={})
-    assert isinstance(fig3, go.Figure)
-    # Should have no borders - empty dict means no color/width properties
-    assert fig3.data[0].marker.line.color is None
-
-    # Test coverage mode with default borders (white, width 1)
-    fig4 = pmv.py_pkg_treemap("my_pkg", color_by="coverage")
-    assert isinstance(fig4, go.Figure)
-    assert fig4.data[0].marker.line.color == "white"
-    assert fig4.data[0].marker.line.width == 0.5
-
-    # Test coverage mode with custom borders
-    fig5 = pmv.py_pkg_treemap(
-        "my_pkg", color_by="coverage", cell_border={"color": "red", "width": 3}
-    )
-    assert isinstance(fig5, go.Figure)
-    assert fig5.data[0].marker.line.color == "red"
-    assert fig5.data[0].marker.line.width == 3
-
-    # Test coverage mode with no borders
-    fig6 = pmv.py_pkg_treemap("my_pkg", color_by="coverage", cell_border={})
-    assert isinstance(fig6, go.Figure)
-    # Should have no borders even in coverage mode when explicitly set to empty
-    assert fig6.data[0].marker.line.color is None
+    fig = pmv.py_pkg_treemap("my_pkg", **kwargs)
+    marker_line = fig.data[0].marker.line
+    assert marker_line.color == expected_color
+    if expected_width is not None:
+        assert marker_line.width == expected_width
 
 
 def test_collect_coverage_data_from_url() -> None:
     """Test collecting coverage data from the provided GitHub URL."""
-    url = "https://github.com/user-attachments/files/21545088/2025-07-31-pymatviz-coverage.json"
-
+    url = (
+        "https://github.com/user-attachments/files/21545088/"
+        "2025-07-31-pymatviz-coverage.json"
+    )
     coverage_map = pmv.treemap.py_pkg.collect_coverage_data(url)
-
-    assert len(coverage_map) > 0  # Verify we got some coverage data
-
-    # Verify all values are floats between 0 and 100
+    assert coverage_map
     for file_path, coverage in coverage_map.items():
+        assert isinstance(file_path, str)
+        assert file_path
         assert isinstance(coverage, float)
         assert 0 <= coverage <= 100
-        assert isinstance(file_path, str)
-        assert len(file_path) > 0
 
 
 # === count_lines with comment_prefixes ===
@@ -1319,13 +1110,8 @@ def sample_lcov_file(tmp_path_factory: pytest.TempPathFactory) -> Path:
     lcov.write_text(
         "TN:test\n"
         "SF:/src/analysis/convex_hull.rs\n"
-        "DA:1,1\nDA:2,1\nDA:3,0\n"
-        "LH:2\nLF:3\n"
-        "end_of_record\n"
-        "SF:/src/io/mod.rs\n"
-        "DA:1,1\n"
-        "LH:1\nLF:1\n"
-        "end_of_record\n"
+        "DA:1,1\nDA:2,1\nDA:3,0\nLH:2\nLF:3\nend_of_record\n"
+        "SF:/src/io/mod.rs\nDA:1,1\nLH:1\nLF:1\nend_of_record\n"
     )
     return lcov
 
@@ -1333,7 +1119,6 @@ def sample_lcov_file(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def test_parse_lcov_file(sample_lcov_file: Path) -> None:
     """parse_lcov_file extracts per-file coverage percentages."""
     result = pmv.treemap.py_pkg.parse_lcov_file(str(sample_lcov_file))
-    assert len(result) == 2
     assert result["/src/analysis/convex_hull.rs"] == pytest.approx(66.667, abs=0.01)
     assert result["/src/io/mod.rs"] == pytest.approx(100.0)
 
@@ -1365,24 +1150,18 @@ def rust_like_source_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Create a Rust-like source directory structure."""
     src = tmp_path_factory.mktemp("src")
     (src / "lib.rs").write_text("pub mod analysis;\npub mod io;\n")
-
-    analysis = src / "analysis"
-    analysis.mkdir()
-    (analysis / "mod.rs").write_text("pub mod convex_hull;\n")
-    (analysis / "convex_hull.rs").write_text(
-        "// Convex hull implementation\n"
-        "pub fn compute() -> Vec<f64> {\n"
-        "    vec![1.0, 2.0]\n"
-        "}\n"
-    )
-
-    io_dir = src / "io"
-    io_dir.mkdir()
-    (io_dir / "mod.rs").write_text("pub mod lmdb;\n")
-    lmdb_dir = io_dir / "lmdb"
-    lmdb_dir.mkdir()
-    (lmdb_dir / "dataset.rs").write_text("pub struct Dataset;\n")
-
+    for rel_path, content in {
+        "analysis/mod.rs": "pub mod convex_hull;\n",
+        "analysis/convex_hull.rs": (
+            "// Convex hull implementation\n"
+            "pub fn compute() -> Vec<f64> {\n    vec![1.0, 2.0]\n}\n"
+        ),
+        "io/mod.rs": "pub mod lmdb;\n",
+        "io/lmdb/dataset.rs": "pub struct Dataset;\n",
+    }.items():
+        file_path = src / rel_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(content)
     return src
 
 
@@ -1401,62 +1180,61 @@ def test_collect_source_modules_basic(rust_like_source_dir: Path) -> None:
         "repo_path_segment",
     }
     assert (df_result["package"] == "my_crate").all()
-    assert (df_result["n_classes"] == 0).all()
-    assert (df_result["n_functions"] == 0).all()
-
-    stems = set(df_result["filename"])
-    assert stems >= {"lib", "mod", "convex_hull", "dataset"}
+    assert (df_result[["n_classes", "n_functions"]] == 0).all().all()
+    assert set(df_result["filename"]) >= {"lib", "mod", "convex_hull", "dataset"}
 
 
-def test_collect_source_modules_sibling_collision(
+@pytest.mark.parametrize(
+    ("setup", "assertion"),
+    [
+        (
+            "collision",
+            lambda df_result: (
+                df_result[
+                    (df_result["filename"] == "analysis")
+                    & (df_result["directory"] == "root")
+                ].iloc[0]["module_parts"]
+                == ["analysis", "analysis"]
+            ),
+        ),
+        ("extra_md", lambda df_result: "readme" not in set(df_result["filename"])),
+        ("ignored_target", lambda df_result: "debug" not in set(df_result["filename"])),
+    ],
+)
+def test_collect_source_modules_filters(
     rust_like_source_dir: Path,
+    setup: str,
+    assertion: Callable[[pd.DataFrame], bool],
 ) -> None:
-    """Sibling file+dir collision nests the file inside the directory namespace."""
-    collision_file = rust_like_source_dir / "analysis.rs"
-    collision_file.write_text("// new-style mod root\n")
-    try:
-        df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
-            str(rust_like_source_dir), ["my_crate"], file_extensions=(".rs",)
-        )
-        collision_rows = df_result[
-            (df_result["filename"] == "analysis") & (df_result["directory"] == "root")
-        ]
-        assert len(collision_rows) == 1
-        assert collision_rows.iloc[0]["module_parts"] == ["analysis", "analysis"]
-    finally:
-        collision_file.unlink(missing_ok=True)
+    """collect_source_modules_from_dir handles filtering cases."""
+    paths_to_remove: list[Path] = []
+    dirs_to_remove: list[Path] = []
+    if setup == "collision":
+        path_to_write = rust_like_source_dir / "analysis.rs"
+        path_to_write.write_text("// new-style mod root\n")
+        paths_to_remove.append(path_to_write)
+    elif setup == "extra_md":
+        path_to_write = rust_like_source_dir / "readme.md"
+        path_to_write.write_text("# Readme\n")
+        paths_to_remove.append(path_to_write)
+    else:
+        target_dir = rust_like_source_dir / "target"
+        target_dir.mkdir(exist_ok=True)
+        path_to_write = target_dir / "debug.rs"
+        path_to_write.write_text("fn main() {}\n")
+        paths_to_remove.append(path_to_write)
+        dirs_to_remove.append(target_dir)
 
-
-def test_collect_source_modules_file_extensions_filter(
-    rust_like_source_dir: Path,
-) -> None:
-    """Only files matching file_extensions are included."""
-    extra_file = rust_like_source_dir / "readme.md"
-    extra_file.write_text("# Readme\n")
-    try:
-        df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
-            str(rust_like_source_dir), ["proj"], file_extensions=(".rs",)
-        )
-        assert "readme" not in set(df_result["filename"])
-    finally:
-        extra_file.unlink(missing_ok=True)
-
-
-def test_collect_source_modules_ignored_dirs(
-    rust_like_source_dir: Path,
-) -> None:
-    """Directories listed in ignored_dirs are skipped."""
-    target_dir = rust_like_source_dir / "target"
-    target_dir.mkdir(exist_ok=True)
-    (target_dir / "debug.rs").write_text("fn main() {}\n")
     try:
         df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
             str(rust_like_source_dir), ["proj"], file_extensions=(".rs",)
         )
-        assert "debug" not in set(df_result["filename"])
+        assert assertion(df_result)
     finally:
-        (target_dir / "debug.rs").unlink(missing_ok=True)
-        target_dir.rmdir()
+        for path_to_remove in paths_to_remove:
+            path_to_remove.unlink(missing_ok=True)
+        for dir_to_remove in dirs_to_remove:
+            dir_to_remove.rmdir()
 
 
 def test_collect_source_modules_nonexistent_dir() -> None:
@@ -1477,49 +1255,46 @@ def test_collect_source_modules_empty_dir(tmp_path: Path) -> None:
     assert df_result.empty
 
 
-def test_collect_source_modules_mixed_extensions_comment_prefix(
-    tmp_path: Path,
-) -> None:
+def test_collect_source_modules_mixed_extensions_comment_prefix(tmp_path: Path) -> None:
     """Mixed file extensions use per-file comment prefixes, not a union."""
     src = tmp_path / "mixed"
     src.mkdir()
     (src / "helper.py").write_text("# py comment\n// code in python\nx = 1\n")
     (src / "lib.rs").write_text("// rs comment\n# code in rust\nlet x = 1;\n")
-
     df_result = pmv.treemap.py_pkg.collect_source_modules_from_dir(
         str(src), ["proj"], file_extensions=(".py", ".rs")
     )
-    py_row = df_result[df_result["filename"] == "helper"].iloc[0]
-    rs_row = df_result[df_result["filename"] == "lib"].iloc[0]
-    assert py_row["line_count"] == 2, "// is not a comment in Python"
-    assert rs_row["line_count"] == 2, "# is not a comment in Rust"
+    assert df_result.set_index("filename")["line_count"].to_dict() == {
+        "helper": 2,
+        "lib": 2,
+    }
 
 
 # === collect_coverage_data lcov support ===
 
 
 @pytest.mark.parametrize(
-    ("ext", "expected_parser"),
-    [(".info", "lcov"), (".lcov", "lcov"), (".json", "json")],
+    ("ext", "content", "expected"),
+    [
+        (".info", "SF:/src/lib.rs\nDA:1,1\nLH:1\nLF:1\nend_of_record\n", 100.0),
+        (".lcov", "SF:/src/lib.rs\nDA:1,1\nLH:1\nLF:1\nend_of_record\n", 100.0),
+        (
+            ".json",
+            json.dumps(
+                {"files": {"src/lib.py": {"summary": {"percent_covered": 75.0}}}}
+            ),
+            75.0,
+        ),
+    ],
 )
 def test_collect_coverage_data_detects_format(
-    tmp_path: Path, ext: str, expected_parser: str
+    tmp_path: Path, ext: str, content: str, expected: float
 ) -> None:
     """collect_coverage_data auto-detects lcov vs JSON by file extension."""
     cov_file = tmp_path / f"coverage{ext}"
-    if expected_parser == "lcov":
-        cov_file.write_text("SF:/src/lib.rs\nDA:1,1\nLH:1\nLF:1\nend_of_record\n")
-        result = pmv.treemap.py_pkg.collect_coverage_data(str(cov_file))
-        assert result["/src/lib.rs"] == pytest.approx(100.0)
-    else:
-        cov_file.write_text(
-            json.dumps(
-                {"files": {"src/lib.py": {"summary": {"percent_covered": 75.0}}}}
-            )
-        )
-        result = pmv.treemap.py_pkg.collect_coverage_data(str(cov_file))
-        assert len(result) == 1
-        assert next(iter(result.values())) == pytest.approx(75.0)
+    cov_file.write_text(content)
+    result = pmv.treemap.py_pkg.collect_coverage_data(str(cov_file))
+    assert next(iter(result.values())) == pytest.approx(expected)
 
 
 # === py_pkg_treemap with source_dir integration ===
@@ -1531,15 +1306,16 @@ def rust_project(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
     base = tmp_path_factory.mktemp("rust_proj")
     src = base / "src"
     src.mkdir()
-
-    (src / "lib.rs").write_text("pub mod utils;\npub fn main() {}\n")
-    utils = src / "utils"
-    utils.mkdir()
-    (utils / "mod.rs").write_text("pub fn helper() {}\n")
-    (utils / "math.rs").write_text(
-        "// math utilities\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n"
-    )
-
+    for rel_path, content in {
+        "lib.rs": "pub mod utils;\npub fn main() {}\n",
+        "utils/mod.rs": "pub fn helper() {}\n",
+        "utils/math.rs": (
+            "// math utilities\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n"
+        ),
+    }.items():
+        file_path = src / rel_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(content)
     lcov = base / "lcov.info"
     lcov.write_text(
         f"SF:{src}/lib.rs\nLH:2\nLF:2\nend_of_record\n"
@@ -1549,79 +1325,52 @@ def rust_project(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
     return {"src": src, "lcov": lcov}
 
 
-def test_treemap_source_dir_basic(rust_project: dict[str, Path]) -> None:
-    """py_pkg_treemap with source_dir creates a valid figure, omits analysis hover."""
-    fig = pmv.py_pkg_treemap(
-        "my_crate",
-        source_dir=str(rust_project["src"]),
-        file_extensions=(".rs",),
-        base_url=None,
-    )
-    assert isinstance(fig, go.Figure)
-    labels = set(fig.data[0].labels)
-    assert "lib" in labels
-    assert "math" in labels
-
-    hover = fig.data[0].hovertemplate
-    for field in ("Classes:", "Functions:", "Methods:"):
-        assert field not in hover
-
-
-def test_treemap_source_dir_with_coverage(
-    rust_project: dict[str, Path],
+@pytest.mark.parametrize(
+    ("kwargs", "checks"),
+    [
+        ({"base_url": None}, {"labels": {"lib", "math"}, "no_analysis": True}),
+        (
+            {"color_by": "coverage", "base_url": None},
+            {"customdata_cols": 13, "hover": "Coverage:"},
+        ),
+        ({"base_url": "auto"}, {"no_urls": True}),
+        ({"base_url": "https://github.com/test/repo/blob/main"}, {"has_urls": True}),
+    ],
+)
+def test_treemap_source_dir_modes(
+    rust_project: dict[str, Path], kwargs: dict[str, Any], checks: dict[str, Any]
 ) -> None:
-    """py_pkg_treemap with source_dir + lcov coverage applies colors."""
+    """py_pkg_treemap source_dir mode handles labels, coverage, and URLs."""
+    if kwargs.get("color_by") == "coverage":
+        kwargs = {**kwargs, "coverage_data_file": str(rust_project["lcov"])}
     fig = pmv.py_pkg_treemap(
         "my_crate",
         source_dir=str(rust_project["src"]),
         file_extensions=(".rs",),
-        color_by="coverage",
-        coverage_data_file=str(rust_project["lcov"]),
-        base_url=None,
-    )
-    assert isinstance(fig, go.Figure)
-    trace = fig.data[0]
-    assert trace.customdata is not None
-    assert trace.customdata.shape[1] == 13  # 12 base + color_value
-    assert "Coverage:" in trace.hovertemplate
-
-
-def test_treemap_source_dir_auto_base_url_disabled(
-    rust_project: dict[str, Path],
-) -> None:
-    """base_url='auto' is silently disabled when source_dir is provided."""
-    fig = pmv.py_pkg_treemap(
-        "my_crate",
-        source_dir=str(rust_project["src"]),
-        file_extensions=(".rs",),
-        base_url="auto",
-    )
-    assert isinstance(fig, go.Figure)
-    trace = fig.data[0]
-    file_urls = trace.customdata[:, 3]
-    assert not any(isinstance(url, str) and url.startswith("http") for url in file_urls)
-
-
-def test_treemap_source_dir_explicit_base_url(
-    rust_project: dict[str, Path],
-) -> None:
-    """Explicit base_url generates links even in source_dir mode."""
-    base = "https://github.com/test/repo/blob/main"
-    fig = pmv.py_pkg_treemap(
-        "my_crate",
-        source_dir=str(rust_project["src"]),
-        file_extensions=(".rs",),
-        base_url=base,
+        **kwargs,
     )
     trace = fig.data[0]
+    if labels := checks.get("labels"):
+        assert labels <= set(trace.labels)
+    if checks.get("no_analysis"):
+        assert all(
+            field not in trace.hovertemplate
+            for field in ("Classes:", "Functions:", "Methods:")
+        )
+    if customdata_cols := checks.get("customdata_cols"):
+        assert trace.customdata.shape[1] == customdata_cols
+    if hover := checks.get("hover"):
+        assert hover in trace.hovertemplate
     file_urls = [str(url) for url in trace.customdata[:, 3]]
-    assert any(base in url for url in file_urls)
+    if checks.get("no_urls"):
+        assert not any(url.startswith("http") for url in file_urls)
+    if checks.get("has_urls"):
+        assert any(kwargs["base_url"] in url for url in file_urls)
 
 
 def test_treemap_python_includes_analysis_hover() -> None:
     """Standard Python mode still includes analysis fields in hover."""
-    fig = pmv.py_pkg_treemap("my_pkg", base_url=None)
-    hover = fig.data[0].hovertemplate
+    hover = pmv.py_pkg_treemap("my_pkg", base_url=None).data[0].hovertemplate
     assert "Classes:" in hover
     assert "Functions:" in hover
 
@@ -1642,57 +1391,17 @@ def _write_py_lines(path: Path, n_lines: int) -> None:
 
 @pytest.fixture(scope="module")
 def deep_pkg_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Create a package with 3 levels of nesting for depth-pruning tests.
-
-    Structure (line counts chosen to exercise adaptive thresholds):
-      deep_pkg/
-        alpha/           (top module with 3 sub-packages → expandable)
-          big/           (800 lines total → qualifies as significant child)
-            core.py      500
-            helpers.py   300
-          medium/        (400 lines total)
-            utils.py     400
-          tiny/          (50 lines → below min_lines threshold)
-            small.py     50
-        beta/            (top module with >5 sub-packages → too many children)
-          s1.py .. s6.py (100 lines each)
-        gamma/           (top module, single file → no split needed)
-          only.py        200
-    """
+    """Create a package with 3 levels of nesting for depth-pruning tests."""
     src_dir = tmp_path_factory.mktemp("deep_src")
-    pkg = src_dir / "deep_pkg"
-    pkg.mkdir()
-    (pkg / "__init__.py").touch()
-
-    # alpha — 3 sub-packages, suitable for expansion
-    alpha = pkg / "alpha"
-    alpha.mkdir()
-    (alpha / "__init__.py").touch()
-
-    for sub_name, files in {
-        "big": {"core.py": 500, "helpers.py": 300},
-        "medium": {"utils.py": 400},
-        "tiny": {"small.py": 50},
-    }.items():
-        sub_dir = alpha / sub_name
-        sub_dir.mkdir()
-        (sub_dir / "__init__.py").touch()
-        for fname, n_lines in files.items():
-            _write_py_lines(sub_dir / fname, n_lines)
-
-    # beta — 6 sub-files directly under beta (no sub-packages)
-    beta = pkg / "beta"
-    beta.mkdir()
-    (beta / "__init__.py").touch()
-    for idx in range(6):
-        _write_py_lines(beta / f"s{idx}.py", 100)
-
-    # gamma — single file
-    gamma = pkg / "gamma"
-    gamma.mkdir()
-    (gamma / "__init__.py").touch()
-    _write_py_lines(gamma / "only.py", 200)
-
+    files = {
+        "alpha/big/core.py": 500,
+        "alpha/big/helpers.py": 300,
+        "alpha/medium/utils.py": 400,
+        "alpha/tiny/small.py": 50,
+        "gamma/only.py": 200,
+        **{f"beta/s{idx}.py": 100 for idx in range(6)},
+    }
+    _write_package_files(src_dir / "deep_pkg", files)
     return src_dir
 
 
@@ -1712,18 +1421,17 @@ class TestMaxModuleDepth:
     @pytest.mark.parametrize("depth", [1, 2, 3])
     def test_max_depth_limits_nesting(self, depth: int) -> None:
         """Deeper path components should not appear when depth is capped."""
-        fig = pmv.py_pkg_treemap("deep_pkg", max_module_depth=depth, base_url=None)
-        trace = fig.data[0]
+        trace = pmv.py_pkg_treemap(
+            "deep_pkg", max_module_depth=depth, base_url=None
+        ).data[0]
         max_id_depth = max(
             id_val.count("/") for id_val in trace.ids if isinstance(id_val, str)
         )
         assert max_id_depth <= depth
-
         if depth == 1:
-            # At depth 1, only top-level modules appear — no sub-packages
             leaf_labels = {
-                lbl
-                for lbl, parent in zip(trace.labels, trace.parents, strict=False)
+                label
+                for label, parent in zip(trace.labels, trace.parents, strict=False)
                 if parent
             }
             assert leaf_labels >= {"alpha", "beta", "gamma"}
@@ -1734,99 +1442,77 @@ class TestMaxModuleDepth:
 class TestAdaptivePruning:
     """Tests for min_lines_for_split and max_children_for_split."""
 
+    @staticmethod
+    def _trace(**kwargs: Any) -> go.Treemap:
+        """Return a deep_pkg treemap trace for pruning tests."""
+        return pmv.py_pkg_treemap("deep_pkg", base_url=None, **kwargs).data[0]
+
     @pytest.mark.parametrize(
         ("min_lines", "max_children"),
-        [
-            (300, None),  # all 6 children (100 lines each) below min_lines
-            (50, 3),  # 6 children exceeds max_children=3
-        ],
+        [(300, None), (50, 3)],
     )
     def test_collapse_beta_children(
         self, min_lines: int, max_children: int | None
     ) -> None:
-        """Beta's 6 children (100 lines each) get collapsed."""
-        fig = pmv.py_pkg_treemap(
-            "deep_pkg",
+        """Beta's 6 children get collapsed."""
+        trace = self._trace(
             max_module_depth=2,
             min_lines_for_split=min_lines,
             max_children_for_split=max_children,
-            base_url=None,
         )
-        labels = set(fig.data[0].labels)
-        assert "beta" in labels
-        assert labels.isdisjoint({f"s{idx}" for idx in range(6)})
+        assert "beta" in trace.labels
+        assert set(trace.labels).isdisjoint({f"s{idx}" for idx in range(6)})
 
     @pytest.mark.parametrize(
         ("min_lines", "expected_present", "expected_absent"),
         [
-            # big(800) & medium(400) significant (≥200), tiny(50) merges to "other"
             (200, {"big", "medium", "other"}, {"tiny"}),
-            # only big(800) significant (≥600), medium & tiny merge to "other"
             (600, {"big", "other"}, {"medium", "tiny"}),
         ],
     )
     def test_other_bucket_for_small_children(
-        self,
-        min_lines: int,
-        expected_present: set[str],
-        expected_absent: set[str],
+        self, min_lines: int, expected_present: set[str], expected_absent: set[str]
     ) -> None:
         """Children below min_lines merge into an 'other' bucket."""
-        fig = pmv.py_pkg_treemap(
-            "deep_pkg",
-            max_module_depth=3,
-            min_lines_for_split=min_lines,
-            max_children_for_split=5,
-            base_url=None,
+        labels = set(
+            self._trace(
+                max_module_depth=3,
+                min_lines_for_split=min_lines,
+                max_children_for_split=5,
+            ).labels
         )
-        labels = set(fig.data[0].labels)
         assert expected_present <= labels
         assert labels.isdisjoint(expected_absent)
 
     def test_max_children_only_at_deepest_level(self) -> None:
         """max_children_for_split does not collapse intermediate levels."""
-        fig = pmv.py_pkg_treemap(
-            "deep_pkg",
-            max_module_depth=3,
-            min_lines_for_split=50,
-            max_children_for_split=2,
-            base_url=None,
+        labels = set(
+            self._trace(
+                max_module_depth=3,
+                min_lines_for_split=50,
+                max_children_for_split=2,
+            ).labels
         )
-        labels = set(fig.data[0].labels)
-        # alpha has 3 sub-packages (big, medium, tiny) which exceeds max_children=2,
-        # but max_children only applies at the deepest level, so all 3 survive
-        assert {"alpha", "big", "medium"} <= labels
-        # At the deepest level, alpha/big has 2 children (core, helpers) ≤ 2 → expanded
-        assert {"core", "helpers"} <= labels
+        assert {"alpha", "big", "medium", "core", "helpers"} <= labels
 
     def test_aggregated_values_are_summed(self) -> None:
         """Collapsed groups have summed line counts."""
-        fig = pmv.py_pkg_treemap(
-            "deep_pkg",
-            max_module_depth=2,
-            min_lines_for_split=500,
-            base_url=None,
+        trace = self._trace(max_module_depth=2, min_lines_for_split=500)
+        assert list(trace.values)[list(trace.labels).index("beta")] == pytest.approx(
+            600, abs=5
         )
-        labels = list(fig.data[0].labels)
-        values = list(fig.data[0].values)
-        # beta: 6 files x 100 lines = 600 total, all < 500 -> collapsed
-        assert values[labels.index("beta")] == pytest.approx(600, abs=5)
 
     def test_min_lines_uses_line_count_not_cell_value(self) -> None:
         """min_lines_for_split must compare against line_count, not cell_value."""
-        fig = pmv.py_pkg_treemap(
-            "deep_pkg",
-            max_module_depth=3,
-            min_lines_for_split=200,
-            max_children_for_split=5,
-            cell_size_fn=lambda _m: 1,
-            base_url=None,
+        labels = set(
+            self._trace(
+                max_module_depth=3,
+                min_lines_for_split=200,
+                max_children_for_split=5,
+                cell_size_fn=lambda _module: 1,
+            ).labels
         )
-        labels = set(fig.data[0].labels)
-        # alpha sub-packages: big (800 lines), medium (400 lines) → both >= 200
-        # With cell_value each file is 1, sum ≤ 2 → would wrongly collapse
-        assert "big" in labels, "big (800 lines) should survive min_lines=200"
-        assert "medium" in labels, "medium (400 lines) should survive min_lines=200"
+        assert {"big", "medium"} <= labels
 
     @pytest.mark.parametrize(
         "base_url",
@@ -1838,21 +1524,15 @@ class TestAdaptivePruning:
     ) -> None:
         """Depth limiting skips customdata refs in text and hover templates."""
         monkeypatch.setattr(
-            pmv.treemap.py_pkg, "collect_coverage_data", lambda *_a, **_kw: {}
+            pmv.treemap.py_pkg, "collect_coverage_data", lambda *_args, **_kwargs: {}
         )
-        fig = pmv.py_pkg_treemap(
-            "deep_pkg",
-            max_module_depth=2,
-            color_by="coverage",
-            base_url=base_url,
-        )
-        text_template = fig.data[0].texttemplate or ""
-        assert "customdata" not in text_template
-        assert "%{label}" in text_template
-
-        hover_template = fig.data[0].hovertemplate or ""
-        assert "customdata" not in hover_template
-        assert "%{label}" in hover_template
+        trace = pmv.py_pkg_treemap(
+            "deep_pkg", max_module_depth=2, color_by="coverage", base_url=base_url
+        ).data[0]
+        assert "customdata" not in (trace.texttemplate or "")
+        assert "%{label}" in (trace.texttemplate or "")
+        assert "customdata" not in (trace.hovertemplate or "")
+        assert "%{label}" in (trace.hovertemplate or "")
 
     @pytest.mark.parametrize(
         "kwargs",
