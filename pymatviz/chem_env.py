@@ -31,9 +31,10 @@ def get_cn_from_symbol(ce_symbol: str, symbol_cn_mapping: dict[str, int]) -> int
 
     if ce_symbol.startswith("M:"):
         try:
-            return int(ce_symbol.split(":")[1])
+            cn_val = int(ce_symbol.split(":")[1])
         except (ValueError, IndexError):
             return 0
+        return max(0, cn_val)
 
     if ce_symbol in ("NULL", "UNKNOWN"):
         return 0
@@ -60,6 +61,9 @@ def classify_local_env_with_order_params(
     from pymatgen.analysis import local_env
 
     try:
+        if not 0 <= site_idx < len(structure):
+            return f"CN:{cn_val}"
+
         # Check if we have order parameters for this coordination number
         if cn_val not in [int(k_cn) for k_cn in local_env.CN_OPT_PARAMS]:
             return f"CN:{cn_val}"
@@ -90,7 +94,7 @@ def classify_local_env_with_order_params(
         # Calculate order parameters
         neighbor_indices = list(range(1, len(sites)))
         local_order_params = local_ops.get_order_parameters(
-            structure=structure,
+            structure=sites,
             n=0,
             indices_neighs=neighbor_indices,
         )

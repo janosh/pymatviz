@@ -53,6 +53,11 @@ def test_count_elements_by_atomic_nums() -> None:
     pd.testing.assert_series_equal(expected, el_cts)
 
 
+def test_count_elements_invalid_symbol_keys() -> None:
+    with pytest.raises(ValueError, match=r"Unexpected element symbol\(s\): Zz"):
+        pmv_pd.count_elements({"Fe": 1, "Zz": 2})
+
+
 @pytest.mark.parametrize("range_limits", [(-1, 10), (100, 200)])
 def test_count_elements_bad_atomic_nums(range_limits: tuple[int, int]) -> None:
     with pytest.raises(ValueError, match="assumed to represent atomic numbers"):
@@ -158,12 +163,24 @@ def test_count_formulas_basic() -> None:
     [
         ([], "Empty input: data sequence is empty"),
         (["Fe2O3", "NotAFormula"], "Invalid formula"),
+        (["Fe-Zz"], "Invalid elements in system"),
     ],
 )
 def test_count_formulas_raises(data: list, error_match: str) -> None:
     """Test count_formulas error handling."""
     with pytest.raises(ValueError, match=error_match):
         pmv_pd.count_formulas(data)
+
+
+def test_count_formulas_invalid_group_by() -> None:
+    with pytest.raises(ValueError, match="Invalid group_by="):
+        pmv_pd.count_formulas(["Fe2O3"], group_by="invalid")  # ty: ignore[invalid-argument-type]
+
+
+def test_count_formulas_sorts_by_arity_before_name() -> None:
+    df_out = pmv_pd.count_formulas(["Li2O", "Fe2O3", "NaCl", "C", "Li-Fe-O"])
+
+    assert list(df_out["chem_sys"]) == ["C", "Cl-Na", "Fe-O", "Li-O", "Fe-Li-O"]
 
 
 def test_count_formulas_composition_objects() -> None:

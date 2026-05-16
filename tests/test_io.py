@@ -196,6 +196,21 @@ def test_save_fig_pdf_template_and_hidden_traces(
     assert fig.data[0].visible == "legendonly"
 
 
+def test_save_fig_restores_pdf_mutations_on_write_error(tmp_path: Path) -> None:
+    fig = go.Figure()
+    fig.add_scatter(x=[1, 2], y=[3, 4], visible="legendonly")
+    orig_template = fig.layout.template
+
+    with (
+        patch.object(fig, "write_image", side_effect=RuntimeError("write failed")),
+        pytest.raises(RuntimeError, match="write failed"),
+    ):
+        pmv.save_fig(fig, f"{tmp_path}/fig.pdf", env_disable=[])
+
+    assert fig.layout.template == orig_template
+    assert fig.data[0].visible == "legendonly"
+
+
 def test_save_and_compress_svg_type_error() -> None:
     """save_and_compress_svg raises TypeError for non-Figure."""
     with pytest.raises(TypeError, match="fig must be a plotly Figure"):

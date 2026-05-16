@@ -34,7 +34,7 @@ from pymatviz import chem_env
         ("M:", {}, 0),  # Malformed M: symbol
         ("M:abc", {}, 0),  # Non-numeric after M:
         ("M:3.5", {}, 0),  # Float after M:
-        ("M:-5", {}, -5),  # Negative after M:
+        ("M:-5", {}, 0),  # Negative after M:
         ("UNKNOWN_SYMBOL", {}, 0),
         ("", {}, 0),  # Empty string
         (":", {}, 0),  # Just colon
@@ -169,6 +169,44 @@ def test_classify_local_env_different_structures(
     assert isinstance(result, str)
     assert len(result) > 0
     assert ":" in result or result.startswith("CN")
+
+
+def test_classify_local_env_uses_requested_site_neighbors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression test for using site 0/order-param neighbors for every site."""
+    from pymatgen.analysis import local_env
+
+    structure = Structure(
+        Lattice.cubic(4),
+        ["Li", "O", "O"],
+        [[0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0, 0]],
+    )
+
+    class FakeCrystalNN:
+        def get_nn_info(self, structure: Structure, n: int) -> list[dict[str, object]]:
+            assert n == 1
+            return [{"site": structure[0]}, {"site": structure[2]}]
+
+    class FakeOrderParams:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def get_order_parameters(
+            self,
+            structure: list,
+            n: int,
+            indices_neighs: list[int],
+        ) -> list[float]:
+            assert n == 0
+            assert indices_neighs == [1, 2]
+            return [1.0 if structure[0].species_string == "O" else 0.0]
+
+    monkeypatch.setitem(local_env.CN_OPT_PARAMS, 4, {"T": ("tet",)})
+    monkeypatch.setattr(local_env, "CrystalNN", FakeCrystalNN)
+    monkeypatch.setattr(local_env, "LocalStructOrderParams", FakeOrderParams)
+
+    assert chem_env.classify_local_env_with_order_params(structure, 1, 4) == "T:4"
 
 
 @pytest.mark.parametrize(
