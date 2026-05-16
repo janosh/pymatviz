@@ -24,7 +24,7 @@
   const file_routes = Object.keys(import.meta.glob(`./**/+page.{svx,svelte,md}`))
     .filter((key) => !key.includes(`/[`))
     .map((filename) =>
-      filename.replace(/^\./, ``).replace(/\/\+page\.\w+$/, ``) || `/`
+      filename.replace(/^\./u, ``).replace(/\/\+page\.\w+$/u, ``) || `/`
     )
 
   let actions = $derived([...new Set([...file_routes, ...data.notebook_routes])].map(
