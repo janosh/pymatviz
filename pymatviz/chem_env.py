@@ -59,61 +59,57 @@ def classify_local_env_with_order_params(
         str: String describing the coordination environment (e.g. "T:4", "O:6", "CN:8")
     """
     from pymatgen.analysis import local_env
+    from pymatgen.core import Structure
 
     try:
-        if not 0 <= site_idx < len(structure):
+        analysis_structure = Structure.from_sites(structure)
+        if not 0 <= site_idx < len(analysis_structure):
             return f"CN:{cn_val}"
 
         # Check if we have order parameters for this coordination number
-        if cn_val not in [int(k_cn) for k_cn in local_env.CN_OPT_PARAMS]:
+        cn_params = local_env.CN_OPT_PARAMS.get(cn_val)
+        if cn_params is None:
             return f"CN:{cn_val}"
 
         # Get the parameter names and settings for this CN
-        names = list(local_env.CN_OPT_PARAMS[cn_val])
-        types = []
-        params = []
-        for name in names:
-            types.append(local_env.CN_OPT_PARAMS[cn_val][name][0])
-            tmp = (
-                local_env.CN_OPT_PARAMS[cn_val][name][1]
-                if len(local_env.CN_OPT_PARAMS[cn_val][name]) > 1
+        names = list(cn_params)
+        order_params = list(cn_params.values())
+        types = [str(order_param[0]) for order_param in order_params]
+        params = [
+            (
+                order_param[1]
+                if len(order_param) > 1 and isinstance(order_param[1], dict)
                 else None
             )
-            params.append(tmp)
+            for order_param in order_params
+        ]
 
         # Create LocalStructOrderParams instance
         local_ops = local_env.LocalStructOrderParams(types, parameters=params)
 
         # Get neighboring sites using CrystalNN
-        crystal_nn = local_env.CrystalNN()
-        nn_info = crystal_nn.get_nn_info(structure=structure, n=site_idx)
+        nn_info = local_env.CrystalNN().get_nn_info(
+            structure=analysis_structure, n=site_idx
+        )
 
-        # Create sites list: central site + neighbors
-        sites = [structure[site_idx]] + [info["site"] for info in nn_info]
+        # Create local structure: central site + neighbors
+        sites = [analysis_structure[site_idx]] + [info["site"] for info in nn_info]
+        local_structure = Structure.from_sites(sites)
 
         # Calculate order parameters
-        neighbor_indices = list(range(1, len(sites)))
         local_order_params = local_ops.get_order_parameters(
-            structure=sites,
+            structure=local_structure,
             n=0,
-            indices_neighs=neighbor_indices,
+            indices_neighs=list(range(1, len(sites))),
         )
 
         # Find the geometry with the highest order parameter
-        best_match_idx = 0
-        best_value = 0.0
-
-        for idx, op_val in enumerate(local_order_params):
-            if op_val is not None and op_val > best_value:
-                best_value = op_val
-                best_match_idx = idx
-
-        # Return the best matching geometry name with CN
+        best_value = max((val for val in local_order_params if val), default=0)
         if best_value > 0.5:  # Only use if reasonably good match
+            best_match_idx = local_order_params.index(best_value)
             return f"{names[best_match_idx]}:{cn_val}"
 
     except (ImportError, RuntimeError, ValueError, IndexError):
         # Fallback to generic CN-based label
-        return f"CN:{cn_val}"
-    else:
-        return f"CN:{cn_val}"  # Fallback to generic CN label
+        pass
+    return f"CN:{cn_val}"  # Fallback to generic CN label

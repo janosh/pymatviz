@@ -197,6 +197,7 @@ def test_save_fig_pdf_template_and_hidden_traces(
 
 
 def test_save_fig_restores_pdf_mutations_on_write_error(tmp_path: Path) -> None:
+    """Ensure save_fig restores layout/data mutations when write_image errors."""
     fig = go.Figure()
     fig.add_scatter(x=[1, 2], y=[3, 4], visible="legendonly")
     orig_template = fig.layout.template

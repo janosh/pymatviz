@@ -161,7 +161,7 @@ def save_fig(
         try:
             if is_pdf and template:
                 fig.layout.template = template
-            # hide click-to-show traces in PDF
+            # Hide legendonly (click-to-show) traces for static exports.
             for trace in fig.data:
                 if trace.visible == "legendonly":
                     trace.visible = False

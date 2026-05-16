@@ -194,10 +194,11 @@ def test_classify_local_env_uses_requested_site_neighbors(
 
         def get_order_parameters(
             self,
-            structure: list,
+            structure: Structure,
             n: int,
             indices_neighs: list[int],
         ) -> list[float]:
+            assert isinstance(structure, Structure)
             assert n == 0
             assert indices_neighs == [1, 2]
             return [1.0 if structure[0].species_string == "O" else 0.0]

@@ -641,8 +641,9 @@ def test_py_pkg_treemap_cell_size_fn(
     assert actual_filenames >= expected_filenames
 
     # Verify cell_value calculations match expectations
-    metrics_keys = pmv.treemap.py_pkg.ModuleStats._fields
-    numeric_keys = {
+    numeric_fields = {
+        "line_count",
+        "depth",
         "n_classes",
         "n_functions",
         "n_methods",
@@ -651,14 +652,10 @@ def test_py_pkg_treemap_cell_size_fn(
         "n_type_checking_imports",
     }
     for _, row in df_passed_to_plotly.iterrows():
-        row_dict = row.to_dict()
-        metrics_dict = {
-            key: 0
-            if key in numeric_keys and pd.isna(row_dict.get(key))
-            else row_dict[key]
-            for key in metrics_keys
-        }
-        metrics_instance = pmv.treemap.py_pkg.ModuleStats(**metrics_dict)  # ty: ignore[invalid-argument-type]
+        metrics_instance = pmv.treemap.py_pkg.ModuleStats._make(
+            0 if field in numeric_fields and pd.isna(row[field]) else row[field]
+            for field in pmv.treemap.py_pkg.ModuleStats._fields
+        )
         expected_val = (
             metrics_instance.line_count
             if calculator is None
