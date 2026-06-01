@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import pytest
 from numpy.typing import ArrayLike
 
-from pymatviz.classify.curves import precision_recall_curve_plotly, roc_curve_plotly
+from pymatviz.classify.curves import precision_recall_curve, roc_curve
 
 
 @pytest.fixture
@@ -25,8 +25,8 @@ TestInput: TypeAlias = np.ndarray | dict[str, Any] | pd.Series
 @pytest.mark.parametrize(
     ("curve_func", "expected_x_label", "expected_y_label"),
     [
-        (precision_recall_curve_plotly, "Recall", "Precision"),
-        (roc_curve_plotly, "False Positive Rate", "True Positive Rate"),
+        (precision_recall_curve, "Recall", "Precision"),
+        (roc_curve, "False Positive Rate", "True Positive Rate"),
     ],
 )
 @pytest.mark.parametrize(
@@ -68,9 +68,7 @@ def test_curve_plotting(
     assert all(0 <= x <= 1 for trace in fig.data for x in trace.x)
 
 
-@pytest.mark.parametrize(
-    "curve_func", [precision_recall_curve_plotly, roc_curve_plotly]
-)
+@pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
 def test_df_input(
     binary_classification_data: tuple[np.ndarray, np.ndarray],
     curve_func: Callable[..., go.Figure],
@@ -99,9 +97,7 @@ def test_df_input(
         ),
     ],
 )
-@pytest.mark.parametrize(
-    "curve_func", [precision_recall_curve_plotly, roc_curve_plotly]
-)
+@pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
 def test_invalid_inputs(
     invalid_case: tuple[list[Any], list[Any]]
     | tuple[np.ndarray, np.ndarray]
@@ -129,11 +125,11 @@ def test_edge_cases(edge_case: tuple[Sequence[float], Sequence[float]]) -> None:
     targets, probs = edge_case
 
     # PR curves should work for all cases
-    fig_pr = precision_recall_curve_plotly(targets, probs, no_skill=False)
+    fig_pr = precision_recall_curve(targets, probs, no_skill=False)
     assert isinstance(fig_pr, go.Figure)
 
     # Pass no_skill=False to disable the no-skill line to avoid annotation errors
-    fig_roc = roc_curve_plotly(targets, probs, no_skill=False)
+    fig_roc = roc_curve(targets, probs, no_skill=False)
     assert isinstance(fig_roc, go.Figure)
 
 
@@ -152,7 +148,7 @@ def test_custom_styling() -> None:
     }
 
     # Pass no_skill=False to disable the no-skill line to avoid annotation errors
-    fig = precision_recall_curve_plotly(targets, probs, no_skill=False)
+    fig = precision_recall_curve(targets, probs, no_skill=False)
     assert fig.data[0].line.color == "red"
     assert fig.data[1].line.dash == "dash"
 
@@ -164,7 +160,7 @@ def test_large_dataset() -> None:
     targets = rng.binomial(n=1, p=0.5, size=n_samples)
     probs = rng.random(size=n_samples)
 
-    for curve_func in [precision_recall_curve_plotly, roc_curve_plotly]:
+    for curve_func in [precision_recall_curve, roc_curve]:
         # Pass no_skill=False to disable the no-skill line to avoid annotation errors
         fig = curve_func(targets, probs, no_skill=False)
         assert isinstance(fig, go.Figure)
@@ -176,33 +172,31 @@ def test_no_skill_line() -> None:
     probs = np.array([0.1, 0.9, 0.2, 0.8])
 
     # Test with no_skill=True (default)
-    fig_pr = precision_recall_curve_plotly(targets, probs)
+    fig_pr = precision_recall_curve(targets, probs)
     assert isinstance(fig_pr, go.Figure)
     # PR curve adds the no-skill line as a shape, not a trace
     assert len(fig_pr.data) == 1  # 1 model trace
     assert len(fig_pr.layout.shapes) == 1  # 1 no-skill line shape
     assert len(fig_pr.layout.annotations) == 1  # 1 no-skill annotation
 
-    fig_roc = roc_curve_plotly(targets, probs)
+    fig_roc = roc_curve(targets, probs)
     assert isinstance(fig_roc, go.Figure)
     # ROC curve adds the no-skill line as a trace
     assert len(fig_roc.data) == 2  # 1 model trace + 1 no-skill line
 
     # Test with no_skill=False
-    fig_pr_no_baseline = precision_recall_curve_plotly(targets, probs, no_skill=False)
+    fig_pr_no_baseline = precision_recall_curve(targets, probs, no_skill=False)
     assert isinstance(fig_pr_no_baseline, go.Figure)
     assert len(fig_pr_no_baseline.data) == 1  # 1 model trace, no baseline
     assert len(fig_pr_no_baseline.layout.shapes) == 0  # No shapes
 
-    fig_roc_no_baseline = roc_curve_plotly(targets, probs, no_skill=False)
+    fig_roc_no_baseline = roc_curve(targets, probs, no_skill=False)
     assert isinstance(fig_roc_no_baseline, go.Figure)
     assert len(fig_roc_no_baseline.data) == 1  # 1 model trace, no baseline
 
     # Test with custom no_skill options for PR curve
     custom_no_skill_pr = {"line": {"color": "red"}}
-    fig_pr_custom = precision_recall_curve_plotly(
-        targets, probs, no_skill=custom_no_skill_pr
-    )
+    fig_pr_custom = precision_recall_curve(targets, probs, no_skill=custom_no_skill_pr)
     assert isinstance(fig_pr_custom, go.Figure)
     assert len(fig_pr_custom.data) == 1  # 1 model trace
     assert len(fig_pr_custom.layout.shapes) == 1  # 1 no-skill line shape
@@ -211,15 +205,13 @@ def test_no_skill_line() -> None:
     # Test with custom no_skill options for ROC curve
     # For ROC curve, we need to pass the line color differently
     custom_no_skill_roc = {"line": {"color": "red"}}
-    fig_roc_custom = roc_curve_plotly(targets, probs, no_skill=custom_no_skill_roc)
+    fig_roc_custom = roc_curve(targets, probs, no_skill=custom_no_skill_roc)
     assert isinstance(fig_roc_custom, go.Figure)
     assert len(fig_roc_custom.data) == 2  # 1 model trace + 1 no-skill line
     assert fig_roc_custom.data[1].line.color == "red"  # Custom color
 
 
-@pytest.mark.parametrize(
-    "curve_func", [precision_recall_curve_plotly, roc_curve_plotly]
-)
+@pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
 def test_dict_with_dataframe_raises_error(
     curve_func: Callable[..., go.Figure],
 ) -> None:
@@ -232,3 +224,18 @@ def test_dict_with_dataframe_raises_error(
         match="when passing a DataFrame, probs_positive must be a column name",
     ):
         curve_func("target", probs_dict, df=df_clf)
+
+
+@pytest.mark.parametrize("curve_func", [precision_recall_curve, roc_curve])
+def test_curve_does_not_mutate_input_dicts(
+    binary_classification_data: tuple[np.ndarray, np.ndarray],
+    curve_func: Callable[..., go.Figure],
+) -> None:
+    """dict-of-dicts predictions must not have probs_positive popped off the caller."""
+    targets, probs = binary_classification_data
+    model_kwargs = {"probs_positive": probs, "line": {"color": "red"}}
+
+    curve_func(targets, {"Model A": model_kwargs}, no_skill=False)
+
+    assert "probs_positive" in model_kwargs  # caller dict untouched
+    assert model_kwargs["line"] == {"color": "red"}

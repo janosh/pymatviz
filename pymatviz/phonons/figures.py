@@ -30,6 +30,7 @@ from pymatviz.typing import (
     AnyDos,
     SetMode,
 )
+from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
 
 
 if TYPE_CHECKING:
@@ -230,7 +231,7 @@ def phonon_bands(
 
     # Now plot each band structure's segments at the correct x positions
     colors = px.colors.qualitative.Plotly
-    line_styles = ("solid", "dot", "dash", "longdash", "dashdot", "longdashdot")
+    line_styles = PLOTLY_LINE_STYLES
 
     for bs_idx, (label, band_struct) in enumerate(bs_dict.items()):
         color = colors[bs_idx % len(colors)]

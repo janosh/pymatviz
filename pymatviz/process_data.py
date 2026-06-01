@@ -40,10 +40,10 @@ def count_elements(
 
     Provided as standalone function for external use or to cache long computations.
     Caching long element counts is done by refactoring:
-        ptable_heatmap_plotly(long_list_of_formulas) # slow
+        ptable_heatmap(long_list_of_formulas) # slow
     to:
         elem_counts = count_elements(long_list_of_formulas) # slow
-        ptable_heatmap_plotly(elem_counts) # fast, only rerun this line to update plot
+        ptable_heatmap(elem_counts) # fast, only rerun this line to update plot
 
     Args:
         values (dict[str, int | float] | pd.Series | list[str]): Iterable of
@@ -376,11 +376,10 @@ def normalize_structures(
     if isinstance(systems, pd.Series):  # Keep original Series index as keys
         return {key: to_pmg_struct(val) for key, val in systems.items()}
 
-    if isinstance(systems, (Sequence, pd.Series)) and not isinstance(systems, str):
-        iterable_struct = list(systems) if isinstance(systems, pd.Series) else systems
+    if isinstance(systems, Sequence) and not isinstance(systems, str):
         return {
             f"{idx} {(struct := to_pmg_struct(item)).formula}": struct
-            for idx, item in enumerate(iterable_struct, start=1)
+            for idx, item in enumerate(systems, start=1)
         }
 
     raise TypeError(

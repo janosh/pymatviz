@@ -236,7 +236,7 @@ def print_split_stats(df_in: pd.DataFrame, split: pd.Series, split_name: str) ->
 
     common_kwargs = dict(y=0.75, len=0.17, tickangle=0, orientation="h")
     # Create periodic table heatmap
-    fig = pmv.ptable_heatmap_splits_plotly(
+    fig = pmv.ptable_heatmap_splits(
         element_split_counts,
         colorbar=(
             dict(title="Train count<br>", x=0.2, tickformat="~s", **common_kwargs),

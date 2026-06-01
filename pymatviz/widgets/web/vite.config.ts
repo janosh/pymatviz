@@ -1,35 +1,12 @@
+import { config } from '@janosh/vite-config'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { defineConfig } from 'vite-plus'
-import { off, shared_fmt, shared_lint } from './vite.shared.ts'
 
 export default defineConfig({
-  fmt: shared_fmt,
-  lint: {
-    categories: shared_lint.categories,
-    ignorePatterns: [`build/`, `node_modules/`],
-    options: { typeAware: true },
-    plugins: [`oxc`, `typescript`, `unicorn`, `import`],
-    rules: {
-      ...shared_lint.rules,
-      ...off(
-        `no-useless-return`,
-        `no-confusing-void-expression`,
-        `max-statements`,
-        `max-lines-per-function`,
-        `max-params`,
-        `max-lines`,
-        `import/no-duplicates`,
-        `unicorn/no-array-for-each`,
-        `@typescript-eslint/no-unsafe-call`,
-        `@typescript-eslint/no-floating-promises`,
-        // Widget uses a dispatch table of renderers defined after the caller
-        `@typescript-eslint/no-use-before-define`,
-      ),
-    },
-  },
+  ...config, // shared lint/fmt/build from @janosh/vite-config (dotfiles)
   plugins: [
     {
       name: `vite-plugin-json-gz`,
@@ -47,6 +24,7 @@ export default defineConfig({
     svelte(),
   ],
   build: {
+    ...config.build, // keep shared cssTarget: esnext (for light-dark())
     outDir: `build`,
     lib: {
       entry: resolve(import.meta.dirname, `anywidget.ts`),

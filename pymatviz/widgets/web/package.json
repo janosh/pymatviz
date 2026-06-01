@@ -10,6 +10,7 @@
     "fmt": "vp fmt --write"
   },
   "devDependencies": {
+    "@janosh/vite-config": "github:janosh/dotfiles",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@types/node": "^25.6.0",
     "anywidget": "^0.11.0",
@@ -19,11 +20,5 @@
     "vite": "npm:@voidzero-dev/vite-plus-core@^0.1.20",
     "vite-plus": "^0.1.20"
   },
-  "overrides": {
-    "@sveltejs/vite-plugin-svelte": {
-      "vite": "$vite"
-    },
-    "svelte": "$svelte",
-    "svelte-multiselect": "11.7.0"
-  }
+  "packageManager": "pnpm@11.5.0"
 }

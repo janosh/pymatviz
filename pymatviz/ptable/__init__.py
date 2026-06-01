@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from pymatviz.ptable.figures import (
-    ptable_heatmap_plotly,
-    ptable_heatmap_splits_plotly,
-    ptable_hists_plotly,
-    ptable_scatter_plotly,
+    ptable_heatmap,
+    ptable_heatmap_splits,
+    ptable_hists,
+    ptable_scatter,
 )

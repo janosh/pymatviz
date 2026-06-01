@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict, cast
 
 import numpy as np
@@ -51,7 +51,7 @@ class ColorbarConfig(TypedDict, total=False):
     tickformat: str
 
 
-def ptable_heatmap_plotly(
+def ptable_heatmap(
     values: ElemValues,
     *,
     count_mode: ElemCountMode = ElemCountMode.composition,
@@ -438,7 +438,32 @@ def ptable_heatmap_plotly(
     return fig
 
 
-def ptable_hists_plotly(
+def _row_7_is_empty(symbols: Collection[str]) -> bool:
+    """Whether period-7 elements (Fr, Ra, Z 104-118) are all absent from the data."""
+    period_7 = {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
+    return not (set(symbols) & period_7)
+
+
+def _resolve_elem_type_colors(
+    color_elem_strategy: ColorElemTypeStrategy,
+    elem_type_colors: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Resolve the element-type color map from a `color_elem_strategy` value.
+
+    A caller-provided ``elem_type_colors`` override takes precedence when given.
+    """
+    if elem_type_colors is not None:
+        return elem_type_colors
+    if isinstance(color_elem_strategy, dict):
+        return color_elem_strategy
+    if color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
+        return ELEM_TYPE_COLORS
+    raise ValueError(
+        f"{color_elem_strategy=} must be one of {VALID_COLOR_ELEM_STRATEGIES}"
+    )
+
+
+def ptable_hists(
     data: (
         pd.DataFrame
         | pd.Series
@@ -528,14 +553,7 @@ def ptable_hists_plotly(
     elif isinstance(data, pd.Series):
         data = data.to_dict()
 
-    if isinstance(color_elem_strategy, dict):
-        elem_type_colors = color_elem_strategy
-    elif color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
-        elem_type_colors = ELEM_TYPE_COLORS
-    else:
-        raise ValueError(
-            f"{color_elem_strategy=} must be one of {VALID_COLOR_ELEM_STRATEGIES}"
-        )
+    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy, elem_type_colors)
 
     # Initialize figure with subplots in periodic table layout
     n_rows, n_cols = 10, 18
@@ -556,10 +574,8 @@ def ptable_hists_plotly(
     else:
         bins_range = x_range
 
-    # Check if row 7 is empty. If so, pull all rows below it up by one.
-    row_7_is_empty = not bool(
-        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
-    )
+    # If row 7 is empty, pull all rows below it up by one.
+    row_7_is_empty = _row_7_is_empty(data)
 
     # Create histograms for each element
     for symbol, period, group, *_ in df_ptable.itertuples():
@@ -854,7 +870,7 @@ def _get_colorbar_settings(
     return cbar_settings
 
 
-def ptable_heatmap_splits_plotly(
+def ptable_heatmap_splits(
     data: (
         pd.DataFrame
         | pd.Series
@@ -976,7 +992,7 @@ def ptable_heatmap_splits_plotly(
         subplot_kwargs (dict): Additional keyword arguments for subplots.
             See https://plotly.com/python/subplots/ for more information.
 
-        For other args, see ptable_heatmap_plotly().
+        For other args, see ptable_heatmap().
 
     Returns:
         go.Figure: Plotly Figure object with the periodic table heatmap splits.
@@ -1016,7 +1032,7 @@ def ptable_heatmap_splits_plotly(
 
     # Calculate split ranges early if using multiple colorscales
     if not data:
-        raise ValueError(f"ptable_heatmap_splits_plotly: {data=} must not be empty")
+        raise ValueError(f"ptable_heatmap_splits: {data=} must not be empty")
     n_splits = len(next(iter(data.values())))
 
     if not split_labels:  # if not DataFrame or empty columns
@@ -1183,10 +1199,8 @@ def ptable_heatmap_splits_plotly(
             ([0, 1, mid, 0], [1, 1, mid, 1]),  # top
         ]
 
-    # Check if row 7 is empty. If so, pull all rows below it up by one.
-    row_7_is_empty = not bool(
-        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
-    )
+    # If row 7 is empty, pull all rows below it up by one.
+    row_7_is_empty = _row_7_is_empty(data)
 
     # Process data and create shapes for each element
     for symbol, period, group, _name, *_ in df_ptable.itertuples():
@@ -1460,7 +1474,7 @@ def ptable_heatmap_splits_plotly(
             if isinstance(annotations, Callable):
                 # Pass the element's values to the callable
                 annotation_func = cast(
-                    "Callable[[Sequence[float]], str | dict[str, Any]]",
+                    "Callable[[Sequence[float] | np.ndarray], str | dict[str, Any]]",
                     annotations,
                 )
                 annotation = annotation_func(values)
@@ -1592,7 +1606,7 @@ LineData: TypeAlias = (
 )
 
 
-def ptable_scatter_plotly(
+def ptable_scatter(
     data: Mapping[str, ElemData],
     *,
     # Plot mode
@@ -1702,14 +1716,7 @@ def ptable_scatter_plotly(
     Returns:
         go.Figure: Plotly Figure object with line plots in a periodic table layout.
     """
-    if isinstance(color_elem_strategy, dict):
-        elem_type_colors = color_elem_strategy
-    elif color_elem_strategy in VALID_COLOR_ELEM_STRATEGIES:
-        elem_type_colors = ELEM_TYPE_COLORS
-    else:
-        raise ValueError(
-            f"{color_elem_strategy=} must be one of {VALID_COLOR_ELEM_STRATEGIES}"
-        )
+    elem_type_colors = _resolve_elem_type_colors(color_elem_strategy, elem_type_colors)
 
     # Initialize figure with subplots
     n_rows, n_cols = 10, 18
@@ -1767,10 +1774,8 @@ def ptable_scatter_plotly(
 
     has_numeric_colors = cbar_min != float("inf")
 
-    # Check if row 7 is empty. If so, pull all rows below it up by one.
-    row_7_is_empty = not bool(
-        set(data) & {el.symbol for el in Element if el.Z in (87, 88, *range(104, 119))}
-    )
+    # If row 7 is empty, pull all rows below it up by one.
+    row_7_is_empty = _row_7_is_empty(data)
 
     # Track whether we're plotting multiple lines per element
     line_colors: dict[str, str] | None = None

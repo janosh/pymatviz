@@ -45,7 +45,7 @@ fig.show()
 df_phonon[Key.formula] = df_phonon[Key.structure].map(lambda cryst: cryst.formula)
 df_phonon[Key.volume] = df_phonon[Key.structure].map(lambda cryst: cryst.volume)
 
-fig = pmv.ptable_heatmap_plotly(df_phonon[Key.formula], log=True)
+fig = pmv.ptable_heatmap(df_phonon[Key.formula], log=True)
 fig.layout.title.update(text="Elemental prevalence in the Matbench phonons dataset")
 fig.show()
 # pmv.save_fig(fig, "phonons-ptable-heatmap.pdf")

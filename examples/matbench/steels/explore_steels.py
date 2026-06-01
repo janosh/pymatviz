@@ -27,7 +27,7 @@ fig.show()
 
 
 # %%
-fig = pmv.ptable_heatmap_plotly(df_steels[Key.composition], log=True)
+fig = pmv.ptable_heatmap(df_steels[Key.composition], log=True)
 fig.layout.title.update(text="Elemental prevalence in the Matbench steels dataset")
 fig.show()
 # pmv.save_fig(fig, "steels-ptable-heatmap.pdf")

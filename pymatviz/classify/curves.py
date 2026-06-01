@@ -1,5 +1,6 @@
 """Plotly-based classification metrics visualization."""
 
+from collections.abc import Callable
 from typing import Any, Literal, TypeAlias
 
 import numpy as np
@@ -9,10 +10,10 @@ import sklearn.metrics as skm
 from numpy.typing import ArrayLike
 
 from pymatviz.process_data import df_to_arrays
+from pymatviz.utils.plotting import PLOTLY_LINE_STYLES
 
 
 Predictions: TypeAlias = ArrayLike | str | dict[str, ArrayLike | dict[str, Any]]
-PLOTLY_LINE_STYLES = ("solid", "dot", "dash", "longdash", "dashdot", "longdashdot")
 
 
 def _standardize_input(
@@ -80,7 +81,40 @@ def _standardize_input(
     return targets, curves_dict
 
 
-def roc_curve_plotly(
+def _add_classifier_curve_traces(
+    fig: go.Figure,
+    targets: np.ndarray,
+    curves_dict: dict[str, dict[str, Any]],
+    *,
+    build_trace: Callable[[str, int, np.ndarray, np.ndarray], dict[str, Any]],
+    meta_key: str,
+    kwargs: dict[str, Any],
+) -> None:
+    """Add one scatter trace per classifier and sort traces by a meta metric.
+
+    Args:
+        fig (go.Figure): Figure to add the per-classifier traces to.
+        targets (np.ndarray): Ground truth binary labels.
+        curves_dict (dict): Map of name to {"probs_positive", **trace_kwargs}.
+        build_trace (Callable): Given (name, idx, targets_no_nan, probs_no_nan), returns
+            the trace kwargs dict (x, y, name, line, hovertemplate, customdata, meta).
+        meta_key (str): Key in each trace's meta dict to sort traces by (descending).
+        kwargs (dict): Extra keywords merged into every trace's add_scatter call.
+    """
+    for idx, (name, curve_cfg) in enumerate(curves_dict.items()):
+        trace_kwargs = dict(curve_cfg)  # don't mutate caller-supplied dicts
+        curve_probs = np.asarray(trace_kwargs.pop("probs_positive"))
+        no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
+        trace_defaults = build_trace(name, idx, targets[no_nan], curve_probs[no_nan])
+        fig.add_scatter(**trace_defaults | kwargs | trace_kwargs)
+
+    # default to -inf so traces missing the metric sort last
+    fig.data = sorted(
+        fig.data, key=lambda tr: tr.meta.get(meta_key, float("-inf")), reverse=True
+    )
+
+
+def roc_curve(
     targets: ArrayLike | str,
     probs_positive: Predictions,
     df: pd.DataFrame | None = None,
@@ -120,17 +154,13 @@ def roc_curve_plotly(
             "Threshold: %{customdata.threshold:.3f}<br>"
         )
 
-    for idx, (name, trace_kwargs) in enumerate(curves_dict.items()):
-        # Extract required data and optional trace kwargs
-        curve_probs = np.asarray(trace_kwargs.pop("probs_positive"))
-
-        no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
-        fpr, tpr, thresholds = skm.roc_curve(targets[no_nan], curve_probs[no_nan])
-        roc_auc = skm.roc_auc_score(targets[no_nan], curve_probs[no_nan])
-
-        roc_str = f"AUC={roc_auc:.2f}"
-        display_name = f"{name} · {roc_str}" if name else roc_str
-        trace_defaults = {
+    def build_trace(
+        name: str, idx: int, tgt: np.ndarray, probs: np.ndarray
+    ) -> dict[str, Any]:
+        fpr, tpr, thresholds = skm.roc_curve(tgt, probs)
+        roc_auc = skm.roc_auc_score(tgt, probs)
+        display_name = f"{name} · AUC={roc_auc:.2f}" if name else f"AUC={roc_auc:.2f}"
+        return {
             "x": fpr,
             "y": tpr,
             "name": display_name,
@@ -141,16 +171,19 @@ def roc_curve_plotly(
             "customdata": [dict(threshold=thr) for thr in thresholds],
             "meta": dict(roc_auc=roc_auc),
         }
-        fig.add_scatter(**trace_defaults | kwargs | trace_kwargs)
 
-    # Sort traces by AUC (descending)
-    fig.data = sorted(fig.data, key=lambda tr: tr.meta.get("roc_auc"), reverse=True)
+    _add_classifier_curve_traces(
+        fig,
+        targets,
+        curves_dict,
+        build_trace=build_trace,
+        meta_key="roc_auc",
+        kwargs=kwargs,
+    )
 
     # Add no-skill baseline line
     if no_skill is not False:
-        # Set up hover template for no-skill line
-        no_skill = no_skill or {}
-        no_skill.setdefault("hovertemplate", hover_template("No skill"))
+        no_skill = dict(no_skill or {})
 
         # default to 100 points so whole line is hoverable, not just end points
         xs = no_skill.pop("xs", np.linspace(0, 1, 100))
@@ -172,15 +205,17 @@ def roc_curve_plotly(
         fig.add_annotation(**anno, xref="x", yref="y")
 
     fig.layout.legend.update(yanchor="bottom", y=0, xanchor="right", x=0.99)
-    fig.layout.update(xaxis_range=[0, 1.05], yaxis_range=[0, 1.05])
     fig.layout.update(
-        xaxis_title="False Positive Rate", yaxis_title="True Positive Rate"
+        xaxis_range=[0, 1.05],
+        yaxis_range=[0, 1.05],
+        xaxis_title="False Positive Rate",
+        yaxis_title="True Positive Rate",
     )
 
     return fig
 
 
-def precision_recall_curve_plotly(
+def precision_recall_curve(
     targets: ArrayLike | str,
     probs_positive: Predictions,
     df: pd.DataFrame | None = None,
@@ -212,24 +247,18 @@ def precision_recall_curve_plotly(
     targets, curves_dict = _standardize_input(targets, probs_positive, df)
     targets = np.asarray(targets)
 
-    for idx, (name, trace_kwargs) in enumerate(curves_dict.items()):
-        # Extract required data and optional trace kwargs
-        curve_probs = np.asarray(trace_kwargs.pop("probs_positive"))
-        no_nan = ~np.isnan(targets) & ~np.isnan(curve_probs)
-        prec_curve, recall_curve, thresholds = skm.precision_recall_curve(
-            targets[no_nan], curve_probs[no_nan]
-        )
+    def build_trace(
+        name: str, idx: int, tgt: np.ndarray, probs: np.ndarray
+    ) -> dict[str, Any]:
+        prec_curve, recall_curve, thresholds = skm.precision_recall_curve(tgt, probs)
         # f1 scores for each threshold
         f1_curve = 2 * (prec_curve * recall_curve) / (prec_curve + recall_curve)
         f1_curve = np.nan_to_num(f1_curve)  # Handle division by zero
-        f1_score = skm.f1_score(targets[no_nan], np.round(curve_probs[no_nan]))
-
+        f1_score = skm.f1_score(tgt, np.round(probs))
         # append final value since threshold has N-1 elements
         thresholds = [*thresholds, 1.0]
-
-        metrics_str = f"F1={f1_score:.2f}"
-        display_name = f"{name} · {metrics_str}" if name else metrics_str
-        trace_defaults = {
+        display_name = f"{name} · F1={f1_score:.2f}" if name else f"F1={f1_score:.2f}"
+        return {
             "x": recall_curve,
             "y": prec_curve,
             "name": display_name,
@@ -250,14 +279,19 @@ def precision_recall_curve_plotly(
             ],
             "meta": dict(f1_score=f1_score),
         }
-        fig.add_scatter(**trace_defaults | kwargs | trace_kwargs)
 
-    # Sort traces by F1 score (descending)
-    fig.data = sorted(fig.data, key=lambda tr: tr.meta.get("f1_score"), reverse=True)
+    _add_classifier_curve_traces(
+        fig,
+        targets,
+        curves_dict,
+        build_trace=build_trace,
+        meta_key="f1_score",
+        kwargs=kwargs,
+    )
 
     # Add no-skill baseline if not explicitly disabled
     if no_skill is not False:
-        no_skill = no_skill or {}
+        no_skill = dict(no_skill or {})
         no_skill_line = no_skill.pop("line", {})
         no_skill_anno = no_skill.pop("annotation", {})
         fig.add_hline(

@@ -26,14 +26,14 @@ if TYPE_CHECKING:
         ({"H": [0.1, 0.2], "He": [0.3, 0.4]}, 5, None, True, "Turbo"),
     ],
 )
-def test_ptable_hists_plotly_basic(
+def test_ptable_hists_basic(
     elem_data: pd.DataFrame | dict[str, list[float]],
     bins: int,
     x_range: tuple[float | None, float | None] | None,
     log: bool,
     colorscale: str,
 ) -> None:
-    fig = pmv.ptable_hists_plotly(
+    fig = pmv.ptable_hists(
         elem_data, bins=bins, x_range=x_range, log=log, colorscale=colorscale
     )
     assert isinstance(fig, go.Figure)
@@ -55,13 +55,13 @@ def test_ptable_hists_plotly_basic(
         (None, 0.5, dict(x=0.5, y=0.5), dict(x=0.5, y=0.5)),  # Test None font_size
     ],
 )
-def test_ptable_hists_plotly_layout(
+def test_ptable_hists_layout(
     font_size: int | None,
     scale: float,
     symbol_kwargs: dict[str, Any],
     annotations: dict[str, Any],
 ) -> None:
-    fig = pmv.ptable_hists_plotly(
+    fig = pmv.ptable_hists(
         {"Fe": [1, 2, 3], "O": [2, 3, 4]},
         font_size=font_size,
         scale=scale,
@@ -81,15 +81,15 @@ def test_ptable_hists_plotly_layout(
     "color_elem_strategy",
     VALID_COLOR_ELEM_STRATEGIES,
 )
-def test_ptable_hists_plotly_element_colors(
+def test_ptable_hists_element_colors(
     color_elem_strategy: ColorElemTypeStrategy,
 ) -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
-    fig = pmv.ptable_hists_plotly(data, color_elem_strategy=color_elem_strategy)
+    fig = pmv.ptable_hists(data, color_elem_strategy=color_elem_strategy)
     assert isinstance(fig, go.Figure)
 
 
-def test_ptable_hists_plotly_annotations() -> None:
+def test_ptable_hists_annotations() -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     anno_kwargs: dict[str, str | int] = {"font_size": 14, "font_color": "red"}
 
@@ -101,7 +101,7 @@ def test_ptable_hists_plotly_annotations() -> None:
         ],
         "O": {"text": "Oxygen", **anno_kwargs},
     }
-    fig = pmv.ptable_hists_plotly(data, annotations=annotations)  # ty: ignore[invalid-argument-type]
+    fig = pmv.ptable_hists(data, annotations=annotations)  # ty: ignore[invalid-argument-type]
     assert isinstance(fig, go.Figure)
 
     # Check multiple annotations are present
@@ -120,7 +120,7 @@ def test_ptable_hists_plotly_annotations() -> None:
             {"text": f"<br>Range: {max(value) - min(value):.1f}"},
         ]
 
-    fig = pmv.ptable_hists_plotly(data, annotations=annotation_func)
+    fig = pmv.ptable_hists(data, annotations=annotation_func)
     # check multiple annotations are present
     anno_texts = [anno.text for anno in fig.layout.annotations]
     assert len(anno_texts) == 6
@@ -129,23 +129,23 @@ def test_ptable_hists_plotly_annotations() -> None:
     assert "<br>Range: 2.0" in anno_texts
 
 
-def test_ptable_hists_plotly_error_cases() -> None:
+def test_ptable_hists_error_cases() -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
 
     # Test invalid color_elem_strategy
     with pytest.raises(
         ValueError, match="color_elem_strategy='invalid' must be one of"
     ):
-        pmv.ptable_hists_plotly(data, color_elem_strategy="invalid")  # ty: ignore[invalid-argument-type]
+        pmv.ptable_hists(data, color_elem_strategy="invalid")  # ty: ignore[invalid-argument-type]
 
     # Test invalid scale
     with pytest.raises(ValueError, match="Invalid value of type ") as exc:
-        pmv.ptable_hists_plotly(data, scale=-1.0)
+        pmv.ptable_hists(data, scale=-1.0)
     assert "An int or float in the interval [1, inf]" in str(exc.value)
 
     # Test invalid bins
     with pytest.raises(ZeroDivisionError, match="division by zero"):
-        pmv.ptable_hists_plotly(data, bins=0)
+        pmv.ptable_hists(data, bins=0)
 
 
 @pytest.mark.parametrize(
@@ -156,11 +156,11 @@ def test_ptable_hists_plotly_error_cases() -> None:
         ({"Fe": "Fe*"}, {"font": {"color": "red"}}),
     ],
 )
-def test_ptable_hists_plotly_symbol_customization(
+def test_ptable_hists_symbol_customization(
     element_symbol_map: dict[str, str] | None,
     symbol_kwargs: dict[str, Any] | None,
 ) -> None:
-    fig = pmv.ptable_hists_plotly(
+    fig = pmv.ptable_hists(
         {"Fe": [1, 2, 3], "O": [2, 3, 4]},
         element_symbol_map=element_symbol_map,
         symbol_kwargs=symbol_kwargs,
@@ -168,7 +168,7 @@ def test_ptable_hists_plotly_symbol_customization(
     assert isinstance(fig, go.Figure)
 
 
-def test_ptable_hists_plotly_subplot_kwargs() -> None:
+def test_ptable_hists_subplot_kwargs() -> None:
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     sub_titles = ["Iron", "Oxygen"]
     subplot_kwargs = {
@@ -176,18 +176,18 @@ def test_ptable_hists_plotly_subplot_kwargs() -> None:
         "vertical_spacing": 0.05,
         "subplot_titles": sub_titles,
     }
-    fig = pmv.ptable_hists_plotly(data, subplot_kwargs=subplot_kwargs)
+    fig = pmv.ptable_hists(data, subplot_kwargs=subplot_kwargs)
     assert isinstance(fig, go.Figure)
     # Verify subplot titles are set
     assert [anno.text for anno in fig.layout.annotations][:2] == sub_titles
 
 
-def test_ptable_hists_plotly_hover_tooltips() -> None:
+def test_ptable_hists_hover_tooltips() -> None:
     """Test that hover tooltips show element info and histogram values."""
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     element_symbol_map = {"Fe": "Iron"}
 
-    fig = pmv.ptable_hists_plotly(data, element_symbol_map=element_symbol_map)
+    fig = pmv.ptable_hists(data, element_symbol_map=element_symbol_map)
 
     # Get hover templates for each histogram trace
     hover_templates = [trace.hovertemplate for trace in fig.data]
@@ -218,15 +218,15 @@ def test_ptable_hists_plotly_hover_tooltips() -> None:
         dict(orientation="v", len=0.6, thickness=20, title="Custom", x=1.1, y=0.5),
     ],
 )
-def test_ptable_hists_plotly_colorbar(
+def test_ptable_hists_colorbar(
     colorbar: dict[str, Any] | Literal[False] | None,
 ) -> None:
-    """Test colorbar customization in pmv.ptable_hists_plotly including range and
+    """Test colorbar customization in pmv.ptable_hists including range and
     visibility.
     """
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
     x_range = (-1, 5)  # Test custom range
-    fig = pmv.ptable_hists_plotly(data, colorbar=colorbar, x_range=x_range)
+    fig = pmv.ptable_hists(data, colorbar=colorbar, x_range=x_range)
 
     if colorbar is False:
         assert all(not hasattr(trace, "colorbar") for trace in fig.data)
@@ -261,7 +261,7 @@ def test_ptable_hists_plotly_colorbar(
             assert actual == expect, f"{key=}: {actual=} != {expect=}"
 
 
-def test_ptable_hists_plotly_x_axis_kwargs() -> None:
+def test_ptable_hists_x_axis_kwargs() -> None:
     """Test that x_axis_kwargs properly modifies histogram x-axes."""
     data = {"Fe": [1, 2, 3], "O": [2, 3, 4]}
 
@@ -276,7 +276,7 @@ def test_ptable_hists_plotly_x_axis_kwargs() -> None:
         "linewidth": 2,
     }
 
-    fig = pmv.ptable_hists_plotly(data, x_axis_kwargs=x_axis_kwargs)
+    fig = pmv.ptable_hists(data, x_axis_kwargs=x_axis_kwargs)
 
     xaxis = fig.layout.xaxis
 
